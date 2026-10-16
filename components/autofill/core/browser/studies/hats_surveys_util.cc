@@ -48,8 +48,13 @@ bool CanTriggerPersonalizationAndTrustSurvey(const FormStructure& form,
       case FillingProduct::kAutofillAi:
         return base::FeatureList::IsEnabled(
             features::kAutofillPersonalizationAndTrustAutofillAiSurvey);
-      case FillingProduct::kNone:
       case FillingProduct::kCreditCard:
+        return base::FeatureList::IsEnabled(
+            features::kAutofillPersonalizationAndTrustCreditCardSurvey);
+      case FillingProduct::kOneTimePassword:
+        return base::FeatureList::IsEnabled(
+            features::kAutofillPersonalizationAndTrustOneTimePasswordSurvey);
+      case FillingProduct::kNone:
       case FillingProduct::kMerchantPromoCode:
       case FillingProduct::kIban:
       case FillingProduct::kAutocomplete:
@@ -58,7 +63,6 @@ bool CanTriggerPersonalizationAndTrustSurvey(const FormStructure& form,
       case FillingProduct::kLoyaltyCard:
       case FillingProduct::kIdentityCredential:
       case FillingProduct::kDataList:
-      case FillingProduct::kOneTimePassword:
       case FillingProduct::kPasskey:
       case FillingProduct::kAtMemory:
         NOTIMPLEMENTED();
@@ -80,9 +84,10 @@ bool CanTriggerPersonalizationAndTrustSurvey(const FormStructure& form,
       case FillingProduct::kAddress:
         return kMinRequiredFieldsForHeuristics;
       case FillingProduct::kAutofillAi:
+      case FillingProduct::kCreditCard:
+      case FillingProduct::kOneTimePassword:
         return 1;
       case FillingProduct::kNone:
-      case FillingProduct::kCreditCard:
       case FillingProduct::kMerchantPromoCode:
       case FillingProduct::kIban:
       case FillingProduct::kAutocomplete:
@@ -91,7 +96,6 @@ bool CanTriggerPersonalizationAndTrustSurvey(const FormStructure& form,
       case FillingProduct::kLoyaltyCard:
       case FillingProduct::kIdentityCredential:
       case FillingProduct::kDataList:
-      case FillingProduct::kOneTimePassword:
       case FillingProduct::kPasskey:
       case FillingProduct::kAtMemory:
         NOTIMPLEMENTED();
@@ -124,11 +128,15 @@ HatsSurveyStringData CollectPersonalizationAndTrustFillingData(
   size_t num_manually_filled = 0;
   FieldTypeSet all_field_types;
   FillingProductSet filling_products_used;
+  bool is_bnpl_used = false;
 
   for (const std::unique_ptr<AutofillField>& field : submitted_form) {
     all_field_types.insert_all(field->Type().GetTypes());
     if (field->filling_product() != FillingProduct::kNone) {
       filling_products_used.insert(field->filling_product());
+    }
+    if (field->was_filled_with_bnpl()) {
+      is_bnpl_used = true;
     }
 
     const autofill_metrics::FieldFillingStatus status =
@@ -193,6 +201,7 @@ HatsSurveyStringData CollectPersonalizationAndTrustFillingData(
           {"AutofillAi entity types used",
            ListToString(autofill_ai_entity_types_used,
                         &EntityType::name_as_string)},
+          {"BNPL used", is_bnpl_used ? "true" : "false"},
           {"Time since last Autofill use",
            submitted_form.last_filling_timestamp()
                .transform([](base::TimeTicks time) {
@@ -209,7 +218,8 @@ void MaybeTriggerFormSubmissionHatsSurveys(
     AutofillClient& client,
     const FormStructure& submitted_form) {
   for (FillingProduct filling_product :
-       std::array{FillingProduct::kAutofillAi, FillingProduct::kAddress}) {
+       std::array{FillingProduct::kAutofillAi, FillingProduct::kOneTimePassword,
+                  FillingProduct::kCreditCard, FillingProduct::kAddress}) {
     if (CanTriggerPersonalizationAndTrustSurvey(submitted_form,
                                                 filling_product)) {
       // Product was used on at least one field in the submitted form, initiate

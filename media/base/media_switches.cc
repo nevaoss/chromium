@@ -373,6 +373,12 @@ BASE_FEATURE(kAudioFocusDuckFlash,
 #endif
 );
 
+// Immediately pauses AudioRendererMixer's underlying output sink when all
+// inputs are removed on explicit player pauses instead of waiting for the
+// 10-second mixer pause delay.
+BASE_FEATURE(kAudioRendererMixerImmediatePause,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Allows the AutoPictureInPictureTabHelper to automatically enter
 // picture-in-picture when a webpage is occluded by another window.
 BASE_FEATURE(kAutoPictureInPictureOnWindowOccluded,
@@ -603,8 +609,7 @@ BASE_FEATURE(kFeatureManagementLiveTranslateCrOS,
 
 // Controls whether FFmpegDemuxer attaches the HDR metadata carried by ITU-T
 // T.35 timed metadata tracks to the video tracks that reference them.
-BASE_FEATURE(kFFmpegDemuxerIT35MetadataTrack,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFFmpegDemuxerIT35MetadataTrack, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Forces software video encoders to be used for low resolutions.
 // Enabled-by-default, except for Android where SW encoder for H26x and AV1 are
@@ -647,6 +652,17 @@ BASE_FEATURE(kGlobalVaapiLock, base::FEATURE_DISABLED_BY_DEFAULT);
 // sufficient, SPS+PPS must appear in-band to mark it as a keyframe.
 BASE_FEATURE(kH264IDRKeyframeRequiresParameterSets,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Skips H.264 NAL units with the unspecified nal_unit_type 31 during Annex B
+// conversion, to work around platform decoders that fail on them.
+// TODO(b/567236166): Remove once the cros-codecs fix has rolled out.
+BASE_FEATURE(kH264SkipUnspecifiedNalus,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 
 // Enables handling of hardware media keys for controlling media.
 BASE_FEATURE(kHardwareMediaKeyHandling,

@@ -15,6 +15,12 @@ namespace actor {
 BASE_DECLARE_FEATURE(kGlicActionUseOptimizationGuide);
 BASE_DECLARE_FEATURE(kActorBypassTOUValidationForGuestView);
 
+// When disabled, a tab-backed ActorSurface uses its TabHandle value as its
+// ActorSurfaceId, and headless surfaces take ids from a separate range starting
+// at 1000000. When enabled, every surface takes the next id from one counter,
+// independent of TabHandle.
+BASE_DECLARE_FEATURE(kGenerateIndependentIdsForActorSurface);
+
 BASE_DECLARE_FEATURE(kGlicExternalProtocolActionResultCode);
 
 BASE_DECLARE_FEATURE(kGlicBlockNavigationToDangerousContentTypes);
@@ -117,6 +123,11 @@ BASE_DECLARE_FEATURE(kActorSendBrowserSignalForAction);
 BASE_DECLARE_FEATURE(kGlicActorLoadAndExtractContentTool);
 extern const base::FeatureParam<base::TimeDelta>
     kGlicActorLoadAndExtractContentToolTimeout;
+
+// Enables the file upload tool, which lets the actor fulfill a page's file
+// chooser request with files downloaded from model-provided URLs instead of
+// showing the native file picker.
+BASE_DECLARE_FEATURE(kGlicActorFileUploadTool);
 
 BASE_DECLARE_FEATURE(kGlicActorTransientTasks);
 extern const base::FeatureParam<bool> kGlicActorTransientTasksForceTransient;

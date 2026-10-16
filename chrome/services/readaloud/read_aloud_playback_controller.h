@@ -5,6 +5,7 @@
 #ifndef CHROME_SERVICES_READALOUD_READ_ALOUD_PLAYBACK_CONTROLLER_H_
 #define CHROME_SERVICES_READALOUD_READ_ALOUD_PLAYBACK_CONTROLLER_H_
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -96,7 +97,8 @@ class ReadAloudPlaybackController
   // Invoked by `prefetch_manager_` when an in-flight synthesis request is
   // dispatched.
   void OnPrefetchSynthesisRequest(uint32_t chunk_index,
-                                  std::u16string_view text);
+                                  std::u16string_view text,
+                                  read_aloud::mojom::Speaker speaker);
 
   // Invoked by `prefetch_manager_` when text content is chunked.
   void OnTextChunked(const std::vector<std::u16string>& chunks);
@@ -108,9 +110,12 @@ class ReadAloudPlaybackController
                                  bool success);
 
   // Maximum duration a Play request will remain deferred before timing out.
-  static constexpr base::TimeDelta kPlayOnReadyTimeout = base::Seconds(10);
+  static constexpr base::TimeDelta kClassicPlayOnReadyTimeout =
+      base::Seconds(10);
+  static constexpr base::TimeDelta kOverviewPlayOnReadyTimeout =
+      kOverviewGenerationTimeout;
 
-  // Triggered if play_on_ready_ remains true beyond kPlayOnReadyTimeout.
+  // Triggered if play_on_ready_ remains true beyond the mode-specific timeout.
   void OnPlayOnReadyTimeout();
 
   // Evaluates whether all prerequisites for audio playback are satisfied.
@@ -127,6 +132,19 @@ class ReadAloudPlaybackController
   // Returns true if playback was started.
   bool MaybePlayOnReady();
 
+  // Single funnel for every playback state transition. Caches `state` and
+  // notifies the client only when the state actually changes, so that the
+  // browser never receives redundant OnPlaybackStateChanged() IPCs.
+  void SetPlaybackState(read_aloud::mojom::PlaybackState state);
+
+  // Invoked by `decoder_sequencer_` at the end of each replenish cycle while
+  // playback is pumping, reporting how the decoded audio queue is doing.
+  void OnPumpStatusChanged(ReadAloudDecoderSequencer::PumpStatus status);
+
+  // Halts playback: cancels any pending play-on-ready, pauses the audio output
+  // stream, stops the decoder pump and reports `state`.
+  void HaltPlayback(read_aloud::mojom::PlaybackState state);
+
   mojo::Receiver<read_aloud::mojom::ReadAloudPlaybackControllerFactory>
       receiver_;
   mojo::Receiver<read_aloud::mojom::ReadAloudPlaybackController>
@@ -141,6 +159,11 @@ class ReadAloudPlaybackController
   // Current playback rate multiplier (clamped between kMinPlaybackRate and
   // kMaxPlaybackRate).
   float playback_rate_ = 1.0f;
+
+  // Last state sent to the client, used to suppress duplicate notifications.
+  // Empty until the first transition of a session, so that the very first
+  // state is always delivered even if it matches the implicit initial state.
+  std::optional<read_aloud::mojom::PlaybackState> playback_state_;
 
   // True if a Play request was received while requirements were unfulfilled.
   bool play_on_ready_ = false;

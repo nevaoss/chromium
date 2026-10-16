@@ -400,6 +400,8 @@ chromium-metrics-reviews@google.com.
   <int value="126" label="SubscriptionEligibilitySubscriptionBenefits"/>
   <int value="127" label="CustomLinksInitializedMobile"/>
   <int value="128" label="CustomLinksListMobile"/>
+  <int value="129" label="SiteTokenProviderPref"/>
+  <int value="130" label="ReaderForAccessibility"/>
 <!-- LINT.ThenChange(/components/sync_preferences/common_syncable_prefs_database.cc:CommonSyncablePref)-->
 
 <!-- LINT.IfChange(ChromeSyncablePref) -->
@@ -1510,18 +1512,6 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="No keystore key"/>
   <int value="1" label="Unknown reason"/>
 </enum>
-
-<!-- LINT.IfChange(SyncMetadataConsistency) -->
-
-<enum name="SyncMetadataConsistency">
-  <int value="0" label="Metadata consistent"/>
-  <int value="1" label="Cache GUID mismatch"/>
-  <int value="2" label="Data type ID mismatch"/>
-  <int value="3" label="Empty persisted authenticated Gaia ID"/>
-  <int value="4" label="Authenticated Gaia ID mismatch"/>
-</enum>
-
-<!-- LINT.ThenChange(/components/sync/model/client_tag_based_data_type_processor.cc:SyncMetadataConsistency) -->
 
 <!-- LINT.IfChange(SyncModelError) -->
 

@@ -30,7 +30,6 @@
 #include "chrome/browser/contextual_cueing/prefs.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/engagement/important_sites_util.h"
-#include "components/enterprise/browser/reporting/prefs.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/first_run/first_run.h"
@@ -127,6 +126,7 @@
 #include "components/enterprise/browser/groups/groups_prefs.h"
 #include "components/enterprise/browser/identifiers/identifiers_prefs.h"
 #include "components/enterprise/browser/promotion/promotion_prefs.h"
+#include "components/enterprise/browser/reporting/prefs.h"
 #include "components/enterprise/buildflags/buildflags.h"
 #include "components/enterprise/connectors/core/connectors_prefs.h"
 #include "components/enterprise/isolated_mode/prefs.h"
@@ -198,6 +198,7 @@
 #include "components/signin/public/base/signin_prefs.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/site_engagement/content/site_engagement_service.h"
+#include "components/site_token_provider/site_token_provider_prefs.h"
 #include "components/skills/public/skills_prefs.h"
 #include "components/subresource_filter/content/browser/ruleset_service.h"
 #include "components/subresource_filter/core/common/constants.h"
@@ -265,7 +266,9 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/accessibility/animation_policy_prefs.h"
+#if BUILDFLAG(IS_CHROMEOS)
 #include "extensions/browser/api/audio/audio_api.h"
+#endif  // BUILDFLAG(IS_CHROMEOS)
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 #if BUILDFLAG(ENABLE_PDF)
@@ -303,6 +306,7 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/actor/ui/actor_ui_state_manager_prefs.h"
+#include "chrome/browser/child_module/child_module_manager.h"
 #include "chrome/browser/desktop_to_mobile_promos/promos_utils.h"  // nogncheck crbug.com/40147906
 #include "chrome/browser/gcm/gcm_product_util.h"
 #include "chrome/browser/indigo/indigo_prefs.h"
@@ -1076,7 +1080,14 @@ constexpr char kNtpMicrosoftAuthLastDismissedTime[] =
     "NewTabPage.MicrosoftAuthentication.LastDimissedTime";
 constexpr char kNtpTabGroupsLastDismissedTime[] =
     "NewTabPage.TabGroups.LastDimissedTime";
+constexpr char kTabsFromOtherDevicesAutoPinnedMigration[] =
+    "toolbar.tabs_from_other_devices_auto_pinned_migration";
 #endif  // !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_CHROMEOS)
+// Deprecated on non-ChromePS platforms on 09/2026. Still used on ChromeOS.
+constexpr char kAudioApiStableDeviceIds[] =
+    "extensions.audio.stable_device_ids";
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1505,7 +1516,14 @@ void RegisterProfilePrefsForMigration(
 #if !BUILDFLAG(IS_ANDROID)
   registry->RegisterTimePref(kNtpMicrosoftAuthLastDismissedTime, base::Time());
   registry->RegisterTimePref(kNtpTabGroupsLastDismissedTime, base::Time());
+  registry->RegisterBooleanPref(kTabsFromOtherDevicesAutoPinnedMigration,
+                                false);
 #endif  // !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_CHROMEOS)
+  // Deprecated 09/2026.
+  // TODO(b/566104798): Clean up deleted pref code after 1 year.
+  registry->RegisterListPref(kAudioApiStableDeviceIds);
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 }
 
 }  // namespace
@@ -1630,6 +1648,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(first_run::kTosDialogBehavior, 0);
   registry->RegisterBooleanPref(lens::kLensCameraAssistedSearchEnabled, true);
 #else   // BUILDFLAG(IS_ANDROID)
+  child_module::ChildModuleManager::RegisterLocalStatePrefs(registry);
   gcm::RegisterPrefs(registry);
   headless::RegisterPrefs(registry);
   media_router::RegisterLocalStatePrefs(registry);
@@ -1988,6 +2007,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
   SigninPrefs::RegisterProfilePrefs(registry);
   site_engagement::SiteEngagementService::RegisterProfilePrefs(registry);
+  site_token_provider::prefs::RegisterProfilePrefs(registry);
   skills::prefs::RegisterProfilePrefs(registry);
   subscription_eligibility::prefs::RegisterProfilePrefs(registry);
   supervised_user::RegisterProfilePrefs(registry);
@@ -2040,7 +2060,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   RegisterAnimationPolicyPrefs(registry);
+#if BUILDFLAG(IS_CHROMEOS)
   extensions::AudioAPI::RegisterUserPrefs(registry);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 #if BUILDFLAG(ENABLE_PDF)
@@ -2883,7 +2905,13 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 #if !BUILDFLAG(IS_ANDROID)
   profile_prefs->ClearPref(kNtpMicrosoftAuthLastDismissedTime);
   profile_prefs->ClearPref(kNtpTabGroupsLastDismissedTime);
+  profile_prefs->ClearPref(kTabsFromOtherDevicesAutoPinnedMigration);
 #endif  // !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_CHROMEOS)
+  // Added 09/2026.
+  // TODO(b/566104798): Clean up deleted pref code after 1 year.
+  profile_prefs->ClearPref(kAudioApiStableDeviceIds);
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

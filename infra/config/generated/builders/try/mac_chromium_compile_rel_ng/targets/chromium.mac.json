@@ -158,7 +158,8 @@
       },
       {
         "args": [
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {
@@ -252,7 +253,7 @@
             "os": "Mac-13"
           },
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
-          "shards": 40
+          "shards": 50
         },
         "test": "browser_tests",
         "test_id_prefix": "ninja://chrome/test:browser_tests/"
@@ -2059,7 +2060,8 @@
       },
       {
         "args": [
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {
@@ -3148,7 +3150,8 @@
         "args": [
           "--enable-features=TreesInViz",
           "--test-launcher-filter-file=../../testing/buildbot/filters/trees_in_viz.blink_platform_unittests.filter",
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {
@@ -3972,7 +3975,8 @@
       },
       {
         "args": [
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {
@@ -5062,7 +5066,8 @@
         "args": [
           "--enable-features=TreesInViz",
           "--test-launcher-filter-file=../../testing/buildbot/filters/trees_in_viz.blink_platform_unittests.filter",
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {

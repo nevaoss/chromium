@@ -1381,7 +1381,7 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "display_server": "x11",
-            "gpu": "10de:2184-595.91.07",
+            "gpu": "10de:2184-595.104.02",
             "os": "Ubuntu-24.04",
             "pool": "chromium.tests.gpu",
         },
@@ -1445,7 +1445,7 @@ targets.mixin(
             "os": "Mac-26",
         },
         optional_dimensions = {
-            30: {
+            180: {
                 "cpu": "Apple_(Virtual)",
             },
         },
@@ -1898,7 +1898,9 @@ targets.mixin(
         # Uncommenting this argument will bypass all interactions with Skia
         # Gold in any tests that use it. This is meant as a temporary
         # emergency stop in case of a Gold outage that's affecting the bots.
-        # "--bypass-skia-gold-functionality",
+        # TODO(crbug.com/skia/568081757): Can comment this out again if/when
+        # it's safe to do so.
+        "--bypass-skia-gold-functionality",
     ],
     precommit_args = [
         "--gerrit-issue=${patch_issue}",
@@ -2370,12 +2372,12 @@ targets.mixin(
     name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "27b5019j",
+        "27b5028f",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27b5019j",
+                name = "xcode_ios_27b5028f",
                 path = "Xcode.app",
             ),
         ],

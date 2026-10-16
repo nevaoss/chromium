@@ -4,16 +4,22 @@
 
 #include "chrome/browser/ttc/core/tool_controller.h"
 
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
 #include "chrome/browser/actor/enterprise_policy_checker.h"
+#include "chrome/browser/actor/tab_annotation_manager.h"
 #include "chrome/browser/actor/tab_observation_strategy.h"
 #include "chrome/browser/actor/tools/navigate_tool_request.h"
 #include "chrome/browser/actor/ui/actor_ui_state_manager.h"
 #include "chrome/browser/actor/ui/actor_ui_tab_controller_interface.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ttc/app/public/tool_types.h"
@@ -30,12 +36,16 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/actor/core/task_id.h"
 #include "components/actor/core/task_source_info.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
+#include "components/bookmarks/browser/bookmark_model.h"
+#include "components/bookmarks/test/bookmark_test_helpers.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/dns/mock_host_resolver.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -46,6 +56,14 @@ namespace ttc {
 
 namespace {
 
+// Asserts that `response` is an error and expects its code to be
+// `expected_code`. Must be used in a void-returning function.
+#define EXPECT_TOOL_ERROR(response, expected_code)       \
+  do {                                                   \
+    ASSERT_FALSE((response).Ok());                       \
+    EXPECT_EQ((response).error().code, (expected_code)); \
+  } while (0)
+
 class ToolControllerBrowserTest : public TtcCoreBrowserTestBase {
  public:
   ToolControllerBrowserTest() = default;
@@ -55,6 +73,9 @@ class ToolControllerBrowserTest : public TtcCoreBrowserTestBase {
   void SetUpOnMainThread() override {
     TtcCoreBrowserTestBase::SetUpOnMainThread();
     host_resolver()->AddRule("*", "127.0.0.1");
+    // For actor test pages such as /actor/media.html.
+    embedded_https_test_server().ServeFilesFromSourceDirectory(
+        "components/test/data");
     ASSERT_TRUE(embedded_https_test_server().Start());
   }
 };
@@ -142,9 +163,8 @@ IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, PerformSearchMissingQuery) {
                                       future.GetCallback());
 
   ToolResponse response = future.Take();
-  ASSERT_FALSE(response.Ok());
-  EXPECT_EQ(response.error().code,
-            actor::mojom::ActionResultCode::kArgumentsInvalid);
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kArgumentsInvalid);
 }
 
 IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, CloseCurrentTab) {
@@ -261,9 +281,8 @@ IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, GoBackWithoutHistory) {
                                       future.GetCallback());
 
   ToolResponse response = future.Take();
-  ASSERT_FALSE(response.Ok());
-  EXPECT_EQ(response.error().code,
-            actor::mojom::ActionResultCode::kHistoryNoBackEntries);
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kHistoryNoBackEntries);
 }
 
 IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, ReloadPage) {
@@ -292,6 +311,301 @@ IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, ReloadPage) {
   EXPECT_EQ(web_contents()->GetLastCommittedURL(), url);
 }
 
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, SwitchTab) {
+  // Navigate tab 0 to a page with title "Title Of Awesomeness".
+  const GURL target_url =
+      embedded_https_test_server().GetURL("example.com", "/title2.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), target_url));
+
+  // Open tab 1 in the foreground so tab 0 is in the background.
+  const GURL active_url =
+      embedded_https_test_server().GetURL("example.com", "/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), active_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+  ASSERT_EQ(browser()->GetTabStripModel()->active_index(), 1);
+
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "switch_tab";
+  tool_request.arguments.Set("query", "Awesomeness");
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TRUE(response.Ok());
+  EXPECT_EQ(browser()->GetTabStripModel()->active_index(), 0);
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), target_url);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, SwitchTabInvalidArguments) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "switch_tab";
+  tool_request.arguments.Set("query", "");
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kArgumentsInvalid);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, OpenKnownPage) {
+  const GURL start_url =
+      embedded_https_test_server().GetURL("example.com", "/title1.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), start_url));
+
+  // Add a bookmark matching "Awesomeness" (with no second tab open, verifying
+  // that OpenKnownPageTool's bookmark fallback is executed).
+  const GURL bookmark_url =
+      embedded_https_test_server().GetURL("example.com", "/title2.html");
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile());
+  ASSERT_TRUE(bookmark_model);
+  bookmarks::test::WaitForBookmarkModelToLoad(bookmark_model);
+  bookmark_model->AddURL(bookmark_model->other_node(), 0,
+                         u"Title Of Awesomeness", bookmark_url);
+
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "open_known_page";
+  tool_request.arguments.Set("query", "Awesomeness");
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TRUE(response.Ok());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), bookmark_url);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest,
+                       OpenKnownPageInvalidArguments) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "open_known_page";
+  tool_request.arguments.Set("query", "");
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kArgumentsInvalid);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, FindAndHighlight) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  // title1.html's body is "This page has no title."
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_https_test_server().GetURL("example.com", "/title1.html")));
+
+  base::test::TestFuture<ToolResponse> future;
+
+  ToolRequest tool_request;
+  tool_request.name = "find_and_highlight";
+  tool_request.arguments.Set("query", "no title");
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  EXPECT_TRUE(future.Take().Ok());
+
+  auto* annotation_manager =
+      actor::TabAnnotationManager::FromWebContents(web_contents());
+  ASSERT_TRUE(annotation_manager);
+  EXPECT_TRUE(annotation_manager->HasActiveHighlight());
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest,
+                       FindAndHighlightTextNotFound) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_https_test_server().GetURL("example.com", "/title1.html")));
+
+  base::test::TestFuture<ToolResponse> future;
+
+  ToolRequest tool_request;
+  tool_request.name = "find_and_highlight";
+  tool_request.arguments.Set("query", "nonexistent text");
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TOOL_ERROR(
+      response, actor::mojom::ActionResultCode::kFindAndHighlightTextNotFound);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest,
+                       FindAndHighlightMissingQuery) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  base::test::TestFuture<ToolResponse> future;
+
+  ToolRequest tool_request;
+  tool_request.name = "find_and_highlight";
+
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kArgumentsInvalid);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, PauseAndPlayVideo) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_https_test_server().GetURL("example.com", "/actor/media.html")));
+
+  // Start playback so there's an active media session.
+  ASSERT_TRUE(content::ExecJs(web_contents(), "play()"));
+  ASSERT_EQ(true, content::EvalJs(web_contents(), "waitForEvent('play')"));
+
+  {
+    base::test::TestFuture<ToolResponse> future;
+    ToolRequest tool_request;
+    tool_request.name = "pause_video";
+    session_controller->ProcessToolCall(std::move(tool_request),
+                                        future.GetCallback());
+    EXPECT_TRUE(future.Take().Ok());
+    EXPECT_EQ(true, content::EvalJs(web_contents(), "waitForEvent('pause')"));
+  }
+
+  {
+    base::test::TestFuture<ToolResponse> future;
+    ToolRequest tool_request;
+    tool_request.name = "play_video";
+    session_controller->ProcessToolCall(std::move(tool_request),
+                                        future.GetCallback());
+    EXPECT_TRUE(future.Take().Ok());
+    EXPECT_EQ(true, content::EvalJs(web_contents(), "waitForEvent('play')"));
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, PlayVideoNoMedia) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_https_test_server().GetURL("example.com", "/title1.html")));
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "play_video";
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  ASSERT_FALSE(response.Ok());
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kMediaControlNoMedia);
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, SeekToTimestamp) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_https_test_server().GetURL("example.com", "/actor/media.html")));
+
+  // Start playback to initialize the media session, then pause so that
+  // currentTime doesn't drift during the seek.
+  ASSERT_TRUE(content::ExecJs(web_contents(), "play()"));
+  ASSERT_EQ(true, content::EvalJs(web_contents(), "waitForEvent('play')"));
+  ASSERT_TRUE(content::ExecJs(web_contents(), "video.pause()"));
+  ASSERT_EQ(true, content::EvalJs(web_contents(), "waitForEvent('pause')"));
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "seek_to_timestamp";
+  tool_request.arguments.Set("timecode", "0:01");
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  EXPECT_TRUE(future.Take().Ok());
+  EXPECT_EQ(true, content::EvalJs(web_contents(), "waitForSeek(1.0)"));
+  EXPECT_EQ(
+      1.0,
+      content::EvalJs(web_contents(), "video.currentTime").ExtractDouble());
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest,
+                       SeekToTimestampInvalidTimecode) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  for (const char* timecode : {"abc", "-5", "1:2:3:4", ""}) {
+    SCOPED_TRACE(timecode);
+    base::test::TestFuture<ToolResponse> future;
+    ToolRequest tool_request;
+    tool_request.name = "seek_to_timestamp";
+    tool_request.arguments.Set("timecode", timecode);
+    session_controller->ProcessToolCall(std::move(tool_request),
+                                        future.GetCallback());
+
+    ToolResponse response = future.Take();
+    EXPECT_TOOL_ERROR(response,
+                      actor::mojom::ActionResultCode::kArgumentsInvalid);
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest,
+                       SeekToTimestampMissingTimecode) {
+  ttc_service().StartSession();
+  auto* session_controller = ttc_service().session_controller();
+  ASSERT_TRUE(session_controller);
+
+  base::test::TestFuture<ToolResponse> future;
+  ToolRequest tool_request;
+  tool_request.name = "seek_to_timestamp";
+  session_controller->ProcessToolCall(std::move(tool_request),
+                                      future.GetCallback());
+
+  ToolResponse response = future.Take();
+  EXPECT_TOOL_ERROR(response,
+                    actor::mojom::ActionResultCode::kArgumentsInvalid);
+}
+
 IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, UnsupportedTool) {
   ttc_service().StartSession();
   auto* session_controller = ttc_service().session_controller();
@@ -306,9 +620,7 @@ IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, UnsupportedTool) {
                                       future.GetCallback());
 
   ToolResponse response = future.Take();
-  ASSERT_FALSE(response.Ok());
-  EXPECT_EQ(response.error().code,
-            actor::mojom::ActionResultCode::kToolUnknown);
+  EXPECT_TOOL_ERROR(response, actor::mojom::ActionResultCode::kToolUnknown);
   ASSERT_TRUE(response.error().message.has_value());
   EXPECT_EQ(*response.error().message, "Unsupported tool");
 }
@@ -319,7 +631,7 @@ IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, GetToolDefinitions) {
   ASSERT_TRUE(session_controller);
 
   std::vector<ToolDefinition> tools = session_controller->GetToolDefinitions();
-  ASSERT_EQ(tools.size(), 6u);
+  ASSERT_EQ(tools.size(), 12u);
 
   const ToolDefinition& open_url = tools[0];
   EXPECT_EQ(open_url.name, "open_url");
@@ -413,6 +725,102 @@ IN_PROC_BROWSER_TEST_F(ToolControllerBrowserTest, GetToolDefinitions) {
 
   // The tool takes no arguments.
   EXPECT_TRUE(reload_page.parameters_json_schema.empty());
+
+  constexpr std::pair<size_t, std::string_view> kQueryTools[] = {
+      {6u, "switch_tab"},
+      {7u, "open_known_page"},
+  };
+  for (const auto& [index, expected_name] : kQueryTools) {
+    const ToolDefinition& tool = tools[index];
+    EXPECT_EQ(tool.name, expected_name);
+    EXPECT_FALSE(tool.description.empty());
+    EXPECT_EQ(tool.behavior, ToolDefinition::Behavior::kBlocking);
+    EXPECT_EQ(tool.verbalization, ToolDefinition::Verbalization::kSilentAction);
+
+    const base::DictValue& tool_schema = tool.parameters_json_schema;
+    const std::string* tool_schema_type = tool_schema.FindString("type");
+    ASSERT_TRUE(tool_schema_type);
+    EXPECT_EQ(*tool_schema_type, "object");
+
+    const std::string* tool_query_type =
+        tool_schema.FindStringByDottedPath("properties.query.type");
+    ASSERT_TRUE(tool_query_type);
+    EXPECT_EQ(*tool_query_type, "string");
+
+    const std::string* query_description =
+        tool_schema.FindStringByDottedPath("properties.query.description");
+    ASSERT_TRUE(query_description);
+    EXPECT_FALSE(query_description->empty());
+
+    const base::ListValue* tool_required = tool_schema.FindList("required");
+    ASSERT_TRUE(tool_required);
+    EXPECT_EQ(*tool_required, base::ListValue().Append("query"));
+  }
+
+  const ToolDefinition& find_and_highlight = tools[8];
+  EXPECT_EQ(find_and_highlight.name, "find_and_highlight");
+  EXPECT_FALSE(find_and_highlight.description.empty());
+  EXPECT_EQ(find_and_highlight.behavior, ToolDefinition::Behavior::kBlocking);
+  EXPECT_EQ(find_and_highlight.verbalization,
+            ToolDefinition::Verbalization::kSilentAction);
+
+  const base::DictValue& highlight_schema =
+      find_and_highlight.parameters_json_schema;
+  const std::string* highlight_schema_type =
+      highlight_schema.FindString("type");
+  ASSERT_TRUE(highlight_schema_type);
+  EXPECT_EQ(*highlight_schema_type, "object");
+
+  const std::string* highlight_query_type =
+      highlight_schema.FindStringByDottedPath("properties.query.type");
+  ASSERT_TRUE(highlight_query_type);
+  EXPECT_EQ(*highlight_query_type, "string");
+
+  const base::ListValue* highlight_required =
+      highlight_schema.FindList("required");
+  ASSERT_TRUE(highlight_required);
+  EXPECT_EQ(*highlight_required, base::ListValue().Append("query"));
+
+  const ToolDefinition& play_video = tools[9];
+  EXPECT_EQ(play_video.name, "play_video");
+  EXPECT_FALSE(play_video.description.empty());
+  EXPECT_EQ(play_video.behavior, ToolDefinition::Behavior::kBlocking);
+  EXPECT_EQ(play_video.verbalization,
+            ToolDefinition::Verbalization::kSilentAction);
+
+  // The tool takes no arguments.
+  EXPECT_TRUE(play_video.parameters_json_schema.empty());
+
+  const ToolDefinition& pause_video = tools[10];
+  EXPECT_EQ(pause_video.name, "pause_video");
+  EXPECT_FALSE(pause_video.description.empty());
+  EXPECT_EQ(pause_video.behavior, ToolDefinition::Behavior::kBlocking);
+  EXPECT_EQ(pause_video.verbalization,
+            ToolDefinition::Verbalization::kSilentAction);
+
+  // The tool takes no arguments.
+  EXPECT_TRUE(pause_video.parameters_json_schema.empty());
+
+  const ToolDefinition& seek_to_timestamp = tools[11];
+  EXPECT_EQ(seek_to_timestamp.name, "seek_to_timestamp");
+  EXPECT_FALSE(seek_to_timestamp.description.empty());
+  EXPECT_EQ(seek_to_timestamp.behavior, ToolDefinition::Behavior::kBlocking);
+  EXPECT_EQ(seek_to_timestamp.verbalization,
+            ToolDefinition::Verbalization::kSilentAction);
+
+  const base::DictValue& seek_schema = seek_to_timestamp.parameters_json_schema;
+  const std::string* seek_schema_type = seek_schema.FindString("type");
+  ASSERT_TRUE(seek_schema_type);
+  EXPECT_EQ(*seek_schema_type, "object");
+
+  const std::string* seek_timecode_type =
+      seek_schema.FindStringByDottedPath("properties.timecode.type");
+  ASSERT_TRUE(seek_timecode_type);
+  EXPECT_EQ(*seek_timecode_type, "string");
+
+  const base::ListValue* seek_required = seek_schema.FindList("required");
+  ASSERT_TRUE(seek_required);
+  EXPECT_EQ(*seek_required, base::ListValue().Append("timecode"));
 }
 
 class ToolControllerActorDisabledBrowserTest

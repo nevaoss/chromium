@@ -4725,14 +4725,14 @@ TEST_P(PartitionAllocTest, OverrideHooks) {
 
   PartitionAllocHooks::SetOverrideHooks(
       [](void** out, AllocFlags flags, size_t size, const char* type_name,
-         std::optional<size_t> alignment) -> bool {
+         std::optional<size_t> alignment, bool use_brp) -> bool {
         if (size == kOverriddenSize && type_name == kOverriddenType) {
           *out = overridden_allocation;
           return true;
         }
         return false;
       },
-      [](void* address) -> bool {
+      [](void* address, FreeFlags flags) -> bool {
         if (address == overridden_allocation) {
           free_called = true;
           return true;
@@ -7073,6 +7073,7 @@ TEST_P(PartitionAllocTest, SwitchBucketDistributionAfterAlloc) {
   root->Free(ptr);
 }
 
+#if PA_BUILDFLAG(ENABLE_AUTO_PARTITIONING)
 TEST_P(PartitionAllocTest, MultipleThreadCachePerThread) {
   // Use thread cache indices which are not used by default partitions.
   constexpr size_t index1 = kNumPartitions;
@@ -7103,6 +7104,7 @@ TEST_P(PartitionAllocTest, MultipleThreadCachePerThread) {
                                     bucket_index, pos2));
   EXPECT_EQ(pos2, 0u);
 }
+#endif  // PA_BUILDFLAG(ENABLE_AUTO_PARTITIONING)
 
 // Documentation tests demonstrating the behavior of `IsExtentOutOfBounds()`.
 // This test passes if it doesn't crash.

@@ -40,6 +40,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/byte_size.h"
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/feature_list.h"
@@ -323,6 +324,7 @@ void CanvasRenderingContext2D::Trace(Visitor* visitor) const {
   ScriptWrappable::Trace(visitor);
   BaseRenderingContext2D::Trace(visitor);
   SVGResourceClient::Trace(visitor);
+  CanvasHibernationHandler::Delegate::Trace(visitor);
 }
 
 void CanvasRenderingContext2D::WillDrawImage(CanvasImageSource* source,
@@ -502,13 +504,6 @@ MemoryManagedPaintCanvas* CanvasRenderingContext2D::GetOrCreatePaintCanvas() {
   return &Recorder()->getRecordingCanvas();
 }
 
-void CanvasRenderingContext2D::RecordingCleared() {
-  BaseRenderingContext2D::RecordingCleared();
-  if (shared_image_provider_) {
-    shared_image_provider_->RecordingCleared();
-  }
-}
-
 void CanvasRenderingContext2D::WillDraw(
     const gfx::Rect& dirty_rect,
     CanvasPerformanceMonitor::DrawType draw_type) {
@@ -537,8 +532,7 @@ std::optional<cc::PaintRecord> CanvasRenderingContext2D::FlushCanvas(
   if (!canvas()) {
     return std::nullopt;
   }
-  return FlushCanvasInternal(shared_image_provider_.get(),
-                             bitmap_provider_.get(), reason);
+  return FlushCanvasInternal(reason);
 }
 
 void CanvasRenderingContext2D::DidFlushRecording(
@@ -552,16 +546,6 @@ void CanvasRenderingContext2D::DidFlushRecording(
     last_recording_ = recording;
   } else {
     last_recording_ = std::nullopt;
-  }
-}
-
-void CanvasRenderingContext2D::OnFlushForImage(
-    cc::PaintImage::ContentId content_id) {
-  if (shared_image_provider_ && !shared_image_provider_->IsSoftware()) {
-    if (Recorder()->getRecordingCanvas().IsCachingImage(content_id)) {
-      FlushCanvas(FlushReason::kOther);
-    }
-    shared_image_provider_->OnFlushForImage(content_id);
   }
 }
 
@@ -779,19 +763,6 @@ CanvasRenderingContext2D::PaintRenderingResultsToResource(
   return si_provider->ProduceCanvasResource();
 }
 
-scoped_refptr<StaticBitmapImage>
-CanvasRenderingContext2D::PaintRenderingResultsToSnapshot(
-    SourceDrawingBuffer source_buffer) {
-  if (!IsResourceProviderValid()) {
-    return nullptr;
-  }
-  FlushCanvas(FlushReason::kOther);
-  if (shared_image_provider_) {
-    return shared_image_provider_->Snapshot();
-  }
-  return bitmap_provider_->Snapshot();
-}
-
 const std::optional<cc::PaintRecord>&
 CanvasRenderingContext2D::GetLastRecording() {
   return last_recording_;
@@ -887,7 +858,7 @@ ExecutionContext* CanvasRenderingContext2D::GetTopExecutionContext() const {
 }
 
 bool CanvasRenderingContext2D::IsPaintable() const {
-  return canvas() && HasResourceProvider();
+  return canvas() && BaseRenderingContext2D::IsPaintable();
 }
 
 bool CanvasRenderingContext2D::IsHibernating() const {
@@ -1202,11 +1173,8 @@ void CanvasRenderingContext2D::CreateProvider() {
 }
 
 base::ByteSize CanvasRenderingContext2D::AllocatedBufferSize() const {
-  if (shared_image_provider_) {
-    return shared_image_provider_->EstimatedSizeInBytes();
-  }
-  if (bitmap_provider_) {
-    return bitmap_provider_->EstimatedSizeInBytes();
+  if (HasResourceProvider()) {
+    return BaseRenderingContext2D::AllocatedBufferSize();
   }
   if (hibernation_handler_ && hibernation_handler_->IsHibernating()) {
     return base::ByteSize(hibernation_handler_->memory_size());
@@ -1215,16 +1183,7 @@ base::ByteSize CanvasRenderingContext2D::AllocatedBufferSize() const {
 }
 
 bool CanvasRenderingContext2D::IsResourceProviderValid() const {
-  if (!canvas()) {
-    return false;
-  }
-  if (shared_image_provider_) {
-    return shared_image_provider_->IsValid();
-  }
-  if (bitmap_provider_) {
-    return bitmap_provider_->IsValid();
-  }
-  return false;
+  return canvas() && BaseRenderingContext2D::IsResourceProviderValid();
 }
 
 Canvas2DResourceProvider* CanvasRenderingContext2D::GetSharedImageProvider()
@@ -1233,7 +1192,7 @@ Canvas2DResourceProvider* CanvasRenderingContext2D::GetSharedImageProvider()
 }
 
 bool CanvasRenderingContext2D::HasResourceProvider() const {
-  return shared_image_provider_ != nullptr || bitmap_provider_ != nullptr;
+  return BaseRenderingContext2D::HasResourceProvider();
 }
 
 bool CanvasRenderingContext2D::InitializeResourceProvider() {
@@ -1266,9 +1225,6 @@ bool CanvasRenderingContext2D::InitializeResourceProvider() {
     return true;
   }
   if (bitmap_provider_) {
-    if (!bitmap_provider_->IsValid()) {
-      return false;
-    }
     return true;
   }
 
@@ -1343,13 +1299,7 @@ void CanvasRenderingContext2D::DropAndRecreateExistingResourceProvider() {
     return;
   }
 
-  if (shared_image_provider_) {
-    shared_image_provider_->RestoreBackBuffer(
-        image->PaintImageForCurrentFrame());
-
-  } else {
-    bitmap_provider_->RestoreBackBuffer(image->PaintImageForCurrentFrame());
-  }
+  RestoreBackBuffer(image->PaintImageForCurrentFrame());
 
   canvas()->UpdateMemoryUsage();
 }
@@ -1389,6 +1339,23 @@ void CanvasRenderingContext2D::RecreateResourceProvider() {
   }
 }
 
+void CanvasRenderingContext2D::RestoreBackBuffer(const cc::PaintImage& image) {
+  DCHECK_EQ(image.height(), Host()->Size().height());
+  DCHECK_EQ(image.width(), Host()->Size().width());
+
+  auto sk_image = image.GetSwSkImage();
+  DCHECK(sk_image);
+  SkPixmap map;
+  sk_image->peekPixels(&map);
+  if (shared_image_provider_) {
+    shared_image_provider_->WritePixels(map.info(), map.addr(), map.rowBytes(),
+                                        /*x=*/0, /*y=*/0);
+  } else if (bitmap_provider_) {
+    bitmap_provider_->WritePixels(map.info(), map.addr(), map.rowBytes(),
+                                  /*x=*/0, /*y=*/0);
+  }
+}
+
 void CanvasRenderingContext2D::WakeUpFromHibernation() {
   TRACE_EVENT0("base", "Canvas2dWakeUpFromHibernation");
 
@@ -1415,12 +1382,7 @@ void CanvasRenderingContext2D::WakeUpFromHibernation() {
   builder.set_image(hibernation_handler->GetImage(),
                     PaintImage::GetNextContentId());
   builder.set_id(PaintImage::GetNextId());
-  if (shared_image_provider_) {
-    shared_image_provider_->RestoreBackBuffer(builder.TakePaintImage());
-
-  } else if (bitmap_provider_) {
-    bitmap_provider_->RestoreBackBuffer(builder.TakePaintImage());
-  }
+  RestoreBackBuffer(builder.TakePaintImage());
   // The hibernation image is no longer valid, clear it.
   hibernation_handler->Clear();
   DCHECK(!hibernation_handler->IsHibernating());

@@ -75,6 +75,7 @@
 <translation id="1046521327593783388">{NUM_PASSWORDS,plural, =1{1 գաղտնաբառ ներմուծվեց <ph name="BRAND" /> այս սարքում}one{{NUM_PASSWORDS} գաղտնաբառ ներմուծվեց <ph name="BRAND" /> այս սարքում}other{{NUM_PASSWORDS} գաղտնաբառ ներմուծվեց <ph name="BRAND" /> այս սարքում}}</translation>
 <translation id="1046572983040892965">Պատուհանը տեղափոխվեց վերև և ձախ</translation>
 <translation id="1047431265488717055">Պատճենել հղման տեքստը</translation>
+<translation id="104751728059674265">Ձեր հաշվից հնարավոր չէ կարծիք ուղարկել։ Չափահաս օգտատերը կարող է օգտագործել իր սարքը կամ պրոֆիլը՝ ձեր փոխարեն խնդրի մասին հաղորդելու համար։</translation>
 <translation id="1048986595386481879">Դինամիկ կերպով հատկացված</translation>
 <translation id="1049324577536766607">{COUNT,plural, =1{<ph name="ATTACHMENTS" />ի ստացում <ph name="DEVICE_NAME" /> սարքից}one{<ph name="ATTACHMENTS" />ի ստացում <ph name="DEVICE_NAME" /> սարքից}other{<ph name="ATTACHMENTS" />ի ստացում <ph name="DEVICE_NAME" /> սարքից}}</translation>
 <translation id="1049743911850919806">Ինկոգնիտո</translation>
@@ -331,6 +332,7 @@
 <translation id="1231572247662419826">Կայքերը կարող են մկնիկի կառավարման տվյալները ստանալու և օգտագործելու թույլտվություն խնդրել</translation>
 <translation id="1232569758102978740">Անանուն</translation>
 <translation id="1233497634904001272">Հարցումն ավարտելու համար նորից հպեք անվտանգության բանալուն:</translation>
+<translation id="1233566345244684257">Ցանկացած մեկը, ում հասանելի են ձեր Gemini հավելվածները, կարող է կառավարել ձեր Chrome դիտարկիչը։</translation>
 <translation id="1233721473400465416">Տեղույթ</translation>
 <translation id="1233835246554936745">{0,plural, =1{Պահել 1 տարր հաշվում}one{Պահել # տարր հաշվում}other{Պահել # տարր հաշվում}}</translation>
 <translation id="1234736487471201993">Ստեղծել QR կոդ այս պատկերի համար</translation>
@@ -553,6 +555,7 @@
 <translation id="1421514190500081936">Նշեք, թե որն է այս տվյալները ներբեռնելու պատճառը՝</translation>
 <translation id="1422159345171879700">Բեռնել վտանգավոր հրահանգաշարերը</translation>
 <translation id="1425040197660226913">Չի հաջողվում վերբեռնել։ Ընտրեք 20 ՄԲ-ից փոքր պատկեր։</translation>
+<translation id="1426154609634610063">Ծանոթացեք Gemini-ի օգտագործման ռիսկերին</translation>
 <translation id="1426410128494586442">Այո</translation>
 <translation id="142655739075382478"><ph name="APP_NAME" /> հավելվածն արգելափակված է</translation>
 <translation id="1427179946227469514">Տեքստի հնչեցման ձայնի ուժգնությունը</translation>
@@ -983,6 +986,7 @@
 <translation id="1755601632425835748">Տեքստի չափսը</translation>
 <translation id="1756963401828337401">Ընտրեք էկրան՝ սքրինշոթ անելու համար</translation>
 <translation id="17584710573359123">Դիտել Chrome Web Store-ում</translation>
+<translation id="1758845021884209593">Օգտագործել դյուրանցումը OS-ի հավելվածներում</translation>
 <translation id="1761402971842586829"><ph name="BUTTON_NAME" />ն այժմ աշխատում է որպես «<ph name="REMAPPING_OPTION" />» կոճակ։</translation>
 <translation id="1761845175367251960"><ph name="NAME" />-ի հաշիվը</translation>
 <translation id="176272781006230109">գնումների առաջարկներ</translation>
@@ -1827,6 +1831,7 @@
 <translation id="2416435988630956212">Ստեղնաշարի գործառական ստեղներ</translation>
 <translation id="2419131370336513030">Դիտել տեղադրված հավելվածները</translation>
 <translation id="2419706071571366386">Անվտանգության համար դուրս գրվեք հաշվից, երբ չեք օգտվում համակարգչից։</translation>
+<translation id="2423226060967554289">Ցույց տալ էջանիշների գոտին</translation>
 <translation id="2423506062824112361">Անհայտ պատճառով չհաջողվեց ներբեռնել բովանդակությունը։</translation>
 <translation id="2423578206845792524">Պա&amp;հել պատկերը որպես…</translation>
 <translation id="2424424966051154874">{0,plural, =1{Հյուր}one{Հյուր (#)}other{Հյուր (#)}}</translation>
@@ -2062,6 +2067,7 @@
 <translation id="2588271083332682494">Դասավորեք ձեր ներդիրները խմբերում</translation>
 <translation id="2588636910004461974">Սարքեր <ph name="VENDOR_NAME" /> մատակարարից</translation>
 <translation id="2589658397149952302">Այլևս չցուցադրել Drive-ի ֆայլերը</translation>
+<translation id="2595270892115552212">Երբ առաջադրանք եք սկսում այլ Gemini հավելվածներից, այդ թվում՝ gemini.google.com-ից և Gemini բջջային հավելվածներից, Gemini-ը կարող է օգտագործել Chrome-ի ավտոմատ դիտարկումն այս սարքում՝ կայքերի հետ փոխազդելու և ձեր փոխարեն առաջադրանքներ կատարելու համար։ <ph name="LINK_BEGIN" />Իմանալ ավելին<ph name="LINK_END" /></translation>
 <translation id="2597073208962000830">«Փոխանակում մոտակա սարքերի հետ» գործառույթը մոտակա սարքեր է փնտրում Bluetooth-ի միջոցով։</translation>
 <translation id="2598136842498757793">Անհատականացնել գործիքագոտու կոճակները</translation>
 <translation id="2598710988533271874">Հասանելի է Chrome-ի նոր տարբերակը</translation>
@@ -2799,6 +2805,7 @@
 <translation id="3132996321662585180">Թարմացնել ամեն օր</translation>
 <translation id="3134312457920437826">Հնարավոր չէ տեղադրել ընդլայնումը, քանի որ այն օգտագործում է մանիֆեստի չաջակցվող տարբերակ:</translation>
 <translation id="3134393957315651797">Ընտրեք «<ph name="EXPERIMENT_NAME" />» փորձարկման կարգավիճակը։ Փորձարկման նկարագրությունը՝ <ph name="EXPERIMENT_DESCRIPTION" /></translation>
+<translation id="3134822828309700120">Թույլ տվեք Gemini-ի այլ հավելվածներին հեռակա եղանակով դիտարկել ցանկացած սարքից</translation>
 <translation id="3139925690611372679">Կանխադրված դեղին ավատար</translation>
 <translation id="314095642664111744">Անջատել ընդգծումը</translation>
 <translation id="3141093262818886744">Բացել</translation>
@@ -3082,6 +3089,7 @@
 <translation id="3355936511340229503">Կապակցման սխալ</translation>
 <translation id="335678817537689040">Ստատիկ</translation>
 <translation id="3359256513598016054">Վկայագրերի քաղաքականության սահմանափակումներ</translation>
+<translation id="3359465538772230055">Առաջադրանքներ չկան</translation>
 <translation id="3360297538363969800">Չհաջողվեց տպել: Ստուգեք ձեր տպիչը և կրկին փորձեք:</translation>
 <translation id="3360306038446926262">Պատուհաններ</translation>
 <translation id="3361421571228286637">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> սարքը ձեզ է ուղարկում <ph name="ATTACHMENTS" />։}one{<ph name="DEVICE_NAME" /> սարքը ձեզ է ուղարկում <ph name="ATTACHMENTS" />։}other{<ph name="DEVICE_NAME" /> սարքը ձեզ է ուղարկում <ph name="ATTACHMENTS" />։}}</translation>
@@ -3610,6 +3618,7 @@
 <translation id="3736487688526377259">Ընտրեք սարքը, որտեղ ուզում եք ստանալ այս հղումը։</translation>
 <translation id="3737058101969549870">Պահե՞լ այցելությունների գոյություն ունեցող պատմությունը այս նոր պրոֆիլից առանձին</translation>
 <translation id="3738924763801731196"><ph name="OID" />՝</translation>
+<translation id="3739203168951159754">Gemini-ը կարող է օգտագործել ավտոմատ դիտարկումը այս սարքում միայն այն դեպքում, եթե սարքը միացված է, և Chrome-ը աշխատում է։</translation>
 <translation id="3739254215541673094">Բացե՞լ <ph name="APPLICATION" /> հավելվածը</translation>
 <translation id="3739349485749941749">Կայքերը կարող են ձեր սարքին հասանելի տպիչները փնտրելու և օգտագործելու թույլտվություն խնդրել</translation>
 <translation id="3741056951918180319">Սեղմելով ընդլայնման վրա՝ դուք կարող եք միացնել այն ցանկացած կայքում։</translation>
@@ -3965,6 +3974,7 @@
 <translation id="3987993985790029246">Պատճենել հղումը</translation>
 <translation id="3988124842897276887">Այս ներդիրը միացած է USB սարքի</translation>
 <translation id="3989635538409502728">Դուրս գալ</translation>
+<translation id="399132041334931433">Ավելացնել ներդիրներ նոր խմբում</translation>
 <translation id="399179161741278232">Ներմուծված</translation>
 <translation id="3992008114154328194"><ph name="FILE_NAME" /> ֆայլը ներբեռնվում է, <ph name="STATUS" /></translation>
 <translation id="3994075804072562819"><ph name="SPECIFIC_NAME" />-ին թույլ տվեք կառավարել USB սարքերը։</translation>
@@ -5194,6 +5204,7 @@
 <translation id="495170559598752135">Գործողություններ</translation>
 <translation id="4951966678293618079">Երբեք չպահել գաղտնաբառեր այս կայքի համար</translation>
 <translation id="4952580838083306838">Թաքցնել կազմակերպչին</translation>
+<translation id="4952628481830269193">Ցույց տալ էջանիշների գոտին</translation>
 <translation id="4953808748584563296">Կանխադրված նարնջագույն ավատար</translation>
 <translation id="4954652437333037880">Ֆայլ</translation>
 <translation id="4954831709600868883">Հարցրեք <ph name="TEXT" /> ապրանքանիշի մասին</translation>
@@ -5267,6 +5278,7 @@
 <translation id="5008936837313706385">Գործողության անունը</translation>
 <translation id="5009463889040999939">Պրոֆիլը վերանվանվում է։ Դա կարող է մի քանի րոպե տևել։</translation>
 <translation id="5010886807652684893">Վիզուալ տեսք</translation>
+<translation id="5012016139642806466">Օգտագործեք գաղտնաբառերը և մյուս տվյալները ձեր բոլոր սարքերում</translation>
 <translation id="5012523644916800014">Կառավարել գաղտնաբառերն ու մուտքի բանալիները</translation>
 <translation id="501394389332262641">Մարտկոցի ցածր լիցքի ձայնային ազդանշան</translation>
 <translation id="5014286001996333986">Փոխարինե՞լ, թե՞ ստեղծել նոր խումբ</translation>
@@ -5446,6 +5458,7 @@
 <translation id="5149602533174716626">Պատճենել տեսանյութի կադրը</translation>
 <translation id="5150254825601720210">Netscape-ի SSL վկայագրերի սերվերի անունը</translation>
 <translation id="5151354047782775295">Ազատեք սկավառակի տարածքը, այլապես որոշ տվյալներ կարող են ավտոմատ ջնջվել</translation>
+<translation id="5152719737931716272">Առաջադրանքն ավարտված է և վերադարձվել է Gemini</translation>
 <translation id="5153074793829217329">Օգտագործել ստեղնաշարը կամ թվաշար՝ մկնիկի նշորդը կառավարելու համար</translation>
 <translation id="5153234146675181447">Հեռախոսի հեռացում</translation>
 <translation id="5153907427821264830"><ph name="STATUS" /> • <ph name="MESSAGE" /></translation>
@@ -5762,6 +5775,7 @@
 <translation id="5414836363063783498">Ստուգում…</translation>
 <translation id="5415497281076257439">Արտահայտություն</translation>
 <translation id="5415871492522952905">Պատմությունը և ներդիրները հասանելի կլինեն ձեր բոլոր սարքերում, այնպես որ դուք կկարողանաք սկսել օգտվել դիտարկիչից մեկ սարքում և շարունակել մյուսում</translation>
+<translation id="5417160551295347092">Gemini-ը կարող է սխալներ թույլ տալ, օրինակ՝ փոխանցել ձեր տեղեկությունները կամ գնումներ կատարել՝ առանց ձեր թույլտվությունը հարցնելու։ <ph name="LINK_BEGIN" />Ծանոթանալ ռիսկերին<ph name="LINK_END" />։</translation>
 <translation id="5417293056300086453">Այս կայքը կարող է օգտագործել նույնացուցիչներ՝ պաշտպանված բովանդակություն նվագարկելու համար։</translation>
 <translation id="5417312524372586921">Դիտարկիչի թեմաներ</translation>
 <translation id="541737483547792035">Խոշորացնել էկրանը</translation>
@@ -6103,6 +6117,7 @@
 <translation id="5687340364605915800">Որոշ կայքեր կարող են չարձագանքել այս հարցմանը</translation>
 <translation id="5689233503102158537">alt + backspace</translation>
 <translation id="5689516760719285838">Տեղորոշում</translation>
+<translation id="568984110402742489">Չհաջողվեց ուղարկել կարծիքը</translation>
 <translation id="56907980372820799">Հղման տվյալներ</translation>
 <translation id="5691772641933328258">Չհաջողվեց ճանաչել մատնահետքը</translation>
 <translation id="5693255400847650006">Խոսափողը ներկայումս օգտագործվում է</translation>
@@ -6512,6 +6527,7 @@
 <translation id="6003143259071779217">Հեռացնել eSIM-ի բջջային ցանցը</translation>
 <translation id="6003479444341796444">Անվանագոտին ցուցադրված է</translation>
 <translation id="6003582434972667631">Թեման սահմանվում է ձեր կազմակերպության կողմից</translation>
+<translation id="600407115562756795">Gemini-ը կորոշի, թե ինչ գործողություններ կատարել՝ հիմնվելով ձեր սկսած կամ թարմացրած առաջադրանքների վրա։</translation>
 <translation id="6005045517426700202">Աղյուսե շենք</translation>
 <translation id="6006484371116297560">Դասական</translation>
 <translation id="6007053304250788613">Հայելու ռեժիմում հնարավոր է բացառել միայն մեկ էկրան</translation>
@@ -8489,6 +8505,7 @@
 <translation id="7523117833414447032">Մեծատառերը կարդալիս</translation>
 <translation id="7523585675576642403">Վերանվանեք պրոֆիլը</translation>
 <translation id="7525067979554623046">Ստեղծել</translation>
+<translation id="7526083414913154899">Իմանալ ավելին Gemini-ի առաջադրանքների մասին</translation>
 <translation id="7528224636098571080">Չբացել</translation>
 <translation id="7528440855533975803">{GROUP_COUNT,plural, =1{Ապախմբավորե՞լ ներդիրների խումբը}one{Ապախմբավորե՞լ ներդիրների խումբը}other{Ապախմբավորե՞լ ներդիրների խմբերը}}</translation>
 <translation id="7529411698175791732">Ստուգեք ձեր ինտերնետ կապը։ Եթե խնդիրը չվերանա, դուրս եկեք հաշվից ու նորից մտեք։</translation>
@@ -9218,6 +9235,7 @@
 <translation id="8081989000209387414">Անջատե՞լ ADB վրիպազերծումը</translation>
 <translation id="8082132721957920509">Ձեր քարտը պահվել է</translation>
 <translation id="8082390128630131497">Եթե անջատեք ADB վրիպազերծումը, <ph name="DEVICE_TYPE" /> սարքի գործարանային կարգավորումները կվերականգնվեն։ Օգտատիրոջ բոլոր հաշիվները և տեղային տվյալները կհեռացվեն:</translation>
+<translation id="8082737802704584539">Կազմակերպությունն անջատել է պատմության պահումը ձեր Google հաշվում</translation>
 <translation id="8084114998886531721">Պահված գաղտնաբառ</translation>
 <translation id="8084417885464859041">Օգտագործել Gemini-ը անվտանգ կերպով</translation>
 <translation id="8084429490152575036">Բջջային APN-ի կարգավորումներ</translation>
@@ -9260,6 +9278,7 @@
 <translation id="8109991406044913868">Արհեստական բանականության օգնությամբ ստեղծված թեմա</translation>
 <translation id="8110393529211831722">Բաժանորդագրությունը տեղադրված է միայն այս սարքում և չի համաժամացվում ձեր հաշվի ներքո գրանցված այլ սարքերի հետ։ <ph name="LINK_BEGIN" />Իմանալ ավելին<ph name="LINK_END" /></translation>
 <translation id="8110489095782891123">Կոնտակտների ցանկը ներբեռնվում է…</translation>
+<translation id="8110781914702267195">Այցելեք Google Wallet՝ <ph name="BEGIN_LINK1" />տվյալների և գաղտնիության կարգավորումները<ph name="END_LINK1" /> ստուգելու կամ <ph name="BEGIN_LINK2" />վճարման եղանակները<ph name="END_LINK2" /> և <ph name="BEGIN_LINK3" />անցաքարտերը<ph name="END_LINK3" />, օրինակ՝ մշտական հաճախորդի քարտերը, կառավարելու համար</translation>
 <translation id="8114925369073821854">Խոսափողի օգտագործման թույլտվություն <ph name="APP_NAME" /> հավելվածի համար</translation>
 <translation id="8116497846156149">Խնդրեք ծնողին, որ հաստատի</translation>
 <translation id="8118276691321086429"><ph name="PASSWORD_MANAGER_BRAND" />ը հիշում է, թե ինչպես եք մտել հաշիվ, և հնարավորության դեպքում ավտոմատ կերպով մուտք է գործում։ Եթե այս գործառույթն անջատված է, ամեն անգամ մուտք գործելուց առաջ ձեզանից հաստատում կպահանջվի։</translation>
@@ -9340,6 +9359,7 @@
 <translation id="8180295062887074137"><ph name="PRINTER_NAME" /> <ph name="PRINTER_STATUS" />։ Տպիչ <ph name="ITEM_POSITION" />՝ <ph name="NUM_PRINTERS" />-ից։</translation>
 <translation id="8180785270975217276">Էներգիայի տնտեսումը միացված է</translation>
 <translation id="8180786512391440389">«<ph name="EXTENSION" />» ընդլայնումը կարող է նշված պանակներում կարդալ և ջնջել պատկերները, տեսանյութերը և ձայնային ֆայլերը:</translation>
+<translation id="8181132988581553950">Gemini-ին հասանելի կլինեն նույն կայքերը, ինչ ձեզ, այդ թվում՝ կայքերը, որտեղ մուտք եք գործել։ Այն երրորդ կողմերին կփոխանցի անհրաժեշտ տեղեկությունները, որոնք կարող են ներառել անձնական տեղեկություններ, որոնք հնարավոր է, որ զգայուն համարեք։</translation>
 <translation id="8183703640399301650">Ձեր սարքի EID համարն է՝ <ph name="EID_NUMBER" />, և սարքի IMEI կոդն է՝ <ph name="IMEI_NUMBER" />։ Դրանց միջոցով կարող եք ակտիվացնել ծառայությունը։</translation>
 <translation id="8184288427634747179">Անցնել <ph name="AVATAR_NAME" />-ի պրոֆիլ</translation>
 <translation id="8184318863960255706">Լրացուցիչ տեղեկություններ</translation>
@@ -10242,6 +10262,7 @@
 <translation id="8874341931345877644">Հեռարձակում սարքին՝</translation>
 <translation id="8874647982044395866">Օրգանական</translation>
 <translation id="8874790741333031443">Փորձեք ժամանակավորապես թույլատրել երրորդ կողմի քուքիները։ Սա կթուլացնի ձեր դիտարկման պաշտպանությունը, սակայն կայքի գործառույթները, ամենայն հավանականությամբ, պատշաճ կերպով կաշխատեն։</translation>
+<translation id="8874864294955002500">Ձեր հաշվից հնարավոր չէ կարծիք ուղարկել։ Կազմակերպության ադմինիստրատորը կարող է օգտագործել իր սարքը կամ պրոֆիլը՝ ձեր փոխարեն խնդրի մասին հաղորդելու համար։</translation>
 <translation id="8875736897340638404">Ընտրեք տեսանելիության մակարդակը</translation>
 <translation id="8876307312329369159">Այս կարգավորումը հնարավոր չէ փոխել ցուցադրական աշխատաշրջանում:</translation>
 <translation id="8876965259056847565">«<ph name="FEATURE_NAME" />» գործառույթը մոտակա սարքեր է փնտրում Bluetooth-ի միջոցով։</translation>

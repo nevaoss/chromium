@@ -1761,6 +1761,34 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
+  if (kIPHBookmarkBarVisibilityFeature.name == feature->name) {
+    // Allows an IPH telling the user they can show the Bookmark Bar on Android:
+    // * At most once per 7 days.
+    // * If the user has never opened the appearance settings page.
+    // * Up to 3 times total (over 10 years).
+    IPHBookmarkBarVisibilityVariant variant =
+        kIPHBookmarkBarVisibilityVariantParam.Get();
+    bool is_tracking_only =
+        (variant == IPHBookmarkBarVisibilityVariant::kMediumTrackingOnly ||
+         variant == IPHBookmarkBarVisibilityVariant::kHighTrackingOnly);
+    std::string trigger_event =
+        is_tracking_only ? "bookmark_bar_visibility_iph_triggered_tracking_only"
+                         : "bookmark_bar_visibility_iph_triggered";
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = kNoRestrictions;
+    config.trigger =
+        EventConfig(trigger_event, Comparator(EQUAL, 0), 7, kMaxStoragePeriod);
+    config.used = EventConfig("settings_appearance_opened",
+                              Comparator(EQUAL, 0), 360, 360);
+    config.event_configs.insert(
+        EventConfig(trigger_event, Comparator(LESS_THAN, 3), kMaxStoragePeriod,
+                    kMaxStoragePeriod));
+    config.tracking_only = is_tracking_only;
+    return config;
+  }
+
   if (kIPHInstanceSwitcherFeature.name == feature->name) {
     // A config that allows the 'Manage windows' text bubble IPH to be shown
     // only once when the user starts using the multi-instance feature by
@@ -1982,8 +2010,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.session_rate_impact.affected_features.emplace();
     config.session_rate_impact.affected_features->push_back(
         "IPH_AutofillVirtualCardSuggestion");
-    config.session_rate_impact.affected_features->push_back(
-        "IPH_KeyboardAccessoryBarSwiping");
 
     return config;
   }
@@ -2086,13 +2112,11 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                                  Comparator(LESS_THAN, 3), 90, 360);
     config.used =
         EventConfig("autofill_card_info_retrieval_suggestion_accepted",
-                    kAlwaysTrue, 90, 360);
+                    Comparator(EQUAL, 0), 90, 360);
 
     // This promo blocks specific promos in the same session.
     config.session_rate_impact.type = SessionRateImpact::Type::EXPLICIT;
     config.session_rate_impact.affected_features.emplace();
-    config.session_rate_impact.affected_features->push_back(
-        "IPH_KeyboardAccessoryBarSwiping");
     config.session_rate_impact.affected_features->push_back(
         "IPH_AutofillVirtualCardSuggestion");
 
@@ -2274,7 +2298,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
       feature->name) {
     // Externally created account profile suggestion IPH is shown:
     // * once for an installation, 10-year window is used as the maximum
-    // * if there was no address keyboard accessory IPH in the last 2 weeks
     // * if such a suggestion was not already accepted
     FeatureConfig config;
     config.valid = true;
@@ -2286,12 +2309,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.used =
         EventConfig("autofill_external_account_profile_suggestion_accepted",
                     Comparator(EQUAL, 0), kMaxStoragePeriod, kMaxStoragePeriod);
-
-#if BUILDFLAG(IS_ANDROID)
-    config.event_configs.insert(
-        EventConfig("keyboard_accessory_address_filling_iph_trigger",
-                    Comparator(EQUAL, 0), 14, k10YearsInDays));
-#endif  // BUILDFLAG(IS_ANDROID)
 
     return config;
   }
@@ -2313,12 +2330,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                               Comparator(LESS_THAN, 2), 90, 360);
 
 #if BUILDFLAG(IS_ANDROID)
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::EXPLICIT;
-    std::vector<std::string> affected_features;
-    affected_features.push_back("IPH_KeyboardAccessoryBarSwiping");
-    session_rate_impact.affected_features = affected_features;
-    config.session_rate_impact = session_rate_impact;
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
 #endif  // BUILDFLAG(IS_ANDROID)
 
     return config;
@@ -2349,10 +2361,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.session_rate_impact.affected_features.emplace();
     config.session_rate_impact.affected_features->push_back(
         "IPH_AutofillVirtualCardSuggestion");
-#if BUILDFLAG(IS_ANDROID)
-    config.session_rate_impact.affected_features->push_back(
-        "IPH_KeyboardAccessoryBarSwiping");
-#endif  // BUILDFLAG(IS_ANDROID)
 
     return config;
   }
@@ -2688,6 +2696,22 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                                  Comparator(LESS_THAN, 3), kMaxStoragePeriod,
                                  kMaxStoragePeriod);
     config.groups.push_back(kiOSHomepageNewBadgesGroup.name);
+    return config;
+  }
+
+  if (kIPHiOSBackgroundNewBadge.name == feature->name) {
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = kNoRestrictions;
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config.blocked_by.type = BlockedBy::Type::NONE;
+    config.blocking.type = Blocking::Type::NONE;
+    config.used = EventConfig("ios_background_badge_used", Comparator(EQUAL, 0),
+                              kMaxStoragePeriod, kMaxStoragePeriod);
+    config.trigger =
+        EventConfig("ios_background_badge_trigger", Comparator(LESS_THAN, 1),
+                    kMaxStoragePeriod, kMaxStoragePeriod);
     return config;
   }
 

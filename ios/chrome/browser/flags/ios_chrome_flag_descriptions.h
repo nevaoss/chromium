@@ -510,6 +510,12 @@ inline constexpr char kContextManagementInComposeboxDescription[] =
     "When Enabled, it ensures that removed tab context are removed from AIM "
     "even when submitted.";
 
+inline constexpr char kContextMenuPreviewDownsampleImageName[] =
+    "Context Menu Preview Downsample Image";
+inline constexpr char kContextMenuPreviewDownsampleImageDescription[] =
+    "When enabled, downsamples images in the context menu preview to reduce "
+    "memory usage.";
+
 inline constexpr char kContextualTasksName[] = "Enables the contextual tasks";
 inline constexpr char kContextualTasksDescription[] =
     "Enables the contextual tasks infrastructure";
@@ -886,6 +892,12 @@ inline constexpr char kGeminiContextualSuggestionsCuesName[] =
 inline constexpr char kGeminiContextualSuggestionsCuesDescription[] =
     "Enables Gemini contextual suggestions cues framework.";
 
+inline constexpr char kGeminiContextualSuggestionsCuesUiModeName[] =
+    "Gemini Contextual Suggestions Cues UI Mode";
+inline constexpr char kGeminiContextualSuggestionsCuesUiModeDescription[] =
+    "Selects the UI presentation mode for Gemini contextual suggestions cues "
+    "(Infobar Then Omnibox Chip, Infobar Only, or Omnibox Chip Only).";
+
 inline constexpr char kGeminiCoordinatorTeardownFixName[] =
     "Gemini Coordinator Teardown Fix";
 inline constexpr char kGeminiCoordinatorTeardownFixDescription[] =
@@ -1234,21 +1246,6 @@ inline constexpr char kLensContinuousZoomEnabledName[] =
 inline constexpr char kLensContinuousZoomEnabledDescription[] =
     "When enabled, Lens camera supports continuous zoom.";
 
-inline constexpr char kLensFetchSrpApiEnabledName[] =
-    "Lens fetch SRP API enabled";
-inline constexpr char kLensFetchSrpApiEnabledDescription[] =
-    "Enables the fetch SRP API.";
-
-inline constexpr char kLensFilterToggleEnabledName[] =
-    "Lens filter toggle enabled";
-inline constexpr char kLensFilterToggleEnabledDescription[] =
-    "Enables the filter toggle in Lens camera.";
-
-inline constexpr char kLensFiltersAblationModeEnabledName[] =
-    "Lens filters ablation mode enabled";
-inline constexpr char kLensFiltersAblationModeEnabledDescription[] =
-    "Enables the filters ablation mode.";
-
 inline constexpr char kLensFollowupsFullHeightEnabledName[] =
     "Lens followups full height enabled";
 inline constexpr char kLensFollowupsFullHeightEnabledDescription[] =
@@ -1292,11 +1289,6 @@ inline constexpr char
     kLensStreamServiceWebChannelTransportEnabledDescription[] =
         "When enabled, uses web channel transport for the stream service.";
 
-inline constexpr char kLensTranslateToggleModeEnabledName[] =
-    "Lens translate toggle mode enabled";
-inline constexpr char kLensTranslateToggleModeEnabledDescription[] =
-    "Enables the translate toggle mode.";
-
 inline constexpr char kLensTripleCameraEnabledName[] =
     "Enable Lens triple camera";
 inline constexpr char kLensTripleCameraEnabledDescription[] =
@@ -1316,6 +1308,11 @@ inline constexpr char kMVTInBottomSheetName[] = "NTP MVT in Bottom Sheet";
 inline constexpr char kMVTInBottomSheetDescription[] =
     "Places the Most Visited Tiles inside the bottom sheet card for the NTP "
     "Redesign.";
+
+inline constexpr char kMagicStackTipsV2IosName[] = "Magic Stack Tips V2";
+inline constexpr char kMagicStackTipsV2IosDescription[] =
+    "Enables Magic Stack Tips V2 on iOS with Non-Actionable or Actionable "
+    "variations.";
 
 inline constexpr char kManualLogUploadsInFREName[] =
     "Manual log uploads in the FRE";
@@ -1338,12 +1335,6 @@ inline constexpr char kMetrickitNonCrashReportName[] =
 inline constexpr char kMetrickitNonCrashReportDescription[] =
     "Enables sending Metrickit reports for non crash type (hang, "
     "cpu-exception, diskwrite-exception)";
-
-inline constexpr char kMigrateIOSKeychainAccessibilityName[] =
-    "Migrate iOS Keychain Accessibility";
-inline constexpr char kMigrateIOSKeychainAccessibilityDescription[] =
-    "Migrate the accessibility attribute in the iOS keychain to 'after first "
-    "unlock'.";
 
 inline constexpr char kMobilePromoOnDesktopName[] = "Mobile Promo On Desktop";
 inline constexpr char kMobilePromoOnDesktopDescription[] =
@@ -1673,6 +1664,12 @@ inline constexpr char kPlusButtonMenuInFakeboxDescription[] =
     "When enabled, the fakebox plus button will display the context menu"
     "instead of opening the composebox first";
 
+inline constexpr char kPlusButtonMenuMoreOptionsSubmenuName[] =
+    "Group the complete list of plus menu options in a submenu.";
+inline constexpr char kPlusButtonMenuMoreOptionsSubmenuDescription[] =
+    "When enabled, the full list of options in the plus menu is grouped in a "
+    "submenu.";
+
 inline constexpr char kPrepopulatedEnginesShadowVariantsName[] =
     "Prepopulated Engines Shadow Variants";
 inline constexpr char kPrepopulatedEnginesShadowVariantsDescription[] =
@@ -1695,11 +1692,6 @@ inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerName[] =
     "Popup Blocker";
 inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerDescription[] =
     "Enables the popup blocker feature row in the Page Action Menu.";
-
-inline constexpr char kReaderModeOmniboxEntrypointInUSName[] =
-    "Reader Mode Omnibox Entrypoint In US";
-inline constexpr char kReaderModeOmniboxEntrypointInUSDescription[] =
-    "Enables the omnibox entrypoint for Reader Mode for users in the US.";
 
 inline constexpr char kReaderModeSupportNewFontsName[] =
     "Reader Mode support new fonts";
@@ -1754,6 +1746,12 @@ inline constexpr char kSearchEngineChoiceScreenSnackbarName[] =
     "Search Engine Choice Screen Snackbar";
 inline constexpr char kSearchEngineChoiceScreenSnackbarDescription[] =
     "Enables a snackbar after the search engine choice screen.";
+
+inline constexpr char kSegmentationPlatformEphemeralCardRankerName[] =
+    "Segmentation platform ephemeral card ranker";
+inline constexpr char kSegmentationPlatformEphemeralCardRankerDescription[] =
+    "Enables the Ephemeral Card ranker for the segmentation platform service "
+    "to rank Magic Stack ephemeral modules on iOS.";
 
 inline constexpr char kSendTabToSelfEnhancedHandoffName[] =
     "Send Tab To Self enhanced handoff";

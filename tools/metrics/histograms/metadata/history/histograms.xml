@@ -43,11 +43,10 @@ chromium-metrics-reviews@google.com.
 
 <variants name="HasCriticalActions">
   <variant name="WithCriticalActions"
-      summary="results contained agent visits and critical actions were
-               queried from the database"/>
+      summary="results were non-empty and critical actions were queried from
+               the database"/>
   <variant name="WithoutCriticalActions"
-      summary="results contained no agent visits or the critical actions
-               feature is disabled"/>
+      summary="results were empty or the critical actions feature is disabled"/>
 </variants>
 
 <variants name="PassagePriority">
@@ -109,6 +108,18 @@ chromium-metrics-reviews@google.com.
     <variant name="Filterable" summary="filterable"/>
     <variant name="Unfilterable" summary="unfilterable"/>
   </token>
+</histogram>
+
+<histogram name="History.BrowsingHistory.QueryDuration" units="ms"
+    expires_after="2027-09-01">
+  <owner>wylieb@chromium.org</owner>
+  <owner>chrome-collections@google.com</owner>
+  <summary>
+    Records the roundtrip duration (in milliseconds) from initiating a browsing
+    history query pass in BrowsingHistoryService (on initial load, search, or
+    continuation pagination) to delivering the assembled results to the
+    BrowsingHistoryDriver. Logged across Desktop, Android, and iOS.
+  </summary>
 </histogram>
 
 <histogram name="History.BrowsingHistoryResult.DuplicateVisitsCount"
@@ -2886,8 +2897,8 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the category of critical action (e.g. form fill, password manager
     login, federated login, download, or OTP) opened from the chrome://history
-    page. Recorded in WebUI when the user clicks an action linkout row under an
-    agent-annotated visit to navigate to its external management surface.
+    page. Recorded in WebUI when the user clicks an action linkout row under a
+    history visit to navigate to its external management surface.
   </summary>
 </histogram>
 
@@ -2896,11 +2907,11 @@ chromium-metrics-reviews@google.com.
   <owner>kalinino@google.com</owner>
   <owner>polonium@google.com</owner>
   <summary>
-    Records the total number of critical actions attached to a single
-    agent-annotated browsing history visit item on the chrome://history page.
-    Recorded for each agent-annotated visit whenever browsing history entries
-    are retrieved and prepared for display (on initial page load, search, or
-    infinite scroll).
+    Records the total number of critical actions attached to a single browsing
+    history visit item on the chrome://history page. Recorded for each visit
+    that has at least one critical action attached whenever browsing history
+    entries are retrieved and prepared for display (on initial page load,
+    search, or infinite scroll).
   </summary>
 </histogram>
 
@@ -2910,9 +2921,9 @@ chromium-metrics-reviews@google.com.
   <owner>polonium@google.com</owner>
   <summary>
     Records the time (in milliseconds) taken to query and retrieve critical
-    actions from the local database for agent-annotated history visits. Recorded
-    each time chrome://history receives a batch of history results containing
-    agent visits and completes fetching their corresponding critical actions.
+    actions from the local database for history visits. Recorded each time
+    chrome://history receives a non-empty batch of history results and completes
+    fetching their corresponding critical actions.
   </summary>
 </histogram>
 
@@ -2956,6 +2967,18 @@ chromium-metrics-reviews@google.com.
     Recorded for queries where {HasCriticalActions}.
   </summary>
   <token key="HasCriticalActions" variants="HasCriticalActions"/>
+</histogram>
+
+<histogram name="HistoryPage.TimeToFirstVisibleContent" units="ms"
+    expires_after="2027-09-01">
+  <owner>wylieb@chromium.org</owner>
+  <owner>chrome-collections@google.com</owner>
+  <summary>
+    Records the time (in milliseconds) from navigation start (timeOrigin) to the
+    animation frame where the loading state is removed and browsing history
+    entries become visible in the chrome://history WebUI. Only logged when the
+    page is in the foreground (document.visibilityState === 'visible').
+  </summary>
 </histogram>
 
 </histograms>

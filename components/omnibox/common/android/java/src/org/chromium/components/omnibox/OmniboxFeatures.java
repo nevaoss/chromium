@@ -99,6 +99,11 @@ public class OmniboxFeatures {
                     OmniboxFeatureList.OMNIBOX_SEARCH_PREFETCH_ON_ENTER_KEY_DOWN,
                     FeatureState.ENABLED_IN_TEST);
 
+    public static final CachedFlag sZeroSuggestPrefetchOnPageLoadAndTabSwitch =
+            newFlag(
+                    OmniboxFeatureList.ZERO_SUGGEST_PREFETCH_ON_PAGE_LOAD_AND_TAB_SWITCH,
+                    FeatureState.ENABLED_IN_TEST);
+
     public static final CachedFlag sUrlBarWithoutLigatures =
             newFlag(OmniboxFeatureList.URL_BAR_WITHOUT_LIGATURES, FeatureState.ENABLED_IN_PROD);
 
@@ -269,17 +274,6 @@ public class OmniboxFeatures {
                     OmniboxFeatureList.OMNIBOX_DISABLE_TABS_FOR_CANVAS,
                     FeatureState.ENABLED_IN_PROD);
 
-    public static final CachedFlag sComposeboxDriveContextMenuOption =
-            newFlag(OmniboxFeatureList.COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION, FeatureState.DISABLED);
-
-    public static final CachedFlag sComposeboxDriveContextMenuOptionDisclaimer =
-            newFlag(
-                    OmniboxFeatureList.COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION_DISCLAIMER,
-                    FeatureState.DISABLED);
-
-    public static final CachedFlag sForceDriveDisclaimerAccepted =
-            newFlag(OmniboxFeatureList.FORCE_DRIVE_DISCLAIMER_ACCEPTED, FeatureState.DISABLED);
-
     public static final IntCachedFeatureParam sGeolocationRequestTimeoutMinutes =
             newIntParam(
                     sUseFusedLocationProvider,
@@ -447,6 +441,14 @@ public class OmniboxFeatures {
     }
 
     /**
+     * Returns whether zero-suggest prefetch should be triggered when a page finishes loading on
+     * Android, aligning with Desktop's page-load and tab-switch behavior.
+     */
+    public static boolean isZeroSuggestPrefetchOnPageLoadAndTabSwitchEnabled() {
+        return sZeroSuggestPrefetchOnPageLoadAndTabSwitch.isEnabled();
+    }
+
+    /**
      * Returns the maximum number of prefetches that can be triggered by touch down events within an
      * omnibox session.
      */
@@ -521,6 +523,14 @@ public class OmniboxFeatures {
     /** Returns whether "Ask about this page" should be placed first before attachments. */
     public static boolean shouldPutCurrentTabFirst() {
         return sFuseboxPopupPutCurrentTabFirst.getValue();
+    }
+
+    /**
+     * Returns whether the popup has a pinned section between the attachments and the "More options"
+     * button, which holds the pinned current tab and pinned tools.
+     */
+    public static boolean hasFuseboxPinnedSection() {
+        return sOmniboxFuseboxPopupVariations.isEnabled() && !shouldUseScrollableCarousel();
     }
 
     /**

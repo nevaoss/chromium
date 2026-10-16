@@ -129,7 +129,6 @@ import java.util.function.Supplier;
     ChromeFeatureList.ANDROID_DESKTOP_HISTORY_LAYOUT,
     ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN
 })
-@EnableFeatures(ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES)
 public class HistoryUiTest {
     private static final int PAGE_INCREMENT = 2;
     private static final String HISTORY_SEARCH_QUERY = "some page";
@@ -813,9 +812,9 @@ public class HistoryUiTest {
 
         List<FilterItem> hosts = mContentManager.getHostInfoListForTests();
         Assert.assertEquals(2, hosts.size());
-        Assert.assertEquals("www.example.com", hosts.get(0).id);
+        Assert.assertEquals("www.example.com", hosts.get(0).getId());
         Assert.assertEquals("www.example.com", hosts.get(0).label.toString());
-        Assert.assertEquals("news.other.org", hosts.get(1).id);
+        Assert.assertEquals("news.other.org", hosts.get(1).getId());
         Assert.assertEquals("news.other.org", hosts.get(1).label.toString());
         Assert.assertTrue(mContentManager.hasHostFilterList());
     }

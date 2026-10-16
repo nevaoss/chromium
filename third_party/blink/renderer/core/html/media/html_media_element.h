@@ -203,6 +203,9 @@ class CORE_EXPORT HTMLMediaElement
       std::variant<MediaStreamDescriptor*, MediaSourceHandle*>;
   void SetSrcObjectVariant(SrcObjectVariant src_object_variant);
   SrcObjectVariant GetSrcObjectVariant() const;
+  bool HasSrcObject() const {
+    return src_object_stream_descriptor_ || src_object_media_source_handle_;
+  }
 
   enum NetworkState {
     kNetworkEmpty,
@@ -259,6 +262,7 @@ class CORE_EXPORT HTMLMediaElement
   TimeRanges* played();
   WebTimeRanges SeekableInternal() const;
   TimeRanges* seekable() const;
+  bool CanSeekTo(double time) const;
   bool ended() const;
   bool Autoplay() const;
   bool Loop() const;
@@ -1093,8 +1097,7 @@ class CORE_EXPORT HTMLMediaElement
 
   Member<AutoplayPolicy> autoplay_policy_;
 
-  raw_ptr<RemotePlaybackClient, UnprotectedInRelease | DanglingUntriaged>
-      remote_playback_client_ = nullptr;
+  Member<RemotePlaybackClient> remote_playback_client_;
 
   Member<MediaControls> media_controls_;
   Member<HTMLMediaElementControlsList> controls_list_;

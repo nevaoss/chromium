@@ -2291,7 +2291,7 @@ TEST_F(PopupViewViewsTest, SubPopupHidesWhenMouseMovesToSearchBar) {
   CreateAndShowView(
       /*widget_params=*/std::nullopt,
       /*search_bar_config=*/
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Search",
+      AutofillPopupView::SearchBarConfig{.placeholders = {u"Search"},
                                          .initial_value = {}},
       /*tabbed_pane_config=*/std::nullopt,
       /*sub_popup_config=*/
@@ -3181,7 +3181,7 @@ TEST_F(PopupViewViewsTest, SearchBar_InputGetsFocusOnShow) {
   widget_params.activatable = views::Widget::InitParams::Activatable::kYes;
   CreateAndShowView({SuggestionType::kAddressEntry}, std::move(widget_params),
                     AutofillPopupView::SearchBarConfig{
-                        .placeholder = u"Placeholder",
+                        .placeholders = {u"Placeholder"},
                         .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
@@ -3197,7 +3197,7 @@ TEST_F(PopupViewViewsTest, SearchBar_HidesPopupOnFocusLost) {
   widget_params.activatable = views::Widget::InitParams::Activatable::kYes;
   CreateAndShowView({SuggestionType::kAddressEntry}, std::move(widget_params),
                     AutofillPopupView::SearchBarConfig{
-                        .placeholder = u"Placeholder",
+                        .placeholders = {u"Placeholder"},
                         .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
@@ -3215,7 +3215,7 @@ TEST_F(PopupViewViewsTest, SearchBar_QueryIsSetAsFilterToController) {
   CreateAndShowView({SuggestionType::kAddressEntry},
                     CreateParamsForTestWidget(),
                     AutofillPopupView::SearchBarConfig{
-                        .placeholder = u"Placeholder",
+                        .placeholders = {u"Placeholder"},
                         .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
@@ -3247,7 +3247,7 @@ TEST_F(PopupViewViewsTest, SearchBar_PressedKeysPassedToController) {
   CreateAndShowView({SuggestionType::kAddressEntry},
                     CreateParamsForTestWidget(),
                     AutofillPopupView::SearchBarConfig{
-                        .placeholder = u"Placeholder",
+                        .placeholders = {u"Placeholder"},
                         .initial_value = {},
                         .no_results_message = u"No suggestions found"});
 
@@ -3549,9 +3549,10 @@ TEST_F(PopupViewViewsTest, SearchBar_RemainVisibleEvenWithNoSuggestions) {
       .WillByDefault(Return(FillingProduct::kAtMemory));
   CreateAndShowView(
       /*ids=*/{}, CreateParamsForTestWidget(),
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Recall from memory",
-                                         .initial_value = {},
-                                         .no_results_message = u""});
+      AutofillPopupView::SearchBarConfig{
+          .placeholders = {u"Recall from memory"},
+          .initial_value = {},
+          .no_results_message = u""});
 
   // The popup should not be hidden due to no suggestions.
   EXPECT_CALL(controller(), Hide(SuggestionHidingReason::kNoSuggestions))
@@ -3571,11 +3572,12 @@ TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
   input::NativeWebKeyboardEvent event(
       blink::WebKeyboardEvent::Type::kRawKeyDown,
       blink::WebInputEvent::kNoModifiers, ui::EventTimeForNow());
-  CreateAndShowView(
-      {SuggestionType::kAtMemorySearchResult}, CreateParamsForTestWidget(),
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Recall from memory",
-                                         .initial_value = {},
-                                         .no_results_message = u""});
+  CreateAndShowView({SuggestionType::kAtMemorySearchResult},
+                    CreateParamsForTestWidget(),
+                    AutofillPopupView::SearchBarConfig{
+                        .placeholders = {u"Recall from memory"},
+                        .initial_value = {},
+                        .no_results_message = u""});
 
   // After `DoUpdateBoundsAndRedrawPopup()` is called,
   // the popup view width is clamped to `kAtMemoryPopupWidth`.
@@ -3737,6 +3739,26 @@ TEST_F(PopupViewViewsHeightLimitTest, LimitPopupSizeForManySuggestions) {
 
   // Height should not change when exceeding the limit.
   EXPECT_EQ(new_height, initial_height);
+}
+
+// Tests that the popup height limit is not applied for datalists since web
+// developers experience changes to the popup as regressions.
+TEST_F(PopupViewViewsHeightLimitTest, DoNotLimitPopupSizeForDatalist) {
+  // Limit must be exceeded by at least one full entry.
+  std::vector<SuggestionType> suggestions(
+      std::ceil(PopupViewViews::kAutofillPopupMaxVisibleEntries) + 1,
+      SuggestionType::kDatalistEntry);
+  CreateAndShowView(suggestions);
+  ASSERT_EQ(controller().GetMainFillingProduct(), FillingProduct::kDataList);
+  const int initial_height = view().GetPreferredSize().height();
+  view().Hide();
+
+  suggestions.resize(suggestions.size() + 1, SuggestionType::kDatalistEntry);
+  CreateAndShowView(suggestions);
+  const int new_height = view().GetPreferredSize().height();
+
+  // Height should increase even when exceeding the limit.
+  EXPECT_GT(new_height, initial_height);
 }
 
 // Tests that separators are not considered entries for the limitation of

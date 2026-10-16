@@ -35,7 +35,6 @@
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
@@ -54,7 +53,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-#include "url/url_constants.h"
 
 namespace blink {
 
@@ -74,22 +72,15 @@ namespace {
 const char kPermissionPolicyNotEnabledError[] =
     "Access to the feature \"tools\" is disallowed by permissions policy.";
 const char kInactiveDocumentError[] = "The document is not active.";
-const char kDocumentDomainEnabledError[] =
-    "document.modelContext cannot be used when document.domain is enabled.";
 
+// `input` must be a non-empty, non-null object.
 String ValidateAndStringifyValue(ScriptState* script_state,
                                  ExceptionState& exception_state,
-                                 ScriptValue input,
+                                 const ScriptObject& input,
                                  const String& value_name) {
-  if (!input.V8Value()->IsObject()) {
-    exception_state.ThrowTypeError("invalid " + value_name +
-                                   ": value is not an object");
-    return String();
-  }
-
   v8::Local<v8::String> value;
   TryRethrowScope rethrow_scope(script_state->GetIsolate(), exception_state);
-  if (!v8::JSON::Stringify(script_state->GetContext(), input.V8Value())
+  if (!v8::JSON::Stringify(script_state->GetContext(), input.V8Object())
            .ToLocal(&value)) {
     CHECK(rethrow_scope.HasCaught());
     return String();
@@ -351,13 +342,6 @@ ScriptPromise<IDLUndefined> ModelContext::registerTool(
         script_state,
         MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
                                            kInactiveDocumentError));
-  }
-
-  if (!IsModelContextAllowed()) {
-    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
-        script_state,
-        MakeGarbageCollected<DOMException>(DOMExceptionCode::kSecurityError,
-                                           kDocumentDomainEnabledError));
   }
 
   if (!ExecutionContext::From(script_state)
@@ -815,10 +799,6 @@ void ModelContext::RegisterDeclarativeTool(
     return;
   }
 
-  if (!IsModelContextAllowed()) {
-    return;
-  }
-
   // TODO(https://crbug.com/509983792): Surface an error to the form when tool
   // registration fails.
   if (tool_map_.find(declarative_tool->ToolName()) != tool_map_.end()) {
@@ -951,22 +931,6 @@ const AtomicString& ModelContext::InterfaceName() const {
   return name;
 }
 
-bool ModelContext::IsModelContextAllowed() const {
-  const Agent* agent = document_->GetExecutionContext()->GetAgent();
-  const AgentClusterKey& key = agent->GetAgentClusterKey();
-  // ModelContext is allowed under any of the following conditions:
-  // 1. The document is in a standard origin-keyed agent cluster.
-  // 2. The document is a local file:// URL and is in the universal file agent
-  // cluster.
-  // 3. Web security is disabled (e.g., via --disable-web-security for testing).
-  return key.IsOriginKeyed() ||
-         (document_->GetExecutionContext()->GetSecurityOrigin()->Protocol() ==
-              url::kFileScheme &&
-          key.IsUniversalFileAgent()) ||
-         (document_->GetSettings() &&
-          !document_->GetSettings()->GetWebSecurityEnabled());
-}
-
 ScriptPromise<IDLSequence<RegisteredTool>> ModelContext::getTools(
     ScriptState* script_state,
     const ModelContextGetToolOptions* options) {
@@ -975,13 +939,6 @@ ScriptPromise<IDLSequence<RegisteredTool>> ModelContext::getTools(
         script_state,
         MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
                                            kInactiveDocumentError));
-  }
-
-  if (!IsModelContextAllowed()) {
-    return ScriptPromise<IDLSequence<RegisteredTool>>::RejectWithDOMException(
-        script_state,
-        MakeGarbageCollected<DOMException>(DOMExceptionCode::kSecurityError,
-                                           kDocumentDomainEnabledError));
   }
 
   if (!ExecutionContext::From(script_state)
@@ -1080,20 +1037,13 @@ void ModelContext::OnGetScriptToolsCompleted(
 ScriptPromise<IDLNullable<IDLString>> ModelContext::executeTool(
     ScriptState* script_state,
     RegisteredTool* tool,
-    ScriptValue input_object,
+    ScriptObject input_object,
     const ExecuteToolOptions* options) {
   if (!document_->IsActive()) {
     return ScriptPromise<IDLNullable<IDLString>>::RejectWithDOMException(
         script_state,
         MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
                                            kInactiveDocumentError));
-  }
-
-  if (!IsModelContextAllowed()) {
-    return ScriptPromise<IDLNullable<IDLString>>::RejectWithDOMException(
-        script_state,
-        MakeGarbageCollected<DOMException>(DOMExceptionCode::kSecurityError,
-                                           kDocumentDomainEnabledError));
   }
 
   if (!ExecutionContext::From(script_state)
@@ -1123,9 +1073,16 @@ ScriptPromise<IDLNullable<IDLString>> ModelContext::executeTool(
                           "an opaque origin."));
   }
 
-  String input_arguments = ValidateAndStringifyValue(
-      script_state, PassThroughException(script_state->GetIsolate()),
-      input_object, "input object");
+  // Per Web IDL, an omitted or explicitly-undefined optional argument is
+  // "missing", which is represented by `IsEmpty()`. We treat a "missing"
+  // optional input object as the empty object.
+  v8::Isolate* isolate = script_state->GetIsolate();
+  if (input_object.IsEmpty()) {
+    input_object = ScriptObject(isolate, v8::Object::New(isolate));
+  }
+  String input_arguments =
+      ValidateAndStringifyValue(script_state, PassThroughException(isolate),
+                                input_object, "input object");
   if (!input_arguments) {
     // Exception already thrown by ValidateAndStringifyValue.
     return EmptyPromise();

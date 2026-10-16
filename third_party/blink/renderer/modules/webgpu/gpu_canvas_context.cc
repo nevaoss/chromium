@@ -97,6 +97,7 @@ void GPUCanvasContext::Trace(Visitor* visitor) const {
   visitor->Trace(swap_texture_);
   ScriptWrappable::Trace(visitor);
   CanvasRenderingContext::Trace(visitor);
+  WebGPUSwapBufferProvider::Client::Trace(visitor);
 }
 
 // CanvasRenderingContext implementation
@@ -890,6 +891,7 @@ bool GPUCanvasContext::CopyTextureToResourceProvider(
     CanvasNon2DResourceProvider* resource_provider) const {
 #if BUILDFLAG(USE_DAWN)
   DCHECK(resource_provider);
+  CHECK(!resource_provider->IsSoftware());
 
   gfx::Size size(texture.GetWidth(), texture.GetHeight());
   DCHECK_EQ(resource_provider->Size(), size);

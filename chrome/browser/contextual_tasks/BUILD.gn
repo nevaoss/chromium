@@ -182,8 +182,10 @@ source_set("impl") {
     "//chrome/browser/themes",
     "//chrome/browser/ui",
     "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/contextual_search",
     "//chrome/browser/ui/omnibox",
     "//chrome/browser/ui/tabs:tabs_public",
+    "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
     "//chrome/common:channel_info",
     "//components/contextual_search:public",
     "//components/contextual_tasks/internal",
@@ -626,9 +628,9 @@ if (!is_android) {
       "//chrome/browser/tab_list",
       "//chrome/browser/ui",
       "//chrome/browser/ui:browser_commands",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/hats:test_support",
+      "//chrome/browser/ui/interaction",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:test_support",
       "//chrome/browser/ui/test:dialog",
@@ -655,6 +657,8 @@ if (!is_android) {
       "//google_apis",
       "//testing/gmock",
       "//testing/gtest",
+      "//ui/base/interaction:test_support",
+      "//ui/webui/tracked_element",
     ]
 
     if (enable_dice_support) {
@@ -842,6 +846,15 @@ source_set("interactive_ui_tests") {
 
   sources = []
 
+  if (!is_android) {
+    sources += [
+      "contextual_tasks_context_management_interactive_uitest.cc",
+      "contextual_tasks_interactive_uitest.cc",
+      "contextual_tasks_side_panel_coordinator_interactive_uitest.cc",
+      "contextual_tasks_ui_service_interactive_uitest.cc",
+    ]
+  }
+
   deps = [
     ":contextual_tasks",
     ":impl",
@@ -869,29 +882,26 @@ source_set("interactive_ui_tests") {
   }
 
   if (!is_android) {
-    sources += [
-      "contextual_tasks_context_management_interactive_uitest.cc",
-      "contextual_tasks_interactive_uitest.cc",
-      "contextual_tasks_side_panel_coordinator_interactive_uitest.cc",
-      "contextual_tasks_ui_service_interactive_uitest.cc",
-    ]
     deps += [
       ":interactive_ui_test_support",
       ":ui",
+      "//chrome/browser/extensions",
+      "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui/views/frame:browser_view_header",
+
+      # TabUnderlineView currently resides under glic/browser_ui.
       "//chrome/browser/glic/browser_ui:glow",
       "//chrome/browser/tab_list",
       "//chrome/browser/ui:browser_actions",
-      "//chrome/browser/ui:browser_commands",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/contextual_search",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:test_support",
-      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
       "//components/contextual_search:test_support",
       "//components/lens:enterprise_policy",
       "//components/strings:components_strings",
+      "//extensions/common",
       "//third_party/lens_server_proto:lens_overlay_proto",
     ]
   }

@@ -294,6 +294,12 @@ inline constexpr char kAnnotatorModeName[] = "Enable annotator tool";
 inline constexpr char kAnnotatorModeDescription[] =
     "Enables the tool for annotating across the OS.";
 
+inline constexpr char kAudioRendererMixerImmediatePauseName[] =
+    "AudioRendererMixer Immediate Pause";
+inline constexpr char kAudioRendererMixerImmediatePauseDescription[] =
+    "Immediately pauses the underlying audio output stream on explicit media "
+    "player pauses instead of waiting for the 10-second mixer pause delay.";
+
 inline constexpr char kAutoRevokeSuspiciousNotificationName[] =
     "Auto-revoke suspicious notification";
 inline constexpr char kAutoRevokeSuspiciousNotificationDescription[] =
@@ -1134,12 +1140,6 @@ inline constexpr char kAutofillEnableNewAmexNetworkArtName[] =
 inline constexpr char kAutofillEnableNewAmexNetworkArtDescription[] =
     "When enabled, updates the American Express network art in Autofill.";
 
-inline constexpr char kAutofillEnableNewFopDisplayAndroidName[] =
-    "Enable Autofill new FOP display on Android";
-inline constexpr char kAutofillEnableNewFopDisplayAndroidDescription[] =
-    "When enabled, updates payment method Autofill suggestions and settings "
-    "UI.";
-
 inline constexpr char kAutofillEnableOffersInClankKeyboardAccessoryName[] =
     "Enable Autofill offers in keyboard accessory";
 inline constexpr char
@@ -1404,6 +1404,12 @@ inline constexpr char kBorealisZinkGlDriverName[] = "Borealis Zink GL Driver";
 inline constexpr char kBorealisZinkGlDriverDescription[] =
     "Enables zink driver for GL rendering in Borealis. Can be enabled for "
     "recommended GL apps only or for all GL apps. Defaults to recommended.";
+
+inline constexpr char kAndroidSetGoogleAccountInHelpName[] =
+    "Set Google account in Help";
+inline constexpr char kAndroidSetGoogleAccountInHelpDescription[] =
+    "When enabled, the account in use is passed to Google Help when launching "
+    "Help and Feedback.";
 
 inline constexpr char kAndroidSettingsUrlName[] = "Android Settings URL";
 inline constexpr char kAndroidSettingsUrlDescription[] =
@@ -1954,6 +1960,12 @@ inline constexpr char kGlicContextualCueV2ActiveUserBackoffDescription[] =
 inline constexpr char kGlicMarketingAutoOpenName[] = "Glic Marketing Auto Open";
 inline constexpr char kGlicMarketingAutoOpenDescription[] =
     "Enables Glic to auto-open on promotion pages.";
+
+inline constexpr char kGlicMessageFirstFreName[] = "Glic Message First FRE";
+inline constexpr char kGlicMessageFirstFreDescription[] =
+    "Enables the message-first first run experience (FRE), which opens Glic "
+    "directly to chat with inline consent instead of the standard FRE when "
+    "the user has not yet consented.";
 
 inline constexpr char kGlicMessageFirstFreForContextualCueName[] =
     "Glic Message First FRE for Contextual Cue";
@@ -3072,11 +3084,6 @@ inline constexpr char kIncognitoScreenshotName[] = "Incognito Screenshot";
 inline constexpr char kIncognitoScreenshotDescription[] =
     "Enables Incognito screenshots on Android. It will also make Incognito "
     "thumbnails visible.";
-
-inline constexpr char kIncognitoThemeOverlayTestingName[] =
-    "Incognito theme overlay for testing";
-inline constexpr char kIncognitoThemeOverlayTestingDescription[] =
-    "Enables incognito theme overlay for testing on the current window.";
 
 inline constexpr char kInfoBarInlineLinksName[] = "InfoBar inline links";
 inline constexpr char kInfoBarInlineLinksDescription[] =
@@ -4411,12 +4418,6 @@ inline constexpr char kSafetyCheckUnusedSitePermissionsDescription[] =
     "When enabled, adds the unused sites permission module to Safety Check on "
     "desktop. The module will be shown depending on the browser state.";
 
-inline constexpr char kSafetyHubDisruptiveNotificationRevocationName[] =
-    "Safety Hub - Disruptive notification revocation";
-inline constexpr char kSafetyHubDisruptiveNotificationRevocationDescription[] =
-    "Enables autorevoking notifications with high volume and low site "
-    "engagement score";
-
 inline constexpr char kSafetyHubUnusedPermissionRevocationForAllSurfacesName[] =
     "Safety Hub -  unused permission revocation from all surfaces";
 inline constexpr char
@@ -4467,11 +4468,6 @@ inline constexpr char kTestThirdPartyCookiePhaseoutDescription[] =
 inline constexpr char kSplitViewHorizontalName[] = "Stacked Split Views";
 inline constexpr char kSplitViewHorizontalDescription[] =
     "Whether split views can be arranged in a stacked layout.";
-
-inline constexpr char kVerticalTabsExpandOnHoverName[] =
-    "Vertical Tabs Expand On Hover";
-inline constexpr char kVerticalTabsExpandOnHoverDescription[] =
-    "Vertical tabs (when enabled and collapsed) will expand on mouse hover.";
 
 inline constexpr char kSidePanelFlyoverAnimationName[] =
     "Side Panel Flyover Animation";
@@ -5541,6 +5537,12 @@ inline constexpr char kAndroidNewManagementNoticeDescription[] =
     "Replaces the existing enterprise management notice shown during the "
     "sign-in flow on Android with the new management notice.";
 
+inline constexpr char kAndroidNewTabButtonTabstripWebUIName[] =
+    "WebUI New Tab Button in Tab Strip";
+inline constexpr char kAndroidNewTabButtonTabstripWebUIDescription[] =
+    "Replaces the native compositor New Tab Button in the Android "
+    "tablet/desktop tab strip with a WebUI implementation.";
+
 inline constexpr char kAndroidPageInfoAsAppMenuItemName[] =
     "Android Page Info As App Menu Item";
 inline constexpr char kAndroidPageInfoAsAppMenuItemDescription[] =
@@ -6122,9 +6124,10 @@ inline constexpr char kDesktopFlingCurveOnAndroidDescription[] =
     "Enables desktop-like fling curve (exponential decay) and scroll wheel "
     "multipliers on Android.";
 
-inline constexpr char kEdgelessTopInsetName[] = "Edgeless Top Inset";
-inline constexpr char kEdgelessTopInsetDescription[] =
-    "Enables the prototype edgeless top inset feature, allowing opted-in "
+inline constexpr char kEdgeToEdgeTopInsetName[] = "Edge-to-Edge Top Inset";
+inline constexpr char kEdgeToEdgeTopInsetDescription[] =
+    "Enables the prototype Edge-to-Edge top inset feature and refactor, which "
+    "unifies top inset consumption and allows opted-in "
     "pages to draw under the top inset.";
 
 inline constexpr char kEdgeToEdgeExtraLogsName[] = "edge-to-edge-extra-logs";
@@ -6188,11 +6191,6 @@ inline constexpr char kEnableCommandLineOnNonRootedName[] =
     "Enable command line on non-rooted devices";
 inline constexpr char kEnableCommandLineOnNoRootedDescription[] =
     "Enable reading command line file on non-rooted devices (DANGEROUS).";
-
-inline constexpr char kEnableEscapeHandlingForSecondaryActivitiesName[] =
-    "Enable escape handling for secondary activities and native pages.";
-inline constexpr char kEnableEscapeHandlingForSecondaryActivitiesDescription[] =
-    "Enables handling escape events on secondary activities and native pages.";
 
 inline constexpr char kEnableSwipeToSwitchPaneName[] =
     "Enable Swipe To Switch Pane";
@@ -6880,6 +6878,11 @@ inline constexpr char kReadAnythingLineFocusName[] = "Reading Mode Line Focus";
 inline constexpr char kReadAnythingLineFocusDescription[] =
     "Enables the experimental line focus mode for Reading mode.";
 
+inline constexpr char kImmersiveReadAnythingPrintName[] =
+    "Immersive Reading Mode Print";
+inline constexpr char kImmersiveReadAnythingPrintDescription[] =
+    "Enables printing the distilled content from immersive Reading mode.";
+
 inline constexpr char kReadAnythingReadAloudPhraseHighlightingName[] =
     "Reading Mode Read Aloud Phrase Highlighting";
 inline constexpr char kReadAnythingReadAloudPhraseHighlightingDescription[] =
@@ -7419,10 +7422,6 @@ inline constexpr char kAshEnableUnifiedDesktopName[] = "Unified desktop mode";
 inline constexpr char kAshEnableUnifiedDesktopDescription[] =
     "Enable unified desktop mode which allows a window to span multiple "
     "displays.";
-
-inline constexpr char kAshPickerGifsName[] = "Picker GIFs search";
-inline constexpr char kAshPickerGifsDescription[] =
-    "Enable GIf search for Picker.";
 
 inline constexpr char kAshSplitKeyboardRefactorName[] =
     "Split keyboard refactor";

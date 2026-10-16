@@ -25,6 +25,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/payments/iban.h"
+#include "components/autofill/core/browser/data_model/valuables/valuable_types.h"
 #include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
 #include "components/autofill/core/browser/integrators/at_memory/at_memory_query_service.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
@@ -113,6 +114,11 @@ class AtMemoryManager {
   // Records the use of the Autofill AI entity identified by the payload's
   // identifier.
   void RecordAutofillAiEntityUse(
+      const Suggestion::AtMemoryPayload::Identifier& identifier);
+
+  // Records the use of the loyalty card identified by the payload's
+  // identifier.
+  void RecordLoyaltyCardUse(
       const Suggestion::AtMemoryPayload::Identifier& identifier);
 
   // Returns true if a search is currently in progress.
@@ -265,13 +271,17 @@ class AtMemoryManager {
   // statefulness is enabled.
   const url::Origin& target_field_origin() const;
 
+  // Returns the metrics recorder of the active session, which is always owned
+  // by `state_manager_`.
+  AtMemoryMetricsRecorder* metrics_recorder() const {
+    return state_manager_.metrics_recorder();
+  }
+
   // Encapsulates state for the currently visible AtMemory popup.
   struct PopupState {
     AutofillSuggestionTriggerSource trigger_source =
         AutofillSuggestionTriggerSource::kUnspecified;
     UpdateSuggestionsCallback update_callback;
-    // TODO(crbug.com/535486238): Reconsider where metrics_recorder should live.
-    std::unique_ptr<AtMemoryMetricsRecorder> metrics_recorder;
     // Flag indicating that a search query is in progress.
     // TODO(crbug.com/535486238): Remove `is_searching` once
     // `kAutofillAtMemorySearchStatefulness` is fully launched.

@@ -278,9 +278,13 @@ source_set("browser_process_platform_part") {
 source_set("chained_back_navigation_tracker") {
   public = [ "chained_back_navigation_tracker.h" ]
   sources = [ "chained_back_navigation_tracker.cc" ]
-  deps = [
+  public_deps = [
     "//base",
     "//content/public/browser",
+    "//ui/base/unowned_user_data",
+  ]
+  deps = [
+    "//components/tabs:public",
     "//third_party/blink/public/common:headers",
     "//ui/base",
   ]
@@ -440,6 +444,7 @@ source_set("net_benchmarking") {
   deps = [
     "//base",
     "//chrome/common:mojo_bindings",
+    "//content/public/common",
     "//mojo/public/cpp/bindings",
   ]
 }
@@ -1066,6 +1071,7 @@ source_set("core") {
     "//chrome/browser/ui/passwords",
     "//chrome/browser/ui/prefs",
     "//chrome/browser/ui/profiles",
+    "//chrome/browser/ui/search",
     "//chrome/browser/ui/search_engines",
     "//chrome/browser/ui/select_file_policy",
     "//chrome/browser/ui/startup",
@@ -1262,6 +1268,7 @@ source_set("core") {
     "//ui/message_center",
     "//ui/webui",
     "//ui/webui:buildflags",
+    "//ui/webui/resources/cr_components/color_change_listener:mojom",
     "//ui/webui/tracked_element",
   ]
 
@@ -1368,7 +1375,6 @@ source_set("core") {
       "//chrome/browser/ui/bookmarks:impl",
       "//chrome/browser/ui/content_settings:impl",
       "//chrome/browser/ui/read_anything:impl",
-      "//chrome/browser/ui/search",
       "//chrome/browser/ui/tabs",
       "//chrome/browser/ui/tabs:features",
       "//chrome/browser/ui/tabs:tab_strip",
@@ -1386,10 +1392,7 @@ source_set("core") {
   }
 
   if (!is_android || is_desktop_android) {
-    deps += [
-      "//chrome/browser/ui/webui/discards",
-      "//ui/webui/resources/cr_components/color_change_listener:mojom",
-    ]
+    deps += [ "//chrome/browser/ui/webui/discards" ]
   }
 
   if (enable_dice_support) {
@@ -3115,7 +3118,6 @@ source_set("browser") {
       "//chrome/browser/headless:metrics",
       "//chrome/browser/ui/views/session_restore_infobar",
       "//chrome/browser/ui/webui/app_settings",
-      "//chrome/browser/ui/webui/app_settings:impl",
       "//chrome/browser/ui/webui/updater:mojo_bindings",
       "//chrome/browser/updates:impl",
       "//chrome/browser/updates:update_metrics",
@@ -4381,7 +4383,6 @@ if (!is_android) {
       "//chrome/browser/prefs:util",
       "//chrome/browser/search_engines",
       "//chrome/browser/ui:browser_commands",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:sad_tab",
       "//chrome/browser/ui:singleton_tabs",
@@ -4495,7 +4496,6 @@ if (!is_android) {
       "//chrome/browser/media/webrtc:webrtc_browser_tests_base",
       "//chrome/browser/renderer_context_menu:test_support",
       "//chrome/browser/ui",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/common:chrome_features",
       "//chrome/common:non_code_constants",

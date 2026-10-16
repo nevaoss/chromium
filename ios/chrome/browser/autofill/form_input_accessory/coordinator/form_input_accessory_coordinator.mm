@@ -85,6 +85,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/form_input_accessory_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/security_alert_commands.h"
@@ -196,6 +197,7 @@ void UndoInSessionSuppressedEntity(
     AutofillSuggestionContextMenuHandler,
     CardCoordinatorDelegate,
     ExpandedManualFillCoordinatorDelegate,
+    FormInputAccessoryCommands,
     FormInputAccessoryMediatorHandler,
     FormInputAccessoryViewControllerDelegate,
     ManualFillAllPasswordCoordinatorDelegate,
@@ -255,6 +257,8 @@ void UndoInSessionSuppressedEntity(
                              forProtocol:@protocol(SecurityAlertCommands)];
     [dispatcher startDispatchingToTarget:self
                              forProtocol:@protocol(AtMemoryCommands)];
+    [dispatcher startDispatchingToTarget:self
+                             forProtocol:@protocol(FormInputAccessoryCommands)];
 
     _brandingCoordinator =
         [[BrandingCoordinator alloc] initWithBaseViewController:viewController
@@ -910,6 +914,14 @@ void UndoInSessionSuppressedEntity(
 // Called when the user has taken action to dismiss a popover.
 - (void)expandedManualFillCoordinatorDidDismissPopover:
     (ExpandedManualFillCoordinator*)coordinator {
+  // If a new coordinator has already been started before the previous popover
+  // finished its dismissal animation, only stop and remove the dismissed
+  // coordinator rather than resetting the newly started one.
+  if (self.childCoordinators.lastObject != coordinator) {
+    [coordinator stop];
+    [self.childCoordinators removeObject:coordinator];
+    return;
+  }
   [self reset];
 }
 
@@ -973,6 +985,12 @@ void UndoInSessionSuppressedEntity(
     presenter = presenter.presentedViewController;
   }
   [presenter presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - FormInputAccessoryCommands
+
+- (void)resetAutofillSuggestionsLoadingStates {
+  [self resetLoadingStates];
 }
 
 #pragma mark - CRWResponderInputView

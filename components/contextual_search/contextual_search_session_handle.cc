@@ -5,6 +5,7 @@
 #include "components/contextual_search/contextual_search_session_handle.h"
 
 #include <algorithm>
+#include <set>
 #include <vector>
 
 #include "base/containers/flat_set.h"
@@ -28,6 +29,25 @@
 #include "third_party/lens_server_proto/modality_chip_props.pb.h"
 
 namespace contextual_search {
+bool TabInfo::operator==(const TabInfo& other) const {
+  if (context_token != other.context_token || tab_id != other.tab_id ||
+      url != other.url || title != other.title || uploaded != other.uploaded ||
+      restored_from_aim != other.restored_from_aim ||
+      ack_by_server != other.ack_by_server ||
+      request_id.has_value() != other.request_id.has_value()) {
+    return false;
+  }
+  if (request_id.has_value() && request_id->SerializeAsString() !=
+                                    other.request_id->SerializeAsString()) {
+    return false;
+  }
+  return true;
+}
+
+bool TabContextState::operator==(const TabContextState& other) const {
+  return attached == other.attached && restored == other.restored &&
+         deselected == other.deselected;
+}
 
 namespace {
 
@@ -258,7 +278,8 @@ void ContextualSearchSessionHandle::StartTabContextUploadFlow(
   }
 
   if (contextual_input_data->tab_session_id.has_value()) {
-    deselected_tabs_urls_.erase(contextual_input_data->tab_session_id.value());
+    tab_context_.deselected.erase(
+        contextual_input_data->tab_session_id.value());
   }
 
   if (auto* metrics_recorder = GetMetricsRecorder()) {
@@ -422,7 +443,7 @@ bool ContextualSearchSessionHandle::DeleteFile(
   // Otherwise, leave in controller for metadata.
   if (is_tab_and_deselection_enabled) {
     // Track that this tab was explicitly deselected in this session.
-    deselected_tabs_urls_[file_info->tab_session_id.value()] = std::make_pair(
+    tab_context_.deselected[file_info->tab_session_id.value()] = std::make_pair(
         file_info->tab_url.value_or(GURL()), file_info->tab_title.value_or(""));
     if (is_submitted) {
       // Remove the deselected tab from `submitted_context_tokens_`
@@ -574,14 +595,14 @@ void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
                 file_info->request_id.value());
           }
           if (file_info->tab_session_id.has_value()) {
-            deselected_tabs_urls_[file_info->tab_session_id.value()] =
+            tab_context_.deselected[file_info->tab_session_id.value()] =
                 std::make_pair(file_info->tab_url.value_or(GURL()),
                                file_info->tab_title.value_or(""));
           }
         }
       };
 
-      // Collect request IDs and add to deselected_tabs_urls_ so
+      // Collect request IDs and add to `tab_context_.deselected` so
       // GetTabsFromContext in ActiveTaskContextProviderImpl filters out
       // submitted task attachments.
       for (const auto& [session_id, token_and_req] : persisted_tabs_) {
@@ -589,7 +610,7 @@ void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
         if (auto* file_info =
                 MarkFileSuperceded(context_controller, token_and_req.first)) {
           if (file_info->tab_session_id.has_value()) {
-            deselected_tabs_urls_[file_info->tab_session_id.value()] =
+            tab_context_.deselected[file_info->tab_session_id.value()] =
                 std::make_pair(file_info->tab_url.value_or(GURL()),
                                file_info->tab_title.value_or(""));
           }
@@ -638,7 +659,7 @@ void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
                     file_info->request_id.value());
               }
               if (file_info->tab_session_id.has_value()) {
-                deselected_tabs_urls_[file_info->tab_session_id.value()] =
+                tab_context_.deselected[file_info->tab_session_id.value()] =
                     std::make_pair(file_info->tab_url.value_or(GURL()),
                                    file_info->tab_title.value_or(""));
               }
@@ -652,7 +673,7 @@ void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
           if (auto* file_info =
                   MarkFileSuperceded(context_controller, it->second.first)) {
             if (file_info->tab_session_id.has_value()) {
-              deselected_tabs_urls_[file_info->tab_session_id.value()] =
+              tab_context_.deselected[file_info->tab_session_id.value()] =
                   std::make_pair(file_info->tab_url.value_or(GURL()),
                                  file_info->tab_title.value_or(""));
             }
@@ -737,7 +758,7 @@ ContextualSearchSessionHandle::CreateClientToAimRequest(
     if (context_management_enabled) {
       // If explicitly deselected by user, treat as deleted. Check this
       // directly because committed tabs are cleared from active lists.
-      if (deselected_tabs_urls_.contains(session_id)) {
+      if (tab_context_.deselected.contains(session_id)) {
         deleted_tabs.push_back(session_id);
         continue;
       }
@@ -893,7 +914,7 @@ std::vector<FileInfo>
 ContextualSearchSessionHandle::GetSubmittedContextFileInfos() const {
   std::vector<base::UnguessableToken> tokens = submitted_context_tokens_;
   for (const auto& [session_id, token_and_req] : persisted_tabs_) {
-    if (deselected_tabs_urls_.contains(session_id)) {
+    if (tab_context_.deselected.contains(session_id)) {
       continue;
     }
     if (!std::ranges::contains(tokens, token_and_req.first)) {
@@ -929,6 +950,44 @@ void ContextualSearchSessionHandle::set_submitted_context_tokens(
 void ContextualSearchSessionHandle::set_persisted_tabs(
     PersistedTabsMap persisted_tabs) {
   persisted_tabs_ = std::move(persisted_tabs);
+}
+
+base::CallbackListSubscription
+ContextualSearchSessionHandle::SubscribeTabContext(
+    TabContextSubscriber callback) {
+  if (!callback) {
+    return {};
+  }
+  return tab_context_subscribers_.Add(std::move(callback));
+}
+
+const TabContextState& ContextualSearchSessionHandle::GetTabContextState()
+    const {
+  return tab_context_;
+}
+
+void ContextualSearchSessionHandle::SetRestoredTabs(std::vector<TabInfo> tabs) {
+  std::vector<TabInfo> rebuilt_restored;
+  rebuilt_restored.reserve(tabs.size());
+  std::set<int32_t> seen_tab_ids;
+  for (TabInfo& tab : tabs) {
+    // Keep the first entry if the server returns the same tab more than once.
+    if (tab.tab_id.has_value() && !seen_tab_ids.insert(*tab.tab_id).second) {
+      continue;
+    }
+    tab.restored_from_aim = true;
+    tab.uploaded = false;
+    rebuilt_restored.push_back(std::move(tab));
+  }
+  if (rebuilt_restored == tab_context_.restored) {
+    return;
+  }
+  tab_context_.restored = std::move(rebuilt_restored);
+  NotifyTabContextSubscribers();
+}
+
+void ContextualSearchSessionHandle::NotifyTabContextSubscribers() {
+  tab_context_subscribers_.Notify(tab_context_);
 }
 
 bool ContextualSearchSessionHandle::IsTabInContext(SessionID session_id) const {
@@ -1064,8 +1123,8 @@ bool ContextualSearchSessionHandle::IsTabDeselected(
     SessionID tab_session_id,
     const GURL& current_url,
     const std::string& current_title) const {
-  auto it = deselected_tabs_urls_.find(tab_session_id);
-  if (it == deselected_tabs_urls_.end()) {
+  auto it = tab_context_.deselected.find(tab_session_id);
+  if (it == tab_context_.deselected.end()) {
     return false;
   }
 
@@ -1079,7 +1138,7 @@ bool ContextualSearchSessionHandle::IsTabDeselected(
   }
 
   if (!is_equivalent) {
-    deselected_tabs_urls_.erase(it);
+    tab_context_.deselected.erase(it);
     return false;
   }
   return true;
@@ -1098,7 +1157,7 @@ bool ContextualSearchSessionHandle::AreUrlsEquivalent(
 
 void ContextualSearchSessionHandle::RemoveDeselectedTab(
     SessionID tab_session_id) {
-  deselected_tabs_urls_.erase(tab_session_id);
+  tab_context_.deselected.erase(tab_session_id);
 }
 
 void ContextualSearchSessionHandle::set_auth_user_index(

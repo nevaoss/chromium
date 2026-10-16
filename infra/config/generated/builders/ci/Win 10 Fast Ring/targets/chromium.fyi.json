@@ -60,7 +60,8 @@
       },
       {
         "args": [
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "module_name": "//third_party/blink/renderer/platform:blink_platform_unittests",
         "module_scheme": "gtest",
@@ -479,7 +480,6 @@
         "test_id_prefix": "ninja://remoting:remoting_unittests/"
       },
       {
-        "experiment_percentage": 100,
         "module_name": "//rlz:rlz_unittests",
         "module_scheme": "gtest",
         "name": "rlz_unittests",

@@ -499,6 +499,7 @@ export class BrowsingContextImpl {
         params.frame.loaderId,
         // `unreachableUrl` indicates if the navigation failed.
         params.frame.unreachableUrl,
+        params.type,
       );
 
       // At the point the page is initialized, all the nested iframes from the
@@ -507,6 +508,12 @@ export class BrowsingContextImpl {
       this.#deleteAllChildren();
 
       this.#documentChanged(params.frame.loaderId);
+      if (params.type === 'BackForwardCacheRestore') {
+        // BFCache restores do not re-emit `DOMContentLoaded` or `load` lifecycle
+        // events because the restored document has already loaded.
+        this.#lifecycle.DOMContentLoaded.resolve();
+        this.#lifecycle.load.resolve();
+      }
     });
 
     this.#cdpTarget.cdpClient.on('Page.frameStartedNavigating', (params) => {
@@ -694,18 +701,17 @@ export class BrowsingContextImpl {
             this.#defaultRealmDeferred = new Deferred<Realm>();
           }
           this.#defaultRealmDeferred.resolve(realm);
-
-          // Initialize ChannelProxy listeners for all the channels of all the
-          // preload scripts related to this BrowsingContext.
-          // TODO: extend for not default realms by the sandbox name.
-          void Promise.all(
-            this.#cdpTarget
-              .getChannels()
-              .map((channel) =>
-                channel.startListenerFromWindow(realm, this.#eventManager),
-              ),
-          );
         }
+
+        // Initialize ChannelProxy listeners for all the channels of all the
+        // preload scripts related to this BrowsingContext and sandbox.
+        void Promise.all(
+          this.#cdpTarget
+            .getChannels(sandbox)
+            .map((channel) =>
+              channel.startListenerFromWindow(realm, this.#eventManager),
+            ),
+        );
       },
     );
 

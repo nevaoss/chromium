@@ -124,12 +124,12 @@ class CORE_EXPORT ImagePaintTimingDetector final
   // node can have multiple associated `StyleImage`s.
   base::TimeTicks LoadTime(const StyleImage&) const;
 
+  // Returns true if any of the persistent data structures (persisting across
+  // frames, i.e. pending images, recorded images, or load times), have entries.
+  // Used for testing image removal cleanup.
+  bool HasPersistentImageStateForTest() const;
+
  private:
-  friend class ImagePaintTimingDetectorTestBase;
-  friend class LargestContentfulPaintCalculatorTest;
-
-  void SendRectsToHud();
-
   // Returns the viewport size, initializing the cached `viewport_size_` if
   // needed.
   uint64_t ViewportSize();

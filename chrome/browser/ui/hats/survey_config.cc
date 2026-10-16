@@ -783,6 +783,8 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
           "AutofillAi entity record types used",
           // For each filling using AutofillAi, the entity type that was filled.
           "AutofillAi entity types used",
+          // Indicates whether a BNPL virtual card was used to fill any field.
+          "BNPL used",
           // Time between form submission and the last Autofill use, in seconds.
           "Time since last Autofill use",
       };
@@ -795,6 +797,19 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
   survey_configs.emplace_back(
       &::autofill::features::kAutofillPersonalizationAndTrustAutofillAiSurvey,
       kHatsSurveyTriggerAutofillPersonalizationAndTrustAutofillAiFilled,
+      /*presupplied_trigger_id=*/std::nullopt,
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      autofill_personalization_and_trust_product_specific_data);
+  survey_configs.emplace_back(
+      &::autofill::features::kAutofillPersonalizationAndTrustCreditCardSurvey,
+      kHatsSurveyTriggerAutofillPersonalizationAndTrustCreditCardFilled,
+      /*presupplied_trigger_id=*/std::nullopt,
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      autofill_personalization_and_trust_product_specific_data);
+  survey_configs.emplace_back(
+      &::autofill::features::
+          kAutofillPersonalizationAndTrustOneTimePasswordSurvey,
+      kHatsSurveyTriggerAutofillPersonalizationAndTrustOneTimePasswordFilled,
       /*presupplied_trigger_id=*/std::nullopt,
       /*product_specific_bits_data_fields=*/std::vector<std::string>{},
       autofill_personalization_and_trust_product_specific_data);

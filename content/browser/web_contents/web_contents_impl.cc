@@ -5502,6 +5502,9 @@ bool WebContentsImpl::IsFullscreen() {
 }
 
 bool WebContentsImpl::ShouldShowStaleContentOnEviction() {
+  if (WasDiscarded()) {
+    return false;
+  }
   return GetDelegate() && GetDelegate()->ShouldShowStaleContentOnEviction(this);
 }
 
@@ -12056,13 +12059,8 @@ void WebContentsImpl::NotifyFindReply(int request_id,
   }
 
   observers_.NotifyObservers(&WebContentsObserver::DidReceiveFindReply,
-                             request_id, number_of_matches,
+                             request_id, number_of_matches, selection_rect,
                              active_match_ordinal, final_update);
-
-  if (delegate_) {
-    delegate_->FindReply(this, request_id, number_of_matches, selection_rect,
-                         active_match_ordinal, final_update);
-  }
 }
 
 void WebContentsImpl::IncrementBluetoothConnectedDeviceCount() {

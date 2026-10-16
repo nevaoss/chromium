@@ -1392,7 +1392,7 @@ bool TimelineMatchesScope(const ScrollTimeline& timeline,
   const TreeScope* ref_scope = target_name.GetTreeScope();
   CHECK(ref_scope);
 
-  if (!def_scope->IsInclusiveAncestorTreeScopeOf(*ref_scope)) {
+  if (!def_scope->IsInclusiveAncestorOf(*ref_scope)) {
     UseCounter::Count(document, WebFeature::kCSSTimelineTreeScopeMismatch);
     if (RuntimeEnabledFeatures::CSSTreeScopedScrollTimelineEnabled()) {
       return false;
@@ -3125,13 +3125,8 @@ void CSSAnimations::CalculateTransitionUpdate(
          "@starting-style style";
 #endif
 
-  if (old_style && !old_style->IsStartingStyle() &&
-      !animating_element.GetDocument().RenderingHadBegunForLastStyleUpdate()) {
-    // Only allow transitions on the first rendered frame for @starting-style.
-    old_style = nullptr;
-  }
-
-  if (!animation_style_recalc && old_style) {
+  if (!animation_style_recalc &&
+      CanStartTransitionsForStyle(old_style, animating_element.GetDocument())) {
     // TODO: Don't run transitions if style.Display() == EDisplay::kNone
     // and display is not transitioned. I.e. display is actually none.
     // Don't bother updating listed_properties unless we need it below.

@@ -212,9 +212,6 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
     return true;
   }
   if (bitmap_provider_) {
-    if (!bitmap_provider_->IsValid()) {
-      return false;
-    }
     return true;
   }
 
@@ -319,16 +316,6 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
   return false;
 }
 
-base::ByteSize OffscreenCanvasRenderingContext2D::AllocatedBufferSize() const {
-  if (shared_image_provider_) {
-    return shared_image_provider_->EstimatedSizeInBytes();
-  }
-  if (bitmap_provider_) {
-    return bitmap_provider_->EstimatedSizeInBytes();
-  }
-  return base::ByteSize();
-}
-
 void OffscreenCanvasRenderingContext2D::Reset() {
   ResetResourceProvider();
   ResetRecorder();
@@ -409,19 +396,6 @@ scoped_refptr<StaticBitmapImage> OffscreenCanvasRenderingContext2D::GetImage() {
   return bitmap_provider_->Snapshot();
 }
 
-scoped_refptr<StaticBitmapImage>
-OffscreenCanvasRenderingContext2D::PaintRenderingResultsToSnapshot(
-    SourceDrawingBuffer source_buffer) {
-  if (!IsResourceProviderValid()) {
-    return nullptr;
-  }
-  FlushCanvas(FlushReason::kOther);
-  if (shared_image_provider_) {
-    return shared_image_provider_->Snapshot();
-  }
-  return bitmap_provider_->Snapshot();
-}
-
 V8RenderingContext* OffscreenCanvasRenderingContext2D::AsV8RenderingContext() {
   return nullptr;
 }
@@ -441,13 +415,6 @@ OffscreenCanvasRenderingContext2D::GetOrCreatePaintCanvas() {
     return nullptr;
   }
   return GetPaintCanvas();
-}
-
-void OffscreenCanvasRenderingContext2D::RecordingCleared() {
-  BaseRenderingContext2D::RecordingCleared();
-  if (shared_image_provider_) {
-    shared_image_provider_->RecordingCleared();
-  }
 }
 
 void OffscreenCanvasRenderingContext2D::WillDraw(
@@ -498,10 +465,6 @@ void OffscreenCanvasRenderingContext2D::LoseContext(LostContextMode lost_mode) {
   uint32_t delay = base::RandIntInclusive(1, kMaxIframeContextLoseDelay);
   dispatch_context_lost_event_timer_.StartOneShot(base::Milliseconds(delay),
                                                   FROM_HERE);
-}
-
-bool OffscreenCanvasRenderingContext2D::IsPaintable() const {
-  return shared_image_provider_ != nullptr || bitmap_provider_ != nullptr;
 }
 
 bool OffscreenCanvasRenderingContext2D::WritePixels(
@@ -556,28 +519,7 @@ bool OffscreenCanvasRenderingContext2D::ResolveFont(const String& new_font) {
 
 std::optional<cc::PaintRecord> OffscreenCanvasRenderingContext2D::FlushCanvas(
     FlushReason reason) {
-  return FlushCanvasInternal(shared_image_provider_.get(),
-                             bitmap_provider_.get(), reason);
-}
-
-void OffscreenCanvasRenderingContext2D::OnFlushForImage(
-    cc::PaintImage::ContentId content_id) {
-  if (shared_image_provider_ && !shared_image_provider_->IsSoftware()) {
-    if (Recorder()->getRecordingCanvas().IsCachingImage(content_id)) {
-      FlushCanvas(FlushReason::kOther);
-    }
-    shared_image_provider_->OnFlushForImage(content_id);
-  }
-}
-
-bool OffscreenCanvasRenderingContext2D::IsResourceProviderValid() const {
-  if (shared_image_provider_) {
-    return shared_image_provider_->IsValid();
-  }
-  if (bitmap_provider_) {
-    return bitmap_provider_->IsValid();
-  }
-  return false;
+  return FlushCanvasInternal(reason);
 }
 
 OffscreenCanvas* OffscreenCanvasRenderingContext2D::HostAsOffscreenCanvas()

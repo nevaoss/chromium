@@ -5,6 +5,9 @@
 assert(is_win || is_mac || is_linux || is_chromeos || is_android)
 
 import("//chrome/common/features.gni")
+import("//components/captive_portal/core/features.gni")
+import("//components/compose/features.gni")
+import("//components/offline_pages/buildflags/features.gni")
 import("//components/signin/features.gni")
 import("//content/public/common/features.gni")
 import("//extensions/buildflags/buildflags.gni")
@@ -23,6 +26,8 @@ source_set("tabs_public") {
   public_deps = [
     "//base",
     "//chrome/common:buildflags",
+    "//components/compose:buildflags",
+    "//components/offline_pages/buildflags",
     "//components/safe_browsing:buildflags",
     "//components/signin/public/base:signin_buildflags",
     "//components/tab_groups",
@@ -538,6 +543,7 @@ if (!is_android) {
       ":utils",
       "//chrome/app:command_ids",
       "//chrome/app/vector_icons",
+      "//chrome/browser:chained_back_navigation_tracker",
       "//chrome/browser/actor",
       "//chrome/browser/actor/ui",
       "//chrome/browser/banners",
@@ -551,9 +557,11 @@ if (!is_android) {
       "//chrome/browser/contextual_tasks",
       "//chrome/browser/external_protocol",
       "//chrome/browser/favicon",
+      "//chrome/browser/file_system_access",
       "//chrome/browser/glic",
       "//chrome/browser/glic/browser_ui",
       "//chrome/browser/glic/suggestions",
+      "//chrome/browser/history",
       "//chrome/browser/history_embeddings",
       "//chrome/browser/image_fetcher",
       "//chrome/browser/indigo",
@@ -581,6 +589,7 @@ if (!is_android) {
       "//chrome/browser/skills:ui",
       "//chrome/browser/ssl",
       "//chrome/browser/storage_access_api",
+      "//chrome/browser/supervised_user",
       "//chrome/browser/sync",
       "//chrome/browser/sync:factories",
       "//chrome/browser/sync_tab_context",
@@ -603,6 +612,7 @@ if (!is_android) {
       "//chrome/browser/ui/actions:actions_util",
       "//chrome/browser/ui/autofill",
       "//chrome/browser/ui/blocked_content",
+      "//chrome/browser/ui/bookmarks",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/commerce",
       "//chrome/browser/ui/context_highlight",
@@ -613,6 +623,7 @@ if (!is_android) {
       "//chrome/browser/ui/read_anything",
       "//chrome/browser/ui/safety_hub",
       "//chrome/browser/ui/search_engine_choice",
+      "//chrome/browser/ui/search_engines",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",
       "//chrome/browser/ui/sync",
@@ -649,6 +660,9 @@ if (!is_android) {
       "//chrome/browser/vr",
       "//chrome/browser/web_applications",
       "//chrome/browser/web_applications/isolated_web_apps:isolated_web_apps_no_pwa_core_deps",
+      "//components/captive_portal/core:buildflags",
+      "//components/client_hints/browser",
+      "//components/compose:buildflags",
       "//components/content_settings/core/browser",
       "//components/contextual_tasks/public",
       "//components/download/content/factory",
@@ -656,6 +670,8 @@ if (!is_android) {
       "//components/enterprise",
       "//components/favicon/content",
       "//components/favicon/core",
+      "//components/history/content/browser",
+      "//components/history/core/browser",
       "//components/history/core/common",
       "//components/image_fetcher/core",
       "//components/lens",
@@ -718,10 +734,12 @@ if (!is_android) {
     if (is_chromeos) {
       deps += [
         "//chrome/browser/apps/app_service",
+        "//chrome/browser/ash/boot_times_recorder",
         "//chrome/browser/ash/child_accounts/time_limits",
         "//chrome/browser/ash/growth",
         "//chrome/browser/ash/mahi/web_contents",
         "//chrome/browser/chromeos/gemini_app",
+        "//chrome/browser/chromeos/policy/dlp",
         "//chrome/browser/ui/ash/google_one",
         "//chrome/browser/ui/views/web_apps:protocol_handler_picker_coordinator",
         "//chromeos/ash/experiences/isolated_web_app",
@@ -743,8 +761,26 @@ if (!is_android) {
       ]
     }
 
+    if (enable_captive_portal_detection) {
+      deps += [
+        "//chrome/browser/captive_portal",
+        "//components/captive_portal/content",
+      ]
+    }
+
+    if (enable_compose) {
+      deps += [
+        "//chrome/browser/compose",
+        "//components/autofill/content/browser",
+      ]
+    }
+
     if (enable_extensions_core) {
       deps += [ "//chrome/browser/extensions" ]
+    }
+
+    if (enable_offline_pages) {
+      deps += [ "//chrome/browser/offline_pages" ]
     }
   }
 
@@ -861,7 +897,6 @@ if (!is_android) {
       "//chrome/browser/sync",
       "//chrome/browser/ui",
       "//chrome/browser/ui:browser_commands",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:tab_ui_helper",
       "//chrome/browser/ui:ui_features",
@@ -871,6 +906,7 @@ if (!is_android) {
       "//chrome/browser/ui/tabs/saved_tab_groups:test_support",
       "//chrome/browser/ui/thumbnails",
       "//chrome/browser/ui/views/frame:browser_view_header",
+      "//chrome/browser/ui/views/send_tab_to_self",
       "//chrome/browser/web_applications",
       "//chrome/browser/web_applications:prevent_close_test_support",
       "//chrome/browser/web_applications:web_applications_test_support",

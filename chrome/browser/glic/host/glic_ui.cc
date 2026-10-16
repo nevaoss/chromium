@@ -64,7 +64,7 @@
 #endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 #if !BUILDFLAG(IS_ANDROID) || BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-#include "chrome/browser/ui/webui/theme_source.h"
+#include "chrome/browser/ui/webui/theme_source.h"  // nogncheck
 #endif
 
 namespace glic {
@@ -291,9 +291,10 @@ GlicUI::GlicUI(content::WebUI* web_ui)
       IdentityManagerFactory::GetForProfile(profile);
   const bool is_internal_google_account =
       identity_manager && IsPrimaryAccountGoogleInternal(*identity_manager);
-  source->AddBoolean("showErrorAllowed", is_internal_google_account ||
-                                             profile->GetPrefs()->GetBoolean(
-                                                 prefs::kGlicShowErrorAllowed));
+  source->AddBoolean(
+      "showErrorAllowed",
+      is_internal_google_account || is_glic_dev ||
+          profile->GetPrefs()->GetBoolean(prefs::kGlicShowErrorAllowed));
   const bool completed_fre = GlicEnabling::HasConsentedForProfile(profile);
   source->AddBoolean("completedFre", completed_fre);
 #if BUILDFLAG(IS_ANDROID)
@@ -400,7 +401,6 @@ void GlicUI::BindInterface(
   }
 }
 
-
 void GlicUI::BindInterface(
     mojo::PendingReceiver<glic::mojom::GlicPreloadHandlerFactory> receiver) {
   preload_factory_receiver_.reset();
@@ -455,7 +455,6 @@ void GlicUI::CreateInternalsPageHandler(
   internals_page_handler_ = std::make_unique<GlicInternalsPageHandler>(
       web_ui()->GetWebContents(), std::move(receiver));
 }
-
 
 void GlicUI::CreatePreloadHandler(
     mojo::PendingReceiver<glic::mojom::GlicPreloadHandler> receiver,

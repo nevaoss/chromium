@@ -43,6 +43,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.Callback;
+import org.chromium.base.ContextUtils;
 import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
@@ -108,13 +109,13 @@ public class CustomTabToolbarUnitTest {
     @Mock Tracker mTracker;
     @Mock Tab mTab;
     @Mock Callback<Integer> mContainerVisibilityChangeObserver;
-    @Mock View mParentView;
     @Mock WindowAndroid mWindowAndroid;
     private @Mock PageInfoIphController mPageInfoIphController;
     @Mock private ThemeColorProvider mThemeColorProvider;
     @Mock private IncognitoStateProvider mIncognitoStateProvider;
     @Mock private SearchActivityClient mSearchActivityClient;
 
+    private final View mParentView = new View(ContextUtils.getApplicationContext());
     private BrowserStateBrowserControlsVisibilityDelegate mControlsVisibleDelegate;
     private Activity mActivity;
     private CustomTabToolbar mToolbar;

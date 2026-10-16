@@ -37,6 +37,7 @@
 #include <limits>
 #include <utility>
 
+#include "partition_alloc/bucket_lookup.h"
 #include "partition_alloc/build_config.h"
 #include "partition_alloc/buildflags.h"
 #include "partition_alloc/free_hint.h"
@@ -589,7 +590,7 @@ class alignas(internal::kPartitionCachelineSize)
       SlotStart slot_start,
       SlotSpanMetadata* slot_span,
       FreeHintType<FreeHintFlags(flags)> hint,
-      const internal::BucketSizeDetails& size_details);
+      internal::BucketSizeDetails size_details);
 
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
   // Actual free operation on BRP dequarantine.
@@ -610,7 +611,7 @@ class alignas(internal::kPartitionCachelineSize)
   PA_ALWAYS_INLINE size_t
   GetSlotUsableSize(const SlotSpanMetadata* slot_span) const;
   PA_ALWAYS_INLINE size_t
-  GetSlotUsableSize(const internal::BucketSizeDetails& size_details,
+  GetSlotUsableSize(internal::BucketSizeDetails size_details,
                     const SlotSpanMetadata* slot_span) const;
 
   // Note: this static method is the most friendly to external callers.
@@ -695,7 +696,7 @@ class alignas(internal::kPartitionCachelineSize)
 
   PA_ALWAYS_INLINE void RawFreeWithThreadCache(
       SlotStart slot_start,
-      const internal::BucketSizeDetails& size_details,
+      internal::BucketSizeDetails size_details,
       SlotSpanMetadata* slot_span);
 
 #if PA_BUILDFLAG(HAS_MEMORY_TAGGING)
@@ -838,7 +839,7 @@ class alignas(internal::kPartitionCachelineSize)
   GetSlotSizeFromRequestedSizeForTesting(size_t requested_size) const;
 
   PA_ALWAYS_INLINE bool IsSchedulerLoopQuarantineTarget(
-      const internal::BucketSizeDetails& size_details);
+      internal::BucketSizeDetails size_details);
 
  private:
   static inline StraightenLargerSlotSpanFreeListsMode
@@ -859,6 +860,12 @@ class alignas(internal::kPartitionCachelineSize)
   template <FreeFlags flags>
   PA_ALWAYS_INLINE static bool FreeProlog(void* object,
                                           const PartitionRoot* root);
+
+  // Returns true if PartitionAllocHook overrides the memory deallocation.
+  template <FreeFlags flags>
+  PA_ALWAYS_INLINE static bool FreeObserverAndFilterFreeOverrideHook(
+      void* object,
+      const PartitionRoot* root);
 
   // Returns whether a |bucket| from |this| root is direct-mapped. This function
   // does not touch |bucket|, contrary to  PartitionBucket::is_direct_mapped().
@@ -885,6 +892,25 @@ class alignas(internal::kPartitionCachelineSize)
   PA_ALWAYS_INLINE AllocInternalResult AllocInternal(size_t requested_size,
                                                      size_t alignment,
                                                      const char* type_name);
+  // Returns true if allocation override hooks is enabled and the hook overrides
+  // the memory allocation. In the case, the allocated memory is returned via
+  // `out`. Otherwise, returns false.
+  template <AllocFlags flags>
+  PA_ALWAYS_INLINE bool FilterAllocationOverrideHook(size_t requested_size,
+                                                     size_t alignment,
+                                                     const char* type_name,
+                                                     AllocInternalResult* out);
+#if PA_BUILDFLAG(MEMORY_TOOL_REPLACES_ALLOCATOR)
+  // Returns true if memory tools overrides the memory allocation. Otherwise,
+  // returns false. In the case, the allocated memory is returned via
+  // `out`. Otherwise, returns false.
+  template <AllocFlags flags>
+  PA_ALWAYS_INLINE bool FilterAllocationMemoryToolOverride(
+      size_t requested_size,
+      size_t alignment,
+      const char* type_name,
+      AllocInternalResult* out);
+#endif  //  PA_BUILDFLAG(MEMORY_TOOL_REPLACES_ALLOCATOR)
 
   // Same as |AllocInternal()|, but don't handle allocation hooks.
   template <AllocFlags flags = AllocFlags::kNone>
@@ -944,7 +970,7 @@ class alignas(internal::kPartitionCachelineSize)
   PA_ALWAYS_INLINE void SchedulerLoopQuarantine(
       SlotStart slot_start,
       SlotSpanMetadata* slot_span,
-      const internal::BucketSizeDetails& size_details);
+      internal::BucketSizeDetails size_details);
 
   PA_ALWAYS_INLINE AllocationNotificationData
   CreateAllocationNotificationData(void* object,

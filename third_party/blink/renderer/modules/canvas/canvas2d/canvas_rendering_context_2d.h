@@ -32,6 +32,7 @@
 #include <memory>
 #include <optional>
 
+#include "base/byte_size.h"
 #include "base/check.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/scoped_refptr.h"
@@ -94,8 +95,7 @@ class MODULES_EXPORT CanvasRenderingContext2D final
     : public ScriptWrappable,
       public BaseRenderingContext2D,
       public SVGResourceClient,
-      public CanvasHibernationHandler::Delegate,
-      public FlushForImageObserver {
+      public CanvasHibernationHandler::Delegate {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -151,9 +151,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   // SVGResourceClient implementation
   void ResourceContentChanged(SVGResource*) override;
 
-  // FlushForImageObserver implementation
-  void OnFlushForImage(cc::PaintImage::ContentId content_id) override;
-
   void UpdateFilterReferences(const FilterOperations&);
   void ClearFilterReferences();
 
@@ -162,7 +159,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   void SetOriginTainted() final;
   void DisableAcceleration() override;
   bool ShouldDisableAccelerationBecauseOfReadback() const override;
-  void RecordingCleared() override;
 
   // CanvasHibernationHandler::Delegate implementation
   Canvas2DResourceProvider* GetSharedImageProvider() const override;
@@ -192,8 +188,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   scoped_refptr<CanvasResource> PaintRenderingResultsToResource(
       SourceDrawingBuffer source_buffer,
       FlushReason reason) override;
-  scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
-      SourceDrawingBuffer source_buffer) override;
   const std::optional<cc::PaintRecord>& GetLastRecording() override;
 
   int Width() const final;
@@ -260,7 +254,7 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   void EnableAccelerationIfPossible() override;
   base::ByteSize AllocatedBufferSize() const override;
 
-  bool IsResourceProviderValid() const;
+  bool IsResourceProviderValid() const override;
 
  protected:
   HTMLCanvasElement* HostAsHTMLCanvasElement() const final;
@@ -316,6 +310,8 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   // This method should be called only when both providers are null.
   void RecreateResourceProvider();
 
+  void RestoreBackBuffer(const cc::PaintImage&);
+
   void WakeUpFromHibernation();
 
   FilterOperations filter_operations_;
@@ -324,8 +320,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   LinkedHashSet<String> font_lru_list_;
 
   std::unique_ptr<CanvasHibernationHandler> hibernation_handler_;
-  std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
-  std::unique_ptr<Canvas2DBitmapProvider> bitmap_provider_;
 
   // `did_fail_to_create_resource_provider_` prevents repeated attempts in
   // allocating resources after the first attempt failed.

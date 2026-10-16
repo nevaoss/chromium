@@ -524,6 +524,113 @@ TEST_F(HTMLGeolocationElementTest, PermissionStatusChangeAfterDecided) {
                   /*is_in_progress*/ true);
 }
 
+TEST_F(HTMLGeolocationElementTest, MetricsRequestInitiationFlow) {
+  ScopedBypassPepcSecurityForTestingForTest bypass_pepc(true);
+  base::HistogramTester histogram_tester;
+
+  // 1. User click with permission already granted.
+  CachedPermissionStatus::From(GetDocument().domWindow())
+      ->SetPermissionStatusMap({{blink::mojom::PermissionName::GEOLOCATION,
+                                 MojoPermissionStatus::GRANTED}});
+  auto* element1 = CreateGeolocationElement();
+  element1->DispatchSimulatedClick(nullptr);
+
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.RequestInitiationFlow",
+      CapabilityElementGeolocationRequestFlow::
+          kClickWithPermissionAlreadyGranted,
+      1);
+
+  // 2. User click requiring prompt that is granted.
+  CachedPermissionStatus::From(GetDocument().domWindow())
+      ->SetPermissionStatusMap({{blink::mojom::PermissionName::GEOLOCATION,
+                                 MojoPermissionStatus::ASK}});
+  auto* element2 = CreateGeolocationElement();
+  WaitForPermissionElementRegistration(element2);
+  element2->DispatchSimulatedClick(nullptr);
+  permission_service()->NotifyPermissionStatusChange(
+      PermissionName::GEOLOCATION, MojoPermissionStatus::GRANTED);
+
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.RequestInitiationFlow",
+      CapabilityElementGeolocationRequestFlow::kClickWithPromptGranted, 1);
+
+  // 3. Autolocate on load.
+  CachedPermissionStatus::From(GetDocument().domWindow())
+      ->SetPermissionStatusMap({{blink::mojom::PermissionName::GEOLOCATION,
+                                 MojoPermissionStatus::GRANTED}});
+  auto* element3 = MakeGarbageCollected<HTMLGeolocationElement>(GetDocument());
+  element3->setAttribute(html_names::kAutolocateAttr, g_empty_atom);
+  GetDocument().body()->AppendChild(element3);
+  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
+  GetDocument().View()->UpdateAllLifecyclePhasesForTest();
+
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.RequestInitiationFlow",
+      CapabilityElementGeolocationRequestFlow::kAutolocateOnLoad, 1);
+
+  // 4. User click on an autolocate element with permission already granted
+  // should record kClickWithPermissionAlreadyGranted (not
+  // kClickWithPromptGranted).
+  element3->CurrentPositionCallback(base::ok(nullptr));
+  element3->DispatchSimulatedClick(nullptr);
+
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.RequestInitiationFlow",
+      CapabilityElementGeolocationRequestFlow::
+          kClickWithPermissionAlreadyGranted,
+      2);
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.RequestInitiationFlow",
+      CapabilityElementGeolocationRequestFlow::kClickWithPromptGranted, 1);
+}
+
+TEST_F(HTMLGeolocationElementTest, MetricsAccuracyMode) {
+  ScopedBypassPepcSecurityForTestingForTest bypass_pepc(true);
+  base::HistogramTester histogram_tester;
+
+  // 1. Default accuracy mode.
+  CachedPermissionStatus::From(GetDocument().domWindow())
+      ->SetPermissionStatusMap({{blink::mojom::PermissionName::GEOLOCATION,
+                                 MojoPermissionStatus::GRANTED}});
+  auto* element1 = CreateGeolocationElement();
+  element1->DispatchSimulatedClick(nullptr);
+
+  histogram_tester.ExpectUniqueSample(
+      "Blink.CapabilityElement.Geolocation.AccuracyMode",
+      CapabilityElementGeolocationAccuracyMode::kDefault, 1);
+
+  // 2. Precise accuracy mode.
+  CachedPermissionStatus::From(GetDocument().domWindow())
+      ->SetPermissionStatusMap({{blink::mojom::PermissionName::GEOLOCATION,
+                                 MojoPermissionStatus::ASK}});
+  auto* element2 = CreateGeolocationElement(/*precise_accuracy_mode=*/true);
+  WaitForPermissionElementRegistration(element2);
+  element2->DispatchSimulatedClick(nullptr);
+  permission_service()->NotifyPermissionStatusChange(
+      PermissionName::GEOLOCATION, MojoPermissionStatus::GRANTED);
+
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.AccuracyMode",
+      CapabilityElementGeolocationAccuracyMode::kPrecise, 1);
+
+  // 3. Approximate accuracy mode.
+  CachedPermissionStatus::From(GetDocument().domWindow())
+      ->SetPermissionStatusMap({{blink::mojom::PermissionName::GEOLOCATION,
+                                 MojoPermissionStatus::GRANTED}});
+  auto* element3 = MakeGarbageCollected<HTMLGeolocationElement>(GetDocument());
+  element3->setAttribute(html_names::kAccuracymodeAttr,
+                         AtomicString("approximate"));
+  element3->setAttribute(html_names::kAutolocateAttr, g_empty_atom);
+  GetDocument().body()->AppendChild(element3);
+  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
+  GetDocument().View()->UpdateAllLifecyclePhasesForTest();
+
+  histogram_tester.ExpectBucketCount(
+      "Blink.CapabilityElement.Geolocation.AccuracyMode",
+      CapabilityElementGeolocationAccuracyMode::kApproximate, 1);
+}
+
 TEST_F(HTMLGeolocationElementTest, MetricsResultAndLatency) {
   ScopedBypassPepcSecurityForTestingForTest bypass_pepc(true);
   base::HistogramTester histogram_tester;

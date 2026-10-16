@@ -23,6 +23,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/payments/bnpl_issuer.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
+#include "components/autofill/core/browser/suggestions/one_time_passwords/otp_suggestion_generator.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
@@ -496,7 +497,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, SearchBarViewProvided) {
   controller().set_suggestions({SuggestionType::kAddressEntry});
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Search",
+      AutofillPopupView::SearchBarConfig{.placeholders = {u"Search"},
                                          .initial_value = {},
                                          .no_results_message = u""});
 }
@@ -506,7 +507,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
   controller().set_suggestions({100, SuggestionType::kAddressEntry});
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Search",
+      AutofillPopupView::SearchBarConfig{.placeholders = {u"Search"},
                                          .initial_value = {},
                                          .no_results_message = u""});
 }
@@ -519,7 +520,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
   ON_CALL(controller(), HasFilteredOutSuggestions).WillByDefault(Return(true));
   ShowAndVerifyUi(
       /*popup_has_parent=*/false, AutofillPopupView::SearchBarConfig{
-                                      .placeholder = u"Search",
+                                      .placeholders = {u"Search"},
                                       .initial_value = {},
                                       .no_results_message = u"No suggestions"});
 }
@@ -542,7 +543,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest, InvokeUi_AtMemoryFetching) {
   PrepareSuggestions({CreateAtMemoryFetchingSuggestion()});
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Find and fill",
+      AutofillPopupView::SearchBarConfig{.placeholders = {u"Find and fill"},
                                          .initial_value = {},
                                          .no_results_message = u""});
 }
@@ -577,7 +578,7 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
                       std::move(notice_suggestion)});
   ShowAndVerifyUi(
       /*popup_has_parent=*/false,
-      AutofillPopupView::SearchBarConfig{.placeholder = u"Find and fill",
+      AutofillPopupView::SearchBarConfig{.placeholders = {u"Find and fill"},
                                          .initial_value = {},
                                          .no_results_message = u""});
 }
@@ -641,6 +642,14 @@ IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
        std::move(remove_suggestion), std::move(manage_suggestion)});
   PrepareSelectedCell(CellIndex{3, CellType::kContent});
   ShowAndVerifyUi(/*popup_has_parent=*/true);
+}
+
+IN_PROC_BROWSER_TEST_P(PopupViewViewsBrowsertest,
+                       InvokeUi_GmailOneTimePassword) {
+  PrepareSuggestions(
+      BuildOtpSuggestions({"1234"}, SuggestionType::kGmailOneTimePasswordEntry,
+                          "elisa.becket@gmail.com"));
+  ShowAndVerifyUi();
 }
 
 INSTANTIATE_TEST_SUITE_P(All,

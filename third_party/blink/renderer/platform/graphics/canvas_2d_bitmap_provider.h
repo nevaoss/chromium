@@ -16,10 +16,12 @@
 #include "cc/paint/paint_record.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_2d_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
+#include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/skia/include/core/SkAlphaType.h"
@@ -42,7 +44,6 @@ class ProcessMemoryDump;
 namespace blink {
 
 class CanvasImageProvider;
-class CanvasResourceProviderDelegate;
 
 // Renders canvas2D ops to a Skia RAM-backed bitmap. Mailboxing is not
 // supported : cannot be directly composited. For usage by (Offscreen)Canvas2D
@@ -68,7 +69,6 @@ class PLATFORM_EXPORT Canvas2DBitmapProvider final
 
   ~Canvas2DBitmapProvider() override;
 
-  bool IsValid() const { return GetSkSurface(); }
   void SetDelegate(CanvasResourceProviderDelegate* delegate) {
     delegate_ = delegate;
   }
@@ -83,29 +83,17 @@ class PLATFORM_EXPORT Canvas2DBitmapProvider final
                    int x,
                    int y);
 
-  viz::SharedImageFormat GetSharedImageFormat() const { return format_; }
-  const gfx::ColorSpace& GetColorSpace() const { return color_space_; }
-  const gfx::HDRMetadata& GetHdrMetadata() const { return hdr_metadata_; }
-  SkAlphaType GetAlphaType() const { return alpha_type_; }
-  gfx::Size Size() const { return size_; }
   base::ByteSize EstimatedSizeInBytes() const {
     return base::ByteSize(format_.EstimatedSizeInBytes(size_));
   }
 
-  void RestoreBackBuffer(const cc::PaintImage&);
-
  private:
-  Canvas2DBitmapProvider(gfx::Size size,
+  Canvas2DBitmapProvider(sk_sp<SkSurface> surface,
+                         gfx::Size size,
                          viz::SharedImageFormat format,
-                         SkAlphaType alpha_type,
                          const gfx::ColorSpace& color_space,
                          const gfx::HDRMetadata& hdr_metadata,
                          CanvasResourceProviderDelegate* delegate);
-
-  // Should only be called from static Create*() methods.
-  // TODO(crbug.com/352263194): Eliminate this method by inlining its body at
-  // callsites.
-  void ClearAtCreation();
 
   // CanvasMemoryDumpClient implementation.
   void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
@@ -116,20 +104,15 @@ class PLATFORM_EXPORT Canvas2DBitmapProvider final
 
   void ApplyAnimatedImageFrameIndexesForId(SkCanvas* canvas, uint32_t id);
 
-  SkSurfaceProps GetSkSurfaceProps() const;
-  SkSurface* GetSkSurface() const;
-  sk_sp<SkSurface> CreateSkSurface() const;
-
   CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
 
   std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
   gfx::Size size_;
   viz::SharedImageFormat format_;
-  SkAlphaType alpha_type_;
   gfx::ColorSpace color_space_;
   gfx::HDRMetadata hdr_metadata_;
-  raw_ptr<CanvasResourceProviderDelegate> delegate_ = nullptr;
-  mutable sk_sp<SkSurface> surface_;
+  WeakPersistent<CanvasResourceProviderDelegate> delegate_;
+  const sk_sp<SkSurface> surface_;
   std::unique_ptr<cc::SkiaPaintCanvas> skia_canvas_;
   const cc::PaintImage::Id snapshot_paint_image_id_;
   cc::PaintImage::ContentId snapshot_paint_image_content_id_ =

@@ -12,7 +12,6 @@
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/paint/timing/element_timing_utils.h"
-#include "third_party/blink/renderer/core/paint/timing/image_element_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_record.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/platform/graphics/paint/float_clip_rect.h"
@@ -120,15 +119,17 @@ void TextElementTiming::OnTextNodePresented(const TextRecord& record) {
   }
 }
 
-void TextElementTiming::OnElementLastContentfulPaint(
-    TextRecord* record,
-    bool was_previously_reported) {
-  CHECK(!record->IsNeededForElementTiming());
-  if (was_previously_reported ||
-      !NeededForTiming(CHECK_DEREF(record->GetNode()))) {
-    return;
+void TextElementTiming::OnPaintFinished(
+    const HeapVector<Member<ImageRecord>>&,
+    const HeapVector<Member<TextRecord>>& text_records) {
+  for (const auto& record : text_records) {
+    CHECK(!record->IsNeededForElementTiming());
+    if (record->WasPreviouslyReported() ||
+        !NeededForTiming(CHECK_DEREF(record->GetNode()))) {
+      continue;
+    }
+    record->SetIsNeededForElementTiming(true);
   }
-  record->SetIsNeededForElementTiming(true);
 }
 
 void TextElementTiming::Trace(Visitor* visitor) const {

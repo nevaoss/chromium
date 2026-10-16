@@ -10,6 +10,7 @@
 #import "base/containers/flat_set.h"
 #import "base/functional/bind.h"
 #import "base/metrics/histogram_functions.h"
+#import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
 #import "components/contextual_cueing/contextual_cueing_enums.h"
 #import "components/feature_engagement/public/event_constants.h"
@@ -38,10 +39,15 @@
 #import "ios/chrome/browser/intelligence/page_classification/features.h"
 #import "ios/chrome/browser/intelligence/page_classification/page_classification_service.h"
 #import "ios/chrome/browser/intelligence/page_classification/page_classification_service_factory.h"
+#import "ios/chrome/browser/location_bar/badge/model/badge_type.h"
+#import "ios/chrome/browser/location_bar/badge/model/location_bar_badge_configuration.h"
+#import "ios/chrome/browser/location_bar/badge/ui/location_bar_badge_constants.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
+#import "ios/chrome/browser/shared/public/commands/location_bar_badge_commands.h"
+#import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
 #import "ios/chrome/browser/sync/model/sync_service_factory.h"
 #import "ios/web/public/browser_state.h"
@@ -49,7 +55,6 @@
 #import "ios/web/public/web_state.h"
 
 namespace contextual_cueing {
-
 ContextualCueingTabHelper::ContextualCueingTabHelper(web::WebState* web_state)
     : web_state_(web_state),
       current_url_(web_state ? web_state->GetLastCommittedURL() : GURL()) {
@@ -174,12 +179,94 @@ void ContextualCueingTabHelper::RecordCueClicked() {
   DismissFeatureEngagementPromo();
 }
 
+void ContextualCueingTabHelper::SetContextualCueForTesting(
+    optimization_guide::proto::ContextualCue cue) {
+  cue_ = std::move(cue);
+}
+
+void ContextualCueingTabHelper::SetLocationBarBadgeCommandsHandler(
+    id<LocationBarBadgeCommands> handler) {
+  location_bar_badge_handler_ = handler;
+}
+
+void ContextualCueingTabHelper::SetGeminiHandler(id<GeminiCommands> handler) {
+  gemini_handler_ = handler;
+}
+
+NSString* ContextualCueingTabHelper::GetContextualCuePrompt() const {
+  if (!cue_.has_value()) {
+    return nil;
+  }
+  return base::SysUTF8ToNSString(cue_->gemini_in_chrome_surface().prompt());
+}
+
 bool ContextualCueingTabHelper::ShowContextualCueInfobar(
     id<GeminiCommands> gemini_handler) {
   if (!web_state_) {
     return false;
   }
-  return ContextualCueInfobarDelegate::Create(web_state_, gemini_handler);
+  id<GeminiCommands> handler =
+      gemini_handler ? gemini_handler : gemini_handler_;
+  return ContextualCueInfobarDelegate::Create(web_state_, handler);
+}
+
+bool ContextualCueingTabHelper::ShowContextualCueChip(
+    id<LocationBarBadgeCommands> badge_handler) {
+  if (!web_state_ || !cue_.has_value()) {
+    return false;
+  }
+
+  id<LocationBarBadgeCommands> handler =
+      badge_handler ? badge_handler : location_bar_badge_handler_;
+  if (!handler) {
+    return false;
+  }
+
+  // The server proto separates the cue into different fields depending on the
+  // presentation format (e.g. `anchored_message_cue.action_text` for short
+  // button/chip actions, `suggested_cuj` for CUJ descriptions, and
+  // `anchored_message_text` for banner messages). For the omnibox chip, prefer
+  // the concise action verb if available, falling back to the suggested CUJ
+  // text.
+  std::string action_text_str;
+  if (cue_->has_anchored_message_cue() &&
+      !cue_->anchored_message_cue().action_text().empty()) {
+    action_text_str = cue_->anchored_message_cue().action_text();
+  } else if (!cue_->suggested_cuj().empty()) {
+    action_text_str = cue_->suggested_cuj();
+  }
+  NSString* action_text = base::SysUTF8ToNSString(action_text_str);
+  UIImage* icon = SymbolWithPointSize(SymbolSparkles, kBadgeSymbolPointSize);
+
+  LocationBarBadgeConfiguration* config = [[LocationBarBadgeConfiguration alloc]
+       initWithBadgeType:LocationBarBadgeType::kGeminiContextualCueChip
+      accessibilityLabel:action_text
+              badgeImage:icon];
+  config.badgeText = action_text;
+  config.shouldHideBadgeAfterChipCollapse = YES;
+
+  [handler updateBadgeConfig:config];
+  RecordCueShown();
+  return true;
+}
+
+bool ContextualCueingTabHelper::PresentContextualCue() {
+  if (!cue_.has_value() || !cue_ui_type_.has_value() || has_presented_cue_) {
+    return false;
+  }
+  bool presented = false;
+  switch (*cue_ui_type_) {
+    case ContextualCueUiType::kMessage:
+      presented = ShowContextualCueInfobar();
+      break;
+    case ContextualCueUiType::kOmniboxChip:
+      presented = ShowContextualCueChip();
+      break;
+  }
+  if (presented) {
+    has_presented_cue_ = true;
+  }
+  return presented;
 }
 
 #pragma mark - web::WebStateObserver
@@ -235,6 +322,10 @@ void ContextualCueingTabHelper::PageLoaded(
 
 void ContextualCueingTabHelper::WasShown(web::WebState* web_state) {
   if (!IsGeminiSuggestionsSettingEnabled()) {
+    return;
+  }
+  if (cue_.has_value() && !has_presented_cue_) {
+    PresentContextualCue();
     return;
   }
   if (!categories_.has_value() && web_state_ && web_state_->IsVisible() &&
@@ -494,6 +585,8 @@ void ContextualCueingTabHelper::InitiateModelExecutionRequest(
   request.mutable_active_tab_page_context()->set_url(expected_url.spec());
   request.mutable_active_tab_page_context()->set_title(
       base::UTF16ToUTF8(web_state_->GetTitle()));
+  request.add_supported_surfaces(
+      optimization_guide::proto::CONTEXTUAL_CUEING_SURFACE_GEMINI_IN_CHROME);
 
   if (delegate_) {
     base::flat_set<GURL> seen_urls;
@@ -553,10 +646,11 @@ void ContextualCueingTabHelper::OnModelExecutionResponseReceived(
   // The proto defines `fulfillment_surface` as a `oneof` to support different
   // surfaces (and future additions). Validate that the surface is populated
   // and set to Gemini in Chrome (GiC), as it is currently the only fulfillment
-  // surface supported on iOS.
+  // surface supported on iOS, and that it contains a valid prepopulated prompt.
   if (cue.fulfillment_surface_case() !=
           optimization_guide::proto::ContextualCue::kGeminiInChromeSurface ||
-      !cue.has_gemini_in_chrome_surface()) {
+      !cue.has_gemini_in_chrome_surface() ||
+      cue.gemini_in_chrome_surface().prompt().empty()) {
     NotifyContextualCueReceived(std::nullopt);
     return;
   }
@@ -584,6 +678,7 @@ void ContextualCueingTabHelper::OnModelExecutionResponseReceived(
 void ContextualCueingTabHelper::NotifyContextualCueReceived(
     std::optional<optimization_guide::proto::ContextualCue> cue) {
   cue_ = std::move(cue);
+  has_presented_cue_ = false;
   if (cue_.has_value()) {
     ContextualCueingCapTrackerService* cap_service = GetCapTrackerService();
     if (cap_service && active_category_type_.has_value()) {
@@ -598,15 +693,24 @@ void ContextualCueingTabHelper::NotifyContextualCueReceived(
   for (Observer& observer : observers_) {
     observer.OnContextualCueReceived(this, cue_);
   }
+  if (cue_.has_value() && web_state_ && web_state_->IsVisible()) {
+    PresentContextualCue();
+  }
 }
 
 void ContextualCueingTabHelper::InvalidateCue() {
   active_category_type_.reset();
+  has_presented_cue_ = false;
+  DismissFeatureEngagementPromo();
+  if (!cue_.has_value()) {
+    return;
+  }
   if (web_state_) {
     ContextualCueInfobarDelegate::Remove(web_state_);
   }
-  if (!cue_.has_value()) {
-    return;
+  if (location_bar_badge_handler_) {
+    [location_bar_badge_handler_
+        hideBadgeForType:LocationBarBadgeType::kGeminiContextualCueChip];
   }
   cue_.reset();
   cue_ui_type_.reset();

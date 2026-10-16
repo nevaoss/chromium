@@ -10,7 +10,9 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
+#include "chrome/grit/generated_resources.h"
 #include "ui/actions/actions.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
 #include "ui/color/color_id.h"
@@ -36,8 +38,8 @@ AppMenuBlockButton::AppMenuBlockButton(PressedCallback callback)
       DISTANCE_ACTION_APP_MENU_BLOCK_ENTRY_ICON_SIZE);
   const int between_spacing = provider->GetDistanceMetric(
       DISTANCE_ACTION_APP_MENU_BLOCK_ENTRY_BETWEEN_CHILD_SPACING);
-  const int corner_radius = provider->GetDistanceMetric(
-      DISTANCE_ACTION_APP_MENU_BLOCK_ENTRY_CORNER_RADIUS);
+  const int corner_radius =
+      provider->GetCornerRadiusMetric(kActionAppMenuBlockEntryCornerRadius);
 
   auto layout = std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical,
@@ -144,6 +146,19 @@ class AppMenuBlockButtonActionViewInterface
       action_view_->GetViewAccessibility().SetName(
           std::u16string(accessible_name));
     }
+
+    std::u16string tooltip = std::u16string(action_item->GetTooltipText());
+    if (tooltip.empty()) {
+      tooltip = std::u16string(action_item->GetText());
+    }
+    const ui::Accelerator& accel = action_item->GetAccelerator();
+    if (!tooltip.empty() && accel.key_code() != ui::VKEY_UNKNOWN &&
+        !accel.GetShortcutText().empty()) {
+      tooltip = l10n_util::GetStringFUTF16(IDS_APP_MENU_BLOCK_TOOLTIP, tooltip,
+                                           accel.GetShortcutText());
+    }
+    action_view_->SetTooltipText(tooltip);
+
     if (!action_item->GetImage().IsEmpty()) {
       action_view_->SetImageModel(action_item->GetImage());
     }

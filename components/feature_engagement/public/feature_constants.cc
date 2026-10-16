@@ -421,9 +421,24 @@ BASE_FEATURE(kIPHAutoDarkUserEducationMessageFeature,
 BASE_FEATURE(kIPHAutoDarkUserEducationMessageOptInFeature,
              "IPH_AutoDarkUserEducationMessageOptIn",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHBookmarksBarFeature,
-             "IPH_BookmarksBar",
+BASE_FEATURE(kIPHBookmarkBarVisibilityFeature,
+             "IPH_BookmarkBarVisibility",
              base::FEATURE_DISABLED_BY_DEFAULT);
+constexpr base::FeatureParam<IPHBookmarkBarVisibilityVariant>::Option
+    kIPHBookmarkBarVisibilityVariantOptions[] = {
+        {IPHBookmarkBarVisibilityVariant::kMedium, "medium"},
+        {IPHBookmarkBarVisibilityVariant::kMediumTrackingOnly,
+         "medium_tracking_only"},
+        {IPHBookmarkBarVisibilityVariant::kHigh, "high"},
+        {IPHBookmarkBarVisibilityVariant::kHighTrackingOnly,
+         "high_tracking_only"},
+};
+BASE_FEATURE_ENUM_PARAM(IPHBookmarkBarVisibilityVariant,
+                        kIPHBookmarkBarVisibilityVariantParam,
+                        &kIPHBookmarkBarVisibilityFeature,
+                        "IPH_BookmarkBarVisibility_x_variant",
+                        IPHBookmarkBarVisibilityVariant::kMedium,
+                        &kIPHBookmarkBarVisibilityVariantOptions);
 BASE_FEATURE(kIPHCCTHistory,
              "IPH_CCTHistory",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -543,18 +558,6 @@ BASE_FEATURE(kIPHInstanceSwitcherFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHRecentTabsFeature,
              "IPH_RecentTabs",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHKeyboardAccessoryAddressFillingFeature,
-             "IPH_KeyboardAccessoryAddressFilling",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHKeyboardAccessoryBarSwipingFeature,
-             "IPH_KeyboardAccessoryBarSwiping",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHKeyboardAccessoryPasswordFillingFeature,
-             "IPH_KeyboardAccessoryPasswordFilling",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHKeyboardAccessoryPaymentFillingFeature,
-             "IPH_KeyboardAccessoryPaymentFilling",
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHKeyboardAccessoryPaymentOfferFeature,
              "IPH_KeyboardAccessoryPaymentOffer",
@@ -931,6 +934,10 @@ BASE_FEATURE(kIPHiOSHomepageLensNewBadge,
 
 BASE_FEATURE(kIPHiOSHomepageCustomizationNewBadge,
              "IPH_iOSHomepageCustomizationNewBadge",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kIPHiOSBackgroundNewBadge,
+             "IPH_iOSBackgroundNewBadge",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIPHiOSOneTimeDefaultBrowserNotificationFeature,

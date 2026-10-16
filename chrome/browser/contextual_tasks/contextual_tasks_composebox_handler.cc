@@ -548,14 +548,30 @@ void ContextualTasksComposeboxHandler::UpdateStateFromUrl(const GURL& url) {
 void ContextualTasksComposeboxHandler::OnTaskChanged() {
   ClearFiles(/*should_block_auto_suggested_tabs=*/false);
   SetSmartTabSharingActive(false);
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    // The session handle can be carried over from the side panel WebContents
+    // (via UpdateContextualSearchWebContentsHelperForTask) and still hold the
+    // tabs submitted/persisted in the previous thread. Clear them directly
+    // rather than relying on SetSmartTabSharingActive(false), which is a no-op
+    // when Smart Tab Sharing is disabled or already inactive.
+    if (auto* session_handle = GetContextualSessionHandle()) {
+      session_handle->ClearSubmittedContextTokens();
+      session_handle->set_persisted_tabs({});
+      session_handle->set_deselected_tabs_urls({});
+    }
+    if (auto* browser = web_ui_interface_->GetBrowser()) {
+      if (auto* provider =
+              contextual_tasks::ActiveTaskContextProvider::From(browser)) {
+        provider->ClearAllLocalTabUnderlines();
+        provider->RefreshContext();
+      }
+    }
+  }
   InitializeInputStateModel();
   if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
-    // InitializeInputStateModel() seeds restored tabs from the session handle,
-    // which can be carried over from the side panel and still hold the tabs
-    // submitted in the previous thread. Don't surface those in the new thread:
-    // they render as stale favicon coins and can hide the auto-suggested tab.
-    // The new thread's restored tabs are populated from the server once its
-    // context loads (see ContextualTasksUI::OnRestoredTabsFetched()).
+    // Clear any restored tabs on the page for the new thread; the new thread's
+    // restored tabs are populated from the server once its context loads (see
+    // ContextualTasksUI::OnRestoredTabsFetched()).
     SetAimThreadRestoredTabs({});
   }
 }
@@ -1105,6 +1121,13 @@ void ContextualTasksComposeboxHandler::ClearFiles(
   pending_context_uploads_.clear();
   pending_query_request_info_.reset();
 #if !BUILDFLAG(IS_ANDROID)
+  if (visual_selection_token_.has_value()) {
+    if (auto* controller = GetLensSearchController()) {
+      if (controller->lens_overlay_controller()) {
+        controller->lens_overlay_controller()->ClearRegionSelection();
+      }
+    }
+  }
   visual_selection_token_.reset();
   visual_selection_overlay_token_.reset();
 #endif

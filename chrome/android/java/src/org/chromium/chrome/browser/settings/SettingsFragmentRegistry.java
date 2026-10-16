@@ -13,12 +13,14 @@ import androidx.fragment.app.Fragment;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
+import org.chromium.base.ContextUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.about_settings.LegalInformationSettings;
 import org.chromium.chrome.browser.appearance.settings.AppearanceSettingsFragment;
 import org.chromium.chrome.browser.appearance.settings.BookmarkBarSettingsFragment;
+import org.chromium.chrome.browser.appearance.settings.TabPositionSettingsFragment;
 import org.chromium.chrome.browser.autofill.settings.AndroidPaymentAppsFragment;
 import org.chromium.chrome.browser.autofill.settings.AutofillAndPasswordsFragment;
 import org.chromium.chrome.browser.autofill.settings.AutofillAndPasswordsFragment.AutofillSettingsReferrer;
@@ -77,6 +79,7 @@ import org.chromium.chrome.browser.toolbar.adaptive.settings.AdaptiveToolbarSett
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
 import org.chromium.chrome.browser.tracing.settings.TracingCategoriesSettings;
 import org.chromium.chrome.browser.tracing.settings.TracingSettings;
+import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.components.browser_ui.accessibility.AccessibilitySettings;
 import org.chromium.components.browser_ui.site_settings.AllSiteSettings;
 import org.chromium.components.browser_ui.site_settings.ChosenObjectSettings;
@@ -314,6 +317,14 @@ public class SettingsFragmentRegistry {
         registerMapping("/bookmarkBar", BookmarkBarSettingsFragment.class);
         registerMapping("/theme", ThemeSettingsFragment.class);
         registerMapping("/toolbar", AdaptiveToolbarSettingsFragment.class);
+        // The page only exists on devices eligible for vertical tabs, and asserts as much. A URL
+        // can still be typed or replayed from history elsewhere, so send it back to Appearance.
+        registerMapping("/tabPosition", TabPositionSettingsFragment.class)
+                .availableWhen(
+                        profile ->
+                                VerticalTabUtils.isVerticalTabsEligible(
+                                        ContextUtils.getApplicationContext()))
+                .fallback("/appearance");
 
         // Accessibility
         registerMapping("/accessibility", AccessibilitySettings.class);
@@ -657,12 +668,12 @@ public class SettingsFragmentRegistry {
     /**
      * Resolves a settings URL to the page to show, or to a URL to go to instead.
      *
-     * <p>A redirect is returned when the URL cannot produce a usable page: a required argument is
-     * absent, an argument names something the page cannot render, or the browser is not in a state
-     * the page needs. This is the norm rather than the exception for settings URLs, which are user
-     * editable and are replayed from history after the data they point at may have been deleted.
-     * Callers must honour the redirect instead of instantiating a page, since the pages themselves
-     * respond to missing arguments by crashing.
+     * <p>A redirect is returned when the URL cannot produce a usable page: the path names no page,
+     * a required argument is absent, an argument names something the page cannot render, or the
+     * browser is not in a state the page needs. This is the norm rather than the exception for
+     * settings URLs, which are user editable and are replayed from history after the data they
+     * point at may have been deleted. Callers must honour the redirect instead of instantiating a
+     * page, since the pages themselves respond to missing arguments by crashing.
      *
      * @param profile the profile the page would be shown for, checked against {@link
      *     RouteSpec#availableWhen}.
@@ -680,8 +691,15 @@ public class SettingsFragmentRegistry {
                 return new Resolution(/* fragmentClass= */ null, args, ancestorUrl);
             }
 
-            // Nothing recognisable is left, so show the main settings page, matching what the
-            // omnibox does for any other unrecognised chrome:// path.
+            // Nothing recognisable is left, so send the user to the settings root. Redirecting
+            // rather than showing it in place keeps the unrecognised Url out of the omnibox and
+            // out of history.
+            if (settingsPathForUrl(url) != null) {
+                return new Resolution(
+                        /* fragmentClass= */ null, args, settingsUrlForPath(/* path= */ null));
+            }
+
+            // Not a settings Url at all, so there is no settings root to redirect to.
             return new Resolution(MainSettings.class, args, /* redirectUrl= */ null);
         }
 

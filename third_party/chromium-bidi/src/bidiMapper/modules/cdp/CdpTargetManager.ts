@@ -95,6 +95,31 @@ export class CdpTargetManager {
     this.#logger = logger;
 
     this.#setEventListeners(browserCdpClient);
+    // Forward browser-level CDP events to BiDi.
+    this.#setCdpEventListeners(browserCdpClient);
+  }
+
+  /**
+   * Forward CDP events to BiDi at the browser level (global events) for
+   * sessions not associated with a BrowsingContext (e.g. the browser session
+   * and custom CDP sessions).
+   */
+  #setCdpEventListeners(cdpClient: CdpClient) {
+    cdpClient.on('*', (event, params) => {
+      // Skip non-CDP EventEmitter events.
+      if (typeof event !== 'string') {
+        return;
+      }
+      this.#eventManager.registerGlobalEvent({
+        type: 'event',
+        method: `goog:cdp.${event}`,
+        params: {
+          event,
+          params,
+          session: cdpClient.sessionId,
+        },
+      });
+    });
   }
 
   /**
@@ -192,7 +217,8 @@ export class CdpTargetManager {
     // receive additional auto-attached sessions, that is very likely
     // coming from custom CDP sessions.
     if (this.#targetKeysToBeIgnoredByAutoAttach.has(targetKey)) {
-      // Return to leave the session untouched.
+      // Forward CDP events from custom sessions before leaving them untouched.
+      this.#setCdpEventListeners(targetCdpClient);
       return;
     }
     this.#targetKeysToBeIgnoredByAutoAttach.add(targetKey);
@@ -343,10 +369,15 @@ export class CdpTargetManager {
     userContext: Browser.UserContext,
   ) {
     this.#setEventListeners(targetCdpClient);
-    this.#preloadScriptStorage.onCdpTargetCreated(
-      targetInfo.targetId,
-      userContext,
-    );
+    const isFrameTarget =
+      targetInfo.type === 'page' || targetInfo.type === 'iframe';
+    if (isFrameTarget) {
+      // Preload scripts only apply to window realms.
+      this.#preloadScriptStorage.onCdpTargetCreated(
+        targetInfo.targetId,
+        userContext,
+      );
+    }
 
     const target = CdpTarget.create(
       targetInfo.targetId,
@@ -362,12 +393,15 @@ export class CdpTargetManager {
       userContext,
       // Pass the cached default User Agent to the new target.
       this.#defaultUserAgent,
+      targetInfo.type,
       this.#logger,
     );
 
     this.#networkStorage.onCdpTargetCreated(target);
-    this.#bluetoothProcessor.onCdpTargetCreated(target);
-    this.#speculationProcessor.onCdpTargetCreated(target);
+    if (isFrameTarget) {
+      this.#bluetoothProcessor.onCdpTargetCreated(target);
+      this.#speculationProcessor.onCdpTargetCreated(target);
+    }
 
     return target;
   }

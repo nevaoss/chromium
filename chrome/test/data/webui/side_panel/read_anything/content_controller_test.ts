@@ -478,6 +478,51 @@ suite('ContentController', () => {
       assertEquals('overline', root.style.textDecoration);
     });
 
+    test('builds a superscript text node', () => {
+      visualBrowserProxy.pdf = true;
+      const text = '1';
+      contentBrowserProxy.textContentMap = {[contentBrowserProxy.rootId]: text};
+      contentBrowserProxy.isSuperscriptMap = {
+        [contentBrowserProxy.rootId]: true,
+      };
+
+      const root = contentController.updateContent();
+
+      assertTrue(!!root);
+      assertEquals('SUP', root.nodeName);
+      assertEquals(text, root.textContent);
+    });
+
+    test('builds a subscript text node', () => {
+      visualBrowserProxy.pdf = true;
+      const text = '2';
+      contentBrowserProxy.textContentMap = {[contentBrowserProxy.rootId]: text};
+      contentBrowserProxy.isSubscriptMap = {[contentBrowserProxy.rootId]: true};
+
+      const root = contentController.updateContent();
+
+      assertTrue(!!root);
+      assertEquals('SUB', root.nodeName);
+      assertEquals(text, root.textContent);
+    });
+
+    test('does not wrap superscript or subscript when not a PDF', () => {
+      visualBrowserProxy.pdf = false;
+      const text = '1';
+      contentBrowserProxy.textContentMap = {[contentBrowserProxy.rootId]: text};
+      contentBrowserProxy.isSuperscriptMap = {
+        [contentBrowserProxy.rootId]: true,
+      };
+      contentBrowserProxy.isSubscriptMap = {[contentBrowserProxy.rootId]: true};
+
+      const root = contentController.updateContent();
+
+      assertTrue(root instanceof Text);
+      assertEquals(text, root.textContent);
+      assertEquals(0, contentBrowserProxy.getCallCount('isSuperscript'));
+      assertEquals(0, contentBrowserProxy.getCallCount('isSubscript'));
+    });
+
     test('builds an element with a text child', () => {
       const parentId = 10;
       const childId = 11;
@@ -720,6 +765,24 @@ suite('ContentController', () => {
       assertEquals('B', root.nodeName);
       assertEquals(text, root.textContent);
       assertEquals('overline', root.style.textDecoration);
+    });
+
+    test('builds a bolded superscript text node', () => {
+      visualBrowserProxy.pdf = true;
+      const text = '1';
+      contentBrowserProxy.textContentMap = {[contentBrowserProxy.rootId]: text};
+      contentBrowserProxy.shouldBoldMap = {[contentBrowserProxy.rootId]: true};
+      contentBrowserProxy.isSuperscriptMap = {
+        [contentBrowserProxy.rootId]: true,
+      };
+
+      const root = contentController.updateContent();
+
+      assertTrue(root instanceof HTMLElement);
+      assertEquals('SUP', root.nodeName);
+      assertTrue(!!root.firstElementChild);
+      assertEquals('B', root.firstElementChild.nodeName);
+      assertEquals(text, root.textContent);
     });
 
     test('builds child elements with different text directions', () => {
@@ -1761,6 +1824,320 @@ suite('ContentController', () => {
       assertTrue(!!link);
       assertEquals('', link.getAttribute('href'));
       assertStringContains(root.textContent || '', 'Safe text');
+    });
+  });
+
+  suite('footnote navigation', () => {
+    let root: ShadowRoot;
+    let container: HTMLElement;
+    let containerScroller: HTMLElement;
+
+    setup(() => {
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      root = host.attachShadow({mode: 'open'});
+      containerScroller = document.createElement('div');
+      containerScroller.id = 'containerScroller';
+      container = document.createElement('div');
+      container.id = 'container';
+      containerScroller.appendChild(container);
+      root.appendChild(containerScroller);
+    });
+
+    test('buildSubtree_ sets element.id when getHtmlId is available', () => {
+      const divId = 10;
+      const textId = 11;
+      contentBrowserProxy.rootId = divId;
+      contentBrowserProxy.htmlTagMap = {[divId]: 'div'};
+      contentBrowserProxy.childrenMap = {[divId]: [textId]};
+      contentBrowserProxy.textContentMap = {[textId]: 'Some text content'};
+      contentBrowserProxy.htmlIdMap = {[divId]: 'footnote-target'};
+
+      const rendered = contentController.updateContent();
+      assertTrue(!!rendered);
+      container.appendChild(rendered);
+
+      const renderedDiv = container.querySelector('#footnote-target');
+      assertTrue(!!renderedDiv);
+      assertEquals('footnote-target', renderedDiv.id);
+    });
+
+    test('click handler falls back to default for external links', async () => {
+      const linkId = 10;
+      const textId = 11;
+      const documentUrl = 'https://www.example.com/page.html';
+      const targetUrl = 'https://www.different-domain.com/page.html#footnote-1';
+
+      contentBrowserProxy.rootId = 1;
+      contentBrowserProxy.childrenMap = {1: [linkId], [linkId]: [textId]};
+      contentBrowserProxy.htmlTagMap = {1: 'div', [linkId]: 'a'};
+      contentBrowserProxy.textContentMap = {[textId]: 'External Link'};
+      contentBrowserProxy.urlMap = {[linkId]: targetUrl};
+      contentBrowserProxy.documentUrl = documentUrl;
+
+      const rendered = contentController.updateContent();
+      assertTrue(!!rendered);
+      container.appendChild(rendered);
+
+      // Setup a mock target in DOM that would scroll if it were same-document
+      const target = document.createElement('div');
+      target.id = 'footnote-1';
+      container.appendChild(target);
+      let scrollIntoViewCalled = false;
+      target.scrollIntoView = () => {
+        scrollIntoViewCalled = true;
+      };
+
+      // Find the link and click it
+      const linkElement = container.querySelector<HTMLAnchorElement>('a');
+      assertTrue(!!linkElement);
+      linkElement.click();
+
+      const linkClickedId =
+          await contentBrowserProxy.whenCalled('onLinkClicked');
+      assertEquals(linkId, linkClickedId);
+      assertFalse(scrollIntoViewCalled);
+    });
+
+    test(
+        'click handler triggers real navigation for mailto links', async () => {
+          const linkId = 10;
+          const textId = 11;
+          const documentUrl = 'https://www.example.com/page.html';
+          const targetUrl = 'mailto:test@example.com';
+
+          contentBrowserProxy.rootId = 1;
+          contentBrowserProxy.childrenMap = {1: [linkId], [linkId]: [textId]};
+          contentBrowserProxy.htmlTagMap = {1: 'div', [linkId]: 'a'};
+          contentBrowserProxy.textContentMap = {[textId]: 'Email Link'};
+          contentBrowserProxy.urlMap = {[linkId]: targetUrl};
+          contentBrowserProxy.documentUrl = documentUrl;
+
+          let scrollToCalled = false;
+          containerScroller.scrollTo = () => {
+            scrollToCalled = true;
+          };
+
+          const rendered = contentController.updateContent();
+          assertTrue(!!rendered);
+          container.appendChild(rendered);
+
+          const linkElement = container.querySelector<HTMLAnchorElement>('a');
+          assertTrue(!!linkElement);
+          linkElement.click();
+
+          const linkClickedId =
+              await contentBrowserProxy.whenCalled('onLinkClicked');
+          assertEquals(linkId, linkClickedId);
+          assertFalse(scrollToCalled, 'Should not scroll');
+        });
+
+    test(
+        'click handler falls back to default if target is missing',
+        async () => {
+          const linkId = 10;
+          const textId = 11;
+          const documentUrl = 'https://www.example.com/page.html';
+          const targetUrl =
+              'https://www.example.com/page.html#footnote-missing';
+
+          contentBrowserProxy.rootId = 1;
+          contentBrowserProxy.childrenMap = {1: [linkId], [linkId]: [textId]};
+          contentBrowserProxy.htmlTagMap = {1: 'div', [linkId]: 'a'};
+          contentBrowserProxy
+              .textContentMap = {[textId]: 'Missing Target Link'};
+          contentBrowserProxy.urlMap = {[linkId]: targetUrl};
+          contentBrowserProxy.documentUrl = documentUrl;
+
+          let scrollToCalled = false;
+          containerScroller.scrollTo = () => {
+            scrollToCalled = true;
+          };
+
+          const rendered = contentController.updateContent();
+          assertTrue(!!rendered);
+          container.appendChild(rendered);
+
+          const linkElement = container.querySelector<HTMLAnchorElement>('a');
+          assertTrue(!!linkElement);
+          linkElement.click();
+
+          const linkClickedId =
+              await contentBrowserProxy.whenCalled('onLinkClicked');
+          assertEquals(linkId, linkClickedId);
+          assertFalse(scrollToCalled);
+        });
+
+    suite('scrollToAnchor', () => {
+      test('scrolls to target', () => {
+        const targetId = 'footnote-1';
+        const target = document.createElement('div');
+        target.id = targetId;
+        container.appendChild(target);
+
+        let scrollIntoViewCalled = false;
+        let scrollOptions: ScrollIntoViewOptions|undefined;
+        target.scrollIntoView = (options) => {
+          scrollIntoViewCalled = true;
+          scrollOptions = options as ScrollIntoViewOptions;
+        };
+
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+        const result = contentController.scrollToAnchor(
+            'https://example.com/page.html#footnote-1', root);
+
+        assertTrue(result);
+        assertTrue(scrollIntoViewCalled);
+        assertEquals('smooth', scrollOptions?.behavior);
+      });
+
+      test('scrolls to top on empty hash', () => {
+        let scrollToCalled = false;
+        let scrollToOptions: ScrollToOptions|undefined;
+        containerScroller.scrollTo = (options) => {
+          scrollToCalled = true;
+          scrollToOptions = options as ScrollToOptions;
+        };
+
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+        const result = contentController.scrollToAnchor(
+            'https://example.com/page.html', root);
+
+        assertTrue(result);
+        assertTrue(scrollToCalled);
+        assertEquals(0, scrollToOptions?.top);
+        assertEquals('smooth', scrollToOptions?.behavior);
+      });
+
+      test('resolves relative links', () => {
+        const targetId = 'footnote-1';
+        const target = document.createElement('div');
+        target.id = targetId;
+        container.appendChild(target);
+
+        let scrollIntoViewCalled = false;
+        target.scrollIntoView = () => {
+          scrollIntoViewCalled = true;
+        };
+
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+
+        // Test hash only
+        let result = contentController.scrollToAnchor('#footnote-1', root);
+        assertTrue(result);
+        assertTrue(scrollIntoViewCalled);
+
+        // Reset and test relative path
+        scrollIntoViewCalled = false;
+        result =
+            contentController.scrollToAnchor('./page.html#footnote-1', root);
+        assertTrue(result);
+        assertTrue(scrollIntoViewCalled);
+      });
+
+      test('ignores different page URLs', () => {
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+        const result = contentController.scrollToAnchor(
+            'https://different.com/page.html#footnote-1', root);
+        assertFalse(result);
+      });
+
+      test('ignores different pathnames', () => {
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+        const result = contentController.scrollToAnchor(
+            'https://example.com/other.html#footnote-1', root);
+        assertFalse(result);
+      });
+
+      test('ignores different search parameters', () => {
+        contentBrowserProxy.documentUrl =
+            'https://example.com/page.html?query=1';
+        const result = contentController.scrollToAnchor(
+            'https://example.com/page.html?query=2#footnote-1', root);
+        assertFalse(result);
+      });
+
+      test('scrolls with identical search parameters', () => {
+        const targetId = 'footnote-1';
+        const target = document.createElement('div');
+        target.id = targetId;
+        container.appendChild(target);
+
+        let scrollIntoViewCalled = false;
+        target.scrollIntoView = () => {
+          scrollIntoViewCalled = true;
+        };
+
+        contentBrowserProxy.documentUrl =
+            'https://example.com/page.html?query=1';
+        const result = contentController.scrollToAnchor(
+            'https://example.com/page.html?query=1#footnote-1', root);
+
+        assertTrue(result);
+        assertTrue(scrollIntoViewCalled);
+      });
+
+      test('handles invalid URLs gracefully', () => {
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+        const result = contentController.scrollToAnchor('invalid://url', root);
+        assertFalse(result);
+      });
+
+      test('handles malformed URI percent-encoding gracefully', () => {
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+
+        // Test hash only with malformed percent-encoding
+        let result = contentController.scrollToAnchor('#foo%2', root);
+        assertFalse(result);
+
+        // Test relative path with malformed percent-encoding
+        result = contentController.scrollToAnchor('./page.html#foo%2', root);
+        assertFalse(result);
+      });
+
+      test('falls back to top on #top hash if element is missing', () => {
+        let scrollToCalled = false;
+        let scrollToOptions: ScrollToOptions|undefined;
+        containerScroller.scrollTo = (options) => {
+          scrollToCalled = true;
+          scrollToOptions = options as ScrollToOptions;
+        };
+
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+
+        // Test hash only
+        let result = contentController.scrollToAnchor('#top', root);
+        assertTrue(result);
+        assertTrue(scrollToCalled);
+        assertEquals(0, scrollToOptions?.top);
+        assertEquals('smooth', scrollToOptions?.behavior);
+
+        // Reset and test absolute URL
+        scrollToCalled = false;
+        result = contentController.scrollToAnchor(
+            'https://example.com/page.html#top', root);
+        assertTrue(result);
+        assertTrue(scrollToCalled);
+        assertEquals(0, scrollToOptions?.top);
+        assertEquals('smooth', scrollToOptions?.behavior);
+      });
+
+      test('scrolls to element on #top hash if element is present', () => {
+        const targetId = 'top';
+        const target = document.createElement('div');
+        target.id = targetId;
+        container.appendChild(target);
+
+        let scrollIntoViewCalled = false;
+        target.scrollIntoView = () => {
+          scrollIntoViewCalled = true;
+        };
+
+        contentBrowserProxy.documentUrl = 'https://example.com/page.html';
+        const result = contentController.scrollToAnchor('#top', root);
+        assertTrue(result);
+        assertTrue(scrollIntoViewCalled);
+      });
     });
   });
 });

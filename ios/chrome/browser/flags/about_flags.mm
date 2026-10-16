@@ -72,6 +72,7 @@
 #import "components/safe_browsing/ios/browser/web_ui/features.h"
 #import "components/search/ntp_features.h"
 #import "components/search_engines/search_engines_switches.h"
+#import "components/segmentation_platform/embedder/home_modules/constants.h"
 #import "components/segmentation_platform/public/features.h"
 #import "components/send_tab_to_self/features.h"
 #import "components/shared_highlighting/core/common/shared_highlighting_features.h"
@@ -99,7 +100,6 @@
 #import "components/webui/flags/feature_entry_macros.h"
 #import "components/webui/flags/flags_storage.h"
 #import "components/webui/flags/flags_ui_switches.h"
-#import "crypto/features.h"
 #import "ios/chrome/app/background_mode_buildflags.h"
 #import "ios/chrome/browser/autofill/model/features.h"
 #import "ios/chrome/browser/badges/model/features.h"
@@ -124,7 +124,6 @@
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/policy/model/reporting/features.h"
 #import "ios/chrome/browser/popup_menu/overflow_menu/public/features.h"
-#import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_manager_ui_features.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/public/features/system_flags.h"
@@ -477,53 +476,6 @@ const FeatureEntry::FeatureVariation
         {"Shortcuts", kDefaultBrowserPromoShortcutsParam, nullptr},
 };
 
-// Uses int values from Lens filters ablation mode enum.
-const FeatureEntry::FeatureParam kLensFiltersAblationModeDisabled[] = {
-    {kLensFiltersAblationMode, "0"}};
-const FeatureEntry::FeatureParam kLensFiltersAblationModePostCapture[] = {
-    {kLensFiltersAblationMode, "1"}};
-const FeatureEntry::FeatureParam kLensFiltersAblationModeLVF[] = {
-    {kLensFiltersAblationMode, "2"}};
-const FeatureEntry::FeatureParam kLensFiltersAblationModeAlways[] = {
-    {kLensFiltersAblationMode, "3"}};
-
-const FeatureEntry::FeatureVariation kLensFiltersAblationModeVariations[] = {
-    {"(Disabled)", kLensFiltersAblationModeDisabled, nullptr},
-    {"(Post Capture)", kLensFiltersAblationModePostCapture, nullptr},
-    {"(LVF)", kLensFiltersAblationModeLVF, nullptr},
-    {"(Always)", kLensFiltersAblationModeAlways, nullptr}};
-
-// Uses int values from Lens translate toggle mode enum.
-const FeatureEntry::FeatureParam kLensTranslateToggleModeDisabled[] = {
-    {kLensTranslateToggleMode, "0"}};
-const FeatureEntry::FeatureParam kLensTranslateToggleModePostCapture[] = {
-    {kLensTranslateToggleMode, "1"}};
-const FeatureEntry::FeatureParam kLensTranslateToggleModeLVF[] = {
-    {kLensTranslateToggleMode, "2"}};
-const FeatureEntry::FeatureParam kLensTranslateToggleModeAlways[] = {
-    {kLensTranslateToggleMode, "3"}};
-
-const FeatureEntry::FeatureVariation kLensTranslateToggleModeVariations[] = {
-    {"(Disabled)", kLensTranslateToggleModeDisabled, nullptr},
-    {"(Post Capture)", kLensTranslateToggleModePostCapture, nullptr},
-    {"(LVF)", kLensTranslateToggleModeLVF, nullptr},
-    {"(Always)", kLensTranslateToggleModeAlways, nullptr}};
-
-const FeatureEntry::FeatureParam kEnableLensOnIPadSidePanel[] = {
-    {kEnableLensOnIPadPresentationStyleParam,
-     kEnableLensOnIPadPresentationStyleSidePanel}};
-const FeatureEntry::FeatureParam kEnableLensOnIPadBottomSheet[] = {
-    {kEnableLensOnIPadPresentationStyleParam,
-     kEnableLensOnIPadPresentationStyleBottomSheet}};
-const FeatureEntry::FeatureParam kEnableLensOnIPadWideBottomSheet[] = {
-    {kEnableLensOnIPadPresentationStyleParam,
-     kEnableLensOnIPadPresentationStyleWideBottomSheet}};
-
-const FeatureEntry::FeatureVariation kEnableLensOnIPadVariations[] = {
-    {"(Side Panel)", kEnableLensOnIPadSidePanel, nullptr},
-    {"(Bottom Sheet)", kEnableLensOnIPadBottomSheet, nullptr},
-    {"(Wide Bottom Sheet)", kEnableLensOnIPadWideBottomSheet, nullptr}};
-
 const FeatureEntry::FeatureParam
     kMlUrlPiecewiseMappedSearchBlendingAdjustedBy0[] = {
         {"MlUrlPiecewiseMappedSearchBlending", "true"},
@@ -860,7 +812,6 @@ const FeatureEntry::FeatureVariation kBestOfAppFREVariations[] = {
     {" - Variant D: Guided Tour with manual metric upload",
      kBestOfAppFREArm4Upload, nullptr},
 };
-
 
 const FeatureEntry::FeatureParam kSingleScreenForBWGPromoConsent[] = {
     {kBWGPromoConsentParams, "1"}};
@@ -1247,6 +1198,9 @@ const FeatureEntry::FeatureParam
          "false"},
         {contextual_cueing::
              kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesServerModelExecutionParam,
          "true"}};
 const FeatureEntry::FeatureParam
     kGeminiContextualSuggestionsCuesWithOnDeviceClassifierGPU[] = {
@@ -1258,6 +1212,9 @@ const FeatureEntry::FeatureParam
          "true"},
         {contextual_cueing::
              kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesServerModelExecutionParam,
          "true"}};
 const FeatureEntry::FeatureParam
     kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcCPU[] = {
@@ -1300,6 +1257,28 @@ const FeatureEntry::FeatureVariation
         {"with thresholds ignored",
          kGeminiContextualSuggestionsCuesIgnoreThresholds, nullptr}};
 
+const FeatureEntry::FeatureParam
+    kGeminiContextualSuggestionsCuesUiModeInfobarThenChip[] = {
+        {contextual_cueing::kGeminiContextualSuggestionsCuesUiModeParam,
+         "infobar_then_chip"}};
+const FeatureEntry::FeatureParam
+    kGeminiContextualSuggestionsCuesUiModeInfobarOnly[] = {
+        {contextual_cueing::kGeminiContextualSuggestionsCuesUiModeParam,
+         "infobar_only"}};
+const FeatureEntry::FeatureParam
+    kGeminiContextualSuggestionsCuesUiModeOmniboxChipOnly[] = {
+        {contextual_cueing::kGeminiContextualSuggestionsCuesUiModeParam,
+         "omnibox_chip_only"}};
+
+const FeatureEntry::FeatureVariation
+    kGeminiContextualSuggestionsCuesUiModeVariations[] = {
+        {"Infobar Then Omnibox Chip",
+         kGeminiContextualSuggestionsCuesUiModeInfobarThenChip, nullptr},
+        {"Infobar Only", kGeminiContextualSuggestionsCuesUiModeInfobarOnly,
+         nullptr},
+        {"Omnibox Chip Only",
+         kGeminiContextualSuggestionsCuesUiModeOmniboxChipOnly, nullptr}};
+
 constexpr FeatureEntry::FeatureParam kClientSideDetectionWithoutEnforcement[] =
     {{"CsdEnforceIos", "false"}};
 constexpr FeatureEntry::FeatureParam kClientSideDetectionWithEnforcement[] = {
@@ -1324,6 +1303,60 @@ const FeatureEntry::FeatureVariation kPageClassificationVariations[] = {
     {"Verticals Only", kPageClassificationVerticalsOnly, nullptr},
     {"On-Device with Verticals Fallback",
      kPageClassificationOnDeviceWithFallback, nullptr}};
+
+const FeatureEntry::FeatureParam kMagicStackTipsV2IosNonActionableParams[] = {
+    {segmentation_platform::features::kMagicStackTipsV2IosActionableParam,
+     "false"}};
+const FeatureEntry::FeatureParam kMagicStackTipsV2IosActionableParams[] = {
+    {segmentation_platform::features::kMagicStackTipsV2IosActionableParam,
+     "true"}};
+const FeatureEntry::FeatureVariation kMagicStackTipsV2IosVariations[] = {
+    {"(Non-Actionable)", kMagicStackTipsV2IosNonActionableParams, nullptr},
+    {"(Actionable)", kMagicStackTipsV2IosActionableParams, nullptr},
+};
+
+const FeatureEntry::FeatureParam kLensSearchTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kLensEphemeralModuleSearchVariation},
+};
+const FeatureEntry::FeatureParam kLensShopTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kLensEphemeralModuleShopVariation},
+};
+const FeatureEntry::FeatureParam kLensTranslateTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kLensEphemeralModuleTranslateVariation},
+};
+const FeatureEntry::FeatureParam kAddressBarPositionTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kAddressBarPositionEphemeralModule},
+};
+const FeatureEntry::FeatureParam kSavePasswordsTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kSavePasswordsEphemeralModule},
+};
+const FeatureEntry::FeatureParam kAutofillPasswordsTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kAutofillPasswordsEphemeralModule},
+};
+const FeatureEntry::FeatureParam kEnhancedSafeBrowsingTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kEnhancedSafeBrowsingEphemeralModule},
+};
+
+const FeatureEntry::FeatureVariation kEphemeralCardRankerCardOverrideOptions[] =
+    {
+        {"- Force Show Lens Search Tip", kLensSearchTipShowArm, nullptr},
+        {"- Force Show Lens Shop Tip", kLensShopTipShowArm, nullptr},
+        {"- Force Show Lens Translate Tip", kLensTranslateTipShowArm, nullptr},
+        {"- Force Show Address Bar Position Tip", kAddressBarPositionTipShowArm,
+         nullptr},
+        {"- Force Show Save Passwords Tip", kSavePasswordsTipShowArm, nullptr},
+        {"- Force Show Autofill Passwords Tip", kAutofillPasswordsTipShowArm,
+         nullptr},
+        {"- Force Show Enhanced Safe Browsing Tip",
+         kEnhancedSafeBrowsingTipShowArm, nullptr},
+};
 
 // To add a new entry, add to the end of kFeatureEntries. There are four
 // distinct types of entries:
@@ -1409,6 +1442,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kPlusButtonMenuInFakeboxName,
      flag_descriptions::kPlusButtonMenuInFakeboxDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kPlusButtonMenuInFakebox)},
+    {"plus-button-menu-more-options-submenu",
+     flag_descriptions::kPlusButtonMenuMoreOptionsSubmenuName,
+     flag_descriptions::kPlusButtonMenuMoreOptionsSubmenuDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kPlusButtonMenuMoreOptionsSubmenu)},
     {"fullscreen-viewport-adjustment-experiment",
      flag_descriptions::kFullscreenSmoothScrollingName,
      flag_descriptions::kFullscreenSmoothScrollingDescription, flags_ui::kOsIos,
@@ -1620,29 +1657,17 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"https-upgrades-ios", flag_descriptions::kHttpsUpgradesName,
      flag_descriptions::kHttpsUpgradesDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(security_interstitials::features::kHttpsUpgrades)},
-    {"reader-mode-omnibox-entrypoint-in-us",
-     flag_descriptions::kReaderModeOmniboxEntrypointInUSName,
-     flag_descriptions::kReaderModeOmniboxEntrypointInUSDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kEnableReaderModeOmniboxEntryPointInUS)},
     {"disable-lens-camera", flag_descriptions::kDisableLensCameraName,
      flag_descriptions::kDisableLensCameraDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kDisableLensCamera)},
     {"enable-lens-on-ipad", flag_descriptions::kEnableLensOnIPadName,
      flag_descriptions::kEnableLensOnIPadDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kEnableLensOnIPad,
-                                    kEnableLensOnIPadVariations,
-                                    "EnableLensOnIPad")},
+     FEATURE_VALUE_TYPE(kEnableLensOnIPad)},
     {"page-info-certificate-information",
      flag_descriptions::kViewCertificateInformationName,
      flag_descriptions::kViewCertificateInformationDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(page_info_certificate::kViewCertificateInformation)},
-    {"migrate-ios-keychain-accessibility",
-     flag_descriptions::kMigrateIOSKeychainAccessibilityName,
-     flag_descriptions::kMigrateIOSKeychainAccessibilityDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(crypto::features::kMigrateIOSKeychainAccessibility)},
     {"search-engine-choice-screen-snackbar",
      flag_descriptions::kSearchEngineChoiceScreenSnackbarName,
      flag_descriptions::kSearchEngineChoiceScreenSnackbarDescription,
@@ -1652,20 +1677,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kSendTabToSelfEnhancedHandoffName,
      flag_descriptions::kSendTabToSelfEnhancedHandoffDescription,
      flags_ui::kOsIos, MULTI_VALUE_TYPE(kSendTabToSelfEnhancedHandoffChoices)},
-    {"lens-filters-ablation-mode-enabled",
-     flag_descriptions::kLensFiltersAblationModeEnabledName,
-     flag_descriptions::kLensFiltersAblationModeEnabledDescription,
-     flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kLensFiltersAblationModeEnabled,
-                                    kLensFiltersAblationModeVariations,
-                                    "LensFiltersAblationMode")},
-    {"lens-translate-toogle-mode-enabled",
-     flag_descriptions::kLensTranslateToggleModeEnabledName,
-     flag_descriptions::kLensTranslateToggleModeEnabledDescription,
-     flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kLensTranslateToggleModeEnabled,
-                                    kLensTranslateToggleModeVariations,
-                                    "LensTranslateToggleMode")},
     {"omnibox-mia-zps", flag_descriptions::kOmniboxMiaZpsName,
      flag_descriptions::kOmniboxMiaZpsDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(
@@ -1837,10 +1848,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"data-sharing-debug-logs", flag_descriptions::kDataSharingDebugLogsName,
      flag_descriptions::kDataSharingDebugLogsDescription, flags_ui::kOsIos,
      SINGLE_VALUE_TYPE(data_sharing::kDataSharingDebugLoggingEnabled)},
-    {"lens-fetch-srp-api-enabled",
-     flag_descriptions::kLensFetchSrpApiEnabledName,
-     flag_descriptions::kLensFetchSrpApiEnabledDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kLensFetchSrpApiEnabled)},
     {"feed-swipe-iph", flag_descriptions::kFeedSwipeInProductHelpName,
      flag_descriptions::kFeedSwipeInProductHelpDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kFeedSwipeInProductHelp,
@@ -2520,10 +2527,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAssistantAimMinimizedStateName,
      flag_descriptions::kAssistantAimMinimizedStateDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kAssistantAimMinimizedState)},
-    {"lens-filter-toggle-enabled",
-     flag_descriptions::kLensFilterToggleEnabledName,
-     flag_descriptions::kLensFilterToggleEnabledDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kLensFilterToggleEnabled)},
     {"lens-followups-full-height-enabled",
      flag_descriptions::kLensFollowupsFullHeightEnabledName,
      flag_descriptions::kLensFollowupsFullHeightEnabledDescription,
@@ -2617,6 +2620,14 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
          contextual_cueing::kGeminiContextualSuggestionsCues,
          kGeminiContextualSuggestionsCuesVariations,
          "GeminiContextualSuggestionsCues")},
+    {"gemini-contextual-suggestions-cues-ui-mode",
+     flag_descriptions::kGeminiContextualSuggestionsCuesUiModeName,
+     flag_descriptions::kGeminiContextualSuggestionsCuesUiModeDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         contextual_cueing::kGeminiContextualSuggestionsCuesUiMode,
+         kGeminiContextualSuggestionsCuesUiModeVariations,
+         "GeminiContextualSuggestionsCuesUiMode")},
     {"page-classification", flag_descriptions::kPageClassificationName,
      flag_descriptions::kPageClassificationDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kPageClassification,
@@ -2819,6 +2830,25 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kGeminiHostExperimentIDsName,
      flag_descriptions::kGeminiHostExperimentIDsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiHostExperimentIDs)},
+    {"magic-stack-tips-v2-ios", flag_descriptions::kMagicStackTipsV2IosName,
+     flag_descriptions::kMagicStackTipsV2IosDescription, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         segmentation_platform::features::kMagicStackTipsV2Ios,
+         kMagicStackTipsV2IosVariations,
+         "MagicStackTipsV2Ios")},
+    {"enable-segmentation-platform-ephemeral_card_ranker",
+     flag_descriptions::kSegmentationPlatformEphemeralCardRankerName,
+     flag_descriptions::kSegmentationPlatformEphemeralCardRankerDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         segmentation_platform::features::
+             kSegmentationPlatformEphemeralCardRanker,
+         kEphemeralCardRankerCardOverrideOptions,
+         "SegmentationPlatformEphemeralCardRanker")},
+    {"context-menu-preview-downsample-image",
+     flag_descriptions::kContextMenuPreviewDownsampleImageName,
+     flag_descriptions::kContextMenuPreviewDownsampleImageDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kContextMenuPreviewDownsampleImage)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

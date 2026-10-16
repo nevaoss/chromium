@@ -36,7 +36,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/layout_constants.h"
-#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
@@ -82,7 +81,6 @@
 #include "content/public/browser/reload_type.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
-#include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
@@ -101,7 +99,6 @@
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
-#include "ui/events/blink/web_input_event.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -118,6 +115,10 @@
 #include "ui/views/layout/layout_manager_base.h"
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view_util_mac.h"
+#endif  // BUILDFLAG(IS_MAC)
 
 namespace {
 
@@ -153,53 +154,6 @@ WebUIToolbarUI* GetWebUIToolbarUIFromWebContents(
   auto* controller = web_ui->GetController();
   return controller ? controller->GetAs<WebUIToolbarUI>() : nullptr;
 }
-
-//  The approach used by RoundedOmniboxResultsFrame on Mac to forward mouse
-//  events received by the popup to the underlying windows ultimately ends up
-//  with the event received at Views level at NativeViewHost, which doesn't know
-//  what to do with them. This is set up as a fallback handler to receive these,
-//  and forward them on further till the WebView.
-class WebUIToolbarEventForwarder : public ui::EventHandler {
- public:
-  WebUIToolbarEventForwarder(WebUIToolbarControlDelegate& control_delegate,
-                             views::WebView& web_view)
-      : control_delegate_(control_delegate), web_view_(web_view) {}
-
-  void OnMouseEvent(ui::MouseEvent* event) override {
-    if (!HaveOpenOmniboxPopup()) {
-      return;
-    }
-    content::RenderWidgetHost* target =
-        web_view_->GetWebContents()->GetRenderViewHost()->GetWidget();
-    if (event->type() == ui::EventType::kMousewheel) {
-      // We purposefully don't forward wheel events. They need special phase
-      // handling and it doesn't seem like we actually do anything with them.
-      return;
-    }
-    if (event->type() == ui::EventType::kMousePressed) {
-      web_view_->RequestFocus();
-    }
-    target->ForwardMouseEvent(ui::MakeWebMouseEvent(*event));
-  }
-
-  bool HaveOpenOmniboxPopup() {
-    auto* bwi = control_delegate_->GetBrowser();
-    if (!bwi) {
-      return false;
-    }
-    // Note that this may be WebUILocationBar or LocationBarView, dependent
-    // on flags.
-    auto* location_bar = BrowserWindow::FromBrowser(bwi)->GetLocationBar();
-    if (!location_bar) {
-      return false;
-    }
-    return location_bar->GetOmniboxController()->IsPopupOpen();
-  }
-
- private:
-  const raw_ref<WebUIToolbarControlDelegate> control_delegate_;
-  const raw_ref<views::WebView> web_view_;
-};
 
 }  // namespace
 
@@ -323,6 +277,18 @@ class WebUIToolbarInternalWebView : public views::WebView {
     views::WebView::OnBlur();
     webui_toolbar_web_view_->OnBlur();
   }
+
+#if BUILDFLAG(IS_MAC)
+  void AddedToWidget() override {
+    views::WebView::AddedToWidget();
+    forwarder_->AddedToWidget();
+  }
+
+  void RemovedFromWidget() override {
+    views::WebView::RemovedFromWidget();
+    forwarder_->RemovedFromWidget();
+  }
+#endif
 
   std::optional<GURL> ConsumeDroppedUrl(const gfx::PointF& point) {
     std::optional<GURL> url;
@@ -904,14 +870,8 @@ void WebUIToolbarWebView::OnAppMenuFocusChanged(bool focused) {
 }
 
 void WebUIToolbarWebView::ExecuteExtensionAction(
-    const std::string& extension_id,
-    bool is_pointer_interaction) {
-  extensions_container_.ExecuteUserAction(extension_id, is_pointer_interaction);
-}
-
-void WebUIToolbarWebView::OnExtensionActionPointerDown(
     const std::string& extension_id) {
-  extensions_container_.OnPointerDown(extension_id);
+  extensions_container_.ExecuteUserAction(extension_id);
 }
 
 void WebUIToolbarWebView::ShowExtensionContextMenu(
@@ -1285,8 +1245,13 @@ void WebUIToolbarWebView::OverflowButtonClicked(
   } else if (identifier == kToolbarBatterySaverButtonElementId) {
     battery_saver_control_.ShowBubble();
     return;
-  } else if (identifier == kToolbarAvatarButtonElementId ||
-             identifier == kToolbarMediaButtonElementId) {
+  } else if (identifier == kToolbarMediaButtonElementId) {
+    // Not a mouse interaction with the button itself, so there's no risk of
+    // this being a click that just closed the dialog, which shouldn't then
+    // reopen it.
+    media_control_.OnClicked(/*is_mouse_interaction=*/false);
+    return;
+  } else if (identifier == kToolbarAvatarButtonElementId) {
     // TODO(crbug.com/556290451): Make buttons work with overflow menu clicks.
     return;
   }

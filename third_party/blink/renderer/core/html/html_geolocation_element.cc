@@ -163,11 +163,17 @@ void HTMLGeolocationElement::OnPermissionStatusChange(
   }
 
   if (FastHasAttribute(html_names::kAutolocateAttr)) {
+    if (HasPendingPermissionRequest()) {
+      RecordGeolocationRequestInitiationFlow(
+          CapabilityElementGeolocationRequestFlow::kClickWithPromptGranted);
+    }
     MaybeTriggerAutolocate(HasPendingPermissionRequest()
                                ? ForceAutolocate::kYes
                                : ForceAutolocate::kNo);
   } else if (HasPendingPermissionRequest() ||
              has_made_permission_decision_granted) {
+    RecordGeolocationRequestInitiationFlow(
+        CapabilityElementGeolocationRequestFlow::kClickWithPromptGranted);
     RequestGeolocation();
   }
 }
@@ -186,6 +192,9 @@ void HTMLGeolocationElement::DidAddUserAgentShadowRoot(ShadowRoot& root) {
 }
 
 void HTMLGeolocationElement::OnActivated() {
+  RecordGeolocationRequestInitiationFlow(
+      CapabilityElementGeolocationRequestFlow::
+          kClickWithPermissionAlreadyGranted);
   if (FastHasAttribute(html_names::kAutolocateAttr)) {
     MaybeTriggerAutolocate(ForceAutolocate::kYes);
   } else {
@@ -317,6 +326,18 @@ void HTMLGeolocationElement::RequestGeolocation() {
     return;
   }
 
+  CapabilityElementGeolocationAccuracyMode accuracy_mode =
+      CapabilityElementGeolocationAccuracyMode::kDefault;
+  const AtomicString& mode = FastGetAttribute(html_names::kAccuracymodeAttr);
+  if (!mode.IsNull()) {
+    if (EqualIgnoringAsciiCase(mode, "precise")) {
+      accuracy_mode = CapabilityElementGeolocationAccuracyMode::kPrecise;
+    } else if (EqualIgnoringAsciiCase(mode, "approximate")) {
+      accuracy_mode = CapabilityElementGeolocationAccuracyMode::kApproximate;
+    }
+  }
+  RecordGeolocationAccuracyMode(accuracy_mode);
+
   location_request_start_time_ = base::TimeTicks::Now();
 
   if (FastHasAttribute(html_names::kWatchAttr)) {
@@ -341,6 +362,10 @@ void HTMLGeolocationElement::MaybeTriggerAutolocate(ForceAutolocate force) {
   if (force == ForceAutolocate::kYes ||
       (!did_autolocate_trigger_request && IsRendered() &&
        PermissionsGranted())) {
+    if (force == ForceAutolocate::kNo) {
+      RecordGeolocationRequestInitiationFlow(
+          CapabilityElementGeolocationRequestFlow::kAutolocateOnLoad);
+    }
     did_autolocate_trigger_request = true;
     RequestGeolocation();
   }

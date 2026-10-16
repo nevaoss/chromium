@@ -20,7 +20,6 @@
 #import "ios/chrome/browser/intelligence/page_action_menu/utils/ai_hub_constants.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/utils/ai_hub_metrics.h"
 #import "ios/chrome/browser/reader_mode/coordinator/reader_mode_options_mediator.h"
-#import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_browser_agent.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_tab_helper.h"
 #import "ios/chrome/browser/reader_mode/ui/reader_mode_options_controls_view.h"
@@ -250,7 +249,8 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
       [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:nil];
       break;
     case kGeminiEntryFlowResultCancelled:
-      // User cancelled sign-in — PAM stays open.
+    case kGeminiEntryFlowResultNoConsent:
+      // User cancelled sign-in/consent — PAM stays open.
       break;
     case kGeminiEntryFlowResultAccountIneligibleByGemini:
     case kGeminiEntryFlowResultAccountIneligibleByEnterprise:

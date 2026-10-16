@@ -50,6 +50,7 @@ import org.chromium.ui.widget.AnchoredPopupWindow.VerticalOrientation;
 /** Unit tests for {@link AnchoredPopupWindow}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(shadows = ShadowView.class)
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public final class AnchoredPopupWindowTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -186,13 +187,10 @@ public final class AnchoredPopupWindowTest {
         RectProvider anchorRectProvider = new RectProvider(new Rect(0, 0, 1000, 1000));
         RectProvider visibleWebContentsRectSupplier = new RectProvider(new Rect(0, 100, 1000, 900));
         AnchoredPopupWindow anchoredPopupWindow =
-                new AnchoredPopupWindow(
-                        mActivity,
-                        mView,
-                        mDrawable,
-                        () -> mContentView,
-                        anchorRectProvider,
-                        visibleWebContentsRectSupplier);
+                new AnchoredPopupWindow.Builder(
+                                mActivity, mView, mDrawable, () -> mContentView, anchorRectProvider)
+                        .setViewportRectProvider(visibleWebContentsRectSupplier)
+                        .build();
 
         anchoredPopupWindow.show();
 
@@ -379,7 +377,9 @@ public final class AnchoredPopupWindowTest {
     private AnchoredPopupWindow createAnchorPopupWindow(boolean allowNonTouchableSize) {
         RectProvider provider = new RectProvider(new Rect(0, 0, 0, 0));
         AnchoredPopupWindow popup =
-                new AnchoredPopupWindow(mActivity, mView, mDrawable, mContentView, provider);
+                new AnchoredPopupWindow.Builder(
+                                mActivity, mView, mDrawable, () -> mContentView, provider)
+                        .build();
         popup.setAllowNonTouchableSize(allowNonTouchableSize);
         return popup;
     }

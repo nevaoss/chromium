@@ -166,16 +166,6 @@ BASE_DECLARE_FEATURE(kDisableLensCamera);
 // Feature flag to enable Lens on iPad.
 BASE_DECLARE_FEATURE(kEnableLensOnIPad);
 
-// Feature param for kEnableLensOnIPad presentation style.
-inline constexpr char kEnableLensOnIPadPresentationStyleParam[] =
-    "presentation-style";
-inline constexpr char kEnableLensOnIPadPresentationStyleSidePanel[] =
-    "side-panel";
-inline constexpr char kEnableLensOnIPadPresentationStyleBottomSheet[] =
-    "bottom-sheet";
-inline constexpr char kEnableLensOnIPadPresentationStyleWideBottomSheet[] =
-    "wide-bottom-sheet";
-
 // Feature flag that allows the Auto-deletion feature to clear all downloaded
 // files scheduled for deletion on every application startup, regardless of when
 // the file was downloaded. This feature is intended for testing-only.
@@ -840,6 +830,12 @@ bool IsPlusButtonInFakeboxEnabled();
 
 // Returns true if the plus button contextual menu in NTP fakebox is enabled
 bool IsPlusButtonMenuInFakeboxEnabled();
+
+// Enables the submenu with more options in the plus menu.
+BASE_DECLARE_FEATURE(kPlusButtonMenuMoreOptionsSubmenu);
+
+// Returns true if the submenu groupping is enabled in the plus menu.
+bool IsPlusButtonMenuMoreOptionsSubmenu();
 
 // Enables the `AssistantAimMinimizedState` feature.
 BASE_DECLARE_FEATURE(kAssistantAimMinimizedState);

@@ -61,6 +61,11 @@ class FuseboxPopup {
     /* package */ final View mToolsDivider;
     /* package */ final TextView mToolsHeader;
 
+    /** Container for tools pinned outside the accordion, below the pinned current tab. */
+    /* package */ final ViewGroup mPinnedToolsContainer;
+
+    /* package */ final View mPinnedSectionTopDivider;
+    /* package */ final View mPinnedSectionBottomDivider;
     /* package */ final View mModelsDivider;
     /* package */ final TextView mModelsHeader;
     /* package */ final TextView mAttachmentsHeader;
@@ -161,18 +166,31 @@ class FuseboxPopup {
         mTabButton = contentView.findViewById(R.id.fusebox_pick_tabs_button);
         mCameraButton = contentView.findViewById(R.id.fusebox_camera_button);
         mGalleryButton = contentView.findViewById(R.id.fusebox_pick_picture_button);
-        mFileButton = contentView.findViewById(R.id.fusebox_pick_file_button);
-        mDriveButton = contentView.findViewById(R.id.fusebox_pick_drive_button);
+        // Only the carousel layouts have file/drive copies. The vertical layout relies on the
+        // accordion copies, which directly follow it.
+        boolean fileAndDriveInCarousel =
+                currentTabPlacement == CurrentTabPlacement.WITH_ATTACHMENTS && useCarousel;
+        mFileButton =
+                contentView.findViewById(
+                        fileAndDriveInCarousel
+                                ? R.id.fusebox_pick_file_button
+                                : R.id.fusebox_pick_file_button_accordion);
+        mDriveButton =
+                contentView.findViewById(
+                        fileAndDriveInCarousel
+                                ? R.id.fusebox_pick_drive_button
+                                : R.id.fusebox_pick_drive_button_accordion);
         mMoreOptionsButton = contentView.findViewById(R.id.fusebox_more_options_button);
         mAccordionContainer = contentView.findViewById(R.id.fusebox_accordion_container);
         mToolsDivider = contentView.findViewById(R.id.fusebox_tools_divider);
         mToolsHeader = contentView.findViewById(R.id.fusebox_tools_header);
+        mPinnedToolsContainer = contentView.findViewById(R.id.fusebox_pinned_tools_container);
+        mPinnedSectionTopDivider =
+                contentView.findViewById(R.id.fusebox_pinned_section_top_divider);
+        mPinnedSectionBottomDivider =
+                contentView.findViewById(R.id.fusebox_pinned_section_bottom_divider);
 
-        initializeItem(
-                mAddCurrentTab,
-                isBottomSheet ? R.string.fusebox_add_tab : R.string.fusebox_add_current_tab,
-                0,
-                0);
+        initializeItem(mAddCurrentTab, R.string.fusebox_add_tab, 0, 0);
         initializeItem(
                 mTabButton,
                 R.string.omnibox_navattach_tabs,
@@ -195,7 +213,9 @@ class FuseboxPopup {
                 OmniboxCapabilities.isDesktopPlatform()
                         ? R.string.omnibox_navattach_add_files
                         : R.string.omnibox_navattach_files,
-                R.drawable.ic_attach_file_24dp,
+                isBottomSheet && currentTabPlacement != CurrentTabPlacement.WITH_ATTACHMENTS
+                        ? R.drawable.ic_folder_24dp
+                        : R.drawable.ic_attach_file_24dp,
                 R.string.accessibility_omnibox_add_files);
         initializeItem(
                 mDriveButton,
@@ -232,11 +252,22 @@ class FuseboxPopup {
                 mCurrentTabTopDivider != null
                         ? List.of(
                                 mCurrentTabTopDivider,
+                                mPinnedSectionTopDivider,
+                                mPinnedSectionBottomDivider,
                                 mRecentTabsDivider,
                                 mToolsDivider,
                                 mModelsDivider)
-                        : List.of(mRecentTabsDivider, mToolsDivider, mModelsDivider);
+                        : List.of(
+                                mPinnedSectionTopDivider,
+                                mPinnedSectionBottomDivider,
+                                mRecentTabsDivider,
+                                mToolsDivider,
+                                mModelsDivider);
         mHeaders = List.of(mRecentTabsHeader, mToolsHeader, mModelsHeader);
+
+        if (useScrollableCarousel) {
+            applyScrollableCarouselTileSize();
+        }
     }
 
     void destroy() {
@@ -349,6 +380,20 @@ class FuseboxPopup {
         if (!isShowing() || mCurrentState == PopupState.HIDDEN) return;
         updateInsets();
         updateDesiredWidth();
+    }
+
+    /**
+     * Sizes the attachment icon tiles for the scrollable carousel. The item layout is shared with
+     * the weighted carousel, which keeps its default tile height.
+     */
+    private void applyScrollableCarouselTileSize() {
+        int tileSize =
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.fusebox_scrollable_carousel_tile_size);
+        for (View button : mAttachmentButtons) {
+            button.findViewById(R.id.start_icon_background).getLayoutParams().height = tileSize;
+        }
     }
 
     private void initializeItem(View item, int textRes, int iconRes, int a11yRes) {

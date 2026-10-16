@@ -1190,7 +1190,6 @@ class CORE_EXPORT Element : public ContainerNode {
   // the 'drawable' attribute). Returns nullptr otherwise.
   HTMLCanvasElement* CanvasForDrawing() const;
 
-  bool HasCanvasTransform() const;
   // Returns the transform that should be used for mapping the border-box,
   // before CSS transforms, to the canvas coordinate space. When the element
   // has a CanvasForDrawing, this affects the geometry of the element (e.g.,
@@ -1693,6 +1692,8 @@ class CORE_EXPORT Element : public ContainerNode {
   virtual bool MatchesReadWritePseudoClass() const { return false; }
   virtual bool MatchesValidityPseudoClasses() const { return false; }
   bool MatchesOverscrollOpen() const;
+  // Unlike !MatchesOverscrollOpen(), only true for valid overscroll areas.
+  bool MatchesOverscrollClosed() const;
 
   virtual bool MayTriggerVirtualKeyboard() const;
 
@@ -2190,6 +2191,8 @@ class CORE_EXPORT Element : public ContainerNode {
   OverscrollAreaTracker* GetOverscrollAreaTracker() const;
 
   Element* GetOverscrollContainer() const;
+  // Updated before styling by OverscrollAreaTracker::UpdateOverscrollArea().
+  bool IsValidOverscrollArea() const;
   void SetOverscrollContainer(Element*);
   void ClearOverscrollContainer();
   void DetachOverscroll();
@@ -2237,6 +2240,10 @@ class CORE_EXPORT Element : public ContainerNode {
   UniqueElementData& EnsureUniqueElementData();
 
   bool IsViewportScrollElement();
+
+  // Returns the rect reported by clientLeft/Top/Width/Height: the padding
+  // box, but text fields use the content box in the inline axis.
+  static PhysicalRect PhysicalClientRect(const LayoutBox&);
 
   void AddPropertyToPresentationAttributeStyle(HeapVector<CSSPropertyValue, 8>&,
                                                CSSPropertyID,

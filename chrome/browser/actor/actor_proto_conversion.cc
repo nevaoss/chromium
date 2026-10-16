@@ -9,14 +9,14 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <variant>
+#include <string>
+#include <utility>
 
 #include "base/barrier_closure.h"
 #include "base/base64.h"
 #include "base/feature_list.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
 #include "base/notimplemented.h"
 #include "base/numerics/safe_conversions.h"
@@ -33,6 +33,7 @@
 #include "chrome/browser/actor/tools/attempt_otp_filling_tool_request.h"
 #include "chrome/browser/actor/tools/click_tool_request.h"
 #include "chrome/browser/actor/tools/drag_and_release_tool_request.h"
+#include "chrome/browser/actor/tools/file_upload_tool_request.h"
 #include "chrome/browser/actor/tools/history_tool_request.h"
 #include "chrome/browser/actor/tools/load_and_extract_content_tool_request.h"
 #include "chrome/browser/actor/tools/media_control_tool_request.h"
@@ -69,7 +70,6 @@
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/origin_gating/core/task_policy_config.h"
-#include "components/password_manager/core/browser/features/password_features.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_context.h"
@@ -100,6 +100,7 @@ using apc::AttemptFormFillingAction;
 using apc::AttemptLoginAction;
 using apc::AttemptOtpFillingAction;
 using apc::ClickAction;
+using apc::ClickToUploadAction;
 using apc::CloseTabAction;
 using apc::CloseWindowAction;
 using apc::CreateTabAction;
@@ -503,7 +504,46 @@ std::unique_ptr<ToolRequest> CreateLoadAndExtractContentRequest(
 
   return std::make_unique<LoadAndExtractContentToolRequest>(std::move(urls));
 }
+
 #endif  // !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
+
+base::expected<std::unique_ptr<ToolRequest>, mojom::ActionResultCode>
+CreateClickToUploadRequest(const ClickToUploadAction& action) {
+  if (!base::FeatureList::IsEnabled(actor::kGlicActorFileUploadTool)) {
+    return base::unexpected(mojom::ActionResultCode::kToolUnknown);
+  }
+
+  TabHandle tab_handle = GetTabHandle(action);
+  if (tab_handle == TabHandle::Null()) {
+    return base::unexpected(mojom::ActionResultCode::kTabWentAway);
+  }
+
+  if (!action.has_target()) {
+    return base::unexpected(mojom::ActionResultCode::kArgumentsInvalid);
+  }
+
+  std::optional<PageTarget> target = ToPageTarget(action.target());
+  if (!target) {
+    return base::unexpected(mojom::ActionResultCode::kArgumentsInvalid);
+  }
+
+  if (action.files().empty()) {
+    return base::unexpected(mojom::ActionResultCode::kFileUploadEmptyFileList);
+  }
+
+  std::vector<FileUploadSource> files;
+  files.reserve(action.files_size());
+  for (const ClickToUploadAction::File& file : action.files()) {
+    // The download URL is the only way to obtain the file contents.
+    if (!file.has_download_url()) {
+      return base::unexpected(mojom::ActionResultCode::kArgumentsInvalid);
+    }
+    files.emplace_back(GURL(file.download_url()), file.file_name());
+  }
+
+  return std::make_unique<FileUploadToolRequest>(tab_handle, *target,
+                                                 std::move(files));
+}
 
 std::unique_ptr<ToolRequest> CreateBackRequest(
     const HistoryBackAction& action) {
@@ -909,6 +949,11 @@ CreateToolRequest(const optimization_guide::proto::Action& action) {
           load_and_extract_content_action);
     }
 #endif  // !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
+    case optimization_guide::proto::Action::kClickToUpload: {
+      const ClickToUploadAction& click_to_upload_action =
+          action.click_to_upload();
+      return CreateClickToUploadRequest(click_to_upload_action);
+    }
     case optimization_guide::proto::Action::kYieldToUser:
       NOTIMPLEMENTED();
       break;

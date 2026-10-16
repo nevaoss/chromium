@@ -24,11 +24,14 @@
 #include "components/autofill/core/browser/at_memory/at_memory_metrics_recorder_test_api.h"
 #include "components/autofill/core/browser/at_memory/at_memory_persisted_state_manager.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
+#include "components/autofill/core/browser/data_manager/valuables/valuables_data_manager.h"
+#include "components/autofill/core/browser/data_manager/valuables/valuables_data_manager_test_api.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/data_model/payments/iban.h"
+#include "components/autofill/core/browser/data_model/valuables/loyalty_card.h"
 #include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
 #include "components/autofill/core/browser/filling/autofill_ai/field_filling_entity_util.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager_test_api.h"
@@ -47,6 +50,7 @@
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/test_utils/autofill_test_util.h"
 #include "components/autofill/core/browser/test_utils/entity_data_test_util.h"
+#include "components/autofill/core/browser/test_utils/valuables_data_test_util.h"
 #include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service_test_helper.h"
@@ -701,6 +705,34 @@ TEST_P(AtMemoryManagerTest, OnSearchSubmitted_AutofillSource_Flight_Footer) {
               SuggestionType::kManageAutofillAiTravel,
               l10n_util::GetStringUTF16(
                   IDS_AUTOFILL_AI_MANAGE_TRAVEL_SUGGESTION_MAIN_TEXT))))));
+}
+
+// Tests that the manage loyalty card footer is shown for autofill sourced
+// loyalty cards.
+TEST_P(AtMemoryManagerTest,
+       OnSearchSubmitted_AutofillSource_LoyaltyCard_Footer) {
+  SeeFormAndShowPopup();
+
+  std::vector<Suggestion> final_suggestions;
+  std::vector<MemorySearchResult> entries;
+  MemorySearchResult entry(MemoryDataType::kLoyaltyMembershipId, u"Label",
+                           u"Value");
+  entry.sources.emplace_back(MemoryEntrySourceType::kAutofill);
+  entries.push_back(std::move(entry));
+
+  MockQueryResultsAndExpectCallback(u"query",
+                                    MemorySearchStatus::kFinalResponseSuccess,
+                                    std::move(entries), final_suggestions);
+
+  manager().OnSearchSubmitted(u"query");
+
+  EXPECT_THAT(
+      final_suggestions,
+      ElementsAre(EqualsAtMemorySuggestion(
+          MemoryDataType::kLoyaltyMembershipId,
+          ElementsAre(EqualsSuggestion(
+              SuggestionType::kManageLoyaltyCard,
+              l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_LOYALTY_CARDS))))));
 }
 
 // Tests that Autofill-sourced data of unknown type does not display any manage
@@ -1567,6 +1599,12 @@ TEST_P(AtMemoryManagerTest, FillOverlappingPopups) {
 
   // 5. Hide Popup 2 (without accepting suggestions).
   manager().OnPopupHidden();
+  if (GetParam()) {
+    // When search statefulness is enabled, hiding the popup does not destroy
+    // the metrics recorder; it is destroyed when the field session ends.
+    histogram_tester.ExpectTotalCount("Autofill.AtMemory.QuerySubmitted", 0);
+    manager().GetStateForField(test::MakeFieldGlobalId(), form_origin());
+  }
 
   // Verify Popup 2 logged its displayed, query submitted, suggestion accepted:
   // - PopupDisplayed should have context menu trigger as well now.
@@ -2171,8 +2209,14 @@ TEST_P(AtMemoryManagerTest, OnPopupShown_SubPopup_DoesNotResetRecorder) {
   // "QuerySubmitted".
   histogram_tester.ExpectTotalCount("Autofill.AtMemory.QuerySubmitted", 0);
 
-  // 3. Hide popup. This should destroy the recorder and log the metric.
+  // 3. Hide popup. When search statefulness is disabled, this destroys the
+  // recorder and logs the metric. When search statefulness is enabled, the
+  // recorder persists until the state is reset.
   manager().OnPopupHidden();
+  if (GetParam()) {
+    histogram_tester.ExpectTotalCount("Autofill.AtMemory.QuerySubmitted", 0);
+    manager().GetStateForField(test::MakeFieldGlobalId(), form_origin());
+  }
   histogram_tester.ExpectUniqueSample("Autofill.AtMemory.QuerySubmitted", false,
                                       1);
 }
@@ -2300,6 +2344,52 @@ TEST_P(AtMemoryManagerTest, FillNonSensitiveAutofillAi) {
   EXPECT_EQ(updated_passport->use_count(), initial_use_count + 1);
 }
 
+// Tests that filling loyalty card records usage metrics and increments use
+// count.
+TEST_P(AtMemoryManagerTest, FillLoyaltyCard) {
+  base::HistogramTester histogram_tester;
+  LoyaltyCard card = test::CreateLoyaltyCard();
+  test_api(*autofill_client().GetValuablesDataManager()).AddLoyaltyCard(card);
+
+  auto [form_id, field_id] = SeeFormAndShowPopup();
+
+  std::vector<Suggestion> final_suggestions;
+  {
+    MemorySearchResult entry(MemoryDataType::kLoyaltyMembershipId,
+                             u"Loyalty Card", u"987654321987654321");
+    entry.identifier = card.id().value();
+    entry.sources = {MemoryEntrySource(MemoryEntrySourceType::kAutofill)};
+    MockQueryResultsAndExpectCallback(u"query",
+                                      MemorySearchStatus::kFinalResponseSuccess,
+                                      {entry}, final_suggestions);
+  }
+  manager().OnSearchSubmitted(u"query");
+  ASSERT_EQ(final_suggestions.size(), 1u);
+
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewField(mojom::ActionPersistence::kFill,
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         _, _, std::u16string(u"987654321987654321"),
+                         FillingProduct::kAtMemory, _));
+
+  task_environment_.FastForwardBy(base::Seconds(60));
+
+  manager().FillSearchResult(autofill_manager(), form_id, field_id,
+                             final_suggestions[0], /*metadata=*/std::nullopt);
+
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.SuggestionAccepted",
+                                      true, 1);
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.SuggestionFilled",
+                                      true, 1);
+
+  std::optional<LoyaltyCard> updated_card =
+      autofill_client().GetValuablesDataManager()->GetLoyaltyCardById(
+          card.id());
+  ASSERT_TRUE(updated_card.has_value());
+  EXPECT_EQ(updated_card->use_count(), card.use_count() + 1);
+}
+
 enum class SourceScenario { kNoSources, kAutofillOnly, kGmailOnly, kMixed };
 
 class AtMemoryManagerIconTest : public AtMemoryManagerTestBase,
@@ -2354,6 +2444,8 @@ TEST_P(AtMemoryManagerIconTest,
        Suggestion::Icon::kCardGenericSpark},
       {MemoryDataType::kIban, Suggestion::Icon::kCardGenericVector,
        Suggestion::Icon::kCardGenericSpark},
+      {MemoryDataType::kLoyaltyMembershipId, Suggestion::Icon::kLoyalty,
+       Suggestion::Icon::kTextSpark},
       {MemoryDataType::kOrderId, Suggestion::Icon::kOrder,
        Suggestion::Icon::kOrderSpark},
       {MemoryDataType::kShipmentTrackingNumber, Suggestion::Icon::kShipment,
@@ -2876,6 +2968,86 @@ TEST_F(AtMemoryManagerTestBase,
   task_environment_.FastForwardBy(base::Seconds(1));
   EXPECT_TRUE(
       manager().GetStateForField(field_id, form_origin()).filter.empty());
+}
+
+// Tests that when search statefulness is enabled, the metrics recorder persists
+// across popup hide/reopen for the same field, records background query
+// completion while the popup is closed, and logs session metrics upon fill.
+TEST_F(AtMemoryManagerTestBase,
+       SearchStatefulness_MetricsRecorderPersistsAcrossPopupHideAndReopen) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAtMemorySearchStatefulness};
+  base::HistogramTester histogram_tester;
+
+  auto [form_id, field_id] = SeeFormAndShowPopup();
+  AtMemoryMetricsRecorder* initial_recorder =
+      test_api(manager()).at_memory_metrics_recorder();
+  ASSERT_NE(initial_recorder, nullptr);
+
+  manager().OnFilterChanged(u"john");
+
+  base::RepeatingCallback<void(MemorySearchResults)> saved_query_callback;
+  EXPECT_CALL(mock_query_service(),
+              Query(std::u16string_view(u"john"), _, _, _))
+      .WillOnce(SaveArg<3>(&saved_query_callback));
+  EXPECT_CALL(update_callback_,
+              Run(ElementsAre(Field("type", &Suggestion::type,
+                                    SuggestionType::kAtMemoryFetching)),
+                  AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl));
+
+  manager().OnSearchSubmitted(u"john");
+  ASSERT_TRUE(saved_query_callback);
+
+  // Hide the popup while the query is in flight.
+  manager().OnPopupHidden();
+
+  // The metrics recorder should still be alive and not have logged session
+  // summary metrics yet.
+  EXPECT_EQ(test_api(manager()).at_memory_metrics_recorder(), initial_recorder);
+  histogram_tester.ExpectTotalCount("Autofill.AtMemory.QuerySubmitted", 0);
+  histogram_tester.ExpectTotalCount("Autofill.AtMemory.UiSessionOutcome", 0);
+
+  // Complete the query in the background while the popup is closed.
+  MemorySearchResult entry(MemoryDataType::kNameFull, u"John Doe", u"John Doe");
+  entry.sources = {MemoryEntrySource(MemoryEntrySourceType::kAutofill)};
+  saved_query_callback.Run(
+      MemorySearchResults(MemorySearchStatus::kFinalResponseSuccess, {entry}));
+
+  // Query completion and latency metrics should be recorded even though the
+  // popup was closed when the response arrived.
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.AtMemory.QueryCompleted",
+      AtMemoryQueryCompletedStatus::kQueryReturnedData, 1);
+  histogram_tester.ExpectTotalCount("Autofill.AtMemory.Latency.Query", 1);
+
+  // Reopen the popup on the same field.
+  AtMemorySearchState restored_state =
+      manager().GetStateForField(field_id, form_origin());
+  ASSERT_FALSE(restored_state.suggestions.empty());
+  manager().OnPopupShown(autofill_manager(), form_id, field_id,
+                         AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl,
+                         /*metadata=*/{}, update_callback_.Get(),
+                         ukm::kInvalidSourceId);
+
+  // The existing metrics recorder instance should be reused.
+  EXPECT_EQ(test_api(manager()).at_memory_metrics_recorder(), initial_recorder);
+  histogram_tester.ExpectTotalCount("Autofill.AtMemory.QuerySubmitted", 0);
+
+  // Accept the suggestion from the restored state.
+  manager().FillSearchResult(autofill_manager(), form_id, field_id,
+                             restored_state.suggestions.back(),
+                             /*metadata=*/std::nullopt);
+
+  EXPECT_EQ(test_api(manager()).at_memory_metrics_recorder(), nullptr);
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.QuerySubmitted", true,
+                                      1);
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.SuggestionAccepted",
+                                      true, 1);
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.SuggestionFilled",
+                                      true, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.AtMemory.UiSessionOutcome",
+      AtMemoryUiSessionOutcome::kSuggestionFilled, 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(All, AtMemoryManagerTest, testing::Bool());

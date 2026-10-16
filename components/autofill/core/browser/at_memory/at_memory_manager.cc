@@ -33,6 +33,7 @@
 #include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
+#include "components/autofill/core/browser/data_manager/valuables/valuables_data_manager.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/autofill/core/browser/data_model/payments/iban.h"
@@ -124,6 +125,8 @@ Suggestion::AtMemoryPayload::Identifier GetPayloadIdentifier(
       return std::get<std::string>(identifier);
     case MemoryDataTypeCategory::kContactInfo:
       return std::get<std::string>(identifier);
+    case MemoryDataTypeCategory::kLoyaltyCard:
+      return ValuableId(std::get<std::string>(identifier));
     case MemoryDataTypeCategory::kUnknown:
       return std::monostate();
   }
@@ -431,6 +434,8 @@ void AtMemoryManager::OnPopupShown(
     return;
   }
   if (!metadata.is_subpopup() && !popup_state_) {
+    // TODO(crbug.com/541160371): Address the case when the search statefulness
+    // is enabled and `state_manager_.field_id() != field_id `.
     const auto [form, field] = bam.FindFormAndField(form_id, field_id);
     const FormSignature form_signature =
         form ? form->form_signature() : FormSignature(0);
@@ -443,16 +448,22 @@ void AtMemoryManager::OnPopupShown(
     popup_state_.emplace();
     popup_state_->trigger_source = trigger_source;
     popup_state_->update_callback = std::move(update_callback);
-    popup_state_->metrics_recorder = std::make_unique<AtMemoryMetricsRecorder>(
-        client_->GetMqlsUploadService(), client_->GetUkmRecorder(),
-        ukm_source_id, client_->GetLastCommittedPrimaryMainFrameURL(),
-        client_->GetPageTitle(), field_id, form_signature, field_signature);
+    // With search statefulness, re-showing the popup on the same field
+    // continues the existing session.
+    if (!metrics_recorder()) {
+      state_manager_.SetMetricsRecorder(
+          std::make_unique<AtMemoryMetricsRecorder>(
+              client_->GetMqlsUploadService(), client_->GetUkmRecorder(),
+              ukm_source_id, client_->GetLastCommittedPrimaryMainFrameURL(),
+              client_->GetPageTitle(), field_id, form_signature,
+              field_signature));
+    }
     // TODO(crbug.com/535486238): Restart `fetching_timer` if search is still
     // in progress when reopening the popup.
   }
 
-  if (popup_state_ && popup_state_->metrics_recorder) {
-    popup_state_->metrics_recorder->OnPopupShown(trigger_source, metadata);
+  if (AtMemoryMetricsRecorder* recorder = metrics_recorder()) {
+    recorder->OnPopupShown(trigger_source, metadata);
   }
 }
 
@@ -477,8 +488,8 @@ bool AtMemoryManager::OnSearchSubmitted(const std::u16string& filter) {
   if (!popup_state_ || !IsAtMemoryTriggerSource(popup_state_->trigger_source)) {
     return false;
   }
-  if (popup_state_->metrics_recorder) {
-    popup_state_->metrics_recorder->OnQuerySubmitted(filter);
+  if (AtMemoryMetricsRecorder* recorder = metrics_recorder()) {
+    recorder->OnQuerySubmitted(filter);
   }
   ExecuteQuery(filter);
   return true;
@@ -489,6 +500,9 @@ void AtMemoryManager::OnPopupHidden() {
           features::kAutofillAtMemorySearchStatefulness)) {
     CancelPendingQueries();
     target_field_origin_ = url::Origin();
+    // Without search statefulness the metrics session ends with the popup.
+    // Destroying the recorder emits the session metrics.
+    state_manager_.TakeMetricsRecorder().reset();
   }
   popup_state_.reset();
 }
@@ -502,17 +516,15 @@ IsAsync AtMemoryManager::FillSearchResult(
         metadata) {
   const Suggestion::AtMemoryPayload& payload =
       suggestion.GetPayload<Suggestion::AtMemoryPayload>();
-  if (popup_state_ && popup_state_->metrics_recorder) {
-    popup_state_->metrics_recorder->OnSuggestionAccepted(
-        payload.memory_data_type, payload.sources_bitmask, metadata);
+  if (AtMemoryMetricsRecorder* recorder = metrics_recorder()) {
+    recorder->OnSuggestionAccepted(payload.memory_data_type,
+                                   payload.sources_bitmask, metadata);
   }
   // Transfer ownership of the metrics session to the filling path.
   // Ensures that the metrics will be properly recorded once the suggestion
   // is filled or one of the async steps in between fails.
-  std::unique_ptr<AtMemoryMetricsRecorder> metrics;
-  if (popup_state_) {
-    metrics = std::move(popup_state_->metrics_recorder);
-  }
+  std::unique_ptr<AtMemoryMetricsRecorder> metrics =
+      state_manager_.TakeMetricsRecorder();
 
   auto fill_now = [&]() {
     if (metrics) {
@@ -540,7 +552,8 @@ IsAsync AtMemoryManager::FillSearchResult(
                        },
                        [](std::monostate) { NOTREACHED(); },
                        [](const std::string&) { NOTREACHED(); },
-                       [](const EntityInstance::EntityId&) { NOTREACHED(); }},
+                       [](const EntityInstance::EntityId&) { NOTREACHED(); },
+                       [](const ValuableId&) { NOTREACHED(); }},
                    payload.identifier);
         return IsAsync(false);
       }
@@ -632,6 +645,13 @@ IsAsync AtMemoryManager::FillSearchResult(
         return fill_now();
       }
 
+      case MemoryDataType::kLoyaltyMembershipId:
+      case MemoryDataType::kLoyaltyMembershipProgram:
+      case MemoryDataType::kLoyaltyMembershipProvider: {
+        RecordLoyaltyCardUse(payload.identifier);
+        return fill_now();
+      }
+
       case MemoryDataType::kCreditCardNickname:
       case MemoryDataType::kIbanNickname:
       case MemoryDataType::kUnknown: {
@@ -687,6 +707,21 @@ void AtMemoryManager::RecordAutofillAiEntityUse(
       }
     }
   }
+}
+
+void AtMemoryManager::RecordLoyaltyCardUse(
+    const Suggestion::AtMemoryPayload::Identifier& identifier) {
+  ValuablesDataManager* vdm = client_->GetValuablesDataManager();
+  if (!vdm) {
+    return;
+  }
+
+  const ValuableId* valuable_id = std::get_if<ValuableId>(&identifier);
+  if (!valuable_id || valuable_id->value().empty()) {
+    return;
+  }
+
+  vdm->RecordLoyaltyCardUsed(*valuable_id, base::Time::Now());
 }
 
 bool AtMemoryManager::IsSearching() const {
@@ -986,10 +1021,8 @@ void AtMemoryManager::OnSearchResultsReceived(const std::u16string& query,
     CancelPendingQueries();
   }
 
-  // TODO(crbug.com/535486238): Handle metrics recording when background query
-  // finishes with the popup closed.
-  if (popup_state_ && popup_state_->metrics_recorder) {
-    popup_state_->metrics_recorder->OnQueryResponseReceived(result);
+  if (AtMemoryMetricsRecorder* recorder = metrics_recorder()) {
+    recorder->OnQueryResponseReceived(result);
   }
 
   const bool is_context_secure = client_->IsContextSecure();
@@ -1117,8 +1150,11 @@ void AtMemoryManager::FillCreditCard(
   }
 
   // TODO(crbug.com/497795513): Consider caching fetched cards.
+  // TODO(crbug.com/561395976): Propagate the `require_user_confirmation` flag
+  // from Java.
   credit_card_access_manager->FetchCreditCard(
       credit_card,
+      /*require_user_confirmation=*/false,
       base::BindOnce(
           [](base::WeakPtr<AtMemoryManager> manager,
              base::WeakPtr<BrowserAutofillManager> bam,

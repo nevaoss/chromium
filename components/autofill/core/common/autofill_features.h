@@ -359,6 +359,10 @@ BASE_DECLARE_FEATURE(kAutofillPersonalizationAndTrustAddressSurvey);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillPersonalizationAndTrustAutofillAiSurvey);
 COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillPersonalizationAndTrustCreditCardSurvey);
+COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillPersonalizationAndTrustOneTimePasswordSurvey);
+COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillPolicyControlledFeatureAutofill);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillPolicyControlledFeatureManualText);
@@ -372,6 +376,8 @@ COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillReplaceFormElementObserver);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillRequireFocusInFrameForSuggestions);
+COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillResetAcceptanceBarrierOnDataListUpdate);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillServerExperimentalSignatures);
 COMPONENT_EXPORT(AUTOFILL) BASE_DECLARE_FEATURE(kAutofillServerUploadMoreData);

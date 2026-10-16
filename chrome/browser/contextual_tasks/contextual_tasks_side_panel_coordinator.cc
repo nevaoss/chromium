@@ -333,6 +333,29 @@ ContextualTasksPanelController* ContextualTasksPanelController::From(
       window->GetUnownedUserDataHost());
 }
 
+// static
+bool ContextualTasksPanelController::IsWebContentsInPanel(
+    content::WebContents* web_contents) {
+  if (!web_contents) {
+    return false;
+  }
+  BrowserWindowInterface* browser =
+      webui::GetBrowserWindowInterface(web_contents);
+  if (!browser) {
+    return false;
+  }
+  auto* controller = From(browser);
+  if (!controller) {
+    return false;
+  }
+  for (auto* wc : controller->GetPanelWebContentsList()) {
+    if (wc == web_contents) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void ContextualTasksSidePanelCoordinator::RecordTimeToFirstContentfulPaint(
     content::WebContents* web_contents) {
   if (!web_contents) {
@@ -1135,8 +1158,14 @@ void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents(
     ui_service->SetInitialEntryPointForTask(task_id, entry_point);
     GURL url;
     if (IsContextualTasksSidePanelRearchitectureEnabled()) {
-      url = ui_service->GetInitialUrlForTask(task_id).value_or(
-          GURL("about:blank"));
+      if (std::optional<GURL> initial_url =
+              ui_service->GetInitialUrlForTask(task_id)) {
+        url = *initial_url;
+      } else if (ui_service->IsTaskWaitingForUrl(task_id)) {
+        url = GURL("about:blank");
+      } else {
+        url = ui_service->GetDefaultAiPageUrlForTask(task_id);
+      }
     } else {
       url = ui_service->GetContextualTaskUrlForTask(task_id);
     }

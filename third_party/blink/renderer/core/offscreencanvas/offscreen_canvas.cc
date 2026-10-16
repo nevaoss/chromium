@@ -475,9 +475,7 @@ DOMMatrix* OffscreenCanvas::getElementTransform(
       return nullptr;
     }
     gfx::Transform transform = GetElementTransform(
-        paint_record->paint_state, Size(), draw_transform->Matrix(),
-        RuntimeEnabledFeatures::ElementCanvasTransformEnabled(
-            GetExecutionContext()));
+        paint_record->paint_state, Size(), draw_transform->Matrix());
     return MakeGarbageCollected<DOMMatrix>(transform,
                                            transform.Is2dTransform());
   }
@@ -1070,7 +1068,7 @@ void OffscreenCanvas::Trace(Visitor* visitor) const {
   visitor->Trace(execution_context_);
   CanvasRenderingContextHost::Trace(visitor);
   EventTarget::Trace(visitor);
-  CanvasRenderingContextHost::Trace(visitor);
+  CanvasResourceDispatcherClient::Trace(visitor);
 }
 
 }  // namespace blink

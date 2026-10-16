@@ -23,6 +23,7 @@
 #include "gpu/ipc/client/client_shared_image_interface.h"
 #include "third_party/blink/public/platform/web_graphics_shared_image_interface_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_2d_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_snapshot_info.h"
 #include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
@@ -30,6 +31,7 @@
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
+#include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/skia/include/core/SkAlphaType.h"
@@ -48,7 +50,6 @@ class Size;
 }  // namespace gfx
 
 namespace gpu {
-class RasterScopedAccess;
 namespace raster {
 class RasterInterface;
 }  // namespace raster
@@ -57,7 +58,6 @@ class RasterInterface;
 namespace blink {
 
 class CanvasImageProvider;
-class CanvasResourceProviderDelegate;
 class WebGraphicsSharedImageInterfaceProvider;
 
 class PLATFORM_EXPORT CanvasNon2DResourceProvider
@@ -243,9 +243,6 @@ class PLATFORM_EXPORT CanvasNon2DResourceProvider
 
   SkSurfaceProps GetSkSurfaceProps() const;
 
-  void EnsureWriteAccess();
-  void EndWriteAccess();
-
   scoped_refptr<CanvasResourceSharedImage> NewOrRecycledResource();
 
   // FlushForImageObserver implementation:
@@ -274,19 +271,17 @@ class PLATFORM_EXPORT CanvasNon2DResourceProvider
   // BitmapGpuChannelLostObserver implementation.
   void OnGpuChannelLost() override;
 
-  bool ShouldReplaceTargetBuffer(
-      PaintImage::ContentId content_id = PaintImage::kInvalidContentId);
+  bool ShouldReplaceTargetBuffer(PaintImage::ContentId content_id);
   void FlushRecording(cc::PaintRecord last_recording);
 
   void EnsureResourceReadyForDraw();
-  std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
 
   const gfx::Size size_;
   const viz::SharedImageFormat format_;
   const SkAlphaType alpha_type_;
   const gfx::ColorSpace color_space_;
   const gfx::HDRMetadata hdr_metadata_;
-  const raw_ptr<CanvasResourceProviderDelegate> delegate_;
+  const WeakPersistent<CanvasResourceProviderDelegate> delegate_;
 
   const bool is_software_;
 
@@ -305,8 +300,6 @@ class PLATFORM_EXPORT CanvasNon2DResourceProvider
   std::unique_ptr<gpu::SharedImagePool<CanvasResourceSharedImage>> image_pool_;
 
   scoped_refptr<CanvasResourceSharedImage> resource_;
-
-  bool current_resource_has_write_access_ = false;
 
   cc::PaintImage::ContentId cached_content_id_ =
       cc::PaintImage::kInvalidContentId;

@@ -20,6 +20,7 @@
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/tool_controller.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
+#import "ios/chrome/browser/intelligence/actor/tools/utils/actor_tool_utils.h"
 #import "ios/chrome/browser/intelligence/actor/tools/utils/logging_util.h"
 
 namespace actor {
@@ -27,27 +28,33 @@ namespace actor {
 namespace {
 
 // Evaluates the destination against the Actor Safety List component data.
-origin_gating::Decision EvaluateSafetyListPredicate(
+void EvaluateSafetyListPredicate(
     origin_gating::GatingDecisionContext* context,
-    const origin_gating::GateableEvent& event) {
+    const origin_gating::GateableEvent& event,
+    base::OnceCallback<void(origin_gating::Decision)> callback) {
   actor::SafetyListManager* safety_list_manager =
       actor::SafetyListManager::GetInstance();
   if (!safety_list_manager) {
-    return origin_gating::Decision::kNoDecision;
+    std::move(callback).Run(origin_gating::Decision::kNoDecision);
+    return;
   }
 
   const GURL& destination = event.destination();
   const GURL& effective_source = event.source() && !event.source()->is_empty()
                                      ? *event.source()
                                      : destination;
-  switch (safety_list_manager->Find(effective_source, destination)) {
-    case actor::SafetyListManager::Decision::kAllow:
-      return origin_gating::Decision::kAllowed;
-    case actor::SafetyListManager::Decision::kBlock:
-      return origin_gating::Decision::kBlocked;
-    case actor::SafetyListManager::Decision::kNone:
-      return origin_gating::Decision::kNoDecision;
-  }
+  safety_list_manager->Find(
+      effective_source, destination,
+      base::BindOnce([](actor::SafetyListManager::Decision decision) {
+        switch (decision) {
+          case actor::SafetyListManager::Decision::kAllow:
+            return origin_gating::Decision::kAllowed;
+          case actor::SafetyListManager::Decision::kBlock:
+            return origin_gating::Decision::kBlocked;
+          case actor::SafetyListManager::Decision::kNone:
+            return origin_gating::Decision::kNoDecision;
+        }
+      }).Then(std::move(callback)));
 }
 
 // Returns the string representation of the ActorEngine::State.
@@ -98,8 +105,12 @@ void LogActStart(
     const std::vector<std::unique_ptr<ActorToolRequest>>& actions) {
   std::vector<std::pair<std::string, std::string>> details;
   for (size_t i = 0; i < actions.size(); ++i) {
-    details.push_back({base::StringPrintf("Actions[%zu]", i),
-                       base::StringPrintf("Tool %zu", i)});
+    std::string tool_name =
+        actions[i] ? std::string(ActorActionCaseToToolName(
+                                     actions[i]->action().action_case())
+                                     .value_or("unknown tool"))
+                   : "null tool";
+    details.push_back({base::StringPrintf("Actions[%zu]", i), tool_name});
   }
   LogJournalEvent(journal, GURL(), task_id, "ExecutionEngine::Act", details);
 }

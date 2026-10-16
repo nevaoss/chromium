@@ -169,12 +169,12 @@ import java.util.function.Consumer;
  * https://crrev.com/c/7637775/comment/33ae0a47_b5b73afc
  */
 @RunWith(ParameterizedRobolectricTestRunner.class)
-@EnableFeatures(ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES)
 @DisableFeatures({
     ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT,
     ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP,
     ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_DIALOG
 })
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class BookmarkManagerMediatorTest {
 
     @Rule(order = Rule.DEFAULT_ORDER - 1)

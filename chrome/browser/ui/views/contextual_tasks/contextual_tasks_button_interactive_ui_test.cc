@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
@@ -61,6 +62,7 @@
 #include "net/base/url_util.h"
 #include "net/dns/mock_host_resolver.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_solid_color.h"
 
@@ -535,6 +537,24 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+                       ButtonDoesNotShowOnNewTabOpenedFromClosedPanelTab) {
+  RunTestSequence(
+      SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
+      SelectTab(kTabStripElementId, 0),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      Do([&]() {
+        chrome::AddSelectedTabWithURL(browser(), GetTestURL(),
+                                      ui::PAGE_TRANSITION_LINK);
+      }),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      SelectTab(kTabStripElementId, 0),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
                        RapidTabSwitchDuringButtonAnimationDoesNotCrash) {
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
@@ -919,6 +939,39 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonPromoInteractiveTest,
       PressButton(kContextualTasksEphemeralToolbarButtonElementId),
       WaitForHide(
           user_education::HelpBubbleView::kHelpBubbleElementIdForTesting));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonPromoInteractiveTest,
+                       PromoAbortsWhenButtonHides) {
+  RunTestSequence(
+      SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
+      AddInstrumentedTab(kSecondTab, GetTestURL()),
+      SelectTab(kTabStripElementId, 0),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      // If the button hides before its show animation completes (e.g. task is
+      // disassociated immediately on close), the promo should not be requested.
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(), RemoveTaskFromTab(0),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      CheckPromoRequested(
+          feature_engagement::kIPHContextualTasksEphemeralToolbarButtonFeature,
+          false),
+      EnsureNotPresent(
+          user_education::HelpBubbleView::kHelpBubbleElementIdForTesting),
+      // When the button stays visible long enough for the show animation to
+      // finish, the promo appears and is aborted if the button later hides.
+      CreateTaskForTab(0), SimulateOpeningContextualTaskSidePanel(),
+      SimulateClosingContextualTaskSidePanel(),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      WaitForPromo(
+          feature_engagement::kIPHContextualTasksEphemeralToolbarButtonFeature),
+      RemoveTaskFromTab(0),
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId),
+      WaitForHide(
+          user_education::HelpBubbleView::kHelpBubbleElementIdForTesting),
+      CheckPromoActive(
+          feature_engagement::kIPHContextualTasksEphemeralToolbarButtonFeature,
+          false));
 }
 
 class ContextualTasksEphemeralBrandedButtonInteractiveTest

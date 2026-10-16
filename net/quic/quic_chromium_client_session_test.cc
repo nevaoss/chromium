@@ -2416,10 +2416,72 @@ TEST_P(QuicChromiumClientSessionTest, MaybeCancelProbing_InFlightAttemptFails) {
       false, 1);
   histogram_tester.ExpectUniqueSample(
       "Net.Quic.Migration.Attempt.FailureReason",
-      QuicMigrationAttemptFailureReason::kProbeFailed, 1);
+      QuicMigrationAttemptFailureReason::kProbeWriteError, 1);
   histogram_tester.ExpectUniqueSample(
       "Net.Quic.Migration.Attempt.FailureReason.ByTrigger.OnNetworkMadeDefault",
-      QuicMigrationAttemptFailureReason::kProbeFailed, 1);
+      QuicMigrationAttemptFailureReason::kProbeWriteError, 1);
+  histogram_tester.ExpectTotalCount(
+      "Net.Quic.Migration.Attempt.SpuriousOutcome", 0);
+  histogram_tester.ExpectTotalCount(
+      "Net.Quic.Migration.Attempt.UnclassifiedOutcome", 0);
+  histogram_tester.ExpectUniqueSample("Net.QuicSession.ConnectionMigration",
+                                      MIGRATION_STATUS_INTERNAL_ERROR, 1);
+}
+
+// A probe that cannot even be started because the connection has no unused
+// connection ID must be attributed to kNoUnusedConnectionId, not to the
+// kProbeUnknownFailure catch-all. QuicConnection::ValidatePath() takes an early
+// return in this case and invokes the result delegate directly, without going
+// through QuicPathValidator.
+TEST_P(QuicChromiumClientSessionTest, ProbingFailsWithNoUnusedConnectionId) {
+  MockQuicData quic_data(version_);
+  int packet_num = 1;
+  socket_data_.reset();
+  quic_data.AddWrite(SYNCHRONOUS,
+                     client_maker_.MakeInitialSettingsPacket(packet_num++));
+  quic_data.AddRead(ASYNC, ERR_IO_PENDING);
+  quic_data.AddRead(ASYNC, ERR_CONNECTION_CLOSED);
+  quic_data.AddSocketDataToFactory(&socket_factory_);
+  Initialize();
+  CompleteCryptoHandshake();
+
+  // Note: unlike MaybeCancelProbing_InFlightAttemptFails above, the server
+  // never sends a NEW_CONNECTION_ID frame, so there is no unused connection ID
+  // to consume for the alternative path.
+  ASSERT_FALSE(session_->connection()->HasUnusedConnectionId());
+
+  MockRead reads[] = {MockRead(SYNCHRONOUS, ERR_IO_PENDING, 0)};
+  SequencedSocketData socket_data(reads, base::span<MockWrite>());
+  auto context = CreateMigrationAttemptContext(
+      QuicMigrationAttemptCause::kOnNetworkMadeDefault, &socket_data);
+
+  IPEndPoint local_address;
+  context->reader()->socket()->GetLocalAddress(&local_address);
+
+  auto path_validation_context = std::make_unique<
+      QuicChromiumClientSession::QuicChromiumPathValidationContext>(
+      ToQuicSocketAddress(local_address), std::move(context));
+
+  base::HistogramTester histogram_tester;
+  // ValidatePath() fails the validation synchronously.
+  session_->connection()->ValidatePath(
+      std::move(path_validation_context),
+      std::make_unique<QuicChromiumClientSession::
+                           ConnectionMigrationValidationResultDelegate>(
+          session_.get()),
+      quic::PathValidationReason::kConnectionMigration);
+
+  histogram_tester.ExpectUniqueSample("Net.Quic.Migration.Attempt.Eligible",
+                                      false, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Net.Quic.Migration.Attempt.Eligible.ByTrigger.OnNetworkMadeDefault",
+      false, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Net.Quic.Migration.Attempt.FailureReason",
+      QuicMigrationAttemptFailureReason::kNoUnusedConnectionId, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Net.Quic.Migration.Attempt.FailureReason.ByTrigger.OnNetworkMadeDefault",
+      QuicMigrationAttemptFailureReason::kNoUnusedConnectionId, 1);
   histogram_tester.ExpectTotalCount(
       "Net.Quic.Migration.Attempt.SpuriousOutcome", 0);
   histogram_tester.ExpectTotalCount(
@@ -2549,9 +2611,9 @@ TEST_P(QuicChromiumClientSessionTest, MaybeCancelProbing_SupersededReason) {
                                QuicMigrationAttemptCause::kOnWriteError);
 
   histogram_tester.ExpectTotalCount("Net.Quic.Migration.Attempt.Eligible", 0);
-  histogram_tester.ExpectUniqueSample(
-      "Net.Quic.Migration.Attempt.Superseded",
-      QuicMigrationAttemptCause::kOnWriteError, 1);
+  histogram_tester.ExpectUniqueSample("Net.Quic.Migration.Attempt.Superseded",
+                                      QuicMigrationAttemptCause::kOnWriteError,
+                                      1);
   histogram_tester.ExpectTotalCount("Net.Quic.Migration.Attempt.FailureReason",
                                     0);
   histogram_tester.ExpectTotalCount(
@@ -4267,6 +4329,62 @@ TEST_P(QuicChromiumClientSessionTest,
   histogram_tester.ExpectTotalCount(
       "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Used",
       0);
+}
+
+TEST_P(QuicChromiumClientSessionTest, SupersededReasonMapping) {
+  constexpr QuicMigrationAttemptCause kCauses[] = {
+      QuicMigrationAttemptCause::kUnknown,
+      QuicMigrationAttemptCause::kOnNetworkDisconnected,
+      QuicMigrationAttemptCause::kOnWriteError,
+      QuicMigrationAttemptCause::kOnNetworkMadeDefault,
+      QuicMigrationAttemptCause::kOnMigrateBackToDefaultNetwork,
+      QuicMigrationAttemptCause::kChangeNetworkOnPathDegrading,
+      QuicMigrationAttemptCause::kChangePortOnPathDegrading,
+      QuicMigrationAttemptCause::kNewNetworkConnectedPostPathDegrading,
+      QuicMigrationAttemptCause::kOnServerPreferredAddressAvailable,
+      QuicMigrationAttemptCause::kMultiPortPath,
+  };
+
+  for (QuicMigrationAttemptCause cause : kCauses) {
+    quic::PathValidationFailure::Reason reason =
+        QuicChromiumClientSession::ChromiumMigrationCauseToQuicheFailureReason(
+            cause);
+    EXPECT_EQ(
+        QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+            reason),
+        cause);
+  }
+
+  // Non-superseded reasons should return kUnknown.
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::kUnknown),
+      QuicMigrationAttemptCause::kUnknown);
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::kStatelessReset),
+      QuicMigrationAttemptCause::kUnknown);
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::kRetryTimeout),
+      QuicMigrationAttemptCause::kUnknown);
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::kNotConnected),
+      QuicMigrationAttemptCause::kUnknown);
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::kNoAvailableConnectionId),
+      QuicMigrationAttemptCause::kUnknown);
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::kWriterError),
+      QuicMigrationAttemptCause::kUnknown);
+  EXPECT_EQ(
+      QuicChromiumClientSession::QuicheFailureReasonToChromiumMigrationCause(
+          quic::PathValidationFailure::Reason::
+              kNewerValidationOnNetworkConnected),
+      QuicMigrationAttemptCause::kUnknown);
 }
 
 }  // namespace

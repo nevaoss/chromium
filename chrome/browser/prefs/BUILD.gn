@@ -185,6 +185,7 @@ source_set("impl") {
     "//components/segmentation_platform/embedder/default_model",
     "//components/signin/core/browser",
     "//components/site_engagement/content",
+    "//components/site_token_provider",
     "//components/skills/public",
     "//components/subresource_filter/content/browser",
     "//components/subresource_filter/core/common",
@@ -386,6 +387,7 @@ source_set("impl") {
   } else {
     deps += [
       "//chrome/browser/actor/ui",
+      "//chrome/browser/child_module",
       "//chrome/browser/desktop_to_mobile_promos:utils",
       "//chrome/browser/device_identity",
       "//chrome/browser/new_tab_page",
@@ -424,9 +426,11 @@ source_set("impl") {
   if (enable_extensions) {
     deps += [
       "//chrome/browser/apps/platform_apps",
-      "//extensions/browser/api/audio",
       "//extensions/browser/api/runtime",
     ]
+    if (is_chromeos) {
+      deps += [ "//extensions/browser/api/audio" ]
+    }
   }
 
   if (enable_extensions_core) {

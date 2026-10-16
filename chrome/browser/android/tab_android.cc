@@ -26,7 +26,6 @@
 #include "cc/slim/layer.h"
 #include "chrome/browser/android/background_tab_manager.h"
 #include "chrome/browser/android/compositor/tab_content_manager.h"
-#include "chrome/browser/android/media_state_observer.h"
 #include "chrome/browser/android/selection/chrome_selection_dropdown_menu_delegate.h"
 #include "chrome/browser/android/tab_features.h"
 #include "chrome/browser/android/tab_web_contents_delegate_android.h"
@@ -407,7 +406,7 @@ void TabAndroid::InitWebContents(
                                                        this);
   web_contents_delegate_ =
       std::make_unique<android::TabWebContentsDelegateAndroid>(
-          env, jweb_contents_delegate);
+          env, jweb_contents_delegate, web_contents_.get());
   web_contents_->SetDelegate(web_contents_delegate_.get());
   web_contents_->SetSelectionPopupDelegate(
       std::make_unique<android::ChromeSelectionDropdownMenuDelegate>());
@@ -460,7 +459,6 @@ void TabAndroid::InitWebContents(
   // Shows a warning notification for dangerous flags in about:flags.
   ShowBadFlagsPrompt(web_contents_.get());
 
-  MediaStateObserver::CreateForWebContents(web_contents_.get());
   if (glic::GlicEnabling::IsProfileEligible(profile())) {
     glic_tab_indicator_helper_ =
         std::make_unique<glic::GlicTabIndicatorHelper>(this);
@@ -548,7 +546,7 @@ void TabAndroid::UpdateDelegates(
       ->SetPopulatorFactory(jcontext_menu_populator_factory);
   web_contents_delegate_ =
       std::make_unique<android::TabWebContentsDelegateAndroid>(
-          env, jweb_contents_delegate);
+          env, jweb_contents_delegate, web_contents());
   web_contents()->SetDelegate(web_contents_delegate_.get());
 }
 

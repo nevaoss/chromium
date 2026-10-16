@@ -438,25 +438,6 @@ const base::FeatureParam<bool> kGlicActorIncrementalTypingClearAutoSelection{
     &kGlicActorIncrementalTyping,
     "glic-actor-incremental-typing-clear-auto-selection", false};
 
-constexpr base::FeatureParam<std::string> kGlicActorEligibleTiers{
-    &kGlicActor, "glic-actor-eligible-tiers", "1,2"};
-
-constexpr base::FeatureParam<GlicActorEnterprisePrefDefault>::Option
-    kGlicActorEnterprisePrefDefaultOptions[] = {
-        {GlicActorEnterprisePrefDefault::kEnabledByDefault,
-         "enabled_by_default"},
-        {GlicActorEnterprisePrefDefault::kDisabledByDefault,
-         "disabled_by_default"},
-        {GlicActorEnterprisePrefDefault::kForcedDisabled, "forced_disabled"},
-};
-
-BASE_FEATURE_ENUM_PARAM(GlicActorEnterprisePrefDefault,
-                        kGlicActorEnterprisePrefDefault,
-                        &kGlicActor,
-                        "glic_actor_enterprise_pref_default",
-                        GlicActorEnterprisePrefDefault::kDisabledByDefault,
-                        &kGlicActorEnterprisePrefDefaultOptions);
-
 const base::FeatureParam<bool> kGlicActorPolicyControlExemption{
     &kGlicActor, "glic_actor_policy_control_exemption", false};
 
@@ -994,8 +975,6 @@ const base::FeatureParam<bool> kGlicButtonCustomThemeFallback{
     &kGlicButtonPressedState, "custom-theme-fallback", true};
 
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicShareImageNoNewConversation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWebActuationSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1343,10 +1322,8 @@ const base::FeatureParam<base::TimeDelta> kIndigoGeneratedImageCacheLifetime{
 // images.
 BASE_FEATURE(kIndigoContextMenuCopy, base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.
 BASE_FEATURE(kInstantUsesSpareRenderer, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables Isolated Web App Developer Mode, which allows developers to
 // install untrusted Isolated Web Apps.
@@ -1472,6 +1449,11 @@ const base::FeatureParam<std::string> kIndigoComponentAttribute{
 BASE_FEATURE(kInitialWebUIWithoutSpellCheckForNtp,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, the initial WebUI skips language detection initialization on
+// startup for NTP.
+BASE_FEATURE(kInitialWebUIWithoutTranslateForNtp,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kSystemNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When kNoReferrers is enabled, most HTTP requests will provide empty
@@ -1541,11 +1523,6 @@ BASE_FEATURE(kSafetyHubThreeDotDetails, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSafetyHubDisruptiveNotificationRevocation,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-constexpr base::FeatureParam<bool>
-    kSafetyHubDisruptiveNotificationRevocationShadowRun{
-        &kSafetyHubDisruptiveNotificationRevocation,
-        /*name=*/"shadow_run", /*default_value=*/false};
 
 #if BUILDFLAG(IS_ANDROID)
 constexpr base::FeatureParam<int>
@@ -1917,7 +1894,7 @@ BASE_FEATURE(kWebAppPeriodicPreinstallUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebAppMigratePreinstalledChat, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kWebAppInstallDialog, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebAppInstallDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kWebAppInstallDialogWinPin, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When this feature is enabled, the web app sync code will process the

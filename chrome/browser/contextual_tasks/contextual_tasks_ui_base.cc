@@ -4,6 +4,7 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_base.h"
 
+#include "base/strings/strcat.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_permission_controller.h"
@@ -37,6 +38,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "mojo/public/mojom/base/error.mojom.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
@@ -49,6 +51,9 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/grit/contextual_tasks_extension_resources.h"
 #include "chrome/grit/contextual_tasks_extension_resources_map.h"
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h"
+#endif
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -151,6 +156,10 @@ content::WebUIDataSource* ContextualTasksUIBase::RegisterWebUIDataSource(
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::MediaSrc,
       "media-src blob: data: 'self';");
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::TrustedTypes,
+      base::StrCat(
+          {webui::kDefaultTrustedTypesPolicies, " composebox-input;"}));
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   source->AddResourcePaths(kGuestViewSharedResources);
@@ -235,6 +244,9 @@ base::DictValue ContextualTasksUIBase::GetContextualTasksLoadTimeData(
   dict.Set(
       "contextManagementInComposeboxEnabled",
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
+  dict.Set(
+      "composeboxSkillsEnabled",
+      base::FeatureList::IsEnabled(omnibox::kComposeboxSkillsContextualTasks));
   dict.Set("webuiRoundedIconsEnabled", features::IsWebUIRoundedIconsEnabled());
 
   AimEligibilityService* aim_eligibility_service =
@@ -338,6 +350,27 @@ void ContextualTasksUIBase::OpenFeedbackUi() {
           ContextualTasksUiServiceFactory::GetForBrowserContext(GetProfile())) {
     ui_service->OpenFeedbackUi(browser, page_url);
   }
+}
+
+void ContextualTasksUIBase::MoveTaskUiToNewTab() {
+  // Base implementation is a no-op; overridden by ContextualTasksUI.
+}
+
+void ContextualTasksUIBase::ShowThreadHistory() {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+  lens::ClientToAimMessage message;
+  message.mutable_open_threads_view()->mutable_payload();
+
+  if (auto* panel_controller = GetPanelController()) {
+    if (auto* active_contents = panel_controller->GetActiveWebContents()) {
+      if (auto* extension_handler =
+              ContextualTasksExtensionHandler::FromWebContents(
+                  active_contents)) {
+        extension_handler->PostAimMessage(message);
+      }
+    }
+  }
+#endif
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -496,5 +529,11 @@ void ContextualTasksUIBase::OnChipPointerEntered(
 
 void ContextualTasksUIBase::OnChipPointerExited(
     toolbar_ui_api::mojom::LhsChipIdentifier identifier) {}
+
+void ContextualTasksUIBase::NotifyAiPageStatusChanged(bool is_ai_page) {
+  if (auto* toolbar_page = GetToolbarPageRemote()) {
+    toolbar_page->OnAiPageStatusChanged(is_ai_page);
+  }
+}
 
 }  // namespace contextual_tasks

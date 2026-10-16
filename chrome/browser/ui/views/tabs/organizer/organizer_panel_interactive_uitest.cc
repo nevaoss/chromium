@@ -182,13 +182,6 @@ class OrganizerPanelUiTest : public InteractiveBrowserTest {
     return steps;
   }
 
-  auto ExpandOnHover() {
-    auto steps =
-        Steps(MoveMouseTo(kTabStripRegionElementId), WaitForExpandOnHover());
-    AddDescriptionPrefix(steps, "ExpandOnHover()");
-    return steps;
-  }
-
   auto WaitForPanelOpen() {
     auto steps = Steps(
         InParallel(RunSubsequence(WaitForEvent(kBrowserViewElementId,
@@ -497,8 +490,11 @@ IN_PROC_BROWSER_TEST_F(OrganizerPanelUiTest,
                        AppearsInTabStripWhenVerticalTabsExpandOnHover) {
   RunTestSequence(
       SetVerticalTabsEnabled(true, /*expand_on_hover_enabled=*/true),
-      CollapseTabStrip(), ExpandOnHover(), OpenOrganizerPanel(),
-      ExpectPanelLocation(OrganizerPanelLocation::kVerticalTabStrip),
+      CollapseTabStrip(),
+      InParallel(RunSubsequence(OpenOrganizerPanel(),
+                                ExpectPanelLocation(
+                                    OrganizerPanelLocation::kVerticalTabStrip)),
+                 RunSubsequence(WaitForExpandOnHover())),
       CheckPanelVisuals(tabs::kVerticalTabStripDefaultUncollapsedWidth, false));
 }
 
@@ -588,7 +584,7 @@ class OrganizerPanelPixelTest : public OrganizerPanelUiTest {
   // consistency. Remember to add any tests which use this to the file
   // `pixel_tests.filter`.
   auto ScreenshotPanel() {
-    constexpr std::string kBaselineCL = "8451947";
+    constexpr std::string kBaselineCL = "8477611";
     auto steps = Steps(
         WaitForPanelLoad(),
         SetOnIncompatibleAction(OnIncompatibleAction::kSkipTest,
@@ -642,4 +638,10 @@ IN_PROC_BROWSER_TEST_F(OrganizerPanelPixelTest, VerticalTabsWithTray) {
   RunTestSequence(SetVerticalTabsEnabled(true),
                   ResizeVerticalTabsRegionToWidth(kVerticalTabsRegionWidth),
                   OpenOrganizerPanel(), ScreenshotPanel());
+}
+
+IN_PROC_BROWSER_TEST_F(OrganizerPanelPixelTest, VerticalTabsCollapsedWithTray) {
+  RunTestSequence(
+      SetVerticalTabsEnabled(true, /*expand_on_hover_enabled=*/false),
+      OpenOrganizerPanel(), ScreenshotPanel());
 }

@@ -149,7 +149,6 @@
 #import "ios/chrome/browser/qr_scanner/coordinator/qr_scanner_legacy_coordinator.h"
 #import "ios/chrome/browser/reader_mode/coordinator/reader_mode_blur_overlay_coordinator.h"
 #import "ios/chrome/browser/reader_mode/coordinator/reader_mode_coordinator.h"
-#import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_browser_agent.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_browser_agent_delegate.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_tab_helper.h"
@@ -513,9 +512,6 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
 
   // The coordinator for the notifications opt-in screen.
   NotificationsOptInCoordinator* _notificationsOptInCoordinator;
-
-  // The coordinator showing the multimodal composebox menu.
-  ComposeboxMenuCoordinator* _composeboxMenuCoordinator;
 
 }
 
@@ -1814,10 +1810,6 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
       dismissVirtualCardEnrollmentBottomSheet];
 }
 
-- (void)resetAutofillSuggestionsLoadingStates {
-  [self.formInputAccessoryCoordinator resetLoadingStates];
-}
-
 - (void)showOmniboxPositionChoice {
   if (!_omniboxPositionChoiceCoordinator) {
     _omniboxPositionChoiceCoordinator =
@@ -1960,27 +1952,9 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
   [_signinCoordinator start];
 }
 
-- (void)showMultimodalActionsMenu {
-  if (IsComposeboxPlusButtonBottomSheet()) {
-    [_composeboxMenuCoordinator stop];
-    _composeboxMenuCoordinator = [[ComposeboxMenuCoordinator alloc]
-        initWithBaseViewController:self.viewController
-                           browser:self.browser
-                        entrypoint:ComposeboxEntrypoint::kNTPPlusButton];
-    [_composeboxMenuCoordinator start];
-  } else {
-    [self showComposeboxFromEntrypoint:ComposeboxEntrypoint::kNTPPlusButton
-                             withQuery:nil];
-  }
-}
-
 - (void)dismissMultimodalActionsMenu {
-  if (_composeboxMenuCoordinator) {
-    [_composeboxMenuCoordinator stop];
-    _composeboxMenuCoordinator = nil;
-  } else {
-    [_composeboxCoordinator hideComposeboxMenu];
-  }
+  [_composeboxCoordinator hideComposeboxMenu];
+  [_omniboxCommandsHandler dismissOmniboxMultimodalActionsMenu];
 }
 
 - (void)showComposebox {
@@ -2936,7 +2910,9 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
 }
 
 - (void)showHomeBackgroundCustomizationPromoWithUIHandler:
-    (id<PromosManagerUIHandler>)promosUIHandler {
+            (id<PromosManagerUIHandler>)promosUIHandler
+                                shouldAlertFETOfDismissal:
+                                    (BOOL)shouldAlertFETOfDismissal {
   // The promos manager tries to check if the current page is an NTP before
   // showing the promo, but asynchronous navigation can cause that to be
   // incorrect.
@@ -2945,7 +2921,9 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
     return;
   }
   [_NTPCoordinator
-      showHomeBackgroundCustomizationPromoWithUIHandler:promosUIHandler];
+      showHomeBackgroundCustomizationPromoWithUIHandler:promosUIHandler
+                              shouldAlertFETOfDismissal:
+                                  shouldAlertFETOfDismissal];
 }
 
 #pragma mark - WebNavigationNTPDelegate

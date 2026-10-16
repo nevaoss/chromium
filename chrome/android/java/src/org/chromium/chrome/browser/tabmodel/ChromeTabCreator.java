@@ -99,92 +99,6 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
         mCompositorViewHolderSupplier = compositorViewHolderSupplier;
     }
 
-    /**
-     * Converts a tabLaunchType to a histogram TabLaunchType key used in
-     * Android.Tab.CreateNewTabDuration.{TabLaunchType} histogram. These must be kept in sync.
-     */
-    private static String tabLaunchTypeToHistogramKey(@TabLaunchType Integer tabLaunchType) {
-        switch (tabLaunchType) {
-            case TabLaunchType.FROM_LINK:
-                return "Link";
-            case TabLaunchType.FROM_EXTERNAL_APP:
-                return "ExternalApp";
-            case TabLaunchType.FROM_CHROME_UI:
-                return "ChromeUI";
-            case TabLaunchType.FROM_RESTORE:
-                return "Restore";
-            case TabLaunchType.FROM_LONGPRESS_FOREGROUND:
-                return "LongressForeground";
-            case TabLaunchType.FROM_LONGPRESS_BACKGROUND:
-                return "LongpressBackground";
-            case TabLaunchType.FROM_REPARENTING:
-                return "Reparenting";
-            case TabLaunchType.FROM_LAUNCHER_SHORTCUT:
-                return "LauncherShortcut";
-            case TabLaunchType.FROM_SPECULATIVE_BACKGROUND_CREATION:
-                return "SpeculativeBackgroundCreation";
-            case TabLaunchType.FROM_BROWSER_ACTIONS:
-                return "BrowserActions";
-            case TabLaunchType.FROM_LAUNCH_NEW_INCOGNITO_TAB:
-                return "NewIncognitoTab";
-            case TabLaunchType.FROM_STARTUP:
-                return "Startup";
-            case TabLaunchType.FROM_SESSION_STARTUP_WITH_URLS_PREF:
-                return "SessionStartupWithUrlsPref";
-            case TabLaunchType.FROM_START_SURFACE:
-                return "StartSurface";
-            case TabLaunchType.FROM_TAB_GROUP_UI:
-                return "TabGroupUI";
-            case TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP:
-                return "LongpressBackgroundInGroup";
-            case TabLaunchType.FROM_APP_WIDGET:
-                return "AppWidget";
-            case TabLaunchType.FROM_LONGPRESS_INCOGNITO:
-                return "LongpressIncognito";
-            case TabLaunchType.FROM_RECENT_TABS:
-                return "RecentTabs";
-            case TabLaunchType.FROM_READING_LIST:
-                return "ReadingList";
-            case TabLaunchType.FROM_TAB_SWITCHER_UI:
-                return "TabSwitcherUI";
-            case TabLaunchType.FROM_RESTORE_TABS_UI:
-                return "RestoreTabsUI";
-            case TabLaunchType.FROM_OMNIBOX:
-                return "Omnibox";
-            case TabLaunchType.FROM_OMNIBOX_BACKGROUND:
-                return "OmniboxBackground";
-            case TabLaunchType.UNSET:
-                return "Unset";
-            case TabLaunchType.FROM_SYNC_BACKGROUND:
-                return "SyncBackground";
-            case TabLaunchType.FROM_RECENT_TABS_FOREGROUND:
-                return "RecentTabsForeground";
-            case TabLaunchType.FROM_COLLABORATION_BACKGROUND_IN_GROUP:
-                return "CollaborationBackgroundInGroup";
-            case TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND:
-                return "BookmarkBarBackground";
-            case TabLaunchType.FROM_REPARENTING_BACKGROUND:
-                return "ReparentingBackground";
-            case TabLaunchType.FROM_HISTORY_NAVIGATION_BACKGROUND:
-                return "HistoryNavigationBackground";
-            case TabLaunchType.FROM_HISTORY_NAVIGATION_FOREGROUND:
-                return "HistoryNavigationBackground";
-            case TabLaunchType.FROM_LONGPRESS_FOREGROUND_IN_GROUP:
-                return "LongpressForegroundInGroup";
-            case TabLaunchType.FROM_TAB_LIST_INTERFACE:
-                return "TabListInterface";
-            case TabLaunchType.FROM_LINK_CREATING_NEW_WINDOW:
-                return "LinkToNewWindow";
-            case TabLaunchType.FROM_TIPS_NOTIFICATIONS:
-                return "TipsNotifications";
-            case TabLaunchType.FROM_TAB_LIST_INTERFACE_BACKGROUND:
-                return "TabListInterfaceBackground";
-            default:
-                assert false : "Unexpected serialization of tabLaunchType: " + tabLaunchType;
-                return "TypeUnknown";
-        }
-    }
-
     @Override
     public void launchNtp(@TabLaunchType int type) {
         TabCreatorUtil.launchNtp(this, getProfile(), type);
@@ -385,7 +299,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 var _ =
                         TimingMetric.mediumUptime(
                                 "Android.Tab.CreateNewTabDuration."
-                                        + tabLaunchTypeToHistogramKey(type)
+                                        + TabLaunchTypeUtils.tabLaunchTypeToHistogramKey(type)
                                         + "2")) {
             int parentId = parent != null ? parent.getId() : Tab.INVALID_TAB_ID;
 
@@ -497,6 +411,7 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
                 // created beforehand. The creation of a spare tab is a costly operation that should
                 // not be performed without testing. Spare tab is only used for navigations in the
                 // foreground and for high-end devices.
+                // TODO(crbug.com/517544602): Fix mismatched TraceEvent.end -> TraceEvent.begin.
                 TraceEvent.end("ChromeTabCreator.loadUrlWithSpareTab");
 
                 tab =
@@ -564,7 +479,6 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
             boolean shouldPin,
             WebContents webContents,
             @TabLaunchType int type,
-            GURL url,
             int suggestedPosition,
             CompletableFuture<Boolean> futureAddTabToModel) {
         if (mTabModel == null || mOrderController == null) return null;
@@ -679,7 +593,10 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
      */
     // TODO(crbug.com/40691614): Clean up the launches from SearchActivity/Chrome.
     public @Nullable Tab launchUrlFromExternalApp(
-            LoadUrlParams loadUrlParams, String appId, boolean forceNewTab, Intent intent) {
+            LoadUrlParams loadUrlParams,
+            @Nullable String appId,
+            boolean forceNewTab,
+            Intent intent) {
         if (mTabModel == null) return null;
         assert !mIncognito || isIncognitoForced();
 
@@ -828,64 +745,8 @@ public class ChromeTabCreator implements TabCreator, NeedsTabModel, NeedsTabMode
             @TabLaunchType int tabLaunchType,
             @Nullable Intent intent,
             @PageTransition int originalTransitionType) {
-        int transition = PageTransition.LINK;
-        switch (tabLaunchType) {
-            case TabLaunchType.FROM_OMNIBOX:
-            case TabLaunchType.FROM_OMNIBOX_BACKGROUND:
-                transition = originalTransitionType;
-                break;
-            case TabLaunchType.FROM_RESTORE:
-            case TabLaunchType.FROM_LINK:
-            case TabLaunchType.FROM_LINK_CREATING_NEW_WINDOW:
-            case TabLaunchType.FROM_EXTERNAL_APP:
-            case TabLaunchType.FROM_BROWSER_ACTIONS:
-                // FROM_API ensures intent handling isn't used.
-                transition = PageTransition.LINK | PageTransition.FROM_API;
-                break;
-            case TabLaunchType.FROM_CHROME_UI:
-            case TabLaunchType.FROM_TAB_SWITCHER_UI:
-            case TabLaunchType.FROM_RESTORE_TABS_UI:
-            case TabLaunchType.FROM_TAB_GROUP_UI:
-            case TabLaunchType.FROM_STARTUP:
-            case TabLaunchType.FROM_SESSION_STARTUP_WITH_URLS_PREF:
-            case TabLaunchType.FROM_LAUNCHER_SHORTCUT:
-            case TabLaunchType.FROM_LAUNCH_NEW_INCOGNITO_TAB:
-            case TabLaunchType.FROM_APP_WIDGET:
-            case TabLaunchType.FROM_READING_LIST:
-            case TabLaunchType.FROM_SYNC_BACKGROUND:
-            case TabLaunchType.FROM_REPARENTING:
-            case TabLaunchType.FROM_START_SURFACE:
-                transition = PageTransition.AUTO_TOPLEVEL;
-                break;
-            case TabLaunchType.FROM_LONGPRESS_FOREGROUND:
-            case TabLaunchType.FROM_LONGPRESS_FOREGROUND_IN_GROUP:
-            case TabLaunchType.FROM_LONGPRESS_INCOGNITO:
-            case TabLaunchType.FROM_HISTORY_NAVIGATION_FOREGROUND:
-                transition = PageTransition.LINK;
-                break;
-            case TabLaunchType.FROM_LONGPRESS_BACKGROUND:
-            case TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP:
-            case TabLaunchType.FROM_COLLABORATION_BACKGROUND_IN_GROUP:
-            case TabLaunchType.FROM_RECENT_TABS:
-            case TabLaunchType.FROM_RECENT_TABS_FOREGROUND:
-            case TabLaunchType.FROM_BOOKMARK_BAR_BACKGROUND:
-            case TabLaunchType.FROM_HISTORY_NAVIGATION_BACKGROUND:
-            case TabLaunchType.FROM_REPARENTING_BACKGROUND:
-            case TabLaunchType.FROM_SPECULATIVE_BACKGROUND_CREATION:
-            case TabLaunchType.FROM_TAB_LIST_INTERFACE:
-            case TabLaunchType.FROM_TIPS_NOTIFICATIONS:
-            case TabLaunchType.FROM_TAB_LIST_INTERFACE_BACKGROUND:
-                // On low end devices tabs are backgrounded in a frozen state, so we set the
-                // transition type to RELOAD to avoid handling intents when the tab is foregrounded.
-                // (https://crbug.com/40536523)
-                transition =
-                        SysUtils.isLowEndDevice() ? PageTransition.RELOAD : PageTransition.LINK;
-                break;
-            case TabLaunchType.UNSET: // Fall through.
-            default:
-                assert false;
-                break;
-        }
+        int transition =
+                TabLaunchTypeUtils.getDefaultPageTransition(tabLaunchType, originalTransitionType);
 
         return IntentHandler.getTransitionTypeFromIntent(assumeNonNull(intent), transition);
     }

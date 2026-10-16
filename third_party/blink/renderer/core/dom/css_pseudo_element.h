@@ -19,6 +19,7 @@ class DOMQuad;
 class DOMQuadInit;
 class DOMRectReadOnly;
 class ExceptionState;
+class FocusOptions;
 class V8UnionCSSPseudoElementOrDocumentOrElementOrText;
 class V8UnionCSSPseudoElementOrElement;
 
@@ -44,9 +45,13 @@ class CSSPseudoElement final : public ScriptWrappable {
                    const AtomicString& pseudo_argument = g_null_atom);
 
   // Parses the `type` to determine the PseudoId and if it's a currently
-  // supported pseudo-element. Optionally extracts the pseudo_argument.
+  // supported pseudo-element. Optionally extracts the pseudo_argument, in the
+  // form that identifies the pseudo-element of `originating_element` (e.g.
+  // `block-start` for `::scroll-button(up)` in horizontal writing modes).
+  // `originating_element` is null for sub-pseudo-elements.
   static std::pair<PseudoId, AtomicString> ConvertTypeToSupportedPseudoId(
-      const AtomicString& type);
+      const AtomicString& type,
+      Element* originating_element);
   // Returns true if the `pseudo_id` is a supported pseudo-element type
   // for CSSPseudoElement interface.
   static bool IsSupportedTypeForCSSPseudoElement(PseudoId pseudo_id);
@@ -84,6 +89,7 @@ class CSSPseudoElement final : public ScriptWrappable {
   // PseudoId-based overload: avoids string parsing, for internal use.
   CSSPseudoElement* pseudo(PseudoId pseudo_id,
                            const AtomicString& pseudo_argument = g_null_atom);
+  void focus(const FocusOptions* options);
 
   // Returns the CSSPseudoElement proxy chain for the given PseudoElement,
   // creating it if necessary. Handles nested pseudos (e.g. ::after::marker)

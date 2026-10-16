@@ -33,6 +33,14 @@ namespace actor::ui {
 class ActorUiTabControllerInterface;
 }  // namespace actor::ui
 
+namespace chrome_browser_net {
+class NetErrorTabHelper;
+}  // namespace chrome_browser_net
+
+namespace client_hints {
+class ClientHintsWebContentsObserver;
+}  // namespace client_hints
+
 namespace content {
 class WebContents;
 }  // namespace content
@@ -71,8 +79,13 @@ class GlicMarketingPageTabHelper;
 class GlicSidePanelCoordinator;
 }  // namespace glic
 
+namespace history {
+class WebContentsTopSitesObserver;
+}  // namespace history
+
 namespace offline_pages {
 class AutoFetchNavigationObserver;
+class RecentTabHelper;
 }  // namespace offline_pages
 
 namespace sync_sessions {
@@ -110,20 +123,25 @@ class V8CompileHintsTabHelper;
 }  // namespace v8_compile_hints
 
 class AboutThisSiteTabHelper;
+class ChainedBackNavigationTracker;
 class ConnectionHelpTabHelper;
 class ExternalProtocolObserver;
+class FileSystemAccessTabHelper;
 class FromGWSNavigationAndKeepAliveRequestObserver;
 class HistoryEmbeddingsTabHelper;
 class HttpAuthCacheStatus;
+class MediaStateObserver;
 class NavigationMetricsRecorder;
 class NavigationPredictorPreconnectClient;
 class OomInterventionTabHelper;
 class PluginObserverAndroid;
 class PolicyAuditorBridge;
 class RevokedPermissionsTabHelper;
+class SearchEngineTabHelper;
 class SecurityStateEventObserver;
 class SoundContentSettingObserver;
 class StorageAccessAPITabHelper;
+class SupervisedUserNavigationObserver;
 class TabContextDecryptionTokenTabHelper;
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
@@ -253,6 +271,19 @@ class TabFeatures {
   std::unique_ptr<HistoryEmbeddingsTabHelper> history_embeddings_tab_helper_;
   std::unique_ptr<download::DownloadNavigationObserver>
       download_navigation_observer_;
+  std::unique_ptr<history::WebContentsTopSitesObserver>
+      web_contents_top_sites_observer_;
+  std::unique_ptr<client_hints::ClientHintsWebContentsObserver>
+      client_hints_web_contents_observer_;
+  std::unique_ptr<ChainedBackNavigationTracker>
+      chained_back_navigation_tracker_;
+  std::unique_ptr<MediaStateObserver> media_state_observer_;
+  std::unique_ptr<FileSystemAccessTabHelper> file_system_access_tab_helper_;
+  std::unique_ptr<SearchEngineTabHelper> search_engine_tab_helper_;
+  std::unique_ptr<chrome_browser_net::NetErrorTabHelper> net_error_tab_helper_;
+  std::unique_ptr<SupervisedUserNavigationObserver>
+      supervised_user_navigation_observer_;
+  std::unique_ptr<offline_pages::RecentTabHelper> recent_tab_helper_;
 
   // Holds the WebUI embedding context subscription.
   base::CallbackListSubscription tab_subscription_;

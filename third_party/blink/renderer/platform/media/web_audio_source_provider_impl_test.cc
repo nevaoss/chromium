@@ -6,7 +6,10 @@
 
 #include <stddef.h>
 
+#include <algorithm>
+#include <memory>
 #include <ranges>
+#include <tuple>
 
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
@@ -14,6 +17,7 @@
 #include "base/run_loop.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
+#include "base/test/test_future.h"
 #include "media/base/audio_bus.h"
 #include "media/base/audio_glitch_info.h"
 #include "media/base/audio_parameters.h"
@@ -47,6 +51,15 @@ std::vector<base::span<float>> GetChannelSpans(media::AudioBus* bus) {
   return channel_spans;
 }
 
+// Returns true if every frame at or after `start_frame` is zero.
+bool AreTrailingFramesZero(const media::AudioBus* bus, int start_frame) {
+  return std::ranges::all_of(bus->AllChannels(), [start_frame](auto channel) {
+    return std::ranges::all_of(
+        channel.subspan(static_cast<size_t>(start_frame)),
+        [](float sample) { return sample == 0.0f; });
+  });
+}
+
 }  // namespace
 
 class WebAudioSourceProviderImplTest : public testing::Test,
@@ -78,8 +91,10 @@ class WebAudioSourceProviderImplTest : public testing::Test,
     EXPECT_CALL(*mock_sink_, Play()).Times(verify);
     wasp_impl_->Play();
 
-    EXPECT_CALL(*mock_sink_, Pause()).Times(verify);
-    wasp_impl_->Pause();
+    EXPECT_CALL(*mock_sink_,
+                Pause(media::AudioRendererSink::PauseReason::kPlaybackPaused))
+        .Times(verify);
+    wasp_impl_->Pause(media::AudioRendererSink::PauseReason::kPlaybackPaused);
 
     EXPECT_CALL(*mock_sink_, SetVolume(kTestVolume)).Times(verify);
     wasp_impl_->SetVolume(kTestVolume);
@@ -260,7 +275,7 @@ TEST_F(WebAudioSourceProviderImplTest, ProvideInput) {
   ASSERT_TRUE(CompareBusses(bus1.get(), bus2.get()));
 
   // Pause should return to silence.
-  wasp_impl_->Pause();
+  wasp_impl_->Pause(media::AudioRendererSink::PauseReason::kPlaybackPaused);
   bus1->channel(0)[0] = 1;
   bus2->Zero();
   wasp_impl_->ProvideInput(audio_data, params_.frames_per_buffer());
@@ -352,6 +367,36 @@ TEST_F(WebAudioSourceProviderImplTest, CopyAudioCBTainted) {
       .Times(1);
   Render(bus1.get());
 
+  testing::Mock::VerifyAndClear(mock_sink_.get());
+}
+
+// Verify that frames past those written by the renderer are zeroed, both in
+// the bus passed to CopyAudioCB and in the rendered bus.
+TEST_F(WebAudioSourceProviderImplTest, CopyAudioCBZeroesUnrenderedFrames) {
+  constexpr float kStaleSampleValue = 1.0f;
+
+  wasp_impl_->Initialize(params_, &fake_callback_);
+
+  base::test::TestFuture<std::unique_ptr<media::AudioBus>, uint32_t, int>
+      copy_future;
+  wasp_impl_->SetCopyAudioCallback(copy_future.GetRepeatingCallback());
+
+  // Simulate a bus that still contains samples from another source.
+  const auto bus = media::AudioBus::Create(params_);
+  for (auto channel : bus->AllChannels()) {
+    std::ranges::fill(channel, kStaleSampleValue);
+  }
+
+  fake_callback_.set_half_fill(true);
+  const int frames_rendered = Render(bus.get());
+  ASSERT_EQ(frames_rendered, bus->frames() / 2);
+
+  std::unique_ptr<media::AudioBus> bus_copy = std::get<0>(copy_future.Take());
+  ASSERT_TRUE(bus_copy);
+  EXPECT_TRUE(AreTrailingFramesZero(bus_copy.get(), frames_rendered));
+  EXPECT_TRUE(AreTrailingFramesZero(bus.get(), frames_rendered));
+
+  wasp_impl_->ClearCopyAudioCallback();
   testing::Mock::VerifyAndClear(mock_sink_.get());
 }
 
@@ -464,5 +509,28 @@ TEST_F(WebAudioSourceProviderImplTest, SetClientCallback) {
   wasp_impl_->SetClient(this);
   base::RunLoop().RunUntilIdle();
   ::testing::Mock::VerifyAndClearExpectations(this);
+}
+
+TEST_F(WebAudioSourceProviderImplTest, PauseForwardsReasonToSink) {
+  wasp_impl_->Initialize(params_, &fake_callback_);
+
+  EXPECT_CALL(*mock_sink_, Start());
+  wasp_impl_->Start();
+  EXPECT_CALL(*mock_sink_, Play());
+  wasp_impl_->Play();
+
+  EXPECT_CALL(*mock_sink_,
+              Pause(media::AudioRendererSink::PauseReason::kWaitingForData));
+  wasp_impl_->Pause(media::AudioRendererSink::PauseReason::kWaitingForData);
+
+  EXPECT_CALL(*mock_sink_, Play());
+  wasp_impl_->Play();
+
+  EXPECT_CALL(*mock_sink_,
+              Pause(media::AudioRendererSink::PauseReason::kPlaybackPaused));
+  wasp_impl_->Pause(media::AudioRendererSink::PauseReason::kPlaybackPaused);
+
+  EXPECT_CALL(*mock_sink_, Stop());
+  wasp_impl_->Stop();
 }
 }  // namespace blink

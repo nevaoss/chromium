@@ -1077,6 +1077,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/omaha/StringSanitizerTest.java",
       "src/org/chromium/chrome/browser/omaha/VersionNumberTest.java",
       "src/org/chromium/chrome/browser/omaha/inline/InAppUpdatePolicyTest.java",
+      "src/org/chromium/chrome/browser/omaha/inline/InAppUpdateSnackbarControllerTest.java",
       "src/org/chromium/chrome/browser/omaha/metrics/UpdateSuccessMetricsTest.java",
     ]
 
@@ -1642,6 +1643,7 @@ if (is_android) {
   robolectric_library(
       "chrome_junit_tests_org.chromium.chrome.browser.settings") {
     sources = [
+      "//chrome/android/java/src/org/chromium/chrome/browser/settings/DetailedPaneSearchControllerTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/settings/MultiColumnTitleUpdaterTest.java",
       "//chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsMenuHelperUnitTest.java",
       "src/org/chromium/chrome/browser/settings/ActivityUtilUnitTest.java",
@@ -1679,6 +1681,7 @@ if (is_android) {
       "//chrome/browser/settings:java",
       "//chrome/browser/settings:settings_in_tab_java",
       "//chrome/browser/ui/android/edge_to_edge:factory_java",
+      "//chrome/browser/ui/vertical_tabs:java",
       "//third_party/androidx:androidx_preference_preference_java",
       "//third_party/androidx:androidx_slidingpanelayout_slidingpanelayout_java",
     ]
@@ -1783,6 +1786,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/safe_browsing/PasswordProtectionBroadcastReceiverTest.java",
       "src/org/chromium/chrome/browser/safe_browsing/SafeBrowsingPasswordReuseDialogBridgeTest.java",
       "src/org/chromium/chrome/browser/safe_browsing/SafeBrowsingReferringAppBridgeTest.java",
+      "src/org/chromium/chrome/browser/safe_browsing/SafeBrowsingSuspiciousSiteDialogBridgeTest.java",
       "src/org/chromium/chrome/browser/selection/TextSelectionActionMenuDelegateTest.java",
       "src/org/chromium/chrome/browser/services/gcm/ChromeGcmListenerServiceImplTest.java",
       "src/org/chromium/chrome/browser/status_indicator/StatusIndicatorMediatorTest.java",
@@ -1800,6 +1804,7 @@ if (is_android) {
       "//base:flagged_apis_java",
       "//base:holder_java",
       "//chrome/browser/actor/android:java",
+      "//chrome/browser/android/metrics:base_java",
       "//chrome/browser/automotivetoolbar:java",
       "//chrome/browser/notifications:java",
       "//chrome/browser/privacy:privacy_preference_manager_java",

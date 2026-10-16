@@ -77,6 +77,7 @@ import java.util.function.Supplier;
         instrumentedPackages = {
             "androidx.recyclerview.widget.RecyclerView" // required to mock final.
         })
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class VerticalTabListItemTouchHelperCallbackUnitTest {
     private static final int THROTTLE_TOKEN = 123;
 
@@ -371,7 +372,7 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
 
     @Test
     public void testOnMove_SolitaryChildTab() {
-        // Solitary child tab (group of 1) should move as a group via moveRelatedTabs.
+        // Solitary child tab (group of 1) should move as a group via moveGroupToIndex.
         mPropertyModel.set(TabProperties.TAB_ID, 1);
         Token groupId = new Token(1L, 2L);
         mPropertyModel.set(TabProperties.TAB_GROUP_ID, groupId);
@@ -392,7 +393,7 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
 
         assertTrue(mCallback.onMove(mRecyclerView, mViewHolder, mTargetViewHolder));
 
-        verify(mTabModel).moveRelatedTabs(1, 5);
+        verify(mTabModel).moveGroupToIndex(groupId, 5);
     }
 
     @Test
@@ -588,6 +589,8 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
 
     @Test
     public void testClearView_AbortedByEsc_RevertsTabGroup() {
+        Token groupId = new Token(1L, 2L);
+        when(mTab1.getTabGroupId()).thenReturn(groupId);
         when(mViewHolder.getItemViewType()).thenReturn(TabProperties.UiType.TAB_GROUP);
         when(mTabModel.getTabById(1)).thenReturn(mTab1);
         when(mTabModel.indexOf(mTab1)).thenReturn(2);
@@ -597,7 +600,7 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         mCallback.markDragAbortedByEsc();
         mCallback.clearView(mRecyclerView, mViewHolder);
 
-        verify(mTabModel).moveRelatedTabs(1, 2);
+        verify(mTabModel).moveGroupToIndex(groupId, 2);
     }
 
     @Test
@@ -610,7 +613,7 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         mCallback.clearView(mRecyclerView, mViewHolder);
 
         verify(mTabModel, never()).moveTab(anyInt(), anyInt());
-        verify(mTabModel, never()).moveRelatedTabs(anyInt(), anyInt());
+        verify(mTabModel, never()).moveGroupToIndex(any(), anyInt());
     }
 
     @Test
@@ -930,6 +933,8 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
 
     @Test
     public void testOnMove_GroupHeader_Downward() {
+        Token groupId = new Token(1L, 2L);
+        when(mTab1.getTabGroupId()).thenReturn(groupId);
         mPropertyModel.set(TabProperties.TAB_ID, 1);
         when(mViewHolder.getItemViewType()).thenReturn(TabProperties.UiType.TAB_GROUP);
         mTargetPropertyModel.set(TabProperties.TAB_ID, 2);
@@ -954,11 +959,13 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         assertTrue(mCallback.onMove(mRecyclerView, mViewHolder, mTargetViewHolder));
 
         // For distance > 0, should use getLastTabModelIndexForList (which is 6).
-        verify(mTabModel).moveRelatedTabs(1, 6);
+        verify(mTabModel).moveGroupToIndex(groupId, 6);
     }
 
     @Test
     public void testOnMove_GroupHeader_Upward() {
+        Token groupId = new Token(1L, 2L);
+        when(mTab1.getTabGroupId()).thenReturn(groupId);
         mPropertyModel.set(TabProperties.TAB_ID, 1);
         when(mViewHolder.getItemViewType()).thenReturn(TabProperties.UiType.TAB_GROUP);
         mTargetPropertyModel.set(TabProperties.TAB_ID, 2);
@@ -983,7 +990,7 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         assertTrue(mCallback.onMove(mRecyclerView, mViewHolder, mTargetViewHolder));
 
         // For distance < 0, should use getFirstTabModelIndexForList (which is 0).
-        verify(mTabModel).moveRelatedTabs(1, 0);
+        verify(mTabModel).moveGroupToIndex(groupId, 0);
     }
 
     @Test

@@ -8,7 +8,6 @@
 #include "cc/paint/paint_image.h"
 #include "third_party/blink/renderer/platform/graphics/dom_node_id.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
-#include "ui/gfx/geometry/point3_f.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/size_f.h"
 
@@ -24,12 +23,10 @@ struct PLATFORM_EXPORT CanvasChildPaintState {
 
   // Child element state.
   float effective_zoom = 1.f;
-  gfx::Point3F transform_origin;        // CSS pixels
   gfx::SizeF box_size;                  // Physical pixels
   gfx::Vector2dF reference_box_offset;  // Physical pixels
 
   // Canvas state.
-  gfx::Size canvas_size;                      // Canvas grid
   gfx::SizeF canvas_content_size;             // Physical pixels
   gfx::Size canvas_device_pixel_content_box;  // Snapped physical pixels
   DOMNodeId canvas_node_id = kInvalidDOMNodeId;
@@ -42,8 +39,7 @@ struct PLATFORM_EXPORT CanvasChildPaintState {
 PLATFORM_EXPORT gfx::Transform GetElementTransform(
     const CanvasChildPaintState&,
     const gfx::Size& canvas_size,
-    const gfx::Transform& draw_transform,
-    bool element_canvas_transform_enabled);
+    const gfx::Transform& draw_transform);
 
 PLATFORM_EXPORT gfx::Vector2dF GetCanvasGridScaleFactor(
     const CanvasChildPaintState&,

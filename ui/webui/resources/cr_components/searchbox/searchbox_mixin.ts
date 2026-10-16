@@ -206,7 +206,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       // When deleting a match, unfreeze `activeQueryId` so post-deletion
       // results are accepted.
       this.searchboxEventTracker_.add(this, 'match-remove', () => {
-        this.activeQueryId = this.nextQueryId_ - 1;
+        this.unfreezeActiveQueryId();
       });
       // Listen for 'keyup' on window to reliably catch Control key releases
       // even if the user clicks outside the searchbox while holding Control.
@@ -238,13 +238,16 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
 
       const changedPrivateProperties =
           changedProperties as Map<PropertyKey, unknown>;
-      if (changedPrivateProperties.has('selectedMatch')) {
-        this.inputAriaLive = this.computeInputAriaLive_();
-      }
       if (changedPrivateProperties.has('result') ||
           changedPrivateProperties.has('selectedMatchIndex') ||
           changedPrivateProperties.has('selection')) {
         this.selectedMatch = this.computeSelectedMatch_();
+      }
+      // Computed after `selectedMatch` so it isn't one update stale; otherwise
+      // the input stays `aria-live=polite` while previewing the first selected
+      // match and screen readers narrate the preview.
+      if (changedPrivateProperties.has('selectedMatch')) {
+        this.inputAriaLive = this.computeInputAriaLive_();
       }
       if (changedPrivateProperties.has('result') ||
           changedPrivateProperties.has('selectedMatchIndex') ||
@@ -443,9 +446,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         }
 
       } else {
-        const index = this.matchIndex;
-        if (this.getInputElement().inputElement.value.trim() && hasMatches &&
-            index >= 0 && index < this.result.matches.length) {
+        const index = hasMatches && this.matchIndex >= 0 ?
+            Math.min(this.matchIndex, this.result.matches.length - 1) :
+            -1;
+        if (this.getInputElement().inputElement.value.trim() && index >= 0) {
           const match = this.result.matches[index]!;
           this.selectedMatch = match;
           if (this.virtualFocusEnabled) {
@@ -733,6 +737,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         const text = newFill.substr(0, newFillEnd);
         const isMatchPreview =
             this.isMatchPreview_(this.selectedMatch, nextSelection.line);
+        // Must precede `setInput()` so screen readers narrate the selection's
+        // label rather than the input's new preview value.
+        this.getInputElement().setSelectionA11yLabel(
+            this.computeSelectionA11yLabel_(this.selectedMatch, nextSelection));
         this.getInputElement().setInput({
           text: text,
           inline: newInline,
@@ -748,12 +756,33 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
               NavigationPredictor.kUpOrDownArrowButton);
         }
       } else if (nextSelection.line === -1) {
+        this.getInputElement().setSelectionA11yLabel('');
         this.getInputElement().setInput({
           text: this.lastQueriedInput ?? '',
           inline: '',
           moveCursorToEnd: true,
           isMatchPreview: false,
         });
+      }
+    }
+
+    /**
+     * Returns the screen reader label for `selection` on `match`. Mirrors the
+     * label `cr-searchbox-match` announces for the same selection.
+     */
+    private computeSelectionA11yLabel_(
+        match: AutocompleteMatch, selection: OmniboxPopupSelection): string {
+      switch (selection.state) {
+        case SelectionLineState.kNormal:
+          return match.a11yLabel;
+        case SelectionLineState.kKeywordMode:
+          return match.keywordModel?.chipA11y || '';
+        case SelectionLineState.kFocusedButtonAction:
+          return match.actions[selection.actionIndex]?.a11yLabel || '';
+        case SelectionLineState.kFocusedButtonRemoveSuggestion:
+          return match.removeButtonA11yLabel;
+        default:
+          return '';
       }
     }
 
@@ -869,9 +898,9 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
           if (this.selectedMatch && this.selectedMatch.supportsDeletion) {
             // Unfreeze `activeQueryId` so post-deletion results are accepted.
-            this.activeQueryId = this.nextQueryId_ - 1;
+            this.unfreezeActiveQueryId();
             this.pageHandler().deleteAutocompleteMatch(
-                this.selectedMatchIndex, this.selectedMatch.destinationUrl);
+                this.matchIndex, this.selectedMatch.destinationUrl);
             e.preventDefault();
           }
         }

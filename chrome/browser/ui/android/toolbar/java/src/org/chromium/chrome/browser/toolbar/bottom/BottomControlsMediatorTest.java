@@ -12,6 +12,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,11 +31,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
+import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
@@ -47,11 +50,13 @@ import org.chromium.cc.input.BrowserControlsState;
 import org.chromium.cc.input.OffsetTag;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerType;
+import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerVisibility;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsOffsetTagsInfo;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsVisibilityManager;
 import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsVisibilityDelegate;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.layouts.LayoutManager;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.overlay_panel.PanelState;
@@ -415,6 +420,48 @@ public class BottomControlsMediatorTest {
     }
 
     @Test
+    public void testFullscreen() {
+        ArgumentCaptor<FullscreenManager.Observer> fullscreenObserverCaptor =
+                ArgumentCaptor.forClass(FullscreenManager.Observer.class);
+        verify(mFullscreenManager).addObserver(fullscreenObserverCaptor.capture());
+        FullscreenManager.Observer observer = fullscreenObserverCaptor.getValue();
+
+        Tab tab = Mockito.mock(Tab.class);
+        FullscreenOptions options = Mockito.mock(FullscreenOptions.class);
+
+        mMediator.setBottomControlsVisible(true);
+        assertTrue("Compositor view should be visible.", mModel.get(COMPOSITED_VIEW_VISIBLE));
+        assertTrue("Android view should be visible.", mModel.get(ANDROID_VIEW_VISIBLE));
+        assertEquals(LayerVisibility.VISIBLE, mMediator.getLayerVisibility());
+        clearInvocations(mBottomControlsStacker);
+
+        doReturn(true).when(mFullscreenManager).getPersistentFullscreenMode();
+        observer.onEnterFullscreen(tab, options);
+        assertFalse(
+                "Compositor view should be hidden in fullscreen.",
+                mModel.get(COMPOSITED_VIEW_VISIBLE));
+        assertFalse(
+                "Android view should be hidden in fullscreen.", mModel.get(ANDROID_VIEW_VISIBLE));
+        assertEquals(LayerVisibility.HIDDEN, mMediator.getLayerVisibility());
+        verify(mBottomControlsStacker).requestLayerUpdate(false);
+        clearInvocations(mBottomControlsStacker);
+
+        doReturn(false).when(mFullscreenManager).getPersistentFullscreenMode();
+        observer.onExitFullscreen(tab);
+        assertTrue(
+                "Compositor view should be visible after exiting fullscreen.",
+                mModel.get(COMPOSITED_VIEW_VISIBLE));
+        assertTrue(
+                "Android view should be visible after exiting fullscreen.",
+                mModel.get(ANDROID_VIEW_VISIBLE));
+        assertEquals(LayerVisibility.VISIBLE, mMediator.getLayerVisibility());
+        verify(mBottomControlsStacker).requestLayerUpdate(false);
+
+        mMediator.destroy();
+        verify(mFullscreenManager).removeObserver(observer);
+    }
+
+    @Test
     public void testShowShadow() {
         when(mBottomControlsStacker.isTopmostVisibleLayer(LayerType.TABSTRIP_TOOLBAR))
                 .thenReturn(true);
@@ -517,5 +564,30 @@ public class BottomControlsMediatorTest {
                 DEFAULT_INSET, /* isDrawingToEdge= */ false, /* isPageOptInToEdge= */ false);
 
         assertEquals(0, mModel.get(BottomControlsProperties.BOTTOM_PADDING));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.BOTTOM_CONTROLS_JANK_IMPROVEMENT)
+    public void testAndroidViewVisibility_DeferredWhileScrolling() {
+        mMediator.setBottomControlsVisible(true);
+        ShadowLooper.idleMainLooper();
+        assertTrue(mModel.get(ANDROID_VIEW_VISIBLE));
+
+        // Scroll controls off so Android view becomes invisible.
+        doReturn(DEFAULT_HEIGHT).when(mBrowserControlsVisibilityManager).getBottomControlOffset();
+        mMediator.onBrowserControlsOffsetUpdate(DEFAULT_HEIGHT);
+        assertFalse(mModel.get(ANDROID_VIEW_VISIBLE));
+
+        // Start scrolling and bring offset back to 0 mid-scroll.
+        mMediator.onContentViewScrollingStateChanged(true);
+        doReturn(0).when(mBrowserControlsVisibilityManager).getBottomControlOffset();
+        mMediator.onBrowserControlsOffsetUpdate(0);
+
+        // Android view should remain invisible mid-scroll.
+        assertFalse(mModel.get(ANDROID_VIEW_VISIBLE));
+
+        // When scrolling stops, Android view visibility should be restored.
+        mMediator.onContentViewScrollingStateChanged(false);
+        assertTrue(mModel.get(ANDROID_VIEW_VISIBLE));
     }
 }

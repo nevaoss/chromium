@@ -2561,6 +2561,13 @@ void GLES2DecoderPassthroughImpl::ReadBackBuffersIntoShadowCopies(
       group_->LoseContexts(error::kUnknown);
       return;
     }
+    if (feature_info_->workarounds()
+            .check_graphics_reset_status_after_readback &&
+        CheckResetStatus()) {
+      // Refuse shadow-copy delivery across a device reset.
+      group_->LoseContexts(error::kUnknown);
+      return;
+    }
     UNSAFE_TODO(memcpy(shadow, mapped, update.size));
     bool unmap_ok = api()->glUnmapBufferFn(GL_ARRAY_BUFFER);
     if (unmap_ok == GL_FALSE) {
@@ -2601,6 +2608,18 @@ error::Error GLES2DecoderPassthroughImpl::ProcessReadPixels(bool did_finish) {
         api()->glDeleteBuffersARBFn(1, &pending_read_pixels.buffer_service_id);
         pending_read_pixels_.pop_front();
         break;
+      }
+
+      // If the context was reset while this readback was queued, the pack
+      // buffer's backing store was never written; mapping it may deliver
+      // uninitialized driver memory on certain GPUs. The sync readback lane is
+      // covered inside ANGLE (checkGraphicsResetStatusAfterReadback).
+      if (feature_info_->workarounds()
+              .check_graphics_reset_status_after_readback &&
+          !WasContextLost() && CheckResetStatus()) {
+        pending_read_pixels_.pop_front();
+        group_->LoseContexts(error::kUnknown);
+        return error::kLostContext;
       }
 
       api()->glBindBufferFn(GL_PIXEL_PACK_BUFFER,

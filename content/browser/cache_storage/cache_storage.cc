@@ -401,8 +401,9 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
     protobuf_index.set_bucket_is_default(bucket_locator_.is_default);
 
     for (const auto& cache_metadata : index.ordered_cache_metadata()) {
-      CHECK(cache_name_to_cache_dir_.contains(cache_metadata.name),
-            base::NotFatalUntil::M158);
+      // TODO(crbug.com/565483779): CHECK-exclusion: Convert to a CHECK once we
+      // are confident it won't be triggered.
+      DCHECK(cache_name_to_cache_dir_.contains(cache_metadata.name));
 
       proto::CacheStorageIndex::Cache* index_cache = protobuf_index.add_cache();
       index_cache->set_name(base::UTF16ToUTF8(cache_metadata.name));
@@ -1327,7 +1328,9 @@ void CacheStorage::MatchAllCachesImpl(
   size_t idx = 0;
   for (const auto& cache_metadata : cache_index_->ordered_cache_metadata()) {
     CacheStorageCacheHandle cache_handle = GetLoadedCache(cache_metadata.name);
-    CHECK(cache_handle.value(), base::NotFatalUntil::M158);
+    // TODO(crbug.com/567223150): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(cache_handle.value());
 
     CacheStorageCache* cache_ptr = cache_handle.value();
     cache_ptr->Match(

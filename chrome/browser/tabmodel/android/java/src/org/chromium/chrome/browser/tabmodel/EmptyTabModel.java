@@ -9,7 +9,6 @@ import static org.chromium.chrome.browser.tabmodel.TabGroupTitleUtils.UNSET_TAB_
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.Callback;
 import org.chromium.base.Token;
 import org.chromium.base.supplier.LazyOneshotSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
@@ -180,10 +179,7 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
     public void moveTab(int id, int newIndex) {}
 
     @Override
-    public void pinTab(
-            int tabId,
-            boolean showUngroupDialog,
-            @Nullable TabModelActionListener tabModelActionListener) {}
+    public void pinTab(int tabId, boolean showUngroupDialog) {}
 
     @Override
     public void unpinTab(int tabId) {}
@@ -256,9 +252,6 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
     public long getMostRecentClosureTime() {
         return TabModel.INVALID_TIMESTAMP;
     }
-
-    @Override
-    public void addDelegateModelObserver(Callback<TabModelInternal> callback) {}
 
     @Override
     public void addIncognitoObserver(IncognitoTabModelObserver observer) {}
@@ -341,11 +334,6 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
     }
 
     @Override
-    public boolean isClosingAllTabs() {
-        return false;
-    }
-
-    @Override
     public void addTabGroupObserver(TabGroupObserver observer) {}
 
     @Override
@@ -422,7 +410,7 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
     }
 
     @Override
-    public void moveRelatedTabs(int id, int newIndex) {}
+    public void moveGroupToIndex(Token tabGroupId, int newIndex) {}
 
     @Override
     public boolean willMergingCreateNewGroup(List<Tab> tabsToMerge) {
@@ -456,11 +444,6 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
     @Override
     public Set<Token> getAllTabGroupIds() {
         return Collections.emptySet();
-    }
-
-    @Override
-    public int getValidPosition(Tab tab, int proposedPosition) {
-        return proposedPosition;
     }
 
     @Override
@@ -502,9 +485,6 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
 
     @Override
     public void setTabGroupColor(Token tabGroupId, int color) {}
-
-    @Override
-    public void deleteTabGroupColor(Token tabGroupId) {}
 
     @Override
     public boolean getTabGroupCollapsed(Token tabGroupId) {

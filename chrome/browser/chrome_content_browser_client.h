@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "base/containers/flat_map.h"
+#include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/scoped_refptr.h"
@@ -81,6 +82,10 @@ class URLLoaderThrottle;
 namespace blocked_content {
 class PopupNavigationDelegate;
 }  // namespace blocked_content
+
+namespace extensions {
+class Extension;
+}  // namespace extensions
 
 namespace content {
 class BrowserContext;
@@ -811,6 +816,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       const GURL& url,
       scoped_refptr<net::HttpResponseHeaders> response_headers,
       bool first_auth_attempt,
+      bool do_not_prompt_for_login,
       content::GuestPageHolder* guest,
       content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback)
       override;
@@ -917,6 +923,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 
   bool IsClipboardPasteAllowed(
       content::RenderFrameHost* render_frame_host) override;
+
+  bool IsClipboardAllowedForServiceWorker(const url::Origin& origin) override;
 
   std::optional<GURL> MaybeOverrideSourceURLForClipboardAccess(
       content::RenderFrameHost* render_frame_host,
@@ -1256,10 +1264,18 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   // their own extra part objects.
   void AddExtraPart(std::unique_ptr<ChromeContentBrowserClientParts> part);
 
+  static void AddChromeSchemeFactories(
+      int render_process_id,
+      content::RenderFrameHost* frame_host,
+      content::WebContents* web_contents,
+      const extensions::Extension* extension,
+      NonNetworkURLLoaderFactoryMap* factories);
+
   // Exposed for tests to perform dependency injection.
   virtual std::unique_ptr<HttpAuthCoordinator> CreateHttpAuthCoordinator();
 
  private:
+  friend class ChromeContentBrowserClientDiskCacheDirTest;
   friend class DisableWebRtcEncryptionFlagTest;
   friend class InProcessBrowserTest;
 

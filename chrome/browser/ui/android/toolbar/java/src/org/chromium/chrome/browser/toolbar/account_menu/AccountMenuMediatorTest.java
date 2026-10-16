@@ -29,6 +29,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -89,7 +90,6 @@ public class AccountMenuMediatorTest {
     @Rule
     public final AccountManagerTestRule mAccountManagerTestRule = new AccountManagerTestRule();
 
-    @Mock private Activity mActivity;
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private @Nullable Profile mProfile;
     @Mock private TabCreator mIncognitoTabCreator;
@@ -105,12 +105,14 @@ public class AccountMenuMediatorTest {
     @Mock private SigninAndHistorySyncActivityLauncher mSigninLauncher;
     @Mock private SigninMetricsUtils.Natives mSigninMetricsUtilsNativeMock;
 
+    private Activity mActivity;
     private Context mContext;
     private ModelList mModelList;
     private AccountMenuMediator mMediator;
 
     @Before
     public void setUp() {
+        mActivity = Robolectric.buildActivity(Activity.class).get();
         mContext = ApplicationProvider.getApplicationContext();
         SettingsNavigationFactory.setInstanceForTesting(mSettingsNavigation);
         IdentityServicesProvider.setInstanceForTests(mIdentityServicesProvider);
@@ -343,7 +345,12 @@ public class AccountMenuMediatorTest {
         // When profile data updates for another account, identity card is not updated.
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT2);
         mAccountManagerTestRule.updateAccount(TestAccounts.ACCOUNT2);
-        assertEquals(initialProfileData, item.model.get(IdentityCardProperties.PROFILE_DATA));
+        DisplayableProfileData profileData = item.model.get(IdentityCardProperties.PROFILE_DATA);
+        // TODO(crbug.com/485508396): Instead assert that the instance is unchanged once adding an
+        // account no longer regenerates DisplayableProfileData for other accounts.
+        assertEquals(initialProfileData.getAccountId(), profileData.getAccountId());
+        assertEquals(initialProfileData.getFullName(), profileData.getFullName());
+        assertEquals(initialProfileData.getAccountEmail(), profileData.getAccountEmail());
 
         // When profile data updates for the primary account, identity card is updated.
         AccountInfo updatedAccount =

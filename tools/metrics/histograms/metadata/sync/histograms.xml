@@ -157,11 +157,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".Migration" summary="run the migration"/>
 </variants>
 
-<variants name="TabsFromOtherDevicesVersion">
-  <variant name="List" summary="list version"/>
-  <variant name="Screenshot" summary="screenshot version"/>
-</variants>
-
 <variants name="TrustedVaultTimeSinceMigrationSuffix">
   <variant name=""
       summary="Includes data for users that went through migration any time
@@ -222,7 +217,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.AccountMenu.UserActionableError"
-    enum="UserActionableError" expires_after="2027-01-24">
+    enum="UserActionableError" expires_after="2027-03-28">
   <owner>rgod@google.com</owner>
   <owner>ylahodiuk@google.com</owner>
   <summary>
@@ -1034,18 +1029,6 @@ chromium-metrics-reviews@google.com.
     is resolved; when key crypto-related events occur (such as decryption key
     acquisition or entering a correct custom passphrase); and as a result of
     other more advanced triggers such as error conditions.
-  </summary>
-  <token key="SyncDataType" variants="SyncDataType"/>
-</histogram>
-
-<histogram name="Sync.DataTypeMetadataConsistency{SyncDataType}"
-    enum="SyncMetadataConsistency" expires_after="2027-08-02">
-  <owner>rushans@google.com</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Recorded when ClientTagBasedDataTypeProcessor checks stored metadata
-    consistency upon processor startup or activation. Tracks whether metadata is
-    consistent or what mismatch/error occurred for {SyncDataType}.
   </summary>
   <token key="SyncDataType" variants="SyncDataType"/>
 </histogram>
@@ -1862,7 +1845,7 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Sync.Local.FileSizeKB" units="KB" expires_after="2027-01-24">
+<histogram name="Sync.Local.FileSizeKB" units="KB" expires_after="2027-03-28">
   <owner>igorruvinov@chromium.org</owner>
   <owner>pastarmovj@chromium.org</owner>
   <summary>
@@ -2315,7 +2298,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SearchEngine.FaviconOnlyUpdate" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>ankushkush@google.com</owner>
   <owner>mahmadi@chromium.org</owner>
   <summary>
@@ -2587,7 +2570,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SyncEverythingOS" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>mmoskvitin@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -2837,104 +2820,6 @@ chromium-metrics-reviews@google.com.
     &quot;Migrate&quot; bucket of &quot;Sync.SyncToSigninMigrationDecision&quot;
     to verify that all migrations that were started also finished.
   </summary>
-</histogram>
-
-<histogram
-    name="Sync.TabsFromOtherDevicesSidePanel.{Version}.DeviceCountOnOpen"
-    units="devices" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the number of synced devices shown when the TabsFromOtherDevices
-    side panel ({Version}) is opened. Recorded once when the side panel is
-    opened and data is loaded.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram name="Sync.TabsFromOtherDevicesSidePanel.{Version}.Events"
-    enum="TabsFromOtherDevicesSidePanelEvent" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records events for the TabsFromOtherDevices side panel ({Version}). Recorded
-    when the side panel is created, opened, closed, or a tab is opened from it.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram
-    name="Sync.TabsFromOtherDevicesSidePanel.{Version}.OpenedTabDeviceIndex"
-    units="index" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the 0-based index of the device from which a tab is opened in the
-    TabsFromOtherDevices side panel ({Version}). Recorded when a tab is opened.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram
-    name="Sync.TabsFromOtherDevicesSidePanel.{Version}.OpenedTabRecencyIndex"
-    units="index" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the index (by recency, i.e., visual order in the side panel) of the
-    tab that was opened within its session/device in the TabsFromOtherDevices
-    side panel ({Version}). Recorded when a tab is opened.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram
-    name="Sync.TabsFromOtherDevicesSidePanel.{Version}.TabCountOnOpen.ActiveDevice"
-    units="tabs" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the number of tabs on the initially active/selected device shown
-    when the TabsFromOtherDevices side panel ({Version}) is opened. Recorded
-    once when the side panel is opened and data is loaded.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram
-    name="Sync.TabsFromOtherDevicesSidePanel.{Version}.TabCountOnOpen.Total"
-    units="tabs" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the total number of synced tabs across all devices shown when the
-    TabsFromOtherDevices side panel ({Version}) is opened. Recorded once when
-    the side panel is opened and data is loaded.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram name="Sync.TabsFromOtherDevicesSidePanel.{Version}.TimeSpentOpen"
-    units="ms" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the total time spent with the TabsFromOtherDevices side panel
-    ({Version}) open. Recorded when the side panel is closed or hidden.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
-</histogram>
-
-<histogram name="Sync.TabsFromOtherDevicesSidePanel.{Version}.TimeToFirstTab"
-    units="ms" expires_after="2027-05-07">
-  <owner>treib@chromium.org</owner>
-  <owner>src/components/sync/OWNERS</owner>
-  <summary>
-    Records the time between opening the TabsFromOtherDevices side panel
-    ({Version}) and opening the first tab from it. Recorded when the first tab
-    is opened.
-  </summary>
-  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
 </histogram>
 
 <histogram name="Sync.ThrottledAllDataTypes" enum="Boolean"

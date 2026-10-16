@@ -76,8 +76,6 @@ should be able to be added at any place in this file.
       summary="Show read anything side panel action"/>
   <variant name=".kActionSidePanelShowReadingList"
       summary="Show reading list side panel action"/>
-  <variant name=".kActionSidePanelShowTabsFromOtherDevices"
-      summary="Show tabs from other devices side panel action"/>
   <variant name=".kActionSplitTab" summary="Split view action"/>
   <variant name=".kActionTabSearch" summary="Tab search action"/>
   <variant name=".kActionTaskManager" summary="Task manager action"/>
@@ -325,6 +323,9 @@ should be able to be added at any place in this file.
   <variant name="_Bookmark" summary="For Bookmark feature."/>
   <variant name="_BookmarkBarSimplified"
       summary="For bookmark bar simplified auto-hide toast."/>
+  <variant name="_BookmarkBarVisibility"
+      summary="For the IPH telling users they can show the Bookmark Bar on
+               Android"/>
   <variant name="_BookmarksBar"
       summary="For Bookmarks Bar feature. (obsolete)"/>
   <variant name="_BottomToolbarTip" summary="For BottomToolbarTip feature."/>
@@ -539,6 +540,8 @@ should be able to be added at any place in this file.
   <variant name="_iOSAddressPromoDesktop"
       summary="For iOSAddressPromoDesktop feature"/>
   <variant name="_iOSAIHubNewBadge" summary="For AI Hub New Badge feature."/>
+  <variant name="_iOSBackgroundNewBadge"
+      summary="For iOSBackgroundNewBadge feature"/>
   <variant name="_IOSBWGPromoFeature" summary="For IOSBWGPromoFeature feature"/>
   <variant name="_iOSChoiceScreen"
       summary="(obsolete) For iOSChoiceScreen feature"/>
@@ -699,14 +702,6 @@ should be able to be added at any place in this file.
   <variant name="_iOSTabGroupsDesktop"
       summary="For iOSTabGroupsDesktopFeature"/>
   <variant name="_iOSWelcomeBack" summary="For iOSWelcomeBack feature"/>
-  <variant name="_KeyboardAccessoryAddressFilling"
-      summary="For KeyboardAccessoryAddressFilling feature."/>
-  <variant name="_KeyboardAccessoryBarSwiping"
-      summary="For KeyboardAccessoryBarSwiping feature."/>
-  <variant name="_KeyboardAccessoryPasswordFilling"
-      summary="For KeyboardAccessoryPasswordFilling feature."/>
-  <variant name="_KeyboardAccessoryPaymentFilling"
-      summary="For KeyboardAccessoryPaymentFilling feature."/>
   <variant name="_KeyboardAccessoryPaymentOffer"
       summary="For KeyboardAccessoryPaymentOffer feature."/>
   <variant name="_LauncherSearchHelpUi"
@@ -1038,7 +1033,6 @@ should be able to be added at any place in this file.
   <variant name="ShoppingInsights" summary="shopping insights"/>
   <variant name="SidePanelDev" summary="side panel dev feature"/>
   <variant name="SideSearch" summary="side search"/>
-  <variant name="TabsFromOtherDevices" summary="tabs from other devices"/>
   <variant name="TestTabScopedEntry" summary="test tab scoped entry"/>
   <variant name="WebView" summary="web view"/>
 </variants>
@@ -1075,6 +1069,7 @@ should be able to be added at any place in this file.
   <variant name=".SyncEsbOn"
       summary="Enhanced Protection setting has been synced to On"/>
   <variant name=".Translate" summary="Translate"/>
+  <variant name=".TtcGenericError" summary="TTC generic error"/>
 </variants>
 
 <variants name="UserEducation_WhatsNew_Module_Type">
@@ -31464,8 +31459,6 @@ should be able to be added at any place in this file.
         summary="Pinned show search companion side panel button"/>
     <variant name=".PinnedShowTranslateButton"
         summary="Pinned show translate button"/>
-    <variant name=".PinnedTabsFromOtherDevicesButton"
-        summary="Pinned tabs from other devices button"/>
     <variant name=".PinnedTaskManagerButton"
         summary="Pinned task manager button"/>
     <variant name=".SharedTabGroupFeedbackButton"
@@ -35703,14 +35696,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="Signin_Impression_FromAvatarBubbleSignin"
-    not_user_triggered="true">
-  <owner>gogerald@chromium.org</owner>
-  <description>
-    Recorded when showing sign in entry in the avatar sign in bubble.
-  </description>
-</action>
-
 <action name="Signin_Impression_FromBookmarkBubble" not_user_triggered="true">
   <owner>gogerald@chromium.org</owner>
   <description>
@@ -36169,22 +36154,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="Signin_Signin_FromAvatarBubbleSignin">
-  <owner>gogerald@chromium.org</owner>
-  <description>
-    Recorded on sign in start from access point
-    signin_metrics::AccessPoint::kAvatarBubbleSignIn.
-  </description>
-</action>
-
-<action name="Signin_Signin_FromAvatarBubbleSigninWithSyncPromo">
-  <owner>droger@chromium.org</owner>
-  <description>
-    Recorded on sign in start from access point
-    signin_metrics::AccessPoint::kAvatarBubbleSignInWithSyncPromo.
-  </description>
-</action>
-
 <action name="Signin_Signin_FromAvatarPillExpandPromo">
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-desktop-team@google.com</owner>
@@ -36544,6 +36513,14 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kProductSpecifications.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromProfileMenuPrimaryButton">
+  <owner>droger@chromium.org</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kProfileMenuPrimaryButton.
   </description>
 </action>
 
@@ -39208,6 +39185,15 @@ should be able to be added at any place in this file.
   <owner>clank-tab-dev@google.com</owner>
   <description>
     Tab group title was changed using the tab group rename dialog on Android.
+  </description>
+</action>
+
+<action name="TabGroup.TitleButton.EditionViewOpened">
+  <owner>achara@google.com</owner>
+  <owner>bling-meridian@google.com</owner>
+  <description>
+    User opened the TabGroup edition view by tapping the TabGroup title button.
+    iOS only.
   </description>
 </action>
 

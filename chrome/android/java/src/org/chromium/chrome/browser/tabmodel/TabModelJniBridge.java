@@ -140,10 +140,6 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     @CalledByNative
     public abstract @JniType("std::vector<TabAndroid*>") List<Tab> getOrderedMultiSelectedTabs();
 
-    @Override
-    @CalledByNative
-    public abstract @JniType("TabAndroid*") @Nullable Tab getTabById(int id);
-
     @CalledByNative
     public boolean hasTab(@JniType("TabAndroid*") @Nullable Tab tab) {
         if (tab == null) return false;
@@ -261,15 +257,13 @@ public abstract class TabModelJniBridge implements TabModelInternal {
      * Closes the Tab at a particular index.
      *
      * @param index Index of the tab to close.
-     * @return Whether the was successfully closed.
      */
     @CalledByNative
-    private boolean closeTabAt(int index) {
+    private void closeTabAt(int index) {
         Tab tab = getTabAt(index);
-        if (tab == null) return false;
+        if (tab == null) return;
 
         closeTab(tab);
-        return true;
     }
 
     /**
@@ -320,9 +314,9 @@ public abstract class TabModelJniBridge implements TabModelInternal {
      */
     @CalledByNative
     private @JniType("TabAndroid*") @Nullable Tab createTabWithWebContents(
-            @Nullable Tab parent,
-            Profile profile,
-            WebContents webContents,
+            @JniType("TabAndroid*") @Nullable Tab parent,
+            @JniType("Profile*") Profile profile,
+            @JniType("content::WebContents*") WebContents webContents,
             int index,
             @TabLaunchType int type,
             boolean shouldPin) {
@@ -332,7 +326,6 @@ public abstract class TabModelJniBridge implements TabModelInternal {
                         shouldPin,
                         webContents,
                         type,
-                        webContents.getVisibleUrl(),
                         index,
                         /* addTabToModel= */ CompletableFuture.completedFuture(true));
     }
@@ -349,7 +342,7 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     @CalledByNative
     private @JniType("TabAndroid*") @Nullable Tab insertWebContentsAt(
             int index,
-            WebContents webContents,
+            @JniType("content::WebContents*") WebContents webContents,
             boolean shouldPin,
             @JniType("std::optional<base::Token>") @Nullable Token tabGroupId) {
         Tab tab =
@@ -369,9 +362,9 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     @CalledByNative
     @VisibleForTesting
     public void openNewTab(
-            Tab parent,
-            GURL url,
-            @Nullable Origin initiatorOrigin,
+            @JniType("TabAndroid*") Tab parent,
+            @JniType("GURL") GURL url,
+            @JniType("std::optional<url::Origin>") @Nullable Origin initiatorOrigin,
             @JniType("std::string") String extraHeaders,
             ResourceRequestBody postData,
             int disposition,
@@ -426,7 +419,7 @@ public abstract class TabModelJniBridge implements TabModelInternal {
      */
     @CalledByNative
     private @JniType("TabAndroid*") @Nullable Tab createNewTabForDevTools(
-            GURL url, boolean newWindow) {
+            @JniType("GURL") GURL url, boolean newWindow) {
         LoadUrlParams loadParams = new LoadUrlParams(url);
         @TabLaunchType int launchType = TabLaunchType.FROM_CHROME_UI;
         if (!newWindow
@@ -518,7 +511,7 @@ public abstract class TabModelJniBridge implements TabModelInternal {
 
     @CalledByNative
     @Override
-    public abstract @Nullable @JniType("tabs::TabStripCollection*") TabStripCollection
+    public abstract @JniType("tabs::TabStripCollection*") @Nullable TabStripCollection
             getTabStripCollection();
 
     /** Returns whether or not a sync session is currently being restored. */
@@ -535,7 +528,7 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     @CalledByNative
     @VisibleForTesting
     public @JniType("TabAndroid*") @Nullable Tab openTabProgrammatically(
-            GURL url, int index, boolean foreground) {
+            @JniType("GURL") GURL url, int index, boolean foreground) {
         LoadUrlParams loadParams = new LoadUrlParams(url);
         @TabLaunchType
         int launchType =
@@ -553,7 +546,7 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     }
 
     @CalledByNative
-    private @Nullable @JniType("TabAndroid*") Tab getOpenerForTab(
+    private @JniType("TabAndroid*") @Nullable Tab getOpenerForTab(
             @JniType("TabAndroid*") Tab target) {
         return getTabById(target.getParentId());
     }
@@ -586,8 +579,8 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     protected abstract void moveTabToIndex(@JniType("TabAndroid*") Tab tab, int newIndex);
 
     @CalledByNative
-    protected abstract void moveGroupToIndex(
-            @JniType("base::Token") Token tabGroupId, int newIndex);
+    @Override
+    public abstract void moveGroupToIndex(@JniType("base::Token") Token tabGroupId, int newIndex);
 
     @CalledByNative
     protected abstract @JniType("std::vector<TabAndroid*>") List<Tab> getAllTabs();
@@ -623,20 +616,27 @@ public abstract class TabModelJniBridge implements TabModelInternal {
      * spans (startIndex, endIndex + 1).
      */
     @CalledByNative
-    protected abstract @JniType("std::vector<int>") int[] getTabGroupTabIndices(
+    protected abstract @JniType("std::vector<int32_t>") int[] getTabGroupTabIndices(
             @JniType("base::Token") Token tabGroupId);
 
     @CalledByNative
     protected abstract @JniType("std::optional<base::Token>") @Nullable Token createTabGroup(
             @JniType("std::vector<TabAndroid*>") List<Tab> tabs);
 
+    /**
+     * Sets the visual data for the specified tab group.
+     *
+     * @param tabGroupId The ID of the tab group.
+     * @param title The title to assign to the tab group.
+     * @param colorId The {@link TabGroupColorId} to assign to the tab group.
+     * @param isCollapsed Whether the tab group is collapsed.
+     */
     @CalledByNative
     protected abstract void setTabGroupVisualData(
             @JniType("base::Token") Token tabGroupId,
             @JniType("std::u16string") String title,
             @TabGroupColorId int colorId,
-            boolean isCollapsed,
-            boolean animate);
+            boolean isCollapsed);
 
     @CalledByNative
     protected abstract @JniType("std::optional<base::Token>") @Nullable Token addTabsToGroup(
@@ -748,9 +748,9 @@ public abstract class TabModelJniBridge implements TabModelInternal {
                 type, isNewTabIncognitoBranded, isCurrentModelIncognitoBranded);
     }
 
+    /** Returns whether the model is currently in the process of closing all of its tabs. */
     @CalledByNative
-    @Override
-    public abstract boolean isClosingAllTabs();
+    protected abstract boolean isClosingAllTabs();
 
     @NativeMethods
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
@@ -759,8 +759,8 @@ public abstract class TabModelJniBridge implements TabModelInternal {
                 TabModelJniBridge self,
                 @JniType("Profile*") Profile profile,
                 @ActivityType int activityType,
-                @JniType("std::optional<int32_t>") @Nullable @CustomTabProfileType
-                        Integer customTabProfileType,
+                @JniType("std::optional<int32_t>") @CustomTabProfileType
+                        @Nullable Integer customTabProfileType,
                 @TabModelType int tabModelType);
 
         void broadcastSessionRestoreComplete(long nativeTabModelJniBridge);

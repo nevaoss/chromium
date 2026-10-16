@@ -700,11 +700,18 @@ public class ToolbarPhone extends ToolbarLayout
             boolean changed =
                     layoutLocationBarWithoutAnimationExpansion(
                             MeasureSpec.getSize(widthMeasureSpec));
+            boolean shouldSkipTransition =
+                    !changed
+                            && ChromeFeatureList.sBottomControlsJankImprovement.isEnabled()
+                            && !isLocationBarShownInNtp()
+                            && !mUrlFocusChangeInProgress
+                            && mUrlExpansionFraction == 0f
+                            && !mOptionalButtonAnimationRunning;
             // Avoid URL expansion while in or transitioning to/from tab switcher.
             // updateUrlExpansionAnimation() is called for these states via
             // setTabSwitcherMode()/onTabSwitcherTransitionFinished() ->
             // updateVisualsForLocationBarState()
-            if (!isInTabSwitcherMode()) {
+            if (!isInTabSwitcherMode() && !shouldSkipTransition) {
                 invokeTransition();
             }
             if (!changed) return;
@@ -3155,6 +3162,11 @@ public class ToolbarPhone extends ToolbarLayout
                 mTopPaddingForEdgeToEdgeNtp,
                 getPaddingEnd(),
                 getPaddingBottom());
+    }
+
+    @Override
+    public int getEdgeToEdgeTopPadding() {
+        return mTopPaddingForEdgeToEdgeNtp;
     }
 
     /** Checks if the given visual state represents a New Tab Page. */

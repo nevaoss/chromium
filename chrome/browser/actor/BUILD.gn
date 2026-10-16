@@ -34,6 +34,7 @@ source_set("actor") {
     "actor_util.h",
     "enterprise_policy_checker.h",
     "execution_engine.h",
+    "headless_web_contents_manager.h",
     "site_policy.h",
     "tab_annotation_manager.h",
     "tab_observation_controller.h",
@@ -102,6 +103,7 @@ source_set("actor") {
     ]
     public += [
       "tools/load_and_extract_content_tool_request.h",
+      "tools/open_known_page_tool_request.h",
       "tools/switch_tab_tool_request.h",
       "tools/tab_management_tool_request.h",
       "tools/window_management_tool_request.h",
@@ -141,6 +143,7 @@ source_set("impl") {
     "aggregated_journal_render_frame_binder.h",
     "enterprise_policy_checker.cc",
     "execution_engine.cc",
+    "headless_web_contents_manager.cc",
     "site_policy.cc",
     "tab_annotation_manager.cc",
     "tab_observation_controller.cc",
@@ -284,7 +287,6 @@ source_set("impl") {
     "//third_party/perfetto:libperfetto",
     "//third_party/perfetto/protos/perfetto/config:zero_gen",
     "//third_party/perfetto/protos/perfetto/trace/perfetto:zero_gen",
-    "//ui/base/metadata",
     "//ui/gfx/codec",
     "//url",
   ]
@@ -306,6 +308,9 @@ source_set("impl") {
       "tools/load_and_extract_content_tool.cc",
       "tools/load_and_extract_content_tool.h",
       "tools/load_and_extract_content_tool_request.cc",
+      "tools/open_known_page_tool.cc",
+      "tools/open_known_page_tool.h",
+      "tools/open_known_page_tool_request.cc",
       "tools/switch_tab_tool.cc",
       "tools/switch_tab_tool.h",
       "tools/switch_tab_tool_request.cc",
@@ -317,7 +322,6 @@ source_set("impl") {
       "tools/window_management_tool_request.cc",
     ]
     deps += [
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs:tab_strip_model_observer",
     ]
@@ -418,6 +422,7 @@ source_set("unit_tests") {
     "actor_task_unittest.cc",
     "actor_test_util_unittest.cc",
     "execution_engine_unittest.cc",
+    "headless_web_contents_manager_unittest.cc",
     "tab_annotation_manager_unittest.cc",
     "tab_observation_strategy_unittest.cc",
     "tools/actor_login_flow_verifier_unittest.cc",
@@ -428,6 +433,7 @@ source_set("unit_tests") {
     "tools/click_tool_request_unittest.cc",
     "tools/file_upload_tool_request_unittest.cc",
     "tools/file_upload_tool_unittest.cc",
+    "tools/media_control_tool_request_unittest.cc",
     "tools/page_search_utils_unittest.cc",
     "tools/type_tool_request_unittest.cc",
   ]
@@ -544,7 +550,6 @@ source_set("browser_tests") {
     "//chrome/browser/safe_browsing",
     "//chrome/browser/subscription_eligibility",
     "//chrome/browser/ui",
-    "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/zoom",
     "//chrome/test:test_support",
@@ -601,6 +606,7 @@ source_set("browser_tests") {
       "tools/navigate_tool_browsertest.cc",
       "tools/observation_delay_controller_browsertest.cc",
       "tools/observation_delay_metrics_browsertest.cc",
+      "tools/open_known_page_tool_browsertest.cc",
       "tools/page_stability_browsertest.cc",
       "tools/page_stability_metrics_browsertest.cc",
       "tools/page_target_util_browsertest.cc",

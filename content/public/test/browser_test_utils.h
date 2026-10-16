@@ -913,6 +913,10 @@ class EvalJsResult {
   }
   [[nodiscard]] bool is_bool() const { return is_ok() && value()->is_bool(); }
   [[nodiscard]] bool is_int() const { return is_ok() && value()->is_int(); }
+  [[nodiscard]] bool is_double() const {
+    return is_ok() && value()->is_double();
+  }
+  [[nodiscard]] bool is_none() const { return is_ok() && value()->is_none(); }
   [[nodiscard]] bool is_list() const { return is_ok() && value()->is_list(); }
   [[nodiscard]] bool is_dict() const { return is_ok() && value()->is_dict(); }
 
@@ -1285,6 +1289,9 @@ std::vector<RenderWidgetHostView*> GetInputEventRouterRenderWidgetHostViews(
 
 // Returns the focused RenderWidgetHost.
 RenderWidgetHost* GetFocusedRenderWidgetHost(WebContents* web_contents);
+
+// Returns whether or not the RenderWidgetHost thinks it is focused.
+bool IsRenderWidgetHostFocused(const RenderWidgetHost*);
 
 // Returns the focused WebContents.
 WebContents* GetFocusedWebContents(WebContents* web_contents);

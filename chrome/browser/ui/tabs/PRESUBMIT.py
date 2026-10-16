@@ -17,11 +17,27 @@ _TAB_FEATURES_CC = 'tab_features.cc'
 # justified in the CL description and reviewed by chrome/browser/ui/tabs
 # OWNERS.
 _ALLOWED_CREATE_FOR_CALLS = (
+    # BookmarkTabHelper is also attached to non-tab WebContents in
+    # extensions::BookmarkManagerPrivateDragEventRouter, so the WebContents
+    # must own it.
+    'BookmarkTabHelper::CreateForWebContents',
+    # CaptivePortalTabHelper lives in //components/captive_portal/content and
+    # is also attached to non-tab GuestView WebContents in
+    # ChromeGuestViewManagerDelegate, so the WebContents must own it.
+    'captive_portal::CaptivePortalTabHelper::CreateForWebContents',
+    # DlpContentTabHelper is also attached to non-tab Chrome App window
+    # WebContents in ChromeAppDelegate and looked up from arbitrary WebContents
+    # by DlpContentManager, so the WebContents must own it.
+    'policy::DlpContentTabHelper::MaybeCreateForWebContents',
     # The task manager tag is looked up from WebContents user data by
     # WebContentsTaskProvider, is swapped in place by WebAppTabHelper, and is
     # also attached to non-tab WebContents (e.g. payment handler WebViews) and
     # to Android tabs, so the WebContents must own it.
     'task_manager::WebContentsTags::CreateForTabContents',
+    # PreRedirectionURLObserver lives in //components/webapps and is also
+    # attached to non-tab WebContents in web_app::CreateWebAppInstallTabHelpers
+    # for background web-app installation, so the WebContents must own it.
+    'webapps::PreRedirectionURLObserver::CreateForWebContents',
 )
 
 

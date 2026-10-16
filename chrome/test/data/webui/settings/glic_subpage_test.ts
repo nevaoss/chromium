@@ -1086,15 +1086,15 @@ suite('GlicSubpage', function() {
       return new Promise(resolve => setTimeout(resolve, 0));
     }
 
-    async function setWebActuationCapability(canActOnWeb: boolean) {
+    async function setWebActuationDisabledForEnterprise(disabled: boolean) {
       webUIListenerCallback(
-          'glic-web-actuation-capability-changed', canActOnWeb);
+          'glic-web-actuation-disabled-for-enterprise-changed', disabled);
       await microtasksFinished();
       await waitOneTick();
       await microtasksFinished();
     }
 
-    test('ToggleDisabledWhenCanActOnWebFalse', async () => {
+    test('ToggleDisabledWhenDisabledForEnterprise', async () => {
       webUIListenerCallback('glic-web-actuation-enabled-changed', true);
       await microtasksFinished();
 
@@ -1107,7 +1107,7 @@ suite('GlicSubpage', function() {
       assertFalse(webActuationToggle.disabled);
 
       // Simulate enterprise DISABLING the feature.
-      await setWebActuationCapability(false);
+      await setWebActuationDisabledForEnterprise(true);
 
       // Re-query, as dom-if restamped.
       webActuationToggle =
@@ -1117,7 +1117,7 @@ suite('GlicSubpage', function() {
       assertFalse(webActuationToggle.checked);
     });
 
-    test('MenuCollapsesWhenCanActOnWebFalse', async () => {
+    test('MenuCollapsesWhenDisabledForEnterprise', async () => {
       const webActuationToggle =
           $<SettingsToggleButtonElement>('webActuationToggle')!;
       let infoCard = $<CrCollapseElement>('webActuationInfoCollapse')!;
@@ -1129,7 +1129,7 @@ suite('GlicSubpage', function() {
       assertTrue(infoCard.opened);
 
       // Simulate enterprise DISABLING the feature.
-      await setWebActuationCapability(false);
+      await setWebActuationDisabledForEnterprise(true);
 
       // Re-query, as dom-if restamped.
       infoCard = $<CrCollapseElement>('webActuationInfoCollapse')!;
@@ -1137,9 +1137,9 @@ suite('GlicSubpage', function() {
       assertFalse(infoCard.opened);
     });
 
-    test('PrefDoesNotExpandMenuWhenCanActOnWebFalse', async () => {
+    test('PrefDoesNotExpandMenuWhenDisabledForEnterprise', async () => {
       // Start disabled by enterprise.
-      await setWebActuationCapability(false);
+      await setWebActuationDisabledForEnterprise(true);
 
       const infoCard = $<CrCollapseElement>('webActuationInfoCollapse')!;
       assertTrue(!!infoCard);        // It exists.
@@ -1154,15 +1154,15 @@ suite('GlicSubpage', function() {
       assertFalse(infoCard.opened);
     });
 
-    test('ToggleReEnablesWhenCanActOnWebTrue', async () => {
+    test('ToggleReEnablesWhenNoLongerDisabledForEnterprise', async () => {
       // Start disabled.
-      await setWebActuationCapability(false);
+      await setWebActuationDisabledForEnterprise(true);
       let webActuationToggle =
           $<SettingsToggleButtonElement>('webActuationToggle')!;
       assertTrue(webActuationToggle.disabled);
 
       // Simulate enterprise ENABLING it back.
-      await setWebActuationCapability(true);
+      await setWebActuationDisabledForEnterprise(false);
 
       webActuationToggle =
           $<SettingsToggleButtonElement>('webActuationToggle')!;
@@ -1341,11 +1341,11 @@ suite('GlicSubpage', function() {
       const scopeToggle = $<SettingsToggleButtonElement>('scopeToggle')!;
 
       prefService.setPrefValue(PrefName.HOTKEY_GLOBAL_SCOPE_ENABLED, true);
-      await microtasksFinished();
+      await page.updateComplete;
       assertTrue(scopeToggle.checked);
 
       prefService.setPrefValue(PrefName.HOTKEY_GLOBAL_SCOPE_ENABLED, false);
-      await microtasksFinished();
+      await page.updateComplete;
       assertFalse(scopeToggle.checked);
     });
 
@@ -1374,7 +1374,7 @@ suite('GlicSubpage', function() {
       // Disable launcher, both shortcuts should still be visible because local
       // scope is enabled.
       prefService.setPrefValue(PrefName.LAUNCHER_ENABLED, false);
-      await microtasksFinished();
+      await page.updateComplete;
       assertTrue(isVisible($(mainShortcutSettingId)));
       assertTrue(isVisible($(selectionShortcutSettingId)));
     });

@@ -111,7 +111,6 @@
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
-#include "chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.h"
 #include "chrome/browser/ui/recently_audible_helper.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/sharing_hub/sharing_hub_bubble_controller.h"
@@ -202,7 +201,6 @@
 #include "chrome/browser/ui/views/permissions/chip/permission_dashboard_view.h"
 #include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
 #include "chrome/browser/ui/views/profiles/profile_menu_coordinator.h"
-#include "chrome/browser/ui/views/qrcode_generator/qrcode_generator_bubble.h"
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_bubble_view.h"
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_device_picker_bubble_view.h"
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_promo_bubble_view.h"
@@ -2129,14 +2127,7 @@ void BrowserView::OnTabDetached(content::WebContents* contents,
   }
 
   // This is to unsubscribe the Window Management permission subscriber.
-  if (window_management_subscription_id_) {
-    contents->GetPrimaryMainFrame()
-        ->GetBrowserContext()
-        ->GetPermissionController()
-        ->UnsubscribeFromPermissionResultChange(
-            window_management_subscription_id_.value());
-    window_management_subscription_id_.reset();
-  }
+  window_management_subscription_.reset();
 
   // We need to reset the current tab contents to null before it gets
   // freed. This is because the focus manager performs some operations
@@ -2783,7 +2774,7 @@ void BrowserView::SetWindowManagementPermissionSubscriptionForUnframedMode(
 
   // It is safe to bind base::Unretained(this) because WebContents is
   // owned by BrowserView.
-  window_management_subscription_id_ =
+  window_management_subscription_ =
       controller->SubscribeToPermissionResultChange(
           content::PermissionDescriptorUtil::
               CreatePermissionDescriptorForPermissionType(
@@ -2995,7 +2986,7 @@ void BrowserView::DidFinishNavigation(
     return;
   }
 
-  if (AppUsesUnframedMode() && !window_management_subscription_id_) {
+  if (AppUsesUnframedMode() && !window_management_subscription_) {
     SetWindowManagementPermissionSubscriptionForUnframedMode(
         navigation_handle->GetWebContents());
   }

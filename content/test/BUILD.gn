@@ -2034,6 +2034,7 @@ test("content_browsertests") {
     "//third_party/blink/public:blink",
     "//third_party/inspector_protocol:crdtp",
     "//third_party/leveldatabase",
+    "//third_party/perfetto:libperfetto",
     "//third_party/re2",
     "//third_party/zlib",
     "//third_party/zlib/google:compression_utils",
@@ -2743,7 +2744,7 @@ test("content_unittests") {
     "../browser/media/system_media_controls/system_media_controls_notifier_unittest.cc",
     "../browser/media/webaudio/audio_context_manager_impl_unittest.cc",
     "../browser/memory/swap_metrics_driver_impl_unittest.cc",
-    "../browser/memory_coordinator/browser_memory_coordinator_unittest.cc",
+    "../browser/memory_coordinator/browser_memory_coordinator_impl_unittest.cc",
     "../browser/memory_coordinator/child_memory_consumer_registry_host_unittest.cc",
     "../browser/metrics/histogram_shared_memory_config_unittest.cc",
     "../browser/metrics/histograms_monitor_unittest.cc",
@@ -2957,6 +2958,7 @@ test("content_unittests") {
     "../browser/storage_partition_impl_map_unittest.cc",
     "../browser/storage_partition_impl_unittest.cc",
     "../browser/tracing/traces_internals/traces_internals_handler_unittest.cc",
+    "../browser/tracing/tracing_controller_impl_data_endpoint_unittest.cc",
     "../browser/url_loader_factory_params_helper_unittest.cc",
     "../browser/usb/web_usb_service_impl_unittest.cc",
     "../browser/wake_lock/wake_lock_service_impl_unittest.cc",
@@ -3239,7 +3241,8 @@ test("content_unittests") {
   }
 
   if (is_linux && enable_vr) {
-    sources += [ "../services/isolated_xr_device/xr_sandbox_hook_linux_unittest.cc" ]
+    sources +=
+        [ "../services/isolated_xr_device/xr_sandbox_hook_linux_unittest.cc" ]
   }
 
   if (is_android || is_linux || is_chromeos || is_mac || is_win || is_fuchsia) {

@@ -21,6 +21,7 @@
 #include "base/base64.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
+#include "base/containers/to_vector.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -112,7 +113,6 @@
 #include "third_party/blink/public/common/unique_name/unique_name_helper.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/gfx/codec/png_codec.h"
-#include "ui/shell_dialogs/select_file_dialog.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -781,7 +781,8 @@ void WebTestControlHost::ResetBrowserAfterWebTest() {
         network::mojom::CookieDeletionFilter::New(), base::DoNothing());
   }
 
-  ui::SelectFileDialog::SetFactory(nullptr);
+  select_file_dialog_automation_receivers_.Clear();
+  fake_file_dialog_factory_.reset();
   {
     base::ScopedAllowBlockingForTesting allow_blocking;
     if (writable_directory_for_tests_.IsValid()) {
@@ -848,7 +849,7 @@ void WebTestControlHost::InitiateCaptureDump(
   renderer_dump_result_ = std::move(renderer_dump_result);
 
   if (capture_navigation_history) {
-    for (auto* window : Shell::windows()) {
+    for (Shell* window : Shell::windows()) {
       WebContents* web_contents = window->web_contents();
       // Only dump the main test window, and windows that it opened. This avoids
       // devtools windows specifically.
@@ -1603,12 +1604,9 @@ void WebTestControlHost::GetWritableDirectory(
   std::move(reply).Run(writable_directory_for_tests_.GetPath());
 }
 
-
 void WebTestControlHost::SetFilePathForMockFileDialog(
     const base::FilePath& path) {
-  ui::SelectFileDialog::SetFactory(
-      std::make_unique<FakeSelectFileDialogFactory>(
-          std::vector<base::FilePath>{path}));
+  fake_file_dialog_factory_.emplace(std::vector<base::FilePath>{path});
 }
 
 void WebTestControlHost::CreateSubresourceFilterRulesetFile(
@@ -1957,7 +1955,7 @@ void WebTestControlHost::PrepareRendererForNextWebTest() {
           /*context=*/"", "disabled"));
 
   // Flush all the back/forward cache to avoid side effects in the next test.
-  for (auto* shell : Shell::windows()) {
+  for (Shell* shell : Shell::windows()) {
     shell->web_contents()->GetController().GetBackForwardCache().Flush();
   }
 
@@ -2080,10 +2078,11 @@ void WebTestControlHost::OnLeakDetectionDone(
 
 void WebTestControlHost::CloseTestOpenedWindows() {
   DevToolsAgentHost::DetachAllClients();
-  std::vector<Shell*> open_windows(Shell::windows());
-  for (auto* shell : open_windows) {
-    if (shell != main_window_)
+  std::vector<Shell*> open_windows(std::from_range, Shell::windows());
+  for (Shell* shell : open_windows) {
+    if (shell != main_window_) {
       shell->Close();
+    }
   }
   secondary_window_ = nullptr;
   base::RunLoop().RunUntilIdle();
@@ -2162,6 +2161,25 @@ void WebTestControlHost::BindWebTestControlHostForRenderer(
 void WebTestControlHost::BindNonAssociatedWebTestControlHost(
     mojo::PendingReceiver<mojom::NonAssociatedWebTestControlHost> receiver) {
   non_associated_receiver_bindings_.Add(this, std::move(receiver));
+}
+
+void WebTestControlHost::BindSelectFileDialogAutomation(
+    mojo::PendingReceiver<blink::test::mojom::SelectFileDialogAutomation>
+        receiver) {
+  select_file_dialog_automation_receivers_.Add(this, std::move(receiver));
+}
+
+void WebTestControlHost::SetSelectFileDialogResult(
+    const std::optional<std::vector<base::FilePath>>& paths,
+    SetSelectFileDialogResultCallback callback) {
+  if (paths.has_value() && paths->empty()) {
+    select_file_dialog_automation_receivers_.ReportBadMessage(
+        "paths must not be empty");
+    std::move(callback).Run();
+    return;
+  }
+  fake_file_dialog_factory_.emplace(paths);
+  std::move(callback).Run();
 }
 
 mojo::AssociatedRemote<mojom::WebTestRenderFrame>&

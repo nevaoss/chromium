@@ -1031,12 +1031,6 @@ const char kContextPanelDismissedHistogram[] =
   _editProfileBottomSheetHandler = nil;
 }
 
-- (void)legacyResetAutofillSuggestionsLoadingStates {
-  // TODO(crbug.com/543386292): Remove this.
-  [HandlerForProtocol(self.dispatcher, BrowserCoordinatorCommands)
-      resetAutofillSuggestionsLoadingStates];
-}
-
 - (void)showAutofillErrorDialog:
     (autofill::AutofillErrorDialogContext)errorContext {
   [_autofillErrorDialogCoordinator stop];
@@ -2180,7 +2174,8 @@ const char kContextPanelDismissedHistogram[] =
   // call the command.
   [HandlerForProtocol(self.dispatcher, NewTabPageCommands)
       showHomeBackgroundCustomizationPromoWithUIHandler:
-          _promosManagerCoordinator];
+          _promosManagerCoordinator
+                              shouldAlertFETOfDismissal:YES];
 }
 
 - (void)showDockingPromo {

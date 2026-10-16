@@ -55,6 +55,7 @@ source_set("backend_logic_impl") {
     "//url",
   ]
   deps = [
+    "//base/i18n:language_tag",
     "//chrome/browser:browser_process",
     "//chrome/browser:global_features",
     "//chrome/browser/autocomplete:aim_eligibility_service",
@@ -388,7 +389,6 @@ if (!is_android) {
       "//chrome/browser/ui:browser_command_controller",
       "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_element_identifiers",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
@@ -437,6 +437,7 @@ if (!is_android) {
       "//ui/compositor",
       "//ui/events:events_base",
       "//ui/events:test_support",
+      "//ui/gfx",
       "//ui/shell_dialogs:test_support",
       "//ui/views",
       "//ui/views:test_support",
@@ -501,7 +502,9 @@ if (!is_android) {
       "//content/test:test_support",
       "//media",
       "//testing/gtest",
+      "//third_party/blink/public/common:headers",
       "//ui/base/clipboard:clipboard_test_support",
+      "//ui/views/controls/webview",
     ]
   }
 

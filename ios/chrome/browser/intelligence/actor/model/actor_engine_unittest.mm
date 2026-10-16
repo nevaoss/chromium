@@ -399,6 +399,8 @@ TEST_F(ActorEngineTest, ActWithNullTool) {
   EXPECT_FALSE(results[0].tool_result.IsOk());
   EXPECT_EQ(results[0].tool_result.code(),
             mojom::ActionResultCode::kToolUnknown);
+  EXPECT_TRUE(HasJournalEntryWithDetail(*journal_, "ExecutionEngine::Act",
+                                        "Actions[0]", "null tool"));
 }
 
 // Test that FailCurrentTool is a safe no-op when the engine is not in the
@@ -460,8 +462,8 @@ class ActorEngineOriginGatingTest : public ActorEngineTest {
     checker_ = nullptr;
     // Reset the singleton to prevent safety list rules from leaking into
     // subsequent tests.
-    actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                      "{}");
+    actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                    "{}");
     ActorEngineTest::TearDown();
   }
 
@@ -507,8 +509,8 @@ TEST_F(ActorEngineOriginGatingTest, BlocksListedUrl) {
       {"from": "https://safe.com", "to": "https://malicious.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   base::test::TestFuture<std::unique_ptr<origin_gating::GatingDecisionContext>,
                          origin_gating::GatingDecision>
@@ -549,8 +551,8 @@ TEST_F(ActorEngineOriginGatingTest, AllowsListedUrl) {
       {"from": "https://safe.com", "to": "https://trusted.com"}
     ]
   })";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   base::test::TestFuture<std::unique_ptr<origin_gating::GatingDecisionContext>,
                          origin_gating::GatingDecision>
@@ -574,8 +576,8 @@ TEST_F(ActorEngineOriginGatingTest, BlocksActionOnBlockedUrl) {
       {"from": "https://malicious.com", "to": "https://malicious.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   base::test::TestFuture<std::unique_ptr<origin_gating::GatingDecisionContext>,
                          origin_gating::GatingDecision>
@@ -598,8 +600,8 @@ TEST_F(ActorEngineOriginGatingTest, HandlesEmptySourceUrl) {
       {"from": "https://malicious.com", "to": "https://malicious.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   base::test::TestFuture<std::unique_ptr<origin_gating::GatingDecisionContext>,
                          origin_gating::GatingDecision>
@@ -623,8 +625,8 @@ TEST_F(ActorEngineOriginGatingTest, Act_NavigationBlockedByOriginGating) {
       {"from": "https://safe.com", "to": "https://malicious.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_.get());
   auto test_browser = std::make_unique<TestBrowser>(profile_.get());
@@ -667,8 +669,8 @@ TEST_F(ActorEngineOriginGatingTest, Act_NavigationAllowedByOriginGating) {
       {"from": "https://safe.com", "to": "https://trusted.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_.get());
   auto test_browser = std::make_unique<TestBrowser>(profile_.get());
@@ -717,8 +719,8 @@ TEST_F(
       {"from": "https://safe.com", "to": "https://malicious.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   // Set up browser and WebState.
   BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_.get());
@@ -772,8 +774,8 @@ TEST_F(ActorEngineOriginGatingTest,
       {"from": "https://safe.com", "to": "https://trusted.com"}
     ]
   })json";
-  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
-                                    mock_rules_json);
+  actor::SetSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                  mock_rules_json);
 
   BrowserList* browser_list = BrowserListFactory::GetForProfile(profile_.get());
   auto test_browser = std::make_unique<TestBrowser>(profile_.get());

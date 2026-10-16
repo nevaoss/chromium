@@ -115,7 +115,6 @@
 #include "chrome/browser/first_run/first_run.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/metrics/first_web_contents_profiler.h"
-#include "chrome/browser/password_manager/factories/password_reuse_manager_factory.h"
 #include "chrome/browser/prefs/session_startup_pref.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -143,6 +142,7 @@
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "chromeos/ash/components/login/auth/stub_authenticator_builder.h"
 #include "chromeos/ash/components/login/session/session_termination_manager.h"
+#include "chromeos/ash/components/password_manager/password_reuse_manager_provider.h"
 #include "chromeos/ash/components/settings/cros_settings.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/ash/components/tpm/prepare_tpm.h"
@@ -979,9 +979,9 @@ void UserSessionManager::SetFirstLoginPrefs(
     const std::string& public_session_locale,
     const std::string& public_session_input_method) {
   VLOG(1) << "Setting first login prefs";
-  InitLocaleAndInputMethodsForNewUser(application_locale_storage_->Get(), this,
-                                      profile, public_session_locale,
-                                      public_session_input_method);
+  InitLocaleAndInputMethodsForNewUser(
+      std::string(application_locale_storage_->GetTag().tag_string()), this,
+      profile, public_session_locale, public_session_input_method);
 
   // Turn on the feature of the low battery sound for all users on the device
   // when a new user login.
@@ -1056,7 +1056,7 @@ bool UserSessionManager::RespectLocalePreference(
     pref_locale = *account_locale;
   }
   if (pref_locale.empty()) {
-    pref_locale = application_locale_storage_->Get();
+    pref_locale = application_locale_storage_->GetTag().tag_string();
   }
   DCHECK(!pref_locale.empty());
   VLOG(1) << "RespectLocalePreference: "
@@ -1893,7 +1893,8 @@ void UserSessionManager::FinalizePrepareProfile(Profile* profile) {
     // These will be used to detect Gaia password reuses.
     if (user_context_.GetSyncPasswordData().has_value()) {
       login::SaveSyncPasswordDataToProfile(
-          user_context_, PasswordReuseManagerFactory::GetForProfile(profile));
+          user_context_, PasswordReuseManagerProvider::Get().Find(
+                             user_context_.GetAccountId()));
     }
 
     if (!user_context_.GetChallengeResponseKeys().empty()) {

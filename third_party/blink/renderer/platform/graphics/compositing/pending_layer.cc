@@ -347,19 +347,16 @@ bool PendingLayer::CanMerge(const PendingLayer& guest,
           chunks_.size() + guest.solid_color_chunk_index_;
     }
 
-    if (property_tree_state_.Transform().NearestDirectlyCompositedAncestor() !=
-        guest.property_tree_state_.Transform()
-            .NearestDirectlyCompositedAncestor()) {
-      CHECK(RuntimeEnabledFeatures::MergeFixedLayersEnabled() ||
-            RuntimeEnabledFeatures::MergeStickyLayersEnabled());
-      if ((IsSolidColor() || guest.IsSolidColor()) &&
-          merged_solid_color_chunk_index == kNotFound) {
-        // Don't merge if that would cause a layer to lose its solid color,
-        // to prevent extra raster cost.
-        // TODO(crbug.com/507502290): This might benefit in other cases,
-        // perhaps with more sophisticated heuristics.
-        return false;
-      }
+    if (merged_solid_color_chunk_index == kNotFound &&
+        (IsSolidColor() || guest.IsSolidColor()) &&
+        property_tree_state_.Transform().NearestDirectlyCompositedAncestor() !=
+            guest.property_tree_state_.Transform()
+                .NearestDirectlyCompositedAncestor()) {
+      // Don't merge across compositing boundaries if that would cause a layer
+      // to lose its solid color, to prevent extra raster cost.
+      // TODO(crbug.com/507502290): This might benefit in other cases,
+      // perhaps with more sophisticated heuristics.
+      return false;
     }
   }
 
@@ -424,19 +421,6 @@ PendingLayer::MergeResult PendingLayer::Merge(
   hit_test_opaqueness_ = merged_hit_test_opaqueness;
   non_composited_scroll_translations_.append_range(
       guest.non_composited_scroll_translations_);
-
-  // For metrics.
-  merged_across_compositing_boundary_count_ +=
-      guest.merged_across_compositing_boundary_count_;
-  // We don't merge across compositing boundaries except for MergeFixedLayers
-  // and MergeStickyLayers.
-  if (property_tree_state_.Transform().NearestDirectlyCompositedAncestor() !=
-      guest.property_tree_state_.Transform()
-          .NearestDirectlyCompositedAncestor()) {
-    CHECK(RuntimeEnabledFeatures::MergeFixedLayersEnabled() ||
-          RuntimeEnabledFeatures::MergeStickyLayersEnabled());
-    merged_across_compositing_boundary_count_++;
-  }
 
   return {.merged = true, .scroll_range_dependent = scroll_range_dependent};
 }

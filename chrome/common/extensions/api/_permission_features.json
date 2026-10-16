@@ -37,15 +37,6 @@
       "5F13EB3D4C8E5A012DF6F03BB4766532C41A07E23CC9F7963FEEB77BBBC7334D"
     ]
   }],
-  "accessibilityPrivate": {
-    "channel": "stable",
-    "extension_types": ["extension", "legacy_packaged_app", "platform_app"],
-    "platforms": ["chromeos"],
-    "allowlist": [
-      "0D209B5E4401BB8E7873B5AB5B1346A1CB067015",  // http://crbug.com/40113485
-      "2FCBCE08B34CCA1728A85F1EFBD9A34DD2558B2E"
-    ]
-  },
   "accessibilityServicePrivate": {
     "channel": "stable",
     "component_extensions_auto_granted": false,
@@ -626,23 +617,6 @@
       "4B7E9789426EBD1BB3F99D72690DAE303FC042DF", // AuthX Secure for ChromeOS
       // https://crbug.com/485245112
       "36F5326E7683E204CE9CE1532093D8BB9CD5D280"  // AuthX in-session extension
-    ]
-  }],
-  "loginScreenUi": [{
-    "channel": "stable",
-    "dependencies": ["behavior:imprivata_login_screen_extension"],
-    "extension_types": ["login_screen_extension"],
-    "location": "policy",
-    "platforms": ["chromeos"]
-  }, {
-    "channel": "stable",
-    "extension_types": ["login_screen_extension"],
-    "location": "policy",
-    "platforms": ["chromeos"],
-    "allowlist": [
-      "7FE4A999359A456C4B0FB7B7AD85CEA29CA50519", // Login screen APIs test extension
-      // https://crbug.com/433867146
-      "4B7E9789426EBD1BB3F99D72690DAE303FC042DF"  // AuthX Secure for ChromeOS
     ]
   }],
   "loginState": [{

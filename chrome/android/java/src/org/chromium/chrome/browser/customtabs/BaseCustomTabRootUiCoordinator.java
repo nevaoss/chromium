@@ -132,7 +132,6 @@ import org.chromium.ui.base.IntentRequestTracker;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeManager;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeSupplier.ChangeObserver;
 import org.chromium.ui.modaldialog.ModalDialogManager;
-import org.chromium.url.GURL;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BooleanSupplier;
@@ -240,7 +239,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
             MonotonicObservableSupplier<TabCreatorManager> tabCreatorManagerSupplier,
             FullscreenManager fullscreenManager,
             MonotonicObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier,
-            Supplier<TabContentManager> tabContentManagerSupplier,
+            Supplier<@Nullable TabContentManager> tabContentManagerSupplier,
             MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
             SettableMonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
             @ActivityType int activityType,
@@ -853,7 +852,6 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                                 boolean shouldPin,
                                 WebContents webContents,
                                 @TabLaunchType int type,
-                                GURL url,
                                 int index,
                                 CompletableFuture<Boolean> addTabToModel) {
                             return null;

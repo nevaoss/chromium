@@ -132,12 +132,21 @@ void TipsAgentAndroid::ScheduleNewNotification(
     if (!tips_service) {
       return;
     }
+    // TODO(crbug.com/567362616): Update the plumbing for Java-only signals to
+    // pass a generic signal map across JNI, avoiding hardcoded feature signals
+    // in tips_agent_android.cc.
+    std::map<std::string, float> custom_signals = {
+        {segmentation_platform::kBottomOmniboxStatus,
+         is_bottom_omnibox ? 1.0f : 0.0f},
+    };
     // `service` and `tips_service` are KeyedServices scoped to `profile`.
     // The callback is owned by `tips_service` and guarded by its WeakPtr, so
     // it will be dropped if the Profile or services are destroyed, ensuring
     // `service` is never called after destruction.
-    tips_service->DetermineBestTip(base::BindOnce(
-        &TipsAgentAndroid::OnBestTipChosen, base::Unretained(service)));
+    tips_service->DetermineBestTip(
+        std::move(custom_signals),
+        base::BindOnce(&TipsAgentAndroid::OnBestTipChosen,
+                       base::Unretained(service)));
     return;
   }
 
@@ -292,17 +301,15 @@ void TipsAgentAndroid::OnGetClientOverview(
 // static
 void TipsAgentAndroid::OnBestTipChosen(
     notifications::NotificationScheduleService* service,
-    std::optional<tips::TipsNotificationsFeatureType> best_tip) {
-  if (!best_tip.has_value() || !service) {
+    std::optional<notifications::NotificationData> data) {
+  if (!data.has_value() || !service) {
     return;
   }
 
   notifications::ScheduleParams schedule_params = GetCurrentScheduleParams();
 
-  notifications::NotificationData data =
-      tips::GetTipsNotificationData(*best_tip);
   service->Schedule(std::make_unique<notifications::NotificationParams>(
-      notifications::SchedulerClientType::kTips, std::move(data),
+      notifications::SchedulerClientType::kTips, std::move(*data),
       std::move(schedule_params)));
 }
 

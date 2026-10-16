@@ -514,9 +514,9 @@ public class IncognitoTabSwitcherPaneUnitTest {
         } else {
             assertTrue(buttonData.canPress());
             reset(mNewTabButtonClickListener);
-            View mockView = mock(View.class);
-            buttonData.onPress(mockView);
-            verify(mNewTabButtonClickListener).onClick(mockView);
+            View view = new View(mContext);
+            buttonData.onPress(view);
+            verify(mNewTabButtonClickListener).onClick(view);
             TabSwitcherPaneCoordinator coordinator =
                     mIncognitoTabSwitcherPane.getTabSwitcherPaneCoordinator();
             if (coordinator != null) {

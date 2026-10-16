@@ -1056,8 +1056,7 @@ bool Element::IsFocusableStyle(UpdateBehavior update_behavior) const {
       if (canvas) {
         break;
       }
-      if (const Element* parent =
-              FlatTreeTraversal::ParentElementSkippingSlots(*element)) {
+      if (const Element* parent = FlatTreeTraversal::ParentElement(*element)) {
         element = parent;
       } else if (element->isConnected()) {
         element = element->GetDocument().LocalOwner();
@@ -2531,10 +2530,34 @@ int Element::clientTop() {
   return ClientTopNoLayout();
 }
 
+// static
+PhysicalRect Element::PhysicalClientRect(const LayoutBox& box) {
+  PhysicalRect rect = box.PhysicalPaddingBoxRect();
+  if (!box.IsTextField() ||
+      !RuntimeEnabledFeatures::InputClientRectWithoutInlinePaddingEnabled()) {
+    return rect;
+  }
+  // Text fields clip their text at the content box in the inline axis.
+  // TODO(crbug.com/501216032): Derive this from the overflow clip rect once
+  // overflow-clip-margin applies to scroll containers, so that the client rect
+  // follows it.
+  // Spec: https://drafts.csswg.org/css-overflow-3/#overflow-clip-margin
+  // Resolution: https://github.com/w3c/csswg-drafts/issues/13502
+  const PhysicalRect content_rect = box.PhysicalContentBoxRect();
+  if (box.IsHorizontalWritingMode()) {
+    rect.offset.left = content_rect.offset.left;
+    rect.size.width = content_rect.size.width;
+  } else {
+    rect.offset.top = content_rect.offset.top;
+    rect.size.height = content_rect.size.height;
+  }
+  return rect;
+}
+
 int Element::ClientLeftNoLayout() const {
   if (const auto* layout_object = GetLayoutBox()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
-               layout_object->PhysicalPaddingBoxRect().offset.left,
+               PhysicalClientRect(*layout_object).offset.left,
                layout_object->StyleRef())
         .Round();
   }
@@ -2544,7 +2567,7 @@ int Element::ClientLeftNoLayout() const {
 int Element::ClientTopNoLayout() const {
   if (const auto* layout_object = GetLayoutBox()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
-               layout_object->PhysicalPaddingBoxRect().offset.top,
+               PhysicalClientRect(*layout_object).offset.top,
                layout_object->StyleRef())
         .Round();
   }
@@ -2655,7 +2678,7 @@ int Element::clientWidth() {
     // using, just use the border-box size.
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                box->IsTable() ? box->StitchedSize().width
-                              : box->PhysicalPaddingBoxRect().Width(),
+                              : PhysicalClientRect(*box).Width(),
                box->StyleRef())
         .Round();
   }
@@ -2699,7 +2722,7 @@ int Element::clientHeight() {
     // using, just use the border-box size.
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                box->IsTable() ? box->StitchedSize().height
-                              : box->PhysicalPaddingBoxRect().Height(),
+                              : PhysicalClientRect(*box).Height(),
                box->StyleRef())
         .Round();
   }
@@ -3904,6 +3927,11 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
       SetNeedsStyleRecalc(kLocalStyleChange,
                           StyleChangeReasonForTracing::FromAttribute(name));
     }
+  } else if (RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+             name == html_names::kOverscrollareaAttr) {
+    // See OverscrollAreaTracker::UpdateOverscrollArea().
+    SetNeedsStyleRecalc(kLocalStyleChange,
+                        StyleChangeReasonForTracing::FromAttribute(name));
   } else if (name == html_names::kDrawableAttr) {
     SetNeedsStyleRecalc(kLocalStyleChange,
                         StyleChangeReasonForTracing::FromAttribute(name));
@@ -4540,19 +4568,8 @@ const gfx::Transform* Element::GetCanvasTransform() const {
   return nullptr;
 }
 
-bool Element::HasCanvasTransform() const {
-  return GetCanvasTransform() != nullptr;
-}
-
 const gfx::Transform* Element::GetUsedCanvasTransform() const {
-  if (IsInCanvasSubtree() &&
-      RuntimeEnabledFeatures::ElementCanvasTransformEnabled(
-          GetExecutionContext())) {
-    if (HasCanvasTransform() && CanvasForDrawing()) {
-      return GetCanvasTransform();
-    }
-  }
-  return nullptr;
+  return CanvasForDrawing() ? GetCanvasTransform() : nullptr;
 }
 
 void Element::SetCanvasTransform(const gfx::Transform& transform) {
@@ -5312,7 +5329,18 @@ void Element::RecalcStyle(const StyleRecalcChange change,
   StyleRecalcChange child_change =
       IsPseudoElement() ? change.ForPseudoElement() : change.ForChildren(*this);
   if (change.ShouldRecalcStyleFor(*this)) {
+    // The style of an overscroll area depends on its registration. This has to
+    // run before rule collection because of potentially matching
+    // pseudo-classes.
+    bool overscroll_container_changed =
+        style_recalc_context.is_overscroll_container_child &&
+        OverscrollAreaTracker::UpdateOverscrollArea(*this);
     child_change = RecalcOwnStyle(change, local_style_recalc_context);
+    if (overscroll_container_changed) {
+      // Add or remove ::-internal-overscroll-area-parent.
+      child_change =
+          child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
+    }
     if (GetStyleChangeType() == kSubtreeStyleChange) {
       child_change =
           child_change.EnsureAtLeast(StyleRecalcChange::kRecalcDescendants);
@@ -5479,9 +5507,15 @@ void Element::RecalcStyle(const StyleRecalcChange change,
                         layout_sibling_recalc_context);
 
     // ::overscroll-area-parent ignores the ComputedStyle bits and checks
-    // GetOverscrollContainer().
-    UpdatePseudoElement(kPseudoIdOverscrollAreaParent, child_change,
-                        child_recalc_context);
+    // IsValidOverscrollArea().
+    bool had_overscroll_area_parent =
+        GetPseudoElement(kPseudoIdOverscrollAreaParent);
+    if (UpdatePseudoElement(kPseudoIdOverscrollAreaParent, child_change,
+                            child_recalc_context) &&
+        !had_overscroll_area_parent) {
+      // The container attaches area parents before its other children.
+      GetOverscrollContainer()->SetNeedsReattachLayoutTree();
+    }
 
     // View transitions ignore the ComputedStyle bits and check
     // ViewTransitionUtils::GetTransition(*this).
@@ -5587,6 +5621,12 @@ const ComputedStyle* Element::PropagateInheritedProperties() {
     // disable the optimization in such cases (especially as we have already
     // disabled it for links, which are the main causes of text decorations),
     // so we do that.
+    return nullptr;
+  }
+  if (style->ColorIsDerivedFromParent()) {
+    // The color was resolved from the parent's color (e.g. color-mix() with
+    // currentColor), so it can neither be kept nor copied from the parent;
+    // it must be recomputed.
     return nullptr;
   }
   ComputedStyleBuilder builder(*style);
@@ -5763,34 +5803,6 @@ StyleRecalcChange Element::RecalcOwnStyle(
     // null to make sure we don't mark for re-attachment if the new style is
     // null.
     old_style = nullptr;
-  }
-
-  // If we have an overscroll container, but it's the wrong one or we shouldn't
-  // have one, remove this element from the overscroll container (which should
-  // also clear GetOverscrollContainer() on `this`).
-  bool is_valid_overscroll_area = OverscrollAreaTracker::IsValidOverscrollArea(
-      *this, new_style, parent_style);
-  Element* overscroll_container = GetOverscrollContainer();
-  if (is_valid_overscroll_area || overscroll_container) {
-    Element* parent = FlatTreeTraversal::ParentElement(*this);
-
-    if (overscroll_container && (!new_style || !is_valid_overscroll_area ||
-                                 overscroll_container != parent)) {
-      DetachOverscroll();
-      overscroll_container = nullptr;
-      // We may need to remove this element's
-      // ::-internal-overscroll-area-parent.
-      child_change =
-          child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
-    }
-    // If we no longer have an overscroll container, but need one, add this
-    // element to the parent overscroll container.
-    if (!overscroll_container && is_valid_overscroll_area) {
-      parent->EnsureOverscrollAreaTracker().AddOverscroll(this);
-      // We need to add a ::-internal-overscroll-area-parent for this element.
-      child_change =
-          child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
-    }
   }
 
   if (GetOverscrollAreaTracker() && old_style && new_style &&
@@ -9213,6 +9225,13 @@ bool Element::MatchesOverscrollOpen() const {
   return false;
 }
 
+bool Element::MatchesOverscrollClosed() const {
+  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+    return false;
+  }
+  return IsValidOverscrollArea() && !MatchesOverscrollOpen();
+}
+
 void Element::FocusWithinStateChanged() {
   if (GetComputedStyle() && GetComputedStyle()->AffectedByFocusWithin()) {
     StyleChangeType change_type =
@@ -10696,7 +10715,7 @@ HTMLCanvasElement* Element::CanvasForDrawing() const {
   // TODO(paint-dev): The check for `drawable` purposely skips immediate
   // canvas children, to ease migration. Ultimately it must apply to
   // immediate children as well.
-  Element* ancestor = FlatTreeTraversal::ParentElementSkippingSlots(*this);
+  Element* ancestor = LayoutTreeBuilderTraversal::LayoutParentElement(*this);
   if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
     return ancestor_canvas->IsContentDrawable() ? ancestor_canvas : nullptr;
   }
@@ -10704,7 +10723,7 @@ HTMLCanvasElement* Element::CanvasForDrawing() const {
     return nullptr;
   }
   while (ancestor) {
-    ancestor = FlatTreeTraversal::ParentElementSkippingSlots(*ancestor);
+    ancestor = FlatTreeTraversal::ParentElement(*ancestor);
     if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
       return ancestor_canvas->IsContentDrawable() ? ancestor_canvas : nullptr;
     }
@@ -11201,7 +11220,7 @@ PseudoElement* Element::GetPseudoElement(
 
 CSSPseudoElement* Element::pseudo(const AtomicString& type) {
   auto [pseudo_id, pseudo_argument] =
-      CSSPseudoElement::ConvertTypeToSupportedPseudoId(type);
+      CSSPseudoElement::ConvertTypeToSupportedPseudoId(type, this);
   return EnsureCSSPseudoElement(pseudo_id, pseudo_argument);
 }
 
@@ -11588,9 +11607,10 @@ bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const {
     return false;
   }
   if (pseudo_id == kPseudoIdOverscrollAreaParent) {
-    // We set or remove our overscroll container in RecalcOwnStyle. Its presence
-    // indicates if we need an overscroll area parent for this element.
-    return GetOverscrollContainer();
+    // Valid overscroll areas get an overscroll area parent, unless they are
+    // display:none.
+    return IsValidOverscrollArea() &&
+           ComputedStyle::NullifyEnsured(GetComputedStyle());
   }
   if (pseudo_id == kPseudoIdCheckMark) {
     // We want to avoid the performance cost of generating the checkmark for
@@ -11642,7 +11662,7 @@ bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const {
     }
     if (pseudo_id == kPseudoIdOverscrollBackdrop) {
       return RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
-             GetOverscrollContainer() != nullptr;
+             IsValidOverscrollArea();
     }
     return style->CanGeneratePseudoElement(pseudo_id);
   }
@@ -11934,6 +11954,15 @@ void Element::SetIsInTopLayer(bool in_top_layer) {
       // added between two lifecycle updates since the overlay computed value
       // would not change, but the layout object order may have.
       SetForceReattachLayoutTree();
+    }
+
+    // Top layer elements can't be overscroll areas. An element leaving the top
+    // layer isn't a valid area yet, but may become one.
+    if (RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+        FastHasAttribute(html_names::kOverscrollareaAttr)) {
+      SetNeedsStyleRecalc(
+          kLocalStyleChange,
+          StyleChangeReasonForTracing::Create(style_change_reason::kTopLayer));
     }
 
     if (IsA<HTMLDialogElement>(*this)) {
@@ -14311,6 +14340,10 @@ Element* Element::GetOverscrollContainer() const {
     return data->GetOverscrollContainer();
   }
   return nullptr;
+}
+
+bool Element::IsValidOverscrollArea() const {
+  return GetOverscrollContainer();
 }
 
 void Element::SetOverscrollContainer(Element* element) {

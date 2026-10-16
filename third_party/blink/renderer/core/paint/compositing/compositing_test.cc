@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "base/containers/span.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "cc/base/features.h"
@@ -945,10 +944,6 @@ TEST_P(CompositingTest, AnchorPositionAdjustmentTransformIdReference) {
 }
 
 TEST_P(CompositingTest, MergeFixedLayers) {
-  base::MetricsSubSampler::ScopedAlwaysSampleForTesting always_sample;
-  std::optional<base::HistogramTester> histograms;
-  histograms.emplace();
-
   SetViewSize(gfx::Size(1000, 500));
   InitializeWithHTML(*WebView()->MainFrameImpl()->GetFrame(), R"HTML(
     <style>
@@ -968,12 +963,8 @@ TEST_P(CompositingTest, MergeFixedLayers) {
   EXPECT_EQ(gfx::Size(180, 150), a->bounds());
   EXPECT_EQ(gfx::Transform::MakeTranslation(0, 100),
             GetTransformNode(a)->local);
-  histograms->ExpectUniqueSample("Blink.Compositor.FixedLayerCount", 1, 1);
-  histograms->ExpectUniqueSample("Blink.Compositor.MergedFixedLayerCount", 1,
-                                 1);
 
   // Merge a and b. b affects both offset and size of the merged layer.
-  histograms.emplace();
   GetElementById("b")->SetInlineStyleProperty(CSSPropertyID::kTop, "40px");
   UpdateAllLifecyclePhases();
   a = CcLayerByDOMElementId("a");
@@ -984,12 +975,8 @@ TEST_P(CompositingTest, MergeFixedLayers) {
   EXPECT_EQ(gfx::Size(180, 160), a->bounds());
   EXPECT_EQ(gfx::Transform::MakeTranslation(0, 100),
             GetTransformNode(a)->local);
-  histograms->ExpectUniqueSample("Blink.Compositor.FixedLayerCount", 1, 1);
-  histograms->ExpectUniqueSample("Blink.Compositor.MergedFixedLayerCount", 1,
-                                 1);
 
   // Don't merge a and b because the merged layer would be too sparse.
-  histograms.emplace();
   GetElementById("b")->SetInlineStyleProperty(CSSPropertyID::kLeft, "800px");
   UpdateAllLifecyclePhases();
   a = CcLayerByDOMElementId("a");
@@ -1004,13 +991,9 @@ TEST_P(CompositingTest, MergeFixedLayers) {
   EXPECT_EQ(gfx::Size(100, 100), b->bounds());
   EXPECT_EQ(gfx::Transform::MakeTranslation(800, 40),
             GetTransformNode(b)->local);
-  histograms->ExpectUniqueSample("Blink.Compositor.FixedLayerCount", 2, 1);
-  histograms->ExpectUniqueSample("Blink.Compositor.MergedFixedLayerCount", 0,
-                                 1);
 
   // Don't merge a and b because they have different fixed-position-specific
   // flags (moved_by_outer_viewport_bounds_delta_y in this case).
-  histograms.emplace();
   GetElementById("b")->setAttribute(html_names::kStyleAttr,
                                     AtomicString("bottom: 200px; left: 0"));
   UpdateAllLifecyclePhases();
@@ -1028,12 +1011,8 @@ TEST_P(CompositingTest, MergeFixedLayers) {
   EXPECT_EQ(gfx::Transform::MakeTranslation(0, 200),
             GetTransformNode(b)->local);
   EXPECT_TRUE(GetTransformNode(b)->moved_by_outer_viewport_bounds_delta_y);
-  histograms->ExpectUniqueSample("Blink.Compositor.FixedLayerCount", 2, 1);
-  histograms->ExpectUniqueSample("Blink.Compositor.MergedFixedLayerCount", 0,
-                                 1);
 
   // Merge a and b which are both attached to the bottom of viewport.
-  histograms.emplace();
   GetElementById("a")->setAttribute(html_names::kStyleAttr,
                                     AtomicString("bottom: 250px; left: 0"));
   UpdateAllLifecyclePhases();
@@ -1046,9 +1025,6 @@ TEST_P(CompositingTest, MergeFixedLayers) {
   EXPECT_EQ(gfx::Transform::MakeTranslation(0, 150),
             GetTransformNode(a)->local);
   EXPECT_TRUE(GetTransformNode(a)->moved_by_outer_viewport_bounds_delta_y);
-  histograms->ExpectUniqueSample("Blink.Compositor.FixedLayerCount", 1, 1);
-  histograms->ExpectUniqueSample("Blink.Compositor.MergedFixedLayerCount", 1,
-                                 1);
 }
 
 TEST_P(CompositingTest, DontMergeFixedLayersIfLosingSolidColor) {
@@ -1068,9 +1044,6 @@ TEST_P(CompositingTest, DontMergeFixedLayersIfLosingSolidColor) {
 }
 
 TEST_P(CompositingTest, MergeStickyLayers) {
-  base::MetricsSubSampler::ScopedAlwaysSampleForTesting always_sample;
-  base::HistogramTester histograms;
-
   SetViewSize(gfx::Size(1000, 500));
   InitializeWithHTML(*WebView()->MainFrameImpl()->GetFrame(), R"HTML(
     <style>
@@ -1141,10 +1114,6 @@ TEST_P(CompositingTest, MergeStickyLayers) {
       b3_data->constraints.scroll_container_relative_containing_block_rect);
   EXPECT_TRUE(b3_data->constraints.is_anchored_top);
   EXPECT_EQ(50, b3_data->constraints.top_offset);
-
-  histograms.ExpectUniqueSample("Blink.Compositor.StickyLayerCount", 4, 1);
-  histograms.ExpectUniqueSample("Blink.Compositor.MergedStickyLayerCount", 2,
-                                1);
 }
 
 TEST_P(CompositingTest, MergeStickyLayersWithCullRectVerticalScrollRange) {
@@ -4392,13 +4361,13 @@ TEST_P(CompositingSimTest, CanvasDrawElementLayers) {
       div { width: 100px; height: 100px; }
     </style>
     <canvas id="canvas" width="200" height="200" content=drawable>
-      <div id="child_a">
+      <div id="child_a" drawable>
         <div id="grandchild_a">a1</div>
         <div id="grandchild_a_wct" style="will-change: transform;">a2</div>
         <div id="grandchild_a_bdf" style="backdrop-filter: blur(10px);">a3</div>
       </div>
-      <div id="child_b" style="background: blue;"></div>
-      <div id="child_c">c</div>
+      <div id="child_b" drawable style="background: blue;"></div>
+      <div id="child_c" drawable>c</div>
     </canvas>
   )HTML");
   Compositor().BeginFrame();
@@ -4614,11 +4583,11 @@ TEST_P(CompositingSimTest, NestedCanvasDrawElementLayers) {
 
   InitializeWithHTML(R"HTML(
     <canvas id="canvas" content=drawable width="200" height="300">
-      <div id="target" style="width: 100px; height: 300px;">
+      <div id="target" drawable style="width: 100px; height: 300px;">
         <div id="sibling_div_a" style="width: 100px; height: 100px; background: #0f0;"></div>
         <canvas id="nested_canvas" content=drawable width="100" height="100">
-          <div id="nested_canvas_target_a" style="width: 50px; height: 50px; background: #00f;"></div>
-          <div id="nested_canvas_target_b" style="width: 50px; height: 50px; background: #0ff;">
+          <div id="nested_canvas_target_a" drawable style="width: 50px; height: 50px; background: #00f;"></div>
+          <div id="nested_canvas_target_b" drawable style="width: 50px; height: 50px; background: #0ff;">
             <div id="nested_canvas_target_b_child" style="width: 10px; height: 10px; background: #000; will-change: transform;"></div>
           </div>
         </canvas>
@@ -4677,9 +4646,9 @@ TEST_P(CompositingSimTest, CanvasChildPaintRecordWithNestedCanvas) {
       #nested_child { width: 50px; height: 50px; background: green; }
     </style>
     <canvas id="parent_canvas" width="200" height="200" content=drawable>
-      <div id="parent_child">
+      <div id="parent_child" drawable>
         <canvas id="nested_canvas" width="100" height="100" content=drawable>
-          <div id="nested_child"></div>
+          <div id="nested_child" drawable></div>
         </canvas>
       </div>
     </canvas>
@@ -4724,8 +4693,8 @@ TEST_P(CompositingSimTest, DirectChildNestedCanvasDrawElementLayers) {
   InitializeWithHTML(R"HTML(
     <!DOCTYPE html>
     <canvas id="parent_canvas" width="200" height="200" content=drawable>
-      <canvas id="nested_canvas" width="100" height="100" content=drawable>
-        <div id="nested_child" style="width: 50px; height: 50px; background: green;"></div>
+      <canvas id="nested_canvas" drawable width="100" height="100" content=drawable>
+        <div id="nested_child" drawable style="width: 50px; height: 50px; background: green;"></div>
       </canvas>
     </canvas>
   )HTML");
@@ -4769,7 +4738,7 @@ TEST_P(CompositingSimTest, CanvasDrawElementLayersWithWillChange) {
       }
     </style>
     <canvas id="canvas" width="200" height="200" content=drawable>
-      <div id="target">
+      <div id="target" drawable>
         <div id="willchange"></div>
       </div>
     </canvas>
@@ -4811,7 +4780,7 @@ TEST_P(CompositingSimTest, CanvasDrawElementLayersWithScrolling) {
       }
     </style>
     <canvas id="canvas" width="200" height="200" content=drawable>
-      <div id="target">
+      <div id="target" drawable>
         <div id="scroller">
           <div id="scrolled"></div>
         </div>
@@ -4881,7 +4850,7 @@ TEST_P(CompositingSimTest, CanvasDrawElementLayersWithCaret) {
       }
     </style>
     <canvas id="canvas" width="200" height="200" content=drawable>
-      <div id="target">
+      <div id="target" drawable>
         <input id="input">
       </div>
     </canvas>
@@ -4927,7 +4896,7 @@ TEST_P(CompositingSimTest, CanvasDrawElementLayersWithAnonymousCaret) {
       }
     </style>
     <canvas id="canvas" width="200" height="200" content=drawable>
-      <div id="target" contenteditable="true">
+      <div id="target" drawable contenteditable="true">
         Text
         <div>Block</div>
       </div>
@@ -4974,7 +4943,7 @@ TEST_P(CompositingSimTest, CanvasDrawElementLayersWithScrollableDrawnElement) {
       }
     </style>
     <canvas id="canvas" width="200" height="200" content=drawable>
-      <div id="scroller">
+      <div id="scroller" drawable>
         <div id="scrolled"></div>
       </div>
     </canvas>
