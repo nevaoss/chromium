@@ -202,18 +202,11 @@ class NET_EXPORT HttpResponseInfo {
   // in no particular order.
   std::set<std::string> dns_aliases;
 
-<<<<<<< HEAD
 #if defined(USE_FILESCHEME_CODECACHE)
   // For file schemes, the last modified time needed to validate its code cache
   base::Time file_last_modified_time;
 #endif
 
-  // If not null, this indicates the response is stored during a certain browser
-  // session. Used for filtering cache access.
-  std::optional<int64_t> browser_run_id;
-
-=======
->>>>>>> 156.0.8078.0~1
   // True if the request matched a shared dictionary and advertised it as being
   // available with an "Available-Dictionary" request header.
   // This is always false for resources served from cache.
