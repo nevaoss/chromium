@@ -49,11 +49,17 @@ public class UiAndroidFeatureList {
                     /* defaultValue= */ false,
                     /* defaultValueInTests= */ true);
 
+    public static final CachedFlag sConnectedDisplayDensityDebugLogs =
+            newCachedFlag(
+                    UiAndroidFeatures.CONNECTED_DISPLAY_DENSITY_DEBUG_LOGS,
+                    /* defaultValue= */ false,
+                    /* defaultValueInTests= */ false);
+
     public static final CachedFlag sAndroidWindowOcclusion =
             newCachedFlag(
                     UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION,
-                    /* defaultValue= */ true,
-                    /* defaultValueInTests= */ true);
+                    /* defaultValue= */ false,
+                    /* defaultValueInTests= */ false);
 
     // Whether to apply optimizations to the window when it is occluded. When false, occlusion
     // metrics will still be collected, but the actual behavior of the window remains unchanged.
@@ -136,6 +142,7 @@ public class UiAndroidFeatureList {
             List.of(
                     sAndroidUseDisplayTopology,
                     sAndroidWindowOcclusion,
+                    sConnectedDisplayDensityDebugLogs,
                     sRefactorMinWidthContextOverride,
                     sUpdatePaddingForDisplayCalculation,
                     sMaximumWindowForGestureNavDetection);

@@ -15,8 +15,6 @@ if (is_android) {
 _proto_files = [
   "aim_eligibility_client_request.proto",
   "aim_eligibility_response.proto",
-  "answer_data.proto",
-  "answer_type.proto",
   "chrome_aim_entry_point.proto",
   "chrome_searchbox_stats.proto",
   "entity_info.proto",
@@ -48,8 +46,6 @@ _proto_files = [
   "tool_config.proto",
   "tool_mode.proto",
   "tool_rule.proto",
-  "tool_substate.proto",
-  "tool_substate_config.proto",
   "types.proto",
   "url_param.proto",
 ]

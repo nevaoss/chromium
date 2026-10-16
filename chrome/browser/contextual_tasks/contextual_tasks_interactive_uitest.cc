@@ -12,6 +12,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/path_service.h"
 #include "base/strings/escape.h"
+#include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
@@ -23,9 +24,11 @@
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_interactive_test_base.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_test_user_variation.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
@@ -34,6 +37,7 @@
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -52,14 +56,17 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths.h"
+#include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/contextual_search/contextual_search_types.h"
+#include "components/contextual_search/mock_contextual_search_session_handle.h"
 #include "components/contextual_search/pref_names.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
@@ -73,6 +80,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
+#include "components/strings/grit/components_strings.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
@@ -98,6 +106,7 @@
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/clipboard/clipboard_monitor.h"
 #include "ui/base/clipboard/clipboard_observer.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/unowned_user_data/user_data_factory.h"
 #include "ui/events/keycodes/keyboard_codes.h"
@@ -106,8 +115,6 @@
 using testing::_;
 
 namespace {
-constexpr char kMockAimPagePath[] = "chrome/test/data/mock_aim_page.html";
-constexpr char kMockAimPageHost[] = "www.google.com";
 
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPrimaryTab);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kGenericTab);
@@ -117,82 +124,10 @@ DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kNewTabId);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebUIToolbarId);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kElementExistsEvent);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kElementDoesNotExistEvent);
-
-constexpr char kCujInterceptionUrl[] = "https://www.google.com/search?udm=50";
-class TestTabContextualizationController
-    : public lens::TabContextualizationController {
- public:
-  inline static SkColor screenshot_color_ = SK_ColorRED;
-
-  explicit TestTabContextualizationController(tabs::TabInterface* tab)
-      : lens::TabContextualizationController(tab) {}
-  ~TestTabContextualizationController() override = default;
-
-  void CaptureScreenshot(
-      std::optional<lens::ImageEncodingOptions> image_options,
-      CaptureScreenshotCallback callback) override {
-    SkBitmap bitmap;
-    bitmap.allocN32Pixels(100, 100, /*isOpaque=*/true);
-    bitmap.eraseColor(screenshot_color_);
-    std::move(callback).Run(bitmap);
-  }
-
- protected:
-  bool IsPageContextEligible(
-      const GURL& url,
-      const std::vector<optimization_guide::FrameMetadata>& frame_metadata)
-      override {
-    return true;
-  }
-};
-
-class MockContextualTasksEligibilityManager
-    : public contextual_tasks::ContextualTasksEligibilityManager {
- public:
-  MockContextualTasksEligibilityManager(
-      PrefService* pref_service,
-      signin::IdentityManager* identity_manager,
-      AimEligibilityService* aim_eligibility_service)
-      : contextual_tasks::ContextualTasksEligibilityManager(
-            pref_service, identity_manager, aim_eligibility_service) {
-    MaybeNotifyEligibilityChanged();
-  }
-  ~MockContextualTasksEligibilityManager() override = default;
-
-  bool IsEligibleWithoutIdentity() const override { return true; }
-  bool CalculateEligibility() const override { return true; }
-};
-
-class MockContextualTasksUiService
-    : public contextual_tasks::ContextualTasksUiService {
- public:
-  MockContextualTasksUiService(
-      Profile* profile,
-      contextual_tasks::ContextualTasksService* contextual_tasks_service,
-      AimEligibilityService* aim_eligibility_service,
-      signin::IdentityManager* identity_manager)
-      : contextual_tasks::ContextualTasksUiService(
-            profile,
-            std::make_unique<testing::NiceMock<
-                contextual_tasks::MockContextualTasksUiServiceDelegate>>(),
-            contextual_tasks_service,
-            identity_manager,
-            aim_eligibility_service,
-            std::make_unique<MockContextualTasksEligibilityManager>(
-                profile->GetPrefs(),
-                identity_manager,
-                aim_eligibility_service),
-            /*cookie_synchronizer=*/nullptr) {}
-  ~MockContextualTasksUiService() override = default;
-
-  bool IsSignedInToBrowserWithValidCredentials() override { return true; }
-  bool IsUrlForPrimaryAccount(const GURL& url) override { return true; }
-  void GetAccessToken(
-      GetAccessTokenCallback callback,
-      base::WeakPtr<content::WebContents> web_contents) override {
-    std::move(callback).Run("fake_access_token");
-  }
-};
+using MockContextualTasksEligibilityManager =
+    contextual_tasks::TestContextualTasksEligibilityManager;
+using MockContextualTasksUiService =
+    contextual_tasks::TestContextualTasksUiService;
 
 class ClipboardTextObserver
     : public ui::test::ObservationStateObserver<std::u16string,
@@ -250,181 +185,14 @@ DEFINE_LOCAL_STATE_IDENTIFIER_VALUE(ClipboardTextObserver, kClipboardText);
 
 namespace contextual_tasks {
 
-class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
+class ContextualTasksInteractiveUiTestBase
+    : public ContextualTasksInteractiveTestBase {
  public:
-  ContextualTasksInteractiveUiTest() {
-    // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox is
-    // enabled and then remove the two omnibox features below.
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{kContextualTasks, lens::features::kLensOverlay,
-                              lens::features::kLensSidePanelUnification,
-                              lens::features::kLensOverlayContextualSearchbox},
-        /*disabled_features=*/{lens::features::kLensSendRawFileMediaTypes,
-                               omnibox::internal::kWebUIOmniboxPopup,
-                               omnibox::internal::kWebUIOmniboxAimPopup});
-    tab_context_override_ =
-        tabs::TabFeatures::GetUserDataFactoryForTesting()
-            .AddOverrideForTesting<
-                lens::TabContextualizationController>(base::BindRepeating(
-                [](tabs::TabInterface& tab)
-                    -> std::unique_ptr<lens::TabContextualizationController> {
-                  return std::make_unique<TestTabContextualizationController>(
-                      &tab);
-                }));
-  }
-  ~ContextualTasksInteractiveUiTest() override = default;
-
-  void SetUpBrowserContextKeyedServices(
-      content::BrowserContext* context) override {
-    InteractiveBrowserTest::SetUpBrowserContextKeyedServices(context);
-
-    AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
-        context,
-        base::BindRepeating(
-            &ContextualTasksInteractiveUiTest::BuildMockAimServiceInstance,
-            base::Unretained(this)));
-
-    contextual_tasks::ContextualTasksUiServiceFactory::GetInstance()
-        ->SetTestingFactory(
-            context,
-            base::BindRepeating(&ContextualTasksInteractiveUiTest::
-                                    BuildMockContextualTasksUiServiceInstance,
-                                base::Unretained(this)));
-
-  }
-
-  std::unique_ptr<KeyedService> BuildMockAimServiceInstance(
-      content::BrowserContext* context) {
-    Profile* profile = Profile::FromBrowserContext(context);
-    auto mock = std::make_unique<MockAimEligibilityService>(
-        CHECK_DEREF(profile->GetPrefs()), /*template_url_service=*/nullptr,
-        /*url_loader_factory=*/nullptr,
-        IdentityManagerFactory::GetForProfile(profile));
-
-    auto* config = &mock->config();
-    // Configure AimEligibility to recognize Browser Tabs as valid inputs to
-    // populate context selection.
-    config->add_input_type_configs()->set_input_type(
-        omnibox::INPUT_TYPE_BROWSER_TAB);
-    config->add_input_type_configs()->set_input_type(
-        omnibox::INPUT_TYPE_LENS_IMAGE);
-    config->add_input_type_configs()->set_input_type(
-        omnibox::INPUT_TYPE_LENS_FILE);
-
-    ON_CALL(*mock, GetSearchboxConfig()).WillByDefault(testing::Return(config));
-
-    ON_CALL(*mock, IsAimUrl(_, _))
-        .WillByDefault(
-            [](const GURL& url,
-               std::optional<contextual_tasks::HostOverride> host_override) {
-              return url.host().find(kMockAimPageHost) != std::string::npos;
-            });
-
-    // Satisfy the native navigation interception checks.
-    ON_CALL(*mock, HasAimUrlParams(_)).WillByDefault(testing::Return(true));
-    ON_CALL(*mock, IsCobrowseEligible()).WillByDefault(testing::Return(true));
-    ON_CALL(*mock, IsAimEligible()).WillByDefault(testing::Return(true));
-    ON_CALL(*mock, RegisterEligibilityChangedCallback(_))
-        .WillByDefault([](base::RepeatingClosure) {
-          return base::CallbackListSubscription();
-        });
-
-    return mock;
-  }
-
-  std::unique_ptr<KeyedService> BuildMockContextualTasksUiServiceInstance(
-      content::BrowserContext* context) {
-    Profile* profile = Profile::FromBrowserContext(context);
-    return std::make_unique<MockContextualTasksUiService>(
-        profile,
-        contextual_tasks::ContextualTasksServiceFactory::GetForProfile(profile),
-        AimEligibilityServiceFactory::GetForProfile(profile),
-        IdentityManagerFactory::GetForProfile(profile));
-  }
-
-  MockAimEligibilityService* GetMockAimEligibilityService(Profile* profile) {
-    auto* service = AimEligibilityServiceFactory::GetForProfile(profile);
-    return static_cast<MockAimEligibilityService*>(service);
-  }
+  ContextualTasksInteractiveUiTestBase() = default;
+  ~ContextualTasksInteractiveUiTestBase() override = default;
 
   void SetUpOnMainThread() override {
-    TestTabContextualizationController::screenshot_color_ = SK_ColorRED;
-    InteractiveBrowserTest::SetUpOnMainThread();
-
-    browser()->GetProfile()->GetPrefs()->SetBoolean(
-        lens::prefs::kLensSharingPageScreenshotEnabled, true);
-    browser()->GetProfile()->GetPrefs()->SetBoolean(
-        lens::prefs::kLensSharingPageContentEnabled, true);
-
-    host_resolver()->AddRule("*", "127.0.0.1");
-    ASSERT_TRUE(embedded_test_server()->Start());
-
-    url_loader_interceptor_ = std::make_unique<
-        content::URLLoaderInterceptor>(base::BindLambdaForTesting(
-        [&](content::URLLoaderInterceptor::RequestParams* params) {
-          const GURL& url = params->url_request.url;
-          if (url.host() == kMockAimPageHost &&
-              (url.path() == "/complete/s" ||
-               url.path() == "/complete/search")) {
-            std::string q_param;
-            net::GetValueForKeyInQuery(url, "q", &q_param);
-            std::string query = base::UnescapeURLComponent(
-                q_param, base::UnescapeRule::REPLACE_PLUS_WITH_SPACE);
-            std::string response_json = base::StringPrintf(
-                ")]}'\n" R"(["%s", ["suggestion-1", "suggestion-2"]])",
-                query.c_str());
-            content::URLLoaderInterceptor::WriteResponse(
-                "HTTP/1.1 200 OK\nContent-Type: application/json\n\n",
-                response_json, params->client.get());
-            return true;
-          }
-          if (url.host() == "a.google.com") {
-            content::URLLoaderInterceptor::WriteResponse(
-                "HTTP/1.1 200 OK\nContent-Type: text/html\n\n",
-                "<html><body>Title 1</body></html>", params->client.get());
-            return true;
-          }
-          if (url.host() == kMockAimPageHost) {
-            content::URLLoaderInterceptor::WriteResponse(kMockAimPagePath,
-                                                         params->client.get());
-            return true;
-          }
-          GURL cluster_info_url{
-              lens::features::GetLensOverlayClusterInfoEndpointUrl()};
-          GURL upload_url{lens::features::GetLensOverlayEndpointURL()};
-          GURL composebox_cluster_info_url{
-              lens::features::GetLensComposeboxClusterInfoEndpointUrl()};
-          GURL composebox_upload_url{
-              lens::features::GetLensComposeboxEndpointUrl()};
-          if ((url.host() == cluster_info_url.host() &&
-               url.path() == cluster_info_url.path()) ||
-              (url.host() == composebox_cluster_info_url.host() &&
-               url.path() == composebox_cluster_info_url.path())) {
-            lens::LensOverlayServerClusterInfoResponse response;
-            response.set_search_session_id("test_search_session_id");
-            std::string response_string;
-            CHECK(response.SerializeToString(&response_string));
-            content::URLLoaderInterceptor::WriteResponse(
-                "HTTP/1.1 200 OK\nContent-Type: application/x-protobuf\n\n",
-                response_string, params->client.get());
-            return true;
-          }
-          if ((url.host() == upload_url.host() &&
-               url.path() == upload_url.path()) ||
-              (url.host() == composebox_upload_url.host() &&
-               url.path() == composebox_upload_url.path())) {
-            lens::LensOverlayServerResponse response;
-            std::string response_string;
-            CHECK(response.SerializeToString(&response_string));
-            content::URLLoaderInterceptor::WriteResponse(
-                "HTTP/1.1 200 OK\nContent-Type: application/x-protobuf\n\n",
-                response_string, params->client.get());
-            return true;
-          }
-          return false;
-        }));
-
-    // Mock configured in factory BuildMockAimServiceInstance
+    ContextualTasksInteractiveTestBase::SetUpOnMainThread();
 
     // Explicitly enable user-level content sharing settings to satisfy native
     // FeatureEligibility.
@@ -438,9 +206,8 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
   }
 
   void TearDownOnMainThread() override {
-    url_loader_interceptor_.reset();
     ui::SelectFileDialog::SetFactory(nullptr);
-    InteractiveBrowserTest::TearDownOnMainThread();
+    ContextualTasksInteractiveTestBase::TearDownOnMainThread();
   }
 
   static auto WaitForElementExists(const ui::ElementIdentifier& contents_id,
@@ -559,7 +326,8 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
     return ForceClickMenuButtonBySelector(contents_id, "#" + button_id);
   }
 
-  auto WaitForComposeboxFilesCount(int expected_count) {
+  auto WaitForComposeboxFilesCount(const ui::ElementIdentifier& contents_id,
+                                   int expected_count) {
     StateChange change;
     change.type = StateChange::Type::kExistsAndConditionTrue;
     change.where = {"contextual-tasks-app", "#composebox", "#composebox"};
@@ -567,7 +335,11 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
         "el => el.attachedContext && el.attachedContext.size === %d",
         expected_count);
     change.event = kElementExistsEvent;
-    return WaitForStateChange(kPrimaryTab, change);
+    return WaitForStateChange(contents_id, change);
+  }
+
+  auto WaitForComposeboxFilesCount(int expected_count) {
+    return WaitForComposeboxFilesCount(kPrimaryTab, expected_count);
   }
 
   auto WaitForFaviconGroupWithTitle(const ui::ElementIdentifier& contents_id,
@@ -664,6 +436,26 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
                  WaitForInterceptionAndLoad());
   }
 
+  auto OpenContextualTasksInSidePanel(
+      const ui::ElementIdentifier& side_panel_id) {
+    return Steps(
+        Do(base::BindLambdaForTesting([this]() {
+          SidePanelUI::From(browser())->DisableAnimationsForTesting();
+          ContextualTasksPanelController::From(browser())->Show(
+              false,
+              omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+        })),
+        WaitForShow(kContextualTasksSidePanelWebViewElementId),
+        NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                         "SidePanelContentWebViewName",
+                         [](ContextualTasksWebView* web_view) -> views::View* {
+                           return web_view->content_web_view();
+                         }),
+        InstrumentNonTabWebView(side_panel_id, "SidePanelContentWebViewName"),
+        WaitForElementExists(side_panel_id, {"contextual-tasks-app",
+                                             "#composebox", "#composebox"}));
+  }
+
   // Verifies the structure and content of the SubmitQuery protobuf message sent
   // from the browser to the inner WebContents.
   MultiStep VerifySubmitQueryMessage(
@@ -713,11 +505,13 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
     return Steps(
         // Wait until the inner WebContents receives the message at the expected
         // index.
-        WaitForJsResult(kInnerWebContentsId,
-                        base::StringPrintf(
-                            "() => window.receivedMessages.filter(buf => new "
-                            "Uint8Array(buf)[0] === 18).length > %d",
-                            expected_message_index)),
+        WaitForJsResult(
+            kInnerWebContentsId,
+            base::StringPrintf(
+                "() => Boolean(Array.isArray(window.receivedMessages) && "
+                "window.receivedMessages.filter(buf => new "
+                "Uint8Array(buf)[0] === 18).length > %d)",
+                expected_message_index)),
         WithElement(kInnerWebContentsId, [expected_media_type,
                                           expected_added_input_name,
                                           expected_message_index,
@@ -873,11 +667,13 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
     return Steps(
         // Wait until the inner WebContents receives the message at the expected
         // index.
-        WaitForJsResult(kInnerWebContentsId,
-                        base::StringPrintf(
-                            "() => window.receivedMessages.filter(buf => new "
-                            "Uint8Array(buf)[0] === 18).length > %d",
-                            expected_message_index)),
+        WaitForJsResult(
+            kInnerWebContentsId,
+            base::StringPrintf(
+                "() => Boolean(Array.isArray(window.receivedMessages) && "
+                "window.receivedMessages.filter(buf => new "
+                "Uint8Array(buf)[0] === 18).length > %d)",
+                expected_message_index)),
         WithElement(kInnerWebContentsId, [expected_query_text,
                                           expected_viewport_image_count,
                                           expected_upload_image_count,
@@ -987,41 +783,6 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
                 query_text)));
   }
 
-  // Drive the real tab->side-panel transition by clicking a thread link in the
-  // embedded AIM page, then rebind the inner contents onto the side panel.
-  auto SimulateThreadLinkAndOpenPanel(ui::ElementIdentifier side_panel_id) {
-    const DeepQuery kThreadLink = {"#threadLink"};
-    return Steps(
-        // New thread / in-panel navigation would otherwise trigger the active
-        // tab's PrimaryPageChanged->Hide() and close the panel under test.
-        Do(base::BindLambdaForTesting([this]() {
-          static_cast<contextual_tasks::ContextualTasksSidePanelCoordinator*>(
-              contextual_tasks::ContextualTasksPanelController::From(browser()))
-              ->SetSuppressHideOnContextualTasksUrlForTesting(true);
-        })),
-        InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
-        // Wait until the mock page has captured the WebUI postMessage source,
-        // otherwise the click handler no-ops and the panel never opens.
-        WaitForJsResult(kInnerWebContentsId,
-                        "() => window.__ctWebuiSourceReady === true"),
-        // The click detaches this tab's WebContents into the side panel, so the
-        // element disappears mid-stop; fire-and-forget to avoid kElementHidden.
-        ExecuteJsAt(kInnerWebContentsId, kThreadLink, "el => el.click()",
-                    ExecuteJsMode::kFireAndForget),
-        WaitForShow(kContextualTasksSidePanelWebViewElementId),
-        UninstrumentWebContents(kInnerWebContentsId,
-                                /*fail_if_not_instrumented=*/false),
-        NameViewRelative(kContextualTasksSidePanelWebViewElementId,
-                         "SidePanelContentWebViewName",
-                         [](ContextualTasksWebView* web_view) -> views::View* {
-                           return web_view->content_web_view();
-                         }),
-        InstrumentNonTabWebView(side_panel_id, "SidePanelContentWebViewName",
-                                /*wait_for_ready=*/true),
-        WaitForElementExists(side_panel_id, {"contextual-tasks-app"}),
-        InstrumentInnerWebContents(kInnerWebContentsId, side_panel_id, 0));
-  }
-
   auto CloseContextualTasksSidePanel() {
     return Steps(
         Do(base::BindLambdaForTesting([this]() {
@@ -1112,31 +873,127 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
                            transcript));
   }
 
- protected:
-  base::test::ScopedFeatureList scoped_feature_list_;
-  std::optional<ui::UserDataFactory::ScopedOverride> tab_context_override_;
-  std::optional<ui::UserDataFactory::ScopedOverride>
-      lens_search_controller_override_;
-  std::unique_ptr<content::URLLoaderInterceptor> url_loader_interceptor_;
-
  private:
   gfx::ScopedAnimationDurationScaleMode disable_animations_{
       gfx::ScopedAnimationDurationScaleMode::ZERO_DURATION};
 };
 
+class ContextualTasksInteractiveUiTest
+    : public ContextualTasksInteractiveUiTestBase,
+      public testing::WithParamInterface<UserVariation> {
+ public:
+  ContextualTasksInteractiveUiTest() = default;
+  ~ContextualTasksInteractiveUiTest() override = default;
+
+  UserVariation GetUserVariation() const override { return GetParam(); }
+};
+
+class ContextualTasksPinnedToolbarInteractiveUiTest
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    auto disabled = GetDefaultDisabledFeatures();
+    enabled.push_back({kEnableContextualTasksPinButtonInToolbar, {}});
+    enabled.push_back({kContextualTasksForceEntryPointEligibility, {}});
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
+};
+
+// This tests the following CUJ:
+//  (1) User opens Customize Chrome toolbar section to pin Contextual Tasks.
+//  (2) User toggles Contextual Tasks pinning via Customize Chrome WebUI.
+//  (3) Pinned Contextual Tasks toolbar button appears.
+//  (4) User clicks the pinned Contextual Tasks toolbar button.
+//  (5) Contextual Tasks side panel opens and WebUI app initializes.
+//  (6) Pinned toolbar button reflects the active toggle state.
+//  (7) User clicks the pinned toolbar button again to toggle the side panel
+//      closed.
+//  (8) Contextual Tasks side panel closes.
+IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
+                       PinnedToolbarButtonClick) {
+  SkipIfIncognito("Toolbar pinning is not supported in Incognito");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kCustomizeChromeWebContentsId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const DeepQuery kContextualTasksToggle = {
+      "customize-chrome-app",
+      "#toolbarPage",
+      base::StrCat({"cr-toggle[aria-label=\"",
+                    l10n_util::GetStringUTF8(
+                        IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL),
+                    "\"]"}),
+  };
+
+  RunTestSequence(
+      // Step 1: Open Customize Chrome toolbar section to pin Contextual Tasks.
+      Do([this]() {
+        chrome::ExecuteCommand(browser(), IDC_SHOW_CUSTOMIZE_CHROME_TOOLBAR);
+      }),
+      WaitForShow(kCustomizeChromeSidePanelWebViewElementId),
+      InstrumentNonTabWebView(kCustomizeChromeWebContentsId,
+                              kCustomizeChromeSidePanelWebViewElementId),
+      // Step 2: Toggle pinning for Contextual Tasks via Customize Chrome WebUI.
+      WaitForElementVisible(kCustomizeChromeWebContentsId,
+                            kContextualTasksToggle),
+      ScrollIntoView(kCustomizeChromeWebContentsId, kContextualTasksToggle),
+      ClickElement(kCustomizeChromeWebContentsId, kContextualTasksToggle),
+      WaitForShow(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+
+      // Step 3 & 4: Click the pinned button to open the side panel and verify
+      // WebUI loads.
+      PressButton(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      CheckResult(
+          [this]() {
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
+          },
+          true),
+
+      // Step 5: Verify the pinned toolbar button reflects the active toggle
+      // state.
+      CheckView(
+          kPinnedToolbarActionShowSidePanelContextualTasksElementId,
+          [](PinnedActionToolbarButton* button) { return button->IsActive(); }),
+
+      // Step 6: Instrument WebUI app inside side panel to verify load.
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      WaitForElementExists(kSidePanelWebContentsId, {"contextual-tasks-app"}),
+
+      // Step 7: Click the pinned button again to toggle the side panel closed.
+      PressButton(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+      WaitForHide(kContextualTasksSidePanelWebViewElementId),
+      CheckResult(
+          [this]() {
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
+          },
+          false),
+
+      // Step 8: Verify the pinned toolbar button is no longer active.
+      CheckView(kPinnedToolbarActionShowSidePanelContextualTasksElementId,
+                [](PinnedActionToolbarButton* button) {
+                  return !button->IsActive();
+                }));
+}
+
 // TODO(crbug.com/500717050): Parameterize this test suite on the feature flag.
-// TODO(crbug.com/524797987): Re-enable this test on ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS)
+// TODO(crbug.com/524797987): Re-enable this test on ChromeOS and Linux.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
 #define MAYBE_AddAndRemovePdfChipFromComposebox \
   DISABLED_AddAndRemovePdfChipFromComposebox
 #else
 #define MAYBE_AddAndRemovePdfChipFromComposebox \
   AddAndRemovePdfChipFromComposebox
 #endif
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        MAYBE_AddAndRemovePdfChipFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
-
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("download.pdf");
@@ -1144,6 +1001,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   ui::SelectFileDialog::SetFactory(
       std::make_unique<content::FakeSelectFileDialogFactory>(
           std::vector<base::FilePath>{file_path}));
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kDocumentChip = {"contextual-tasks-app",
                                    "#composebox",
@@ -1168,26 +1027,24 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(InstrumentTab(kPrimaryTab, 0),
                   SelectTab(kTabStripElementId, 0),
-                  OpenContextualTasksInCurrentTab(kInterceptionUrl),
+                  OpenContextualTasksInSidePanel(kSidePanelId),
 
-                  ForceClickAddContextEntrypoint(kPrimaryTab),
-                  ForceClickMenuButton(kPrimaryTab, "fileUpload"),
+                  ForceClickAddContextEntrypoint(kSidePanelId),
+                  ForceClickMenuButton(kSidePanelId, "fileUpload"),
 
-                  WaitForDocumentChipWithTitle(kPrimaryTab, "download.pdf"),
-                  WaitForElementVisible(kPrimaryTab, kDocumentChip),
-                  WaitForComposeboxFilesCount(1),
+                  WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
+                  WaitForElementVisible(kSidePanelId, kDocumentChip),
+                  WaitForComposeboxFilesCount(kSidePanelId, 1),
 
-                  WaitForElementVisible(kPrimaryTab, kRemoveDocumentButton),
-                  ClickButton(kPrimaryTab, kRemoveDocumentButton),
-                  WaitForElementDoesNotExist(kPrimaryTab, kDocumentChip),
-                  WaitForComposeboxFilesCount(0));
+                  WaitForElementVisible(kSidePanelId, kRemoveDocumentButton),
+                  ClickButton(kSidePanelId, kRemoveDocumentButton),
+                  WaitForElementDoesNotExist(kSidePanelId, kDocumentChip),
+                  WaitForComposeboxFilesCount(kSidePanelId, 0));
 }
 
 // TODO(crbug.com/524797987): Re-enable this test.
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        DISABLED_AddAndRemoveImageChipFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
-
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("handbag.png");
@@ -1195,6 +1052,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   ui::SelectFileDialog::SetFactory(
       std::make_unique<content::FakeSelectFileDialogFactory>(
           std::vector<base::FilePath>{file_path}));
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kImgChip = {
       "contextual-tasks-app",         "#composebox", "#composebox", "#carousel",
@@ -1209,17 +1068,17 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(InstrumentTab(kPrimaryTab, 0),
                   SelectTab(kTabStripElementId, 0),
-                  OpenContextualTasksInCurrentTab(kInterceptionUrl),
+                  OpenContextualTasksInSidePanel(kSidePanelId),
 
-                  ForceClickAddContextEntrypoint(kPrimaryTab),
-                  ForceClickMenuButton(kPrimaryTab, "imageUpload"),
+                  ForceClickAddContextEntrypoint(kSidePanelId),
+                  ForceClickMenuButton(kSidePanelId, "imageUpload"),
 
-                  WaitForElementVisible(kPrimaryTab, kImgChip),
-                  WaitForComposeboxFilesCount(1),
+                  WaitForElementVisible(kSidePanelId, kImgChip),
+                  WaitForComposeboxFilesCount(kSidePanelId, 1),
 
-                  ClickButton(kPrimaryTab, kRemoveImgButton),
-                  WaitForElementDoesNotExist(kPrimaryTab, kImgChip),
-                  WaitForComposeboxFilesCount(0));
+                  ClickButton(kSidePanelId, kRemoveImgButton),
+                  WaitForElementDoesNotExist(kSidePanelId, kImgChip),
+                  WaitForComposeboxFilesCount(kSidePanelId, 0));
 }
 
 // TODO(crbug.com/524797987, crbug.com/529701663): Re-enable this test.
@@ -1230,37 +1089,46 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 #else
 #define MAYBE_AddAndRemoveTabFromComposebox AddAndRemoveTabFromComposebox
 #endif
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        MAYBE_AddAndRemoveTabFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kFaviconGroup = {
       "contextual-tasks-app", "#composebox",       "#composebox",
       "#contextEntrypoint",   "#entrypointButton", "composebox-favicon-group"};
 
-  RunTestSequence(InstrumentTab(kPrimaryTab, 0),
-                  AddInstrumentedTab(kGenericTab, kGenericPageUrl),
-                  SelectTab(kTabStripElementId, 0),
-                  OpenContextualTasksInCurrentTab(kInterceptionUrl),
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0),
+      NavigateWebContents(kPrimaryTab, GURL(chrome::kChromeUIVersionURL)),
+      AddInstrumentedTab(kGenericTab, kGenericPageUrl),
+      WaitForWebContentsReady(kGenericTab, kGenericPageUrl),
+      SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
 
-                  ForceClickAddContextEntrypoint(kPrimaryTab),
-                  ForceClickMenuButton(kPrimaryTab, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
 
-                  WaitForFaviconGroupWithTitle(kPrimaryTab, "title1.html"),
-                  WaitForComposeboxFilesCount(1),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "title1.html"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
 
-                  ForceClickAddContextEntrypoint(kPrimaryTab),
-                  ForceClickMenuButton(kPrimaryTab, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
 
-                  WaitForElementDoesNotExist(kPrimaryTab, kFaviconGroup),
-                  WaitForComposeboxFilesCount(0));
+      WaitForElementDoesNotExist(kSidePanelId, kFaviconGroup),
+      WaitForComposeboxFilesCount(kSidePanelId, 0));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AddAndSubmitTabFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kFaviconGroup = {
       "contextual-tasks-app", "#composebox",       "#composebox",
@@ -1272,14 +1140,18 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0),
+      NavigateWebContents(kPrimaryTab, GURL(chrome::kChromeUIVersionURL)),
       AddInstrumentedTab(kGenericTab, kGenericPageUrl),
+      WaitForWebContentsReady(kGenericTab, kGenericPageUrl),
       SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, 0),
-      WaitForFaviconGroupWithTitle(kPrimaryTab, "title1.html"),
-      WaitForComposeboxFilesCount(1), ClickButton(kPrimaryTab, kSubmitButton),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "title1.html"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
       VerifySubmitQueryMessage(
           lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
           std::nullopt, 0,
@@ -1287,10 +1159,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
               CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AddAndSubmitPdfChipFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
-
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("download.pdf");
@@ -1298,6 +1168,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   ui::SelectFileDialog::SetFactory(
       std::make_unique<content::FakeSelectFileDialogFactory>(
           std::vector<base::FilePath>{file_path}));
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kDocumentChip = {"contextual-tasks-app",
                                    "#composebox",
@@ -1319,19 +1191,19 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "fileUpload"),
-      WaitForDocumentChipWithTitle(kPrimaryTab, "download.pdf"),
-      WaitForComposeboxFilesCount(1), ClickButton(kPrimaryTab, kSubmitButton),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "fileUpload"),
+      WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
       VerifySubmitQueryMessage(lens::LensOverlayRequestId::MEDIA_TYPE_PDF));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AddAndSubmitImageChipFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
-
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("handbag.png");
@@ -1339,6 +1211,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   ui::SelectFileDialog::SetFactory(
       std::make_unique<content::FakeSelectFileDialogFactory>(
           std::vector<base::FilePath>{file_path}));
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kImgChip = {
       "contextual-tasks-app",         "#composebox", "#composebox", "#carousel",
@@ -1350,19 +1224,22 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "imageUpload"),
-      WaitForElementExists(kPrimaryTab, kImgChip),
-      WaitForComposeboxFilesCount(1), ClickButton(kPrimaryTab, kSubmitButton),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "imageUpload"),
+      WaitForElementExists(kSidePanelId, kImgChip),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
       VerifySubmitQueryMessage(
           lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AddAndSubmitMultipleContextsFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl1 = embedded_test_server()->GetURL("/title1.html");
   const GURL kGenericPageUrl2 = embedded_test_server()->GetURL("/title2.html");
 
@@ -1370,6 +1247,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath pdf_path = test_data_dir.AppendASCII("download.pdf");
   base::FilePath image_path = test_data_dir.AppendASCII("handbag.png");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kFaviconGroup = {
       "contextual-tasks-app", "#composebox",       "#composebox",
@@ -1381,33 +1260,37 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0),
+      NavigateWebContents(kPrimaryTab, GURL(chrome::kChromeUIVersionURL)),
       AddInstrumentedTab(kGenericTab2, kGenericPageUrl2),
+      WaitForWebContentsReady(kGenericTab2, kGenericPageUrl2),
       AddInstrumentedTab(kGenericTab, kGenericPageUrl1),
+      WaitForWebContentsReady(kGenericTab, kGenericPageUrl1),
       SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
       // 1. Add Tab 1 (most recent since we opened Tab 2 first, is at Index 0)
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, 0),
-      WaitForFaviconGroupWithTitle(kPrimaryTab, "title1.html"),
-      WaitForComposeboxFilesCount(1),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "title1.html"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
 
-      // 2. Add Tab 2 (now shifted to Index 1 since Tab 1 is selected. Menu is
-      // already open!)
-      ForceClickMenuButton(kPrimaryTab, 1),
-      WaitForFaviconGroupWithTitle(kPrimaryTab, "Title Of Awesomeness"),
-      WaitForComposeboxFilesCount(2),
+      // 2. Add Tab 2
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 1),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "Title Of Awesomeness"),
+      WaitForComposeboxFilesCount(kSidePanelId, 2),
 
-      // 3. Set factory for PDF and upload PDF. Menu is still open!
+      // 3. Set factory for PDF and upload PDF
       Do(base::BindLambdaForTesting([&]() {
         ui::SelectFileDialog::SetFactory(
             std::make_unique<content::FakeSelectFileDialogFactory>(
                 std::vector<base::FilePath>{pdf_path}));
       })),
-      ForceClickMenuButton(kPrimaryTab, "fileUpload"),
-      WaitForDocumentChipWithTitle(kPrimaryTab, "download.pdf"),
-      WaitForComposeboxFilesCount(3),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "fileUpload"),
+      WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
+      WaitForComposeboxFilesCount(kSidePanelId, 3),
 
       // 4. Set factory for Image 1 and upload Image 1
       Do(base::BindLambdaForTesting([&]() {
@@ -1415,9 +1298,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
             std::make_unique<content::FakeSelectFileDialogFactory>(
                 std::vector<base::FilePath>{image_path}));
       })),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "imageUpload"),
-      WaitForComposeboxFilesCount(4),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "imageUpload"),
+      WaitForComposeboxFilesCount(kSidePanelId, 4),
 
       // 5. Set factory for Image 2 and upload Image 2
       Do(base::BindLambdaForTesting([&]() {
@@ -1425,13 +1308,13 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
             std::make_unique<content::FakeSelectFileDialogFactory>(
                 std::vector<base::FilePath>{image_path}));
       })),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "imageUpload"),
-      WaitForComposeboxFilesCount(5),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "imageUpload"),
+      WaitForComposeboxFilesCount(kSidePanelId, 5),
 
       // 6. Submit
-      WaitForSubmitButtonEnabled(kPrimaryTab),
-      ClickButton(kPrimaryTab, kSubmitButton),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
 
       // 7. Verify multiple inputs in the final message
       // We expect 4 images: 2 manual images + 2 viewports from the 2 tabs.
@@ -1443,9 +1326,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
           /*expected_upload_file_count=*/1, std::vector<std::string>{}));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AddAndSubmitTextOnlyFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kSubmitButton = {"contextual-tasks-app", "#composebox",
                                    "#composebox", "cr-composebox-submit",
@@ -1453,14 +1336,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
       // Type text query
-      InputText(kPrimaryTab, "My text-only query"),
+      InputText(kSidePanelId, "My text-only query"),
 
       // Click Submit
-      ClickButton(kPrimaryTab, kSubmitButton),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
 
       // Verify query submission (0 viewports, 0 uploads, 0 files, expected
       // text)
@@ -1471,12 +1355,13 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                                        /*expected_added_input_names=*/{}),
 
       // After submit the compsebox input should be empty.
-      WaitForInputCleared(kPrimaryTab));
+      WaitForInputCleared(kSidePanelId));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AddAndSubmitMultipleContextsWithTextFromComposebox) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl1 = embedded_test_server()->GetURL("/title1.html");
   const GURL kGenericPageUrl2 = embedded_test_server()->GetURL("/title2.html");
 
@@ -1484,6 +1369,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath pdf_path = test_data_dir.AppendASCII("download.pdf");
   base::FilePath image_path = test_data_dir.AppendASCII("handbag.png");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kFaviconGroup = {
       "contextual-tasks-app", "#composebox",       "#composebox",
@@ -1495,32 +1382,37 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0),
+      NavigateWebContents(kPrimaryTab, GURL(chrome::kChromeUIVersionURL)),
       AddInstrumentedTab(kGenericTab2, kGenericPageUrl2),
+      WaitForWebContentsReady(kGenericTab2, kGenericPageUrl2),
       AddInstrumentedTab(kGenericTab, kGenericPageUrl1),
+      WaitForWebContentsReady(kGenericTab, kGenericPageUrl1),
       SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
       // 1. Add Tab 1
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, 0),
-      WaitForFaviconGroupWithTitle(kPrimaryTab, "title1.html"),
-      WaitForComposeboxFilesCount(1),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "title1.html"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
 
-      // 2. Add Tab 2 (Menu is still open!)
-      ForceClickMenuButton(kPrimaryTab, 1),
-      WaitForFaviconGroupWithTitle(kPrimaryTab, "Title Of Awesomeness"),
-      WaitForComposeboxFilesCount(2),
+      // 2. Add Tab 2
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 1),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "Title Of Awesomeness"),
+      WaitForComposeboxFilesCount(kSidePanelId, 2),
 
-      // 3. Set factory for PDF and upload PDF. Menu is still open!
+      // 3. Set factory for PDF and upload PDF
       Do(base::BindLambdaForTesting([&]() {
         ui::SelectFileDialog::SetFactory(
             std::make_unique<content::FakeSelectFileDialogFactory>(
                 std::vector<base::FilePath>{pdf_path}));
       })),
-      ForceClickMenuButton(kPrimaryTab, "fileUpload"),
-      WaitForDocumentChipWithTitle(kPrimaryTab, "download.pdf"),
-      WaitForComposeboxFilesCount(3),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "fileUpload"),
+      WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
+      WaitForComposeboxFilesCount(kSidePanelId, 3),
 
       // 4. Set factory for Image 1 and upload Image 1
       Do(base::BindLambdaForTesting([&]() {
@@ -1528,9 +1420,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
             std::make_unique<content::FakeSelectFileDialogFactory>(
                 std::vector<base::FilePath>{image_path}));
       })),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "imageUpload"),
-      WaitForComposeboxFilesCount(4),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "imageUpload"),
+      WaitForComposeboxFilesCount(kSidePanelId, 4),
 
       // 5. Set factory for Image 2 and upload Image 2
       Do(base::BindLambdaForTesting([&]() {
@@ -1538,16 +1430,16 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
             std::make_unique<content::FakeSelectFileDialogFactory>(
                 std::vector<base::FilePath>{image_path}));
       })),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "imageUpload"),
-      WaitForComposeboxFilesCount(5),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "imageUpload"),
+      WaitForComposeboxFilesCount(kSidePanelId, 5),
 
       // Type query text
-      InputText(kPrimaryTab, "Query with multiple attachments"),
+      InputText(kSidePanelId, "Query with multiple attachments"),
 
       // 6. Submit
-      WaitForSubmitButtonEnabled(kPrimaryTab),
-      ClickButton(kPrimaryTab, kSubmitButton),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
 
       // 7. Verify multiple inputs + query text in the final message
       VerifyMultipleSubmitQueryMessage("Query with multiple attachments",
@@ -1557,8 +1449,11 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                                        std::vector<std::string>{}));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AutoSuggestedTabChipAppearsAndCanBeSubmitted) {
+  SkipIfIncognito(
+      "Auto-suggested tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -1615,8 +1510,11 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
               CONTEXTUAL_INPUT_UPLOAD_TYPE_AUTO_TAB_CHIP));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        AutoSuggestedTabChipCanBeDismissed) {
+  SkipIfIncognito(
+      "Auto-suggested tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -1736,17 +1634,22 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 class ContextualTasksInteractiveUiTestWithChips
     : public ContextualTasksInteractiveUiTest {
  public:
-  ContextualTasksInteractiveUiTestWithChips() {
-    scoped_feature_list_chips_.InitAndDisableFeature(
-        omnibox::kTabFaviconChipsToCoins);
-  }
+  ContextualTasksInteractiveUiTestWithChips() = default;
+  ~ContextualTasksInteractiveUiTestWithChips() override = default;
 
- private:
-  base::test::ScopedFeatureList scoped_feature_list_chips_;
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    auto disabled = GetDefaultDisabledFeatures();
+    disabled.push_back(omnibox::kTabFaviconChipsToCoins);
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
 };
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestWithChips,
                        AutoSuggestedTabChipAppearsAndCanBeSubmitted) {
+  SkipIfIncognito(
+      "Auto-suggested tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -1814,8 +1717,11 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
               CONTEXTUAL_INPUT_UPLOAD_TYPE_AUTO_TAB_CHIP));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestWithChips,
                        AutoSuggestedTabChipCanBeDismissed) {
+  SkipIfIncognito(
+      "Auto-suggested tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -1920,18 +1826,29 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
 }
 
 class ContextualTasksInteractiveUiTestParameterized
-    : public ContextualTasksInteractiveUiTest,
-      public testing::WithParamInterface<bool> {
+    : public ContextualTasksInteractiveUiTestBase,
+      public testing::WithParamInterface<std::tuple<UserVariation, bool>> {
  public:
-  ContextualTasksInteractiveUiTestParameterized() {
-    if (GetParam()) {
-      scoped_feature_list_.InitAndEnableFeature(kAimTriggeredThreadLinks);
+  ContextualTasksInteractiveUiTestParameterized() = default;
+  ~ContextualTasksInteractiveUiTestParameterized() override = default;
+
+  bool GetAimTriggeredThreadLinksParam() const {
+    return std::get<1>(GetParam());
+  }
+
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    auto disabled = GetDefaultDisabledFeatures();
+    if (GetAimTriggeredThreadLinksParam()) {
+      enabled.push_back({kAimTriggeredThreadLinks, {}});
     } else {
-      scoped_feature_list_.InitAndDisableFeature(kAimTriggeredThreadLinks);
+      disabled.push_back(kAimTriggeredThreadLinks);
     }
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
+    ContextualTasksInteractiveUiTestBase::SetUpCommandLine(command_line);
     mock_cert_verifier_.SetUpCommandLine(command_line);
 
     // Add command line to allow opaque origin post messages to be accepted in
@@ -1947,7 +1864,7 @@ class ContextualTasksInteractiveUiTestParameterized
   }
 
   void SetUpOnMainThread() override {
-    ContextualTasksInteractiveUiTest::SetUpOnMainThread();
+    ContextualTasksInteractiveUiTestBase::SetUpOnMainThread();
     mock_cert_verifier_.mock_cert_verifier()->set_default_result(net::OK);
 
     base::FilePath test_data_dir;
@@ -1996,7 +1913,9 @@ class ContextualTasksInteractiveUiTestParameterized
   }
 
  protected:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  UserVariation GetUserVariation() const override {
+    return std::get<0>(GetParam());
+  }
   content::ContentMockCertVerifier mock_cert_verifier_;
   net::EmbeddedTestServer https_server_{net::EmbeddedTestServer::TYPE_HTTPS};
 };
@@ -2015,6 +1934,13 @@ class ContextualTasksInteractiveUiTestParameterized
 // URL.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
                        WindowOpenCUJ) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Webview window.open and tab-strip opener routing tests require "
+      "Contextual Tasks in a top-level browser tab, which requires a "
+      "signed-in session.");
+
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kTargetUrl("https://a.google.com/title1.html");
 
@@ -2045,7 +1971,7 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
         nav_observer.Wait();
       }));
 
-  if (GetParam()) {
+  if (GetAimTriggeredThreadLinksParam()) {
     // When flag is enabled, the source tab stays open.
     // Instrument the new tab at index 1.
     sequence = Steps(
@@ -2096,6 +2022,13 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
 // new tab opened.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
                        WindowOpenBlank) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Webview window.open and tab-strip opener routing tests require "
+      "Contextual Tasks in a top-level browser tab, which requires a "
+      "signed-in session.");
+
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kTargetUrl("https://a.google.com/title1.html");
 
@@ -2133,6 +2066,17 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
 // 3) Verifies the Contextual Tasks tab navigates to the opened URL.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
                        WindowOpenSelf) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Webview window.open and tab-strip opener routing tests require "
+      "Contextual Tasks in a top-level browser tab, which requires a "
+      "signed-in session.");
+
+  if (!GetAimTriggeredThreadLinksParam()) {
+    GTEST_SKIP() << "WindowOpenSelf target=_self tab navigation requires "
+                    "kAimTriggeredThreadLinks";
+  }
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kTargetUrl("https://a.google.com/title1.html");
 
@@ -2167,6 +2111,13 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
 // 4) Verify the postMessage is received in the <webview>.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
                        PostMessageToDummyOpenerRoutedToWebview) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Webview window.open and tab-strip opener routing tests require "
+      "Contextual Tasks in a top-level browser tab, which requires a "
+      "signed-in session.");
+
   const GURL kActiveTabUrl =
       https_server_.GetURL("myaccount.google.com", "/title1.html");
   const GURL clicked_url =
@@ -2265,7 +2216,7 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
 
   // If AimTriggeredThreadLinks is enabled, the window.open call opens in a new
   // tab, so the original contextual tasks tab still exists.
-  if (GetParam()) {
+  if (GetAimTriggeredThreadLinksParam()) {
     sequence = Steps(
         std::move(sequence), WaitForShow(kInnerWebContentsId),
         WithElement(kInnerWebContentsId,
@@ -2311,6 +2262,13 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
 // 4) Verify the postMessage is received in the <webview>.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
                        PopupPostMessageToOpenerRoutedToWebview) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Webview window.open and tab-strip opener routing tests require "
+      "Contextual Tasks in a top-level browser tab, which requires a "
+      "signed-in session.");
+
   const GURL kActiveTabUrl =
       https_server_.GetURL("myaccount.google.com", "/title1.html");
   const GURL clicked_url =
@@ -2419,7 +2377,7 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
 
   // If AimTriggeredThreadLinks is enabled, the window.open call opens in a new
   // tab, so the original contextual tasks tab still exists.
-  if (GetParam()) {
+  if (GetAimTriggeredThreadLinksParam()) {
     sequence = Steps(
         std::move(sequence), WaitForShow(kInnerWebContentsId),
         WithElement(kInnerWebContentsId,
@@ -2458,27 +2416,45 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
   RunTestSequence(InAnyContext(std::move(sequence)));
 }
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         ContextualTasksInteractiveUiTestParameterized,
-                         testing::Bool());
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksInteractiveUiTestParameterized,
+    testing::Combine(testing::Values(UserVariation::kSignedIn,
+                                     UserVariation::kSignedOut,
+                                     UserVariation::kIncognito),
+                     testing::Bool()),
+    [](const testing::TestParamInfo<std::tuple<UserVariation, bool>>& info) {
+      return base::StrCat(
+          {UserVariationToString(testing::TestParamInfo<UserVariation>(
+               std::get<0>(info.param), info.index)),
+           std::get<1>(info.param) ? "_TriggeredThreadLinks"
+                                   : "_NoTriggeredThreadLinks"});
+    });
 
 class ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled
     : public ContextualTasksInteractiveUiTest {
  public:
-  ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled() {
-    scoped_feature_list_aai_disabled_.InitAndDisableFeature(
-        lens::features::kLensOnlySendAaiForModalityChips);
-  }
+  ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled() =
+      default;
+  ~ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled()
+      override = default;
 
- private:
-  base::test::ScopedFeatureList scoped_feature_list_aai_disabled_;
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    auto disabled = GetDefaultDisabledFeatures();
+    disabled.push_back(lens::features::kLensOnlySendAaiForModalityChips);
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
 };
 
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled,
     AddAndSubmitTabFromComposebox_SendsAai) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
 
   const DeepQuery kFaviconGroup = {
       "contextual-tasks-app", "#composebox",       "#composebox",
@@ -2490,25 +2466,27 @@ IN_PROC_BROWSER_TEST_F(
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0),
+      NavigateWebContents(kPrimaryTab, GURL(chrome::kChromeUIVersionURL)),
       AddInstrumentedTab(kGenericTab, kGenericPageUrl),
+      WaitForWebContentsReady(kGenericTab, kGenericPageUrl),
       SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, 0),
-      WaitForFaviconGroupWithTitle(kPrimaryTab, "title1.html"),
-      WaitForComposeboxFilesCount(1), ClickButton(kPrimaryTab, kSubmitButton),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, 0),
+      WaitForFaviconGroupWithTitle(kSidePanelId, "title1.html"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
       // When flag is disabled, unresolved URLs (Tabs) are sent in AAI.
       VerifySubmitQueryMessage(
           lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
           "title1.html"));
 }
 
-IN_PROC_BROWSER_TEST_F(
+IN_PROC_BROWSER_TEST_P(
     ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled,
     AddAndSubmitPdfChipFromComposebox_SendsAai) {
-  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
-
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("download.pdf");
@@ -2517,25 +2495,40 @@ IN_PROC_BROWSER_TEST_F(
       std::make_unique<content::FakeSelectFileDialogFactory>(
           std::vector<base::FilePath>{file_path}));
 
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
+
   const DeepQuery kSubmitButton = {"contextual-tasks-app", "#composebox",
                                    "#composebox", "cr-composebox-submit",
                                    "#submitContainer"};
 
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(kInterceptionUrl),
-      InstrumentInnerWebContents(kInnerWebContentsId, kPrimaryTab, 0),
-      ForceClickAddContextEntrypoint(kPrimaryTab),
-      ForceClickMenuButton(kPrimaryTab, "fileUpload"),
-      WaitForDocumentChipWithTitle(kPrimaryTab, "download.pdf"),
-      WaitForComposeboxFilesCount(1), ClickButton(kPrimaryTab, kSubmitButton),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "fileUpload"),
+      WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForSubmitButtonEnabled(kSidePanelId),
+      ClickButton(kSidePanelId, kSubmitButton),
       // When flag is disabled, PDF is sent in AAI.
       VerifySubmitQueryMessage(lens::LensOverlayRequestId::MEDIA_TYPE_PDF,
                                "download.pdf"));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksInteractiveUiTestWithAaiOnlyForModalityChipsDisabled,
+    testing::Values(UserVariation::kSignedIn,
+                    UserVariation::kSignedOut,
+                    UserVariation::kIncognito),
+    &UserVariationToString);
+
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        RecontextualizationViewportChangeOnly) {
+  SkipIfIncognito(
+      "Auto-suggested tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -2623,28 +2616,43 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 }
 
 class ContextualTasksRecontextUiTest
-    : public ContextualTasksInteractiveUiTest,
-      public testing::WithParamInterface<bool> {
+    : public ContextualTasksInteractiveUiTestBase,
+      public testing::WithParamInterface<std::tuple<UserVariation, bool>> {
  public:
-  ContextualTasksRecontextUiTest() {
-    if (GetParam()) {
-      // Explicitly disable `kContextualTasks` here to override the base
-      // class (ContextualTasksInteractiveUiTest) which enables it.
-      scoped_feature_list_.InitWithFeatures(
-          {kContextualTasksSidePanel}, {kContextualTasks});
+  ContextualTasksRecontextUiTest() = default;
+  ~ContextualTasksRecontextUiTest() override = default;
+
+  bool GetSidePanelParam() const { return std::get<1>(GetParam()); }
+
+  void SetUpFeatureList() override {
+    auto disabled = GetDefaultDisabledFeatures();
+    if (GetSidePanelParam()) {
+      std::vector<base::test::FeatureRefAndParams> enabled;
+      for (const auto& f : GetDefaultEnabledFeatures()) {
+        if (&f.feature.get() != &kContextualTasks) {
+          enabled.push_back(f);
+        }
+      }
+      disabled.push_back(kContextualTasks);
+      enabled.push_back({kContextualTasksSidePanel, {}});
+      feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
     } else {
-      // `kContextualTasks` is already enabled by the base class.
-      scoped_feature_list_.InitWithFeatures(
-          {}, {kContextualTasksSidePanel});
+      auto enabled = GetDefaultEnabledFeatures();
+      disabled.push_back(kContextualTasksSidePanel);
+      feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
     }
   }
 
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+ protected:
+  UserVariation GetUserVariation() const override {
+    return std::get<0>(GetParam());
+  }
 };
 
 IN_PROC_BROWSER_TEST_P(ContextualTasksRecontextUiTest,
                        RecontextualizationAfterContextualSearchboxQuery) {
+  SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
+
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -2700,7 +2708,26 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksRecontextUiTest,
       // Turn 1: Issue a query from the Lens Overlay Contextual Searchbox entry
       // point.
       InSameContext(
-          WaitForShow(LensOverlayController::kOverlayId),
+          WaitForShow(LensOverlayController::kOverlayId), Do([&]() {
+            content::WebContents* web_contents =
+                browser()->tab_strip_model()->GetActiveWebContents();
+            auto* lens_controller =
+                LensSearchController::FromTabWebContents(web_contents);
+            auto* query_router = static_cast<lens::FakeLensQueryFlowRouter*>(
+                lens_controller->query_router());
+            CHECK(query_router);
+            auto* session_handle = static_cast<
+                contextual_search::MockContextualSearchSessionHandle*>(
+                query_router->GetContextualSearchSessionHandle());
+            CHECK(session_handle);
+            ON_CALL(*session_handle,
+                    CreateSearchUrl(::testing::_, ::testing::_))
+                .WillByDefault(::testing::WithArg<1>([](base::OnceCallback<void(
+                                                            GURL)> callback) {
+                  std::move(callback).Run(GURL(
+                      "https://www.google.com/search?q=first+query&udm=50"));
+                }));
+          }),
           WaitForElementExists(kOverlayId, kPathToOverlaySearchboxInput),
           FocusWebContents(kOverlayId),
           ExecuteJsAt(kOverlayId, kPathToOverlaySearchboxInput,
@@ -2800,19 +2827,27 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksRecontextUiTest,
           std::ref(session_uuid)));
 }
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         ContextualTasksRecontextUiTest,
-                         testing::Bool());
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksRecontextUiTest,
+    testing::Combine(testing::Values(UserVariation::kSignedIn,
+                                     UserVariation::kSignedOut,
+                                     UserVariation::kIncognito),
+                     testing::Bool()),
+    [](const testing::TestParamInfo<std::tuple<UserVariation, bool>>& info) {
+      return base::StrCat(
+          {UserVariationToString(testing::TestParamInfo<UserVariation>(
+               std::get<0>(info.param), info.index)),
+           std::get<1>(info.param) ? "_SidePanelOnly" : "_ContextualTasks"});
+    });
 
-
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        QueryOpenAndCloseFlow) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
   RunTestSequence(
-      InstrumentTab(kPrimaryTab, 0),
-      SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(GURL(kCujInterceptionUrl)),
-      SimulateThreadLinkAndOpenPanel(kSidePanelId),
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
       InputText(kSidePanelId, "How to make kombucha?"),
       SubmitQueryViaSubmitButton(kSidePanelId),
@@ -2826,27 +2861,25 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
       CloseContextualTasksSidePanel());
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        NewTaskThreadInteraction) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
-  RunTestSequence(
-      InstrumentTab(kPrimaryTab, 0),
-      SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(GURL(kCujInterceptionUrl)),
-      SimulateThreadLinkAndOpenPanel(kSidePanelId),
+  RunTestSequence(InstrumentTab(kPrimaryTab, 0),
+                  SelectTab(kTabStripElementId, 0),
+                  OpenContextualTasksInSidePanel(kSidePanelId),
 
-      InputText(kSidePanelId, "some draft text"),
-      WaitForInputValue(kSidePanelId, "some draft text"),
-      ClickNewThreadButton(kSidePanelId),
-      // New thread navigates the embedded thread frame, so tolerate navigation
-      // while waiting for the composebox input to clear.
-      WaitForInputCleared(kSidePanelId,
-                          /*continue_across_navigation=*/true));
+                  InputText(kSidePanelId, "some draft text"),
+                  WaitForInputValue(kSidePanelId, "some draft text"),
+                  ClickNewThreadButton(kSidePanelId),
+                  // New thread navigates the embedded thread frame, so tolerate
+                  // navigation while waiting for the composebox input to clear.
+                  WaitForInputCleared(kSidePanelId,
+                                      /*continue_across_navigation=*/true));
 }
 
 // Doesn't click #voiceSearchButton (would invoke
 // webkitSpeechRecognition.start).
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        IntegrationVoiceLightweight) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
   const DeepQuery kVoiceButtonPath = {"contextual-tasks-app", "#composebox",
@@ -2854,10 +2887,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
   const DeepQuery kVoiceSearchComponentPath = {
       "contextual-tasks-app", "#composebox", "#composebox", "#voiceSearch"};
   RunTestSequence(
-      InstrumentTab(kPrimaryTab, 0),
-      SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(GURL(kCujInterceptionUrl)),
-      SimulateThreadLinkAndOpenPanel(kSidePanelId),
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
       EnsureVoiceSearchAvailable(kSidePanelId),
       WaitForElementExists(kSidePanelId, kVoiceButtonPath),
@@ -2871,27 +2903,29 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                                        /*expected_added_input_names=*/{}));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        ClickSuggestionSubmitsQuery) {
+  SkipIfIncognito("Search suggestions are disabled in Incognito mode.");
+
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
-  // SimulateThreadLinkAndOpenPanel transfers the original contextual tasks page
-  // (empty query) into the panel, so typed matches render in
-  // #contextualTasksSuggestionsContainer, not the composebox's internal #matches.
+  // In the side panel, typed matches render in
+  // #contextualTasksSuggestionsContainer, not the composebox's internal
+  // #matches.
   const DeepQuery kSuggestionMatchText = {
       "contextual-tasks-app", "#composebox",
       "#contextualTasksSuggestionsContainer", "#match1", "#textContainer"};
   RunTestSequence(
-      InstrumentTab(kPrimaryTab, 0),
-      SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(GURL(kCujInterceptionUrl)),
-      SimulateThreadLinkAndOpenPanel(kSidePanelId),
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
       InputText(kSidePanelId, "kombucha"),
-      // Wait for the real suggestion text so we never click a stale match.
+      // Wait for the suggestion element to exist before checking its text,
+      // avoiding a JS null vs string type mismatch during initial polling.
+      WaitForElementExists(kSidePanelId, kSuggestionMatchText),
       WaitForJsResultAt(kSidePanelId, kSuggestionMatchText,
                         "el => el.textContent.trim()",
-                        std::string("suggestion-1"),
-                        /*element_must_be_present_at_start=*/false),
+                        std::string("suggestion-1")),
       ClickButton(kSidePanelId, kSuggestionMatchText),
       VerifyMultipleSubmitQueryMessage("suggestion-1",
                                        /*expected_viewport_image_count=*/0,
@@ -2904,8 +2938,14 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 // 1) User navigates to google search contextual tasks trigger URL (udm=50)
 // 2) The tab should navigate to chrome://contextual-tasks
 // 3) The composebox becomes visible and the input field is focused
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        FocusComposeboxOnInitialLoad) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Top-level Contextual Tasks tab navigation interception requires a "
+      "signed-in browser session.");
+
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
 
   StateChange composebox_focused;
@@ -2938,7 +2978,14 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
 // 6) Verify the original contextual tasks tab is still there.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
                        LocationHrefRedirectedToOpenedTab) {
-  if (!GetParam()) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Webview window.open and tab-strip opener routing tests require "
+      "Contextual Tasks in a top-level browser tab, which requires a "
+      "signed-in session.");
+
+  if (!GetAimTriggeredThreadLinksParam()) {
     GTEST_SKIP()
         << "Requires AimTriggeredThreadLinks (window tracking) enabled";
   }
@@ -3016,61 +3063,54 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
   RunTestSequence(std::move(sequence));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                        ComposeboxLensButtonIsEnabled) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOpenedTab);
-  const GURL kThreadUrl("https://www.google.com/search?q=thread");
   // #lensIcon is in the inner cr-composebox nested under the contextual tasks
   // composebox, hence the doubled #composebox.
   const DeepQuery kLensIcon = {"contextual-tasks-app", "#composebox",
                                "#composebox", "#lensIcon"};
   RunTestSequence(
       InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
-      OpenContextualTasksInCurrentTab(GURL(kCujInterceptionUrl)),
-      InstrumentNextTab(kOpenedTab),
-      SimulateThreadLinkAndOpenPanel(kSidePanelId),
-      WaitForWebContentsReady(kOpenedTab),
-      CheckElement(
-          kOpenedTab,
-          [kThreadUrl](ui::TrackedElement* el) {
-            auto* web_contents = AsInstrumentedWebContents(el)->web_contents();
-            const GURL& url = web_contents->GetLastCommittedURL();
-            std::string actual_q;
-            std::string expected_q;
-            return url.host() == chrome::kChromeUIContextualTasksHost &&
-                   net::GetValueForKeyInQuery(url, "q", &actual_q) &&
-                   net::GetValueForKeyInQuery(kThreadUrl, "q", &expected_q) &&
-                   actual_q == expected_q;
-          }),
+      OpenContextualTasksInSidePanel(kSidePanelId),
       WaitForElementExists(kSidePanelId, kLensIcon),
       WaitForJsResultAt(kSidePanelId, kLensIcon, "el => !el.disabled", true));
 }
 
-class ContextualTasksCopyUrlTest : public ContextualTasksInteractiveUiTest,
-                                   public testing::WithParamInterface<bool> {
+class ContextualTasksCopyUrlTest
+    : public ContextualTasksInteractiveUiTestBase,
+      public testing::WithParamInterface<std::tuple<UserVariation, bool>> {
  public:
-  ContextualTasksCopyUrlTest() {
-    std::vector<base::test::FeatureRef> enabled_features;
-    std::vector<base::test::FeatureRef> disabled_features;
-    std::vector<base::test::FeatureRef> features = {
+  ContextualTasksCopyUrlTest() = default;
+  ~ContextualTasksCopyUrlTest() override = default;
+
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    auto disabled = GetDefaultDisabledFeatures();
+    std::vector<base::test::FeatureRef> webui_features = {
         features::kInitialWebUI, features::kWebUILocationBar,
         omnibox::internal::kWebUIOmniboxAimPopup};
-    if (GetParam()) {
-      enabled_features = features;
+    if (IsWebUI()) {
+      std::erase(disabled, omnibox::internal::kWebUIOmniboxAimPopup);
+      for (const auto& f : webui_features) {
+        enabled.push_back({*f, {}});
+      }
     } else {
-      disabled_features = features;
+      for (const auto& f : webui_features) {
+        disabled.push_back(f);
+      }
     }
-    copy_url_feature_list_.InitWithFeatures(enabled_features,
-                                            disabled_features);
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
   }
+
+  bool IsWebUI() const { return std::get<1>(GetParam()); }
 
   views::WebView* GetWebUIToolbarWebView() {
     return ::GetWebUIToolbarWebView(browser())->GetWebViewForTesting();
   }
 
   ui::test::InteractiveTestApi::MultiStep SetupTest() {
-    if (GetParam()) {
+    if (IsWebUI()) {
       return Steps(
           InstrumentTab(kPrimaryTab),
           InstrumentNonTabWebView(kWebUIToolbarId, GetWebUIToolbarWebView(),
@@ -3088,7 +3128,7 @@ class ContextualTasksCopyUrlTest : public ContextualTasksInteractiveUiTest,
         "#input"};
     const WebContentsInteractionTestUtil::DeepQuery kReadonlyOmniboxDeepQuery =
         {"toolbar-app", "location-bar", "readonly-omnibox"};
-    if (GetParam()) {
+    if (IsWebUI()) {
       return Steps(FocusWebContents(kPrimaryTab),
                    SendAccelerator(kBrowserViewElementId, focus_accelerator),
                    WaitForJsResultAt(kWebUIToolbarId, kTextInputDeepQuery,
@@ -3106,8 +3146,10 @@ class ContextualTasksCopyUrlTest : public ContextualTasksInteractiveUiTest,
     }
   }
 
- private:
-  base::test::ScopedFeatureList copy_url_feature_list_;
+ protected:
+  UserVariation GetUserVariation() const override {
+    return std::get<0>(GetParam());
+  }
 };
 
 // TODO(crbug.com/542608217): Disable on Linux MSan due to failure/flakiness.
@@ -3117,6 +3159,12 @@ class ContextualTasksCopyUrlTest : public ContextualTasksInteractiveUiTest,
 #define MAYBE_CopyUrl CopyUrl
 #endif
 IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, MAYBE_CopyUrl) {
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Testing LocationBar URL swapping requires Contextual Tasks in a "
+      "top-level browser tab, which requires a signed-in session.");
+
   content::BrowserTestClipboardScope test_clipboard_scope;
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50&q=test");
 
@@ -3155,7 +3203,13 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, MAYBE_CopyUrl) {
 }
 
 IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, FocusAndBlur) {
-  const bool is_webui = GetParam();
+  // TODO(crbug.com/533072196): Clean up this test once the pre-rearchitecture
+  // logic is cleaned up.
+  SkipIfNotSignedIn(
+      "Testing LocationBar omnibox focus/blur requires Contextual Tasks in a "
+      "top-level browser tab, which requires a signed-in session.");
+
+  const bool is_webui = IsWebUI();
 
 #if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
   if (is_webui) {
@@ -3273,11 +3327,39 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, FocusAndBlur) {
                               /*fail_if_not_instrumented=*/false));
 }
 
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualTasksCopyUrlTest,
+    testing::Combine(testing::Values(UserVariation::kSignedIn,
+                                     UserVariation::kSignedOut,
+                                     UserVariation::kIncognito),
+                     testing::Bool()),
+    [](const testing::TestParamInfo<std::tuple<UserVariation, bool>>& info) {
+      return base::StrCat(
+          {UserVariationToString(testing::TestParamInfo<UserVariation>(
+               std::get<0>(info.param), info.index)),
+           std::get<1>(info.param) ? "_WebUI" : "_Views"});
+    });
+
 INSTANTIATE_TEST_SUITE_P(All,
-                         ContextualTasksCopyUrlTest,
-                         testing::Bool(),
-                         [](const testing::TestParamInfo<bool>& info) {
-                           return info.param ? "WebUI" : "Views";
-                         });
+                         ContextualTasksInteractiveUiTest,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksPinnedToolbarInteractiveUiTest,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksInteractiveUiTestWithChips,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
 
 }  // namespace contextual_tasks

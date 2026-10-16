@@ -41,14 +41,24 @@ BASE_DECLARE_FEATURE(kComposeboxSkillsOmniboxEverywhere);
 BASE_DECLARE_FEATURE(kComposeboxSkillsOmniboxPopup);
 
 // If enabled, richer suggestions (e.g. image grids) for tools such as Create
-// Image will be shown in the Composebox.
-BASE_DECLARE_FEATURE(kComposeboxRichImageSuggestions);
+// Image will be shown in the Realbox Composebox.
+BASE_DECLARE_FEATURE(kComposeboxRichImageSuggestionsRealbox);
 
-// If enabled, persists the AIM button in the Composebox.
-BASE_DECLARE_FEATURE(kComposeboxPersistentAimButton);
+// If enabled, richer suggestions (e.g. image grids) for tools such as Create
+// Image will be shown in the Omnibox Composebox.
+BASE_DECLARE_FEATURE(kComposeboxRichImageSuggestionsOmnibox);
+
+// If enabled, persists the AIM button in the Realbox Composebox.
+BASE_DECLARE_FEATURE(kComposeboxPersistentAimButtonRealbox);
+// If enabled, persists the AIM button in the Omnibox Composebox.
+BASE_DECLARE_FEATURE(kComposeboxPersistentAimButtonOmnibox);
 // If enabled, shows an X icon on the persistent AIM button. Only effective if
-// persistent AIM button is also enabled.
+// the persistent AIM button is also enabled for the surface.
 BASE_DECLARE_FEATURE(kComposeboxPersistentAimButtonWithX);
+
+// If enabled, clicking outside the Realbox Composebox closes the suggestions
+// dropdown and restores page interaction while keeping the Composebox open.
+BASE_DECLARE_FEATURE(kComposeboxRealboxOutsideClick);
 
 // If enabled, suggest requests for multifile inputs will include the cinpts CGI param.
 BASE_DECLARE_FEATURE(kSuggestRequestSendsMultifileCgiParam);

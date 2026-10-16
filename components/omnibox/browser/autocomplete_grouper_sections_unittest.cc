@@ -1954,6 +1954,18 @@ TEST(AutocompleteGrouperSectionsTest, IOSNTPZpsSection) {
           CreateMatch(93, omnibox::GROUP_TRENDS)},
          {100, 99, 98, 97, 96, 95, 94, 93});
   }
+
+  {
+    SCOPED_TRACE(
+        "Given cross-device tab matches, should display at most 1 above "
+        "psuggest and trends");
+    test({CreateMatch(102, omnibox::GROUP_MOBILE_CLIPBOARD),
+          CreateMatch(101, omnibox::GROUP_CROSS_DEVICE_TABS),
+          CreateMatch(100, omnibox::GROUP_CROSS_DEVICE_TABS),
+          CreateMatch(99, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+          CreateMatch(98, omnibox::GROUP_TRENDS)},
+         {102, 101, 99, 98});
+  }
 }
 
 // Tests the groups and limits for DesktopSecondaryNTPZpsSection.
@@ -2374,6 +2386,22 @@ TEST(AutocompleteGrouperSectionsTest, DesktopWebZpsContextualSuggestionsOnly) {
         // Nothing but contextual action and contextual search matches.
         {96, 95, 93});
   }
+  {
+    SCOPED_TRACE("ZPS contextual search matches with cross-device tab");
+    test(
+        {
+            CreateMatch(100, omnibox::GROUP_CROSS_DEVICE_TABS),
+            CreateMatch(99, omnibox::GROUP_MOST_VISITED),
+            CreateMatch(98, omnibox::GROUP_VISITED_DOC_RELATED),
+            CreateMatch(97, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+            CreateMatch(96, omnibox::GROUP_CONTEXTUAL_SEARCH_ACTION),
+            CreateMatch(95, omnibox::GROUP_CONTEXTUAL_SEARCH),
+            CreateMatch(94, omnibox::GROUP_CONTEXTUAL_SEARCH_ACTION),
+            CreateMatch(93, omnibox::GROUP_CONTEXTUAL_SEARCH),
+        },
+        // Cross-device tab at the top, followed by contextual matches.
+        {100, 96, 95, 93});
+  }
 }
 
 TEST(AutocompleteGrouperSectionsTest, DesktopComposeboxZpsSection) {
@@ -2416,6 +2444,44 @@ TEST(AutocompleteGrouperSectionsTest, DesktopComposeboxZpsSection) {
         // Group search gets in along with contextual searches.
         {96, 95, 93});
   }
+  {
+    SCOPED_TRACE("ZPS rich image action matches only");
+    test(
+        {
+            CreateMatch(99, omnibox::GROUP_RICH_IMAGE_ACTION),
+            CreateMatch(98, omnibox::GROUP_RICH_IMAGE_ACTION),
+            CreateMatch(97, omnibox::GROUP_RICH_IMAGE_ACTION),
+        },
+        // All rich image actions get in, up to `max_aim_suggestions`.
+        {99, 98, 97});
+  }
+  {
+    SCOPED_TRACE("Rich image actions are grouped after all other groups");
+    test(
+        {
+            CreateMatch(100, omnibox::GROUP_RICH_IMAGE_ACTION),
+            CreateMatch(99, omnibox::GROUP_SEARCH),
+            CreateMatch(98, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+            CreateMatch(97, omnibox::GROUP_AI_MODE_ZERO_SUGGEST_CANNED),
+            CreateMatch(96, omnibox::GROUP_CONTEXTUAL_SEARCH),
+        },
+        // Rich image actions are last despite having the highest relevance.
+        {99, 98, 97, 96, 100});
+  }
+  {
+    SCOPED_TRACE("Rich image actions are dropped once the section is full");
+    test(
+        {
+            CreateMatch(99, omnibox::GROUP_SEARCH),
+            CreateMatch(98, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+            CreateMatch(97, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+            CreateMatch(96, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+            CreateMatch(95, omnibox::GROUP_PERSONALIZED_ZERO_SUGGEST),
+            CreateMatch(94, omnibox::GROUP_RICH_IMAGE_ACTION),
+        },
+        // `max_suggestions` is reached before the rich image action is added.
+        {99, 98, 97, 96, 95});
+  }
 }
 #endif  // !(BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS))
 
@@ -2435,13 +2501,13 @@ TEST(AutocompleteGrouperSectionsTest,
 
   auto make_search = [](int score) {
     auto match = CreateMatch(score, omnibox::GROUP_SEARCH);
-    match.type = AutocompleteMatchType::SEARCH_HISTORY;
+    match.type = omnibox::AutocompleteMatchType::kSearchHistory;
     return match;
   };
 
   auto make_url = [](int score) {
     auto match = CreateMatch(score, omnibox::GROUP_OTHER_NAVS);
-    match.type = AutocompleteMatchType::NAVSUGGEST;
+    match.type = omnibox::AutocompleteMatchType::kNavsuggest;
     return match;
   };
 

@@ -101,7 +101,8 @@ CGFloat const kSheetCornerRadius = 30;
               homeBackgroundCustomizationService
                                     imageFetcher:imageFetcher
                       homeBackgroundImageService:homeBackgroundImageService
-                        userUploadedImageManager:nil];
+                        userUploadedImageManager:nil
+                                     prefService:self.profile->GetPrefs()];
   _backgroundConfigurationMediator.delegate = self.presentationDelegate;
 
   [self
@@ -247,6 +248,7 @@ CGFloat const kSheetCornerRadius = 30;
           "UserUploaded.Tapped"));
       return;
     case HomeCustomizationBackgroundStyle::kDefault:
+    case HomeCustomizationBackgroundStyle::kEphemeral:
       NOTREACHED();
   }
 
@@ -384,6 +386,7 @@ CGFloat const kSheetCornerRadius = 30;
           _backgroundConfigurationMediator.backgroundSelectionOutcome);
       break;
     case HomeCustomizationBackgroundStyle::kDefault:
+    case HomeCustomizationBackgroundStyle::kEphemeral:
       return;
   }
 }

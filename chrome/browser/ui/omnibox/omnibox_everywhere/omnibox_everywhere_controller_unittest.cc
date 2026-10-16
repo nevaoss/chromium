@@ -43,6 +43,7 @@
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/views/test/widget_activation_waiter.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -136,6 +137,11 @@ class OmniboxEverywhereControllerTest : public ChromeViewsTestBase {
  public:
   void SetUp() override {
     set_native_widget_type(NativeWidgetType::kDesktop);
+#if BUILDFLAG(IS_WIN)
+    ASSERT_TRUE(temp_start_menu_dir_.CreateUniqueTempDir());
+    start_menu_override_.emplace(base::DIR_START_MENU,
+                                 temp_start_menu_dir_.GetPath());
+#endif
     ChromeViewsTestBase::SetUp();
     profile_ = std::make_unique<TestingProfile>();
     TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetBoolean(
@@ -180,6 +186,10 @@ class OmniboxEverywhereControllerTest : public ChromeViewsTestBase {
   std::unique_ptr<TestingProfile> profile_;
   std::unique_ptr<TemplateURLServiceFactoryTestUtil>
       template_url_service_test_util_;
+#if BUILDFLAG(IS_WIN)
+  base::ScopedTempDir temp_start_menu_dir_;
+  std::optional<base::ScopedPathOverride> start_menu_override_;
+#endif
 };
 
 using OmniboxEverywhereGlobalFeaturesTest = ChromeViewsTestBase;
@@ -227,6 +237,170 @@ TEST_F(OmniboxEverywhereControllerTest, OnInvokeEphemeralModeToggling) {
   controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
                       profile_.get(), GetContext());
   EXPECT_TRUE(controller.IsVisible());
+}
+
+// Tests that invoking while Chrome's default screen picker is open cancels the
+// screenshare flow, dismisses the picker, and restores the widget.
+TEST_F(OmniboxEverywhereControllerTest,
+       OnInvokeCancelsScreenshareCaptureFlowEphemeralMode) {
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+
+  base::HistogramTester histogram_tester;
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  ASSERT_TRUE(controller.IsVisible());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 1);
+
+  // Opening the picker hides the widget for the duration of the capture flow.
+  controller.ui_manager()->OnScreensharePickerOpened();
+  ASSERT_TRUE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(controller.IsVisible());
+
+  // Invoking (e.g. via hotkey) while the default picker is up cancels
+  // screenshare, records the metric, and restores the widget.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  EXPECT_FALSE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_TRUE(controller.IsVisible());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 2);
+
+  // Now that the widget is visible again, invoking again dismisses/hides it.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  EXPECT_FALSE(controller.IsVisible());
+}
+
+TEST_F(OmniboxEverywhereControllerTest,
+       OnInvokeCancelsScreenshareCaptureFlowPersistentMode) {
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+
+  base::HistogramTester histogram_tester;
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  ASSERT_TRUE(controller.IsVisible());
+  ASSERT_TRUE(controller.ui_manager()->IsActive());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 1);
+
+  // Opening the picker hides the widget for the duration of the capture flow.
+  controller.ui_manager()->OnScreensharePickerOpened();
+  ASSERT_TRUE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(controller.IsVisible());
+
+  // Invoking via status tray icon cancels screenshare, records metric, and
+  // restores the widget.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kStatusTrayIcon,
+                      profile_.get(), GetContext());
+  EXPECT_FALSE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_TRUE(controller.IsVisible());
+  EXPECT_TRUE(controller.ui_manager()->IsActive());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kStatusTrayIcon, 1);
+}
+
+TEST_F(OmniboxEverywhereControllerTest,
+       OnInvokeCancelsChromeDefaultPickerAndSwitchesProfile) {
+  TestingProfile profile2;
+  TemplateURLServiceFactoryTestUtil util2(&profile2);
+  util2.VerifyLoad();
+  TemplateURLData data;
+  data.SetURL("https://www.google.com/search?q={searchTerms}");
+  util2.model()->SetUserSelectedDefaultSearchProvider(
+      util2.model()->Add(std::make_unique<TemplateURL>(data)));
+
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  ASSERT_TRUE(controller.IsVisible());
+  EXPECT_EQ(profile_.get(), controller.target_profile());
+
+  // Opening the picker hides the widget for the duration of the capture flow.
+  controller.ui_manager()->OnScreensharePickerOpened();
+  ASSERT_TRUE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(controller.IsVisible());
+
+  // Invoking with profile2 cancels the picker and switches to profile2.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kStatusTrayIcon,
+                      &profile2, GetContext());
+  EXPECT_FALSE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_TRUE(controller.IsVisible());
+  EXPECT_EQ(&profile2, controller.target_profile());
+  EXPECT_EQ(&profile2, controller.ui_manager()->profile());
+}
+
+TEST_F(OmniboxEverywhereControllerTest,
+       OnInvokeIgnoredDuringRegionSelectOverlay) {
+  using RegionCaptureSource =
+      omnibox_everywhere::OmniboxEverywhereUIManager::RegionCaptureSource;
+
+  base::HistogramTester histogram_tester;
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  ASSERT_TRUE(controller.IsVisible());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 1);
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  controller.ui_manager()->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
+  ASSERT_TRUE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+
+  // Invoking while region selection overlay is active must be ignored.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  EXPECT_TRUE(controller.ui_manager()->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(future.IsReady());
+  // No additional invocation metric recorded.
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 1);
+
+  controller.ui_manager()->Shutdown();
+  EXPECT_TRUE(future.IsReady());
 }
 
 // Tests that invoking in persistent mode toggles between floating active and
@@ -809,24 +983,7 @@ TEST_F(OmniboxEverywhereControllerTest,
   EXPECT_TRUE(controller.IsVisible());
 }
 
-#if BUILDFLAG(IS_WIN)
-TEST_F(OmniboxEverywhereControllerTest, CreateStartMenuShortcut) {
-  base::ScopedTempDir user_data_dir;
-  ASSERT_TRUE(user_data_dir.CreateUniqueTempDir());
-  base::ScopedPathOverride user_data_override(chrome::DIR_USER_DATA,
-                                              user_data_dir.GetPath());
 
-  base::ScopedTempDir start_menu_dir;
-  ASSERT_TRUE(start_menu_dir.CreateUniqueTempDir());
-  base::ScopedPathOverride start_menu_override(base::DIR_START_MENU,
-                                               start_menu_dir.GetPath());
-
-  omnibox_everywhere::OmniboxEverywhereController controller;
-  base::test::TestFuture<bool> future;
-  controller.CreateStartMenuShortcut(future.GetCallback());
-  EXPECT_TRUE(future.Get());
-}
-#endif
 
 TEST_F(OmniboxEverywhereControllerTest, PinToTaskbar) {
   omnibox_everywhere::OmniboxEverywhereController controller;
@@ -1112,4 +1269,93 @@ TEST_F(OmniboxEverywhereControllerTest, MAYBE_InvocationSourceMetricRecorded) {
       omnibox_everywhere::InvocationSource::kCommandLine, 1);
 
   histogram_tester.ExpectTotalCount("OmniboxEverywhere.InvocationSource", 4);
+}
+
+TEST_F(OmniboxEverywhereControllerTest, EnablesBackgroundModeOnFirstInvoke) {
+  TestingPrefServiceSimple* local_state =
+      TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  ASSERT_TRUE(local_state);
+
+  const PrefService::Preference* bg_mode_pref = local_state->FindPreference(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode);
+  const PrefService::Preference* launch_pref = local_state->FindPreference(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup);
+  ASSERT_TRUE(bg_mode_pref);
+  ASSERT_TRUE(launch_pref);
+
+  // Initially disabled by default.
+  EXPECT_TRUE(bg_mode_pref->IsDefaultValue());
+  EXPECT_FALSE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode));
+  EXPECT_TRUE(launch_pref->IsDefaultValue());
+  EXPECT_FALSE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup));
+
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }));
+
+  // First invocation enables background mode and launch on startup.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kStatusTrayIcon,
+                      profile_.get(), GetContext());
+  EXPECT_FALSE(bg_mode_pref->IsDefaultValue());
+  EXPECT_TRUE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode));
+  EXPECT_FALSE(launch_pref->IsDefaultValue());
+  EXPECT_TRUE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup));
+
+  // If user subsequently disables background mode / launch on startup in
+  // settings, subsequent invocations must not re-enable them.
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode, false);
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup, false);
+  EXPECT_FALSE(bg_mode_pref->IsDefaultValue());
+  EXPECT_FALSE(launch_pref->IsDefaultValue());
+
+  controller.Hide();
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kStatusTrayIcon,
+                      profile_.get(), GetContext());
+  EXPECT_FALSE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode));
+  EXPECT_FALSE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup));
+}
+
+TEST_F(OmniboxEverywhereControllerTest,
+       DoesNotOverrideExplicitBackgroundModePrefOnInvoke) {
+  TestingPrefServiceSimple* local_state =
+      TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  ASSERT_TRUE(local_state);
+
+  // User explicitly disables background mode and launch on startup before ever
+  // invoking Omnibox Everywhere.
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode, false);
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup, false);
+  const PrefService::Preference* bg_mode_pref = local_state->FindPreference(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode);
+  const PrefService::Preference* launch_pref = local_state->FindPreference(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup);
+  ASSERT_TRUE(bg_mode_pref);
+  ASSERT_TRUE(launch_pref);
+  EXPECT_FALSE(bg_mode_pref->IsDefaultValue());
+  EXPECT_FALSE(launch_pref->IsDefaultValue());
+
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }));
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kStatusTrayIcon,
+                      profile_.get(), GetContext());
+  EXPECT_FALSE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode));
+  EXPECT_FALSE(local_state->GetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereLaunchOnStartup));
 }

@@ -335,7 +335,7 @@ void RenderWidgetHostViewEventHandler::HandleMouseWheelEvent(
     mouse_wheel_phase_handler_.AddPhaseIfNeededAndScheduleEndEvent(
         mouse_wheel_event, should_route_event, /*is_fling_capable=*/false);
     if (should_route_event) {
-      host_->delegate()->GetInputEventRouter()->RouteMouseWheelEvent(
+      host_->GetInputEventRouter()->RouteMouseWheelEvent(
           host_view_, &mouse_wheel_event, *event->latency());
     } else {
       ProcessMouseWheelEvent(mouse_wheel_event, *event->latency());
@@ -357,6 +357,11 @@ void RenderWidgetHostViewEventHandler::OnMouseEvent(ui::MouseEvent* event) {
     return;
 
   ForwardMouseEventToParent(event);
+  // Forwarding the event may have resulted in the view or window being
+  // destroyed.
+  if (!window_ || !host_ || host_view_->destroy_pending()) {
+    return;
+  }
   // TODO(mgiuca): Return if event->handled() returns true. This currently
   // breaks drop-down lists which means something is incorrectly setting
   // event->handled to true (http://crbug.com/577983).
@@ -395,14 +400,18 @@ void RenderWidgetHostViewEventHandler::OnMouseEvent(ui::MouseEvent* event) {
       // Confirm existing composition text on mouse press, to make sure
       // the input caret won't be moved with an ongoing composition text.
       if (event->type() == ui::EventType::kMousePressed) {
+        auto weak_this = weak_ptr_factory_.GetWeakPtr();
         FinishImeCompositionSession();
+        if (!weak_this || !window_ || !host_ || host_view_->destroy_pending()) {
+          return;
+        }
       }
 
       blink::WebMouseEvent mouse_event = ui::MakeWebMouseEvent(*event);
       ModifyEventMovementAndCoords(*event, &mouse_event);
       if (ShouldRouteEvents()) {
-        host_->delegate()->GetInputEventRouter()->RouteMouseEvent(
-            host_view_, &mouse_event, *event->latency());
+        host_->GetInputEventRouter()->RouteMouseEvent(host_view_, &mouse_event,
+                                                      *event->latency());
       } else {
         ProcessMouseEvent(mouse_event, *event->latency());
       }
@@ -469,10 +478,10 @@ void RenderWidgetHostViewEventHandler::OnScrollEvent(ui::ScrollEvent* event) {
 
     if (should_route_event) {
       if (maybe_synthetic_fling_cancel) {
-        host_->delegate()->GetInputEventRouter()->RouteGestureEvent(
+        host_->GetInputEventRouter()->RouteGestureEvent(
             host_view_, &*maybe_synthetic_fling_cancel, ui::LatencyInfo());
       }
-      host_->delegate()->GetInputEventRouter()->RouteMouseWheelEvent(
+      host_->GetInputEventRouter()->RouteMouseWheelEvent(
           host_view_, &mouse_wheel_event, *event->latency());
     } else {
       if (maybe_synthetic_fling_cancel) {
@@ -485,7 +494,7 @@ void RenderWidgetHostViewEventHandler::OnScrollEvent(ui::ScrollEvent* event) {
              event->type() == ui::EventType::kScrollFlingCancel) {
     blink::WebGestureEvent gesture_event = ui::MakeWebGestureEvent(*event);
     if (should_route_event) {
-      host_->delegate()->GetInputEventRouter()->RouteGestureEvent(
+      host_->GetInputEventRouter()->RouteGestureEvent(
           host_view_, &gesture_event, ui::LatencyInfo());
     } else {
       host_->ForwardGestureEvent(gesture_event);
@@ -546,8 +555,8 @@ void RenderWidgetHostViewEventHandler::OnTouchEvent(ui::TouchEvent* event) {
   MarkUnchangedTouchPointsAsStationary(&touch_event,
                                        event->pointer_details().id);
   if (ShouldRouteEvents()) {
-    host_->delegate()->GetInputEventRouter()->RouteTouchEvent(
-        host_view_, &touch_event, *event->latency());
+    host_->GetInputEventRouter()->RouteTouchEvent(host_view_, &touch_event,
+                                                  *event->latency());
   } else {
     ProcessTouchEvent(touch_event, *event->latency());
   }
@@ -577,7 +586,11 @@ void RenderWidgetHostViewEventHandler::OnGestureEvent(ui::GestureEvent* event) {
   // Confirm existing composition text on TAP gesture, to make sure the input
   // caret won't be moved with an ongoing composition text.
   if (event->type() == ui::EventType::kGestureTap) {
+    auto weak_this = weak_ptr_factory_.GetWeakPtr();
     FinishImeCompositionSession();
+    if (!weak_this || !window_ || !host_ || host_view_->destroy_pending()) {
+      return;
+    }
   }
 
   blink::WebGestureEvent gesture = ui::MakeWebGestureEvent(*event);
@@ -590,8 +603,8 @@ void RenderWidgetHostViewEventHandler::OnGestureEvent(ui::GestureEvent* event) {
     fling_cancel.data.fling_cancel.prevent_boosting = false;
     fling_cancel.data.fling_cancel.target_viewport = false;
     if (ShouldRouteEvents()) {
-      host_->delegate()->GetInputEventRouter()->RouteGestureEvent(
-          host_view_, &fling_cancel, ui::LatencyInfo());
+      host_->GetInputEventRouter()->RouteGestureEvent(host_view_, &fling_cancel,
+                                                      ui::LatencyInfo());
     } else {
       host_->ForwardGestureEvent(fling_cancel);
     }
@@ -623,8 +636,8 @@ void RenderWidgetHostViewEventHandler::OnGestureEvent(ui::GestureEvent* event) {
     }
 
     if (ShouldRouteEvents()) {
-      host_->delegate()->GetInputEventRouter()->RouteGestureEvent(
-          host_view_, &gesture, *event->latency());
+      host_->GetInputEventRouter()->RouteGestureEvent(host_view_, &gesture,
+                                                      *event->latency());
     } else {
       host_->GetRenderInputRouter()->ForwardGestureEventWithLatencyInfo(
           gesture, *event->latency());
@@ -698,6 +711,10 @@ void RenderWidgetHostViewEventHandler::FinishImeCompositionSession() {
   // call to finish composition text should be made through the RWHVA itself
   // otherwise the following call to cancel composition will lead to an extra
   // IPC for finishing the ongoing composition (see https://crbug.com/723024).
+  if (!host_view_ || !host_view_->GetTextInputClient()) {
+    return;
+  }
+  auto weak_this = weak_ptr_factory_.GetWeakPtr();
 #if BUILDFLAG(IS_WEBOS)
   TextInputManager* input_manager = host_view_->GetTextInputManager();
   if (input_manager) {
@@ -724,9 +741,11 @@ void RenderWidgetHostViewEventHandler::FinishImeCompositionSession() {
     }
   }
 #endif  // BUILDFLAG(IS_WEBOS)
-
   host_view_->GetTextInputClient()->ConfirmCompositionText(
       /* keep_selection */ true);
+  if (!weak_this || !window_ || !host_ || host_view_->destroy_pending()) {
+    return;
+  }
   host_view_->ImeCancelComposition();
 }
 
@@ -838,8 +857,8 @@ void RenderWidgetHostViewEventHandler::HandleMouseEventWhileLocked(
     if (CanRendererHandleEvent(event, mouse_locked_, is_selection_popup) &&
         !(event->flags() & ui::EF_FROM_TOUCH)) {
       if (ShouldRouteEvents()) {
-        host_->delegate()->GetInputEventRouter()->RouteMouseEvent(
-            host_view_, &mouse_event, *event->latency());
+        host_->GetInputEventRouter()->RouteMouseEvent(host_view_, &mouse_event,
+                                                      *event->latency());
       } else {
         ProcessMouseEvent(mouse_event, *event->latency());
       }
@@ -901,8 +920,8 @@ void RenderWidgetHostViewEventHandler::MoveCursorToCenter(
         blink::WebInputEvent::Modifiers::kRelativeMotionEvent);
     mouse_event.SetPositionInScreen(gfx::PointF(center_in_screen));
     if (ShouldRouteEvents()) {
-      host_->delegate()->GetInputEventRouter()->RouteMouseEvent(
-          host_view_, &mouse_event, ui::LatencyInfo());
+      host_->GetInputEventRouter()->RouteMouseEvent(host_view_, &mouse_event,
+                                                    ui::LatencyInfo());
     } else {
       ProcessMouseEvent(mouse_event, ui::LatencyInfo());
     }
@@ -969,7 +988,7 @@ bool RenderWidgetHostViewEventHandler::ShouldMoveToCenter(
 }
 
 bool RenderWidgetHostViewEventHandler::ShouldRouteEvents() const {
-  if (!host_->delegate()) {
+  if (!host_ || !host_->delegate()) {
     return false;
   }
 
@@ -979,7 +998,7 @@ bool RenderWidgetHostViewEventHandler::ShouldRouteEvents() const {
   if (!host_->delegate()->IsWidgetForPrimaryMainFrame(host_))
     return false;
 
-  return !!host_->delegate()->GetInputEventRouter();
+  return !!host_->GetInputEventRouter();
 }
 
 void RenderWidgetHostViewEventHandler::ProcessMouseEvent(

@@ -23,6 +23,7 @@ BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned);
+BASE_DECLARE_FEATURE(kContextualTasksEphemeralButtonContextMenu);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
 BASE_DECLARE_FEATURE(kContextualTasksContextMultiTurnTabRelevance);
@@ -72,7 +73,6 @@ BASE_DECLARE_FEATURE(kContextualTasksSendContextualInputUploadType);
 // contextual tasks URL and redirect to aim URL.
 BASE_DECLARE_FEATURE(kContextualTasksUrlRedirectToAimUrl);
 
-
 // If enabled, animates the caret.
 BASE_DECLARE_FEATURE(kContextualTasksAnimatedCaret);
 
@@ -81,9 +81,6 @@ BASE_DECLARE_FEATURE(kEnergyEffectInNextbox);
 
 // Fixes the composebox jump.
 BASE_DECLARE_FEATURE(kContextualTasksComposeboxJumpFix);
-
-// Switches the Contextual Tasks composebox to the forked embedder element.
-BASE_DECLARE_FEATURE(kContextualTasksComposeboxFork);
 
 // Enables the use of a rounded clip-path for the composebox.
 BASE_DECLARE_FEATURE(kContextualTasksRoundedClipPath);
@@ -131,6 +128,12 @@ BASE_DECLARE_FEATURE(kContextualTasksWindowTracking);
 // Enables upload chunking for Contextual Tasks.
 BASE_DECLARE_FEATURE(kContextualTasksUploadChunking);
 
+// Enables the in-panel WebUI voice search UI on large-screen Android (tablet
+// and desktop form factors), instead of delegating to the platform voice
+// recognition activity. Has no effect on Android phones, or off Android, which
+// always uses the WebUI voice search UI.
+BASE_DECLARE_FEATURE(kContextualTasksWebUiVoiceSearchDesktopAndroid);
+
 // Enables composebox embedded in AIM main frame, new auth, and
 // new side panel and ghost loader for contextual tasks.
 BASE_DECLARE_FEATURE(kContextualTasksRearchitecture);
@@ -153,6 +156,13 @@ BASE_DECLARE_FEATURE(kContextualTasksNonBlockingUrlNavigation);
 // Returns whether non-blocking AIM URL navigation is enabled.
 bool GetIsContextualTasksNonBlockingUrlNavigationEnabled();
 
+// Allows signed-out users to use side panel cobrowse in Desktop Android.
+BASE_DECLARE_FEATURE(kAllowSignedOutUserInDesktopAndroid);
+
+// Returns whether signed-out users are allowed to use side panel cobrowse in
+// Desktop Android.
+bool IsAllowSignedOutUserInDesktopAndroidEnabled();
+
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
 
 enum class OverflowMenuItems {
@@ -172,6 +182,8 @@ bool GetIsContextualTasksLazyFetchClusterInfoEnabled();
 bool GetIsContextualTasksWindowTrackingEnabled();
 
 bool GetIsContextualTasksUploadChunkingEnabled();
+
+bool GetIsContextualTasksWebUiVoiceSearchDesktopAndroidEnabled();
 
 bool GetContextualTasksSpatialModelToolbarLayoutEnabled();
 
@@ -289,6 +301,11 @@ extern const base::FeatureParam<EntryPointOption, true> kShowEntryPoint;
 // when the side panel is right-aligned.
 extern bool GetEnableRightHandContextualTasksEphemeralButton();
 
+// Controls whether the contextual tasks ephemeral button is placed as a regular
+// circular button with drop shadow next to the battery saver button.
+BASE_DECLARE_FEATURE_PARAM(bool,
+                           kEnableCircularEphemeralButtonNextToBatterySaver);
+
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
 
@@ -354,7 +371,6 @@ extern int GetContextualTasksOnboardingTooltipImpressionDelay();
 // The number of seconds inactive side panel WebContents should keep in cache.
 // Expired side panel WebContents will be destroyed.
 extern int ContextualTasksInactiveSidePanelKeepInCacheMinutes();
-
 
 // Returns if the protected page error is enabled.
 extern bool GetIsProtectedPageErrorEnabled();
@@ -453,7 +469,6 @@ extern bool GetEnableContextualTasksSmartCompose();
 // zero state suggestions are enabled for Contextual Tasks.
 extern bool GetEnableNativeZeroStateSuggestions();
 
-
 // Returns whether basic mode should be enabled.
 extern bool GetIsBasicModeEnabled();
 
@@ -470,7 +485,6 @@ extern bool ShouldEnableCookiePrefetch();
 // Returns whether the input plate can be locked and unlocked by a message
 // from AIM.
 extern bool ShouldEnableLockAndUnlockInputCapability();
-
 
 // Returns whether the file hint is enabled in the composebox.
 extern bool GetEnableFileHint();
@@ -550,6 +564,8 @@ extern const char kContextualTasksBypassDismissedCapName[];
 extern const char kContextualTasksBypassDismissedCapDescription[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[];
+extern const char kContextualTasksEphemeralButtonContextMenuName[];
+extern const char kContextualTasksEphemeralButtonContextMenuDescription[];
 
 }  // namespace flag_descriptions
 

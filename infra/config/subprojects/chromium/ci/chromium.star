@@ -61,6 +61,7 @@ consoles.console_view(
 
 ci.builder(
     name = "android-archive-rel",
+    description_html = "Archive builder for Android ARM.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -120,6 +121,7 @@ ci.builder(
 
 ci.builder(
     name = "android-arm64-archive-rel",
+    description_html = "Archive builder for Android ARM64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -304,6 +306,7 @@ ci.builder(
 ci.builder(
     name = "android-official",
     branch_selector = branches.selector.ANDROID_BRANCHES,
+    description_html = "Official builder for Android ARM.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -458,6 +461,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-chromeos-archive-rel",
+    description_html = "Archive builder for Ash Chrome (linux-chromeos) x64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -517,6 +521,7 @@ ci.builder(
         ],
     ),
     cores = 8,
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "cros",
@@ -545,6 +550,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-archive-rel",
+    description_html = "Archive builder for Linux x64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -597,6 +603,7 @@ ci.builder(
 ci.builder(
     name = "linux-official",
     branch_selector = branches.selector.LINUX_BRANCHES,
+    description_html = "Official builder for Linux x64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -695,6 +702,7 @@ ci.builder(
 
 ci.builder(
     name = "mac-archive-rel",
+    description_html = "Archive builder for Mac x64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -745,6 +753,7 @@ ci.builder(
 
 ci.builder(
     name = "mac-arm64-archive-rel",
+    description_html = "Archive builder for Mac ARM64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -798,6 +807,7 @@ ci.builder(
 ci.builder(
     name = "mac-official",
     branch_selector = branches.selector.MAC_BRANCHES,
+    description_html = "Official builder for Mac ARM64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -841,6 +851,7 @@ ci.builder(
 
 ci.builder(
     name = "win-archive-rel",
+    description_html = "Archive builder for Windows x64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -952,6 +963,7 @@ ci.builder(
 ci.builder(
     name = "win-official",
     branch_selector = branches.selector.WINDOWS_BRANCHES,
+    description_html = "Official builder for Windows x64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -999,6 +1011,7 @@ ci.builder(
 
 ci.builder(
     name = "win32-archive-rel",
+    description_html = "Archive builder for Windows x86.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -1051,6 +1064,7 @@ ci.builder(
 ci.builder(
     name = "win32-official",
     branch_selector = branches.selector.WINDOWS_BRANCHES,
+    description_html = "Official builder for Windows x86.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",

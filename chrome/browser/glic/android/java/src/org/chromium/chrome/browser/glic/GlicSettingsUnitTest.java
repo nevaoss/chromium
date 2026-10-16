@@ -42,6 +42,7 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
@@ -72,7 +73,7 @@ import org.chromium.ui.base.TestActivity;
     ChromeFeatureList.ANDROID_BOTTOM_BAR,
     ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL
 })
-@EnableFeatures(ChromeFeatureList.ACTOR_LOGIN_PERMISSIONS_UI)
+@EnableFeatures({ChromeFeatureList.ACTOR_LOGIN_PERMISSIONS_UI, ChromeFeatureList.GLIC_VOICE})
 public class GlicSettingsUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -178,6 +179,24 @@ public class GlicSettingsUnitTest {
     }
 
     @Test
+    public void testMicrophoneHighlightParam() {
+        Bundle args = new Bundle();
+        args.putString(
+                GlicNavigationUtils.EXTRA_HIGHLIGHT_FIELD,
+                GlicNavigationUtils.FIELD_MICROPHONE_PERMISSION);
+
+        // Verifies launching with highlight parameters does not crash
+        GlicSettings fragment = launchFragment(args);
+
+        // Flush shadow main looper to run the posted scroll/highlight runnables
+        org.robolectric.shadows.ShadowLooper.idleMainLooper();
+
+        ChromeSwitchPreference microphonePref =
+                fragment.findPreference(GlicSettings.PERMISSION_MICROPHONE);
+        assertTrue("Microphone preference should be visible", microphonePref.isVisible());
+    }
+
+    @Test
     public void testClickPermissionsActivity() {
         GlicSettings fragment = launchFragment();
         Preference preference = fragment.findPreference("glic_permissions_activity");
@@ -236,6 +255,7 @@ public class GlicSettingsUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testGlicButtonPreference_SidePanel_Pinned() {
+        DeviceInfo.setIsDesktopForTesting(true);
         when(mPrefServiceMock.getBoolean(GlicPrefNames.GLIC_PINNED_TO_TABSTRIP)).thenReturn(true);
         GlicSettings fragment = launchFragment();
 
@@ -254,6 +274,7 @@ public class GlicSettingsUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testGlicButtonPreference_SidePanel_Toggle() {
+        DeviceInfo.setIsDesktopForTesting(true);
         when(mPrefServiceMock.getBoolean(GlicPrefNames.GLIC_PINNED_TO_TABSTRIP)).thenReturn(false);
         GlicSettings fragment = launchFragment();
 
@@ -313,6 +334,66 @@ public class GlicSettingsUnitTest {
                 GlicSettings.PERMISSION_MICROPHONE);
         assertEquals(1, mUserActionTester.getActionCount("Glic.Settings.Microphone.Enabled"));
         assertEquals(1, mUserActionTester.getActionCount("Glic.Settings.Microphone.Disabled"));
+    }
+
+    @Test
+    public void testMicrophonePermissionVisible_VoiceEnabled() {
+        GlicSettings fragment = launchFragment();
+        Preference microphonePref = fragment.findPreference(GlicSettings.PERMISSION_MICROPHONE);
+        assertTrue(
+                "Preference permissions_microphone should be visible", microphonePref.isVisible());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.GLIC_VOICE)
+    public void testMicrophonePermissionHidden_VoiceDisabled() {
+        GlicSettings fragment = launchFragment();
+        Preference microphonePref = fragment.findPreference(GlicSettings.PERMISSION_MICROPHONE);
+        assertFalse(
+                "Preference permissions_microphone should be hidden", microphonePref.isVisible());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.GLIC_VOICE)
+    public void testMicrophonePermissionNotSetUp_VoiceDisabled() {
+        // With the pref already enabled, the setup path would request RECORD_AUDIO on load. It
+        // must be skipped entirely so the user is not prompted for a hidden toggle.
+        when(mPrefServiceMock.getBoolean(GlicPrefNames.GLIC_MICROPHONE_ENABLED)).thenReturn(true);
+        Shadows.shadowOf(RuntimeEnvironment.getApplication())
+                .denyPermissions(Manifest.permission.RECORD_AUDIO);
+
+        GlicSettings fragment = launchFragment();
+
+        Preference microphonePref = fragment.findPreference(GlicSettings.PERMISSION_MICROPHONE);
+        assertFalse(
+                "Preference permissions_microphone should be hidden", microphonePref.isVisible());
+        // No listener and no shared pref sync means setupSwitchPreference() never ran, so
+        // ensureRecordAudioPermissionGranted() could not have been reached either.
+        assertTrue(
+                "Preference permissions_microphone should have no change listener",
+                microphonePref.getOnPreferenceChangeListener() == null);
+        assertFalse(
+                ChromeSharedPreferences.getInstance()
+                        .readBoolean(GLIC_MICROPHONE_SETTING_ENABLED, false));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.GLIC_VOICE)
+    public void testSearchIndex_MicrophoneToggleHidden_RemovesEntry() {
+        GlicSettings.SEARCH_INDEX_DATA_PROVIDER.updateDynamicPreferences(
+                RuntimeEnvironment.getApplication(), mSearchIndexDataMock, mProfileMock);
+        verify(mSearchIndexDataMock)
+                .removeEntryForKey(
+                        GlicSettings.class.getName(), GlicSettings.PERMISSION_MICROPHONE);
+    }
+
+    @Test
+    public void testSearchIndex_MicrophoneToggleShown_KeepsEntry() {
+        GlicSettings.SEARCH_INDEX_DATA_PROVIDER.updateDynamicPreferences(
+                RuntimeEnvironment.getApplication(), mSearchIndexDataMock, mProfileMock);
+        verify(mSearchIndexDataMock, never())
+                .removeEntryForKey(
+                        GlicSettings.class.getName(), GlicSettings.PERMISSION_MICROPHONE);
     }
 
     @Test
@@ -634,6 +715,7 @@ public class GlicSettingsUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testLauncherToggle_InitialState_Enabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
         when(mLocalPrefServiceMock.getBoolean(GlicPrefNames.GLIC_LAUNCHER_ENABLED))
                 .thenReturn(true);
         GlicSettings fragment = launchFragment();
@@ -672,6 +754,7 @@ public class GlicSettingsUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testLauncherToggle_Click() {
+        DeviceInfo.setIsDesktopForTesting(true);
         when(mLocalPrefServiceMock.getBoolean(GlicPrefNames.GLIC_LAUNCHER_ENABLED))
                 .thenReturn(false);
         GlicSettings fragment = launchFragment();
@@ -699,8 +782,9 @@ public class GlicSettingsUnitTest {
     @Test
     @DisableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testNavigationShortcutPreference_SidePanelDisabled() {
-        // Even if launcher is enabled, the navigation shortcut should be invisible if side panel is
-        // disabled.
+        // Even if launcher is enabled, the navigation shortcut should be invisible if the form
+        // factor does not support the side panel. A phone never does.
+        DeviceInfo.setIsDesktopForTesting(false);
         when(mLocalPrefServiceMock.getBoolean(GlicPrefNames.GLIC_LAUNCHER_ENABLED))
                 .thenReturn(true);
         GlicSettings fragment = launchFragment();
@@ -715,6 +799,7 @@ public class GlicSettingsUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
     public void testSearchIndex_SidePanelEnabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
         GlicSettings.SEARCH_INDEX_DATA_PROVIDER.updateDynamicPreferences(
                 RuntimeEnvironment.getApplication(), mSearchIndexDataMock, mProfileMock);
         verify(mSearchIndexDataMock)

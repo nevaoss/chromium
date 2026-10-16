@@ -6,17 +6,20 @@
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/callback_list.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/time/time.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
 #include "chrome/browser/contextual_tasks/aim_message_poster.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_types.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "content/public/browser/document_user_data.h"
@@ -46,6 +49,11 @@ namespace content {
 class WebContents;
 }  // namespace content
 
+namespace lens {
+class AddedContext;
+class ClientToSearchMessage;
+}  // namespace lens
+
 class LensSearchController;
 class ContextualTasksExtensionHandler
     : public content::DocumentUserData<ContextualTasksExtensionHandler>,
@@ -55,9 +63,13 @@ class ContextualTasksExtensionHandler
       public composebox::mojom::PageHandler,
       public searchbox::mojom::PageHandler,
       public contextual_tasks::AimMessagePoster,
-      public PermissionPromptObserver::Observer {
+      public PermissionPromptObserver::Observer,
+      public contextual_tasks::ContextualTasksUiService::Observer {
  public:
   ~ContextualTasksExtensionHandler() override;
+
+  // contextual_tasks::ContextualTasksUiService::Observer:
+  void OnLensOverlayStateChanged(bool is_showing) override;
 
   // PermissionPromptObserver::Observer:
   void OnPermissionPromptChanged(bool is_showing,
@@ -65,6 +77,9 @@ class ContextualTasksExtensionHandler
 
   // contextual_tasks::AimMessagePoster:
   void PostAimMessage(const lens::ClientToAimMessage& message) override;
+
+  // Sends a search communication message to the extension page.
+  void PostSearchMessage(const lens::ClientToSearchMessage& message);
 
   void BindContextualTasksFactory(
       mojo::PendingReceiver<
@@ -80,6 +95,19 @@ class ContextualTasksExtensionHandler
   void SetTaskId(const base::Uuid& uuid) override;
   void OnWebviewMessage(const std::vector<uint8_t>& message) override;
   void GetHandshakeMessage(GetHandshakeMessageCallback callback) override;
+  void GetLensCropPreview(GetLensCropPreviewCallback callback) override;
+  void RemoveLensCrop() override;
+
+  base::WeakPtr<contextual_search::InputStateModel>
+  GetOrCreateInputStateModelForTesting() {
+    return GetOrCreateInputStateModel();
+  }
+  void OnLensThumbnailCreatedForTesting(const std::string& thumbnail_uri) {
+    OnLensThumbnailCreated(thumbnail_uri);
+  }
+  std::optional<base::UnguessableToken> GetLensOverlayTokenForTesting() {
+    return GetLensOverlayToken();
+  }
 
   void BindComposeboxFactory(
       mojo::PendingReceiver<composebox::mojom::PageHandlerFactory> receiver);
@@ -135,7 +163,8 @@ class ContextualTasksExtensionHandler
                          const std::string& keyword,
                          searchbox::mojom::InputMethod input_method) override;
   void StopAutocomplete(bool clear_result) override;
-  void OpenAutocompleteMatch(uint8_t line,
+  void OpenAutocompleteMatch(uint32_t result_sequence_id,
+                             uint8_t line,
                              const GURL& url,
                              bool are_matches_showing,
                              uint8_t mouse_button,
@@ -203,15 +232,17 @@ class ContextualTasksExtensionHandler
   void CaptureRegionScreenshot(
       CaptureRegionScreenshotCallback callback) override;
   void DismissFre(searchbox::mojom::FreStage stage) override {}
-  void ShowHotkeyDropdown(const gfx::Rect& anchor_bounds) override {}
+  void ShowHotkeyDropdown(const gfx::Rect& anchor_bounds,
+                          ShowHotkeyDropdownCallback callback) override;
   void OpenHotkeySettings() override {}
+  void OnEscapePressed() override {}
 
  private:
   friend class content::DocumentUserData<ContextualTasksExtensionHandler>;
   explicit ContextualTasksExtensionHandler(content::RenderFrameHost* rfh);
   DOCUMENT_USER_DATA_KEY_DECL();
 
-  content::WebContents* GetActiveTabWebContents() const;
+  BrowserWindowInterface* GetBrowserWindowInterface() const;
 
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle();
@@ -239,6 +270,11 @@ class ContextualTasksExtensionHandler
   void OnInputStateChanged(const omnibox::InputState& state);
   base::WeakPtr<contextual_search::InputStateModel>
   GetOrCreateInputStateModel();
+  bool IsPrimarySearchMessageSender() const;
+  void OnLensThumbnailCreated(const std::string& thumbnail_uri);
+  void RecordTimeToHandshakeComplete();
+  void HandleOnSubmitQueryRequest();
+  std::optional<lens::AddedContext> GetLensAddedContext();
 
   base::WeakPtr<contextual_search::InputStateModel> input_state_model_;
   base::CallbackListSubscription input_state_subscription_;
@@ -246,10 +282,18 @@ class ContextualTasksExtensionHandler
   base::ScopedObservation<PermissionPromptObserver,
                           PermissionPromptObserver::Observer>
       permission_prompt_observation_{this};
+  base::ScopedObservation<contextual_tasks::ContextualTasksUiService,
+                          contextual_tasks::ContextualTasksUiService::Observer>
+      ui_service_observation_{this};
 
   std::optional<base::Uuid> task_id_;
   omnibox::ToolMode active_tool_ = omnibox::TOOL_MODE_UNSPECIFIED;
   omnibox::ModelMode active_model_ = omnibox::MODEL_MODE_UNSPECIFIED;
+  base::TimeTicks last_handled_submit_interaction_time_{};
+
+  bool is_lens_crop_mounted_ = false;
+  std::string last_lens_crop_data_uri_;
+  base::WeakPtrFactory<ContextualTasksExtensionHandler> weak_ptr_factory_{this};
 };
 
 #endif  // CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_

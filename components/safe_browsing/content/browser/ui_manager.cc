@@ -17,7 +17,7 @@
 #include "components/safe_browsing/content/browser/content_unsafe_resource_util.h"
 #include "components/safe_browsing/content/browser/safe_browsing_blocking_page.h"
 #include "components/safe_browsing/content/browser/threat_details.h"
-#include "components/safe_browsing/core/browser/db/v4_protocol_manager_util.h"
+#include "components/safe_browsing/core/browser/db/sb_protocol_manager_util.h"
 #include "components/safe_browsing/core/browser/ping_manager.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
@@ -281,7 +281,8 @@ void SafeBrowsingUIManager::OnBlockingPageDone(
         SBThreatType::SB_THREAT_TYPE_MANAGED_POLICY_WARN) {
       delegate_->TriggerUrlFilteringInterstitialExtensionEventIfDesired(
           web_contents, main_frame_url, "ENTERPRISE_WARNED_BYPASS",
-          resources[0].rt_lookup_response);
+          resources[0].rt_lookup_response,
+          /*is_bypassing_interstitial=*/true);
       return;
     }
     delegate_->TriggerSecurityInterstitialProceededExtensionEventIfDesired(
@@ -308,7 +309,8 @@ SafeBrowsingUIManager::CreateBlockingPage(
     if (forward_extension_event) {
       ForwardUrlFilteringInterstitialExtensionEventToEmbedder(
           contents, blocked_url, "ENTERPRISE_WARNED_SEEN",
-          unsafe_resource.rt_lookup_response);
+          unsafe_resource.rt_lookup_response,
+          /*is_bypassing_interstitial=*/false);
     }
     return blocking_page;
   } else if (unsafe_resource.threat_type ==
@@ -320,7 +322,8 @@ SafeBrowsingUIManager::CreateBlockingPage(
     if (forward_extension_event) {
       ForwardUrlFilteringInterstitialExtensionEventToEmbedder(
           contents, blocked_url, "ENTERPRISE_BLOCKED_SEEN",
-          unsafe_resource.rt_lookup_response);
+          unsafe_resource.rt_lookup_response,
+          /*is_bypassing_interstitial=*/false);
     }
     return blocking_page;
   }
@@ -352,8 +355,10 @@ void SafeBrowsingUIManager::
         content::WebContents* web_contents,
         const GURL& page_url,
         const std::string& threat_type,
-        safe_browsing::RTLookupResponse rt_lookup_response) {
+        safe_browsing::RTLookupResponse rt_lookup_response,
+        bool is_bypassing_interstitial) {
   delegate_->TriggerUrlFilteringInterstitialExtensionEventIfDesired(
-      web_contents, page_url, threat_type, rt_lookup_response);
+      web_contents, page_url, threat_type, rt_lookup_response,
+      is_bypassing_interstitial);
 }
 }  // namespace safe_browsing

@@ -7,7 +7,7 @@ import 'chrome://omnibox-everywhere.top-chrome/fre_chin.js';
 import {FreChinMode} from 'chrome://omnibox-everywhere.top-chrome/fre_chin.js';
 import type {FreChinElement, ShowHotkeyDropdownDetail} from 'chrome://omnibox-everywhere.top-chrome/fre_chin.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise, isVisible} from 'chrome://webui-test/test_util.js';
 
 suite('FreChinTest', () => {
@@ -38,6 +38,7 @@ suite('FreChinTest', () => {
     const dropdownTrigger = freChin.shadowRoot.querySelector<HTMLButtonElement>(
         '.dropdown-trigger');
     assertTrue(!!dropdownTrigger);
+    assertEquals('183px', window.getComputedStyle(dropdownTrigger).width);
     assertEquals(
         'Select keyboard shortcut: Cmd Shift Space',
         dropdownTrigger.getAttribute('aria-label'));
@@ -75,6 +76,7 @@ suite('FreChinTest', () => {
             freChin.shadowRoot.querySelector<HTMLButtonElement>(
                 '.dropdown-trigger');
         assertTrue(!!dropdownTrigger);
+        assertEquals('183px', window.getComputedStyle(dropdownTrigger).width);
         assertEquals(
             'Select keyboard shortcut',
             dropdownTrigger.getAttribute('aria-label'));
@@ -166,6 +168,13 @@ suite('FreChinTest', () => {
         freChin.shadowRoot.querySelectorAll<HTMLElement>('.key-badge');
     assertEquals(3, keyBadges.length);
 
+    const toSearchLabel =
+        freChin.shadowRoot.querySelector<HTMLElement>('.to-search-label');
+    assertTrue(!!toSearchLabel);
+    assertEquals(
+        'to search with Chrome. Change shortcut in Settings',
+        toSearchLabel.textContent.replace(/\s+/g, ' ').trim());
+
     const changeShortcutLabel =
         freChin.shadowRoot.querySelector('.change-shortcut-label');
     assertTrue(!!changeShortcutLabel);
@@ -177,6 +186,10 @@ suite('FreChinTest', () => {
         freChin.shadowRoot.querySelector<HTMLAnchorElement>('.settings-link');
     assertTrue(!!settingsLink);
     assertEquals('Settings', settingsLink.textContent.trim());
+
+    const settingsPromise = eventToPromise('open-settings', freChin);
+    settingsLink.click();
+    await settingsPromise;
   });
 
   test('clicking close button fires close event', async () => {
@@ -186,4 +199,22 @@ suite('FreChinTest', () => {
     closeBtn.click();
     await closePromise;
   });
+
+  test(
+      'reflects small-loomnibox attribute when small loomnibox is enabled',
+      async () => {
+        assertFalse(freChin.hasAttribute('small-loomnibox'));
+
+        freChin.smallLoomnibox = true;
+        await freChin.updateComplete;
+        assertTrue(freChin.hasAttribute('small-loomnibox'));
+
+        freChin.mode = FreChinMode.SHORTCUT_REMINDER;
+        await freChin.updateComplete;
+        assertTrue(freChin.hasAttribute('small-loomnibox'));
+
+        freChin.smallLoomnibox = false;
+        await freChin.updateComplete;
+        assertFalse(freChin.hasAttribute('small-loomnibox'));
+      });
 });

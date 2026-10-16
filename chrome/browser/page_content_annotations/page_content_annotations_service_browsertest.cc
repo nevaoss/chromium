@@ -2167,8 +2167,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 1);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kSuccess, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 1);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, false, 1);
   } else {
     // Neither APC nor PDF text extraction is requested when feature is
     // disabled. Only the PDF page count is requested and recorded to UKM
@@ -2189,8 +2191,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         kPageContentExtractionRequestTypeHistogram,
         ExtractionRequestType::kPDFPageCount, 1);
     histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(
+        kPdfTextTopLevelSizeLimitExceededHistogram, 0);
   }
 }
 
@@ -2242,8 +2246,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 1);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kEmptyText, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 1);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, false, 1);
   } else {
     // Neither APC nor PDF text extraction is requested when feature is
     // disabled. Only the PDF page count is requested and recorded to UKM
@@ -2264,8 +2270,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         kPageContentExtractionRequestTypeHistogram,
         ExtractionRequestType::kPDFPageCount, 1);
     histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(
+        kPdfTextTopLevelSizeLimitExceededHistogram, 0);
   }
 }
 
@@ -2320,8 +2328,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 1);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kSuccess, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 1);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, false, 1);
   } else {
     // Neither APC nor PDF text extraction is requested when feature is
     // disabled. Only the PDF page count is requested and recorded to UKM
@@ -2342,8 +2352,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         kPageContentExtractionRequestTypeHistogram,
         ExtractionRequestType::kPDFPageCount, 1);
     histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(
+        kPdfTextTopLevelSizeLimitExceededHistogram, 0);
   }
 }
 
@@ -2398,8 +2410,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 1);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kSuccess, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 1);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, true, 1);
   } else {
     // Neither APC nor PDF text extraction is requested when feature is
     // disabled. Only the PDF page count is requested and recorded to UKM
@@ -2420,8 +2434,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         kPageContentExtractionRequestTypeHistogram,
         ExtractionRequestType::kPDFPageCount, 1);
     histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(
+        kPdfTextTopLevelSizeLimitExceededHistogram, 0);
   }
 }
 
@@ -2476,8 +2492,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 1);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kSuccess, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 1);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, true, 1);
   } else {
     // Neither APC nor PDF text extraction is requested when feature is
     // disabled. Only the PDF page count is requested and recorded to UKM
@@ -2498,8 +2516,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         kPageContentExtractionRequestTypeHistogram,
         ExtractionRequestType::kPDFPageCount, 1);
     histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+    histogram_tester.ExpectTotalCount(
+        kPdfTextTopLevelSizeLimitExceededHistogram, 0);
   }
 }
 
@@ -2552,8 +2572,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
       EXPECT_TRUE(ukm_future.WaitAndClear());
 
       histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-      histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-      histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+      histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+      histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+      histogram_tester.ExpectTotalCount(
+          kPdfTextTopLevelSizeLimitExceededHistogram, 0);
     }
   };
 
@@ -2568,8 +2590,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 1);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kSuccess, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 1);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 1);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 1);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, false, 1);
   } else {
     histogram_tester.ExpectUniqueSample(
         kPageContentExtractionRequestTypeHistogram,
@@ -2587,8 +2611,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
         ExtractionRequestType::kPDFText, 2);
     histogram_tester.ExpectUniqueSample(kPdfTextExtractionStatusHistogram,
                                         PdfTextExtractionStatus::kSuccess, 2);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 2);
-    histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 2);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 2);
+    histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 2);
+    histogram_tester.ExpectUniqueSample(
+        kPdfTextTopLevelSizeLimitExceededHistogram, false, 2);
   } else {
     histogram_tester.ExpectUniqueSample(
         kPageContentExtractionRequestTypeHistogram,
@@ -2655,8 +2681,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   histogram_tester.ExpectTotalCount(kPageContentExtractionRequestTypeHistogram,
                                     0);
   histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-  histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-  histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeLimitExceededHistogram,
+                                    0);
 }
 
 // Async getter does not support PDF documents, regardless of whether PDF text
@@ -2691,8 +2719,10 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   histogram_tester.ExpectTotalCount(kPageContentExtractionRequestTypeHistogram,
                                     0);
   histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
-  histogram_tester.ExpectTotalCount(kPdfTextExtractionLatencyHistogram, 0);
-  histogram_tester.ExpectTotalCount(kPdfTextExtractionSizeHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeLimitExceededHistogram,
+                                    0);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -2797,5 +2827,68 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Bool(), ::testing::Bool()),
     &PageContentAnnotationsServiceContentExtractionPdfHangingTest::
         DescribeParams);
+
+class PageContentAnnotationsServiceContentExtractionEmbeddedPdfTest
+    : public PageContentAnnotationsServiceContentExtractionPdfTest {
+ public:
+  PageContentAnnotationsServiceContentExtractionEmbeddedPdfTest() = default;
+  ~PageContentAnnotationsServiceContentExtractionEmbeddedPdfTest() override =
+      default;
+
+  void InitializeFeatureList() override {
+    PageContentAnnotationsServiceContentExtractionPdfTest::
+        InitializeFeatureList();
+    embedded_pdf_bytes_extraction_.InitAndEnableFeature(
+        kGlicEmbeddedPdfBytesExtraction);
+  }
+
+ private:
+  base::test::ScopedFeatureList embedded_pdf_bytes_extraction_;
+};
+
+// Feature `kGlicEmbeddedPdfBytesExtraction` does not affect PDF text
+// extraction. PDF text extraction is still restricted to top-level PDF only,
+// even if the feature is enabled.
+IN_PROC_BROWSER_TEST_P(
+    PageContentAnnotationsServiceContentExtractionEmbeddedPdfTest,
+    PDFTextExtractionDoesNotSupportEmbeddedPDF) {
+  base::HistogramTester histogram_tester;
+
+  // Set up the observer for page content extraction.
+  FakeExtractionServiceObserver observer;
+  auto* service = PageContentExtractionServiceFactory::GetForProfile(
+      browser()->GetProfile());
+  observer.Observe(service);
+
+  // Navigate to a page that embeds a PDF.
+  ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(
+      browser(), embedded_test_server()->GetURL("/pdf/two_embedded_pdfs.html"),
+      /*number_of_navigations=*/1);
+
+  // Text extraction does not support embedded PDF. The PDF text extraction is
+  // never attempted. The request for PDF text is not created because the page
+  // fails the MIME type being `application/pdf` check. Instead, a request for
+  // `AnnotatedPageContent` is made.
+  observer.Wait();
+  const PageContent& page_content = observer.page_content_future_.Get();
+  RefCountedAnnotatedPageContentPtr annotated_page_content_ptr =
+      GetAnnotatedPageContentPtrFromPageContent(page_content);
+  ASSERT_TRUE(annotated_page_content_ptr);
+
+  histogram_tester.ExpectUniqueSample(
+      kPageContentExtractionRequestTypeHistogram,
+      ExtractionRequestType::kAnnotatedPageContent, 1);
+  histogram_tester.ExpectTotalCount(kPdfTextExtractionStatusHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelLatencyHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeHistogram, 0);
+  histogram_tester.ExpectTotalCount(kPdfTextTopLevelSizeLimitExceededHistogram,
+                                    0);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    PageContentAnnotationsServiceContentExtractionEmbeddedPdfTest,
+    ::testing::Combine(::testing::Bool(), ::testing::Bool()),
+    &PageContentAnnotationsServiceContentExtractionPdfTest::DescribeParams);
 
 }  // namespace page_content_annotations

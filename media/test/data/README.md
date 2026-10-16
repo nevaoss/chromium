@@ -145,9 +145,18 @@ A 4-channel FLAC file with a `WAVEFORMATEXTENSIBLE_CHANNEL_MASK` tag. Used to ve
 
 ### MP3
 
+#### repro-minimal.mp3
+MP3 file containing independent channel block_type switching in joint stereo (e.g. from Zoom H1n recorder). Used to verify that Symphonia decodes frames with per-channel block_type differences without error.
+Source: Repro file from https://issues.chromium.org/issues/563087658
+
 #### silent-section.mp3
 MP3 file containing silent sections filled with 0xff bytes, causing Symphonia decoder to trigger out-of-bounds error on bit reservoir. Used to verify the fix for this regression.
 Source: https://abfiles.s3.amazonaws.com/jds/silent-section.mp3
+
+#### synth-bad.mp3
+Truncated MP3 test file (~2.6 KB, 4 complete frames followed by a truncated 5th frame). Used to verify that SymphoniaAudioDecoder gracefully drops undecodeable trailing frames and reaches end-of-stream (firing the 'ended' event) without a fatal decode error.
+Source: Repro file from https://issues.chromium.org/issues/558966895, trimmed to the first 2650 bytes.
+
 
 ### VVC
 
@@ -1031,6 +1040,12 @@ Fragmented mp4 samples with SMPTE ST 2094-50 timed metadata track.
 
 #### agtm-metadata-track-frag.mp4
 Fragmented mp4 header with SMPTE ST 2094-50 timed metadata track.
+
+#### agtm-metadata-cdsc-track.mp4
+MP4 file with SMPTE ST 2094-50 timed metadata track using cdsc track reference.
+
+#### agtm-metadata-rndr-track.mp4
+MP4 file with SMPTE ST 2094-50 timed metadata track using rndr track reference.
 
 #### av1-I-frame-320x240-agtm
 Same as av1-I-frame-320x240 but with an AGTM ITU_T35 metadata OBU added.

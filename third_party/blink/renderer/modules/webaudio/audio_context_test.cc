@@ -29,9 +29,11 @@
 #include "third_party/blink/public/platform/web_runtime_features.h"
 #include "third_party/blink/public/web/web_heap.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_tester.h"
+#include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_dom_exception.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_worklet_options.h"
+#include "third_party/blink/renderer/bindings/core/v8/worker_or_worklet_script_controller.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_audio_sink_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextlatencycategory_double.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextrendersizecategory_unsignedlong.h"
@@ -41,7 +43,9 @@
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/messaging/message_channel.h"
 #include "third_party/blink/renderer/core/messaging/message_port.h"
+#include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/core/timing/performance.h"
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
@@ -49,7 +53,11 @@
 #include "third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_playback_stats.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_worklet.h"
+#include "third_party/blink/renderer/modules/webaudio/audio_worklet_global_scope.h"
+#include "third_party/blink/renderer/modules/webaudio/audio_worklet_handler.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_worklet_messaging_proxy.h"
+#include "third_party/blink/renderer/modules/webaudio/audio_worklet_node.h"
+#include "third_party/blink/renderer/modules/webaudio/cross_thread_audio_worklet_processor_info.h"
 #include "third_party/blink/renderer/modules/webaudio/delay_node.h"
 #include "third_party/blink/renderer/modules/webaudio/media_stream_audio_destination_node.h"
 #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
@@ -59,6 +67,7 @@
 #include "third_party/blink/renderer/modules/webrtc/webrtc_audio_device_impl.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
+#include "third_party/blink/renderer/platform/heap/thread_state.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
@@ -344,18 +353,21 @@ class MockAudioContextManager : public mojom::blink::AudioContextManager {
     stopped_count_++;
   }
   void AudioContextCreated(uint32_t id) override {}
-  void AudioContextClosed(uint32_t id) override {}
+  void AudioContextClosed(uint32_t id) override { ++closed_count_; }
 
   int started_count() const { return started_count_; }
   int stopped_count() const { return stopped_count_; }
+  int closed_count() const { return closed_count_; }
   void reset() {
     started_count_ = 0;
     stopped_count_ = 0;
+    closed_count_ = 0;
   }
 
  private:
   int started_count_ = 0;
   int stopped_count_ = 0;
+  int closed_count_ = 0;
   mojo::ReceiverSet<mojom::blink::AudioContextManager> receivers_;
 };
 
@@ -1494,6 +1506,74 @@ TEST_F(AudioContextStatsTest, HasPendingActivityAfterClose) {
   EXPECT_FALSE(audio_context->HasPendingActivity());
 }
 
+// Test that closed AudioContext instances are reclaimed by Oilpan garbage
+// collection, even if closeContext() is called before the permission service
+// finishes its initial check.
+TEST_F(AudioContextTest, ClosedAudioContextReclaimedByGarbageCollection) {
+  WeakPersistent<AudioContext> weak_context;
+  {
+    AudioContextOptions* options = AudioContextOptions::Create();
+    AudioContext* audio_context = AudioContext::Create(
+        GetFrame().DomWindow(), options, ASSERT_NO_EXCEPTION);
+    weak_context = audio_context;
+
+    ScriptState* script_state = ToScriptStateForMainWorld(&GetFrame());
+    ScriptState::Scope scope(script_state);
+    DummyExceptionStateForTesting exception_state;
+    audio_context->closeContext(script_state, exception_state);
+  }
+
+  test::RunPendingTasks();
+  WebHeap::CollectAllGarbageForTesting();
+  EXPECT_EQ(weak_context.Get(), nullptr);
+}
+
+// Test that a closed AudioContext is reclaimed by garbage collection even if
+// the permission service check completed before closeContext() was called.
+TEST_F(AudioContextStatsTest, ClosedAudioContextReclaimedAfterPermissionBound) {
+  WeakPersistent<AudioContext> weak_context;
+  {
+    AudioContextOptions* options = AudioContextOptions::Create();
+    AudioContext* audio_context = AudioContext::Create(
+        GetFrame().DomWindow(), options, ASSERT_NO_EXCEPTION);
+    weak_context = audio_context;
+
+    FlushPermissionService(audio_context);
+    EXPECT_TRUE(audio_context->HasPendingActivity());
+
+    ScriptState* script_state = ToScriptStateForMainWorld(&GetFrame());
+    ScriptState::Scope scope(script_state);
+    DummyExceptionStateForTesting exception_state;
+    audio_context->closeContext(script_state, exception_state);
+    EXPECT_FALSE(audio_context->HasPendingActivity());
+  }
+
+  test::RunPendingTasks();
+  WebHeap::CollectAllGarbageForTesting();
+  EXPECT_EQ(weak_context.Get(), nullptr);
+}
+
+// Test that tearing down the frame/context on an already-closed AudioContext
+// (where audio_context_manager_ was reset) does not re-execute DidClose() or
+// crash when GetWindow()->GetFrame() is null.
+TEST_F(AudioContextTest, ClosedAudioContextContextDestroyedDoesNotCrash) {
+  AudioContextOptions* options = AudioContextOptions::Create();
+  AudioContext* audio_context = AudioContext::Create(
+      GetFrame().DomWindow(), options, ASSERT_NO_EXCEPTION);
+
+  ScriptState* script_state = ToScriptStateForMainWorld(&GetFrame());
+  ScriptState::Scope scope(script_state);
+  DummyExceptionStateForTesting exception_state;
+  audio_context->closeContext(script_state, exception_state);
+  EXPECT_EQ(audio_context->ContextState(), V8AudioContextState::Enum::kClosed);
+  test::RunPendingTasks();
+  EXPECT_EQ(mock_audio_context_manager()->closed_count(), 1);
+
+  GetFrame().DomWindow()->FrameDestroyed();
+  test::RunPendingTasks();
+  EXPECT_EQ(mock_audio_context_manager()->closed_count(), 1);
+}
+
 TEST_F(AudioContextStatsTest, PlaybackStatsCoarsening) {
   blink::WebRuntimeFeatures::EnableFeatureFromString(
       "AudioContextPlaybackStats", true);
@@ -1553,6 +1633,101 @@ TEST_F(AudioContextTest, AudioWorkletTerminatedOnClose) {
 
   // Wait for worker thread to shut down to avoid race on g_platform.
   proxy->GetBackingWorkerThread()->WaitForShutdownForTesting();
+}
+
+// Test that releasing the last reference to an AudioWorkletHandler during
+// CreateProcessor teardown safely executes on the main thread instead of
+// running ~AudioHandler on the AudioWorklet thread (which triggers
+// DCHECK(IsMainThread())).
+TEST_F(AudioContextTest, AudioWorkletCreateProcessorTeardownOnMainThread) {
+  AudioContextOptions* options = AudioContextOptions::Create();
+  AudioContext* audio_context = AudioContext::Create(
+      GetFrame().DomWindow(), options, ASSERT_NO_EXCEPTION);
+
+  ScriptState* script_state = ToScriptStateForMainWorld(&GetFrame());
+  ScriptState::Scope scope(script_state);
+
+  auto* audio_worklet = audio_context->audioWorklet();
+  audio_worklet->proxies_.push_back(audio_worklet->CreateGlobalScope());
+
+  auto* proxy = audio_worklet->GetMessagingProxy();
+  ASSERT_TRUE(proxy);
+
+  WorkerThread* worker_thread = proxy->GetBackingWorkerThread();
+  ASSERT_TRUE(worker_thread);
+
+  // Register dummy-processor in the AudioWorkletGlobalScope.
+  base::WaitableEvent registration_event;
+  PostCrossThreadTask(
+      *worker_thread->GetTaskRunner(TaskType::kMiscPlatformAPI), FROM_HERE,
+      CrossThreadBindOnce(
+          [](WorkerThread* thread, base::WaitableEvent* event) {
+            auto* global_scope =
+                To<AudioWorkletGlobalScope>(thread->GlobalScope());
+            ScriptState* script_state =
+                global_scope->ScriptController()->GetScriptState();
+            ScriptState::Scope scope(script_state);
+            String source_code =
+                "class DummyProcessor extends AudioWorkletProcessor {"
+                "  process() { return true; }"
+                "};"
+                "registerProcessor('dummy-processor', DummyProcessor);";
+            ClassicScript::CreateUnspecifiedScript(source_code)
+                ->RunScriptOnScriptState(script_state);
+            event->Signal();
+          },
+          CrossThreadUnretained(worker_thread),
+          CrossThreadUnretained(&registration_event)));
+  registration_event.Wait();
+
+  AudioWorkletNodeOptions* node_options = AudioWorkletNodeOptions::Create();
+  auto* node = MakeGarbageCollected<AudioWorkletNode>(
+      *audio_context, "dummy-processor", node_options,
+      Vector<CrossThreadAudioParamInfo>(), nullptr);
+  scoped_refptr<AudioWorkletHandler> handler =
+      WrapRefCounted(&static_cast<AudioWorkletHandler&>(node->Handler()));
+
+  auto* channel = MakeGarbageCollected<MessageChannel>(
+      audio_context->GetExecutionContext());
+  MessagePortChannel processor_port_channel = channel->port2()->Disentangle();
+
+  handler->MarkProcessorInactiveOnMainThread();
+
+  WeakPersistent<AudioWorkletNode> weak_node = node;
+
+  // Block the worker thread until the main thread has dropped all references.
+  base::WaitableEvent worker_block_event;
+  PostCrossThreadTask(
+      *worker_thread->GetTaskRunner(TaskType::kMiscPlatformAPI), FROM_HERE,
+      CrossThreadBindOnce([](base::WaitableEvent* event) { event->Wait(); },
+                          CrossThreadUnretained(&worker_block_event)));
+
+  // Dispatch CreateProcessor and drop all main thread references.
+  proxy->CreateProcessor(handler, std::move(processor_port_channel),
+                         SerializedScriptValue::NullValue());
+  EXPECT_EQ(proxy->pending_create_processor_handlers_.size(), 1u);
+  handler = nullptr;
+  node = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  EXPECT_EQ(weak_node.Get(), nullptr);
+  audio_context->GetDeferredTaskHandler().ClearHandlersToBeDeleted();
+
+  // Unblock worker thread so CreateProcessor runs.
+  worker_block_event.Signal();
+
+  // Flush the worker thread task queue and run main thread tasks.
+  base::WaitableEvent wait_event;
+  PostCrossThreadTask(
+      *worker_thread->GetTaskRunner(TaskType::kMiscPlatformAPI), FROM_HERE,
+      CrossThreadBindOnce(&base::WaitableEvent::Signal,
+                          CrossThreadUnretained(&wait_event)));
+  wait_event.Wait();
+  test::RunPendingTasks();
+  EXPECT_TRUE(proxy->pending_create_processor_handlers_.empty());
+
+  DummyExceptionStateForTesting exception_state;
+  audio_context->closeContext(script_state, exception_state);
+  worker_thread->WaitForShutdownForTesting();
 }
 
 // Test that an active AudioWorklet shared MessagePort keeps neither its
@@ -3066,6 +3241,24 @@ TEST_F(AudioContextTest, SetSinkIdPermissionsPolicy) {
     ASSERT_TRUE(dom_exception);
     EXPECT_EQ(dom_exception->name(), "NotAllowedError");
   }
+}
+
+TEST_F(AudioContextTest, AudioContextGCWhilePendingPromise) {
+  ScopedAudioContextAsyncStateTransitionsForTest scoped_feature(true);
+  V8TestingScope scope;
+  {
+    AudioContext* audio_context = AudioContext::Create(
+        GetFrame().DomWindow(), AudioContextOptions::Create(),
+        ASSERT_NO_EXCEPTION);
+
+    // Create a pending promise in AudioContext (pending_promise_resolvers_).
+    audio_context->suspendContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION);
+    EXPECT_EQ(audio_context->PendingPromiseResolverCountForTesting(), 1u);
+  }
+  // Trigger GC. BaseAudioContextTest tests the actual collection and Dispose()
+  // path since AudioContext::HasPendingActivity() keeps AudioContext alive
+  // while unclosed.
+  ThreadState::Current()->CollectAllGarbageForTesting();
 }
 
 }  // namespace blink

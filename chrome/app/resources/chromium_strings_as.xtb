@@ -10,6 +10,7 @@
 
 কিছুমান সুবিধা উপলব্ধ নহ'ব পাৰে আৰু অগ্ৰাধিকাৰসমূহত কৰা সলনি কার্য ছেভ নহ'ব পাৰে।</translation>
 <translation id="1083934481477628225">আপোনাৰ অভিভাৱকে Chromiumত "ছাইট, এপ্ আৰু এক্সটেনশ্বনসমূহৰ বাবে অনুমতি" অফ কৰিছে</translation>
+<translation id="109026165963220603">নিকটৱৰ্তী ডিভাইচসমূহ বিচাৰি পাবলৈ আৰু ব্যৱহাৰ কৰিবলৈ Chromiumক আপোনাৰ স্থানীয় নেটৱৰ্কৰ এক্সেছৰ প্ৰয়োজন</translation>
 <translation id="1090946077924227754">Chromiumৰ কোনো নিৰ্দিষ্ট সুবিধা বা এক্সটেনশ্বন সন্ধান কৰিবলৈ, ঠিকনাৰ বাৰত ইয়াৰ শ্বৰ্টকাটটো টাইপ কৰি তাৰ পাছত আপুনি বাছনি কৰা কীব’ৰ্ডৰ কীটো টিপক</translation>
 <translation id="1098493699368672217">ছিষ্টেমৰ ট্ৰে’ত Chromiumৰ জৰিয়তে সন্ধান কৰাৰ বিকল্পটো দেখুৱাওক আৰু কীব’ৰ্ডৰ শ্বৰ্টকাট অন কৰক</translation>
 <translation id="1104942323762546749">Chromiumএ আপোনাৰ পাছৱর্ডসমূহ ৰপ্তানি কৰিব খোজে। ইয়াৰ অনুমতি আপোনাৰ দিবলৈ Windows পাছৱৰ্ড টাইপ কৰক।</translation>
@@ -70,6 +71,7 @@
 <translation id="1793486931176048546">দ্ৰুত এক্সেছৰ বাবে Chromiumক আপোনাৰ টাস্কবাৰত পিন কৰিবলৈ Windowsৰ জাননীত <ph name="BEGIN_BOLD" />হয়<ph name="END_BOLD" />ত ক্লিক কৰক।</translation>
 <translation id="1808667845054772817">Chromium ৰিইনষ্টল কৰক</translation>
 <translation id="1820835682567584003">Chromiumএ <ph name="AUTHENTICATION_PURPOSE" /> চেষ্টা কৰি আছে</translation>
+<translation id="1828328511398219809"><ph name="EXISTING_USER" /> ইতিমধ্যে ছাইন ইন হৈ আছে। আপোনাৰ ব্ৰাউজিং পৃথক কৰি ৰাখিবলৈ, আপোনাৰ নিজৰ প্ৰ’ফাইলত <ph name="USER_EMAIL_ADDRESS" /> হিচাপে Chromiumত ছাইন ইন কৰক। আপুনি লগতে <ph name="DEVICE" />ৰ পৰা আপোনাৰ এক্সটেনশ্বন আৰু অধিক বস্তু পাব।</translation>
 <translation id="183031085822326697">পৰৱৰ্তী সময়ত আপুনি নিজৰ <ph name="DEVICE_TYPE" />ত Chromium খুলিলে, আপুনি Google Password Manager ব্যৱহাৰ কৰিবলৈ এটা প্ৰম্প্‌ট দেখা পাব।</translation>
 <translation id="1838374766361614909">সন্ধান কৰা বস্তুবোৰ মচক</translation>
 <translation id="18552579716432081">আপোনাৰ Google একাউণ্টত ব্ৰাউজিঙৰ ডেটা ৰাখি কেৱল এই ডিভাইচৰ পৰা সেই ডেটা মচিবলৈ <ph name="BEGIN_LINK" />Chromiumৰ পৰা ছাইন আউট কৰক<ph name="END_LINK" />।</translation>
@@ -105,6 +107,7 @@
 <translation id="2126108037660393668">ডাউনল’ড কৰা ফাইলটোৰ সত্যাপন বিফল হৈছে।</translation>
 <translation id="2135919691573380097">এই ছাইটটোৰ বিৰুদ্ধে অভিযোগ দিয়ক</translation>
 <translation id="2137162749895930932">অনুবাদৰ স্ক্ৰীনখন বন্ধ কৰক</translation>
+<translation id="2147218225094845757">ছাইডৰ পেনেল লুকুৱাওক</translation>
 <translation id="215352261310130060">এই ছাইটটোৱে কোনো সুৰক্ষিত সংযোগ ব্যৱহাৰ কৰি থকা নাই আৰু ফাইলটো ক্ষতিকাৰকভাৱে সলনি কৰা হ’ব পাৰে বাবে Chromiumএ এই ডাউনল’ডটো অৱৰোধ কৰিছে</translation>
 <translation id="2170098639895543546">পৃষ্ঠাখনত যিকোনো বস্তু বাছনি কৰক</translation>
 <translation id="2174178932569897599">Chromium কাষ্টমাইজ কৰক</translation>
@@ -148,6 +151,7 @@
 <translation id="2575822587468774919">প্ৰতিচ্ছবিৰ সন্ধান সুবিধাটোৰ জৰিয়তে সন্ধান কৰিবলৈ যিকোনো বস্তু বাছনি কৰক</translation>
 <translation id="2576118232315942160">আপোনাৰ আটাইবোৰ ডিভাইচত নিজৰ পাছৱৰ্ড আৰু অধিক পাবলৈ, Chromiumত ছাইন ইন কৰক</translation>
 <translation id="2587622539943955767">Chromium ডাউনল’ড কৰি আপোনাৰ Google একাউণ্টত ছাইন ইন কৰিবলৈ আপোনাৰ ফ’নটোৰে কিউআৰ ক’ডটো স্কেন কৰক।</translation>
+<translation id="2587885422541096572">Chromiumৰ জৰিয়তে সন্ধান কৰিবলৈ।</translation>
 <translation id="2592940277904433508">Chromium ব্যৱহাৰ কৰাটো অব্যাহত ৰাখক</translation>
 <translation id="259935314519650377">ডাউনল’ড কৰা ইনষ্টলাৰটো কেশ্ব কৰাত বিফল হৈছে। আসোঁৱাহ: <ph name="UNPACK_CACHING_ERROR_CODE" />।</translation>
 <translation id="2620436844016719705">ছিষ্টেম</translation>
@@ -192,6 +196,7 @@
 <translation id="3038232873781883849">ইনষ্টল কৰাৰ বাবে অপেক্ষা কৰি থকা হৈছে...</translation>
 <translation id="3045032126857188731">অনুবাদ কৰা ভাষা: <ph name="LANGUAGE" /></translation>
 <translation id="3047590466164881923">মতামতৰ ডায়লগ বন্ধ কৰক</translation>
+<translation id="3064717200427679322"><ph name="EXISTING_USER" /> ইতিমধ্যে ছাইন ইন হৈ আছে। আপোনাৰ ব্ৰাউজিং পৃথক কৰি ৰাখিবলৈ, আপোনাৰ নিজৰ প্ৰ’ফাইলত <ph name="USER_EMAIL_ADDRESS" /> হিচাপে Chromiumত ছাইন ইন কৰক। আপুনি লগতে <ph name="DEVICE" />ৰ পৰা আপোনাৰ পঢ়াৰ সূচী আৰু অধিক বস্তু পাব।</translation>
 <translation id="3068187312562070417">Chromiumৰ অন্য প্ৰ’ফাইলসমূহ</translation>
 <translation id="3068290154869370196">এক্সটেনশ্বনসমূহ হৈছে এড-অন যিয়ে আপোনাক Chromium কাষ্টমাইজ কৰিবলৈ দিয়ে। সংগঠিত হৈ থকাৰ পৰা আৰম্ভ কৰি দৈনন্দিন কাৰ্যসমূহ সৰল কৰালৈকে, এক্সটেনশ্বনে আপোনাক Chromiumক আপোনাৰ নিজৰ কৰি তোলাত সহায় কৰে।</translation>
 <translation id="3068515742935458733">Googleলৈ ক্ৰেশ্ব ৰিপ‘ৰ্ট আৰু <ph name="UMA_LINK" /> পঠিয়াই Chromiumক উন্নত কৰাত সহায় কৰক</translation>
@@ -261,7 +266,6 @@
 
           **প্ৰশ্নৰ পৰামৰ্শ আগবঢ়োৱা:** স্ক্ৰীনশ্বটখন ভালকৈ বুজিবলৈ কোনো ব্যৱহাৰকাৰীয়ে সুধিব পৰা ৩-৫ টা চিন্তা উদ্ৰেককাৰী প্ৰশ্নৰ এখন বুলেটযুক্ত সূচী সৃষ্টি কৰক। এই প্ৰশ্নসমূহত অতি কমেও এনেকুৱা এটা প্ৰশ্ন অন্তৰ্ভুক্ত হ’ব লাগে যিটো বিশেষকৈ ভিজুৱেল বস্তু, ইয়াৰ ডিজাইন বা ইয়াৰ স্থানৰ বিষয়ে হয়।</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
-<translation id="387514319934708384">Chromiumক এই ছাইটটোৰ বাবে স্থানীয় নেটৱৰ্কৰ অনুমতিৰ আৱশ্যক</translation>
 <translation id="3885770153807205175">ভাষা বাছনিকৰ্তা</translation>
 <translation id="388648406173476553">Chromium কাষ্টমাইজ আৰু নিয়ন্ত্ৰণ কৰক। এই বিষয়ত আপুনি মনোযোগ দিয়াৰ প্ৰয়োজন - সবিশেষৰ বাবে ক্লিক কৰক।</translation>
 <translation id="3889543394854987837">Chromium খুলিবলৈ আপোনাৰ নামত ক্লিক কৰক আৰু ব্ৰাউজিং আৰম্ভ কৰক।</translation>
@@ -293,6 +297,7 @@
 <translation id="4147856324248078748">আপোনাৰ Chromium কাষ্টমাইজ কৰক</translation>
 <translation id="4148957013307229264">ইনষ্টল কৰি থকা হৈছে…</translation>
 <translation id="419998258129752635"><ph name="PAGE_TITLE" /> - নেটৱর্কত ছাইন ইন - Chromium</translation>
+<translation id="4208652172235621272"><ph name="EXISTING_USER" /> ইতিমধ্যে ছাইন ইন হৈ আছে। আপোনাৰ ব্ৰাউজিং পৃথক কৰি ৰাখিবলৈ, আপোনাৰ নিজৰ প্ৰ’ফাইলত <ph name="USER_EMAIL_ADDRESS" /> হিচাপে Chromiumত ছাইন ইন কৰক। আপুনি লগতে আপোনাৰ আটাইবোৰ ডিভাইচত আপোনাৰ পঢ়াৰ সূচী আৰু অধিক বস্তু পাব।</translation>
 <translation id="421369550622382712">Chromiumৰ বাবে উৎকৃষ্ট এপ্, গে’ম, এক্সটেনশ্বন আৰু থীমসমূহ বিচাৰক।</translation>
 <translation id="4217080900579554343">আপোনাৰ আটাইবোৰ কম্পিউটাৰত এই এক্সটেনশ্বন আৰু অধিক পাবলৈ Chromiumত ছাইন ইন কৰক</translation>
 <translation id="4217972271355023382">আপোনাৰ অভিভাৱকৰ পচন্দসমূহৰ জৰিয়তে অনলাইনত সুৰক্ষিত হৈ থাকিবলৈ, আপোনাৰ Chromium প্ৰ’ফাইললৈ সলনি কৰক, য’ত আপুনি ইতিমধ্যে <ph name="USER_EMAIL_ADDRESS" /> হিচাপে ছাইন ইন কৰিছে</translation>
@@ -337,6 +342,7 @@
 <translation id="4621240073146040695">প্ৰায় আপ-টু-ডে’ট কৰা হৈছে! আপডে’ট সম্পূৰ্ণ কৰিবলৈ Chromium পুনৰ লঞ্চ কৰক৷</translation>
 <translation id="4625064703209785397">Chromiumৰ V8 ইঞ্জিনৰ সৈতে ছাইটবোৰ খৰতকীয়া কৰি তোলে কিন্তু Chromiumক আক্ৰমণৰ পৰা সামান্য কম প্ৰতিৰোধী কৰে</translation>
 <translation id="4626321472657185181">Chromiumৰ জৰিয়তে সন্ধান কৰাৰ সুবিধাটো খোলক</translation>
+<translation id="4654639495249754755">Chromium প্ৰ’ফাইল</translation>
 <translation id="4665829708273112819">সকীয়নি: Chromeএ কোনো এক্সটেনশ্বনক আপোনাৰ ব্ৰাউজিঙৰ ইতিহাস ৰেকৰ্ড কৰাত বাধা দিব নোৱাৰে। এই এক্সটেনশ্বনটো ইনক’গনিট’ ম’ডত অক্ষম কৰিবলৈ এই বিকল্পটো বাছনিৰ পৰা আঁতৰাওক।</translation>
 <translation id="4673151026126227699">যদি আপুনি Chromium ব্যৱহাৰ কৰাৰ ৰিপ’ৰ্টও শ্বেয়াৰ কৰে, সেই ৰিপ’ৰ্টত আপুনি চোৱা URLসমূহ অন্তৰ্ভুক্ত হয়</translation>
 <translation id="4673710618874938871"><ph name="USER_NAME" />, মেম্বাৰশ্বিপ হিচাপে ছাইন ইন কৰা আছে। একাউণ্টৰ মেনু খোলক</translation>
@@ -392,6 +398,7 @@
 <translation id="5382964351116519680">Chromiumৰ জৰিয়তে সন্ধান কৰাৰ সুবিধাটো খোলক</translation>
 <translation id="5383439451358640070">Chromiumএ কিয় কিছুমান ফাইল অৱৰোধ কৰে সেই বিষয়ে জানক</translation>
 <translation id="5386450000063123300">Chromium আপডে’ট কৰি থকা হৈছে (<ph name="PROGRESS_PERCENT" />)</translation>
+<translation id="5387586787134731891"><ph name="EXISTING_USER" /> ইতিমধ্যে ছাইন ইন হৈ আছে। আপোনাৰ ব্ৰাউজিং পৃথক কৰি ৰাখিবলৈ, আপোনাৰ নিজৰ প্ৰ’ফাইলত <ph name="USER_EMAIL_ADDRESS" /> হিচাপে Chromiumত ছাইন ইন কৰক। আপুনি লগতে আপোনাৰ আটাইবোৰ ডিভাইচত আপোনাৰ এক্সটেনশ্বন আৰু অধিক বস্তু পাব।</translation>
 <translation id="538767207339317086">Chromiumত ছাইন ইন কৰাৰ অনুমতি দিয়ক</translation>
 <translation id="5405650547142096840">Chromiumৰ পৰা আঁতৰাওক</translation>
 <translation id="5424544524441439284">কাৰ্যদক্ষতা কম কৰে কিন্তু Chromiumক আক্ৰমণৰ বাবে অধিক প্ৰতিৰোধী কৰে</translation>
@@ -436,9 +443,9 @@
 <translation id="5883558403894052917">Chromiumএ এই বস্তুবোৰত মালৱেৰ থকাটো পাইছে:</translation>
 <translation id="5889361821821684993">আপোনাৰ ব্ৰাউজাৰত আটাইতকৈ সুৰক্ষিত ছেটিং আছে নে নাই সেয়া নিশ্চিত কৰিবলৈ Chromiumএ নিয়মিতভাৱে পৰীক্ষা কৰে। যদি আপুনি কিবা পৰ্যালোচনা কৰাৰ প্ৰয়োজন হয় তেন্তে আমি আপোনাক জনাম।</translation>
 <translation id="5895138241574237353">ৰিষ্টাৰ্ট কৰক</translation>
+<translation id="5896077214220653386">Chromiumত Gemini Enterprise</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> - নেটৱর্কত ছাইন ইন</translation>
 <translation id="5924017743176219022">ইন্টাৰনেটৰ সৈতে সংযোগ কৰি থকা হৈছে...</translation>
-<translation id="5939553720811388432">আপোনাৰ Chromium সাজু কৰোঁ আহক</translation>
 <translation id="5941711191222866238">সৰু কৰক</translation>
 <translation id="5949225980829865667">আপোনাৰ আটাইবোৰ ডিভাইচত এই বুকমাৰ্কটো আৰু অধিক পাবলৈ, Chromiumত ছাইন ইন কৰক</translation>
 <translation id="5953657885167112863">Chromiumক আপোনাৰ নিজৰ কৰি তোলক</translation>
@@ -468,6 +475,7 @@
 <translation id="6174920971222007286">এই ফাইলটো ক্ষতিকাৰক হ’ব পাৰে<ph name="LINE_BREAK" />যদি আপুনি পাছৱৰ্ডটো প্ৰদান কৰে, তেন্তে Chromiumএ এই ডাউনল’ডটো আপোনাৰ বাবে পৰীক্ষা কৰিব পাৰে। ফাইলটোৰ বিষয়ে তথ্য Googleৰ সুৰক্ষিত ব্ৰাউজিঙলৈ পঠিওৱা হয়, কিন্তু ফাইলৰ সমল আৰু পাছৱৰ্ড আপোনাৰ ডিভাইচতে থাকে।</translation>
 <translation id="6182736845697986886">আপডে’ট ছাৰ্ভাৰৰ অভ্যন্তৰীণ আসোঁৱাহৰ বাবে ইনষ্টলেশ্বন কৰিব পৰা নগ’ল।</translation>
 <translation id="6183079672144801177">আপোনাৰ <ph name="TARGET_DEVICE_NAME" />ত Chromiumত আপুনি ছাইন ইন হৈ থকাটো নিশ্চিত কৰক আৰু তাৰ পাছত পুনৰ পঠিয়াবলৈ চেষ্টা কৰক।</translation>
+<translation id="6192070012454216182">যিকোনো ঠাইৰ পৰা সন্ধান কৰক আৰু প্ৰশ্ন সোধক, আনকি Chromium মিনিমাইজ কৰা থাকিলেও। Chromiumক নেপথ্যত চলিবলৈ অনুমতি দিয়ে।</translation>
 <translation id="6212496753309875659">এই কম্পিউটাৰটোত ইতিমধ্যে Chromiumৰ অধিক শেহতীয়া সংস্কৰণ আছে। যদি ছফ্টৱেৰটোৱে কাম কৰা নাই তেন্তে Chromium আনইনষ্টল কৰি আকৌ চেষ্টা কৰক।</translation>
 <translation id="6219195342503754812">{0,plural, =0{এতিয়া Chromium পুনৰ লঞ্চ হ’ব}=1{১ ছেকেণ্ডত Chromium পুনৰ লঞ্চ হ’ব}one{# ছেকেণ্ডত Chromium পুনৰ লঞ্চ হ’ব}other{# ছেকেণ্ডত Chromium পুনৰ লঞ্চ হ’ব}}</translation>
 <translation id="6241367896540709610">Chromiumক ফাইল ডাউনল’ড কৰিবলৈ ষ্ট’ৰেজৰ এক্সেছৰ অনুমতিৰ আৱশ্যক</translation>
@@ -588,12 +596,14 @@
 <translation id="7213407614656404070">আপুনি বাৰ্তা, নথি আৰু অন্য এপ্‌সমূহত যেতিয়াই লিংকত ক্লিক কৰে Chromium ব্যৱহাৰ কৰক</translation>
 <translation id="7216228761061470870">আপুনি প্ৰতিচ্ছবি সন্ধান কৰা সুবিধাটো ব্যৱহাৰ কৰিলে, PDFসমূহকে ধৰি পৃষ্ঠাখনৰ শিৰোনাম, URL আৰু সমল ছাৰ্ভাৰলৈ পঠিওৱা হয়।</translation>
 <translation id="7223968959479464213">কাৰ্য পৰিচালক - Chromium</translation>
+<translation id="7226331818892775989">অন্য এপ্‌ বা ফাইলৰ দৰে Chromiumৰ বাহিৰৰ সমলৰ বিষয়ে সোধক</translation>
 <translation id="7227958669698166857"><ph name="EXISTING_USER" /> ইতিমধ্যে ছাইন ইন হৈ আছে। আপোনাৰ ব্ৰাউজিং পৃথক কৰি ৰাখিবলৈ, আপোনাৰ নিজৰ প্ৰ’ফাইলত <ph name="USER_EMAIL_ADDRESS" /> হিচাপে Chromiumত ছাইন ইন কৰক। আপুনি লগতে আপোনাৰ আটাইবোৰ ডিভাইচত ছেভ কৰা তথ্য আৰু অধিক পাব।</translation>
 <translation id="7252276985725323153">তাৎক্ষণিকভাৱে ব্ৰাউজ কৰা আৰম্ভ কৰক: Windows ষ্টাৰ্ট হোৱাৰ লগে লগে এতিয়া Chromium লঞ্চ কৰিব পাৰি।</translation>
 <translation id="7274695763216404502">পিন কৰা হৈছে! টুলবাৰৰ পৰা প্ৰতিচ্ছবিৰ সন্ধান সুবিধাটো পুনৰ ব্যৱহাৰ কৰক</translation>
 <translation id="7288567540154601580">টেব আৰু এক্সটেনশ্বন</translation>
 <translation id="7295544978856094497">{NUM_EXTENSIONS,plural, =1{Chromiumএ আপুনি এইটো আঁতৰাবলৈ চুপাৰিছ কৰিছে}one{Chromiumএ আপুনি এইসমূহ আঁতৰাবলৈ চুপাৰিছ কৰিছে}other{Chromiumএ আপুনি এইসমূহ আঁতৰাবলৈ চুপাৰিছ কৰিছে}}</translation>
 <translation id="7296334833518879294">ছিষ্টেমৰ অডিঅ’ শ্বেয়াৰ কৰিবলৈ, ছিষ্টেমৰ ছেটিং খোলক আৰু Chromiumৰ বাবে 'কেৱল ছিষ্টেমৰ অডিঅ’ ৰেকৰ্ডিঙৰ অনুমতি দিয়ক'। আপুনি তাৰ পাছত Chromium ৰিষ্টাৰ্ট কৰিব লাগিব।</translation>
+<translation id="7299899569525778554">ডেস্কটপৰ পৰা সন্ধান কৰক</translation>
 <translation id="731795002583552498">Chromium আপডে’ট কৰি থকা হৈছে</translation>
 <translation id="7318036098707714271">আপোনাৰ পচন্দৰ ফাইলটো ব্যৱহাৰযোগ্য নহয় বা অমান্য।
 
@@ -641,7 +651,6 @@ Chromiumএ আপোনাৰ ছেটিংসমূহ পুনৰুদ্
 <translation id="77283119132245232"><ph name="BROWSER_NAME" />ৰ বাবে ছিষ্টেম ট্ৰে’চ কৰাৰ সেৱা প্ৰদান কৰে। যদি এই সেৱাটো অক্ষম কৰা হয়, তেন্তে ব্ৰাউজাৰে সৃষ্টি কৰা কাৰ্যদক্ষতাৰ ট্রে’চত প্ৰসংগ সলনি আৰু সাজু থ্ৰেড অনুষ্ঠানসমূহৰ দৰে সমগ্ৰ ছিষ্টেমৰ অনুষ্ঠানসমূহ অন্তৰ্ভুক্ত নহ’ব।</translation>
 <translation id="7745317241717453663">এই কাৰ্যই এই ডিভাইচটোৰ পৰা আপোনাৰ ব্ৰাউজিঙৰ ডেটা মচি পেলাব। আপোনাৰ ডেটা পাছত পুনৰুদ্ধাৰ কৰিবলৈ Chromiumত <ph name="USER_EMAIL" /> হিচাপে ছাইন ইন কৰক।</translation>
 <translation id="7747138024166251722">ইনষ্টলাৰটোৱে কোনো অস্থায়ী ডাইৰেক্ট'ৰী সৃষ্টি কৰিব নোৱাৰিলে। ছফ্টৱেৰ ইনষ্টল কৰিবলৈ অনুগ্ৰহ কৰি খালী ঠাই আৰু লগতে অনুমতি আছেনে নাই পৰীক্ষা কৰক।</translation>
-<translation id="7747820849741499258">Chromiumত সন্ধান কৰক</translation>
 <translation id="7750130090210923118">ডিফ’ল্ট Chromiumলৈ ৰিছেট কৰক</translation>
 <translation id="7752521946322750699">Chromiumত আপোনাৰ কাম সুৰক্ষিত কৰিবলৈ, আপুনি Chromiumত ছাইন-ইন কৰি থোৱাৰ সময়ত আপোনাৰ প্ৰতিষ্ঠানে কিছুমান নিৰ্দিষ্ট তথ্য চাব বা পৰিচালনা কৰিব পাৰিব।</translation>
 <translation id="7781047659465034537">Chromiumক ডিফ’ল্ট হিচাপে ছেট কৰি সেইটোক টাস্কবাৰত পিন কৰক</translation>
@@ -739,6 +748,7 @@ Chromiumএ আপোনাৰ ছেটিংসমূহ পুনৰুদ্
 <translation id="8619360774459241877">Chromium লঞ্চ কৰি থকা হৈছে...</translation>
 <translation id="8624541899164515475">ছেটিং, নতুন টেবত খোলে।</translation>
 <translation id="8648201657708811153">Google Chrome for Testing আপোনাৰ ডিফ’ল্ট ব্ৰাউজাৰ কৰিব নোৱাৰি।</translation>
+<translation id="8676101123715131330">যিকোনো ঠাইৰ পৰা Chromiumৰ জৰিয়তে সন্ধান কৰক</translation>
 <translation id="8697124171261953979">এইটোৱে আপুনি Chromiumৰ ব্যৱহাৰ আৰম্ভ কৰিলে বা Omniboxৰ পৰা সন্ধান কৰিলে কি পৃষ্ঠা খোল খাব সেয়া নিয়ন্ত্ৰণ কৰে।</translation>
 <translation id="8704119203788522458">এইটো আপোনাৰ Chromium</translation>
 <translation id="8712637175834984815">বুজি পালোঁ</translation>
@@ -772,6 +782,7 @@ Chromiumএ আপোনাৰ ছেটিংসমূহ পুনৰুদ্
 <translation id="897581876605952338">Chromium Enterpriseৰ ল’গ’</translation>
 <translation id="8980139959902937527">আপোনাৰ <ph name="DEVICE_TYPE" />ত Chromium এপ্‌টোৰ জৰিয়তে যিকোনো ঠাইতে Googleৰ সুৰক্ষা লাভ কৰক</translation>
 <translation id="8981150672034878610">আপোনাৰ প্ৰফাইল খোলোঁতে কিবা ভুল হোৱাৰ বাবে Chromium আৰম্ভ কৰিব নোৱাৰি। Chromium ৰিষ্টাৰ্ট কৰিবলৈ চেষ্টা কৰক।</translation>
+<translation id="8981886272598860786">Chromiumৰ জৰিয়তে সন্ধান কৰিবলৈ বা <ph name="BEGIN_LINK" />ছেটিঙ<ph name="END_LINK" />ত কাষ্টমাইজ কৰিবলৈ</translation>
 <translation id="8988036198400390003">Chromium প্ৰ’ফাইল পৰিচালনা কৰক</translation>
 <translation id="8993855408334954620">Chromiumত Gemini আৰু আপোনাৰ খোলা টেবৰ মাজত নেভিগে’ট কৰিবলৈ আপোনাৰ কীব’ৰ্ড ব্যৱহাৰ কৰক।</translation>
 <translation id="9018218886431812662">ইনষ্টল সম্পূৰ্ণ হ’ল</translation>

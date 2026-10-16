@@ -50,12 +50,12 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachm
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.SetActiveModelSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
+import org.chromium.chrome.browser.omnibox.fusebox.PopupButtonData.PopupButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileIntentUtils;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.utilities.TabLoadingService;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -68,21 +68,20 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.feature_engagement.Tracker;
-import org.chromium.components.omnibox.AimModelsProto.ModelMode;
+import org.chromium.components.omnibox.AimModelsProtoIntDef.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.DisplayState;
 import org.chromium.components.omnibox.AutocompleteRequestType;
-import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
+import org.chromium.components.omnibox.IconResourceIdsProtoIntDef.IconResourceIds;
 import org.chromium.components.omnibox.InputTypeProto.InputType;
 import org.chromium.components.omnibox.ModelConfigProto.ModelConfig;
 import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
-import org.chromium.components.omnibox.ToolModeProto.ToolMode;
+import org.chromium.components.omnibox.ToolModeProtoIntDef.ToolMode;
 import org.chromium.components.omnibox.ToolModeUtils;
-import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.KeyNavigationUtil;
 import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.base.WindowAndroid;
@@ -101,6 +100,9 @@ import java.util.function.Supplier;
 /** Mediator for the Fusebox component. */
 @NullMarked
 /* package */ class FuseboxMediator implements FuseboxAttachmentChangeListener, BackPressHandler {
+
+    /* package */ static final @IconResourceIds int UNSPECIFIED_ICON_RESOURCE_ID =
+            IconResourceIds.PLACE_WHITE;
 
     private final Context mContext;
     private final WindowAndroid mWindowAndroid;
@@ -131,7 +133,8 @@ import java.util.function.Supplier;
     private final OmniboxResourceProvider mResourceProvider;
     private @Nullable AttachmentsSelectionController mSelectionController;
 
-    private boolean mIsTextWrapping;
+    private final NonNullObservableSupplier<Boolean> mUrlTextWrappingSupplier;
+    private final Callback<Boolean> mOnTextWrappingChanged = _ -> updateFuseboxState();
     private @BrandedColorScheme int mBrandedColorScheme = BrandedColorScheme.APP_DEFAULT;
     private @Nullable Profile mProfile;
     private @Nullable AutocompleteInput mInput;
@@ -170,7 +173,8 @@ import java.util.function.Supplier;
             Supplier<@Nullable View> scrimAnchorViewSupplier,
             BackPressManager backPressManager,
             @Nullable Runnable onFirstPickerInteractionCanceledCallback,
-            SettableNonNullObservableSupplier<Boolean> hasAttachmentsSupplier) {
+            SettableNonNullObservableSupplier<Boolean> hasAttachmentsSupplier,
+            NonNullObservableSupplier<Boolean> urlTextWrappingSupplier) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -188,6 +192,8 @@ import java.util.function.Supplier;
         mOnFirstPickerInteractionCanceledCallback = onFirstPickerInteractionCanceledCallback;
         mIsDesktopPlatform = OmniboxCapabilities.isDesktopPlatform();
         mHasAttachmentsSupplier = hasAttachmentsSupplier;
+        mUrlTextWrappingSupplier = urlTextWrappingSupplier;
+        mUrlTextWrappingSupplier.addSyncObserverAndCallIfNonNull(mOnTextWrappingChanged);
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -197,6 +203,9 @@ import java.util.function.Supplier;
                         Snackbar.TYPE_NOTIFICATION,
                         Snackbar.UMA_FUSEBOX_UPLOAD_FAILED);
 
+        mModel.set(
+                FuseboxProperties.NAVIGATE_BUTTON_CONTENT_DESCRIPTION,
+                context.getString(R.string.acc_send_button_search_or_navigate));
         mModel.set(FuseboxProperties.PLUS_BUTTON_CLICKED, this::onPlusButtonClicked);
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED, this::onRequestTypeButtonClicked);
 
@@ -214,6 +223,9 @@ import java.util.function.Supplier;
         mModel.set(FuseboxProperties.POPUP_RECENT_TABS_HEADER_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_RECENT_TABS_DIVIDER_VISIBLE, false);
 
+        mModel.set(
+                FuseboxProperties.POPUP_ATTACHMENTS_HEADER_VISIBLE,
+                !mIsDesktopPlatform && OmniboxFeatures.hasAccordion());
         mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_VISIBLE, !mIsDesktopPlatform);
         mModel.set(FuseboxProperties.POPUP_ATTACH_CAMERA_VISIBLE, !mIsDesktopPlatform);
         mModel.set(FuseboxProperties.POPUP_ATTACH_GALLERY_VISIBLE, true);
@@ -231,6 +243,7 @@ import java.util.function.Supplier;
     /* package */ void destroy() {
         endInput();
         mBackPressManager.removeHandler(this);
+        mUrlTextWrappingSupplier.removeObserver(mOnTextWrappingChanged);
     }
 
     public boolean wasPopupItemSelected() {
@@ -358,7 +371,6 @@ import java.util.function.Supplier;
         setAutocompleteInput(null);
         mProfile = null;
         mMetrics = null;
-        mIsTextWrapping = false;
         updateFuseboxState();
     }
 
@@ -439,8 +451,7 @@ import java.util.function.Supplier;
                 if (inputState != null) {
                     boolean inputHasNonDefaultModel =
                             mInput != null
-                                    && mInput.getModelMode()
-                                            != ModelMode.MODEL_MODE_UNSPECIFIED_VALUE
+                                    && mInput.getModelMode() != ModelMode.MODEL_MODE_UNSPECIFIED
                                     && mInput.getModelMode() != inputState.defaultModel;
                     boolean modelNeedsReset =
                             inputState.activeModel != inputState.defaultModel
@@ -481,11 +492,6 @@ import java.util.function.Supplier;
         }
     }
 
-    /* package */ void setIsTextWrapping(boolean isTextWrapping) {
-        mIsTextWrapping = isTextWrapping;
-        updateFuseboxState();
-    }
-
     private void updateFuseboxState() {
         @FuseboxState int targetState;
         boolean showRequestTypeButton = shouldShowRequestTypeButton();
@@ -495,28 +501,17 @@ import java.util.function.Supplier;
                 || mInput.getDisplayState() == DisplayState.DRAFTING_NO_FOCUS) {
             targetState = FuseboxState.DISABLED;
         } else if (mInput.getDisplayState() == DisplayState.DRAFTING) {
-            // Note: FuseboxState semantics have diverged significantly across form factors:
-            // - On Tablet, COMPACT activates the floating pop-out overlay container, negative
-            //   margins, and elevated translations. Setting DISABLED keeps the omnibox collapsed
-            //   in the toolbar slot during drafting (crbug.com/552571006).
-            // - On Phone, COMPACT leaves the omnibox single-line in the toolbar while enabling the
-            //   '+' button affordance in StatusView (crbug.com/557024450).
-            // (On Desktop/AL, COMPACT and DISABLED behave identically under SUGGESTIONS_POPOVER).
-            // TODO(crbug.com/559120802): Refactor FuseboxState to decouple the '+' affordance from
-            // container layout geometry.
-            targetState =
-                    DeviceFormFactor.isNonMultiDisplayContextOnTablet(mContext)
-                            ? FuseboxState.DISABLED
-                            : FuseboxState.COMPACT;
+            targetState = FuseboxState.COMPACT;
         } else {
             boolean isPopover =
                     mModel.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
                             == FuseboxLayoutMode.SUGGESTIONS_POPOVER;
+            boolean isTextWrapping = mUrlTextWrappingSupplier.get();
             targetState =
                     // If we're showing the request type button...
                     showRequestTypeButton
                                     // or the text is wrapping (popover doesn't care)...
-                                    || (mIsTextWrapping && !isPopover)
+                                    || (isTextWrapping && !isPopover)
                                     // or the attachments list has elements...
                                     || !mModelList.isEmpty()
                                     // or popover with any ai request type, even when the request
@@ -759,15 +754,14 @@ import java.util.function.Supplier;
             Bitmap favicon = OmniboxResourceProvider.getFaviconBitmapForTab(tab);
 
             buttons.add(
-                    new PopupButtonData(
-                            (data) -> onAddRecentTab(tab),
-                            tab.getTitle(),
-                            favicon,
-                            /* enabled= */ true,
-                            /* selected= */ false,
-                            PopupButtonType.RECENT_TAB,
-                            /* protoId= */ 0,
-                            /* hasColor= */ favicon != null));
+                    new PopupButtonData.Builder()
+                            .setType(PopupButtonType.RECENT_TAB)
+                            .setOnClicked((data) -> onAddRecentTab(tab))
+                            .setText(tab.getTitle())
+                            .setCustomIcon(favicon)
+                            .setEnabled(true)
+                            .setHasColor(favicon != null)
+                            .build());
         }
         return buttons;
     }
@@ -782,8 +776,8 @@ import java.util.function.Supplier;
         mPopupItemSelected = true;
         maybeActivateAiMode(AiModeActivationSource.IMPLICIT);
 
-        if (!FuseboxTabUtils.isTabActive(tab)) {
-            tab.loadIfNeeded(/* forceBackingSize= */ true);
+        if (!FuseboxTabUtils.hasLoadedContent(tab)) {
+            TabLoadingService.getInstance().queueLoadIfNeeded(tab);
         }
 
         Set<Integer> currentAttachedIds = mModelList.getAttachedTabIds();
@@ -977,18 +971,6 @@ import java.util.function.Supplier;
         }
     }
 
-    private String getRequestTypeButtonText(InputState inputState) {
-        if (inputState.activeTool == ToolMode.TOOL_MODE_UNSPECIFIED_VALUE) {
-            return mContext.getString(R.string.ai_mode_entrypoint_label);
-        }
-        for (ToolConfig toolConfig : inputState.getToolConfigs()) {
-            if (toolConfig.getToolValue() == inputState.activeTool) {
-                return toolConfig.getChipLabel();
-            }
-        }
-        return "";
-    }
-
     private void onAutocompleteRequestTypeChanged(@AutocompleteRequestType Integer type) {
         updateFuseboxState();
         mModel.set(FuseboxProperties.REQUEST_TYPE, type);
@@ -1008,6 +990,12 @@ import java.util.function.Supplier;
                         : null;
         if (inputState != null) {
             onInputStateChange(inputState);
+        } else {
+            // Client controlled mode, or an input state that never arrived. Derive the tool from
+            // the request type so the chip and send button are still described correctly.
+            updateRequestTypeButtonProperties(
+                    ToolModeUtils.getToolModeForRequestType(type, mHasAttachmentsSupplier.get()),
+                    /* toolConfig= */ null);
         }
 
         updatePlusButtonBackgroundStyle();
@@ -1016,15 +1004,32 @@ import java.util.function.Supplier;
     private PopupButtonData createAiModeToolButtonData() {
         boolean selected =
                 mInput != null && mInput.getRequestType() == AutocompleteRequestType.AI_MODE;
-        return new PopupButtonData(
-                this::onDynamicButtonClicked,
-                mContext.getString(R.string.ai_mode_entrypoint_label),
-                IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE_VALUE,
-                /* enabled= */ true,
-                selected,
-                PopupButtonType.TOOL,
-                ToolMode.TOOL_MODE_UNSPECIFIED_VALUE,
-                /* hasColor= */ false);
+        return new PopupButtonData.Builder()
+                .setType(PopupButtonType.TOOL)
+                .setOnClicked(this::onDynamicButtonClicked)
+                .setText(mContext.getString(R.string.ai_mode_entrypoint_label))
+                .setSubtext(getToolSubtext(ToolMode.TOOL_MODE_UNSPECIFIED))
+                .setIconId(IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE)
+                .setEnabled(true)
+                .setSelected(selected)
+                .setProtoId(ToolMode.TOOL_MODE_UNSPECIFIED)
+                .build();
+    }
+
+    @VisibleForTesting
+    String getToolSubtext(@ToolMode int toolMode) {
+        if (!OmniboxFeatures.hasAccordion()) {
+            return "";
+        }
+
+        return switch (toolMode) {
+            case ToolMode.TOOL_MODE_UNSPECIFIED ->
+                    mContext.getString(R.string.fusebox_ai_mode_subtext);
+            case ToolMode.TOOL_MODE_IMAGE_GEN ->
+                    mContext.getString(R.string.fusebox_create_image_subtext);
+            case ToolMode.TOOL_MODE_CANVAS -> mContext.getString(R.string.fusebox_canvas_subtext);
+            default -> "";
+        };
     }
 
     private void launchCamera() {
@@ -1122,13 +1127,13 @@ import java.util.function.Supplier;
         mPopupItemSelected = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.DRIVE_FILES);
-        launchDrivePicker();
+        launchDrivePicker(mProfile);
     }
 
-    private void launchDrivePicker() {
+    private void launchDrivePicker(Profile profile) {
         long startTime = TimeUtils.elapsedRealtimeMillis();
         DriveFilePickerClient.getInstance()
-                .launchPicker(mWindowAndroid, /* mimeTypes= */ null)
+                .launchPicker(mWindowAndroid, profile, /* mimeTypes= */ null)
                 .then(
                         metadata -> {
                             if (metadata == null) {
@@ -1248,12 +1253,31 @@ import java.util.function.Supplier;
         // Note that some of the time that this method is called in the middle of beginInput(), so
         // checking avoid checking isInInputSession() or using mModelList.
 
-        mModel.set(
-                FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT, getRequestTypeButtonText(inputState));
+        updateRequestTypeButtonProperties(inputState.activeTool, getActiveToolConfig(inputState));
 
         if (mModel.get(FuseboxProperties.POPUP_STATE) != PopupState.HIDDEN) {
             updateModelForPopupInputState(inputState);
         }
+    }
+
+    /**
+     * Populates the request type button and send button properties. {@code toolConfig} is the
+     * server description of {@code activeTool}, and is null in client controlled mode or whenever
+     * the server shipped no config for the tool.
+     */
+    private void updateRequestTypeButtonProperties(
+            @ToolMode int activeTool, @Nullable ToolConfig toolConfig) {
+        @IconResourceIds int iconId = getRequestTypeButtonIconId(toolConfig);
+        mModel.set(
+                FuseboxProperties.NAVIGATE_BUTTON_CONTENT_DESCRIPTION,
+                getNavigateButtonContentDescription(toolConfig));
+        mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_ICON_ID, iconId);
+        mModel.set(
+                FuseboxProperties.REQUEST_TYPE_BUTTON_SHOULD_TINT_ICON,
+                shouldTintRequestTypeButtonIcon(iconId));
+        mModel.set(
+                FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT,
+                getRequestTypeButtonText(activeTool, toolConfig));
     }
 
     private void updateModelForPopupInputState(InputState inputState) {
@@ -1277,7 +1301,7 @@ import java.util.function.Supplier;
         boolean driveVisible =
                 OmniboxFeatures.sComposeboxDriveContextMenuOption.isEnabled()
                         && inputState.allowedInputTypes.contains(InputType.INPUT_TYPE_DRIVE_VALUE)
-                        && DriveFilePickerClient.getInstance().isAvailable(mContext);
+                        && DriveFilePickerClient.getInstance().isAvailable(mContext, mProfile);
         boolean driveEnabled =
                 !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_DRIVE_VALUE);
         mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_ENABLED, tabsEnabled);
@@ -1299,14 +1323,15 @@ import java.util.function.Supplier;
         }
 
         for (ToolConfig toolConfig : inputState.getToolConfigs()) {
-            int toolMode = toolConfig.getToolValue();
+            @ToolMode int toolMode = toolConfig.getToolValue();
             if (!inputState.isToolVisible(toolMode)) continue;
 
             String label = toolConfig.getMenuLabel();
+            String tooltip = toolConfig.getMenuTooltip();
             int iconId =
                     toolConfig.hasIcon() && toolConfig.getIcon().hasIconId()
                             ? toolConfig.getIcon().getIconIdValue()
-                            : IconResourceIds.PLACE_WHITE_VALUE;
+                            : UNSPECIFIED_ICON_RESOURCE_ID;
             boolean selected =
                     mInput != null
                             && ToolModeUtils.getRequestTypeForToolMode(toolMode)
@@ -1315,28 +1340,32 @@ import java.util.function.Supplier;
                     inputState.isToolEnabled(toolMode)
                             && (!disableTabsForCanvas
                                     || !hasAttachedTabs
-                                    || toolMode != ToolMode.TOOL_MODE_CANVAS_VALUE);
-            boolean hasColor =
-                    toolMode == ToolMode.TOOL_MODE_IMAGE_GEN_VALUE
-                            || toolMode == ToolMode.TOOL_MODE_IMAGE_GEN_UPLOAD_VALUE;
+                                    || toolMode != ToolMode.TOOL_MODE_CANVAS);
+            boolean hasColor = !shouldTintRequestTypeButtonIcon(iconId);
 
             toolButtonDataList.add(
-                    new PopupButtonData(
-                            this::onDynamicButtonClicked,
-                            label,
-                            iconId,
-                            enabled,
-                            selected,
-                            PopupButtonType.TOOL,
-                            toolMode,
-                            hasColor));
+                    new PopupButtonData.Builder()
+                            .setType(PopupButtonType.TOOL)
+                            .setOnClicked(this::onDynamicButtonClicked)
+                            .setText(label)
+                            .setSubtext(getToolSubtext(toolMode))
+                            .setIconId(iconId)
+                            .setEnabled(enabled)
+                            .setSelected(selected)
+                            .setProtoId(toolMode)
+                            .setHasColor(hasColor)
+                            .setTooltip(tooltip)
+                            .build());
         }
 
+        boolean showSectionHeaders = !OmniboxFeatures.hasAccordion();
         boolean showTools = !toolButtonDataList.isEmpty();
         mModel.set(FuseboxProperties.POPUP_TOOL_DIVIDER_VISIBLE, showTools);
         mModel.set(
                 FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE,
-                showTools && !TextUtils.isEmpty(inputState.getToolsSectionConfig().getHeader()));
+                showTools
+                        && showSectionHeaders
+                        && !TextUtils.isEmpty(inputState.getToolsSectionConfig().getHeader()));
         mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, toolButtonDataList);
 
         // The InputState is always targeting an AI Mode request and what would be possible, but the
@@ -1351,33 +1380,99 @@ import java.util.function.Supplier;
             int modelMode = modelConfig.getModelValue();
             if (inputState.isModelVisible(modelMode)) {
                 boolean selected = isAimRequest && inputState.activeModel == modelMode;
+                String tooltip = modelConfig.getMenuTooltip();
                 int iconId =
                         modelConfig.hasIcon() && modelConfig.getIcon().hasIconId()
                                 ? modelConfig.getIcon().getIconIdValue()
-                                : IconResourceIds.PLACE_WHITE_VALUE;
+                                : UNSPECIFIED_ICON_RESOURCE_ID;
                 modelButtonDataList.add(
-                        new PopupButtonData(
-                                this::onDynamicButtonClicked,
-                                modelConfig.getMenuLabel(),
-                                iconId,
-                                inputState.isModelEnabled(modelMode),
-                                selected,
-                                PopupButtonType.MODEL,
-                                modelMode,
-                                /* hasColor= */ false));
+                        new PopupButtonData.Builder()
+                                .setType(PopupButtonType.MODEL)
+                                .setOnClicked(this::onDynamicButtonClicked)
+                                .setText(modelConfig.getMenuLabel())
+                                .setIconId(iconId)
+                                .setEnabled(inputState.isModelEnabled(modelMode))
+                                .setSelected(selected)
+                                .setProtoId(modelMode)
+                                .setTooltip(tooltip)
+                                .build());
             }
         }
         boolean showModelPicker = modelButtonDataList.size() >= 2;
-        boolean showModelPickerDivider =
-                showModelPicker && !OmniboxFeatures.shouldShowBottomSheetPopup();
-        mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, showModelPickerDivider);
-        mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, showModelPicker);
+        mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, showModelPicker);
+        mModel.set(
+                FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE,
+                showModelPicker && showSectionHeaders);
         mModel.set(
                 FuseboxProperties.POPUP_MODEL_HEADER_TEXT,
                 inputState.getModelSectionConfig().getHeader());
         mModel.set(
                 FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST,
                 showModelPicker ? modelButtonDataList : List.of());
+    }
+
+    /**
+     * Returns the {@link ToolConfig} describing {@code inputState.activeTool}, or null when the
+     * server shipped none. An exact tool match always wins. Any image generation config is accepted
+     * as a fallback for an image generation tool, since the server may describe the family with a
+     * single config.
+     */
+    private static @Nullable ToolConfig getActiveToolConfig(InputState inputState) {
+        if (inputState.activeTool == ToolMode.TOOL_MODE_UNSPECIFIED) {
+            return null;
+        }
+        boolean activeIsImageGen = ToolModeUtils.isImageGenTool(inputState.activeTool);
+        @Nullable ToolConfig imageGenFallback = null;
+        for (ToolConfig toolConfig : inputState.getToolConfigs()) {
+            if (toolConfig.getToolValue() == inputState.activeTool) {
+                return toolConfig;
+            }
+            if (imageGenFallback == null
+                    && activeIsImageGen
+                    && ToolModeUtils.isImageGenTool(toolConfig.getToolValue())) {
+                imageGenFallback = toolConfig;
+            }
+        }
+        return imageGenFallback;
+    }
+
+    private String getNavigateButtonContentDescription(@Nullable ToolConfig toolConfig) {
+        if (ToolModeUtils.isConventionalRequest(mModel.get(FuseboxProperties.REQUEST_TYPE))) {
+            return mContext.getString(R.string.acc_send_button_search_or_navigate);
+        }
+        if (toolConfig != null) {
+            String chipLabel = toolConfig.getChipLabel().trim();
+            if (!chipLabel.isEmpty()) {
+                return chipLabel;
+            }
+        }
+        return mContext.getString(R.string.acc_send_button_send_to_ai);
+    }
+
+    private static @IconResourceIds int getRequestTypeButtonIconId(
+            @Nullable ToolConfig toolConfig) {
+        if (toolConfig != null
+                && toolConfig.getIcon().hasIconId()
+                && toolConfig.getIcon().getIconIdValue() != UNSPECIFIED_ICON_RESOURCE_ID) {
+            return toolConfig.getIcon().getIconIdValue();
+        }
+        return IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE;
+    }
+
+    private String getRequestTypeButtonText(
+            @ToolMode int activeTool, @Nullable ToolConfig toolConfig) {
+        if (activeTool == ToolMode.TOOL_MODE_UNSPECIFIED) {
+            return mContext.getString(R.string.ai_mode_entrypoint_label);
+        }
+        return toolConfig != null ? toolConfig.getChipLabel() : "";
+    }
+
+    /**
+     * Returns whether an icon should be tinted to match the surrounding text color. The banana icon
+     * is multicolored by design, so it is left untinted in both the request type button and popup.
+     */
+    private static boolean shouldTintRequestTypeButtonIcon(@IconResourceIds int iconId) {
+        return iconId != IconResourceIds.BANANA;
     }
 
     private boolean trySetRequestType(@AutocompleteRequestType int requestType) {
@@ -1408,7 +1503,7 @@ import java.util.function.Supplier;
         }
     }
 
-    private void setModelMode(int modelMode) {
+    private void setModelMode(@ModelMode int modelMode) {
         if (!isInInputSession()) return;
 
         hidePopup();
@@ -1423,8 +1518,10 @@ import java.util.function.Supplier;
 
     private void onMoreOptionsClicked() {
         if (!isInInputSession()) return;
-        boolean expanded = mModel.get(FuseboxProperties.POPUP_ACCORDION_EXPANDED);
-        mModel.set(FuseboxProperties.POPUP_ACCORDION_EXPANDED, !expanded);
+        boolean wasExpanded = mModel.get(FuseboxProperties.POPUP_ACCORDION_EXPANDED);
+        boolean expanded = !wasExpanded;
+        mModel.set(FuseboxProperties.POPUP_ACCORDION_EXPANDED, expanded);
+        mMetrics.notifyAccordionToggled(expanded);
     }
 
     void selectFirstAttachment() {

@@ -1988,9 +1988,34 @@ TEST_F(IndigoPageActionControllerTest,
 }
 
 TEST_F(IndigoPageActionControllerTest,
+       EntryPointShownWhenkIndigoContextualCueingV2Disabled) {
+  // Disable the Indigo contextual cueing flag to ensure we fall back to the
+  // original entry point behavior (calling Show on the page action controller).
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndDisableFeature(features::kIndigoContextualCueingV2);
+
+  CreateController();
+  SetupEligibleAndOnboarded();
+
+  EXPECT_CALL(*page_action_controller_, Show(kActionIndigo));
+  EXPECT_CALL(*page_action_controller_, ShowAnchoredMessage(_, _));
+  EXPECT_CALL(*page_action_controller_, ShowSuggestionChip(kActionIndigo, _))
+      .Times(0);
+
+  GURL url("https://example.com");
+  ExpectOptimizationGuideDecision(url, OptimizationGuideDecision::kTrue);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      url, tab_interface_->GetContents());
+  navigation->Commit();
+}
+
+TEST_F(IndigoPageActionControllerTest,
        EntryPointsStateDelegatedWhenIndigoContextualCueingV2Enabled) {
   base::test::ScopedFeatureList local_feature_list;
-  local_feature_list.InitAndEnableFeature(features::kIndigoContextualCueingV2);
+  local_feature_list.InitWithFeatures({features::kIndigoContextualCueingV2,
+                                       contextual_cueing::kContextualCueingV2},
+                                      {});
 
   CreateController();
   SetupEligibleAndOnboarded();
@@ -2344,7 +2369,9 @@ TEST_F(IndigoPageActionControllerTest, CheckEligibilityForCueingPendingTimeout) 
 
   EXPECT_FALSE(future.IsReady());
 
-  task_environment_.FastForwardBy(base::Seconds(3));
+  task_environment_.FastForwardBy(
+      features::kIndigoMetadataKeywordHeuristicMaxWaitTime.Get() +
+      base::Milliseconds(500));
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_FALSE(future.Get());

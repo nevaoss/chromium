@@ -5,6 +5,7 @@
 #include "content/browser/media/capture/web_contents_frame_tracker.h"
 
 #include <algorithm>
+#include <map>
 #include <utility>
 
 #include "base/feature_list.h"
@@ -14,6 +15,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/no_destructor.h"
 #include "base/strings/strcat.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/trace_event/trace_event.h"
@@ -56,6 +58,73 @@ void SetScaleOverrideForCapture(RenderFrameHost* rfh, float scale_override) {
   }
 }
 
+// Remembers which WebContents a tab-capture routing ID originally resolved to.
+//
+// A tab capture is identified by the routing ID of the captured tab's main
+// RenderFrameHost at the moment the capture was requested. That routing ID is
+// baked into the DesktopMediaID and never changes for the lifetime of the
+// capture session.
+//
+// While a capture device is alive, WebContentsFrameTracker observes the
+// captured WebContents and follows it across navigations, including
+// cross-process ones that swap the main RenderFrameHost. A capture device can
+// however be destroyed and re-created *within a single capture session*: when
+// a consumer pauses a stream (blink::mojom::MediaStreamStateChange::PAUSE), the
+// last capture client disconnects and VideoCaptureManager releases the device
+// entirely. Resuming re-creates it, which resolves the captured tab from the
+// original routing ID all over again.
+//
+// If the captured tab performed a cross-process navigation in the meantime --
+// which is guaranteed for pause/resume driven by enterprise URL policy, since
+// the pause is triggered by navigating to a different site -- that
+// RenderFrameHost no longer exists. The lookup then fails and the capture
+// target is reported as permanently lost, which aborts the whole stream with a
+// fatal error rather than resuming it.
+//
+// This registry bridges that gap. Entries are weak: once the WebContents is
+// gone the lookup correctly fails, and the capture target really is
+// permanently lost.
+class CapturedTabRegistry {
+ public:
+  static CapturedTabRegistry& Get() {
+    static base::NoDestructor<CapturedTabRegistry> instance;
+    return *instance;
+  }
+
+  CapturedTabRegistry(const CapturedTabRegistry&) = delete;
+  CapturedTabRegistry& operator=(const CapturedTabRegistry&) = delete;
+
+  void Register(const GlobalRenderFrameHostId& id, WebContents* web_contents) {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    DCHECK(web_contents);
+    // Opportunistically drop entries whose WebContents has gone away, so the
+    // map stays proportional to the number of live captured tabs.
+    std::erase_if(entries_, [](const auto& entry) { return !entry.second; });
+    entries_[id] = web_contents->GetWeakPtr();
+  }
+
+  WebContents* Lookup(const GlobalRenderFrameHostId& id) {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    const auto it = entries_.find(id);
+    if (it == entries_.end()) {
+      return nullptr;
+    }
+    if (!it->second) {
+      entries_.erase(it);
+      return nullptr;
+    }
+    return it->second.get();
+  }
+
+ private:
+  friend class base::NoDestructor<CapturedTabRegistry>;
+
+  CapturedTabRegistry() = default;
+  ~CapturedTabRegistry() = default;
+
+  std::map<GlobalRenderFrameHostId, base::WeakPtr<WebContents>> entries_;
+};
+
 }  // namespace
 
 // Note on lifetime: this context is deleted via WebContentsObserver's
@@ -63,7 +132,7 @@ void SetScaleOverrideForCapture(RenderFrameHost* rfh, float scale_override) {
 class WebContentsContext : public WebContentsFrameTracker::Context {
  public:
   explicit WebContentsContext(WebContents* contents) : contents_(contents) {
-    DCHECK(contents_);
+    CHECK(contents_, base::NotFatalUntil::M160);
   }
   ~WebContentsContext() override = default;
 
@@ -136,7 +205,7 @@ WebContentsFrameTracker::WebContentsFrameTracker(
 {
   // Verify on construction that this object is created on the UI thread.  After
   // this, depend on the sequence checker to ensure consistent execution.
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M160);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(device_task_runner_);
 
@@ -156,7 +225,7 @@ void WebContentsFrameTracker::WillStartCapturingWebContents(
     const gfx::Size& capture_size,
     bool is_high_dpi_enabled) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!is_capturing_);
+  CHECK(!is_capturing_, base::NotFatalUntil::M160);
   if (!web_contents()) {
     return;
   }
@@ -174,7 +243,7 @@ void WebContentsFrameTracker::WillStartCapturingWebContents(
 void WebContentsFrameTracker::DidStopCapturingWebContents() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (web_contents()) {
-    DCHECK(is_capturing_);
+    CHECK(is_capturing_, base::NotFatalUntil::M160);
     context_->DecrementCapturerCount();
     is_capturing_ = false;
 
@@ -185,7 +254,7 @@ void WebContentsFrameTracker::DidStopCapturingWebContents() {
       auto_scaler_.reset();
     }
   }
-  DCHECK(!is_capturing_);
+  CHECK(!is_capturing_, base::NotFatalUntil::M160);
 }
 
 void WebContentsFrameTracker::SetCapturedContentSize(
@@ -317,7 +386,22 @@ void WebContentsFrameTracker::CaptureTargetChanged() {
 void WebContentsFrameTracker::SetWebContentsAndContextFromRoutingId(
     const GlobalRenderFrameHostId& id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  Observe(WebContents::FromRenderFrameHost(RenderFrameHost::FromID(id)));
+  WebContents* target =
+      WebContents::FromRenderFrameHost(RenderFrameHost::FromID(id));
+  if (target) {
+    // Remember the association, so that a capture device re-created later in
+    // the same capture session can still find this tab even if `id` has gone
+    // away in the meantime due to a cross-process navigation.
+    CapturedTabRegistry::Get().Register(id, target);
+  } else {
+    // The main RenderFrameHost that `id` refers to is gone. This does not mean
+    // the captured tab is gone: a cross-process navigation swaps the main
+    // RenderFrameHost while the tab itself lives on, and capture is expected to
+    // follow the tab. Recover the tab if it is still around.
+    target = CapturedTabRegistry::Get().Lookup(id);
+  }
+
+  Observe(target);
   if (web_contents()) {
     // If the routing ID was invalid, don't set up a context.
     context_ = std::make_unique<WebContentsContext>(web_contents());
@@ -332,7 +416,7 @@ void WebContentsFrameTracker::ApplySubCaptureTarget(
     base::OnceCallback<void(media::mojom::ApplySubCaptureTargetResult)>
         callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(callback);
+  CHECK(callback, base::NotFatalUntil::M160);
 
   if (sub_capture_target_version_ >= sub_capture_target_version) {
     std::move(callback).Run(
@@ -387,7 +471,7 @@ void WebContentsFrameTracker::SetWebContentsAndContextForTesting(
 void WebContentsFrameTracker::OnPossibleTargetChange() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!web_contents()) {
-    DCHECK(!context_);
+    CHECK(!context_, base::NotFatalUntil::M160);
     device_task_runner_->PostTask(
         FROM_HERE,
         base::BindOnce(&WebContentsVideoCaptureDevice::OnTargetPermanentlyLost,

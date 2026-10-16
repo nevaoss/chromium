@@ -732,13 +732,15 @@ void DesktopWindowTreeHostPlatform::ShowWindowControlsMenu(
 }
 
 bool DesktopWindowTreeHostPlatform::IsMaximized() const {
-  return platform_window()->GetPlatformWindowState() ==
-         ui::PlatformWindowState::kMaximized;
+  return (platform_window() && platform_window()->GetPlatformWindowState() ==
+                                   ui::PlatformWindowState::kMaximized) ||
+         window_state_ == ui::PlatformWindowState::kMaximized;
 }
 
 bool DesktopWindowTreeHostPlatform::IsMinimized() const {
-  return platform_window()->GetPlatformWindowState() ==
-         ui::PlatformWindowState::kMinimized;
+  return (platform_window() && platform_window()->GetPlatformWindowState() ==
+                                   ui::PlatformWindowState::kMinimized) ||
+         window_state_ == ui::PlatformWindowState::kMinimized;
 }
 
 bool DesktopWindowTreeHostPlatform::HasCapture() const {
@@ -886,8 +888,9 @@ void DesktopWindowTreeHostPlatform::SetFullscreen(bool fullscreen,
 }
 
 bool DesktopWindowTreeHostPlatform::IsFullscreen() const {
-  return platform_window()->GetPlatformWindowState() ==
-         ui::PlatformWindowState::kFullScreen;
+  return (platform_window() && platform_window()->GetPlatformWindowState() ==
+                                   ui::PlatformWindowState::kFullScreen) ||
+         window_state_ == ui::PlatformWindowState::kFullScreen;
 }
 
 void DesktopWindowTreeHostPlatform::SetOpacity(float opacity) {
@@ -1020,19 +1023,24 @@ gfx::Rect DesktopWindowTreeHostPlatform::GetBoundsInDIP() const {
 
 void DesktopWindowTreeHostPlatform::OnVideoCaptureLockCreated() {
   WindowTreeHostPlatform::OnVideoCaptureLockCreated();
-  has_video_capture_ = true;
+  ++video_capture_count_;
 
-  if (GetWidget() && GetWidget()->IsMinimized()) {
-    SetVisible(true);
+  if (IsMinimized()) {
+    if (compositor()) {
+      compositor()->SetVisible(true);
+    }
   }
 }
 
 void DesktopWindowTreeHostPlatform::OnVideoCaptureLockDestroyed() {
   WindowTreeHostPlatform::OnVideoCaptureLockDestroyed();
-  has_video_capture_ = false;
+  DCHECK_GT(video_capture_count_, 0);
+  --video_capture_count_;
 
-  if (GetWidget() && GetWidget()->IsMinimized()) {
-    SetVisible(false);
+  if (IsMinimized() && video_capture_count_ == 0) {
+    if (compositor()) {
+      compositor()->SetVisible(false);
+    }
   }
 }
 
@@ -1050,7 +1058,9 @@ void DesktopWindowTreeHostPlatform::OnCompositorVisibilityChanging(
       window()->AllocateLocalSurfaceId();
       compositor->SetLocalSurfaceIdFromParent(window()->GetLocalSurfaceId());
     }
-    GetContentWindow()->Show();
+    if (!IsMinimized()) {
+      GetContentWindow()->Show();
+    }
   }
 }
 
@@ -1168,6 +1178,8 @@ void DesktopWindowTreeHostPlatform::OnInputPanelRectChanged(
 void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
     ui::PlatformWindowState old_state,
     ui::PlatformWindowState new_state) {
+  window_state_ = new_state;
+
   bool was_minimized = old_state == ui::PlatformWindowState::kMinimized;
   bool is_minimized = new_state == ui::PlatformWindowState::kMinimized;
 
@@ -1181,10 +1193,12 @@ void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
             switches::kEnableAggressiveReleasePolicy);
     if (!is_minimized) {
       GetContentWindow()->Show();
-      SetVisible(true);
+      compositor()->SetVisible(true);
+      native_widget_delegate_->OnNativeWidgetVisibilityChanged(true);
     } else if (!use_aggressive_release_policy) {
-      SetVisible(false);
+      compositor()->SetVisible(false);
       GetContentWindow()->Hide();
+      native_widget_delegate_->OnNativeWidgetVisibilityChanged(false);
     }
   }
 #else
@@ -1194,10 +1208,18 @@ void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
   if (!aura::NativeWindowOcclusionTracker::
           IsNativeWindowOcclusionTrackingAlwaysEnabled(this) &&
       is_minimized != was_minimized) {
-    if (!has_video_capture_ && is_minimized) {
-      SetVisible(false);
+    if (is_minimized) {
+      if (video_capture_count_ == 0 && compositor()) {
+        compositor()->SetVisible(false);
+      }
+      GetContentWindow()->Hide();
+      native_widget_delegate_->OnNativeWidgetVisibilityChanged(false);
     } else {
-      SetVisible(true);
+      if (compositor()) {
+        compositor()->SetVisible(true);
+      }
+      GetContentWindow()->Show();
+      native_widget_delegate_->OnNativeWidgetVisibilityChanged(true);
     }
   }
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -1403,13 +1425,6 @@ void DesktopWindowTreeHostPlatform::ScheduleRelayout() {
   }
 }
 
-void DesktopWindowTreeHostPlatform::SetVisible(bool visible) {
-  if (compositor()) {
-    compositor()->SetVisible(visible);
-  }
-
-  native_widget_delegate_->OnNativeWidgetVisibilityChanged(visible);
-}
 
 void DesktopWindowTreeHostPlatform::AddAdditionalInitProperties(
     const Widget::InitParams& params,

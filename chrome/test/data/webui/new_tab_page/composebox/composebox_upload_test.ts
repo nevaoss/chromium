@@ -20,7 +20,7 @@ import {assertStyle} from '../test_support.js';
 import * as testSupport from './test_support.js';
 
 
-suite(`NewTabPageComposeboxUploadFileTest`, () => {
+suite('NewTabPageComposeboxUploadFileTest', () => {
   const testProxy = testSupport.setupComposeboxTest();
 
   test('uploading/deleting pdf file queries zps', async () => {
@@ -52,13 +52,9 @@ suite(`NewTabPageComposeboxUploadFileTest`, () => {
 
     // Delete the uploaded file.
     const deletedId = testProxy.element.$.carousel.files[0]!.uuid;
-    testProxy.element.$.carousel.dispatchEvent(new CustomEvent('delete-file', {
-      detail: {
-        uuid: deletedId,
-      },
-      bubbles: true,
-      composed: true,
-    }));
+    testProxy.element.$.carousel.fire('delete-file', {
+      uuid: deletedId,
+    });
 
     await microtasksFinished();
 
@@ -423,14 +419,10 @@ suite(`NewTabPageComposeboxUploadFileTest`, () => {
 
     // Act.
     const deletedId = testProxy.element.$.carousel.files[0]!.uuid;
-    testProxy.element.$.carousel.dispatchEvent(new CustomEvent('delete-file', {
-      detail: {
-        uuid: deletedId,
-        fromUserAction: true,
-      },
-      bubbles: true,
-      composed: true,
-    }));
+    testProxy.element.$.carousel.fire('delete-file', {
+      uuid: deletedId,
+      fromUserAction: true,
+    });
 
     await microtasksFinished();
 
@@ -455,14 +447,10 @@ suite(`NewTabPageComposeboxUploadFileTest`, () => {
     const uuid = await testSupport.addTab(testProxy);
 
     // Act.
-    testProxy.element.$.carousel.dispatchEvent(new CustomEvent('delete-file', {
-      detail: {
-        uuid: uuid,
-        fromUserAction: true,
-      },
-      bubbles: true,
-      composed: true,
-    }));
+    testProxy.element.$.carousel.fire('delete-file', {
+      uuid: uuid,
+      fromUserAction: true,
+    });
 
     await microtasksFinished();
 
@@ -473,6 +461,22 @@ suite(`NewTabPageComposeboxUploadFileTest`, () => {
         1,
         testProxy.metrics.count(
             histogramName, ContextualSearchInputStateDeletionType.TAB));
+  });
+
+  test('processing status keeps a delayed tab submittable', async () => {
+    testSupport.createComposeboxElement(testProxy);
+    const token = await testSupport.addTab(testProxy, /*delayUpload=*/ true);
+    const queries =
+        testProxy.searchboxHandler.getCallCount('queryAutocomplete');
+
+    testProxy.searchboxCallbackRouterRemote.onContextualInputStatusChanged(
+        token, ContextUploadStatus.kProcessing, null);
+    await microtasksFinished();
+
+    assertTrue(testProxy.element.fileUploadsComplete);
+    assertEquals(
+        queries + 1,
+        testProxy.searchboxHandler.getCallCount('queryAutocomplete'));
   });
 
   test(
@@ -599,9 +603,7 @@ suite(`NewTabPageComposeboxUploadFileTest`, () => {
 
         // Delete the file. `uploadButtonDisabled` should be false.
         const deletedId = testProxy.element.$.carousel.files[0]!.uuid;
-        testProxy.element.$.carousel.dispatchEvent(new CustomEvent(
-            'delete-file',
-            {detail: {uuid: deletedId}, bubbles: true, composed: true}));
+        testProxy.element.$.carousel.fire('delete-file', {uuid: deletedId});
         await microtasksFinished();
         assertFalse(testProxy.element['uploadButtonDisabled']);
         testProxy.searchboxHandler.resetResolver(
@@ -715,7 +717,7 @@ suite(`NewTabPageComposeboxUploadFileTest`, () => {
   });
 });
 
-suite(`NewTabPageComposeboxUploadPasteTest`, () => {
+suite('NewTabPageComposeboxUploadPasteTest', () => {
   const testProxy = testSupport.setupComposeboxTest();
 
   test('pasting valid files calls addFileContext', async () => {
@@ -1122,7 +1124,7 @@ suite(`NewTabPageComposeboxUploadPasteTest`, () => {
 
 
 
-suite(`NewTabPageComposeboxUploadToolModeTest`, () => {
+suite('NewTabPageComposeboxUploadToolModeTest', () => {
   const testProxy = testSupport.setupComposeboxTest();
 
   test('correctly sets create image mode', async () => {
@@ -1261,7 +1263,7 @@ suite(`NewTabPageComposeboxUploadToolModeTest`, () => {
   });
 });
 
-suite(`NewTabPageComposeboxUploadContextTest`, () => {
+suite('NewTabPageComposeboxUploadContextTest', () => {
   const testProxy = testSupport.setupComposeboxTest();
 
   test('when flag enabled, adds tab context of ghost file', async () => {

@@ -71,6 +71,7 @@ VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kUseDrmBlackFullscreenOptimization);
 #if BUILDFLAG(IS_ANDROID)
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kUseFrameIntervalDeciderAdaptiveFrameRate);
+VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidFrameIntervalContinuousRange);
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kCalculateDeadlineDerivedInterval);
 VIZ_COMMON_EXPORT extern const base::FeatureParam<double>
     kCalculateDeadlineDerivedIntervalSnapToleranceParam;
@@ -179,6 +180,8 @@ VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kDisplaySchedulerAsClient);
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kRpdqFilterLookupOptimizations);
 
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kBypassOutdatedSurfaceActivation);
+
+VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kRenderNonMergedSurfaceAtBackingScale);
 
 VIZ_COMMON_EXPORT int DrawQuadSplitLimit();
 VIZ_COMMON_EXPORT bool IsRenderPassDrawQuadCullingOptimizationEnabled();

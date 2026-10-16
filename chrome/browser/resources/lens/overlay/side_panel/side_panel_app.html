@@ -658,17 +658,8 @@
   allow="cross-origin-isolated; display-capture; geolocation; microphone;
            clipboard-read; clipboard-write;"
   frameborder="0"
-  hidden$="[[enableWebviewResults]]"
 >
 </iframe>
-<webview
-  name="resultsWebview"
-  id="resultsWebview"
-  class="results results-pane"
-  partition="persist:lenspart"
-  hidden$="[[!enableWebviewResults]]"
->
-</webview>
 
 <feedback-toast id="feedbackToast"></feedback-toast>
 
@@ -689,7 +680,6 @@
     is-collapsible
     hide-file-inputs_
     carousel-on-top_
-    composebox-no-flicker-suggestions-fix
     lens-button-disabled$="[[isOverlayShowing]]"
     max-suggestions="[[maxSuggestions]]"
     lens-button-triggers-overlay

@@ -37,8 +37,14 @@ class FullWebUIOmniboxFrame : public RoundedOmniboxResultsFrame {
   void OnMouseEvent(ui::MouseEvent* event) override;
 #endif  // !USE_AURA
 
+  // The shadow margin, with the top expanded to also cover the location bar.
+  // Events inside these insets are forwarded to the browser window beneath.
+  gfx::Insets GetEventForwardingInsets() const;
+
+  // How the Full WebUI Widget is aligned relative to the location bar.
+  static gfx::Insets GetLocationBarAlignmentInsets();
+
  private:
-  gfx::Insets GetEventForwardingInsets();
 #if defined(USE_AURA)
   void UpdateWindowTargeter();
 #endif  // USE_AURA

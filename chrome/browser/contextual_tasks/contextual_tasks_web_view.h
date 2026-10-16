@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_WEB_VIEW_H_
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "components/web_modal/web_contents_modal_dialog_manager_delegate.h"
 #include "content/public/browser/media_stream_request.h"
@@ -16,8 +17,14 @@
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/view.h"
 
+namespace blink::mojom {
+class FileChooserParams;
+}  // namespace blink::mojom
+
 namespace content {
+class FileSelectListener;
 class NavigationHandle;
+class RenderFrameHost;
 class WebContents;
 struct OpenURLParams;
 }  // namespace content
@@ -55,6 +62,9 @@ class ContextualTasksWebView
   // Returns the WebContents currently displayed in the content WebView.
   content::WebContents* web_contents() const;
 
+  // Focuses the main content WebView.
+  void RequestContentViewFocus();
+
   // Toggles the visibility of the ghost loader overlay.
   void SetGhostLoaderVisible(bool visible);
 
@@ -73,6 +83,9 @@ class ContextualTasksWebView
       const content::OpenURLParams& params,
       base::OnceCallback<void(content::NavigationHandle&)>
           navigation_handle_callback) override;
+  void RunFileChooser(content::RenderFrameHost* render_frame_host,
+                      scoped_refptr<content::FileSelectListener> listener,
+                      const blink::mojom::FileChooserParams& params) override;
 
   // content::WebContentsObserver:
   void DidStartNavigation(

@@ -19,7 +19,7 @@ import {FakeMediaQueryList} from 'chrome://webui-test/fake_media_query_list.js';
 import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
 import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import type {TestMock} from 'chrome://webui-test/test_mock.js';
-import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {assertStyle, disableTransitionsRecursively, installMock, MockSpeechRecognition, mockSpeechRecognition} from './composebox_test_utils.js';
 import type {MockComposebox, MockComposeboxVoiceSearch} from './composebox_test_utils.js';
@@ -331,6 +331,46 @@ suite('ComposeboxVoiceSearch', () => {
         voiceSearchElement.shadowRoot.querySelector('#closeButton');
     assertTrue(!!closeButton, 'close button should be shown during error');
   });
+
+  test(
+      'positions error message and close button with 20px top padding ' +
+          'when audio-wave-enabled',
+      async () => {
+        loadTimeData.overrideValues({
+          voiceSearchCoherenceComposeboxesEnabled: true,
+        });
+        await createComposeboxElement();
+
+        const voiceSearchElement = await openVoiceSearchUI();
+        voiceSearchElement.audioWaveEnabled = true;
+        await voiceSearchElement.updateComplete;
+
+        mockSpeechRecognition.onerror!
+            ({error: 'network'} as SpeechRecognitionErrorEvent);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+
+        const errorContainer =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#error-container');
+        assertTrue(!!errorContainer);
+        assertFalse(errorContainer.hidden);
+        assertEquals(
+            '20px', window.getComputedStyle(errorContainer).paddingTop);
+
+        const closeButton =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#closeButton');
+        assertTrue(!!closeButton);
+        assertEquals('14px', window.getComputedStyle(closeButton).top);
+
+        // Disabling audio-wave-enabled restores default styling.
+        voiceSearchElement.audioWaveEnabled = false;
+        await voiceSearchElement.updateComplete;
+        assertEquals(
+            '11px', window.getComputedStyle(errorContainer).paddingTop);
+        assertEquals('12px', window.getComputedStyle(closeButton).top);
+      });
 
   test(
       'NO_MATCH error auto-closes immediately when hasErrorTimer is false',
@@ -730,6 +770,20 @@ suite('ComposeboxVoiceSearch', () => {
             'Submit button should be hidden when flag is disabled');
       });
 
+  test('stop button has accessible label and tabindex', async () => {
+    loadTimeData.overrideValues({
+      voiceSearchCoherenceComposeboxesEnabled: true,
+    });
+    await createComposeboxElement();
+
+    const voiceSearchElement = await openVoiceSearchUI();
+    const stopButton = voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+        '#stopButton')!;
+    assertTrue(!!stopButton);
+    assertEquals('0', stopButton.getAttribute('tabindex'));
+    assertTrue(stopButton.hasAttribute('aria-label'));
+  });
+
   test(
       'Submits the voice transcript directly on submit click while recording',
       async () => {
@@ -869,6 +923,72 @@ suite('ComposeboxVoiceSearch', () => {
     assertTrue(stoppedEventFired, 'Event should fire on outside pointerdown');
     assertFalse(
         mockSpeechRecognition.voiceSearchInProgress, 'Engine should stop');
+  });
+
+  test('Stops voice search on Escape key', async () => {
+    loadTimeData.overrideValues({
+      voiceSearchCoherenceComposeboxesEnabled: true,
+    });
+    await createComposeboxElement();
+
+    const voiceSearchElement = await openVoiceSearchUI();
+    assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+
+    const speechRes = createResults(1);
+    Object.assign(
+        speechRes.results[0]![0]!, {confidence: 1, transcript: 'hello world'});
+    mockSpeechRecognition.onresult!(speechRes);
+    await microtasksFinished();
+
+    const stoppedEventPromise =
+        eventToPromise('recording-stopped', voiceSearchElement);
+
+    const escapeEvent = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    document.dispatchEvent(escapeEvent);
+    const stoppedEvent = await stoppedEventPromise;
+
+    assertEquals('hello world', (stoppedEvent as CustomEvent<string>).detail);
+    assertFalse(
+        mockSpeechRecognition.voiceSearchInProgress, 'Engine should stop');
+    assertTrue(
+        escapeEvent.defaultPrevented, 'Escape event should be prevented');
+  });
+
+  test('Cancels voice search on Escape key when error is showing', async () => {
+    loadTimeData.overrideValues({
+      voiceSearchCoherenceComposeboxesEnabled: true,
+    });
+    await createComposeboxElement();
+
+    const voiceSearchElement = await openVoiceSearchUI();
+    assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+
+    const errorEventPromise =
+        eventToPromise('voice-search-error', voiceSearchElement);
+    mockSpeechRecognition.onerror!
+        ({error: 'network'} as SpeechRecognitionErrorEvent);
+    await errorEventPromise;
+    await voiceSearchElement.updateComplete;
+
+    const cancelEventPromise =
+        eventToPromise('voice-search-cancel', voiceSearchElement);
+
+    const escapeEvent = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    document.dispatchEvent(escapeEvent);
+    await cancelEventPromise;
+
+    assertTrue(
+        escapeEvent.defaultPrevented, 'Escape event should be prevented');
   });
 
   test('Does not stop voice search on pointerdown inside composebox', async () => {
@@ -1167,12 +1287,10 @@ suite('ComposeboxVoiceSearch', () => {
 
     searchboxHandler.resetResolver('submitQuery');
     const mainSubmitButton = composeboxElement.$.submit;
-    mainSubmitButton.dispatchEvent(
-        new CustomEvent('submit-focusin', {bubbles: true, composed: true}));
+    mainSubmitButton.fire('submit-focusin');
     await microtasksFinished();
 
-    mainSubmitButton.dispatchEvent(
-        new CustomEvent('submit-click', {bubbles: true, composed: true}));
+    mainSubmitButton.fire('submit-click');
     await microtasksFinished();
 
     assertEquals(1, searchboxHandler.getCallCount('submitQuery'));
@@ -1457,6 +1575,28 @@ suite('ComposeboxVoiceSearch', () => {
     assertEquals('16px', window.getComputedStyle(input).fontSize);
   });
 
+  test('error message font size matches transcript by default', async () => {
+    await createComposeboxElement();
+    const voiceSearchElement = getVoiceSearchElement(composeboxElement);
+    composeboxElement.style.setProperty('--cr-composebox-font-size', 'initial');
+
+    mockSpeechRecognition.onerror!
+        ({error: 'network'} as SpeechRecognitionErrorEvent);
+    voiceSearchElement.liveTranscriptEnabled = true;
+    await microtasksFinished();
+    await voiceSearchElement.updateComplete;
+
+    const input =
+        voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+    const errorContainer =
+        voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+            '#error-container')!;
+
+    assertEquals(
+        window.getComputedStyle(input).fontSize,
+        window.getComputedStyle(errorContainer).fontSize);
+  });
+
   test(
       'input ends above bottom action buttons and spans full width',
       async () => {
@@ -1481,6 +1621,7 @@ suite('ComposeboxVoiceSearch', () => {
         assertFalse(!!buttonSpacer);
         assertEquals(
             'column', window.getComputedStyle(container).flexDirection);
+        assertEquals('20px', window.getComputedStyle(input).paddingInlineStart);
         assertEquals('20px', window.getComputedStyle(input).paddingInlineEnd);
         assertEquals('0px', window.getComputedStyle(input).paddingBottom);
         assertEquals('static', window.getComputedStyle(bottomActions).position);
@@ -1523,4 +1664,162 @@ suite('ComposeboxVoiceSearch', () => {
     assertEquals(aimFontSize, window.getComputedStyle(input).fontSize);
     assertEquals(aimFontSize, window.getComputedStyle(errorContainer).fontSize);
   });
+
+  test(
+      'voice search text color can be overridden via css variable',
+      async () => {
+        await createComposeboxElement();
+        const voiceSearchElement = getVoiceSearchElement(composeboxElement);
+
+        mockSpeechRecognition.onerror!
+            ({error: 'network'} as SpeechRecognitionErrorEvent);
+        voiceSearchElement.liveTranscriptEnabled = true;
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+        const errorContainer =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#error-container')!;
+
+        // The default comes from a var() fallback chain, so verify embedders
+        // can still override it via --color-composebox-voice-search-font.
+        composeboxElement.style.setProperty(
+            '--color-composebox-voice-search-font', 'rgb(10, 10, 10)');
+        assertEquals('rgb(10, 10, 10)', window.getComputedStyle(input).color);
+        assertEquals(
+            'rgb(10, 10, 10)', window.getComputedStyle(errorContainer).color);
+      });
+
+  test(
+      'multiline transcript behavior when wave and live transcript enabled',
+      async () => {
+        await createComposeboxElement();
+        composeboxElement.style.display = 'block';
+        composeboxElement.style.position = 'relative';
+        composeboxElement.style.width = '337px';
+        const voiceSearchElement = await openVoiceSearchUI();
+        voiceSearchElement.audioWaveEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = true;
+        voiceSearchElement.submitStopButtonsEnabled = true;
+        await voiceSearchElement.updateComplete;
+
+        assertFalse(voiceSearchElement.hasMultilineTranscript);
+        assertFalse(
+            voiceSearchElement.hasAttribute('has-multiline-transcript'));
+
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+        // When empty, input has .empty class with max-height: 44px and
+        // centered text without inline start padding.
+        assertEquals('44px', window.getComputedStyle(input).maxHeight);
+        assertEquals('0px', window.getComputedStyle(input).paddingInlineStart);
+
+        // When transcript is populated, max-height allows up to 7 lines
+        // (188px) plus room for the bottom scroll fade, and transcription text
+        // has 20px padding from start edge per Figma spec.
+        const speechRes = createResults(1);
+        Object.assign(
+            speechRes.results[0]![0]!,
+            {confidence: 1, transcript: 'hello world'});
+        mockSpeechRecognition.onresult!(speechRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertEquals('195px', window.getComputedStyle(input).maxHeight);
+        assertEquals('auto', window.getComputedStyle(input).overflowY);
+        assertEquals('20px', window.getComputedStyle(input).paddingInlineStart);
+        assertEquals(1, voiceSearchElement.transcriptLines);
+        assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
+
+        // When transcript is long and wraps across lines,
+        // hasMultilineTranscript becomes true and transcriptLines reflects the
+        // line count (> 1).
+        const longSpeechRes = createResults(1);
+        Object.assign(longSpeechRes.results[0]![0]!, {
+          confidence: 1,
+          transcript: 'very long speech transcript '.repeat(20),
+        });
+        mockSpeechRecognition.onresult!(longSpeechRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertTrue(voiceSearchElement.hasMultilineTranscript);
+        assertTrue(voiceSearchElement.hasAttribute('has-multiline-transcript'));
+        assertTrue(voiceSearchElement.transcriptLines > 1);
+
+        const container =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#container')!;
+        assertEquals('absolute', window.getComputedStyle(container).position);
+        const bottomActions =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#bottomActions')!;
+        assertEquals(
+            'absolute', window.getComputedStyle(bottomActions).position);
+
+        // When audioWaveEnabled is false, hasMultilineTranscript is false.
+        voiceSearchElement.audioWaveEnabled = false;
+        const multilineRes = createResults(1);
+        Object.assign(
+            multilineRes.results[0]![0]!,
+            {confidence: 1, transcript: 'multiple lines of transcription'});
+        mockSpeechRecognition.onresult!(multilineRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertFalse(voiceSearchElement.hasMultilineTranscript);
+        assertFalse(
+            voiceSearchElement.hasAttribute('has-multiline-transcript'));
+        assertEquals(1, voiceSearchElement.transcriptLines);
+        assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
+
+        // When liveTranscriptEnabled is false, hasMultilineTranscript is false.
+        voiceSearchElement.audioWaveEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = false;
+        mockSpeechRecognition.onresult!(multilineRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertFalse(voiceSearchElement.hasMultilineTranscript);
+        assertFalse(
+            voiceSearchElement.hasAttribute('has-multiline-transcript'));
+        assertEquals(1, voiceSearchElement.transcriptLines);
+        assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
+      });
+
+  test(
+      'empty transcript input has no mask-image and is not scrollable',
+      async () => {
+        await createComposeboxElement();
+        const voiceSearchElement = await openVoiceSearchUI();
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+
+        // Live transcript mode defaults to true; empty input has no mask-image.
+        assertTrue(input.classList.contains('empty'));
+        assertEquals('none', window.getComputedStyle(input).maskImage);
+        assertEquals('none', window.getComputedStyle(input).scrollbarWidth);
+
+        // Helper text mode without live transcript has overflow hidden.
+        voiceSearchElement.helperTextEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = false;
+        await voiceSearchElement.updateComplete;
+        assertEquals('none', window.getComputedStyle(input).maskImage);
+        assertEquals('hidden', window.getComputedStyle(input).overflowY);
+
+        // Audio-wave-enabled mode keeps mask-image: none and no scrollbar.
+        voiceSearchElement.toggleAttribute('audio-wave-enabled', true);
+        await voiceSearchElement.updateComplete;
+        assertEquals('none', window.getComputedStyle(input).maskImage);
+        assertEquals('none', window.getComputedStyle(input).scrollbarWidth);
+
+        // Non-empty transcript restores gradient mask and scrollable overflow.
+        voiceSearchElement.liveTranscriptEnabled = true;
+        (voiceSearchElement as any).transcript_ = 'hello world';
+        voiceSearchElement.requestUpdate();
+        await voiceSearchElement.updateComplete;
+
+        assertFalse(input.classList.contains('empty'));
+        assertTrue(window.getComputedStyle(input).maskImage !== 'none');
+        assertEquals('auto', window.getComputedStyle(input).overflowY);
+        assertEquals('none', window.getComputedStyle(input).scrollbarWidth);
+      });
 });

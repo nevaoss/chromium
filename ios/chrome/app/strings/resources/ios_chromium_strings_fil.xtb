@@ -53,6 +53,8 @@ Hindi mase-save ang mga bagong bookmark sa iyong account hangga't hindi ka nagde
 <translation id="1965068424387304464">Tip sa Chromium: Mag-save ng Mga Password</translation>
 <translation id="1992653360331625459">Mayroon ka nang mga password para sa mga account na ito sa iyong Password Manager. Kung pipiliin mong i-import ang isa sa mga password sa ibaba, papalitan nito ang kasalukuyang password.</translation>
 <translation id="2006345422933397527">Hindi matingnan ng Chromium kung may mga update. Subukang tingnan ang iyong koneksyon sa internet.</translation>
+<translation id="2025935492422922097">Pinoproseso ng Chromium ang mga pamagat ng page at URL sa pribadong space sa cloud</translation>
+<translation id="2027881372245801507">Hindi kinokontrol ng pag-off ng mga suhestyon ang pagpoproseso ng Chromium ng mga pamagat ng page at URL para sa iba pang feature. Puwede mong pamahalaan ang access sa data na ito sa iyong <ph name="BEGIN_LINK" />mga setting ng pag-sync<ph name="END_LINK" />.</translation>
 <translation id="2042889939382983733">Tingnan ang Iyong History sa Chromium</translation>
 <translation id="2052320862053429062">Pana-panahong sinusuri ng Chromium ang iyong mga password sa mga listahang na-publish online. Kapag ginagawa ito, naka-encrypt ang iyong mga password at username, para hindi mabasa ng sinuman ang mga ito, kabilang ang Google.</translation>
 <translation id="2059365270911640413">Tapusin ang pag-set up ng Chromium</translation>
@@ -105,6 +107,7 @@ Para sa higit pang setting na gumagamit ng data para pahusayin ang iyong experie
 <translation id="3072591112723064972">Gawing iyong default browser ang Chromium para instant na magbukas ng mga link dito.</translation>
 <translation id="3115956258722352278">Gawing default na browser mo ang Chromium?</translation>
 <translation id="3180939591219927904">I-on ang "I-lock ang mga tab na Incognito kapag isinara mo ang Chromium"</translation>
+<translation id="3239426886813624481">Para i-share ang iyong lokasyon sa mga website, mag-tap sa Mga Setting para payagan ang Chromium na gamitin ang lokasyon mo.</translation>
 <translation id="327628223428512207">Ilagay ang passphrase para i-save ang password na ito at makuha ang data ng Chromium sa lahat ng iyong device</translation>
 <translation id="328933489847748230">{count,plural, =1{Nagpapakita ngayon ng 1 window ng Chromium}one{Nagpapakita ngayon ng {count} window ng Chromium}other{Nagpapakita ngayon ng {count} na window ng Chromium}}</translation>
 <translation id="3344204225393848305">Itakda ang Chromium bilang Default</translation>
@@ -142,6 +145,7 @@ Subukang maghintay nang ilang minuto bago lumipat ng account. Kung lilipat ka ng
 <translation id="3855938650519180865">Ano'ng Bago sa Chromium</translation>
 <translation id="3886689467633467988">Mag-sign in sa site na ito at sa Chromium para makuha mo ang iyong mga bookmark at higit pa sa lahat ng device mo.</translation>
 <translation id="3949514465204582407">Tip sa Chromium: Makuha ang iyong mga password sa anumang app</translation>
+<translation id="3983298990898629929">Itakda ang Chromium bilang iyong default browser para magbukas ng mga link sa isang pag-tap</translation>
 <translation id="4005283307739974863">Magbubukas at Magpapatakbo ng Pag-check sa Kaligtasan sa Chromium.</translation>
 <translation id="4043291146360695975">Sine-save ang mga password sa Password Manager sa device lang na ito.</translation>
 <translation id="4046625794029820944">Huwag nang kumopya ng mga URL. Itakda ang Chromium bilang default para direktang mag-load ng mga page.</translation>
@@ -273,6 +277,7 @@ Mga bagay na dapat isaalang-alang:
 <translation id="6680609900732453726">Panatilihing pribado ang iyong pag-browse gamit ang pag-authenticate ng device kapag isinara mo ang Chromium</translation>
 <translation id="6696512128741076907">Itakda ang Chromium bilang default para instant na magbukas ng mga link mula sa iba pang app.</translation>
 <translation id="6752854822223394465">Sine-set up ng iyong organisasyon ang Chromium...</translation>
+<translation id="6777348401413221846">Full screen na video ng kung paano itakda ang Chromium bilang default: Buksan ang mga setting ng Chromium sa iOS, i-tap ang "Default na Browser App," at piliin ang Chromium.</translation>
 <translation id="6794054469102824109">Mabubuksan ang Dino Game ng Chromium.</translation>
 <translation id="6820823224820483452">Hindi masuri ng Chromium ang lahat ng password. Subukan ulit bukas.</translation>
 <translation id="6830782797004194206">Mas mabilis na makapag-sign in gamit ang autofill ng Chromium</translation>
@@ -302,6 +307,7 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028">Ise-save ang iyong password sa Password Manager para sa <ph name="EMAIL" />.</translation>
 <translation id="7434848749522628428">Ise-save ang passkey na ito sa Password Manager para sa <ph name="USER_EMAIL" /></translation>
+<translation id="7453822113116681031">Gawing default browser mo ang Chromium para magbukas ng mga link sa isang pag-tap</translation>
 <translation id="7504829997542308412">Buksan ang Chromium</translation>
 <translation id="7531461704633548377">Mula sa Chromium</translation>
 <translation id="7554983317097061001">Tip sa Chromium: Ilipat ang Chromium sa dock</translation>
@@ -348,6 +354,8 @@ Ang taong may passphrase mo lang ang makakapagbasa ng iyong naka-encrypt na data
 <translation id="865600487977764604">Pinapanatili kang ligtas sa Chromium at puwedeng gamitin para paigtingin ang iyong seguridad sa iba pang Google app kapag naka-sign in ka.</translation>
 <translation id="8663480472502753423">Panatilihing up to date ang Chromium</translation>
 <translation id="8685813584220679697">Mag-sign in sa site na ito at sa Chromium.</translation>
+<translation id="8697693743327341604">Kung pipiliin o babalewalain mo ang isang suhestyon, aangkop ang Chromium para makatulong na magpakita sa iyo ng mga mas nauugnay na suhestyon sa hinaharap.</translation>
+<translation id="869832267508702259">Gawing default mo ang Chromium para makakuha ng mga insight ng Gemini saan ka man mag-browse</translation>
 <translation id="8698780336333802489">I-import sa Chromium</translation>
 <translation id="8730503818204408000">Mabubuksan ang Setting ng Chromium para itakda ang Chromium bilang Default na Browser.</translation>
 <translation id="8754966941001340678">Inirerekomenda ng Chromium ang pinaigting na proteksyon</translation>

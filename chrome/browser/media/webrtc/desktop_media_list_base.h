@@ -23,8 +23,6 @@ inline constexpr gfx::Size kDefaultThumbnailSize = {100, 100};
 // Base class for DesktopMediaList implementations. Implements logic shared
 // between implementations. Specifically it's responsible for keeping current
 // list of sources and calling the observer when the list changes.
-//
-// TODO(crbug.com/40637301): Consider renaming this class.
 class DesktopMediaListBase : public DesktopMediaList {
  public:
   explicit DesktopMediaListBase(base::TimeDelta update_period);
@@ -55,10 +53,13 @@ class DesktopMediaListBase : public DesktopMediaList {
   using RefreshCallback = UpdateCallback;
 
   struct SourceDescription {
-    SourceDescription(content::DesktopMediaID id, const std::u16string& name);
+    SourceDescription(content::DesktopMediaID id,
+                      const std::u16string& name,
+                      bool is_sharing_blocked = false);
 
     content::DesktopMediaID id;
     std::u16string name;
+    bool is_sharing_blocked = false;
   };
 
   DesktopMediaListBase(base::TimeDelta update_period,

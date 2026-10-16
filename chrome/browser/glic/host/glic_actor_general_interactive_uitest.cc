@@ -212,9 +212,14 @@ GlicActorGeneralUiTest::CheckActorTabDataHasAnnotatedPageContentCache() {
 
 MultiStep GlicActorGeneralUiTest::OpenDevToolsWindow() {
   return Steps(Do([this]() {
-    content::WebContents* contents = GetGlicContents();
-    DevToolsWindowTesting::OpenDevToolsWindowSync(contents,
-                                                  /*is_docked=*/false);
+    content::WebContents* contents =
+        browser()->tab_strip_model()->GetActiveWebContents();
+    DevToolsWindow* devtools = DevToolsWindowTesting::OpenDevToolsWindowSync(
+        contents, /*is_docked=*/false);
+    BrowserWindowInterface* devtools_browser =
+        DevToolsWindowTesting::Get(devtools)->browser();
+    ASSERT_TRUE(devtools_browser);
+    ui_test_utils::WaitUntilBrowserBecomeActive(devtools_browser);
   }));
 }
 
@@ -874,8 +879,9 @@ class GlicActorCallbackOrderGeneralUiTest : public GlicActorGeneralUiTest {
     feature_list_.InitWithFeaturesAndParameters(
         {
             {features::kGlicActor,
-             {{features::kGlicActorClickDelay.name, "60000ms"},
-              {features::kGlicActorPolicyControlExemption.name, "true"}}},
+             {{features::kGlicActorPolicyControlExemption.name, "true"}}},
+            {actor::kActorClickDelay,
+             {{actor::kActorClickDelayParam.name, "60000ms"}}},
             {actor::kGlicPerformActionsReturnsBeforeStateChange, {}},
         },
         /*disabled_features=*/{});

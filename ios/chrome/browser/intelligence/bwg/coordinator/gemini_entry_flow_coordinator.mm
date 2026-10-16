@@ -56,8 +56,9 @@ signin_metrics::AccessPoint AccessPointFromGeminiEntryPoint(
     case gemini::EntryPoint::DirectOmniboxBadge:
       return signin_metrics::AccessPoint::kIosPageActionMenu;
     case gemini::EntryPoint::ExternalAppStoreEvent:
+      return signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent;
     case gemini::EntryPoint::AppSwitcherAISummarization:
-      return signin_metrics::AccessPoint::kDeepLinkDefault;
+      return signin_metrics::AccessPoint::kAppSwitcherAISummarization;
     default:
       NOTREACHED();
   }
@@ -181,6 +182,11 @@ signin_metrics::AccessPoint AccessPointFromGeminiEntryPoint(
 #pragma mark - GeminiServiceObserving
 
 - (void)geminiEligibilityDidChange {
+  GeminiService* geminiService =
+      GeminiServiceFactory::GetForProfile(self.browser->GetProfile());
+  if (!geminiService || geminiService->IsWorkspacePolicyCheckPending()) {
+    return;
+  }
   _geminiServiceObserverBridge.reset();
   [self evaluateEligibilityAndRoute];
 }
@@ -321,15 +327,25 @@ signin_metrics::AccessPoint AccessPointFromGeminiEntryPoint(
   // Gemini policy restriction (workspace) — present account menu
   // for switching accounts.
   if (availability.ineligibility_reasons->workspace) {
-    [self presentAccountMenu];
-    return;
+    // Policy checks are performed asynchronously, so sign-in state could have
+    // changed since the flow was triggered.
+    AuthenticationService* authService =
+        AuthenticationServiceFactory::GetForProfile(self.browser->GetProfile());
+    if (authService && authService->SigninEnabled() &&
+        authService->HasPrimaryIdentity()) {
+      [self presentAccountMenu];
+      return;
+    } else {
+      [self finishWithResult:kGeminiEntryFlowResultCancelled];
+    }
   }
 
   // Remaining ineligibility (account capability or other).
   [self finishWithResult:kGeminiEntryFlowResultUnknown];
 }
 
-// Presents the account menu for switching to a different account.
+// Presents the account menu for switching to a different account. Assumes
+// sign-in is enabled and there is a primary account.
 - (void)presentAccountMenu {
   _accountMenuCoordinator = [[AccountMenuCoordinator alloc]
       initWithBaseViewController:self.baseViewController

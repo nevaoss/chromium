@@ -283,12 +283,14 @@ export class SearchboxIconElement extends CrLitElement {
 
     if (changedProperties.has('match') || changedProperties.has('pageUrl') ||
         changedProperties.has('defaultIcon') ||
-        changedProperties.has('inKeywordMode')) {
+        changedProperties.has('inKeywordMode') ||
+        changedProperties.has('inSearchbox')) {
       this.maskImage = this.computeMaskImage_();
     }
 
     if (changedProperties.has('match') || changedProperties.has('pageUrl') ||
         changedProperties.has('defaultIcon') ||
+        changedProperties.has('inSearchbox') ||
         changedPrivateProperties.has('isTopChromeSearchbox_')) {
       const oldFaviconImage = this.faviconImage_;
       this.faviconImage_ = this.computeFaviconImage_();
@@ -304,6 +306,7 @@ export class SearchboxIconElement extends CrLitElement {
     if (changedProperties.has('match') || changedProperties.has('pageUrl') ||
         changedProperties.has('defaultIcon') ||
         changedProperties.has('inKeywordMode') ||
+        changedProperties.has('inSearchbox') ||
         changedPrivateProperties.has('isLensSearchbox_') ||
         changedPrivateProperties.has('isTopChromeSearchbox_') ||
         changedPrivateProperties.has('faviconImage_') ||
@@ -408,10 +411,12 @@ export class SearchboxIconElement extends CrLitElement {
   }
 
   private computeMaskImage_(): string {
-    // In keyword mode, use search_cr23.svg as a fallback icon in the searchbox.
-    // If a custom keyword icon or favicon exists, it is displayed as an image
-    // via computeBackgroundImage_() / computeShowIconImg_().
+    // In keyword mode, show the custom keyword vector icon if present,
+    // otherwise fall back to search_cr23.svg in the searchbox.
     if (this.inSearchbox && this.inKeywordMode) {
+      if (this.defaultIcon) {
+        return `url(${this.defaultIcon})`;
+      }
       return 'url(//resources/cr_components/searchbox/icons/search_cr23.svg)';
     }
 

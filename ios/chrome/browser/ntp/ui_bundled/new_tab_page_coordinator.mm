@@ -20,6 +20,7 @@
 #import "components/feed/feed_feature_list.h"
 #import "components/image_fetcher/ios/ios_image_data_fetcher_wrapper.h"
 #import "components/keyed_service/core/service_access_type.h"
+#import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/most_visited_sites.h"
 #import "components/ntp_tiles/pref_names.h"
 #import "components/omnibox/browser/aim_eligibility_service.h"
@@ -59,6 +60,7 @@
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_consumer.h"
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_view_controller.h"
 #import "ios/chrome/browser/context_menu/ui_bundled/link_preview/link_preview_coordinator.h"
+#import "ios/chrome/browser/default_browser/model/utils.h"
 #import "ios/chrome/browser/discover_feed/model/discover_feed_observer_bridge.h"
 #import "ios/chrome/browser/discover_feed/model/discover_feed_service.h"
 #import "ios/chrome/browser/discover_feed/model/discover_feed_service_factory.h"
@@ -96,6 +98,7 @@
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_actions_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_component_factory_protocol.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_constants.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_consumer.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_content_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_controller_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_coordinator+Testing.h"
@@ -129,6 +132,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/contextual_default_browser_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
@@ -478,8 +482,8 @@
   self.NTPRedesignViewController = nil;
   self.feedHeaderViewController.NTPDelegate = nil;
   self.feedHeaderViewController = nil;
-  [self.feedTopSectionCoordinator stop];
-  self.feedTopSectionCoordinator = nil;
+  [_feedTopSectionCoordinator stop];
+  _feedTopSectionCoordinator = nil;
   [self stopAccountMenuCoordinator];
   [self stopSigninCoordinator];
 
@@ -581,7 +585,7 @@
   if (!IsNTPRedesignEnabled()) {
     [self.NTPViewController focusOmnibox];
   } else if (self.NTPRedesignViewController) {
-    [self.NTPRedesignViewController focusOmnibox];
+    [self focusOmnibox];
   }
 }
 
@@ -601,25 +605,19 @@
 }
 
 - (void)locationBarDidBecomeFirstResponder {
-  if (IsNTPRedesignEnabled()) {
-    [self.NTPRedesignViewController omniboxDidBecomeFirstResponder];
-  } else {
+  if (!IsNTPRedesignEnabled()) {
     [self.NTPViewController omniboxDidBecomeFirstResponder];
   }
 }
 
 - (void)locationBarWillResignFirstResponder {
-  if (IsNTPRedesignEnabled()) {
-    [self.NTPRedesignViewController omniboxWillResignFirstResponder];
-  } else {
+  if (!IsNTPRedesignEnabled()) {
     [self.NTPViewController omniboxWillResignFirstResponder];
   }
 }
 
 - (void)locationBarDidResignFirstResponder {
-  if (IsNTPRedesignEnabled()) {
-    [self.NTPRedesignViewController omniboxDidEndEditing];
-  } else {
+  if (!IsNTPRedesignEnabled()) {
     [self.NTPViewController omniboxDidEndEditing];
   }
 }
@@ -639,6 +637,7 @@
   [self restoreNTPScrollPosition];
   [self updateNTPIsVisible:YES];
   [self updateStartForVisibilityChange:YES];
+  [self maybeShowContextualDefaultBrowserPromo];
 }
 
 - (void)didNavigateAwayFromNTP {
@@ -820,12 +819,6 @@
              discoverFeedForBrowser:self.browser
         viewControllerConfiguration:[self feedViewControllerConfiguration]];
   }
-
-  // Feed top section visibility is based on feed visibility, so this should
-  // always be below the block that sets `feedViewController`.
-  if ([self isFeedVisible]) {
-    self.feedTopSectionCoordinator = [self createFeedTopSectionCoordinator];
-  }
 }
 
 // Configures `self.headerView`.
@@ -926,6 +919,7 @@
   } else {
     NTPMediator.headerConsumer = self.headerView;
     NTPMediator.consumer = self.NTPViewController;
+    NTPMediator.scrollConsumer = self.NTPViewController;
   }
   PlaceholderService* placeholderService =
       ios::PlaceholderServiceFactory::GetForProfile(self.profile);
@@ -957,8 +951,7 @@
   NTPViewController.NTPShortcutsHandler = self;
   NTPViewController.feedVisible = [self isFeedVisible];
   NTPViewController.feedTopSectionViewController =
-      [self isFeedVisible] ? self.feedTopSectionCoordinator.viewController
-                           : nil;
+      self.feedTopSectionCoordinator.viewController;
   NTPViewController.feedWrapperViewController = self.feedWrapperViewController;
   NTPViewController.overscrollDelegate = self;
   NTPViewController.NTPContentDelegate = self;
@@ -974,6 +967,8 @@
     self.NTPRedesignViewController.NTPContentDelegate = self;
     self.NTPRedesignViewController.headerCommandsHandler = self;
     self.NTPRedesignViewController.feedViewController = self.feedViewController;
+    self.NTPRedesignViewController.feedTopSectionViewController =
+        self.feedTopSectionCoordinator.viewController;
     self.NTPRedesignViewController.magicStackViewController =
         self.contentSuggestionsCoordinator.magicStackCollectionView;
     self.NTPRedesignViewController.NTPShortcutsHandler = self;
@@ -1055,6 +1050,20 @@
     return self.incognitoViewController;
   }
   return self.containerViewController;
+}
+
+- (FeedTopSectionCoordinator*)feedTopSectionCoordinator {
+  if (![self isFeedVisible]) {
+    if (_feedTopSectionCoordinator) {
+      [_feedTopSectionCoordinator stop];
+      _feedTopSectionCoordinator = nil;
+    }
+    return nil;
+  }
+  if (!_feedTopSectionCoordinator) {
+    _feedTopSectionCoordinator = [self createFeedTopSectionCoordinator];
+  }
+  return _feedTopSectionCoordinator;
 }
 
 #pragma mark - NewTabPageHeaderCommands
@@ -1491,7 +1500,9 @@
   // relayout.
   [self.containedViewController.view setNeedsLayout];
   [self.containedViewController.view layoutIfNeeded];
-  if (!IsNTPRedesignEnabled()) {
+  if (IsNTPRedesignEnabled()) {
+    [self.NTPRedesignViewController updateFeedLayout];
+  } else {
     [self.NTPViewController updateNTPLayout];
   }
 }
@@ -1520,7 +1531,9 @@
 }
 
 - (void)handleFeedTopSectionClosed {
-  if (!IsNTPRedesignEnabled()) {
+  if (IsNTPRedesignEnabled()) {
+    [self.NTPRedesignViewController handleFeedTopSectionClosed];
+  } else {
     [self.NTPViewController updateScrollPositionForFeedTopSectionClosed];
   }
 }
@@ -1786,6 +1799,22 @@
 
 #pragma mark - Private
 
+// Evaluates and triggers a contextual default browser promo if eligible.
+- (void)maybeShowContextualDefaultBrowserPromo {
+  CommandDispatcher* dispatcher = self.browser->GetCommandDispatcher();
+  if (![dispatcher
+          dispatchingForProtocol:@protocol(
+                                     ContextualDefaultBrowserPromoCommands)]) {
+    return;
+  }
+
+  id<ContextualDefaultBrowserPromoCommands> promoHandler =
+      HandlerForProtocol(dispatcher, ContextualDefaultBrowserPromoCommands);
+  feature_engagement::Tracker* tracker =
+      feature_engagement::TrackerFactory::GetForProfile(self.profile);
+  MaybeShowContextualDefaultBrowserPromo(tracker, promoHandler);
+}
+
 // Opens the AIM web page.
 - (void)openAIMWeb {
   GURL URL = GetUrlForAim(self.templateURLService,
@@ -1875,11 +1904,18 @@
       self.discoverFeedService->RemoveFeedViewController(
           self.feedViewController);
     }
+    [_feedTopSectionCoordinator stop];
+    _feedTopSectionCoordinator = nil;
     self.feedViewController = nil;
     if ([self.NTPMediator isFeedHeaderVisible]) {
       [self configureFeedAndHeader];
+    } else {
+      self.feedHeaderViewController = nil;
     }
     self.NTPRedesignViewController.feedViewController = self.feedViewController;
+    self.NTPRedesignViewController.feedTopSectionViewController =
+        self.feedTopSectionCoordinator.viewController;
+    [self updateFeedLayout];
     return;
   }
   DCHECK(self.NTPViewController);
@@ -1890,11 +1926,11 @@
     self.discoverFeedService->RemoveFeedViewController(self.feedViewController);
   }
 
-  [self.feedTopSectionCoordinator stop];
+  [_feedTopSectionCoordinator stop];
+  _feedTopSectionCoordinator = nil;
 
   self.feedWrapperViewController = nil;
   self.feedViewController = nil;
-  self.feedTopSectionCoordinator = nil;
 
   // Fetches feed header and conditionally fetches feed. Feed can only be
   // visible if feed header is visible.
@@ -2046,7 +2082,7 @@
 // if necessary.
 - (void)restoreNTPScrollPosition {
   if ([self isStartSurface]) {
-    [self.NTPMediator.consumer restoreScrollPosition:-CGFLOAT_MAX];
+    [self.NTPMediator.scrollConsumer restoreScrollPosition:-CGFLOAT_MAX];
   } else {
     [self.NTPMediator restoreNTPScrollPositionForWebState:self.webState];
   }
@@ -2069,6 +2105,10 @@
   if (page == CustomizationMenuPage::kMain) {
     tracker->NotifyEvent(
         feature_engagement::events::kHomeBackgroundCustomizationMenuUsed);
+    if (IsNTPEphemeralThemeEnabled()) {
+      tracker->NotifyEvent(
+          feature_engagement::events::kEphemeralThemePromoUsed);
+    }
   }
 }
 
@@ -2169,6 +2209,20 @@
   _aimBubblePresenter = presenter;
 }
 
+// Returns `YES` if conditions to focus on Composebox are met.
+- (BOOL)canFocusComposebox {
+  if (!_aimEligibilityService->IsFuseboxEligible()) {
+    return NO;
+  }
+
+  if (ntp_tiles::GetAimButtonRefactorArm() !=
+      ntp_tiles::AimButtonRefactorArm::kFocusComposeboxAimQuickAction) {
+    return NO;
+  }
+
+  return YES;
+}
+
 #pragma mark - HomeCustomizationDelegate
 
 - (void)dismissCustomizationMenu {
@@ -2216,13 +2270,27 @@
 - (void)openAIM {
   RecordHomeAction(IOSHomeActionType::kQuickActionAIM, [self isStartSurface]);
   [self.NTPMetricsRecorder recordAIMButtonTapped];
-  if (!IsDisableComposeboxFromAIMNTPEnabled() &&
-      _aimEligibilityService->IsFuseboxEligible() &&
+
+  if ([self canFocusComposebox] &&
       MaybeShowComposebox(self.browser, ComposeboxEntrypoint::kNTPAIMButton)) {
     return;
   }
 
   [self openAIMWeb];
+}
+
+- (void)openAIMImageGeneration {
+  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
+           ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction);
+  // TODO(crbug.com/549020046): Implement this method and add metrics recording
+  // hooks.
+}
+
+- (void)openAIMAttachImage {
+  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
+           ntp_tiles::AimButtonRefactorArm::kAttachImageQuickAction);
+  // TODO(crbug.com/549020046): Implement this method and add metrics recording
+  // hooks.
 }
 
 - (void)preloadVoiceSearch {

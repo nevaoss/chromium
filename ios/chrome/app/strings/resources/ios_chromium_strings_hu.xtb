@@ -53,6 +53,8 @@
 <translation id="1965068424387304464">Chromium-tipp: Jelszavak mentése</translation>
 <translation id="1992653360331625459">Ezekhez a fiókokhoz már vannak jelszavai a Jelszókezelőben. Ha az alábbi jelszavak egyikének importálása mellett dönt, azzal lecseréli a meglévőt.</translation>
 <translation id="2006345422933397527">A Chromium nem tudott frissítéseket keresni. Ellenőrizze az internetkapcsolatot.</translation>
+<translation id="2025935492422922097">A Chromium a felhőben lévő privát területen dolgozza fel az oldalcímeket és az URL-eket</translation>
+<translation id="2027881372245801507">A javaslatok kikapcsolása nem befolyásolja azt, hogy a Chromium hogyan dolgozza fel az oldalcímeket és az URL-eket más funkciókhoz. Az ezekhez az adatokhoz való hozzáférést a <ph name="BEGIN_LINK" />szinkronizálási beállításokban<ph name="END_LINK" /> kezelheti.</translation>
 <translation id="2042889939382983733">A Chromium-előzmények megtekintése</translation>
 <translation id="2052320862053429062">A Chromium rendszeres időközönként online közzétett listák alapján ellenőrzi az Ön jelszavait. Az eljárás során jelszavai és felhasználónevei titkosítva vannak, így senki nem láthatja őket, még a Google sem.</translation>
 <translation id="2059365270911640413">Fejezze be a Chromium beállítását</translation>
@@ -105,6 +107,7 @@ Az adatokat a Chromium-élmény javítására használó további beállítások
 <translation id="3072591112723064972">Állítsa be a Chromiumot alapértelmezett böngészőként, hogy azonnal megnyithassa benne a linkeket.</translation>
 <translation id="3115956258722352278">Legyen a Chromium az alapértelmezett böngészője?</translation>
 <translation id="3180939591219927904">Kapcsolja be az „Inkognitó lapok zárolása a Chromium bezárásakor” beállítást.</translation>
+<translation id="3239426886813624481">Ha meg szeretné osztani tartózkodási helyét a webhelyekkel, koppintson a Beállítások lehetőségre, hogy a Chromium használhassa a tartózkodási helyét.</translation>
 <translation id="327628223428512207">Adja meg az összetett jelszót, hogy menthesse a jelszót, és az összes eszközén hozzáférhessen a Chromium-adatokhoz</translation>
 <translation id="328933489847748230">{count,plural, =1{Jelenleg 1 Chromium-ablak látható}other{Jelenleg {count} Chromium-ablak látható}}</translation>
 <translation id="3344204225393848305">A Chromium beállítása alapértelmezettként</translation>
@@ -142,6 +145,7 @@ A fiókváltás előtt várjon néhány percet. Ha most vált fiókot, akkor eze
 <translation id="3855938650519180865">A Chromium újdonságai</translation>
 <translation id="3886689467633467988">Jelentkezzen be erre a webhelyre és a Chromiumba, hogy az összes eszközén hozzáférhessen könyvjelzőihez és még sok minden máshoz.</translation>
 <translation id="3949514465204582407">Chromium-tipp: Hozzáférhet a jelszavaihoz bármilyen alkalmazásban</translation>
+<translation id="3983298990898629929">Állítsa be a Chromiumot alapértelmezett böngészőként, hogy egyetlen koppintással nyithassa meg a linkeket.</translation>
 <translation id="4005283307739974863">Megnyitja és futtatja a biztonsági ellenőrzést a Chromiumban.</translation>
 <translation id="4043291146360695975">A jelszavakat csak ezen az eszközön menti a rendszer a Jelszókezelőbe.</translation>
 <translation id="4046625794029820944">Elfelejtheti az URL-ek másolgatását. Állítsa be a Chromiumot alapértelmezettként az oldalak közvetlen betöltéséhez.</translation>
@@ -273,6 +277,7 @@ Megjegyzések:
 <translation id="6680609900732453726">Az eszközhitelesítéssel megőrizheti böngészése privát jellegét, amikor bezárja a Chromiumot.</translation>
 <translation id="6696512128741076907">Állítsa be a Chromiumot alapértelmezettként, hogy azonnal megnyithassa a más alkalmazásokból származó linkeket</translation>
 <translation id="6752854822223394465">A szervezete beállítja a Chromiumot…</translation>
+<translation id="6777348401413221846">Teljes képernyős videó arról, hogyan állítható be a Chromium alapértelmezettként: Nyissa meg a Chromium beállításait iOS rendszeren, koppintson az „Alapértelmezett böngésző” elemre, és válassza ki a Chromiumot.</translation>
 <translation id="6794054469102824109">Megnyitja a Chromium dinós játékát.</translation>
 <translation id="6820823224820483452">A Chromium nem tudta ellenőrizni az összes jelszót. Próbálkozzon újra holnap.</translation>
 <translation id="6830782797004194206">Gyorsabban bejelentkezhet a Chromium automatikus kitöltésével</translation>
@@ -302,6 +307,7 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028">Jelszavát elmenti a rendszer a fiókhoz (<ph name="EMAIL" />) kapcsolt Jelszókezelőbe.</translation>
 <translation id="7434848749522628428">Ez az azonosítókulcs a fiókjához (<ph name="USER_EMAIL" />) kapcsolt Jelszókezelőbe lesz mentve.</translation>
+<translation id="7453822113116681031">Tegye a Chromiumot alapértelmezett böngészővé, hogy egyetlen koppintással nyithassa meg a linkeket.</translation>
 <translation id="7504829997542308412">Nyissa meg a Chromiumot.</translation>
 <translation id="7531461704633548377">A Chromiumból</translation>
 <translation id="7554983317097061001">Chromium-tipp: Helyezze át a Chromiumot a Dockra</translation>
@@ -348,6 +354,8 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="865600487977764604">Gondoskodik a biztonságáról a Chromiumban, és használható a biztonság növelésére más Google-alkalmazásokban, amikor Ön be van jelentkezve.</translation>
 <translation id="8663480472502753423">Chromium böngészője legyen mindig naprakész</translation>
 <translation id="8685813584220679697">Jelentkezzen be erre a webhelyre és a Chromiumba.</translation>
+<translation id="8697693743327341604">Ha kiválaszt egy javaslatot, vagy ha figyelmen kívül hagyja azt, a Chromium igazodik hozzá, hogy a jövőben relevánsabb javaslatokat jeleníthessen meg Önnek.</translation>
+<translation id="869832267508702259">Állítsa be a Chromiumot alapértelmezettként, hogy hozzáférhessen a Gemini statisztikáihoz, bárhol is böngésszen</translation>
 <translation id="8698780336333802489">Importálás a Chromiumba</translation>
 <translation id="8730503818204408000">Megnyitja a Chromium beállításait a Chromium alapértelmezett böngészőként való beállításához.</translation>
 <translation id="8754966941001340678">A Chromium speciális védelmet javasol</translation>

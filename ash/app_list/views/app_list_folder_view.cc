@@ -44,6 +44,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/compositor.h"
+#include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animation_observer.h"
 #include "ui/compositor/layer_solid_color.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
@@ -662,6 +663,7 @@ AppListFolderView::AppListFolderView(AppListFolderController* folder_controller,
   // such changes.
   background_view_ = AddChildView(std::make_unique<views::View>());
   background_view_->SetPaintToLayer(ui::LAYER_TEXTURED);
+  background_view_->layer()->SetName("AppListFolderView:Background");
 
   if (chromeos::features::IsSystemBlurEnabled()) {
     background_view_->layer()->SetFillsBoundsOpaquely(false);
@@ -687,6 +689,8 @@ AppListFolderView::AppListFolderView(AppListFolderController* folder_controller,
 
   animating_background_ = AddChildView(std::make_unique<views::View>());
   animating_background_->SetPaintToLayer(ui::LAYER_SOLID_COLOR);
+  animating_background_->layer()->SetName(
+      "AppListFolderView:AnimatingBackground");
   if (chromeos::features::IsSystemBlurEnabled()) {
     animating_background_->layer()->SetBackgroundBlur(
         StyleUtil::kBackgroundBlurSigma);
@@ -698,14 +702,13 @@ AppListFolderView::AppListFolderView(AppListFolderController* folder_controller,
 
   contents_container_ = AddChildView(std::make_unique<views::View>());
   contents_container_->SetPaintToLayer(ui::LAYER_NOT_DRAWN);
+  contents_container_->layer()->SetName("AppListFolderView:ContentsContainer");
 
   CreateScrollableAppsGrid(tablet_mode);
 
   // Create a shadow under `background_view_`.
   shadow_ = SystemShadow::CreateShadowOnNinePatchLayer(
-      SystemShadow::Type::kElevation12,
-      base::BindRepeating(&AppListFolderView::OnShadowLayerRecreated,
-                          base::Unretained(this)));
+      SystemShadow::Type::kElevation12);
   background_view_->AddLayerToRegion(shadow_->GetLayer(),
                                      views::LayerRegion::kBelow);
 
@@ -1056,12 +1059,6 @@ void AppListFolderView::UpdatePreferredBounds() {
 
 void AppListFolderView::UpdateShadowBounds() {
   shadow_->SetContentBounds(background_view_->layer()->bounds());
-}
-
-void AppListFolderView::OnShadowLayerRecreated(ui::Layer* old_layer,
-                                               ui::Layer* new_layer) {
-  background_view_->RemoveLayerFromRegions(old_layer);
-  background_view_->AddLayerToRegion(new_layer, views::LayerRegion::kBelow);
 }
 
 int AppListFolderView::GetYOffsetForFolder() {

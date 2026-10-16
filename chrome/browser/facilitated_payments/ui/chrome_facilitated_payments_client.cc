@@ -54,7 +54,7 @@ ChromeFacilitatedPaymentsClient::ChromeFacilitatedPaymentsClient(
   pix_account_linking_manager_ =
       std::make_unique<payments::facilitated::PixAccountLinkingManager>(
           this, payments::facilitated::GetFacilitatedPaymentsApiClientCreator(
-                    web_contents->GetPrimaryMainFrame()->GetGlobalId()));
+                    web_contents->GetWeakPtr()));
   RegisterAllowlists();
 }
 
@@ -256,6 +256,12 @@ void ChromeFacilitatedPaymentsClient::RegisterAllowlists() {
             payments::facilitated::kEnableIframeForPix)) {
       optimization_guide_decider_->RegisterOptimizationTypes(
           {optimization_guide::proto::PIX_PSP_ALLOWLIST});
+    }
+    if (base::FeatureList::IsEnabled(
+            payments::facilitated::kEnableDesktopQrCodeDetection)) {
+      optimization_guide_decider_->RegisterOptimizationTypes(
+          {optimization_guide::proto::
+               PAYMENT_QR_CODE_MERCHANT_URL_REGEX_ALLOWLIST});
     }
     optimization_guide_decider_->RegisterOptimizationTypes(
         {optimization_guide::proto::A2A_MERCHANT_ALLOWLIST});

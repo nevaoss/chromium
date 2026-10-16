@@ -41,6 +41,8 @@
 //media/test/data/ac4-only-ajoc-frag.mp4
 //media/test/data/ac4-only-channel-based-coding-frag.mp4
 //media/test/data/ac4-only-ims-frag.mp4
+//media/test/data/agtm-metadata-cdsc-track.mp4
+//media/test/data/agtm-metadata-rndr-track.mp4
 //media/test/data/agtm-metadata-track-frag.m4s
 //media/test/data/agtm-metadata-track-frag.mp4
 //media/test/data/audio-start-time-only.webm
@@ -481,6 +483,7 @@
 //media/test/data/red-green.h264
 //media/test/data/red_green_gradient_lossy.webp
 //media/test/data/reference-frame-scaling-test.ivf
+//media/test/data/repro-minimal.mp3
 //media/test/data/sfx-flac.mp4
 //media/test/data/sfx-flac_frag.mp4
 //media/test/data/sfx-opus-441.webm
@@ -506,6 +509,7 @@
 //media/test/data/stereo_48000.wav
 //media/test/data/sync2-trimmed.mp4
 //media/test/data/sync2.ogv
+//media/test/data/synth-bad.mp3
 //media/test/data/ten_byte_file
 //media/test/data/test-25fps.av1.ivf
 //media/test/data/test-25fps.av1.ivf.json

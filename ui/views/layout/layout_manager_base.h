@@ -49,9 +49,9 @@ class VIEWS_EXPORT LayoutManagerBase : public LayoutManager,
   View* host_view() { return host_view_; }
   const View* host_view() const { return host_view_; }
 
-  // Fetches a proposed layout for a host view with size |host_size|. If the
-  // result had already been calculated, a cached value may be returned.
-  const ProposedLayout& GetProposedLayout(const gfx::Size& host_size) const;
+  // Fetches a proposed layout for a host view with |host_size|. If the result
+  // had already been calculated, a cached value may be used.
+  ProposedLayout GetProposedLayout(const gfx::Size& host_size) const;
 
   // Fetches a proposed layout for a host view with `size_bounds`. This function
   // does not require caching because it is generally used in combination with

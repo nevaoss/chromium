@@ -51,6 +51,7 @@ source_set("unit_tests") {
     "//base",
     "//chrome/browser/enterprise:impl",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//testing/gtest",
   ]
 
@@ -87,6 +88,7 @@ source_set("unit_tests") {
       "scoped_cf_prefs_observer_override.h",
     ]
     deps += [
+      "//chrome/test/base:testing_browser_process",
       "//components/enterprise/platform_auth:enterprise_platform_auth",
       "//third_party/ocmock",
     ]
@@ -115,7 +117,10 @@ if (!is_android) {
         "platform_auth_policy_observer_browsertest.cc",
         "platform_auth_provider_manager_browsertest.cc",
       ]
-      deps += [ ":test_utils" ]
+      deps += [
+        ":test_utils",
+        "//chrome/browser/ui:browser_tabstrip",
+      ]
     }
 
     if (is_mac) {
@@ -151,6 +156,7 @@ if (is_android) {
       "//chrome/android:chrome_jni_headers",
       "//chrome/browser/enterprise:impl",
       "//chrome/test:test_support",
+      "//chrome/test/base:chrome_test_utils",
       "//content/test:test_support",
       "//testing/gmock",
     ]

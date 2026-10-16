@@ -16,7 +16,9 @@
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
@@ -104,7 +106,7 @@ void PopulateAiModeButtonUiConfig(content::WebUIDataSource* source,
 bool OmniboxPopupUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
   return omnibox::IsAimPopupFeatureEnabled() ||
-         omnibox::IsWebUIOmniboxFullPopupEnabled() ||
+         omnibox::internal::IsWebUIOmniboxFullPopupEnabled() ||
          omnibox::IsWebUIOmniboxPopupEnabled() ||
          base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere) ||
          features::IsWebUILocationBarEnabled();
@@ -144,6 +146,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                         TemplateURLServiceFactory::GetForProfile(profile_)));
   source->AddBoolean("omniboxAimPopupEnabled",
                      omnibox::IsAimPopupFeatureEnabled());
+  source->AddBoolean("webuiOmniboxFullPopupEnabled",
+                     omnibox::internal::IsWebUIOmniboxFullPopupEnabled());
   // TODO(b/504670497): Replace this NTP-specific flag with a generic flag.
   // TODO(b/474406096): Replace this NTP-specific flag with a generic flag.
   source->AddBoolean("isFuseboxEnabled", false);
@@ -157,10 +161,13 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean("webuiOmniboxPopupSelectionControlEnabled",
                      base::FeatureList::IsEnabled(
                          omnibox::kWebUIOmniboxPopupSelectionControl));
-  source->AddBoolean(
-      "searchboxMultiline",
-      base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
-          omnibox::kWebUIOmniboxFullPopupMultiline.Get());
+  source->AddBoolean("omniboxAimWebUIShadowEnabled",
+                     omnibox::ShouldDrawAimShadowInWebUI());
+  source->AddBoolean("omniboxFullWebUIShadowEnabled",
+                     omnibox::ShouldDrawFullPopupShadowInWebUI());
+  source->AddBoolean("searchboxMultiline",
+                     omnibox::internal::IsWebUIOmniboxFullPopupEnabled() &&
+                         omnibox::kWebUIOmniboxFullPopupMultiline.Get());
 
   source->AddBoolean("reportMetrics", true);
   source->AddString("charTypedToPaintMetricName",
@@ -199,15 +206,18 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kShowContextMenuTabPreviews.Get());
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
-  // The popup chip UI entrypoint is enabled by the AskG experiment (kAskGShowChip).
+  source->AddBoolean("composeboxRichImageSuggestionsEnabled",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxRichImageSuggestionsOmnibox));
+  // The popup chip UI entrypoint is enabled by the AskG experiment
+  // (kAskGShowChip).
   source->AddBoolean(
       "composeboxShowChip",
-      omnibox::IsAimPopupEnabled(profile_) &&
-          omnibox::kAskGShowChip.Get());
+      omnibox::IsAimPopupEnabled(profile_) && omnibox::kAskGShowChip.Get());
   source->AddBoolean("composeboxShowCurrentTabChip",
-                     omnibox::kAskGCurrentTabChip.Get());
-  source->AddBoolean("composeboxShowLensIcon",
-                     omnibox::kAskGLensIcon.Get());
+                     omnibox::kAskGCurrentTabChip.Get() &&
+                         omnibox::AreContextualTasksEligible(profile_));
+  source->AddBoolean("composeboxShowLensIcon", omnibox::kAskGLensIcon.Get());
   source->AddBoolean("askGComposeboxLensChipEnabled",
                      omnibox::kAskGComposeboxLensChip.Get());
   source->AddBoolean("askGBlockAutoTabZeroStateSuggestions",
@@ -240,6 +250,12 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
           base::FeatureList::IsEnabled(omnibox::kTabFaviconChipsToCoins));
   source->AddBoolean("composeboxContextMenuTooltipsEnabled",
                      omnibox::IsContextMenuTooltipsInComposeboxEnabled());
+  source->AddBoolean("composeboxPersistentAimButton",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxPersistentAimButtonOmnibox));
+  source->AddBoolean("composeboxPersistentAimButtonWithX",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxPersistentAimButtonWithX));
   auto searchbox_layout_mode = AddContextButtonVariantToSearchboxLayoutMode(
       omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get());
   source->AddString("searchboxLayoutMode", searchbox_layout_mode);
@@ -264,7 +280,7 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kContextButtonShapeIsOblong.Get());
 
   int default_resource = IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_HTML;
-  if (omnibox::IsWebUIOmniboxFullPopupEnabled()) {
+  if (omnibox::internal::IsWebUIOmniboxFullPopupEnabled()) {
     default_resource = IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_FULL_HTML;
   }
   webui::SetupWebUIDataSource(source, kOmniboxPopupResources, default_resource);
@@ -351,6 +367,14 @@ void OmniboxPopupUI::CreatePageHandler(
       std::move(receiver), std::move(page), web_ui()->GetWebContents(),
       omnibox_controller);
   popup_handler_->set_embedder(embedder());
+  if (omnibox_controller->edit_model()) {
+    if (auto* popup_view = omnibox_controller->edit_model()->popup_view()) {
+      // Notify the popup view after `popup_handler_` is assigned so
+      // `GetPopupHandler()` is valid during synchronous `OnPopupHandlerReady()`
+      // callbacks.
+      popup_view->OnPopupHandlerReady();
+    }
+  }
 }
 
 void OmniboxPopupUI::BindInterface(

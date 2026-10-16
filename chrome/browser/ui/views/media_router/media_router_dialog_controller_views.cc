@@ -26,6 +26,7 @@
 #include "components/media_router/browser/presentation/start_presentation_context.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/views/bubble/bubble_anchor.h"
 
@@ -102,13 +103,23 @@ void MediaRouterDialogControllerViews::CreateMediaRouterDialog(
   if (!weak_this || !blocker) {
     return;
   }
+
+  CastDialogCoordinator::AfterShownCallback callback =
+      base::BindOnce(&MediaRouterDialogControllerViews::OnDialogCreated,
+                     weak_ptr_factory_.GetWeakPtr(), activation_location);
+
+  // Fail gracefully if dropping fullscreen closed the browser window.
+  BrowserWindowInterface* browser_after_drop =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(initiator());
+  if (browser && !browser_after_drop) {
+    std::move(callback).Run(ShowCastDialogStatus::kWindowClosed);
+    return;
+  }
+  browser = browser_after_drop;
   fullscreen_blocker_ = std::move(*blocker);
 
   BrowserView* browser_view =
       browser ? BrowserView::GetBrowserViewForBrowser(browser) : nullptr;
-  CastDialogCoordinator::AfterShownCallback callback =
-      base::BindOnce(&MediaRouterDialogControllerViews::OnDialogCreated,
-                     weak_ptr_factory_.GetWeakPtr(), activation_location);
   if (browser_view) {
     // Show the Cast dialog anchored to the Cast toolbar button.
     if (browser_view->toolbar_button_provider()

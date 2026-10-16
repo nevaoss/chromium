@@ -135,12 +135,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHThreeDotMenuBackButton,
     &kIPHTouchToSearchCalloutFeature,
     &kIPHTranslateMenuButtonFeature,
-    &kIPHVideoTutorialNTPChromeIntroFeature,
-    &kIPHVideoTutorialNTPDownloadFeature,
-    &kIPHVideoTutorialNTPSearchFeature,
-    &kIPHVideoTutorialNTPSummaryFeature,
-    &kIPHVideoTutorialNTPVoiceSearchFeature,
-    &kIPHVideoTutorialTryNowFeature,
     // keep-sorted end
 // ALL_FEATURES_ANDROID_END
 #else
@@ -210,7 +204,9 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHiOSPromoContextualDefaultBrowserGeminiFeature,
     &kIPHiOSPromoCredentialProviderExtensionFeature,
     &kIPHiOSPromoDefaultBrowserReminderFeature,
+    &kIPHiOSPromoEphemeralThemeFeature,
     &kIPHiOSPromoGenericDefaultBrowserFeature,
+    &kIPHiOSPromoLevelUpFeature,
     &kIPHiOSPromoMadeForIOSFeature,
     &kIPHiOSPromoNonModalAppSwitcherDefaultBrowserFeature,
     &kIPHiOSPromoNonModalShareDefaultBrowserFeature,

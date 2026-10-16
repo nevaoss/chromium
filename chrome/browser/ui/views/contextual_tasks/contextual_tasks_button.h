@@ -27,11 +27,14 @@ class LayerOwner;
 
 class ContextualTasksButton
     : public ToolbarButton,
+      public ui::SimpleMenuModel::Delegate,
       public contextual_tasks::ContextualTasksPanelController::Observer,
       public ImmersiveModeController::Observer {
   METADATA_HEADER(ContextualTasksButton, ToolbarButton)
 
  public:
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(
+      kContextualTasksEphemeralButtonRemoveForTaskMenuItem);
   enum class Shape {
     kCircle,
     kFlatEdgeLeft,
@@ -47,7 +50,11 @@ class ContextualTasksButton
   Shape GetShape() const;
   float GetCornerRadiusFor(ToolbarButton::Edge edge) const override;
   bool IsTrailing() const;
+  bool IsSidePanelRightAligned() const;
   ui::Layer* GetDropShadowLayerForTesting() const;
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override;
   // contextual_tasks::ContextualTasksPanelController::Observer:
   void OnSurfaceStateChanged(
       contextual_tasks::ContextualTasksPanelHost::SurfaceState state,
@@ -62,6 +69,9 @@ class ContextualTasksButton
 
   // views::ViewObserver:
   void OnViewLayerBoundsSet(views::View* observed_view) override;
+
+  // views::View:
+  void RemoveLayerFromRegions(ui::Layer* old_layer) override;
 
  protected:
   void UpdateColorsAndInsets() override;
@@ -78,7 +88,6 @@ class ContextualTasksButton
   void AnimateShow();
   void ClearDropShadow();
   ui::ImageModel GetButtonImage();
-  bool IsSidePanelRightAligned() const;
 
   base::CallbackListSubscription should_update_visibility_subscription_;
   base::CallbackListSubscription should_update_position_subscription_;

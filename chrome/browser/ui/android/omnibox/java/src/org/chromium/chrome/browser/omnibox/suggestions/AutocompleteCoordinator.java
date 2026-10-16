@@ -71,12 +71,18 @@ import java.util.function.Supplier;
 /** Coordinator that handles the interactions with the autocomplete system. */
 @NullMarked
 public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
-    @IntDef({NavigationTarget.CURRENT_TAB, NavigationTarget.NEW_TAB, NavigationTarget.NEW_WINDOW})
+    @IntDef({
+        NavigationTarget.CURRENT_TAB,
+        NavigationTarget.NEW_TAB,
+        NavigationTarget.NEW_BACKGROUND_TAB,
+        NavigationTarget.NEW_WINDOW
+    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface NavigationTarget {
         int CURRENT_TAB = 0;
         int NEW_TAB = 1;
-        int NEW_WINDOW = 2;
+        int NEW_BACKGROUND_TAB = 2;
+        int NEW_WINDOW = 3;
     }
 
     private final ViewGroup mParent;
@@ -202,7 +208,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
 
         mProfileSupplier = profileObservableSupplier;
         mProfileChangeCallback = this::setAutocompleteProfile;
-        mProfileSupplier.addSyncObserverAndPostIfNonNull(mProfileChangeCallback);
+        mProfileSupplier.addSyncObserverAndCallIfNonNull(mProfileChangeCallback);
 
         // When AsyncViewInflation is disabled, OmniboxSuggestionsDropdown cannot create the
         // recycled view pool b/c it causes issues with the timing of prewarming views. Creation of
@@ -233,7 +239,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
         mMediator = mediator;
         mProfileSupplier = profileObservableSupplier;
         mProfileChangeCallback = this::setAutocompleteProfile;
-        mProfileSupplier.addSyncObserverAndPostIfNonNull(mProfileChangeCallback);
+        mProfileSupplier.addSyncObserverAndCallIfNonNull(mProfileChangeCallback);
         mLocationBarEmbedder = locationBarEmbedder;
         mModalDialogManagerSupplier = modalDialogManagerSupplier;
         mViewProvider = new SuggestionListViewHolderProvider(new ModelList());

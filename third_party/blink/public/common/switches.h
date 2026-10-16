@@ -24,6 +24,7 @@ BLINK_COMMON_EXPORT extern const char kAllowPreCommitInput[];
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 BLINK_COMMON_EXPORT extern const char kAllowScriptsToCloseWindows[];
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+BLINK_COMMON_EXPORT extern const char kAsyncTouchMoveThrottleTimeMs[];
 BLINK_COMMON_EXPORT extern const char kBlinkSettings[];
 BLINK_COMMON_EXPORT extern const char kDarkModeSettings[];
 BLINK_COMMON_EXPORT extern const char kDataUrlInSvgUseEnabled[];

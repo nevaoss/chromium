@@ -137,6 +137,9 @@ public class BasicSuggestionProcessor extends BaseSuggestionViewProcessor {
             case SuggestTemplateInfo.IconType.BOLT_VALUE:
                 return R.drawable.bolt_24dp;
 
+            case SuggestTemplateInfo.IconType.IMAGE_CREATE_VALUE:
+                return R.drawable.image_create_24dp;
+
             default: // Icon type is specified, but not recognized
                 assert false : "Unrecognized IconType: " + iconType;
                 return 0;
@@ -260,7 +263,8 @@ public class BasicSuggestionProcessor extends BaseSuggestionViewProcessor {
         }
 
         model.set(SuggestionViewProperties.IS_SEARCH_SUGGESTION, isSearchSuggestion);
-        model.set(SuggestionViewProperties.ALLOW_WRAP_AROUND, isSearchSuggestion);
+        model.set(SuggestionViewProperties.TEXT_LINE_1_WRAP, isSearchSuggestion);
+        model.set(SuggestionViewProperties.TEXT_LINE_2_WRAP, suggestion.shouldWrapSecondaryText());
         model.set(SuggestionViewProperties.TEXT_LINE_1_TEXT, textLine1);
         model.set(SuggestionViewProperties.TEXT_LINE_2_TEXT, textLine2);
 

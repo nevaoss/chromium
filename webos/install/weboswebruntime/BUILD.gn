@@ -31,7 +31,7 @@ copy("weboswebruntime") {
   deps = [
     "//neva/app_runtime:app_runtime_resources", # for app_runtime_content.pak
     "//third_party/icu:icudata",                # for icudtl.dat
-    "//v8:v8",                                  # for snapshot_blob.bin
+    "//v8:v8_snapshot",                         # for snapshot_blob.bin
     "//webos:webos_resources",                  # for webos_content.pak
     ":gl",                                      # for libEGL.so and libGLESv2.so
     ":locales",

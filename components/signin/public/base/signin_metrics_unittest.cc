@@ -45,6 +45,7 @@ const AccessPoint kAccessPointsThatSupportUserAction[] = {
     AccessPoint::kProductSpecifications,
     AccessPoint::kAddressBubble,
     AccessPoint::kGlicLaunchButton,
+    AccessPoint::kHistoryPage,
     AccessPoint::kNonModalSigninPasswordPromo,
     AccessPoint::kNonModalSigninBookmarkPromo,
     AccessPoint::kUserManagerWithPrefilledEmail,
@@ -55,6 +56,7 @@ const AccessPoint kAccessPointsThatSupportUserAction[] = {
     AccessPoint::kSettingsAutofillAndPasswords,
     AccessPoint::kIndigo,
     AccessPoint::kSkills,
+    AccessPoint::kPasswordManagerCard,
 };
 
 const AccessPoint kAccessPointsThatSupportImpression[] = {
@@ -85,6 +87,7 @@ const AccessPoint kAccessPointsThatSupportImpression[] = {
     AccessPoint::kCredentialExchangeImport,
     AccessPoint::kIosGeminiButtonToolbar,
     AccessPoint::kSettingsAutofillAndPasswords,
+    AccessPoint::kPasswordManagerCard,
 };
 
 class SigninMetricsTest : public ::testing::Test {
@@ -269,6 +272,14 @@ class SigninMetricsTest : public ::testing::Test {
         return "ComposeboxDriveContextMenuOptionBubble";
       case AccessPoint::kSkills:
         return "Skills";
+      case AccessPoint::kAccountMenuSignedOutState:
+        return "AccountMenuSignedOutState";
+      case AccessPoint::kAppSwitcherAISummarization:
+        return "AppSwitcherAISummarization";
+      case AccessPoint::kGeminiExternalAppStoreEvent:
+        return "GeminiExternalAppStoreEvent";
+      case AccessPoint::kPasswordManagerCard:
+        return "PasswordManagerCard";
     }
   }
 };

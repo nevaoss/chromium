@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/check_op.h"
-#include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/notreached.h"
 #include "build/build_config.h"
@@ -23,6 +22,14 @@
 namespace signin {
 
 namespace {
+
+// Maximum primary account sync data score at or above which account switching
+// is never offered.
+constexpr int kSwitchingPrimaryScoreUpperLimit = 6;
+
+// Upper bound for the low primary account sync data score bracket (0 to 2),
+// where the secondary account score must exceed `primary_score`.
+constexpr int kSwitchingLowPrimaryScoreThreshold = 2;
 
 // Threshold values for quartile classification of sync data counts.
 struct SyncDataTypeThresholds {
@@ -47,31 +54,55 @@ struct SyncDataTypeThresholds {
   }
 };
 
+std::pair<syncer::DataType, SyncDataTypeThresholds> GetDataTypeThresholdEntry(
+    syncer::DataType type) {
+  switch (type) {
+    case syncer::PASSWORDS:
+      return {syncer::PASSWORDS,
+              {.q1 = switches::kPasswordsQ1Threshold.Get(),
+               .median = switches::kPasswordsMedianThreshold.Get(),
+               .q3 = switches::kPasswordsQ3Threshold.Get()}};
+    case syncer::BOOKMARKS:
+      return {syncer::BOOKMARKS,
+              {.q1 = switches::kBookmarksQ1Threshold.Get(),
+               .median = switches::kBookmarksMedianThreshold.Get(),
+               .q3 = switches::kBookmarksQ3Threshold.Get()}};
+    case syncer::AUTOFILL:
+      return {syncer::AUTOFILL,
+              {.q1 = switches::kAutofillQ1Threshold.Get(),
+               .median = switches::kAutofillMedianThreshold.Get(),
+               .q3 = switches::kAutofillQ3Threshold.Get()}};
+    case syncer::AUTOFILL_WALLET_METADATA:
+      return {syncer::AUTOFILL_WALLET_METADATA,
+              {.q1 = switches::kAutofillWalletMetadataQ1Threshold.Get(),
+               .median = switches::kAutofillWalletMetadataMedianThreshold.Get(),
+               .q3 = switches::kAutofillWalletMetadataQ3Threshold.Get()}};
+    case syncer::READING_LIST:
+      return {syncer::READING_LIST,
+              {.q1 = switches::kReadingListQ1Threshold.Get(),
+               .median = switches::kReadingListMedianThreshold.Get(),
+               .q3 = switches::kReadingListQ3Threshold.Get()}};
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+    case syncer::EXTENSIONS:
+      return {syncer::EXTENSIONS,
+              {.q1 = switches::kExtensionsQ1Threshold.Get(),
+               .median = switches::kExtensionsMedianThreshold.Get(),
+               .q3 = switches::kExtensionsQ3Threshold.Get()}};
+#endif
+    default:
+      NOTREACHED();
+  }
+}
+
 // Returns the list of sync data types and their respective thresholds used for
 // quartile classification when computing sync data score.
 const auto& GetScoreDataTypeThresholds() {
   static const auto kScoreDataTypeThresholds =
       std::to_array<std::pair<syncer::DataType, SyncDataTypeThresholds>>({
-          {syncer::PASSWORDS,
-           SyncDataTypeThresholds{
-               .q1 = switches::kPasswordsQ1Threshold.Get(),
-               .median = switches::kPasswordsMedianThreshold.Get(),
-               .q3 = switches::kPasswordsQ3Threshold.Get()}},
-          {syncer::BOOKMARKS,
-           SyncDataTypeThresholds{
-               .q1 = switches::kBookmarksQ1Threshold.Get(),
-               .median = switches::kBookmarksMedianThreshold.Get(),
-               .q3 = switches::kBookmarksQ3Threshold.Get()}},
-          {syncer::AUTOFILL,
-           SyncDataTypeThresholds{
-               .q1 = switches::kAutofillQ1Threshold.Get(),
-               .median = switches::kAutofillMedianThreshold.Get(),
-               .q3 = switches::kAutofillQ3Threshold.Get()}},
-          {syncer::AUTOFILL_WALLET_METADATA,
-           SyncDataTypeThresholds{
-               .q1 = switches::kAutofillWalletMetadataQ1Threshold.Get(),
-               .median = switches::kAutofillWalletMetadataMedianThreshold.Get(),
-               .q3 = switches::kAutofillWalletMetadataQ3Threshold.Get()}},
+          GetDataTypeThresholdEntry(syncer::PASSWORDS),
+          GetDataTypeThresholdEntry(syncer::BOOKMARKS),
+          GetDataTypeThresholdEntry(syncer::AUTOFILL),
+          GetDataTypeThresholdEntry(syncer::AUTOFILL_WALLET_METADATA),
       });
   return kScoreDataTypeThresholds;
 }
@@ -79,27 +110,19 @@ const auto& GetScoreDataTypeThresholds() {
 // Returns the list of all relevant sync data types and their respective
 // thresholds for quartile classification when determining preferred data
 // types for string personalization.
-std::vector<std::pair<syncer::DataType, SyncDataTypeThresholds>>
-GetPreferredDataTypeThresholds() {
-  auto thresholds = base::ToVector(GetScoreDataTypeThresholds());
-  if (base::FeatureList::IsEnabled(
-          switches::kEnableAccountPreviewPreferredAccountFollowup)) {
-    thresholds.emplace_back(
-        syncer::READING_LIST,
-        SyncDataTypeThresholds{
-            .q1 = switches::kReadingListQ1Threshold.Get(),
-            .median = switches::kReadingListMedianThreshold.Get(),
-            .q3 = switches::kReadingListQ3Threshold.Get()});
+const auto& GetPreferredDataTypeThresholds() {
+  static const auto kPreferredDataTypeThresholds =
+      std::to_array<std::pair<syncer::DataType, SyncDataTypeThresholds>>({
+          GetDataTypeThresholdEntry(syncer::PASSWORDS),
+          GetDataTypeThresholdEntry(syncer::BOOKMARKS),
+          GetDataTypeThresholdEntry(syncer::AUTOFILL),
+          GetDataTypeThresholdEntry(syncer::AUTOFILL_WALLET_METADATA),
+          GetDataTypeThresholdEntry(syncer::READING_LIST),
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
-    thresholds.emplace_back(
-        syncer::EXTENSIONS,
-        SyncDataTypeThresholds{
-            .q1 = switches::kExtensionsQ1Threshold.Get(),
-            .median = switches::kExtensionsMedianThreshold.Get(),
-            .q3 = switches::kExtensionsQ3Threshold.Get()});
+          GetDataTypeThresholdEntry(syncer::EXTENSIONS),
 #endif
-  }
-  return thresholds;
+      });
+  return kPreferredDataTypeThresholds;
 }
 
 std::vector<PreferredDataTypeInfo> ExtractPreferredDataTypes(
@@ -276,11 +299,6 @@ bool IsCandidatePreferredOverCurrentBest(
 std::optional<AccountPreviewDataService::AccountPreviewPreference>
 ComputeAccountPreviewPreference(const GaiaId& gaia_id,
                                 const AccountPreviewData& data) {
-  if (!base::FeatureList::IsEnabled(
-          switches::kEnableAccountPreviewPreferredAccount)) {
-    return std::nullopt;
-  }
-
   AccountPreviewDataService::AccountPreviewPreference preference;
   preference.gaia_id = gaia_id;
   preference.preferred_data_types = ExtractPreferredDataTypes(data);
@@ -290,12 +308,8 @@ ComputeAccountPreviewPreference(const GaiaId& gaia_id,
 
 AccountPreviewSelectionResult ComputePreferredAccountForPromo(
     base::span<const AccountPreviewHeuristicContext> accounts) {
-  if (!base::FeatureList::IsEnabled(
-          switches::kEnableAccountPreviewPreferredAccount)) {
-    return {};
-  }
 
-  if (accounts.empty()) {
+  if (accounts.empty() || !accounts[0].preview_data) {
     return {};
   }
 
@@ -315,7 +329,8 @@ AccountPreviewSelectionResult ComputePreferredAccountForPromo(
 
   // Priority 2: If an AGA (external app primary) account exists, select it.
   for (const auto& account : accounts) {
-    if (account.is_external_app_primary && account.is_regular_account()) {
+    if (account.preview_data && account.is_external_app_primary &&
+        account.is_regular_account()) {
       result.selected_account = account.gaia_id;
       result.selection_reason =
           AccountPreviewSelectionReason::kExternalAppPrimary;
@@ -328,7 +343,7 @@ AccountPreviewSelectionResult ComputePreferredAccountForPromo(
   // Priority 3: Compare sync data between all regular accounts.
   const AccountPreviewHeuristicContext* best_candidate = nullptr;
   for (const auto& account : accounts) {
-    if (!account.is_regular_account()) {
+    if (!account.preview_data || !account.is_regular_account()) {
       continue;
     }
     result.account_scores[account.gaia_id] =
@@ -347,6 +362,120 @@ AccountPreviewSelectionResult ComputePreferredAccountForPromo(
   result.selection_reason = AccountPreviewSelectionReason::kSyncDataScore;
   result.preference = ComputeAccountPreviewPreference(
       best_candidate->gaia_id, *best_candidate->preview_data);
+  return result;
+}
+
+AccountSwitchingSelectionResult ComputeAccountSwitchingSelection(
+    base::span<const AccountPreviewHeuristicContext> accounts) {
+  AccountSwitchingSelectionResult result;
+  if (accounts.empty() || !accounts[0].is_primary) {
+    result.outcome =
+        AccountSwitchingSelectionOutcome::kWouldNotShowNoPrimaryAccount;
+    return result;
+  }
+
+  if (accounts.size() < 2) {
+    result.outcome =
+        AccountSwitchingSelectionOutcome::kWouldNotShowNotEnoughAccounts;
+    return result;
+  }
+
+  // The first account in the list (`accounts[0]`) is the primary account.
+  const AccountPreviewHeuristicContext& primary_account = accounts[0];
+  if (!primary_account.is_regular_account()) {
+    result.outcome =
+        AccountSwitchingSelectionOutcome::kWouldNotShowNonRegularPrimaryAccount;
+    return result;
+  }
+
+  if (primary_account.is_external_app_primary) {
+    result.outcome = AccountSwitchingSelectionOutcome::
+        kWouldNotShowExternalAppPrimaryAccount;
+    return result;
+  }
+
+  if (!primary_account.preview_data) {
+    result.outcome = AccountSwitchingSelectionOutcome::
+        kWouldNotShowPrimaryMissingPreviewData;
+    return result;
+  }
+
+  bool has_regular_secondary = false;
+  bool has_regular_secondary_with_preview_data = false;
+  const AccountPreviewHeuristicContext* best_secondary = nullptr;
+  SyncDataScore best_secondary_score;
+  for (const auto& account : accounts.subspan(1u)) {
+    if (!account.is_regular_account()) {
+      continue;
+    }
+    has_regular_secondary = true;
+    if (!account.preview_data) {
+      continue;
+    }
+    has_regular_secondary_with_preview_data = true;
+    if (!account.has_other_devices()) {
+      continue;
+    }
+    SyncDataScore score = CalculateSyncDataScore(*account.preview_data);
+    if (!best_secondary || score > best_secondary_score) {
+      best_secondary = &account;
+      best_secondary_score = score;
+    }
+  }
+
+  if (!has_regular_secondary) {
+    result.outcome = AccountSwitchingSelectionOutcome::
+        kWouldNotShowNoRegularSecondaryAccount;
+    return result;
+  }
+
+  if (!has_regular_secondary_with_preview_data) {
+    result.outcome = AccountSwitchingSelectionOutcome::
+        kWouldNotShowSecondaryMissingPreviewData;
+    return result;
+  }
+
+  if (!best_secondary) {
+    result.outcome = AccountSwitchingSelectionOutcome::
+        kWouldNotShowNoSecondaryWithOtherDevices;
+    return result;
+  }
+
+  const int primary_score =
+      CalculateSyncDataScore(*primary_account.preview_data).total_score;
+  const int secondary_score = best_secondary_score.total_score;
+
+  if (primary_score >= kSwitchingPrimaryScoreUpperLimit) {
+    result.outcome =
+        AccountSwitchingSelectionOutcome::kWouldNotShowPrimaryExceedsUpperLimit;
+    return result;
+  }
+
+  // For primary score Y in {0, 2}, secondary score X must satisfy X > Y.
+  // For primary score Y in {3, 5}, secondary score X must satisfy X > 2 * Y.
+  if (primary_score <= kSwitchingLowPrimaryScoreThreshold) {
+    if (secondary_score > primary_score) {
+      result.outcome =
+          AccountSwitchingSelectionOutcome::kWouldShowLowPrimaryScore;
+      result.selected_account = best_secondary->gaia_id;
+      result.preference = ComputeAccountPreviewPreference(
+          best_secondary->gaia_id, *best_secondary->preview_data);
+      return result;
+    }
+  } else {
+    CHECK_LT(primary_score, kSwitchingPrimaryScoreUpperLimit);
+    if (secondary_score > 2 * primary_score) {
+      result.outcome =
+          AccountSwitchingSelectionOutcome::kWouldShowDoubledPrimaryScore;
+      result.selected_account = best_secondary->gaia_id;
+      result.preference = ComputeAccountPreviewPreference(
+          best_secondary->gaia_id, *best_secondary->preview_data);
+      return result;
+    }
+  }
+
+  result.outcome = AccountSwitchingSelectionOutcome::
+      kWouldNotShowSecondaryDoesNotMeetThreshold;
   return result;
 }
 

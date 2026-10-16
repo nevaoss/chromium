@@ -23,7 +23,6 @@
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_prefs.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/tribool.h"
 #include "google_apis/gaia/core_account_id.h"
@@ -176,6 +175,7 @@ void MaybeRecordWebSigninToChromeSigninTimes(
     case signin_metrics::AccessPoint::kGlicLaunchButton:
     case signin_metrics::AccessPoint::kIndigo:
     case signin_metrics::AccessPoint::kSkills:
+    case signin_metrics::AccessPoint::kAccountMenuSignedOutState:
     case signin_metrics::AccessPoint::kHistoryPage:
     case signin_metrics::AccessPoint::kCollaborationJoinTabGroup:
     case signin_metrics::AccessPoint::kHistorySyncOptinExpansionPillOnStartup:
@@ -209,6 +209,9 @@ void MaybeRecordWebSigninToChromeSigninTimes(
     case signin_metrics::AccessPoint::kLevelUp:
     case signin_metrics::AccessPoint::kSignoutUndoSnackbar:
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
+    case signin_metrics::AccessPoint::kAppSwitcherAISummarization:
+    case signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent:
+    case signin_metrics::AccessPoint::kPasswordManagerCard:
       return;
   }
 
@@ -324,27 +327,8 @@ void SigninMetricsService::OnPrimaryAccountChanged(
 
   switch (event_details.GetEventTypeFor(signin::ConsentLevel::kSync)) {
     case signin::PrimaryAccountChangeEvent::Type::kNone:
+    case signin::PrimaryAccountChangeEvent::Type::kSet:
       break;
-    case signin::PrimaryAccountChangeEvent::Type::kSet: {
-      std::optional<signin_metrics::AccessPoint> access_point =
-          event_details.GetSetPrimaryAccountAccessPoint();
-      CHECK(access_point.has_value());
-      if (access_point == signin_metrics::AccessPoint::
-                              kHistorySyncOptinExpansionPillOnStartup) {
-        CHECK(switches::IsAvatarSyncPromoFeatureEnabled());
-        SigninPrefs signin_prefs(pref_service_.get());
-        const CoreAccountInfo& account =
-            event_details.GetCurrentState().primary_account;
-        base::UmaHistogramExactLinear(
-            "Signin.SyncOptIn.IdentityPill.SyncAtShowCount",
-            signin_prefs.GetSyncPromoIdentityPillShownCount(account.gaia),
-            // Arbitrary number that is higher than the possible show count that
-            // the promo can reach
-            // (`user_education::features::GetNewBadgeShowCount()`: 10).
-            /*exclusive_max=*/30);
-      }
-      break;
-    }
     case signin::PrimaryAccountChangeEvent::Type::kCleared:
       if (pref_service_->HasPrefPath(kSyncPausedStartTimePref)) {
         RecordPendingResolutionTime(

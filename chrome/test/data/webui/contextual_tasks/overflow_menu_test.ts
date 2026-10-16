@@ -5,6 +5,7 @@
 import 'chrome://contextual-tasks/overflow_menu.js';
 
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import {ToolbarBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_toolbar_browser_proxy.js';
 import type {OverflowMenuElement} from 'chrome://contextual-tasks/overflow_menu.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -12,11 +13,12 @@ import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
 import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
-import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
+import {TestContextualTasksBrowserProxy, TestToolbarBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
 
 suite('OverflowMenuTest', () => {
   let overflowMenu: OverflowMenuElement;
   let proxy: TestContextualTasksBrowserProxy;
+  let toolbarProxy: TestToolbarBrowserProxy;
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -24,6 +26,8 @@ suite('OverflowMenuTest', () => {
     proxy = new TestContextualTasksBrowserProxy(
         'chrome://webui-test/contextual_tasks/test.html');
     BrowserProxyImpl.setInstance(proxy);
+    toolbarProxy = new TestToolbarBrowserProxy();
+    ToolbarBrowserProxyImpl.setInstance(toolbarProxy);
 
     loadTimeData.resetForTesting({
       isSmallDeviceFormFactor: false,
@@ -64,7 +68,7 @@ suite('OverflowMenuTest', () => {
     assertTrue(!!myActivityButton);
 
     myActivityButton.click();
-    await proxy.handler.whenCalled('openMyActivityUi');
+    await toolbarProxy.handler.whenCalled('openMyActivityUi');
   });
 
   test('handles feedback click', async () => {
@@ -73,7 +77,7 @@ suite('OverflowMenuTest', () => {
     assertTrue(!!feedbackButton);
 
     feedbackButton.click();
-    await proxy.handler.whenCalled('openFeedbackUi');
+    await toolbarProxy.handler.whenCalled('openFeedbackUi');
   });
 
   suite('SmallFormFactor', () => {
@@ -102,7 +106,7 @@ suite('OverflowMenuTest', () => {
       assertTrue(!!myActivityButton);
 
       myActivityButton.click();
-      await proxy.handler.whenCalled('openMyActivityUi');
+      await toolbarProxy.handler.whenCalled('openMyActivityUi');
     });
 
     test('handles feedback click', async () => {
@@ -111,7 +115,7 @@ suite('OverflowMenuTest', () => {
       assertTrue(!!feedbackButton);
 
       feedbackButton.click();
-      await proxy.handler.whenCalled('openFeedbackUi');
+      await toolbarProxy.handler.whenCalled('openFeedbackUi');
     });
   });
 
@@ -229,7 +233,7 @@ suite('OverflowMenuTest', () => {
       await microtasksFinished();
 
       pinButton.click();
-      await proxy.handler.whenCalled('pinSidePanel');
+      await toolbarProxy.handler.whenCalled('pinSidePanel');
 
       // Both recordUserAction and recordBoolean map to the same metric name in
       // the fake metrics tracker, resulting in a count of 2.
@@ -251,7 +255,7 @@ suite('OverflowMenuTest', () => {
       await microtasksFinished();
 
       pinButton.click();
-      await proxy.handler.whenCalled('unpinSidePanel');
+      await toolbarProxy.handler.whenCalled('unpinSidePanel');
 
       // Both recordUserAction and recordBoolean map to the same metric name in
       // the fake metrics tracker, resulting in a count of 2.
@@ -263,6 +267,31 @@ suite('OverflowMenuTest', () => {
               'ContextualTasks.WebUI.UserAction.UnpinSidePanel', true));
       assertEquals(
           0, metrics.count('ContextualTasks.WebUI.UserAction.PinSidePanel'));
+    });
+
+    test('updates pin state via Mojo', async () => {
+      assertFalse(overflowMenu.isPinned);
+
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(true);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
+      await overflowMenu.updateComplete;
+
+      assertTrue(overflowMenu.isPinned);
+
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(false);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
+      await overflowMenu.updateComplete;
+
+      assertFalse(overflowMenu.isPinned);
+    });
+
+    test('pin state listener is removed on disconnect', async () => {
+      overflowMenu.remove();
+
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(true);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
+
+      assertFalse(overflowMenu.isPinned);
     });
   });
 
@@ -321,7 +350,7 @@ suite('OverflowMenuTest', () => {
       assertTrue(!!helpButton);
 
       helpButton.click();
-      await proxy.handler.whenCalled('openOverflowMenuHelpUi');
+      await toolbarProxy.handler.whenCalled('openOverflowMenuHelpUi');
     });
 
     test('handles feedback click', async () => {
@@ -330,7 +359,7 @@ suite('OverflowMenuTest', () => {
       assertTrue(!!feedbackButton);
 
       feedbackButton.click();
-      await proxy.handler.whenCalled('openFeedbackUi');
+      await toolbarProxy.handler.whenCalled('openFeedbackUi');
     });
 
     suite('WithNewThreadInOverflow', () => {

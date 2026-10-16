@@ -190,10 +190,13 @@ BASE_FEATURE(kThrottleMainFrameTo60HzWebView,
 
 BASE_FEATURE(kThrottleMainFrameTo60HzDesktopAndroid,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kDesktopAndroidUnifiedCompositorLimits,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kHighFramerateRequestFromClient,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 void SetIsEligibleForThrottleMainFrameTo60Hz(bool is_eligible) {
   s_is_eligible_for_throttle_main_frame_to_60hz.store(
@@ -304,7 +307,12 @@ BASE_FEATURE(kBrowserControlsHeightChangeCancelAnimations,
 BASE_FEATURE(kWebviewSchedulerStateMachine, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kBrowserControlsScrollSnapAnimation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 
 BASE_FEATURE(kSelectionEdgeVisibilityUsesFullEdge,
              base::FEATURE_ENABLED_BY_DEFAULT);

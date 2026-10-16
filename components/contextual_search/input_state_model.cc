@@ -358,6 +358,23 @@ void InputStateModel::PopulateConfig(const SearchboxConfig& config) {
   }
 }
 
+void InputStateModel::SetIdentityState(
+    bool is_signed_in,
+    bool browser_identity_matches_aim_identity) {
+  if (is_signed_in_ == is_signed_in &&
+      browser_identity_matches_aim_identity_ ==
+          browser_identity_matches_aim_identity) {
+    return;
+  }
+  is_signed_in_ = is_signed_in;
+  browser_identity_matches_aim_identity_ =
+      browser_identity_matches_aim_identity;
+
+  RebuildAllowedInputTypes();
+  updateDisabledState();
+  notifySubscribers();
+}
+
 bool InputStateModel::UpdateConfig(const SearchboxConfig& config) {
   if (!IsConfigPopulated(&config)) {
     return false;
@@ -409,6 +426,7 @@ InputStateModel::InputStateModel(
   }
   user_modified_tool_in_thread_ =
       new_input_state_model.user_modified_tool_in_thread_;
+  lens_crop_ = new_input_state_model.lens_crop_;
 }
 
 InputStateModel::~InputStateModel() = default;
@@ -621,15 +639,19 @@ void InputStateModel::SetPermanentlyDisabledInputTypes(
 
 void InputStateModel::TogglePermanentlyDisabledInputType(InputType input_type,
                                                          bool disabled) {
+  bool changed = false;
   if (disabled) {
     if (!std::ranges::contains(permanently_disabled_input_types_, input_type)) {
       permanently_disabled_input_types_.push_back(input_type);
+      changed = true;
     }
   } else {
-    std::erase(permanently_disabled_input_types_, input_type);
+    changed = std::erase(permanently_disabled_input_types_, input_type) > 0;
   }
-  updateDisabledState();
-  notifySubscribers();
+  if (changed) {
+    updateDisabledState();
+    notifySubscribers();
+  }
 }
 
 void InputStateModel::updateSelectedState(ToolMode tool, ModelMode model) {
@@ -896,10 +918,10 @@ void InputStateModel::RebuildAllowedInputTypes() {
   }
 
   // Fallback for drive if not already present in SearchboxConfig and drive is
-  // supported. This option is available even on signout when the signin promo
+  // supported. This option is available on signout when the signin promo
   // feature flag is enabled, which will prompt the signin promo when clicked.
-  if (!contains(omnibox::INPUT_TYPE_DRIVE) && IsDriveSupported() &&
-      sharing_enabled) {
+  if (!contains(omnibox::INPUT_TYPE_DRIVE) && !is_signed_in_ &&
+      IsDriveSupported() && sharing_enabled) {
     state_.allowed_input_types.push_back(omnibox::INPUT_TYPE_DRIVE);
   }
 }
@@ -939,6 +961,27 @@ std::map<std::string, std::string> InputStateModel::GetAdditionalQueryParams() {
 
 const InputState& InputStateModel::GetInputState() const {
   return state_;
+}
+
+void InputStateModel::SetLensCrop(const std::string& data_uri) {
+  // There is only ever one region crop; setting a crop replaces any existing
+  // crop.
+  lens_crop_ = LensCrop{data_uri};
+  notifySubscribers();
+}
+
+std::optional<std::string> InputStateModel::GetLensCrop() const {
+  if (lens_crop_.has_value()) {
+    return lens_crop_->data_uri;
+  }
+  return std::nullopt;
+}
+
+void InputStateModel::RemoveLensCrop() {
+  if (lens_crop_.has_value()) {
+    lens_crop_.reset();
+    notifySubscribers();
+  }
 }
 
 }  // namespace contextual_search

@@ -63,6 +63,10 @@ BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
 BASE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables a context menu on the ephemeral contextual tasks toolbar button to
+// remove it from the toolbar.
+BASE_FEATURE(kContextualTasksEphemeralButtonContextMenu,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -125,7 +129,6 @@ BASE_FEATURE(kContextualTasksSendContextualInputUploadType,
 BASE_FEATURE(kContextualTasksUrlRedirectToAimUrl,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-
 // If enabled, animates the caret.
 BASE_FEATURE(kContextualTasksAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -136,8 +139,6 @@ BASE_FEATURE(kContextualTasksEnableFileHint, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksComposeboxJumpFix,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kContextualTasksComposeboxFork, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the use of a rounded clip-path for the composebox.
 BASE_FEATURE(kContextualTasksRoundedClipPath, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -189,6 +190,9 @@ BASE_FEATURE(kContextualTasksWindowTracking, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksUploadChunking, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksWebUiVoiceSearchDesktopAndroid,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -208,6 +212,20 @@ BASE_FEATURE(kContextualTasksNonBlockingUrlNavigation,
 
 bool GetIsContextualTasksNonBlockingUrlNavigationEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksNonBlockingUrlNavigation);
+}
+
+BASE_FEATURE(kAllowSignedOutUserInDesktopAndroid,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool IsAllowSignedOutUserInDesktopAndroidEnabled() {
+#if BUILDFLAG(IS_ANDROID)
+  return base::FeatureList::IsEnabled(kAllowSignedOutUserInDesktopAndroid) &&
+         ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_DESKTOP;
+#else
+  // Desktop platforms admit signed-out users through Lens side panel
+  // unification instead; this feature must not widen that behaviour.
+  return false;
+#endif
 }
 
 bool GetIsContextualTasksPdfCitationsEnabled() {
@@ -232,6 +250,11 @@ bool GetIsContextualTasksWindowTrackingEnabled() {
 
 bool GetIsContextualTasksUploadChunkingEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksUploadChunking);
+}
+
+bool GetIsContextualTasksWebUiVoiceSearchDesktopAndroidEnabled() {
+  return base::FeatureList::IsEnabled(
+      kContextualTasksWebUiVoiceSearchDesktopAndroid);
 }
 
 bool GetContextualTasksSpatialModelToolbarLayoutEnabled() {
@@ -317,8 +340,8 @@ const base::FeatureParam<double> kContentVisibilityThreshold{
 
 const base::FeatureParam<int> kMaxConversationTurns{
     &kContextualTasksContext, "max_conversation_turns", 5};
-const base::FeatureParam<int> kMaxTitlesPerThread{
-    &kContextualTasksContext, "max_titles_per_thread", 25};
+const base::FeatureParam<int> kMaxTitlesPerThread{&kContextualTasksContext,
+                                                  "max_titles_per_thread", 25};
 
 const base::FeatureParam<bool> kEnablePreviousTabFallback(
     &kContextualTasksContext,
@@ -347,7 +370,6 @@ const base::FeatureParam<base::TimeDelta> kSmartTabSharingTabSelectionTimeout(
     &kContextualTasksContext,
     "ContextualTasksContextSmartTabSharingTabSelectionTimeout",
     base::Milliseconds(300));
-
 
 const base::FeatureParam<SmartTabSharingIphFirstTimePromptOption>::Option
     kSmartTabSharingIphFirstTimePromptOptions[] = {
@@ -455,6 +477,11 @@ const base::FeatureParam<bool> kEnableRightHandContextualTasksEphemeralButton{
     &kContextualTasksEphemeralBrandedEntryPoint,
     "enable-right-hand-contextual-tasks-ephemeral-button", false};
 
+BASE_FEATURE_PARAM(bool,
+                   kEnableCircularEphemeralButtonNextToBatterySaver,
+                   &kContextualTasksEphemeralBrandedEntryPoint,
+                   false);
+
 constexpr base::FeatureParam<ExpandButtonOption>::Option kExpandButtonOption[] =
     {{ExpandButtonOption::kSidePanelExpandButton, "side-panel-expand-button"},
      {ExpandButtonOption::kToolbarCloseButton, "toolbar-close-button"}};
@@ -543,13 +570,13 @@ const base::FeatureParam<int> kContextualTasksOnboardingTooltipDismissedCap(
 
 const base::FeatureParam<int> kContextualTasksAskGTooltipDismissedCap(
     &kContextualTasksShowOnboardingTooltip,
-    "ContextualTasksAskGTooltipDismissedCap", 1);
+    "ContextualTasksAskGTooltipDismissedCap",
+    1);
 
-const base::FeatureParam<int>
-    kContextualTasksAskGTooltipSessionImpressionCap(
-        &kContextualTasksShowOnboardingTooltip,
-        "ContextualTasksAskGTooltipSessionImpressionCap",
-        10);
+const base::FeatureParam<int> kContextualTasksAskGTooltipSessionImpressionCap(
+    &kContextualTasksShowOnboardingTooltip,
+    "ContextualTasksAskGTooltipSessionImpressionCap",
+    10);
 
 const base::FeatureParam<int> kContextualTasksOnboardingTooltipImpressionDelay(
     &kContextualTasksShowOnboardingTooltip,
@@ -755,7 +782,6 @@ bool GetIsContextualTasksSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSuggestionsEnabled);
 }
 
-
 base::TimeDelta GetSmartTabSharingTabSelectionTimeout() {
   if (kSmartTabSharingTabSelectionTimeout.Get().is_positive()) {
     return kSmartTabSharingTabSelectionTimeout.Get();
@@ -819,7 +845,6 @@ bool IsCustomNlmUiEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksCustomNlmUi);
 }
 
-
 bool GetIsBasicModeEnabled() {
   return kContextualTasksEnableBasicMode.Get();
 }
@@ -840,7 +865,6 @@ bool ShouldEnableLockAndUnlockInputCapability() {
   return base::FeatureList::IsEnabled(kContextualTasks) &&
          kContextualTasksLockAndUnlockInputCapability.Get();
 }
-
 
 bool GetEnableFileHint() {
   return base::FeatureList::IsEnabled(kContextualTasksEnableFileHint);
@@ -1003,6 +1027,12 @@ const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[] =
 const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[] =
     "Keeps the ephemeral contextual tasks button visible even when the "
     "permanent button is pinned in the toolbar.";
+
+const char kContextualTasksEphemeralButtonContextMenuName[] =
+    "Contextual Tasks Ephemeral Button Context Menu";
+const char kContextualTasksEphemeralButtonContextMenuDescription[] =
+    "Enables a context menu on the ephemeral contextual tasks toolbar button "
+    "to remove it from the toolbar.";
 
 }  // namespace flag_descriptions
 

@@ -660,10 +660,10 @@ class CONTENT_EXPORT WebContentsImpl
       uint32_t max_bitmap_size,
       bool bypass_cache,
       WebContents::ImageDownloadCallback callback) override;
-  void Find(int request_id,
-            const std::u16string& search_text,
+  void Find(const std::u16string& search_text,
             blink::mojom::FindOptionsPtr options,
-            bool skip_delay) override;
+            bool skip_delay,
+            base::FunctionRef<void(int request_id)> on_request_id) override;
   void StopFinding(StopFindAction action) override;
   bool WasEverAudible() override;
   bool IsFullscreen() override;
@@ -751,6 +751,7 @@ class CONTENT_EXPORT WebContentsImpl
       const GURL& blocked_url,
       const GURL& initiator_url,
       const url::Origin& initiator_origin,
+      scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       blink::mojom::NavigationBlockedReason reason) override;
   void OnDidFinishLoad(RenderFrameHostImpl* render_frame_host,
                        const GURL& url) override;
@@ -963,7 +964,9 @@ class CONTENT_EXPORT WebContentsImpl
       RenderFrameHost* rfh,
       mojo::PendingAssociatedReceiver<device::mojom::ScreenOrientation>
           receiver) override;
-  bool IsTransientActivationRequiredForHtmlFullscreen() override;
+  bool IsTransientActivationRequiredForHtmlFullscreen(
+      RenderFrameHostImpl* requesting_frame,
+      bool is_xr_overlay) override;
   bool IsBackForwardCacheSupported() override;
   RenderWidgetHostImpl* CreateNewPopupWidget(
       base::SafeRef<SiteInstanceGroup> site_instance_group,
@@ -1083,7 +1086,8 @@ class CONTENT_EXPORT WebContentsImpl
       base::WeakPtr<PreloadingAttempt> attempt,
       PreloadingHoldbackStatus holdback_status_override,
       std::optional<base::TimeDelta> ttl,
-      bool should_ignore_saver_modes) override;
+      bool should_ignore_saver_modes,
+      bool is_ahead_of_actual_navigation) override;
   std::unique_ptr<PrerenderHandle> StartPrerendering(
       const GURL& prerendering_url,
       PreloadingTriggerType trigger_type,
@@ -1317,6 +1321,7 @@ class CONTENT_EXPORT WebContentsImpl
       bool* proceed_to_fire_unload) override;
   void CancelModalDialogsForRenderManager() override;
   void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) override;
+  void PrepareToSwapRenderFrameHosts() override;
   void NotifySwappedFromRenderManager(RenderFrameHostImpl* old_frame,
                                       RenderFrameHostImpl* new_frame) override;
   void NotifySwappedFromRenderManagerWithoutFallbackContent(
@@ -1587,7 +1592,7 @@ class CONTENT_EXPORT WebContentsImpl
   // directory.
   void EnumerateDirectory(
       base::WeakPtr<FileChooserImpl> file_chooser,
-      RenderFrameHost* render_frame_host,
+      RenderFrameHostImpl* render_frame_host,
       scoped_refptr<FileChooserImpl::FileSelectListenerImpl> listener,
       const base::FilePath& directory_path);
 
@@ -1816,9 +1821,6 @@ class CONTENT_EXPORT WebContentsImpl
                            ForEachFrameTreeInnerContents);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplBrowserTest,
                            UserAgentOverrideDuringDeferredNavigation);
-  FRIEND_TEST_ALL_PREFIXES(FencedFrameMPArchBrowserTest, FrameIteration);
-  FRIEND_TEST_ALL_PREFIXES(FencedFrameParameterizedBrowserTest,
-                           ShouldIgnoreJsDialog);
   FRIEND_TEST_ALL_PREFIXES(FormStructureBrowserTest, HTMLFiles);
   FRIEND_TEST_ALL_PREFIXES(NavigationControllerTest, HistoryNavigate);
   FRIEND_TEST_ALL_PREFIXES(RenderFrameHostManagerTest, PageDoesBackAndReload);
@@ -2138,6 +2140,10 @@ class CONTENT_EXPORT WebContentsImpl
   RenderWidgetHostView* GetCreatedWidget(ChildProcessId process_id,
                                          int route_id);
 
+  // Closes and destroys any pending or shown popup widgets created by
+  // `render_frame_host`.
+  void ClosePopupWidgetsForFrame(RenderFrameHost* render_frame_host);
+
   // Finds the new CreatedWindow by |main_frame_widget_route_id|, initializes
   // it for renderer-initiated creation, and returns it. Note that this can only
   // be called once as this call also removes it from the internal map.
@@ -2396,6 +2402,8 @@ class CONTENT_EXPORT WebContentsImpl
 #endif
 
   void OnFocusSelectionBoundsChangedSubscriptionRemoved();
+
+  void UpdateVisibilityPreFocus();
 
   // Data for core operation ---------------------------------------------------
 
@@ -2987,6 +2995,12 @@ class CONTENT_EXPORT WebContentsImpl
 #if BUILDFLAG(IS_ANDROID)
   bool supports_forward_transition_animation_ = true;
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+  // True while any frame in this WebContents is changing RenderFrameHosts
+  // during a navigation commit, including while the RenderFrameHostManager is
+  // preparing to swap frames. Notably, this will be true while dispatching
+  // RenderFrameHostChanged() and RenderViewHostChanged() events.
+  bool is_swapping_render_frame_hosts_ = false;
 
   void SetDragSource(const DragId& drag_id,
                      const GlobalRenderFrameHostToken& source_rfh_token);

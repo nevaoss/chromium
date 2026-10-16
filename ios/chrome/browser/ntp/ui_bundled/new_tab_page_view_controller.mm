@@ -14,6 +14,7 @@
 #import "base/ios/block_types.h"
 #import "base/task/sequenced_task_runner.h"
 #import "components/feature_engagement/public/tracker.h"
+#import "components/ntp_tiles/features.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/public/magic_stack_constants.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/ui/magic_stack_collection_view.h"
 #import "ios/chrome/browser/content_suggestions/public/ntp_home_constants.h"
@@ -50,6 +51,8 @@
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ui/base/device_form_factor.h"
+
+using ntp_tiles::AimButtonRefactorArm;
 
 namespace {
 
@@ -179,6 +182,11 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   // The current background image.
   UIImage* _backgroundImage;
   HomeCustomizationFramingCoordinates* _framingCoordinates;
+  // Local path for an animated background, if any.
+  NSString* _animatedBackgroundPath;
+  // Dynamic light and dark mode color providers for the animated background.
+  NSDictionary<NSString*, UIColor*>* _animatedBackgroundLightModeColorProvider;
+  NSDictionary<NSString*, UIColor*>* _animatedBackgroundDarkModeColorProvider;
   // The image view to display the current background image.
   HomeCustomizationImageView* _backgroundImageView;
   // The view controller holding the NTP quick actions buttons.
@@ -190,9 +198,13 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   BOOL _isBottomOmnibox;
   // The bottom inset for the feed.
   CGFloat _feedBottomInset;
+  // The title for the AI Mode button.
+  NSString* _aimTitle;
+  // The icon for the AI Mode button.
+  UIImage* _aimIcon;
 }
 
-// Properties synthesized from NewTabPageConsumer.
+// Properties synthesized from NewTabPageScrollConsumer.
 @synthesize mostVisitedVisible = _mostVisitedVisible;
 @synthesize magicStackVisible = _magicStackVisible;
 
@@ -228,6 +240,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
       [[NewTabPageQuickActionsViewController alloc] init];
   _quickActionsViewController.layoutGuideCenter = self.layoutGuideCenter;
   _quickActionsViewController.NTPShortcutsHandler = self.NTPShortcutsHandler;
+  [_quickActionsViewController setAIMTitle:_aimTitle icon:_aimIcon];
 
   // TODO(crbug.com/40799579): Remove this when bug is fixed.
   [self.feedWrapperViewController loadViewIfNeeded];
@@ -247,7 +260,14 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 
   _backgroundImageView = [[HomeCustomizationImageView alloc] init];
   _backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-  [self updateBackgroundImageView];
+  if (_animatedBackgroundPath.length > 0) {
+    [_backgroundImageView
+        setAnimatedBackgroundPath:_animatedBackgroundPath
+           lightModeColorProvider:_animatedBackgroundLightModeColorProvider
+            darkModeColorProvider:_animatedBackgroundDarkModeColorProvider];
+  } else {
+    [self updateBackgroundImageView];
+  }
   [self.view addSubview:_backgroundImageView];
   AddSameConstraints(_backgroundImageView, self.view);
 
@@ -640,19 +660,18 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
     if (obj == self.magicStackCollectionView ||
         obj == self.contentSuggestionsViewController ||
         obj == self.feedHeaderViewController) {
-      heightAboveFeed +=
-          content_suggestions::ReducedModuleSpacing(self.traitCollection);
+      heightAboveFeed += content_suggestions::ReducedModuleSpacing();
     }
 
     if (obj == _quickActionsViewController) {
       // First, subtract off the "standard" space that was added in the
       // previous iteration of the loop because this module uses custom
       // top and bottom spacing.
-      heightAboveFeed -=
-          content_suggestions::ReducedModuleSpacing(self.traitCollection);
+      heightAboveFeed -= content_suggestions::ReducedModuleSpacing();
       // Then add in the custom spacing used for this module.
-      heightAboveFeed += content_suggestions::QuickActionsTopPadding() +
-                         [self quickActionsBottomSpacing];
+      heightAboveFeed +=
+          content_suggestions::QuickActionsTopPadding(self.traitCollection) +
+          [self quickActionsBottomSpacing];
     }
   }
   return heightAboveFeed;
@@ -738,7 +757,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   return _moduleLayoutGuide;
 }
 
-#pragma mark - NewTabPageConsumer
+#pragma mark - NewTabPageScrollConsumer
 
 - (void)restoreScrollPosition:(CGFloat)scrollPosition {
   if (self.view.window) {
@@ -800,16 +819,40 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 - (void)setBackgroundImage:(UIImage*)backgroundImage
         framingCoordinates:
             (HomeCustomizationFramingCoordinates*)framingCoordinates {
+  _animatedBackgroundPath = nil;
+  _animatedBackgroundLightModeColorProvider = nil;
+  _animatedBackgroundDarkModeColorProvider = nil;
   _backgroundImage = backgroundImage;
   _framingCoordinates = framingCoordinates;
 
   [self updateBackgroundImageView];
 }
 
+- (void)setAnimatedBackgroundPath:(NSString*)animatedBackgroundPath
+           lightModeColorProvider:
+               (NSDictionary<NSString*, UIColor*>*)lightModeColorProvider
+            darkModeColorProvider:
+                (NSDictionary<NSString*, UIColor*>*)darkModeColorProvider {
+  _animatedBackgroundPath = animatedBackgroundPath;
+  _animatedBackgroundLightModeColorProvider = [lightModeColorProvider copy];
+  _animatedBackgroundDarkModeColorProvider = [darkModeColorProvider copy];
+  _backgroundImage = nil;
+  _framingCoordinates = nil;
+  [_backgroundImageView
+      setAnimatedBackgroundPath:_animatedBackgroundPath
+         lightModeColorProvider:_animatedBackgroundLightModeColorProvider
+          darkModeColorProvider:_animatedBackgroundDarkModeColorProvider];
+}
+
 - (void)setAIMAllowed:(BOOL)allowed {
   _isAIMAllowed = allowed;
 }
 
+- (void)setAIMTitle:(NSString*)title icon:(UIImage*)icon {
+  _aimTitle = [title copy];
+  _aimIcon = icon;
+  [_quickActionsViewController setAIMTitle:title icon:icon];
+}
 - (void)setOmniboxInBottomPosition:(BOOL)isBottomOmnibox {
   if (_isBottomOmnibox == isBottomOmnibox) {
     return;
@@ -1156,7 +1199,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   if (!_isAIMAllowed || !IsAimEnabledInNtp()) {
     return NO;
   }
-  AimButtonRefactorArm arm = GetAimButtonRefactorArm();
+  AimButtonRefactorArm arm = ntp_tiles::GetAimButtonRefactorArm();
   return arm != AimButtonRefactorArm::kAimAsModule &&
          arm != AimButtonRefactorArm::kAimAsMvt &&
          arm != AimButtonRefactorArm::kNoChips;
@@ -1419,10 +1462,10 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
             constraintEqualToAnchor:self.headerView.bottomAnchor
                            constant:self.quickActionsVisible
                                         ? content_suggestions::
-                                              QuickActionsTopPadding()
+                                              QuickActionsTopPadding(
+                                                  self.traitCollection)
                                         : content_suggestions::
-                                              ReducedModuleSpacing(
-                                                  self.traitCollection)],
+                                              ReducedModuleSpacing()],
       ];
     }
   }
@@ -1676,10 +1719,9 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
         UIView* viewAbove =
             [self viewForAboveFeedObject:self.objectsAboveFeed[index - 1]];
 
-        CGFloat spacingToUse = isQuickActions
-                                   ? [self quickActionsBottomSpacing]
-                                   : content_suggestions::ReducedModuleSpacing(
-                                         self.traitCollection);
+        CGFloat spacingToUse =
+            isQuickActions ? [self quickActionsBottomSpacing]
+                           : content_suggestions::ReducedModuleSpacing();
         [NSLayoutConstraint activateConstraints:@[
           [view.topAnchor constraintEqualToAnchor:viewAbove.bottomAnchor
                                          constant:spacingToUse],
@@ -1807,10 +1849,8 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   CGFloat oldWidth = _moduleWidth.constant;
   CGFloat width;
   if (IsNewTabPageUICleanupEnabled()) {
-    CGFloat maxWidth = (IsRegularXRegularSizeClass(self))
-                           ? kDiscoverFeedContentMaxWidthUICleanup
-                           : kDiscoverFeedContentMaxWidth;
-    width = MIN(viewWidth - (2 * kNewTabPageHorizontalMargin), maxWidth);
+    width = MIN(viewWidth - (2 * kNewTabPageHorizontalMargin),
+                kDiscoverFeedContentMaxWidth);
   } else {
     CGFloat widthMultiplier = (100 - kHomeModuleMinimumPadding) / 100;
     width = MIN(viewWidth * widthMultiplier, kDiscoverFeedContentMaxWidth);
@@ -1878,8 +1918,8 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 // Visited is visible.
 - (CGFloat)quickActionsBottomSpacing {
   return self.mostVisitedVisible
-             ? content_suggestions::MostVisitedTopPadding()
-             : content_suggestions::ReducedModuleSpacing(self.traitCollection);
+             ? content_suggestions::MostVisitedTopPadding(self.traitCollection)
+             : content_suggestions::ReducedModuleSpacing();
 }
 
 - (CGFloat)minimumNTPHeight {

@@ -33,6 +33,7 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       'addFileContext',
       'addTabContext',
       'clearFiles',
+      'onEscapePressed',
       'deleteAutocompleteMatch',
       'deleteContext',
       'deleteTabContext',
@@ -126,9 +127,11 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
   }
 
   openAutocompleteMatch(
-      line: number, url: Url, areMatchesShowing: boolean, mouseButton: number,
+      resultSequenceId: number, line: number, url: Url,
+      areMatchesShowing: boolean, mouseButton: number,
       modifiers: ActionModifiers, viaKeyboard: boolean) {
     this.methodCalled('openAutocompleteMatch', {
+      resultSequenceId,
       line,
       url,
       areMatchesShowing,
@@ -359,10 +362,18 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
   showHotkeyDropdown(
       anchorBounds: {x: number, y: number, width: number, height: number}) {
     this.methodCalled('showHotkeyDropdown', {anchorBounds});
+    if (this.results_.has('showHotkeyDropdown')) {
+      return this.results_.get('showHotkeyDropdown');
+    }
+    return Promise.resolve();
   }
 
   openHotkeySettings() {
     this.methodCalled('openHotkeySettings');
+  }
+
+  onEscapePressed() {
+    this.methodCalled('onEscapePressed');
   }
 }
 

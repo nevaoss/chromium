@@ -81,7 +81,8 @@ void OmniboxController::StartAutocomplete(
 }
 
 void OmniboxController::StopAutocomplete(bool clear_result) const {
-  TRACE_EVENT0("omnibox", "OmniboxController::StopAutocomplete");
+  TRACE_EVENT1("omnibox", "OmniboxController::StopAutocomplete", "clear_result",
+               clear_result);
   autocomplete_controller_->Stop(clear_result
                                      ? AutocompleteStopReason::kClobbered
                                      : AutocompleteStopReason::kInteraction);
@@ -176,8 +177,8 @@ void OmniboxController::ClearPopupKeywordMode() const {
   TRACE_EVENT0("omnibox", "OmniboxController::ClearPopupKeywordMode");
   if (IsPopupOpen()) {
     OmniboxPopupSelection selection = edit_model_->GetPopupSelection();
-    if (selection.state == OmniboxPopupSelection::KEYWORD_MODE) {
-      selection.state = OmniboxPopupSelection::NORMAL;
+    if (selection.state == OmniboxPopupSelection::LineState::kKeywordMode) {
+      selection.state = OmniboxPopupSelection::LineState::kNormal;
       edit_model_->SetPopupSelection(selection);
     }
   }

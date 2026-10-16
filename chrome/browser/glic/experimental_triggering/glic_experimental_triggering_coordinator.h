@@ -11,10 +11,12 @@
 #include <string>
 #include <string_view>
 
+#include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_metrics.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_types.h"
+#include "components/sync_device_info/device_info.h"
 
 class Profile;
 class BrowserWindowInterface;
@@ -45,7 +47,7 @@ class GlicExperimentalTriggeringCoordinator {
 
   // Validates, logs, and processes an incoming raw protobuf triggering
   // message, returning the domain response (success or error).
-  virtual std::optional<ExperimentalTriggeringResponse> OnProtoMessage(
+  std::optional<ExperimentalTriggeringResponse> OnProtoMessage(
       const std::string& context_id,
       const components_sharing_message::GlicExperimentalTriggering& proto,
       ScopedIncomingMessageResultLogger result_logger,
@@ -63,6 +65,10 @@ class GlicExperimentalTriggeringCoordinator {
       GlicExperimentalTriggeringUpdateCallback update_callback,
       tabs::TabInterface* prepared_tab);
 
+  // Returns the capabilities supported for Glic experimental triggering.
+  static base::flat_set<std::string> GetCapabilities(
+      syncer::DeviceInfo::GlicExperimentalTriggeringState state);
+
   size_t GetUpdatesHandlerMapSizeForTesting() const {
     return context_id_to_updates_handler_map_.size();
   }
@@ -76,7 +82,7 @@ class GlicExperimentalTriggeringCoordinator {
  private:
   friend class ExperimentalTriggeringUpdatesHandler;
 
-  void OnUpdatesHandlerCleanup(std::string_view context_id);
+  void OnUpdatesHandlerCleanup(const std::string& context_id);
 
   // Returns true if an active updates handler exists for `context_id`.
   bool HasUpdatesHandler(std::string_view context_id) const {

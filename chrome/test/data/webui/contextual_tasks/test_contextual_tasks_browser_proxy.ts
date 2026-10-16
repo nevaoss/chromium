@@ -5,6 +5,9 @@
 import {ExtensionPageCallbackRouter, PageCallbackRouter} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
 import type {ComposeboxPosition, ContextInfo, ContextualTaskId, ContextualWindowId, ExtensionPageHandlerInterface, ExtensionPageRemote, InjectedInput, PageHandlerInterface, PageInterface, PageRemote} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
 import type {BrowserProxy, ExtensionBrowserProxy} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import {PageCallbackRouter as ToolbarPageCallbackRouter} from 'chrome://contextual-tasks/contextual_tasks_toolbar.mojom-webui.js';
+import type {PageHandlerInterface as ToolbarPageHandlerInterface, PageRemote as ToolbarPageRemote} from 'chrome://contextual-tasks/contextual_tasks_toolbar.mojom-webui.js';
+import type {ToolbarBrowserProxy} from 'chrome://contextual-tasks/contextual_tasks_toolbar_browser_proxy.js';
 import type {PostMessageHandler} from 'chrome://contextual-tasks/post_message_handler.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Uuid} from 'chrome://resources/mojo/mojo/public/mojom/base/uuid.mojom-webui.js';
@@ -48,6 +51,7 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'showSmartTabSharingDefaultOnIph',
       'onWindowClosed',
       'resetForNewThread',
+      'focusComposebox',
     ]);
   }
 
@@ -188,6 +192,10 @@ class MockPage extends TestBrowserProxy implements PageInterface {
   resetForNewThread(taskId: Uuid, threadUrl: Url) {
     this.methodCalled('resetForNewThread', taskId, threadUrl);
   }
+
+  focusComposebox() {
+    this.methodCalled('focusComposebox');
+  }
 }
 
 /**
@@ -226,18 +234,13 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'onImageClickedFromSourcesMenu',
       'onTabClickedFromSourcesMenu',
       'onWebviewMessage',
-      'openFeedbackUi',
-      'openMyActivityUi',
       'openOnboardingHelpUi',
-      'openOverflowMenuHelpUi',
-      'openUrl',
+      'openAskGHelpUi',
       'reopenTabs',
       'setTaskId',
       'setThreadTitle',
       'showThreadHistory',
       'submitQuery',
-      'pinSidePanel',
-      'unpinSidePanel',
       'isSidePanelPinned',
       'notifySmartTabSharingTryItIphResult',
       'notifySmartTabSharingDefaultOnIphResult',
@@ -327,24 +330,13 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
     return Promise.resolve({isErrorDocument: false});
   }
 
-  openMyActivityUi() {
-    this.methodCalled('openMyActivityUi');
-  }
-
-  openFeedbackUi() {
-    this.methodCalled('openFeedbackUi');
-  }
-
   openOnboardingHelpUi() {
     this.methodCalled('openOnboardingHelpUi');
   }
 
-  openOverflowMenuHelpUi() {
-    this.methodCalled('openOverflowMenuHelpUi');
-  }
-
-  openUrl(url: Url|string, disposition: number) {
-    this.methodCalled('openUrl', url, disposition);
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  openAskGHelpUi() {
+    this.methodCalled('openAskGHelpUi');
   }
 
   onboardingTooltipDismissed() {
@@ -434,15 +426,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
     return Promise.resolve();
   }
 
-
-  pinSidePanel() {
-    this.methodCalled('pinSidePanel');
-  }
-
-  unpinSidePanel() {
-    this.methodCalled('unpinSidePanel');
-  }
-
   isSidePanelPinned() {
     this.methodCalled('isSidePanelPinned');
     return Promise.resolve({isPinned: false});
@@ -524,10 +507,28 @@ export class TestExtensionPageHandler extends TestBrowserProxy implements
   constructor() {
     super([
       'getHandshakeMessage',
+      'getLensCropPreview',
       'onWebviewMessage',
+      'removeLensCrop',
       'setTaskId',
       'updateComposeboxHeight',
     ]);
+  }
+
+  lensCropPreviewResult: {dataUri: string|null} = {dataUri: null};
+
+  setLensCropPreviewResult(dataUri: string|null) {
+    this.lensCropPreviewResult = {dataUri};
+  }
+
+  getLensCropPreview() {
+    this.methodCalled('getLensCropPreview');
+    return Promise.resolve(this.lensCropPreviewResult);
+  }
+
+  removeLensCrop() {
+    this.methodCalled('removeLensCrop');
+    return Promise.resolve();
   }
 
   getHandshakeMessage() {
@@ -571,5 +572,61 @@ export class TestExtensionBrowserProxy extends TestBrowserProxy implements
     this.callbackRouterRemote =
         this.callbackRouter.$.bindNewPipeAndPassRemote();
     this.handler = new TestExtensionPageHandler();
+  }
+}
+
+/**
+ * Test version of the contextual_tasks_toolbar PageHandler used to verify calls
+ * to the browser from the toolbar WebUI.
+ */
+export class TestToolbarPageHandler extends TestBrowserProxy implements
+    ToolbarPageHandlerInterface {
+  constructor() {
+    super([
+      'pinSidePanel',
+      'unpinSidePanel',
+      'openMyActivityUi',
+      'openOverflowMenuHelpUi',
+      'openFeedbackUi',
+    ]);
+  }
+
+  pinSidePanel() {
+    this.methodCalled('pinSidePanel');
+  }
+
+  unpinSidePanel() {
+    this.methodCalled('unpinSidePanel');
+  }
+
+  openMyActivityUi() {
+    this.methodCalled('openMyActivityUi');
+  }
+
+  openOverflowMenuHelpUi() {
+    this.methodCalled('openOverflowMenuHelpUi');
+  }
+
+  openFeedbackUi() {
+    this.methodCalled('openFeedbackUi');
+  }
+}
+
+/**
+ * Test version of the ToolbarBrowserProxy used in connecting the Contextual
+ * Tasks toolbar WebUI to the browser.
+ */
+export class TestToolbarBrowserProxy extends TestBrowserProxy implements
+    ToolbarBrowserProxy {
+  callbackRouter: ToolbarPageCallbackRouter;
+  callbackRouterRemote: ToolbarPageRemote;
+  handler: TestToolbarPageHandler;
+
+  constructor() {
+    super([]);
+    this.callbackRouter = new ToolbarPageCallbackRouter();
+    this.callbackRouterRemote =
+        this.callbackRouter.$.bindNewPipeAndPassRemote();
+    this.handler = new TestToolbarPageHandler();
   }
 }

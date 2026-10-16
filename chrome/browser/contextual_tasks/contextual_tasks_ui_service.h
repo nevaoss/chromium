@@ -97,6 +97,7 @@ class ContextualTasksUiService : public KeyedService {
    public:
     virtual void OnContextualTasksUiServiceShutdown(
         ContextualTasksUiService* service) {}
+    virtual void OnLensOverlayStateChanged(bool is_showing) {}
   };
 
   ContextualTasksUiService(
@@ -132,6 +133,9 @@ class ContextualTasksUiService : public KeyedService {
   // A notification that the browser attempted to navigate to the AI page. If
   // this method is being called, it means the navigation was blocked and it
   // should be processed by this method.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   virtual void OnNavigationToAiPageIntercepted(
       const GURL& url,
       base::WeakPtr<tabs::TabInterface> source_tab,
@@ -156,6 +160,9 @@ class ContextualTasksUiService : public KeyedService {
   // A notification that a navigation to a link that is not related to the ai
   // thread occurred in the contextual tasks WebUI while being viewed in a tab
   // (as opposed to side panel).
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   virtual void OnNonThreadNavigationInTab(
       content::OpenURLParams url_params,
       base::WeakPtr<tabs::TabInterface> tab);
@@ -163,6 +170,9 @@ class ContextualTasksUiService : public KeyedService {
   // A notification that a navigation to the search results page occurred in the
   // contextual tasks WebUI while being viewed in the side panel (as opposed to
   // a tab).
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   virtual void OnSearchResultsNavigationInSidePanel(
       content::OpenURLParams url_params,
       ContextualTasksUIInterface* web_ui_interface);
@@ -279,6 +289,11 @@ class ContextualTasksUiService : public KeyedService {
           session_handle,
       omnibox::ChromeAimEntryPoint entry_point);
 
+  // Cleans up a closed side panel for the active tab's task by disassociating
+  // all associated tabs and releasing cached resources.
+  virtual void DestroyClosedSidePanel(
+      BrowserWindowInterface* browser_window_interface);
+
   // Opens the contextual tasks side panel showing a ghost loader while waiting
   // for the initial thread URL to be provided for that task. This creates an
   // empty task. If the panel is already open for a task, this is a no-op.
@@ -303,11 +318,6 @@ class ContextualTasksUiService : public KeyedService {
   // Returns whether the provided URL is to an AI page.
   virtual bool IsAiUrl(const GURL& url);
 
-  // Returns whether the contextual tasks side panel is open and the given
-  // WebContents is inside the side panel.
-  virtual bool IsSidePanelOpenAndRequestInSidePanel(
-      content::WebContents* web_contents);
-
   // Returns whether the provided task ID is for a task that should show the
   // error page on load.
   virtual bool IsPendingErrorPage(const base::Uuid& task_id);
@@ -320,6 +330,9 @@ class ContextualTasksUiService : public KeyedService {
 
   // Returns whether the provided URL represents a contextual tasks "display
   // URL" that should lead to the contextual tasks WebUI page upon navigation.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   bool IsContextualTasksDisplayUrl(const GURL& url);
 
   // Returns whether the provided URL is a Google search results page. This
@@ -328,6 +341,9 @@ class ContextualTasksUiService : public KeyedService {
   virtual bool IsSearchResultsUrl(const GURL& url);
 
   // Returns whether the provided URL is a share URL.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   bool IsShareUrl(const GURL& url);
 
   // Returns whether the provided URL is for a valid (e.g. can be loaded in
@@ -440,6 +456,8 @@ class ContextualTasksUiService : public KeyedService {
       std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
           session_handle);
 
+  // TODO(crbug.com/533072235): Deprecated test helper for OpenUrl(). Will be
+  // removed when OpenUrl() and legacy HandleNavigationImpl are cleaned up.
   void OpenUrlForTesting(const content::OpenURLParams& url_params,
                          const blink::mojom::WindowFeatures& window_features,
                          BrowserWindowInterface* browser) {
@@ -454,6 +472,8 @@ class ContextualTasksUiService : public KeyedService {
       content::WebContents* source_contents);
 
  protected:
+  friend class ContextualTasksUiServiceTest;
+
   virtual void StartTaskUiInSidePanelImpl(
       BrowserWindowInterface* browser_window_interface,
       tabs::TabInterface* tab_interface,
@@ -463,12 +483,21 @@ class ContextualTasksUiService : public KeyedService {
       StartTaskUiOptions options);
 
   // Navigates to a share URL.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   virtual void OpenUrl(const content::OpenURLParams& url_params,
                        const blink::mojom::WindowFeatures& window_features,
                        BrowserWindowInterface* browser);
   // The actual implementation of `HandleNavigation` that extracts more of the
   // components needed to decide if the navigation should be handled by this
   // service.
+  // TODO(crbug.com/533072235): Deprecated. This code was a legacy artifact of
+  // the requirement to intercept navigations to AIM and send them to Contextual
+  // Tasks. This method quickly grew into an unreadable monolith and is being
+  // deprecated as part of the Contextual Tasks rearchitecture. Do not add any
+  // new logic or callers to this code without first consulting the Lens on
+  // Chrome team (lens-chrome-eng@google.com).
   virtual bool HandleNavigationImpl(
       content::OpenURLParams url_params,
       content::WebContents* source_contents,
@@ -512,6 +541,45 @@ class ContextualTasksUiService : public KeyedService {
       content::OpenURLParams url_params,
       content::WebContents* source_contents);
 
+  // Returns whether the given WebContents is currently hosted within the side
+  // panel.
+  virtual bool IsWebContentsInSidePanel(content::WebContents* web_contents);
+
+  // Returns whether the URL is allowed to navigate and commit within the side
+  // panel (e.g. Google AI URL, valid Google Search results page, Google
+  // Captcha, or sign-in domain).
+  virtual bool IsAllowedSidePanelUrl(const GURL& url);
+
+  // Returns whether the given navigation should be treated as a citation link
+  // click from within the side panel.
+  virtual bool ShouldHandleCitationClick(const GURL& url,
+                                         content::WebContents* source_contents);
+
+  // Handles a citation link click originating in the side panel.
+  // Routes video and PDF citations to the active tab, activates and scrolls
+  // existing tabs matching the citation URL using text fragments, or clobbers
+  // the active tab / opens a new adjacent tab.
+  virtual bool HandleCitationClick(
+      content::OpenURLParams url_params,
+      content::WebContents* source_contents,
+      tabs::TabInterface* tab,
+      const blink::mojom::WindowFeatures& window_features);
+
+  // Returns whether the given navigation should be treated as an external link
+  // clicked from within the side panel, routing to the browser tab strip.
+  virtual bool ShouldHandleSidePanelExternalNavigation(
+      const GURL& url,
+      content::WebContents* source_contents);
+
+  // Handles an external link navigation originating in the side panel by
+  // routing HTTP(S) links to the main browser tab strip via OpenUrl (converting
+  // CURRENT_TAB to NEW_FOREGROUND_TAB).
+  virtual bool HandleSidePanelExternalNavigation(
+      content::OpenURLParams url_params,
+      content::WebContents* source_contents,
+      tabs::TabInterface* tab,
+      const blink::mojom::WindowFeatures& window_features);
+
   // Helper to build the common search parameters map for Contextual Tasks,
   // matching what was previously provided to app.ts via GetCommonSearchParams.
   static std::map<std::string, std::string>
@@ -519,11 +587,17 @@ class ContextualTasksUiService : public KeyedService {
       content::WebContents* source_contents);
 
   // Used primarily for debugging - loads a URL in the specified WebContents.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   virtual void LoadUrlInWebContents(
       const GURL& url,
       base::WeakPtr<content::WebContents> web_contents);
 
   // Redirects a navigation to a contextual tasks WebUI URL to an AIM URL.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   void ScheduleRedirectWebUIUrlToAim(
       content::OpenURLParams url_params,
       base::WeakPtr<content::WebContents> source_contents,
@@ -546,6 +620,9 @@ class ContextualTasksUiService : public KeyedService {
   // Checks whether a top-level navigation targeting a Contextual Tasks WebUI
   // URL occurs in an environment that is ineligible for the feature (e.g., user
   // is ineligible or Google is not the default search provider).
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   virtual bool ShouldRedirectIneligibleRequest(
       const GURL& url,
       content::WebContents* source_contents) const;
@@ -609,6 +686,9 @@ class ContextualTasksUiService : public KeyedService {
 
 #if !BUILDFLAG(IS_ANDROID)
   // Called when back button expands side panel.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   void OnBackButtonExpandsSidePanel(base::WeakPtr<tabs::TabInterface> weak_tab);
 #endif
 
@@ -647,6 +727,9 @@ class ContextualTasksUiService : public KeyedService {
   std::string GetHostForTask(const base::Uuid& task_id);
 
   // Removes a window tracker from the list of trackers.
+  // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
+  // should not be used. It is only used by the legacy HandleNavigationImpl
+  // which will be cleaned up (see comment there).
   void RemoveWindowTracker(base::WeakPtr<ContextualTasksWindowTracker> tracker);
 
  private:

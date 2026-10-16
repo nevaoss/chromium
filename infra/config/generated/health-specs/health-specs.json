@@ -2873,7 +2873,49 @@
           }
         ]
       },
+      "Libfuzzer Upload Mac ASan Schema v1": {
+        "contact_team_email": "chrome-fuzzing-core@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
       "Libfuzzer Upload Windows ASan": {
+        "contact_team_email": "chrome-fuzzing-core@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "Libfuzzer Upload Windows ASan Schema v1": {
         "contact_team_email": "chrome-fuzzing-core@google.com",
         "problem_specs": [
           {
@@ -3760,6 +3802,27 @@
         ]
       },
       "Mac ASAN Release Media": {
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "Mac ASAN Release Schema v1": {
+        "contact_team_email": "chrome-sanitizer-builder-owners@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",
@@ -5518,6 +5581,27 @@
         ]
       },
       "Win ASan Release Media": {
+        "contact_team_email": "chrome-sanitizer-builder-owners@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "Win ASan Release Schema v1": {
         "contact_team_email": "chrome-sanitizer-builder-owners@google.com",
         "problem_specs": [
           {
@@ -9422,6 +9506,27 @@
           }
         ]
       },
+      "linux-arm64-rel-cft": {
+        "contact_team_email": "browser-automation-staff@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
       "linux-arm64-rel-fyi": {
         "contact_team_email": "chrome-linux-engprod@google.com",
         "problem_specs": [
@@ -9927,27 +10032,6 @@
       },
       "linux-chromeos-treesinviz-disabled-rel": {
         "contact_team_email": "chrome-gpu-team@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "linux-chromeos-tsgo-rel": {
-        "contact_team_email": "chrome-webui@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",
@@ -10639,27 +10723,6 @@
           }
         ]
       },
-      "linux-tsgo-rel": {
-        "contact_team_email": "chrome-webui@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
       "linux-updater-builder-dbg": {
         "contact_team_email": "omaha-core@google.com",
         "problem_specs": [
@@ -11146,6 +11209,48 @@
       },
       "mac-arm64-archive-rel": {
         "contact_team_email": "bling-engprod@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "mac-arm64-centipede-asan-rel": {
+        "contact_team_email": "chrome-fuzzing-core@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "mac-arm64-centipede-asan-rel-tests": {
+        "contact_team_email": "chrome-fuzzing-core@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",

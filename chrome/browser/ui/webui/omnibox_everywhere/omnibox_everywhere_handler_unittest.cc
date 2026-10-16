@@ -10,6 +10,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
+#include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/icu_test_util.h"
 #include "base/test/scoped_feature_list.h"
@@ -20,7 +21,9 @@
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/composebox_everywhere_handler.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/mojom/omnibox_everywhere.mojom.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_page_handler.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
@@ -98,6 +101,7 @@ class MockOmniboxEverywhereService : public OmniboxEverywhereService {
                    navigation_handle_callback),
               (override));
   MOCK_METHOD(void, ShowProfilePicker, (), (override));
+  MOCK_METHOD(void, HidePopup, (), (override));
   MOCK_METHOD(void, OnDrivePickerOpened, (), (override));
   MOCK_METHOD(void, OnDrivePickerClosed, (), (override));
   MOCK_METHOD(void, OnHotkeyDropdownOpened, (), (override));
@@ -368,7 +372,7 @@ TEST_F(OmniboxEverywhereHandlerTest,
 }
 
 TEST_F(OmniboxEverywhereHandlerTest,
-       DismissShortcutSetupWithHotkeyAdvancesToReminder) {
+       DismissShortcutSetupWithHotkeySkipsReminder) {
   handler_->SetHotkey("Ctrl+Shift+Space");
   EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
       omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
@@ -377,9 +381,9 @@ TEST_F(OmniboxEverywhereHandlerTest,
 
   EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
       omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
-  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
       omnibox_everywhere::prefs::kFreShortcutReminderDismissed));
-  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
       omnibox_everywhere::prefs::kFreDismissed));
 }
 
@@ -636,4 +640,75 @@ TEST_F(OmniboxEverywhereHandlerTest, CalculateContextMenuAnchorPoint_RTL) {
                 anchor_rect, container_bounds),
             gfx::Point(140, 260));
 }
+
+TEST_F(OmniboxEverywhereHandlerTest, OnEscapePressedHidesPopup) {
+  base::RunLoop run_loop;
+  EXPECT_CALL(*mock_service_, HidePopup()).WillOnce([&]() { run_loop.Quit(); });
+  handler_->OnEscapePressed();
+  run_loop.Run();
+}
+
+class ComposeboxEverywhereHandlerPublic : public ComposeboxEverywhereHandler {
+ public:
+  using ComposeboxEverywhereHandler::ComposeboxEverywhereHandler;
+  using SearchboxHandler::omnibox_controller;
+};
+
+TEST_F(OmniboxEverywhereHandlerTest,
+       ComposeboxEverywhereOpenUrlUsesGeneratedTransition) {
+  MockOmniboxEverywhereService* factory_service = nullptr;
+  OmniboxEverywhereServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+      profile(),
+      base::BindLambdaForTesting(
+          [&](content::BrowserContext* context)
+              -> std::unique_ptr<KeyedService> {
+            auto service = std::make_unique<MockOmniboxEverywhereService>(
+                Profile::FromBrowserContext(context));
+            factory_service = service.get();
+            return service;
+          }));
+  ASSERT_TRUE(factory_service);
+
+  mojo::Remote<composebox::mojom::PageHandler> composebox_remote;
+  mojo::Remote<searchbox::mojom::PageHandler> searchbox_remote;
+  testing::NiceMock<MockSearchboxPage> mock_page;
+  ComposeboxEverywhereHandlerPublic composebox_handler(
+      composebox_remote.BindNewPipeAndPassReceiver(),
+      searchbox_remote.BindNewPipeAndPassReceiver(),
+      mock_page.BindAndGetRemote(), profile(), web_contents(),
+      base::BindLambdaForTesting(
+          [&]() { return contextual_session_handle_.get(); }),
+      base::DoNothing(), /*screenshare_delegate=*/nullptr);
+
+  ASSERT_TRUE(composebox_handler.omnibox_controller());
+  ASSERT_TRUE(composebox_handler.omnibox_controller()->client());
+  EXPECT_EQ(metrics::OmniboxEventProto::COMPOSEBOX_EVERYWHERE,
+            composebox_handler.omnibox_controller()
+                ->client()
+                ->GetPageClassification(/*is_prefetch=*/false));
+
+  const GURL kTestUrl("https://www.google.com/search?q=aim+query&udm=50");
+  GURL captured_url;
+  WindowOpenDisposition captured_disposition;
+  ui::PageTransition captured_transition;
+  EXPECT_CALL(*factory_service,
+              OpenUrl(testing::_, testing::_, testing::_, testing::_))
+      .WillOnce(
+          [&](const GURL& url, WindowOpenDisposition disposition,
+              ui::PageTransition transition,
+              base::OnceCallback<void(content::NavigationHandle&)> callback) {
+            captured_url = url;
+            captured_disposition = disposition;
+            captured_transition = transition;
+          });
+
+  composebox_handler.OpenUrl(kTestUrl, WindowOpenDisposition::CURRENT_TAB,
+                             base::NullCallback());
+
+  EXPECT_EQ(kTestUrl, captured_url);
+  EXPECT_EQ(WindowOpenDisposition::CURRENT_TAB, captured_disposition);
+  EXPECT_TRUE(ui::PageTransitionCoreTypeIs(captured_transition,
+                                           ui::PAGE_TRANSITION_GENERATED));
+}
+
 }  // namespace

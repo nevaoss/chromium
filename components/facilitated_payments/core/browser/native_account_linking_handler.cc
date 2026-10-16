@@ -134,6 +134,7 @@ void NativeAccountLinkingHandler::InitiateAccountLinkingNetworkCall(
 
   payments_network_interface->GetDetailsForCreatePaymentInstrument(
       billing_customer_id, client_token,
+      GetPayloadForGetDetailsForCreatePaymentInstrument(),
       base::BindOnce(&NativeAccountLinkingHandler::
                          OnGetDetailsForCreatePaymentInstrumentResponseReceived,
                      GetWeakPtr(), base::TimeTicks::Now()),
@@ -168,6 +169,11 @@ void NativeAccountLinkingHandler::ShowAccountLinkingPrompt() {
       base::BindOnce(&NativeAccountLinkingHandler::OnAccepted, GetWeakPtr()),
       base::BindOnce(&NativeAccountLinkingHandler::OnDeclined, GetWeakPtr()),
       base::BindOnce(&NativeAccountLinkingHandler::OnDismissed, GetWeakPtr()));
+}
+
+void NativeAccountLinkingHandler::Reset() {
+  api_client_.reset();
+  action_token_.clear();
 }
 
 void NativeAccountLinkingHandler::DismissPrompt() {

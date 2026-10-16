@@ -6,6 +6,7 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/profiles/profile.h"
@@ -163,14 +164,16 @@ void OmniboxEverywhereDebugPageHandler::ShowLensIph() {
 
 void OmniboxEverywhereDebugPageHandler::CreateStartMenuShortcut(
     CreateStartMenuShortcutCallback callback) {
+#if BUILDFLAG(IS_WIN)
   if (g_browser_process && g_browser_process->GetFeatures()) {
     auto* controller =
         g_browser_process->GetFeatures()->omnibox_everywhere_controller();
-    if (controller) {
-      controller->CreateStartMenuShortcut(std::move(callback));
+    if (controller && controller->ui_manager()) {
+      controller->ui_manager()->CreateStartMenuShortcut(std::move(callback));
       return;
     }
   }
+#endif
   std::move(callback).Run(false);
 }
 
@@ -196,6 +199,8 @@ void OmniboxEverywhereDebugPageHandler::ResetProfilePrefs(
     user_education_internals_page_handler_->ClearFeaturePromoData(
         feature_engagement::kIPHOmniboxEverywhereLensPromoFeature.name,
         base::DoNothing());
+    user_education_internals_page_handler_->RemoveGracePeriods(
+        base::DoNothing());
   }
   std::move(callback).Run(true);
 }
@@ -214,12 +219,15 @@ void OmniboxEverywhereDebugPageHandler::ResetAllPrefs(
       handler.ClearFeaturePromoData(
           feature_engagement::kIPHOmniboxEverywhereLensPromoFeature.name,
           base::DoNothing());
+      handler.RemoveGracePeriods(base::DoNothing());
     }
   } else if (profile_->IsRegularProfile()) {
     omnibox_everywhere::prefs::ResetProfilePrefs(profile_);
     if (user_education_internals_page_handler_) {
       user_education_internals_page_handler_->ClearFeaturePromoData(
           feature_engagement::kIPHOmniboxEverywhereLensPromoFeature.name,
+          base::DoNothing());
+      user_education_internals_page_handler_->RemoveGracePeriods(
           base::DoNothing());
     }
   }

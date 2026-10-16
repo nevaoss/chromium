@@ -13,6 +13,7 @@
 
 #include "base/command_line.h"
 #include "base/containers/to_vector.h"
+#include "base/i18n/icubridge/default_icu_locale.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/path_service.h"
@@ -41,7 +42,6 @@
 #include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/pwc/privileged_web_contents.h"
 #include "chrome/browser/pwc/pwc_component_policy.h"
-#include "chrome/browser/pwc/pwc_features.mojom-features.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/common/chrome_paths.h"
@@ -77,6 +77,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/extension_features.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/switches.h"
@@ -95,6 +96,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #else
 #include "chrome/browser/extensions/api/debugger/extension_dev_tools_infobar_delegate.h"
+#include "chrome/browser/infobars/infobar_features.h"
 #endif
 
 #if BUILDFLAG(ENABLE_PDF)
@@ -160,6 +162,10 @@ using testing::Eq;
 
 class DebuggerApiTest : public ExtensionApiTest {
  protected:
+  DebuggerApiTest() {
+    feature_list_.InitAndDisableFeature(
+        extensions_features::kDisableExtensionsOnChromeUrlsSwitch);
+  }
   ~DebuggerApiTest() override = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override;
@@ -197,6 +203,7 @@ class DebuggerApiTest : public ExtensionApiTest {
   // |extension_|.
   TestExtensionDir test_extension_dir_;
   base::SimpleTestTickClock clock_;
+  base::test::ScopedFeatureList feature_list_;
 };
 
 void DebuggerApiTest::SetUpCommandLine(base::CommandLine* command_line) {
@@ -319,16 +326,7 @@ testing::AssertionResult DebuggerApiTest::RunAttachFunctionOnTarget(
   return testing::AssertionSuccess();
 }
 
-class PwcDebuggerApiTest : public DebuggerApiTest {
- public:
-  PwcDebuggerApiTest() {
-    feature_list_.InitAndEnableFeature(
-        pwc::mojom::features::kPrivilegedWebContents);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
+using PwcDebuggerApiTest = DebuggerApiTest;
 
 // An extension with the "debugger" permission cannot attach to, or even
 // enumerate, a privileged WebContents (see //chrome's PrivilegedWebContents):
@@ -549,7 +547,7 @@ class TestInterstitialPage
                 web_contents,
                 CreateTestMetricsHelper(web_contents),
                 nullptr,
-                base::i18n::GetConfiguredLocale(),
+                std::string(base::i18n::GetDefaultIcuLocale().tag_string()),
                 GURL(),
                 /* settings_page_helper*/ nullptr)) {}
 
@@ -749,6 +747,20 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       infobars::ContentInfoBarManager::FromWebContents(
           tab_list2->GetTab(1)->GetContents());
 
+  // The infobar framework shows a global infobar only in the
+  // active tab of each browser window, moving it as the active tab changes.
+  // The legacy GlobalConfirmInfoBar instead puts an infobar in every tab. Only
+  // `manager2` is a background tab (browser2's active tab is `manager3`), so
+  // it is the only expectation that differs between the two implementations.
+  const bool global_infobar_in_active_tab_only = infobars::IsInfoBarMigrated(
+      infobars::InfoBarDelegate::EXTENSION_DEV_TOOLS_INFOBAR_DELEGATE);
+  const size_t background_tab_infobars =
+      global_infobar_in_active_tab_only ? 0u : 1u;
+  // The infobar the user would click the close button on must be one that is
+  // actually showing.
+  infobars::ContentInfoBarManager* dismissal_manager =
+      global_infobar_in_active_tab_only ? manager3 : manager2;
+
   // Attaching to one tab should create infobars in both browsers.
   attach_function = new DebuggerAttachFunction();
   attach_function->set_extension(extension());
@@ -756,7 +768,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
   EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(background_tab_infobars, manager2->infobars().size());
   EXPECT_EQ(1u, manager3->infobars().size());
 
   // Attaching to another tab should not create more infobars.
@@ -766,7 +778,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id2), profile()));
   EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(background_tab_infobars, manager2->infobars().size());
   EXPECT_EQ(1u, manager3->infobars().size());
 
   // Detaching from one of the tabs should not remove infobars.
@@ -776,7 +788,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id2),
       profile()));
   EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(background_tab_infobars, manager2->infobars().size());
   EXPECT_EQ(1u, manager3->infobars().size());
 
   // Detaching from the other tab also should not remove infobars, since even
@@ -788,7 +800,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id),
       profile()));
   EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(background_tab_infobars, manager2->infobars().size());
   EXPECT_EQ(1u, manager3->infobars().size());
 
   // Attach again; should not create infobars.
@@ -798,15 +810,15 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
   EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(background_tab_infobars, manager2->infobars().size());
   EXPECT_EQ(1u, manager3->infobars().size());
 
   // Remove the global infobar by simulating what happens when the user clicks
   // the close button (see InfoBarView::ButtonPressed()).  The
   // InfoBarDismissed() call will remove the infobars everywhere except on
-  // |manager2| itself; the RemoveSelf() call removes that one.
-  manager2->infobars()[0]->delegate()->InfoBarDismissed();
-  manager2->infobars()[0]->RemoveSelf();
+  // |dismissal_manager| itself; the RemoveSelf() call removes that one.
+  dismissal_manager->infobars()[0]->delegate()->InfoBarDismissed();
+  dismissal_manager->infobars()[0]->RemoveSelf();
   EXPECT_EQ(0u, manager1->infobars().size());
   EXPECT_EQ(0u, manager2->infobars().size());
   EXPECT_EQ(0u, manager3->infobars().size());
@@ -824,14 +836,17 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
   EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(background_tab_infobars, manager2->infobars().size());
   EXPECT_EQ(1u, manager3->infobars().size());
 
-  // Closing tab should not affect anything.
+  // Closing tab should not affect anything. Note that under the infobar
+  // framework this makes `manager2`'s tab active, so the global
+  // infobar moves there.
   EXPECT_EQ(2, tab_list2->GetTabCount());
   tab_list2->CloseTab(tab_list2->GetTab(1)->GetHandle());
   EXPECT_EQ(1, tab_list2->GetTabCount());
   manager3 = nullptr;
+  dismissal_manager = nullptr;
   EXPECT_EQ(1u, manager1->infobars().size());
   EXPECT_EQ(1u, manager2->infobars().size());
 
@@ -894,14 +909,19 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
                        InfoBarIsNotRemovedWhenAnotherDebuggerAttached) {
   const int tab_id1 =
       sessions::SessionTabHelper::IdForTab(GetActiveWebContents()).id();
-  infobars::ContentInfoBarManager* manager =
-      infobars::ContentInfoBarManager::FromWebContents(GetActiveWebContents());
 
   ASSERT_TRUE(embedded_test_server()->Started());
   ASSERT_TRUE(
       NavigateToURLInNewTab(embedded_test_server()->GetURL("/simple.html")));
   const int tab_id2 =
       sessions::SessionTabHelper::IdForTab(GetActiveWebContents()).id();
+
+  // Watch the active tab's manager: the infobar framework only
+  // shows a global infobar in the active tab of each browser window, while the
+  // legacy GlobalConfirmInfoBar shows one in every tab. The active tab has an
+  // infobar either way.
+  infobars::ContentInfoBarManager* manager =
+      infobars::ContentInfoBarManager::FromWebContents(GetActiveWebContents());
 
   // Attaching to a tab should create an infobar.
   {
@@ -1376,8 +1396,24 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessDebuggerExtensionApiTest,
       << message_;
 }
 
-IN_PROC_BROWSER_TEST_F(SitePerProcessDebuggerExtensionApiTest,
-                       AttachRejectedWhenScreenshotsDisabled) {
+// Test fixture for verifying chrome.debugger screenshot policy behavior when
+// the kExtensionDebuggerStrictPolicyRestrictions feature flag is explicitly
+// enabled (crbug.com/561948316).
+class SitePerProcessDebuggerExtensionApiStrictPolicyEnabledTest
+    : public SitePerProcessDebuggerExtensionApiTest {
+ public:
+  SitePerProcessDebuggerExtensionApiStrictPolicyEnabledTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        extensions_features::kExtensionDebuggerStrictPolicyRestrictions);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(
+    SitePerProcessDebuggerExtensionApiStrictPolicyEnabledTest,
+    AttachRejectedWhenScreenshotsDisabled) {
   ASSERT_TRUE(embedded_test_server()->Started());
   GURL url = embedded_test_server()->GetURL("a.test", "/english_page.html");
   ASSERT_TRUE(NavigateToURL(web_contents(), url));
@@ -1393,8 +1429,9 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessDebuggerExtensionApiTest,
 #if BUILDFLAG(IS_CHROMEOS)
 // Target-level screenshot restrictions via Data Leak Prevention (DLP) are
 // currently only supported on ChromeOS.
-IN_PROC_BROWSER_TEST_F(SitePerProcessDebuggerExtensionApiTest,
-                       AttachRejectedWhenScreenshotsRestrictedByDlp) {
+IN_PROC_BROWSER_TEST_F(
+    SitePerProcessDebuggerExtensionApiStrictPolicyEnabledTest,
+    AttachRejectedWhenScreenshotsRestrictedByDlp) {
   ASSERT_TRUE(embedded_test_server()->Started());
   GURL url = embedded_test_server()->GetURL("a.test", "/english_page.html");
   ASSERT_TRUE(NavigateToURL(web_contents(), url));
@@ -1417,7 +1454,7 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessDebuggerExtensionApiTest,
 // restrictions and can attach to the browser target even when enterprise
 // policy disables screenshots.
 IN_PROC_BROWSER_TEST_F(
-    SitePerProcessDebuggerExtensionApiTest,
+    SitePerProcessDebuggerExtensionApiStrictPolicyEnabledTest,
     BrowserTargetAllowedForTrustedExtensionWhenScreenshotsDisabled) {
   profile()->GetPrefs()->SetBoolean(prefs::kDisableScreenshots, true);
 
@@ -1444,13 +1481,28 @@ IN_PROC_BROWSER_TEST_F(
       detach_function.get(), R"([{"targetId": "browser"}])", profile()));
 }
 
-class DebuggerExtensionManagementPolicyTest
+class DebuggerExtensionManagementPolicyTestBase
     : public ExtensionApiTestWithManagementPolicy {
  public:
   void SetUpCommandLine(base::CommandLine* command_line) override {
     ExtensionApiTestWithManagementPolicy::SetUpCommandLine(command_line);
     content::IsolateAllSitesForTesting(command_line);
   }
+};
+
+// Test fixture for verifying chrome.debugger runtime_blocked_hosts policy
+// behavior when the kExtensionDebuggerStrictPolicyRestrictions feature flag is
+// explicitly enabled (crbug.com/561948316).
+class DebuggerExtensionManagementPolicyTest
+    : public DebuggerExtensionManagementPolicyTestBase {
+ public:
+  DebuggerExtensionManagementPolicyTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        extensions_features::kExtensionDebuggerStrictPolicyRestrictions);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 // Tests that attaching the debugger to a blocked host is rejected when
@@ -1684,6 +1736,123 @@ IN_PROC_BROWSER_TEST_F(
       attach_function.get(), R"([{"targetId": "browser"}, "1.1"])", profile());
 
   EXPECT_EQ("Host access is restricted by policy.", actual_error);
+}
+
+// Test fixture for verifying chrome.debugger screenshot policy behavior when
+// the kExtensionDebuggerStrictPolicyRestrictions feature flag is disabled
+// (crbug.com/561948316).
+class SitePerProcessDebuggerExtensionApiStrictPolicyDisabledTest
+    : public SitePerProcessDebuggerExtensionApiTest {
+ public:
+  SitePerProcessDebuggerExtensionApiStrictPolicyDisabledTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        extensions_features::kExtensionDebuggerStrictPolicyRestrictions);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Tests that when kExtensionDebuggerStrictPolicyRestrictions is disabled
+// (crbug.com/561948316), attaching the debugger is allowed even if enterprise
+// policy disables screenshots globally.
+IN_PROC_BROWSER_TEST_F(
+    SitePerProcessDebuggerExtensionApiStrictPolicyDisabledTest,
+    AttachAllowedWhenScreenshotsDisabled) {
+  ASSERT_TRUE(embedded_test_server()->Started());
+  GURL url = embedded_test_server()->GetURL("a.test", "/english_page.html");
+  ASSERT_TRUE(NavigateToURL(web_contents(), url));
+
+  profile()->GetPrefs()->SetBoolean(prefs::kDisableScreenshots, true);
+
+  ASSERT_TRUE(RunExtensionTest("debugger_disable_screenshots",
+                               {.custom_arg = "debuggerAllowed"}))
+      << message_;
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+// Tests that when kExtensionDebuggerStrictPolicyRestrictions is disabled
+// (crbug.com/561948316), attaching the debugger is allowed even if DLP
+// restricts screenshots on the target.
+IN_PROC_BROWSER_TEST_F(
+    SitePerProcessDebuggerExtensionApiStrictPolicyDisabledTest,
+    AttachAllowedWhenScreenshotsRestrictedByDlp) {
+  ASSERT_TRUE(embedded_test_server()->Started());
+  GURL url = embedded_test_server()->GetURL("a.test", "/english_page.html");
+  ASSERT_TRUE(NavigateToURL(web_contents(), url));
+
+  policy::MockDlpContentManager mock_dlp_content_manager;
+  policy::ScopedDlpContentObserverForTesting scoped_dlp_content_observer(
+      &mock_dlp_content_manager);
+  EXPECT_CALL(mock_dlp_content_manager,
+              IsScreenshotApiRestricted(web_contents()))
+      .WillRepeatedly(testing::Return(true));
+
+  ASSERT_TRUE(RunExtensionTest("debugger_disable_screenshots",
+                               {.custom_arg = "debuggerAllowed"}))
+      << message_;
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
+// Test fixture for verifying chrome.debugger runtime_blocked_hosts policy
+// behavior when the kExtensionDebuggerStrictPolicyRestrictions feature flag is
+// disabled (crbug.com/561948316).
+class DebuggerExtensionManagementPolicyStrictPolicyDisabledTest
+    : public DebuggerExtensionManagementPolicyTestBase {
+ public:
+  DebuggerExtensionManagementPolicyStrictPolicyDisabledTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        extensions_features::kExtensionDebuggerStrictPolicyRestrictions);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Tests that when kExtensionDebuggerStrictPolicyRestrictions is disabled
+// (crbug.com/561948316), attaching the debugger to an unblocked host succeeds
+// even when enterprise policy blocks another host (restoring legacy per-URL
+// behavior).
+IN_PROC_BROWSER_TEST_F(
+    DebuggerExtensionManagementPolicyStrictPolicyDisabledTest,
+    AttachAllowedWithPolicyBlockedHostsGlobal_UnblockedHost) {
+  ASSERT_TRUE(StartEmbeddedTestServer());
+  GURL url = embedded_test_server()->GetURL("b.test", "/english_page.html");
+  ASSERT_TRUE(NavigateToURL(web_contents(), url));
+
+  // Set up runtime blocked hosts globally for all extensions (blocking a.test).
+  {
+    ExtensionManagementPolicyUpdater pref(&policy_provider_);
+    pref.AddPolicyBlockedHost("*", "*://a.test");
+  }
+
+  // Attempting to attach to an unblocked host (b.test) succeeds.
+  ASSERT_TRUE(RunExtensionTest("debugger_policy_blocked_hosts")) << message_;
+}
+
+// Tests that when kExtensionDebuggerStrictPolicyRestrictions is disabled
+// (crbug.com/561948316), attaching the debugger directly to a policy-blocked
+// host is still rejected with the legacy per-URL policy error.
+IN_PROC_BROWSER_TEST_F(
+    DebuggerExtensionManagementPolicyStrictPolicyDisabledTest,
+    AttachRejectedWithPolicyBlockedHostsGlobal_BlockedHost) {
+  ASSERT_TRUE(StartEmbeddedTestServer());
+  GURL url = embedded_test_server()->GetURL("a.test", "/english_page.html");
+  ASSERT_TRUE(NavigateToURL(web_contents(), url));
+
+  // Set up runtime blocked hosts globally for all extensions (blocking a.test).
+  {
+    ExtensionManagementPolicyUpdater pref(&policy_provider_);
+    pref.AddPolicyBlockedHost("*", "*://a.test");
+  }
+
+  // Attempting to attach to the blocked host (a.test) fails with the legacy
+  // per-URL error message.
+  ASSERT_TRUE(RunExtensionTest(
+      "debugger_policy_blocked_hosts",
+      {.custom_arg =
+           "This page cannot be scripted due to an ExtensionsSettings policy."}))
+      << message_;
 }
 
 }  // namespace extensions

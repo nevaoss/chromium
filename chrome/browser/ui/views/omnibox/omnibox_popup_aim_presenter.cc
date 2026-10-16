@@ -66,8 +66,7 @@ void OmniboxPopupAimPresenter::LogResultToContentReadyMetric(
 
 std::optional<base::TimeDelta>
 OmniboxPopupAimPresenter::ShouldDeferUntilVisualStateReady() const {
-  if (!base::FeatureList::IsEnabled(
-          omnibox::kOmniboxAimDeferShowUntilVisualStateReady)) {
+  if (!omnibox::ShouldDeferAimShowUntilVisualStateReady()) {
     return std::nullopt;
   }
   return base::Milliseconds(
@@ -79,7 +78,7 @@ bool OmniboxPopupAimPresenter::ShouldDebounceResize() const {
 }
 
 bool OmniboxPopupAimPresenter::ShouldApplyHeightWorkarounds() const {
-  return base::FeatureList::IsEnabled(omnibox::kOmniboxAimHeightWorkarounds);
+  return omnibox::ShouldApplyAimHeightWorkarounds();
 }
 
 bool OmniboxPopupAimPresenter::ShouldDetachWebContentsOnHide() const {
@@ -88,12 +87,16 @@ bool OmniboxPopupAimPresenter::ShouldDetachWebContentsOnHide() const {
 }
 
 bool OmniboxPopupAimPresenter::ShouldEvictOnHide() const {
-  return base::FeatureList::IsEnabled(omnibox::kOmniboxAimEvictOnHide);
+  return omnibox::ShouldAimEvictOnHide();
 }
 
 bool OmniboxPopupAimPresenter::ShouldSizeWebViewToPreferredHeight() const {
   return base::FeatureList::IsEnabled(
       omnibox::kOmniboxAimSizeWebViewToPreferredHeight);
+}
+
+bool OmniboxPopupAimPresenter::ShouldDrawShadowInWebUI() const {
+  return omnibox::ShouldDrawAimShadowInWebUI();
 }
 
 void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,
@@ -150,10 +153,16 @@ void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,
 }
 
 void OmniboxPopupAimPresenter::WidgetDestroyed() {
+  // Drop the observation before the widget goes away; `Show()` re-establishes
+  // it against the new widget.
+  widget_observation_.Reset();
   // Update the popup state manager if widget was destroyed externally, e.g., by
-  // the OS. This ensures the popup state manager stays in sync.
-  if (controller()->popup_state_manager()->popup_state() ==
-      OmniboxPopupState::kAim) {
+  // the OS. This ensures the popup state manager stays in sync. Skip this when
+  // `Hide()` is discarding the widget on purpose, since clearing the state here
+  // would re-enter `Hide()`.
+  if (!is_destroying_widget() &&
+      controller()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kAim) {
     controller()->popup_state_manager()->SetPopupState(
         OmniboxPopupState::kNone);
   }

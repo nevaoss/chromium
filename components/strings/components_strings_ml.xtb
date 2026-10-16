@@ -282,7 +282,6 @@
 <translation id="1449251255954293933">Google Wallet-ൽ റിഡ്രെസ് നമ്പർ സംരക്ഷിക്കുക</translation>
 <translation id="1455413310270022028">ഇറേസർ</translation>
 <translation id="1457992721081300557">{NUM_REVIEWS,plural, =0{0 റിവ്യൂകൾ കാണുക}=1{ഒരു റിവ്യൂ കാണുക}other{ആകെയുള്ള # റിവ്യൂകളും കാണുക}}</translation>
-<translation id="1458770162980644530">'ഇപ്പോൾ വാങ്ങി പിന്നീട് പണമടയ്ക്കുക' സേവന നിബന്ധനകളുടെ സ്ക്രീൻ. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
 <translation id="1460317464907341501">ഈ ഇമെയിൽ സ്വയമേവ പരിശോധിച്ചുറപ്പിക്കണോ?</translation>
 <translation id="1461041542809785877">പ്രകടനം</translation>
 <translation id="1462245070427461050">JIS B9</translation>
@@ -467,7 +466,6 @@
 <translation id="1757773103848038814">മോണോസ്പെയ്‌സ് ഫോണ്ട്</translation>
 <translation id="1757935267918149452">'Google പാസ്‌വേഡ് മാറ്റുക' ബട്ടൺ, നിങ്ങളുടെ Google അക്കൗണ്ടിന്റെ പാസ്‌വേഡ് മാറ്റാൻ സജീവമാക്കുക</translation>
 <translation id="1759776526873274358">നിങ്ങളുടെ സുരക്ഷ മെച്ചപ്പെടുത്താൻ സൈറ്റുകൾ ഉപയോഗിക്കുന്ന പരിശോധിച്ചുറപ്പിക്കൽ കോഡുകൾ സ്വയമേവ പൂരിപ്പിക്കുക. Chrome-ന് നിങ്ങളുടെ Gmail-ൽ നിന്ന് ഈ കോഡുകൾ നേടാനാകും. <ph name="BEGIN_LINK" />ഈ ഫീച്ചറിനെ കുറിച്ച് കൂടുതലറിയുക<ph name="LINK_END" /></translation>
-<translation id="176013700366797492"><ph name="BEGIN_LINK1" />ഡാറ്റാ, സ്വകാര്യതാ മുൻഗണനകൾ<ph name="END_LINK1" /> നിയന്ത്രിക്കാനോ <ph name="BEGIN_LINK2" />പേയ്‌മെന്റ് രീതികളും<ph name="END_LINK2" /> ലോയൽറ്റി കാർഡുകളും ഐഡികളും പോലുള്ള <ph name="BEGIN_LINK3" />പാസുകളും<ph name="END_LINK3" /> മാനേജ് ചെയ്യാനോ Google Wallet സന്ദർശിക്കുക</translation>
 <translation id="1763864636252898013">ഈ സെർവറിന് അത് <ph name="DOMAIN" /> ആണെന്ന് തെളിയിക്കാനായില്ല; അതിന്റെ സുരക്ഷ സർട്ടിഫിക്കറ്റിനെ നിങ്ങളുടെ ഉപകരണത്തിന്റെ ഓപ്പറേറ്റിംഗ് സിസ്‌റ്റത്തിന് പരിചയമില്ല. തെറ്റായ കോൺഫിഗറേഷൻ കാരണമോ ഒരു അക്രമണകാരി നിങ്ങളുടെ കണക്ഷനെ തടസ്സപ്പെടുത്തുന്നത് കൊണ്ടോ ആയിരിക്കാം ഇത് സംഭവിച്ചത്.</translation>
 <translation id="1768211456781949159"><ph name="BEGIN_LINK" />Windows നെറ്റ്‌വർക്ക് ഡയഗണോസ്‌റ്റിക്‌സ് റൺ ചെയ്‌തുനോക്കൂ<ph name="END_LINK" />.</translation>
 <translation id="1777422078676229054">ഫോട്ടോ (ആർക്കൈവൽ)</translation>
@@ -550,6 +548,7 @@
 <translation id="1924727005275031552">പുതിയവ</translation>
 <translation id="1927930548546198515">നിങ്ങളുടെ അഭ്യർത്ഥനകളും നിർദ്ദേശങ്ങൾ സ്വീകരിക്കുമ്പോഴോ അവഗണിക്കുമ്പോഴോ ഉള്ള പ്രവർത്തനരീതിയും പോലുള്ള, നിങ്ങൾ ഫീച്ചർ ഉപയോഗിക്കുന്ന രീതി Chrome ലോഗ് ചെയ്യുന്നു</translation>
 <translation id="1932098463447129402">മുമ്പല്ല</translation>
+<translation id="1932629105611536854">ഡെലിവറി തപാൽ കോഡ്</translation>
 <translation id="1935353813610900265">AI ഉപയോഗിച്ചുള്ള ചരിത്രം തിരയൽ സംബന്ധിച്ച് ഫീഡ്ബാക്ക് അയയ്‌ക്കുക</translation>
 <translation id="1935995810530254458">എന്തായാലും പകർത്തുക</translation>
 <translation id="1938580037092872316">സംരക്ഷിച്ച വിലാസത്തിലേക്ക് പുതിയ വിവരങ്ങൾ ചേർക്കുക</translation>
@@ -615,6 +614,7 @@
 <translation id="2045871135676061132">Envelope Personal</translation>
 <translation id="2048261947532620704">പേജ് വിവർത്തനം ചെയ്യുന്നു</translation>
 <translation id="2055016614992422886">സംഭാഷണം</translation>
+<translation id="2057654338925604102">കാരിയർ ഡൊമെയ്ൻ</translation>
 <translation id="2058468041496756763">Chrome-ന്റെ ക്രമീകരണത്തിൽ നിങ്ങൾക്ക് ഏതുസമയത്തും തിരയൽ എഞ്ചിൻ മാറ്റാം. നിങ്ങൾ മുൻഗണന നൽകുന്ന തിരയൽ എഞ്ചിൻ കാണുന്നില്ലെങ്കിൽ, അവരുടെ സൈറ്റിൽ നിങ്ങൾക്ക് തിരയാം. Chrome ക്രമീകരണത്തിൽ അടുത്തിടെ സന്ദർശിച്ച തിരയൽ എഞ്ചിനായി ഇത് ലിസ്റ്റ് ചെയ്തിരിക്കുന്നത് നിങ്ങൾക്ക് കാണാം, നിങ്ങൾക്ക് ഇത് ഡിഫോൾട്ടാക്കുകയും ചെയ്യാം.</translation>
 <translation id="2059166748188874810">മുൻസിപ്പാലിറ്റി</translation>
 <translation id="2059202684901022309">22 x 34 ഇഞ്ച്</translation>
@@ -765,6 +765,7 @@
 <translation id="2277753418458118549">കണക്ഷന്റെ വിശദാംശങ്ങൾ കാണിക്കുക</translation>
 <translation id="2277949605527755300"><ph name="URL" />, നിങ്ങളുടെ കൈകൾ ട്രാക്ക് ചെയ്യാൻ ആഗ്രഹിക്കുന്നു</translation>
 <translation id="22792995594807632">ഡൗൺലോഡ് ചെയ്യുന്നതിന് മുമ്പ് അവലോകനം ചെയ്യേണ്ടതുണ്ട്</translation>
+<translation id="2279607542590042584">പാസ്കീ • Apple Passwords</translation>
 <translation id="2283340219607151381">വിലാസങ്ങൾ സംരക്ഷിച്ച് സ്വയമേവ പൂരിപ്പിക്കുക</translation>
 <translation id="2283447177162560884">'<ph name="PAGE_TITLE" />' ഇല്ലാതാക്കി</translation>
 <translation id="2283599456633275070">യാത്ര</translation>
@@ -775,7 +776,6 @@
 <translation id="2292556288342944218">നിങ്ങളുടെ ഇന്റർനെറ്റ് ആക്‌സസ്സ് ബ്ലോക്ക് ചെയ്‌തു</translation>
 <translation id="2294150501457238325">പാസ്‌പോർട്ട് സുരക്ഷിതമായി ചേർക്കുക</translation>
 <translation id="2295831393422400053">എന്നെ എഴുതാൻ സഹായിക്കൂ ഉപയോഗിക്കാൻ, തിരയലുകളും ബ്രൗസിംഗും കൂടുതൽ മികച്ചതാക്കൂ ക്രമീകരണം ഓണാക്കുക</translation>
-<translation id="2296244067976588032">പാസ്‌കീ • iCloud Keychain</translation>
 <translation id="2296331629987861142">ഈസി ഇൻസ്റ്റാൾമെന്റുകളിൽ പേ ചെയ്യുക (യോഗ്യതയ്ക്ക് വിധേയമാണ്, ഫീസ് ബാധകം)</translation>
 <translation id="2300306941146563769">അപ്‌ലോഡ് ചെയ്‌തില്ല</translation>
 <translation id="2301064673700597535">യോഗ്യതയുള്ള സർട്ടിഫിക്കറ്റ് പ്രസ്‌താവനകൾ</translation>
@@ -837,6 +837,8 @@
 <translation id="2384307209577226199">എന്റര്‍പ്രൈസ് ഡിഫോൾട്ട്</translation>
 <translation id="2385809941344967209">നിങ്ങളുടെ Chrome ക്രമീകരണത്തിൽ നിന്ന് Chrome അപ്‌ഡേറ്റ് ചെയ്യുക</translation>
 <translation id="2386255080630008482">സെർവറിന്റെ സർട്ടിഫിക്കറ്റ് റദ്ദാക്കി.</translation>
+<translation id="2387424091060104123">Gemini നിർദ്ദേശിച്ചത് · <ph name="SRC_LINK" />ഉറവിടങ്ങൾ കാണുക<ph name="END_SRC_LINK" />
+Chrome-ൽ നിന്ന് നിങ്ങൾക്ക് ഈ നിർദ്ദേശം നീക്കം ചെയ്യാം. നിങ്ങളുടെ ഒറിജിനൽ ഉറവിടം ഇല്ലാതാക്കില്ല. <ph name="MANAGE_LINK" />മെച്ചപ്പെടുത്തിയ സ്വയമേവ പൂരിപ്പിക്കൽ മാനേജ് ചെയ്യുക<ph name="END_MANAGE_LINK" /></translation>
 <translation id="239203817277685015">വിശദമാക്കുക</translation>
 <translation id="2392959068659972793">മൂല്യമൊന്നും സജ്ജമാക്കാത്ത നയങ്ങൾ കാണിക്കുക</translation>
 <translation id="239429038616798445">ഈ ഷിപ്പിംഗ് രീതി ലഭ്യമല്ല. മറ്റൊരു രീതി പരീക്ഷിക്കുക.</translation>
@@ -859,7 +861,6 @@
 <translation id="2436186046335138073">എല്ലാ <ph name="PROTOCOL" /> ലിങ്കുകളും തുറക്കാൻ <ph name="HANDLER_HOSTNAME" /> എന്നതിനെ അനുവദിക്കണോ?</translation>
 <translation id="243815215670139125">ഈ കാർഡ് നിങ്ങളുടെ Google Account-ൽ സംരക്ഷിക്കാനായില്ല. പകരം, ഈ ഉപകരണത്തിലെ Chrome-ൽ ഇത് സംരക്ഷിച്ചിരിക്കുന്നു.</translation>
 <translation id="2438874542388153331">വലതുവശത്ത് നാല് തവണ പഞ്ച് ചെയ്യുക</translation>
-<translation id="2441854154602066476">ടച്ച് ചെയ്യുമ്പോൾ പൂരിപ്പിക്കാൻ ലഭ്യമായ പേയ്‌മെന്റ് രീതികൾ. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
 <translation id="2442865686365739754">Chrome ഇനിപ്പറയുന്നവ <ph name="BEGIN_EMPHASIS" />സംരക്ഷിക്കില്ല<ph name="END_EMPHASIS" />:
           <ph name="BEGIN_LIST" />
             <ph name="LIST_ITEM" />നിങ്ങളുടെ ബ്രൗസിംഗ് ചരിത്രം
@@ -882,6 +883,7 @@
 <translation id="2467272921457885625">ഉപകരണ ഹാർഡ്‌വെയർ സവിശേഷതകളും CPU/RAM ഉപയോഗ ചരിത്രം പോലുള്ള സ്ഥിതിവിവരക്കണക്കുകളും</translation>
 <translation id="2467421459221956357">സെൻസറുകൾ ഉപയോഗിക്കണോ?</translation>
 <translation id="2467694685043708798"><ph name="BEGIN_LINK" />നെറ്റ്‌വർക്ക് ഡയഗണോസ്‌റ്റിക്‌സ് റൺ ചെയ്യുന്നു<ph name="END_LINK" /></translation>
+<translation id="2468247643665097563">ഓർഡർ</translation>
 <translation id="2469153820345007638">1-N ക്രമത്തിൽ</translation>
 <translation id="24699311393038040">പേപ്പർ (കോട്ട് ചെയ്തത്)</translation>
 <translation id="2471632709106952369">താരതമ്യം ചെയ്‌ത ടേബിളൂകൾ</translation>
@@ -898,8 +900,8 @@
 <translation id="2491120439723279231">സെർവറിന്റെ സർട്ടിഫിക്കറ്റിൽ പിശകുകൾ ഉണ്ട്.</translation>
 <translation id="2491414235131909199">ഒരു വിപുലീകരണം ഈ പേജ് ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു</translation>
 <translation id="2493122313108999546">വലുപ്പം മാറ്റി</translation>
-<translation id="249376477913017009">Gmail-ൽ നിന്നും മറ്റുമുള്ള സ്വയമേവ പൂരിപ്പിക്കൽ അറിയിപ്പ് തുറന്നു</translation>
 <translation id="2495083838625180221">JSON പാർസർ</translation>
+<translation id="2495909791227061512">സമീപമുള്ള ഉപകരണങ്ങളിലേക്ക് കണക്റ്റ് ചെയ്യണോ?</translation>
 <translation id="2496402116964818747">പാസ്‌വേഡുകൾ പൂരിപ്പിക്കാൻ ഫിംഗർപ്രിന്റ് ഉപയോഗിക്കണോ എന്നത് <ph name="SETTINGS" /> എന്നതിൽ നിങ്ങൾക്ക് മാറ്റാം</translation>
 <translation id="2498091847651709837">പുതിയ കാർഡ് സ്‌കാൻ ചെയ്യുക</translation>
 <translation id="2501270939904835585">ലേബലുകൾ (സാറ്റിൻ)</translation>
@@ -908,6 +910,7 @@
 <translation id="2505063700931618106">കാർഡ് വിവരങ്ങൾ സംരക്ഷിച്ചു</translation>
 <translation id="2505268675989099013">അക്കൗണ്ട് പരിരക്ഷിക്കുക</translation>
 <translation id="2508626115198287271"><ph name="BENEFIT_DESCRIPTION" /> (നിബന്ധനകൾ ബാധകം)</translation>
+<translation id="251033673027346551"><ph name="BEGIN_LINK" />ഡാറ്റാ, സ്വകാര്യതാ മുൻഗണനകൾ<ph name="END_LINK" /> മാനേജ് ചെയ്യാൻ Google Wallet സന്ദർശിക്കുക.</translation>
 <translation id="2512101340618156538">അനുവദനീയമല്ല (ഡിഫോൾട്ട്)</translation>
 <translation id="2512413427717747692">ഡിഫോൾട്ട് ബ്രൗസർ ബട്ടണായി Chrome സജ്ജീകരിക്കുക, iOS ക്രമീകരണത്തിൽ സിസ്റ്റത്തിന്റെ ഡിഫോൾട്ട് ബ്രൗസറായി Chrome സജ്ജീകരിക്കുന്നതിന് Enter അമർത്തുക</translation>
 <translation id="2515629240566999685">നിങ്ങളുടെ ഏരിയയിലെ സിഗ്‌നൽ പരിശോധിക്കുന്നു</translation>
@@ -922,7 +925,6 @@
 <translation id="2527451058878391043">CVC നിങ്ങളുടെ കാർഡിന്റെ മുൻഭാഗത്താണുള്ളത്. നിങ്ങളുടെ കാർഡ് നമ്പറിന് മുകളിൽ വലതുവശത്തുള്ള 4 അക്ക കോഡാണിത്.</translation>
 <translation id="2529899080962247600">ഈ ഫീൽഡിൽ <ph name="MAX_ITEMS_LIMIT" />-ൽ കൂടുതൽ എൻ‌ട്രികൾ ഉണ്ടാകരുത്. തുടർന്നുള്ള എല്ലാ എൻ‌ട്രികളും നിരസിക്കും.</translation>
 <translation id="2530042584066815841">മൗസ് ലോക്കും ഉപയോഗവും</translation>
-<translation id="253493526287553278">പ്രമോ കോഡ് വിശദാംശങ്ങൾ കാണുക</translation>
 <translation id="2535585790302968248">സ്വകാര്യമായി ബ്രൗസ് ചെയ്യാൻ പുതിയ അദൃശ്യ ടാബ് തുറക്കുക</translation>
 <translation id="2535659140340599600">{COUNT,plural, =1{എന്നതും മറ്റൊരെണ്ണവും}other{എന്നതും മറ്റ് # എണ്ണവും}}</translation>
 <translation id="2536110899380797252">വിലാസം ചേർക്കുക</translation>
@@ -1205,7 +1207,6 @@
 <translation id="3052868890529250114">നിങ്ങൾ സാധാരണയായി സുരക്ഷിതമായാണ് സൈറ്റുകളിലേക്ക് കണക്റ്റ് ചെയ്യുന്നത്, എന്നാൽ ഇത്തവണ Chrome-ന് സുരക്ഷിതമായ കണക്ഷൻ ഉപയോഗിക്കാനായില്ല. ഒരു ആക്രമണകാരി നിങ്ങളുടെ നെറ്റ്‌വർക്ക് കണക്ഷൻ പരിഷ്‌കരിക്കാനോ അതിൽ നിന്നുള്ള വിവരങ്ങൾ ചോർത്താനോ ശ്രമിക്കുന്നുണ്ടാകാം. <ph name="BEGIN_LEARN_MORE_LINK" />ഈ മുന്നറിയിപ്പിനെ കുറിച്ച് കൂടുതലറിയുക<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="3052964831964880138"><ph name="PRODUCT_NAME" /> എന്നതിന് <ph name="PRICE_DROP" /> വിലക്കുറവ്</translation>
 <translation id="3053013834507634016">സര്‍‌ട്ടിഫിക്കറ്റ് കീ ഉപയോഗം</translation>
-<translation id="3056660797732519147">'ഇപ്പോൾ വാങ്ങി പിന്നീട് പണമടയ്ക്കുക' പിശക് സ്‌ക്രീൻ. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
 <translation id="3057844102210575426">യാത്രാ വിവരങ്ങൾ മാനേജ് ചെയ്യുക</translation>
 <translation id="3061707000357573562">പാച്ച് സേവനം</translation>
 <translation id="3062655045399308513">ബ്രൗസിംഗ് ഡാറ്റ ഇല്ലാതാക്കുക...</translation>
@@ -1300,6 +1301,7 @@
 <translation id="3207960819495026254">ബുക്ക്‌മാർക്കുചെയ്‌തു</translation>
 <translation id="3209034400446768650">പേജ് പണം ഈടാക്കിയേക്കാം</translation>
 <translation id="3209071504641569648">നിങ്ങളുടെ അഭ്യർത്ഥനകളും പേജിന്റെ പേരുകളും URL-കളും Google-ലേക്ക് അയയ്ക്കുന്നു, മെച്ചപ്പെടുത്തിയ സ്വയമേവ പൂരിപ്പിക്കൽ മെച്ചപ്പെടുത്താൻ അവ അവലോകനം ചെയ്തേക്കാം</translation>
+<translation id="3211727636285361260"><ph name="HANDLER_HOSTNAME" /> മുഖേന <ph name="PROTOCOL" /> ലിങ്കുകൾ തുറക്കുക</translation>
 <translation id="3212468046572043669">ഡൗൺലോഡ് ആരംഭിച്ചു. അത് കാണാൻ, മുകളിൽ നിന്ന് വലിച്ചിട്ട ശേഷം 'മടങ്ങുക' ബട്ടൺ സ്പർശിക്കുക</translation>
 <translation id="3212581601480735796"><ph name="HOSTNAME" /> എന്നതിലുള്ള നിങ്ങളുടെ ആക്റ്റിവിറ്റി നിരീക്ഷണത്തിലാണ്</translation>
 <translation id="3215092763954878852">WebAuthn ഉപയോഗിക്കാനായില്ല</translation>
@@ -1427,6 +1429,7 @@
 <translation id="3432601291244612633">പേജ് അടയ്ക്കുക</translation>
 <translation id="3434025015623587566">Google Password Manager-ന് കൂടുതൽ ആക്‌സസ് ആവശ്യമാണ്</translation>
 <translation id="343474037147570563">നിങ്ങൾ അപ്‌ലോഡ് ചെയ്യുന്നതോ അറ്റാച്ച് ചെയ്യുന്നതോ ആയ ഫയലുകൾ വിശകലനം ചെയ്യുന്നതിന്, Google Cloud-ലേക്കോ മൂന്നാം കക്ഷികൾക്കോ അയയ്ക്കുന്നു. ഉദാഹരണത്തിന്, സെൻസിറ്റീവായിട്ടുള്ള വ്യക്തിപരമായ ഡാറ്റയോ മാൽവെയറോ ഉണ്ടോയെന്നറിയാൻ അവ സ്‌കാൻ ചെയ്‌തേക്കാം, കമ്പനിയുടെ നയങ്ങൾ അടിസ്ഥാനമാക്കി അവ സംഭരിച്ചേക്കാം, അവ നിങ്ങളുടെ അഡ്‌മിന് ദൃശ്യമാകുകയും ചെയ്തേക്കാം.</translation>
+<translation id="3435267628744367511">ടാബുകൾ മാറാതെ തന്നെ വിവരങ്ങൾ കണ്ടെത്താനും പൂരിപ്പിക്കാനും ഏത് ഫോമിലും Ctrl രണ്ടുതവണ അമർത്തുക</translation>
 <translation id="3435557549311968410">തുടർച്ചയായത് (ചെറുത്)</translation>
 <translation id="3435738964857648380">സുരക്ഷ</translation>
 <translation id="3436125638121079308">ഈ ത്രെഡിൽ മികച്ച പ്രതികരണങ്ങൾക്കായി പ്രസക്തമായ ടാബുകൾ സ്വയമേവ പങ്കിടണോ?</translation>
@@ -1438,6 +1441,7 @@
 <translation id="3447884698081792621">സർട്ടിഫിക്കറ്റ് (<ph name="ISSUER" /> ഇഷ്യൂ ചെയ്‌തത്) കാണിക്കുക</translation>
 <translation id="3450323514459570273">നിങ്ങളുടെ MIDI ഉപകരണങ്ങൾ നിയന്ത്രിക്കാനും റീപ്രോഗ്രാം ചെയ്യാനും ആവശ്യപ്പെടാം</translation>
 <translation id="3452404311384756672">ഇടവേള ലഭ്യമാക്കുക:</translation>
+<translation id="345268527248907593">ഈ സൈറ്റ് ലഭ്യമാക്കാനായില്ല</translation>
 <translation id="3453962258458347894">ശ്രമങ്ങളുടെ എണ്ണം</translation>
 <translation id="3461266716147554923">ക്ലിപ്പ്‌ബോർഡിലേക്ക് പകർത്തിയിട്ടുള്ള ടെക്‌സ്റ്റും ചിത്രങ്ങളും കാണാൻ <ph name="URL" /> ആഗ്രഹിക്കുന്നു</translation>
 <translation id="3461824795358126837">ഹൈലൈറ്റർ</translation>
@@ -1515,6 +1519,8 @@
 <translation id="3577473026931028326">എന്തോ കുഴപ്പമുണ്ടായി. വീണ്ടും ശ്രമിക്കുക.</translation>
 <translation id="3580550219062570293"><ph name="TOS_TITLE" /> <ph name="LOGO_DESCRIPTION" /></translation>
 <translation id="3581089476000296252">ഈ പേജ് തയ്യാറാകുമ്പോൾ, Chrome നിങ്ങളെ അറിയിക്കും. &lt;a&gt;റദ്ദാക്കുക&lt;/a&gt;</translation>
+<translation id="3581499772329034229">ടാബുകൾ സ്വയമേവ ചേർക്കുക</translation>
+<translation id="3582670569275100909">ഷിപ്പ്മെന്റുകൾ</translation>
 <translation id="3582930987043644930">പേര് ചേർക്കുക</translation>
 <translation id="3583757800736429874">&amp;നീക്കുന്നത് വീണ്ടും ചെയ്യുക</translation>
 <translation id="3584299510153766161">താഴെ ഇരട്ട പഞ്ച് ചെയ്യുക</translation>
@@ -1590,6 +1596,7 @@
 <translation id="3705189812819839667"><ph name="RESULT_OWNER" /> - <ph name="RESULT_PRODUCT_SOURCE" /></translation>
 <translation id="370665806235115550">ലോഡ്ചെയ്യുന്നു...</translation>
 <translation id="3709599264800900598">നിങ്ങൾ പകർത്തിയ ടെക്‌സ്‌റ്റ്</translation>
+<translation id="3711223220609269738">പുതിയ ഐസൊലേറ്റഡ് ടാബ്</translation>
 <translation id="3711430313228789376">പാസ്‌വേഡുകൾ കാണിക്കാൻ Chrome ബ്രൗസർ ശ്രമിക്കുന്നു</translation>
 <translation id="3711895659073496551">താൽക്കാലികമായി റദ്ദാക്കുക</translation>
 <translation id="3712004750972384495">സ്ക്രീൻ റെക്കോർഡിംഗ് സംരക്ഷിക്കുന്നു</translation>
@@ -1603,11 +1610,13 @@
 <translation id="3715597595485130451">Wi-Fi-യിലേക്ക് കണക്റ്റുചെയ്യുക</translation>
 <translation id="3717027428350673159"><ph name="BEGIN_LINK" />പ്രോക്‌സിയും ഫയർവാളും DNS കോൺഫിഗറേഷനും പരിശോധിക്കുന്നു<ph name="END_LINK" /></translation>
 <translation id="3723316892512143176">Iban</translation>
+<translation id="3724078054554953078">ഷിപ്പ് ചെയ്ത തീയതി</translation>
 <translation id="372429172604983730">ആന്‍റിവൈറസ്, ഫയർവാൾ, വെബ് ഫിൽട്ടറിംഗ് അല്ലെങ്കിൽ പ്രോക്‌സി സോഫ്റ്റ്‌വെയർ എന്നിവ ഉൾപ്പെടെയുള്ള ആപ്പുകൾ ഈ പിശകിന് കാരണമാകുന്നു.</translation>
 <translation id="3727101516080730231"><ph name="CREATE_GOOGLE_SLIDE_FOCUSED_FRIENDLY_MATCH_TEXT" />, Slides-ൽ പുതിയൊരു Google അവതരണം വേഗത്തിൽ സൃഷ്ടിക്കാൻ Tab അമർത്തുക, തുടർന്ന് Enter അമർത്തുക</translation>
 <translation id="3727309136762649052">നെയിംസ്പെയ്സ്</translation>
 <translation id="3727850735097852673">macOS Keychain-ന് ഒപ്പം Google Password Manager ഉപയോഗിക്കുന്നതിന്, Chrome വീണ്ടും ആരംഭിച്ച് Keychain ആക്‌സസ് അനുവദിക്കുക. വീണ്ടും ആരംഭിച്ചുകഴിഞ്ഞാൽ നിങ്ങളുടെ ടാബുകൾ വീണ്ടും തുറക്കും.</translation>
 <translation id="3728173127485570463">പാസ്‌വേഡുകൾ സ്വയമേവ പൂരിപ്പിക്കാൻ Chrome ബ്രൗസറിന് ഇനി നിങ്ങളുടെ ഫിംഗർപ്രിന്റ് ആവശ്യമില്ല</translation>
+<translation id="3729811201279509483">ടാബുകൾ നേരിട്ട് ചേർക്കുക</translation>
 <translation id="3736564442532774454"><ph name="APP_NAME" /> എന്നതിലെ നിങ്ങളുടെ സൂക്ഷ്‌മമായി കൈകാര്യം ചെയ്യേണ്ട വിവരങ്ങൾ പൂരിപ്പിക്കാൻ Chrome ബ്രൗസർ ശ്രമിക്കുന്നു.</translation>
 <translation id="3738166223076830879">നിങ്ങളുടെ ബ്രൗസർ മാനേജ് ചെയ്യുന്നത് നിങ്ങളുടെ അഡ്‌മിൻ ആണ്.</translation>
 <translation id="3739842843727261045">തംബ്‌സ് അപ്പ് നൽകുന്നത് നിങ്ങൾക്ക് ഈ ഫലങ്ങൾ ഇഷ്ടമായെന്ന ഫീഡ്ബാക്ക് സമർപ്പിക്കുന്നു</translation>
@@ -1963,6 +1972,7 @@
 <translation id="4284885181066817063"><ph name="DOMAIN" /> ബ്ലോക്ക് ചെയ്‌തു</translation>
 <translation id="4288101205645068104">വാഹനം ഇല്ലാതാക്കുക</translation>
 <translation id="4290920330097335010">ഒരിക്കലും അനുവദിക്കരുത്</translation>
+<translation id="4291909791598163333">സന്ദർശിക്കാൻ ഉദ്ദേശിക്കുന്ന സൈറ്റ് സന്ദർശിക്കുന്നതിൽ നിന്ന് നിങ്ങളുടെ സ്ഥാപനം നിങ്ങളെ ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു</translation>
 <translation id="4297502707443874121"><ph name="THUMBNAIL_PAGE" />-ാം പേജിനുള്ള ലഘുചിത്രം</translation>
 <translation id="4297937944457164390"><ph name="ATTRIBUTE_NAME" /> അപ്ഡേറ്റ് ചെയ്‌തു</translation>
 <translation id="4298148761711700950">QR അപ്‌ലോഡ് ഇല്ലാതെ തൽക്ഷണം പേ ചെയ്യൂ</translation>
@@ -2075,7 +2085,7 @@
 <translation id="4490717597759821841">A7</translation>
 <translation id="449126573531210296">സമന്വയിപ്പിച്ച പാസ്‌വേഡുകൾ നിങ്ങളുടെ Google Account ഉപയോഗിച്ച് എൻക്രിപ്റ്റ് ചെയ്യുക</translation>
 <translation id="4493480324863638523">URL അസാധുവാണ്. സ്‌റ്റാൻഡേർഡ് സ്‌കീം ഉള്ള URL ആയിരിക്കണം, ഉദാ. http://example.com അല്ലെങ്കിൽ https://example.com.</translation>
-<translation id="4497010149473852018">ടച്ച് ചെയ്യുമ്പോൾ പൂരിപ്പിക്കാൻ ലഭ്യമായ ലോയൽറ്റി കാർഡുകൾ. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
+<translation id="4497843134750481377">ഓഫറുകൾ മാനേജ് ചെയ്യുക</translation>
 <translation id="4500587658229086076">സുരക്ഷിതമല്ലാത്ത ഉള്ളടക്കം</translation>
 <translation id="4501939680615452918">ട്രെൻഡിംഗ് റെസ്റ്റോറന്റുകളിൽ ഒഴിവുകൾ ഉണ്ടോയെന്ന് നോക്കുക</translation>
 <translation id="4503459574136856756">കൂടുതൽ പ്രൊഫഷണലായി തോന്നിക്കാൻ എന്റെ ബയോ മാറ്റിയെഴുതുക</translation>
@@ -2141,7 +2151,6 @@
 <translation id="4628948037717959914">ഫോട്ടോ</translation>
 <translation id="4629370161347991046">A4x6</translation>
 <translation id="462989688138616749"><ph name="CLOUD_PROVIDER" /> എന്നതിലേക്കുള്ള നിങ്ങളുടെ ഫയൽ അപ്‌ലോഡ് <ph name="HOURS" /> മണിക്കൂറിനുള്ളിൽ ആരംഭിക്കും</translation>
-<translation id="4631881646528206880">വെർച്വൽ കാർഡ് എൻറോൾമെന്റ്</translation>
 <translation id="4635278307999235413">അഡ്‌മിൻ കൺസോളിലേക്ക് ഡാറ്റ അയയ്ക്കുന്നു</translation>
 <translation id="4636930964841734540">വിവരം</translation>
 <translation id="4640225694041297329">കഴിഞ്ഞ 7 ദിവസത്തെ ഫലങ്ങൾ കാണിക്കുക</translation>
@@ -2202,6 +2211,7 @@
 <translation id="4732860731866514038"><ph name="LANGUAGE" /> ഭാഷാ പായ്ക്ക് ഡൗൺലോഡ് ചെയ്യുന്നു..<ph name="PERCENT" />%</translation>
 <translation id="4733082559415072992">നിങ്ങളുടെ ഉപകരണത്തിന്‍റെ ലൊക്കേഷൻ ഉപയോഗിക്കാൻ <ph name="URL" /> ആഗ്രഹിക്കുന്നു</translation>
 <translation id="473414950835101501">നിങ്ങളുടെ ക്യാമറകൾ ഉപയോഗിക്കുക</translation>
+<translation id="4736089601076994090">കാലഹരണപ്പെടുന്നത്: <ph name="EXPIRATION_DATE" /></translation>
 <translation id="4736825316280949806">Chromium റീസ്‌റ്റാർട്ടുചെയ്യുക</translation>
 <translation id="4736934858538408121">വെർച്വൽ കാർഡ്</translation>
 <translation id="473775607612524610">അപ്ഡേറ്റ് ചെയ്യുക</translation>
@@ -2405,7 +2415,6 @@
 <translation id="5052488928733955073">നിങ്ങളുടെ വിവരങ്ങൾ പൂരിപ്പിക്കുന്നതിൽ പ്രശ്‌നമുണ്ട്. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിക്കുക.</translation>
 <translation id="5053116470141135293">നിങ്ങളുടെ യഥാർത്ഥ വിശദാംശങ്ങൾ പരിരക്ഷിക്കുന്നതിന് ഈ കാർഡ് ഉപയോഗിച്ച് ചെക്ക് ഔട്ട് ചെയ്യുമ്പോൾ ഒരു വെർച്വൽ കാർഡ് നമ്പർ പൂരിപ്പിക്കും. Google Wallet-ൽ മാനേജ് ചെയ്യുക. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="5056425809654826431">{NUM_FILES,plural, =1{സമീപമുള്ള പങ്കിടൽ ഉപയോഗിച്ച് ഈ ഫയൽ അയയ്‌ക്കാൻ നിങ്ങളുടെ ഉപകരണത്തിൽ ഇടം (<ph name="DISK_SPACE_SIZE" />) സൃഷ്ടിക്കുക}other{സമീപമുള്ള പങ്കിടൽ ഉപയോഗിച്ച് ഈ ഫയലുകൾ അയയ്‌ക്കാൻ നിങ്ങളുടെ ഉപകരണത്തിൽ ഇടം (<ph name="DISK_SPACE_SIZE" />) സൃഷ്ടിക്കുക}}</translation>
-<translation id="5056587122125565772">ചിത്രം സൃഷ്ടിക്കുക</translation>
 <translation id="505757197798929356">തുറക്കാനുള്ള കാരണം നൽകുക (ആവശ്യമാണ്)</translation>
 <translation id="5058282932481719070">ക്രമീകരണത്തിൽ 'മെച്ചപ്പെടുത്തിയ സ്വയമേവ പൂരിപ്പിക്കലിനെ' കുറിച്ച് കൂടുതലറിയുക</translation>
 <translation id="5061227663725596739"><ph name="LOOKALIKE_DOMAIN" /> ആണോ നിങ്ങൾ ഉദ്ദേശിച്ചത്?</translation>
@@ -2524,14 +2533,15 @@
 <translation id="5255583962255635076">നിങ്ങളുടെ ഔദ്യോഗിക പ്രൊഫൈലിൽ ബാധകമാക്കിയ ബ്രൗസർ നയങ്ങൾ</translation>
 <translation id="5255690596502591079">എന്തായാലും ക്യാപ്‌ചർ ചെയ്യുക</translation>
 <translation id="5255771248404149177">നിങ്ങളുടെ കാർഡ് ദാതാവ് ഇത് നിങ്ങളാണെന്ന് ഉറപ്പാക്കാൻ ആഗ്രഹിക്കുന്നു</translation>
-<translation id="525579853540851404">'ഇപ്പോൾ വാങ്ങി പിന്നീട് പണമടയ്ക്കുക' പുരോഗതി സ്‌ക്രീൻ. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
 <translation id="5255833070095767006">350 x 460 മി.മീ</translation>
 <translation id="5257739419779698609">{0,plural, =1{ഈ ഫയൽ <ph name="DESTINATION_NAME" /> എന്നതിലേക്ക് പകർത്താൻ അഡ്‌മിൻ നയം നിർദ്ദേശിക്കുന്നില്ല}other{ഈ ഫയലുകൾ <ph name="DESTINATION_NAME" /> എന്നതിലേക്ക് പകർത്താൻ അഡ്‌മിൻ നയം നിർദ്ദേശിക്കുന്നില്ല}}</translation>
 <translation id="5258473597674772367">"<ph name="GROUP_NAME" />" ടാബ് ഗ്രൂപ്പ് ഇനി ലഭ്യമല്ല</translation>
 <translation id="5260842098960755113">ത്രെഡ് അടച്ചു</translation>
 <translation id="5262342527470539728">നിങ്ങളുടെ വിവരങ്ങൾ <ph name="ACCOUNT" /> എന്നതിനായി <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> എന്നതിൽ സംരക്ഷിച്ചിരിക്കുന്നു</translation>
+<translation id="5263202631354741256">ഐഡി</translation>
 <translation id="5263867360296733198">അപ്‌ലോഡ് ചെയ്യുന്നതിന് മുമ്പ് അവലോകനം ചെയ്യേണ്ടതുണ്ട്</translation>
 <translation id="5266128565379329178">മുകളിൽ ബൈൻഡ് ചെയ്യുക</translation>
+<translation id="5268746892698450173">കാരിയറിന്റെ പേര്</translation>
 <translation id="5269225904387178860">താഴെ നാല് തവണ പഞ്ച് ചെയ്യുക</translation>
 <translation id="5271381225185906340">"<ph name="DATA_CONTROLS_ATTRIBUTE" />" എന്നത് "<ph name="DATA_CONTROLS_RESTRICTION" />" എന്നതിനുള്ള പിന്തുണയ്ക്കുന്ന വ്യവസ്ഥയല്ല</translation>
 <translation id="527191520368130807">പോളിഷ് ചെയ്യുക</translation>
@@ -2559,6 +2569,7 @@
 <translation id="5314967030527622926">ബുക്ക്‌ലെറ്റ് മേക്കർ</translation>
 <translation id="5316812925700871227">എതിർ ഘടികാരദിശയിൽ തിരിക്കുക</translation>
 <translation id="5317780077021120954">സംരക്ഷിക്കുക</translation>
+<translation id="5318654747230250818">കോഡ്: <ph name="PROMO_CODE" /></translation>
 <translation id="531996107159483074"><ph name="BEGIN_BOLD" />നിങ്ങളുടെ ഡിഫോൾട്ട് തിരയൽ എഞ്ചിൻ വെബിൽ തിരയാൻ നിങ്ങളെ അനുവദിക്കുകയും Chromium ഫീച്ചറുകളെ പിന്തുണയ്ക്കുകയും ചെയ്യുന്നു<ph name="END_BOLD" /> ഉദാഹരണത്തിന്, വിലാസ ബാറിൽ നിന്നും വെബ് പേജുകളിലെ ചിത്രങ്ങളിൽ നിന്നും തിരയുന്നത് പോലുള്ളവ. നിങ്ങളുടെ തിരയൽ എഞ്ചിൻ ഒരു ഫീച്ചറിനെ പിന്തുണയ്ക്കുന്നില്ലെങ്കിൽ അത് ലഭ്യമായേക്കില്ല.</translation>
 <translation id="5323043727018853753">ഉൾച്ചേർത്ത ഉള്ളടക്കം അനുവദനീയമാണ്</translation>
 <translation id="5323105697514565458"><ph name="FRIENDLY_MATCH_TEXT" />, <ph name="MATCH_POSITION" /> / <ph name="NUM_MATCHES" /></translation>
@@ -2607,7 +2618,6 @@
 <translation id="5398461103557553443">അടുത്ത തവണ ഈ IBAN സ്വയമേവ പൂരിപ്പിക്കാൻ, Google Wallet-ൽ ഇത് സംരക്ഷിക്കുക</translation>
 <translation id="5398772614898833570">പരസ്യങ്ങൾ ബ്ലോക്കുചെയ്‌തു</translation>
 <translation id="5400836586163650660">ചാരനിറം</translation>
-<translation id="5402715318763077894">ലോക്കൽ നെറ്റ്‌വർക്ക് ആക്‌സസ് അനുവദിക്കുക</translation>
 <translation id="540949333488055151">പ്ലാസ്റ്റിക് (നിറമുള്ളത്)</translation>
 <translation id="540969355065856584">ഈ സെർവറിന് അത് <ph name="DOMAIN" /> ആണെന്ന് തെളിയിക്കാനായില്ല; അതിന്റെ സുരക്ഷ സർട്ടിഫിക്കറ്റിന് ഇപ്പോൾ സാധുതയുള്ളതല്ല. തെറ്റായ കോൺഫിഗറേഷൻ കാരണമോ ഒരു ആക്രമണകാരി നിങ്ങളുടെ കണക്ഷനെ തടസ്സപ്പെടുത്തുന്നത് കൊണ്ടോ ആയിരിക്കാം ഇത് സംഭവിച്ചത്.</translation>
 <translation id="5411462078004183575">കുറഞ്ഞ നിരക്കുള്ള ഓപ്ഷൻ</translation>
@@ -2641,6 +2651,7 @@
 <translation id="5452923259299906094">ഇ-വാലറ്റും Pix-ഉം ഉപയോഗിച്ച് പേ ചെയ്യുക</translation>
 <translation id="5455374756549232013">മോശം നയ ടൈംസ്റ്റാമ്പ്</translation>
 <translation id="5456428544444655325">ഒരിക്കലും ദൃശ്യമാക്കരുത്</translation>
+<translation id="5457082343331641453">നിങ്ങളുടെ തിരയലിലേക്ക് ചേർക്കുക</translation>
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> എന്നതും മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> എണ്ണവും}other{<ph name="CONTACT_PREVIEW" /> എന്നതും മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> എണ്ണവും}}</translation>
 <translation id="5463625433003343978">ഉപകരണങ്ങൾ കണ്ടെത്തുന്നു...</translation>
 <translation id="5465128270485645058">ഈ ത്രെഡുമായി ബന്ധപ്പെട്ടതാണെങ്കിൽ, ഈ വിൻഡോയിലെ തുറന്ന ടാബുകൾ സ്വയമേവ പങ്കിടുന്നതിലൂടെ കൂടുതൽ അനുയോജ്യമായ പ്രതികരണങ്ങൾ നേടുക.</translation>
@@ -2771,6 +2782,7 @@
 <translation id="5649053991847567735">യാന്ത്രിക ഡൗൺലോഡുകൾ</translation>
 <translation id="5651323159439184939">ട്രാക്‌റ്റർ ഫീഡ്</translation>
 <translation id="5653681867130739344">Google Wallet-ൽ ഐഡന്റിറ്റി കാർഡ് സുരക്ഷിതമായി അപ്ഡേറ്റ് ചെയ്യുക</translation>
+<translation id="5653744563415531641">Google ഉൽപ്പന്നങ്ങളിലുടനീളം ഫോമുകൾ പൂരിപ്പിക്കുന്നത് പോലെ, നിങ്ങളുടെ വിവരങ്ങൾ സംരക്ഷിച്ച് കാര്യങ്ങൾ വേഗത്തിൽ പൂർത്തിയാക്കുക. <ph name="ACCOUNT" /> എന്നതിനായി നിങ്ങൾക്ക് <ph name="MANAGE_WALLET_SETTINGS_LINK" />.</translation>
 <translation id="5654927323611874862">അപ്‌ലോഡ് ചെയ്ത ക്രാഷ് റിപ്പോർട്ട് ഐഡി:</translation>
 <translation id="5654965123204121933">ആവശ്യമായ <ph name="SEARCH_TERMS_REPLACEMENT" /> എന്ന പകരം നൽകാനുള്ള സ്ട്രിംഗ് URL-ൽ ഇല്ല: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">ഇമെയില്‍</translation>
@@ -2848,6 +2860,7 @@
 <translation id="5789643057113097023">.</translation>
 <translation id="5793317771769868848">ഈ ഉപകരണത്തിൽ നിന്ന് ഈ പേയ്‌മെന്റ് രീതി ഇല്ലാതാക്കും</translation>
 <translation id="5794065675298686371">നിരക്ക് ട്രാക്ക് ചെയ്യൽ അറിയിപ്പുകൾ ഓണാക്കുക</translation>
+<translation id="5794093550048860249">ട്രാക്കിംഗ് നമ്പർ</translation>
 <translation id="5796050750059455142">“<ph name="BEGIN_LINK" />മറ്റ് Google ഉൽപ്പന്നങ്ങളിലെ സ്‌മാർട്ട് ഫീച്ചറുകൾ<ph name="LINK_END" />” ഓണാക്കുക</translation>
 <translation id="5797984091151707075">അഡ്‌മിൻ നയം അനുസരിച്ച് ബ്ലോക്ക് ചെയ്തു</translation>
 <translation id="5804241973901381774">അനുമതികൾ</translation>
@@ -2894,6 +2907,7 @@
 <translation id="5884465125445718607">Envelope Chinese #6</translation>
 <translation id="5887400589839399685">കാർഡ് സംരക്ഷിച്ചു</translation>
 <translation id="5887687176710214216">അവസാനം സന്ദർശിച്ചത് ഇന്നലെയാണ്</translation>
+<translation id="5887791684215121787">ടാബുകൾ മാറാതെ തന്നെ വിവരങ്ങൾ കണ്ടെത്താനും പൂരിപ്പിക്കാനും ഏത് ഫോമിലും ⌘ ⌘ അമർത്തുക</translation>
 <translation id="5889251770650310375">നിങ്ങളുടെ മറ്റ് ഉപകരണങ്ങളിൽ നിന്നുള്ള ചരിത്രം ലഭിക്കാൻ, ഇത് നിങ്ങൾ തന്നെയാണെന്ന് പരിശോധിച്ചുറപ്പിച്ച് നിങ്ങളുടെ ചരിത്രവും ടാബുകളും സമന്വയിപ്പിക്കുക. നിങ്ങൾക്ക് ക്രമീകരണത്തിൽ ഏതുസമയത്തും സമന്വയിപ്പിക്കൽ നിർത്താം. നിങ്ങളുടെ ചരിത്രം അടിസ്ഥാനമാക്കി Search-ഉം മറ്റ് സേവനങ്ങളും Google വ്യക്തിപരമാക്കിയേക്കാം.</translation>
 <translation id="5895138241574237353">പുനരാരംഭിക്കുക</translation>
 <translation id="5895187275912066135">ഇനിപ്പറയുന്നദിവസം നല്‍‌കി</translation>
@@ -3123,6 +3137,7 @@
 <translation id="6264485186158353794">തിരികെ സുരക്ഷയിലേക്ക്</translation>
 <translation id="6264636978858465832">Password Manager-ന് കൂടുതൽ ആക്‌സസ് ആവശ്യമാണ്</translation>
 <translation id="6265794661083428563"><ph name="POLICY_NAME" /> നയത്തിന്റെ മൂല്യം പകർത്തുക</translation>
+<translation id="6271264012613848937">നിങ്ങളുടെ സ്ഥാപനത്തിന്റെ നയങ്ങൾ കാരണം <ph name="URL" /> സന്ദർശിക്കുന്നതിൽ നിന്ന് നിങ്ങളെ ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു. അത് അപ്രതീക്ഷിതമാണെങ്കിൽ, നിങ്ങളുടെ അഡ്‌മിനെ ബന്ധപ്പെടുക.</translation>
 <translation id="6272088941196661550">നിങ്ങളുടെ Chrome ചരിത്രത്തിൽ പ്രസക്തമായ ആക്റ്റിവിറ്റി കാണാൻ ജേർണി പുനരാരംഭിക്കുക</translation>
 <translation id="6272383483618007430">Google അപ്ഡേറ്റ്</translation>
 <translation id="6278015583149890680">Google Drive, OneDrive</translation>
@@ -3152,6 +3167,7 @@
 <translation id="6319672966240656136">നിങ്ങൾ Google-ന്റെ വിപുലമായ പരിരക്ഷാ പ്രോഗ്രാമിന് കീഴിലായതിനാൽ ഈ സൈറ്റ് ബ്ലോക്ക് ചെയ്ത നിലയിൽ തുടരും. <ph name="BEGIN_LEARN_MORE_LINK" />ഈ മുന്നറിയിപ്പിനെ കുറിച്ച് കൂടുതലറിയുക<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6321917430147971392">നിങ്ങളുടെ DNS ക്രമീകരണങ്ങൾ പരിശോധിക്കുക</translation>
 <translation id="6322182122604171028">Windows Hello ഉപയോഗിക്കാനായില്ല</translation>
+<translation id="6326175484149238433">Chrome-ൽ നിന്ന് നീക്കം ചെയ്യുക</translation>
 <translation id="6326947323444967009">iOS ക്രമീകരണത്തിൽ സിസ്റ്റത്തിന്റെ ഡിഫോൾട്ട് ബ്രൗസറായി Chrome സജ്ജീകരിക്കുക</translation>
 <translation id="6328639280570009161">നെറ്റ്‌വർക്ക് പ്രവചനം പ്രവർത്തനരഹിതമാക്കാൻ ശ്രമിക്കുക</translation>
 <translation id="6329742260390895689">നിങ്ങളുടെ വിവരങ്ങൾ സ്വയമേവ പൂരിപ്പിക്കാൻ, Wallet ക്രമീകരണത്തിൽ "Google-ൽ ഉടനീളം പാസുകൾ ഉപയോഗിക്കുക" എന്ന ക്രമീകരണം ഓണാക്കുക</translation>
@@ -3215,6 +3231,7 @@
 <translation id="6410264514553301377"><ph name="CREDIT_CARD" />-ന്‍റെ കാലാവധി തീരുന്ന തീയതിയും CVC-യും നൽകുക</translation>
 <translation id="6411107829285739505">A4x8</translation>
 <translation id="6412543105195503444">രക്ഷാകർതൃ അനുമതി ഡയലോഗ്</translation>
+<translation id="6413532517183895572">നിങ്ങളുടെ Wallet ക്രമീകരണം മാനേജ് ചെയ്യുക</translation>
 <translation id="6415778972515849510">നിങ്ങളുടെ Google Account പരിരക്ഷിക്കാനും പാസ്‌വേഡ് മാറ്റാനും Chromium സഹായിക്കും.</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">പ്രധാനപ്പെട്ട ബിസിനസോ വ്യക്തിപരമായ ഡാറ്റയോ പുറത്താണ് സൂക്ഷിക്കുന്നതെന്ന് ഉറപ്പാക്കുക.</translation>
@@ -3401,6 +3418,7 @@
 <translation id="6751487147225428522">ROC 8K</translation>
 <translation id="6753269504797312559">നയ മൂല്യം</translation>
 <translation id="6753434778807740853"><ph name="ENTRY_VOICEOVER" /> എന്ന എൻട്രി ഇല്ലാതാക്കുക</translation>
+<translation id="6753460329812070808">Chrome-ൽ നിന്ന് നിർദ്ദേശം നീക്കം ചെയ്തു</translation>
 <translation id="6757797048963528358">നിങ്ങളുടെ ഉപകരണം സ്ലീപ്പ് മോഡിലായി</translation>
 <translation id="6758934187792712102"><ph name="URL" /> എന്നതിന് നിങ്ങളുടെ മോഷൻ, ലൈറ്റ് സെൻസറുകൾ ഉപയോഗിക്കണം</translation>
 <translation id="6770747695101757579">പേപ്പർ (കോട്ടൺ)</translation>
@@ -3480,6 +3498,7 @@
 <translation id="6897140037006041989">ഉപയോക്തൃ ഏജന്‍റ്</translation>
 <translation id="6898699227549475383">ഓര്‍‌ഗനൈസേഷന്‍‌ (O)</translation>
 <translation id="6900702165119149418">നിങ്ങൾ സൈൻ ഔട്ട് ചെയ്‌തിരിക്കുന്നു</translation>
+<translation id="6902049722133977432">പഴയപടിയാക്കുക</translation>
 <translation id="6910211073230771657">ഇല്ലാതാക്കി</translation>
 <translation id="691024665142758461">ഒന്നിലധികം ഫയലുകൾ ഡൗൺലോഡ് ചെയ്യുക</translation>
 <translation id="691046363691324218">റിഡ്രെസ് നമ്പർ</translation>
@@ -3694,6 +3713,7 @@
 <translation id="7266094331715305887">ഉപകരണത്തിലെ ആപ്പുകൾ</translation>
 <translation id="7268742523336093718">Google Wallet-ലേക്ക് പാസ്‌പോർട്ട് സുരക്ഷിതമായി ചേർക്കുക</translation>
 <translation id="7269151392155523061">കുറുക്കുവഴിയും <ph name="SEARCH_AGGREGATOR_SETTINGS_POLICY" /> നിർവചിച്ചിരിക്കുന്ന തിരയൽ അഗ്രഗേറ്റർ കീവേഡും സമാനമാകരുത്: <ph name="SHORTCUT_NAME" /></translation>
+<translation id="7271135282910524932">നിങ്ങളുടെ സ്ഥാപനം സജ്ജീകരിച്ച പരിരക്ഷകളിലോ നയങ്ങളിലോ എന്തോ പിശകുണ്ടായി. പിന്നീട് വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കിൽ നിങ്ങളുടെ അഡ്‌മിനെ ബന്ധപ്പെടുക.</translation>
 <translation id="7273111226200291353">നിങ്ങൾ ഡൗൺലോഡ് ചെയ്യുന്ന ഫയലുകൾ വിശകലനം ചെയ്യുന്നതിന്, Google Cloud-ലേക്കോ മൂന്നാം കക്ഷികൾക്കോ അയയ്ക്കുന്നു. ഉദാഹരണത്തിന്, സെൻസിറ്റീവായിട്ടുള്ള വ്യക്തിപരമായ ഡാറ്റയോ മാൽവെയറോ ഉണ്ടോയെന്നറിയാൻ അവ സ്‌കാൻ ചെയ്‌തേക്കാം, കമ്പനിയുടെ നയങ്ങൾ അടിസ്ഥാനമാക്കി അവ സംഭരിച്ചേക്കാം, അവ നിങ്ങളുടെ അഡ്‌മിന് ദൃശ്യമാകുകയും ചെയ്തേക്കാം.</translation>
 <translation id="7275334191706090484">നിയന്ത്രിത ബുക്ക്‌മാർക്കുകൾ</translation>
 <translation id="7278933725460302617">നിങ്ങൾ ഇപ്പോൾ ഐസൊലേറ്റഡ് മോഡിലാണ്</translation>
@@ -3733,6 +3753,7 @@
 <translation id="7347640536700429009">കാർഡിലെ പേര് അസാധുവാണ്</translation>
 <translation id="7352651011704765696">എന്തോ കുഴപ്പം സംഭവിച്ചു</translation>
 <translation id="7353601530677266744">കമാന്‍ഡ് ലൈന്‍‌</translation>
+<translation id="7358055687760675498"><ph name="REPLACED_HANDLER_TITLE" /> എന്നതിന് പകരം <ph name="HANDLER_HOSTNAME" /> മുഖേന <ph name="PROTOCOL" /> ലിങ്കുകൾ തുറക്കുക</translation>
 <translation id="7359588939039777303">പരസ്യങ്ങൾ ബ്ലോക്കുചെയ്‌തു.</translation>
 <translation id="7362281996276843968">ഈ ഗ്രൂപ്പ് അടച്ചു</translation>
 <translation id="7363096869660964304">എന്നിരുന്നാലും, നിങ്ങൾ അദൃശ്യമായിരിക്കില്ല. അദൃശ്യ മോഡിലായിരിക്കുമ്പോൾ നിങ്ങളുടെ ബ്രൗസിംഗ് ചരിത്രം നിങ്ങളുടെ തൊഴിൽദാതാവിൽ നിന്നോ ഇന്റര്‍നെറ്റ് സേവന ദാതാവിൽ നിന്നോ സന്ദർശിക്കുന്ന വെബ്‌സൈറ്റുകളിൽ നിന്നോ മറയ്‌ക്കുന്നില്ല.</translation>
@@ -3842,6 +3863,7 @@
 <translation id="7514365320538308">ഡൗൺലോഡ് ചെയ്യുക</translation>
 <translation id="7515998400212163428">Android</translation>
 <translation id="7516123895971374904">ഇപ്പോൾ മാത്രം VR അനുവദിച്ചിരിക്കുന്നു</translation>
+<translation id="7517198908921983825">Gemini നിർദ്ദേശിച്ചത് · <ph name="SOURCES" /></translation>
 <translation id="7517414872996418597">Envelope C10</translation>
 <translation id="7518003948725431193">വെബ് വിലാസത്തിനായി വെബ്‌പേജൊന്നും കണ്ടെത്തിയില്ല: <ph name="URL" /></translation>
 <translation id="7521387064766892559">JavaScript</translation>
@@ -4000,6 +4022,7 @@
 <translation id="7758069387465995638">ഫയർവാളോ ആന്റി വൈറസ് സോഫ്‌റ്റ്‌വെയറോ കണക്ഷൻ ബ്ലോക്ക് ചെയ്‌തിട്ടുണ്ടാകാം.</translation>
 <translation id="7759147511335618829">MIDI ഉപകരണ കൺട്രോൾ &amp; റീപ്രോഗ്രാം</translation>
 <translation id="7759809451544302770">ഓപ്‌ഷണൽ</translation>
+<translation id="7760566304700414795">ഷിപ്പ്മെന്റ്</translation>
 <translation id="776110834126722255">അവസാനിപ്പിച്ചു</translation>
 <translation id="7761159795823346334">ക്യാമറാ അനുമതി നൽകണോ?</translation>
 <translation id="7761701407923456692">സെർവറിന്റെ സർട്ടിഫിക്കറ്റ് URL-മായി പൊരുത്തപ്പെടുന്നില്ല.</translation>
@@ -4007,6 +4030,7 @@
 <translation id="7765158879357617694">നീക്കുക</translation>
 <translation id="7766518757692125295">സ്കേർട്ട്</translation>
 <translation id="776749070095465053">ഫാബ്രിക്</translation>
+<translation id="7772659560036894129">ഉൽപ്പന്നത്തിന്റെ പേരുകൾ</translation>
 <translation id="7773005668374414287">അതേ ക്രമത്തിൽ ഫേസ് അപ്പ്</translation>
 <translation id="7779418012194492374"><ph name="DEVICE_NAME" /> എന്നതിനുള്ള ആക്‌സസ് റദ്ദാക്കുക</translation>
 <translation id="7781829728241885113">ഇന്നലെ</translation>
@@ -4042,7 +4066,6 @@
 <translation id="7839192898639727867">സര്‍‌ട്ടിഫിക്കറ്റ് സബ്‌ജക്റ്റ് കീ ഐഡി</translation>
 <translation id="7840103971441592723">സ്ക്രീൻ ക്യാപ്‌ചർ ആരംഭിച്ചു</translation>
 <translation id="784137052867620416">Shopping ഉൾക്കാഴ്ചകൾ</translation>
-<translation id="7841633276323004751">പേയ്മെന്റ് തുടരാനായി തിരഞ്ഞെടുക്കാൻ, പേയ്മെന്റ് രീതികൾ ലഭ്യമാണ്. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{ഒന്നുമില്ല}=1{ഒരു ആപ്പ് (<ph name="EXAMPLE_APP_1" />)}=2{2 ആപ്പുകൾ (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}other{# ആപ്പുകൾ (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">ഒരു പിശകുണ്ടായി. വീണ്ടും ശ്രമിക്കുക.</translation>
 <translation id="784623644169604270">സമീപകാല ആക്റ്റിവിറ്റിയില്ല</translation>
@@ -4121,7 +4144,6 @@
 <translation id="79682505114836835">"<ph name="VALUE" />" എന്ന മൂല്യം അസാധുവായ ഒരു ഹെക്സ് നിറമാണ്.</translation>
 <translation id="7968982339740310781">വിശദാംശങ്ങൾ കാണുക</translation>
 <translation id="7972714317346275248">RSA എന്‍‌ക്രിപ്‌ഷനോടുകൂടിയ PKCS #1 SHA-384</translation>
-<translation id="7976053965094442846">തവണകളായി പണമടയ്ക്കാൻ 'ഇപ്പോൾ വാങ്ങി പിന്നീട് പണമടയ്ക്കുക' ഇഷ്യൂവർമാർ ലഭ്യമാണ്. കീബോർഡ് മറച്ചിരിക്കുന്നു.</translation>
 <translation id="7976214039405368314">നിരവധി അഭ്യർത്ഥനകൾ</translation>
 <translation id="7977029776654598145">എപ്പോഴാണ് ഉപയോഗിക്കുന്നത്</translation>
 <translation id="7977538094055660992">ഔട്ട്പുട്ട് ഉപകരണം</translation>
@@ -4131,6 +4153,7 @@
 <translation id="7984945080620862648">Chrome-ന് പ്രോസസ്സുചെയ്യാനാകാത്ത രൂപമാറ്റം വരുത്തിയ ക്രെഡൻഷ്യലുകൾ വെബ്സൈറ്റ് അയയ്ക്കുന്നതിനാൽ നിങ്ങൾക്കിപ്പോൾ <ph name="SITE" /> സന്ദർശിക്കാനാകില്ല.നെറ്റ്‌വർക്ക് പിശകുകളും ആക്രമണങ്ങളും സാധാരണയായി താൽക്കാലികമായതിനാൽ ഈ പേജ് മിക്കവാറും പിന്നീട് പ്രവർത്തിക്കും.</translation>
 <translation id="7986319120639858961"><ph name="CARD_TITLE" /> <ph name="TIME" /> <ph name="BOOKMARKED" /> <ph name="TITLE" /> <ph name="DOMAIN" /></translation>
 <translation id="7987087088851949178">തവണകളായി പണമടയ്ക്കാനുള്ള 'ഇപ്പോൾ വാങ്ങി പിന്നീട് പണമടയ്ക്കുക' ഇഷ്യൂവർമാരുടെ ലിസ്റ്റ്, പൂർണ്ണ ഉയരത്തിൽ തുറന്നു.</translation>
+<translation id="7990290316254726169">ഈ സൈറ്റ് HTTPS പിന്തുണയ്‌ക്കാത്തതിനാലും നിങ്ങൾ ഐസൊലേറ്റഡ് മോഡിലായതിനാലുമാണ് ഈ മുന്നറിയിപ്പ് കാണുന്നത്. <ph name="BEGIN_LEARN_MORE_LINK" />ഈ മുന്നറിയിപ്പിനെ കുറിച്ച് കൂടുതലറിയുക<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="799149739215780103">ബൈൻഡ് ചെയ്യുക</translation>
 <translation id="7992044431894087211"><ph name="APPLICATION_TITLE" /> എന്നതുമായി സ്ക്രീൻ പങ്കിടൽ പുനരാരംഭിച്ചു</translation>
 <translation id="799384093520583425">ഈ പേജിൽ DevTools ഉപയോഗിക്കുന്നത് നിങ്ങളുടെ സ്ഥാപനം ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു</translation>
@@ -4198,6 +4221,7 @@
 <translation id="8118506371121007279">ഫീഡ്ബാക്ക് നൽകുക</translation>
 <translation id="812020627659652807">ഫയലുകൾ ഇപ്പോൾ ഇല്ലാതാക്കുക</translation>
 <translation id="8120720167840853945">ഈ നയം, മറ്റേതെങ്കിലും നയങ്ങളുടെ ഡിഫോൾട്ട് പ്രവർത്തനരീതി നിയന്ത്രിക്കുന്നില്ല.</translation>
+<translation id="8120827570827570666">വ്യാപാരിയുടെ ഡൊമെയ്ൻ</translation>
 <translation id="8127301229239896662">നിങ്ങളുടെ കമ്പ്യൂട്ടറിൽ അല്ലെങ്കിൽ നെറ്റ്‍വര്‍ക്കിൽ "<ph name="SOFTWARE_NAME" />" ശരിയായി ഇൻസ്‌റ്റാൾ ചെയ്‌തിട്ടില്ല. ഈ പ്രശ്‌നം പരിഹരിക്കാൻ നിങ്ങളുടെ ഐടി അഡ്‌മിനോട് ആവശ്യപ്പെടുക.</translation>
 <translation id="8130113808541743942">ഇനിപ്പറയുന്നതിലേക്ക് നീക്കുക...</translation>
 <translation id="813024282736408069">സ്വയമേവ പൂരിപ്പിക്കലിനായി ഒരു വെർച്വൽ കാർഡ് ഓണാക്കുക</translation>
@@ -4309,6 +4333,7 @@
 <translation id="830868413617744215">ബീറ്റ</translation>
 <translation id="8310477433309274098">ഫീസില്ല, 0% APR വരെ</translation>
 <translation id="8312841338723044391">തത്സമയം</translation>
+<translation id="8314036873065514376">വ്യാപാരിയുടെ പേര്</translation>
 <translation id="8316555157357957253">ഇപ്പോൾ ഉപയോഗിക്കുന്നത്</translation>
 <translation id="8319414634934645341">വിപുലീകരിച്ച കീ ഉപയോഗം</translation>
 <translation id="831997045666694187">വൈകുന്നേരം</translation>
@@ -4345,6 +4370,7 @@
 <translation id="8371841335382565017">കാസ്റ്റിംഗിനുള്ള ഉപകരണങ്ങളുടെ ലിസ്റ്റ് കാണിക്കുക</translation>
 <translation id="8371889962595521444">ഇഷ്‌ടാനുസൃത റൂട്ട് സർട്ടിഫിക്കറ്റുകൾ</translation>
 <translation id="8374636051559112948">വ്യത്യാസപ്പെടുന്നു</translation>
+<translation id="8377507422902936905">ഓർഡറുകൾ</translation>
 <translation id="837840316697671463">നിങ്ങളുടെ ഉപകരണത്തിൽ ഫയൽ കണ്ടെത്താനാകുന്നില്ലെങ്കിൽ, അത് <ph name="CLOUD_PROVIDER" /> എന്നതിൽ തിരയുക.</translation>
 <translation id="8378714024927312812">നിങ്ങളുടെ സ്ഥാപനം മാനേജ് ചെയ്യുന്നത്</translation>
 <translation id="8380941800586852976">അപകടകരമായത്</translation>
@@ -4425,7 +4451,6 @@
 <translation id="8522552481199248698">നിങ്ങളുടെ Google Account പരിരക്ഷിക്കാനും പാസ്‌വേഡ് മാറ്റാനും Chrome സഹായിക്കും.</translation>
 <translation id="8523574453888018351">എന്നെ ഒരു പുതിയ ഭാഷ പഠിപ്പിക്കൂ</translation>
 <translation id="852450791482410042">ഇപ്പോൾ പേ ചെയ്യുക</translation>
-<translation id="8528479410903501741">IBAN സംരക്ഷിക്കുക</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533587060884335451">കൃത്യ ലൊക്കേഷൻ ഉപയോഗിക്കൂ</translation>
 <translation id="8533619373899488139">ബ്ലോക്ക് ചെയ്ത URL-കളുടെ ലിസ്റ്റും നിങ്ങളുടെ സിസ്റ്റം അഡ്‌മിൻ നടപ്പിലാക്കിയ മറ്റ് നയങ്ങളും കാണുന്നതിന് &lt;strong&gt;chrome://policy&lt;/strong&gt; സന്ദർശിക്കുക.</translation>
@@ -4469,6 +4494,7 @@
 <translation id="860043288473659153">കാർഡിന്റെ ഉടമയുടെ പേര്</translation>
 <translation id="8601206103050338563">TLS WWW ക്ലയന്‍റ് പരിശോധിച്ചുറപ്പിക്കൽ</translation>
 <translation id="8604103095921958091">'ഇപ്പോൾ വാങ്ങി പിന്നീട് പണമടയ്ക്കുക' സേവന നിബന്ധനകളുടെ സ്ക്രീൻ മുഴുവനായും തുറന്നു.</translation>
+<translation id="8605014984308506350">ഈ സൈറ്റ് HTTPS പിന്തുണയ്‌ക്കാത്തതിനാലും നിങ്ങൾ ഐസൊലേറ്റഡ് മോഡിലായതിനാലുമാണ് ഈ മുന്നറിയിപ്പ് കാണുന്നത്. <ph name="LEARN_MORE" /></translation>
 <translation id="8617269623452051934">നിങ്ങളുടെ ഉപകരണത്തിന്റെ ഉപയോഗം</translation>
 <translation id="8619130384334725124">നിലവിലെ ഡിഫോൾട്ട്</translation>
 <translation id="8620276786115098679">Envelope Kaku 7</translation>
@@ -4622,6 +4648,7 @@
 <translation id="8883863364960302898">Google Drive ഫോൾഡർ</translation>
 <translation id="8884537526797090108">രഹസ്യാത്മക ഉള്ളടക്കം റെക്കോർഡ് ചെയ്യാനാകില്ല</translation>
 <translation id="8889525327610245418">Google Wallet-ൽ ഡ്രൈവിംഗ് ലൈസൻസ് സുരക്ഷിതമായി അപ്ഡേറ്റ് ചെയ്യുക</translation>
+<translation id="8890516388109605451">ഉറവിടങ്ങള്‍</translation>
 <translation id="8891031436559779793">ഏതെങ്കിലും സൈറ്റിൽ നിരക്ക് കുറയുമ്പോൾ നിങ്ങൾക്ക് അറിയിപ്പ് ലഭിക്കും.</translation>
 <translation id="8891727572606052622">അസാധുവായ പ്രോക്സി മോഡ്</translation>
 <translation id="8894794286471754040">നീളമുള്ള അരിക് ആദ്യം</translation>

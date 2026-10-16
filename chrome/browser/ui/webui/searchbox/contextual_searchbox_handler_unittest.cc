@@ -53,6 +53,7 @@
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
 #include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
+#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_utils.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/searchbox/contextual_searchbox_test_utils.h"
@@ -1939,6 +1940,24 @@ TEST_F(SmartTabSharingTest, SubmitQuery_PersistsSmartTabSharingInactive) {
   EXPECT_FALSE(*new_session_handle->smart_tab_sharing_active());
 }
 
+TEST_F(SmartTabSharingTest,
+       SubmitQuery_ComposeboxEverywhereDoesNotUseBrowserWindowContext) {
+  static_cast<TestOmniboxClient*>(handler().client())
+      ->location_bar_model()
+      ->set_page_classification(
+          metrics::OmniboxEventProto::COMPOSEBOX_EVERYWHERE);
+  handler().SetSmartTabSharingActive(true);
+  EXPECT_TRUE(handler().IsSmartTabSharingActive());
+
+  ASSERT_TRUE(mock_service_);
+  EXPECT_CALL(*mock_service_,
+              GetRelevantTabsForConversationThread(testing::_, testing::_,
+                                                   testing::_, testing::_))
+      .Times(0);
+
+  SubmitQueryAndWaitForNavigation();
+}
+
 TEST_F(SmartTabSharingTest, LogMenuOptionClickedMetrics) {
   ASSERT_TRUE(contextual_tasks::ContextualTasksContextService::
                   GetIsSmartTabSharingEnabled(profile()));
@@ -2459,10 +2478,11 @@ TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {
             &MockContextualSearchMetricsRecorder::RecordZeroSuggestClickBase));
 
     auto modifiers = searchbox::mojom::ActionModifiers::New();
-    handler().OpenAutocompleteMatch(0, GURL("https://www.google.com"),
-                                    /*are_matches_showing=*/true,
-                                    /*mouse_button=*/0, std::move(modifiers),
-                                    /*via_keyboard=*/false);
+    handler().OpenAutocompleteMatch(
+        handler().autocomplete_controller()->result().sequence_id(), 0,
+        GURL("https://www.google.com"), /*are_matches_showing=*/true,
+        /*mouse_button=*/0, std::move(modifiers),
+        /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.ZeroSuggestClickV2.IsContextual.NewTabPage", false,
@@ -2495,10 +2515,11 @@ TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {
             &MockContextualSearchMetricsRecorder::RecordZeroSuggestClickBase));
 
     auto modifiers = searchbox::mojom::ActionModifiers::New();
-    handler().OpenAutocompleteMatch(0, GURL("https://www.contextual.com"),
-                                    /*are_matches_showing=*/true,
-                                    /*mouse_button=*/0, std::move(modifiers),
-                                    /*via_keyboard=*/false);
+    handler().OpenAutocompleteMatch(
+        handler().autocomplete_controller()->result().sequence_id(), 0,
+        GURL("https://www.contextual.com"), /*are_matches_showing=*/true,
+        /*mouse_button=*/0, std::move(modifiers),
+        /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.ZeroSuggestClickV2.IsContextual.NewTabPage", true, 1);
@@ -2532,7 +2553,7 @@ TEST_F(ContextualSearchboxHandlerTest,
     AutocompleteMatch match;
     match.provider = &fake_controller->GetFakeProvider();
     match.destination_url = GURL("https://www.google.com");
-    match.type = AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED;
+    match.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
 
     fake_controller->published_result_.AppendMatches({match});
 
@@ -2544,10 +2565,11 @@ TEST_F(ContextualSearchboxHandlerTest,
                                       RecordTypedSuggestNavigationBase));
 
     auto modifiers = searchbox::mojom::ActionModifiers::New();
-    handler().OpenAutocompleteMatch(0, GURL("https://www.google.com"),
-                                    /*are_matches_showing=*/true,
-                                    /*mouse_button=*/0, std::move(modifiers),
-                                    /*via_keyboard=*/false);
+    handler().OpenAutocompleteMatch(
+        handler().autocomplete_controller()->result().sequence_id(), 0,
+        GURL("https://www.google.com"), /*are_matches_showing=*/true,
+        /*mouse_button=*/0, std::move(modifiers),
+        /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.TypedSuggestNavigation.IsVerbatim.NewTabPage", true,
@@ -2567,12 +2589,12 @@ TEST_F(ContextualSearchboxHandlerTest,
     AutocompleteMatch match0;
     match0.provider = &fake_controller->GetFakeProvider();
     match0.destination_url = GURL("https://www.google.com");
-    match0.type = AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED;
+    match0.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
 
     AutocompleteMatch match1;
     match1.provider = &fake_controller->GetFakeProvider();
     match1.destination_url = GURL("https://www.google.com/search?q=suggestion");
-    match1.type = AutocompleteMatchType::SEARCH_SUGGEST;
+    match1.type = omnibox::AutocompleteMatchType::kSearchSuggest;
 
     fake_controller->published_result_.AppendMatches({match0, match1});
 
@@ -2585,7 +2607,8 @@ TEST_F(ContextualSearchboxHandlerTest,
 
     auto modifiers = searchbox::mojom::ActionModifiers::New();
     handler().OpenAutocompleteMatch(
-        1, GURL("https://www.google.com/search?q=suggestion"),
+        handler().autocomplete_controller()->result().sequence_id(), 1,
+        GURL("https://www.google.com/search?q=suggestion"),
         /*are_matches_showing=*/true, /*mouse_button=*/0, std::move(modifiers),
         /*via_keyboard=*/false);
 
@@ -2607,6 +2630,54 @@ TEST_F(ContextualSearchboxHandlerTest, SubmitQueryWithAdditionalParams) {
   std::string udm_param;
   EXPECT_TRUE(net::GetValueForKeyInQuery(query_url, "udm", &udm_param));
   EXPECT_EQ("50", udm_param);
+}
+
+TEST_F(ContextualSearchboxHandlerTest,
+       SubmitQuery_OmniboxPageActionInvocationSource) {
+  omnibox::ChromeAimEntryPoint captured_aim_entry_point =
+      omnibox::UNKNOWN_AIM_ENTRY_POINT;
+  std::optional<lens::LensOverlayInvocationSource> captured_invocation_source;
+
+  EXPECT_CALL(query_controller(), CreateSearchUrl)
+      .WillOnce(
+          [&](auto&& request_info, base::OnceCallback<void(GURL)> callback) {
+            captured_aim_entry_point = request_info->aim_entry_point;
+            captured_invocation_source = request_info->invocation_source;
+            std::move(callback).Run(GURL("https://www.google.com"));
+          });
+
+  contextual_session_handle_->set_invocation_source(
+      lens::LensOverlayInvocationSource::kOmniboxPageAction);
+  handler().SubmitQuery(kQueryText, 1, false, false, false, false,
+                        /*is_voice_search=*/false);
+
+  EXPECT_EQ(
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_TAB_SEARCH,
+      captured_aim_entry_point);
+  EXPECT_EQ(lens::LensOverlayInvocationSource::kOmniboxPageAction,
+            captured_invocation_source);
+}
+
+TEST_F(ContextualSearchboxHandlerTest, GetAimEntryPoint) {
+  contextual_session_handle_->set_invocation_source(
+      lens::LensOverlayInvocationSource::kOmniboxPageAction);
+  EXPECT_EQ(
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_TAB_SEARCH,
+      GetAimEntryPoint(metrics::OmniboxEventProto::OTHER_OMNIBOX_COMPOSEBOX,
+                       contextual_session_handle_.get()));
+
+  contextual_session_handle_->set_invocation_source(
+      lens::LensOverlayInvocationSource::kOmniboxContextualQuery);
+  EXPECT_EQ(
+      omnibox::ChromeAimEntryPoint::
+          DESKTOP_CHROME_OTHER_OMNIBOX_COMPOSEBOX_ENTRY_POINT,
+      GetAimEntryPoint(metrics::OmniboxEventProto::OTHER_OMNIBOX_COMPOSEBOX,
+                       contextual_session_handle_.get()));
+
+  EXPECT_EQ(
+      omnibox::ChromeAimEntryPoint::
+          DESKTOP_CHROME_OTHER_OMNIBOX_COMPOSEBOX_ENTRY_POINT,
+      GetAimEntryPoint(metrics::OmniboxEventProto::OTHER_OMNIBOX_COMPOSEBOX));
 }
 
 TEST_F(ContextualSearchboxHandlerTest, SubmitQuery_NoContextualTasksService) {
@@ -3822,7 +3893,8 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, GetRecentTabs) {
       ntp_composebox::kNtpComposebox, params);
 
   // Add only 1 valid tab, and ensure it is the only one returned.
-  auto* about_blank_tab = AddTab(GURL("about:blank"));
+  auto* example_tab = AddTab(GURL("https://www.example.com"));
+  AddTab(GURL("about:blank"));
   AddTab(GURL("chrome://webui-is-ignored"));
 
   {
@@ -3831,7 +3903,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, GetRecentTabs) {
     handler().GetRecentTabs(future.GetCallback());
     auto tabs = future.Take();
     ASSERT_EQ(tabs.size(), 1u);
-    EXPECT_EQ(tabs[0]->tab_id, about_blank_tab->GetHandle().raw_value());
+    EXPECT_EQ(tabs[0]->tab_id, example_tab->GetHandle().raw_value());
   }
 
   auto* contextual_tasks_tab =
@@ -3843,17 +3915,17 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, GetRecentTabs) {
 
   {
     // Verify that the active contextual tasks tab is successfully filtered out,
-    // and only the regular blank tab is returned.
+    // and only the regular example tab is returned.
     base::test::TestFuture<std::vector<searchbox::mojom::TabInfoPtr>> future;
     handler().GetRecentTabs(future.GetCallback());
     auto tabs = future.Take();
     ASSERT_EQ(tabs.size(), 1u);
-    EXPECT_EQ(tabs[0]->tab_id, about_blank_tab->GetHandle().raw_value());
+    EXPECT_EQ(tabs[0]->tab_id, example_tab->GetHandle().raw_value());
   }
 
   // Case B: Test when the contextual tasks tab is an INACTIVE tab.
   ON_CALL(*tab_list(), GetActiveTab())
-      .WillByDefault(testing::Return(about_blank_tab));
+      .WillByDefault(testing::Return(example_tab));
 
   {
     // Verify that even when the contextual tasks tab is inactive,
@@ -3862,7 +3934,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, GetRecentTabs) {
     handler().GetRecentTabs(future.GetCallback());
     auto tabs = future.Take();
     ASSERT_EQ(tabs.size(), 1u);
-    EXPECT_EQ(tabs[0]->tab_id, about_blank_tab->GetHandle().raw_value());
+    EXPECT_EQ(tabs[0]->tab_id, example_tab->GetHandle().raw_value());
   }
 
   AddTab(GURL("https://www.google.com"));
@@ -3879,7 +3951,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, GetRecentTabs) {
     EXPECT_EQ(tabs[1]->tab_id, youtube_tab->GetHandle().raw_value());
   }
 
-  content::WebContentsTester::For(about_blank_tab->GetContents())
+  content::WebContentsTester::For(example_tab->GetContents())
       ->SetLastActiveTimeTicks(IncrementTimeTicksAndGet());
 
   {
@@ -3887,7 +3959,7 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest, GetRecentTabs) {
     base::test::TestFuture<std::vector<searchbox::mojom::TabInfoPtr>> future;
     handler().GetRecentTabs(future.GetCallback());
     auto tabs = future.Take();
-    EXPECT_EQ(tabs[0]->tab_id, about_blank_tab->GetHandle().raw_value());
+    EXPECT_EQ(tabs[0]->tab_id, example_tab->GetHandle().raw_value());
     EXPECT_EQ(tabs[1]->tab_id, gmail_tab->GetHandle().raw_value());
   }
 }

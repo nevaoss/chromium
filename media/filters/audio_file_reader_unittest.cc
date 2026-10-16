@@ -211,10 +211,11 @@ TEST_P(AudioFileReaderTest, UnknownDuration) {
 }
 
 TEST_P(AudioFileReaderTest, WithVideo) {
-  // The total samples should be 45568 after applying discard padding.
-  // ffprobe shows discard_padding=64 for the last packet.
-  RunTest("bear.ogv", "-2.10,-1.01,0.24,1.48,0.70,-0.68,", 2, 44100,
-          base::Microseconds(1011520), 44609, 45568);
+  // Total raw samples decoded is 45568, but 128 preroll samples prior to time 0
+  // are trimmed by AudioFileReader::FinalizeDecodedBuffer, leaving 45440
+  // frames.
+  RunTest("bear.ogv", "-2.58,-0.68,1.00,1.40,-0.08,-1.29,", 2, 44100,
+          base::Microseconds(1011520), 44609, 45440);
 }
 
 TEST_P(AudioFileReaderTest, FLAC) {
@@ -268,6 +269,11 @@ TEST_P(AudioFileReaderTest, CorruptMP3) {
   disable_packet_verification();
   RunTest("corrupt.mp3", "-4.95,-2.95,-0.44,1.16,0.31,-2.21,", 1, 44100,
           base::Microseconds(1018801), 44930, 44928);
+}
+
+TEST_P(AudioFileReaderTest, ReproMinimalMP3) {
+  RunTest("repro-minimal.mp3", "-0.84,-0.32,-0.75,-0.41,-0.93,0.29,", 2, 44100,
+          base::Microseconds(2220409), 97921, 97391);
 }
 
 #if BUILDFLAG(USE_PROPRIETARY_CODECS)

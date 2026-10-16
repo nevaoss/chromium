@@ -93,7 +93,6 @@ class ContextualTasksPageHandlerBrowserTest : public ::InProcessBrowserTest {
         mojo::PendingReceiver<mojom::PageHandler>(), contextual_tasks_ui_.get(),
         mock_contextual_tasks_ui_service_, mock_contextual_tasks_service_,
         nullptr);
-    page_handler_->set_skip_feedback_ui_for_testing(true);
   }
 
   void TearDownOnMainThread() override {
@@ -120,18 +119,16 @@ class ContextualTasksPageHandlerBrowserTest : public ::InProcessBrowserTest {
 };
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksPageHandlerBrowserTest, OpenFeedbackUi) {
-  page_handler_->set_skip_feedback_ui_for_testing(false);
-
   EXPECT_CALL(*mock_contextual_tasks_ui_service_, OpenFeedbackUi(browser(), _))
       .Times(1);
 
-  page_handler_->OpenFeedbackUi();
+  contextual_tasks_ui_->OpenFeedbackUi();
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksPageHandlerBrowserTest, OpenMyActivityUi) {
   auto* tab_list = TabListInterface::From(browser());
   int start_count = tab_list->GetTabCount();
-  page_handler_->OpenMyActivityUi();
+  contextual_tasks_ui_->OpenMyActivityUi();
   EXPECT_EQ(tab_list->GetTabCount(), start_count + 1);
   content::WebContents* active_contents =
       browser()->GetActiveTabInterface()->GetContents();
@@ -151,11 +148,22 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksPageHandlerBrowserTest, OpenOnboardingHelp
 IN_PROC_BROWSER_TEST_F(ContextualTasksPageHandlerBrowserTest, OpenOverflowMenuHelpUi) {
   auto* tab_list = TabListInterface::From(browser());
   int start_count = tab_list->GetTabCount();
-  page_handler_->OpenOverflowMenuHelpUi();
+  contextual_tasks_ui_->OpenOverflowMenuHelpUi();
   EXPECT_EQ(tab_list->GetTabCount(), start_count + 1);
   content::WebContents* active_contents =
       browser()->GetActiveTabInterface()->GetContents();
   EXPECT_EQ(active_contents->GetURL().spec(), "https://support.google.com/chrome/answer/17025061");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksPageHandlerBrowserTest, OpenAskGHelpUi) {
+  auto* tab_list = TabListInterface::From(browser());
+  int start_count = tab_list->GetTabCount();
+  page_handler_->OpenAskGHelpUi();
+  EXPECT_EQ(tab_list->GetTabCount(), start_count + 1);
+  content::WebContents* active_contents =
+      browser()->GetActiveTabInterface()->GetContents();
+  EXPECT_EQ(active_contents->GetURL().spec(),
+            contextual_tasks::GetContextualTasksTabHelpUrl());
 }
 
 }  // namespace contextual_tasks

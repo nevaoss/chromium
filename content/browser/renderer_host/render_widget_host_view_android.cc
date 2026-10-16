@@ -16,8 +16,6 @@
 #include "base/auto_reset.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
-#include "base/debug/crash_logging.h"
-#include "base/debug/dump_without_crashing.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -924,11 +922,17 @@ RenderWidgetHostViewAndroid::GetNativeViewAccessible() {
 }
 
 void RenderWidgetHostViewAndroid::GotFocus() {
+  if (destroy_pending()) {
+    return;
+  }
   host()->GotFocus();
   OnFocusInternal();
 }
 
 void RenderWidgetHostViewAndroid::LostFocus() {
+  if (destroy_pending()) {
+    return;
+  }
   host()->LostFocus();
   LostFocusInternal();
 }
@@ -1633,7 +1637,7 @@ bool RenderWidgetHostViewAndroid::OnTouchEvent(
 
   // Receiving any other touch event before the double-tap timeout expires
   // cancels opening the spellcheck menu.
-  if (auto* focused_frame = host_->frame_tree()->GetFocusedFrame()) {
+  if (auto* focused_frame = host()->frame_tree()->GetFocusedFrame()) {
     if (auto* suggestion_host =
             TextSuggestionHostAndroid::GetForCurrentDocument(
                 focused_frame->current_frame_host())) {
@@ -1664,13 +1668,6 @@ bool RenderWidgetHostViewAndroid::OnTouchEvent(
     return true;
   }
 
-  if (is_sequence_overscrolling_) {
-    // TODO(407571917): Remove crash keys after investigation.
-    SCOPED_CRASH_KEY_STRING1024(
-        "crbug407571917", "event_type",
-        base::NumberToString(static_cast<int>(event.GetAction())));
-    base::debug::DumpWithoutCrashing();
-  }
 
   // In case input transfer to Viz is supported, let `input_transfer_handler_`
   // request the transfer on touch down, we are not expecting to receive the
@@ -1933,6 +1930,15 @@ void RenderWidgetHostViewAndroid::ShutdownAndDisconnect() {
   }
   destruction_observers_.Clear();
 
+  // Detach first so the manager's null checks absorb any selection event
+  // the hide below synchronously emits back into this view.
+  if (touch_selection_controller_client_manager_) {
+    touch_selection_controller_client_manager_->Detach();
+  }
+  if (touch_selection_controller_) {
+    touch_selection_controller_->HideAndDisallowShowingAutomatically();
+  }
+
   UpdateNativeViewTree(nullptr, nullptr);
   view_.set_event_handler(nullptr);
 
@@ -2101,6 +2107,9 @@ void RenderWidgetHostViewAndroid::CopySharedImageFromExactSurface(
 }
 
 bool RenderWidgetHostViewAndroid::CanSynchronizeVisualProperties() {
+  if (destroy_pending()) {
+    return false;
+  }
   // When a rotation begins, the new visual properties are not all notified to
   // RenderWidgetHostViewAndroid at the same time. The process begins when
   // OnSynchronizedDisplayPropertiesChanged is called, and ends with
@@ -2130,6 +2139,9 @@ bool RenderWidgetHostViewAndroid::ShouldRouteEvents() const {
 }
 
 void RenderWidgetHostViewAndroid::UpdateWebViewBackgroundColorIfNecessary() {
+  if (destroy_pending() || !host()->delegate()) {
+    return;
+  }
   // Android WebView had a bug the BG color was always set to black when
   // fullscreen (see https://crbug.com/961223#c5). As applications came to rely
   // on this behavior, preserve it here.
@@ -2191,6 +2203,9 @@ bool RenderWidgetHostViewAndroid::SupportsAnimation() const {
 }
 
 void RenderWidgetHostViewAndroid::SetNeedsAnimate() {
+  if (destroy_pending()) {
+    return;
+  }
   if (features::IsFluidResizeEnabled()) {
     // The synchronous (WebView) compositor does not have a proper browser
     // compositor with which to drive animations.
@@ -2297,6 +2312,9 @@ void RenderWidgetHostViewAndroid::DidScroll() {}
 
 void RenderWidgetHostViewAndroid::ShowTouchSelectionContextMenu(
     const gfx::Point& location) {
+  if (destroy_pending()) {
+    return;
+  }
   host()->ShowContextMenuAtPoint(location,
                                  ui::mojom::MenuSourceType::kTouchHandle);
 }
@@ -2650,8 +2668,9 @@ void RenderWidgetHostViewAndroid::RequestDisallowInterceptTouchEvent() {
 
 void RenderWidgetHostViewAndroid::TransformPointToRootSurface(
     gfx::PointF* point) {
-  if (!host()->delegate())
+  if (destroy_pending() || !host()->delegate()) {
     return;
+  }
   RenderViewHostDelegateView* rvh_delegate_view =
       host()->delegate()->GetDelegateView();
   if (rvh_delegate_view->DoBrowserControlsShrinkRendererSize())
@@ -2793,11 +2812,11 @@ void RenderWidgetHostViewAndroid::UnlockPointer() {
     Java_RenderWidgetHostViewImpl_hidePointerLockToast(env, GetJavaObject());
   }
 
-  host_->LostPointerLock();
+  host()->LostPointerLock();
 }
 
 void RenderWidgetHostViewAndroid::OnPointerLockRelease() {
-  host_->LostPointerLock();
+  host()->LostPointerLock();
 }
 
 bool RenderWidgetHostViewAndroid::LockKeyboard(
@@ -2833,8 +2852,9 @@ void RenderWidgetHostViewAndroid::UnlockKeyboard() {
 
 void RenderWidgetHostViewAndroid::SendKeyEvent(
     input::NativeWebKeyboardEvent& event) {
-  if (!host())
+  if (destroy_pending()) {
     return;
+  }
 
   RenderWidgetHostImpl* target_host = host();
 
@@ -2847,7 +2867,7 @@ void RenderWidgetHostViewAndroid::SendKeyEvent(
 
   // Receiving a key event before the double-tap timeout expires cancels opening
   // the spellcheck menu. If the suggestion menu is open, we close the menu.
-  if (auto* focused_frame = host_->frame_tree()->GetFocusedFrame()) {
+  if (auto* focused_frame = host()->frame_tree()->GetFocusedFrame()) {
     if (auto* suggestion_host =
             TextSuggestionHostAndroid::GetForCurrentDocument(
                 focused_frame->current_frame_host())) {
@@ -2875,12 +2895,12 @@ void RenderWidgetHostViewAndroid::SendKeyEvent(
 void RenderWidgetHostViewAndroid::SendMouseEvent(
     const blink::WebMouseEvent& event,
     const ui::LatencyInfo& info) {
-  if (!host() || !host()->delegate())
+  if (destroy_pending() || !host()->delegate()) {
     return;
+  }
 
   if (ShouldRouteEvents()) {
-    host()->delegate()->GetInputEventRouter()->RouteMouseEvent(this, &event,
-                                                               info);
+    host()->GetInputEventRouter()->RouteMouseEvent(this, &event, info);
   } else {
     host()->ForwardMouseEventWithLatencyInfo(event, info);
   }
@@ -2912,8 +2932,9 @@ void RenderWidgetHostViewAndroid::UpdateMouseState(int action_button,
 
 void RenderWidgetHostViewAndroid::SendMouseWheelEvent(
     const blink::WebMouseWheelEvent& event) {
-  if (!host() || !host()->delegate())
+  if (destroy_pending() || !host()->delegate()) {
     return;
+  }
 
   ui::LatencyInfo latency_info;
   latency_info.AddLatencyNumber(ui::INPUT_EVENT_LATENCY_UI_COMPONENT);
@@ -2923,8 +2944,8 @@ void RenderWidgetHostViewAndroid::SendMouseWheelEvent(
       wheel_event, should_route_events, /*is_fling_capable=*/true);
 
   if (should_route_events) {
-    host()->delegate()->GetInputEventRouter()->RouteMouseWheelEvent(
-        this, &wheel_event, latency_info);
+    host()->GetInputEventRouter()->RouteMouseWheelEvent(this, &wheel_event,
+                                                        latency_info);
   } else {
     host()->ForwardWheelEventWithLatencyInfo(wheel_event, latency_info);
   }
@@ -3240,6 +3261,7 @@ bool RenderWidgetHostViewAndroid::OnMouseWheelEvent(
   if (destroy_pending()) {
     return false;
   }
+  input::ScopedInputDispatchPin pin(this);
   SendMouseWheelEvent(input::WebMouseWheelEventBuilder::Build(event));
   return true;
 }
@@ -3265,6 +3287,9 @@ void RenderWidgetHostViewAndroid::OnSizeChanged() {
 
 void RenderWidgetHostViewAndroid::OnPhysicalBackingSizeChanged(
     std::optional<base::TimeDelta> deadline_override) {
+  if (destroy_pending()) {
+    return;
+  }
   // We may need to update the background color to match pre-surface-sync
   // behavior of EvictFrameIfNecessary.
   UpdateWebViewBackgroundColorIfNecessary();

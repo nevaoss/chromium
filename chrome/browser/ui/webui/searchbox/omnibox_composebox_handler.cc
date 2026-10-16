@@ -59,7 +59,7 @@ class OmniboxPopupComposeboxClient : public ContextualOmniboxClient {
       TemplateURLRef::PostContent* post_content,
       WindowOpenDisposition disposition,
       ui::PageTransition transition,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       base::TimeTicks match_selection_timestamp,
       bool destination_url_entered_without_scheme,
       bool destination_url_entered_with_http_scheme,
@@ -73,8 +73,8 @@ class OmniboxPopupComposeboxClient : public ContextualOmniboxClient {
     net::GetValueForKeyInQuery(destination_url, "q", &query_text);
     composebox_handler_->SubmitQuery(
         query_text, disposition,
-        PageClassificationToAimEntryPoint(
-            GetPageClassification(/*is_prefetch=*/false)),
+        GetAimEntryPoint(GetPageClassification(/*is_prefetch=*/false),
+                         composebox_handler_->GetContextualSessionHandle()),
         additional_params, /*is_voice_search=*/false);
   }
 

@@ -7,7 +7,6 @@
 #include "base/check_op.h"
 #include "gin/object_template_builder.h"
 #include "gin/per_context_data.h"
-#include "gin/per_isolate_data.h"
 #include "v8/include/cppgc/visitor.h"
 #include "v8/include/v8-cppgc.h"
 #include "v8/include/v8-sandbox.h"
@@ -33,6 +32,7 @@ NamedPropertyInterceptor* WrappableBase::GetNamedPropertyInterceptor() {
 
 void WrappableBase::Trace(cppgc::Visitor* visitor) const {
   visitor->Trace(wrapper_);
+  v8::Object::Wrappable::Trace(visitor);
 }
 
 const v8::Object::WrapperTypeInfo* WrappableBase::GetWrapperTypeInfo() const {

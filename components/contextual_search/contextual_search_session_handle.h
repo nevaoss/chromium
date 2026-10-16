@@ -98,7 +98,14 @@ class ContextualSearchSessionHandle {
   std::optional<bool> smart_tab_sharing_active() const {
     return smart_tab_sharing_active_;
   }
-  void set_smart_tab_sharing_active(std::optional<bool> active);
+  void set_smart_tab_sharing_active(std::optional<bool> active) {
+    smart_tab_sharing_active_ = active;
+  }
+
+  // Invoked when the user explicitly toggles Smart Tab Sharing in the UI.
+  // Clears active/persisted context tokens and records removed context IDs so
+  // that tab strip underlines clear immediately and the server drops context.
+  void OnSmartTabSharingToggled(bool active);
 
   bool smart_tab_sharing_toggled_since_last_turn() const {
     return smart_tab_sharing_toggled_since_last_turn_;
@@ -118,6 +125,11 @@ class ContextualSearchSessionHandle {
 
   std::optional<lens::LensOverlayInvocationSource> invocation_source() const {
     return invocation_source_;
+  }
+
+  void set_invocation_source(
+      std::optional<lens::LensOverlayInvocationSource> invocation_source) {
+    invocation_source_ = invocation_source;
   }
 
   bool is_contextual_lens_session() const {
@@ -155,6 +167,16 @@ class ContextualSearchSessionHandle {
   virtual std::optional<lens::proto::LensOverlaySuggestInputs>
   GetSuggestInputs() const;
 
+  // Returns the search session ID from the underlying controller, or empty
+  // string if not available.
+  virtual std::string search_session_id() const;
+
+  // Constructs the visual search interaction data for the given file token, if
+  // available.
+  virtual std::optional<lens::LensOverlayVisualSearchInteractionData>
+  GetVisualSearchInteractionData(const base::UnguessableToken& file_token,
+                                 const std::optional<std::string>& query_text);
+
   // Generates a token and adds it to the list of uploaded context tokens. A
   // followup call to 'StartFileContextUploadFlow` or
   // `StartTabContextUploadFlow`, using the returned token, is required to start
@@ -172,7 +194,9 @@ class ContextualSearchSessionHandle {
 
   // Starts the tab context upload flow for the given file token using the
   // tab context stored in the contextual input data. The file token must have
-  // been previously returned by `CreateContextToken`.
+  // been previously returned by `CreateContextToken`. If
+  // `contextual_input_data` is null, the upload flow is aborted and
+  // `file_token` is removed from uploaded context tokens.
   virtual void StartTabContextUploadFlow(
       const base::UnguessableToken& file_token,
       std::unique_ptr<lens::ContextualInputData> contextual_input_data,
@@ -206,6 +230,10 @@ class ContextualSearchSessionHandle {
   // Removes file from context controller. Returns true if the file was found
   // and deleted.
   bool DeleteFile(const base::UnguessableToken& file_token);
+
+  // Removes the token from the list of uploaded context tokens. Returns true if
+  // the token was found and removed.
+  bool RemoveUploadedContextToken(const base::UnguessableToken& file_token);
 
   using DeselectedTabsMap = std::map<SessionID, std::pair<GURL, std::string>>;
 
@@ -292,6 +320,11 @@ class ContextualSearchSessionHandle {
   // Returns true if any context tokens were submitted in any query in this
   // session.
   bool has_submitted_context() const { return has_submitted_context_; }
+
+  // The multi-login account index for this session, received from the
+  // AIM/Search handshake response.
+  size_t auth_user_index() const { return auth_user_index_; }
+  void set_auth_user_index(size_t auth_user_index);
 
   // Clears the list of submitted context tokens for this particular instance of
   // the session. This is intended to be invoked when the server has responded
@@ -396,7 +429,7 @@ class ContextualSearchSessionHandle {
   const base::UnguessableToken session_id_;
 
   // The invocation source to send with generated search URLs or query payloads.
-  const std::optional<lens::LensOverlayInvocationSource> invocation_source_;
+  std::optional<lens::LensOverlayInvocationSource> invocation_source_;
 
   // Whether this session was initiated by a contextual Lens query. This could
   // apply to entrypoints like contextual suggestions in the Omnibox or the
@@ -420,6 +453,9 @@ class ContextualSearchSessionHandle {
   // Sharing was toggled, to be sent to AIM via `removed_contexts` on the next
   // query submission turn.
   std::vector<lens::LensOverlayRequestId> sts_toggled_removed_contexts_;
+
+  // The multi-login account index for this session.
+  size_t auth_user_index_ = 0;
 
   // This needs to be the last member to ensure all outstanding WeakPtrs are
   // invalidated before the rest of the members.

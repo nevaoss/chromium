@@ -28,7 +28,7 @@
 #include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/favicon/favicon_utils.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
@@ -238,6 +238,10 @@ std::optional<ui::ImageModel> GetImageModelForIconResourceId(
 #endif
     case omnibox::IconResourceIds::PHOTO_PRINTS:
       return ui::ImageModel();
+    case omnibox::IconResourceIds::IMAGE_CREATE:
+      return ui::ImageModel::FromVectorIcon(
+          kImageCreateIcon, ui::kColorMenuIcon,
+          ui::SimpleMenuModel::kDefaultIconSize);
     default:
       return std::nullopt;
   }
@@ -251,9 +255,13 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kFirstTabMenuItemIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
+                                      kSecondTabMenuItemIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kImageUploadMenuItemIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kFileUploadMenuItemIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
+                                      kSharedTabsSubmenuIdForTesting);
 
 OmniboxContextMenuController::OmniboxContextMenuController(
     OmniboxPopupFileSelector* file_selector,
@@ -533,6 +541,11 @@ void OmniboxContextMenuController::AddRecentTabItems() {
                                            ? ui::kColorMenuIcon
                                            : ui::kColorMenuIconDisabled,
                                        ui::SimpleMenuModel::kDefaultIconSize));
+    // ID for testing the submenu parent row. Tests must select this row to
+    // open the submenu before `kFirstTabMenuItemIdForTesting` becomes
+    // reachable.
+    menu_model_->SetElementIdentifierAt(menu_model_->GetItemCount() - 1,
+                                        kSharedTabsSubmenuIdForTesting);
   }
 
   min_tools_and_models_command_id_ =
@@ -545,6 +558,11 @@ void OmniboxContextMenuController::AddRecentTabItems() {
     // ID for testing tab section.
     target_menu_model->SetElementIdentifierAt(first_tab_index,
                                               kFirstTabMenuItemIdForTesting);
+  }
+  if (tabs.size() > 1 &&
+      target_menu_model->GetItemCount() > first_tab_index + 1) {
+    target_menu_model->SetElementIdentifierAt(first_tab_index + 1,
+                                              kSecondTabMenuItemIdForTesting);
   }
 
   if (!base::FeatureList::IsEnabled(omnibox::kAimUsePecApi) &&
@@ -783,6 +801,11 @@ std::u16string OmniboxContextMenuController::GetShareTabsTooltip() const {
 }
 
 bool OmniboxContextMenuController::IsTabContextEnabled() const {
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
+      std::ranges::any_of(GetRecentTabs(), &TabInfo::is_checked)) {
+    return true;
+  }
+
   if (base::FeatureList::IsEnabled(omnibox::kAimUsePecApi)) {
     auto it = input_type_info_.find(omnibox::InputType::INPUT_TYPE_BROWSER_TAB);
     return it != input_type_info_.end() && it->second.enabled;
@@ -1532,8 +1555,11 @@ OmniboxPopupUI* OmniboxContextMenuController::GetOmniboxPopupUI(
     return nullptr;
   }
 
+  // The window can be absent in unit tests that stub out the browser.
+  BrowserWindow* const browser_window =
+      BrowserWindow::FromBrowser(browser_window_interface);
   LocationBar* location_bar =
-      browser_window_interface->GetFeatures().location_bar();
+      browser_window ? browser_window->GetLocationBar() : nullptr;
   if (!location_bar) {
     return nullptr;
   }

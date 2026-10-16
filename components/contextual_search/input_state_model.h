@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_CONTEXTUAL_SEARCH_INPUT_STATE_MODEL_H_
 #define COMPONENTS_CONTEXTUAL_SEARCH_INPUT_STATE_MODEL_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -87,6 +88,10 @@ class InputStateModel {
   // were notified.
   bool UpdateConfig(const omnibox::SearchboxConfig& config);
 
+  // Updates the identity state and re-evaluates allowed and disabled inputs.
+  void SetIdentityState(bool is_signed_in,
+                        bool browser_identity_matches_aim_identity);
+
   // Set a new tool.
   void setActiveTool(ToolMode tool);
 
@@ -130,6 +135,18 @@ class InputStateModel {
     return browser_identity_matches_aim_identity_;
   }
 
+  struct LensCrop {
+    std::string data_uri;
+    bool operator==(const LensCrop&) const = default;
+  };
+
+  // Lens region crop storage.
+  // There is only ever one region crop; setting a crop clears any existing
+  // crop.
+  void SetLensCrop(const std::string& data_uri);
+  std::optional<std::string> GetLensCrop() const;
+  void RemoveLensCrop();
+  const std::optional<LensCrop>& lens_crop() const { return lens_crop_; }
 
   // Gets the `PrefService`.
   void SetPrefService(PrefService* pref_service);
@@ -192,8 +209,8 @@ class InputStateModel {
   raw_ptr<PrefService> pref_service_ = nullptr;
   PrefChangeRegistrar pref_change_registrar_;
   const bool is_off_the_record_;
-  const bool is_signed_in_;
-  const bool browser_identity_matches_aim_identity_;
+  bool is_signed_in_;
+  bool browser_identity_matches_aim_identity_;
   bool has_valid_config_ = false;
   GURL current_url_;
 
@@ -219,6 +236,9 @@ class InputStateModel {
   // param is added a few URL changes AFTER the thread URL is changed (to change
   // threads).
   bool user_modified_tool_in_thread_ = false;
+
+  // Stores the active region crop preview, if any.
+  std::optional<LensCrop> lens_crop_;
 
   base::WeakPtrFactory<InputStateModel> weak_ptr_factory_{this};
 };

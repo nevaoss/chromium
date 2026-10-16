@@ -229,7 +229,7 @@ void LensSearchController::OpenLensOverlay(
         /*additional_query_parameters=*/{},
         // TODO(crbug.com/432490312): Match type here is likely not ideal.
         // Investigate removing match type from this function.
-        AutocompleteMatchType::Type::SEARCH_SUGGEST,
+        omnibox::AutocompleteMatchType::kSearchSuggest,
         /*is_zero_prefix_suggestion=*/false,
         /*suppress_contextualization=*/false);
     return;
@@ -340,7 +340,7 @@ void LensSearchController::StartContextualization(
 void LensSearchController::IssueContextualSearchRequest(
     lens::LensOverlayInvocationSource invocation_source,
     const GURL& destination_url,
-    AutocompleteMatchType::Type match_type,
+    omnibox::AutocompleteMatchType match_type,
     bool is_zero_prefix_suggestion) {
   // This method should only be used by the omnibox flows.
   // There is no dependency on the omnibox, so this check is solely to ensure a
@@ -364,7 +364,7 @@ void LensSearchController::IssueTextSearchRequest(
     lens::LensOverlayInvocationSource invocation_source,
     std::string query_text,
     std::map<std::string, std::string> additional_query_parameters,
-    AutocompleteMatchType::Type match_type,
+    omnibox::AutocompleteMatchType match_type,
     bool is_zero_prefix_suggestion,
     bool suppress_contextualization) {
   // If the eligibility checks fail, do not procced with opening any UI.
@@ -391,7 +391,7 @@ void LensSearchController::IssueTextSearchRequest(
     if (is_zero_prefix_suggestion) {
       lens_selection_type = lens::MULTIMODAL_SUGGEST_ZERO_PREFIX;
     } else if (match_type ==
-               AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED) {
+               omnibox::AutocompleteMatchType::kSearchWhatYouTyped) {
       lens_selection_type = lens::MULTIMODAL_SEARCH;
     } else {
       lens_selection_type = lens::MULTIMODAL_SUGGEST_TYPEAHEAD;
@@ -409,7 +409,6 @@ void LensSearchController::IssueTextSearchRequest(
       query_text, additional_query_parameters, match_type,
       is_zero_prefix_suggestion, invocation_source);
 }
-
 
 void LensSearchController::CloseLensAsync(
     lens::LensOverlayDismissalSource dismissal_source) {

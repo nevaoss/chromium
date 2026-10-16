@@ -38,7 +38,7 @@ std::string_view PixAccountLinkingManager::GetHistogramSuffix() const {
 
 base::DictValue
 PixAccountLinkingManager::GetPayloadForGetDetailsForCreatePaymentInstrument() {
-  return base::DictValue();
+  return base::DictValue().Set("pix_account_linking_info", base::DictValue());
 }
 
 base::WeakPtr<NativeAccountLinkingHandler>
@@ -104,6 +104,7 @@ void PixAccountLinkingManager::MaybeShowPixAccountLinkingPrompt(
 }
 
 void PixAccountLinkingManager::Reset() {
+  NativeAccountLinkingHandler::Reset();
   has_user_returned_to_chrome_ = false;
   has_post_return_delay_passed_ = false;
   is_eligible_for_pix_account_linking_ = std::nullopt;

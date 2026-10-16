@@ -463,10 +463,6 @@ search-animated-glow {
   padding-top: 14px;
 }
 
-:host(:not([file-uploads-complete])) .upload-button {
-  cursor: not-allowed;
-}
-
 :host([upload-button-disabled]) .upload-button {
   color: var(--color-composebox-upload-button-disabled);
 }
@@ -573,7 +569,7 @@ search-animated-glow {
   top: var(--cr-composebox-submit-container-top, 58px);
 }
 
-:host([submit-enabled][searchbox-layout-mode='TallBottomContext'][show-dropdown]:not([show-file-carousel])) .carousel-divider {
+:host([submit-enabled][searchbox-layout-mode='TallBottomContext'][show-dropdown]:not([show-file-carousel]):not([has-grid])) .carousel-divider {
   --contextual-entrypoint-and-carousel-carousel-divider-margin-top: 50px;
 }
 

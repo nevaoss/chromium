@@ -52,6 +52,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLay
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController.OnSuggestionsReceivedListener;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator.NavigationTarget;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator.OmniboxSuggestionsVisualStateObserver;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteDelegate.AutocompleteLoadCallback;
 import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.TraversalMode;
@@ -66,8 +67,10 @@ import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
+import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
 import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
@@ -641,7 +644,15 @@ class AutocompleteMediator
     }
 
     private void installAutocompleteObservers() {
-        if (mAutocomplete == null || !mActivityWindowFocused) return;
+        if (mAutocomplete == null) return;
+        // Hub and Tab Search overlays can be invoked in multi-window / split-screen before the
+        // target window acquires system focus. Allow attaching observers so suggestions can
+        // populate.
+        boolean isHubOrTabSearch =
+                mAutocompleteInput != null
+                        && PageClassificationUtils.isHubOrTabSearch(
+                                mAutocompleteInput.getPageClassification());
+        if (!mActivityWindowFocused && !isHubOrTabSearch) return;
         mAutocomplete.addOnSuggestionsReceivedListener(this);
     }
 
@@ -800,7 +811,13 @@ class AutocompleteMediator
         boolean openInNewWindow = !openInNewTab && (modifiers & KeyEvent.META_SHIFT_ON) != 0;
 
         loadUrlForOmniboxMatch(
-                matchIndex, suggestion, url, mLastActionUpTimestamp, openInNewTab, openInNewWindow);
+                matchIndex,
+                suggestion,
+                url,
+                mLastActionUpTimestamp,
+                openInNewTab,
+                openInNewWindow,
+                /* openInBackground= */ false);
     }
 
     /**
@@ -1487,8 +1504,9 @@ class AutocompleteMediator
         // navigation while the Omnibox input session is not active.
         try (TraceEvent e = TraceEvent.scoped("AutocompleteMediator.loadTypedOmniboxText")) {
             if (!isInInputSession()) return;
-            boolean openInNewTab = target == AutocompleteCoordinator.NavigationTarget.NEW_TAB;
-            boolean openInNewWindow = target == AutocompleteCoordinator.NavigationTarget.NEW_WINDOW;
+            boolean openInBackground = target == NavigationTarget.NEW_BACKGROUND_TAB;
+            boolean openInNewTab = target == NavigationTarget.NEW_TAB || openInBackground;
+            boolean openInNewWindow = target == NavigationTarget.NEW_WINDOW;
 
             final String urlText = mUrlBarEditingTextProvider.getTextWithAutocomplete();
             cancelAutocompleteRequests();
@@ -1502,9 +1520,10 @@ class AutocompleteMediator
 
             if (TextUtils.isEmpty(urlText)
                     && mFuseboxCoordinator.getHasAttachmentsSupplier().get()) {
-                loadUrlAttachmentsOnly(eventTime, openInNewTab, openInNewWindow);
+                loadUrlAttachmentsOnly(eventTime, openInNewTab, openInNewWindow, openInBackground);
             } else {
-                findMatchAndLoadUrl(urlText, eventTime, openInNewTab, openInNewWindow);
+                findMatchAndLoadUrl(
+                        urlText, eventTime, openInNewTab, openInNewWindow, openInBackground);
             }
         }
     }
@@ -1520,7 +1539,10 @@ class AutocompleteMediator
             String text, long eventTime, @AutocompleteCoordinator.NavigationTarget int target) {
         try (TraceEvent e = TraceEvent.scoped("AutocompleteMediator.loadPastedText")) {
             if (!isInInputSession() || TextUtils.isEmpty(text)) return;
-            boolean openInNewTab = target == AutocompleteCoordinator.NavigationTarget.NEW_TAB;
+            boolean openInBackground = target == NavigationTarget.NEW_BACKGROUND_TAB;
+            boolean openInNewTab =
+                    target == AutocompleteCoordinator.NavigationTarget.NEW_TAB
+                            || target == NavigationTarget.NEW_BACKGROUND_TAB;
             boolean openInNewWindow = target == AutocompleteCoordinator.NavigationTarget.NEW_WINDOW;
 
             cancelAutocompleteRequests();
@@ -1534,7 +1556,8 @@ class AutocompleteMediator
                     suggestionMatch.getUrl(),
                     eventTime,
                     openInNewTab,
-                    openInNewWindow);
+                    openInNewWindow,
+                    openInBackground);
         }
     }
 
@@ -1550,7 +1573,11 @@ class AutocompleteMediator
      *     current window.
      */
     private void findMatchAndLoadUrl(
-            String urlText, long inputStart, boolean openInNewTab, boolean openInNewWindow) {
+            String urlText,
+            long inputStart,
+            boolean openInNewTab,
+            boolean openInNewWindow,
+            boolean openInBackground) {
         AutocompleteMatch suggestionMatch = getSuggestionMatchForUrlText(urlText);
 
         if (suggestionMatch == null) return;
@@ -1560,7 +1587,8 @@ class AutocompleteMediator
                 suggestionMatch.getUrl(),
                 inputStart,
                 openInNewTab,
-                openInNewWindow);
+                openInNewWindow,
+                openInBackground);
     }
 
     private @Nullable AutocompleteMatch getSuggestionMatchForUrlText(String urlText) {
@@ -1588,30 +1616,6 @@ class AutocompleteMediator
     }
 
     /**
-     * Load the URL for the suggestion at the specified index.
-     *
-     * @param matchIndex Position of the suggestion in the drop down view.
-     * @param eventTime The timestamp when the navigation was triggered.
-     * @param openInNewTab Whether the URL will be loaded in a new tab.
-     * @param openInNewWindow Whether the URL will be loaded in a new window.
-     * @return Whether navigation was successfully dispatched for the suggestion.
-     */
-    /* package */ boolean loadUrlForOmniboxMatch(
-            int matchIndex, long eventTime, boolean openInNewTab, boolean openInNewWindow) {
-        if (!isInInputSession()) return false;
-        AutocompleteMatch suggestion = getSuggestionAt(matchIndex);
-        if (suggestion == null) return false;
-        loadUrlForOmniboxMatch(
-                matchIndex,
-                suggestion,
-                suggestion.getUrl(),
-                eventTime,
-                openInNewTab,
-                openInNewWindow);
-        return true;
-    }
-
-    /**
      * Loads the specified omnibox suggestion.
      *
      * @param matchIndex The position of the selected omnibox suggestion.
@@ -1632,7 +1636,8 @@ class AutocompleteMediator
             GURL url,
             long inputStart,
             boolean openInNewTab,
-            boolean openInNewWindow) {
+            boolean openInNewWindow,
+            boolean openInBackground) {
         if (!isInInputSession()) return;
 
         try (TraceEvent e = TraceEvent.scoped("AutocompleteMediator.loadUrlFromOmniboxMatch")) {
@@ -1674,6 +1679,7 @@ class AutocompleteMediator
                                 inputStart,
                                 openInNewTab,
                                 openInNewWindow,
+                                openInBackground,
                                 finalTransition);
                     };
 
@@ -1682,7 +1688,10 @@ class AutocompleteMediator
     }
 
     private void loadUrlAttachmentsOnly(
-            long eventTime, boolean openInNewTab, boolean openInNewWindow) {
+            long eventTime,
+            boolean openInNewTab,
+            boolean openInNewWindow,
+            boolean openInBackground) {
         Callback<GURL> onUrlReady =
                 (finalUrl) -> {
                     mDelegate.loadUrl(
@@ -1691,6 +1700,7 @@ class AutocompleteMediator
                                     .setInputStartTimestamp(eventTime)
                                     .setOpenInNewTab(openInNewTab)
                                     .setOpenInNewWindow(openInNewWindow)
+                                    .setOpenInBackground(openInBackground)
                                     .build());
                     mHandler.post(this::finishInteraction);
                 };
@@ -1729,9 +1739,24 @@ class AutocompleteMediator
             long inputStart,
             boolean openInNewTab,
             boolean openInNewWindow,
+            boolean openInBackground,
             int transition) {
         try (TraceEvent e =
                 TraceEvent.scoped("AutocompleteMediator.finishLoadUrlForOmniboxMatch")) {
+            if (suggestion.isExtensionMatch()) {
+                Tab tab = mDataProvider.getTab();
+                WebContents webContents = tab != null ? tab.getWebContents() : null;
+                if (webContents != null) {
+                    ExtensionUi.onOmniboxExtensionInputEntered(
+                            webContents, url.getSpec(), openInNewTab, openInNewWindow);
+                }
+                // Dismiss the suggestions list and clear focus immediately. This is an extension
+                // match, so an event is fired to the extension rather than having any kind of
+                // page navigation.
+                finishInteraction();
+                return;
+            }
+
             // Kick off an action to clear focus and dismiss the suggestions list.
             // This normally happens when the target site loads and focus is moved to the
             // webcontents. On Android T we occasionally observe focus events to be lost, resulting
@@ -1755,6 +1780,7 @@ class AutocompleteMediator
                             .setPostData(suggestion.getPostData())
                             .setOpenInNewTab(openInNewTab)
                             .setOpenInNewWindow(openInNewWindow)
+                            .setOpenInBackground(openInBackground)
                             .setExtraHeaders(suggestion.getExtraHeaders())
                             .setAutocompleteLoadCallback(autocompleteLoadCallback)
                             .build());
@@ -1889,7 +1915,7 @@ class AutocompleteMediator
         mListPropertyModel.set(
                 SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR, applyMargin);
         if (mSideUiStateProvider != null) {
-            onSideUiSpecsChanged(mSideUiStateProvider.getCurrentSideUiSpecs());
+            updateLeftSideBarMarginPx(mSideUiStateProvider.getCurrentSideUiSpecs());
         }
     }
 
@@ -1905,8 +1931,17 @@ class AutocompleteMediator
     }
 
     @Override
-    public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
-        int leftMarginPx = sideUiSpecs.getWidth(AnchorSide.LEFT);
+    public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs, UiUpdateRequest request) {
+        updateLeftSideBarMarginPx(sideUiSpecs);
+    }
+
+    /**
+     * Updates the suggestions list's left margin to account for the given {@link SideUiSpecs}.
+     *
+     * @param sideUiSpecs The {@link SideUiSpecs} to apply.
+     */
+    private void updateLeftSideBarMarginPx(SideUiSpecs sideUiSpecs) {
+        int leftMarginPx = sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
         if (mLeftSideUiMarginPx != leftMarginPx) {
             mLeftSideUiMarginPx = leftMarginPx;
             mListPropertyModel.set(SuggestionListProperties.LEFT_SIDE_BAR_MARGIN_PX, leftMarginPx);
@@ -2213,18 +2248,22 @@ class AutocompleteMediator
         boolean showSuggestionsContainer = isTopResumedActivity;
 
         if (isInInputSession()) {
+            boolean isHubOrTabSearch =
+                    PageClassificationUtils.isHubOrTabSearch(
+                            mAutocompleteInput.getPageClassification());
+
             // Always set the window activity focused property to true for hub search so that the
             // dropdown container persists when search activity is dismissed.
             // TODO(crbug.com/390011136): Find a better way to create a seamless animation when
             // exiting hub search that dismisses the URL bar and suggestions list together.
-            showSuggestionsContainer |=
-                    PageClassificationUtils.isHubOrTabSearch(
-                            mAutocompleteInput.getPageClassification());
+            showSuggestionsContainer |= isHubOrTabSearch;
 
             if (isTopResumedActivity) {
                 installAutocompleteObservers();
                 onInputChanged();
-            } else {
+            } else if (!isHubOrTabSearch) {
+                // Hub and Tab Search manage their own dismissal lifecycle and retain observers
+                // and requests when inactive in multi-window mode or across window transitions.
                 dismissDeleteDialog(DialogDismissalCause.NAVIGATE_BACK_OR_TOUCH_OUTSIDE);
                 stopAutocomplete(AutocompleteStopReason.CLOBBERED);
                 removeAutocompleteObservers();

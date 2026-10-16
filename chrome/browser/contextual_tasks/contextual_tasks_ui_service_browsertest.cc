@@ -378,8 +378,12 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceZeroStateEnabledTest,
   GURL zero_state_url = ui_service->GetDefaultAiPageUrl();
 
   content::TestNavigationObserver navigation_observer(panel_contents);
-  ui_service->StartTaskUiInSidePanel(browser(), active_tab, zero_state_url,
-                                     nullptr);
+  ui_service->StartTaskUiInSidePanel(
+      browser(), active_tab, zero_state_url, nullptr,
+      StartTaskUiOptions{
+          .entry_point = omnibox::ChromeAimEntryPoint::
+              DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION,
+      });
   navigation_observer.Wait();
 
   std::string new_task_id_str = GetTaskIdFromPanel(panel_contents);
@@ -417,8 +421,12 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceZeroStateDisabledTest,
   GURL zero_state_url = ui_service->GetDefaultAiPageUrl();
 
   content::TestNavigationObserver navigation_observer(panel_contents);
-  ui_service->StartTaskUiInSidePanel(browser(), active_tab, zero_state_url,
-                                     nullptr);
+  ui_service->StartTaskUiInSidePanel(
+      browser(), active_tab, zero_state_url, nullptr,
+      StartTaskUiOptions{
+          .entry_point = omnibox::ChromeAimEntryPoint::
+              DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION,
+      });
 
   // We expect it to NOT reload because feature is disabled.
   base::RunLoop().RunUntilIdle();
@@ -818,9 +826,8 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_FALSE(handled);
 }
 
-IN_PROC_BROWSER_TEST_F(
-    ContextualTasksUiServiceRearchitectureEnabledTest,
-    SidePanelNavigation_ThirdPartyUrl_DoesNotAddSidePanelParams) {
+IN_PROC_BROWSER_TEST_F(ContextualTasksUiServiceRearchitectureEnabledTest,
+                       SidePanelNavigation_ThirdPartyUrl_RoutesToTabStrip) {
   ContextualTasksUiService* ui_service =
       ContextualTasksUiServiceFactory::GetForBrowserContext(
           browser()->GetProfile());
@@ -840,8 +847,10 @@ IN_PROC_BROWSER_TEST_F(
   auto* aim_service = static_cast<MockAimEligibilityService*>(
       AimEligibilityServiceFactory::GetForProfile(browser()->GetProfile()));
   GURL third_party_url("https://example.com/article");
-  EXPECT_CALL(*aim_service, IsAimUrl(third_party_url, testing::_))
-      .WillRepeatedly(testing::Return(false));
+  ON_CALL(*aim_service, IsAimUrl(testing::_, testing::_))
+      .WillByDefault(testing::Return(false));
+
+  int initial_tab_count = browser()->GetTabStripModel()->count();
 
   content::OpenURLParams params =
       content::OpenURLParams::CreateBrowserInitiated(
@@ -853,7 +862,17 @@ IN_PROC_BROWSER_TEST_F(
       /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true,
       /*is_mobile_ua=*/false, std::nullopt, std::nullopt,
       blink::mojom::WindowFeatures());
-  EXPECT_FALSE(handled);
+  EXPECT_TRUE(handled);
+
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return browser()->GetTabStripModel()->count() == initial_tab_count + 1;
+  }));
+  EXPECT_EQ(browser()
+                ->GetTabStripModel()
+                ->GetActiveTab()
+                ->GetContents()
+                ->GetVisibleURL(),
+            third_party_url);
 }
 
 IN_PROC_BROWSER_TEST_F(

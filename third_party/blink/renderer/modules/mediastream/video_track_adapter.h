@@ -16,6 +16,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#include "base/token.h"
 #include "media/base/video_frame.h"
 #include "third_party/blink/public/platform/modules/mediastream/media_stream_types.h"
 #include "third_party/blink/public/web/modules/mediastream/encoded_video_frame.h"
@@ -66,6 +67,8 @@ class MODULES_EXPORT VideoTrackAdapter
   void RemoveTrack(const MediaStreamVideoTrack* track);
   void ReconfigureTrack(const MediaStreamVideoTrack* track,
                         const VideoTrackAdapterSettings& settings);
+  void SetTrackSubCaptureTarget(const MediaStreamVideoTrack* track,
+                                const base::Token& sub_capture_target);
 
   // Delivers |frame| to all tracks that have registered a callback.
   // Must be called on the video task runner.
@@ -83,6 +86,22 @@ class MODULES_EXPORT VideoTrackAdapter
   // DeliverFrameOnVideoTaskRunner() will not be called for this frame.
   void OnFrameDroppedOnVideoTaskRunner(
       media::VideoCaptureFrameDropReason reason);
+
+  // Creates and delivers a black frame of |size| to all tracks that have
+  // registered a frame delivery callback.
+  //
+  // Unlike a bare media::VideoFrame::CreateBlackFrame(), the frame is stamped
+  // so that it survives the pipeline: it continues the source's timestamp
+  // timeline rather than restarting at zero, and it carries |capture_version|
+  // rather than a default-constructed one. Without both, the frame is
+  // discarded downstream and the consumer is left displaying the last real
+  // frame indefinitely.
+  //
+  // Must be called on the video task runner.
+  void DeliverBlackFrameOnVideoTaskRunner(
+      const gfx::Size& size,
+      media::CaptureVersion capture_version,
+      base::TimeTicks estimated_capture_time);
 
   // Called when it is guaranteed that all subsequent frames delivered
   // over DeliverFrameOnVideoTaskRunner() will have a capture-target version
@@ -143,21 +162,30 @@ class MODULES_EXPORT VideoTrackAdapter
                                std::optional<float> device_scale_factor)>;
   using VideoTrackFormatInternalCallback =
       CrossThreadFunction<void(const media::VideoCaptureFormat&)>;
+
+  struct VideoTrackCallbacks {
+    VideoCaptureDeliverFrameInternalCallback frame_callback;
+    VideoCaptureNotifyFrameDroppedInternalCallback
+        notify_frame_dropped_callback;
+    DeliverEncodedVideoFrameInternalCallback encoded_frame_callback;
+    VideoCaptureSubCaptureVersionInternalCallback capture_version_callback;
+    VideoTrackSettingsInternalCallback settings_callback;
+    VideoTrackFormatInternalCallback format_callback;
+  };
+
   void AddTrackOnVideoTaskRunner(
       const MediaStreamVideoTrack* track,
-      VideoCaptureDeliverFrameInternalCallback frame_callback,
-      VideoCaptureNotifyFrameDroppedInternalCallback
-          notify_frame_dropped_callback,
-      DeliverEncodedVideoFrameInternalCallback encoded_frame_callback,
-      VideoCaptureSubCaptureVersionInternalCallback capture_version_callback,
-      VideoTrackSettingsInternalCallback settings_callback,
-      VideoTrackFormatInternalCallback format_callback,
-      const VideoTrackAdapterSettings& settings);
+      VideoTrackCallbacks callbacks,
+      const VideoTrackAdapterSettings& settings,
+      base::Token sub_capture_target = base::Token());
 
   void RemoveTrackOnVideoTaskRunner(const MediaStreamVideoTrack* track);
   void ReconfigureTrackOnVideoTaskRunner(
       const MediaStreamVideoTrack* track,
       const VideoTrackAdapterSettings& settings);
+  void SetTrackSubCaptureTargetOnVideoTaskRunner(
+      const MediaStreamVideoTrack* track,
+      base::Token sub_capture_target);
 
   using OnMutedInternalCallback = CrossThreadFunction<void(bool mute_state)>;
   void StartFrameMonitoringOnVideoTaskRunner(
@@ -206,6 +234,13 @@ class MODULES_EXPORT VideoTrackAdapter
   // Resolution configured on the video source, accessed on the video task
   // runner.
   std::optional<gfx::Size> source_frame_size_;
+
+  // Media timestamp of the most recently delivered frame, and the wall time at
+  // which it was delivered. Used to place a synthesized black frame on the same
+  // timeline as the real frames instead of restarting it at zero. Accessed on
+  // the video task runner.
+  base::TimeDelta last_frame_timestamp_;
+  base::TimeTicks last_frame_arrival_time_;
 };
 
 }  // namespace blink

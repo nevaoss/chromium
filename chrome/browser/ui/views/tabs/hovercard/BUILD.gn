@@ -140,6 +140,8 @@ source_set("test_support") {
     "//ui/gfx:test_support",
     "//ui/views:test_support",
   ]
+
+  deps = [ "//chrome/browser/ui/views/frame:browser_view_header" ]
 }
 
 source_set("browser_tests") {
@@ -153,10 +155,12 @@ source_set("browser_tests") {
     "//chrome/browser",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui",
+    "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/performance_controls",
     "//chrome/browser/ui/tabs:features",
     "//chrome/browser/ui/thumbnails",
+    "//chrome/browser/ui/views/frame:browser_view_header",
     "//chrome/browser/ui/views/tabs:base",
     "//chrome/browser/ui/views/tabs/common:impl",
     "//chrome/common:constants",
@@ -191,6 +195,8 @@ if (!is_chromeos_device) {
       ":test_support",
       "//chrome/app:command_ids",
       "//chrome/browser/interstitials:test_support",
+      "//chrome/browser/ui:browser_command_controller",
+      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_element_identifiers",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/interaction",

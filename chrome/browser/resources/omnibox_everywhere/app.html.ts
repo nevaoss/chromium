@@ -14,6 +14,7 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
       this.isComposeboxMode_ ? html`
     <omnibox-everywhere-composebox id="composebox" searchbox-next-enabled
         ?is-active="${this.isActive_}"
+        .isPendingScreenshot="${this.isPendingScreenshot_}"
         searchbox-layout-mode="${this.searchboxLayoutMode_}"
         .state="${this.composeboxState_}"
         .clearAllInputsWhenSubmittingQuery="${true}"
@@ -38,17 +39,16 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
                                    this.contextManagementInComposeboxEnabled_}">
     </omnibox-everywhere-omnibox>
   `}
-  ${
-      this.mostVisitedEnabled_ && this.showShortcuts_ &&
-      !this.isFreIntroModal_() && !this.isFreChin_() ? html`
-    <div id="mostVisitedContainer" ?hidden="${!this.hasMostVisitedTiles_}">
-      <cr-most-visited id="mostVisited" single-row non-editable hide-title
-          max-tiles="7"></cr-most-visited>
+  ${this.mostVisitedEnabled_ ? html`
+    <div id="mostVisitedContainer" ?hidden="${this.isMostVisitedHidden_()}">
+      <cr-most-visited id="mostVisited" single-row non-editable
+          ?hide-title="${this.hideTitle_}" max-tiles="${this.smallLoomnibox_ ? 5 : 7}"></cr-most-visited>
     </div>
   ` : ''}
   ${
       this.isFreIntroModal_() ? html`
     <fre-modal
+        ?small-loomnibox="${this.smallLoomnibox_}"
         @close="${this.onFreClose_}">
     </fre-modal>
   ` : ''}
@@ -56,8 +56,10 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
       this.isFreShortcutSetupChin_() ? html`
     <fre-chin
         id="freShortcutSetupChin"
+        ?small-loomnibox="${this.smallLoomnibox_}"
         .mode="${FreChinMode.SHORTCUT_SETUP}"
         .hotkeyTokens="${this.hotkeyTokens_}"
+        .dropdownOpen="${this.isHotkeyDropdownOpen_}"
         @show-hotkey-dropdown="${this.onFreShowHotkeyDropdown_}"
         @open-settings="${this.onFreOpenSettings_}"
         @close="${this.onFreClose_}">
@@ -67,8 +69,10 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
       this.isFreShortcutReminderChin_() ? html`
     <fre-chin
         id="freShortcutReminderChin"
+        ?small-loomnibox="${this.smallLoomnibox_}"
         .mode="${FreChinMode.SHORTCUT_REMINDER}"
         .hotkeyTokens="${this.hotkeyTokens_}"
+        .dropdownOpen="${this.isHotkeyDropdownOpen_}"
         @show-hotkey-dropdown="${this.onFreShowHotkeyDropdown_}"
         @open-settings="${this.onFreOpenSettings_}"
         @close="${this.onFreClose_}">

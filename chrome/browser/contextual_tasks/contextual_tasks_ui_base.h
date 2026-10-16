@@ -9,12 +9,22 @@
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_toolbar.mojom.h"
+#include "components/user_education/webui/help_bubble_handler.h"  // nogncheck
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
 #include "ui/webui/mojo_web_ui_controller.h"
+#include "ui/webui/resources/cr_components/help_bubble/help_bubble.mojom.h"  // nogncheck
+
+#if !BUILDFLAG(IS_ANDROID)
+#include "base/scoped_observation.h"
+#include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+#endif
+
+class BrowserWindowInterface;
 
 namespace content {
+class WebContents;
 class WebUI;
 class WebUIDataSource;
 }  // namespace content
@@ -23,6 +33,7 @@ class Profile;
 
 namespace contextual_tasks {
 
+class ContextualTasksPanelController;
 class ContextualTasksPermissionController;
 
 // Base WebUI controller class for Contextual Tasks.
@@ -47,7 +58,13 @@ class ContextualTasksUIBase
     : public ui::MojoWebUIController,
       public contextual_tasks_toolbar::mojom::PageHandlerFactory,
       public contextual_tasks_toolbar::mojom::PageHandler,
-      public contextual_tasks_toolbar::mojom::ContextualTasksToolbarUIService {
+      public contextual_tasks_toolbar::mojom::ContextualTasksToolbarUIService,
+      public help_bubble::mojom::HelpBubbleHandlerFactory
+#if !BUILDFLAG(IS_ANDROID)
+    ,
+      public PinnedToolbarActionsModel::Observer
+#endif
+{
  public:
   explicit ContextualTasksUIBase(content::WebUI* web_ui);
   ContextualTasksUIBase(const ContextualTasksUIBase&) = delete;
@@ -63,6 +80,18 @@ class ContextualTasksUIBase
       mojo::PendingReceiver<contextual_tasks_toolbar::mojom::PageHandler>
           page_handler) override;
 
+  // contextual_tasks_toolbar::mojom::PageHandler:
+  void PinSidePanel() override;
+  void UnpinSidePanel() override;
+  void OpenMyActivityUi() override;
+  void OpenOverflowMenuHelpUi() override;
+  void OpenFeedbackUi() override;
+
+#if !BUILDFLAG(IS_ANDROID)
+  // PinnedToolbarActionsModel::Observer:
+  void OnActionsChanged() override;
+#endif
+
   void BindInterface(
       mojo::PendingReceiver<contextual_tasks_toolbar::mojom::PageHandlerFactory>
           pending_receiver);
@@ -73,6 +102,16 @@ class ContextualTasksUIBase
       mojo::PendingReceiver<
           contextual_tasks_toolbar::mojom::ContextualTasksToolbarUIService>
           pending_receiver);
+
+  void BindInterface(
+      mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandlerFactory>
+          pending_receiver);
+
+  // help_bubble::mojom::HelpBubbleHandlerFactory:
+  void CreateHelpBubbleHandler(
+      mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
+      mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler)
+      override;
 
   // contextual_tasks_toolbar::mojom::ContextualTasksToolbarUIService:
   void GetInitialState(GetInitialStateCallback callback) override;
@@ -90,9 +129,24 @@ class ContextualTasksUIBase
       toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
 
   Profile* GetProfile();
+  content::WebContents* GetWebUIWebContents();
+  BrowserWindowInterface* GetBrowser();
+  ContextualTasksPanelController* GetPanelController();
   contextual_tasks_toolbar::mojom::Page* GetToolbarPageRemote() {
-    return toolbar_page_.get();
+    return toolbar_page_.is_bound() ? toolbar_page_.get() : nullptr;
   }
+
+  // Returns the Contextual Tasks toolbar WebUI controller hosted by
+  // `web_contents`, or null if `web_contents` does not host one.
+  static ContextualTasksUIBase* FromWebContents(
+      content::WebContents* web_contents);
+
+  // Called by `ContextualTasksPermissionController` when its permission
+  // dashboard state changes. Forwards the new state to subscribed WebUI
+  // clients, and does nothing if `controller` belongs to a task that is not
+  // currently on screen.
+  void NotifyPermissionDashboardStateChanged(
+      ContextualTasksPermissionController* controller);
 
  protected:
   // Helper to dynamically resolve the active tab's permission controller.
@@ -104,13 +158,24 @@ class ContextualTasksUIBase
   mojo::Receiver<contextual_tasks_toolbar::mojom::PageHandler>
       toolbar_page_handler_receiver_{this};
   mojo::Remote<contextual_tasks_toolbar::mojom::Page> toolbar_page_;
-
   mojo::Receiver<
       contextual_tasks_toolbar::mojom::ContextualTasksToolbarUIService>
       receiver_{this};
   mojo::RemoteSet<
       contextual_tasks_toolbar::mojom::ContextualTasksToolbarUIObserver>
       toolbar_ui_observers_;
+  toolbar_ui_api::mojom::PermissionDashboardStatePtr
+      last_pushed_permission_dashboard_state_;
+
+#if !BUILDFLAG(IS_ANDROID)
+  base::ScopedObservation<PinnedToolbarActionsModel,
+                          PinnedToolbarActionsModel::Observer>
+      pinned_toolbar_actions_model_observation_{this};
+#endif
+
+  std::unique_ptr<user_education::HelpBubbleHandler> help_bubble_handler_;
+  mojo::Receiver<help_bubble::mojom::HelpBubbleHandlerFactory>
+      help_bubble_factory_receiver_{this};
 };
 
 }  // namespace contextual_tasks

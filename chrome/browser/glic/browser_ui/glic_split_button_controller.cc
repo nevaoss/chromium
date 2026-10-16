@@ -11,6 +11,7 @@
 #include "base/feature_list.h"
 #include "base/notimplemented.h"
 #include "build/build_config.h"
+#include "chrome/browser/glic/browser_ui/activity_list_bubble/glic_activity_list_bubble_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
@@ -28,7 +29,6 @@
 #include "chrome/common/chrome_features.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/tabs/public/tab_interface.h"
-#include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 
 namespace glic {
 
@@ -106,7 +106,7 @@ void GlicSplitButtonController::OnGlicButtonClicked() {
   tabs::TabInterface* active_tab =
       TabListInterface::From(browser_)->GetActiveTab();
   if (!is_panel_showing && prompt_suggestion && !prompt_suggestion->empty() &&
-      active_tab) {
+      active_tab && GlicEnabling::IsEnabledForProfile(browser_->GetProfile())) {
     glic::GlicInvokeOptions options(glic::Target(*active_tab),
                                     GetInvocationSource(*delegate));
     options.prompts.push_back(std::move(*prompt_suggestion));

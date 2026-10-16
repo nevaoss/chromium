@@ -36,7 +36,6 @@
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/user_education/webui/help_bubble_handler.h"  // nogncheck
 #include "content/public/browser/host_zoom_map.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -52,7 +51,6 @@
 #include "ui/base/resource/resource_scale_factor.h"
 #include "ui/webui/mojo_web_ui_controller.h"
 #include "ui/webui/resources/cr_components/composebox/composebox.mojom.h"
-#include "ui/webui/resources/cr_components/help_bubble/help_bubble.mojom.h"  // nogncheck
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "components/guest_view/browser/slim_web_view/slim_web_view_page_handler_factory.h"  // nogncheck
@@ -71,6 +69,7 @@ namespace contextual_tasks {
 class ContextualTasksAutoSuggestionManager;
 class ContextualTasksComposeboxHandlerInterface;
 class ContextualTasksUiService;
+class ContextualTasksUiTest;
 
 }  // namespace contextual_tasks
 
@@ -95,7 +94,6 @@ class ContextualTasksUI
 #endif
       public contextual_tasks::mojom::PageHandlerFactory,
       public composebox::mojom::PageHandlerFactory,
-      public help_bubble::mojom::HelpBubbleHandlerFactory,
       public contextual_tasks_internals::mojom::
           ContextualTasksInternalsPageHandlerFactory,
       public signin::IdentityManager::Observer,
@@ -106,6 +104,7 @@ class ContextualTasksUI
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kSmartTabSharingMenuItemElementId);
 
   friend class ContextualTasksUIBrowserTest;
+  friend class contextual_tasks::ContextualTasksUiTest;
 
   // A WebContentsObserver used to observe navigations or URL changes in the
   // frame being hosted by this WebUI. Top-level navigations are ignored since
@@ -161,11 +160,6 @@ class ContextualTasksUI
   void BindInterface(
       mojo::PendingReceiver<composebox::mojom::PageHandlerFactory> receiver);
 
-  // help_bubble::mojom::HelpBubbleHandlerFactory:
-  void CreateHelpBubbleHandler(
-      mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
-      mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler)
-      override;
 
   // contextual_tasks::mojom::PageHandlerFactory:
   void CreatePageHandler(
@@ -197,6 +191,7 @@ class ContextualTasksUI
   void TransferNavigationToEmbeddedPage(content::OpenURLParams params) override;
   void CloseSidePanel() override;
   void OnSidePanelStateChanged() override;
+  void FocusComposebox() override;
   void OnActiveTabContextStatusChanged() override;
   void SyncAutoSuggestedTabContext() override;
   void ResetForNewThread(const base::Uuid& task_id, const GURL& url) override;
@@ -271,9 +266,6 @@ class ContextualTasksUI
       mojo::PendingReceiver<contextual_tasks::mojom::PageHandlerFactory>
           pending_receiver);
 
-  void BindInterface(
-      mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandlerFactory>
-          pending_receiver);
 
   // Instantiates the implementor of the contextual_tasks::mojom::
   // ContextualTasksInternalsPageHandlerFactory mojo interface passing the
@@ -363,8 +355,6 @@ class ContextualTasksUI
                              const GURL& url,
                              bool replace_navigation_entry) override;
 
-  contextual_tasks::ContextualTasksPanelController* GetPanelController();
-
   void UpdateExpandButtonEnabled(bool enabled) override;
 
   std::unique_ptr<contextual_tasks::ContextualTasksAutoSuggestionManager>
@@ -393,10 +383,6 @@ class ContextualTasksUI
   mojo::Receiver<composebox::mojom::PageHandlerFactory>
       composebox_page_handler_factory_receiver_{this};
 
-  std::unique_ptr<user_education::HelpBubbleHandler> help_bubble_handler_;
-
-  mojo::Receiver<help_bubble::mojom::HelpBubbleHandlerFactory>
-      help_bubble_factory_receiver_{this};
 
   std::unique_ptr<InnerFrameCreationObvserver>
       inner_web_contents_creation_observer_;

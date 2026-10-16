@@ -107,10 +107,6 @@ export interface ContextualTasksAppElement {
     // <if expr="not is_android or enable_webui_contextual_tasks_composebox">
     composebox: ContextualTasksComposeboxElement,
     // </if>
-    // <if expr="is_android and not enable_webui_contextual_tasks_composebox">
-    composebox?: ContextualTasksComposeboxElement,
-    // </if>
-    onboardingTooltip?: ContextualTasksOnboardingTooltipElement,
   };
 }
 
@@ -475,6 +471,11 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
     this.listenerIds_ = [
       callbackRouter.onSidePanelStateChanged.addListener(
           () => this.updateSidePanelState()),
+      callbackRouter.focusComposebox.addListener(() => {
+        this.updateComplete.then(() => {
+          this.composebox_?.tryFocus();
+        });
+      }),
       callbackRouter.turnOnSmartTabSharing.addListener(() => {
         // <if expr="not is_android">
         const menu = this.getContextualActionMenu();
@@ -742,6 +743,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       this.forceComposeboxFocus();
     } else if (this.isZeroState_ && !this.isShownInTab_) {
       this.playZeroStateAnimations_();
+      this.forceComposeboxFocus();
     }
 
     // The thread URL is considered pending (not loaded immediately in the
@@ -851,7 +853,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
   // <if expr="not is_android">
   private getContextualActionMenu(): ContextualActionMenuElement|null {
     const wrapper =
-        this.shadowRoot?.querySelector<ContextualTasksComposeboxElement>(
+        this.shadowRoot.querySelector<ContextualTasksComposeboxElement>(
             'contextual-tasks-composebox');
     if (!wrapper) {
       return null;
@@ -892,8 +894,9 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
 
   private updateTooltipVisibility_() {
     const onboardingTooltip =
-        this.shadowRoot?.querySelector<ContextualTasksOnboardingTooltipElement>(
-            '#onboardingTooltip') || null;
+        this.shadowRoot.querySelector<ContextualTasksOnboardingTooltipElement>(
+            '#onboardingTooltip') ||
+        null;
     const composeboxContainer = this.composebox_;
     const crComposebox = composeboxContainer?.getComposebox() || null;
 
@@ -920,7 +923,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
 
     // <if expr="not is_android">
     const askGTooltip =
-        this.shadowRoot?.querySelector<ContextualTasksInfoTooltipElement>(
+        this.shadowRoot.querySelector<ContextualTasksInfoTooltipElement>(
             '#askGTooltip') ||
         null;
 
@@ -1763,24 +1766,33 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
     this.updateTooltipVisibility_();
   }
 
+  private getOnboardingTooltip_(): ContextualTasksOnboardingTooltipElement
+      |null {
+    return this.shadowRoot.querySelector('contextual-tasks-onboarding-tooltip');
+  }
+
   get numberOfTimesTooltipShownForTesting() {
-    return this.$.onboardingTooltip?.numberOfTimesTooltipShownForTesting ?? 0;
+    return this.getOnboardingTooltip_()?.numberOfTimesTooltipShownForTesting ??
+        0;
   }
 
   set numberOfTimesTooltipShownForTesting(n: number) {
-    if (this.$.onboardingTooltip) {
-      this.$.onboardingTooltip.numberOfTimesTooltipShownForTesting = n;
+    const tooltip = this.getOnboardingTooltip_();
+    if (tooltip) {
+      tooltip.numberOfTimesTooltipShownForTesting = n;
     }
   }
 
   set userDismissedTooltipForTesting(dismissed: boolean) {
-    if (this.$.onboardingTooltip) {
-      this.$.onboardingTooltip.userDismissedTooltipForTesting = dismissed;
+    const tooltip = this.getOnboardingTooltip_();
+    if (tooltip) {
+      tooltip.userDismissedTooltipForTesting = dismissed;
     }
   }
 
   get tooltipResizeObserverForTesting() {
-    return this.$.onboardingTooltip?.tooltipResizeObserverForTesting ?? null;
+    return this.getOnboardingTooltip_()?.tooltipResizeObserverForTesting ??
+        null;
   }
 
   private updateBasicModeAfterNavigation() {

@@ -78,6 +78,7 @@ def linux_memory_builder(*, name, **kwargs):
 linux_memory_builder(
     name = "Linux ASan LSan Builder",
     branch_selector = branches.selector.LINUX_BRANCHES,
+    description_html = "Compiles a Linux x64 release build with AddressSanitizer and LeakSanitizer.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -121,6 +122,7 @@ linux_memory_builder(
 linux_memory_builder(
     name = "Linux ASan LSan Tests (1)",
     branch_selector = branches.selector.LINUX_BRANCHES,
+    description_html = "Runs tests against a Linux x64 AddressSanitizer and LeakSanitizer build.",
     parent = "ci/Linux ASan LSan Builder",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -257,6 +259,7 @@ linux_memory_builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|asan lsan",
         short_name = "tst",
@@ -268,6 +271,7 @@ linux_memory_builder(
 linux_memory_builder(
     name = "Linux TSan Builder",
     branch_selector = branches.selector.LINUX_BRANCHES,
+    description_html = "Compiles a Linux x64 release build with ThreadSanitizer.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -294,6 +298,7 @@ linux_memory_builder(
             "x64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|TSan v2",
         short_name = "bld",
@@ -303,6 +308,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux CFI",
+    description_html = "Builds and runs tests on Linux x64 release builds with Control Flow Integrity (CFI) enabled.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -345,7 +351,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 60,
+                    shards = 94,
                 ),
             ),
             "crashpad_tests": targets.remove(
@@ -361,9 +367,13 @@ linux_memory_builder(
                 "linux_nvidia_gtx_1660_stable",
             ],
             "interactive_ui_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 # Slow on certain debug builders, see crbug.com/1513713.
                 swarming = targets.swarming(
-                    shards = 15,
+                    shards = 26,
                 ),
             ),
             "sync_integration_tests": targets.mixin(
@@ -389,6 +399,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux Chromium OS ASan LSan Builder",
+    description_html = "Compiles an Ash Chrome (linux-chromeos) x64 release build with AddressSanitizer and LeakSanitizer.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -432,6 +443,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux Chromium OS ASan LSan Tests (1)",
+    description_html = "Runs tests against an Ash Chrome (linux-chromeos) x64 AddressSanitizer and LeakSanitizer build.",
     parent = "Linux Chromium OS ASan LSan Builder",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -523,6 +535,7 @@ linux_memory_builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "cros|asan",
         short_name = "tst",
@@ -532,6 +545,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux ChromiumOS MSan Builder",
+    description_html = "Compiles an Ash Chrome (linux-chromeos) x64 release build with MemorySanitizer.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -571,6 +585,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux ChromiumOS MSan Tests",
+    description_html = "Runs tests against an Ash Chrome (linux-chromeos) x64 MemorySanitizer build.",
     parent = "Linux ChromiumOS MSan Builder",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -664,6 +679,7 @@ linux_memory_builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "cros|msan",
         short_name = "tst",
@@ -674,6 +690,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux MSan Builder",
+    description_html = "Compiles a Linux x64 release build with MemorySanitizer.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -712,6 +729,7 @@ linux_memory_builder(
 
 linux_memory_builder(
     name = "Linux MSan Tests",
+    description_html = "Runs tests against a Linux x64 MemorySanitizer build.",
     parent = "Linux MSan Builder",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -750,7 +768,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 70,
+                    shards = 119,
                 ),
             ),
             "content_browsertests": targets.mixin(
@@ -766,8 +784,12 @@ linux_memory_builder(
                 reason = "Can't run on MSAN because gl_unittests uses the hardware driver, which isn't instrumented.",
             ),
             "interactive_ui_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 swarming = targets.swarming(
-                    shards = 25,
+                    shards = 43,
                 ),
             ),
             "services_unittests": targets.remove(
@@ -784,6 +806,7 @@ linux_memory_builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|msan",
         short_name = "tst",
@@ -793,6 +816,7 @@ linux_memory_builder(
 
 ci.builder(
     name = "Mac ASan 64 Builder",
+    description_html = "Compiles a Mac x64 release build with AddressSanitizer.",
     triggering_policy = scheduler.greedy_batching(
         max_concurrent_invocations = 2,
     ),
@@ -834,6 +858,7 @@ ci.builder(
 linux_memory_builder(
     name = "Linux TSan Tests",
     branch_selector = branches.selector.LINUX_BRANCHES,
+    description_html = "Runs tests against a Linux x64 ThreadSanitizer build.",
     parent = "ci/Linux TSan Builder",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -942,6 +967,7 @@ linux_memory_builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|TSan v2",
         short_name = "tst",
@@ -1028,7 +1054,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 20,
+                    shards = 34,
                 ),
             ),
             "content_browsertests": targets.mixin(
@@ -1052,6 +1078,7 @@ linux_memory_builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|ubsan",
         short_name = "tst",
@@ -1062,6 +1089,7 @@ linux_memory_builder(
 
 ci.builder(
     name = "Mac ASan 64 Tests (1)",
+    description_html = "Runs tests against a Mac x64 AddressSanitizer build.",
     parent = "Mac ASan 64 Builder",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -1208,6 +1236,7 @@ ci.builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|blink",
         short_name = "asn",
@@ -1291,6 +1320,7 @@ ci.builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|blink",
         short_name = "lk",
@@ -1376,6 +1406,7 @@ ci.builder(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|blink",
         short_name = "msn",
@@ -1384,6 +1415,7 @@ ci.builder(
 
 ci.builder(
     name = "win-asan",
+    description_html = "Builds and runs tests on Windows x64 release builds with AddressSanitizer.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",

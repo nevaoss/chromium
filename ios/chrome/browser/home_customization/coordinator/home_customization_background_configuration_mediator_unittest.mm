@@ -10,6 +10,7 @@
 #import "base/strings/stringprintf.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/test/metrics/histogram_tester.h"
+#import "base/test/scoped_feature_list.h"
 #import "components/image_fetcher/core/image_fetcher.h"
 #import "components/image_fetcher/core/mock_image_fetcher.h"
 #import "components/image_fetcher/core/request_metadata.h"
@@ -36,9 +37,11 @@
 #import "ios/chrome/browser/home_customization/ui/home_customization_background_configuration_mutator.h"
 #import "ios/chrome/browser/home_customization/utils/home_customization_constants.h"
 #import "ios/chrome/browser/image_fetcher/model/image_fetcher_service_factory.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
 #import "ios/chrome/browser/ntp/ui_bundled/theme_utils.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/web/public/test/web_task_environment.h"
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/gtest_mac.h"
@@ -104,7 +107,6 @@ class HomeCustomizationBackgroundConfigurationMediatorTest
  public:
   void SetUp() override {
     TestProfileIOS::Builder test_profile_builder;
-    test_profile_builder.SetPrefService(CreatePrefService());
     test_profile_builder.AddTestingFactory(
         UserUploadedImageManagerFactory::GetInstance(),
         base::BindRepeating(&CreateUserUploadedImageManager));
@@ -127,25 +129,12 @@ class HomeCustomizationBackgroundConfigurationMediatorTest
         initWithBackgroundCustomizationService:background_service
                                   imageFetcher:mock_image_fetcher_.get()
                     homeBackgroundImageService:home_background_image_service
-                      userUploadedImageManager:user_image_manager];
+                      userUploadedImageManager:user_image_manager
+                                   prefService:profile_->GetPrefs()];
 
     consumer_ =
         [[FakeHomeCustomizationBackgroundConfigurationConsumer alloc] init];
     mediator_.consumer = consumer_;
-  }
-
-  std::unique_ptr<sync_preferences::PrefServiceSyncable> CreatePrefService() {
-    sync_preferences::PrefServiceMockFactory factory;
-    scoped_refptr<user_prefs::PrefRegistrySyncable> registry(
-        new user_prefs::PrefRegistrySyncable);
-    std::unique_ptr<sync_preferences::PrefServiceSyncable> prefs =
-        factory.CreateSyncable(registry.get());
-
-    registry->RegisterBooleanPref(prefs::kNTPCustomBackgroundEnabledByPolicy,
-                                  true);
-    registry->RegisterIntegerPref(themes::prefs::kPolicyThemeColor,
-                                  SK_ColorTRANSPARENT);
-    return prefs;
   }
 
   FakeHomeBackgroundImageService* FakeImageService() {
@@ -747,4 +736,65 @@ TEST_F(HomeCustomizationBackgroundConfigurationMediatorTest,
   EXPECT_EQ(expected_image, actual_image);
   EXPECT_GT(actual_original_size.width, 0);
   EXPECT_GT(actual_original_size.height, 0);
+}
+
+// Tests loading and applying the ephemeral theme background without adding it
+// to the recently used backgrounds list.
+TEST_F(HomeCustomizationBackgroundConfigurationMediatorTest,
+       LoadAndApplyEphemeralBackground) {
+  base::test::ScopedFeatureList feature_list(kNewTabPageEphemeralTheme);
+
+  base::DictValue light_dict;
+  light_dict.Set("**.Background.Fill 1.Color", "#1A73E8");
+  base::DictValue dark_dict;
+  dark_dict.Set("**.Background.Fill 1.Color", "#8AB4F8");
+  base::DictValue color_mapping;
+  color_mapping.Set(kEphemeralThemeLightModeColorsKey, std::move(light_dict));
+  color_mapping.Set(kEphemeralThemeDarkModeColorsKey, std::move(dark_dict));
+
+  base::DictValue theme_data;
+  theme_data.Set(kEphemeralThemeSeedColorKey, "FF8000");
+  theme_data.Set(kEphemeralThemeAnimationPathKey, "/path/to/animation.json");
+  theme_data.Set(kEphemeralThemeAnimationColorMappingKey,
+                 std::move(color_mapping));
+  profile_->GetPrefs()->SetDict(prefs::kIosNtpEphemeralThemeData,
+                                std::move(theme_data));
+
+  size_t initial_recent_count =
+      CustomizationService()->GetRecentlyUsedBackgrounds().size();
+
+  [mediator_ loadRecentlyUsedBackgroundConfigurations];
+
+  ASSERT_EQ(1u, consumer_.configurations.count);
+  BackgroundCollectionConfiguration* section = consumer_.configurations[0];
+  ASSERT_GE(section.configurationOrder.count, 2u);
+
+  NSString* default_id = section.configurationOrder[0];
+  NSString* ephemeral_id = section.configurationOrder[1];
+  id<BackgroundCustomizationConfiguration> ephemeral_item =
+      section.configurations[ephemeral_id];
+  ASSERT_TRUE(ephemeral_item);
+  EXPECT_EQ(HomeCustomizationBackgroundStyle::kEphemeral,
+            ephemeral_item.backgroundStyle);
+  EXPECT_NE(nil, ephemeral_item.colorPalette);
+  EXPECT_NSEQ(@"/path/to/animation.json",
+              ephemeral_item.animatedBackgroundPath);
+  ASSERT_NE(nil, ephemeral_item.lightModeColorProvider);
+  EXPECT_NSEQ(
+      UIColorFromRGB(0x1A73E8),
+      ephemeral_item.lightModeColorProvider[@"**.Background.Fill 1.Color"]);
+  ASSERT_NE(nil, ephemeral_item.darkModeColorProvider);
+  EXPECT_NSEQ(
+      UIColorFromRGB(0x8AB4F8),
+      ephemeral_item.darkModeColorProvider[@"**.Background.Fill 1.Color"]);
+  EXPECT_NSEQ(default_id, consumer_.selectedBackgroundId);
+
+  // Apply and save the ephemeral theme.
+  [mediator_ applyBackgroundForConfiguration:ephemeral_item];
+  [mediator_ saveCurrentTheme];
+
+  EXPECT_TRUE(CustomizationService()->IsCurrentEphemeralTheme());
+  EXPECT_NSEQ(ephemeral_id, consumer_.selectedBackgroundId);
+  EXPECT_EQ(initial_recent_count,
+            CustomizationService()->GetRecentlyUsedBackgrounds().size());
 }

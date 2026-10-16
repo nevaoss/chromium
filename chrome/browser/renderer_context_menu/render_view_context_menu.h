@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@
 #include "components/renderer_context_menu/render_view_context_menu_proxy.h"
 #include "components/supervised_user/core/browser/supervised_user_url_filtering_service.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/weak_document_ptr.h"
 #include "content/public/common/buildflags.h"
 #include "extensions/buildflags/buildflags.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
@@ -78,6 +80,10 @@ class Extension;
 
 namespace gfx {
 class Point;
+}
+
+namespace indigo {
+class IndigoImageReplacementManager;
 }
 
 namespace blink {
@@ -237,6 +243,21 @@ class RenderViewContextMenu
 #if BUILDFLAG(ENABLE_COMPOSE)
   virtual ChromeComposeClient* GetChromeComposeClient() const;
 #endif
+
+  struct IndigoReplacementInfo {
+    raw_ptr<indigo::IndigoImageReplacementManager> manager = nullptr;
+    raw_ptr<content::RenderFrameHost> subframe_rfh = nullptr;
+    GURL image_url;
+  };
+
+  // Returns information about the loaded Indigo replacement (manager, subframe
+  // RenderFrameHost, and generated image URL) if the context menu was invoked
+  // on an image with a completed Indigo replacement, or std::nullopt otherwise.
+  virtual std::optional<IndigoReplacementInfo> GetIndigoReplacementInfo() const;
+
+  // Returns the URL of the Indigo replacement image if the context menu was
+  // invoked on an image with a completed Indigo replacement, or an empty GURL.
+  GURL GetIndigoReplacementImageURL() const;
 
   // RenderViewContextMenuBase:
   // The |initiator| parameter is the origin that supplied the URL being
@@ -465,9 +486,6 @@ class RenderViewContextMenu
   // the original page being distilled.
   content::WebContents* GetWebContentsForDataControls() const;
 
-  // Returns the URL of the Indigo replacement image if the context menu was
-  // invoked on an image with an active Indigo replacement, or an empty GURL.
-  virtual GURL GetIndigoReplacementImageURL() const;
 
   // Returns a list of registered ProtocolHandlers that can handle the clicked
   // on URL.
@@ -634,6 +652,10 @@ class RenderViewContextMenu
   //  Used for CTR metrics of menu item for opening Glic.
   bool glic_item_shown_ = false;
   bool glic_item_executed_ = false;
+
+  // Tracks the originating document at menu-open time so Glic actions can bail
+  // out if the tab navigated while the menu was open.
+  const content::WeakDocumentPtr source_document_at_menu_open_;
 
   base::WeakPtrFactory<RenderViewContextMenu> weak_pointer_factory_{this};
 };

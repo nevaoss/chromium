@@ -175,6 +175,24 @@ static void AppendServerMapMousePosition(StringBuilder& url, Event* event) {
   url.AppendNumber(clamped_point.y());
 }
 
+void HTMLAnchorElementBase::RunActivationBehaviorBeforeDOMActivate(
+    Event& event,
+    EventDispatchHandlingState*) {
+  if (!RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    return;
+  }
+  if (event.defaultPrevented() || event.DefaultHandled()) {
+    return;
+  }
+
+  if (AnchorElementUtils::IsLinkClick(event) && IsLiveLink()) {
+    // IsLinkClick validates that |event| is a MouseEvent. `HandleClick()` marks
+    // the event as default-handled, which suppresses the DOMActivate event that
+    // `Node::DefaultEventHandler()` would otherwise dispatch.
+    HandleClick(To<MouseEvent>(event));
+  }
+}
+
 void HTMLAnchorElementBase::DefaultEventHandler(Event& event) {
   if (IsLink()) {
     if (IsFocused() && KeyboardEvent::IsEnterKeyKeydownEvent(event) &&
@@ -184,10 +202,19 @@ void HTMLAnchorElementBase::DefaultEventHandler(Event& event) {
       return;
     }
 
-    if (AnchorElementUtils::IsLinkClick(event) && IsLiveLink()) {
-      // IsLinkClick validates that |event| is a MouseEvent.
-      HandleClick(To<MouseEvent>(event));
-      return;
+    if (!RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+      if (AnchorElementUtils::IsLinkClick(event) && IsLiveLink()) {
+        // IsLinkClick validates that |event| is a MouseEvent.
+        HandleClick(To<MouseEvent>(event));
+        return;
+      }
+    } else {
+      if (event.type() == event_type_names::kAuxclick &&
+          AnchorElementUtils::IsLinkClick(event) && IsLiveLink()) {
+        // IsLinkClick validates that |event| is a MouseEvent.
+        HandleClick(To<MouseEvent>(event));
+        return;
+      }
     }
   }
 
@@ -388,7 +415,7 @@ void HTMLAnchorElementBase::NavigateToHyperlink(
   frame_request.SetNavigationPolicy(navigation_policy);
   frame_request.SetClientNavigationReason(ClientNavigationReason::kAnchorClick);
   frame_request.SetSourceElement(this);
-  const AtomicString& target =
+  const AtomicString target =
       frame_request.CleanNavigationTarget(GetEffectiveTarget());
 
   AnchorElementUtils::HandleRelAttribute(frame_request, frame->GetSettings(),
