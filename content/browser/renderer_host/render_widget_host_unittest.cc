@@ -16,12 +16,15 @@
 #include "base/location.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "cc/mojom/render_frame_metadata.mojom.h"
 #include "cc/trees/render_frame_metadata.h"
@@ -93,7 +96,6 @@
 #include "ui/gfx/canvas.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include "base/strings/utf_string_conversions.h"
 #include "content/browser/renderer_host/render_widget_host_view_android.h"
 #include "ui/android/screen_android.h"
 #endif
@@ -1003,6 +1005,30 @@ TEST_F(RenderWidgetHostTest, SetPopupBoundsConstrainedByDelegate) {
   EXPECT_EQ(gfx::Rect(5, 100, 20, 20), view_->GetViewBounds());
 }
 
+// Tests that oversized popup bounds from the renderer are clamped to the
+// display, since their area would otherwise overflow int browser side.
+TEST_F(RenderWidgetHostTest, PopupBoundsAreClampedToTheDisplay) {
+  // Let the initial screen rects settle, otherwise the popup bounds below are
+  // dropped rather than clamped.
+  ClearScreenRects();
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !host_->waiting_for_screen_rects_ack_; }));
+
+  const gfx::Rect work_area =
+      display::Screen::Get()->GetPrimaryDisplay().work_area();
+  ASSERT_FALSE(work_area.IsEmpty());
+
+  constexpr gfx::Rect kHugeBounds(0, 0, 100000, 100000);
+  ASSERT_FALSE(kHugeBounds.size().GetCheckedArea().IsValid());
+  static_cast<blink::mojom::PopupWidgetHost*>(host_.get())
+      ->SetPopupBounds(kHugeBounds, base::DoNothing());
+
+  const gfx::Rect bounds = view_->GetViewBounds();
+  EXPECT_EQ(work_area.width(), bounds.width());
+  EXPECT_EQ(work_area.height(), bounds.height());
+  EXPECT_TRUE(bounds.size().GetCheckedArea().IsValid());
+}
+
 TEST_F(RenderWidgetHostTest, SynchronizeVisualProperties) {
   ClearVisualProperties();
 
@@ -1180,6 +1206,51 @@ TEST_F(RenderWidgetHostTest, SynchronizeVisualProperties) {
             host_->old_visual_properties_->new_size_device_px);
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(1u, widget_.ReceivedVisualProperties().size());
+}
+
+// Verify that fullscreen transitions occurring while an ack is pending advance
+// `fullscreen_grant_count`, so a rapid enter/exit pair that reverts
+// `is_fullscreen_granted` before the ack arrives still triggers a
+// `VisualProperties` update with the incremented grant count once the ack is
+// received (https://crbug.com/561969557).
+TEST_F(RenderWidgetHostTest,
+       FullscreenChangeAndRevertWhileAckPendingSendsUpdatedGrantCountOnAck) {
+  // Put the host into a state where an ack is outstanding, so that any further
+  // update is subject to throttling.
+  ClearVisualProperties();
+  view_->SetBounds(gfx::Rect(0, 0, 100, 100));
+  ASSERT_TRUE(host_->SynchronizeVisualProperties());
+  ASSERT_TRUE(host_->visual_properties_ack_pending_);
+  ASSERT_FALSE(host_->old_visual_properties_->is_fullscreen_granted);
+  const uint64_t initial_grant_count =
+      host_->old_visual_properties_->fullscreen_grant_count;
+
+  ClearVisualProperties();
+
+  // Entering and immediately exiting fullscreen while
+  // `visual_properties_ack_pending_` is true is throttled, leaving
+  // `is_fullscreen_granted` back at `false`.
+  delegate_->set_is_fullscreen(true);
+  EXPECT_FALSE(host_->SynchronizeVisualProperties());
+  delegate_->set_is_fullscreen(false);
+  EXPECT_FALSE(host_->SynchronizeVisualProperties());
+  EXPECT_TRUE(widget_.ReceivedVisualProperties().empty());
+
+  // When the pending ack arrives, `StoredVisualPropertiesNeedsUpdate` detects
+  // that `fullscreen_grant_count` advanced and sends the update despite
+  // `is_fullscreen_granted` still being `false` and the size being unchanged.
+  cc::RenderFrameMetadata metadata;
+  metadata.viewport_size_in_pixels = gfx::Size(100, 100);
+  metadata.local_surface_id = std::nullopt;
+  static_cast<RenderFrameMetadataProvider::Observer&>(*host_)
+      .OnLocalSurfaceIdChanged(metadata);
+
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !widget_.ReceivedVisualProperties().empty(); }));
+  ASSERT_EQ(1u, widget_.ReceivedVisualProperties().size());
+  EXPECT_FALSE(widget_.ReceivedVisualProperties()[0].is_fullscreen_granted);
+  EXPECT_EQ(initial_grant_count + 1,
+            widget_.ReceivedVisualProperties()[0].fullscreen_grant_count);
 }
 
 // Test that a resize event is sent if SynchronizeVisualProperties() is called
@@ -2662,6 +2733,55 @@ TEST_F(RenderWidgetHostDragTest, SanitizeFilenameExtensionOnDrag) {
   // BaseName() should strip the path traversal components.
   EXPECT_EQ(drop_data().file_contents_filename_extension,
             FILE_PATH_LITERAL("payload.so"));
+}
+
+// Internal drag_id in DropData must never be exposed to untrusted
+// drop target renderers in outgoing DragData.
+TEST_F(RenderWidgetHostDragTest, DragIdNotExposedInOutgoingDragData) {
+  DropData drop_data;
+  drop_data.drag_id = base::UnguessableToken::Create();
+  drop_data.custom_data[u"application/x-custom-key"] = u"custom-value";
+
+  blink::mojom::DragDataPtr drag_data =
+      DropDataToDragData(drop_data, GetFileSystemAccessManager(),
+                         main_test_rfh()->GetProcess()->GetDeprecatedID(),
+                         GetChromeBlobStorageContext());
+
+  ASSERT_TRUE(drag_data);
+  ASSERT_EQ(drag_data->items.size(), 1u);
+  ASSERT_TRUE(drag_data->items[0]->is_string());
+  EXPECT_EQ(drag_data->items[0]->get_string()->string_type,
+            "application/x-custom-key");
+  EXPECT_EQ(drag_data->items[0]->get_string()->string_data, u"custom-value");
+}
+
+// Internal drag_id in DropData must never be exposed to renderers in
+// dragenter metadata.
+TEST_F(RenderWidgetHostDragTest, DragIdNotExposedInDragEnterMetaData) {
+  mojo::PendingAssociatedReceiver<blink::mojom::FrameWidget> receiver =
+      BindFakeFrameWidgetInterfaces(main_test_rfh());
+  DragCaptureFrameWidget mock_frame_widget(std::move(receiver));
+
+  DropData drop_data;
+  drop_data.drag_id = base::UnguessableToken::Create();
+  drop_data.custom_data[u"application/x-custom-key"] = u"custom-value";
+
+  base::RunLoop run_loop;
+  GetRenderWidgetHost()->DragTargetDragEnter(
+      drop_data, gfx::PointF(), gfx::PointF(),
+      blink::DragOperationsMask::kDragOperationEvery, 0,
+      base::BindOnce(
+          [](base::OnceClosure quit_closure, ui::mojom::DragOperation operation,
+             bool document_is_handling_drag) { std::move(quit_closure).Run(); },
+          run_loop.QuitClosure()));
+  run_loop.Run();
+
+  const auto& captured_drag_data = mock_frame_widget.drag_data();
+  ASSERT_TRUE(captured_drag_data);
+  ASSERT_EQ(captured_drag_data->items.size(), 1u);
+  ASSERT_TRUE(captured_drag_data->items[0]->is_string());
+  EXPECT_EQ(captured_drag_data->items[0]->get_string()->string_type,
+            "application/x-custom-key");
 }
 
 TEST_F(RenderWidgetHostDragTest, DragEnterDoesNotLeakPaths) {

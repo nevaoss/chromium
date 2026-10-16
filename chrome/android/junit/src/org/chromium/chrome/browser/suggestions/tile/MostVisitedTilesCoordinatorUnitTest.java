@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.suggestions.tile;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -18,6 +19,8 @@ import android.content.res.Resources;
 import android.view.View;
 import android.view.ViewGroup.MarginLayoutParams;
 
+import androidx.annotation.DimenRes;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -29,6 +32,7 @@ import org.robolectric.Robolectric;
 
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
@@ -40,6 +44,7 @@ import org.chromium.components.browser_ui.widget.displaystyle.VerticalDisplaySty
 
 /** Unit tests for {@link MostVisitedTilesCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@EnableFeatures({ChromeFeatureList.NTP_AURORA + ":padding_style/0"})
 public class MostVisitedTilesCoordinatorUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -135,6 +140,38 @@ public class MostVisitedTilesCoordinatorUnitTest {
                 PaddingStyle.LARGE,
                 /* expectPaddingSet= */ true,
                 R.dimen.mvt_container_top_margin_large);
+    }
+
+    /**
+     * Verifies that the Aurora top margin is re-applied, rather than the logo-based one, when the
+     * margins are updated, e.g. after the default search engine changes.
+     */
+    @Test
+    public void testUpdateTilesLayoutMargins_withAuroraPaddingStyleSmall() {
+        testUpdateTilesLayoutMarginsWithAuroraImpl(
+                PaddingStyle.SMALL, R.dimen.mvt_container_top_margin_medium);
+    }
+
+    @Test
+    public void testUpdateTilesLayoutMargins_withAuroraPaddingStyleLarge() {
+        testUpdateTilesLayoutMarginsWithAuroraImpl(
+                PaddingStyle.LARGE, R.dimen.mvt_container_top_margin_large);
+    }
+
+    private void testUpdateTilesLayoutMarginsWithAuroraImpl(
+            @PaddingStyle int paddingStyle, @DimenRes int expectedTopMarginDimen) {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.NTP_AURORA, PADDING_STYLE_PARAM, paddingStyle);
+        MarginLayoutParams marginLayoutParams = new MarginLayoutParams(100, 100);
+        when(mMvTilesContainerLayout.getLayoutParams()).thenReturn(marginLayoutParams);
+
+        mCoordinator.updateTilesLayoutMargins(/* shouldShowLogo= */ false, /* isLff= */ false);
+
+        verify(mMediator, never()).updateTilesLayoutMargins(anyBoolean(), anyBoolean());
+        verify(mMvTilesContainerLayout).setLayoutParams(marginLayoutParams);
+        assertEquals(
+                mActivity.getResources().getDimensionPixelSize(expectedTopMarginDimen),
+                marginLayoutParams.topMargin);
     }
 
     private void verifyMvtPaddingsAndTopMargin(

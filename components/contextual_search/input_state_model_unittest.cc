@@ -91,6 +91,35 @@ TEST_F(InputStateModelTest, DoesNotRemoveDriveInputWhenSignedInAndFlagEnabled) {
                   omnibox::INPUT_TYPE_BROWSER_TAB, omnibox::INPUT_TYPE_DRIVE));
 }
 
+// Tests that Drive input is not added when not configured by the server in
+// SearchboxConfig, even if signed in and flag is enabled.
+TEST_F(InputStateModelTest,
+       DoesNotAddDriveInputWhenNotConfiguredByServerAndSignedInAndFlagEnabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {omnibox::kComposeboxDriveContextMenuOption}, {});
+
+  // Server config containing Lens and Browser Tab, but intentionally omitting
+  // INPUT_TYPE_DRIVE (e.g. for enterprise or restricted accounts).
+  omnibox::SearchboxConfig config;
+  config.add_input_type_configs()->set_input_type(
+      omnibox::InputType::INPUT_TYPE_LENS_IMAGE);
+  config.add_input_type_configs()->set_input_type(
+      omnibox::InputType::INPUT_TYPE_LENS_FILE);
+
+  input_state_model_ = std::make_unique<InputStateModel>(
+      session_handle_, config, active_url_, /*is_off_the_record=*/false,
+      /*is_signed_in=*/true,
+      /*browser_identity_matches_aim_identity=*/true);
+  input_state_model_->SetPrefService(&pref_service_);
+  const auto& state = input_state_model_->get_state_for_testing();
+
+  EXPECT_THAT(state.allowed_input_types,
+              testing::UnorderedElementsAre(omnibox::INPUT_TYPE_LENS_IMAGE,
+                                            omnibox::INPUT_TYPE_LENS_FILE,
+                                            omnibox::INPUT_TYPE_BROWSER_TAB));
+}
+
 TEST_F(InputStateModelTest, RemovesDriveInputWhenFlagDisabled) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
@@ -1734,6 +1763,106 @@ TEST_F(InputStateModelTest, UpdateConfig) {
       model->GetInputState().allowed_models,
       testing::ElementsAre(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR,
                            omnibox::ModelMode::MODEL_MODE_GEMINI_PRO));
+}
+
+TEST_F(InputStateModelTest, SetLensCrop_AddsCropAndNotifies) {
+  int notify_count = 0;
+  auto subscription = input_state_model_->subscribe(base::BindRepeating(
+      [](int* count, const omnibox::InputState&) { (*count)++; },
+      &notify_count));
+
+  input_state_model_->SetLensCrop("data:image/png;base64,abc");
+  EXPECT_EQ(1, notify_count);
+  EXPECT_EQ("data:image/png;base64,abc", input_state_model_->GetLensCrop());
+  ASSERT_TRUE(input_state_model_->lens_crop().has_value());
+  EXPECT_EQ("data:image/png;base64,abc",
+            input_state_model_->lens_crop()->data_uri);
+}
+
+TEST_F(InputStateModelTest, SetLensCrop_ReplaceSemantics) {
+  int notify_count = 0;
+  auto subscription = input_state_model_->subscribe(base::BindRepeating(
+      [](int* count, const omnibox::InputState&) { (*count)++; },
+      &notify_count));
+
+  input_state_model_->SetLensCrop("data:image/png;base64,first");
+  EXPECT_EQ(1, notify_count);
+  EXPECT_EQ("data:image/png;base64,first", input_state_model_->GetLensCrop());
+
+  // Setting a second crop replaces the first (only ever one region crop).
+  input_state_model_->SetLensCrop("data:image/png;base64,second");
+  EXPECT_EQ(2, notify_count);
+  EXPECT_EQ("data:image/png;base64,second", input_state_model_->GetLensCrop());
+  ASSERT_TRUE(input_state_model_->lens_crop().has_value());
+  EXPECT_EQ("data:image/png;base64,second",
+            input_state_model_->lens_crop()->data_uri);
+}
+
+TEST_F(InputStateModelTest, RemoveLensCrop_RemovesAndNotifies) {
+  input_state_model_->SetLensCrop("data:image/png;base64,abc");
+  EXPECT_TRUE(input_state_model_->GetLensCrop().has_value());
+
+  int notify_count = 0;
+  auto subscription = input_state_model_->subscribe(base::BindRepeating(
+      [](int* count, const omnibox::InputState&) { (*count)++; },
+      &notify_count));
+
+  input_state_model_->RemoveLensCrop();
+  EXPECT_EQ(1, notify_count);
+  EXPECT_EQ(std::nullopt, input_state_model_->GetLensCrop());
+  EXPECT_FALSE(input_state_model_->lens_crop().has_value());
+
+  // Removing when already empty does not notify.
+  input_state_model_->RemoveLensCrop();
+  EXPECT_EQ(1, notify_count);
+}
+
+
+TEST_F(InputStateModelTest, CopyConstructorPreservesLensCrops) {
+  input_state_model_->SetLensCrop("data:image/png;base64,preserved");
+
+  MockContextualSearchSessionHandle new_session_handle;
+  auto new_controller =
+      std::make_unique<MockContextualSearchContextController>();
+  ON_CALL(new_session_handle, GetController())
+      .WillByDefault(testing::Return(new_controller.get()));
+  ON_CALL(*new_controller, GetFileInfoList())
+      .WillByDefault(testing::Return(empty_file_info_list_));
+
+  InputStateModel copy(*input_state_model_, new_session_handle);
+  EXPECT_EQ("data:image/png;base64,preserved", copy.GetLensCrop());
+  ASSERT_TRUE(copy.lens_crop().has_value());
+  EXPECT_EQ("data:image/png;base64,preserved", copy.lens_crop()->data_uri);
+}
+
+TEST_F(InputStateModelTest, SetIdentityStateUpdatesAllowedInputTypes) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures({omnibox::kComposeboxDriveContextMenuOption},
+                                {});
+
+  omnibox::SearchboxConfig config;
+  config.add_input_type_configs()->set_input_type(
+      omnibox::InputType::INPUT_TYPE_DRIVE);
+
+  auto model = std::make_unique<InputStateModel>(
+      session_handle_, config, GURL("https://www.google.com"),
+      /*is_off_the_record=*/false, /*is_signed_in=*/false,
+      /*browser_identity_matches_aim_identity=*/false);
+
+  EXPECT_THAT(
+      model->GetInputState().allowed_input_types,
+      testing::Not(testing::Contains(omnibox::InputType::INPUT_TYPE_DRIVE)));
+
+  model->SetIdentityState(/*is_signed_in=*/true,
+                          /*browser_identity_matches_aim_identity=*/true);
+  EXPECT_THAT(model->GetInputState().allowed_input_types,
+              testing::Contains(omnibox::InputType::INPUT_TYPE_DRIVE));
+
+  model->SetIdentityState(/*is_signed_in=*/false,
+                          /*browser_identity_matches_aim_identity=*/false);
+  EXPECT_THAT(
+      model->GetInputState().allowed_input_types,
+      testing::Not(testing::Contains(omnibox::InputType::INPUT_TYPE_DRIVE)));
 }
 
 }  // namespace contextual_search

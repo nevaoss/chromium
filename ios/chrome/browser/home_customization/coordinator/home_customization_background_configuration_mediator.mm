@@ -12,13 +12,16 @@
 #import "base/i18n/message_formatter.h"
 #import "base/memory/raw_ptr.h"
 #import "base/metrics/histogram_functions.h"
+#import "base/strings/string_number_conversions.h"
 #import "base/strings/string_util.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
+#import "base/values.h"
 #import "components/crash/core/common/crash_key.h"
 #import "components/image_fetcher/core/image_fetcher.h"
 #import "components/image_fetcher/core/image_fetcher_service.h"
 #import "components/image_fetcher/core/request_metadata.h"
+#import "components/prefs/pref_service.h"
 #import "components/sync/protocol/theme_types.pb.h"
 #import "ios/chrome/browser/home_customization/coordinator/background_customization_configuration_item.h"
 #import "ios/chrome/browser/home_customization/coordinator/home_customization_data_conversion.h"
@@ -36,7 +39,9 @@
 #import "ios/chrome/browser/home_customization/ui/home_customization_framing_coordinates.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette_util.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
 #import "ios/chrome/browser/ntp/ui_bundled/theme_utils.h"
+#import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/grit/ios_strings.h"
@@ -91,6 +96,7 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   // Used to get and observe the background state.
   raw_ptr<HomeBackgroundCustomizationService> _backgroundCustomizationService;
   raw_ptr<UserUploadedImageManager> _userUploadedImageManager;
+  raw_ptr<PrefService> _prefService;
 
   // Observer for the customization service.
   std::unique_ptr<HomeBackgroundCustomizationServiceObserverBridge>
@@ -112,7 +118,8 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
                 homeBackgroundImageService:
                     (HomeBackgroundImageService*)homeBackgroundImageService
                   userUploadedImageManager:
-                      (UserUploadedImageManager*)userUploadedImageManager {
+                      (UserUploadedImageManager*)userUploadedImageManager
+                               prefService:(PrefService*)prefService {
   self = [super init];
   if (self) {
     _backgroundCustomizationService = backgroundCustomizationService;
@@ -122,6 +129,7 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
     _imageFetcher = imageFetcher;
     _homeBackgroundImageService = homeBackgroundImageService;
     _userUploadedImageManager = userUploadedImageManager;
+    _prefService = prefService;
   }
   return self;
 }
@@ -152,6 +160,17 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   [collectionConfiguration.configurationOrder
       addObject:defaultConfig.configurationID];
 
+  BackgroundCustomizationConfigurationItem* ephemeralConfig = nil;
+  if (IsNTPEphemeralThemeEnabled()) {
+    ephemeralConfig = [self createEphemeralConfigurationItem];
+    if (ephemeralConfig) {
+      collectionConfiguration.configurations[ephemeralConfig.configurationID] =
+          ephemeralConfig;
+      [collectionConfiguration.configurationOrder
+          addObject:ephemeralConfig.configurationID];
+    }
+  }
+
   // Figure out the current background. This may not be element 1 in the
   // recently used backgrounds list if the current background is the default.
   // Or after a section toggle has been activated, as that refreshes all of
@@ -161,14 +180,19 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   std::optional<sync_pb::UserColorTheme> colorTheme =
       _backgroundCustomizationService->GetCurrentColorTheme();
   std::optional<RecentlyUsedBackground> current = std::nullopt;
-  if (customBackground) {
-    current = customBackground.value();
-  } else if (colorTheme) {
-    current = colorTheme.value();
+  if (!_backgroundCustomizationService->IsCurrentEphemeralTheme()) {
+    if (customBackground) {
+      current = customBackground.value();
+    } else if (colorTheme) {
+      current = colorTheme.value();
+    }
   }
 
   NSString* selectedBackgroundID;
-  if (!current.has_value()) {
+  if (ephemeralConfig &&
+      _backgroundCustomizationService->IsCurrentEphemeralTheme()) {
+    selectedBackgroundID = ephemeralConfig.configurationID;
+  } else if (!current.has_value()) {
     selectedBackgroundID = defaultConfig.configurationID;
   }
 
@@ -207,7 +231,9 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   BackgroundCollectionConfiguration* collectionConfiguration =
       [[BackgroundCollectionConfiguration alloc] init];
   std::optional<sync_pb::UserColorTheme> colorTheme =
-      _backgroundCustomizationService->GetCurrentColorTheme();
+      _backgroundCustomizationService->IsCurrentEphemeralTheme()
+          ? std::nullopt
+          : _backgroundCustomizationService->GetCurrentColorTheme();
   NSString* selectedColorID = nil;
 
   BackgroundCustomizationConfigurationItem* noBackgroundConfiguration =
@@ -301,6 +327,7 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   _imageFetcher = nullptr;
   _homeBackgroundImageService = nullptr;
   _userUploadedImageManager = nullptr;
+  _prefService = nullptr;
 }
 
 #pragma mark - HomeCustomizationBackgroundConfigurationMutator
@@ -397,6 +424,9 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
     case HomeCustomizationBackgroundStyle::kDefault:
       [self applyDefaultBackground];
       break;
+    case HomeCustomizationBackgroundStyle::kEphemeral:
+      [self applyEphemeralBackground:configurationItem];
+      break;
     default:
       NOTREACHED();
   }
@@ -436,7 +466,9 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   std::optional<sync_pb::UserColorTheme> colorTheme =
       service->GetCurrentColorTheme();
 
-  if (customBackground) {
+  if (service->IsCurrentEphemeralTheme() && IsNTPEphemeralThemeEnabled()) {
+    currentConfiguration = [self createEphemeralConfigurationItem];
+  } else if (customBackground) {
     currentConfiguration = [self
         generateConfigurationItemForRecentBackground:customBackground.value()];
   } else if (colorTheme) {
@@ -451,6 +483,66 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
 }
 
 #pragma mark - Private
+
+// Creates the configuration item for the ephemeral theme from preferences, or
+// returns nil if the ephemeral theme data is not available.
+- (BackgroundCustomizationConfigurationItem*)createEphemeralConfigurationItem {
+  UIColor* backgroundColor = nil;
+  NSDictionary<NSString*, UIColor*>* lightModeColorProvider = nil;
+  NSDictionary<NSString*, UIColor*>* darkModeColorProvider = nil;
+
+  if (!_prefService) {
+    return nil;
+  }
+
+  const base::DictValue& themeData =
+      _prefService->GetDict(prefs::kIosNtpEphemeralThemeData);
+  const std::string* seedHex =
+      themeData.FindString(kEphemeralThemeSeedColorKey);
+  if (seedHex) {
+    std::string_view trimmedHex =
+        base::TrimString(*seedHex, "#", base::TRIM_LEADING);
+    uint32_t seedColor = 0;
+    if (!trimmedHex.empty() && base::HexStringToUInt(trimmedHex, &seedColor)) {
+      backgroundColor = skia::UIColorFromSkColor(SkColorSetA(seedColor, 0xFF));
+    }
+    const base::DictValue* colorMapping =
+        themeData.FindDict(kEphemeralThemeAnimationColorMappingKey);
+    if (colorMapping) {
+      lightModeColorProvider = ColorProviderDictionaryFromDict(
+          colorMapping->FindDict(kEphemeralThemeLightModeColorsKey));
+      darkModeColorProvider = ColorProviderDictionaryFromDict(
+          colorMapping->FindDict(kEphemeralThemeDarkModeColorsKey));
+    }
+  }
+
+  NSString* imagePath = [self ephemeralThemeAnimatedBackgroundPath];
+  if (!backgroundColor || !imagePath) {
+    return nil;
+  }
+  return [[BackgroundCustomizationConfigurationItem alloc]
+      initWithEphemeralTheme:backgroundColor
+                   imagePath:imagePath
+      lightModeColorProvider:lightModeColorProvider
+       darkModeColorProvider:darkModeColorProvider
+           accessibilityName:nil];
+}
+
+// Returns the local file path for the ephemeral theme animated background from
+// preferences, or nil if unavailable.
+- (NSString*)ephemeralThemeAnimatedBackgroundPath {
+  if (!_prefService || !IsNTPEphemeralThemeEnabled()) {
+    return nil;
+  }
+  const base::DictValue& themeData =
+      _prefService->GetDict(prefs::kIosNtpEphemeralThemeData);
+  const std::string* path =
+      themeData.FindString(kEphemeralThemeAnimationPathKey);
+  if (!path || path->empty()) {
+    return nil;
+  }
+  return base::SysUTF8ToNSString(*path);
+}
 
 // Callback function that is called when the collection images are fetched. This
 // will then create BackgroundCollectionConfiguration objects and send them to
@@ -581,6 +673,13 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
   _backgroundCustomizationService->ClearCurrentBackground();
 }
 
+- (void)applyEphemeralBackground:
+    (BackgroundCustomizationConfigurationItem*)configurationItem {
+  _backgroundCustomizationService->SetCurrentEphemeralTheme(
+      skia::UIColorToSkColor(configurationItem.backgroundColor),
+      SchemeVariantToProtoEnum(configurationItem.colorVariant));
+}
+
 // Generates a `BackgroundCustomizationConfigurationItem` for the provided
 // recently used background to display in the UI.
 - (BackgroundCustomizationConfigurationItem*)
@@ -653,7 +752,8 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
 - (RecentlyUsedBackground)generateRecentBackgroundForConfiguration:
     (BackgroundCustomizationConfigurationItem*)configuration {
   switch (configuration.backgroundStyle) {
-    case HomeCustomizationBackgroundStyle::kDefault: {
+    case HomeCustomizationBackgroundStyle::kDefault:
+    case HomeCustomizationBackgroundStyle::kEphemeral: {
       return RecentlyUsedBackground();
     }
     case HomeCustomizationBackgroundStyle::kColor: {

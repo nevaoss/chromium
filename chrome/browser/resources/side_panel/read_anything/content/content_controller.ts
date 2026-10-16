@@ -23,6 +23,12 @@ import {NodeStore} from './node_store.js';
 import {removeExtraneousElementsFrom} from './readability_content_processing.js';
 import {ReadabilityImageClassifier} from './readability_image_classifier.js';
 
+const READABILITY_SET_HTML_OPTIONS: SetHtmlOptions = {
+  sanitizer: {
+    removeElements: ['style', 'meta', 'template'],
+  },
+};
+
 const DATA_PREFIX = 'data-';
 const LINK_DATA_ATTR = 'link';
 const LINKS_OFF_TAG = 'span';
@@ -66,6 +72,8 @@ const READABILITY_TAG_TO_RM_TAG: Map<string, string> = new Map([
   ['button', 'div'],
   ['details', 'div'],
   ['mark', 'div'],
+  ['i', 'b'],
+  ['em', 'b'],
 ]);
 
 export interface ContentListener {
@@ -153,13 +161,6 @@ export class ContentController {
   private readonly listeners_: ContentListener[] = [];
   private currentState_: ContentState = CONTENT_STATES[ContentType.NO_CONTENT];
   private previousRootId_?: number;
-
-  // The Trusted Types policy is registered globally on the window object.
-  // The browser only allows a policy name to be registered once per page load.
-  // Making this static ensures that multiple instances of ContentController
-  // (which occur frequently during WebUI test runs) share the same policy
-  // reference and do not trigger a "Policy already exists" TypeError.
-  private static trustedUpdatePolicy: TrustedTypePolicy|undefined;
 
   // Holds the text nodes extracted from the current rendered distillation.
   // This array ensures that we can link a DOM node back to its AXTree
@@ -284,8 +285,7 @@ export class ContentController {
       }
 
       const contentContainer = document.createElement('div');
-      contentContainer.innerHTML = this.getTrustedHtml(contentHtml);
-
+      contentContainer.setHTML(contentHtml, READABILITY_SET_HTML_OPTIONS);
 
       // Strip single newlines from text nodes to prevent unexpected sentence
       // breaks, as Readability preserves raw HTML newlines which are visually
@@ -814,8 +814,18 @@ export class ContentController {
         colorSpaceConversion: 'none',
         premultiplyAlpha: 'premultiply',
       });
-      context.drawImage(bitmap, 0, 0);
-      this.listeners_.forEach(l => l.onContentChange());
+      try {
+        // Return early if content was cleared or redistilled while the image
+        // was decoding. Otherwise, listeners would be notified to recalculate
+        // text positions for unchanged content.
+        if (this.nodeStore_.getDomNode(nodeId) !== element) {
+          return;
+        }
+        context.drawImage(bitmap, 0, 0);
+        this.listeners_.forEach(l => l.onContentChange());
+      } finally {
+        bitmap.close();
+      }
     }
   }
 
@@ -1102,25 +1112,6 @@ export class ContentController {
         }
       });
     });
-  }
-
-  private getTrustedHtml(html: string): TrustedHTML {
-    if (!ContentController.trustedUpdatePolicy || !isDistilledByReadability()) {
-      return window.trustedTypes!.emptyHTML;
-    }
-    return ContentController.trustedUpdatePolicy.createHTML(html);
-  }
-
-  configureTrustedTypes(): void {
-    if (!window.trustedTypes || ContentController.trustedUpdatePolicy) {
-      return;
-    }
-    ContentController.trustedUpdatePolicy =
-        window.trustedTypes.createPolicy('reader-mode-policy', {
-          createHTML: (s: string) => s,
-          createScript: () => '',
-          createScriptURL: () => '',
-        });
   }
 
   static getInstance(): ContentController {

@@ -8,7 +8,6 @@ import "mojo/public/mojom/base/uuid.mojom";
 import "mojo/public/mojom/base/unguessable_token.mojom";
 import "mojo/public/mojom/base/proto_wrapper.mojom";
 import "url/mojom/url.mojom";
-import "ui/base/mojom/window_open_disposition.mojom";
 
 // Struct representing an injected input which can be text only,
 // contain a modality chip, or both, and allows immediate submission.
@@ -130,21 +129,16 @@ interface PageHandler {
   // shown in the side panel.
   IsShownInTab() => (bool is_in_tab);
 
-  // Opens the My Activity page in a new tab.
-  OpenMyActivityUi();
-
-  // Opens the Feedback page in a new tab.
-  OpenFeedbackUi();
+  // Note: The following help UI methods are intentionally parameterless to
+  // prevent compromised renderers from injecting arbitrary URLs or dispositions
+  // (crbug.com/523750306). Target URLs and dispositions are resolved entirely
+  // within the browser process.
 
   // Opens the onboarding help page in a new tab.
   OpenOnboardingHelpUi();
 
-  // Opens the overflow menu help page in a new tab.
-  OpenOverflowMenuHelpUi();
-
-  // Open the URL with window open disposition.
-  // Used for handling newwindow event inside <webview>.
-  OpenUrl(url.mojom.Url url, ui.mojom.WindowOpenDisposition disposition);
+  // Opens the Ask G help page in a new tab.
+  OpenAskGHelpUi();
 
   // Moves the contents of the side panel to a new tab.
   MoveTaskUiToNewTab();
@@ -188,12 +182,6 @@ interface PageHandler {
   // to context may or may not be opened in new tabs depending upon what
   // option user selects.
   ReopenTabs();
-
-  // Pins the side panel to the toolbar.
-  PinSidePanel();
-
-  // Unpins the side panel from the toolbar.
-  UnpinSidePanel();
 
   // Called when the user opens the composebox contextual action menu dialog.
   OnContextMenuOpened();
@@ -247,6 +235,10 @@ interface Page {
   // A notification that WebUI has moved into or out of the side panel. The UI
   // code should query the `IsShownInTab` method to get the current state.
   OnSidePanelStateChanged();
+
+  // Called by the browser process (C++) when the side panel is opened to focus
+  // the composebox input in the WebUI page.
+  FocusComposebox();
 
   // Called by the browser process (C++) to send a message to the <webview>
   // guest. The WebUI is responsible for taking a serialized
@@ -348,10 +340,6 @@ interface Page {
   // section.
   SetShowReopenTabs(bool show);
 
-  // Called by the browser process (C++) to notify the UI when the pin state
-  // changes.
-  OnSidePanelPinStateChanged(bool is_pinned);
-
   // Called by the browser process (C++) to notify the UI whether the expand
   // button should be enabled.
   SetExpandButtonEnabled(bool enabled);
@@ -422,6 +410,18 @@ interface ExtensionPageHandler {
   // Inputs:
   // - `uuid`: The Uuid of the new active task.
   SetTaskId(mojo_base.mojom.Uuid uuid);
+
+  // Returns the base64 PNG data-URI of the Lens crop preview for the current
+  // tab/session, or null if no crop is active.
+  //
+  // Previous designs used an explicit `data_id` parameter, but it was removed
+  // to prevent race conditions where the embedding page could request an image
+  // for a stale `data_id` that no longer exists in the browser.
+  GetLensCropPreview() => (string? data_uri);
+
+  // Removes the active Lens region crop, clearing region selection
+  // and closing the Lens overlay.
+  RemoveLensCrop();
 };
 
 // Extension-side handler for requests from the browser process.
@@ -437,30 +437,21 @@ interface ExtensionPage {
   // TODO(crbug.com/462788705): Use `ProtoWrapper` instead of `array<uint8>`
   PostAimMessage(array<uint8> message);
 
+  // Sends a search communication message (e.g.
+  // lens.chrome.ClientToSearchMessage) from the browser to the extension to be
+  // forwarded to the search page.
+  PostSearchMessage(mojo_base.mojom.ProtoWrapper message);
+
   // Signals to the extension that the handshake with GWS is complete.
   // Called by C++ after the browser processes the handshake response.
   OnHandshakeComplete();
 
-  // Called by the browser process (C++) when the AIM server sends a HideInput
-  // command to hide the compose box.
-  HideInput();
+  // Called by the browser process (C++) when the Lens overlay is shown/hidden.
+  OnLensOverlayStateChanged(bool is_showing);
 
-  // Called by the browser process (C++) when the AIM server sends a
-  // RestoreInput command to show the compose box.
-  RestoreInput();
-
-  // Called by the browser process (C++) when the AIM server sends an
-  // EnterBasicMode command to enter basic mode.
-  EnterBasicMode();
-
-  // Called by the browser process (C++) when the AIM server sends an
-  // ExitBasicMode command to exit basic mode.
-  ExitBasicMode();
-
-  // Called by the browser process (C++) to lock/disable the input in the WebUI.
-  LockInput();
-
-  // Called by the browser process (C++) to unlock/enable the input in the
-  // WebUI.
-  UnlockInput();
+  // Called by the browser process (C++, ContextualTasksExtensionHandler)
+  // when an updated Lens region selection is captured while the chip
+  // iframe is already mounted, allowing the chip to update its preview
+  // thumbnail in-place without unmounting/remounting.
+  OnLensCropUpdated(url.mojom.Url data_uri);
 };

@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 
+#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -73,6 +74,7 @@ class LabelButton;
 
 namespace glic {
 class ToolbarGlicButton;
+class ToolbarGlicButtonInterface;
 class ToolbarGlicActorTaskIcon;
 class GlicButtonInterface;
 class GlicSplitButtonController;
@@ -196,6 +198,8 @@ class ToolbarView : public views::AccessiblePaneView,
   MediaToolbarButton* media_button() const { return media_button_; }
   HomeButton* home_button() const { return home_; }
 
+  // Returns the native Views Glic button, or nullptr if the Glic button is not
+  // created or is rendered by the WebUI toolbar (`features::kWebUIGlicButton`).
   views::LabelButton* GetGlicButton();
 
   // TODO(crbug.com/513238408): Remove this once toolbar layout/overflow is
@@ -280,6 +284,11 @@ class ToolbarView : public views::AccessiblePaneView,
   void SetToolbarVisibility(bool visible);
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
+                           CircularButtonRetainsInteriorMarginsAndPosition);
+  FRIEND_TEST_ALL_PREFIXES(ToolbarViewCircularContextualTasksBrowserTest,
+                           LeftSidePanelUsesOriginalLeftButton);
+
   // Forwards view overrides to this class.
   class ContainerView;
 
@@ -296,21 +305,22 @@ class ToolbarView : public views::AccessiblePaneView,
   // Logic that must be done on initialization and then on layout.
   void LayoutCommon();
 
-  // Returns true if the contextual tasks button is visible and positioned at
-  // the trailing edge of the toolbar.
-  bool IsTrailingContextualTasksButtonVisible() const;
-
-  // Reorders the contextual tasks button to the leading or trailing edge based
-  // on side panel alignment and RTL state.
-  void ReorderContextualTasksButton();
-
-  // Returns true if the contextual tasks button should be positioned at the
-  // trailing edge of the toolbar.
-  bool IsContextualTasksButtonTrailing() const;
-
   // Returns whether the app menu control should apply Fitts' law edge padding
   // to extend to the window border when maximized or fullscreen.
   bool ShouldAppMenuApplyFittsLaw(bool is_maximized_or_fullscreen) const;
+
+  // Positions `contextual_tasks_button_` in the toolbar hierarchy based on
+  // whether it should dock at the edges or sit as a circular button to the
+  // left of profile (and glic button if visible).
+  void PositionContextualTasksButton();
+
+  // Returns true if the contextual tasks button is visible and positioned at
+  // the leading edge of the toolbar.
+  bool IsLeadingContextualTasksButtonVisible() const;
+
+  // Returns true if the contextual tasks button is visible and positioned at
+  // the trailing edge of the toolbar.
+  bool IsTrailingContextualTasksButtonVisible() const;
 
   // AppMenuIconController::Delegate:
   void UpdateTypeAndSeverity(
@@ -430,7 +440,9 @@ class ToolbarView : public views::AccessiblePaneView,
   // The button currently holding the lock to be shown/hidden.
   raw_ptr<glic::GlicButtonInterface> locked_expansion_button_ = nullptr;
   raw_ptr<GlicAndActorButtonsContainer> glic_actor_button_container_ = nullptr;
-  raw_ptr<glic::ToolbarGlicButton> glic_button_ = nullptr;
+  raw_ptr<glic::ToolbarGlicButton> glic_button_view_ = nullptr;
+  // An alias for `glic_button_view_` or `toolbar_webview_->GetGlicControl()`.
+  raw_ptr<glic::ToolbarGlicButtonInterface> glic_button_ = nullptr;
   raw_ptr<glic::ToolbarGlicActorTaskIcon> glic_actor_task_icon_ = nullptr;
   raw_ptr<ToolbarDivider> glic_button_divider_ = nullptr;
   std::unique_ptr<ActorTaskListBubble> actor_task_list_bubble_;

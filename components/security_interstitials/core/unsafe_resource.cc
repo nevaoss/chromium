@@ -47,9 +47,6 @@ bool UnsafeResource::IsMainPageLoadPendingWithSyncCheck(
     // Client-side phishing detection interstitials never block the main
     // frame load, since they happen after the page is finished loading.
     case SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING:
-    // Malicious ad activity reporting happens in the background.
-    case SB_THREAT_TYPE_BLOCKED_AD_POPUP:
-    case SB_THREAT_TYPE_BLOCKED_AD_REDIRECT:
     // Ad sampling happens in the background.
     case SB_THREAT_TYPE_AD_SAMPLE:
     // Chrome SAVED password reuse warning happens after the page is finished
@@ -66,6 +63,9 @@ bool UnsafeResource::IsMainPageLoadPendingWithSyncCheck(
     case SB_THREAT_TYPE_ENTERPRISE_PASSWORD_REUSE:
     // Suspicious site collection happens in the background
     case SB_THREAT_TYPE_SUSPICIOUS_SITE:
+    // Suspicious site warnings are shown after the page load commits, so the
+    // main frame load is not pending when the warning is displayed.
+    case SB_THREAT_TYPE_WARNABLE_SUSPICIOUS_SITE:
       return false;
 
     default:

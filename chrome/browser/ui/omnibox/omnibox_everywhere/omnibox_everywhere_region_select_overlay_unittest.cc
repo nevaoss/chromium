@@ -7,18 +7,25 @@
 #include <memory>
 #include <vector>
 
+#include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
+#include "base/test/icu_test_util.h"
 #include "base/test/test_future.h"
+#include "base/time/time.h"
+#include "build/build_config.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
+#include "third_party/skia/include/core/SkRect.h"
+#include "ui/base/accelerators/accelerator.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/display/test/test_screen.h"
 #include "ui/events/event.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/point.h"
+#include "ui/gfx/geometry/rect.h"
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/test/views_drawing_test_utils.h"
 #include "ui/views/view.h"
@@ -649,16 +656,17 @@ TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
   EXPECT_TRUE(cursor_chip->GetVisible());
   EXPECT_EQ(cursor_chip->width(), 56);
   EXPECT_EQ(cursor_chip->height(), 56);
-  EXPECT_EQ(cursor_chip->x(), 108);
-  EXPECT_EQ(cursor_chip->y(), 108);
+  EXPECT_EQ(cursor_chip->x(), 98);
+  EXPECT_EQ(cursor_chip->y(), 98);
 
-  // Moving mouse near bottom-right edge flips cursor chip.
+  // Moving mouse near bottom-right edge keeps constant offset and clips at
+  // edge.
   ui::MouseEvent move_edge(ui::EventType::kMouseMoved, gfx::Point(780, 580),
                            gfx::Point(780, 580), base::TimeTicks::Now(), 0, 0);
   contents_view->OnMouseMoved(move_edge);
   EXPECT_TRUE(cursor_chip->GetVisible());
-  EXPECT_LT(cursor_chip->x(), 780);
-  EXPECT_LT(cursor_chip->y(), 580);
+  EXPECT_EQ(cursor_chip->x(), 778);
+  EXPECT_EQ(cursor_chip->y(), 578);
 
   // Mouse leaving hides the cursor chip.
   ui::MouseEvent exit_event(ui::EventType::kMouseExited, gfx::Point(),
@@ -915,11 +923,8 @@ TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
   ASSERT_TRUE(future.Wait());
 }
 
-// A drag that starts on the secondary display and spills onto the primary is
-// attributed to the display holding the majority of the selection, and the
-// crop is clamped to that display's slice of the screenshot.
 TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
-       MultiDisplay_SelectionSpanningDisplaysCropsToMajorityDisplay) {
+       MultiDisplay_SelectionSpanningDisplaysCompositesAllSlices) {
   SetDisplays({display::Display(1, gfx::Rect(0, 0, 800, 600)),
                display::Display(2, gfx::Rect(800, 0, 800, 600))});
 
@@ -939,17 +944,210 @@ TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
   ASSERT_TRUE(contents_view1);
 
   // Drag on display 2 from local (100, 100) to local (-20, 300), i.e. global
-  // (900, 100) -> (780, 300). Display 2 holds 100x200 of the selection versus
-  // only 20x200 on display 1, so display 2 wins.
+  // (900, 100) -> (780, 300). 100x200 lies on display 2 and 20x200 on
+  // display 1; both contribute to the composite.
   SimulateMouseDrag(contents_view1, gfx::Point(100, 100), gfx::Point(-20, 300));
 
   ASSERT_TRUE(future.Wait());
   EXPECT_FALSE(future.Get().empty());
-  // Clamped to display 2's slice: global x 800..900, y 100..300.
-  EXPECT_EQ(future.Get().width(), 100);
+  EXPECT_EQ(future.Get().width(), 120);
   EXPECT_EQ(future.Get().height(), 200);
-  // Blue confirms the crop came from display 2, not the green display 1.
-  EXPECT_EQ(future.Get().getColor(0, 0), SK_ColorBLUE);
+  EXPECT_EQ(future.Get().getColor(0, 100), SK_ColorGREEN);
+  EXPECT_EQ(future.Get().getColor(19, 100), SK_ColorGREEN);
+  EXPECT_EQ(future.Get().getColor(20, 100), SK_ColorBLUE);
+  EXPECT_EQ(future.Get().getColor(119, 100), SK_ColorBLUE);
+  EXPECT_TRUE(overlay->widgets_for_testing()[0]->IsClosed());
+  EXPECT_TRUE(overlay->widgets_for_testing()[1]->IsClosed());
+}
+
+TEST_F(OmniboxEverywhereRegionSelectOverlayTest, GestureTapCancelResetsDrag) {
+  base::test::TestFuture<const SkBitmap&> future;
+  auto overlay = OmniboxEverywhereRegionSelectOverlay::Create(
+      CreateTestBitmap(100, 100), RegionCaptureSource::AllDisplays(),
+      future.GetCallback(), GetContext());
+  ASSERT_TRUE(overlay);
+
+  views::View* contents_view =
+      overlay->GetActiveWidgetForTesting()->GetContentsView();
+  ASSERT_TRUE(contents_view);
+
+  // Begin gesture scroll.
+  ui::GestureEvent scroll_begin(
+      10, 10, 0, base::TimeTicks::Now(),
+      ui::GestureEventDetails(ui::EventType::kGestureScrollBegin));
+  contents_view->OnGestureEvent(&scroll_begin);
+
+  // Cancel gesture (e.g. OS palm rejection).
+  ui::GestureEvent tap_cancel(
+      10, 10, 0, base::TimeTicks::Now(),
+      ui::GestureEventDetails(ui::EventType::kGestureTapCancel));
+  contents_view->OnGestureEvent(&tap_cancel);
+
+  ASSERT_TRUE(future.Wait());
+  EXPECT_TRUE(future.Get().empty());
+  EXPECT_TRUE(overlay->GetActiveWidgetForTesting()->IsClosed());
+}
+
+TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
+       MultiDisplay_BalancedMixedDpiDragCompositesAtSharperScale) {
+  display::Display display1(1, gfx::Rect(0, 0, 800, 600));
+  display1.set_device_scale_factor(1.0f);
+
+  display::Display display2(2, gfx::Rect(800, 0, 800, 600));
+  display2.set_device_scale_factor(2.0f);
+
+  SetDisplays({display1, display2});
+
+  // Physical bounds:
+  // display1: (0, 0, 800, 600)
+  // display2: (1600, 0, 1600, 1200)
+  // Virtual desktop pixel bounds: (0, 0, 3200, 1200)
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(3200, 1200);
+  bitmap.eraseColor(SK_ColorBLACK);
+  bitmap.eraseArea(SkIRect::MakeXYWH(0, 0, 800, 600), SK_ColorRED);
+  bitmap.eraseArea(SkIRect::MakeXYWH(1600, 0, 1600, 1200), SK_ColorGREEN);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  auto overlay = OmniboxEverywhereRegionSelectOverlay::Create(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback(),
+      GetContext());
+  ASSERT_TRUE(overlay);
+  ASSERT_EQ(overlay->widgets_for_testing().size(), 2u);
+
+  views::View* contents_view1 =
+      overlay->widgets_for_testing()[1]->GetContentsView();
+  ASSERT_TRUE(contents_view1);
+
+  // Drag spanning from (750, 100) to (850, 200) in virtual desktop DIP
+  // coordinates. Starting on display2 locally at (-50, 100) and ending at (50,
+  // 200).
+  SimulateMouseDrag(contents_view1, gfx::Point(-50, 100), gfx::Point(50, 200));
+
+  ASSERT_TRUE(future.Wait());
+  EXPECT_FALSE(future.Get().empty());
+  // The two displays contribute equal area, so the tie resolves to the sharper
+  // of the two and the 100x100 DIP selection is composited at 200x200 pixels.
+  EXPECT_EQ(future.Get().width(), 200);
+  EXPECT_EQ(future.Get().height(), 200);
+
+  // Left half is upscaled from 1.0x monitor (RED).
+  EXPECT_EQ(future.Get().getColor(50, 100), SK_ColorRED);
+  // Right half is from 2.0x monitor (GREEN).
+  EXPECT_EQ(future.Get().getColor(150, 100), SK_ColorGREEN);
+  // Boundary check around x = 100.
+  EXPECT_EQ(future.Get().getColor(99, 100), SK_ColorRED);
+  EXPECT_EQ(future.Get().getColor(100, 100), SK_ColorGREEN);
+}
+
+// A sliver clipped from a high-DPI neighbour must not rescale the whole
+// composite: the output is rasterized at the scale of the display covering
+// most of the selection.
+TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
+       MultiDisplay_HighDpiSliverDoesNotRescaleComposite) {
+  display::Display display1(1, gfx::Rect(0, 0, 800, 600));
+  display1.set_device_scale_factor(1.0f);
+
+  display::Display display2(2, gfx::Rect(800, 0, 800, 600));
+  display2.set_device_scale_factor(2.0f);
+
+  SetDisplays({display1, display2});
+
+  // Virtual desktop pixel bounds: (0, 0, 3200, 1200). display1 occupies
+  // x 0..799 (RED), display2 occupies x 1600..3199 (GREEN).
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(3200, 1200);
+  bitmap.eraseColor(SK_ColorBLACK);
+  bitmap.eraseArea(SkIRect::MakeXYWH(0, 0, 800, 600), SK_ColorRED);
+  bitmap.eraseArea(SkIRect::MakeXYWH(1600, 0, 1600, 1200), SK_ColorGREEN);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  auto overlay = OmniboxEverywhereRegionSelectOverlay::Create(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback(),
+      GetContext());
+  ASSERT_TRUE(overlay);
+  ASSERT_EQ(overlay->widgets_for_testing().size(), 2u);
+
+  views::View* contents_view0 =
+      overlay->widgets_for_testing()[0]->GetContentsView();
+  ASSERT_TRUE(contents_view0);
+
+  // Drag from (100, 100) to (802, 300): 700x200 DIP lands on the 1.0x display
+  // and only a 2x200 DIP sliver on the 2.0x display.
+  SimulateMouseDrag(contents_view0, gfx::Point(100, 100), gfx::Point(802, 300));
+
+  ASSERT_TRUE(future.Wait());
+  EXPECT_FALSE(future.Get().empty());
+  // Composited at the dominant display's 1.0x scale, not the neighbour's 2.0x.
+  EXPECT_EQ(future.Get().width(), 702);
+  EXPECT_EQ(future.Get().height(), 200);
+
+  // The dominant slice is a 1:1 blit, so its pixels are exact.
+  EXPECT_EQ(future.Get().getColor(0, 100), SK_ColorRED);
+  EXPECT_EQ(future.Get().getColor(699, 100), SK_ColorRED);
+  // The sliver still contributes its own display's content.
+  EXPECT_EQ(future.Get().getColor(700, 100), SK_ColorGREEN);
+}
+
+TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
+       CropGlobalSelection_ClampedAreaBelowMinSelectionCancels) {
+  SetDisplays({display::Display(1, gfx::Rect(0, 0, 100, 100))});
+
+  base::test::TestFuture<const SkBitmap&> future;
+  auto overlay = OmniboxEverywhereRegionSelectOverlay::Create(
+      CreateTestBitmap(100, 100, SK_ColorRED),
+      RegionCaptureSource::AllDisplays(), future.GetCallback(), GetContext());
+  ASSERT_TRUE(overlay);
+
+  views::View* contents_view =
+      overlay->GetActiveWidgetForTesting()->GetContentsView();
+  ASSERT_TRUE(contents_view);
+
+  // Drag from (-95, -95) to (2, 2).
+  // Bounding rect is 97x97 (>= kMinSelectionSize of 10), but only (0, 0, 2, 2)
+  // intersects the display, which is below kMinSelectionSize.
+  SimulateMouseDrag(contents_view, gfx::Point(-95, -95), gfx::Point(2, 2));
+
+  ASSERT_TRUE(future.Wait());
+  EXPECT_TRUE(future.Get().empty());
+}
+
+TEST_F(OmniboxEverywhereRegionSelectOverlayTest,
+       RTL_OverlayCoordinatesAreNotMirrored) {
+  base::test::ScopedRestoreICUDefaultLocale scoped_locale("he");
+  ASSERT_TRUE(base::i18n::IsRTL());
+
+  SetDisplays({display::Display(1, gfx::Rect(0, 0, 800, 600))});
+  SkBitmap bitmap = CreateTestBitmap(800, 600, SK_ColorBLUE);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  auto overlay = OmniboxEverywhereRegionSelectOverlay::Create(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback(),
+      GetContext());
+  ASSERT_TRUE(overlay);
+
+  views::Widget* widget = overlay->GetActiveWidgetForTesting();
+  ASSERT_TRUE(widget);
+  views::View* contents_view = widget->GetContentsView();
+  ASSERT_TRUE(contents_view);
+  EXPECT_FALSE(widget->GetRootView()->GetMirrored());
+  EXPECT_FALSE(contents_view->GetMirrored());
+
+  ASSERT_EQ(contents_view->children().size(), 2u);
+  views::View* toast_chip = contents_view->children()[0];
+  views::View* cursor_chip = contents_view->children()[1];
+
+  // The toast container sits at its unmirrored center position while still
+  // mirroring its internal icon/label layout in RTL.
+  EXPECT_EQ(toast_chip->GetMirroredBounds(), toast_chip->bounds());
+  EXPECT_TRUE(toast_chip->GetMirrored());
+
+  // Moving the mouse to (100, 100) keeps the cursor chip at (98, 98, 56, 56)
+  // on the left rather than mirroring it to x=646 on the right.
+  ui::MouseEvent move_event(ui::EventType::kMouseMoved, gfx::Point(100, 100),
+                            gfx::Point(100, 100), base::TimeTicks::Now(), 0, 0);
+  contents_view->OnMouseMoved(move_event);
+  EXPECT_EQ(cursor_chip->GetMirroredBounds(), gfx::Rect(98, 98, 56, 56));
 }
 
 }  // namespace omnibox_everywhere

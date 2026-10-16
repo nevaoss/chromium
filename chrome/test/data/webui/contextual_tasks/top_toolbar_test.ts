@@ -6,6 +6,7 @@ import 'chrome://contextual-tasks/top_toolbar.js';
 import 'chrome://contextual-tasks/sources_menu.js';
 
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import {ToolbarBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_toolbar_browser_proxy.js';
 import type {ContextualTasksFaviconGroupElement} from 'chrome://contextual-tasks/favicon_group.js';
 import type {TopToolbarElement} from 'chrome://contextual-tasks/top_toolbar.js';
 import type {UnboundedDialog} from 'chrome://contextual-tasks/utils.js';
@@ -16,20 +17,23 @@ import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://
 import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {assertHTMLElement} from './contextual_tasks_test_utils.js';
-import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
+import {TestContextualTasksBrowserProxy, TestToolbarBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
 
 suite('TopToolbarTest', () => {
   let topToolbar: TopToolbarElement;
   let proxy: TestContextualTasksBrowserProxy;
+  let toolbarProxy: TestToolbarBrowserProxy;
 
   setup(() => {
     proxy = new TestContextualTasksBrowserProxy(
         'chrome://webui-test/contextual_tasks/test.html');
     BrowserProxyImpl.setInstance(proxy);
+    toolbarProxy = new TestToolbarBrowserProxy();
+    ToolbarBrowserProxyImpl.setInstance(toolbarProxy);
     loadTimeData.overrideValues({
       contextManagementInComposeboxEnabled: false,
       contextualTasksEnableSpatialModelToolbarLayout: false,
-      contextualTasksUnboundedMenuEnabled: true,
+      contextualTasksUnboundedMenuEnabled: false,
       contextualTasksSidePanelRearchitectureEnabled: false,
     });
   });
@@ -61,7 +65,7 @@ suite('TopToolbarTest', () => {
       assertHTMLElement(lightLogo);
       assertEquals(
           lightLogo.src,
-          'chrome://resources/cr_components/searchbox/icons/chrome_product.svg');
+          'chrome://resources/cr_components/searchbox/icons/chrome_product_cr23.svg');
       const darkLogo = topToolbar.shadowRoot.querySelector<HTMLImageElement>(
           '.chrome-logo-dark');
       assertHTMLElement(darkLogo);
@@ -483,12 +487,13 @@ suite('TopToolbarTest', () => {
           pinButton.innerText.trim(), loadTimeData.getString('pinTooltip'));
 
       pinButton.click();
-      await proxy.handler.whenCalled('pinSidePanel');
+      await toolbarProxy.handler.whenCalled('pinSidePanel');
     });
 
     test('handles unpin button click', async () => {
       // Simulate pinned state.
-      proxy.callbackRouterRemote.onSidePanelPinStateChanged(true);
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(true);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
       await microtasksFinished();
 
       const moreButton =
@@ -508,7 +513,48 @@ suite('TopToolbarTest', () => {
           pinButton.innerText.trim(), loadTimeData.getString('unpinTooltip'));
 
       pinButton.click();
-      await proxy.handler.whenCalled('unpinSidePanel');
+      await toolbarProxy.handler.whenCalled('unpinSidePanel');
+    });
+
+    test('updates pin state via Mojo', async () => {
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(true);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
+      await topToolbar.updateComplete;
+
+      // Note: isPinned property on topToolbar is protected. We check via unpin
+      // button in menu.
+      const moreButton =
+          topToolbar.shadowRoot.querySelector<CrIconButtonElement>(
+              '#overflowMenuButton');
+      assertTrue(!!moreButton);
+      moreButton.click();
+      await microtasksFinished();
+
+      const menu = topToolbar.$.overflowMenu.get();
+      const pinButton =
+          menu.shadowRoot.querySelector<HTMLElement>('#pinButton');
+      assertTrue(!!pinButton);
+      assertEquals(
+          pinButton.innerText.trim(), loadTimeData.getString('unpinTooltip'));
+
+      // Toggling back to unpinned should update the button text.
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(false);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
+      await topToolbar.updateComplete;
+      await microtasksFinished();
+
+      assertEquals(
+          pinButton.innerText.trim(), loadTimeData.getString('pinTooltip'));
+    });
+
+    test('pin state listener is removed on disconnect', async () => {
+      topToolbar.remove();
+
+      toolbarProxy.callbackRouterRemote.onSidePanelPinStateChanged(true);
+      await toolbarProxy.callbackRouterRemote.$.flushForTesting();
+      await topToolbar.updateComplete;
+
+      assertFalse((topToolbar as any).isPinned);
     });
 
     test('resets handshake complete when leaving AI page', async () => {
@@ -612,7 +658,7 @@ suite('TopToolbarTest', () => {
       const myActivityButton = buttons[1];
       assertTrue(!!myActivityButton);
       myActivityButton.click();
-      await proxy.handler.whenCalled('openMyActivityUi');
+      await toolbarProxy.handler.whenCalled('openMyActivityUi');
     });
 
     test('handles help click', async () => {
@@ -628,7 +674,7 @@ suite('TopToolbarTest', () => {
       const helpButton = buttons[2];
       assertTrue(!!helpButton);
       helpButton.click();
-      await proxy.handler.whenCalled('openFeedbackUi');
+      await toolbarProxy.handler.whenCalled('openFeedbackUi');
     });
 
     test('calls maybeTriggerPinningPromo when AI page is shown', async () => {
@@ -872,33 +918,44 @@ suite('TopToolbarTest', () => {
     assertFalse(overflowMenuButton.classList.contains('active'));
 
     const menu = topToolbar.$.overflowMenu.get();
-    let showUnboundedCalled = false;
-    let hideUnboundedCalled = false;
+    // Stubbed so the test never depends on real platform surface support.
+    // The unbounded lifecycle itself is covered by unbounded_menu_test.ts.
     const dialogEl = menu.$.menu.getDialog() as UnboundedDialog;
-    dialogEl.showUnboundedElement = () => {
-      showUnboundedCalled = true;
-      return Promise.resolve();
-    };
-    dialogEl.hideUnboundedElement = () => {
-      hideUnboundedCalled = true;
-      return Promise.resolve();
-    };
+    dialogEl.showUnboundedElement = () => Promise.resolve();
+    dialogEl.hideUnboundedElement = () => Promise.resolve();
 
     // Open overflow menu
     overflowMenuButton.click();
     await microtasksFinished();
 
     assertTrue(overflowMenuButton.classList.contains('active'));
-    assertTrue(showUnboundedCalled);
-    assertTrue(dialogEl.hasAttribute('unbounded'));
 
     // Close overflow menu
     menu.close();
     await microtasksFinished();
 
     assertFalse(overflowMenuButton.classList.contains('active'));
-    assertTrue(hideUnboundedCalled);
-    assertFalse(dialogEl.hasAttribute('unbounded'));
+  });
+
+  test('closes overflow menu when the side panel loses focus', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    topToolbar = document.createElement('top-toolbar');
+    document.body.appendChild(topToolbar);
+    await microtasksFinished();
+
+    const overflowMenuButton =
+        topToolbar.shadowRoot.querySelector<HTMLElement>('#overflowMenuButton');
+    assertTrue(!!overflowMenuButton);
+
+    overflowMenuButton.click();
+    await microtasksFinished();
+    assertTrue(topToolbar.$.overflowMenu.get().$.menu.open);
+
+    // Clicking outside of the side panel (e.g. on the page contents, the Lens
+    // crop frame, or a search result) blurs the side panel's window.
+    window.dispatchEvent(new Event('blur'));
+    await microtasksFinished();
+    assertFalse(topToolbar.$.overflowMenu.get().$.menu.open);
   });
 
   // <if expr="not is_android">
@@ -925,6 +982,7 @@ suite('TopToolbarTest', () => {
         message: '',
         tooltip: '',
         accessibilityName: '',
+        stateToken: 1,
         ...overrides,
       };
     }

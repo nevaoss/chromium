@@ -61,6 +61,7 @@
 #include "ui/actions/actions.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display_switches.h"
+#include "ui/views/controls/webview/webview.h"
 
 namespace indigo {
 namespace {
@@ -1046,6 +1047,32 @@ IN_PROC_BROWSER_TEST_F(IndigoContextualCueingV2BrowserTest,
       base::HashMetricName(contextual_cueing::GetName(
           contextual_cueing::CueTargetType::kIndigo)),
       1);
+}
+
+IN_PROC_BROWSER_TEST_F(IndigoContextualCueingV2BrowserTest,
+                       InteractionDowngradesToQuietIfPersistent) {
+  const GURL main_tab_url = embedded_test_server()->GetURL("/image.html");
+
+  page_actions::PageActionController* page_action_controller =
+      browser()
+          ->GetActiveTabInterface()
+          ->GetTabFeatures()
+          ->page_action_controller();
+  page_actions::PageActionObserver observer(kActionAnchoredContextualCue);
+  observer.RegisterAsPageActionObserver(*page_action_controller);
+
+  RunTestSequence(
+      InstrumentTab(kWebContentsId),
+      NavigateWebContents(kWebContentsId, main_tab_url),
+      WaitForWebContentsReady(kWebContentsId, main_tab_url),
+      WaitForShow(
+          page_actions::AnchoredMessageBubbleView::kAnchoredMessageChipId),
+      PressButton(
+          page_actions::AnchoredMessageBubbleView::kAnchoredMessageChipId),
+      WaitForShow(IndigoToolbar::kToolbarElementId),
+      CheckResult(
+          [&]() { return observer.GetCurrentPageActionState().showing; },
+          true));
 }
 
 }  // namespace

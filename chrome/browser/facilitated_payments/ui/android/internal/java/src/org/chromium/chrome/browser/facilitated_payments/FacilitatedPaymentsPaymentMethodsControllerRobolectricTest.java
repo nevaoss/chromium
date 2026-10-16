@@ -12,6 +12,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -50,6 +51,7 @@ import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymen
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.PixAccountLinkingPromptProperties.SETTINGS_LINK_CALLBACK;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.PixAccountLinkingPromptProperties.VIDEO_LINK_CALLBACK;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.ProgressScreenProperties.MESSAGE_TEXT;
+import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.ProgressScreenProperties.SHOW_GPAY_ICON;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SCREEN;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SCREEN_VIEW_MODEL;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SURVIVES_NAVIGATION;
@@ -67,6 +69,7 @@ import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymen
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -84,6 +87,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.robolectric.Robolectric;
+import org.robolectric.Shadows;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -1411,7 +1415,7 @@ public class FacilitatedPaymentsPaymentMethodsControllerRobolectricTest {
         assertThat(mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN), is(PROGRESS_SCREEN));
         assertNotNull(mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL));
         assertEquals(
-                1,
+                2,
                 mFacilitatedPaymentsPaymentMethodsModel
                         .get(SCREEN_VIEW_MODEL)
                         .getAllProperties()
@@ -1419,6 +1423,8 @@ public class FacilitatedPaymentsPaymentMethodsControllerRobolectricTest {
         assertEquals(
                 mContext.getString(R.string.pix_payment_progress_screen_message),
                 mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL).get(MESSAGE_TEXT));
+        assertTrue(
+                mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL).get(SHOW_GPAY_ICON));
         assertThat(mFacilitatedPaymentsPaymentMethodsModel.get(SURVIVES_NAVIGATION), is(false));
     }
 
@@ -1431,7 +1437,7 @@ public class FacilitatedPaymentsPaymentMethodsControllerRobolectricTest {
         assertThat(mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN), is(PROGRESS_SCREEN));
         assertNotNull(mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL));
         assertEquals(
-                1,
+                2,
                 mFacilitatedPaymentsPaymentMethodsModel
                         .get(SCREEN_VIEW_MODEL)
                         .getAllProperties()
@@ -1439,6 +1445,8 @@ public class FacilitatedPaymentsPaymentMethodsControllerRobolectricTest {
         assertEquals(
                 "",
                 mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL).get(MESSAGE_TEXT));
+        assertFalse(
+                mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL).get(SHOW_GPAY_ICON));
         assertThat(mFacilitatedPaymentsPaymentMethodsModel.get(SURVIVES_NAVIGATION), is(false));
     }
 
@@ -1541,6 +1549,91 @@ public class FacilitatedPaymentsPaymentMethodsControllerRobolectricTest {
                         .get(SCREEN_VIEW_MODEL)
                         .get(DECLINE_BUTTON_TEXT_ID),
                 is(R.string.pix_account_linking_prompt_decline));
+    }
+
+    @Test
+    @EnableFeatures({ChromeFeatureList.ENABLE_PIX_ACCOUNT_LINKING_NATIVE})
+    public void testPixAccountLinkingPrompt_DefaultPromptNotOverriddenWithVideoLink() {
+        mCoordinator.showPixAccountLinkingPrompt(0, TestAccounts.ACCOUNT1.getEmail());
+
+        org.mockito.ArgumentCaptor<BottomSheetContent> contentCaptor =
+                org.mockito.ArgumentCaptor.forClass(BottomSheetContent.class);
+        verify(mBottomSheetController).requestShowContent(contentCaptor.capture(), anyBoolean());
+        android.view.View contentView = contentCaptor.getValue().getContentView();
+
+        android.widget.TextView valueProp1 =
+                contentView.findViewById(
+                        org.chromium.chrome.browser.facilitated_payments.R.id.value_prop_message_1);
+        assertNotNull(valueProp1);
+        assertThat(
+                valueProp1.getText().toString(),
+                is(mContext.getString(R.string.pix_account_linking_prompt_value_prop_message_1)));
+        assertNull(
+                contentView.findViewById(
+                        org.chromium.chrome.browser.facilitated_payments.R.id
+                                .prompt_b_value_prop_message_1));
+    }
+
+    @Test
+    @EnableFeatures({"EnablePixAccountLinkingNative:prompt_variant/VariationB"})
+    public void testPixAccountLinkingPrompt_VariantBShowsVideoLink() {
+        mCoordinator.showPixAccountLinkingPrompt(0, TestAccounts.ACCOUNT1.getEmail());
+
+        org.mockito.ArgumentCaptor<BottomSheetContent> contentCaptor =
+                org.mockito.ArgumentCaptor.forClass(BottomSheetContent.class);
+        verify(mBottomSheetController).requestShowContent(contentCaptor.capture(), anyBoolean());
+        android.view.View contentView = contentCaptor.getValue().getContentView();
+
+        android.widget.TextView promptBValueProp1 =
+                contentView.findViewById(
+                        org.chromium.chrome.browser.facilitated_payments.R.id
+                                .prompt_b_value_prop_message_1);
+        assertNotNull(promptBValueProp1);
+        assertThat(
+                promptBValueProp1.getText().toString(),
+                is("Pay without copying and pasting Pix code. See how it works"));
+        assertNull(
+                contentView.findViewById(
+                        org.chromium.chrome.browser.facilitated_payments.R.id
+                                .value_prop_message_1));
+    }
+
+    @Test
+    @EnableFeatures({ChromeFeatureList.ENABLE_PIX_ACCOUNT_LINKING_NATIVE})
+    public void testPixAccountLinkingPrompt_VideoLinkCallbackOpensDefaultUrlWhenParamUnset() {
+        mCoordinator.showPixAccountLinkingPrompt(0, TestAccounts.ACCOUNT1.getEmail());
+
+        mFacilitatedPaymentsPaymentMethodsModel
+                .get(SCREEN_VIEW_MODEL)
+                .get(VIDEO_LINK_CALLBACK)
+                .onClick(null);
+
+        Intent startedIntent = Shadows.shadowOf((Activity) mContext).getNextStartedActivity();
+        assertNotNull(startedIntent);
+        assertThat(startedIntent.getAction(), is(Intent.ACTION_VIEW));
+        assertThat(
+                startedIntent.getDataString(),
+                is(
+                        FacilitatedPaymentsPaymentMethodsMediator
+                                .DEFAULT_PIX_ACCOUNT_LINKING_VIDEO_URL));
+    }
+
+    @Test
+    @EnableFeatures({
+        "EnablePixAccountLinkingNative:video_url_on_prompt/https%3A%2F%2Fexample.com%2Fpix"
+    })
+    public void testPixAccountLinkingPrompt_VideoLinkCallbackOpensCustomUrlWhenParamSet() {
+        mCoordinator.showPixAccountLinkingPrompt(0, TestAccounts.ACCOUNT1.getEmail());
+
+        mFacilitatedPaymentsPaymentMethodsModel
+                .get(SCREEN_VIEW_MODEL)
+                .get(VIDEO_LINK_CALLBACK)
+                .onClick(null);
+
+        Intent startedIntent = Shadows.shadowOf((Activity) mContext).getNextStartedActivity();
+        assertNotNull(startedIntent);
+        assertThat(startedIntent.getAction(), is(Intent.ACTION_VIEW));
+        assertThat(startedIntent.getDataString(), is("https://example.com/pix"));
     }
 
     @Test
@@ -1873,9 +1966,9 @@ public class FacilitatedPaymentsPaymentMethodsControllerRobolectricTest {
         assertThat(mFacilitatedPaymentsPaymentMethodsModel.get(VISIBLE_STATE), is(SHOWN));
         assertThat(mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN), is(PROGRESS_SCREEN));
         assertNotNull(mFacilitatedPaymentsPaymentMethodsModel.get(SCREEN_VIEW_MODEL));
-        // Progress screen has exactly one view property (MESSAGE_TEXT).
+        // Progress screen has two view properties (MESSAGE_TEXT and SHOW_GPAY_ICON).
         assertEquals(
-                1,
+                2,
                 mFacilitatedPaymentsPaymentMethodsModel
                         .get(SCREEN_VIEW_MODEL)
                         .getAllProperties()

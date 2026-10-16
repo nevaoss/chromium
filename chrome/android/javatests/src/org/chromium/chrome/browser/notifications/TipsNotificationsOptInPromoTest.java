@@ -35,7 +35,6 @@ import org.junit.runner.RunWith;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Feature;
-import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.IntentHandler;
@@ -48,6 +47,7 @@ import org.chromium.chrome.test.transit.FreshCtaTransitTestRule;
 import org.chromium.chrome.test.transit.notifications.TipsOptInBottomSheetFacility;
 import org.chromium.chrome.test.transit.ntp.RegularNewTabPageStation;
 import org.chromium.chrome.test.util.ChromeRenderTestRule;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.test.util.DeviceRestriction;
 import org.chromium.ui.test.util.RenderTestRule.Component;
 import org.chromium.ui.widget.ButtonCompat;
@@ -58,10 +58,9 @@ import java.io.IOException;
 /** Integration and render tests for the tips notifications opt in promo. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @EnableFeatures({ChromeFeatureList.ANDROID_TIPS_NOTIFICATIONS + ":always_show_opt_in_promo/true"})
-@DisableFeatures(ChromeFeatureList.BOTTOM_SHEET_ON_DESKTOP_WINDOWING) // crbug.com/561423545
 @Batch(Batch.PER_CLASS)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_STARTUP_PROMOS})
-@Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO)
+@Restriction({DeviceRestriction.RESTRICTION_TYPE_NON_AUTO, DeviceFormFactor.PHONE_OR_TABLET})
 public class TipsNotificationsOptInPromoTest {
     @Rule
     public FreshCtaTransitTestRule mCtaTestRule =
@@ -70,7 +69,8 @@ public class TipsNotificationsOptInPromoTest {
     @Rule
     public ChromeRenderTestRule mRenderTestRule =
             ChromeRenderTestRule.Builder.withPublicCorpus()
-                    .setRevision(1)
+                    .setRevision(2)
+                    .setDescription("Ligatures and contextual alternates disabled in UI text")
                     .setBugComponent(Component.UI_NOTIFICATIONS)
                     .build();
 

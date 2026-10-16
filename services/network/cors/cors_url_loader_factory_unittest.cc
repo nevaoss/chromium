@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -15,10 +16,17 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/test_support/fake_message_dispatch_context.h"
 #include "mojo/public/cpp/test_support/test_utils.h"
+#include "net/base/features.h"
 #include "net/base/load_flags.h"
 #include "net/base/mock_network_change_notifier.h"
+#include "net/disk_cache/buildflags.h"
+#include "net/disk_cache/disk_cache.h"
+#include "net/http/http_cache.h"
 #include "net/proxy_resolution/configured_proxy_resolution_service.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "net/test/embedded_test_server/http_request.h"
+#include "net/test/embedded_test_server/http_response.h"
+#include "net/test/test_with_task_environment.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
 #include "net/url_request/url_request_context.h"
 #include "net/url_request/url_request_context_builder.h"
@@ -36,6 +44,7 @@
 #include "services/network/resource_scheduler/resource_scheduler_client.h"
 #include "services/network/test/fake_test_cert_verifier_params_factory.h"
 #include "services/network/test/test_url_loader_client.h"
+#include "services/network/test/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -49,10 +58,10 @@ constexpr int kRequestId = 456;
 
 }  // namespace
 
-class CorsURLLoaderFactoryTest : public testing::Test {
+class CorsURLLoaderFactoryTest : public testing::Test,
+                                 public net::WithTaskEnvironment {
  public:
-  CorsURLLoaderFactoryTest()
-      : task_environment_(base::test::TaskEnvironment::MainThreadType::IO) {
+  CorsURLLoaderFactoryTest() {
     net::URLRequestContextBuilder context_builder;
     context_builder.set_proxy_resolution_service(
         net::ConfiguredProxyResolutionService::CreateDirect());
@@ -158,6 +167,12 @@ class CorsURLLoaderFactoryTest : public testing::Test {
 
   net::test_server::EmbeddedTestServer* test_server() { return &test_server_; }
 
+  NetworkContext* network_context() { return network_context_.get(); }
+
+  std::vector<mojo::Remote<mojom::URLLoader>>& url_loaders() {
+    return url_loaders_;
+  }
+
   net::test::MockNetworkChangeNotifier* mock_network_change_notifier() {
     return scoped_mock_network_change_notifier_->mock_network_change_notifier();
   }
@@ -175,9 +190,9 @@ class CorsURLLoaderFactoryTest : public testing::Test {
     return cors_url_loader_factory_remote_.is_connected();
   }
 
+  OriginAccessList* origin_access_list() { return &origin_access_list_; }
+
  private:
-  // Test environment.
-  base::test::TaskEnvironment task_environment_;
   mojo::FakeMessageDispatchContext mojo_context_;
   // This is required by NetworkBoundCorsURLLoaderFactoryTest but has to live
   // here to destruct things in the right order (it must outlive
@@ -282,10 +297,6 @@ TEST_F(CorsURLLoaderFactoryTest, DisallowedLoadFlagToUntrustedLoader) {
 }
 
 TEST_F(CorsURLLoaderFactoryTest, DocumentDestinationRequiresNavigateMode) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      features::kRestrictFrameDestinationsToNavigate);
-
   ResourceRequest request;
   request.mode = mojom::RequestMode::kNoCors;
   request.credentials_mode = mojom::CredentialsMode::kOmit;
@@ -666,6 +677,368 @@ TEST_F(BrowserProcessCorsURLLoaderFactoryTest, OutermostMainFrameNotClamped) {
   EXPECT_FALSE(bad_message_observer.got_bad_message());
   histogram_tester.ExpectTotalCount(
       "NetworkService.CorsURLLoaderFactory.IsOutermostMainFrameClamped", 0);
+}
+
+#if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
+class SharedHttpCacheCorsURLLoaderFactoryTest
+    : public CorsURLLoaderFactoryTest {
+ public:
+  SharedHttpCacheCorsURLLoaderFactoryTest() {
+    AddScopedFeatureList().InitWithFeaturesAndParameters(
+        {{net::features::kDiskCacheBackendExperiment,
+          {{net::features::kDiskCacheBackendParam.name, "sql"}}},
+         {net::features::kRendererAccessibleHttpCache, {}}},
+        {});
+  }
+
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+
+    auto context_params = CreateNetworkContextParamsForTesting();
+    context_params->http_cache_enabled = true;
+    context_params->file_paths->http_cache_directory = temp_dir_.GetPath();
+
+    const url::Origin origin = url::Origin::Create(GURL("https://example.com"));
+    auto factory_params = network::mojom::URLLoaderFactoryParams::New();
+    factory_params->renderer_accessible_http_cache_write_enabled = true;
+    factory_params->isolation_info = net::IsolationInfo::Create(
+        net::IsolationInfo::RequestType::kOther, origin, origin,
+        net::SiteForCookies::FromOrigin(origin));
+
+    BaseSetup(std::move(factory_params), std::move(context_params));
+  }
+
+ private:
+  base::ScopedTempDir temp_dir_;
+};
+
+TEST_F(SharedHttpCacheCorsURLLoaderFactoryTest, RedirectNotCached) {
+  net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+  https_server.RegisterRequestHandler(base::BindRepeating(
+      [](const net::test_server::HttpRequest& request)
+          -> std::unique_ptr<net::test_server::HttpResponse> {
+        if (request.relative_url == "/script.js" ||
+            request.relative_url == "/script2.js") {
+          auto response =
+              std::make_unique<net::test_server::BasicHttpResponse>();
+          response->set_code(net::HTTP_OK);
+          response->set_content_type("application/javascript");
+          response->AddCustomHeader("Cache-Control", "max-age=3600");
+          response->AddCustomHeader("Access-Control-Allow-Origin", "*");
+          response->set_content("console.log('ok');");
+          return response;
+        }
+        if (request.relative_url == "/redirect.js") {
+          auto response =
+              std::make_unique<net::test_server::BasicHttpResponse>();
+          response->set_code(net::HTTP_FOUND);
+          response->AddCustomHeader("Location", "/script2.js");
+          response->AddCustomHeader("Access-Control-Allow-Origin", "*");
+          return response;
+        }
+        return nullptr;
+      }));
+  ASSERT_TRUE(https_server.Start());
+
+  const url::Origin initiator_origin =
+      url::Origin::Create(test_server()->base_url());
+
+  // 1. Direct request without redirect should be marked eligible for shared
+  // cache.
+  {
+    ResourceRequest request;
+    request.mode = mojom::RequestMode::kCors;
+    request.credentials_mode = mojom::CredentialsMode::kOmit;
+    request.method = net::HttpRequestHeaders::kGetMethod;
+    request.url = https_server.GetURL("/script.js");
+    request.destination = mojom::RequestDestination::kScript;
+    request.request_initiator = initiator_origin;
+
+    CreateLoaderAndStart(request);
+    test_cors_loader_clients().back()->RunUntilComplete();
+    EXPECT_EQ(
+        net::OK,
+        test_cors_loader_clients().back()->completion_status().error_code);
+
+    disk_cache::Backend* backend =
+        network_context()->GetHttpCache()->GetCurrentBackend();
+    ASSERT_TRUE(backend);
+    EXPECT_EQ(1u, backend->GetSharedCacheEligibleEntriesCountForTest());
+  }
+
+  // 2. Redirected request (302 -> 200 OK) must NOT be marked eligible for
+  // shared cache.
+  {
+    ResourceRequest request;
+    request.mode = mojom::RequestMode::kCors;
+    request.credentials_mode = mojom::CredentialsMode::kOmit;
+    request.method = net::HttpRequestHeaders::kGetMethod;
+    request.url = https_server.GetURL("/redirect.js");
+    request.destination = mojom::RequestDestination::kScript;
+    request.request_initiator = initiator_origin;
+
+    CreateLoaderAndStart(request);
+    test_cors_loader_clients().back()->RunUntilRedirectReceived();
+    url_loaders().back()->FollowRedirect({}, std::nullopt);
+    test_cors_loader_clients().back()->RunUntilComplete();
+    EXPECT_EQ(
+        net::OK,
+        test_cors_loader_clients().back()->completion_status().error_code);
+
+    disk_cache::Backend* backend =
+        network_context()->GetHttpCache()->GetCurrentBackend();
+    ASSERT_TRUE(backend);
+    EXPECT_EQ(1u, backend->GetSharedCacheEligibleEntriesCountForTest());
+  }
+}
+#endif  // BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
+
+class IsolatedWorldOriginLockCorsURLLoaderFactoryTest
+    : public CorsURLLoaderFactoryTest {
+ protected:
+  const url::Origin isolated_origin_a_ =
+      url::Origin::Create(GURL("https://isolated-a.example.com"));
+  const url::Origin isolated_origin_b_ =
+      url::Origin::Create(GURL("https://isolated-b.example.com"));
+
+  void SetUp() override {}
+
+  void SetUpFactory(bool ignore_isolated_world_origin,
+                    const std::optional<url::Origin>& lock,
+                    OriginatingProcessId process_id = kProcessId) {
+    auto factory_params = network::mojom::URLLoaderFactoryParams::New();
+    factory_params->ignore_isolated_world_origin = ignore_isolated_world_origin;
+    factory_params->isolated_world_origin_lock = lock;
+    BaseSetup(std::move(factory_params), mojom::NetworkContextParams::New(),
+              process_id);
+  }
+};
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest, MatchingLockAllowed) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_a_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       MismatchedLockRejected) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_b_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_TRUE(bad_message_observer.got_bad_message());
+  EXPECT_EQ("CorsURLLoaderFactory: isolated_world_origin lock mismatch",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       MissingLockOnPrivilegedFactoryRejected) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, std::nullopt);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_a_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_TRUE(bad_message_observer.got_bad_message());
+  EXPECT_EQ("CorsURLLoaderFactory: isolated_world_origin lock mismatch",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       NoIsolatedWorldOriginAllowed) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = std::nullopt;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       IgnoredOriginNotRejected) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/true, std::nullopt);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_b_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       IgnoredOriginClearedAndUnsafeHeadersBlocked) {
+  origin_access_list()->AddAllowListEntryForOrigin(
+      isolated_origin_a_, "http", std::string(test_server()->base_url().host()),
+      /*port=*/0, mojom::CorsDomainMatchMode::kAllowSubdomains,
+      mojom::CorsPortMatchMode::kAllowAnyPort,
+      mojom::CorsOriginAccessMatchPriority::kDefaultPriority);
+
+  // Normal factory ignores isolated world origin and clears it.
+  SetUpFactory(/*ignore_isolated_world_origin=*/true, std::nullopt);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_a_;
+  request.headers.SetHeader("Sec-Invalid", "value");
+
+  // Since isolated_world_origin is cleared, ShouldAllowUnsafeHeaders falls back
+  // to request_initiator, which does not have allow list privileges, so the
+  // forbidden header causes a bad message.
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_TRUE(bad_message_observer.got_bad_message());
+  EXPECT_EQ("CorsURLLoaderFactory: Forbidden Sec- header from renderer",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest, BrowserProcessAllowed) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_,
+               OriginatingProcessId::browser());
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_b_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       FeatureDisabledBypassesCheck) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      features::kEnforceIsolatedWorldOriginLock);
+
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = isolated_origin_b_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       OpaqueInitiatorWithMatchingIsolatedWorldOriginAllowed) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  // An opaque initiator (e.g. a content script running in a sandboxed iframe
+  // or data: URL frame) is allowed by VerifyRequestInitiatorLock, and the
+  // isolated_world_origin matches the factory lock.
+  request.request_initiator = url::Origin();
+  request.isolated_world_origin = isolated_origin_a_;
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       OpaqueIsolatedWorldOriginOnDefaultFactoryAllowed) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/true, std::nullopt);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  // If an isolated world has an opaque origin, Blink falls back to the default
+  // factory (ignore_isolated_world_origin = true), which clears
+  // isolated_world_origin without reporting a bad message.
+  request.isolated_world_origin = url::Origin();
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       OpaqueIsolatedWorldOriginOnPrivilegedFactoryRejected) {
+  SetUpFactory(/*ignore_isolated_world_origin=*/false, isolated_origin_a_);
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kInclude;
+  request.method = net::HttpRequestHeaders::kGetMethod;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(test_server()->base_url());
+  request.isolated_world_origin = url::Origin();
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request);
+  EXPECT_TRUE(bad_message_observer.got_bad_message());
+  EXPECT_EQ("CorsURLLoaderFactory: isolated_world_origin lock mismatch",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(IsolatedWorldOriginLockCorsURLLoaderFactoryTest,
+       LockPresentWhenIgnoredOriginIsTrueRejected) {
+  mojo::test::BadMessageObserver bad_message_observer;
+  SetUpFactory(/*ignore_isolated_world_origin=*/true, isolated_origin_a_);
+  EXPECT_TRUE(bad_message_observer.got_bad_message());
+  EXPECT_EQ(
+      "CorsURLLoaderFactory: isolated_world_origin_lock set when "
+      "ignore_isolated_world_origin is true",
+      bad_message_observer.WaitForBadMessage());
 }
 
 }  // namespace network::cors

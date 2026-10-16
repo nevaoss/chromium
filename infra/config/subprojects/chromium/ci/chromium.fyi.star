@@ -110,6 +110,7 @@ def fyi_mac_builder(*, name, **kwargs):
 
 ci.builder(
     name = "Linux Viz",
+    description_html = "Runs Viz display compositor and Vulkan SwiftShader tests on Linux x64 release.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -132,7 +133,6 @@ ci.builder(
     targets = targets.bundle(
         targets = [
             "linux_viz_gtests",
-            "vulkan_swiftshader_isolated_scripts",
         ],
         additional_compile_targets = [
             "all",
@@ -142,6 +142,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "viz",
     ),
@@ -149,6 +150,7 @@ ci.builder(
 
 ci.builder(
     name = "Site Isolation Android",
+    description_html = "Runs Site Isolation tests on Android ARM64 release builds.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -196,6 +198,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "site_isolation",
     ),
@@ -229,6 +232,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "network|traffic|annotations",
         short_name = "lnx",
@@ -274,6 +278,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release",
         short_name = "rel",
@@ -286,6 +291,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-blink-wpt-reset-rel",
+    description_html = "Runs Blink web tests on Linux x64 release with --force-browsing-instance-reset-between-tests enabled.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -338,6 +344,7 @@ ci.builder(
         },
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|blink",
         short_name = "BIr",
@@ -382,6 +389,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux",
         short_name = "se",
@@ -391,6 +399,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-blink-heap-verification",
+    description_html = "Builds and runs Blink tests on Linux x64 release with Blink heap verification enabled.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -421,6 +430,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|blink",
         short_name = "VF",
@@ -431,6 +441,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-fieldtrial-rel",
+    description_html = "Runs fieldtrial browser tests on Linux x64 release builds.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -459,6 +470,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux",
     ),
@@ -466,6 +478,7 @@ ci.builder(
 
 ci.thin_tester(
     name = "mac-fieldtrial-tester",
+    description_html = "Runs fieldtrial browser tests on Mac ARM64 release builds.",
     parent = "ci/mac-arm64-rel",
     builder_spec = builder_config.builder_spec(
         execution_mode = builder_config.execution_mode.TEST,
@@ -491,6 +504,7 @@ ci.thin_tester(
             "mac_default_arm64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
     ),
@@ -535,6 +549,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "mulitscreen",
     ),
@@ -544,6 +559,7 @@ ci.builder(
 
 ci.builder(
     name = "android-fieldtrial-rel",
+    description_html = "Builds and runs fieldtrial tests on Android x64 release builds.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -656,6 +672,7 @@ fyi_ios_builder(
 
 ci.builder(
     name = "android-perfetto-rel",
+    description_html = "Builds and runs Perfetto tracing tests on Android x64 release builds.",
     schedule = "triggered",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -703,6 +720,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "android",
     ),
@@ -710,6 +728,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-perfetto-rel",
+    description_html = "Builds and runs Perfetto tracing diff tests and gtests on Linux x64 release builds.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -741,6 +760,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux",
     ),
@@ -748,6 +768,7 @@ ci.builder(
 
 fyi_mac_builder(
     name = "mac-perfetto-rel",
+    description_html = "Builds and runs Perfetto tracing tests on Mac x64 release builds.",
     schedule = "triggered",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -949,6 +970,7 @@ ci.builder(
         },
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux",
     ),
@@ -1004,6 +1026,7 @@ ci.builder(
         },
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|blink",
         short_name = "trace",
@@ -1070,6 +1093,7 @@ fyi_ios_builder(
 
 ci.builder(
     name = "linux-headless-shell-rel",
+    description_html = "Builds and runs tests for headless_shell on Linux x64 release builds.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -1098,6 +1122,7 @@ ci.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux",
         short_name = "hdls",
@@ -1108,6 +1133,7 @@ ci.builder(
 # TODO(crbug.com/40223366): Remove this builder after experimentation.
 ci.builder(
     name = "linux-rel-no-external-ip",
+    description_html = "Experimental builder testing Chromium release builds on Linux bots without external IP addresses.",
     builder_spec = builder_config.copy_from(
         "ci/Linux Builder",
     ),
@@ -1116,7 +1142,6 @@ ci.builder(
             "gpu_tests",
             "release_builder",
             "remoteexec",
-            "devtools_do_typecheck",
             "linux",
             "x64",
         ],
@@ -1158,6 +1183,7 @@ ci.builder(
 
 ci.builder(
     name = "win-perfetto-rel",
+    description_html = "Builds and runs Perfetto tracing tests on Windows x64 release builds.",
     schedule = "triggered",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -1194,6 +1220,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "win",
     ),
@@ -1202,6 +1229,7 @@ ci.builder(
 # TODO(crbug.com/40223366): Remove this builder after experimentation.
 ci.builder(
     name = "win10-rel-no-external-ip",
+    description_html = "Experimental builder testing Chromium release builds on Windows 10 bots without external IP addresses.",
     builder_spec = builder_config.copy_from(
         "ci/Win x64 Builder",
     ),
@@ -1352,6 +1380,7 @@ ci.builder(
         os_type = targets.os_type.LINUX,
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|arm64",
         short_name = "rel",
@@ -1436,6 +1465,7 @@ ci.builder(
         os_type = targets.os_type.LINUX,
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|arm64",
         short_name = "wl",
@@ -1445,6 +1475,7 @@ ci.builder(
 
 ci.builder(
     name = "linux-upload-perfetto",
+    description_html = "Builds trace_processor_shell on Linux x64 and uploads prebuilts to Cloud Storage.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -1476,6 +1507,7 @@ ci.builder(
         use_swarming = False,
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "perfetto",
         short_name = "lnx",
@@ -1485,6 +1517,7 @@ ci.builder(
 
 ci.builder(
     name = "win-upload-perfetto",
+    description_html = "Builds trace_processor_shell on Windows x64 and uploads prebuilts to Cloud Storage.",
     schedule = "with 3h interval",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -1520,6 +1553,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "perfetto",
         short_name = "win",
@@ -1530,6 +1564,7 @@ ci.builder(
 
 fyi_ios_builder(
     name = "ios-blink-rel-fyi",
+    description_html = "Builds and runs Chromium tests with the experimental Blink engine on iOS ARM64 simulator.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "ios",
@@ -1755,6 +1790,7 @@ fyi_ios_builder(
 
 fyi_ios_builder(
     name = "ios27-sdk-simulator",
+    description_html = "Builds and runs iOS debug simulator tests using the iOS 27 SDK.",
     schedule = "0 1,5,9,13,17,21 * * *",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -1793,7 +1829,6 @@ fyi_ios_builder(
             "mac_26_arm64",
             "mac_toolchain",
             "out_dir_arg",
-            "xcode_27_beta",
             "xctest",
         ],
     ),
@@ -1810,6 +1845,7 @@ fyi_ios_builder(
 
 fyi_ios_builder(
     name = "ios26-beta-simulator",
+    description_html = "Builds iOS debug simulator targets with Xcode n-1 and runs tests on iOS 26 beta simulator with Xcode n.",
     schedule = "0 0,4,8,12,16,20 * * *",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -1869,6 +1905,7 @@ fyi_ios_builder(
 
 fyi_ios_builder(
     name = "ios27-beta-simulator",
+    description_html = "Builds iOS debug simulator targets and runs tests on iOS 27 beta simulator.",
     schedule = "0 3,7,11,15,19,23 * * *",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -1926,6 +1963,7 @@ fyi_ios_builder(
 
 fyi_ios_builder(
     name = "ios26-sdk-simulator",
+    description_html = "Builds and runs iOS debug simulator tests using the iOS 26 SDK and Xcode n.",
     schedule = "0 2,6,10,14,18,22 * * *",
     triggered_by = [],
     builder_spec = builder_config.builder_spec(
@@ -1983,6 +2021,7 @@ fyi_ios_builder(
 
 fyi_mac_builder(
     name = "Mac Builder Next",
+    description_html = "Builds and runs Chromium release tests on upcoming macOS versions on ARM64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -2052,6 +2091,7 @@ fyi_mac_builder(
 
 fyi_mac_builder(
     name = "Mac deterministic",
+    description_html = "Verifies that Mac x64 release builds are deterministic.",
     executable = "recipe:swarming/deterministic_build",
     gn_args = gn_args.config(
         configs = [
@@ -2065,8 +2105,8 @@ fyi_mac_builder(
     ),
     builderless = True,
     cores = None,
-    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
-    os = os.MAC_15,
+    os = os.MAC_DEFAULT,
+    cpu = cpu.ARM64,
     console_view_entry = consoles.console_view_entry(
         category = "deterministic|mac",
         short_name = "rel",
@@ -2076,6 +2116,7 @@ fyi_mac_builder(
 
 fyi_mac_builder(
     name = "Mac deterministic (dbg)",
+    description_html = "Verifies that Mac x64 debug builds are deterministic.",
     executable = "recipe:swarming/deterministic_build",
     gn_args = gn_args.config(
         configs = [
@@ -2087,8 +2128,8 @@ fyi_mac_builder(
     ),
     builderless = True,
     cores = None,
-    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
-    os = os.MAC_15,
+    os = os.MAC_DEFAULT,
+    cpu = cpu.ARM64,
     console_view_entry = consoles.console_view_entry(
         category = "deterministic|mac",
         short_name = "dbg",
@@ -2199,6 +2240,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.WINDOWS_10,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "win10",
     ),
@@ -2208,6 +2250,7 @@ ci.builder(
 
 ci.builder(
     name = "win32-arm64-rel",
+    description_html = "Compiles Chromium release builds for Windows ARM64.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(config = "chromium"),
         chromium_config = builder_config.chromium_config(
@@ -2240,6 +2283,7 @@ ci.builder(
 
 ci.builder(
     name = "win-fieldtrial-rel",
+    description_html = "Builds and runs fieldtrial browser tests on Windows x64 release builds.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -2309,6 +2353,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "network|traffic|annotations",
         short_name = "win",
@@ -2363,6 +2408,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "misc",
         short_name = "nosb",
@@ -2523,6 +2569,7 @@ ci.builder(
         },
     ),
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = [
         consoles.console_view_entry(
             category = "treesinviz",
@@ -2590,6 +2637,7 @@ ci.builder(
         },
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = [
         consoles.console_view_entry(
             category = "treesinviz",
@@ -2711,7 +2759,6 @@ ci.builder(
             "gpu_tests",
             "release_builder",
             "remoteexec",
-            "devtools_do_typecheck",
             "linux",
             "x64",
         ],
@@ -2743,6 +2790,7 @@ ci.builder(
         },
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = [
         consoles.console_view_entry(
             category = "treesinviz",
@@ -2755,87 +2803,6 @@ ci.builder(
         ),
     ],
     contact_team_email = "chrome-gpu-team@google.com",
-)
-
-ci.builder(
-    name = "linux-tsgo-rel",
-    description_html = "Builds Chrome (and tests) on Linux with GN flag use_typescript_go=true.",
-    builder_spec = builder_config.builder_spec(
-        gclient_config = builder_config.gclient_config(config = "chromium"),
-        chromium_config = builder_config.chromium_config(
-            config = "chromium",
-            apply_configs = ["mb"],
-            build_config = builder_config.build_config.RELEASE,
-            target_bits = 64,
-            target_platform = builder_config.target_platform.LINUX,
-        ),
-    ),
-    gn_args = gn_args.config(
-        configs = [
-            "release_builder",
-            "remoteexec",
-            "linux",
-            "x64",
-            "use_typescript_go",
-        ],
-    ),
-    targets = targets.bundle(
-        additional_compile_targets = [
-            "browser_tests",
-            "chrome",
-            "interactive_ui_tests",
-            "unit_tests",
-        ],
-    ),
-    os = os.LINUX_DEFAULT,
-    console_view_entry = consoles.console_view_entry(
-        category = "linux",
-        short_name = "tsgo",
-    ),
-    contact_team_email = "chrome-webui@google.com",
-)
-
-ci.builder(
-    name = "linux-chromeos-tsgo-rel",
-    description_html = "Builds Chrome (and tests) for ChromeOS on Linux with GN flag use_typescript_go=true.",
-    builder_spec = builder_config.builder_spec(
-        gclient_config = builder_config.gclient_config(
-            config = "chromium",
-            apply_configs = ["chromeos"],
-        ),
-        chromium_config = builder_config.chromium_config(
-            config = "chromium",
-            apply_configs = ["mb"],
-            build_config = builder_config.build_config.RELEASE,
-            target_arch = builder_config.target_arch.INTEL,
-            target_bits = 64,
-            target_platform = builder_config.target_platform.CHROMEOS,
-        ),
-    ),
-    gn_args = gn_args.config(
-        configs = [
-            "chromeos_with_codecs",
-            "release_builder",
-            "remoteexec",
-            "use_cups",
-            "x64",
-            "use_typescript_go",
-        ],
-    ),
-    targets = targets.bundle(
-        additional_compile_targets = [
-            "browser_tests",
-            "chrome",
-            "interactive_ui_tests",
-            "unit_tests",
-        ],
-    ),
-    os = os.LINUX_DEFAULT,
-    console_view_entry = consoles.console_view_entry(
-        category = "chromeos",
-        short_name = "tsgo",
-    ),
-    contact_team_email = "chrome-webui@google.com",
 )
 
 ci.builder(
@@ -2923,6 +2890,7 @@ ci.builder(
         },
     ),
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "webdriver",
     ),
@@ -2978,6 +2946,7 @@ ci.builder(
         },
     ),
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "win|separate-renderer",
         short_name = "tst",
@@ -3022,6 +2991,7 @@ ci.builder(
         },
     ),
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "linux|separate-renderer",
         short_name = "tst",

@@ -53,6 +53,8 @@ Je kunt pas nieuwe bookmarks opslaan in je account als je er een paar hebt verwi
 <translation id="1965068424387304464">Chromium-tip: Wachtwoorden opslaan</translation>
 <translation id="1992653360331625459">Je hebt al wachtwoorden voor deze accounts in je Wachtwoordmanager. Als je ervoor kiest een van de wachtwoorden hieronder te importeren, vervangt dit het bestaande wachtwoord.</translation>
 <translation id="2006345422933397527">Chromium kan niet checken op updates. Check de internetverbinding.</translation>
+<translation id="2025935492422922097">Chromium verwerkt paginatitels en URL's in een privégedeelte in de cloud</translation>
+<translation id="2027881372245801507">Als je suggesties uitzet, heeft dit geen invloed op de verwerking van paginatitels en URL's door Chromium voor andere functies. Je kunt de toegang tot deze gegevens beheren in je <ph name="BEGIN_LINK" />synchronisatie-instellingen<ph name="END_LINK" />.</translation>
 <translation id="2042889939382983733">Je Chromium-geschiedenis bekijken</translation>
 <translation id="2052320862053429062">Chromium vergelijkt periodiek je wachtwoorden met lijsten die online zijn gepubliceerd. Als dit wordt gedaan, zijn je wachtwoorden en gebruikersnamen versleuteld, zodat ze door niemand (inclusief Google) kunnen worden gelezen.</translation>
 <translation id="2059365270911640413">Chromium instellen afronden</translation>
@@ -105,6 +107,7 @@ Ga naar <ph name="BEGIN_LINK" />Google-services<ph name="END_LINK" /> voor meer 
 <translation id="3072591112723064972">Stel Chromium in als je standaardbrowser om links meteen hier te openen.</translation>
 <translation id="3115956258722352278">Chromium instellen als je standaardbrowser?</translation>
 <translation id="3180939591219927904">Zet 'Incognitotabbladen vergrendelen als je Chromium sluit' aan</translation>
+<translation id="3239426886813624481">Als je je locatie wilt delen met websites, tik je op Instellingen om Chromium je locatie te laten gebruiken.</translation>
 <translation id="327628223428512207">Voer een wachtwoordzin in om dit wachtwoord op te slaan en Chromium-gegevens op al je apparaten te krijgen</translation>
 <translation id="328933489847748230">{count,plural, =1{Er wordt nu 1 Chromium-venster getoond}other{Er worden nu {count} Chromium-vensters getoond}}</translation>
 <translation id="3344204225393848305">Chromium instellen als standaard</translation>
@@ -142,6 +145,7 @@ Wacht een paar minuten voordat je van account wisselt. Als je nu van account wis
 <translation id="3855938650519180865">Nieuw in Chromium</translation>
 <translation id="3886689467633467988">Log in op deze site en bij Chromium om onder andere je bookmarks op al je apparaten te gebruiken.</translation>
 <translation id="3949514465204582407">Chromium-tip: Krijg je wachtwoorden in elke app</translation>
+<translation id="3983298990898629929">Stel Chromium in als je standaardbrowser om links met één tik te openen</translation>
 <translation id="4005283307739974863">Opent de Veiligheidscheck in Chromium en voert deze uit.</translation>
 <translation id="4043291146360695975">Wachtwoorden worden alleen opgeslagen in Wachtwoordmanager op dit apparaat.</translation>
 <translation id="4046625794029820944">Stop met het kopiëren van URL's. Stel Chromium in als standaardbrowser om pagina's rechtstreeks te laden.</translation>
@@ -273,6 +277,7 @@ Aandachtspunten:
 <translation id="6680609900732453726">Houd je browsen privé met apparaatverificatie als je Chromium sluit</translation>
 <translation id="6696512128741076907">Stel Chromium in als standaardbrowser om links meteen te openen vanuit andere apps.</translation>
 <translation id="6752854822223394465">Je organisatie stelt Chromium in…</translation>
+<translation id="6777348401413221846">Video op volledig scherm over hoe je Chromium instelt als standaardbrowser: open de Chromium-instellingen in iOS, tik op Standaard browser-app en selecteer Chromium.</translation>
 <translation id="6794054469102824109">Opent de Chromium Dino-game.</translation>
 <translation id="6820823224820483452">Chromium kan niet alle wachtwoorden checken. Probeer het morgen opnieuw.</translation>
 <translation id="6830782797004194206">Log sneller in met automatisch invullen in Chromium</translation>
@@ -302,6 +307,7 @@ Alleen iemand met je wachtwoordzin kan je versleutelde gegevens lezen. De wachtw
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028">Je wachtwoord wordt opgeslagen in Wachtwoordmanager voor <ph name="EMAIL" />.</translation>
 <translation id="7434848749522628428">Deze toegangssleutel wordt opgeslagen in Wachtwoordmanager voor <ph name="USER_EMAIL" />.</translation>
+<translation id="7453822113116681031">Stel Chromium in als je standaardbrowser om links met één tik te openen</translation>
 <translation id="7504829997542308412">Open Chromium</translation>
 <translation id="7531461704633548377">Van Chromium</translation>
 <translation id="7554983317097061001">Chromium-tip: verplaats Chromium naar het dock</translation>
@@ -348,6 +354,8 @@ Alleen iemand met je wachtwoordzin kan je versleutelde gegevens lezen. De wachtw
 <translation id="865600487977764604">Beschermt je op Chromium en kan worden gebruikt om de beveiliging in andere Google-apps te verbeteren als je bent ingelogd.</translation>
 <translation id="8663480472502753423">Houd Chromium up-to-date</translation>
 <translation id="8685813584220679697">Log in bij deze site en Chromium.</translation>
+<translation id="8697693743327341604">Als je een suggestie selecteert of negeert, past Chromium zich aan om je in de toekomst relevantere suggesties te tonen.</translation>
+<translation id="869832267508702259">Stel Chromium in als je standaardbrowser om Gemini-inzichten te krijgen, waar je ook browst</translation>
 <translation id="8698780336333802489">Importeren naar Chromium</translation>
 <translation id="8730503818204408000">Opent de Chromium-instelling om Chromium in te stellen als standaardbrowser.</translation>
 <translation id="8754966941001340678">Chromium raadt Geoptimaliseerde beveiliging aan</translation>

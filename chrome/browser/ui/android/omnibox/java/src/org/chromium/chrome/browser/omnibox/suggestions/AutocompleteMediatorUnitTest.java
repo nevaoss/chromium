@@ -53,6 +53,7 @@ import org.robolectric.shadows.ShadowPausedSystemClock;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.ResettersForTesting;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -90,10 +91,13 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
+import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
+import org.chromium.chrome.browser.ui.extensions.ExtensionUiBackend;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
+import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.favicon.LargeIconBridge;
 import org.chromium.components.favicon.LargeIconBridgeJni;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
@@ -184,6 +188,7 @@ public class AutocompleteMediatorUnitTest {
     @Mock private PropertyObserver<PropertyKey> mPropertyObserver;
     @Mock private Tab mTab;
     @Mock private WebContents mWebContents;
+    @Mock private ExtensionUiBackend mExtensionUiBackend;
 
     @Mock
     private CachedZeroSuggestionsManager.OverridesForTesting mMockCachedZeroSuggestionsManager;
@@ -381,6 +386,13 @@ public class AutocompleteMediatorUnitTest {
         return session;
     }
 
+    private FuseboxSessionState setUpSessionForPendingItemSelection() {
+        var session = createEmptySession();
+        mMediator.beginInput(session);
+        mMediator.allowPendingItemSelection();
+        return session;
+    }
+
     private AutocompleteMatch createSearchSuggestMatch() {
         return AutocompleteMatchBuilder.searchWithType(OmniboxSuggestionType.SEARCH_SUGGEST)
                 .setDisplayText(SAMPLE_QUERY)
@@ -409,7 +421,8 @@ public class AutocompleteMediatorUnitTest {
                 url,
                 /* inputStart= */ 0,
                 /* openInNewTab= */ false,
-                /* openInNewWindow= */ false);
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ false);
     }
 
     private void setUpSessionAndMatch(
@@ -742,7 +755,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTextChanged_emptyTextTriggersZeroSuggest() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
         @PageClassification int pageClassification = PageClassification.BLANK;
@@ -804,7 +816,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTextChanged_nonEmptyTextTriggersSuggestions() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         @PageClassification int pageClassification = PageClassification.BLANK;
         var session = createSession(url, url.getSpec(), pageClassification);
@@ -821,7 +832,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTextChanged_cancelsPendingRequests() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         @PageClassification int pageClassification = PageClassification.BLANK;
         var session = createSession(url, url.getSpec(), pageClassification);
@@ -1215,6 +1225,21 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    public void onSuggestionFocused_emptyFillIntoEdit_doesNotFallbackToDisplayText() {
+        setUpSessionForPendingItemSelection();
+
+        AutocompleteMatch match =
+                new AutocompleteMatchBuilder()
+                        .setDisplayText("View your AI Mode history")
+                        .setFillIntoEdit("")
+                        .build();
+
+        mMediator.onSuggestionFocused(match);
+
+        verify(mAutocompleteDelegate).setOmniboxEditingText("");
+    }
+
+    @Test
     public void onSuggestionClicked_TabsStarterPack() {
         mMediator.onNativeInitialized();
         mMediator.beginInput(createEmptySession());
@@ -1468,7 +1493,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void setSessionState_trackSessionState() {
-
         assertFalse(mMediator.isOmniboxSessionActiveForTesting());
 
         mMediator.beginInput(createEmptySession());
@@ -1523,7 +1547,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void requestToUiModelTime_recordedForZps() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
         @PageClassification int pageClassification = PageClassification.BLANK;
@@ -1551,7 +1574,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void requestToUiModelTime_notRecordedWhenCanceled_LastResult() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
         @PageClassification int pageClassification = PageClassification.BLANK;
@@ -1575,7 +1597,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void requestToUiModelTime_notRecordedWhenCanceled_FirstResult() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
         @PageClassification int pageClassification = PageClassification.BLANK;
@@ -1600,7 +1621,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void requestToUiModelTime_recordsBothHistogramsWhenFirstResponseIsFinal() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
         @PageClassification int pageClassification = PageClassification.BLANK;
@@ -1618,7 +1638,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void requestToUiModelTime_subsequentKeyStrokesReportTimeSinceLastKeystroke() {
-
         UnsyncedSuggestionsListAnimation.setAnimationsDisabledForTesting(
                 /* disabledForTesting= */ true);
 
@@ -1838,7 +1857,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTopResumedActivityChanged_nonZeroSuggest() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         @PageClassification int pageClassification = PageClassification.BLANK;
         var session = createSession(url, url.getSpec(), pageClassification);
@@ -1865,7 +1883,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTopResumedActivityChanged_zeroSuggest() {
-
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
         @PageClassification int pageClassification = PageClassification.BLANK;
@@ -1909,7 +1926,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTextChanged_cachedZpsNotInvokedInTypedContext() {
-
         var session = createSession(PAGE_URL, PAGE_TITLE, 0);
         mMediator.beginInput(session);
 
@@ -1956,7 +1972,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTextChanged_dontCacheTypedSuggestions() {
-
         for (@PageClassification int pageClass = PageClassification.MIN_VALUE;
                 pageClass <= PageClassification.MAX_VALUE;
                 pageClass++) {
@@ -1970,7 +1985,6 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void onTextChanged_dontCacheCachedSuggestions() {
-
         for (@PageClassification int pageClass = PageClassification.MIN_VALUE;
                 pageClass <= PageClassification.MAX_VALUE;
                 pageClass++) {
@@ -2090,7 +2104,7 @@ public class AutocompleteMediatorUnitTest {
     public void testDefaultBrowserPromo_notShownWithIncorrectSuggestionType() {
         var url = new GURL("http://test");
 
-        for (@OmniboxSuggestionType int type = 0; type < OmniboxSuggestionType.NUM_TYPES; type++) {
+        for (@OmniboxSuggestionType int type = 0; type <= OmniboxSuggestionType.MAX_VALUE; type++) {
             if (type != OmniboxSuggestionType.CLIPBOARD_URL) {
                 var match = AutocompleteMatchBuilder.searchWithType(type).build();
                 mMediator.onSuggestionClicked(match, 0, url, /* modifiers= */ 0);
@@ -2615,6 +2629,33 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    public void onTopResumedActivityChanged_hubSearchRetainsObservers() {
+        var session =
+                createSession(new GURL("https://abc.xyz"), "title", PageClassification.ANDROID_HUB);
+        mMediator.beginInput(session);
+
+        clearInvocations(mAutocompleteController);
+        mMediator.onTopResumedActivityChanged(/* isTopResumedActivity= */ false);
+        verify(mAutocompleteController, never()).stop(anyInt());
+        verify(mAutocompleteController, never()).removeOnSuggestionsReceivedListener(any());
+    }
+
+    @Test
+    public void onTopResumedActivityChanged_tabSearchRetainsObservers() {
+        var session =
+                createSession(
+                        new GURL("https://abc.xyz"),
+                        "title",
+                        PageClassification.ANDROID_TAB_SEARCH_OVERLAY);
+        mMediator.beginInput(session);
+
+        clearInvocations(mAutocompleteController);
+        mMediator.onTopResumedActivityChanged(/* isTopResumedActivity= */ false);
+        verify(mAutocompleteController, never()).stop(anyInt());
+        verify(mAutocompleteController, never()).removeOnSuggestionsReceivedListener(any());
+    }
+
+    @Test
     public void isInInputSession_ignoresWindowFocus() {
         var session = createEmptySession();
         mMediator.beginInput(session);
@@ -2900,6 +2941,73 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    public void loadUrlForOmniboxMatch_extensionMatch_dispatchesToExtensionUi() {
+        ExtensionUi.setBackendForTesting(mExtensionUiBackend);
+        ResettersForTesting.register(() -> ExtensionUi.setBackendForTesting(null));
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        doReturn(mWebContents).when(mTab).getWebContents();
+
+        setUpSessionAndMatch(
+                AutocompleteRequestType.SEARCH, OmniboxSuggestionType.SEARCH_OTHER_ENGINE);
+        doReturn(true).when(mAutocompleteMatch).isExtensionMatch();
+
+        GURL extensionUrl = new GURL(UrlConstants.CHROME_EXTENSION_SCHEME + "://id/?q=test");
+        mMediator.loadUrlForOmniboxMatch(
+                /* matchIndex= */ 0,
+                mAutocompleteMatch,
+                extensionUrl,
+                /* inputStart= */ 0,
+                /* openInNewTab= */ true,
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ false);
+
+        // Verify that extension matches are dispatched to the extension system via
+        // ExtensionUi rather than triggering a normal tab navigation via
+        // AutocompleteDelegate.loadUrl().
+        verify(mExtensionUiBackend)
+                .onOmniboxExtensionInputEntered(
+                        mWebContents,
+                        extensionUrl.getSpec(),
+                        /* openInNewTab= */ true,
+                        /* openInNewWindow= */ false);
+        verify(mAutocompleteDelegate, never()).loadUrl(any());
+    }
+
+    @Test
+    public void loadUrlForOmniboxMatch_notExtensionMatch_loadsViaDelegate() {
+        setUpSessionAndMatch(
+                AutocompleteRequestType.SEARCH, OmniboxSuggestionType.SEARCH_OTHER_ENGINE);
+        doReturn(false).when(mAutocompleteMatch).isExtensionMatch();
+
+        GURL extensionUrl = new GURL(UrlConstants.CHROME_EXTENSION_SCHEME + "://id/options.html");
+        mMediator.loadUrlForOmniboxMatch(
+                /* matchIndex= */ 0,
+                mAutocompleteMatch,
+                extensionUrl,
+                /* inputStart= */ 0,
+                /* openInNewTab= */ false,
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ false);
+
+        verify(mAutocompleteDelegate).loadUrl(any());
+    }
+
+    @Test
+    public void loadUrlForOmniboxMatch_inBackground() {
+        setUpSessionAndMatch(AutocompleteRequestType.SEARCH, OmniboxSuggestionType.SEARCH_SUGGEST);
+        mMediator.loadUrlForOmniboxMatch(
+                /* matchIndex= */ 0,
+                mAutocompleteMatch,
+                JUnitTestGURLs.EXAMPLE_URL,
+                /* inputStart= */ 0,
+                /* openInNewTab= */ true,
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ true);
+        verify(mAutocompleteDelegate).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertTrue(mOmniboxLoadUrlParamsCaptor.getValue().openInBackground);
+    }
+
+    @Test
     public void onNavigation_parkedAtSentinelInZeroPrefixState_clearsText() {
         var session = createEmptySession();
         session.getAutocompleteInput().setUserText("");
@@ -2914,37 +3022,28 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     public void installAutocompleteObservers_failsWhenActivityNotFocused() {
-        // Create a new mediator with activity focus set to false.
-        doReturn(false).when(mActivity).hasWindowFocus();
-        AutocompleteMediator mediator =
-                new AutocompleteMediator(
-                        mContext,
-                        mResourceProvider,
-                        mAutocompleteDelegate,
-                        mTextStateProvider,
-                        mListModel,
-                        new Handler(),
-                        () -> mModalDialogManager,
-                        null,
-                        null,
-                        mLocationBarDataProvider,
-                        tabGroupId -> {},
-                        url -> false,
-                        mOmniboxActionDelegate,
-                        mActivityLifecycleDispatcher,
-                        mEmbedder,
-                        mWindowAndroid,
-                        mDeferredImeCallback,
-                        mFuseboxCoordinator,
-                        mUiOverrides);
-        mediator.getDropdownItemViewInfoListBuilderForTest()
-                .registerSuggestionProcessor(mMockProcessor);
+        mMediator.onTopResumedActivityChanged(/* isTopResumedActivity= */ false);
 
         var session = createEmptySession();
-        mediator.beginInput(session);
+        mMediator.beginInput(session);
 
         // Verify that observers are NOT installed because activity is not focused.
         verify(mAutocompleteController, never()).addOnSuggestionsReceivedListener(any());
+    }
+
+    @Test
+    public void installAutocompleteObservers_tabSearchInstallsWhenActivityNotFocused() {
+        mMediator.onTopResumedActivityChanged(/* isTopResumedActivity= */ false);
+
+        var session =
+                createSession(
+                        new GURL("https://abc.xyz"),
+                        "title",
+                        PageClassification.ANDROID_TAB_SEARCH_OVERLAY);
+        mMediator.beginInput(session);
+
+        // Verify that observers ARE installed for Tab Search even though activity is not focused.
+        verify(mAutocompleteController).addOnSuggestionsReceivedListener(mMediator);
     }
 
     @Test

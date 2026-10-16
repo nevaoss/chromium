@@ -10,6 +10,8 @@
 #include "base/functional/bind.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -116,8 +118,7 @@ void ContextualTasksEphemeralButtonController::OnTaskUpdated(
 void ContextualTasksEphemeralButtonController::OnTaskRemoved(
     const base::Uuid& task_id,
     contextual_tasks::ContextualTasksService::TriggerSource source) {
-  std::erase(ephemeral_button_eligible_tasks_, task_id);
-  should_update_visibility_callbacks_.Notify(false);
+  MaybeNotifyVisibilityShouldChange();
 }
 
 void ContextualTasksEphemeralButtonController::OnWillBeDestroyed() {
@@ -138,6 +139,7 @@ void ContextualTasksEphemeralButtonController::OnTaskAssociatedToTab(
 void ContextualTasksEphemeralButtonController::OnTaskDisassociatedFromTab(
     const base::Uuid& task_id,
     SessionID tab_id) {
+  std::erase(ephemeral_button_eligible_tabs_, tab_id);
   MaybeNotifyVisibilityShouldChange();
 }
 
@@ -168,14 +170,17 @@ void ContextualTasksEphemeralButtonController::OnEntryWillHide(
     return;
   }
 
+  contextual_tasks::ContextualTasksService* service =
+      GetContextualTasksService();
   std::optional<contextual_tasks::ContextualTask> current_task =
-      GetContextualTasksService()->GetContextualTaskForTab(
-          GetCurrentTabSessionId().value());
+      service->GetContextualTaskForTab(GetCurrentTabSessionId().value());
 
-  if (current_task) {
-    if (!std::ranges::contains(ephemeral_button_eligible_tasks_,
-                               current_task->GetTaskId())) {
-      ephemeral_button_eligible_tasks_.emplace_back(current_task->GetTaskId());
+  // Mark every tab associated to the task, not just the active one, so the
+  // remaining tabs keep the button if the dismissing tab goes away.
+  for (SessionID tab_id :
+       service->GetTabsAssociatedWithTask(current_task->GetTaskId())) {
+    if (!std::ranges::contains(ephemeral_button_eligible_tabs_, tab_id)) {
+      ephemeral_button_eligible_tabs_.emplace_back(tab_id);
     }
   }
   MaybeNotifyVisibilityShouldChange();
@@ -262,9 +267,13 @@ bool ContextualTasksEphemeralButtonController::ShouldShowEphemeralButton() {
   }
 
   // The ephemeral toolbar button should show if the contextual task side panel
-  // was closed.
-  bool should_show_button = std::ranges::contains(
-      ephemeral_button_eligible_tasks_, current_task->GetTaskId());
+  // was closed on this tab, or on any other tab sharing its task.
+  bool should_show_button = std::ranges::any_of(
+      GetContextualTasksService()->GetTabsAssociatedWithTask(
+          current_task->GetTaskId()),
+      [this](SessionID tab_id) {
+        return std::ranges::contains(ephemeral_button_eligible_tabs_, tab_id);
+      });
 
   if (contextual_tasks::kShowEntryPoint.Get() ==
       contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) {
@@ -273,6 +282,28 @@ bool ContextualTasksEphemeralButtonController::ShouldShowEphemeralButton() {
   }
 
   return should_show_button;
+}
+
+void ContextualTasksEphemeralButtonController::
+    RemoveEphemeralButtonForCurrentTask() {
+  if (!base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksEphemeralButtonContextMenu)) {
+    return;
+  }
+
+  std::optional<SessionID> current_tab_session_id = GetCurrentTabSessionId();
+  if (current_tab_session_id.has_value()) {
+    std::erase(ephemeral_button_eligible_tabs_, current_tab_session_id.value());
+  }
+
+  contextual_tasks::ContextualTasksUiService* ui_service =
+      contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
+          browser_window_interface_->GetProfile());
+  if (ui_service) {
+    ui_service->DestroyClosedSidePanel(browser_window_interface_);
+  }
+
+  MaybeNotifyVisibilityShouldChange();
 }
 
 contextual_tasks::ContextualTasksService*

@@ -1634,8 +1634,8 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
-                       AccessibilityMenuListDialogModeSetsize) {
-  RunHtmlTest(FILE_PATH_LITERAL("menulist-dialog-mode-setsize.html"));
+                       AccessibilityMenuListViolationModeSetsize) {
+  RunHtmlTest(FILE_PATH_LITERAL("menulist-violation-mode-setsize.html"));
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
@@ -1847,6 +1847,19 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityAriaRadiogroup) {
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityAriaRadioInShadowRoot) {
   RunAriaTest(FILE_PATH_LITERAL("aria-radio-in-shadow-root.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    DumpAccessibilityTreeTest,
+    AccessibilityRadiosInRadiogroupsWithInterveningNonGenerics) {
+  RunAriaTest(FILE_PATH_LITERAL(
+      "radios-in-radiogroups-with-intervening-non-generics.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityRadioGroupCalculationWithIgnoredRadios) {
+  RunAriaTest(
+      FILE_PATH_LITERAL("radio-group-calculation-with-ignored-radios.html"));
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityAriaReadonly) {

@@ -45,7 +45,8 @@ namespace blink {
 ArrayBufferContents::ArrayBufferContents(
     const base::subtle::PlatformSharedMemoryRegion& region,
     uint64_t offset,
-    size_t length) {
+    size_t length,
+    SharingType is_shared) {
   DCHECK(region.IsValid());
 
   // The offset must be a multiples of |SysInfo::VMAllocationGranularity()|.
@@ -71,8 +72,13 @@ ArrayBufferContents::ArrayBufferContents(
     base::subtle::PlatformSharedMemoryRegion::Unmap(mapping, mapper);
   };
   uint8_t* base = &result.value()[offset_rounding];
-  backing_store_ =
-      v8::ArrayBuffer::NewBackingStore(base, length, deleter, nullptr);
+  if (is_shared == kShared) {
+    backing_store_ =
+        v8::SharedArrayBuffer::NewBackingStore(base, length, deleter, nullptr);
+  } else {
+    backing_store_ =
+        v8::ArrayBuffer::NewBackingStore(base, length, deleter, nullptr);
+  }
 }
 
 ArrayBufferContents::ArrayBufferContents(
@@ -153,31 +159,47 @@ void ArrayBufferContents::Reset() {
   backing_store_.reset();
 }
 
-void ArrayBufferContents::Transfer(ArrayBufferContents& other) {
+void ArrayBufferContents::TransferOrCopy(ArrayBufferContents& other) {
   DCHECK(!IsShared());
-  DCHECK(!other.Data());
-  other.backing_store_ = std::move(backing_store_);
+  DCHECK(!other.IsValid());
+  // Transfer may be done with the intent of sending the bytes to a different
+  // thread, so play it safe by reverting to copying contents if the use
+  // count indicates we're not the only user.
+  if (backing_store_.use_count() != 1) {
+    CopyTo(other);
+    backing_store_.reset();
+  } else {
+    other.backing_store_ = std::move(backing_store_);
+  }
 }
 
 void ArrayBufferContents::ShareWith(ArrayBufferContents& other) {
   DCHECK(IsShared());
-  DCHECK(!other.Data());
+  DCHECK(!other.IsValid());
   other.backing_store_ = backing_store_;
 }
 
 void ArrayBufferContents::ShareNonSharedForInternalUse(
     ArrayBufferContents& other) {
   DCHECK(!IsShared());
-  DCHECK(!other.Data());
-  DCHECK(Data());
+  DCHECK(!other.IsValid());
+  DCHECK(IsValid());
   other.backing_store_ = backing_store_;
 }
 
 void ArrayBufferContents::CopyTo(ArrayBufferContents& other) {
-  other = ArrayBufferContents(
-      DataLength(), 1, IsShared() ? kShared : kNotShared, kDontInitialize);
-  if (!IsValid() || !other.IsValid())
+  if (!IsValid()) {
+    other = ArrayBufferContents();
     return;
+  }
+  const std::optional<size_t> max_num_elements =
+      backing_store_->IsResizableByUserJavaScript()
+          ? std::make_optional(backing_store_->MaxByteLength())
+          : std::nullopt;
+  other = ArrayBufferContents(
+      DataLength(), max_num_elements, 1, IsShared() ? kShared : kNotShared,
+      kDontInitialize, ArrayBufferContents::AllocationFailureBehavior::kCrash);
+  CHECK(other.IsValid());
   other.ByteSpan().copy_from(ByteSpan());
 }
 
@@ -202,6 +224,8 @@ void* ArrayBufferContents::AllocateMemory(size_t size,
     }
   }
 
+  constexpr auto flags_with_size =
+      flags | partition_alloc::AllocFlags::kAllowGigaAllocations;
 #ifdef V8_ENABLE_SANDBOX
   // The V8 sandbox requires all ArrayBuffer backing stores to be allocated
   // inside the sandbox address space. This isn't guaranteed if allocation
@@ -210,11 +234,11 @@ void* ArrayBufferContents::AllocateMemory(size_t size,
   // hooks (which are e.g. used by the heap profiler) should still be invoked.
   // Using the kNoOverrideHooks and kNoMemoryToolOverride flags with
   // accomplishes this.
-  constexpr auto new_flags = flags |
+  constexpr auto new_flags = flags_with_size |
                              partition_alloc::AllocFlags::kNoOverrideHooks |
                              partition_alloc::AllocFlags::kNoMemoryToolOverride;
 #else
-  constexpr auto new_flags = flags;
+  constexpr auto new_flags = flags_with_size;
 #endif
   void* data;
   if (policy == kZeroInitialize) {

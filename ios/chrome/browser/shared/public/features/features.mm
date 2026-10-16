@@ -899,7 +899,7 @@ bool IsAimCobrowseEnabled() {
   return base::FeatureList::IsEnabled(kAimCobrowse);
 }
 
-BASE_FEATURE(kPreventCobrowseOnAimSrpTap, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableCobrowseOnAimSrpTap, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kFeedbackEntryPointsRequireCanSubmitFeedbackCapability,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1008,9 +1008,17 @@ bool IsUpdateTabGroupColorsEnabled() {
 // Enables the plus button in NTP fakebox.
 BASE_FEATURE(kPlusButtonInFakebox, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables the plus button contextual menu in NTP fakebox.
+BASE_FEATURE(kPlusButtonMenuInFakebox, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Returns true if the plus button in NTP fakebox is enabled.
 bool IsPlusButtonInFakeboxEnabled() {
   return base::FeatureList::IsEnabled(kPlusButtonInFakebox);
+}
+
+// Returns true if the plus button contextual menu in NTP fakebox is enabled.
+bool IsPlusButtonMenuInFakeboxEnabled() {
+  return base::FeatureList::IsEnabled(kPlusButtonMenuInFakebox);
 }
 
 BASE_FEATURE(kAssistantAimMinimizedState, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1066,8 +1074,7 @@ bool IsIOSPhishGuardPasteShortcutDetectionEnabled() {
   return base::FeatureList::IsEnabled(kIOSPhishGuardPasteShortcutDetection);
 }
 
-
-BASE_FEATURE(kSupportGoogleOneDeepLink, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSupportGoogleOneDeepLink, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGoogleOneDeepLinkEnabled() {
   return base::FeatureList::IsEnabled(kSupportGoogleOneDeepLink);
@@ -1132,4 +1139,19 @@ BASE_FEATURE(kAimHistoryThreadsManagement, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAimHistoryThreadsManagementEnabled() {
   return base::FeatureList::IsEnabled(kAimHistoryThreadsManagement);
+}
+
+BASE_FEATURE(kTTCEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsTTCEnabled() {
+  return base::FeatureList::IsEnabled(kTTCEnabled);
+}
+
+BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kAimCobrowseWebSelectionSearch, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAimCobrowseWebSelectionSearchEnabled() {
+  return IsAimCobrowseEnabled() &&
+         base::FeatureList::IsEnabled(kAimCobrowseWebSelectionSearch);
 }

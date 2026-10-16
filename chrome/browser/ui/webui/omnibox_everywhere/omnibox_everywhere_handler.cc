@@ -8,6 +8,7 @@
 
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/browser_process.h"
@@ -127,7 +128,7 @@ class OmniboxEverywhereClient : public ContextualOmniboxClient {
       TemplateURLRef::PostContent* post_content,
       WindowOpenDisposition disposition,
       ui::PageTransition transition,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       base::TimeTicks match_selection_timestamp,
       bool destination_url_entered_without_scheme,
       bool destination_url_entered_with_http_scheme,
@@ -414,14 +415,17 @@ void OmniboxEverywhereHandler::SetHotkey(const std::string& hotkey_spec) {
 }
 
 void OmniboxEverywhereHandler::ShowHotkeyDropdown(
-    const gfx::Rect& anchor_bounds) {
+    const gfx::Rect& anchor_bounds,
+    ShowHotkeyDropdownCallback callback) {
   if (!web_contents_) {
+    std::move(callback).Run();
     return;
   }
 
   views::Widget* widget = views::Widget::GetWidgetForNativeWindow(
       web_contents_->GetTopLevelNativeWindow());
   if (!widget) {
+    std::move(callback).Run();
     return;
   }
 
@@ -441,13 +445,15 @@ void OmniboxEverywhereHandler::ShowHotkeyDropdown(
       base::BindRepeating(&OmniboxEverywhereHandler::SetHotkey,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&OmniboxEverywhereHandler::OnHotkeyDropdownClosed,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void OmniboxEverywhereHandler::OnHotkeyDropdownClosed() {
+void OmniboxEverywhereHandler::OnHotkeyDropdownClosed(
+    ShowHotkeyDropdownCallback callback) {
   if (service_) {
     service_->OnHotkeyDropdownClosed();
   }
+  std::move(callback).Run();
 }
 
 void OmniboxEverywhereHandler::PushFreState() {
@@ -475,6 +481,14 @@ void OmniboxEverywhereHandler::PushFreState() {
 
 void OmniboxEverywhereHandler::OpenHotkeySettings() {
   chrome::ShowSettingsSubPageForProfile(profile_, chrome::kSearchSubPage);
+}
+
+void OmniboxEverywhereHandler::OnEscapePressed() {
+  if (service_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&OmniboxEverywhereService::HidePopup,
+                                  base::Unretained(service_)));
+  }
 }
 
 void OmniboxEverywhereHandler::OnProfileAvatarChanged(

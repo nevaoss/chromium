@@ -410,9 +410,9 @@ TEST_F(AutocompleteControllerTest, FilterMatchesForInstantKeywordWithBareAt) {
   EXPECT_TRUE(std::all_of(
       controller_.internal_result_.begin(), controller_.internal_result_.end(),
       [](const auto& match) {
-        return match.type == AutocompleteMatchType::STARTER_PACK ||
+        return match.type == omnibox::AutocompleteMatchType::kStarterPack ||
                match.type ==
-                   AutocompleteMatchType::FEATURED_ENTERPRISE_SEARCH ||
+                   omnibox::AutocompleteMatchType::kFeaturedEnterpriseSearch ||
                match.contents == u"@";
       }));
 }
@@ -1171,7 +1171,7 @@ TEST_F(AutocompleteControllerTest, MlRanking_PiecewiseMappedSearchBlending) {
   // score mapping function to overwrite the relevance score). This will result
   // in the document suggestion getting culled from the final list of
   // suggestions.
-  const auto type = AutocompleteMatchType::DOCUMENT_SUGGESTION;
+  const auto type = omnibox::AutocompleteMatchType::kDocumentSuggestion;
   EXPECT_THAT(
       controller_.SimulateCleanAutocompletePass({
           // Final score: 1000
@@ -1196,8 +1196,8 @@ TEST_F(AutocompleteControllerTest, MlRanking_PiecewiseMappedSearchBlending) {
           CreateAnswerMlScoredMatch("answer 1100 0.75", false, 1100, 0.75),
           // Final score: 1000 (!= 1500)
           CreateMlScoredMatch("calculator 1000 0.95",
-                              AutocompleteMatchType::CALCULATOR, false, 1000,
-                              1),
+                              omnibox::AutocompleteMatchType::kCalculator,
+                              false, 1000, 1),
           // Final score: 1431
           CreateHistoryUrlMlScoredMatch("history 500 0.914", true, 500, 0.914),
       }),
@@ -1230,10 +1230,11 @@ TEST_F(AutocompleteControllerTest, MlRanking_PiecewiseMappedSearchBlending) {
       }));
 
   scoped_refptr<FakeAutocompleteProvider> shortcut_provider =
-      new FakeAutocompleteProvider(AutocompleteProvider::Type::TYPE_SHORTCUTS);
+      new FakeAutocompleteProvider(AutocompleteProvider::Type::kShortcuts);
 
   auto shortcut_match = CreateMlScoredMatch(
-      "shortcut 600 0.75", AutocompleteMatchType::HISTORY_URL, true, 600, 0.75);
+      "shortcut 600 0.75", omnibox::AutocompleteMatchType::kHistoryUrl, true,
+      600, 0.75);
   shortcut_match.provider = shortcut_provider.get();
 
   // Non-boosted shortcut suggestions should be ranked BELOW searches.
@@ -1273,7 +1274,8 @@ TEST_F(AutocompleteControllerTest, MlRanking_PiecewiseMappedSearchBlending) {
   // ...unless their final relevance score (obtained via piecewise ML scoring)
   // is below the "grouping threshold".
   shortcut_match = CreateMlScoredMatch(
-      "shortcut 600 0.25", AutocompleteMatchType::HISTORY_URL, true, 600, 0.25);
+      "shortcut 600 0.25", omnibox::AutocompleteMatchType::kHistoryUrl, true,
+      600, 0.25);
   shortcut_match.provider = shortcut_provider.get();
   shortcut_match.scoring_signals->set_visit_count(5);
   EXPECT_THAT(
@@ -1469,7 +1471,7 @@ TEST_F(AutocompleteControllerTest, MlRanking_MappedSearchBlending) {
   // "final_score = min + ml_score * (max - min)" to overwrite the score). This
   // will result in the document suggestion getting culled from the final list
   // of suggestions.
-  const auto type = AutocompleteMatchType::DOCUMENT_SUGGESTION;
+  const auto type = omnibox::AutocompleteMatchType::kDocumentSuggestion;
   EXPECT_THAT(
       controller_.SimulateCleanAutocompletePass({
           // Final score: 1150 (== 600 + 0.25 * (2800 - 600))
@@ -1890,7 +1892,7 @@ TEST_F(AutocompleteControllerTest, UpdateResult_NotifyingAndTimers) {
     SCOPED_TRACE("Expect debounced expire notification.");
     controller_.GetFakeProvider().done_ = false;
     AutocompleteMatch transferred_match{
-        nullptr, 1000, false, AutocompleteMatchType::URL_WHAT_YOU_TYPED};
+        nullptr, 1000, false, omnibox::AutocompleteMatchType::kUrlWhatYouTyped};
     transferred_match.from_previous = true;
     controller_.GetFakeProvider().matches_ = {transferred_match};
     controller_.Start(FakeAutocompleteController::CreateInput(u"test"));
@@ -1901,6 +1903,173 @@ TEST_F(AutocompleteControllerTest, UpdateResult_NotifyingAndTimers) {
         700, AutocompleteController::UpdateType::kExpirePass);
     controller_.ExpectStopAfter(800);
     controller_.ExpectNoNotificationOrStop();
+  }
+}
+
+TEST_F(AutocompleteControllerTest,
+       UpdateResult_ComposeboxSuppressesEmptySyncResult) {
+  auto create_composebox_input =
+      [](metrics::OmniboxEventProto::PageClassification classification) {
+        return AutocompleteInput(u"", classification, TestSchemeClassifier());
+      };
+
+  // Provider index 4 is TYPE_SEARCH, which runs for Composebox.
+  auto& search_provider = controller_.GetFakeProvider(4);
+
+  {
+    SCOPED_TRACE(
+        "NTP composebox: empty sync pass while not done should not notify; "
+        "async pass with matches should notify.");
+    controller_.internal_result_.Reset();
+    controller_.published_result_.Reset();
+    search_provider.done_ = false;
+    search_provider.matches_ = {};
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
+
+    search_provider.matches_ = {CreateSearchMatch("search", true, 900)};
+    search_provider.done_ = true;
+    controller_.OnProviderUpdate(true, &search_provider);
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kLastAsyncPass);
+    controller_.ExpectNoNotificationOrStop();
+  }
+  {
+    SCOPED_TRACE(
+        "Omnibox composebox: empty sync pass while not done should not notify; "
+        "final async pass with empty matches should notify.");
+    controller_.internal_result_.Reset();
+    controller_.published_result_.Reset();
+    search_provider.done_ = false;
+    search_provider.matches_ = {};
+    controller_.Start(create_composebox_input(
+        metrics::OmniboxEventProto::OTHER_OMNIBOX_COMPOSEBOX));
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
+
+    search_provider.done_ = true;
+    controller_.OnProviderUpdate(true, &search_provider);
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kLastAsyncPass);
+    controller_.ExpectNoNotificationOrStop();
+  }
+  {
+    SCOPED_TRACE(
+        "Composebox: empty sync pass while not done should notify if stop "
+        "timer triggers.");
+    controller_.internal_result_.Reset();
+    controller_.published_result_.Reset();
+    search_provider.done_ = false;
+    search_provider.matches_ = {};
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
+
+    task_environment_.FastForwardBy(base::Milliseconds(1500));
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 1);
+    EXPECT_EQ(
+        controller_.observer_->on_autocomplete_stop_timer_stopped_call_count,
+        1);
+    controller_.observer_->on_result_changed_call_count_ = 0;
+    controller_.observer_->on_autocomplete_stop_timer_stopped_call_count = 0;
+    controller_.ExpectNoNotificationOrStop();
+  }
+  {
+    SCOPED_TRACE("Composebox: non-empty sync pass should notify immediately.");
+    controller_.internal_result_.Reset();
+    controller_.published_result_.Reset();
+    search_provider.done_ = false;
+    search_provider.matches_ = {CreateSearchMatch("search", true, 900)};
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kSyncPass);
+
+    search_provider.done_ = true;
+    controller_.OnProviderUpdate(true, &search_provider);
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kLastAsyncPass);
+    controller_.ExpectNoNotificationOrStop();
+  }
+  {
+    SCOPED_TRACE(
+        "Composebox: verbatim-only sync pass while not done should not notify; "
+        "async pass with suggestions should notify.");
+    controller_.internal_result_.Reset();
+    controller_.published_result_.Reset();
+    AutocompleteMatch verbatim_match = CreateSearchMatch("verbatim", true, 900);
+    verbatim_match.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
+    search_provider.done_ = false;
+    search_provider.matches_ = {verbatim_match};
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
+
+    search_provider.matches_ = {
+        verbatim_match, CreateSearchMatch("search suggestion", false, 800)};
+    search_provider.done_ = true;
+    controller_.OnProviderUpdate(true, &search_provider);
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kLastAsyncPass);
+    controller_.ExpectNoNotificationOrStop();
+  }
+  {
+    SCOPED_TRACE(
+        "Composebox: transferred-only sync pass while not done should not "
+        "notify; async pass with suggestions should notify.");
+    controller_.internal_result_.Reset();
+    controller_.published_result_.Reset();
+    AutocompleteMatch old_match = CreateSearchMatch("old search", true, 900);
+    old_match.provider = &search_provider;
+    controller_.internal_result_.AppendMatches({old_match});
+    search_provider.done_ = false;
+    search_provider.matches_ = {};
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    EXPECT_FALSE(controller_.internal_result_.empty());
+    EXPECT_TRUE(controller_.internal_result_.match_at(0)->from_previous);
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
+
+    search_provider.matches_ = {
+        CreateSearchMatch("new suggestion", true, 900)};
+    search_provider.done_ = true;
+    controller_.OnProviderUpdate(true, &search_provider);
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kLastAsyncPass);
+    controller_.ExpectNoNotificationOrStop();
+  }
+  {
+    SCOPED_TRACE(
+        "Composebox: Stop(kClobbered) after suppressed empty sync pass should "
+        "clear published_result_ and notify observers.");
+    // Populate a SEARCH_WHAT_YOU_TYPED match on search_provider so it won't be
+    // transferred by TransferOldMatches when starting the next query.
+    AutocompleteMatch match = CreateSearchMatch("search", true, 900);
+    match.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
+    search_provider.done_ = true;
+    search_provider.matches_ = {match};
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    controller_.ExpectOnResultChanged(
+        0, AutocompleteController::UpdateType::kSyncPassOnly);
+    EXPECT_FALSE(controller_.published_result_.empty());
+
+    // Start a new query where search_provider is empty and not done yet.
+    // Sync pass is empty and notification is suppressed, leaving
+    // internal_result_ empty while published_result_ still holds the previous
+    // query's match.
+    search_provider.matches_ = {};
+    search_provider.done_ = false;
+    controller_.Start(
+        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
+    EXPECT_TRUE(controller_.internal_result_.empty());
+    EXPECT_FALSE(controller_.published_result_.empty());
+
+    controller_.Stop(AutocompleteStopReason::kClobbered);
+    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 1);
+    EXPECT_TRUE(controller_.published_result_.empty());
+    controller_.observer_->on_result_changed_call_count_ = 0;
   }
 }
 
@@ -2041,9 +2210,9 @@ TEST_F(AutocompleteControllerTest, UpdateResult_ForceAllowedToBeDefault) {
             true, true,
             {
                 CreateSearchMatch("search", true, 200),
-                CreateAutocompleteMatch("history",
-                                        AutocompleteMatchType::HISTORY_CLUSTER,
-                                        false, false, 1000, std::nullopt),
+                CreateAutocompleteMatch(
+                    "history", omnibox::AutocompleteMatchType::kHistoryCluster,
+                    false, false, 1000, std::nullopt),
             },
             FakeAutocompleteController::CreateInput(u"test", false, true)),
         testing::ElementsAreArray({
@@ -2153,6 +2322,55 @@ TEST_F(AutocompleteControllerTest, UpdateResult_ContextualSuggestionsAndLens) {
                                          provider_matches, zps_input);
     check_results(/*expect_contextual=*/true, /*expect_lens=*/true);
   }
+}
+
+TEST_F(AutocompleteControllerTest,
+       UpdateResult_ContextualSuggestionsPreservesCrossDeviceTab) {
+  // Enable contextual suggestions with ablation of other suggestions.
+  omnibox_feature_configs::ScopedConfigForTesting<
+      omnibox_feature_configs::ContextualSearch>
+      contextual_search_config;
+  contextual_search_config.Get().contextual_zps_limit = 3;
+  contextual_search_config.Get().show_open_lens_action = false;
+  contextual_search_config.Get()
+      .contextual_suggestions_ablate_others_when_present = true;
+
+  EXPECT_CALL(*provider_client(), AreLensEntrypointsVisible())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*provider_client(), IsPagePaywalled())
+      .WillRepeatedly(testing::Return(false));
+
+  AutocompleteInput zps_input(u"", 0u, metrics::OmniboxEventProto::OTHER,
+                              TestSchemeClassifier());
+  zps_input.set_focus_type(metrics::OmniboxFocusType::INTERACTION_FOCUS);
+
+  AutocompleteMatch cross_device_match;
+  cross_device_match.type = omnibox::AutocompleteMatchType::kCrossDeviceTab;
+  cross_device_match.suggestion_group_id = omnibox::GROUP_CROSS_DEVICE_TABS;
+  cross_device_match.relevance = 100;
+  cross_device_match.destination_url = GURL("https://example.com/tab");
+  cross_device_match.contents = u"cross_device";
+  cross_device_match.contents_class = {
+      {0, AutocompleteMatch::ACMatchClassification::NONE}};
+
+  AutocompleteMatch personalized_match =
+      CreatePersonalizedZeroPrefixMatch("zps_base", 1450);
+
+  AutocompleteMatch contextual_match =
+      CreateContextualSearchMatch(u"zps_contextual");
+
+  // 1. Sync pass before async contextual search matches arrive.
+  EXPECT_THAT(controller_.SimulateAutocompletePass(
+                  /*sync=*/true, /*done=*/false,
+                  {cross_device_match, personalized_match}, zps_input),
+              testing::ElementsAre("cross_device", "zps_base"));
+
+  // 2. Async pass when contextual search matches arrive. Personalized zero
+  // suggest is ablated, but the cross-device tab remains present at the top.
+  EXPECT_THAT(controller_.SimulateAutocompletePass(
+                  /*sync=*/false, /*done=*/true,
+                  {cross_device_match, personalized_match, contextual_match}),
+              testing::ElementsAre("cross_device", "zps_contextual"));
 }
 
 TEST_F(AutocompleteControllerTest, UpdateResult_HasContextualChips) {
@@ -2326,7 +2544,7 @@ TEST_F(AutocompleteControllerTest, ShouldRunProvider_StarterPack) {
   // Not in keyword mode, run all providers except open tab provider.
   for (auto& provider : controller_.providers()) {
     EXPECT_EQ(controller_.ShouldRunProvider(provider.get()),
-              provider->type() != AutocompleteProvider::TYPE_OPEN_TAB)
+              provider->type() != AutocompleteProvider::Type::kOpenTab)
         << "Provider Type: "
         << AutocompleteProvider::TypeToString(provider->type());
   }
@@ -2336,9 +2554,9 @@ TEST_F(AutocompleteControllerTest, ShouldRunProvider_StarterPack) {
 
   // In @tabs, run search, keyword, and open tab provider only.
   controller_.input_.UpdateText(u"@tabs", 0, {});
-  expected_provider_types = {AutocompleteProvider::TYPE_KEYWORD,
-                             AutocompleteProvider::TYPE_SEARCH,
-                             AutocompleteProvider::TYPE_OPEN_TAB};
+  expected_provider_types = {AutocompleteProvider::Type::kKeyword,
+                             AutocompleteProvider::Type::kSearch,
+                             AutocompleteProvider::Type::kOpenTab};
   for (auto& provider : controller_.providers()) {
     EXPECT_EQ(controller_.ShouldRunProvider(provider.get()),
               expected_provider_types.contains(provider->type()))
@@ -2348,9 +2566,9 @@ TEST_F(AutocompleteControllerTest, ShouldRunProvider_StarterPack) {
 
   // In @bookmarks, run search, keyword, and bookmarks only.
   controller_.input_.UpdateText(u"@bookmarks", 0, {});
-  expected_provider_types = {AutocompleteProvider::TYPE_KEYWORD,
-                             AutocompleteProvider::TYPE_SEARCH,
-                             AutocompleteProvider::TYPE_BOOKMARK};
+  expected_provider_types = {AutocompleteProvider::Type::kKeyword,
+                             AutocompleteProvider::Type::kSearch,
+                             AutocompleteProvider::Type::kBookmark};
   for (auto& provider : controller_.providers()) {
     EXPECT_EQ(controller_.ShouldRunProvider(provider.get()),
               expected_provider_types.contains(provider->type()))
@@ -2360,10 +2578,10 @@ TEST_F(AutocompleteControllerTest, ShouldRunProvider_StarterPack) {
 
   // In @history, run search, keyword, and history providers only.
   controller_.input_.UpdateText(u"@history", 0, {});
-  expected_provider_types = {AutocompleteProvider::TYPE_KEYWORD,
-                             AutocompleteProvider::TYPE_SEARCH,
-                             AutocompleteProvider::TYPE_HISTORY_QUICK,
-                             AutocompleteProvider::TYPE_HISTORY_URL};
+  expected_provider_types = {AutocompleteProvider::Type::kKeyword,
+                             AutocompleteProvider::Type::kSearch,
+                             AutocompleteProvider::Type::kHistoryQuick,
+                             AutocompleteProvider::Type::kHistoryUrl};
   for (auto& provider : controller_.providers()) {
     EXPECT_EQ(controller_.ShouldRunProvider(provider.get()),
               expected_provider_types.contains(provider->type()))
@@ -2397,7 +2615,7 @@ TEST_F(AutocompleteControllerTest,
       std::make_unique<TemplateURL>(turl_data));
 
   // Not in keyword mode, run all providers except open tab provider.
-  excluded_provider_types = {AutocompleteProvider::TYPE_OPEN_TAB};
+  excluded_provider_types = {AutocompleteProvider::Type::kOpenTab};
   for (auto& provider : controller_.providers()) {
     EXPECT_NE(controller_.ShouldRunProvider(provider.get()),
               excluded_provider_types.contains(provider->type()))
@@ -2410,10 +2628,10 @@ TEST_F(AutocompleteControllerTest,
   controller_.input_.UpdateText(u"keyword", 0, {});
   controller_.input_.set_in_keyword_mode(true);
   excluded_provider_types = {
-      AutocompleteProvider::TYPE_OPEN_TAB,
-      AutocompleteProvider::TYPE_HISTORY_CLUSTER_PROVIDER,
-      AutocompleteProvider::TYPE_DOCUMENT,
-      AutocompleteProvider::TYPE_ON_DEVICE_HEAD};
+      AutocompleteProvider::Type::kOpenTab,
+      AutocompleteProvider::Type::kHistoryClusterProvider,
+      AutocompleteProvider::Type::kDocument,
+      AutocompleteProvider::Type::kOnDeviceHead};
   for (auto& provider : controller_.providers()) {
     EXPECT_NE(controller_.ShouldRunProvider(provider.get()),
               excluded_provider_types.contains(provider->type()))
@@ -2424,9 +2642,9 @@ TEST_F(AutocompleteControllerTest,
   // For drive.google.com, run document provider.
   controller_.input_.UpdateText(u"drive.google.com", 0, {});
   excluded_provider_types = {
-      AutocompleteProvider::TYPE_OPEN_TAB,
-      AutocompleteProvider::TYPE_HISTORY_CLUSTER_PROVIDER,
-      AutocompleteProvider::TYPE_ON_DEVICE_HEAD};
+      AutocompleteProvider::Type::kOpenTab,
+      AutocompleteProvider::Type::kHistoryClusterProvider,
+      AutocompleteProvider::Type::kOnDeviceHead};
   for (auto& provider : controller_.providers()) {
     EXPECT_NE(controller_.ShouldRunProvider(provider.get()),
               excluded_provider_types.contains(provider->type()))
@@ -2438,7 +2656,7 @@ TEST_F(AutocompleteControllerTest,
 TEST_F(AutocompleteControllerTest, ShouldRunProvider_LensSearchbox) {
   // Run all providers except open tab provider.
   std::set<AutocompleteProvider::Type> excluded_provider_types = {
-      AutocompleteProvider::TYPE_OPEN_TAB};
+      AutocompleteProvider::Type::kOpenTab};
   controller_.input_ = AutocompleteInput(
       u"a", 1u, metrics::OmniboxEventProto::OTHER, TestSchemeClassifier());
   for (auto& provider : controller_.providers()) {
@@ -2450,7 +2668,7 @@ TEST_F(AutocompleteControllerTest, ShouldRunProvider_LensSearchbox) {
 
   // For Lens searchboxes, run search provider only.
   std::set<AutocompleteProvider::Type> expected_provider_types = {
-      AutocompleteProvider::TYPE_SEARCH};
+      AutocompleteProvider::Type::kSearch};
 
   controller_.input_ = AutocompleteInput(
       u"a", 1u, metrics::OmniboxEventProto::CONTEXTUAL_SEARCHBOX,
@@ -2513,10 +2731,10 @@ TEST_F(AutocompleteControllerTest,
 
   // Setup the providers.
   auto aggregator_provider = base::MakeRefCounted<FakeAutocompleteProvider>(
-      AutocompleteProvider::Type::TYPE_ENTERPRISE_SEARCH_AGGREGATOR);
+      AutocompleteProvider::Type::kEnterpriseSearchAggregator);
   controller_.providers_.push_back(aggregator_provider);
   auto document_provider = base::MakeRefCounted<FakeAutocompleteProvider>(
-      AutocompleteProvider::Type::TYPE_DOCUMENT);
+      AutocompleteProvider::Type::kDocument);
   controller_.providers_.push_back(document_provider);
 
   // In unscoped mode (not keyword mode), aggregator is run when
@@ -2576,8 +2794,8 @@ TEST_F(AutocompleteControllerTest,
 
   // Only search, keyword, and aggregator providers ran when in aggregator mode.
   std::set<AutocompleteProvider::Type> expected_provider_types = {
-      AutocompleteProvider::TYPE_SEARCH, AutocompleteProvider::TYPE_KEYWORD,
-      AutocompleteProvider::Type::TYPE_ENTERPRISE_SEARCH_AGGREGATOR};
+      AutocompleteProvider::Type::kSearch, AutocompleteProvider::Type::kKeyword,
+      AutocompleteProvider::Type::kEnterpriseSearchAggregator};
   controller_.input_.UpdateText(u"aggregator_not_featured", 0, {});
   for (auto& provider : controller_.providers()) {
     EXPECT_EQ(controller_.ShouldRunProvider(provider.get()),
@@ -2600,9 +2818,9 @@ TEST_F(AutocompleteControllerTest,
 TEST_F(AutocompleteControllerTest, ShouldRunProvider_AndroidHubSearch) {
   // Regular Hub search (ANDROID_HUB) should run all 4 providers.
   std::set<AutocompleteProvider::Type> expected_provider_types = {
-      AutocompleteProvider::TYPE_SEARCH, AutocompleteProvider::TYPE_OPEN_TAB,
-      AutocompleteProvider::TYPE_BOOKMARK,
-      AutocompleteProvider::TYPE_HISTORY_QUICK};
+      AutocompleteProvider::Type::kSearch, AutocompleteProvider::Type::kOpenTab,
+      AutocompleteProvider::Type::kBookmark,
+      AutocompleteProvider::Type::kHistoryQuick};
 
   controller_.input_ =
       AutocompleteInput(u"a", 1u, metrics::OmniboxEventProto::ANDROID_HUB,
@@ -2621,9 +2839,9 @@ TEST_F(AutocompleteControllerTest, ShouldRunProvider_AndroidTabSearchOverlay) {
   // providers (e.g. SearchProvider, BookmarkProvider) will filter themselves
   // out in their Start() methods.
   std::set<AutocompleteProvider::Type> expected_provider_types = {
-      AutocompleteProvider::TYPE_SEARCH, AutocompleteProvider::TYPE_OPEN_TAB,
-      AutocompleteProvider::TYPE_BOOKMARK,
-      AutocompleteProvider::TYPE_HISTORY_QUICK};
+      AutocompleteProvider::Type::kSearch, AutocompleteProvider::Type::kOpenTab,
+      AutocompleteProvider::Type::kBookmark,
+      AutocompleteProvider::Type::kHistoryQuick};
 
   AutocompleteInput input(
       u"a", 1u, metrics::OmniboxEventProto::ANDROID_TAB_SEARCH_OVERLAY,
@@ -2950,7 +3168,7 @@ TEST_F(AutocompleteControllerTest, UpdateAssociatedKeywords) {
 
   struct MatchData {
     std::u16string fill_into_edit;
-    AutocompleteMatchType::Type type;
+    omnibox::AutocompleteMatchType type;
   };
 
   auto test = [&](const std::u16string input_text,
@@ -3012,9 +3230,9 @@ TEST_F(AutocompleteControllerTest, UpdateAssociatedKeywords) {
   // regardless of the input or the match position.
   EXPECT_THAT(test(u"input", u"",
                    {{u"keyword_starter_pack",
-                     AutocompleteMatchType::Type::STARTER_PACK},
+                     omnibox::AutocompleteMatchType::kStarterPack},
                     {u"keyword_featured_enterprise_search",
-                     AutocompleteMatchType::Type::FEATURED_ENTERPRISE_SEARCH},
+                     omnibox::AutocompleteMatchType::kFeaturedEnterpriseSearch},
                     {u"keyword_0"},
                     {u"keywo"}}),
               testing::ElementsAreArray({u"keyword_starter_pack",
@@ -3045,7 +3263,7 @@ TEST_F(AutocompleteControllerTest, UpdateAssociatedKeywords) {
       testing::ElementsAreArray({u"", u"", u"keyword_0"}));
 
   EXPECT_THAT(test(u"", u"",
-                   {{u"keywo", AutocompleteMatchType::Type::NAVSUGGEST},
+                   {{u"keywo", omnibox::AutocompleteMatchType::kNavsuggest},
                     {u"keyword_0_underscore"},
                     {u"keyword_0 space"}},
                    /*is_zero_suggest=*/true),
@@ -3411,7 +3629,7 @@ TEST_F(AutocompleteControllerTest, PersistsExperimentStatsV2InSession) {
   controller_.template_url_service_->Add(
       std::make_unique<TemplateURL>(turl_data));
   AutocompleteMatch match(nullptr, 1100, false,
-                          AutocompleteMatchType::SEARCH_SUGGEST);
+                          omnibox::AutocompleteMatchType::kSearchSuggest);
   match.keyword = u"search";
   match.destination_url = GURL("https://google.com/search?q=foo");
   match.search_terms_args =
@@ -3442,7 +3660,7 @@ TEST_F(AutocompleteControllerTest, PersistsExperimentStatsV2InSession) {
 
   // Run another autocomplete pass (e.g. typing query "foo").
   AutocompleteMatch typed_match(nullptr, 1100, false,
-                                AutocompleteMatchType::SEARCH_SUGGEST);
+                                omnibox::AutocompleteMatchType::kSearchSuggest);
   typed_match.keyword = u"search";
   typed_match.destination_url = GURL("https://google.com/search?q=foo");
   typed_match.search_terms_args =
@@ -3467,7 +3685,7 @@ TEST_F(AutocompleteControllerTest, PersistsExperimentStatsV2InSession) {
 TEST_F(AutocompleteControllerTest,
        MaybeProcessInlineLocationSuggestionMatch_ResetsPermission) {
   AutocompleteMatch match(nullptr, 1100, false,
-                          AutocompleteMatchType::SEARCH_SUGGEST);
+                          omnibox::AutocompleteMatchType::kSearchSuggest);
   match.subtypes.insert(omnibox::SUBTYPE_LOCATION_SUGGEST_TRIGGER);
   match.extra_headers[kXGeoHeader] = "w test";
   match.destination_url = GURL("https://www.google.com/search?q=coffee");
@@ -3491,7 +3709,7 @@ TEST_F(AutocompleteControllerTest,
       std::make_unique<TemplateURL>(turl_data));
 
   AutocompleteMatch match(nullptr, 1100, false,
-                          AutocompleteMatchType::SEARCH_SUGGEST);
+                          omnibox::AutocompleteMatchType::kSearchSuggest);
   match.keyword = u"google.com";
   match.subtypes = {omnibox::SuggestSubtype::SUBTYPE_CONTEXTUAL_SEARCH,
                     omnibox::SuggestSubtype::SUBTYPE_CONTEXTUAL_SEARCH_STATIC};
@@ -3513,8 +3731,8 @@ TEST_F(AutocompleteControllerTest,
       controller_.internal_result_.match_at(0)->description);
 
   // Non-static contextual suggestions always have description populated.
-  AutocompleteMatch non_static_match(nullptr, 1100, false,
-                                     AutocompleteMatchType::SEARCH_SUGGEST);
+  AutocompleteMatch non_static_match(
+      nullptr, 1100, false, omnibox::AutocompleteMatchType::kSearchSuggest);
   non_static_match.keyword = u"google.com";
   non_static_match.subtypes = {
       omnibox::SuggestSubtype::SUBTYPE_CONTEXTUAL_SEARCH};
@@ -3532,7 +3750,7 @@ TEST_F(AutocompleteControllerTest, ExcludedProviderStoppedAndUpdatesIgnored) {
   // Set up an excluded provider, e.g., OnDeviceHeadProvider which does not run
   // in keyword mode.
   auto head_provider = base::MakeRefCounted<FakeAutocompleteProvider>(
-      AutocompleteProvider::Type::TYPE_ON_DEVICE_HEAD);
+      AutocompleteProvider::Type::kOnDeviceHead);
   controller_.providers_.push_back(head_provider);
 
   // Non-keyword input: head_provider should run.

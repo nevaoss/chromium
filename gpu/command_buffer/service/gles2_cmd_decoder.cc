@@ -343,6 +343,28 @@ class ScopedPixelUnpackState {
   raw_ptr<ContextState> state_;
 };
 
+// Temporarily resets UNPACK_ROW_LENGTH and UNPACK_IMAGE_HEIGHT in the real
+// driver to their initial values (0) around a compressed texture upload,
+// restoring the tracked values when it goes out of scope. Unlike
+// ScopedPixelUnpackState it does not unbind the pixel unpack buffer:
+// compressed uploads legitimately source from it. See the comment in
+// DoCompressedTexImage for why compressed dispatches need this.
+class ScopedCompressedUnpackStateScrub {
+ public:
+  explicit ScopedCompressedUnpackStateScrub(ContextState* state);
+
+  ScopedCompressedUnpackStateScrub(const ScopedCompressedUnpackStateScrub&) =
+      delete;
+  ScopedCompressedUnpackStateScrub& operator=(
+      const ScopedCompressedUnpackStateScrub&) = delete;
+
+  ~ScopedCompressedUnpackStateScrub();
+
+ private:
+  raw_ptr<ContextState> state_;
+  bool active_ = false;
+};
+
 // Encapsulates an OpenGL texture.
 class BackTexture {
  public:
@@ -2283,7 +2305,10 @@ class GLES2DecoderImpl : public GLES2Decoder, public ErrorStateClient {
   const SamplerState& GetSamplerStateForTextureUnit(GLenum target, GLuint unit);
 
   // Helper method to call glClear workaround.
-  void ClearFramebufferForWorkaround(GLbitfield mask);
+  // Clears the framebuffer via a blit on drivers where glClear is broken.
+  // Returns false if the blit failed, in which case the targeted attachments
+  // must not be recorded as cleared.
+  bool ClearFramebufferForWorkaround(GLbitfield mask);
 
   bool SupportsSeparateFramebufferBinds() const {
     return (feature_info_->feature_flags().chromium_framebuffer_multisample ||
@@ -2512,7 +2537,8 @@ class GLES2DecoderImpl : public GLES2Decoder, public ErrorStateClient {
   };
 
   // A table of CommandInfo for all the commands.
-  static const CommandInfo command_info[kNumCommands - kFirstGLES2Command];
+  static const std::array<CommandInfo, kNumCommands - kFirstGLES2Command>
+      command_info;
 
   // Most recent generation of the TextureManager.  If this no longer matches
   // the current generation when our context becomes current, then we'll rebind
@@ -2528,7 +2554,9 @@ class GLES2DecoderImpl : public GLES2Decoder, public ErrorStateClient {
   base::WeakPtrFactory<GLES2DecoderImpl> weak_ptr_factory_{this};
 };
 
-constexpr GLES2DecoderImpl::CommandInfo GLES2DecoderImpl::command_info[] = {
+constexpr std::array<GLES2DecoderImpl::CommandInfo,
+                     kNumCommands - kFirstGLES2Command>
+    GLES2DecoderImpl::command_info = {{
 #define GLES2_CMD_OP(name)                                   \
   {                                                          \
     &GLES2DecoderImpl::Handle##name, cmds::name::kArgFlags,  \
@@ -2536,9 +2564,9 @@ constexpr GLES2DecoderImpl::CommandInfo GLES2DecoderImpl::command_info[] = {
         sizeof(cmds::name) / sizeof(CommandBufferEntry) - 1, \
   }                                                          \
   , /* NOLINT */
-    GLES2_COMMAND_LIST(GLES2_CMD_OP)
+        GLES2_COMMAND_LIST(GLES2_CMD_OP)
 #undef GLES2_CMD_OP
-};
+    }};
 
 ScopedGLErrorSuppressor::ScopedGLErrorSuppressor(
     const char* function_name, ErrorState* error_state)
@@ -2570,6 +2598,7 @@ class ScopedBufferReattacher {
   };
 
   void Initialize();
+  void RestoreBindings();
 
   raw_ptr<GLES2DecoderImpl> decoder_;
   raw_ptr<TextureRef> texture_ref_ = nullptr;
@@ -2591,12 +2620,25 @@ ScopedBufferReattacher::ScopedBufferReattacher(GLES2DecoderImpl* decoder,
   Initialize();
 }
 
+bool IsLayeredTextureTarget(GLenum texture_target) {
+  switch (texture_target) {
+    case GL_TEXTURE_2D_ARRAY:
+    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+    case GL_TEXTURE_3D:
+    case GL_TEXTURE_CUBE_MAP:
+    case GL_TEXTURE_CUBE_MAP_ARRAY:
+      return true;
+    default:
+      return false;
+  }
+}
+
 void ScopedBufferReattacher::Initialize() {
   const bool reattach_depth_stencil =
       decoder_->workarounds().reattach_fbo_depth_stencil_on_reallocation;
   const bool reattach_layer_increase =
       decoder_->workarounds().reattach_texture_to_fbo_after_layer_increase &&
-      texture_ref_ && texture_ref_->texture()->target() == GL_TEXTURE_2D_ARRAY;
+      texture_ref_ && IsLayeredTextureTarget(texture_ref_->texture()->target());
   if (!reattach_depth_stencil && !reattach_layer_increase) {
     return;
   }
@@ -2662,6 +2704,10 @@ void ScopedBufferReattacher::Initialize() {
           GL_FRAMEBUFFER, attachment_point, GL_RENDERBUFFER, 0);
     }
   }
+
+  if (!saved_attachments_.empty()) {
+    RestoreBindings();
+  }
 }
 
 ScopedBufferReattacher::~ScopedBufferReattacher() {
@@ -2698,13 +2744,25 @@ ScopedBufferReattacher::~ScopedBufferReattacher() {
     }
   }
 
-  // Restore bindings.
+  RestoreBindings();
+}
+
+void ScopedBufferReattacher::RestoreBindings() {
+  // Restore bindings. A null tracked framebuffer means the client has the
+  // default framebuffer bound, which on this decoder is the emulated
+  // backbuffer, not driver FBO 0 (see RestoreCurrentFramebufferBindings and
+  // RestoreFramebufferBindings). Restoring raw FBO 0 here desyncs the driver
+  // binding from the tracked state and lets the pending backbuffer clear
+  // (backbuffer_needs_clear_bits_) be consumed against the wrong framebuffer.
   if (old_read_fbo_ == old_draw_fbo_) {
-    GLuint service_id = old_read_fbo_ ? old_read_fbo_->service_id() : 0;
+    GLuint service_id = old_read_fbo_ ? old_read_fbo_->service_id()
+                                      : decoder_->GetBackbufferServiceId();
     decoder_->api()->glBindFramebufferEXTFn(GL_FRAMEBUFFER, service_id);
   } else {
-    GLuint read_id = old_read_fbo_ ? old_read_fbo_->service_id() : 0;
-    GLuint draw_id = old_draw_fbo_ ? old_draw_fbo_->service_id() : 0;
+    GLuint read_id = old_read_fbo_ ? old_read_fbo_->service_id()
+                                   : decoder_->GetBackbufferServiceId();
+    GLuint draw_id = old_draw_fbo_ ? old_draw_fbo_->service_id()
+                                   : decoder_->GetBackbufferServiceId();
     decoder_->api()->glBindFramebufferEXTFn(GL_READ_FRAMEBUFFER, read_id);
     decoder_->api()->glBindFramebufferEXTFn(GL_DRAW_FRAMEBUFFER, draw_id);
   }
@@ -2813,6 +2871,33 @@ ScopedPixelUnpackState::ScopedPixelUnpackState(ContextState* state)
 
 ScopedPixelUnpackState::~ScopedPixelUnpackState() {
   state_->RestoreUnpackState();
+}
+
+ScopedCompressedUnpackStateScrub::ScopedCompressedUnpackStateScrub(
+    ContextState* state)
+    : state_(state) {
+  DCHECK(state_);
+  // These are ES3 pixel store parameters, forwarded to the real driver only
+  // while a pixel unpack buffer is bound; without one the driver already
+  // holds their initial values. Deliberately wider than the minimum: like
+  // ContextState::PushTextureUnpackState() (and ANGLE's compressed entry
+  // points, which always use an empty PixelUnpackState), the scrub runs
+  // whenever a pixel unpack buffer is bound, even if the tracked values are
+  // already the defaults, so the guarantee does not depend on the tracked
+  // state mirroring the driver state.
+  active_ = state_->bound_pixel_unpack_buffer.get() != nullptr;
+  if (active_) {
+    state_->SetUnpackParametersForCompressedTexImage();
+  }
+}
+
+ScopedCompressedUnpackStateScrub::~ScopedCompressedUnpackStateScrub() {
+  // Re-applies the tracked unpack geometry (the client's values while a pixel
+  // unpack buffer is bound) — the same logic used everywhere else the service
+  // restores this state.
+  if (active_) {
+    state_->UpdateUnpackParameters();
+  }
 }
 
 BackTexture::BackTexture(GLES2DecoderImpl* decoder)
@@ -4915,8 +5000,8 @@ error::Error GLES2DecoderImpl::DoCommandsImpl(unsigned int num_commands,
 
     const unsigned int arg_count = size - 1;
     unsigned int command_index = command - kFirstGLES2Command;
-    if (command_index < std::size(command_info)) {
-      const CommandInfo& info = UNSAFE_TODO(command_info[command_index]);
+    if (command_index < command_info.size()) {
+      const CommandInfo& info = command_info[command_index];
       unsigned int info_arg_count = static_cast<unsigned int>(info.arg_count);
       if ((info.arg_flags == cmd::kFixed && arg_count == info_arg_count) ||
           (info.arg_flags == cmd::kAtLeastN && arg_count >= info_arg_count)) {
@@ -7340,6 +7425,11 @@ bool GLES2DecoderImpl::ClearUnclearedAttachments(GLenum target,
     return false;
   }
 
+  // Set when a clear issued below failed. A failed clear leaves the attachment
+  // holding whatever was previously in that GPU memory, so the "cleared"
+  // bookkeeping must not be committed for it.
+  bool clear_failed = false;
+
   bool cleared_int_renderbuffers = false;
   Framebuffer* draw_framebuffer = GetBoundDrawFramebuffer();
   if (framebuffer->HasUnclearedIntRenderbufferAttachments()) {
@@ -7352,98 +7442,131 @@ bool GLES2DecoderImpl::ClearUnclearedAttachments(GLenum target,
     state_.SetDeviceCapabilityState(GL_SCISSOR_TEST, false);
     ClearDeviceWindowRectangles();
 
-    // TODO(zmo): Assume DrawBuffers() does not affect ClearBuffer().
-    framebuffer->ClearUnclearedIntRenderbufferAttachments(
-        renderbuffer_manager());
+    // Drain pre-existing driver errors into the wrapper so they are still
+    // reported to the client, and so that any error observed by the clears
+    // below is attributable to those clears.
+    LOCAL_COPY_REAL_GL_ERRORS_TO_WRAPPER("ClearUnclearedAttachments");
 
+    // TODO(zmo): Assume DrawBuffers() does not affect ClearBuffer().
+    GLenum int_clear_error =
+        framebuffer->ClearUnclearedIntRenderbufferAttachments(
+            renderbuffer_manager());
+    if (int_clear_error != GL_NO_ERROR) {
+      // Report the failure through the wrapper so that GL_OUT_OF_MEMORY runs
+      // OnOutOfMemoryError() and lose_context_when_out_of_memory_ applies.
+      LOCAL_SET_GL_ERROR(int_clear_error, "ClearUnclearedAttachments",
+                         "failed to clear integer renderbuffer attachment");
+      clear_failed = true;
+    }
+
+    // Set even when the clear failed: this tracks that the block above
+    // dirtied GL state (draw framebuffer binding, color mask, scissor test,
+    // window rectangles), not that the attachments ended up cleared. It is
+    // what drives the state restoration below, which must run on both the
+    // success and the failure path.
     cleared_int_renderbuffers = true;
   }
 
   GLbitfield clear_bits = 0;
   bool reset_draw_buffers = false;
   bool rebound_draw_for_clear = cleared_int_renderbuffers;
-  if (framebuffer->HasUnclearedColorAttachments()) {
-    // We should always use alpha == 0 here, because 1) some draw buffers may
-    // have alpha and some may not; 2) we won't have the same situation as the
-    // back buffer where alpha channel exists but is not requested.
-    api()->glClearColorFn(0.0f, 0.0f, 0.0f, 0.0f);
-    state_.SetDeviceColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    clear_bits |= GL_COLOR_BUFFER_BIT;
+  if (!clear_failed) {
+    if (framebuffer->HasUnclearedColorAttachments()) {
+      // We should always use alpha == 0 here, because 1) some draw buffers may
+      // have alpha and some may not; 2) we won't have the same situation as the
+      // back buffer where alpha channel exists but is not requested.
+      api()->glClearColorFn(0.0f, 0.0f, 0.0f, 0.0f);
+      state_.SetDeviceColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+      clear_bits |= GL_COLOR_BUFFER_BIT;
 
-    if (SupportsDrawBuffers()) {
-      // Ensure |framebuffer| is bound as DRAW before preparing draw buffers.
-      // Otherwise glDrawBuffersARB mutates the wrong FBO's state, causing
-      // the glClear to skip clearing uncleared attachments.
+      if (SupportsDrawBuffers()) {
+        // Ensure |framebuffer| is bound as DRAW before preparing draw buffers.
+        // Otherwise glDrawBuffersARB mutates the wrong FBO's state, causing
+        // the glClear to skip clearing uncleared attachments.
+        if (!rebound_draw_for_clear && target == GL_READ_FRAMEBUFFER &&
+            draw_framebuffer != framebuffer) {
+          BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->service_id());
+          rebound_draw_for_clear = true;
+        }
+        reset_draw_buffers =
+            framebuffer
+                ->PrepareDrawBuffersForClearingUninitializedAttachments();
+      }
+    }
+
+    const Framebuffer::Attachment* depth_attachment =
+        framebuffer->GetAttachment(GL_DEPTH_ATTACHMENT);
+    const Framebuffer::Attachment* stencil_attachment =
+        framebuffer->GetAttachment(GL_STENCIL_ATTACHMENT);
+    bool clear_depth = depth_attachment && !depth_attachment->cleared();
+    bool clear_stencil = stencil_attachment && !stencil_attachment->cleared();
+
+    // A packed depth-stencil image attached at only one of the depth/stencil
+    // points must be bound and cleared at both points so that both components
+    // are initialized before the image is marked as cleared.
+    GLenum filled_depth_stencil_point = 0;
+    if (clear_depth && !stencil_attachment &&
+        (GLES2Util::GetChannelsForFormat(depth_attachment->internal_format()) &
+         GLES2Util::kStencil) != 0) {
+      filled_depth_stencil_point = GL_STENCIL_ATTACHMENT;
+      Framebuffer::BindAttachmentToPoint(target, GL_STENCIL_ATTACHMENT,
+                                         depth_attachment);
+      clear_stencil = true;
+    } else if (clear_stencil && !depth_attachment &&
+               (GLES2Util::GetChannelsForFormat(
+                    stencil_attachment->internal_format()) &
+                GLES2Util::kDepth) != 0) {
+      filled_depth_stencil_point = GL_DEPTH_ATTACHMENT;
+      Framebuffer::BindAttachmentToPoint(target, GL_DEPTH_ATTACHMENT,
+                                         stencil_attachment);
+      clear_depth = true;
+    }
+
+    if (clear_stencil) {
+      api()->glClearStencilFn(0);
+      state_.SetDeviceStencilMaskSeparate(GL_FRONT, kDefaultStencilMask);
+      state_.SetDeviceStencilMaskSeparate(GL_BACK, kDefaultStencilMask);
+      clear_bits |= GL_STENCIL_BUFFER_BIT;
+    }
+
+    if (clear_depth) {
+      api()->glClearDepthFn(1.0f);
+      state_.SetDeviceDepthMask(GL_TRUE);
+      clear_bits |= GL_DEPTH_BUFFER_BIT;
+    }
+
+    if (clear_bits) {
       if (!rebound_draw_for_clear && target == GL_READ_FRAMEBUFFER &&
           draw_framebuffer != framebuffer) {
+        // TODO(zmo): There is no guarantee that an FBO that is complete on the
+        // READ attachment will be complete as a DRAW attachment.
         BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->service_id());
-        rebound_draw_for_clear = true;
       }
-      reset_draw_buffers =
-          framebuffer->PrepareDrawBuffersForClearingUninitializedAttachments();
+      state_.SetDeviceCapabilityState(GL_SCISSOR_TEST, false);
+      ClearDeviceWindowRectangles();
+      if (workarounds().gl_clear_broken) {
+        clear_failed = !ClearFramebufferForWorkaround(clear_bits);
+      } else {
+        // Drain any pre-existing driver errors so the check below only reflects
+        // errors generated by this clear.
+        LOCAL_COPY_REAL_GL_ERRORS_TO_WRAPPER("ClearUnclearedAttachments");
+        api()->glClearFn(clear_bits);
+        // GL_OUT_OF_MEMORY can be raised by any command (ES 3.2 section 2.3.1),
+        // and leaves the results of that command undefined. A clear that failed
+        // this way leaves the attachment holding whatever was previously in
+        // that GPU memory - drivers that defer physical allocation until first
+        // use can fail here under VRAM pressure. Routing the error through
+        // PeekGLError also makes OnOutOfMemoryError() fire so
+        // lose_context_when_out_of_memory_ applies.
+        clear_failed =
+            LOCAL_PEEK_GL_ERROR("ClearUnclearedAttachments") != GL_NO_ERROR;
+      }
     }
-  }
 
-  const Framebuffer::Attachment* depth_attachment =
-      framebuffer->GetAttachment(GL_DEPTH_ATTACHMENT);
-  const Framebuffer::Attachment* stencil_attachment =
-      framebuffer->GetAttachment(GL_STENCIL_ATTACHMENT);
-  bool clear_depth = depth_attachment && !depth_attachment->cleared();
-  bool clear_stencil = stencil_attachment && !stencil_attachment->cleared();
-
-  // A packed depth-stencil image attached at only one of the depth/stencil
-  // points must be bound and cleared at both points so that both components
-  // are initialized before the image is marked as cleared.
-  GLenum filled_depth_stencil_point = 0;
-  if (clear_depth && !stencil_attachment &&
-      (GLES2Util::GetChannelsForFormat(depth_attachment->internal_format()) &
-       GLES2Util::kStencil) != 0) {
-    filled_depth_stencil_point = GL_STENCIL_ATTACHMENT;
-    Framebuffer::BindAttachmentToPoint(target, GL_STENCIL_ATTACHMENT,
-                                       depth_attachment);
-    clear_stencil = true;
-  } else if (clear_stencil && !depth_attachment &&
-             (GLES2Util::GetChannelsForFormat(
-                  stencil_attachment->internal_format()) &
-              GLES2Util::kDepth) != 0) {
-    filled_depth_stencil_point = GL_DEPTH_ATTACHMENT;
-    Framebuffer::BindAttachmentToPoint(target, GL_DEPTH_ATTACHMENT,
-                                       stencil_attachment);
-    clear_depth = true;
-  }
-
-  if (clear_stencil) {
-    api()->glClearStencilFn(0);
-    state_.SetDeviceStencilMaskSeparate(GL_FRONT, kDefaultStencilMask);
-    state_.SetDeviceStencilMaskSeparate(GL_BACK, kDefaultStencilMask);
-    clear_bits |= GL_STENCIL_BUFFER_BIT;
-  }
-
-  if (clear_depth) {
-    api()->glClearDepthFn(1.0f);
-    state_.SetDeviceDepthMask(GL_TRUE);
-    clear_bits |= GL_DEPTH_BUFFER_BIT;
-  }
-
-  if (clear_bits) {
-    if (!rebound_draw_for_clear && target == GL_READ_FRAMEBUFFER &&
-        draw_framebuffer != framebuffer) {
-      // TODO(zmo): There is no guarantee that an FBO that is complete on the
-      // READ attachment will be complete as a DRAW attachment.
-      BindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->service_id());
+    if (filled_depth_stencil_point) {
+      Framebuffer::BindAttachmentToPoint(target, filled_depth_stencil_point,
+                                         nullptr);
     }
-    state_.SetDeviceCapabilityState(GL_SCISSOR_TEST, false);
-    ClearDeviceWindowRectangles();
-    if (workarounds().gl_clear_broken) {
-      ClearFramebufferForWorkaround(clear_bits);
-    } else {
-      api()->glClearFn(clear_bits);
-    }
-  }
-
-  if (filled_depth_stencil_point) {
-    Framebuffer::BindAttachmentToPoint(target, filled_depth_stencil_point,
-                                       nullptr);
   }
 
   if (cleared_int_renderbuffers || clear_bits) {
@@ -7457,12 +7580,20 @@ bool GLES2DecoderImpl::ClearUnclearedAttachments(GLenum target,
     }
   }
 
-  framebuffer_manager()->MarkAttachmentsAsCleared(
-      framebuffer, renderbuffer_manager(), texture_manager());
-
   if (rasterizer_discard_enabled) {
     state_.SetDeviceCapabilityState(GL_RASTERIZER_DISCARD, true);
   }
+
+  // Only commit the cleared state once the clear is known to have landed.
+  // Marking attachments cleared after a failed clear would let a subsequent
+  // ReadPixels()/draw read uninitialized GPU memory and hand it to the client.
+  if (clear_failed) {
+    return false;
+  }
+
+  framebuffer_manager()->MarkAttachmentsAsCleared(
+      framebuffer, renderbuffer_manager(), texture_manager());
+
   return true;
 }
 
@@ -12103,11 +12234,15 @@ error::Error GLES2DecoderImpl::HandleGetUniformIndices(
   if (!bucket) {
     return error::kInvalidArguments;
   }
-  GLsizei count = 0;
-  std::vector<char*> names;
-  std::vector<GLint> len;
-  if (!bucket->GetAsStrings(&count, &names, &len) || count <= 0) {
+  std::optional<std::vector<std::string_view>> names = bucket->GetAsStrings();
+  if (!names.has_value() || names->empty()) {
     return error::kInvalidArguments;
+  }
+  const GLsizei count = static_cast<GLsizei>(names->size());
+  std::vector<const char*> name_ptrs;
+  name_ptrs.reserve(names->size());
+  for (std::string_view name : *names) {
+    name_ptrs.push_back(name.data());
   }
   typedef cmds::GetUniformIndices::Result Result;
   uint32_t checked_size = 0;
@@ -12137,7 +12272,7 @@ error::Error GLES2DecoderImpl::HandleGetUniformIndices(
     return error::kNoError;
   }
   LOCAL_COPY_REAL_GL_ERRORS_TO_WRAPPER("GetUniformIndices");
-  api()->glGetUniformIndicesFn(service_id, count, &names[0], indices);
+  api()->glGetUniformIndicesFn(service_id, count, name_ptrs.data(), indices);
   GLenum error = api()->glGetErrorFn();
   if (error == GL_NO_ERROR) {
     result->SetNumResults(count);
@@ -12552,7 +12687,7 @@ bool GLES2DecoderImpl::ClearCompressedTextureLevel(Texture* texture,
     // Add extra scope to destroy zero and the object it owns right
     // after its usage.
     auto zero = base::HeapArray<char>::WithSize(bytes_required);
-    bool reset_base_level = workarounds().reset_base_level_for_astc_sub_image &&
+    bool reset_base_level = workarounds().reset_base_level_for_astc_image &&
                             IsASTCFormat(format) && texture->base_level() != 0;
     api()->glBindTextureFn(texture->target(), texture->service_id());
     if (reset_base_level) {
@@ -12560,6 +12695,10 @@ bool GLES2DecoderImpl::ClearCompressedTextureLevel(Texture* texture,
     }
 
     LOCAL_COPY_REAL_GL_ERRORS_TO_WRAPPER("ClearCompressedTextureLevel");
+    // This zero-fill sources from CPU memory, but the client's unpack
+    // geometry is still resident in the real driver and must not influence a
+    // compressed upload; see the comment in DoCompressedTexImage.
+    ScopedCompressedUnpackStateScrub scrub(&state_);
     api()->glCompressedTexSubImage2DFn(target, level, 0, 0, width, height,
                                        format, zero.size(), zero.data());
     // Some compressed formats are not supported by CompressedTexSubImage*
@@ -12618,7 +12757,7 @@ bool GLES2DecoderImpl::ClearCompressedTextureLevel3D(Texture* texture,
     // Add extra scope to destroy zero and the object it owns right
     // after its usage.
     auto zero = base::HeapArray<char>::WithSize(bytes_required);
-    bool reset_base_level = workarounds().reset_base_level_for_astc_sub_image &&
+    bool reset_base_level = workarounds().reset_base_level_for_astc_image &&
                             IsASTCFormat(format) && texture->base_level() != 0;
     api()->glBindTextureFn(texture->target(), texture->service_id());
     if (reset_base_level) {
@@ -12626,6 +12765,10 @@ bool GLES2DecoderImpl::ClearCompressedTextureLevel3D(Texture* texture,
     }
 
     LOCAL_COPY_REAL_GL_ERRORS_TO_WRAPPER("ClearCompressedTextureLevel3D");
+    // This zero-fill sources from CPU memory, but the client's unpack
+    // geometry is still resident in the real driver and must not influence a
+    // compressed upload; see the comment in DoCompressedTexImage.
+    ScopedCompressedUnpackStateScrub scrub(&state_);
     api()->glCompressedTexSubImage3DFn(target, level, 0, 0, 0, width, height,
                                        depth, format, zero.size(), zero.data());
     // Some compressed formats are not supported by CompressedTexSubImage*
@@ -13376,6 +13519,27 @@ error::Error GLES2DecoderImpl::DoCompressedTexImage(
           format_info->decompressed_type, decompressed_data.data());
     }
   } else {
+    // Per OpenGL ES 3.2, "All pixel storage modes are ignored when decoding
+    // a compressed texture image" (sec. 8.7; SubImage data is "interpreted
+    // as though ... provided to CompressedTexImage*", and sec. 8.4.1 defines
+    // unpack state as pertaining only to TexImage*, TexSubImage*, and
+    // ReadPixels), so UNPACK_ROW_LENGTH and UNPACK_IMAGE_HEIGHT must never
+    // influence a compressed upload. With a PIXEL_UNPACK buffer bound,
+    // however, the renderer-supplied values are resident in the real driver
+    // (see HandlePixelStorei), so they are scrubbed to their initial values
+    // (0, table 8.1) around the dispatch. ANGLE's frontend has applied this
+    // same neutralization to its compressed entry points since 2021
+    // (crbug.com/1267496), so the passthrough decoder is already protected.
+    // The other compressed dispatch sites (DoCompressedTexSubImage and the
+    // ClearCompressedTextureLevel paths) reference this comment.
+    // https://crbug.com/562279351
+    ScopedCompressedUnpackStateScrub scrub(&state_);
+    bool reset_base_level = workarounds().reset_base_level_for_astc_image &&
+                            IsASTCFormat(internal_format) &&
+                            texture->base_level() != 0;
+    if (reset_base_level) {
+      api()->glTexParameteriFn(texture->target(), GL_TEXTURE_BASE_LEVEL, 0);
+    }
     if (dimension == ContextState::k2D) {
       bool handled = false;
       if (workarounds().upload_oversized_mip_levels_via_unpack_buffer &&
@@ -13387,15 +13551,20 @@ error::Error GLES2DecoderImpl::DoCompressedTexImage(
         if (texture->GetLevelSize(target, 0, &level0_width, &level0_height,
                                   &level0_depth) &&
             level0_width > 0 && level0_height > 0) {
-          const int slot_w = std::max(
-              1, static_cast<int>(
-                     std::bit_ceil(static_cast<uint32_t>(level0_width))) >>
-                     level);
-          const int slot_h = std::max(
-              1, static_cast<int>(
-                     std::bit_ceil(static_cast<uint32_t>(level0_height))) >>
-                     level);
-          if (width > slot_w || height > slot_h) {
+          const gfx::Vector2d block_size =
+              GetCompressedTexBlockDimensions(internal_format);
+          const int expected_width = std::max(1, level0_width >> level);
+          const int expected_height = std::max(1, level0_height >> level);
+          const int expected_blocks_x =
+              (expected_width + block_size.x() - 1) / block_size.x();
+          const int expected_blocks_y =
+              (expected_height + block_size.y() - 1) / block_size.y();
+          const int incoming_blocks_x =
+              (width + block_size.x() - 1) / block_size.x();
+          const int incoming_blocks_y =
+              (height + block_size.y() - 1) / block_size.y();
+          if (incoming_blocks_x > expected_blocks_x ||
+              incoming_blocks_y > expected_blocks_y) {
             GLuint scratch = 0;
             api()->glGenBuffersARBFn(1, &scratch);
             api()->glBindBufferFn(GL_PIXEL_UNPACK_BUFFER, scratch);
@@ -13422,6 +13591,10 @@ error::Error GLES2DecoderImpl::DoCompressedTexImage(
     } else {
       api()->glCompressedTexImage3DFn(target, level, internal_format, width,
                                       height, depth, border, image_size, data);
+    }
+    if (reset_base_level) {
+      api()->glTexParameteriFn(texture->target(), GL_TEXTURE_BASE_LEVEL,
+                               texture->base_level());
     }
   }
   GLenum error = LOCAL_PEEK_GL_ERROR(func_name);
@@ -13827,7 +14000,10 @@ error::Error GLES2DecoderImpl::DoCompressedTexSubImage(
                                decompressed_data.data());
     }
   } else {
-    bool reset_base_level = workarounds().reset_base_level_for_astc_sub_image &&
+    // Compressed uploads must ignore client unpack state; see the comment in
+    // DoCompressedTexImage.
+    ScopedCompressedUnpackStateScrub scrub(&state_);
+    bool reset_base_level = workarounds().reset_base_level_for_astc_image &&
                             IsASTCFormat(format) && texture->base_level() != 0;
     if (reset_base_level) {
       api()->glTexParameteriFn(texture->target(), GL_TEXTURE_BASE_LEVEL, 0);
@@ -16364,7 +16540,8 @@ void GLES2DecoderImpl::CopySubTextureHelper(const char* function_name,
 
   // Use DRAW instead of COPY if the workaround is enabled.
   if (method == CopyTextureMethod::DIRECT_COPY &&
-      workarounds().prefer_draw_to_copy) {
+      workarounds().prefer_draw_to_copy &&
+      (dest_level == 0 || feature_info_->IsWebGL2OrES3Context())) {
     method = CopyTextureMethod::DIRECT_DRAW;
   }
 
@@ -16527,25 +16704,35 @@ void GLES2DecoderImpl::TexStorageImpl(GLenum target,
     PixelStoreParams params;
     params.alignment = 1;
     for (int ii = 0; ii < levels; ++ii) {
+      GLsizei pessimized_level_width = level_width;
+      GLsizei pessimized_level_height = level_height;
+      GLsizei pessimized_level_depth = level_depth;
+      if (workarounds().round_up_3d_texture_size_to_pot_for_limit &&
+          (target == GL_TEXTURE_3D || depth > 1)) {
+        pessimized_level_width = static_cast<GLsizei>(
+            std::bit_ceil(static_cast<uint32_t>(level_width)));
+        pessimized_level_height = static_cast<GLsizei>(
+            std::bit_ceil(static_cast<uint32_t>(level_height)));
+        pessimized_level_depth = static_cast<GLsizei>(
+            std::bit_ceil(static_cast<uint32_t>(level_depth)));
+      }
       uint32_t size;
       if (is_compressed_format) {
         GLsizei level_size;
         if (!GetCompressedTexSizeInBytes(
-                function_name, level_width, level_height, level_depth,
-                internal_format, &level_size, error_state_.get())) {
-          // GetCompressedTexSizeInBytes() already generates a GL error.
+                function_name, pessimized_level_width, pessimized_level_height,
+                pessimized_level_depth, internal_format, &level_size,
+                error_state_.get())) {
+          // GetCompressedTexSizeInBytes() already generated a GL error
+          // (e.g. in the case of overflow, GL_INVALID_VALUE).
           return;
         }
         size = static_cast<uint32_t>(level_size);
       } else {
-        if (!GLES2Util::ComputeImageDataSizesES3(level_width,
-                                                 level_height,
-                                                 level_depth,
-                                                 format, type,
-                                                 params,
-                                                 &size,
-                                                 nullptr, nullptr,
-                                                 nullptr, nullptr)) {
+        if (!GLES2Util::ComputeImageDataSizesES3(
+                pessimized_level_width, pessimized_level_height,
+                pessimized_level_depth, format, type, params, &size, nullptr,
+                nullptr, nullptr, nullptr)) {
           LOCAL_SET_GL_ERROR(
               GL_OUT_OF_MEMORY, function_name, "dimensions too large");
           return;
@@ -17335,7 +17522,7 @@ const SamplerState& GLES2DecoderImpl::GetSamplerStateForTextureUnit(
   return default_sampler_state_;
 }
 
-void GLES2DecoderImpl::ClearFramebufferForWorkaround(GLbitfield mask) {
+bool GLES2DecoderImpl::ClearFramebufferForWorkaround(GLbitfield mask) {
   ScopedGLErrorSuppressor suppressor("GLES2DecoderImpl::ClearWorkaround",
                                      error_state_.get());
   clear_framebuffer_blit_->ClearFramebuffer(
@@ -17343,6 +17530,20 @@ void GLES2DecoderImpl::ClearFramebufferForWorkaround(GLbitfield mask) {
       gfx::Size(viewport_max_width_, viewport_max_height_), mask,
       state_.color_clear_red, state_.color_clear_green, state_.color_clear_blue,
       state_.color_clear_alpha, state_.depth_clear, state_.stencil_clear);
+  // |suppressor|'s destructor silently discards GL_OUT_OF_MEMORY and
+  // GL_CONTEXT_LOST_KHR, so peek here while the failure is still observable.
+  // Callers that commit "cleared" bookkeeping must be able to tell that the
+  // blit failed, otherwise an attachment that still holds uninitialized GPU
+  // memory would be recorded as cleared. Peeking also routes GL_OUT_OF_MEMORY
+  // through OnOutOfMemoryError() so lose_context_when_out_of_memory_ applies.
+  //
+  // The suppressor is deliberately kept: it is what keeps the blit's errors
+  // from being attributed to unrelated later commands for the callers that
+  // ignore the result. Surfacing the first error to those callers is bounded,
+  // because ClearRealGLErrors() NOTREACHED()s on anything other than
+  // GL_OUT_OF_MEMORY and GL_CONTEXT_LOST_KHR, i.e. the code already asserts
+  // that those are the only errors this blit can produce.
+  return LOCAL_PEEK_GL_ERROR("ClearFramebufferForWorkaround") == GL_NO_ERROR;
 }
 
 void GLES2DecoderImpl::RestoreAllExternalTextureBindingsIfNeeded() {

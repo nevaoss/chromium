@@ -70,6 +70,12 @@ BASE_FEATURE(kUseDrmBlackFullscreenOptimization,
 BASE_FEATURE(kUseFrameIntervalDeciderAdaptiveFrameRate,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, FrameIntervalDecider uses ContinuousRangeSettings bounded by the
+// display's max supported refresh rate, instead of passing matched frame
+// intervals through unbounded.
+BASE_FEATURE(kAndroidFrameIntervalContinuousRange,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // If enabled, `ExternalBeginFrameSourceAndroid::AChoreographerImpl` derives a
 // VSync interval from the frame timelines that the OS provided via the callback
 // registered through `AChoreographer_postVsyncCallback` (as long as the OS
@@ -345,7 +351,7 @@ BASE_FEATURE(kMixedFixedIntervalMatcher, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, the FrameEvictionManager scales its limit of max number of saved
 // frames dynamically based on memory pressure.
-BASE_FEATURE(kScalableFrameEviction, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kScalableFrameEviction, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Remove gpu process reference if gpu context is loss, and gpu channel cannot
 // be established due to said gpu process exiting.
@@ -410,6 +416,13 @@ BASE_FEATURE(kRpdqFilterLookupOptimizations, base::FEATURE_ENABLED_BY_DEFAULT);
 // tokens when parent frame submission lags behind child surface execution.
 BASE_FEATURE(kBypassOutdatedSurfaceActivation,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, a non-mergeable surface's root render pass backing is enlarged
+// to match the scale at which the frame's content was rasterized. This avoids
+// downsampling and then upsampling the content, keeping text sharp
+// (crbug.com/513611535).
+BASE_FEATURE(kRenderNonMergedSurfaceAtBackingScale,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
 // Use BufferQueue for the primary plane instead of a DXGI swap chain or DComp

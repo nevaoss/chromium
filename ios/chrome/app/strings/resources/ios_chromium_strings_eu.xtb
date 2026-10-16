@@ -53,6 +53,8 @@ Laster-marka batzuk ezabatu arte, ezingo da beste laster-markarik gorde kontuan.
 <translation id="1965068424387304464">Chromium-erako aholkua: gorde pasahitzak</translation>
 <translation id="1992653360331625459">Jadanik badauzkazu kontu hauetarako pasahitzak Pasahitz-kudeatzailea zerbitzuan. Beheko pasahitzetako bat inportatzea aukeratzen baduzu, lehendik dagoena ordeztuko du.</translation>
 <translation id="2006345422933397527">Chromium-ek ezin izan ditu bilatu eguneratzeak. Egiaztatu Internetera konektatuta zaudela.</translation>
+<translation id="2025935492422922097">Chromium-ek hodeiko eremu pribatu batean prozesatzen ditu orrien izenak eta URLak</translation>
+<translation id="2027881372245801507">Iradokizunak desaktibatuta ere, ez da kontrolatuko Chromium-ek beste eginbide batzuen orrien izenak eta URLak nola prozesatzen dituen. Datu horietarako sarbidea kudeatzeko, joan <ph name="BEGIN_LINK" />sinkronizazio-ezarpenetara<ph name="END_LINK" />.</translation>
 <translation id="2042889939382983733">Ikusi Chromium-eko historia</translation>
 <translation id="2052320862053429062">Sarean argitaratu diren zerrendetan ea zure pasahitzak dauden egiaztatzen du noizean behin Chromium-ek. Horretarako, pasahitzak eta erabiltzaile-izenak enkriptatzen ditu inork irakurri ezin ditzan, ezta Google-k ere.</translation>
 <translation id="2059365270911640413">Amaitu Chromium konfiguratzen</translation>
@@ -105,6 +107,7 @@ Chromium-en erabilera hobetzeko datuak erabiltzen dituzten ezarpen gehiago ikust
 <translation id="3072591112723064972">Ezarri Chromium arakatzaile lehenetsi gisa, estekak berehala irekitzeko.</translation>
 <translation id="3115956258722352278">Chromium arakatzaile lehenetsi bihurtu nahi duzu?</translation>
 <translation id="3180939591219927904">Aktibatu "Blokeatu ezkutuko moduko fitxak Chromium ixten duzunean"</translation>
+<translation id="3239426886813624481">Zure kokapena webguneekin partekatzeko, sakatu Ezarpenak eta eman kokapena erabiltzeko baimena Chromium-i.</translation>
 <translation id="327628223428512207">Idatzi pasaesaldia pasahitz hau gordetzeko eta Chromium-eko datuak gailu guztietan lortzeko</translation>
 <translation id="328933489847748230">{count,plural, =1{Chromium-eko leiho bat dago ikusgai}other{Chromium-eko {count} leiho daude ikusgai}}</translation>
 <translation id="3344204225393848305">Ezarri Chromium arakatzaile lehenetsi gisa</translation>
@@ -142,6 +145,7 @@ Kontua aldatu aurretik, itxaron minutu batzuk. Kontua orain aldatzen baduzu, dat
 <translation id="3855938650519180865">Chromium-en berritasunak</translation>
 <translation id="3886689467633467988">Hasi saioa webgune honetan eta Chromium-en, zure laster-markak eta bestelako elementuak gailu guztietan eduki ditzazun.</translation>
 <translation id="3949514465204582407">Chromium-i buruzko aholkua: lortu gordetako pasahitzak edozein aplikaziotan</translation>
+<translation id="3983298990898629929">Ezarri Chromium arakatzaile lehenetsi gisa estekak sakatze hutsarekin irekitzeko</translation>
 <translation id="4005283307739974863">Chromium-en segurtasun-egiaztapena irekitzen eta exekutatzen du.</translation>
 <translation id="4043291146360695975">Pasahitzak gailu honetan soilik gordetzen dira Pasahitz-kudeatzailea zerbitzuan.</translation>
 <translation id="4046625794029820944">Utzi URLak kopiatzeari. Ezarri Chromium arakatzaile lehenetsi gisa orriak zuzenean kargatzeko.</translation>
@@ -273,6 +277,7 @@ Kontuan hartu beharrekoak:
 <translation id="6680609900732453726">Mantendu arakatzea pribatu gailuaren autentifikazioaren bidez Chromium ixten duzunean</translation>
 <translation id="6696512128741076907">Ezarri Chromium arakatzaile lehenetsi gisa beste aplikazioetako estekak berehala irekitzeko.</translation>
 <translation id="6752854822223394465">Zure erakundea Chromium konfiguratzen ari da…</translation>
+<translation id="6777348401413221846">Pantaila osoko bideoa Chromium arakatzaile lehenetsi gisa ezartzeko argibideekin: ireki Chromium-en ezarpenak iOS-en, sakatu "Default Browser App" (arakatzaile lehenetsia) eta hautatu Chromium.</translation>
 <translation id="6794054469102824109">Chromium-eko Dino jokoa irekitzen du.</translation>
 <translation id="6820823224820483452">Chromium-ek ezin izan ditu egiaztatu pasahitz guztiak. Saiatu berriro bihar.</translation>
 <translation id="6830782797004194206">Hasi saioa bizkorrago Chromium-en betetze automatikoarekin</translation>
@@ -302,6 +307,7 @@ Zure pasaesaldia dakitenek soilik irakur ditzakete zure datu enkriptatuak. Googl
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028"><ph name="EMAIL" /> kontuko pasahitza Pasahitz-kudeatzailea zerbitzuan gordeko da.</translation>
 <translation id="7434848749522628428">Sarbide-gakoa <ph name="USER_EMAIL" /> kontuari dagokion Pasahitz-kudeatzailea zerbitzuan gordeko da</translation>
+<translation id="7453822113116681031">Ezarri Chromium arakatzaile lehenetsi gisa estekak sakatze hutsarekin irekitzeko</translation>
 <translation id="7504829997542308412">Ireki Chromium.</translation>
 <translation id="7531461704633548377">Chromium-etik</translation>
 <translation id="7554983317097061001">Chromium-i buruzko aholkua: eraman Chromium zintara</translation>
@@ -348,6 +354,8 @@ Zure pasaesaldia dakitenek soilik irakur ditzakete zure datu enkriptatuak. Googl
 <translation id="865600487977764604">Babestuta mantentzen zaitu Chromium-en, eta segurtasuna areagotzeko erabil daiteke Google-ren beste aplikazio batzuetan saioa hasita daukazunean.</translation>
 <translation id="8663480472502753423">Mantendu Chromium eguneratuta</translation>
 <translation id="8685813584220679697">Hasi saioa webgune honetan eta Chromium-en.</translation>
+<translation id="8697693743327341604">Iradokizun bat hautatzen edo baztertzen baduzu, Chromium etorkizunean iradokizun egokiagoak erakusteko egokituko da.</translation>
+<translation id="869832267508702259">Edonon arakatzen duzula ere Gemini-ren estatistikak lortzeko, ezarri Chromium arakatzaile lehenetsi gisa</translation>
 <translation id="8698780336333802489">Inportatu Chromium-era</translation>
 <translation id="8730503818204408000">Chromium arakatzaile lehenetsi gisa ezartzeko Chromium-en ezarpena irekitzen du.</translation>
 <translation id="8754966941001340678">Chromium-ek babes hobetua gomendatzen du</translation>

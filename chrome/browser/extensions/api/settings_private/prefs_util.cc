@@ -248,8 +248,6 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
     BUILDFLAG(IS_CHROMEOS)
   (*s_allowlist)[autofill::prefs::kAutofillBnplEnabled] =
       settings_api::PrefType::kBoolean;
-  (*s_allowlist)[autofill::prefs::kAutofillAtMemoryTriggerInfo] =
-      settings_api::PrefType::kDictionary;
   (*s_allowlist)[autofill::prefs::kAutofillAtMemoryDoubleCtrlTriggerEnabled] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[autofill::prefs::kAutofillAtMemoryShortcut] =
@@ -323,8 +321,7 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[::prefs::kCtrlTabMru] = settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kCurrentThemeID] = settings_api::PrefType::kString;
   (*s_allowlist)[::prefs::kPinnedActions] = settings_api::PrefType::kList;
-  (*s_allowlist)[themes::prefs::kPolicyThemeColor] =
-      settings_api::PrefType::kNumber;
+  (*s_allowlist)[themes::kPolicyThemeColor] = settings_api::PrefType::kNumber;
 #if BUILDFLAG(IS_LINUX)
   (*s_allowlist)[::prefs::kSystemTheme] = settings_api::PrefType::kNumber;
 #endif
@@ -383,8 +380,6 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[drive::prefs::kDriveFsBulkPinningVisible] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[drive::prefs::kDisableDriveOverCellular] =
-      settings_api::PrefType::kBoolean;
-  (*s_allowlist)[drive::prefs::kDriveFsEnableMirrorSync] =
       settings_api::PrefType::kBoolean;
 #endif
   (*s_allowlist)[::prefs::kDownloadBubblePartialViewEnabled] =
@@ -492,8 +487,6 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kString;
   (*s_allowlist)[::content_settings::kThirdPartyCookieBlockingSetting] =
       settings_api::PrefType::kNumber;
-  (*s_allowlist)[::prefs::kPrivacySandboxRelatedWebsiteSetsEnabled] =
-      settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kEnableDoNotTrack] = settings_api::PrefType::kBoolean;
   (*s_allowlist)[universal_optout::prefs::kUniversalOptOutEnabled] =
       settings_api::PrefType::kBoolean;

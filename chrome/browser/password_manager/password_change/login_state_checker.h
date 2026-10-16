@@ -10,17 +10,13 @@
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/types/strong_alias.h"
-#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
+#include "components/optimization_guide/proto/features/password_change_submission.pb.h"
 #include "content/public/browser/web_contents_observer.h"
 
 class AnnotatedPageContentCapturer;
 class OptimizationGuideKeyedService;
-
-namespace optimization_guide::proto {
-class PasswordChangeSubmissionLoggingData;
-}  // namespace optimization_guide::proto
 
 namespace content {
 class NavigationHandle;
@@ -110,13 +106,14 @@ class LoginStateChecker : public content::WebContentsObserver {
       LoginCheckResult::Status result,
       std::unique_ptr<
           optimization_guide::proto::PasswordChangeSubmissionLoggingData>
-          logging_data = nullptr) {
+          logging_data = nullptr,
+      std::optional<LoginCheckResult::LoginCheckError> error = std::nullopt) {
     if (result == LoginCheckResult::Status::kLoggedIn) {
       timer_.Stop();
     }
     result_check_callback_.Run(LoginCheckResult(
         result, state_checks_count_, base::Time::Now() - creation_time_,
-        std::move(logging_data)));
+        std::move(logging_data), error));
   }
 #endif
 

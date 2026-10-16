@@ -53,6 +53,8 @@ Der kan ikke gemmes nye bogmærker på din konto, før du sletter nogle. Hvis du
 <translation id="1965068424387304464">Tip til Chromium: Gem adgangskoder</translation>
 <translation id="1992653360331625459">Du har allerede adgangskoder til disse konti i Adgangskodeadministrator. Hvis du vælger at importere én af adgangskoderne nedenfor, vil den erstatte den eksisterende adgangskode.</translation>
 <translation id="2006345422933397527">Chromium kunne ikke søge efter opdateringer. Prøv at tjekke din internetforbindelse.</translation>
+<translation id="2025935492422922097">Chromium behandler sidetitler og webadresser i et privat område i skyen</translation>
+<translation id="2027881372245801507">Deaktivering af forslag styrer ikke Chromiums behandling af sidetitler og webadresser for andre funktioner. Du kan administrere adgangen til disse data i dine <ph name="BEGIN_LINK" />synkroniseringsindstillinger<ph name="END_LINK" />.</translation>
 <translation id="2042889939382983733">Se din Chromium-historik</translation>
 <translation id="2052320862053429062">Chromium tjekker regelmæssigt, om dine adgangskoder er på nogen lister over adgangskoder, der er blevet afsløret online. Dine adgangskoder og brugernavne krypteres under disse tjek, så de kan ikke læses af nogen, heller ikke Google.</translation>
 <translation id="2059365270911640413">Afslut konfigurationen af Chromium</translation>
@@ -105,6 +107,7 @@ Du kan finde flere indstillinger, der bruger data til at forbedre din Chromium-o
 <translation id="3072591112723064972">Gør Chromium til din standardbrowser, så du kan åbne links her med det samme.</translation>
 <translation id="3115956258722352278">Vil du gøre Chromium til din standardbrowser?</translation>
 <translation id="3180939591219927904">Aktivér "Lås inkognitofaner, når du lukker Chromium"</translation>
+<translation id="3239426886813624481">Hvis du vil dele din lokation med websites, skal du trykke på Indstillinger for at give Chromium tilladelse til at bruge din lokation.</translation>
 <translation id="327628223428512207">Angiv adgangssætningen for at gemme denne adgangskode og få Chromium-data på alle dine enheder</translation>
 <translation id="328933489847748230">{count,plural, =1{Der vises nu 1 Chromium-vindue}one{Der vises nu {count} Chromium-vindue}other{Der vises nu {count} Chromium-vinduer}}</translation>
 <translation id="3344204225393848305">Indstil Chromium som standard</translation>
@@ -142,6 +145,7 @@ Prøv at vente et par minutter, før du skifter konto. Hvis du skifter konto nu,
 <translation id="3855938650519180865">Nyheder i Chromium</translation>
 <translation id="3886689467633467988">Log ind på dette website og i Chromium for at få adgang til dine bogmærker og meget mere på alle dine enheder.</translation>
 <translation id="3949514465204582407">Tip til Chromium: Få adgang til dine adgangskoder i enhver app</translation>
+<translation id="3983298990898629929">Angiv Chromium som din standardbrowser, så du kan åbne links med ét tryk</translation>
 <translation id="4005283307739974863">Åbner og kører et sikkerhedstjek i Chromium.</translation>
 <translation id="4043291146360695975">Adgangskoder gemmes kun i Adgangs­kode­admin­istrator på denne enhed.</translation>
 <translation id="4046625794029820944">Stop med at kopiere webadresser. Angiv Chromium som standardbrowser for at indlæse sider direkte.</translation>
@@ -273,6 +277,7 @@ Vær opmærksom på følgende:
 <translation id="6680609900732453726">Hold din browsing privat med enhedsgodkendelse, når du lukker Chromium</translation>
 <translation id="6696512128741076907">Angiv Chromium som standardbrowser for at åbne links med det samme fra andre apps.</translation>
 <translation id="6752854822223394465">Din organisation konfigurer Chromium...</translation>
+<translation id="6777348401413221846">Video i fuld skærm, der viser, hvordan du angiver Chromium som standardbrowser: Åbn Chromium-indstillingerne i iOS, tryk på "Standardapp til browsing", og vælg Chromium.</translation>
 <translation id="6794054469102824109">Åbner Chromium Dino-spillet.</translation>
 <translation id="6820823224820483452">Chromium kunne ikke tjekke alle adgangskoder. Prøv igen i morgen.</translation>
 <translation id="6830782797004194206">Log hurtigere ind med autofyld i Chromium</translation>
@@ -302,6 +307,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028">Din adgangskode gemmes i Adgangs­kode­admin­istrator for <ph name="EMAIL" />.</translation>
 <translation id="7434848749522628428">Denne adgangsnøgle gemmes i Adgangskodeadministrator for <ph name="USER_EMAIL" /></translation>
+<translation id="7453822113116681031">Gør Chromium til din standardbrowser, så du kan åbne links med ét tryk</translation>
 <translation id="7504829997542308412">Åbn Chromium</translation>
 <translation id="7531461704633548377">Fra Chromium</translation>
 <translation id="7554983317097061001">Tip til Chromium: Flyt Chromium til docken</translation>
@@ -348,6 +354,8 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="865600487977764604">Beskytter dig i Chromium og kan bruges til at forbedre din sikkerhed i andre Google-apps, når du er logget ind.</translation>
 <translation id="8663480472502753423">Sørger for, at Chromium er opdateret</translation>
 <translation id="8685813584220679697">Log ind på dette website og Chromium.</translation>
+<translation id="8697693743327341604">Hvis du vælger eller ignorerer et forslag, tilpasses Chromium, så du får vist mere relevante forslag fremover.</translation>
+<translation id="869832267508702259">Gør Chromium til din standardbrowser, så du kan få Gemini-indsigt, uanset hvor du browser</translation>
 <translation id="8698780336333802489">Importér til Chromium</translation>
 <translation id="8730503818204408000">Åbner indstillingen for Chromium, så du kan angive Chromium som standardbrowser.</translation>
 <translation id="8754966941001340678">Chromium anbefaler forbedret beskyttelse</translation>

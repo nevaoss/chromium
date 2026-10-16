@@ -47,6 +47,7 @@
 <translation id="1464044141348608623">Nepovoliť webom zisťovať, kedy aktívne používate zariadenie</translation>
 <translation id="146867109637325312">{COUNT,plural, =1{<ph name="SITE_COUNT" /> webe}few{<ph name="SITE_COUNT" /> weboch}many{<ph name="SITE_COUNT" /> sites}other{<ph name="SITE_COUNT" /> weboch}}</translation>
 <translation id="1476700086976862423">Sépiová farba motívu</translation>
+<translation id="1497214680865404175">Obrázok nahraný používateľom</translation>
 <translation id="1500473259453106018">Skryť kartu Poklesy cien na kartách</translation>
 <translation id="1508931164824684991">Weby môžu používať JavaScript</translation>
 <translation id="1510341833810331442">Weby nemôžu ukladať údaje vo vašom zariadení</translation>
@@ -675,7 +676,7 @@ Rozšírená ochrana ovláda tieto nastavenia Chromu:</translation>
 <translation id="7986741934819883144">Výber kontaktu</translation>
 <translation id="7990211076305263060">Keď je táto možnosť zapnutá, weby môžu žiadať o povolenie používať váš mikrofón. Keď je táto možnosť vypnutá, weby nemôžu používať váš mikrofón.</translation>
 <translation id="8007176423574883786">Vypnuté v tomto zariadení</translation>
-<translation id="802154636333426148">Stiahnutie zlyhalo</translation>
+<translation id="802154636333426148">Nepodarilo sa stiahnuť</translation>
 <translation id="8033047164036749181">Odoberať upozornenia z tohto webu</translation>
 <translation id="8051193500142930381">Funkcie vyžadujúce kameru nebudú fungovať</translation>
 <translation id="8067883171444229417">Prehrať video</translation>

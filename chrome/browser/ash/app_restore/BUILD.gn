@@ -208,6 +208,7 @@ source_set("browser_tests") {
     "//chrome/browser/prefs:util",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui",
+    "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui/ash/desks",
     "//chrome/browser/ui/ash/device_scheduled_reboot",
     "//chrome/browser/ui/ash/system_web_apps",
@@ -248,10 +249,6 @@ source_set("browser_tests") {
     "//ui/views:test_support",
     "//ui/wm",
   ]
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("unit_tests") {
@@ -284,6 +281,7 @@ source_set("unit_tests") {
     "//chrome/common:constants",
     "//chrome/common:non_code_constants",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//chromeos/ash/components/login/session",
     "//chromeos/ash/experiences/arc:arc_features",
     "//chromeos/constants",

@@ -263,9 +263,9 @@ struct AutocompleteMatch {
   typedef std::map<std::string, std::string> AdditionalInfo;
 
   // The type of this match.
-  typedef AutocompleteMatchType::Type Type;
+  using Type = omnibox::AutocompleteMatchType;
 
-  // Document subtype, for AutocompleteMatchType::DOCUMENT.
+  // Document subtype, for omnibox::AutocompleteMatchType::kDocumentSuggestion.
   // Update kDocumentTypeStrings when updating DocumentType.
   // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.omnibox
   // GENERATED_JAVA_CLASS_NAME_OVERRIDE: DocumentType
@@ -992,7 +992,7 @@ struct AutocompleteMatch {
   ui::PageTransition transition = ui::PAGE_TRANSITION_TYPED;
 
   // Type of this match.
-  Type type = AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED;
+  Type type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
 
   // The type of this suggestion as reported from and back to the suggest server
   // via the server response and the ChromeSearchboxStats (reported in the match

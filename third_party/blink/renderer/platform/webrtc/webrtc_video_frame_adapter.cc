@@ -27,7 +27,7 @@
 #include "media/base/video_frame.h"
 #include "media/base/video_types.h"
 #include "media/base/video_util.h"
-#include "media/renderers/video_frame_rgba_to_yuva_converter.h"
+#include "media/gfx/video_frame_rgba_to_yuva_converter.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
@@ -394,6 +394,13 @@ WebRtcVideoFrameAdapter::ScaledBuffer::ToI420() {
   return parent_->GetOrCreateFrameBufferForSize(size_)->ToI420();
 }
 
+webrtc::scoped_refptr<webrtc::I420BufferInterface>
+WebRtcVideoFrameAdapter::ScaledBuffer::ToI420ForInspection() {
+  return parent_
+      ->GetOrCreateFrameBufferForSize(size_, /*is_for_inspection=*/true)
+      ->ToI420();
+}
+
 scoped_refptr<media::VideoFrame>
 WebRtcVideoFrameAdapter::ScaledBuffer::getMediaVideoFrame() const {
   return parent_->getMediaVideoFrame();
@@ -444,17 +451,31 @@ WebRtcVideoFrameAdapter::~WebRtcVideoFrameAdapter() {
   // the capturer that premapped frames are required.
   // Don't send the feedback if accelerated scaling is enabled because the
   // feature takes care of mapping outside of encoder anyway.
+  // Also, only send feedback if the frame was actually accessed (either adapted
+  // or accessed directly via getMediaVideoFrame()), so dropped frames do not
+  // overwrite the previous feedback.
 
   if (shared_resources_ &&
       !base::FeatureList::IsEnabled(kWebrtcAcceleratedScaling)) {
-    shared_resources_->SetFeedback(
-        media::VideoCaptureFeedback().RequireMapped(!adapted_frames_.empty()));
+    const bool require_mapped = std::ranges::any_of(
+        adapted_frames_,
+        [](const AdaptedFrame& frame) { return !frame.is_for_inspection; });
+    if (require_mapped || was_media_frame_accessed_) {
+      shared_resources_->SetFeedback(
+          media::VideoCaptureFeedback().RequireMapped(require_mapped));
+    }
   }
 }
 
 webrtc::scoped_refptr<webrtc::I420BufferInterface>
 WebRtcVideoFrameAdapter::ToI420() {
   return GetOrCreateFrameBufferForSize(full_size_)->ToI420();
+}
+
+webrtc::scoped_refptr<webrtc::I420BufferInterface>
+WebRtcVideoFrameAdapter::ToI420ForInspection() {
+  return GetOrCreateFrameBufferForSize(full_size_, /*is_for_inspection=*/true)
+      ->ToI420();
 }
 
 webrtc::scoped_refptr<webrtc::VideoFrameBuffer>
@@ -482,20 +503,25 @@ WebRtcVideoFrameAdapter::CropAndScale(int offset_x,
 
 webrtc::scoped_refptr<webrtc::VideoFrameBuffer>
 WebRtcVideoFrameAdapter::GetOrCreateFrameBufferForSize(
-    const ScaledBufferSize& size) {
+    const ScaledBufferSize& size,
+    bool is_for_inspection) {
   base::AutoLock auto_lock(adapted_frames_lock_);
   // Does this buffer already exist?
-  for (const auto& adapted_frame : adapted_frames_) {
-    if (adapted_frame.size == size)
+  for (auto& adapted_frame : adapted_frames_) {
+    if (adapted_frame.size == size) {
+      adapted_frame.is_for_inspection =
+          adapted_frame.is_for_inspection && is_for_inspection;
       return adapted_frame.frame_buffer;
+    }
   }
   // Adapt the frame for this size.
-  adapted_frames_.push_back(AdaptBestFrame(size));
+  adapted_frames_.push_back(AdaptBestFrame(size, is_for_inspection));
   return adapted_frames_.back().frame_buffer;
 }
 
 WebRtcVideoFrameAdapter::AdaptedFrame WebRtcVideoFrameAdapter::AdaptBestFrame(
-    const ScaledBufferSize& size) const {
+    const ScaledBufferSize& size,
+    bool is_for_inspection) const {
   double requested_scale_factor =
       static_cast<double>(size.natural_size.width()) /
       size.visible_rect.width();
@@ -524,7 +550,8 @@ WebRtcVideoFrameAdapter::AdaptedFrame WebRtcVideoFrameAdapter::AdaptBestFrame(
       webrtc::scoped_refptr<webrtc::VideoFrameBuffer> adapted_webrtc_frame =
           best_webrtc_frame->Scale(size.natural_size.width(),
                                    size.natural_size.height());
-      return AdaptedFrame(size, nullptr, adapted_webrtc_frame);
+      return AdaptedFrame(size, nullptr, adapted_webrtc_frame,
+                          is_for_inspection);
     }
   }
   // Because |size| is expressed relative to the full size'd frame, we need to
@@ -550,7 +577,8 @@ WebRtcVideoFrameAdapter::AdaptedFrame WebRtcVideoFrameAdapter::AdaptBestFrame(
   }
   webrtc::scoped_refptr<webrtc::VideoFrameBuffer> adapted_webrtc_frame =
       ConvertToWebRtcVideoFrameBuffer(media_frame, shared_resources_);
-  return AdaptedFrame(size, media_frame, adapted_webrtc_frame);
+  return AdaptedFrame(size, media_frame, adapted_webrtc_frame,
+                      is_for_inspection);
 }
 
 scoped_refptr<media::VideoFrame>

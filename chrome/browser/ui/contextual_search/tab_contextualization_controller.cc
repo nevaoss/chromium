@@ -4,9 +4,13 @@
 
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 
+#include <utility>
+
+#include "base/auto_reset.h"
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/bind_post_task.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "chrome/browser/page_content_annotations/page_content_extraction_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -18,6 +22,7 @@
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
@@ -58,9 +63,7 @@ TabContextualizationController::TabContextualizationController(
 
 TabContextualizationController::~TabContextualizationController() {
   in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
-  for (auto& callback : pending_page_context_callbacks_) {
-    std::move(callback).Run(nullptr);
-  }
+  CompleteDeferredPageContextRequests(false);
 }
 
 void TabContextualizationController::WillDiscardContents(
@@ -68,6 +71,8 @@ void TabContextualizationController::WillDiscardContents(
     content::WebContents* old_contents,
     content::WebContents* new_contents) {
   is_page_context_eligible_ = false;
+  did_first_visually_non_empty_paint_ = false;
+  did_dom_content_loaded_ = false;
   pending_page_context_timer_.Stop();
   in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
   Observe(new_contents);
@@ -94,6 +99,8 @@ void TabContextualizationController::OnPageContextEligibilityAPILoaded(
 
 void TabContextualizationController::PrimaryPageChanged(content::Page& page) {
   is_page_context_eligible_ = false;
+  did_first_visually_non_empty_paint_ = false;
+  did_dom_content_loaded_ = false;
   pending_page_context_timer_.Stop();
   in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
 }
@@ -102,32 +109,130 @@ void TabContextualizationController::WillDetach(
     tabs::TabInterface* tab,
     tabs::TabInterface::DetachReason reason) {
   is_page_context_eligible_ = false;
-  pending_page_context_timer_.Stop();
   in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
-  std::vector<GetPageContextCallback> callbacks =
-      std::move(pending_page_context_callbacks_);
-  pending_page_context_callbacks_.clear();
-  for (auto& callback : callbacks) {
-    std::move(callback).Run(nullptr);
+  CompleteDeferredPageContextRequests(false);
+}
+
+void TabContextualizationController::
+    DocumentOnLoadCompletedInPrimaryMainFrame() {
+  MaybeCompleteDeferredPageContextRequests();
+}
+
+void TabContextualizationController::DidFirstVisuallyNonEmptyPaint() {
+  did_first_visually_non_empty_paint_ = true;
+  MaybeCompleteDeferredPageContextRequests();
+}
+
+void TabContextualizationController::DOMContentLoaded(
+    content::RenderFrameHost* render_frame_host) {
+  if (!render_frame_host->IsInPrimaryMainFrame()) {
+    return;
+  }
+  did_dom_content_loaded_ = true;
+  MaybeCompleteDeferredPageContextRequests();
+}
+
+void TabContextualizationController::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (!navigation_handle->IsInPrimaryMainFrame()) {
+    return;
+  }
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&TabContextualizationController::
+                                    MaybeCompleteDeferredPageContextRequests,
+                                weak_ptr_factory_.GetWeakPtr()));
+}
+
+void TabContextualizationController::DidStopLoading() {
+  MaybeCompleteDeferredPageContextRequests();
+}
+
+void TabContextualizationController::NavigationStopped() {
+  MaybeCompleteDeferredPageContextRequests();
+}
+
+void TabContextualizationController::BeforeUnloadDialogCancelled() {
+  MaybeCompleteDeferredPageContextRequests();
+}
+
+TabContextualizationController::PageContextAvailability
+TabContextualizationController::GetPageContextAvailability() const {
+  content::WebContents* web_contents = tab_->GetContents();
+  if (!web_contents) {
+    return PageContextAvailability::kUnavailable;
+  }
+
+  if (web_contents->HasUncommittedNavigationInPrimaryMainFrame()) {
+    return PageContextAvailability::kLoading;
+  }
+  if (web_contents->IsDocumentOnLoadCompletedInPrimaryMainFrame()) {
+    return PageContextAvailability::kReadyToExtract;
+  }
+#if BUILDFLAG(IS_ANDROID)
+  const bool is_optimization_enabled = base::FeatureList::IsEnabled(
+      chrome::android::kOnDemandBackgroundTabContextCaptureOptimization);
+  const bool is_activated = tab_->IsActivated();
+
+  // If the initial visual paint has already completed, the page is visually
+  // rendered and the primary DOM is ready. We can safely extract immediately
+  // without waiting for subresources or ads to finish loading, provided either:
+  // 1) early first paint completion is enabled, or
+  // 2) this is the active foreground tab and skip_delay_for_active_tab is on.
+  const bool is_first_paint_optimization_enabled =
+      is_optimization_enabled &&
+      (chrome::android::kOnDemandBackgroundTabContextCaptureEnableFirstPaint
+           .Get() ||
+       (is_activated &&
+        chrome::android::
+            kOnDemandBackgroundTabContextCaptureSkipDelayForActiveTab.Get()));
+  const bool has_first_paint =
+      did_first_visually_non_empty_paint_ ||
+      web_contents->CompletedFirstVisuallyNonEmptyPaint();
+  if (has_first_paint && is_first_paint_optimization_enabled) {
+    return PageContextAvailability::kReadyToExtract;
+  }
+
+  // First paint is unreliable for background tabs, so it cannot be the only
+  // readiness signal. Annotated page content is extracted from the DOM rather
+  // than from pixels, so a parsed document is sufficient to extract.
+  const bool is_background_dom_content_loaded_enabled =
+      !is_activated && is_optimization_enabled &&
+      chrome::android::
+          kOnDemandBackgroundTabContextCaptureBackgroundTabUseDomContentLoaded
+              .Get();
+  const bool has_dom_content_loaded =
+      did_dom_content_loaded_ ||
+      web_contents->GetPrimaryMainFrame()->IsDOMContentLoaded();
+  if (has_dom_content_loaded && is_background_dom_content_loaded_enabled) {
+    return PageContextAvailability::kReadyToExtract;
+  }
+#endif  // BUILDFLAG(IS_ANDROID)
+  return web_contents->IsLoading() ? PageContextAvailability::kLoading
+                                   : PageContextAvailability::kUnavailable;
+}
+
+void TabContextualizationController::
+    MaybeCompleteDeferredPageContextRequests() {
+  if (deferred_page_context_requests_.empty()) {
+    return;
+  }
+
+  const auto availability = GetPageContextAvailability();
+  if (availability != PageContextAvailability::kLoading) {
+    CompleteDeferredPageContextRequests(
+        availability == PageContextAvailability::kReadyToExtract);
   }
 }
 
-void TabContextualizationController::DidFinishLoad(
-    content::RenderFrameHost* render_frame_host,
-    const GURL& validated_url) {
-  if (render_frame_host && render_frame_host->IsInPrimaryMainFrame()) {
-    FlushPendingPageContextCallbacks();
-  }
-}
-
-void TabContextualizationController::FlushPendingPageContextCallbacks() {
+void TabContextualizationController::CompleteDeferredPageContextRequests(
+    bool should_extract) {
   pending_page_context_timer_.Stop();
-  std::vector<GetPageContextCallback> callbacks =
-      std::move(pending_page_context_callbacks_);
-  pending_page_context_callbacks_.clear();
-
-  for (auto& callback : callbacks) {
-    FetchPageContextInternal(std::move(callback));
+  for (auto& request : std::exchange(deferred_page_context_requests_, {})) {
+    if (should_extract) {
+      FetchPageContextInternal(std::move(request.callback));
+    } else {
+      std::move(request.callback).Run(nullptr);
+    }
   }
 }
 
@@ -261,29 +366,60 @@ void TabContextualizationController::GetPageContext(
 
   Observe(web_contents);
 
-  if (web_contents->IsLoading()) {
-    pending_page_context_callbacks_.push_back(std::move(callback));
-#if BUILDFLAG(IS_ANDROID)
-    if (base::FeatureList::IsEnabled(
-            chrome::android::
-                kOnDemandBackgroundTabContextCaptureOptimization)) {
-      int timeout_sec =
-          chrome::android::
-              kOnDemandBackgroundTabContextCaptureOverallFlushTimeoutSeconds
-                  .Get();
-      if (timeout_sec > 0 && !pending_page_context_timer_.IsRunning()) {
-        pending_page_context_timer_.Start(
-            FROM_HERE, base::Seconds(timeout_sec),
-            base::BindOnce(&TabContextualizationController::
-                               FlushPendingPageContextCallbacks,
-                           in_flight_weak_ptr_factory_.GetWeakPtr()));
-      }
-    }
-#endif  // BUILDFLAG(IS_ANDROID)
-    return;
+  switch (GetPageContextAvailability()) {
+    case PageContextAvailability::kReadyToExtract:
+      FetchPageContextInternal(std::move(callback));
+      return;
+    case PageContextAvailability::kUnavailable:
+      std::move(callback).Run(nullptr);
+      return;
+    case PageContextAvailability::kLoading:
+      break;
   }
+  deferred_page_context_requests_.push_back(
+      {scoped_cancellation_id_, std::move(callback)});
+#if BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(
+          chrome::android::
+              kOnDemandBackgroundTabContextCaptureOptimization)) {
+    const bool use_active_tab_timeout =
+        tab_->IsActivated() &&
+        chrome::android::
+            kOnDemandBackgroundTabContextCaptureSkipDelayForActiveTab.Get();
+    const int timeout_sec =
+        use_active_tab_timeout
+            ? chrome::android::
+                  kOnDemandBackgroundTabContextCaptureActiveTabFlushTimeoutSeconds
+                      .Get()
+            : chrome::android::
+                  kOnDemandBackgroundTabContextCaptureOverallFlushTimeoutSeconds
+                      .Get();
+    if (timeout_sec > 0 && !pending_page_context_timer_.IsRunning()) {
+      pending_page_context_timer_.Start(
+          FROM_HERE, base::Seconds(timeout_sec),
+          base::BindOnce(&TabContextualizationController::
+                              CompleteDeferredPageContextRequests,
+                          in_flight_weak_ptr_factory_.GetWeakPtr(), true));
+    }
+  }
+#endif  // BUILDFLAG(IS_ANDROID)
+}
 
-  FetchPageContextInternal(std::move(callback));
+void TabContextualizationController::GetPageContext(
+    GetPageContextCallback callback,
+    const base::UnguessableToken& cancellation_id) {
+  base::AutoReset<std::optional<base::UnguessableToken>> cancellation_scope(
+      &scoped_cancellation_id_, cancellation_id);
+  GetPageContext(std::move(callback));
+}
+
+bool TabContextualizationController::CancelPageContextRequest(
+    const base::UnguessableToken& cancellation_id) {
+  return std::erase_if(
+             deferred_page_context_requests_,
+             [&cancellation_id](const DeferredPageContextRequest& request) {
+               return request.cancellation_id == cancellation_id;
+             }) > 0;
 }
 
 void TabContextualizationController::FetchPageContextInternal(
@@ -309,7 +445,7 @@ void TabContextualizationController::FetchPageContextInternal(
 #if BUILDFLAG(ENABLE_PDF)
   // Capture the PDF bytes if the PDF helper exists.
   pdf::PDFDocumentHelper* pdf_helper =
-      pdf::PDFDocumentHelper::MaybeGetForWebContents(*web_contents);
+      pdf::PDFDocumentHelper::MaybeGetForFullPagePdf(*web_contents);
   if (pdf_helper) {
     // Fetch the PDF bytes then run the callback.
     pdf_helper->GetPdfBytes(
@@ -373,7 +509,7 @@ void TabContextualizationController::OnPdfBytesReceived(
 
   // Get the most visible page index if the PDF helper exists.
   pdf::PDFDocumentHelper* pdf_helper =
-      pdf::PDFDocumentHelper::MaybeGetForWebContents(*web_contents);
+      pdf::PDFDocumentHelper::MaybeGetForFullPagePdf(*web_contents);
   if (pdf_helper) {
     // TODO(crbug.com/443743308): Parallelize the PDF page index fetch with the
     // PDF bytes fetch.

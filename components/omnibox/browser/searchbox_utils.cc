@@ -11,6 +11,7 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
 #include "base/strings/utf_string_conversions.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/navigation_metrics/navigation_metrics.h"
@@ -32,13 +33,22 @@
 #include "components/omnibox/browser/omnibox_logging_utils.h"
 #include "components/omnibox/browser/omnibox_metrics_constants.h"
 #include "components/omnibox/browser/page_classification_functions.h"
+#if !BUILDFLAG(IS_IOS)
+#include "components/omnibox/browser/vector_icons.h"  // nogncheck
+#endif                                                // !BUILDFLAG(IS_IOS)
 #include "components/omnibox/browser/verbatim_match.h"
+#include "components/omnibox/common/omnibox_features.h"
+#include "components/search_engines/search_engine_type.h"
 #include "components/search_engines/template_url.h"
+#include "components/search_engines/template_url_starter_pack_data.h"
 #include "components/sessions/core/session_id.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/vector_icons/vector_icons.h"
 #include "net/cookies/cookie_util.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/ui_base_features.h"
+#include "ui/gfx/vector_icon_types.h"
 
 using metrics::OmniboxEventProto;
 
@@ -98,10 +108,31 @@ AutocompleteMatch GenerateDotComMatch(
   return match;
 }
 
+AutocompleteSnapshot::AutocompleteSnapshot() = default;
+
+AutocompleteSnapshot::AutocompleteSnapshot(const AutocompleteInput& input,
+                                           AutocompleteResult result)
+    : input(input), result(std::move(result)) {}
+
+AutocompleteSnapshot::AutocompleteSnapshot(AutocompleteSnapshot&&) noexcept =
+    default;
+
+AutocompleteSnapshot& AutocompleteSnapshot::operator=(
+    AutocompleteSnapshot&&) noexcept = default;
+
+AutocompleteSnapshot::~AutocompleteSnapshot() = default;
+
+AutocompleteSnapshot MakeAutocompleteSnapshot(
+    const AutocompleteController* controller) {
+  DCHECK(controller);
+  return AutocompleteSnapshot(controller->input(),
+                              controller->result().CopyForSnapshot());
+}
+
 void OpenMatch(
     AutocompleteController* autocomplete_controller,
     OmniboxClient* client,
-    const AutocompleteInput& input,
+    const AutocompleteSnapshot& snapshot,
     OmniboxPopupSelection selection,
     AutocompleteMatch match,
     WindowOpenDisposition disposition,
@@ -109,12 +140,13 @@ void OpenMatch(
     OmniboxEventProto::KeywordModeEntryMethod keyword_mode_entry_method,
     const std::u16string& pasted_text) {
   const base::TimeTicks now = base::TimeTicks::Now();
-  const AutocompleteResult& result = autocomplete_controller->result();
+  const AutocompleteInput& input = snapshot.input;
+  const AutocompleteResult& result = snapshot.result;
 
   // If the user is executing an action, this will be non-null and some match
   // opening and metrics behavior will be adjusted accordingly.
   OmniboxAction* action = nullptr;
-  if (selection.state == OmniboxPopupSelection::NORMAL &&
+  if (selection.state == OmniboxPopupSelection::LineState::kNormal &&
       match.takeover_action) {
     DCHECK_NE(metrics_tracker.match_selection_timestamp(), base::TimeTicks());
     action = match.takeover_action.get();
@@ -131,14 +163,16 @@ void OpenMatch(
 
   // NULL_RESULT_MESSAGE matches are informational only and cannot be acted
   // upon. Immediately return when attempting to open one.
-  if (match.type == AutocompleteMatchType::NULL_RESULT_MESSAGE && !action) {
+  if (match.type == omnibox::AutocompleteMatchType::kNullResultMessage &&
+      !action) {
     return;
   }
 
   // Switch the window disposition to SWITCH_TO_TAB for open tab matches that
   // originated while in keyword mode, or for tab switch actions.
   const bool is_open_tab_match =
-      match.from_keyword && match.type == AutocompleteMatchType::OPEN_TAB;
+      match.from_keyword &&
+      match.type == omnibox::AutocompleteMatchType::kOpenTab;
   const bool is_tab_switch_action =
       action && action->ActionId() == OmniboxActionId::TAB_SWITCH;
   if (is_open_tab_match || is_tab_switch_action) {
@@ -267,7 +301,7 @@ void OpenMatch(
     if (ui::PageTransitionTypeIncludingQualifiersIs(
             match.transition, ui::PAGE_TRANSITION_KEYWORD) ||
         match.provider->type() ==
-            AutocompleteProvider::TYPE_UNSCOPED_EXTENSION) {
+            AutocompleteProvider::Type::kUnscopedExtension) {
       // User is in keyword mode or accepted an unscoped extension suggestion,
       // increment usage count for the keyword.
       searchbox::EmitAcceptedKeywordSuggestionHistogram(
@@ -351,7 +385,7 @@ void OpenMatch(
       match.type, metrics_tracker.match_selection_timestamp(),
       input.added_default_scheme_to_typed_url(),
       input.typed_url_had_http_scheme() &&
-          match.type == AutocompleteMatchType::URL_WHAT_YOU_TYPED,
+          match.type == omnibox::AutocompleteMatchType::kUrlWhatYouTyped,
       input.text(), match, alternative_nav_match);
 }
 
@@ -397,7 +431,7 @@ void PasteAndGo(AutocompleteController* autocomplete_controller,
                  &alternate_nav_url);
 
   GURL upgraded_url;
-  if (match.type == AutocompleteMatchType::URL_WHAT_YOU_TYPED &&
+  if (match.type == omnibox::AutocompleteMatchType::kUrlWhatYouTyped &&
       client->ShouldDefaultTypedNavigationsToHttps() &&
       AutocompleteInput::ShouldUpgradeToHttps(text, match.destination_url, 0,
                                               false, &upgraded_url)) {
@@ -408,7 +442,11 @@ void PasteAndGo(AutocompleteController* autocomplete_controller,
     input.set_added_default_scheme_to_typed_url(false);
   }
 
-  OpenMatch(autocomplete_controller, client, input,
+  // `input` is a modified copy of the controller's input, so pair it with the
+  // controller's result rather than using a snapshot of the live state.
+  const AutocompleteSnapshot snapshot(
+      input, autocomplete_controller->result().CopyForSnapshot());
+  OpenMatch(autocomplete_controller, client, snapshot,
             OmniboxPopupSelection(OmniboxPopupSelection::kNoMatch), match,
             WindowOpenDisposition::CURRENT_TAB, metrics_tracker,
             keyword_mode_entry_method, text);
@@ -532,6 +570,55 @@ KeywordLabelNames GetKeywordLabelNames(const std::u16string& keyword,
   names.full_name =
       l10n_util::GetStringFUTF16(IDS_OMNIBOX_KEYWORD_TEXT_MD, names.short_name);
   return names;
+}
+
+const gfx::VectorIcon& GetKeywordVectorIcon(const TemplateURL& turl) {
+#if BUILDFLAG(IS_IOS)
+  return gfx::VectorIcon::EmptyIcon();
+#else
+  using StarterPackId = template_url_starter_pack_data::StarterPackId;
+
+  // 1. Handle starter pack `@` keywords
+  switch (turl.starter_pack_id()) {
+    case StarterPackId::kGemini:
+      return omnibox::kSparkIcon;
+    case StarterPackId::kAiMode:
+      return features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
+                                               : omnibox::kSearchSparkOldIcon;
+    case StarterPackId::kBookmarks:
+      return features::IsRoundedIconsEnabled()
+                 ? omnibox::kStarFilledIcon
+                 : omnibox::kStarActiveChromeRefreshOldIcon;
+    case StarterPackId::kHistory:
+      return features::IsRoundedIconsEnabled()
+                 ? vector_icons::kHistoryIcon
+                 : vector_icons::kHistoryChromeRefreshOldIcon;
+    case StarterPackId::kTabs:
+      return features::IsRoundedIconsEnabled()
+                 ? omnibox::kChromeProductIcon
+                 : omnibox::kProductChromeRefreshOldIcon;
+    default:
+      break;
+  }
+
+  if (turl.featured_by_policy()) {
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+    if (turl.CreatedByEnterpriseSearchAggregatorPolicy()) {
+      return base::FeatureList::IsEnabled(omnibox::kUseAgentspace25Logo)
+                 ? vector_icons::kGoogleAgentspaceMonochromeLogo25Icon
+                 : vector_icons::kGoogleAgentspaceMonochromeLogoIcon;
+    }
+#endif
+    return features::IsRoundedIconsEnabled()
+               ? omnibox::kPublicIcon
+               : omnibox::kPageChromeRefreshOldIcon;
+  }
+
+  // 2. Fallback for generic site keywords (e.g. youtube.com, google.com)
+  return features::IsRoundedIconsEnabled()
+             ? vector_icons::kSearchIcon
+             : vector_icons::kSearchChromeRefreshOldIcon;
+#endif  // BUILDFLAG(IS_IOS)
 }
 
 }  // namespace searchbox

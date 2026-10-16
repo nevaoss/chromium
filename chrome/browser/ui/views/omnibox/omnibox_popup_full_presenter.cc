@@ -172,11 +172,13 @@ void OmniboxPopupFullPresenter::RequestFocus() {
     return;
   }
 
-  // If the popup widget is already active, focus the WebUI content and its
-  // underlying WebContents immediately without deferral.
+  // If the popup widget is already active, focus the WebUI content now so the
+  // caret and selection are correct within this event loop turn. Do NOT return
+  // here: the activation seen at this instant can be torn down later in the
+  // same tab-switch sequence, leaving the popup looking focused while keys go
+  // to the browser widget. See crbug.com/558761131.
   if (GetWidget()->IsActive()) {
     FocusPopupContent();
-    return;
   }
 
   // Defer activation to the next event loop cycle to avoid re-entrant window
@@ -248,6 +250,10 @@ bool OmniboxPopupFullPresenter::ShouldSizeWebViewToPreferredHeight() const {
       omnibox::kOmniboxFullWebUISizeWebViewToPreferredHeight);
 }
 
+bool OmniboxPopupFullPresenter::ShouldDrawShadowInWebUI() const {
+  return omnibox::ShouldDrawFullPopupShadowInWebUI();
+}
+
 bool OmniboxPopupFullPresenter::ShouldHideForInitialLayout() const {
   return false;
 }
@@ -294,18 +300,19 @@ void OmniboxPopupFullPresenter::SynchronizePopupBounds() {
   // Calculate the bounds of the "content area" which includes the location bar
   // and any results, plus the alignment insets to cover the focus ring.
   gfx::Rect widget_bounds = location_bar()->BoundsInScreen();
-  widget_bounds.Inset(
-      -RoundedOmniboxResultsFrame::GetLocationBarAlignmentInsets());
+  widget_bounds.Inset(-FullWebUIOmniboxFrame::GetLocationBarAlignmentInsets());
 
   const int default_height = widget_bounds.height();
-  bool has_results = content_height_ > default_height;
-  int target_elevation =
-      has_results ? RoundedOmniboxResultsFrame::kDefaultElevation : 0;
 
   auto* results_frame =
       views::AsViewClass<FullWebUIOmniboxFrame>(GetResultsFrame());
   CHECK(results_frame);
-  results_frame->SetElevation(target_elevation);
+  const bool shadow_in_webui = ShouldDrawShadowInWebUI();
+  if (!shadow_in_webui) {
+    const bool has_results = content_height_ > default_height;
+    results_frame->SetElevation(
+        has_results ? RoundedOmniboxResultsFrame::kDefaultElevation : 0);
+  }
 
   widget_bounds.set_height(content_height_ > 1 ? content_height_
                                                : default_height);
@@ -317,7 +324,12 @@ void OmniboxPopupFullPresenter::SynchronizePopupBounds() {
   widget_bounds.set_height(
       std::max(get_minimum_size().height(), widget_bounds.height()));
 
-  widget_bounds.Inset(-results_frame->GetInsets());
+  // Normally the frame's border supplies the shadow margin. When the page
+  // paints the shadow the frame has no border, so add the margin here; the
+  // WebView covers it and the page paints the shadow into it.
+  widget_bounds.Inset(-(shadow_in_webui
+                            ? RoundedOmniboxResultsFrame::GetShadowInsets()
+                            : results_frame->GetInsets()));
   GetWidget()->SetBounds(widget_bounds);
 }
 
@@ -508,9 +520,12 @@ void OmniboxPopupFullPresenter::WidgetDestroyed() {
   forward_events_timer_.Stop();
   popup_widget_observation_.Reset();
   // Update the popup state manager if widget was destroyed externally, e.g., by
-  // the OS. This ensures the popup state manager stays in sync.
-  if (controller()->popup_state_manager()->popup_state() ==
-      OmniboxPopupState::kFull) {
+  // the OS. This ensures the popup state manager stays in sync. Skip this when
+  // `Hide()` is discarding the widget on purpose, since clearing the state here
+  // would re-enter `Hide()`.
+  if (!is_destroying_widget() &&
+      controller()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kFull) {
     controller()->popup_state_manager()->SetPopupState(
         OmniboxPopupState::kNone);
   }

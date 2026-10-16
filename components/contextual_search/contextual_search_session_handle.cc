@@ -48,6 +48,25 @@ std::vector<FileInfo> TokensToFileInfos(
   return file_infos;
 }
 
+// Marks the file associated with `token` as superceded and returns a mutable
+// pointer to its FileInfo. Returns nullptr if `controller` is null or if no
+// file is associated with `token`.
+// TODO(crbug.com/564475334): See if this can be moved to
+// `ContextualSearchContextController`.
+FileInfo* MarkFileSuperceded(ContextualSearchContextController* controller,
+                             const base::UnguessableToken& token) {
+  if (!controller) {
+    return nullptr;
+  }
+  const auto* file_info = controller->GetFileInfo(token);
+  if (!file_info) {
+    return nullptr;
+  }
+  auto* mutable_file_info = const_cast<FileInfo*>(file_info);
+  mutable_file_info->is_superceded = true;
+  return mutable_file_info;
+}
+
 }  // namespace
 
 ContextualSearchSessionHandle::ContextualSearchSessionHandle(
@@ -128,6 +147,21 @@ ContextualSearchSessionHandle::GetSuggestInputs() const {
   }
 
   return std::nullopt;
+}
+
+std::string ContextualSearchSessionHandle::search_session_id() const {
+  auto* controller = GetController();
+  return controller ? controller->search_session_id() : "";
+}
+
+std::optional<lens::LensOverlayVisualSearchInteractionData>
+ContextualSearchSessionHandle::GetVisualSearchInteractionData(
+    const base::UnguessableToken& file_token,
+    const std::optional<std::string>& query_text) {
+  auto* controller = GetController();
+  return controller ? controller->GetVisualSearchInteractionData(file_token,
+                                                                 query_text)
+                    : std::nullopt;
 }
 
 base::UnguessableToken ContextualSearchSessionHandle::CreateContextToken() {
@@ -218,8 +252,12 @@ void ContextualSearchSessionHandle::StartTabContextUploadFlow(
     return;
   }
 
-  if (contextual_input_data &&
-      contextual_input_data->tab_session_id.has_value()) {
+  if (!contextual_input_data) {
+    uploaded_context_tokens_.erase(it);
+    return;
+  }
+
+  if (contextual_input_data->tab_session_id.has_value()) {
     deselected_tabs_urls_.erase(contextual_input_data->tab_session_id.value());
   }
 
@@ -442,6 +480,11 @@ bool ContextualSearchSessionHandle::DeleteFile(
   return success;
 }
 
+bool ContextualSearchSessionHandle::RemoveUploadedContextToken(
+    const base::UnguessableToken& file_token) {
+  return std::erase(uploaded_context_tokens_, file_token) > 0;
+}
+
 void ContextualSearchSessionHandle::ClearFiles(bool query_submitted) {
   if (query_submitted) {
     // When submitting query, always track tab tokens in `persisted_tabs_`
@@ -504,6 +547,9 @@ void ContextualSearchSessionHandle::CreateSearchUrl(
     MaybeAddTabToPersistedTabs(token);
   }
 
+  sts_toggled_removed_contexts_.clear();
+  smart_tab_sharing_toggled_since_last_turn_ = false;
+
   // Set the invocation source on the search URL request info, if it is not
   // already set.
   if (!search_url_request_info->invocation_source.has_value()) {
@@ -514,18 +560,18 @@ void ContextualSearchSessionHandle::CreateSearchUrl(
                                       std::move(callback));
 }
 
-void ContextualSearchSessionHandle::set_smart_tab_sharing_active(
-    std::optional<bool> active) {
-  if (smart_tab_sharing_active_.value_or(false) != active.value_or(false)) {
-    smart_tab_sharing_toggled_since_last_turn_ = true;
-
+void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
+  if (smart_tab_sharing_active_.value_or(!active) != active) {
     auto* context_controller = GetController();
 
-    auto add_removed_context = [&](const base::UnguessableToken& token) {
-      if (context_controller) {
-        if (const auto* file_info = context_controller->GetFileInfo(token)) {
+    if (!active) {
+      smart_tab_sharing_toggled_since_last_turn_ = true;
+
+      auto add_removed_context = [&](const base::UnguessableToken& token) {
+        if (auto* file_info = MarkFileSuperceded(context_controller, token)) {
           if (file_info->request_id.has_value()) {
-            sts_toggled_removed_contexts_.push_back(file_info->request_id.value());
+            sts_toggled_removed_contexts_.push_back(
+                file_info->request_id.value());
           }
           if (file_info->tab_session_id.has_value()) {
             deselected_tabs_urls_[file_info->tab_session_id.value()] =
@@ -533,32 +579,96 @@ void ContextualSearchSessionHandle::set_smart_tab_sharing_active(
                                file_info->tab_title.value_or(""));
           }
         }
-      }
-    };
+      };
 
-    // Collect request IDs and add to deselected_tabs_urls_ so GetTabsFromContext
-    // in ActiveTaskContextProviderImpl filters out submitted task attachments.
-    for (const auto& [session_id, token_and_req] : persisted_tabs_) {
-      sts_toggled_removed_contexts_.push_back(token_and_req.second);
-      if (context_controller) {
-        const auto* file_info =
-            context_controller->GetFileInfo(token_and_req.first);
-        if (file_info && file_info->tab_session_id.has_value()) {
-          deselected_tabs_urls_[file_info->tab_session_id.value()] =
-              std::make_pair(file_info->tab_url.value_or(GURL()),
-                             file_info->tab_title.value_or(""));
+      // Collect request IDs and add to deselected_tabs_urls_ so
+      // GetTabsFromContext in ActiveTaskContextProviderImpl filters out
+      // submitted task attachments.
+      for (const auto& [session_id, token_and_req] : persisted_tabs_) {
+        sts_toggled_removed_contexts_.push_back(token_and_req.second);
+        if (auto* file_info =
+                MarkFileSuperceded(context_controller, token_and_req.first)) {
+          if (file_info->tab_session_id.has_value()) {
+            deselected_tabs_urls_[file_info->tab_session_id.value()] =
+                std::make_pair(file_info->tab_url.value_or(GURL()),
+                               file_info->tab_title.value_or(""));
+          }
         }
       }
-    }
 
-    // Collect request IDs from uploaded context tokens.
-    for (const auto& token : uploaded_context_tokens_) {
-      add_removed_context(token);
-    }
+      // Collect request IDs from uploaded context tokens.
+      for (const auto& token : uploaded_context_tokens_) {
+        add_removed_context(token);
+      }
 
-    // Collect request IDs from submitted context tokens.
-    for (const auto& token : submitted_context_tokens_) {
-      add_removed_context(token);
+      // Collect request IDs from submitted context tokens.
+      for (const auto& token : submitted_context_tokens_) {
+        add_removed_context(token);
+      }
+
+      // Immediately clear submitted and uploaded context tokens and persisted
+      // tabs so tab strip underlines and context state clear instantly in the
+      // UI.
+      persisted_tabs_.clear();
+      submitted_context_tokens_.clear();
+      uploaded_context_tokens_.clear();
+    } else {
+      auto is_smart_or_implicit_tab = [&](const base::UnguessableToken& token) {
+        if (!context_controller) {
+          return false;
+        }
+        const auto* file_info = context_controller->GetFileInfo(token);
+        if (!file_info) {
+          return false;
+        }
+        return (file_info->input_data &&
+                file_info->input_data->was_smart_tab_selection) ||
+               file_info->is_implicit_upload;
+      };
+
+      auto maybe_remove_manual_context =
+          [&](const base::UnguessableToken& token) {
+            if (is_smart_or_implicit_tab(token)) {
+              return false;
+            }
+            if (auto* file_info =
+                    MarkFileSuperceded(context_controller, token)) {
+              if (file_info->request_id.has_value()) {
+                sts_toggled_removed_contexts_.push_back(
+                    file_info->request_id.value());
+              }
+              if (file_info->tab_session_id.has_value()) {
+                deselected_tabs_urls_[file_info->tab_session_id.value()] =
+                    std::make_pair(file_info->tab_url.value_or(GURL()),
+                                   file_info->tab_title.value_or(""));
+              }
+            }
+            return true;
+          };
+
+      for (auto it = persisted_tabs_.begin(); it != persisted_tabs_.end();) {
+        if (!is_smart_or_implicit_tab(it->second.first)) {
+          sts_toggled_removed_contexts_.push_back(it->second.second);
+          if (auto* file_info =
+                  MarkFileSuperceded(context_controller, it->second.first)) {
+            if (file_info->tab_session_id.has_value()) {
+              deselected_tabs_urls_[file_info->tab_session_id.value()] =
+                  std::make_pair(file_info->tab_url.value_or(GURL()),
+                                 file_info->tab_title.value_or(""));
+            }
+          }
+          it = persisted_tabs_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+
+      std::erase_if(uploaded_context_tokens_, maybe_remove_manual_context);
+      std::erase_if(submitted_context_tokens_, maybe_remove_manual_context);
+
+      if (!sts_toggled_removed_contexts_.empty()) {
+        smart_tab_sharing_toggled_since_last_turn_ = true;
+      }
     }
 
     // Deduplicate collected request IDs.
@@ -577,12 +687,6 @@ void ContextualSearchSessionHandle::set_smart_tab_sharing_active(
       }
     }
     sts_toggled_removed_contexts_ = std::move(unique_reqs);
-
-    // Immediately clear submitted and uploaded context tokens and persisted
-    // tabs so tab strip underlines and context state clear instantly in the UI.
-    persisted_tabs_.clear();
-    submitted_context_tokens_.clear();
-    uploaded_context_tokens_.clear();
   }
   smart_tab_sharing_active_ = active;
 }
@@ -787,7 +891,16 @@ ContextualSearchSessionHandle::GetUploadedContextFileInfos() const {
 
 std::vector<FileInfo>
 ContextualSearchSessionHandle::GetSubmittedContextFileInfos() const {
-  return TokensToFileInfos(GetController(), submitted_context_tokens_);
+  std::vector<base::UnguessableToken> tokens = submitted_context_tokens_;
+  for (const auto& [session_id, token_and_req] : persisted_tabs_) {
+    if (deselected_tabs_urls_.contains(session_id)) {
+      continue;
+    }
+    if (!std::ranges::contains(tokens, token_and_req.first)) {
+      tokens.push_back(token_and_req.first);
+    }
+  }
+  return TokensToFileInfos(GetController(), tokens);
 }
 
 std::vector<std::string>
@@ -986,6 +1099,14 @@ bool ContextualSearchSessionHandle::AreUrlsEquivalent(
 void ContextualSearchSessionHandle::RemoveDeselectedTab(
     SessionID tab_session_id) {
   deselected_tabs_urls_.erase(tab_session_id);
+}
+
+void ContextualSearchSessionHandle::set_auth_user_index(
+    size_t auth_user_index) {
+  auth_user_index_ = auth_user_index;
+  if (auto* controller = GetController()) {
+    controller->SetAuthUserIndex(auth_user_index);
+  }
 }
 
 }  // namespace contextual_search

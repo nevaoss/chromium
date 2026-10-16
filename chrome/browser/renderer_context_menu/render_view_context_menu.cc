@@ -54,7 +54,6 @@
 #include "chrome/browser/context_hub/memory_bank/memory_bank_entry.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/devtools/devtools_window.h"
-#include "chrome/browser/devtools/features.h"
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/download/download_stats.h"
@@ -229,6 +228,7 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_details.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/page.h"
 #include "content/public/browser/picture_in_picture_window_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -290,6 +290,7 @@
 #include "ui/gfx/vector_icon_types.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "url/origin.h"
+#include "url/url_constants.h"
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -955,13 +956,9 @@ bool IsLensOptionEnteredThroughKeyboard(int event_flags) {
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
 
-bool IsGlicWindow(const RenderViewContextMenu* menu,
-                  content::BrowserContext* browser_context) {
-  if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
-    return glic::GetGlicGuestWebContents(
-               menu->GetWebContents()->GetOuterWebContents()) != nullptr;
-  }
-  return false;
+bool IsAnyGlicWebContents(const RenderViewContextMenu* menu) {
+  return glic::GlicEnabling::IsEnabledByGlobalCriteria() &&
+         glic::IsAnyGlicWebContents(menu->GetWebContents());
 }
 
 bool IsPrintPreviewContent(const GURL& current_url) {
@@ -1073,14 +1070,11 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
 
 RenderViewContextMenu::RenderViewContextMenu(
     content::RenderFrameHost& render_frame_host,
-    const content::ContextMenuParams& params,
-    bool is_paste_enabled,
+    const content::ContextMenuParams& params, bool is_paste_enabled,
     bool is_paste_and_match_style_enabled)
     : RenderViewContextMenuBase(render_frame_host, params),
       extension_items_(
-          browser_context_,
-          this,
-          &menu_model_,
+          browser_context_, this, &menu_model_,
           base::BindRepeating(
               extensions::context_menu_helpers::MenuItemMatchesParams,
               params_)),
@@ -1097,7 +1091,8 @@ RenderViewContextMenu::RenderViewContextMenu(
       embedder_web_contents_(GetWebContentsToUse(&render_frame_host)),
       autofill_context_menu_manager_(this, &menu_model_),
       is_paste_enabled_(is_paste_enabled),
-      is_paste_and_match_style_enabled_(is_paste_and_match_style_enabled) {
+      is_paste_and_match_style_enabled_(is_paste_and_match_style_enabled),
+      source_document_at_menu_open_(render_frame_host.GetWeakDocumentPtr()) {
   if (!g_custom_id_ranges_initialized) {
     g_custom_id_ranges_initialized = true;
     SetContentCustomCommandIdRange(IDC_CONTENT_CONTEXT_CUSTOM_FIRST,
@@ -1293,7 +1288,7 @@ void RenderViewContextMenu::InitMenu() {
     // Add "Copy Link Address" menu option for Glic Multi instance. Link
     // options are not supported by default (since Glic uses WebView's context
     // menu).
-    if (IsGlicWindow(this, browser_context_) && !params_.link_url.is_empty()) {
+    if (IsAnyGlicWebContents(this) && !params_.link_url.is_empty()) {
       AppendCopyLinkLocationItem();
       menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
     }
@@ -1421,7 +1416,7 @@ void RenderViewContextMenu::InitMenu() {
       content_type_->SupportsGroup(ContextMenuContentType::ITEM_GROUP_PRINT)) {
     AppendPrintItem();
   } else {
-    if (IsGlicWindow(this, browser_context_) &&
+    if (IsAnyGlicWebContents(this) &&
         base::FeatureList::IsEnabled(features::kGlicPrintMenuItem)) {
       AppendPrintItem();
     }
@@ -2054,13 +2049,14 @@ void RenderViewContextMenu::AppendLinkItems() {
         enterprise_isolated_mode::IsolatedModeReplacesIncognito(GetProfile());
 
     if (show_open_link_off_the_record && isolated_mode_enabled) {
-      AddItemWithOptionalIcon(IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED,
-                              features::IsMenuSimplificationEnabled()
-                                  ? IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED_V2
-                                  : IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED,
-                              features::IsRoundedIconsEnabled()
-                                  ? vector_icons::kDomainIcon
-                                  : vector_icons::kBusinessChromeRefreshOldIcon);
+      AddItemWithOptionalIcon(
+          IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED,
+          features::IsMenuSimplificationEnabled()
+              ? IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED_V2
+              : IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED,
+          features::IsRoundedIconsEnabled()
+              ? vector_icons::kDomainIcon
+              : vector_icons::kBusinessChromeRefreshOldIcon);
     }
 
     AppendOpenInWebAppLinkItems();
@@ -2297,7 +2293,7 @@ void RenderViewContextMenu::AppendImageItems() {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_LOAD_IMAGE,
                                     IDS_CONTENT_CONTEXT_LOAD_IMAGE);
   }
-  if (!IsGlicWindow(this, browser_context_)) {
+  if (!IsAnyGlicWebContents(this)) {
     // Glic doesn't have tabs, to this option doesn't make sense there.
     AddItemWithOptionalIcon(IDC_CONTENT_CONTEXT_OPENIMAGENEWTAB,
                             IDS_CONTENT_CONTEXT_OPENIMAGENEWTAB, kImageIcon);
@@ -2728,17 +2724,8 @@ void RenderViewContextMenu::AppendCopyItem() {
   if (menu_model_.GetItemCount()) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
-
-  std::u16string selected_text = PrintableSelectionText();
-  base::TrimWhitespace(selected_text, base::TRIM_ALL, &selected_text);
-  if (features::IsMenuSimplificationEnabled() && !selected_text.empty()) {
-    menu_model_.AddItem(IDC_CONTENT_CONTEXT_COPY,
-                        l10n_util::GetStringFUTF16(
-                            IDS_CONTENT_CONTEXT_COPY_SELECTION, selected_text));
-  } else {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_COPY,
                                     IDS_CONTENT_CONTEXT_COPY);
-  }
 }
 
 void RenderViewContextMenu::AppendLinkToTextItems() {
@@ -2748,7 +2735,7 @@ void RenderViewContextMenu::AppendLinkToTextItems() {
   }
 
   // Disable for glic.
-  if (IsGlicWindow(this, browser_context_)) {
+  if (IsAnyGlicWebContents(this)) {
     return;
   }
 
@@ -2782,12 +2769,10 @@ void RenderViewContextMenu::AppendPrintItem() {
       (params_.media_type == ContextMenuDataMediaType::kNone ||
        params_.media_flags & ContextMenuData::kMediaCanPrint) &&
       params_.misspelled_word.empty()) {
-    const std::u16string printable_selection_text = PrintableSelectionText();
     if (ShouldUseSimplifiedTextSelection() &&
-        !printable_selection_text.empty()) {
-      menu_model_.AddItem(IDC_PRINT, l10n_util::GetStringFUTF16(
-                                         IDS_CONTENT_CONTEXT_PRINT_SELECTION,
-                                         printable_selection_text));
+        !PrintableSelectionText().empty()) {
+      menu_model_.AddItemWithStringId(IDC_PRINT,
+                                      IDS_CONTENT_CONTEXT_PRINT_SELECTION);
     } else {
       menu_model_.AddItemWithStringId(IDC_PRINT, IDS_CONTENT_CONTEXT_PRINT);
     }
@@ -2802,18 +2787,10 @@ void RenderViewContextMenu::AppendPartialTranslateItem() {
     return;
   }
 
-  const std::u16string printable_selection_text = PrintableSelectionText();
   std::u16string label;
-
   if (is_menu_simplification_enabled) {
-    if (printable_selection_text.empty()) {
       label =
           l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2);
-    } else {
-      label = l10n_util::GetStringFUTF16(
-          IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2,
-          printable_selection_text);
-    }
   } else {
     label = l10n_util::GetStringFUTF16(
         IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE,
@@ -2895,7 +2872,7 @@ void RenderViewContextMenu::AppendSaveToMemoryBanksItem() {
 }
 
 void RenderViewContextMenu::AppendGlicItems() {
-  if (IsGlicWindow(this, browser_context_)) {
+  if (IsAnyGlicWebContents(this)) {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_RELOAD_GLIC,
                                     IDS_CONTENT_CONTEXT_RELOAD);
     menu_model_.SetElementIdentifierAt(
@@ -3268,8 +3245,6 @@ void RenderViewContextMenu::AppendSharingItems() {
     menu_model_.RemoveItemAt(items_initial);
   }
 }
-
-
 
 void RenderViewContextMenu::AppendRegionSearchItem() {
   auto* entry_point_controller =
@@ -3909,8 +3884,6 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       break;
 
     case IDC_CONTENT_CONTEXT_COPYIMAGE:
-      // TODO(b/530284842): Support copying replacement image data to
-      // clipboard.
       ExecCopyImageAt();
       break;
 
@@ -4103,8 +4076,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       // The policy on the source_web_contents_ applies; when performing the
       // action, do it on the appropriate target (the embedder_web_contents_ or
       // the RenderFrameHost, respectively).
-      if (base::FeatureList::IsEnabled(features::kDevToolsShowPolicyDialog) &&
-          !DevToolsWindow::AllowDevToolsFor(GetProfile(),
+      if (!DevToolsWindow::AllowDevToolsFor(GetProfile(),
                                             source_web_contents_)) {
 #if !BUILDFLAG(IS_ANDROID)
         DevToolsPolicyDialog::Show(source_web_contents_);
@@ -4256,10 +4228,18 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
     case IDC_CONTENT_CONTEXT_EMOJI: {
       // The emoji dialog is UI that can interfere with the fullscreen bubble,
       // so drop fullscreen when it is shown. https://crbug.com/40054574
+      // Note: BrowserView::ShowEmojiPanel() also drops fullscreen when a
+      // browser is present; this drop ensures fullscreen is exited on the
+      // fallback ui::ShowEmojiPanel() path when !browser as well.
       // TODO(avi): Do we need to attach the fullscreen block to the emoji
       // panel?
+      base::WeakPtr<RenderViewContextMenu> weak_this =
+          weak_pointer_factory_.GetWeakPtr();
       if (!source_web_contents_->ForSecurityDropFullscreen(
               /*display_id=*/display::kInvalidDisplayId)) {
+        return;
+      }
+      if (!weak_this) {
         return;
       }
 
@@ -4454,15 +4434,6 @@ bool RenderViewContextMenu::IsDevCommandEnabled(int id) const {
     if (!prefs->GetBoolean(prefs::kWebKitJavascriptEnabled)) {
       return false;
     }
-
-    // Don't enable the web inspector if the developer tools are disabled via
-    // the preference dev-tools-disabled.
-    if (!base::FeatureList::IsEnabled(features::kDevToolsShowPolicyDialog)) {
-      if (!DevToolsWindow::AllowDevToolsFor(GetProfile(),
-                                            source_web_contents_)) {
-        return false;
-      }
-    }
   }
 
   return true;
@@ -4608,7 +4579,7 @@ bool RenderViewContextMenu::IsPasteAndMatchStyleEnabled() const {
 }
 
 bool RenderViewContextMenu::IsPrintPreviewEnabled() const {
-  if (IsGlicWindow(this, browser_context_) &&
+  if (IsAnyGlicWebContents(this) &&
       base::FeatureList::IsEnabled(features::kGlicPrintMenuItem)) {
     return GetPrefs(browser_context_)->GetBoolean(prefs::kPrintingEnabled) &&
            (source_web_contents_ && !source_web_contents_->IsCrashed());
@@ -4820,10 +4791,9 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
             : send_tab_to_self::kSendTabToSelfEnhancedDesktopUI;
 
     // TODO(crbug.com/516708776): Remove new feature tag when no longer new.
-    menu_model_.SetIsNewFeatureAt(
-        menu_model_.GetItemCount() - 1,
-        UserEducationService::MaybeShowNewBadge(GetBrowserContext(),
-                                                stts_feature));
+    menu_model_.SetIsNewFeatureAt(menu_model_.GetItemCount() - 1,
+                                  UserEducationService::MaybeShowNewBadge(
+                                      GetBrowserContext(), stts_feature));
     return;
   }
 
@@ -4902,6 +4872,13 @@ void RenderViewContextMenu::ExecOpenWebApp() {
       *app_id, apps::LaunchContainer::kLaunchContainerWindow,
       WindowOpenDisposition::CURRENT_TAB, apps::LaunchSource::kFromMenu);
   launch_params.override_url = params_.link_url;
+  // Forwarding `params_.frame_origin`, `params_.frame_url.GetAsReferrer()`, and
+  // `params_.referrer_policy` directly mirrors
+  // `GetOpenURLParamsWithExtraHeaders()` for other link context menu items
+  // (e.g. `IDC_CONTENT_CONTEXT_OPENLINKNEWTAB`).
+  launch_params.initiator_origin = params_.frame_origin;
+  launch_params.referrer_url = params_.frame_url.GetAsReferrer();
+  launch_params.referrer_policy = params_.referrer_policy;
   apps::AppServiceProxyFactory::GetForProfile(GetProfile())
       ->LaunchAppWithParams(std::move(launch_params));
 }
@@ -5193,12 +5170,22 @@ void RenderViewContextMenu::ExecSaveAs() {
 }
 
 void RenderViewContextMenu::ExecGlic() {
+  // Context menus remain open across navigations on Views platforms. Bail out
+  // if the originating document is no longer the active primary page to avoid
+  // cross-navigation selection leaks, eligibility bypasses, or null-derefs.
+  content::RenderFrameHost* source_frame =
+      source_document_at_menu_open_.AsRenderFrameHostIfValid();
+  if (!source_frame ||
+      &source_frame->GetPage() != &source_web_contents_->GetPrimaryPage()) {
+    return;
+  }
+
   if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile(),
                                                       params_.selection_text)) {
     glic_item_executed_ = true;
     glic::GlicContextMenuInvocationHelper::HandleContextualMenuClick(
         tabs::TabInterface::MaybeGetFromContents(source_web_contents_),
-        params_.selection_text, GetRenderFrameHost()->GetGlobalId());
+        params_.selection_text, source_frame->GetGlobalId());
   }
 }
 
@@ -5240,7 +5227,36 @@ void RenderViewContextMenu::ExecCopyImageAt() {
     return;
   }
 
-  frame_host->CopyImageAt(params_.x, params_.y);
+  // When an image has been replaced with an Indigo transformation, the rendered
+  // pixels are derived from the generated replacement image rather than the
+  // original merchant image in the main frame DOM. Note that in this case only
+  // the bitmap representation is copied to the clipboard; other formats (such
+  // as HTML or URL) written by the standard CopyImageAt path are omitted.
+  std::optional<IndigoReplacementInfo> indigo_info;
+  if (base::FeatureList::IsEnabled(features::kIndigoContextMenuCopy)) {
+    indigo_info = GetIndigoReplacementInfo();
+  }
+
+  if (indigo_info) {
+    // `indigo_info->subframe_rfh` is the child extension subframe that keys the
+    // replacement in `IndigoImageReplacementManager`, whereas `frame_host` is
+    // the parent embedder frame to which clipboard source attribution and
+    // Enterprise Data Protection policies apply.
+    content::GlobalRenderFrameHostId rfh_id = frame_host->GetGlobalId();
+    indigo_info->manager->GetReplacementImageForExport(
+        *indigo_info->subframe_rfh,
+        base::BindOnce(
+            [](content::GlobalRenderFrameHostId rfh_id,
+               const SkBitmap& bitmap) {
+              if (content::RenderFrameHost* rfh =
+                      content::RenderFrameHost::FromID(rfh_id)) {
+                enterprise_data_protection::CopyImageToClipboard(*rfh, bitmap);
+              }
+            },
+            rfh_id));
+  } else {
+    frame_host->CopyImageAt(params_.x, params_.y);
+  }
 
 #if !BUILDFLAG(IS_ANDROID)
   if (enterprise_data_protection::IsClipboardCopyAllowedByPolicyForUI(
@@ -5620,7 +5636,7 @@ void RenderViewContextMenu::MaybeAppendOpenGlicItem(bool add_separator) {
 
   if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile(),
                                                       params_.selection_text) &&
-      !IsGlicWindow(this, browser_context_)) {
+      !IsAnyGlicWebContents(this)) {
     base::ReplaceChars(params_.selection_text, AutocompleteInput::kInvalidChars,
                        u" ", &params_.selection_text);
     base::TrimWhitespace(params_.selection_text, base::TRIM_ALL,
@@ -5804,7 +5820,7 @@ void RenderViewContextMenu::OpenTextQueryInLens() {
       /*additional_query_parameters=*/{},
       // TODO(crbug.com/432490312): Match type here is likely not ideal.
       // Investigate removing match type from this function.
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/
       !lens::features::
@@ -6017,7 +6033,7 @@ bool RenderViewContextMenu::CanAppendGlicShareImageItem() const {
   }
 
   if (!glic::GlicEnabling::IsShareImageEnabledForProfile(GetProfile()) ||
-      IsGlicWindow(this, browser_context_)) {
+      IsAnyGlicWebContents(this)) {
     return false;
   }
 
@@ -6128,13 +6144,14 @@ bool RenderViewContextMenu::IsLinkToIsolatedWebApp() const {
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 
-GURL RenderViewContextMenu::GetIndigoReplacementImageURL() const {
+std::optional<RenderViewContextMenu::IndigoReplacementInfo>
+RenderViewContextMenu::GetIndigoReplacementInfo() const {
   if (!params_.image_replacement_frame_token.has_value()) {
-    return GURL();
+    return std::nullopt;
   }
   RenderFrameHost* frame_host = GetRenderFrameHost();
   if (!frame_host) {
-    return GURL();
+    return std::nullopt;
   }
 
   content::RenderFrameHost* subframe_host =
@@ -6142,16 +6159,22 @@ GURL RenderViewContextMenu::GetIndigoReplacementImageURL() const {
                                       *params_.image_replacement_frame_token);
   if (!subframe_host || &subframe_host->GetPage() != &frame_host->GetPage() ||
       subframe_host->GetParent() != frame_host) {
-    return GURL();
+    return std::nullopt;
   }
   auto* manager =
       indigo::IndigoImageReplacementManager::GetForPage(frame_host->GetPage());
   if (!manager) {
-    return GURL();
+    return std::nullopt;
   }
   auto* replacement = manager->GetImageReplacementForFrame(*subframe_host);
-  if (!replacement) {
-    return GURL();
+  if (!replacement || replacement->GetReplacementImageURL().is_empty()) {
+    return std::nullopt;
   }
-  return replacement->GetReplacementImageURL();
+  return IndigoReplacementInfo{manager, subframe_host,
+                               replacement->GetReplacementImageURL()};
+}
+
+GURL RenderViewContextMenu::GetIndigoReplacementImageURL() const {
+  std::optional<IndigoReplacementInfo> info = GetIndigoReplacementInfo();
+  return info ? info->image_url : GURL();
 }

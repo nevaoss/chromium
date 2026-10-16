@@ -17,6 +17,7 @@
 #include "base/files/file_util.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/path_service.h"
+#include "base/run_loop.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -103,6 +104,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/base32/base32.h"
+#include "components/blocked_content/popup_blocker_tab_helper.h"
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/feature_engagement/public/feature_constants.h"
@@ -169,6 +171,7 @@
 #include "ui/events/test/test_event.h"
 #include "ui/shell_dialogs/fake_select_file_dialog.h"
 #include "ui/views/accessibility/view_accessibility.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/interaction/element_tracker_views.h"
@@ -176,6 +179,7 @@
 #include "ui/views/test/widget_test.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/any_widget_observer.h"
+#include "ui/views/window/dialog_delegate.h"
 #include "url/origin.h"
 
 namespace {
@@ -910,6 +914,93 @@ class LensOverlayControllerBrowserTest : public InProcessBrowserTest {
       int browser_test_flags = ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP) {
     const GURL url = embedded_test_server()->GetURL(relative_url);
     lens::WaitForPaint(browser(), url, disposition, browser_test_flags);
+  }
+
+  // Opens the overlay and the results side panel, then returns the results
+  // frame hosted inside the side panel WebContents. Returns nullptr if any step
+  // fails; callers should ASSERT on the result before using it.
+  content::RenderFrameHost* OpenSidePanelAndGetResultsFrame() {
+    auto* controller = GetLensOverlayController();
+    OpenLensOverlay(LensOverlayInvocationSource::kAppMenu);
+    if (!base::test::RunUntil(
+            [&]() { return controller->state() == State::kOverlay; })) {
+      return nullptr;
+    }
+    if (!content::WaitForLoadStop(GetOverlayWebContents())) {
+      return nullptr;
+    }
+
+    controller->OpenSidePanelForTesting();
+    GetLensOverlaySidePanelCoordinator()->LoadURLInResultsFrameForTesting(
+        GURL("https://www.google.com/search"));
+    if (!IsLensResultsSidePanelShowing()) {
+      return nullptr;
+    }
+    content::WebContents* side_panel_contents =
+        controller->GetSidePanelWebContentsForTesting();
+    if (!side_panel_contents ||
+        !content::WaitForLoadStop(side_panel_contents)) {
+      return nullptr;
+    }
+
+    // The results frame is the only child frame of the side panel web contents.
+    return content::ChildFrameAt(side_panel_contents->GetPrimaryMainFrame(), 0);
+  }
+
+  // Builds the OpenURLParams that the browser would construct for a navigation
+  // requested by `initiator`.
+  content::OpenURLParams MakeRendererInitiatedParams(
+      content::RenderFrameHost* initiator,
+      const GURL& url,
+      WindowOpenDisposition disposition,
+      bool user_gesture,
+      content::FrameTreeNodeId frame_tree_node_id =
+          content::FrameTreeNodeId()) {
+    content::OpenURLParams params(url, content::Referrer(), frame_tree_node_id,
+                                  disposition, ui::PAGE_TRANSITION_LINK,
+                                  /*is_renderer_initiated=*/true);
+    params.user_gesture = user_gesture;
+    params.initiator_origin = initiator->GetLastCommittedOrigin();
+    params.initiator_frame_token = initiator->GetFrameToken();
+    params.initiator_process_id = initiator->GetProcess()->GetDeprecatedID();
+    params.source_site_instance = initiator->GetSiteInstance();
+    params.source_render_process_id =
+        initiator->GetProcess()->GetDeprecatedID();
+    params.source_render_frame_id = initiator->GetRoutingID();
+    return params;
+  }
+
+  // Builds the OpenURLParams that RenderViewContextMenuBase constructs when a
+  // link inside `initiator` is right clicked and a command such as "Open link
+  // in new tab" is chosen. These are browser initiated, which is why
+  // `user_gesture` defaults to true.
+  content::OpenURLParams MakeContextMenuParams(
+      content::RenderFrameHost* initiator,
+      const GURL& url,
+      WindowOpenDisposition disposition) {
+    content::OpenURLParams params =
+        content::OpenURLParams::CreateBrowserInitiated(
+            url, disposition, ui::PAGE_TRANSITION_LINK, content::Referrer(),
+            /*started_from_context_menu=*/true);
+    params.source_render_process_id =
+        initiator->GetProcess()->GetDeprecatedID();
+    params.source_render_frame_id = initiator->GetRoutingID();
+    params.initiator_frame_token = initiator->GetFrameToken();
+    params.initiator_process_id = initiator->GetProcess()->GetDeprecatedID();
+    params.initiator_origin = initiator->GetLastCommittedOrigin();
+    params.source_site_instance = initiator->GetSiteInstance();
+    return params;
+  }
+
+  // Runs every task that was already posted to this thread's task queue. Task
+  // runners are FIFO, so once the closure posted below runs, anything posted
+  // before it has run too. This is used to assert that a task which would have
+  // opened an extra tab did not do so.
+  void WaitForPreviouslyPostedTasks() {
+    base::RunLoop run_loop;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
   }
 
   // Helper to remove the start time, client upload duration, and viewport size
@@ -2355,7 +2446,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   // Issue a text search request to open the side panel without the overlay.
   search_controller->IssueTextSearchRequest(
       LensOverlayInvocationSource::kContentAreaContextMenuText, "query", {},
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/false);
 
@@ -2634,6 +2725,408 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
                   .ExtractBool());
 }
 
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_CurrentTabFromSubframe_DoesNotNavigateCurrentTab) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  ASSERT_TRUE(results_frame->GetParentOrOuterDocument());
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  content::WebContents* active_tab =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  const GURL initial_active_url = active_tab->GetLastCommittedURL();
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+
+  // Request a CURRENT_TAB navigation carrying the results frame's frame tree
+  // node id, which belongs to the side panel rather than to the tab being
+  // navigated.
+  const content::OpenURLParams params = MakeRendererInitiatedParams(
+      results_frame, embedded_test_server()->GetURL("/title1.html"),
+      WindowOpenDisposition::CURRENT_TAB, /*user_gesture=*/true,
+      results_frame->GetFrameTreeNodeId());
+
+  // The request should be handled safely without crashing on frame tree
+  // lookups or navigating the current active tab.
+  side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+
+  // Verify the active tab was not navigated, not even asynchronously.
+  EXPECT_FALSE(active_tab->GetController().GetPendingEntry());
+  EXPECT_EQ(initial_active_url, active_tab->GetLastCommittedURL());
+  EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_WithoutUserActivation_BlocksPopup) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  auto* popup_blocker = blocked_content::PopupBlockerTabHelper::FromWebContents(
+      browser()->GetTabStripModel()->GetActiveWebContents());
+  ASSERT_TRUE(popup_blocker);
+
+  // Send OpenURL requests with user_gesture = false and no transient
+  // activation anywhere.
+  const WindowOpenDisposition kDispositions[] = {
+      WindowOpenDisposition::NEW_BACKGROUND_TAB,
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+  };
+
+  size_t expected_blocked_popups = 0;
+  for (WindowOpenDisposition disposition : kDispositions) {
+    SCOPED_TRACE(testing::Message()
+                 << "disposition " << static_cast<int>(disposition));
+    const content::OpenURLParams params = MakeRendererInitiatedParams(
+        results_frame, embedded_test_server()->GetURL("/title1.html"),
+        disposition, /*user_gesture=*/false);
+
+    side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+
+    // Verify that the request is evaluated against popup blocking rules and
+    // does not open a new tab.
+    ++expected_blocked_popups;
+    EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+    EXPECT_EQ(expected_blocked_popups, popup_blocker->GetBlockedPopupsCount());
+  }
+}
+
+// The side panel WebUI main frame is chrome-untrusted:// content, so requests
+// it initiates must be validated exactly like requests from the results frame.
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_CurrentTabFromWebUIMainFrame_IsAlsoValidated) {
+  WaitForPaint();
+
+  ASSERT_TRUE(OpenSidePanelAndGetResultsFrame());
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+  content::RenderFrameHost* main_frame =
+      side_panel_contents->GetPrimaryMainFrame();
+  ASSERT_TRUE(main_frame);
+
+  content::WebContents* active_tab =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  const GURL initial_active_url = active_tab->GetLastCommittedURL();
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  auto* popup_blocker =
+      blocked_content::PopupBlockerTabHelper::FromWebContents(active_tab);
+  ASSERT_TRUE(popup_blocker);
+
+  const content::OpenURLParams params = MakeRendererInitiatedParams(
+      main_frame, embedded_test_server()->GetURL("/title1.html"),
+      WindowOpenDisposition::CURRENT_TAB, /*user_gesture=*/true,
+      main_frame->GetFrameTreeNodeId());
+
+  side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+
+  // The request is demoted and popup blocked rather than forwarded verbatim,
+  // so the tab is neither navigated nor replaced.
+  EXPECT_EQ(1u, popup_blocker->GetBlockedPopupsCount());
+  EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+  EXPECT_FALSE(active_tab->GetController().GetPendingEntry());
+  EXPECT_EQ(initial_active_url, active_tab->GetLastCommittedURL());
+}
+
+// Dispositions that `blocked_content::ConsiderForPopupBlocking()` ignores must
+// not be forwarded as-is, otherwise the results frame could start downloads or
+// open off-the-record windows without a user gesture.
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_DemotesDispositionsThatSkipPopupBlocking) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  content::WebContents* active_tab =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  const GURL initial_active_url = active_tab->GetLastCommittedURL();
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  auto* popup_blocker =
+      blocked_content::PopupBlockerTabHelper::FromWebContents(active_tab);
+  ASSERT_TRUE(popup_blocker);
+
+  const WindowOpenDisposition kDispositions[] = {
+      WindowOpenDisposition::SAVE_TO_DISK,
+      WindowOpenDisposition::OFF_THE_RECORD,
+      WindowOpenDisposition::CURRENT_TAB,
+      WindowOpenDisposition::SWITCH_TO_TAB,
+      WindowOpenDisposition::NEW_PICTURE_IN_PICTURE,
+  };
+
+  size_t expected_blocked_popups = 0;
+  for (WindowOpenDisposition disposition : kDispositions) {
+    SCOPED_TRACE(testing::Message()
+                 << "disposition " << static_cast<int>(disposition));
+    const content::OpenURLParams params = MakeRendererInitiatedParams(
+        results_frame, embedded_test_server()->GetURL("/title1.html"),
+        disposition, /*user_gesture=*/true);
+
+    side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+
+    // Each request is demoted to NEW_FOREGROUND_TAB, and because there is no
+    // real transient activation it is then caught by the popup blocker.
+    ++expected_blocked_popups;
+    EXPECT_EQ(expected_blocked_popups, popup_blocker->GetBlockedPopupsCount());
+    EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+    EXPECT_FALSE(active_tab->GetController().GetPendingEntry());
+    EXPECT_EQ(initial_active_url, active_tab->GetLastCommittedURL());
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
+                       SidePanel_OpenURLFromTab_BlocksNonWebSchemes) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  content::WebContents* active_tab =
+      browser()->GetTabStripModel()->GetActiveWebContents();
+  const GURL initial_active_url = active_tab->GetLastCommittedURL();
+  const GURL initial_side_panel_url =
+      side_panel_contents->GetLastCommittedURL();
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  auto* popup_blocker =
+      blocked_content::PopupBlockerTabHelper::FromWebContents(active_tab);
+  ASSERT_TRUE(popup_blocker);
+
+  const GURL non_web_urls[] = {
+      GURL("chrome://settings/"),
+      GURL("file:///etc/passwd"),
+      GURL("javascript:alert('sample')"),
+      GURL("data:text/html,<p>sample</p>"),
+      GURL("about:blank"),
+      GURL("devtools://devtools/bundled/inspector.html"),
+      GURL("mailto:sample@example.com"),
+  };
+
+  for (const GURL& target_url : non_web_urls) {
+    SCOPED_TRACE(testing::Message() << "url " << target_url);
+    const content::OpenURLParams params = MakeRendererInitiatedParams(
+        results_frame, target_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        /*user_gesture=*/true);
+
+    // The request is rejected outright, so it is neither navigated nor
+    // recorded as a blocked popup. The return value is not checked because
+    // LensOverlaySidePanelWebView::OpenURLFromTab() always returns nullptr;
+    // only the observable state below distinguishes a rejected request from an
+    // accepted one.
+    side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+    EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+    EXPECT_EQ(0u, popup_blocker->GetBlockedPopupsCount());
+    EXPECT_FALSE(active_tab->GetController().GetPendingEntry());
+    EXPECT_EQ(initial_active_url, active_tab->GetLastCommittedURL());
+    EXPECT_EQ(initial_side_panel_url,
+              side_panel_contents->GetLastCommittedURL());
+  }
+}
+
+// A genuine, user activated link click in the results frame must still open a
+// new tab and must not be caught by the popup blocker.
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_ActivatedLinkClick_IsNotPopupBlocked) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+
+  auto* popup_blocker = blocked_content::PopupBlockerTabHelper::FromWebContents(
+      browser()->GetTabStripModel()->GetActiveWebContents());
+  ASSERT_TRUE(popup_blocker);
+
+  // The side panel only forwards navigations from the trusted search origin,
+  // so make the results frame present that origin.
+  content::OverrideLastCommittedOrigin(
+      results_frame, url::Origin::Create(GURL("https://www.google.com/")));
+
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+
+  // content::ExecJs runs the script with a user gesture, so the click below
+  // carries real transient activation.
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+  // Cross origin relative to the results frame, so the click is forwarded to
+  // the browser instead of being handled inside the side panel.
+  const GURL nav_url = embedded_test_server()->GetURL("/title1.html");
+  ASSERT_TRUE(content::ExecJs(
+      results_frame, content::JsReplace(kNewTabLinkClickScript, nav_url),
+      content::EvalJsOptions::EXECUTE_SCRIPT_NO_RESOLVE_PROMISES));
+
+  content::WebContents* new_tab = add_tab.Wait();
+  ASSERT_TRUE(new_tab);
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+  EXPECT_EQ(nav_url, new_tab->GetLastCommittedURL());
+  EXPECT_EQ(0u, popup_blocker->GetBlockedPopupsCount());
+
+  // A duplicate tab would be opened from a posted task, so let the already
+  // posted tasks run before counting.
+  WaitForPreviouslyPostedTasks();
+  EXPECT_EQ(initial_tab_count + 1, browser()->GetTabStripModel()->count());
+}
+
+// Regression test for a single request opening two tabs. The side panel
+// WebContents is observed by LensOverlaySidePanelCoordinator, which opens the
+// URL in the browser from DidOpenRequestedURL(). That notification is only sent
+// when the delegate returns a WebContents, so OpenURLFromTab() must not return
+// one. This is the shape of the params that the renderer context menu builds
+// for "Open link in new tab".
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_ContextMenuNewTab_OpensExactlyOneTab) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  // The coordinator only re-opens URLs coming from the trusted search origin,
+  // so this is required for the duplicate tab to be reachable at all.
+  content::OverrideLastCommittedOrigin(
+      results_frame, url::Origin::Create(GURL("https://www.google.com/")));
+
+  auto* popup_blocker = blocked_content::PopupBlockerTabHelper::FromWebContents(
+      browser()->GetTabStripModel()->GetActiveWebContents());
+  ASSERT_TRUE(popup_blocker);
+
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  const GURL nav_url = embedded_test_server()->GetURL("/title1.html");
+
+  // A real right click notifies user activation from
+  // EventHandler::HandleMousePressEvent(), so the frame has transient
+  // activation by the time the context menu command runs. content::ExecJs runs
+  // with a user gesture, which reproduces that state.
+  ASSERT_TRUE(content::ExecJs(results_frame, "true;"));
+
+  // RenderViewContextMenuBase builds browser initiated params, which default to
+  // user_gesture=true, and stamps the frame that was right clicked as both the
+  // source and the initiator.
+  const content::OpenURLParams params = MakeContextMenuParams(
+      results_frame, nav_url, WindowOpenDisposition::NEW_BACKGROUND_TAB);
+
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+  side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+
+  content::WebContents* new_tab = add_tab.Wait();
+  ASSERT_TRUE(new_tab);
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+  EXPECT_EQ(nav_url, new_tab->GetLastCommittedURL());
+
+  // The duplicate tab would be opened from a posted task, so let the already
+  // posted tasks run before counting.
+  WaitForPreviouslyPostedTasks();
+  EXPECT_EQ(initial_tab_count + 1, browser()->GetTabStripModel()->count());
+  EXPECT_EQ(0u, popup_blocker->GetBlockedPopupsCount());
+}
+
+// Regression test for "Open link in incognito window" silently opening a normal
+// tab in the regular profile. OFF_THE_RECORD is excluded from the disposition
+// allow-list because a compromised renderer must not reach it, but a context
+// menu command is browser initiated and must still work. Note that no transient
+// activation is granted here: a context menu can easily stay open longer than
+// the activation lifetime, so browser initiated requests must not depend on it.
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_ContextMenuIncognito_OpensOffTheRecord) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  const GURL nav_url = embedded_test_server()->GetURL("/title1.html");
+
+  const content::OpenURLParams params = MakeContextMenuParams(
+      results_frame, nav_url, WindowOpenDisposition::OFF_THE_RECORD);
+
+  auto* popup_blocker = blocked_content::PopupBlockerTabHelper::FromWebContents(
+      browser()->GetTabStripModel()->GetActiveWebContents());
+  ASSERT_TRUE(popup_blocker);
+
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+  side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+
+  // Popup blocking happens synchronously inside OpenURL, so checking it here
+  // makes a regression fail in seconds with a clear message rather than hanging
+  // in Wait() below until the test launcher timeout.
+  ASSERT_EQ(0u, popup_blocker->GetBlockedPopupsCount())
+      << "The request was demoted and popup blocked instead of being opened "
+         "off the record";
+
+  content::WebContents* new_tab = add_tab.Wait();
+  ASSERT_TRUE(new_tab);
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+  EXPECT_EQ(nav_url, new_tab->GetLastCommittedURL());
+
+  // The whole point: the request must land in an off the record profile rather
+  // than being demoted into a regular tab.
+  EXPECT_TRUE(new_tab->GetBrowserContext()->IsOffTheRecord());
+  EXPECT_NE(browser()->GetProfile(), new_tab->GetBrowserContext());
+
+  // The original browser must not have gained a tab.
+  WaitForPreviouslyPostedTasks();
+  EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+}
+
+// The counterpart to the test above: the same disposition coming from the
+// renderer must still be demoted, because the popup blocker ignores
+// OFF_THE_RECORD and a compromised results frame could otherwise open
+// off the record windows at will.
+IN_PROC_BROWSER_TEST_F(
+    LensOverlayControllerBrowserTest,
+    SidePanel_OpenURLFromTab_RendererIncognito_IsStillDemoted) {
+  WaitForPaint();
+
+  content::RenderFrameHost* results_frame = OpenSidePanelAndGetResultsFrame();
+  ASSERT_TRUE(results_frame);
+  content::WebContents* side_panel_contents =
+      GetLensOverlayController()->GetSidePanelWebContentsForTesting();
+  ASSERT_TRUE(side_panel_contents);
+
+  auto* popup_blocker = blocked_content::PopupBlockerTabHelper::FromWebContents(
+      browser()->GetTabStripModel()->GetActiveWebContents());
+  ASSERT_TRUE(popup_blocker);
+
+  const int initial_tab_count = browser()->GetTabStripModel()->count();
+  const GURL nav_url = embedded_test_server()->GetURL("/title1.html");
+
+  const content::OpenURLParams params = MakeRendererInitiatedParams(
+      results_frame, nav_url, WindowOpenDisposition::OFF_THE_RECORD,
+      /*user_gesture=*/true);
+
+  side_panel_contents->OpenURL(params, /*navigation_handle_callback=*/{});
+  WaitForPreviouslyPostedTasks();
+
+  // Demoted to NEW_FOREGROUND_TAB, then popup blocked because the claimed
+  // gesture is not backed by transient activation. Either way, no off the
+  // record window is opened and no tab is added.
+  EXPECT_EQ(initial_tab_count, browser()->GetTabStripModel()->count());
+  EXPECT_EQ(1u, popup_blocker->GetBlockedPopupsCount());
+}
+
 // TODO(crbug.com/413042395): This test is not testing overlay logic, but
 // instead the side panel logic. Therefore, this test should be moved to a side
 // panel browsertest file.
@@ -2791,7 +3284,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   EXPECT_TRUE(controller->GetOverlayViewForTesting()->GetVisible());
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -2868,7 +3361,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   int tabs = browser()->GetTabStripModel()->count();
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -2979,7 +3472,7 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_TRUE(controller->GetOverlayViewForTesting()->GetVisible());
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -3077,7 +3570,7 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_TRUE(controller->GetOverlayViewForTesting()->GetVisible());
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -3372,7 +3865,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest, CsbToHiddenState) {
             metrics::OmniboxEventProto::CONTEXTUAL_SEARCHBOX);
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -3495,7 +3988,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
             metrics::OmniboxEventProto::CONTEXTUAL_SEARCHBOX);
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "hello", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "hello", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -3540,7 +4033,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Issue a regular searchbox request.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -3561,7 +4054,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   content::TestNavigationObserver second_searchbox_query_observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/true, std::map<std::string, std::string>());
 
   // We can't use content::WaitForLoadStop here since the last navigation is
@@ -3580,7 +4073,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   content::TestNavigationObserver third_searchbox_query_observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "blue", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "blue", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -4039,7 +4532,7 @@ IN_PROC_BROWSER_TEST_F(
   content::TestNavigationObserver first_searchbox_query_observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
   first_searchbox_query_observer.Wait();
@@ -4069,7 +4562,7 @@ IN_PROC_BROWSER_TEST_F(
   content::TestNavigationObserver second_searchbox_query_observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/true, std::map<std::string, std::string>());
   second_searchbox_query_observer.Wait();
 
@@ -4727,7 +5220,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
       [&]() { return controller->state() == State::kOverlay; }));
 
   // Open the find bar.
-  browser()->GetFeatures().GetFindBarController()->Show();
+  FindBarController::From(browser())->Show();
 
   // Verify the overlay turns off.
   ASSERT_TRUE(base::test::RunUntil(
@@ -5716,6 +6209,42 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 }
 
 IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
+                       PdfBytesNotExtractedForEmbeddedPdfIframe) {
+  // Open an HTML page embedding a PDF in an iframe.
+  const GURL url = embedded_test_server()->GetURL("/pdf/test-iframe.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // State should start in off.
+  auto* controller = GetLensOverlayController();
+  ASSERT_TRUE(controller);
+  ASSERT_EQ(controller->state(), State::kOff);
+
+  // Open the overlay.
+  OpenLensOverlay(LensOverlayInvocationSource::kAppMenu);
+  ASSERT_EQ(controller->state(), State::kScreenshot);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->state() == State::kOverlay; }));
+
+  auto* fake_query_controller =
+      static_cast<lens::TestLensOverlayQueryController*>(
+          GetLensOverlayQueryController());
+
+  // Wait until page content payload is sent.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return fake_query_controller->last_sent_page_content_payload()
+               .content()
+               .content_data()
+               .size() >= 1;
+  }));
+  for (const auto& content_data :
+       fake_query_controller->last_sent_page_content_payload()
+           .content()
+           .content_data()) {
+    EXPECT_NE(content_data.content_type(), lens::ContentData::CONTENT_TYPE_PDF);
+  }
+}
+
+IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
                        PartialPdfIncludedInRequest) {
   // Open the PDF document and wait for it to finish loading.
   const GURL url = embedded_test_server()->GetURL(kPdfDocument);
@@ -5818,7 +6347,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 
   // Make a searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -5841,7 +6370,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 
   // Issue a new searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -5977,7 +6506,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 
   // Issue a query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/true, std::map<std::string, std::string>());
 
   // Verify transitions to live page.
@@ -6031,7 +6560,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 
   // Simulate a zero suggest suggestion being chosen.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/true, std::map<std::string, std::string>());
 
   // Issuing a search from the overlay state can only be done through the
@@ -6176,7 +6705,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 
   // Make a searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -6198,7 +6727,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
 
   // Issue a new searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -6259,7 +6788,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
   int tab_count = browser()->GetTabStripModel()->count();
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "green", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "green", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -6671,7 +7200,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Make a searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -6959,7 +7488,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Simulate a zero suggest suggestion being chosen.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/true, std::map<std::string, std::string>());
 
   // Issuing a search from the overlay state can only be done through the
@@ -7104,7 +7633,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Simulate a manual typed suggestion being entered.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -7301,7 +7830,7 @@ IN_PROC_BROWSER_TEST_F(
   // Show ZPS and issue a query.
   controller->OnZeroSuggestShownForTesting();
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
   ASSERT_TRUE(base::test::RunUntil(
@@ -7342,7 +7871,7 @@ IN_PROC_BROWSER_TEST_F(
 
   // Issue a search query before ZPS is shown.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
   ASSERT_TRUE(base::test::RunUntil(
@@ -7357,7 +7886,7 @@ IN_PROC_BROWSER_TEST_F(
 
   controller->OnZeroSuggestShownForTesting();
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -7404,7 +7933,7 @@ IN_PROC_BROWSER_TEST_F(
 
   // Issue a search query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
   ASSERT_TRUE(base::test::RunUntil(
@@ -7420,7 +7949,7 @@ IN_PROC_BROWSER_TEST_F(
   follow_up_query_issued_count =
       test_side_panel_coordinator->side_panel_loading_set_to_true_;
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "red", AutocompleteMatchType::Type::SEARCH_SUGGEST,
+      kTestTime, "red", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -7463,7 +7992,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Make a searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7481,7 +8010,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   content::TestNavigationObserver observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "apples", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "apples", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7521,7 +8050,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   GetLensSearchController()->IssueTextSearchRequest(
       LensOverlayInvocationSource::kContentAreaContextMenuText, "test",
       /*additional_query_parameters=*/{},
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/false);
 
@@ -7539,7 +8068,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   content::TestNavigationObserver observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "apples", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "apples", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7584,7 +8113,7 @@ IN_PROC_BROWSER_TEST_F(
   GetLensSearchController()->IssueTextSearchRequest(
       LensOverlayInvocationSource::kContentAreaContextMenuText, "test",
       /*additional_query_parameters=*/{},
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/true);
 
@@ -7602,7 +8131,7 @@ IN_PROC_BROWSER_TEST_F(
   content::TestNavigationObserver observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "apples", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "apples", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7664,7 +8193,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Make a searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7686,7 +8215,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Issue a new searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7730,7 +8259,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Issue a new searchbox query.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -7996,7 +8525,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Make a searchbox query to open the live page and side panel.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -8604,7 +9133,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerOverlaySearchbox,
             metrics::OmniboxEventProto::CONTEXTUAL_SEARCHBOX);
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "hello", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "hello", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -8646,7 +9175,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerOverlaySearchbox,
             metrics::OmniboxEventProto::CONTEXTUAL_SEARCHBOX);
 
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "hello", AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, "hello", omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
 
@@ -9083,7 +9612,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   content::TestNavigationObserver multimodal_observer(
       controller->GetSidePanelWebContentsForTesting());
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, test_text, AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      kTestTime, test_text, omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       std::map<std::string, std::string>());
   multimodal_observer.WaitForNavigationFinished();
@@ -9228,7 +9757,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest, ReshowOverlay) {
 
   // Make a searchbox query to open the side panel and hide the overlay.
   controller->IssueSearchBoxRequestForTesting(
-      kTestTime, "oranges", AutocompleteMatchType::SEARCH_SUGGEST,
+      kTestTime, "oranges", omnibox::AutocompleteMatchType::kSearchSuggest,
       /*is_zero_prefix_suggestion=*/false,
       /*additional_query_params=*/{});
 
@@ -9369,7 +9898,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerReinvocationBrowserTest,
   // Issue a text search request to open the side panel without the overlay.
   GetLensSearchController()->IssueTextSearchRequest(
       LensOverlayInvocationSource::kContentAreaContextMenuText, "query", {},
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/true);
 
@@ -9422,7 +9951,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerReinvocationBrowserTest,
   // navigation in the side panel finishes.
   controller->IssueSearchBoxRequestForTesting(
       base::Time::Now(), "first query",
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false, {{"vsqid", "fake_vsqid"}});
 
   // Wait for the side panel to open and load.
@@ -9540,7 +10069,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerReinvocationBrowserTest,
   // Issue a text search request to open the side panel without the overlay.
   GetLensSearchController()->IssueTextSearchRequest(
       LensOverlayInvocationSource::kContentAreaContextMenuText, "query", {},
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/true);
 
@@ -9637,7 +10166,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerReinvocationBrowserTest,
   // Issue a text search request to open the side panel without the overlay.
   search_controller->IssueTextSearchRequest(
       LensOverlayInvocationSource::kContentAreaContextMenuText, "query", {},
-      AutocompleteMatchType::Type::SEARCH_WHAT_YOU_TYPED,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
       /*is_zero_prefix_suggestion=*/false,
       /*suppress_contextualization=*/true);
 

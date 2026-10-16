@@ -41,6 +41,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
+#include "url/url_constants.h"
 
 namespace {
 using testing::_;
@@ -566,6 +567,63 @@ const std::string kInvalidJsonResponse = R"invalid({
     ]
   })invalid";
 
+const std::string kNonHttpsImageUrlJsonResponse = R"json({
+    "contentSuggestions": [
+      {
+        "document": {
+          "derivedStructData": {
+            "title": "John's Document 1"
+          }
+        },
+        "destinationUri": "https://www.example.com/1",
+        "iconUri": "javascript:alert(1)",
+        "score": 0.8
+      },
+      {
+        "document": {
+          "derivedStructData": {
+            "title": "John's Document 2"
+          }
+        },
+        "destinationUri": "https://www.example.com/2",
+        "iconUri": "http://www.example.com/icon.png",
+        "score": 0.8
+      }
+    ],
+    "peopleSuggestions": [
+      {
+        "suggestion": "john@example.com",
+        "document": {
+          "derivedStructData": {
+            "name": {
+              "displayName": "John Doe"
+            },
+            "displayPhoto": {
+              "url": "javascript:alert(2)"
+            }
+          }
+        },
+        "destinationUri": "https://example.com/people/jdoe",
+        "score": 0.8
+      },
+      {
+        "suggestion": "john2@example.com",
+        "document": {
+          "derivedStructData": {
+            "name": {
+              "displayName": "John Doe2"
+            },
+            "displayPhoto": {
+              "url": "http://example.com/image.png"
+            }
+          }
+        },
+        "destinationUri": "https://example.com/people/jdoe2",
+        "score": 0.8
+      }
+    ]
+  })json";
+
 // Helper methods to dynamically generate valid responses.
 std::string CreateQueryResult(const std::string& query,
                               const float score = 0.0) {
@@ -757,7 +815,7 @@ class EnterpriseSearchAggregatorProviderTest : public testing::Test {
 
   AutocompleteMatch CreateAutocompleteMatch(std::u16string url) {
     AutocompleteMatch match(provider_.get(), 1000, false,
-                            AutocompleteMatchType::NAVSUGGEST);
+                            omnibox::AutocompleteMatchType::kNavsuggest);
     match.destination_url = GURL(url);
     return match;
   }
@@ -1076,7 +1134,7 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, Parse) {
   ACMatches matches = provider_->matches_;
   ASSERT_EQ(matches.size(), 3u);
 
-  EXPECT_EQ(matches[0].type, AutocompleteMatchType::NAVSUGGEST);
+  EXPECT_EQ(matches[0].type, omnibox::AutocompleteMatchType::kNavsuggest);
   EXPECT_EQ(matches[0].relevance, 810);
   EXPECT_EQ(matches[0].contents,
             l10n_util::GetStringFUTF16(IDS_PERSON_SUGGESTION_DESCRIPTION,
@@ -1091,7 +1149,7 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, Parse) {
   EXPECT_EQ(matches[0].fill_into_edit,
             u"keyword https://example.com/people/jdoe");
 
-  EXPECT_EQ(matches[1].type, AutocompleteMatchType::NAVSUGGEST);
+  EXPECT_EQ(matches[1].type, omnibox::AutocompleteMatchType::kNavsuggest);
   EXPECT_EQ(matches[1].relevance, 410);
   EXPECT_EQ(matches[1].contents, u"10/15/07 - John Doe - Google Docs");
   EXPECT_EQ(matches[1].description, u"John's doodle");
@@ -1102,7 +1160,7 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, Parse) {
                                        ui::PAGE_TRANSITION_KEYWORD));
   EXPECT_EQ(matches[1].fill_into_edit, u"keyword https://www.example.com");
 
-  EXPECT_EQ(matches[2].type, AutocompleteMatchType::SEARCH_SUGGEST);
+  EXPECT_EQ(matches[2].type, omnibox::AutocompleteMatchType::kSearchSuggest);
   EXPECT_EQ(matches[2].relevance, 0);
   EXPECT_EQ(matches[2].contents, u"John's Document 1");
   EXPECT_EQ(matches[2].description, u"");
@@ -1127,7 +1185,7 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, Parse_MultipleResponses) {
   ACMatches matches = provider_->matches_;
   ASSERT_EQ(matches.size(), 3u);
 
-  EXPECT_EQ(matches[0].type, AutocompleteMatchType::NAVSUGGEST);
+  EXPECT_EQ(matches[0].type, omnibox::AutocompleteMatchType::kNavsuggest);
   EXPECT_EQ(matches[0].relevance, 810);
   EXPECT_EQ(matches[0].contents,
             l10n_util::GetStringFUTF16(IDS_PERSON_SUGGESTION_DESCRIPTION,
@@ -1142,7 +1200,7 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, Parse_MultipleResponses) {
   EXPECT_EQ(matches[0].fill_into_edit,
             u"keyword https://example.com/people/jdoe");
 
-  EXPECT_EQ(matches[1].type, AutocompleteMatchType::NAVSUGGEST);
+  EXPECT_EQ(matches[1].type, omnibox::AutocompleteMatchType::kNavsuggest);
   EXPECT_EQ(matches[1].relevance, 410);
   EXPECT_EQ(matches[1].contents, u"10/15/07 - John Doe - Google Docs");
   EXPECT_EQ(matches[1].description, u"John's doodle");
@@ -1153,7 +1211,7 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, Parse_MultipleResponses) {
                                        ui::PAGE_TRANSITION_KEYWORD));
   EXPECT_EQ(matches[1].fill_into_edit, u"keyword https://www.example.com");
 
-  EXPECT_EQ(matches[2].type, AutocompleteMatchType::SEARCH_SUGGEST);
+  EXPECT_EQ(matches[2].type, omnibox::AutocompleteMatchType::kSearchSuggest);
   EXPECT_EQ(matches[2].relevance, 0);
   EXPECT_EQ(matches[2].contents, u"John's Document 1");
   EXPECT_EQ(matches[2].description, u"");
@@ -2017,6 +2075,24 @@ TEST_F(EnterpriseSearchAggregatorProviderTest, DiscardsInvalidJavascriptUrl) {
   ACMatches matches = provider_->matches_;
   // After fix, it should have 0 matches because javascript: URLs are discarded.
   EXPECT_EQ(matches.size(), 0u);
+}
+
+TEST_F(EnterpriseSearchAggregatorProviderTest,
+       DiscardsNonHttpsImageAndIconUrls) {
+  provider_->adjusted_input_ = CreateInput(u"john d", true);
+  StartAndComplete3Requests(200, kNonHttpsImageUrlJsonResponse);
+
+  ACMatches matches = provider_->matches_;
+  ASSERT_EQ(matches.size(), 4u);
+  // Matches are kept but `image_url` and `icon_url` are cleared because the
+  // supplied `displayPhoto.url` and `iconUri` values do not use the HTTPS
+  // scheme. People suggestions still use the engine favicon as `icon_url`.
+  for (const auto& match : matches) {
+    EXPECT_EQ(match.image_url, GURL()) << match.destination_url;
+    EXPECT_TRUE(match.icon_url.is_empty() ||
+                match.icon_url.SchemeIs(url::kHttpsScheme))
+        << match.icon_url;
+  }
 }
 
 TEST_F(EnterpriseSearchAggregatorProviderSingleRequestTest,

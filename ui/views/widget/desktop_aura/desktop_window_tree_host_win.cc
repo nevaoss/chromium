@@ -304,9 +304,10 @@ void DesktopWindowTreeHostWin::Init(const Widget::InitParams& params) {
   window()->Show();
 
   // Stack immediately above its parent so that it does not cover other
-  // root-level windows, with the exception of menus, to allow them to be
-  // displayed on top of other windows.
-  if (params.parent && params.type != views::Widget::InitParams::TYPE_MENU) {
+  // root-level windows, with the exception of menus and security surfaces, to
+  // allow them to be displayed on top of other windows.
+  if (params.parent && params.type != views::Widget::InitParams::TYPE_MENU &&
+      z_order_ != ui::ZOrderLevel::kSecuritySurface) {
     StackAbove(params.parent);
   }
 }
@@ -1123,6 +1124,15 @@ DesktopWindowTreeHostWin::GetParentNativeViewAccessible() {
   }
 
   views::Widget* parent_widget = widget->parent();
+  if (!parent_widget && widget->IsVisible()) {
+    // Context-created popups, such as TooltipAura's widget, can have a Win32
+    // owner without a Widget parent. Resolve the owner's content window to
+    // obtain its Widget.
+    if (HWND owner_hwnd = ::GetWindow(GetHWND(), GW_OWNER)) {
+      parent_widget =
+          Widget::GetWidgetForNativeView(GetContentWindowForHWND(owner_hwnd));
+    }
+  }
   if (!parent_widget) {
     return nullptr;
   }

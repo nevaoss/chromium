@@ -133,9 +133,8 @@ class LensSearchController {
   void IssueContextualSearchRequest(
       lens::LensOverlayInvocationSource invocation_source,
       const GURL& destination_url,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion);
-
 
   // If `suppress_contextualization` is true, queries will not be performed with
   // contextualization for the duration of the session. However,
@@ -146,7 +145,7 @@ class LensSearchController {
       lens::LensOverlayInvocationSource invocation_source,
       std::string query_text,
       std::map<std::string, std::string> additional_query_parameters,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       bool suppress_contextualization);
 
@@ -178,8 +177,9 @@ class LensSearchController {
   // Returns true if Lens is currently active on this tab.
   virtual bool IsActive();
 
-  // Returns true if either the overlay or the side panel is showing.
-  bool IsShowingUI();
+  // Returns true if either the overlay or the side panel is showing. Virtual
+  // for testing.
+  virtual bool IsShowingUI();
 
   // Returns true if Lens is currently off on this tab.
   bool IsOff();
@@ -284,7 +284,7 @@ class LensSearchController {
 
   // Returns whether the current tab's committed origin matches the origin
   // of the page when this Lens session was initiated.
-  bool IsCurrentTabSameOrigin() const;
+  virtual bool IsCurrentTabSameOrigin() const;
 
   // Returns the origin of the page when this Lens session was initiated.
   const url::Origin& session_origin() const { return session_origin_; }

@@ -8,7 +8,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include "base/check_deref.h"
@@ -79,22 +78,30 @@ class PasswordAutofillManager : public autofill::AutofillSuggestionDelegate,
       const override;
 
   // AutofillSuggestionDelegate implementation.
-  std::variant<autofill::AutofillDriver*, PasswordManagerDriver*>
-  GetDriver_DoNotUse() override;
   void OnSuggestionsShown(base::span<const autofill::Suggestion> suggestions,
                           const SuggestionUiMetadata& metadata) override;
   void OnSuggestionsHidden(autofill::SuggestionHidingReason reason) override;
   bool OnFilterChanged(const std::u16string& filter) override;
   bool OnSearchSubmitted(const std::u16string& filter) override;
-  void DidSelectSuggestion(const autofill::Suggestion& suggestion) override;
+  void DidSelectSuggestion(const autofill::Suggestion& suggestion,
+                           const autofill::FormGlobalId& form_id,
+                           const autofill::FieldGlobalId& field_id) override;
   void DidAcceptSuggestion(const autofill::Suggestion& suggestion,
-                           const SuggestionMetadata& metadata) override;
+                           const SuggestionMetadata& metadata,
+                           const autofill::FormGlobalId& form_id,
+                           const autofill::FieldGlobalId& field_id) override;
   bool RemoveSuggestion(const autofill::Suggestion& suggestion) override;
   void ClearPreviewedForm() override;
   autofill::FillingProduct GetMainFillingProduct() const override;
   void OnTabSelected(autofill::TabbedPaneTabType tab_type) override;
   bool IsSearching() const override;
   autofill::FieldGlobalId GetQueriedFieldId() const override;
+
+  // PasswordAutofillManager ignores the `form_id` and `field_id` in
+  // AutofillSuggestionDelegate::Did{Select,Accept}Suggestion().
+  void DidSelectSuggestion(const autofill::Suggestion& suggestion);
+  void DidAcceptSuggestion(const autofill::Suggestion& suggestion,
+                           const SuggestionMetadata& metadata);
 
   // Invoked when a password mapping is added.
   void OnAddPasswordFillData(const autofill::PasswordFormFillData& fill_data);
@@ -123,6 +130,7 @@ class PasswordAutofillManager : public autofill::AutofillSuggestionDelegate,
   // Called when main frame navigates. Not called for in-page navigations.
   void DidNavigateMainFrame();
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   PasswordManualFallbackMetricsRecorder&
   GetPasswordManualFallbackMetricsRecorder() {
     return CHECK_DEREF(manual_fallback_metrics_recorder_.get());
@@ -134,6 +142,7 @@ class PasswordAutofillManager : public autofill::AutofillSuggestionDelegate,
   inline PasswordSuggestionFlow* manual_fallback_flow() {
     return manual_fallback_flow_.get();
   }
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
   // If there is a popup waiting to be displayed with a delay, this cancels it.
   void FocusedInputChanged();
@@ -249,6 +258,11 @@ class PasswordAutofillManager : public autofill::AutofillSuggestionDelegate,
       ShowWebAuthnCredentials show_webauthn_credentials,
       ShowIdentityCredentials show_identity_credentials);
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+  bool MaybeTriggerPasswordManualFallback(
+      const autofill::TriggeringField& field);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
   std::unique_ptr<autofill::PasswordFormFillData> fill_data_;
 
   password_manager::PasswordSuggestionGenerator suggestion_generator_;
@@ -281,6 +295,7 @@ class PasswordAutofillManager : public autofill::AutofillSuggestionDelegate,
   // on Android, Mac and Windows.
   std::unique_ptr<device_reauth::DeviceAuthenticator> authenticator_;
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   // Initialized when the user triggers the password manual fallback. This flow
   // reads all user passwords upon initialization. Hence it's reset upon main
   // frame navigation or if this `PasswordAutofillManager` is destroyed.
@@ -296,6 +311,7 @@ class PasswordAutofillManager : public autofill::AutofillSuggestionDelegate,
   // `manual_fallback_flow_` and dies when `manual_fallback_flow_` dies.
   std::unique_ptr<PasswordManualFallbackMetricsRecorder>
       manual_fallback_metrics_recorder_;
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
   // This timer is used to delay showing the suggestions popup if passkey
   // suggestions are allowed but the passkey list has not yet arrived.

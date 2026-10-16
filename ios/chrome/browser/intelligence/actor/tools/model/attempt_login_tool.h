@@ -10,6 +10,7 @@
 #import <vector>
 
 #import "base/memory/raw_ptr.h"
+#import "base/memory/scoped_refptr.h"
 #import "base/memory/weak_ptr.h"
 #import "base/scoped_observation.h"
 #import "base/time/time.h"
@@ -80,11 +81,6 @@ class AttemptLoginTool : public ActorTool,
                       bool should_store_permission,
                       actor_login::LoginStatusResultOrError login_status);
 
-  // Called when the initial DOM extraction step from the rescan attempt
-  // completes. If no forms were found in the DOM, completes rescanning with
-  // failure immediately without waiting for `rescan_timer_`.
-  void OnDomRescanComplete(bool forms_found_in_dom);
-
   // Called when password forms in `web_state_` have finished rescanning and are
   // registered with the password manager. Continues the login attempt if
   // `forms_found` is true.
@@ -107,8 +103,10 @@ class AttemptLoginTool : public ActorTool,
   // The time when the tool is created.
   base::TimeTicks attempt_login_tool_start_time_;
 
-  // Manager that logs model quality and uploads logs to the server.
-  std::unique_ptr<ActorLoginQualityLogger> quality_logger_;
+  // Helper class which collects the model quality log for this login
+  // flow. Shared with the login service internals, the log is uploaded
+  // once the last participant of the flow is done with it.
+  scoped_refptr<ActorLoginQualityLogger> quality_logger_;
 
   // Callback that signals the tool execution result.
   ToolExecutionCallback execute_callback_;

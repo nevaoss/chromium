@@ -135,6 +135,7 @@ void MediaStreamVideoSource::RemoveTrack(MediaStreamVideoTrack* video_track,
     DCHECK_NE(it, kNotFound);
     tracks_.EraseAt(it);
   }
+  OnTrackRemoved(video_track);
   secure_tracker_.Remove(video_track);
 
   {
@@ -246,15 +247,20 @@ void MediaStreamVideoSource::StopForRestart(RestartCallback callback,
   if (send_black_frame) {
     const std::optional<gfx::Size> source_size =
         GetTrackAdapter()->source_frame_size();
-    scoped_refptr<media::VideoFrame> black_frame =
-        media::VideoFrame::CreateBlackFrame(
-            source_size.has_value() ? *source_size
-                                    : gfx::Size(kDefaultWidth, kDefaultHeight));
+    const gfx::Size black_frame_size =
+        source_size.has_value() ? *source_size
+                                : gfx::Size(kDefaultWidth, kDefaultHeight);
+    // Note: the frame is constructed on the video task runner rather than here,
+    // so that it can be stamped with a timestamp that continues the source's
+    // timeline. A frame starting over at zero, with a default capture version,
+    // is discarded downstream and the consumer keeps displaying the last real
+    // frame.
     PostCrossThreadTask(
         *video_task_runner(), FROM_HERE,
-        CrossThreadBindOnce(&VideoTrackAdapter::DeliverFrameOnVideoTaskRunner,
-                            GetTrackAdapter(), black_frame,
-                            base::TimeTicks::Now()));
+        CrossThreadBindOnce(
+            &VideoTrackAdapter::DeliverBlackFrameOnVideoTaskRunner,
+            GetTrackAdapter(), black_frame_size, GetCaptureVersion(),
+            base::TimeTicks::Now()));
   }
 
   StopSourceForRestartImpl();
@@ -542,6 +548,7 @@ bool MediaStreamVideoSource::SupportsEncodedOutput() const {
 }
 
 void MediaStreamVideoSource::ApplySubCaptureTarget(
+    MediaStreamVideoTrack* track,
     media::mojom::blink::SubCaptureTargetType type,
     const base::Token& sub_capture_target,
     uint32_t sub_capture_version,
@@ -556,7 +563,8 @@ media::CaptureVersion MediaStreamVideoSource::GetCaptureVersion() const {
 }
 
 std::optional<media::CaptureVersion>
-MediaStreamVideoSource::GetNextCaptureVersion() {
+MediaStreamVideoSource::GetNextCaptureVersion(
+    media::mojom::SubCaptureTargetType type) {
   return std::nullopt;
 }
 
@@ -582,6 +590,12 @@ scoped_refptr<VideoTrackAdapter> MediaStreamVideoSource::GetTrackAdapter() {
         video_task_runner(), IsVideoDesktopCaptureMediaType(device().type));
   }
   return track_adapter_;
+}
+
+void MediaStreamVideoSource::SetTrackSubCaptureTarget(
+    const MediaStreamVideoTrack* track,
+    const base::Token& sub_capture_target) {
+  GetTrackAdapter()->SetTrackSubCaptureTarget(track, sub_capture_target);
 }
 
 void MediaStreamVideoSource::UpdateCanDiscardAlpha() {

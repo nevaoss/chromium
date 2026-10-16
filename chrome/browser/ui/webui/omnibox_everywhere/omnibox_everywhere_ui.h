@@ -193,6 +193,7 @@ class OmniboxEverywhereUI
                                const RegionCaptureSource& source,
                                RegionSelectedCallback callback) override;
   void OnScreenshotMenuClosed();
+  bool CancelChromeDefaultPicker();
 
   // ui::SimpleMenuModel::Delegate:
   void ExecuteCommand(int command_id, int event_flags) override;
@@ -226,7 +227,10 @@ class OmniboxEverywhereUI
   void ExecuteScreenshotCommand(
       int command_id,
       base::WeakPtr<ContextualSearchboxScreenshareController> controller);
+  void OnScreenshotCaptureDone(
+      const std::optional<base::UnguessableToken>& token);
   void ResetScreenshotMenu();
+  void SynthesizeMouseMoveEvent();
 
   // Buffers upload status notifications that arrive while the WebUI is
   // transitioning to composebox mode before `composebox_handler_` is bound.
@@ -239,6 +243,7 @@ class OmniboxEverywhereUI
 
   const raw_ptr<Profile> profile_;
   bool is_composebox_mode_ = false;
+  bool screenshot_origin_was_searchbox_ = false;
 
   std::vector<PendingUploadStatus> pending_upload_statuses_;
 

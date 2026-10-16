@@ -181,11 +181,18 @@ test("shell_dialogs_unittests") {
       "//components/dbus",
       "//dbus",
       "//dbus:test_support",
+      "//ui/aura",
+      "//ui/display:test_support",
+      "//ui/ozone:ozone_switches",
+      "//ui/platform_window",
     ]
   }
 
   if (is_mac) {
-    deps += [ "//components/remote_cocoa/app_shim" ]
+    deps += [
+      "//components/remote_cocoa/app_shim",
+      "//components/remote_cocoa/app_shim:features",
+    ]
   }
 
   # TODO: Remove once http://crbug.com/951419 is fixed.

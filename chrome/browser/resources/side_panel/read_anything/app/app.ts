@@ -95,7 +95,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
       lineFocusStyle_: {type: Object},
       lineFocusEnabled_: {type: Boolean},
       lineFocusMovement_: {type: Number},
-      isDocsLoadMoreButtonVisible_: {type: Boolean},
       hasValidSelection_: {type: Boolean},
       isReadAnythingPinned_: {type: Boolean},
     };
@@ -108,7 +107,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
   protected accessor lineFocusEnabled_: boolean = false;
   protected accessor lineFocusMovement_: LineFocusMovement|null = null;
 
-  protected accessor isDocsLoadMoreButtonVisible_: boolean = false;
   protected accessor hasValidSelection_: boolean = false;
   protected accessor isReadAnythingPinned_: boolean = false;
   protected isReadAnythingImprovedUiEnabled_: boolean = false;
@@ -183,9 +181,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
     this.nodeStore_.clear();
     ColorChangeUpdater.forDocument().start();
     this.contentState_ = this.contentController_.getState();
-    if (this.contentBrowserProxy_.isReadabilityEnabled()) {
-      this.contentController_.configureTrustedTypes();
-    }
     this.isReadAnythingImprovedUiEnabled_ =
         this.visualBrowserProxy_.isReadAnythingImprovedUiEnabled();
   }
@@ -377,8 +372,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
 
   updateContent() {
     this.willDrawAgainSoon_ = this.contentBrowserProxy_.requiresDistillation();
-    this.isDocsLoadMoreButtonVisible_ =
-        this.contentBrowserProxy_.isDocsLoadMoreButtonVisible();
     this.hasValidSelection_ = this.contentBrowserProxy_.hasValidSelection();
 
     // Remove all children from container. Use `replaceChildren` rather than
@@ -417,6 +410,10 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   protected onLinksToggle_() {
+    this.settingsPrefs_ = {
+      ...this.settingsPrefs_,
+      linksEnabled: this.visualBrowserProxy_.isLinksEnabled(),
+    };
     this.updateLinks_();
   }
 
@@ -425,6 +422,10 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   protected onImagesToggle_() {
+    this.settingsPrefs_ = {
+      ...this.settingsPrefs_,
+      imagesEnabled: this.visualBrowserProxy_.isImagesEnabled(),
+    };
     this.updateImages_();
   }
 
@@ -459,10 +460,6 @@ export class AppElement extends AppElementBase implements SpeechListener,
     this.logger_.setHidden(
         presentationState ===
         this.visualBrowserProxy_.getInHiddenPresentationState());
-  }
-
-  protected onDocsLoadMoreButtonClick_() {
-    this.contentBrowserProxy_.onScrolledToBottom();
   }
 
   protected onLanguageMenuOpen_() {
@@ -680,6 +677,12 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   protected onSpeechRateChange_() {
+    // TODO(crbug.com/564638585): Replace manual settingsPrefs_ updates for each
+    // onChange_ method with automated updates.
+    this.settingsPrefs_ = {
+      ...this.settingsPrefs_,
+      speechRate: this.audioBrowserProxy_.getSpeechRate(),
+    };
     this.speechController_.onSpeechSettingsChange();
   }
 
@@ -754,6 +757,10 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   protected onHighlightChange_(event: CustomEvent<{data: number}>) {
+    this.settingsPrefs_ = {
+      ...this.settingsPrefs_,
+      highlightGranularity: event.detail.data,
+    };
     this.speechController_.onHighlightGranularityChange(event.detail.data);
     // Apply highlighting changes to the DOM.
     this.styleUpdater_.setHighlight();

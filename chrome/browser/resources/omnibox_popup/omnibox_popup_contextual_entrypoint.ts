@@ -6,6 +6,7 @@ import '//resources/cr_components/composebox/composebox_lens_search.js';
 import '//resources/cr_components/composebox/current_tab_chip.js';
 import './omnibox_popup_contextual_entrypoint_button.js';
 
+import type {ComposeboxLensSearchElement} from '//resources/cr_components/composebox/composebox_lens_search.js';
 import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
@@ -101,6 +102,10 @@ export class OmniboxPopupContextualEntrypointElement extends CrLitElement {
     return this.showContextEntrypoint_ && !this.shouldHideEntrypointButton_();
   }
 
+  get showLensSearchIcon(): boolean {
+    return this.showContextEntrypoint_ && this.isLensIconShown_;
+  }
+
   constructor() {
     super();
     this.searchboxBrowserProxy_ = SearchboxBrowserProxy.getInstance();
@@ -181,10 +186,10 @@ export class OmniboxPopupContextualEntrypointElement extends CrLitElement {
         changedProps.has('inputState')) {
       this.isCurrentTabChipShown_ = this.isContentSharingEnabled &&
           this.isLensSearchEligible && this.computeShowCurrentTabChip_();
-      this.isLensIconShown_ =
-          this.isContentSharingEnabled && this.isLensIconEligible;
       this.isLensChipShown_ = this.isContentSharingEnabled &&
           this.isLensSearchEligible && !this.isCurrentTabChipShown_;
+      this.isLensIconShown_ = this.isContentSharingEnabled &&
+          this.isLensIconEligible && !this.isLensChipShown_;
       this.applyContextButtonBackground_ =
           this.contextButtonHasBackground_ && !this.isLensChipShown_;
     }
@@ -194,9 +199,16 @@ export class OmniboxPopupContextualEntrypointElement extends CrLitElement {
       |null {
     if (this.showContextEntrypoint) {
       return this.shadowRoot
-                 ?.querySelector<OmniboxPopupContextualEntrypointButtonElement>(
-                     '#context') ??
-          null;
+          .querySelector<OmniboxPopupContextualEntrypointButtonElement>(
+              '#context');
+    }
+    return null;
+  }
+
+  getLensSearchIconElement(): ComposeboxLensSearchElement|null {
+    if (this.showLensSearchIcon) {
+      return this.shadowRoot.querySelector<ComposeboxLensSearchElement>(
+          '#lensSearchIcon');
     }
     return null;
   }
@@ -234,14 +246,19 @@ export class OmniboxPopupContextualEntrypointElement extends CrLitElement {
         tabs.find(tab => tab.showInCurrentTabChip) || null;
   }
 
-  protected onAddTabContext_(e: CustomEvent<{
+  protected async onAddTabContext_(e: CustomEvent<{
     id: number,
     title: string,
     url: Url,
   }>) {
-    this.searchboxBrowserProxy_.handler.addTabContext(
-        e.detail.id, /*delayUpload=*/ false,
-        TabAttachmentSource.kCurrentTabChip);
+    try {
+      await this.searchboxBrowserProxy_.handler.addTabContext(
+          e.detail.id, /*delayUpload=*/ false,
+          TabAttachmentSource.kCurrentTabChip);
+    } catch {
+      // TODO (b/563357265) - Surface addTabContext failures for the current-tab
+      // chip so they are visible to the user in the omnibox popup.
+    }
   }
 
   protected computeShowCurrentTabChip_() {

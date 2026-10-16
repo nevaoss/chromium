@@ -371,11 +371,14 @@ public class TabbedStartupWindowPolicyDelegate implements SyncStateChangedListen
     }
 
     private void updateCachedRestoreOnStartupPref() {
-        if (!isHistorySyncActive()) {
+        // TODO(crbug.com/567130104): Remove the isDefaultValuePreference() check once
+        // SessionStartupPref::GetDefaultStartupType() is updated to return LAST on Android desktop.
+        if (!isHistorySyncActive()
+                || assertNonNull(mPrefService).isDefaultValuePreference(Pref.RESTORE_ON_STARTUP)) {
             ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(PREF_UNSET);
             return;
         }
-        int type = assertNonNull(mPrefService).getInteger(Pref.RESTORE_ON_STARTUP);
+        int type = mPrefService.getInteger(Pref.RESTORE_ON_STARTUP);
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(type);
     }
 
@@ -421,5 +424,9 @@ public class TabbedStartupWindowPolicyDelegate implements SyncStateChangedListen
     public interface Natives {
         @JniType("std::vector<std::string>")
         List<String> getSessionStartupUrls(@JniType("PrefService*") PrefService prefService);
+
+        void setSessionStartupUrlsForTesting(
+                @JniType("PrefService*") PrefService prefService,
+                @JniType("std::vector<std::string>") List<String> urls);
     }
 }

@@ -24,6 +24,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "base/trace_event/trace_event.h"
 #include "build/branding_buildflags.h"
 #include "build/buildflag.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
@@ -379,12 +380,6 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
            GetVoiceSearchCoherenceCobrowsingComposeboxEnabled());
 
   // Enables if voice search ntp searchbox live experiment is on. Includes new
-  // metrics, new animation, new submit/stop buttons, no live transcription.
-  dict.Set(
-      "voiceSearchCoherenceSearchboxNoLiveTranscriptionEnabled",
-      base::FeatureList::IsEnabled(omnibox::kVoiceSearchCoherenceSearchbox));
-
-  // Enables if voice search ntp searchbox live experiment is on. Includes new
   // metrics, new animation, new submit/stop buttons, live transcription.
   dict.Set("voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled",
            omnibox::kVoiceSearchCoherenceSearchboxWithLiveTranscription.Get());
@@ -534,9 +529,6 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set(
       "realboxVirtualFocusNavigation",
       base::FeatureList::IsEnabled(features::kRealboxVirtualFocusNavigation));
-  dict.Set("omniboxPopupVirtualFocusNavigation",
-           base::FeatureList::IsEnabled(
-               features::kOmniboxPopupVirtualFocusNavigation));
   dict.Set("lensOverlayVirtualFocusNavigation",
            base::FeatureList::IsEnabled(
                features::kLensOverlayVirtualFocusNavigation));
@@ -951,7 +943,7 @@ SearchboxHandler::CreateAutocompleteMatch(
   if (MatchHasSideTypeAndRenderType(
           match, omnibox::GroupConfig_SideType_SECONDARY,
           omnibox::GroupConfig_RenderType_HORIZONTAL, suggestion_groups_map) &&
-      (match.type != AutocompleteMatchType::SEARCH_SUGGEST_ENTITY ||
+      (match.type != omnibox::AutocompleteMatchType::kSearchSuggestEntity ||
        !match.image_url.is_valid())) {
     return std::nullopt;
   }
@@ -1008,11 +1000,11 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->swap_contents_and_description =
       match.swap_contents_and_description;
   mojom_match->show_contextual_description = false;
-  mojom_match->type = AutocompleteMatchType::ToString(match.type);
+  mojom_match->type = omnibox::AutocompleteMatchTypeToString(match.type);
   mojom_match->supports_deletion = match.SupportsDeletion();
   mojom_match->is_two_row_suggestion =
       !mojom_match->image_url.empty() ||
-      match.type == AutocompleteMatchType::CALCULATOR ||
+      match.type == omnibox::AutocompleteMatchType::kCalculator ||
       match.enterprise_search_aggregator_type ==
           AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE;
   if (match.suggest_template) {
@@ -1049,13 +1041,13 @@ SearchboxHandler::CreateAutocompleteMatch(
   std::u16string header_text =
       autocomplete_controller()->GetSuggestionGroupHeaderText(
           match.suggestion_group_id);
-  mojom_match->a11y_label = AutocompleteMatchType::ToAccessibilityLabel(
+  mojom_match->a11y_label = omnibox::AutocompleteMatchToAccessibilityLabel(
       match, header_text, match.contents, line, 0,
       GetAdditionalA11yMessage(match,
                                searchbox::mojom::SelectionLineState::kNormal));
 
   mojom_match->remove_button_a11y_label =
-      AutocompleteMatchType::ToAccessibilityLabel(
+      omnibox::AutocompleteMatchToAccessibilityLabel(
           match, header_text, match.contents, line, 0,
           GetAdditionalA11yMessage(match, searchbox::mojom::SelectionLineState::
                                               kFocusedButtonRemoveSuggestion));
@@ -1226,8 +1218,14 @@ void SearchboxHandler::SendAvailableKeywordModels() {
 
   TemplateURLService* template_url_service = GetTemplateURLService();
   if (!template_url_service) {
-    page_->SetAvailableKeywordModels({});
+    page_->SetAvailableKeywordModels({}, "");
     return;
+  }
+
+  std::string default_search_provider_keyword;
+  if (const TemplateURL* dse =
+          template_url_service->GetDefaultSearchProvider()) {
+    default_search_provider_keyword = base::UTF16ToUTF8(dse->keyword());
   }
 
   std::vector<searchbox::mojom::InputKeywordModelPtr> models;
@@ -1273,10 +1271,20 @@ void SearchboxHandler::SendAvailableKeywordModels() {
     keyword_model->display_text = names.full_name.empty()
                                       ? base::UTF16ToUTF8(turl->keyword())
                                       : base::UTF16ToUTF8(names.full_name);
+    const gfx::VectorIcon& keyword_icon =
+        searchbox::GetKeywordVectorIcon(*turl);
+    if (&keyword_icon != &vector_icons::kSearchIcon &&
+        &keyword_icon != &vector_icons::kSearchChromeRefreshOldIcon) {
+      keyword_model->icon_path = AutocompleteIconToResourceName(keyword_icon);
+    }
+    keyword_model->placeholder =
+        base::UTF16ToUTF8(AutocompleteMatch::GetKeywordPlaceholder(
+            turl, client() && client()->IsHistoryEmbeddingsEnabled()));
     models.push_back(std::move(keyword_model));
   }
 
-  page_->SetAvailableKeywordModels(std::move(models));
+  page_->SetAvailableKeywordModels(std::move(models),
+                                   default_search_provider_keyword);
 }
 
 void SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged() {
@@ -1327,6 +1335,8 @@ void SearchboxHandler::QueryAutocomplete(
     bool is_on_focus,
     const std::string& keyword,
     searchbox::mojom::InputMethod input_method) {
+  TRACE_EVENT2("omnibox", "SearchboxHandler::QueryAutocomplete", "is_on_focus",
+               is_on_focus, "query_id", query_id);
   DCHECK(!tab_id.has_value())
       << "QueryAutocomplete with tab_id is only supported for the full WebUI "
          "Omnibox.";
@@ -1339,20 +1349,8 @@ void SearchboxHandler::QueryAutocomplete(
   if (!keyword.empty()) {
     TemplateURLService* service = GetTemplateURLService();
     if (service) {
-      std::u16string keyword16;
-      // TODO(b:504669216): There may actually exist a `TemplateURL` with
-      //   shortcut '?'. Using '?' as a sentinel value to represent the default
-      //   search engine will incorrectly trigger the default search engine even
-      //   when the user wanted the '?' search engine.
-      if (keyword == "?") {
-        template_url = service->GetDefaultSearchProvider();
-        if (template_url) {
-          keyword16 = template_url->keyword();
-        }
-      } else {
-        keyword16 = base::UTF8ToUTF16(keyword);
-        template_url = service->GetTemplateURLForKeyword(keyword16);
-      }
+      const std::u16string keyword16 = base::UTF8ToUTF16(keyword);
+      template_url = service->GetTemplateURLForKeyword(keyword16);
       if (template_url) {
         is_keyword_selected = true;
         input_with_keyword = keyword16 + u" " + input;
@@ -1366,8 +1364,11 @@ void SearchboxHandler::QueryAutocomplete(
   cursor_position = std::min(
       cursor_position, static_cast<uint32_t>(input_with_keyword.length()));
 
-  // Early exit if a query is already in progress for on focus inputs.
-  if (!autocomplete_controller()->done() && is_on_focus) {
+  // Early exit for a new on-focus query if the previous on-focus query is
+  // pending. Note that on-focus == zero suggest. This avoids redundant
+  // restarts.
+  if (!autocomplete_controller()->done() &&
+      autocomplete_controller()->input().IsZeroSuggest() && is_on_focus) {
     return;
   }
 
@@ -1387,9 +1388,9 @@ void SearchboxHandler::QueryAutocomplete(
     if (is_keyword_selected && template_url) {
       edit_model()->SetKeywordInfo(
           KeywordState::kKeyword, template_url->keyword(),
-          /*keyword_placeholder=*/u"",
-          keyword == "?" ? metrics::OmniboxEventProto::QUESTION_MARK
-                         : metrics::OmniboxEventProto::SPACE_AT_END);
+          AutocompleteMatch::GetKeywordPlaceholder(
+              template_url, client() && client()->IsHistoryEmbeddingsEnabled()),
+          metrics::OmniboxEventProto::SPACE_AT_END);
     } else {
       edit_model()->SetKeywordInfo(KeywordState::kNone, u"", u"",
                                    metrics::OmniboxEventProto::INVALID);
@@ -1467,10 +1468,12 @@ void SearchboxHandler::StopAutocomplete(bool clear_result) {
   }
 }
 
-void SearchboxHandler::OpenMatch(OmniboxPopupSelection selection,
-                                 AutocompleteMatch match,
-                                 WindowOpenDisposition disposition,
-                                 base::TimeTicks match_selection_timestamp) {
+void SearchboxHandler::OpenMatch(
+    OmniboxPopupSelection selection,
+    AutocompleteMatch match,
+    WindowOpenDisposition disposition,
+    base::TimeTicks match_selection_timestamp,
+    const searchbox::AutocompleteSnapshot& snapshot) {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   if (base::FeatureList::IsEnabled(
           extensions_features::kSearchEngineExplicitChoiceDialog) &&
@@ -1487,20 +1490,21 @@ void SearchboxHandler::OpenMatch(OmniboxPopupSelection selection,
 
   metrics_tracker_.set_match_selection_timestamp(match_selection_timestamp);
   metrics_tracker_.set_focus_resulted_in_navigation(true);
-  // TODO(crbug.com/530254690): Associate inputs and results for match.
-  searchbox::OpenMatch(autocomplete_controller(), client(),
-                       autocomplete_controller()->input(), selection, match,
-                       disposition, metrics_tracker_,
+  searchbox::OpenMatch(autocomplete_controller(), client(), snapshot, selection,
+                       match, disposition, metrics_tracker_,
                        metrics::OmniboxEventProto::INVALID, u"");
 }
 
 void SearchboxHandler::OpenAutocompleteMatch(
+    uint32_t result_sequence_id,
     uint8_t line,
     const GURL& url,
     bool are_matches_showing,
     uint8_t mouse_button,
     searchbox::mojom::ActionModifiersPtr modifiers,
     bool via_keyboard) {
+  TRACE_EVENT("omnibox", "SearchboxHandler::OpenAutocompleteMatch", "line",
+              line);
   const base::TimeTicks timestamp = base::TimeTicks::Now();
   const WindowOpenDisposition disposition = ComputeWindowOpenDisposition(
       mouse_button, modifiers->alt_key, modifiers->ctrl_key,
@@ -1516,7 +1520,10 @@ void SearchboxHandler::OpenAutocompleteMatch(
           client(), autocomplete_controller()->input().text(),
           /*in_keyword_mode=*/false,
           /*allow_exact_keyword_match=*/true, &verbatim_match);
-      OpenMatch(selection, verbatim_match, disposition, timestamp);
+      // The verbatim match is classified from the live input rather than
+      // taken from a published result, so snapshot the live state.
+      OpenMatch(selection, verbatim_match, disposition, timestamp,
+                searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
     } else {
       edit_model()->OpenSelection(selection, timestamp, disposition,
                                   via_keyboard);
@@ -1524,59 +1531,87 @@ void SearchboxHandler::OpenAutocompleteMatch(
     return;
   }
 
-  const AutocompleteMatch* match = GetMatchWithUrl(line, url);
-  if (!match) {
-    // This can happen due to asynchronous updates changing the result while
-    // the web UI is referencing a stale match.
-    return;
+  const MatchActivationStatus status =
+      GetMatchActivationStatus(result_sequence_id, line, url);
+  base::UmaHistogramEnumeration(kMatchActivationStatusHistogram, status);
+
+  const AutocompleteResult& ac_result = autocomplete_controller()->result();
+  if (status == MatchActivationStatus::kSnapshotMatch &&
+      ac_result.sequence_id() > result_sequence_id) {
+    base::UmaHistogramExactLinear(kSnapshotMatchSequenceDistanceHistogram,
+                                  ac_result.sequence_id() - result_sequence_id,
+                                  50);
+  }
+
+  const AutocompleteMatch* match = nullptr;
+  // Non-null only when the match was activated from a stale result; the
+  // `edit_model()` path below distinguishes this from the live result case.
+  const searchbox::AutocompleteSnapshot* snapshot = nullptr;
+  switch (status) {
+    case MatchActivationStatus::kLiveResultMatch:
+      match = &ac_result.match_at(line);
+      break;
+    case MatchActivationStatus::kSnapshotMatch:
+      snapshot = GetSnapshot(result_sequence_id);
+      match = &snapshot->result.match_at(line);
+      break;
+    case MatchActivationStatus::kSnapshotNotFoundOrEvicted:
+    case MatchActivationStatus::kUrlMismatch:
+    case MatchActivationStatus::kIndexOutOfBounds:
+      return;
   }
   const OmniboxPopupSelection selection(line);
   if (base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
-    OpenMatch(selection, *match, disposition, timestamp);
+    // Open the match against the input and result it was activated from.
+    if (snapshot) {
+      OpenMatch(selection, *match, disposition, timestamp, *snapshot);
+    } else {
+      OpenMatch(selection, *match, disposition, timestamp,
+                searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
+    }
   } else {
-    edit_model()->OpenSelection(selection, timestamp, disposition,
-                                via_keyboard);
+    edit_model()->OpenSelection(selection, timestamp, disposition, via_keyboard,
+                                snapshot);
   }
 }
 
 OmniboxPopupSelection ConvertSelection(
     searchbox::mojom::OmniboxPopupSelectionPtr selection) {
-  OmniboxPopupSelection::LineState state =
-      OmniboxPopupSelection::LineState::LINE_STATE_MAX_VALUE;
+  std::optional<OmniboxPopupSelection::LineState> state;
   switch (selection->state) {
     case searchbox::mojom::SelectionLineState::kNormal: {
-      state = OmniboxPopupSelection::LineState::NORMAL;
+      state = OmniboxPopupSelection::LineState::kNormal;
       break;
     }
     case searchbox::mojom::SelectionLineState::kKeywordMode: {
-      state = OmniboxPopupSelection::LineState::KEYWORD_MODE;
+      state = OmniboxPopupSelection::LineState::kKeywordMode;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonAction: {
-      state = OmniboxPopupSelection::LineState::FOCUSED_BUTTON_ACTION;
+      state = OmniboxPopupSelection::LineState::kFocusedButtonAction;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonRemoveSuggestion: {
-      state =
-          OmniboxPopupSelection::LineState::FOCUSED_BUTTON_REMOVE_SUGGESTION;
+      state = OmniboxPopupSelection::LineState::kFocusedButtonRemoveSuggestion;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonAim: {
-      state = OmniboxPopupSelection::LineState::FOCUSED_BUTTON_AIM;
+      state = OmniboxPopupSelection::LineState::kFocusedButtonAim;
       break;
     }
-    case searchbox::mojom::SelectionLineState::
-        kFocusedButtonContextEntrypoint: {
+    case searchbox::mojom::SelectionLineState::kFocusedButtonContextEntrypoint:
+    case searchbox::mojom::SelectionLineState::kFocusedButtonVoiceSearch:
+    case searchbox::mojom::SelectionLineState::kFocusedButtonLensSearch: {
       // Handled directly by webui omnibox popup.
       NOTREACHED();
     }
     case searchbox::mojom::SelectionLineState::kCtrlEnter: {
-      state = OmniboxPopupSelection::LineState::CTRL_ENTER;
+      state = OmniboxPopupSelection::LineState::kCtrlEnter;
       break;
     }
   }
-  CHECK_NE(state, OmniboxPopupSelection::LineState::LINE_STATE_MAX_VALUE);
+  CHECK(state.has_value());
   // Special case line for mojom equivalent of kNoMatch; it is represented
   // as uint8_t so direct conversion would become a positive out of bounds
   // index.
@@ -1584,7 +1619,7 @@ OmniboxPopupSelection ConvertSelection(
       selection->line == static_cast<uint8_t>(OmniboxPopupSelection::kNoMatch)
           ? OmniboxPopupSelection::kNoMatch
           : selection->line,
-      state, selection->action_index);
+      state.value(), selection->action_index);
 }
 
 void SearchboxHandler::SetPopupSelection(
@@ -1593,11 +1628,11 @@ void SearchboxHandler::SetPopupSelection(
           omnibox::kWebUISearchboxWithoutModelController)) {
     OmniboxPopupSelection popup_selection =
         ConvertSelection(std::move(selection));
-    if (popup_selection.line != OmniboxPopupSelection::kNoMatch &&
-        popup_selection.line >= autocomplete_controller()->result().size()) {
-      return;
+    const AutocompleteResult& result = autocomplete_controller()->result();
+    if (popup_selection.IsNonMatchSelection() ||
+        popup_selection.IsControlPresentOnMatch(result)) {
+      edit_model()->SetPopupSelection(popup_selection, false, false, false);
     }
-    edit_model()->SetPopupSelection(popup_selection, false, false, false);
   }
 }
 
@@ -1609,13 +1644,18 @@ void SearchboxHandler::OpenPopupSelection(
       ConvertSelection(std::move(selection));
   const bool sequence_id_matched =
       result_sequence_id == autocomplete_controller()->result().sequence_id();
+  // Verbatim Ctrl+Enter (on kNoMatch) navigates using the raw typed input
+  // text rather than an AutocompleteResult match item, so it is exempted from
+  // being dropped on result sequence ID mismatches.
+  const bool is_verbatim_ctrl_enter =
+      popup_selection.state == OmniboxPopupSelection::LineState::kCtrlEnter &&
+      popup_selection.line == OmniboxPopupSelection::kNoMatch;
 
   if (!base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
     const bool selection_matched =
         popup_selection == edit_model()->GetPopupSelection() ||
-        popup_selection.state == OmniboxPopupSelection::FOCUSED_BUTTON_AIM ||
-        popup_selection.state == OmniboxPopupSelection::CTRL_ENTER;
+        popup_selection.IsNonMatchSelection();
     base::UmaHistogramBoolean("Omnibox.WebUI.SelectionMatched",
                               selection_matched);
     base::UmaHistogramBoolean(
@@ -1623,6 +1663,7 @@ void SearchboxHandler::OpenPopupSelection(
         sequence_id_matched);
 
     if ((!selection_matched || !sequence_id_matched) &&
+        !is_verbatim_ctrl_enter &&
         base::FeatureList::IsEnabled(kDropMismatchedSelections)) {
       return;
     }
@@ -1634,9 +1675,32 @@ void SearchboxHandler::OpenPopupSelection(
   base::UmaHistogramBoolean("Omnibox.WebUI.AutocompleteResultSequenceIdMatched",
                             sequence_id_matched);
 
-  if (!sequence_id_matched &&
+  if (!sequence_id_matched && !is_verbatim_ctrl_enter &&
       base::FeatureList::IsEnabled(kDropMismatchedSelections)) {
     return;
+  }
+
+  // For Ctrl+Enter selections, the match is generated here rather than taken
+  // from the result, and the selection may have no corresponding match at all,
+  // e.g. for verbatim input, so this is handled before the range check below.
+  if (popup_selection.state == OmniboxPopupSelection::LineState::kCtrlEnter &&
+      autocomplete_controller()->history_url_provider()) {
+    const AutocompleteInput& input = autocomplete_controller()->input();
+    const AutocompleteResult& result = autocomplete_controller()->result();
+    // TODO(crbug.com/545723506): Use match from AutocompleteResult.
+    // There is no edit model on this path, and `input()` is never cleared, so
+    // this can be stale after a revert.
+    std::u16string text_for_tld = input.text();
+    if (popup_selection.line > 0 && popup_selection.line < result.size()) {
+      text_for_tld = result.match_at(popup_selection.line).fill_into_edit;
+    }
+    AutocompleteMatch url_match = searchbox::GenerateDotComMatch(
+        client(), autocomplete_controller(), input, text_for_tld);
+    if (url_match.destination_url.is_valid()) {
+      OpenMatch(popup_selection, url_match, disposition, base::TimeTicks::Now(),
+                searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
+      return;
+    }
   }
 
   if (popup_selection.line >= autocomplete_controller()->result().size()) {
@@ -1646,7 +1710,8 @@ void SearchboxHandler::OpenPopupSelection(
   const AutocompleteMatch& match =
       autocomplete_controller()->result().match_at(popup_selection.line);
 
-  if (popup_selection.state == OmniboxPopupSelection::FOCUSED_BUTTON_ACTION) {
+  if (popup_selection.state ==
+      OmniboxPopupSelection::LineState::kFocusedButtonAction) {
     if (popup_selection.action_index < match.actions.size()) {
       auto* action = match.actions[popup_selection.action_index].get();
       if (action) {
@@ -1655,24 +1720,9 @@ void SearchboxHandler::OpenPopupSelection(
             *(autocomplete_controller()->autocomplete_provider_client()));
       }
     }
-  } else if (popup_selection.state == OmniboxPopupSelection::CTRL_ENTER) {
-    AutocompleteMatch final_match = match;
-    if (autocomplete_controller()->history_url_provider()) {
-      std::u16string text_for_tld = autocomplete_controller()->input().text();
-      if (popup_selection.line > 0) {
-        text_for_tld = match.fill_into_edit;
-      }
-      AutocompleteMatch alternate_match = searchbox::GenerateDotComMatch(
-          client(), autocomplete_controller(),
-          autocomplete_controller()->input(), text_for_tld);
-      if (alternate_match.destination_url.is_valid()) {
-        final_match = alternate_match;
-      }
-    }
-    OpenMatch(popup_selection, final_match, disposition,
-              base::TimeTicks::Now());
   } else {
-    OpenMatch(popup_selection, match, disposition, base::TimeTicks::Now());
+    OpenMatch(popup_selection, match, disposition, base::TimeTicks::Now(),
+              searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
   }
 }
 
@@ -1758,7 +1808,8 @@ void SearchboxHandler::ExecuteAction(uint8_t line,
   } else {
     edit_model()->OpenSelection(
         OmniboxPopupSelection(
-            line, OmniboxPopupSelection::FOCUSED_BUTTON_ACTION, action_index),
+            line, OmniboxPopupSelection::LineState::kFocusedButtonAction,
+            action_index),
         match_selection_timestamp, disposition);
   }
 }
@@ -1832,6 +1883,16 @@ void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
     }
   }
 
+  const auto& result = autocomplete_controller()->result();
+  autocomplete_result_snapshots_[result.sequence_id()] =
+      searchbox::MakeAutocompleteSnapshot(autocomplete_controller());
+  const size_t max_snapshots = static_cast<size_t>(
+      std::max(0, omnibox::kWebUIOmniboxFullPopupSnapshotCacheSize.Get()));
+  while (autocomplete_result_snapshots_.size() > max_snapshots) {
+    autocomplete_result_snapshots_.erase(
+        autocomplete_result_snapshots_.begin());
+  }
+
   page_->AutocompleteResultChanged(CreateAutocompleteResult(
       current_query_id_, input_text, autocomplete_controller()->result(),
       BookmarkModelFactory::GetForBrowserContext(profile_),
@@ -1897,22 +1958,96 @@ void SearchboxHandler::OnPermissionPromptChanged(bool is_showing,
 }
 
 const AutocompleteMatch* SearchboxHandler::GetMatchWithUrl(
+    uint32_t result_sequence_id,
     size_t index,
     const GURL& url) const {
-  const AutocompleteResult& result = autocomplete_controller()->result();
-  if (index >= result.size()) {
-    // This can happen due to asynchronous updates changing the result while
-    // the web UI is referencing a stale match.
-    return nullptr;
+  // If the user is attempting to activate a match from an up-to-date
+  // autocomplete result (`result_sequence_id` match), then fetch the match
+  // directly from the live autocomplete result.
+  if (autocomplete_controller()->result().sequence_id() == result_sequence_id &&
+      index < autocomplete_controller()->result().size()) {
+    const AutocompleteMatch& match =
+        autocomplete_controller()->result().match_at(index);
+    if (match.destination_url == url) {
+      return &match;
+    }
   }
-  const AutocompleteMatch& match = result.match_at(index);
-  if (match.destination_url != url) {
-    // This can happen also, for the same reason. We could search the result
-    // for the match with this URL, but there would be no guarantee that it's
-    // the same match, so for this edge case we treat result mismatch as none.
-    return nullptr;
+
+  // Otherwise, if the user is attempting to activate a match from a stale
+  // autocomplete result (`result_sequence_id` mismatch), then fetch the match
+  // from the stored set of autocomplete result snapshots to work around
+  // potential autocomplete result desynchronization between the renderer and
+  // browser processes (e.g. WebUI holds a stale result at the time of match
+  // activation, while the autocomplete controller is holding a more up-to-date
+  // result).
+  if (auto it = autocomplete_result_snapshots_.find(result_sequence_id);
+      it != autocomplete_result_snapshots_.end()) {
+    const auto& snapshot = it->second;
+    if (index < snapshot.result.size()) {
+      const AutocompleteMatch& match = snapshot.result.match_at(index);
+      if (match.destination_url == url) {
+        return &match;
+      }
+    }
   }
-  return &match;
+
+  return nullptr;
+}
+
+const AutocompleteMatch* SearchboxHandler::GetMatchWithUrl(
+    size_t index,
+    const GURL& url) const {
+  return GetMatchWithUrl(autocomplete_controller()->result().sequence_id(),
+                         index, url);
+}
+
+SearchboxHandler::MatchActivationStatus
+SearchboxHandler::GetMatchActivationStatus(uint32_t result_sequence_id,
+                                           size_t line,
+                                           const GURL& url) const {
+  const AutocompleteResult& ac_result = autocomplete_controller()->result();
+  if (result_sequence_id == ac_result.sequence_id()) {
+    if (line >= ac_result.size()) {
+      return MatchActivationStatus::kIndexOutOfBounds;
+    }
+    if (ac_result.match_at(line).destination_url != url) {
+      return MatchActivationStatus::kUrlMismatch;
+    }
+    return MatchActivationStatus::kLiveResultMatch;
+  }
+
+  auto it = autocomplete_result_snapshots_.find(result_sequence_id);
+  if (it == autocomplete_result_snapshots_.end()) {
+    return MatchActivationStatus::kSnapshotNotFoundOrEvicted;
+  }
+  const AutocompleteResult& snapshot_result = it->second.result;
+  if (line >= snapshot_result.size()) {
+    return MatchActivationStatus::kIndexOutOfBounds;
+  }
+  if (snapshot_result.match_at(line).destination_url != url) {
+    return MatchActivationStatus::kUrlMismatch;
+  }
+  return MatchActivationStatus::kSnapshotMatch;
+}
+
+const AutocompleteInput* SearchboxHandler::GetInput(
+    uint32_t result_sequence_id) const {
+  if (autocomplete_controller()->result().sequence_id() == result_sequence_id) {
+    return &autocomplete_controller()->input();
+  }
+  if (const auto* snapshot = GetSnapshot(result_sequence_id)) {
+    return &snapshot->input;
+  }
+  return nullptr;
+}
+
+const searchbox::AutocompleteSnapshot* SearchboxHandler::GetSnapshot(
+    uint32_t result_sequence_id) const {
+  if (auto it = autocomplete_result_snapshots_.find(result_sequence_id);
+      it != autocomplete_result_snapshots_.end()) {
+    return &it->second;
+  }
+  return nullptr;
 }
 
 omnibox::InputState SearchboxHandler::GetInputState() const {
@@ -1989,7 +2124,8 @@ void SearchboxHandler::OnDefaultSearchExtensionDialogDone(
           OmniboxClient::ExtensionControlledDialogResult::kAccept ||
       dialog_result ==
           OmniboxClient::ExtensionControlledDialogResult::kNoDialogShown) {
-    OpenMatch(selection, match, disposition, match_selection_timestamp);
+    OpenMatch(selection, match, disposition, match_selection_timestamp,
+              searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
   } else if (dialog_result ==
              OmniboxClient::ExtensionControlledDialogResult::kReject) {
     std::u16string input_text = autocomplete_controller()->input().text();
@@ -2001,7 +2137,8 @@ void SearchboxHandler::OnDefaultSearchExtensionDialogDone(
         autocomplete_controller()->input().in_keyword_mode(),
         /*allow_exact_keyword_match=*/true, &new_match, &new_alternate_nav_url);
 
-    OpenMatch(selection, new_match, disposition, match_selection_timestamp);
+    OpenMatch(selection, new_match, disposition, match_selection_timestamp,
+              searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
     client()->FocusWebContents();
   }
 }
@@ -2022,6 +2159,11 @@ void SearchboxHandler::StartScreenshare(bool prefer_entire_screen,
 
 void SearchboxHandler::CaptureRegionScreenshot(
     CaptureRegionScreenshotCallback callback) {
+  NOTREACHED();
+}
+
+void SearchboxHandler::ShowHotkeyDropdown(const gfx::Rect& anchor_bounds,
+                                          ShowHotkeyDropdownCallback callback) {
   NOTREACHED();
 }
 

@@ -4,14 +4,26 @@
 
 #import "ios/chrome/browser/content_suggestions/most_visited_tiles/ui/most_visited_tiles_collection_view_layout.h"
 
+#import "components/ntp_tiles/features.h"
 #import "ios/chrome/browser/content_suggestions/magic_stack/public/magic_stack_constants.h"
-#import "ios/chrome/browser/content_suggestions/ui/cells/content_suggestions_cells_constants.h"
+#import "ios/chrome/browser/content_suggestions/most_visited_tiles/public/most_visited_tiles_constants.h"
 #import "ios/chrome/browser/content_suggestions/ui/cells/content_suggestions_tile_layout_util.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
 
 namespace {
 
+constexpr NSUInteger kMaximumVisibleItemsOnScreen = 4;
+constexpr NSUInteger kMaximumVisibleItemsOnScreenWithAimModule = 3;
+
 /// Maximum number of items that should be fully visible on the screen.
-const NSUInteger kMaximumVisibleItemsOnScreen = 4;
+NSUInteger MaximumVisibleItemsOnScreen() {
+  if (IsAimEnabledInNtp() &&
+      ntp_tiles::GetAimButtonRefactorArm() ==
+          ntp_tiles::AimButtonRefactorArm::kAimAsModule) {
+    return kMaximumVisibleItemsOnScreenWithAimModule;
+  }
+  return kMaximumVisibleItemsOnScreen;
+}
 
 /// Multiplier for peeking the first off-screen element.
 const CGFloat kPeekInsetMultiplerCompactWidth = 0.6;
@@ -23,7 +35,7 @@ CGFloat PeekInsetForCollectionView(UITraitCollection* trait_collection) {
       trait_collection.horizontalSizeClass == UIUserInterfaceSizeClassCompact
           ? kPeekInsetMultiplerCompactWidth
           : kPeekInsetMultiplerRegularWidth;
-  return kMagicStackImageContainerWidth * peek_inset_multiplier;
+  return MostVisitedIconContainerSize() * peek_inset_multiplier;
 }
 
 /// Creates a section in the collection view layout.
@@ -31,9 +43,14 @@ NSCollectionLayoutSection* GetSectionForMostVisitedTilesCollectionView(
     NSUInteger item_count,
     CGFloat container_width,
     UITraitCollection* trait_collection) {
-  CGFloat items_per_group = MIN(item_count, kMaximumVisibleItemsOnScreen);
+  CGFloat items_per_group = MIN(item_count, MaximumVisibleItemsOnScreen());
   NSCollectionLayoutDimension* estimated_height_dimension =
-      [NSCollectionLayoutDimension estimatedDimension:kMostVisitedTileIconSize];
+      [NSCollectionLayoutDimension
+          estimatedDimension:ntp_tiles::GetAimButtonRefactorArm() ==
+                                     ntp_tiles::AimButtonRefactorArm::
+                                         kAimAsModule
+                                 ? MostVisitedIconContainerSize()
+                                 : kMostVisitedTileIconSize];
 
   NSCollectionLayoutDimension* item_width_dimension =
       [NSCollectionLayoutDimension
@@ -46,7 +63,7 @@ NSCollectionLayoutSection* GetSectionForMostVisitedTilesCollectionView(
   /// Group configuration.
   CGFloat group_width = container_width - kMagicStackContainerInsets.leading -
                         kMagicStackContainerInsets.trailing;
-  if (item_count > kMaximumVisibleItemsOnScreen) {
+  if (item_count > MaximumVisibleItemsOnScreen()) {
     /// Allow peeking the 5th element.
     group_width -= PeekInsetForCollectionView(trait_collection);
   }
@@ -67,7 +84,10 @@ NSCollectionLayoutSection* GetSectionForMostVisitedTilesCollectionView(
   section.orthogonalScrollingBehavior =
       UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuous;
   section.interGroupSpacing = spacing;
-  section.contentInsets = kMagicStackContainerInsets;
+  section.contentInsets = ntp_tiles::GetAimButtonRefactorArm() ==
+                                  ntp_tiles::AimButtonRefactorArm::kAimAsModule
+                              ? kMostVisitedContainerInsets
+                              : kMagicStackContainerInsets;
   return section;
 }
 

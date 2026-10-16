@@ -21,6 +21,7 @@
 #include "components/safe_browsing/buildflags.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/visibility.h"
+#include "content/public/browser/weak_document_ptr.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom.h"
@@ -199,6 +200,12 @@ void ShareServiceImpl::Share(const std::string& title,
                              ShareCallback callback) {
   UMA_HISTOGRAM_ENUMERATION(kWebShareApiCountMetric, WebShareMethod::kShare);
 
+  if (!render_frame_host().IsActive()) {
+    VLOG(1) << "Cannot share from inactive frame";
+    std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
+    return;
+  }
+
   if (!render_frame_host().IsFeatureEnabled(
           network::mojom::PermissionsPolicyFeature::kWebShare)) {
     std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
@@ -210,6 +217,18 @@ void ShareServiceImpl::Share(const std::string& title,
     std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
     ReportBadMessageAndDeleteThis(
         "Web Share URL scheme must be http or https.");
+    return;
+  }
+
+  // A compromised renderer can call Share() directly, bypassing the check in
+  // NavigatorShare::share(), so the browser enforces user activation itself.
+  // Consume rather than test, so that a single gesture cannot be replayed into
+  // repeated share sheets. NavigatorShare::share() consumes its own copy with
+  // UserActivationUpdateSource::kBrowser, which leaves the browser-side state
+  // intact for this check.
+  if (!render_frame_host().ConsumeTransientUserActivation()) {
+    VLOG(1) << "Share without transient user activation";
+    std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
     return;
   }
 
@@ -273,7 +292,7 @@ void ShareServiceImpl::Share(const std::string& title,
     safe_browsing_request_.emplace(
         g_browser_process->safe_browsing_service()->database_manager(),
         v5_manager ? v5_manager->GetWeakPtr() : nullptr,
-        web_contents->GetLastCommittedURL(),
+        render_frame_host().GetLastCommittedURL(),
         base::BindOnce(&ShareServiceImpl::RunShareOperation,
                        weak_factory_.GetWeakPtr(), title, text, share_url,
                        std::move(files), std::move(callback)));
@@ -297,7 +316,13 @@ void ShareServiceImpl::RunShareOperation(
   safe_browsing_request_.reset();
 #endif
 
-  content::WebContents* const web_contents =
+  if (!render_frame_host().IsActive()) {
+    VLOG(1) << "Cannot share from inactive frame";
+    std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
+    return;
+  }
+
+  content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(&render_frame_host());
   if (!web_contents || !IsWebContentsForegroundAndVisible(web_contents)) {
     VLOG(1) << "Cannot share if tab is not active and visible";
@@ -333,9 +358,21 @@ void ShareServiceImpl::RunShareOperation(
          blink::mojom::ShareError result) { std::move(callback).Run(result); },
       std::move(sharing_service_operation), std::move(callback)));
 #elif BUILDFLAG(IS_WIN)
+  base::WeakPtr<ShareServiceImpl> weak_this = weak_factory_.GetWeakPtr();
+  content::WeakDocumentPtr weak_document =
+      render_frame_host().GetWeakDocumentPtr();
   auto blocker = web_contents->ForSecurityDropFullscreen(
       /*display_id=*/display::kInvalidDisplayId);
-  if (!blocker) {
+  if (!weak_this) {
+    return;
+  }
+  content::RenderFrameHost* rfh = weak_document.AsRenderFrameHostIfValid();
+  if (!blocker || !rfh || !rfh->IsActive()) {
+    std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
+    return;
+  }
+  web_contents = content::WebContents::FromRenderFrameHost(rfh);
+  if (!web_contents || !IsWebContentsForegroundAndVisible(web_contents)) {
     std::move(callback).Run(blink::mojom::ShareError::PERMISSION_DENIED);
     return;
   }

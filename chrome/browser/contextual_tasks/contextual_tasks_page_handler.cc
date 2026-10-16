@@ -88,7 +88,6 @@
 #endif
 
 namespace {
-constexpr char kMyActivityUrl[] = "https://myactivity.google.com/myactivity";
 
 void OpenUrlWithDisposition(Profile* profile,
                             const GURL& url,
@@ -273,17 +272,6 @@ ContextualTasksPageHandler::ContextualTasksPageHandler(
   ui_service_->EnsureCookiesSynced(
       base::BindOnce(&ContextualTasksPageHandler::OnCookieSyncCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
-
-#if !BUILDFLAG(IS_ANDROID)
-  if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    Profile* profile = web_ui_controller_->GetProfile();
-    if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
-      pinned_toolbar_actions_model_observation_.Observe(model);
-      bool is_pinned = model->Contains(kActionSidePanelShowContextualTasks);
-      OnPinStateChanged(is_pinned);
-    }
-  }
-#endif
 }
 
 ContextualTasksPageHandler::~ContextualTasksPageHandler() = default;
@@ -413,38 +401,7 @@ void ContextualTasksPageHandler::ShowThreadHistory() {
 }
 
 void ContextualTasksPageHandler::IsShownInTab(IsShownInTabCallback callback) {
-  if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    OnActionsChanged();
-  }
   std::move(callback).Run(web_ui_controller_->IsShownInTab());
-}
-
-void ContextualTasksPageHandler::OpenMyActivityUi() {
-  BrowserWindowInterface* browser = web_ui_controller_->GetBrowser();
-  if (!browser) {
-    return;
-  }
-  OpenUrlWithDisposition(web_ui_controller_->GetProfile(), GURL(kMyActivityUrl),
-                         WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
-}
-
-void ContextualTasksPageHandler::OpenFeedbackUi() {
-  if (skip_feedback_ui_for_testing_) {
-    return;
-  }
-  BrowserWindowInterface* browser = web_ui_controller_->GetBrowser();
-  if (!browser) {
-    return;
-  }
-  GURL page_url =
-      web_ui_controller_->GetWebUIWebContents()->GetLastCommittedURL();
-  if (auto* tab_list = TabListInterface::From(browser)) {
-    if (auto* active_tab = tab_list->GetActiveTab()) {
-      page_url = active_tab->GetContents()->GetLastCommittedURL();
-    }
-  }
-
-  ui_service_->OpenFeedbackUi(browser, page_url);
 }
 
 void ContextualTasksPageHandler::OpenOnboardingHelpUi() {
@@ -458,21 +415,14 @@ void ContextualTasksPageHandler::OpenOnboardingHelpUi() {
       WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
 }
 
-void ContextualTasksPageHandler::OpenOverflowMenuHelpUi() {
+void ContextualTasksPageHandler::OpenAskGHelpUi() {
   BrowserWindowInterface* browser = web_ui_controller_->GetBrowser();
   if (!browser) {
     return;
   }
-  OpenUrlWithDisposition(
-      web_ui_controller_->GetProfile(),
-      GURL(contextual_tasks::GetContextualTasksOverflowMenuHelpUrl()),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
-}
-
-void ContextualTasksPageHandler::OpenUrl(const GURL& url,
-                                         WindowOpenDisposition disposition) {
-  OpenUrlWithDisposition(web_ui_controller_->GetProfile(), url, disposition,
-                         web_ui_controller_->GetBrowser());
+  OpenUrlWithDisposition(web_ui_controller_->GetProfile(),
+                         GURL(contextual_tasks::GetContextualTasksTabHelpUrl()),
+                         WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
 }
 
 void ContextualTasksPageHandler::MoveTaskUiToNewTab() {
@@ -515,6 +465,11 @@ void ContextualTasksPageHandler::OnWebviewMessage(
   if (aim_to_client_message.has_handshake_response()) {
     web_ui_controller_->GetPageRemote()->OnHandshakeComplete();
     web_ui_controller_->OnSidePanelStateChanged();
+    if (panel_controller_) {
+      panel_controller_->RecordTimeToHandshakeComplete(
+          web_ui_controller_ ? web_ui_controller_->GetWebUIWebContents()
+                             : nullptr);
+    }
   } else if (aim_to_client_message.has_hide_input()) {
     web_ui_controller_->GetPageRemote()->HideInput();
   } else if (aim_to_client_message.has_restore_input()) {
@@ -864,18 +819,6 @@ void ContextualTasksPageHandler::OnReceivedRemoveInjectedInput(
   }
 }
 
-void ContextualTasksPageHandler::PinSidePanel() {
-  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    return;
-  }
-#if !BUILDFLAG(IS_ANDROID)
-  Profile* profile = web_ui_controller_->GetProfile();
-  if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
-    model->UpdatePinnedState(kActionSidePanelShowContextualTasks, true);
-  }
-#endif
-}
-
 void ContextualTasksPageHandler::OnContextMenuOpened() {
 #if !BUILDFLAG(IS_ANDROID)
   if (!contextual_tasks::ContextualTasksContextService::
@@ -951,30 +894,6 @@ void ContextualTasksPageHandler::CloseWindow(
   if (ui_service_) {
     ui_service_->CloseTrackedWindow(window_id);
   }
-}
-
-void ContextualTasksPageHandler::UnpinSidePanel() {
-  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
-    return;
-  }
-#if !BUILDFLAG(IS_ANDROID)
-  Profile* profile = web_ui_controller_->GetProfile();
-  if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
-    model->UpdatePinnedState(kActionSidePanelShowContextualTasks, false);
-  }
-#endif
-}
-
-void ContextualTasksPageHandler::OnPinStateChanged(bool is_pinned) {
-  web_ui_controller_->GetPageRemote()->OnSidePanelPinStateChanged(is_pinned);
-}
-
-void ContextualTasksPageHandler::OnActionsChanged() {
-  bool effective_pin_state =
-      contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() &&
-      contextual_tasks::GetEffectivePinState(
-          web_ui_controller_ ? web_ui_controller_->GetProfile() : nullptr);
-  OnPinStateChanged(effective_pin_state);
 }
 
 void ContextualTasksPageHandler::MaybeTriggerPinningPromo() {

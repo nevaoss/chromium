@@ -172,8 +172,6 @@ builder.
 
   Location filters:
   * [`//.+/3pp/.+`](https://cs.chromium.org/search?q=+file:.+/3pp/)
-  * [`//third_party/android_deps/fetch_all.py`](https://cs.chromium.org/search?q=+file:third_party/android_deps/fetch_all.py)
-  * [`//third_party/android_deps/buildSrc/src/main/groovy/.+`](https://cs.chromium.org/chromium/src/third_party/android_deps/buildSrc/src/main/groovy/)
 
 * [android-10-arm64-rel](https://ci.chromium.org/p/chromium/builders/try/android-10-arm64-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""android-10-arm64-rel""))
 
@@ -494,6 +492,12 @@ builder.
   * [`//third_party/webgpu-cts/.+`](https://cs.chromium.org/chromium/src/third_party/webgpu-cts/)
   * [`//tools/clang/scripts/update.py`](https://cs.chromium.org/search?q=+file:tools/clang/scripts/update.py)
   * [`//ui/gl/features.gni`](https://cs.chromium.org/search?q=+file:ui/gl/features.gni)
+
+* [fuchsia-arm64-cast-receiver-rel](https://ci.chromium.org/p/chromium/builders/try/fuchsia-arm64-cast-receiver-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""fuchsia-arm64-cast-receiver-rel""))
+
+  Location filters:
+  * [`//chromecast/.+`](https://cs.chromium.org/chromium/src/chromecast/)
+  * [`//build/fuchsia/sdk_override.txt`](https://cs.chromium.org/search?q=+file:build/fuchsia/sdk_override.txt)
 
 * [fuchsia-x64-accessibility-rel](https://ci.chromium.org/p/chromium/builders/try/fuchsia-x64-accessibility-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""fuchsia-x64-accessibility-rel""))
 

@@ -139,6 +139,8 @@ class CONTENT_EXPORT WebContentsViewAura
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            DragDropFilesOriginateFromRenderer);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest, DragDropImageFromRenderer);
+  FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
+                           DragDropImageFromRenderer_InaccessibleImageOmitted);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest, DragDropVirtualFiles);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            DragDropVirtualFilesOriginateFromRenderer);
@@ -194,11 +196,17 @@ class CONTENT_EXPORT WebContentsViewAura
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            ClampTouchLocationToBrowserObservedPoint);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
+                           StartDraggingMouseRequiresLeftButton);
+  FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
+                           RefusedDragDoesNotBlockSubsequentDrags);
+  FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            UrlInDropDataReturnsUrlInOSExchangeDataGetString);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            IgnoreInputs_OngoingDropGetsCleared);
   FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
                            EndDragIsCalledAfterAsyncDrop);
+  FRIEND_TEST_ALL_PREFIXES(WebContentsViewAuraTest,
+                           StartDraggingMouseReleasedEndsDrag);
 
   class WindowObserver;
 
@@ -212,10 +220,6 @@ class CONTENT_EXPORT WebContentsViewAura
 
   virtual void EndDrag(base::WeakPtr<RenderWidgetHostImpl> source_rwh_weak_ptr,
                        ui::mojom::DragOperation op);
-
-  // Clears drag-and-drop state when a drag attempt fails to start (e.g. due to
-  // drag failures from system/OS errors during initiation).
-  void ClearDragStateOnStartFailure(RenderWidgetHostImpl* source_rwh);
 
   void InstallOverscrollControllerDelegate(RenderWidgetHostViewAura* view);
 

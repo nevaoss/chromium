@@ -9,6 +9,7 @@
 
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/gmock_expected_support.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "base/uuid.h"
@@ -34,8 +35,10 @@ namespace autofill {
 
 namespace {
 
+using base::test::HasValue;
 using i18n_model_definition::kLegacyHierarchyCountryCode;
 using ::testing::IsEmpty;
+using ::testing::Not;
 
 const char kLocale[] = "en-US";
 
@@ -328,6 +331,21 @@ TEST_F(AutofillProfileComparatorTest, MergePhoneNumbers_Mergeability) {
   EXPECT_FALSE(comparator_.MergePhoneNumbers(different, p1).has_value());
 }
 
+// Tests that merging a phone number with an explicit '+' country code and a
+// phone number starting with the default region's country code does not crash
+// when they match without region context.
+TEST_F(AutofillProfileComparatorTest,
+       MergePhoneNumbers_DifferentCountryCodesCrashRepro) {
+  AutofillProfile profile_a =
+      CreateProfileWithPhoneNumber("+49 1 415 555 0199");
+  AutofillProfile profile_b = CreateProfileWithPhoneNumber("1 415 555 0199");
+  profile_a.SetInfo(ADDRESS_HOME_COUNTRY, u"US", kLocale);
+  profile_b.SetInfo(ADDRESS_HOME_COUNTRY, u"US", kLocale);
+
+  PhoneNumber merged_number(&profile_b);
+  EXPECT_FALSE(comparator_.MergePhoneNumbers(profile_a, profile_b).has_value());
+}
+
 // Tests that MergeAddresses correctly identifies mergeable and
 // non-mergeable addresses.
 TEST_F(AutofillProfileComparatorTest, MergeAddresses_Mergeability) {
@@ -446,22 +464,27 @@ TEST_F(AutofillProfileComparatorTest, MergeComponents) {
   EXPECT_TRUE(comparator_.MergeCompanyNames(p, p).has_value());
   EXPECT_TRUE(comparator_.MergePhoneNumbers(p, p).has_value());
   EXPECT_TRUE(comparator_.MergeAddresses(p, p).has_value());
-  EXPECT_TRUE(
-      NameInfo::AreNamesMergeable(p.GetNameInfo(), p.GetAddressCountryCode(),
-                                  p.GetNameInfo(), p.GetAddressCountryCode()));
+  EXPECT_THAT(NameInfo::MergeNames(p.GetNameInfo(), p.GetAddressCountryCode(),
+                                   p.GetNameInfo(), p.GetAddressCountryCode(),
+                                   /*newer_was_more_recently_used=*/true),
+              HasValue());
 
   EXPECT_TRUE(comparator_.MergeEmailAddresses(p, mergeable).has_value());
   EXPECT_TRUE(comparator_.MergeCompanyNames(p, mergeable).has_value());
   EXPECT_TRUE(comparator_.MergePhoneNumbers(p, mergeable).has_value());
   EXPECT_TRUE(comparator_.MergeAddresses(p, mergeable).has_value());
-  EXPECT_TRUE(NameInfo::AreNamesMergeable(
-      p.GetNameInfo(), p.GetAddressCountryCode(), mergeable.GetNameInfo(),
-      mergeable.GetAddressCountryCode()));
+  EXPECT_THAT(NameInfo::MergeNames(p.GetNameInfo(), p.GetAddressCountryCode(),
+                                   mergeable.GetNameInfo(),
+                                   mergeable.GetAddressCountryCode(),
+                                   /*newer_was_more_recently_used=*/true),
+              HasValue());
 
-  EXPECT_FALSE(NameInfo::AreNamesMergeable(
-      p.GetNameInfo(), p.GetAddressCountryCode(),
-      not_mergeable_by_name.GetNameInfo(),
-      not_mergeable_by_name.GetAddressCountryCode()));
+  EXPECT_THAT(
+      NameInfo::MergeNames(p.GetNameInfo(), p.GetAddressCountryCode(),
+                           not_mergeable_by_name.GetNameInfo(),
+                           not_mergeable_by_name.GetAddressCountryCode(),
+                           /*newer_was_more_recently_used=*/true),
+      Not(HasValue()));
   EXPECT_FALSE(
       comparator_.MergeEmailAddresses(p, not_mergeable_by_email_address)
           .has_value());

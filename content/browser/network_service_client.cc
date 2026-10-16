@@ -90,7 +90,8 @@ class NetworkInterfaceChangeHelper {
     // AddressTrackerLinux's sequence using
     // |network_interface_change_listener_pending_|.
     if (!network_interface_change_listener_) {
-      DCHECK(network_interface_change_listener_pending_);
+      CHECK(network_interface_change_listener_pending_,
+            base::NotFatalUntil::M160);
       network_interface_change_listener_.Bind(
           std::move(network_interface_change_listener_pending_));
     }
@@ -230,7 +231,8 @@ void NetworkServiceClient::OnNetworkServiceInitialized(
   // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
 #if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (IsOutOfProcessNetworkService()) {
-    DCHECK(!net::NetworkChangeNotifier::CreateIfNeeded());
+    CHECK(!net::NetworkChangeNotifier::CreateIfNeeded(),
+          base::NotFatalUntil::M160);
     service->GetNetworkChangeManager(
         network_change_manager_.BindNewPipeAndPassReceiver());
 #if BUILDFLAG(IS_LINUX)

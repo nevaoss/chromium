@@ -40,8 +40,13 @@
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
+#include "extensions/buildflags/buildflags.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/extensions/tab_helper.h"
+#endif
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/actions/chrome_action_id.h"
@@ -300,8 +305,8 @@ class ContextualTasksSidePanelCoordinatorTest : public testing::Test {
   }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
-  void TriggerOnSeeExtensionsClicked(views::BubbleAnchor anchor) {
-    coordinator_->OnSeeExtensionsClicked(anchor);
+  void TriggerOnSeeExtensionsClicked() {
+    coordinator_->OnSeeExtensionsClicked();
   }
 
   ContextualTasksExtensionsContainer* GetExtensionsContainer() {
@@ -1294,13 +1299,133 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
   EXPECT_EQ(cached_wc->GetVisibleURL(), expected_url);
 }
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+// The extensions menu dereferences extensions::TabHelper::FromWebContents()
+// without a null check, so the side panel's WebContents must have one attached
+// even though it is not a tab.
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       PanelWebContentsHasExtensionsTabHelper) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndEnableFeature(
+      kContextualTasksSidePanelRearchitecture);
+
+  ContextualTask expected_task(base::Uuid::GenerateRandomV4());
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(expected_task));
+
+  coordinator_->Show(
+      /*transition_from_tab=*/false,
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      /*use_no_animation=*/true);
+
+  content::WebContents* panel_contents =
+      GetWebContentsForTaskForTesting(expected_task.GetTaskId());
+  ASSERT_TRUE(panel_contents);
+  EXPECT_TRUE(extensions::TabHelper::FromWebContents(panel_contents));
+}
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
 TEST_F(ContextualTasksSidePanelCoordinatorTest,
        OnSeeExtensionsClicked_NoActiveContents) {
-  TriggerOnSeeExtensionsClicked(views::BubbleAnchor());
+  TriggerOnSeeExtensionsClicked();
   EXPECT_EQ(GetExtensionsContainer(), nullptr);
 }
 #endif
 
-}  // namespace contextual_tasks
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       TimeToFirstContentfulPaint_RecordedOncePerSession) {
+  base::HistogramTester histogram_tester;
 
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(task));
+
+  coordinator_->Show(
+      /*transition_from_tab=*/false,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+
+  content::WebContents* cached_wc =
+      GetWebContentsForTaskForTesting(task.GetTaskId());
+  ASSERT_TRUE(cached_wc);
+
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToFirstContentfulPaint", 0);
+
+  // Trigger RecordTimeToFirstContentfulPaint with unrelated WebContents (should
+  // be ignored).
+  auto other_wc = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), nullptr);
+  coordinator_->RecordTimeToFirstContentfulPaint(other_wc.get());
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToFirstContentfulPaint", 0);
+
+  // Trigger RecordTimeToFirstContentfulPaint with the cached WebContents.
+  coordinator_->RecordTimeToFirstContentfulPaint(cached_wc);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToFirstContentfulPaint", 1);
+
+  // Duplicate paint event in the same session should NOT record again.
+  coordinator_->RecordTimeToFirstContentfulPaint(cached_wc);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToFirstContentfulPaint", 1);
+
+  // Calling Show() again starts a new session, resetting the recorded flag.
+  coordinator_->Show(
+      /*transition_from_tab=*/false,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+
+  coordinator_->RecordTimeToFirstContentfulPaint(cached_wc);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToFirstContentfulPaint", 2);
+}
+
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       TimeToHandshakeComplete_RecordedOncePerSession) {
+  base::HistogramTester histogram_tester;
+
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(task));
+
+  coordinator_->Show(
+      /*transition_from_tab=*/false,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+
+  content::WebContents* cached_wc =
+      GetWebContentsForTaskForTesting(task.GetTaskId());
+  ASSERT_TRUE(cached_wc);
+
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToHandshakeComplete", 0);
+
+  // Trigger RecordTimeToHandshakeComplete with unrelated WebContents (should be
+  // ignored).
+  auto other_wc = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), nullptr);
+  coordinator_->RecordTimeToHandshakeComplete(other_wc.get());
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToHandshakeComplete", 0);
+
+  // Trigger RecordTimeToHandshakeComplete with the cached WebContents.
+  coordinator_->RecordTimeToHandshakeComplete(cached_wc);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToHandshakeComplete", 1);
+
+  // Duplicate handshake complete event in the same session should NOT record
+  // again.
+  coordinator_->RecordTimeToHandshakeComplete(cached_wc);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToHandshakeComplete", 1);
+
+  // Calling Show() again starts a new session, resetting the recorded flag.
+  coordinator_->Show(
+      /*transition_from_tab=*/false,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+
+  coordinator_->RecordTimeToHandshakeComplete(cached_wc);
+  histogram_tester.ExpectTotalCount(
+      "ContextualTasks.SidePanel.TimeToHandshakeComplete", 2);
+}
+
+}  // namespace contextual_tasks

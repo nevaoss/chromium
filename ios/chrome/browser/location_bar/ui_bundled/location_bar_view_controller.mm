@@ -32,6 +32,7 @@
 #import "ios/chrome/browser/location_bar/ui_bundled/fakebox_buttons_snapshot_provider.h"
 #import "ios/chrome/browser/location_bar/ui_bundled/highlight_utils.h"
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_constants.h"
+#import "ios/chrome/browser/location_bar/ui_bundled/location_bar_content_size_delegate.h"
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_metrics.h"
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_mutator.h"
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_placeholder_type.h"
@@ -119,7 +120,8 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
 }
 @end
 
-@interface LocationBarViewController () <UIContextMenuInteractionDelegate,
+@interface LocationBarViewController () <LocationBarContentSizeDelegate,
+                                         UIContextMenuInteractionDelegate,
                                          UIIndirectScribbleInteractionDelegate>
 // The injected edit view.
 @property(nonatomic, strong) UIView<TextFieldViewContaining>* editView;
@@ -217,6 +219,7 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
     _textOnly = textOnly;
     _locationBarSteadyView =
         [[LocationBarSteadyView alloc] initWithTextOnly:textOnly];
+    _locationBarSteadyView.contentSizeDelegate = self;
     if (!_textOnly && IsGlassToolbarEnabled()) {
       _steadyViewLayoutGuide = [[UILayoutGuide alloc] init];
     }
@@ -358,8 +361,10 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
     [self.locationBarSteadyView setIncognitoBadgeView:self.incognitoBadgeView];
   }
 
-  DCHECK(self.badgeView) << "The badge view must be set at this point";
-  [self.locationBarSteadyView setBadgeView:self.badgeView];
+  if (!_textOnly) {
+    DCHECK(self.badgeView) << "The badge view must be set at this point";
+    [self.locationBarSteadyView setBadgeView:self.badgeView];
+  }
   if (self.readerModeChipView) {
     [self.locationBarSteadyView setReaderModeChipView:self.readerModeChipView];
   }
@@ -561,6 +566,14 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
       _defaultSearchEngineIconView.accessibilityIdentifier = nil;
     }
   }
+}
+
+#pragma mark - LocationBarContentSizeDelegate
+
+- (void)locationBarContentSizeDidChange {
+  // Received from the steady view; re-publish it to the owner of this location
+  // bar, which is the only one able to react to a width change.
+  [self.contentSizeDelegate locationBarContentSizeDidChange];
 }
 
 #pragma mark - LocationBarSteadyViewConsumer
@@ -960,7 +973,7 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
 
 // Updates the layout guides to point to the entrypoints in this toolbar.
 - (void)updateLayoutGuides {
-  if (!self.isViewLoaded) {
+  if (!self.isViewLoaded || _textOnly) {
     return;
   }
   // The _active flag is only used when NextIA is enabled. When it is disabled,

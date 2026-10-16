@@ -7,10 +7,10 @@
 
 #include <set>
 
+#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/glic/common/local_hotkey_manager.h"
-#include "chrome/browser/glic/host/context/glic_screenshot_capturer.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_webui.mojom.h"
 #include "chrome/browser/glic/host/host.h"
@@ -84,9 +84,6 @@ class GlicSidePanelUi
   void SwitchConversation(
       glic::mojom::ConversationInfoPtr info,
       mojom::WebClientHandler::SwitchConversationCallback callback) override;
-  void CaptureScreenshot(
-      glic::mojom::WebClientHandler::CaptureScreenshotCallback callback)
-      override;
 
   // GlicUiEmbedder and Host::Delegate:
   bool IsShowing() const override;
@@ -142,7 +139,59 @@ class GlicSidePanelUi
   }
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(GlicSidePanelUiAndroidTest,
+                           MicPermissionDialogDenied);
+  FRIEND_TEST_ALL_PREFIXES(GlicSidePanelUiAndroidTest,
+                           MicPermissionDialogAcceptedWithDeadWebContents);
+  FRIEND_TEST_ALL_PREFIXES(GlicSidePanelUiAndroidTest,
+                           MicPermissionDialogAcceptedAndSystemGranted);
+  FRIEND_TEST_ALL_PREFIXES(GlicSidePanelUiAndroidTest,
+                           MicPermissionDialogAcceptedButSystemDenied);
+  FRIEND_TEST_ALL_PREFIXES(
+      GlicSidePanelUiAndroidTest,
+      WindowDeactivatedDuringPermissionRequestIsSuppressed);
+  FRIEND_TEST_ALL_PREFIXES(GlicSidePanelUiAndroidTest,
+                           SuppressedDeactivationDeliveredAfterDialogDismissed);
+  FRIEND_TEST_ALL_PREFIXES(
+      GlicSidePanelUiAndroidTest,
+      SuppressedDeactivationDeliveredAfterSystemPromptCompletes);
+  FRIEND_TEST_ALL_PREFIXES(GlicSidePanelUiAndroidTest,
+                           NoDeactivationWhenWindowRegainsFocusAfterPrompt);
+
   GlicSidePanelCoordinator* GetGlicSidePanelCoordinator() const;
+
+  // Called with the user's answer to Chrome's microphone pre-prompt. Continues
+  // to the OS permission flow when `allowed`, otherwise fails the request.
+  void OnMicPermissionDialogResult(
+      base::WeakPtr<content::WebContents> web_contents,
+      const content::MediaStreamRequest& request,
+      content::MediaResponseCallback callback,
+      bool allowed);
+
+  // Forwards `request` to MediaCaptureDevicesDispatcher, which triggers the OS
+  // permission prompt if needed.
+  void RequestSystemMediaAccessPermission(
+      content::WebContents* web_contents,
+      const content::MediaStreamRequest& request,
+      content::MediaResponseCallback callback);
+
+  // Handles the outcome of the OS permission flow, showing a snackbar if
+  // microphone access ended up denied.
+  void OnMediaAccessPermissionResult(
+      base::WeakPtr<content::WebContents> web_contents,
+      blink::mojom::MediaStreamType audio_type,
+      content::MediaResponseCallback callback,
+      const blink::mojom::StreamDevicesSet& stream_devices_set,
+      blink::mojom::MediaStreamRequestResult result,
+      std::unique_ptr<content::MediaStreamUI> ui);
+
+  // Fails `callback` with `result` without consulting the OS.
+  void RejectMediaAccessRequest(content::MediaResponseCallback callback,
+                                blink::mojom::MediaStreamRequestResult result);
+
+  // Notifies the delegate if the embedder window is no longer active. Used to
+  // catch up on deactivations suppressed during a permission prompt.
+  void SyncEmbedderWindowActivation();
 
   base::CallbackListSubscription panel_visibility_subscription_;
   base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
@@ -157,7 +206,10 @@ class GlicSidePanelUi
       panel_focus_dependent_hotkey_manager_;
   raw_ptr<Profile> profile_;
 
-  std::unique_ptr<GlicScreenshotCapturer> screenshot_capturer_;
+  // True while a microphone/camera permission prompt is in front of the
+  // window. Deactivation notifications are suppressed during this time so the
+  // panel is not treated as backgrounded by the prompt itself.
+  bool is_requesting_media_permission_ = false;
 
   base::ScopedObservation<Host, Host::Observer> host_observation_{this};
 

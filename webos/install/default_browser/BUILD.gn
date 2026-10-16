@@ -67,7 +67,7 @@ copy("default_browser") {
   deps = [
     "//chrome",                             # for chrome, chrome_*.pack and resources.pak
     "//components/crash/core/app:chrome_crashpad_handler", # for chrome_crashpad_handler
-    "//v8:v8",                              # for snapshot_blob.bin and natives_blob.bin
+    "//v8:v8_snapshot",                     # for snapshot_blob.bin and natives_blob.bin
     "//third_party/icu:icudata",            # for icudtl.dat
     "//headless:resource_pack_data",        # for headless_lib_data.pak
     "//headless:resource_pack_strings",     # for headless_lib_strings.pak

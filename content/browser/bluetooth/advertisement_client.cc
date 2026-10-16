@@ -12,6 +12,7 @@
 #include "content/browser/bluetooth/bluetooth_blocklist.h"
 #include "content/browser/bluetooth/bluetooth_metrics.h"
 #include "content/browser/web_contents/web_contents_impl.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 
 namespace content {
 
@@ -49,11 +50,14 @@ WebBluetoothServiceImpl::WatchAdvertisementsClient::WatchAdvertisementsClient(
         client_remote,
     blink::WebBluetoothDeviceId device_id,
     RequestCallback callback)
-    : AdvertisementClient(service,
-                          std::move(client_remote),
-                          std::move(callback)),
+    : AdvertisementClient(
+          service,
+          std::move(client_remote),
+          mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+              std::move(callback),
+              blink::mojom::WebBluetoothResult::WATCH_ADVERTISEMENTS_ABORTED)),
       device_id_(device_id) {
-  DCHECK(device_id_.IsValid());
+  CHECK(device_id_.IsValid(), base::NotFatalUntil::M160);
 }
 
 WebBluetoothServiceImpl::WatchAdvertisementsClient::
@@ -91,11 +95,15 @@ WebBluetoothServiceImpl::ScanningClient::ScanningClient(
         client_remote,
     blink::mojom::WebBluetoothRequestLEScanOptionsPtr options,
     RequestCallback callback)
-    : AdvertisementClient(service,
-                          std::move(client_remote),
-                          std::move(callback)),
+    : AdvertisementClient(
+          service,
+          std::move(client_remote),
+          mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+              std::move(callback),
+              blink::mojom::WebBluetoothResult::PROMPT_CANCELED)),
       options_(std::move(options)) {
-  DCHECK(options_->filters.has_value() || options_->accept_all_advertisements);
+  CHECK(options_->filters.has_value() || options_->accept_all_advertisements,
+        base::NotFatalUntil::M160);
 }
 
 WebBluetoothServiceImpl::ScanningClient::~ScanningClient() = default;
@@ -134,7 +142,7 @@ void WebBluetoothServiceImpl::ScanningClient::SendEvent(
     return;
   }
 
-  DCHECK(options_->filters.has_value());
+  CHECK(options_->filters.has_value(), base::NotFatalUntil::M160);
 
   // For every filter, we're going to check to see if a |name|, |name_prefix|,
   // or |services| have been set. If one of these is set, we will check the

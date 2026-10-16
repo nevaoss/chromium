@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 """Definitions of builders in the chromium.fuchsia builder group."""
 
-load("@chromium-luci//args.star", "args")
 load("@chromium-luci//branches.star", "branches")
 load("@chromium-luci//builder_config.star", "builder_config")
 load("@chromium-luci//builder_health_indicators.star", "health_spec")
@@ -61,6 +60,7 @@ targets.settings_defaults.set(
 
 ci.builder(
     name = "Deterministic Fuchsia (dbg)",
+    description_html = "Verifies that Fuchsia x64 debug builds are deterministic.",
     executable = "recipe:swarming/deterministic_build",
     gn_args = gn_args.config(
         configs = [
@@ -70,6 +70,7 @@ ci.builder(
             "x64",
         ],
     ),
+    ssd = None,
     # Runs two builds, which can cause the builder to run out of disk space
     # with standard free space.
     free_space = free_space.high,
@@ -92,6 +93,7 @@ ci.builder(
 ci.builder(
     name = "fuchsia-arm64-cast-receiver-rel",
     branch_selector = branches.selector.FUCHSIA_BRANCHES,
+    description_html = "ARM64 release build of Fuchsia components with Cast Receiver.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -156,8 +158,7 @@ ci.builder(
             ),
         },
     ),
-    # TODO(crbug.com/549757519): Restore to the CQ when test pool is recovered.
-    gardener_rotations = args.ignore_default(None),
+    ssd = None,
     console_view_entry = [
         consoles.console_view_entry(
             category = "cast-receiver",
@@ -171,6 +172,7 @@ ci.builder(
         ),
     ],
     contact_team_email = "chrome-fuchsia-engprod@google.com",
+    execution_timeout = 6 * time.hour,
 )
 
 ci.builder(
@@ -255,6 +257,7 @@ ci.builder(
             ),
         },
     ),
+    ssd = None,
     free_space = free_space.high,
     console_view_entry = [
         consoles.console_view_entry(
@@ -275,6 +278,7 @@ ci.builder(
 ci.builder(
     name = "fuchsia-x64-cast-receiver-rel",
     branch_selector = branches.selector.FUCHSIA_BRANCHES,
+    description_html = "x64 release build of Fuchsia components with Cast Receiver.",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
             config = "chromium",
@@ -356,6 +360,7 @@ ci.builder(
             ],
         },
     ),
+    ssd = None,
     console_view_entry = [
         consoles.console_view_entry(
             category = "cast-receiver",

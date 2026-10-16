@@ -8,7 +8,6 @@ import android.graphics.Bitmap;
 
 import androidx.annotation.IntDef;
 
-import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
@@ -16,6 +15,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxSta
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.IconResourceIdsProtoIntDef.IconResourceIds;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.ReadableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
@@ -47,14 +47,6 @@ class FuseboxProperties {
         int TOOLBAR_MULTI_LINE = 3;
     }
 
-    @IntDef({PopupButtonType.RECENT_TAB, PopupButtonType.TOOL, PopupButtonType.MODEL})
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface PopupButtonType {
-        int RECENT_TAB = 0;
-        int TOOL = 1;
-        int MODEL = 2;
-    }
-
     @IntDef({BackgroundStyle.INTERACT_ONLY_SMALL, BackgroundStyle.ALWAYS_VISIBLE_WIDE})
     @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE_USE)
@@ -63,60 +55,6 @@ class FuseboxProperties {
         int INTERACT_ONLY_SMALL = 0;
         // Wide background that is always visible.
         int ALWAYS_VISIBLE_WIDE = 1;
-    }
-
-    /** Encapsulates the state for a button in the Fusebox popup. */
-    public static class PopupButtonData {
-        public final Runnable onClicked;
-        public final String text;
-        // Either iconId (predefined vector drawable) or customIcon (bitmap favicon) is set.
-        public final /*IconResourceIds*/ int iconId;
-        public final @Nullable Bitmap customIcon;
-        public final boolean enabled;
-        public final boolean selected;
-        public final @PopupButtonType int type;
-        public final int protoId;
-        public final boolean hasColor;
-
-        public PopupButtonData(
-                Callback<PopupButtonData> onClicked,
-                String text,
-                int iconId,
-                boolean enabled,
-                boolean selected,
-                @PopupButtonType int type,
-                int protoId,
-                boolean hasColor) {
-            this.onClicked = onClicked.bind(this);
-            this.text = text;
-            this.iconId = iconId;
-            this.customIcon = null;
-            this.enabled = enabled;
-            this.selected = selected;
-            this.type = type;
-            this.protoId = protoId;
-            this.hasColor = hasColor;
-        }
-
-        public PopupButtonData(
-                Callback<PopupButtonData> onClicked,
-                String text,
-                @Nullable Bitmap customIcon,
-                boolean enabled,
-                boolean selected,
-                @PopupButtonType int type,
-                int protoId,
-                boolean hasColor) {
-            this.onClicked = onClicked.bind(this);
-            this.text = text;
-            this.iconId = 0;
-            this.customIcon = customIcon;
-            this.enabled = enabled;
-            this.selected = selected;
-            this.type = type;
-            this.protoId = protoId;
-            this.hasColor = hasColor;
-        }
     }
 
     /** The adapter for the attachments RecyclerView. */
@@ -143,6 +81,10 @@ class FuseboxProperties {
     public static final WritableIntDefPropertyKey<FuseboxState> FUSEBOX_STATE =
             new WritableIntDefPropertyKey<>(FuseboxState.DISABLED);
 
+    /** The content description for the navigate button. */
+    public static final WritableObjectPropertyKey<String> NAVIGATE_BUTTON_CONTENT_DESCRIPTION =
+            new WritableObjectPropertyKey<>();
+
     /** The style of the background for the plus button. */
     public static final WritableIntDefPropertyKey<BackgroundStyle> PLUS_BUTTON_BACKGROUND_STYLE =
             new WritableIntDefPropertyKey<>(BackgroundStyle.INTERACT_ONLY_SMALL);
@@ -157,6 +99,10 @@ class FuseboxProperties {
 
     /** Whether the accordion menu in the popup is expanded. */
     public static final WritableBooleanPropertyKey POPUP_ACCORDION_EXPANDED =
+            new WritableBooleanPropertyKey();
+
+    /** Whether the attachments header in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_ATTACHMENTS_HEADER_VISIBLE =
             new WritableBooleanPropertyKey();
 
     /** Action to perform when the user clicks the Camera button in the popup. */
@@ -317,6 +263,14 @@ class FuseboxProperties {
     public static final WritableObjectPropertyKey<Runnable> REQUEST_TYPE_BUTTON_CLICKED =
             new WritableObjectPropertyKey<>();
 
+    /** The start icon, an {@link IconResourceIds} value, for the request type button. */
+    public static final WritableIntDefPropertyKey<IconResourceIds> REQUEST_TYPE_BUTTON_ICON_ID =
+            new WritableIntDefPropertyKey<>(IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE);
+
+    /** Whether to tint the start icon of the request type button. */
+    public static final WritableBooleanPropertyKey REQUEST_TYPE_BUTTON_SHOULD_TINT_ICON =
+            new WritableBooleanPropertyKey();
+
     /** The text for the request type button. */
     public static final WritableObjectPropertyKey<String> REQUEST_TYPE_BUTTON_TEXT =
             new WritableObjectPropertyKey<>();
@@ -333,10 +287,12 @@ class FuseboxProperties {
         COLOR_SCHEME,
         FUSEBOX_LAYOUT_MODE,
         FUSEBOX_STATE,
+        NAVIGATE_BUTTON_CONTENT_DESCRIPTION,
         PLUS_BUTTON_BACKGROUND_STYLE,
         PLUS_BUTTON_CLICKED,
         PLUS_BUTTON_VISIBLE,
         POPUP_ACCORDION_EXPANDED,
+        POPUP_ATTACHMENTS_HEADER_VISIBLE,
         POPUP_ATTACH_CAMERA_CLICKED,
         POPUP_ATTACH_CAMERA_ENABLED,
         POPUP_ATTACH_CAMERA_VISIBLE,
@@ -375,6 +331,8 @@ class FuseboxProperties {
         POPUP_USE_CAROUSEL,
         REQUEST_TYPE,
         REQUEST_TYPE_BUTTON_CLICKED,
+        REQUEST_TYPE_BUTTON_ICON_ID,
+        REQUEST_TYPE_BUTTON_SHOULD_TINT_ICON,
         REQUEST_TYPE_BUTTON_TEXT,
         REQUEST_TYPE_BUTTON_VISIBLE
         // go/keep-sorted end

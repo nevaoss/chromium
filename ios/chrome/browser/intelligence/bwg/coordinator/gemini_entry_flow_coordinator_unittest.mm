@@ -24,7 +24,6 @@
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
-#import "ios/chrome/browser/signin/model/fake_authentication_service_delegate.h"
 #import "ios/chrome/browser/signin/model/fake_system_identity.h"
 #import "ios/chrome/browser/signin/model/fake_system_identity_manager.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
@@ -54,8 +53,7 @@ class GeminiEntryFlowCoordinatorTest : public PlatformTest {
                               base::BindRepeating(&CreateTestSyncService));
     builder.AddTestingFactory(
         AuthenticationServiceFactory::GetInstance(),
-        AuthenticationServiceFactory::GetFactoryWithDelegateForTesting(
-            std::make_unique<FakeAuthenticationServiceDelegate>()));
+        AuthenticationServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(
         GeminiServiceFactory::GetInstance(),
         base::BindRepeating(
@@ -116,8 +114,8 @@ class GeminiEntryFlowCoordinatorTest : public PlatformTest {
 
     if ([identity.userEmail hasSuffix:@"@google.com"] ||
         [identity.userEmail hasSuffix:@"@foo.com"]) {
-      CoreAccountInfo account_info =
-          identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
+      CoreAccountInfo account_info = identity_manager->GetPrimaryAccountInfo(
+          signin::ConsentLevel::kSignin);
       signin::SimulateSuccessfulFetchOfAccountInfo(
           identity_manager, account_info.account_id,
           base::SysNSStringToUTF8(identity.userEmail), identity.gaiaId,
@@ -175,6 +173,47 @@ TEST_F(GeminiEntryFlowCoordinatorTest, ColdStartPolicyCheckPending) {
   fake_gemini_service_->SetIsEligible(true);
 
   // Evaluation completes with success once policy check completes.
+  EXPECT_TRUE(flow_completed_);
+  EXPECT_EQ(kGeminiEntryFlowResultSuccess, flow_result_);
+}
+
+// Tests that intermediate capability updates while the policy check is
+// still pending do not cause re-entrant routing or complete prematurely.
+TEST_F(GeminiEntryFlowCoordinatorTest,
+       IntermediateUpdateWhilePolicyCheckPendingDoesNotComplete) {
+  SignIn([FakeSystemIdentity fakeIdentity1]);
+  fake_gemini_service_->SetIsEligible(true);
+  fake_gemini_service_->SetWorkspacePolicyCheckPending(true);
+
+  GeminiStartupState* startup_state = [[GeminiStartupState alloc]
+      initWithEntryPoint:gemini::EntryPoint::ExternalAppStoreEvent];
+
+  coordinator_ = [[GeminiEntryFlowCoordinator alloc]
+      initWithBaseViewController:root_view_controller_
+                         browser:browser_.get()
+                    startupState:startup_state
+        showSnackbarOnCompletion:YES
+                      completion:^(GeminiEntryFlowResult result) {
+                        flow_result_ = result;
+                        flow_completed_ = true;
+                      }];
+
+  [coordinator_ start];
+
+  EXPECT_FALSE(flow_completed_);
+
+  // Trigger an intermediate eligibility change (e.g. from account capability
+  // update) while the enterprise check is still pending.
+  fake_gemini_service_->SetIsEligible(false);
+
+  // The coordinator should ignore the intermediate change while pending and
+  // not complete.
+  EXPECT_FALSE(flow_completed_);
+
+  // Now resolve the enterprise policy check.
+  fake_gemini_service_->SetIsEligible(true);
+  fake_gemini_service_->SetWorkspacePolicyCheckPending(false);
+
   EXPECT_TRUE(flow_completed_);
   EXPECT_EQ(kGeminiEntryFlowResultSuccess, flow_result_);
 }

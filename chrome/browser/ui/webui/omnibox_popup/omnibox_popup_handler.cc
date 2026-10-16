@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
 #include "components/search/search.h"
 #include "components/search_engines/template_url.h"
@@ -59,14 +60,6 @@ OmniboxPopupHandler::OmniboxPopupHandler(
     }
   }
   NotifyDefaultSearchProviderChanged();
-
-  if (controller_ && controller_->edit_model()) {
-    if (auto* popup_view = controller_->edit_model()->popup_view()) {
-      // Notify the popup view that the WebUI page handler is ready to process
-      // input and display suggestions.
-      popup_view->OnPopupHandlerReady();
-    }
-  }
 }
 
 OmniboxPopupHandler::~OmniboxPopupHandler() = default;
@@ -158,6 +151,12 @@ void OmniboxPopupHandler::OnPaste(const std::string& text,
     std::u16string u16_old_text;
     std::u16string u16_new_text = base::UTF8ToUTF16(text);
 
+    if (auto* view = model->view()) {
+      view->SetWindowTextAndCaretPos(
+          u16_new_text, std::min(selection.end(), u16_new_text.length()),
+          /*update_popup=*/false, /*notify_text_changed=*/false);
+    }
+
     OmniboxView::StateChanges state_changes;
     state_changes.old_text = &u16_old_text;
     state_changes.new_text = &u16_new_text;
@@ -213,13 +212,13 @@ void OmniboxPopupHandler::SetInputState(
     bool query_zps,
     searchbox::mojom::InputKeywordModelPtr keyword_model,
     bool is_tab_switch) {
+  current_sequence_number_++;
+  TRACE_EVENT("omnibox", "OmniboxPopupHandler::SetInputState",
+              "sequence_number", current_sequence_number_, "is_focused",
+              is_focused, "is_tab_switch", is_tab_switch);
+
   latest_selection_ = selection;
   show_full_url_ = show_full_url;
-  current_sequence_number_++;
-
-  TRACE_EVENT2("omnibox", "OmniboxPopupHandler::SetInputState",
-               "sequence_number", current_sequence_number_, "is_focused",
-               is_focused);
 
   auto state = omnibox_popup::mojom::OmniboxInputState::New();
   state->sequence_number = current_sequence_number_;
@@ -251,6 +250,12 @@ void OmniboxPopupHandler::SetFocus(bool is_focused,
                                    bool query_zps,
                                    bool select_all) {
   page_->SetFocus(is_focused, query_zps, select_all);
+}
+
+void OmniboxPopupHandler::FocusSearchWithDefaultSearchEngineKeywordMode() {
+  if (page_.is_bound()) {
+    page_->FocusSearchWithDefaultSearchEngineKeywordMode();
+  }
 }
 
 void OmniboxPopupHandler::ClearAutocompleteMatches() {
@@ -313,8 +318,9 @@ void OmniboxPopupHandler::LogEscapeAction(
 void OmniboxPopupHandler::OpenAimPopup(bool via_keyboard) {
   if (controller_) {
     controller_->edit_model()->OpenSelection(
-        OmniboxPopupSelection(OmniboxPopupSelection::kNoMatch,
-                              OmniboxPopupSelection::FOCUSED_BUTTON_AIM),
+        OmniboxPopupSelection(
+            OmniboxPopupSelection::kNoMatch,
+            OmniboxPopupSelection::LineState::kFocusedButtonAim),
         via_keyboard);
   }
 }
@@ -417,6 +423,14 @@ void OmniboxPopupHandler::OnCutOrCopy(uint32_t sequence_number,
              : u16_old_text;
   gfx::Range new_selection = is_cut ? gfx::Range(sel_min, sel_min) : selection;
 
+  if (is_cut) {
+    if (auto* view = controller_->edit_model()->view()) {
+      view->SetWindowTextAndCaretPos(u16_new_text, sel_min,
+                                     /*update_popup=*/false,
+                                     /*notify_text_changed=*/false);
+    }
+  }
+
   OmniboxView::StateChanges state_changes;
   state_changes.old_text = &u16_old_text;
   state_changes.new_text = &u16_new_text;
@@ -447,5 +461,12 @@ void OmniboxPopupHandler::OpenDevTools() {
   if (web_contents_) {
     DevToolsWindow::OpenDevToolsWindow(web_contents_,
                                        DevToolsOpenedByAction::kUnknown);
+  }
+}
+
+void OmniboxPopupHandler::AdvanceFocus(bool reverse) {
+  if (auto* helper =
+          OmniboxPopupWebContentsHelper::FromWebContents(web_contents_)) {
+    helper->AdvanceFocus(reverse);
   }
 }

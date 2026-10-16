@@ -10,6 +10,10 @@ export function getHtml(this: OmniboxPopupSearchboxElement) {
   // clang-format off
   return html`
     <div id="inputWrapper" @focusout="${this.onInputWrapperFocusout}"
+        class="${
+      this.webuiShadowEnabled_ && this.dropdownIsVisible ?
+          'omnibox-shadow-layer' :
+          ''}"
         @keydown="${this.onInputWrapperKeydown}">
       <cr-searchbox-input id="input"
           exportparts="searchbox-input"
@@ -26,7 +30,6 @@ export function getHtml(this: OmniboxPopupSearchboxElement) {
           @focusin="${this.onInputFocusin_}"
           @mousedown="${this.onInputMousedown_}"
           @searchbox-input-text-updated="${this.onSearchboxInputTextUpdated_}"
-          @input-focus-changed="${this.onInputFocusChanged}"
           @paste="${this.onInputPaste_}"
           @copy="${this.onInputCopy_}"
           @cut="${this.onInputCut_}">

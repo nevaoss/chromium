@@ -14,6 +14,7 @@
 #include "partition_alloc/bucket_lookup.h"
 #include "partition_alloc/build_config.h"
 #include "partition_alloc/buildflags.h"
+#include "partition_alloc/debug_data_on_stack.h"
 #include "partition_alloc/in_slot_metadata.h"
 #include "partition_alloc/oom.h"
 #include "partition_alloc/page_allocator.h"
@@ -26,6 +27,7 @@
 #include "partition_alloc/partition_alloc_check.h"
 #include "partition_alloc/partition_alloc_config.h"
 #include "partition_alloc/partition_alloc_constants.h"
+#include "partition_alloc/partition_alloc_public_constants.h"
 #include "partition_alloc/partition_bucket.h"
 #include "partition_alloc/partition_cookie.h"
 #include "partition_alloc/partition_oom.h"
@@ -239,7 +241,6 @@ void BeforeForkInParent() PA_NO_THREAD_SAFETY_ANALYSIS {
       LockRoot, false,
       internal::PartitionRootEnumerator::EnumerateOrder::kNormal);
 
-  internal::PartitionTlsRegistry::GetLock().Acquire();
   internal::ThreadCacheRegistry::GetLock().Acquire();
   g_leak_size_map_lock.Acquire();
 }
@@ -248,7 +249,6 @@ void ReleaseLocks(bool in_child) PA_NO_THREAD_SAFETY_ANALYSIS {
   UnlockOrReinit(g_leak_size_map_lock, in_child);
   // In reverse order, even though there are no lock ordering dependencies.
   UnlockOrReinit(internal::ThreadCacheRegistry::GetLock(), in_child);
-  UnlockOrReinit(internal::PartitionTlsRegistry::GetLock(), in_child);
   internal::PartitionRootEnumerator::Instance().Enumerate(
       UnlockOrReinitRoot, in_child,
       internal::PartitionRootEnumerator::EnumerateOrder::kReverse);
@@ -1165,6 +1165,8 @@ void PartitionRoot::Init(PartitionOptions opts) {
 
     settings_.use_tighter_aligned_alloc_bound =
         (opts.tighter_aligned_alloc_bound == PartitionOptions::kEnabled);
+    settings_.allow_giga_allocations =
+        (opts.allow_giga_allocations == PartitionOptions::kAllowed);
 
     initialized_ = true;
   }
@@ -1438,7 +1440,26 @@ bool PartitionRoot::TryReallocInPlaceForNormalBuckets(
           static_cast<unsigned char*>(object) + GetSlotUsableSize(slot_span)));
     }
 #endif  // PA_BUILDFLAG(USE_PARTITION_COOKIE)
+
+#if PA_BUILDFLAG(CHECKED_SPAN_HAS_METADATA_SUPPORT)
+    // By definition, slots that can store the raw size do not smuggle
+    // the requested size.
+    PA_DCHECK(!ref_count->IsSmuggledSizeAvailable());
+#endif  // PA_BUILDFLAG(CHECKED_SPAN_HAS_METADATA_SUPPORT)
+
   }
+#if PA_BUILDFLAG(CHECKED_SPAN_HAS_METADATA_SUPPORT)
+  else if (brp_enabled()) {
+    if (new_size + sizeof(internal::CheckedSpanSmuggledRequestedSize) <=
+        current_usable_size) {
+      PA_UNSAFE_BUFFERS(internal::SmuggleRequestedSize(
+          object, current_usable_size, new_size));
+      ref_count->SetHasSmuggledSizeBit();
+    } else {
+      ref_count->ClearHasSmuggledSizeBit();
+    }
+  }
+#endif  // PA_BUILDFLAG(CHECKED_SPAN_HAS_METADATA_SUPPORT)
 
 #undef PARTITION_ALLOC_HAS_DCHECKED_BRP
 
@@ -1516,7 +1537,8 @@ size_t PartitionRoot::AllocationCapacityFromRequestedSize(size_t size) const {
 
   if (!bucket.is_direct_mapped()) [[likely]] {
     size = bucket.slot_size;
-  } else if (size > MaxAllocationSize()) {
+  } else if (size > MaxAllocationSize() &&
+             (!allow_giga_allocations() || size > MaxGigaAllocationSize())) {
     // Too large to allocate => return the size unchanged.
   } else {
     size = GetDirectMapSlotSize(size);

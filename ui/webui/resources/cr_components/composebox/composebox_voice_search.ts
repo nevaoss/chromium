@@ -189,6 +189,16 @@ export class ComposeboxVoiceSearchElement extends
       detailsUrl_: {type: String},
       detailedError: {type: Number},
       hasErrorTimer: {type: Boolean},
+      hasMultilineTranscript: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'has-multiline-transcript',
+      },
+      transcriptLines: {
+        type: Number,
+        reflect: true,
+        attribute: 'transcript-lines',
+      },
       isPermissionPromptOpen: {
         type: Boolean,
         reflect: true,
@@ -244,12 +254,14 @@ export class ComposeboxVoiceSearchElement extends
   accessor detailedError: VoiceSearchError|null = null;
   accessor dynamicTimeoutEnabled: boolean = false;
   accessor hasErrorTimer: boolean = false;
+  accessor hasMultilineTranscript: boolean = false;
   accessor helperTextEnabled: boolean = false;
   accessor idleTimeout: number = 3000;
   accessor isPermissionPromptOpen: boolean = false;
   accessor liveTranscriptEnabled: boolean = true;
   accessor manualSubmitIdleTimeout: number|undefined = undefined;
   accessor metricSource: string = '';
+  accessor transcriptLines: number = 1;
   // Accept page callback router attribute asynchronously, so that the parent
   // and voice search component can share the same mojo connection and source of
   // truth (to avoid race conditions).
@@ -272,7 +284,11 @@ export class ComposeboxVoiceSearchElement extends
 
   private accessor state_: State = State.UNINITIALIZED;
 
-  private readonly isAndroid_: boolean = getLoadTimeBoolean('isAndroid', false);
+  // True when `webkitSpeechRecognition` is backed by Android's
+  // `SpeechRecognitionImpl`, which owns the microphone itself and reports
+  // cumulative result snapshots.
+  private readonly androidSpeechRecognition_: boolean =
+      getLoadTimeBoolean('androidSpeechRecognition', false);
   private blurTimeoutId_: number|null = null;
   private listenerIds_: number[] = [];
   private pageHandler_: PageHandlerRemote =
@@ -302,7 +318,7 @@ export class ComposeboxVoiceSearchElement extends
 
   override connectedCallback() {
     super.connectedCallback();
-    AudioProcessor.setSimulate(this.isAndroid_);
+    AudioProcessor.setSimulate(this.androidSpeechRecognition_);
     if (!this.metricSource) {
       this.searchboxHandler_.getPageClassification().then(({metricSource}) => {
         this.metricSource = metricSource || '';
@@ -322,8 +338,8 @@ export class ComposeboxVoiceSearchElement extends
     super.disconnectedCallback();
   }
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
+  override updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties as PropertyValues<this>);
     // When `pageCallbackRouter` is set by the parent,
     // add all listeners for the callback router if not already added.
     if (changedProperties.has('pageCallbackRouter') &&
@@ -333,9 +349,26 @@ export class ComposeboxVoiceSearchElement extends
               this.onVoicePermissionPromptChanged.bind(this)),
       );
     }
+    if (changedProperties.has('transcript_') ||
+        changedProperties.has('audioWaveEnabled') ||
+        changedProperties.has('liveTranscriptEnabled')) {
+      const input = this.shadowRoot?.querySelector<HTMLElement>('#input');
+      if (input && this.audioWaveEnabled && this.liveTranscriptEnabled) {
+        input.scrollTop = input.scrollHeight;
+        const lines = !this.transcript_ ?
+            1 :
+            Math.min(
+                7, Math.max(1, Math.round((input.scrollHeight - 20) / 24)));
+        this.transcriptLines = lines;
+        this.hasMultilineTranscript = lines > 1;
+      } else {
+        this.transcriptLines = 1;
+        this.hasMultilineTranscript = false;
+      }
+    }
   }
 
-  protected shouldShowErrorScrim_(): boolean {
+  protected isInError_(): boolean {
     return !!this.errorMessage_;
   }
 
@@ -398,13 +431,30 @@ export class ComposeboxVoiceSearchElement extends
     }
   };
 
+  private onKeyDown_ = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      if (this.isPermissionPromptOpen) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.isInError_()) {
+        this.onCloseClick_();
+      } else {
+        this.onStopClick_();
+      }
+    }
+  };
+
   /**
    * Adds global listeners to close voice search on outside interactions.
    * `pointerdown` captures clicks on flat DOMs (e.g., NTP).
    * `blur` captures clicks inside isolated webviews (e.g., Contextual Tasks
    * `#threadFrame`) which steal focus but do not bubble click events.
+   * `keydown` captures Escape key to stop voice search.
    */
   private addOutsideListeners_() {
+    document.addEventListener('keydown', this.onKeyDown_, true);
     WindowProxy.getInstance().setTimeout(() => {
       document.addEventListener('pointerdown', this.onOutsideInteraction_);
       window.addEventListener('blur', this.onOutsideInteraction_);
@@ -413,6 +463,7 @@ export class ComposeboxVoiceSearchElement extends
 
   private removeOutsideListeners_() {
     document.removeEventListener('pointerdown', this.onOutsideInteraction_);
+    document.removeEventListener('keydown', this.onKeyDown_, true);
     window.removeEventListener('blur', this.onOutsideInteraction_);
   }
 
@@ -555,7 +606,7 @@ export class ComposeboxVoiceSearchElement extends
     const speechResult = results[e.resultIndex];
     assert(speechResult);
 
-    if (this.isAndroid_) {
+    if (this.androidSpeechRecognition_) {
       // On Android, `SpeechRecognitionImpl` sends cumulative snapshots of the
       // entire utterance. The last item in `results` represents the current
       // full transcript.
@@ -623,7 +674,7 @@ export class ComposeboxVoiceSearchElement extends
       case State.RESULT_RECEIVED:
         // On Android, 'SpeechRecognitionImpl' always fires 'onEnd' when the
         // utterance finishes. Submit immediately if a transcript is present.
-        if (this.isAndroid_ && this.transcript_) {
+        if (this.androidSpeechRecognition_ && this.transcript_) {
           this.onFinalResult_(this.transcript_, /*forceSubmit=*/ true);
           return;
         }
@@ -834,7 +885,7 @@ export class ComposeboxVoiceSearchElement extends
   protected onCloseClick_() {
     // If closing while an error is showing, the close action is to dismiss
     // the error state, so it should not log as a user-canceled voice session.
-    if (this.shouldShowErrorScrim_()) {
+    if (this.isInError_()) {
       this.fire('voice-search-cancel', /*canceled-by-user=*/ false);
       this.voiceModeEndCleanup_();
       return;
@@ -857,6 +908,8 @@ export class ComposeboxVoiceSearchElement extends
     this.error_ = null;
     this.errorMessage_ = '';
     this.detailedError = null;
+    this.hasMultilineTranscript = false;
+    this.transcriptLines = 1;
     WindowProxy.getInstance().clearTimeout(this.timerId_);
     this.timerId_ = null;
   }

@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/compiler_specific.h"
-#include "base/feature_list.h"
 #include "base/numerics/byte_conversions.h"
 #include "base/numerics/safe_conversions.h"
 #include "build/build_config.h"
@@ -16,13 +15,6 @@
 #include "media/base/video_types.h"
 
 namespace media {
-
-namespace {
-
-// Kill-switch: Remove after M145 is stable.
-BASE_FEATURE(kResetDecoderForNonIDR, base::FEATURE_ENABLED_BY_DEFAULT);
-
-}  // namespace
 
 VideoToolboxH264Accelerator::VideoToolboxH264Accelerator(
     std::unique_ptr<MediaLog> media_log,
@@ -136,19 +128,26 @@ VideoToolboxH264Accelerator::Status VideoToolboxH264Accelerator::SubmitDecode(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Extract changed parameter sets and update active parameter set data.
-  std::vector<base::span<const uint8_t>> combined_nalu_data;
-  if (!sps_tracker_.ExtractForInbandUpdate(combined_nalu_data) ||
-      !pps_tracker_.ExtractForInbandUpdate(combined_nalu_data)) {
+  std::vector<base::span<const uint8_t>> sps_nalu_data;
+  if (!sps_tracker_.ExtractForInbandUpdate(sps_nalu_data)) {
+    return Status::kFail;
+  }
+  std::vector<base::span<const uint8_t>> pps_nalu_data;
+  if (!pps_tracker_.ExtractForInbandUpdate(pps_nalu_data)) {
     return Status::kFail;
   }
 
-  // Create a new format description if we haven't initialized one yet, or if we
-  // are at a keyframe and the parameter set data has changed.
-  if (!active_format_ || (pic->idr && !combined_nalu_data.empty())) {
-    combined_nalu_data.clear();
+  // Create a new format description if we haven't initialized one yet, or if
+  // the SPS has changed, or if we are at a keyframe and the PPS has changed.
+  std::vector<base::span<const uint8_t>> combined_nalu_data;
+  if (!active_format_ || !sps_nalu_data.empty() ||
+      (pic->idr && !pps_nalu_data.empty())) {
     if (!CreateFormat()) {
       return Status::kFail;
     }
+  } else {
+    // Non-IDR frames that only update the PPS can be handled in-band.
+    combined_nalu_data = std::move(pps_nalu_data);
   }
 
   // Append slice data.
@@ -162,8 +161,7 @@ VideoToolboxH264Accelerator::Status VideoToolboxH264Accelerator::SubmitDecode(
     return Status::kFail;
   }
 
-  if (!pic->idr && first_decode_ &&
-      base::FeatureList::IsEnabled(kResetDecoderForNonIDR)) {
+  if (!pic->idr && first_decode_) {
     // Flag the sample if it's non-IDR and the first sample provided. This was
     // recommended by Apple to prevent corruption when seeking to SEI
     // recovery points. See https://crbug.com/451536366.

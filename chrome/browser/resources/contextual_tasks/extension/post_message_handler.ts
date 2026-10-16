@@ -2,30 +2,45 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import type {ExtensionPageInterface} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
 import {ExtensionBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
 import type {ExtensionBrowserProxy} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
-import {getArrayBufferFromBigBuffer, HANDSHAKE_INTERVAL_MS, isGoogleOrigin, MAX_HANDSHAKE_ATTEMPTS} from 'chrome://contextual-tasks/utils.js';
+import {getArrayBufferFromBigBuffer, HANDSHAKE_INTERVAL_MS, MAX_HANDSHAKE_ATTEMPTS} from 'chrome://contextual-tasks/utils.js';
 
-declare global {
-  interface Window {
-    // Exposes read-only handshake tracking state on window for test
-    // verification in extension_post_message_handler_test.ts and browser tests.
-    // Cleaned up on destroy().
-    stateForTesting?: {
-      targetOrigin: string|null,
-      handshakeCompleted: boolean,
-    };
+type ProtoWrapper = Parameters<ExtensionPageInterface['postSearchMessage']>[0];
+
+const MAX_MESSAGE_BYTES = 1024 * 1024;  // 1MB
+
+// LINT.IfChange(AllowedOrigins)
+export function urlMatchesAllowList(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'https:') {
+      return false;
+    }
+    const host = url.hostname;
+    return host === 'google.com' || host === 'www.google.com' ||
+        host.endsWith('.borg.google.com') ||
+        host.endsWith('.corp.google.com') || host.endsWith('.prod.google.com');
+  } catch {
+    return false;
   }
 }
+// LINT.ThenChange(
+//   manifest.json:AllowedOrigins,
+//   manifest.json:WebAccessibleMatches
+// )
 
 export class ExtensionPostMessageHandler {
   private browserProxy_: ExtensionBrowserProxy;
   private targetOrigin_: string|null = null;
+  private pendingSearchMessages_: Uint8Array[] = [];
   private handshakeIntervalId_: number|null = null;
   private handshakeCompleted_: boolean = false;
   private messageListener_: ((event: MessageEvent) => void)|null = null;
   private onHandshakeCompleteListenerId_: number|null = null;
   private postAimMessageListenerId_: number|null = null;
+  private postSearchMessageListenerId_: number|null = null;
   private isDestroyed_: boolean = false;
 
   constructor(browserProxy?: ExtensionBrowserProxy) {
@@ -34,16 +49,6 @@ export class ExtensionPostMessageHandler {
     this.initMojoListeners_();
     this.initWindowListener_();
     this.initHandshake();
-
-    const handler = this;
-    window.stateForTesting = {
-      get targetOrigin() {
-        return handler.targetOrigin_;
-      },
-      get handshakeCompleted() {
-        return handler.handshakeCompleted_;
-      },
-    };
   }
 
   get targetOrigin(): string|null {
@@ -56,6 +61,25 @@ export class ExtensionPostMessageHandler {
 
   get isDestroyed(): boolean {
     return this.isDestroyed_;
+  }
+
+  private setTargetOrigin_(origin: string) {
+    if (!urlMatchesAllowList(origin)) {
+      return;
+    }
+    this.targetOrigin_ = origin;
+    while (this.pendingSearchMessages_.length > 0) {
+      const msg = this.pendingSearchMessages_.shift()!;
+      window.parent.postMessage(msg, this.targetOrigin_);
+    }
+  }
+
+  setTargetOriginForTesting(origin: string|null) {
+    if (origin) {
+      this.setTargetOrigin_(origin);
+    } else {
+      this.targetOrigin_ = null;
+    }
   }
 
   async initHandshake(): Promise<void> {
@@ -77,9 +101,7 @@ export class ExtensionPostMessageHandler {
     if (referrer) {
       try {
         const url = new URL(referrer);
-        if (isGoogleOrigin(url.origin)) {
-          this.targetOrigin_ = url.origin;
-        }
+        this.setTargetOrigin_(url.origin);
       } catch {
         // Ignore
       }
@@ -108,9 +130,13 @@ export class ExtensionPostMessageHandler {
         }
         return;
       }
+      if (!this.targetOrigin_) {
+        // Do not broadcast internal protocol messages if target origin cannot
+        // be authoritatively determined from referrer.
+        return;
+      }
       handshakeAttempts++;
-      const destOrigin = this.targetOrigin_ || '*';
-      window.parent.postMessage(messageArray, destOrigin);
+      window.parent.postMessage(messageArray, this.targetOrigin_);
     }, HANDSHAKE_INTERVAL_MS);
   }
 
@@ -120,13 +146,13 @@ export class ExtensionPostMessageHandler {
         return;
       }
 
-      if (!isGoogleOrigin(event.origin)) {
+      if (!urlMatchesAllowList(event.origin)) {
         console.warn('Rejected message from untrusted origin:', event.origin);
         return;
       }
 
       if (!this.targetOrigin_) {
-        this.targetOrigin_ = event.origin;
+        this.setTargetOrigin_(event.origin);
       } else if (this.targetOrigin_ !== event.origin) {
         console.warn(
             'Origin mismatch. Expected:', this.targetOrigin_,
@@ -146,6 +172,12 @@ export class ExtensionPostMessageHandler {
         dataBytes = event.data;
       } else {
         console.warn('Unexpected message data type:', typeof event.data);
+        return;
+      }
+
+      if (dataBytes.byteLength > MAX_MESSAGE_BYTES) {
+        console.warn(
+            'Message exceeds maximum allowed size:', dataBytes.byteLength);
         return;
       }
 
@@ -177,10 +209,23 @@ export class ExtensionPostMessageHandler {
               const messageArray = new Uint8Array(message);
               window.parent.postMessage(messageArray, this.targetOrigin_);
             });
+
+    this.postSearchMessageListenerId_ =
+        this.browserProxy_.callbackRouter.postSearchMessage.addListener(
+            (message: ProtoWrapper) => {
+              const buffer = getArrayBufferFromBigBuffer(message.smuggled);
+              const messageArray = new Uint8Array(buffer);
+              if (this.targetOrigin_) {
+                window.parent.postMessage(messageArray, this.targetOrigin_);
+              } else {
+                this.pendingSearchMessages_.push(messageArray);
+              }
+            });
   }
 
   destroy() {
     this.isDestroyed_ = true;
+    this.pendingSearchMessages_ = [];
     if (this.handshakeIntervalId_ !== null) {
       clearInterval(this.handshakeIntervalId_);
       this.handshakeIntervalId_ = null;
@@ -199,7 +244,11 @@ export class ExtensionPostMessageHandler {
           this.postAimMessageListenerId_);
       this.postAimMessageListenerId_ = null;
     }
-    delete window.stateForTesting;
+    if (this.postSearchMessageListenerId_ !== null) {
+      this.browserProxy_.callbackRouter.removeListener(
+          this.postSearchMessageListenerId_);
+      this.postSearchMessageListenerId_ = null;
+    }
   }
 }
 
@@ -221,9 +270,4 @@ export function resetExtensionPostMessagingForTesting() {
     instance.destroy();
     instance = null;
   }
-}
-
-// Auto-initialize when running inside an extension frame.
-if (window.location.protocol === 'chrome-extension:') {
-  initExtensionPostMessaging();
 }

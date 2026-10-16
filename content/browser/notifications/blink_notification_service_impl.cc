@@ -105,7 +105,7 @@ BlinkNotificationServiceImpl::BlinkNotificationServiceImpl(
       receiver_(this, std::move(receiver)) {
   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M159);
   CHECK(notification_context_, base::NotFatalUntil::M159);
-  CHECK(browser_context_, base::NotFatalUntil::M159);
+  CHECK(browser_context_, base::NotFatalUntil::M165);
 
   receiver_.set_disconnect_handler(base::BindOnce(
       &BlinkNotificationServiceImpl::OnConnectionError,

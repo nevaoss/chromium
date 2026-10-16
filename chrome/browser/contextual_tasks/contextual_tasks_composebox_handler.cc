@@ -141,7 +141,7 @@ class ContextualTasksOmniboxClient : public ContextualOmniboxClient {
       TemplateURLRef::PostContent* post_content,
       WindowOpenDisposition disposition,
       ui::PageTransition transition,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       base::TimeTicks match_selection_timestamp,
       bool destination_url_entered_without_scheme,
       bool destination_url_entered_with_http_scheme,
@@ -168,7 +168,7 @@ void ContextualTasksOmniboxClient::OnAutocompleteAccept(
     TemplateURLRef::PostContent* post_content,
     WindowOpenDisposition disposition,
     ui::PageTransition transition,
-    AutocompleteMatchType::Type match_type,
+    omnibox::AutocompleteMatchType match_type,
     base::TimeTicks match_selection_timestamp,
     bool destination_url_entered_without_scheme,
     bool destination_url_entered_with_http_scheme,
@@ -327,7 +327,9 @@ void ContextualTasksComposeboxHandler::OnContextUploadStatusChanged(
       }
     }
   }
-  if (context_upload_status == ContextUploadStatus::kUploadSuccessful) {
+  if (context_upload_status == ContextUploadStatus::kUploadSuccessful ||
+      context_upload_status == ContextUploadStatus::kUploadFailed ||
+      context_upload_status == ContextUploadStatus::kValidationFailed) {
     auto* contextual_session_handle = GetContextualSessionHandle();
     if (!contextual_session_handle) {
       return;
@@ -342,8 +344,13 @@ void ContextualTasksComposeboxHandler::OnContextUploadStatusChanged(
 
     auto task_id = web_ui_interface_->GetTaskId();
     if (task_id.has_value() && contextual_tasks_service_) {
-      contextual_tasks_service_->AssociateTabWithTask(
-          task_id.value(), file_info->tab_session_id.value());
+      if (context_upload_status == ContextUploadStatus::kUploadSuccessful) {
+        contextual_tasks_service_->AssociateTabWithTask(
+            task_id.value(), file_info->tab_session_id.value());
+      } else {
+        contextual_tasks_service_->DisassociateTabFromTask(
+            task_id.value(), file_info->tab_session_id.value());
+      }
     }
   }
 }
@@ -451,7 +458,8 @@ void ContextualTasksComposeboxHandler::CreateAndSendQueryMessage(
       active_tab = tab_list->GetActiveTab();
       if (active_tab && !has_visual_selection) {
         bool should_block_recontextualize = false;
-        if (omnibox::IsTabDeselectionInComposeboxEnabled()) {
+        if (omnibox::IsTabDeselectionInComposeboxEnabled() &&
+            !IsSmartTabSharingActive()) {
           if (session_handle) {
             SessionID session_id =
                 sessions::SessionTabHelper::IdForTab(active_tab->GetContents());
@@ -487,23 +495,23 @@ void ContextualTasksComposeboxHandler::CreateAndSendQueryMessage(
   // Kick off the on-submit contextualization flow to upload delayed tabs and
   // recontextualize the active tab.
   recontextualization_pending_count_++;
-  // It is safe to use base::Unretained(this) here because `recontextualizer_`
-  // is owned by `this` and will be destroyed when `this` is destroyed,
-  // cancelling any pending callbacks.
   auto callback = base::BindOnce(
-      [](ContextualTasksComposeboxHandler* handler, std::string query,
-         std::optional<base::Uuid> task_id,
+      [](base::WeakPtr<ContextualTasksComposeboxHandler> handler,
+         std::string query, std::optional<base::Uuid> task_id,
          std::optional<base::UnguessableToken> token, bool voice,
          std::map<std::string, std::string> cgi_params,
          base::WeakPtr<contextual_search::ContextualSearchSessionHandle>
              handle) {
+        if (!handler) {
+          return;
+        }
         // The session handle is accessed via GetContextualSessionHandle(),
         // so we ignore it here.
         handler->ContinueCreateAndSendQueryMessage(query, task_id, token, voice,
                                                    std::move(cgi_params));
       },
-      base::Unretained(this), query, task_id, overlay_token, is_voice_search,
-      additional_cgi_params);
+      weak_factory_.GetWeakPtr(), query, task_id, overlay_token,
+      is_voice_search, additional_cgi_params);
 
   contextual_tasks::QueryContextualizer::ContextualizeParams params;
   params.task_id = task_id;
@@ -512,11 +520,11 @@ void ContextualTasksComposeboxHandler::CreateAndSendQueryMessage(
   params.auto_suggested_chip_tabs = tabs_to_force_contextualize;
   params.on_ineligible_callback = base::BindRepeating(
       &ContextualTasksComposeboxHandler::OnPageContextIneligible,
-      base::Unretained(this));
+      weak_factory_.GetWeakPtr());
   params.on_processed_callback =
       base::BindRepeating(&ContextualTasksComposeboxHandler::
                               OnTabProcessedForQueryContextualization,
-                          base::Unretained(this));
+                          weak_factory_.GetWeakPtr());
   params.complete_callback = std::move(callback);
   params.enable_smart_tab_selection = IsSmartTabSharingActive();
   recontextualizer_->Contextualize(std::move(params));
@@ -541,6 +549,15 @@ void ContextualTasksComposeboxHandler::OnTaskChanged() {
   ClearFiles(/*should_block_auto_suggested_tabs=*/false);
   SetSmartTabSharingActive(false);
   InitializeInputStateModel();
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    // InitializeInputStateModel() seeds restored tabs from the session handle,
+    // which can be carried over from the side panel and still hold the tabs
+    // submitted in the previous thread. Don't surface those in the new thread:
+    // they render as stale favicon coins and can hide the auto-suggested tab.
+    // The new thread's restored tabs are populated from the server once its
+    // context loads (see ContextualTasksUI::OnRestoredTabsFetched()).
+    SetAimThreadRestoredTabs({});
+  }
 }
 
 std::vector<int32_t> ContextualTasksComposeboxHandler::GetSelectedTabIds()
@@ -608,47 +625,7 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
     SearchboxHandler::page_->SetRestoredTabIds(restored_tab_ids);
     // Set cached submitted tabs so they show up before thread loading is
     // complete and after submission.
-    if (auto* session_handle = GetContextualSessionHandle()) {
-      std::vector<searchbox::mojom::TabInfoPtr> submitted_tabs;
-      std::vector<contextual_search::FileInfo> file_infos =
-          session_handle->GetSubmittedContextFileInfos();
-      // Ensures the tabs are ordered by their selection time.
-      std::sort(file_infos.begin(), file_infos.end(),
-                [](const contextual_search::FileInfo& a,
-                   const contextual_search::FileInfo& b) {
-                  return a.selection_time < b.selection_time;
-                });
-      for (const contextual_search::FileInfo& file_info : file_infos) {
-        if ((file_info.mime_type == lens::MimeType::kHtml ||
-             file_info.mime_type == lens::MimeType::kAnnotatedPageContent) &&
-            (file_info.tab_url.has_value() ||
-             file_info.tab_title.has_value())) {
-          searchbox::mojom::TabInfoPtr tab_info =
-              searchbox::mojom::TabInfo::New();
-          int32_t tab_id = 0;
-          if (file_info.tab_session_id.has_value()) {
-            tab_id = tabs::SessionMappedTabHandleFactory::GetInstance()
-                         .GetHandleForSessionId(
-                             file_info.tab_session_id.value().id());
-            // In case the tab is not mapped.
-            if (tab_id == tabs::TabHandle::NullValue &&
-                SessionID::IsValidValue(
-                    file_info.tab_session_id.value().id())) {
-              tab_id = file_info.tab_session_id.value().id();
-            }
-          }
-          tab_info->tab_id = SessionID::IsValidValue(tab_id)
-                                 ? tab_id
-                                 : tabs::TabHandle::NullValue;
-          tab_info->title = file_info.tab_title.value_or("");
-          tab_info->url = file_info.tab_url.value_or(GURL());
-          submitted_tabs.push_back(std::move(tab_info));
-        }
-      }
-      if (!submitted_tabs.empty()) {
-        SetAimThreadRestoredTabs(std::move(submitted_tabs));
-      }
-    }
+    CacheSubmittedTabsFromSessionHandle();
   }
 
   if (input_state_model_) {
@@ -719,6 +696,76 @@ void ContextualTasksComposeboxHandler::SetAimThreadRestoredTabs(
 
   if (SearchboxHandler::page_) {
     SearchboxHandler::page_->SetAimThreadRestoredTabs(std::move(tabs));
+  }
+}
+
+void ContextualTasksComposeboxHandler::CacheSubmittedTabsFromSessionHandle() {
+  if (!base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) ||
+      !IsContextualSearchTabSharingEligible()) {
+    return;
+  }
+#if !BUILDFLAG(IS_ANDROID)
+  if (visual_selection_token_.has_value()) {
+    return;
+  }
+  if (auto* controller = GetLensSearchController()) {
+    if (controller->lens_overlay_controller()->HasRegionSelection() &&
+        controller->query_router() &&
+        controller->query_router()
+            ->overlay_tab_context_file_token()
+            .has_value()) {
+      return;
+    }
+  }
+#endif
+  auto* session_handle = GetContextualSessionHandle();
+  if (!session_handle) {
+    return;
+  }
+  std::vector<searchbox::mojom::TabInfoPtr> submitted_tabs;
+  std::vector<contextual_search::FileInfo> file_infos =
+      session_handle->GetSubmittedContextFileInfos();
+  // Ensures the tabs are ordered by their selection time.
+  std::sort(file_infos.begin(), file_infos.end(),
+            [](const contextual_search::FileInfo& a,
+               const contextual_search::FileInfo& b) {
+              return a.selection_time < b.selection_time;
+            });
+  for (const contextual_search::FileInfo& file_info : file_infos) {
+    if ((file_info.mime_type == lens::MimeType::kHtml ||
+         file_info.mime_type == lens::MimeType::kAnnotatedPageContent) &&
+        (file_info.tab_url.has_value() || file_info.tab_title.has_value())) {
+      searchbox::mojom::TabInfoPtr tab_info = searchbox::mojom::TabInfo::New();
+      int32_t tab_id = 0;
+      if (file_info.tab_session_id.has_value()) {
+        tab_id =
+            tabs::SessionMappedTabHandleFactory::GetInstance()
+                .GetHandleForSessionId(file_info.tab_session_id.value().id());
+        // In case the tab is not mapped.
+        if (tab_id == tabs::TabHandle::NullValue &&
+            SessionID::IsValidValue(file_info.tab_session_id.value().id())) {
+          tab_id = file_info.tab_session_id.value().id();
+        }
+      }
+      tab_info->tab_id =
+          SessionID::IsValidValue(tab_id) ? tab_id : tabs::TabHandle::NullValue;
+      tab_info->title = file_info.tab_title.value_or("");
+      tab_info->url = file_info.tab_url.value_or(GURL());
+
+      // Remove any existing entry for the same tab so it moves to the most
+      // recent position with its updated title and URL.
+      std::erase_if(submitted_tabs, [&](const auto& existing) {
+        if (tab_info->tab_id != tabs::TabHandle::NullValue &&
+            existing->tab_id != tabs::TabHandle::NullValue) {
+          return existing->tab_id == tab_info->tab_id;
+        }
+        return existing->url == tab_info->url;
+      });
+      submitted_tabs.push_back(std::move(tab_info));
+    }
+  }
+  if (!submitted_tabs.empty()) {
+    SetAimThreadRestoredTabs(std::move(submitted_tabs));
   }
 }
 
@@ -795,6 +842,7 @@ void ContextualTasksComposeboxHandler::ContinueCreateAndSendQueryMessage(
     contextual_tasks::FinalizeAndSendAimQuery(
         std::move(create_client_to_aim_request_info), session_handle,
         web_ui_interface_);
+    CacheSubmittedTabsFromSessionHandle();
   }
 }
 
@@ -1015,12 +1063,35 @@ void ContextualTasksComposeboxHandler::AddTabContext(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
   }
+
+  if (tab) {
+    // Associate the tab with the task as soon as it is attached as context.
+    auto task_id = web_ui_interface_->GetTaskId();
+    if (task_id.has_value() && contextual_tasks_service_) {
+      contextual_tasks_service_->AssociateTabWithTask(
+          task_id.value(),
+          sessions::SessionTabHelper::IdForTab(tab->GetContents()));
+    }
+  }
   auto token = contextual_session_handle->CreateContextToken();
 
   pending_context_uploads_.insert(token);
 
-  ContextualSearchboxHandler::ContinueAddTabContext(tab_id, delay_upload, token,
-                                                    std::move(callback));
+  ContextualSearchboxHandler::ContinueAddTabContext(
+      tab_id, delay_upload, token,
+      base::BindOnce(&ContextualTasksComposeboxHandler::ForwardTabContextResult,
+                     weak_factory_.GetWeakPtr(), token, std::move(callback)));
+}
+
+void ContextualTasksComposeboxHandler::ForwardTabContextResult(
+    const base::UnguessableToken& token,
+    AddTabContextCallback callback,
+    base::expected<base::UnguessableToken,
+                   contextual_search::ContextUploadErrorType> result) {
+  if (!result.has_value()) {
+    MarkContextUploadFinished(token);
+  }
+  std::move(callback).Run(std::move(result));
 }
 
 void ContextualTasksComposeboxHandler::ClearFiles(
@@ -1196,9 +1267,12 @@ void ContextualTasksComposeboxHandler::DeleteContext(
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
   if (was_delayed) {
-    OnContextUploadStatusChanged(
-        file_token, lens::MimeType::kUnknown,
-        contextual_search::ContextUploadStatus::kUploadExpired, std::nullopt);
+    // Delayed tabs are never uploaded, and this deletion was initiated by the
+    // WebUI, so there is no upload status to report back to the page. Doing so
+    // would surface a spurious upload error. Only refresh the input state.
+    if (input_state_model()) {
+      input_state_model()->OnContextChanged();
+    }
   }
 
   // Hide the underline for the tab if it was associated with the deleted
@@ -1404,6 +1478,7 @@ void ContextualTasksComposeboxHandler::MaybeSendPendingQuery() {
       contextual_tasks::FinalizeAndSendAimQuery(
           std::move(pending_query_request_info_), session_handle,
           web_ui_interface_);
+      CacheSubmittedTabsFromSessionHandle();
     }
     pending_query_request_info_.reset();
   }
@@ -1426,6 +1501,7 @@ void ContextualTasksComposeboxHandler::DeactivateSmartTabSharing() {
     input_state_model_->SetSmartTabSharingActive(false);
   }
 #if !BUILDFLAG(IS_ANDROID)
+  last_sent_smart_tab_sharing_active_ = false;
   if (SearchboxHandler::page_) {
     SearchboxHandler::page_->UpdateSmartTabSharingActive(false);
   }

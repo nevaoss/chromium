@@ -8,9 +8,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
@@ -18,7 +20,6 @@ import android.content.Context;
 import android.view.View.OnClickListener;
 
 import androidx.test.core.app.ApplicationProvider;
-import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,7 @@ import org.mockito.junit.MockitoRule;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
@@ -42,6 +44,8 @@ import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.signin.services.DisplayableProfileData;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
+import org.chromium.chrome.browser.signin.services.SigninMetricsUtils;
+import org.chromium.chrome.browser.signin.services.SigninMetricsUtilsJni;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
@@ -49,6 +53,7 @@ import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorSupplier;
 import org.chromium.chrome.browser.toolbar.R;
+import org.chromium.chrome.browser.toolbar.account_menu.AccountMenuMediator.Event;
 import org.chromium.chrome.browser.toolbar.account_menu.AccountMenuProperties.IdentityCardProperties;
 import org.chromium.chrome.browser.toolbar.account_menu.AccountMenuProperties.ItemType;
 import org.chromium.chrome.browser.toolbar.account_menu.AccountMenuProperties.MenuItemProperties;
@@ -61,6 +66,7 @@ import org.chromium.components.browser_ui.settings.SettingsNavigation.SettingsFr
 import org.chromium.components.signin.SigninFeatures;
 import org.chromium.components.signin.base.AccountInfo;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
+import org.chromium.components.signin.metrics.SigninPromoAction;
 import org.chromium.components.signin.test.util.TestAccounts;
 import org.chromium.components.sync.SyncService;
 import org.chromium.components.sync.UserActionableError;
@@ -73,7 +79,10 @@ import java.lang.ref.WeakReference;
 
 /** Unit tests for {@link AccountMenuMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures(SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS)
+@EnableFeatures({
+    SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS,
+    SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT
+})
 public class AccountMenuMediatorTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -94,6 +103,7 @@ public class AccountMenuMediatorTest {
     @Mock private SyncService mSyncService;
     @Mock private BottomSheetSigninAndHistorySyncCoordinator mSigninCoordinator;
     @Mock private SigninAndHistorySyncActivityLauncher mSigninLauncher;
+    @Mock private SigninMetricsUtils.Natives mSigninMetricsUtilsNativeMock;
 
     private Context mContext;
     private ModelList mModelList;
@@ -119,6 +129,8 @@ public class AccountMenuMediatorTest {
 
         IncognitoUtils.setEnabledForTesting(true);
 
+        SigninMetricsUtilsJni.setInstanceForTesting(mSigninMetricsUtilsNativeMock);
+
         mModelList = new ModelList();
         mMediator =
                 new AccountMenuMediator(
@@ -136,14 +148,11 @@ public class AccountMenuMediatorTest {
         mMediator.destroy();
         SettingsNavigationFactory.setInstanceForTesting(null);
         IdentityServicesProvider.setInstanceForTests(null);
+        SyncServiceFactory.setInstanceForTesting(null);
     }
 
     @Test
-    @SmallTest
-    @DisableFeatures({
-        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-        SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT
-    })
+    @DisableFeatures(SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT)
     public void testSignedOut_showsPromoCardAndSigninsOnClick() {
         assertEquals(4, mModelList.size());
         ListItem item = mModelList.get(0);
@@ -161,15 +170,11 @@ public class AccountMenuMediatorTest {
                         eq(mContext),
                         eq(mProfile),
                         any(),
-                        eq(SigninAccessPoint.NTP_SIGNED_OUT_ICON));
+                        eq(SigninAccessPoint.ACCOUNT_MENU_SIGNED_OUT_STATE));
     }
 
     @Test
-    @SmallTest
-    @EnableFeatures({
-        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-        SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT
-    })
+    @EnableFeatures(SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT)
     public void testSignedOut_activitylessSigninOnClick() {
         assertEquals(4, mModelList.size());
         ListItem item = mModelList.get(0);
@@ -186,10 +191,9 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testSigninNotAllowed_omitsPromoCard() {
         doReturn(false).when(mSigninManager).isSigninAllowed();
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         assertEquals(3, mModelList.size());
         assertEquals(ItemType.MENU_ITEM, mModelList.get(0).type);
@@ -199,7 +203,6 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testAutofillItemClick_dismissesAndOpensAutofillSettings() {
         assertEquals(4, mModelList.size());
         ListItem item = mModelList.get(1);
@@ -221,11 +224,10 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testAccountSettingsItemClick_dismissesAndOpensAccountSettings() {
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
         mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         assertEquals(6, mModelList.size());
         ListItem item = mModelList.get(3);
@@ -247,10 +249,9 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testOpenIncognitoItemClick_dismissesAndOpensNewIncognitoWindow() {
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         doReturn(new WeakReference<>(mActivity)).when(mWindowAndroid).getActivity();
 
@@ -278,10 +279,9 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testOpenIncognitoItemClick_dismissesAndOpensNewIncognitoTab() {
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         assertEquals(4, mModelList.size());
         ListItem item = mModelList.get(3);
@@ -297,10 +297,9 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testOpenIncognitoDisabled_omitsIncognitoItemAndDivider() {
         IncognitoUtils.setEnabledForTesting(false);
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         assertEquals(2, mModelList.size());
         assertEquals(ItemType.PROMO_CARD, mModelList.get(0).type);
@@ -311,12 +310,11 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testSignedIn_showsIdentityCard() {
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
         mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
 
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         assertEquals(6, mModelList.size());
         ListItem item = mModelList.get(0);
@@ -328,12 +326,11 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testProfileDataUpdated_updatesIdentityCard() {
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
         mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
 
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         ListItem item = mModelList.get(0);
         assertEquals(ItemType.IDENTITY_CARD, item.type);
@@ -361,7 +358,6 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testObserverRegistrationAndTeardown() {
         verify(mSigninManager).addSignInStateObserver(mMediator);
 
@@ -370,7 +366,6 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testSignInStateObservers_updateMenuItems() {
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
         mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
@@ -392,12 +387,11 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testManageGoogleAccountItemClick_opensMyAccount() {
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
         mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
 
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         assertEquals(6, mModelList.size());
         ListItem item = mModelList.get(2);
@@ -415,10 +409,9 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testSignedOut_doesNotDisplayManageGoogleAccountItem() {
         // The FakeIdentityManager from `mAccountManagerTestRule` has no primary account by default.
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         for (ListItem item : mModelList) {
             if (item.type == ItemType.MENU_ITEM) {
@@ -430,11 +423,10 @@ public class AccountMenuMediatorTest {
     }
 
     @Test
-    @SmallTest
     public void testIncognitoProfile_doesNotDisplayManageGoogleAccountItem() {
         doReturn(true).when(mProfile).isOffTheRecord();
 
-        mMediator.updateMenuItems();
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
 
         for (ListItem item : mModelList) {
             if (item.type == ItemType.MENU_ITEM) {
@@ -443,5 +435,139 @@ public class AccountMenuMediatorTest {
                         item.model.get(MenuItemProperties.TITLE_ID));
             }
         }
+    }
+
+    @Test
+    public void testRecordMenuShown_signedOut() {
+        HistogramWatcher watcher = expectEvent(Event.SHOWN_SIGNED_OUT);
+
+        mMediator.updateMenuItems(/* recordShownMetrics= */ true);
+
+        watcher.assertExpected();
+        verify(mSigninMetricsUtilsNativeMock)
+                .logSigninOffered(
+                        SigninPromoAction.NO_SIGNIN_PROMO,
+                        SigninAccessPoint.ACCOUNT_MENU_SIGNED_OUT_STATE);
+    }
+
+    @Test
+    public void testRecordMenuShown_signinNotAllowed() {
+        doReturn(false).when(mSigninManager).isSigninAllowed();
+        HistogramWatcher watcher = expectEvent(Event.SHOWN_SIGNED_OUT_SIGNIN_DISABLED);
+
+        mMediator.updateMenuItems(/* recordShownMetrics= */ true);
+
+        watcher.assertExpected();
+        // Sign-in was not offered, since no promo card is shown.
+        verify(mSigninMetricsUtilsNativeMock, never()).logSigninOffered(anyInt(), anyInt());
+    }
+
+    @Test
+    public void testRecordMenuShown_signedIn() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+        HistogramWatcher watcher = expectEvent(Event.SHOWN_SIGNED_IN);
+
+        mMediator.updateMenuItems(/* recordShownMetrics= */ true);
+
+        watcher.assertExpected();
+        verify(mSigninMetricsUtilsNativeMock, never()).logSigninOffered(anyInt(), anyInt());
+    }
+
+    @Test
+    public void testRecordMenuShown_signedInWithError() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+        doReturn(UserActionableError.NEEDS_TRUSTED_VAULT_KEY_FOR_EVERYTHING)
+                .when(mSyncService)
+                .getUserActionableError();
+        HistogramWatcher watcher = expectEvent(Event.SHOWN_SIGNED_IN_WITH_ERROR);
+
+        mMediator.updateMenuItems(/* recordShownMetrics= */ true);
+
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testRecordEvent_signinPromo() {
+        HistogramWatcher watcher = expectEvent(Event.SIGNIN_PROMO_CLICKED);
+
+        ListItem item = mModelList.get(0);
+        assertEquals(ItemType.PROMO_CARD, item.type);
+        OnClickListener onSigninClick =
+                item.model.get(PromoCardProperties.ON_SIGNIN_CLICK_LISTENER);
+        assertNotNull(onSigninClick);
+        onSigninClick.onClick(null);
+
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testRecordEvent_passwordsAndAutofill() {
+        HistogramWatcher watcher = expectEvent(Event.PASSWORDS_AND_AUTOFILL_CLICKED);
+
+        clickMenuItem(/* index= */ 1);
+
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testRecordEvent_newIncognitoWindow() {
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
+        doReturn(new WeakReference<>(mActivity)).when(mWindowAndroid).getActivity();
+        HistogramWatcher watcher = expectEvent(Event.NEW_INCOGNITO_WINDOW_CLICKED);
+
+        clickMenuItem(/* index= */ 3);
+
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testRecordEvent_newIncognitoTab() {
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
+        HistogramWatcher watcher = expectEvent(Event.NEW_INCOGNITO_TAB_CLICKED);
+
+        clickMenuItem(/* index= */ 3);
+
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testRecordEvent_manageGoogleAccount() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
+        HistogramWatcher watcher = expectEvent(Event.MANAGE_GOOGLE_ACCOUNT_CLICKED);
+
+        clickMenuItem(/* index= */ 2);
+
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testRecordEvent_accountSettings() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+        mMediator.updateMenuItems(/* recordShownMetrics= */ false);
+        HistogramWatcher watcher = expectEvent(Event.ACCOUNT_SETTINGS_CLICKED);
+
+        clickMenuItem(/* index= */ 3);
+
+        watcher.assertExpected();
+    }
+
+    private void clickMenuItem(int index) {
+        ListItem item = mModelList.get(index);
+        assertEquals(ItemType.MENU_ITEM, item.type);
+        OnClickListener clickListener = item.model.get(MenuItemProperties.CLICK_LISTENER);
+        assertNotNull(clickListener);
+        clickListener.onClick(null);
+    }
+
+    /** Expects the given event to be recorded once. */
+    private static HistogramWatcher expectEvent(@Event int event) {
+        return HistogramWatcher.newSingleRecordWatcher("Signin.AccountMenu.Event", event);
     }
 }

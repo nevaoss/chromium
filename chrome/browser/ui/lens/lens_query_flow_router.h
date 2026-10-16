@@ -30,8 +30,12 @@ bool IsOmniboxInvocationSource(
 
 // Returns true if the active tab should be forced to contextualize for the
 // given invocation source when no overlay token is present.
+// `session_handle` is the contextual search session the query will be issued
+// on, and may be null.
 bool ShouldFetchActiveTabForInvocationSource(
-    std::optional<lens::LensOverlayInvocationSource> invocation_source);
+    std::optional<lens::LensOverlayInvocationSource> invocation_source,
+    const contextual_search::ContextualSearchSessionHandle* session_handle =
+        nullptr);
 
 // A router for queries that Lens should perform.
 class LensQueryFlowRouter
@@ -147,6 +151,9 @@ class LensQueryFlowRouter
       const std::optional<contextual_search::ContextUploadErrorType>&
           error_type);
 
+  // Testing method to trigger the controller destroyed callback.
+  void OnControllerDestroyedForTesting() { OnControllerDestroyed(); }
+
   // Handles the interaction response from the server.
   void HandleInteractionResponse(
       std::optional<lens::ImageCrop> image_crop,
@@ -198,6 +205,7 @@ class LensQueryFlowRouter
       contextual_search::ContextUploadStatus context_upload_status,
       const std::optional<contextual_search::ContextUploadErrorType>&
           error_type) override;
+  void OnControllerDestroyed() override;
 
   // Callbacks for DesktopQueryContextualizerDelegate:
   contextual_search::ContextualSearchSessionHandle* GetOrCreateSessionHandle();

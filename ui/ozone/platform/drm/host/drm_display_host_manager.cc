@@ -8,7 +8,9 @@
 #include <stddef.h>
 #include <xf86drm.h>
 
+#include <array>
 #include <memory>
+#include <string_view>
 #include <utility>
 
 #include "base/compiler_specific.h"
@@ -52,11 +54,11 @@ const int kAuthFailSleepMs = 100;
 // Log a warning after failing to authenticate for this many milliseconds.
 const int kLogAuthFailDelayMs = 1000;
 
-// Maximum number of attempts to authenticate the DRM device before giving up.
-// With kAuthFailSleepMs = 100, 30 attempts corresponds to ~3 seconds.
-constexpr int kMaxAuthAttempts = 30;
+// Maximum number of attempts to authenticate the DRM device before proceeding.
+// With kAuthFailSleepMs = 100, 10 attempts corresponds to ~1 second.
+constexpr int kMaxAuthAttempts = 10;
 
-constexpr const char* kDisplayActionString[] = {
+constexpr std::array<std::string_view, 3> kDisplayActionString = {
     "ADD",
     "REMOVE",
     "CHANGE",
@@ -165,14 +167,14 @@ std::unique_ptr<DrmWrapper> OpenDrmDevice(const base::FilePath& dev_path,
   }
 
   if (!is_authenticated) {
-    LOG(ERROR) << "Failed to authenticate " << dev_path.value() << " after "
-               << num_auth_attempts << " attempt(s)";
-    return nullptr;
+    LOG(WARNING) << "Failed to authenticate " << dev_path.value() << " after "
+                 << num_auth_attempts
+                 << " attempt(s); proceeding with unauthenticated device";
+  } else {
+    VLOG(1) << "Succeeded authenticating " << dev_path.value() << " in "
+            << (base::TimeTicks::Now() - start_time).InMilliseconds() << " ms "
+            << "with " << num_auth_attempts << " attempt(s)";
   }
-
-  VLOG(1) << "Succeeded authenticating " << dev_path.value() << " in "
-          << (base::TimeTicks::Now() - start_time).InMilliseconds() << " ms "
-          << "with " << num_auth_attempts << " attempt(s)";
 
   auto drm = std::make_unique<DrmWrapper>(sys_path, std::move(scoped_fd),
                                           is_primary_device);
@@ -458,9 +460,8 @@ void DrmDisplayHostManager::ProcessEvent() {
     const std::string seqnum = seqnum_it == event.display_event_props.end()
                                    ? ""
                                    : ("(SEQNUM:" + seqnum_it->second + ")");
-    VLOG(1) << "Got display event "
-            << UNSAFE_TODO(kDisplayActionString[event.action_type]) << seqnum
-            << " for " << event.path.value();
+    VLOG(1) << "Got display event " << kDisplayActionString[event.action_type]
+            << seqnum << " for " << event.path.value();
     switch (event.action_type) {
       case DeviceEvent::ADD:
         if (drm_devices_.find(event.path) == drm_devices_.end()) {

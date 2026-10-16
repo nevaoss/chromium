@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/intelligence/on_device_category_classifier/in_process_category_classification_service_factory.h"
 
 #import "base/functional/bind.h"
+#import "ios/chrome/browser/intelligence/contextual_cueing/features.h"
 #import "ios/chrome/browser/intelligence/on_device_category_classifier/in_process_category_classification_service.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
@@ -14,6 +15,10 @@ namespace {
 
 std::unique_ptr<KeyedService> BuildInProcessCategoryClassificationService(
     ProfileIOS* profile) {
+  if (!contextual_cueing::
+          IsGeminiContextualSuggestionsCuesOnDeviceClassifierEnabled()) {
+    return nullptr;
+  }
   if (profile->IsOffTheRecord()) {
     return nullptr;
   }

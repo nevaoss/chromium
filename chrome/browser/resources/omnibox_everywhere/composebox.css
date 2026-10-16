@@ -29,6 +29,14 @@
   --text-input-top-spacing: 10px;
   --text-input-inline-end-spacing: 80px;
   --text-input-inline-start-spacing: 16px;
+  --cr-composebox-input-padding-inline-start: 10.5px;
+  /* Aligns carousel thumbnails with the composebox input and dropdown text.
+   * Uses a 9.5px offset (1px less than the 10.5px input text padding) to
+   * optically align the thumbnail card with the text column. */
+  --context-carousel-inline-start-spacing: calc(
+      var(--text-input-inline-start-spacing) +
+      var(--cr-searchbox-icon-container-size) +
+      9.5px);
   --cr-composebox-match-icon-container-padding-inline-start: 16px;
   --cr-searchbox-match-text-padding-inline-start: 8px;
   --text-input-max-height: 190px;
@@ -51,7 +59,7 @@
   --cr-composebox-submit-border-radius: 100px;
   --cr-composebox-submit-height: 32px;
   --cr-composebox-submit-icon-offset: 0;
-  --cr-composebox-submit-icon-size: 14px;
+  --cr-composebox-submit-icon-size: 20px;
   --cr-composebox-submit-width: 40px;
 }
 
@@ -62,20 +70,17 @@
   border-radius: inherit;
   display: flex;
   flex-direction: column;
-  height: calc-size(auto, size);
-  max-height: var(--cr-composebox-max-height, 422px);
+  height: auto;
+  min-height: var(--cr-searchbox-height, 48px);
   pointer-events: auto;
   position: relative;
-  overflow: hidden;
+  /* Elements like the IPH must overflow. */
+  overflow: visible;
   transition:
     opacity var(--fade-duration) ease-in-out,
     visibility var(--fade-duration) ease-in-out;
   padding-bottom: 10px;
   z-index: 2;
-}
-
-:host([is-collapsible][expanding_]:not([show-dropdown])) #composebox {
-  min-height: unset;
 }
 
 :host([is-dragging-file]) #composebox * {
@@ -87,7 +92,8 @@
   display: flex;
   flex-direction: column;
   padding-bottom: 0;
-  overflow: hidden;
+  /* Elements like the IPH must overflow. */
+  overflow: visible;
   width: 100%;
 }
 
@@ -143,10 +149,11 @@ search-animated-glow:not([animation-state='expanding'])::part(
   z-index: 0;
 }
 
-/* Needed because composebox_submit.css sets opacity: 0.4 on #submitIcon
- * when disabled. For loomnibox, we want the submit icon to remain at
- * full opacity even when the input is empty. */
-cr-composebox-submit::part(submit-icon),
+/* Ensure the modern arrow-forward icon is used per the design spec. */
+cr-composebox-submit::part(submit-icon) {
+  --cr-icon-image: url(//resources/images/icon_arrow_forward.svg);
+}
+
 cr-composebox-input::part(cancel) {
   opacity: 1;
 }
@@ -158,6 +165,7 @@ cr-composebox-submit::part(submit) {
   inset-inline-end: unset;
   bottom: unset;
   opacity: 1;
+  margin-inline-start: 4px;
 }
 
 #bottomControls .context-menu-container {
@@ -175,7 +183,7 @@ cr-composebox-submit::part(submit) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
 }
 
 /* TODO(crbug.com/532200145): Refine the selectors. New interactive elements
@@ -213,7 +221,7 @@ cr-composebox-input::part(icon-container) {
 cr-composebox-input::part(input),
 cr-composebox-input::part(mirror),
 cr-composebox-input::part(smart-compose) {
-  padding-inline-start: 10.5px;
+  padding-inline-start: var(--cr-composebox-input-padding-inline-start);
 }
 
 cr-composebox-dropdown::part(match-icon-container) {
@@ -223,9 +231,4 @@ cr-composebox-dropdown::part(match-icon-container) {
 
 cr-composebox-dropdown::part(match-text-container) {
   padding-inline-start: 8px;
-}
-
-:host(:not([is-active])),
-:host(:not([is-active])) cr-composebox-input::part(icon-container) {
-  -webkit-app-region: no-drag;
 }

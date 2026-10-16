@@ -51,7 +51,6 @@
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
-#include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_pedal_implementations.h"
@@ -258,10 +257,22 @@ ChromeAutocompleteProviderClient::ChromeAutocompleteProviderClient(
       storage_partition_(nullptr),
       omnibox_triggered_feature_service_(
           std::make_unique<OmniboxTriggeredFeatureService>()) {
+  OmniboxPedalProfileType profile_type = OmniboxPedalProfileType::kRegular;
+  if (profile_->IsGuestSession()) {
+    profile_type = OmniboxPedalProfileType::kGuest;
+  } else if (profile_->IsPrimaryOTRProfileWithRegularParent()) {
+    profile_type = OmniboxPedalProfileType::kOtrWithRegularParent;
+  }
+
+  const OmniboxPedalOtrType otr_type =
+      IncognitoModePrefs::GetIncognitoModeType(profile_) ==
+              IncognitoModePrefs::IncognitoModeType::kEnterprise
+          ? OmniboxPedalOtrType::kIsolated
+          : OmniboxPedalOtrType::kIncognito;
+
   pedal_provider_ = std::make_unique<OmniboxPedalProvider>(
       *this,
-      GetPedalImplementations(profile_->IsPrimaryOTRProfileWithRegularParent(),
-                              profile_->IsGuestSession(), /*testing=*/false));
+      GetPedalImplementations(profile_type, otr_type, /*testing=*/false));
 }
 
 ChromeAutocompleteProviderClient::~ChromeAutocompleteProviderClient() = default;
@@ -713,7 +724,6 @@ bool ChromeAutocompleteProviderClient::ShouldSendPageTitleSuggestParam() const {
       GetAimEligibilityService());
 }
 
-
 bool ChromeAutocompleteProviderClient::IsAskGShowChipEnabled() const {
 #if !BUILDFLAG(IS_ANDROID)
   return IsOmniboxNextAimPopupEnabled() && omnibox::kAskGShowChip.Get();
@@ -814,27 +824,12 @@ bool ChromeAutocompleteProviderClient::OpenJourneys(const std::string& query) {
 
 bool ChromeAutocompleteProviderClient::ShouldOpenCoBrowsePanel() const {
 #if !BUILDFLAG(IS_ANDROID)
-  if (!lens::features::IsLensSidePanelUnificationEnabled() ||
-      !contextual_tasks::IsContextualTasksUIEnabled()) {
+  if (!omnibox::AreContextualTasksEligible(profile_)) {
     return false;
   }
 
-  if (!omnibox::kAskGCoBrowse.Get() &&
-      !omnibox::kAskGCoBrowseWithVisualSelection.Get()) {
-    return false;
-  }
-
-  if (!lens::features::IsLensSidePanelUnificationAllowSignedOut()) {
-    auto* ui_service =
-        contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
-            profile_);
-    if (!ui_service || !ui_service->IsSignedInToBrowserWithValidCredentials() ||
-        !ui_service->CookieJarContainsPrimaryAccount()) {
-      return false;
-    }
-  }
-
-  return true;
+  return omnibox::kAskGCoBrowse.Get() ||
+         omnibox::kAskGCoBrowseWithVisualSelection.Get();
 #else
   return false;
 #endif
@@ -935,7 +930,7 @@ void ChromeAutocompleteProviderClient::OpenLensOverlay(
 
 void ChromeAutocompleteProviderClient::IssueContextualSearchRequest(
     const GURL& destination_url,
-    AutocompleteMatchType::Type match_type,
+    omnibox::AutocompleteMatchType match_type,
     bool is_zero_prefix_suggestion) {
 #if !BUILDFLAG(IS_ANDROID)
   if (auto* web_contents = GetWebContents(web_contents_getter_)) {
@@ -971,6 +966,10 @@ void ChromeAutocompleteProviderClient::PromptPageTranslation() {
 
 bool ChromeAutocompleteProviderClient::ShouldOpenComposeboxForAskG() const {
 #if !BUILDFLAG(IS_ANDROID)
+  if (!omnibox::AreContextualTasksEligible(profile_)) {
+    return false;
+  }
+
   return omnibox::IsAimPopupFeatureEnabled() && omnibox::kAskGComposeBox.Get();
 #else
   return false;

@@ -31,6 +31,8 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {ContextInfo} from './contextual_tasks.mojom-webui.js';
 import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
 import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
+import type {ToolbarBrowserProxy} from './contextual_tasks_toolbar_browser_proxy.js';
+import {ToolbarBrowserProxyImpl} from './contextual_tasks_toolbar_browser_proxy.js';
 import type {OverflowMenuElement} from './overflow_menu.js';
 import type {SourcesMenuElement} from './sources_menu.js';
 import {getCss} from './top_toolbar.css.js';
@@ -129,7 +131,10 @@ export class TopToolbarElement extends TopToolbarElementBase {
   accessor showReopenTabs_: boolean = false;
   accessor onboardingTooltipShowing: boolean = false;
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
+  private toolbarBrowserProxy_: ToolbarBrowserProxy =
+      ToolbarBrowserProxyImpl.getInstance();
   private listenerIds_: number[] = [];
+  private toolbarListenerIds_: number[] = [];
   protected accessor isExpandButtonEnabled: boolean =
       loadTimeData.getBoolean('expandButtonEnabled');
   accessor isPinButtonEnabled: boolean =
@@ -150,6 +155,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
   protected accessor overflowMenuOpen_: boolean = false;
   protected accessor webuiRoundedIconsEnabled_: boolean =
       loadTimeData.getBoolean('webuiRoundedIconsEnabled');
+  private boundOnWindowBlur_: () => void = this.onWindowBlur_.bind(this);
 
   override connectedCallback() {
     super.connectedCallback();
@@ -161,10 +167,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
       callbackRouter.setShowReopenTabs.addListener(show => {
         this.showReopenTabs_ = show;
       }),
-      callbackRouter.onSidePanelPinStateChanged.addListener(
-          (isPinned: boolean) => {
-            this.isPinned = isPinned;
-          }),
       callbackRouter.setExpandButtonEnabled.addListener((enabled: boolean) => {
         this.isExpandButtonEnabled = enabled;
       }),
@@ -172,6 +174,13 @@ export class TopToolbarElement extends TopToolbarElementBase {
         this.isHandshakeComplete = true;
       }),
     ];
+    this.toolbarListenerIds_ = [
+      this.toolbarBrowserProxy_.callbackRouter.onSidePanelPinStateChanged
+          .addListener((isPinned: boolean) => {
+            this.isPinned = isPinned;
+          }),
+    ];
+    window.addEventListener('blur', this.boundOnWindowBlur_);
   }
 
   override disconnectedCallback() {
@@ -179,6 +188,19 @@ export class TopToolbarElement extends TopToolbarElementBase {
     this.listenerIds_.forEach(
         id => this.browserProxy_.callbackRouter.removeListener(id));
     this.listenerIds_ = [];
+    this.toolbarListenerIds_.forEach(
+        id => this.toolbarBrowserProxy_.callbackRouter.removeListener(id));
+    this.toolbarListenerIds_ = [];
+    window.removeEventListener('blur', this.boundOnWindowBlur_);
+  }
+
+  // Dismisses any open menu when the side panel loses focus. Clicks outside of
+  // the side panel (e.g. on the page contents, the Lens crop frame, or a search
+  // result in the sandboxed results frame) never reach this document, so
+  // `cr-action-menu`'s own light dismiss does not run. See crbug.com/543760434.
+  private onWindowBlur_() {
+    this.$.overflowMenu.getIfExists()?.close();
+    this.$.sourcesMenu.getIfExists()?.close();
   }
 
   // <if expr="not is_android">

@@ -653,8 +653,6 @@ void RenderThreadImpl::Init() {
     RequestNewItemsForFrameRoutingCache();
   }
 
-  blink::WebV8Features::InitializeMojoJSAllowedProtectedMemory();
-
 #if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
   neva::RenderThreadImpl<RenderThreadImpl>::Init();
 #endif
@@ -826,6 +824,10 @@ void RenderThreadImpl::InitializeWebKit(mojo::BinderMap* binders) {
 
   blink_platform_impl_ = std::make_unique<RendererBlinkPlatformImpl>(
       main_thread_scheduler_.get(), GetIOTaskRunner());
+  // Whether this process may enable MojoJS is tracked in protected memory,
+  // which has to be initialized before anything enables or queries the MojoJS
+  // runtime features below.
+  blink::WebRuntimeFeatures::InitializeMojoJSPermissions();
   // This, among other things, enables any feature marked "test" in
   // runtime_enabled_features. It is run before
   // SetRuntimeFeaturesDefaultsAndUpdateFromArgs() so that command line

@@ -24,6 +24,7 @@
 #include "media/base/decrypt_config.h"
 #include "media/base/media_switches.h"
 #include "media/base/stream_parser_buffer.h"
+#include "media/base/subsample_entry.h"
 #include "media/formats/mp4/bitstream_converter.h"
 #include "media/formats/mp4/box_definitions.h"
 #include "media/formats/mp4/nalu_test_helper.h"
@@ -156,7 +157,8 @@ TEST_P(AVCConversionTest, ParseCorrectly) {
   std::vector<uint8_t> buf;
   std::vector<SubsampleEntry> subsamples;
   MakeInputForLength(GetParam(), &buf);
-  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, &subsamples));
+  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf,
+                                        &subsamples));
 
   BitstreamConverter::AnalysisResult expected;
   expected.is_conformant = true;
@@ -173,7 +175,8 @@ TEST_P(AVCConversionTest, NALUSizeTooLarge) {
   std::vector<uint8_t> buf;
   WriteLength(GetParam(), 10 * sizeof(kNALU1), &buf);
   buf.insert(buf.end(), kNALU1.begin(), kNALU1.end());
-  EXPECT_FALSE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, nullptr));
+  EXPECT_FALSE(
+      AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf, nullptr));
 }
 
 TEST_P(AVCConversionTest, NALUSizeIsZero) {
@@ -188,7 +191,8 @@ TEST_P(AVCConversionTest, NALUSizeIsZero) {
   WriteLength(GetParam(), sizeof(kNALU2), &buf);
   buf.insert(buf.end(), kNALU2.begin(), kNALU2.end());
 
-  EXPECT_FALSE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, nullptr));
+  EXPECT_FALSE(
+      AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf, nullptr));
 }
 
 TEST_P(AVCConversionTest, SubsampleSizesUpdatedAfterAnnexBConversion) {
@@ -216,12 +220,13 @@ TEST_P(AVCConversionTest, SubsampleSizesUpdatedAfterAnnexBConversion) {
 
   // Write the third subsample, containing a single one-byte NALU
   WriteLength(GetParam(), 1, &buf);
-  buf.push_back(0);
+  buf.push_back(12);  // Filler data
   subsample.clear_bytes = GetParam() + 1;
   subsample.cypher_bytes = 0;
   subsamples.push_back(subsample);
 
-  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, &subsamples));
+  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf,
+                                        &subsamples));
   EXPECT_EQ(subsamples.size(), 3u);
   EXPECT_EQ(subsamples[0].clear_bytes, 4 + sizeof(kNALU1));
   EXPECT_EQ(subsamples[0].cypher_bytes, 0u);
@@ -229,25 +234,106 @@ TEST_P(AVCConversionTest, SubsampleSizesUpdatedAfterAnnexBConversion) {
   EXPECT_EQ(subsamples[1].cypher_bytes, 0u);
   EXPECT_EQ(subsamples[2].clear_bytes, 4 + 1u);
   EXPECT_EQ(subsamples[2].cypher_bytes, 0u);
+  EXPECT_TRUE(VerifySubsamplesMatchSize(subsamples, buf.size()));
+}
+
+TEST_P(AVCConversionTest, ConvertFrameToAnnexBClearDummyNaluWithSubsamples) {
+  std::vector<uint8_t> buf;
+  std::vector<SubsampleEntry> subsamples;
+
+  // Subsample 0: kNALU1 (clear).
+  WriteLength(GetParam(), sizeof(kNALU1), &buf);
+  buf.insert(buf.end(), kNALU1.begin(), kNALU1.end());
+  subsamples.emplace_back(GetParam() + sizeof(kNALU1), 0);
+
+  // Subsample 1: A clear dummy NALU (0x00) followed by kNALU2 (clear).
+  WriteLength(GetParam(), 1, &buf);
+  buf.push_back(0x00);
+  WriteLength(GetParam(), sizeof(kNALU2), &buf);
+  buf.insert(buf.end(), kNALU2.begin(), kNALU2.end());
+  subsamples.emplace_back(2 * GetParam() + 1 + sizeof(kNALU2), 0);
+
+  // Subsample 2: Only a clear dummy NALU (0x00).
+  WriteLength(GetParam(), 1, &buf);
+  buf.push_back(0x00);
+  subsamples.emplace_back(GetParam() + 1, 0);
+
+  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf,
+                                        &subsamples));
+
+  // Verify the dummy NALUs are absent from the converted output.
+  EXPECT_EQ(base::span(buf), base::span(kExpected));
+
+  // Verify clear_bytes were reduced for the removed dummy NALUs and
+  // VerifySubsamplesMatchSize remains true.
+  EXPECT_EQ(subsamples.size(), 3u);
+  EXPECT_EQ(subsamples[0].clear_bytes, 4 + sizeof(kNALU1));
+  EXPECT_EQ(subsamples[0].cypher_bytes, 0u);
+  EXPECT_EQ(subsamples[1].clear_bytes, 4 + sizeof(kNALU2));
+  EXPECT_EQ(subsamples[1].cypher_bytes, 0u);
+  EXPECT_EQ(subsamples[2].clear_bytes, 0u);
+  EXPECT_EQ(subsamples[2].cypher_bytes, 0u);
+  EXPECT_TRUE(VerifySubsamplesMatchSize(subsamples, buf.size()));
+}
+
+TEST_P(AVCConversionTest,
+       ConvertFrameToAnnexBCypherOverlappingDummyNaluPreserved) {
+  std::vector<uint8_t> buf;
+  std::vector<SubsampleEntry> subsamples;
+
+  // Subsample 0: kNALU1 (clear).
+  WriteLength(GetParam(), sizeof(kNALU1), &buf);
+  buf.insert(buf.end(), kNALU1.begin(), kNALU1.end());
+  subsamples.emplace_back(GetParam() + sizeof(kNALU1), 0);
+
+  // Subsample 1: 1-byte NALU with 0x00 where the length prefix is clear
+  // and the payload byte overlaps cypher_bytes.
+  WriteLength(GetParam(), 1, &buf);
+  buf.push_back(0x00);
+  subsamples.emplace_back(GetParam(), 1);
+
+  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf,
+                                        &subsamples));
+
+  // Verify the NALU overlapping cypher_bytes was preserved rather than removed.
+  EXPECT_EQ(buf.size(), (4 + sizeof(kNALU1)) + (4 + 1));
+  EXPECT_EQ(buf.back(), 0x00);
+  EXPECT_EQ(subsamples.size(), 2u);
+  EXPECT_EQ(subsamples[0].clear_bytes, 4 + sizeof(kNALU1));
+  EXPECT_EQ(subsamples[0].cypher_bytes, 0u);
+  EXPECT_EQ(subsamples[1].clear_bytes, 4u);
+  EXPECT_EQ(subsamples[1].cypher_bytes, 1u);
+  EXPECT_TRUE(VerifySubsamplesMatchSize(subsamples, buf.size()));
+}
+
+TEST_P(AVCConversionTest, AllDummyNalusRejected) {
+  std::vector<uint8_t> buf;
+  WriteLength(GetParam(), 1, &buf);
+  buf.push_back(0x00);
+  EXPECT_FALSE(
+      AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf, nullptr));
 }
 
 TEST_P(AVCConversionTest, ParsePartial) {
   std::vector<uint8_t> buf;
   MakeInputForLength(GetParam(), &buf);
   buf.pop_back();
-  EXPECT_FALSE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, nullptr));
+  EXPECT_FALSE(
+      AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf, nullptr));
   // This tests a buffer ending in the middle of a NAL length. For length size
   // of one, this can't happen, so we skip that case.
   if (GetParam() != 1) {
     MakeInputForLength(GetParam(), &buf);
     buf.erase(buf.end() - (sizeof(kNALU2) + 1), buf.end());
-    EXPECT_FALSE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, nullptr));
+    EXPECT_FALSE(AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf,
+                                           nullptr));
   }
 }
 
 TEST_P(AVCConversionTest, ParseEmpty) {
   std::vector<uint8_t> buf;
-  EXPECT_TRUE(AVC::ConvertFrameToAnnexB(GetParam(), &buf, nullptr));
+  EXPECT_TRUE(
+      AVC::ConvertFrameToAnnexB(GetParam(), VideoCodec::kH264, &buf, nullptr));
   EXPECT_EQ(0u, buf.size());
 }
 
@@ -584,9 +670,9 @@ TEST_F(AVCConversionTest, InsertParamSetsForRecoveryPointFrame) {
 
   // Verify SPS and PPS were injected before the SEI.
   std::string annexb_str = AnnexBToString(buf, subsamples);
-  EXPECT_NE(annexb_str.find("SPS"), std::string::npos)
+  EXPECT_TRUE(annexb_str.contains("SPS"))
       << "SPS not found in output: " << annexb_str;
-  EXPECT_NE(annexb_str.find("PPS"), std::string::npos)
+  EXPECT_TRUE(annexb_str.contains("PPS"))
       << "PPS not found in output: " << annexb_str;
 }
 
@@ -685,9 +771,9 @@ TEST_F(AVCConversionTest,
   EXPECT_TRUE(analysis.is_sei_recovery_point.value_or(false));
 
   const std::string annexb_str = AnnexBToString(buf, subsamples);
-  EXPECT_NE(annexb_str.find("SPS"), std::string::npos)
+  EXPECT_TRUE(annexb_str.contains("SPS"))
       << "Expected SPS injection in clear content: " << annexb_str;
-  EXPECT_NE(annexb_str.find("PPS"), std::string::npos)
+  EXPECT_TRUE(annexb_str.contains("PPS"))
       << "Expected PPS injection in clear content: " << annexb_str;
 }
 
@@ -711,9 +797,9 @@ TEST_F(AVCConversionTest,
   EXPECT_FALSE(analysis.is_sei_recovery_point.value_or(false));
 
   const std::string annexb_str = AnnexBToString(buf, subsamples);
-  EXPECT_EQ(annexb_str.find("SPS"), std::string::npos)
+  EXPECT_FALSE(annexb_str.contains("SPS"))
       << "SPS must not be injected for regular non-IDR frame: " << annexb_str;
-  EXPECT_EQ(annexb_str.find("PPS"), std::string::npos)
+  EXPECT_FALSE(annexb_str.contains("PPS"))
       << "PPS must not be injected for regular non-IDR frame: " << annexb_str;
 }
 
@@ -742,9 +828,9 @@ TEST_F(AVCConversionTest,
   EXPECT_TRUE(analysis.is_sei_recovery_point.value_or(false));
 
   const std::string annexb_str = AnnexBToString(buf, subsamples);
-  EXPECT_EQ(annexb_str.find("SPS"), std::string::npos)
+  EXPECT_FALSE(annexb_str.contains("SPS"))
       << "SPS must not be injected for encrypted SEI recovery: " << annexb_str;
-  EXPECT_EQ(annexb_str.find("PPS"), std::string::npos)
+  EXPECT_FALSE(annexb_str.contains("PPS"))
       << "PPS must not be injected for encrypted SEI recovery: " << annexb_str;
 }
 
@@ -769,9 +855,9 @@ TEST_F(AVCConversionTest,
   EXPECT_TRUE(analysis.is_sei_recovery_point.value_or(false));
 
   const std::string annexb_str = AnnexBToString(buf, subsamples);
-  EXPECT_EQ(annexb_str.find("SPS"), std::string::npos)
+  EXPECT_FALSE(annexb_str.contains("SPS"))
       << "SPS must not be injected when flag is disabled: " << annexb_str;
-  EXPECT_EQ(annexb_str.find("PPS"), std::string::npos)
+  EXPECT_FALSE(annexb_str.contains("PPS"))
       << "PPS must not be injected when flag is disabled: " << annexb_str;
 }
 

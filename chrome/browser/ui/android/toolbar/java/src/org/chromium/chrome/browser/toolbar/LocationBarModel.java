@@ -52,6 +52,7 @@ import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AutocompleteSchemeClassifier;
+import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxUrlEmphasizer;
 import org.chromium.components.omnibox.SecurityStatusIcon;
 import org.chromium.components.security_state.ConnectionMaliciousContentStatus;
@@ -308,6 +309,9 @@ public class LocationBarModel implements ToolbarDataProvider, LocationBarDataPro
 
         boolean isTabChanging = mTab != tab;
         Tab previousTab = mTab;
+        if (isTabChanging) {
+            resetSameDocNavFlags();
+        }
         mTab = tab;
         mProfile = profile;
         performProfileDependentInitializationIfRequired();
@@ -862,12 +866,11 @@ public class LocationBarModel implements ToolbarDataProvider, LocationBarDataPro
         }
 
         // Suppress neutral/info icon during page load to avoid transition jank before
-        // SSL state is resolved for HTTP/HTTPS URLs if the toolbar refactor is enabled.
+        // SSL state is resolved for HTTP/HTTPS URLs.
         // Non-HTTP(S) schemes (e.g. chrome://, file://) never transition to SECURE and
         // should show their neutral icon immediately.
-        // TODO(crbug.com/553488661): We are now doing suppression by default in
-        // LocationBarMediator#updateLocationBarIcon. See about removing suppression here then.
-        if (ToolbarVariationUtils.isToolbarUiRefactorEnabled(mContext)
+        if ((ToolbarVariationUtils.isToolbarUiRefactorEnabled(mContext)
+                        || OmniboxFeatures.sSuppressStatusIconDuringHttpNavigation.isEnabled())
                 && securityLevel == ConnectionSecurityLevel.NONE
                 && isLoading()
                 && UrlUtilities.isHttpOrHttps(getCurrentGurl())) {
@@ -920,11 +923,11 @@ public class LocationBarModel implements ToolbarDataProvider, LocationBarDataPro
             boolean isIncognito) {
         // Return regular color scheme if the website does not show warning.
         if (connectionSecurityLevel == ConnectionSecurityLevel.DANGEROUS) {
+            // Suspicious sites display a themed neutral icon (on-surface-variant) in the Omnibox
+            // rather than a danger/error red tint.
             if (getMaliciousContentStatus()
                     == ConnectionMaliciousContentStatus.WARNABLE_SUSPICIOUS_SITE) {
-                // Return Resources.ID_NULL to skip color tinting so the shield_question icon
-                // retains its internal red fill and white question mark vector colors.
-                return Resources.ID_NULL;
+                return ThemeUtils.getThemedToolbarIconTintRes(brandedColorScheme);
             }
             // Assign red color only on light or dark background including Incognito mode.
             // We will not change the security icon to red when BrandedColorScheme is
