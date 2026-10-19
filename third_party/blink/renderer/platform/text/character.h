@@ -327,29 +327,11 @@ inline bool MaybeBidiRtl(UChar32 ch) {
          !IsInRange(ch, 0x20000, 0x323AF);
 }
 
-<<<<<<< HEAD
-// TODO(neva): Remove this once Neva GCC version upgraded to 13.2+.
-#if defined(__GNUC__) &&                                       \
-    (__GNUC__ < 13 || __GNUC__ == 13 && __GNUC_MINOR__ < 2) && \
-    !defined(__clang__)
-static inline bool isSpecialCharacterBidiRtlUtf16(UChar c) {
-  return !Character::MaybeBidiRtlUtf16(c);
-}
-
-inline bool Character::MaybeBidiRtl(const String& text) {
-  return !text.Is8Bit() &&
-         !text.IsAllSpecialCharacters<isSpecialCharacterBidiRtlUtf16>();
-}
-#else
-inline bool Character::MaybeBidiRtl(const String& text) {
-=======
 inline bool MaybeBidiRtl(const String& text) {
->>>>>>> 157.0.8081.0~1
   return !text.Is8Bit() && !text.IsAllSpecialCharacters<[](UChar c) {
     return !MaybeBidiRtlUtf16(c);
   }>();
 }
-#endif
 
 inline bool IsEastAsianWidthFullwidth(UChar32 ch) {
   // All EAW=F characters are in the "Halfwidth and Fullwidth forms" block,
