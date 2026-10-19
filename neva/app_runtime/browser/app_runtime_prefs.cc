@@ -32,7 +32,6 @@
 #include "content/public/browser/browser_context.h"
 
 #if defined(USE_NEVA_CHROME_EXTENSIONS)
-#include "extensions/browser/api/audio/audio_api.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/permissions_manager.h"
 #endif  // defined(USE_NEVA_CHROME_EXTENSIONS)
@@ -97,7 +96,6 @@ std::unique_ptr<PrefService> CreateUserPrefService(
   PrefRegistrySyncable* pref_registry = new PrefRegistrySyncable;
 #if defined(USE_NEVA_CHROME_EXTENSIONS)
   extensions::ExtensionPrefs::RegisterProfilePrefs(pref_registry);
-  extensions::AudioAPI::RegisterUserPrefs(pref_registry);
   extensions::PermissionsManager::RegisterProfilePrefs(pref_registry);
 #endif  // defined(USE_NEVA_CHROME_EXTENSIONS)
   language::LanguagePrefs::RegisterProfilePrefs(pref_registry);
