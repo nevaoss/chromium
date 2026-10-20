@@ -197,6 +197,8 @@ struct TopicVisit {
   url.mojom.Url url;
   // Title of the visited page.
   string title;
+  // When the page was visited.
+  mojo_base.mojom.Time visit_time;
 };
 
 // A suggested way for the user to pick a Topic back up.
@@ -205,6 +207,25 @@ struct TopicContinuationQuery {
   string title;
   // Query used to run the follow-up search.
   string prompt;
+};
+
+// A page suggested in a TopicCollection.
+struct TopicCollectionItem {
+  // Display title of the page.
+  string title;
+  // URL of the page.
+  url.mojom.Url url;
+  // Name of the site the page belongs to, if known.
+  string? site_name;
+};
+
+// A titled group of pages related to a Topic, shown as a carousel on the topic
+// details page.
+struct TopicCollection {
+  // Display title of the collection.
+  string title;
+  // Pages in the collection, in display order.
+  array<TopicCollectionItem> items;
 };
 
 // A grouping of related browsing history shown in the Topics view.
@@ -225,6 +246,8 @@ struct Topic {
   array<TopicVisit> visits;
   // Suggested follow-up searches for the Topic.
   array<TopicContinuationQuery> continuation_queries;
+  // Groups of related pages, shown on the topic details page.
+  array<TopicCollection> collections;
 };
 
 // Represents either a topic ID or a full topic URL.
@@ -421,6 +444,12 @@ interface PageHandler {
   // it cannot be fully populated (i.e. it would be omitted by `GetTopics()`).
   [RuntimeFeature=kTopics]
   GetTopic(string id) => (Topic? topic);
+
+  // Returns the URL of a representative image for `page_url`, a page in one of
+  // a Topic's collections, or null if there is none or `page_url` is not a web
+  // URL.
+  [RuntimeFeature=kTopics]
+  GetTopicPageImageUrl(url.mojom.Url page_url) => (url.mojom.Url? image_url);
 
   // Opens the specified topic (by topic ID or full URL) in a new tab.
   [RuntimeFeature=kTopics]

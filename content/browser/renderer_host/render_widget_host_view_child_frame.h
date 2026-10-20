@@ -26,6 +26,7 @@
 #include "components/viz/common/surfaces/surface_info.h"
 #include "components/viz/host/host_frame_sink_client.h"
 #include "content/browser/compositor/image_transport_factory.h"
+#include "content/browser/renderer_host/input/mouse_wheel_phase_handler.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/touch_selection_controller_client_manager.h"
@@ -36,6 +37,7 @@
 #include "third_party/blink/public/mojom/frame/viewport_intersection_state.mojom-forward.h"
 #include "third_party/blink/public/mojom/input/input_event_result.mojom-shared.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/vector2d_f.h"
 #include "ui/gfx/native_ui_types.h"
 
 #if BUILDFLAG(IS_MAC)
@@ -126,6 +128,7 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
   RenderWidgetHostViewBase* GetRootView() override;
 #if BUILDFLAG(IS_WIN)
   bool ShouldInitiateStylusWriting() override;
+  std::optional<gfx::Vector2dF> GetStylusHandwritingPixelsPerInch() override;
   void OnStartStylusWriting() override;
   void OnEditElementFocusedForStylusWriting(
       blink::mojom::StylusWritingFocusResultPtr focus_result) override;
@@ -158,6 +161,7 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
   gfx::Rect GetBoundsInScreen() override;
   gfx::Rect GetBoundsInScreenWithoutTransform() override;
   void DidStopFlinging() override;
+  MouseWheelPhaseHandler* GetMouseWheelPhaseHandler() override;
   blink::mojom::PointerLockResult LockPointer(
       bool request_unadjusted_movement) override;
   blink::mojom::PointerLockResult ChangePointerLock(
@@ -412,6 +416,8 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
   std::optional<DisplayFeature> display_feature_;
 
   bool disconnected_ = false;
+
+  MouseWheelPhaseHandler mouse_wheel_phase_handler_;
 
   base::WeakPtrFactory<RenderWidgetHostViewChildFrame> weak_factory_{this};
 };

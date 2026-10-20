@@ -88,21 +88,21 @@ bool ContextualCueInfobarDelegate::Create(web::WebState* web_state,
   // TODO(crbug.com/559227915): Refactor the output of ContextualCueingTabHelper
   // to expose a cleaner model object with generic fields (title, action_text,
   // subtitle, prompt) instead of exposing Optimization Guide proto internals.
-  std::u16string title;
-  if (cue.has_suggested_cuj() && !cue.suggested_cuj().empty()) {
-    title = base::UTF8ToUTF16(cue.suggested_cuj());
-  }
-
   const auto& anchored_cue = cue.anchored_message_cue();
-  std::u16string message =
+  std::u16string title =
       base::UTF8ToUTF16(anchored_cue.anchored_message_text());
   std::u16string button_text = base::UTF8ToUTF16(anchored_cue.action_text());
   std::string prompt = cue.gemini_in_chrome_surface().prompt();
 
   // Do not show the infobar banner if any required display or prompt text is
   // missing or empty.
-  if (title.empty() || message.empty() || button_text.empty() ||
-      prompt.empty()) {
+  if (title.empty() || button_text.empty() || prompt.empty()) {
+    return false;
+  }
+
+  infobars::InfoBarManager* infobar_manager =
+      InfoBarManagerImpl::FromWebState(web_state);
+  if (!infobar_manager) {
     return false;
   }
 
@@ -114,17 +114,11 @@ bool ContextualCueInfobarDelegate::Create(web::WebState* web_state,
     return false;
   }
 
-  infobars::InfoBarManager* infobar_manager =
-      InfoBarManagerImpl::FromWebState(web_state);
-  if (!infobar_manager) {
-    return false;
-  }
-
   // Remove any existing contextual cue infobar before adding a new one.
   Remove(web_state);
 
-  ContextualCueInfobarConfig config{std::move(title), std::move(message),
-                                    std::move(button_text), std::move(prompt)};
+  ContextualCueInfobarConfig config{std::move(title), std::move(button_text),
+                                    std::move(prompt)};
   auto delegate = std::make_unique<ContextualCueInfobarDelegate>(
       web_state, gemini_handler, std::move(config));
 
@@ -173,7 +167,7 @@ std::u16string ContextualCueInfobarDelegate::GetTitleText() const {
 }
 
 std::u16string ContextualCueInfobarDelegate::GetMessageText() const {
-  return config_.message;
+  return std::u16string();
 }
 
 int ContextualCueInfobarDelegate::GetButtons() const {

@@ -814,7 +814,6 @@ if (!is_android) {
       "//chrome/browser/profiles:profile_test_util",
       "//chrome/browser/search_engine_choice",
       "//chrome/browser/ui:browser_commands",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:toolbar_controller_util",
       "//chrome/browser/ui:ui_features",
@@ -1310,10 +1309,12 @@ if (is_android) {
       "//base/test:test_support",
       "//chrome/browser/profiles:profile",
       "//content/test:test_support",
+      "//services/network:test_support",
     ]
     deps = [
       ":chrome_test_path_utils",
       ":test_launcher_utils",
+      "//chrome/browser/net",
       "//chrome/browser/ui/android/tab_model",
       "//chrome/browser/ui/browser_window",
       "//components/keyed_service/content",

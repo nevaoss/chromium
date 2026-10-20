@@ -60,6 +60,7 @@ function createTabInfo(id: number, title: string, url: string): TabInfo {
     tabId: id,
     showInCurrentTabChip: false,
     showInPreviousTabChip: false,
+    isLoading: false,
     title,
     url,
     lastActive: {internalValue: 0n},
@@ -110,6 +111,13 @@ suite('TabPickerTest', () => {
     assertTrue(isVisible(label));
     assert(label);
     assertEquals('Add tabs', label.textContent.trim());
+
+    const triggerStyle = window.getComputedStyle(app.$.shareTabsTrigger);
+    assertEquals('14px', triggerStyle.fontSize);
+    assertEquals(
+        '20px', triggerStyle.getPropertyValue('--iron-icon-height').trim());
+    assertEquals(
+        '20px', triggerStyle.getPropertyValue('--iron-icon-width').trim());
   });
 
   test(
@@ -304,5 +312,65 @@ suite('TabPickerTest', () => {
 
     assertTrue(app.$.tabMenu.open);
     assertFalse(app.$.tabMenu.getDialog().hasAttribute('unbounded'));
+  });
+
+  test(
+      'Tab selection remains sticky across menu close and reopen', async () => {
+        app.$.shareTabsTrigger.click();
+        await microtasksFinished();
+
+        const items =
+            app.$.tabMenu.querySelectorAll<HTMLButtonElement>('.dropdown-item');
+        const [item0] = items;
+        assert(item0);
+
+        item0.click();
+        await microtasksFinished();
+
+        assertTrue(isVisible(item0.querySelector('.share-tabs-check')));
+
+        app.$.tabMenu.close();
+        await microtasksFinished();
+        assertFalse(app.$.tabMenu.open);
+
+        app.$.shareTabsTrigger.click();
+        await microtasksFinished();
+        assertTrue(app.$.tabMenu.open);
+
+        const reopenedItems =
+            app.$.tabMenu.querySelectorAll<HTMLButtonElement>('.dropdown-item');
+        const [reopenedItem0] = reopenedItems;
+        assert(reopenedItem0);
+        assertTrue(isVisible(reopenedItem0.querySelector('.share-tabs-check')));
+      });
+
+  test('Dark mode reflects attribute correctly', async () => {
+    assertFalse(app.getDarkModeForTesting());
+    assertFalse(app.hasAttribute('dark-mode'));
+
+    app.setDarkModeForTesting(true);
+    await microtasksFinished();
+    assertTrue(app.hasAttribute('dark-mode'));
+
+    app.setDarkModeForTesting(false);
+    await microtasksFinished();
+    assertFalse(app.hasAttribute('dark-mode'));
+  });
+
+  test('Flyout item text color adapts in dark mode', async () => {
+    app.$.shareTabsTrigger.click();
+    await microtasksFinished();
+    assertTrue(app.$.tabMenu.open);
+
+    const items =
+        app.$.tabMenu.querySelectorAll<HTMLButtonElement>('.dropdown-item');
+    const [item0] = items;
+    assert(item0);
+
+    app.setDarkModeForTesting(true);
+    await microtasksFinished();
+
+    const color = window.getComputedStyle(item0).color;
+    assertEquals('rgb(230, 232, 240)', color);
   });
 });

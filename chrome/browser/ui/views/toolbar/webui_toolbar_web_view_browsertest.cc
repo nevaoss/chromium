@@ -1515,8 +1515,11 @@ class WebUIToolbarWebViewRaceTest : public InProcessBrowserTest {
 // Regression test for crbug.com/478033216. Tests that an attempt to bind to
 // `TrackedElementHandler` while the window is being closed does not cause a
 // crash.
+// TODO(crbug.com/567216381): Flaky. The test doesn't wait for the toolbar's
+// initial navigation, so WebUIToolbarUI::Init() (which registers the
+// TrackedElementHandler config) may not have run before GetOrCreate().
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
-                       BindInterfaceAfterCloseRace) {
+                       DISABLED_BindInterfaceAfterCloseRace) {
   // 1. Setup: Create a new browser window.
   BrowserWindowInterface* new_browser = CreateBrowser(browser()->GetProfile());
   ui_test_utils::WaitForBrowserSetLastActive(new_browser);
@@ -6994,25 +6997,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 
   // Show Customize Chrome side panel, which causes its pinned action button to
   // pop out and become visible.
+  constexpr toolbar_ui_api::mojom::PinnedToolbarAction kPoppedOutAction =
+      toolbar_ui_api::mojom::PinnedToolbarAction::kSidePanelShowCustomizeChrome;
   SidePanelUI::From(browser())->Show(SidePanelEntryId::kCustomizeChrome);
 
   // Wait until the pinned action button is visible.
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return content::EvalJs(GetWebUIWebContents(), R"(
-          (() => {
-            const app = document.querySelector('toolbar-app');
-            const pinnedContainer = app?.$['pinnedToolbarActions'];
-            if (!pinnedContainer || !pinnedContainer.checkVisibility()) {
-              return false;
-            }
-            const actionButton = pinnedContainer.shadowRoot?.querySelector(
-                'pinned-toolbar-action');
-            return actionButton && actionButton.checkVisibility() &&
-                   !actionButton.classList.contains('overflow-display-none');
-          })();
-        )")
-        .ExtractBool();
-  }));
+  ASSERT_TRUE(WaitForPinnedActionVisible(kPoppedOutAction));
 
   // Add a spacer as wide as the toolbar window to force all overflowable
   // controls to overflow.

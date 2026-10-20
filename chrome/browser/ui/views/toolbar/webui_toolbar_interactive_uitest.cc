@@ -44,11 +44,11 @@
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/views/extensions/extension_popup.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_coordinator.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+#include "chrome/browser/ui/views/global_media_controls/media_dialog_view.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/reload_control.h"
@@ -2444,92 +2444,6 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
   }
 }
 
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
-                       ExtensionBubbleReopenSuppression) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-
-  GURL allowed_url =
-      embedded_test_server()->GetURL("allowed.com", "/title1.html");
-
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), allowed_url));
-
-  ui::TrackedElement* element = nullptr;
-  WebUIToolbarWebView* webui_toolbar_view = nullptr;
-  views::WebView* web_view = nullptr;
-  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
-                                     &webui_toolbar_view, &web_view,
-                                     browser()));
-  content::WebContents* web_contents = web_view->GetWebContents();
-
-  base::ScopedAllowBlockingForTesting allow_blocking;
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-
-  scoped_refptr<const extensions::Extension> extension =
-      LoadAndPinExtension(webui_toolbar_view, temp_dir,
-                          /*has_background_script=*/false, /*has_popup=*/true);
-  ASSERT_TRUE(extension);
-
-  std::string extension_id = extension->id();
-
-  auto* container = static_cast<WebUIToolbarExtensionsContainer*>(
-      ExtensionsContainer::From(*browser()));
-  ASSERT_TRUE(container);
-
-  container->SetSuppressionThresholdForTesting(base::Seconds(5));
-
-  // 1. Test click suppression for extensions menu button (puzzle piece, id:
-  // "").
-  {
-    auto* coordinator = container->extensions_menu_coordinator_.get();
-    ASSERT_TRUE(coordinator);
-    EXPECT_FALSE(coordinator->IsShowing());
-
-    // Click extensions button to open the menu.
-    LeftClickPointerSequenceExtensionButton(web_contents, "");
-    EXPECT_TRUE(
-        base::test::RunUntil([&]() { return coordinator->IsShowing(); }));
-    views::Widget* menu_widget = coordinator->GetExtensionsMenuWidget();
-    ASSERT_TRUE(menu_widget);
-
-    // Simulate losing focus when clicking the button while menu is open.
-    menu_widget->CloseWithReason(views::Widget::ClosedReason::kLostFocus);
-
-    // Synchronously simulate the exact IPC payload sequence from WebUI.
-    container->OnPointerDown("");
-    container->ToggleExtensionsMenuFromWebUI(/*is_pointer_interaction=*/true);
-
-    // The show attempt should be suppressed, so the menu stays closed.
-    EXPECT_FALSE(coordinator->IsShowing());
-  }
-
-  // 2. Test click suppression for pinned extension button (popup).
-  {
-    // Click the extension button to open the popup.
-    LeftClickPointerSequenceExtensionButton(web_contents, extension_id);
-    EXPECT_TRUE(base::test::RunUntil([&]() {
-      return ExtensionPopup::last_popup_for_testing() != nullptr &&
-             ExtensionPopup::last_popup_for_testing()->GetWidget()->IsVisible();
-    }));
-    views::Widget* popup_widget =
-        ExtensionPopup::last_popup_for_testing()->GetWidget();
-    ASSERT_TRUE(popup_widget);
-
-    // Simulate losing focus when clicking the button while popup is open.
-    popup_widget->CloseWithReason(views::Widget::ClosedReason::kLostFocus);
-
-    // Synchronously simulate the exact IPC payload sequence from WebUI.
-    container->OnPointerDown(extension_id);
-    container->ExecuteUserAction(extension_id,
-                                 /*is_pointer_interaction=*/true);
-
-    // The show attempt should be suppressed, so the popup finishes closing
-    // and no new popup is shown.
-    EXPECT_TRUE(base::test::RunUntil(
-        [&]() { return ExtensionPopup::last_popup_for_testing() == nullptr; }));
-  }
-}
-
 enum class ControlType {
   kHome,
   kSplitTabs,
@@ -3203,11 +3117,38 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledInteractiveUiTest,
 
   // Click the media button in the overflow menu and wait for the
   // overflow menu to close.
-  //
-  // TODO(crbug.com/491791965): Also verify that the media dialog is
-  // shown once clicking the overflow menu item is wired up to open the dialog.
   ASSERT_TRUE(ClickOverflowMenuItem(
       *overflow_menu, IDS_OVERFLOW_MENU_ITEM_TEXT_MEDIA_CONTROLS));
+
+  // The button is hidden when the overflow menu item is clicked, so the browser
+  // has to ask the WebUI to display it before the dialog can be anchored to it.
+  ASSERT_TRUE(WaitForTrackedElementVisible(kToolbarMediaButtonElementId));
+
+  // The dialog should be shown once the button becomes visible.
+  ASSERT_TRUE(base::test::RunUntil(
+      []() -> bool { return MediaDialogView::IsShowing(); }));
+
+  // The dialog must be anchored to the button itself, rather than falling back
+  // to the toolbar as a whole. The element is looked up again here rather than
+  // reusing the one above, since showing the dialog may have destroyed and
+  // recreated it.
+  ui::TrackedElement* media_element =
+      WaitForTrackedElementVisible(kToolbarMediaButtonElementId);
+  ASSERT_TRUE(media_element);
+  EXPECT_EQ(MediaDialogView::GetDialogViewForTesting()->GetAnchorRect(),
+            media_element->GetScreenBounds());
+
+  // The button must stay visible for as long as the dialog is anchored to it,
+  // even though it would otherwise overflow at this window size.
+  EXPECT_TRUE(WaitForTrackedElements(
+      {kToolbarOverflowButtonElementId, kToolbarMediaButtonElementId},
+      {kToolbarForwardButtonElementId}));
+
+  // Closing the dialog should allow the button to overflow again.
+  MediaDialogView::HideDialog();
+  EXPECT_TRUE(WaitForTrackedElements(
+      {kToolbarOverflowButtonElementId},
+      {kToolbarForwardButtonElementId, kToolbarMediaButtonElementId}));
 }
 
 // Test that when the media button is shown but disabled (greyed out), it

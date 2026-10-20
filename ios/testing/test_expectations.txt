@@ -111,7 +111,7 @@ crbug.com/553554439 [ iOS26.5 iPad Simulator ] ReadingListTestCase/testMarkMixed
 crbug.com/554049961 GeminiMultiTabTestCase/testActiveTabNotBlockedOnTabGridWhenSharedTabExists [ Pass Failure ]
 
 # Gardening suppression 2026-09-04
-crbug.com/557277868 [ Simulator ] ContentSuggestionsTestCase/testMostVisitedPinnedSiteDragAndDrop [ Pass Failure ]
+crbug.com/557277868 ContentSuggestionsTestCase/testMostVisitedPinnedSiteDragAndDrop [ Pass Failure ]
 crbug.com/557277111 [ Simulator ] TranslateInfobarTestCase/testTranslateManualTrigger [ Pass Failure ]
 crbug.com/557276943 [ iPhone Simulator ] SnapshotTestCase/testSnapshotWithScrollDown [ Pass Failure ]
 crbug.com/557277287 [ iPhone Simulator ] ComposeboxEligiblityTestCase/testNoTabAttachmentsInImageGeneration [ Pass Failure ]
@@ -129,9 +129,6 @@ crbug.com/556842646 [ Simulator ] AutofillAIEGTest/testWalletFailureShowsErrorDi
 crbug.com/559221484 TabGroupsTestCase/testGroupCreationFromAnotherGroupInSelectionMode [ Pass Failure ]
 
 # Gardening suppression 2026-09-14
-crbug.com/561644215 ComposeboxTestCase/testComposeboxAIModeEmptyTextStartsCobrowse [ Pass Failure ]
-crbug.com/561644215 AssistantAIMTestCase/testAssistantDoesNotReappearAfterExplicitClose [ Pass Failure ]
-crbug.com/561644215 AssistantAIMTestCase/testAssistantPersistsOnBackground [ Pass Failure ]
 crbug.com/561662655 SafeBrowsingTestCase/testEnterpriseWarningPageRefreshedThenBypass [ Pass Failure ]
 
 # Gardening suppression 2026-09-17
@@ -204,3 +201,9 @@ crbug.com/561644215 AssistantAIMTestCase/testAssistantHiddenOnNTPAfterColdStart 
 crbug.com/567129485 [ iPhone Simulator ] PasswordControllerEGTest/testLoginEventReported [ Pass Failure ]
 crbug.com/567174858 PageInfoTestCase/testOpeningURLFromFullHistoryDismissesPageInfo [ Pass Failure ]
 crbug.com/567174858 PageInfoTestCase/testOpeningURLFromLastVisitedDismissesPageInfo [ Pass Failure ]
+
+# Gardening suppression 2026-09-29
+crbug.com/565749273 [ iPad ] GeminiAppSwitchingTestCase/testAppSwitchingAISummarizationIncognitoToNormalMode [ Pass Failure ]
+crbug.com/565749273 [ iPad ] GeminiAppSwitchingTestCase/testAppSwitchingAISummarizationMismatchedAccountSnackbar [ Pass Failure ]
+crbug.com/565749273 [ iPad ] GeminiAppSwitchingTestCase/testAppSwitchingAISummarizationPageLoadingSnackbar [ Pass Failure ]
+crbug.com/567546565 [ Device ] WindowOpenByDOMTestCase/testLinkWithBlankTargetMultipleTimes [ Pass Failure ]

@@ -375,15 +375,6 @@ bool Canvas2DResourceProvider::IsValid() const {
   return !IsGpuContextLost() && GetSkSurface();
 }
 
-void Canvas2DResourceProvider::TransferBackFromWebGPU(
-    const gpu::SyncToken& webgpu_write_sync_token) {
-  if (IsGpuContextLost()) {
-    return;
-  }
-
-  resource()->EndExternalWrite(webgpu_write_sync_token);
-}
-
 gpu::SharedImageUsageSet Canvas2DResourceProvider::GetSharedImageUsageFlags()
     const {
   return image_pool_->GetImageInfo().usage;
@@ -1076,17 +1067,6 @@ sk_sp<SkSurface> Canvas2DResourceProvider::CreateSkSurface() const {
 SkSurfaceProps Canvas2DResourceProvider::GetSkSurfaceProps() const {
   const bool can_use_lcd_text = GetAlphaType() == kOpaque_SkAlphaType;
   return skia::LegacyDisplayGlobals::ComputeSurfaceProps(can_use_lcd_text);
-}
-
-void Canvas2DResourceProvider::RestoreBackBuffer(const cc::PaintImage& image) {
-  DCHECK_EQ(image.height(), Size().height());
-  DCHECK_EQ(image.width(), Size().width());
-
-  auto sk_image = image.GetSwSkImage();
-  DCHECK(sk_image);
-  SkPixmap map;
-  sk_image->peekPixels(&map);
-  WritePixels(map.info(), map.addr(), map.rowBytes(), /*x=*/0, /*y=*/0);
 }
 
 void Canvas2DResourceProvider::ApplyAnimatedImageFrameIndexesForId(

@@ -676,6 +676,18 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Blink.CapabilityElement.Geolocation.AccuracyMode"
+    enum="CapabilityElementGeolocationAccuracyMode" expires_after="2027-04-01">
+  <owner>tungnh@chromium.org</owner>
+  <owner>ravjit@chromium.org</owner>
+  <owner>src/components/permissions/PERMISSIONS_OWNERS</owner>
+  <summary>
+    Records the accuracy mode requested when a geolocation element requests
+    location. Recorded once per geolocation request when the element initiates a
+    geolocation query.
+  </summary>
+</histogram>
+
 <histogram name="Blink.CapabilityElement.Geolocation.PositionError.Reason"
     enum="CapabilityElementGeolocationPositionErrorReason"
     expires_after="2027-04-01">
@@ -686,6 +698,19 @@ chromium-metrics-reviews@google.com.
     Records the error reason when a geolocation element's location query fails.
     Recorded once per failed geolocation request when the initial error callback
     is invoked.
+  </summary>
+</histogram>
+
+<histogram name="Blink.CapabilityElement.Geolocation.RequestInitiationFlow"
+    enum="CapabilityElementGeolocationRequestFlow" expires_after="2027-04-01">
+  <owner>tungnh@chromium.org</owner>
+  <owner>ravjit@chromium.org</owner>
+  <owner>src/components/permissions/PERMISSIONS_OWNERS</owner>
+  <summary>
+    Records how a location query is initiated from a geolocation element:
+    whether by a user click with permission already granted, a user click
+    requiring a permission prompt that was granted, or autolocate on page load.
+    Recorded once per geolocation request when the request is initiated.
   </summary>
 </histogram>
 
@@ -778,7 +803,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.ChildURLLoaderFactoryBundle.CloneTime"
-    units="microseconds" expires_after="2027-01-22">
+    units="microseconds" expires_after="2027-03-28">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -913,50 +938,6 @@ chromium-metrics-reviews@google.com.
     105.0.5175.0 were impacted by https://crbug.com/1330675. Be careful when
     aggregating or comparing these histograms across the version.
     {BlinkUpdateTimeSuffixes}
-  </summary>
-</histogram>
-
-<histogram name="Blink.Compositor.FixedLayerCount" units="count"
-    expires_after="2026-08-07">
-  <owner>wangxianzhu@chromium.org</owner>
-  <owner>paint-dev@chromium.org</owner>
-  <summary>
-    Number of fixed-position composited layers under a local frame root.
-    Reported at the end of a full compositing update, with a 0.01 sample rate.
-  </summary>
-</histogram>
-
-<histogram name="Blink.Compositor.MergedFixedLayerCount" units="count"
-    expires_after="2026-08-07">
-  <owner>wangxianzhu@chromium.org</owner>
-  <owner>paint-dev@chromium.org</owner>
-  <summary>
-    Total number of fixed-position pending layers that are merged into
-    composited layers, under a local frame root. This is non-zero only if
-    MergeFixedLayers is enabled. Reported at the end of a full compositing
-    update, with a 0.01 sample rate.
-  </summary>
-</histogram>
-
-<histogram name="Blink.Compositor.MergedStickyLayerCount" units="count"
-    expires_after="2026-08-07">
-  <owner>wangxianzhu@chromium.org</owner>
-  <owner>paint-dev@chromium.org</owner>
-  <summary>
-    Total number of sticky-position pending layers that are merged into
-    composited layers, under a local frame root. This is non-zero only if
-    MergeStickyLayers is enabled. Reported at the end of a full compositing
-    update, with a 0.01 sample rate.
-  </summary>
-</histogram>
-
-<histogram name="Blink.Compositor.StickyLayerCount" units="count"
-    expires_after="2026-08-07">
-  <owner>wangxianzhu@chromium.org</owner>
-  <owner>paint-dev@chromium.org</owner>
-  <summary>
-    Number of sticky-position composited layers under a local frame root.
-    Reported at the end of a full compositing update, with a 0.01 sample rate.
   </summary>
 </histogram>
 
@@ -1628,7 +1609,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AccountChosenPosition.Desktop" units="count"
     expires_after="2026-12-27">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the 0-based position of the account that was selected by the user in
@@ -1756,7 +1737,6 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AutoReauthn.BlockedByContentSettings"
     enum="Boolean" expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -1769,7 +1749,6 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AutoReauthn.BlockedByEmbargo" enum="Boolean"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -1782,7 +1761,6 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AutoReauthn.BlockedByEmbedder" enum="Boolean"
     expires_after="2026-12-12">
-  <owner>npm@chromium.org</owner>
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -1794,7 +1772,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AutoReauthn.BlockedByPreventSilentAccess"
     enum="Boolean" expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records whether the FedCM auto re-authn call is blocked because
@@ -1806,7 +1784,6 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AutoReauthn.ReturningAccounts"
     enum="FedCmNumAccounts" expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -1819,7 +1796,6 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.AutoReauthn.Succeeded" enum="Boolean"
     expires_after="2027-02-28">
-  <owner>npm@chromium.org</owner>
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -1910,7 +1886,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.ClosedSheetType.Android" enum="FedCmSheetType"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the type of FedCM Android UI sheet that is being displayed when the
@@ -1921,7 +1897,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.ClosedSheetType.Desktop" enum="FedCmSheetType"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the type of FedCM desktop UI sheet that is being displayed when the
@@ -1967,7 +1943,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.DidShowUI" enum="Boolean"
     expires_after="2027-03-07">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records whether the FedCM UI is shown or not. Records a sample when the
@@ -1978,7 +1954,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.Disconnect.FrameType"
     enum="FedCmRequesterFrameType" expires_after="2026-12-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the type of frame that invokes disconnect(). Records once for each
@@ -1990,7 +1966,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.DomainHint.NumMatchingAccounts"
     enum="FedCmNumAccounts" expires_after="2026-12-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the number of accounts that match a domain hint. Records at the time
@@ -2052,7 +2028,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.HasNonce" enum="BooleanHit"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records a 1 whenever a FedCM API call includes the nonce parameter. Records
@@ -2063,7 +2039,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.HasNonceOutsideParamsOnly" enum="BooleanHit"
     expires_after="2027-03-07">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records a 1 whenever a FedCM API call includes the nonce parameter, but does
@@ -2087,7 +2063,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.IdentityProvidersCount" units="count"
     expires_after="2027-04-26">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the count of identity providers right before fetching endpoints with
@@ -2162,7 +2138,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.LoginHint.NumMatchingAccounts"
     enum="FedCmNumAccounts" expires_after="2026-12-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the number of accounts that match a login hint. Records at the time
@@ -2179,7 +2155,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.MismatchDialogType" enum="FedCmMismatchDialogType"
     expires_after="2027-01-03">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the type of mismatch dialog shown: whether it is the first mismatch
@@ -2237,7 +2213,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.RpContext" enum="FedCmRpContext"
     expires_after="2027-02-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the RP Context used in a FedCM call. Records only when the RP
@@ -2247,7 +2223,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.RpMode" enum="FedCmRpMode"
     expires_after="2027-02-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the RP mode of the FedCM API. Recorded once per API call together
@@ -2280,7 +2256,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.SignInStatusSetToSignout.NetError"
     enum="NetErrorCodes" expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the NetError from the accounts list endpoint. This histogram is only
@@ -2328,7 +2304,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.Status.Disconnect" enum="FedCmDisconnectStatus"
     expires_after="2026-12-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the status of a disconnect call to the FedCM API. Recorded once per
@@ -2351,7 +2327,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.Status.MediationRequirement"
     enum="CredentialManagerMediationRequirement" expires_after="2026-12-28">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the mediation requirement of a request token call to the FedCM API.
@@ -2446,7 +2422,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.Timing.Disconnect" units="ms"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the time from when the disconnect() request is received by the
@@ -2557,7 +2533,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.UseOtherAccountResult"
     enum="FedCmUseOtherAccountResult" expires_after="2026-12-22">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the outcome of the user clicking on the &quot;use other
@@ -2571,7 +2547,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.UserInfo.NumAccounts" enum="FedCmNumAccounts"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the number of accounts returned by a getUserInfo() call. Records
@@ -2582,7 +2558,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.UserInfo.Status" enum="FedCmUserInfoStatus"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the status of a getUserInfo() call. Records once per request when
@@ -2592,7 +2568,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.UserInfo.TimeToRequestCompleted" units="ms"
     expires_after="2027-09-05">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
     Records the time from when a getUserInfo() call is received on the browser
@@ -2634,7 +2610,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.FedCm.WebIdentitySubdomain.DiscoverySucceeded"
     enum="BooleanSuccess" expires_after="2027-05-08">
-  <owner>npm@chromium.org</owner>
+  <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <owner>sureshpotti@microsoft.com</owner>
   <summary>
@@ -4883,7 +4859,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="Blink.Responsiveness.PerAnimationFrame.{Subpart}.{PerAnimationFrameInteractionType}"
+    name="Blink.Responsiveness.PerAnimationFrame.CommitToPresentationTime.{PerAnimationFrameInteractionType}"
     units="ms" expires_after="2027-05-10">
   <owner>sullivan@chromium.org</owner>
   <owner>mmocny@chromium.org</owner>
@@ -4892,49 +4868,288 @@ chromium-metrics-reviews@google.com.
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>
     Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
-    the phases and sub-parts (aka breakdowns) of Interactions that produced a
-    presented animation frame. Reported per Animation Frame which includes at
-    least one Event Timing which is a part of an interaction (as in INP). All
-    subparts are based on Event Timing API measurements (and so, do not include
-    continuous events, like scrolling).
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
 
-    This metric measures {Subpart}.
+    This subpart represents the duration from the time when commit stage of
+    rendering completes to when the browser presents the next frame with the
+    changes caused by the last event.
 
     The metric is reported for {PerAnimationFrameInteractionType}.
   </summary>
-  <token key="Subpart">
-    <variant name="InputDelay"
-        summary="total input delay from the first event creation time
-                 (timeStamp) to when it started processing"/>
-    <variant name="InputDelay.CreationToQueueTime"
-        summary="duration from the first event creation time (timeStamp) to
-                 when it was queued on the main thread"/>
-    <variant name="InputDelay.QueueToProcessingStartTime"
-        summary="duration from when the first event was queued on the main
-                 thread to when it started processing"/>
-    <variant name="MainThreadWork"
-        summary="total main thread work duration from when the first event
-                 started processing to when commit stage of rendering
-                 completed"/>
-    <variant name="MainThreadWork.EventProcessingDuration"
-        summary="total non-overlapping event processing duration on the main
-                 thread across all events in the animation frame (both before
-                 rendering starts and inside rendering)"/>
-    <variant name="MainThreadWork.RenderingDuration"
-        summary="duration from when rendering starts to when commit stage of
-                 rendering completes, discounting any event processing
-                 duration that occurred inside rendering (e.g. post-layout
-                 boundary events)"/>
-    <variant name="MainThreadWork.UnaccountedDuration"
-        summary="total unaccounted main-thread duration (idle or other
-                 non-event tasks) between when the first event starts
-                 processing and when rendering starts, discounting any event
-                 processing duration before rendering starts"/>
-    <variant name="PresentationDelay"
-        summary="duration from when commit stage of rendering completes to
-                 when the browser presents the next frame with the changes
-                 caused by the last event"/>
-  </token>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.EventCreationTimeToEventQueueTime.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the first event creation time
+    (timeStamp) to when it was queued on the main thread.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.EventCreationTimeToProcessingStart.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the first event creation time
+    (timeStamp) to when it was processed on the main thread. Traditionally, also
+    referred to as Input Delay.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.EventCreationToLastProcessingEnd.NoFramePresented.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the total duration when no frame is presented, which
+    is from the time when the first event is created to when the last event
+    finishes processing. To get the total duration when a frame is presented,
+    use Blink.Responsiveness.PerAnimationFrame.EventCreationToPresentationTime.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.EventCreationToPresentationTime.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the total duration between when the event is created
+    until it is presented, which is the entire interaction duration.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.EventQueueTimeToCommit.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the total duration between when the event is queued
+    on the main thread until commit, which is the duration on the main thread.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.EventQueueTimeToProcessingStart.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the time when the first event was
+    queued on the main thread to when it was processed.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.FirstProcessingStartToLastProcessingEnd.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the time when the first event
+    starts processing on the main thread to when the last event finishes
+    processing.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.ProcessingEndToPresentationTime.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the time when the last event
+    finishes processing on the main thread to when the browser presents the next
+    frame with the changes caused by this event. Traditionally, also referred to
+    as Presentation Delay.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.ProcessingEndToRenderStartTime.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the time when the last event
+    finishes processing on the main thread to when the rendering starts.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.RenderStartTimeToCommitTime.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the duration from the time when the rendering starts
+    to when commit stage of rendering completes.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
+  <token key="PerAnimationFrameInteractionType"
+      variants="PerAnimationFrameInteractionType"/>
+</histogram>
+
+<histogram
+    name="Blink.Responsiveness.PerAnimationFrame.TotalUnaccountedEventProcessingTime.{PerAnimationFrameInteractionType}"
+    units="ms" expires_after="2027-05-10">
+  <owner>sullivan@chromium.org</owner>
+  <owner>mmocny@chromium.org</owner>
+  <owner>speed-metrics-dev@chromium.org</owner>
+  <owner>chrome-analysis-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Blink.Responsiveness.PerAnimationFrame.* is a family of metrics representing
+    the sub-parts (aka breakdowns) of Interactions. Reported per Animation Frame
+    which includes at least one Event Timing which is a part of an interaction
+    (as in INP). All subparts are based on Event Timing API measurements (and
+    so, do not include continuous events, like scrolling).
+
+    This subpart represents the total unaccounted duration (idle time) within
+    the processing time range which is from the time when the first event starts
+    processing on the main thread to when the last event finishes processing.
+
+    The metric is reported for {PerAnimationFrameInteractionType}.
+  </summary>
   <token key="PerAnimationFrameInteractionType"
       variants="PerAnimationFrameInteractionType"/>
 </histogram>
@@ -4973,52 +5188,6 @@ chromium-metrics-reviews@google.com.
                  pointerdown, pointerup, mousedown, mouseup, and click event
                  is reported."/>
   </token>
-</histogram>
-
-<histogram
-    name="Blink.Responsiveness.WithoutAnimationFrame.{Subpart}.{PerAnimationFrameInteractionType}"
-    units="ms" expires_after="2027-05-10">
-  <owner>sullivan@chromium.org</owner>
-  <owner>mmocny@chromium.org</owner>
-  <owner>speed-metrics-dev@chromium.org</owner>
-  <owner>chrome-analysis-team@google.com</owner>
-  <improvement direction="LOWER_IS_BETTER"/>
-  <summary>
-    Blink.Responsiveness.WithoutAnimationFrame.* is a family of metrics
-    representing the phases and sub-parts (aka breakdowns) of Interactions that
-    did not produce a presented animation frame (e.g., events that did not
-    require a next paint). Reported per frame group which includes at least one
-    Event Timing which is a part of an interaction (as in INP).
-
-    This metric measures {Subpart}.
-
-    The metric is reported for {PerAnimationFrameInteractionType}.
-  </summary>
-  <token key="Subpart">
-    <variant name="InputDelay"
-        summary="total input delay from the first event creation time
-                 (timeStamp) to when it started processing"/>
-    <variant name="InputDelay.CreationToQueueTime"
-        summary="duration from the first event creation time (timeStamp) to
-                 when it was queued on the main thread"/>
-    <variant name="InputDelay.QueueToProcessingStartTime"
-        summary="duration from when the first event was queued on the main
-                 thread to when it started processing"/>
-    <variant name="MainThreadWork"
-        summary="total main thread work duration from when the first event
-                 started processing to when the last event finished
-                 processing"/>
-    <variant name="MainThreadWork.EventProcessingDuration"
-        summary="total non-overlapping event processing duration on the main
-                 thread across all events in the group"/>
-    <variant name="MainThreadWork.UnaccountedDuration"
-        summary="total unaccounted main-thread duration (idle or other
-                 non-event tasks) between when the first event starts
-                 processing and when the last event finishes processing,
-                 discounting event processing duration"/>
-  </token>
-  <token key="PerAnimationFrameInteractionType"
-      variants="PerAnimationFrameInteractionType"/>
 </histogram>
 
 <histogram name="Blink.ScanAndPreloadTime.{FrameType}.{IsInitial}" units="ms"
@@ -5340,7 +5509,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.Sms.Receive.TimeSuccess" units="ms"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>yigu@chromium.org</owner>
   <owner>goto@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>

@@ -25,11 +25,14 @@
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
+#include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/lens/lens_overlay_dismissal_source.h"
+#include "components/tabs/public/mock_tab_interface.h"
 #include "components/variations/scoped_variations_ids_provider.h"
 #include "content/public/browser/file_select_listener.h"
 #include "content/public/browser/web_contents_delegate.h"
@@ -44,12 +47,26 @@
 #include "ui/shell_dialogs/fake_select_file_dialog.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
 
+using testing::_;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 
 namespace contextual_tasks {
 namespace {
+
+class MockLensSearchController : public LensSearchController {
+ public:
+  explicit MockLensSearchController(tabs::TabInterface* tab)
+      : LensSearchController(tab) {}
+  ~MockLensSearchController() override = default;
+
+  using LensSearchController::CloseLensAsync;
+  MOCK_METHOD(void,
+              CloseLensAsync,
+              (lens::LensOverlayDismissalSource dismissal_source),
+              (override));
+};
 
 class FakeContextualTasksUiService : public ContextualTasksUiService {
  public:
@@ -64,7 +81,12 @@ class FakeContextualTasksUiService : public ContextualTasksUiService {
             /*cookie_synchronizer=*/nullptr) {}
 
   bool IsAiUrl(const GURL& url) override {
-    return url.host() == "ai.google.com";
+    return url.GetHost() == "ai.google.com" ||
+           url.GetQuery().find("udm=50") != std::string::npos;
+  }
+
+  bool IsSearchResultsUrl(const GURL& url) override {
+    return url.GetHost() == "www.google.com" && url.GetPath() == "/search";
   }
 };
 
@@ -263,8 +285,11 @@ TEST_F(ContextualTasksWebViewTest,
   web_view_->SetWebContents(web_contents.get());
   EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
 
-  // DidStopLoading while waiting for URL does not prematurely dismiss loader.
+  // DidStopLoading and DidFirstVisuallyNonEmptyPaint while waiting for URL
+  // do not prematurely dismiss loader.
   web_view_->DidStopLoading();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+  web_view_->DidFirstVisuallyNonEmptyPaint();
   EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
 
   // When actual navigation starts and paints, ghost loader dismisses.
@@ -274,6 +299,54 @@ TEST_F(ContextualTasksWebViewTest,
   sim->Start();
   EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
 
+  web_view_->DidFirstVisuallyNonEmptyPaint();
+  EXPECT_FALSE(web_view_->IsGhostLoaderVisible());
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       AboutBlankNavigationAndPaintDoNotHideGhostLoader) {
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+  web_view_->SetGhostLoaderVisible(true);
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  // An aborted about:blank navigation should not hide the ghost loader.
+  auto aborted_blank_sim = content::NavigationSimulator::CreateBrowserInitiated(
+      GURL("about:blank"), web_contents.get());
+  aborted_blank_sim->Start();
+  aborted_blank_sim->AbortCommit();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  // A committed about:blank navigation and its first paint / stop loading
+  // should not hide the ghost loader while waiting for the real search page.
+  auto committed_blank_sim =
+      content::NavigationSimulator::CreateBrowserInitiated(GURL("about:blank"),
+                                                           web_contents.get());
+  committed_blank_sim->Commit();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  web_view_->DidFirstVisuallyNonEmptyPaint();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  web_view_->DidStopLoading();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  // Once the real search navigation commits and paints, the ghost loader hides.
+  auto search_sim = content::NavigationSimulator::CreateBrowserInitiated(
+      GURL("https://www.google.com/search?q=test"), web_contents.get());
+  search_sim->SetKeepLoading(true);
+  search_sim->Start();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  // Late paint while about:blank is still the committed URL does not hide it.
+  web_view_->DidFirstVisuallyNonEmptyPaint();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
+
+  search_sim->Commit();
+  EXPECT_TRUE(web_view_->IsGhostLoaderVisible());
   web_view_->DidFirstVisuallyNonEmptyPaint();
   EXPECT_FALSE(web_view_->IsGhostLoaderVisible());
 }
@@ -371,6 +444,122 @@ TEST_F(ContextualTasksWebViewTest, RunFileChooserOpensFileDialog) {
   // Close the dialog so that `FileSelectHelper` releases its self-reference.
   dialog->CallFileSelectionCanceled();
   EXPECT_TRUE(listener->canceled());
+}
+
+TEST_F(ContextualTasksWebViewTest, TransitionFromSrpToAiPageClosesLens) {
+  tabs::MockTabInterface mock_tab;
+  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  // Navigating to SRP should not close Lens.
+  EXPECT_CALL(mock_lens_controller, CloseLensAsync(_)).Times(0);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://www.google.com/search?q=test"));
+  testing::Mock::VerifyAndClearExpectations(&mock_lens_controller);
+
+  // Transitioning from SRP to AIM should close Lens.
+  EXPECT_CALL(
+      mock_lens_controller,
+      CloseLensAsync(
+          lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted))
+      .Times(1);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://ai.google.com/search?q=test"));
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       SameDocumentTransitionFromSrpToAiPageClosesLens) {
+  tabs::MockTabInterface mock_tab;
+  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  EXPECT_CALL(mock_lens_controller, CloseLensAsync(_)).Times(0);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://www.google.com/search?q=test"));
+  testing::Mock::VerifyAndClearExpectations(&mock_lens_controller);
+
+  EXPECT_CALL(
+      mock_lens_controller,
+      CloseLensAsync(
+          lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted))
+      .Times(1);
+  auto sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=test&udm=50"),
+      web_contents->GetPrimaryMainFrame());
+  sim->CommitSameDocument();
+}
+
+TEST_F(ContextualTasksWebViewTest, InitialNavigationToAiPageDoesNotCloseLens) {
+  tabs::MockTabInterface mock_tab;
+  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  EXPECT_CALL(mock_lens_controller, CloseLensAsync(_)).Times(0);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://ai.google.com/search?q=test"));
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       SetWebContentsAlreadyOnSrpThenTransitionToAiPageClosesLens) {
+  tabs::MockTabInterface mock_tab;
+  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://www.google.com/search?q=test"));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  web_view_->SetWebContents(web_contents.get());
+
+  EXPECT_CALL(
+      mock_lens_controller,
+      CloseLensAsync(
+          lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted))
+      .Times(1);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://ai.google.com/search?q=test"));
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       TransitionFromSrpToNonSrpThenAiPageDoesNotCloseLens) {
+  tabs::MockTabInterface mock_tab;
+  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  EXPECT_CALL(mock_lens_controller, CloseLensAsync(_)).Times(0);
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://www.google.com/search?q=test"));
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://example.com"));
+  content::NavigationSimulator::NavigateAndCommitFromBrowser(
+      web_contents.get(), GURL("https://ai.google.com/search?q=test"));
 }
 
 }  // namespace

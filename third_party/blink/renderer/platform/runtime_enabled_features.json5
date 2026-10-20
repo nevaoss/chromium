@@ -1161,6 +1161,11 @@
       status: {"Android": "", "default": "stable"},
     },
     {
+      // Allows automated test runners to keep focused carets visible.
+      name: "CaretBlinking",
+      status: "stable",
+    },
+    {
       // Keeps the caret outside an editable atomic inline - e.g.
       // <div contenteditable style="display:inline-block"> - for a click that
       // landed next to the box rather than on it.
@@ -1312,7 +1317,7 @@
     // https://chromestatus.com/feature/5122501071994880
     {
       name: "ColorSpacePredefinedLinearSpaces",
-      status: "experimental",
+      status: "stable",
     },
     // Enable the rec2100-linear color space in CSS and PredefinedColorSpace.
     // https://chromestatus.com/feature/5204024772788224
@@ -1724,6 +1729,7 @@
       // in computed styles.
       // https://github.com/w3c/csswg-drafts/issues/14052
       name: "CSSFlowStartAndEndSerialization",
+      status: "experimental",
       depends_on: ["CSSFlowStartAndEnd"],
     },
     {
@@ -1912,6 +1918,12 @@
       status: "test",
     },
     {
+      // Support for `position-visibility: anchor-valid`.
+      // See crbug.com/333421963.
+      name: "CSSPositionVisibilityAnchorValid",
+      status: "experimental",
+    },
+    {
       // The @private rule declares lexically-scoped custom properties that are
       // visible only within the enclosing style rule and the elements it
       // matches, with their names rewritten so they are never observable as
@@ -1939,6 +1951,11 @@
     {
       name: "CSSPseudoElementInterface",
       status: "stable",
+    },
+    {
+      name: "CSSPseudoElementScrollButton",
+      depends_on: ["CSSPseudoElementInterface"],
+      status: "experimental",
     },
     {
       name: "CSSPseudoElementViewTransitions",
@@ -2129,7 +2146,7 @@
     {
       // crbug.com/468928416, crbug.com/498974811
       name: "CSSTextDecorationInset",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://issues.chromium.org/40675832: CSS `text-decoration-skip-ink: all` value
@@ -2192,10 +2209,6 @@
       status: "experimental",
     },
     {
-      name: "CSSTypedArithmetic",
-      status: "stable",
-    },
-    {
       // CSS URL request modifiers: cross-origin(), integrity(),
       // referrer-policy() inside url() functions.
       //
@@ -2254,6 +2267,12 @@
     {
       // appearance:base-select for <select multiple size=1> with a picker.
       name: "CustomizableSelectMultiplePopup",
+      status: "experimental",
+    },
+    {
+      // Adds new UA styles for customizable select from CSSWG discussions.
+      // https://chromestatus.com/feature/6270612585709568
+      name: "CustomizableSelectNewUAStyles",
       status: "experimental",
     },
     // see crbug.com/341313078
@@ -2674,10 +2693,6 @@
       status: "stable",
     },
     {
-      name: "ElementCanvasTransform",
-      status: "experimental",
-    },
-    {
       public: true,
       name: "ElementCapture",
       status: {"Android": "experimental", "iOS": "", "default": "stable"},
@@ -2747,6 +2762,10 @@
       name: "EventPseudoTargetProperty",
       status: "stable",
       depends_on: ["CSSPseudoElementInterface"],
+    },
+    {
+      name: "EventPseudoTargetViewTransitionName",
+      status: "stable",
     },
     {
 
@@ -3741,6 +3760,11 @@
       status: "stable",
     },
     {
+      // See crbug.com/40910996
+      name: "InlineContainingBlockSkipOpaque",
+      status: "stable",
+    },
+    {
       name: "InlineCursorSkipNonIfc",
       status: "stable",
     },
@@ -3754,6 +3778,13 @@
       // non-trivial.
       name: "InnerHTMLParserFastpathLogFailure",
       status: "experimental",
+    },
+    {
+      // Text fields leave the inline padding out of their client rect and
+      // scroll size, matching where they clip their text. Kill switch.
+      // https://github.com/w3c/csswg-drafts/issues/13502
+      name: "InputClientRectWithoutInlinePadding",
+      status: "stable",
     },
     {
       // Prevents running DefaultEventHandler on disabled input elements.
@@ -4070,6 +4101,13 @@
       name: "LongPressLinkSelectText",
     },
     {
+      // Kill-switch for releasing the :active state when a touch long-press is
+      // lifted, and for making context-menu focus hit tests read-only.
+      // https://crbug.com/358393574
+      name: "LongPressReleasesActiveState",
+      status: "stable",
+    },
+    {
       // Use LongAnimationFrameMonitor to emit longtask entries
       name: "LongTaskFromLongAnimationFrame",
       status: "stable",
@@ -4252,11 +4290,6 @@
     {
       name: "MenuElements",
       status: "experimental",
-    },
-    {
-      // Killswitch M149.
-      name: "MergeFixedLayers",
-      status: "stable",
     },
     {
       // Killswitch M149. Functionality changed in M151.
@@ -4840,6 +4873,10 @@
       status: "experimental",
     },
     {
+      name: "PermissionsPolicyForSharedWorkers",
+      status: "experimental",
+    },
+    {
       name: "PermissionsRequestRevoke",
       status: "experimental",
     },
@@ -4913,7 +4950,7 @@
       // `position-visibility` property: `anchor-valid` and `anchor-visible`.
       // See crbug.com/526682332.
       name: "PositionVisibilitySingularValues",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "PotentialPermissionsPolicyReporting",
@@ -5156,6 +5193,13 @@
       // This will be shipped in M148, and it can be removed in M150.
       // See https://issues.chromium.org/issues/452981723.
       name: "ReadingFlowWithSlots",
+      status: "stable",
+    },
+    {
+      // Enables caret visibility and keyboard selection/navigation for
+      // readonly text controls (input and textarea).
+      // https://issues.chromium.org/issues/40801366
+      name: "ReadOnlyTextControlSelection",
       status: "stable",
     },
     {
@@ -5450,6 +5494,12 @@
       status: "stable",
     },
     {
+      // Places ruby annotations clear of the base's underline or overline.
+      // https://drafts.csswg.org/css-ruby-1/#ruby-text-decoration
+      name: "RubyTextDecorationSpacing",
+      status: "test",
+    },
+    {
       // Runs a microtask checkpoint before prepare script in
       // XML Parser. This was added in M148 and can be removed
       // after M150.
@@ -5728,11 +5778,6 @@
       settable_from_internals: true,
     },
     {
-      // See https://chromestatus.com/feature/5203433409871872
-      name: "SelectiveClipboardFormatRead",
-      status: "test",
-    },
-    {
       // See https://chromestatus.com/feature/4811835974615040
       name: "SelectivePermissionsIntervention",
       status: "stable",
@@ -5782,6 +5827,14 @@
       // https://crbug.com/40894694
       name: "SeparateDeferModuleScriptTasks",
       status: "stable",
+    },
+    {
+      // Exposes the Focusable interface, DocumentOrShadowRoot.activeFocusable,
+      // CSSPseudoElement.focus(), and sequential focus navigation primitives.
+      // https://crbug.com/565786176
+      name: "SequentialFocusPrimitives",
+      depends_on: ["CSSPseudoElementInterface"],
+      status: "test",
     },
     {
       name: "Serial",
@@ -6467,8 +6520,9 @@
     },
     {
       // https://crbug.com/41492459
+      // ChromeStatus: https://chromestatus.com/feature/6294595288825856
       name: "TextOverflowString",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "TextScaleMetaTag",
@@ -7574,10 +7628,11 @@
     },
     {
       // Switches from XML parsing through libxml2 to parsing XML using the
-      // Rust xml crate. This makes parsing memory safe but breaks XSLT
-      // as the Rust XML parsing code paths is incompatible with libxslt.
+      // Rust xml crate. When an XSL processing instruction is encountered,
+      // the Rust backend creates an ad-hoc libxml2 xmlDocPtr tree for libxslt
+      // if XSLT is enabled (e.g. reverse origin trial or CAP alerts).
       // https://crbug.com/441911594
-      name: "XMLParsingRust"
+      name: "XMLParsingRust",
     },
     {
       // Enables the Rust XML parser for situations where we know

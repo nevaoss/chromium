@@ -941,6 +941,7 @@ source_set("unit_tests") {
       "desktop_session_agent_unittest.cc",
       "ipc_desktop_environment_unittest.cc",
       "ipc_peer_session_unittest.cc",
+      "ipc_video_frame_capturer_unittest.cc",
       "mojo_video_capturer_list_unittest.cc",
       "mojom/remoting_mojom_traits_unittest.cc",
       "worker_process_launcher_unittest.cc",
@@ -1329,7 +1330,7 @@ if (enable_me2me_host) {
       defines += [ "REMOTING_USE_X11" ]
       deps += [
         "//remoting/host/linux:platform_impls",
-        "//ui/events/platform/x11",
+        "//remoting/host/linux:x11",
       ]
       if (is_linux) {
         deps += [ "//ui/gtk:gtk_config" ]

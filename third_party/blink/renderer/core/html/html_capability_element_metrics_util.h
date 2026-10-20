@@ -64,6 +64,18 @@ void RecordPermissionElementInvalidStyleReason(const QualifiedName& tag_name,
 // These values are used for histograms. Entries should not be renumbered and
 // numeric values should never be reused.
 //
+// LINT.IfChange(CapabilityElementGeolocationRequestFlow)
+enum class CapabilityElementGeolocationRequestFlow {
+  kClickWithPermissionAlreadyGranted = 0,
+  kClickWithPromptGranted = 1,
+  kAutolocateOnLoad = 2,
+  kMaxValue = kAutolocateOnLoad,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/blink/enums.xml:CapabilityElementGeolocationRequestFlow)
+
+// These values are used for histograms. Entries should not be renumbered and
+// numeric values should never be reused.
+//
 // LINT.IfChange(CapabilityElementGeolocationResult)
 enum class CapabilityElementGeolocationResult {
   kSuccess = 0,
@@ -84,6 +96,21 @@ enum class CapabilityElementGeolocationPositionErrorReason {
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/blink/enums.xml:CapabilityElementGeolocationPositionErrorReason)
 
+// These values are used for histograms. Entries should not be renumbered and
+// numeric values should never be reused.
+//
+// LINT.IfChange(CapabilityElementGeolocationAccuracyMode)
+enum class CapabilityElementGeolocationAccuracyMode {
+  kDefault = 0,
+  kPrecise = 1,
+  kApproximate = 2,
+  kMaxValue = kApproximate,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/blink/enums.xml:CapabilityElementGeolocationAccuracyMode)
+
+void RecordGeolocationRequestInitiationFlow(
+    CapabilityElementGeolocationRequestFlow flow);
+
 void RecordGeolocationRequestResult(CapabilityElementGeolocationResult result);
 
 void RecordGeolocationPositionErrorReason(
@@ -92,6 +119,9 @@ void RecordGeolocationPositionErrorReason(
 void RecordGeolocationTimeToPosition(base::TimeDelta duration);
 
 void RecordGeolocationTimeToError(base::TimeDelta duration);
+
+void RecordGeolocationAccuracyMode(
+    CapabilityElementGeolocationAccuracyMode mode);
 
 }  // namespace blink
 

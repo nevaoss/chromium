@@ -244,7 +244,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /** Tests for {@link TabListMediator}. */
-@SuppressWarnings({"ConstantConditions", "DirectInvocationOnMock"})
+// TODO(567604165): Remove mocking of Views / Activities
+@SuppressWarnings({"ConstantConditions", "DirectInvocationOnMock", "DoNotMock"})
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(
         instrumentedPackages = {
@@ -1420,16 +1421,28 @@ public class TabListMediatorUnitTest {
 
     @Test
     public void sendsMoveTabSignalCorrectlyWithGroup() {
+        Token groupId = Token.createRandom();
+        when(mTab1.getTabGroupId()).thenReturn(groupId);
         TabGridItemTouchHelperCallback itemTouchHelperCallback = getItemTouchHelperCallback();
 
         itemTouchHelperCallback.onMove(mRecyclerView, mViewHolder1, mViewHolder2);
 
-        verify(mTabModel).moveRelatedTabs(eq(TAB1_ID), eq(1));
+        verify(mTabModel).moveGroupToIndex(eq(groupId), eq(1));
+    }
+
+    @Test
+    public void sendsMoveTabSignalCorrectlyWithSingleTab() {
+        TabGridItemTouchHelperCallback itemTouchHelperCallback = getItemTouchHelperCallback();
+
+        itemTouchHelperCallback.onMove(mRecyclerView, mViewHolder1, mViewHolder2);
+
+        verify(mTabModel).moveTab(eq(TAB1_ID), eq(1));
     }
 
     @Test
     public void sendsMoveTabSignalCorrectlyWithinGroup() {
         setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
+        when(mTab1.getTabGroupId()).thenReturn(Token.createRandom());
 
         getItemTouchHelperCallback().onMove(mRecyclerView, mViewHolder1, mViewHolder2);
 

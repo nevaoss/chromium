@@ -719,7 +719,6 @@ source_set("extensions") {
       "//chrome/browser/indigo",
       "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_init_state",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:scoped_tabbed_browser_displayer",
       "//chrome/browser/ui:singleton_tabs",
@@ -922,6 +921,7 @@ source_set("extensions") {
       "//components/translate/content/browser",
       "//content/public/browser",
       "//mojo/public/cpp/bindings",
+      "//ui/base/unowned_user_data",
     ]
     deps += [
       "//apps",
@@ -1933,6 +1933,7 @@ source_set("unit_tests") {
     "api/developer_private/developer_private_api_unittest.cc",
     "api/developer_private/extension_info_generator_unittest.cc",
     "api/enterprise_hardware_platform/enterprise_hardware_platform_api_unittest.cc",
+    "api/enterprise_webrtc/enterprise_webrtc_api_observer_unittest.cc",
     "api/extension_action/extension_action_api_unittest.cc",
     "api/font_settings/font_settings_api_unittest.cc",
     "api/gcm/extension_gcm_app_handler_unittest.cc",
@@ -1961,7 +1962,9 @@ source_set("unit_tests") {
     "api/webstore_private/webstore_private_unittest.cc",
     "bookmarks/bookmarks_helpers_unittest.cc",
     "chrome_component_extension_resource_manager_unittest.cc",
+    "chrome_content_browser_client_extensions_part_unittest.cc",
     "chrome_content_verifier_unittest.cc",
+    "chrome_extension_function_details_unittest.cc",
     "chrome_extension_function_unittest.cc",
     "chrome_extension_test.cc",
     "chrome_extension_test.h",
@@ -2007,6 +2010,7 @@ source_set("unit_tests") {
     "installed_loader_unittest.cc",
     "low_trust_policy_install_block_manager_unittest.cc",
     "omaha_attributes_handler_unittest.cc",
+    "open_tab_helper_unittest.cc",
     "pack_extension_unittest.cc",
     "permission_message_combinations_unittest.cc",
     "permission_messages_unittest.cc",
@@ -2024,6 +2028,8 @@ source_set("unit_tests") {
     "sync/extension_sync_data_unittest.cc",
     "sync/extension_sync_service_unittest.cc",
     "tab_helper_unittest.cc",
+    "test_standalone_window_controller.cc",
+    "test_standalone_window_controller.h",
     "unpacked_installer_unittest.cc",
     "updater/authenticated_network_fetcher_unittest.cc",
     "updater/extension_update_client_command_line_config_policy_unittest.cc",
@@ -2050,6 +2056,7 @@ source_set("unit_tests") {
     "//chrome/browser/extensions/api/browsing_data",
     "//chrome/browser/extensions/api/cookies:helpers",
     "//chrome/browser/extensions/api/enterprise_hardware_platform",
+    "//chrome/browser/extensions/api/enterprise_webrtc",
     "//chrome/browser/extensions/api/extension_action",
     "//chrome/browser/extensions/api/gcm",
     "//chrome/browser/extensions/api/omnibox",
@@ -2065,6 +2072,7 @@ source_set("unit_tests") {
     "//chrome/browser/search_engines",
     "//chrome/browser/supervised_user:test_support",
     "//chrome/browser/sync",
+    "//chrome/browser/tab_list:test_support",
     "//chrome/browser/themes",
     "//chrome/browser/ui/extensions",
     "//chrome/browser/ui/supervised_user",
@@ -2121,9 +2129,11 @@ source_set("unit_tests") {
   }
 
   if (enable_extensions) {
+    deps += [ "//chrome/browser/extensions/api/experimental_ai_data" ]
     sources += [
       "api/device_permissions_manager_unittest.cc",
       "api/enterprise_reporting_private/enterprise_reporting_private_unittest.cc",
+      "api/experimental_ai_data/experimental_ai_data_policy_unittest.cc",
       "api/file_system/file_system_api_unittest.cc",
       "api/identity/gaia_remote_consent_flow_unittest.cc",
       "api/identity/web_auth_flow_info_bar_delegate_unittest.cc",
@@ -2184,6 +2194,7 @@ source_set("unit_tests") {
       "//components/password_manager/core/browser/leak_detection:test_support",
       "//components/password_manager/core/browser/sharing",
       "//components/password_manager/core/browser/sharing:test_support",
+      "//components/tabs:test_support",
       "//components/webauthn/core/browser:test_support",
       "//ui/base/clipboard:clipboard_test_support",
     ]
@@ -2669,7 +2680,6 @@ source_set("browser_tests") {
       "//chrome/browser/contextual_tasks:ui",
       "//chrome/browser/ui:browser_command_controller",
       "//chrome/browser/ui:browser_commands",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/search:test_support_ui",
       "//chrome/browser/ui/tabs/saved_tab_groups",
@@ -2999,6 +3009,13 @@ source_set("browser_tests") {
       sources += [ "api/pdf_viewer_private/pdf_viewer_private_apitest.cc" ]
     }
 
+    if (is_win || is_linux || is_mac || is_chromeos) {
+      sources += [
+        "api/experimental_ai_data/experimental_ai_data_policy_browsertest.cc",
+      ]
+      deps += [ "//chrome/browser/extensions/api/experimental_ai_data" ]
+    }
+
     if (is_win || is_linux || is_mac) {
       sources += [
         "//chrome/browser/ui/views/web_apps/file_handler_launch_dialog_browsertest.cc",
@@ -3234,6 +3251,7 @@ source_set("interactive_ui_tests") {
       "api/extension_action/browser_action_interactive_uitest.cc",
       "api/extension_action/extension_action_api_interactive_uitest.cc",
       "api/extension_action/page_action_interactive_uitest.cc",
+      "api/messaging/incognito_connectability_interactive_uitest.cc",
       "api/notifications/notifications_interactive_apitest.cc",
       "api/omnibox/omnibox_api_interactive_uitest.cc",
       "api/permissions/permissions_api_interactive_uitest.cc",
@@ -3259,6 +3277,7 @@ source_set("interactive_ui_tests") {
       "//chrome/browser/apps/app_service",
       "//chrome/browser/apps/platform_apps:browser_test_support",
       "//chrome/browser/devtools:test_support",
+      "//chrome/browser/infobars",
       "//chrome/browser/omnibox",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/search_engines",
@@ -3268,9 +3287,12 @@ source_set("interactive_ui_tests") {
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/extensions:test_support",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop",
+      "//chrome/browser/ui/views/infobars",
       "//chrome/test:test_support_ui",
       "//chrome/test/base:browser_test_waiters",
       "//components/feed:feature_list",
+      "//components/infobars/content",
+      "//components/infobars/core",
       "//content/public/browser",
       "//content/test:test_support",
       "//extensions:test_support",

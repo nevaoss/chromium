@@ -189,6 +189,7 @@ import java.util.function.Supplier;
     ChromeFeatureList.ANIMATED_IMAGE_DRAG_SHADOW,
     ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU
 })
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class VerticalTabListCoordinatorUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -3506,7 +3507,6 @@ public class VerticalTabListCoordinatorUnitTest {
                         /* tabGroupTitle= */ "Test Group",
                         /* mhtmlTabTitle= */ null,
                         /* tabGroupCollapsed= */ false,
-                        /* isGroupShared= */ false,
                         /* isIncognito= */ false);
 
         Tab mockTab = prepareMockTab(mMockTab1, 101);

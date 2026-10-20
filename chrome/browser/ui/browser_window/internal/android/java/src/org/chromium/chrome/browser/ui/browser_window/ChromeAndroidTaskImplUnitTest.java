@@ -55,6 +55,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowRoleManager;
 
@@ -1265,7 +1266,7 @@ public class ChromeAndroidTaskImplUnitTest {
         var chromeAndroidTaskWithMockDeps = createChromeAndroidTaskWithMockDeps(/* taskId= */ 1);
         var chromeAndroidTask = chromeAndroidTaskWithMockDeps.mChromeAndroidTask;
         var profile = chromeAndroidTaskWithMockDeps.mMockProfile;
-        var unregisteredActivity = mock(Activity.class);
+        var unregisteredActivity = Robolectric.buildActivity(Activity.class).get();
 
         // Act.
         long nativeBrowserWindowPtr =

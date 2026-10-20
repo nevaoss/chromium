@@ -32,6 +32,8 @@
 #include "base/callback_list.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/common/buildflags.h"
+#include "components/compose/buildflags.h"
+#include "components/offline_pages/buildflags/buildflags.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "content/public/common/buildflags.h"
@@ -50,8 +52,10 @@ class ConnectionHelpTabHelper;
 class CookieControlsPageActionController;
 class ExternalProtocolObserver;
 class FileSystemAccessPageActionController;
+class FileSystemAccessTabHelper;
 class FocusTabAfterNavigationHelper;
 class FontPrewarmerTabHelper;
+class ChainedBackNavigationTracker;
 class FramebustBlockTabHelper;
 
 class FormInteractionTabHelper;
@@ -80,12 +84,14 @@ class RecordReplayPageActionController;
 class RevokedPermissionsTabHelper;
 class SadTabHelper;
 class SearchEngineChoiceTabHelper;
+class SearchEngineTabHelper;
 class SearchPromotionNavigationObserver;
 class SecurityStateEventObserver;
 class SharedHighlightingPromo;
 class SidePanelRegistry;
 class SoundContentSettingObserver;
 class StorageAccessAPITabHelper;
+class SupervisedUserNavigationObserver;
 class TabCaptureContentsBorderHelper;
 class TabContextDecryptionTokenTabHelper;
 class TabResourceUsageTabHelper;
@@ -129,6 +135,10 @@ namespace actor::ui {
 class ActorUiTabControllerInterface;
 }  // namespace actor::ui
 
+namespace chrome_browser_net {
+class NetErrorTabHelper;
+}  // namespace chrome_browser_net
+
 namespace commerce {
 class CommerceUiTabHelper;
 class DiscountsPageActionViewController;
@@ -147,6 +157,10 @@ class EnterpriseProxyTabHelper;
 namespace enterprise_reporting {
 class SaasUsageNavigationObserver;
 }  // namespace enterprise_reporting
+
+namespace client_hints {
+class ClientHintsWebContentsObserver;
+}  // namespace client_hints
 
 namespace content {
 class WebContents;
@@ -173,6 +187,9 @@ class DownloadNavigationObserver;
 }  // namespace download
 
 namespace extensions {
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+class AppTabHelper;
+#endif
 class ExtensionSidePanelManager;
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 class NavigationExtensionEnabler;
@@ -191,6 +208,10 @@ class GlicSelectionObserver;
 class SelectionOverlayController;
 class GlicPageFeaturesManager;
 }  // namespace glic
+
+namespace history {
+class WebContentsTopSitesObserver;
+}  // namespace history
 
 namespace memory_saver {
 class MemorySaverChipController;
@@ -279,6 +300,7 @@ class CampaignsManagerSessionTabHelper;
 class GeminiAppTabHelper;
 class GoogleOneOfferIphTabHelper;
 namespace ash {
+class BootTimesRecorderTabHelper;
 class CrosIsolatedWebAppEnabler;
 }  // namespace ash
 namespace ash::app_time {
@@ -300,6 +322,16 @@ class ChromeRLZTrackerWebContentsObserver;
 class PluginObserver;
 #endif
 
+#if BUILDFLAG(ENABLE_COMPOSE)
+class ChromeComposeClient;
+#endif
+
+#if BUILDFLAG(ENABLE_OFFLINE_PAGES)
+namespace offline_pages {
+class RecentTabHelper;
+}  // namespace offline_pages
+#endif
+
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 namespace safe_browsing {
 class TailoredSecurityUrlObserver;
@@ -317,6 +349,7 @@ class FilterUiController;
 
 namespace tabs {
 
+class ChildTabAlertHelper;
 class ContextHighlightTabFeature;
 class InactiveWindowMouseEventController;
 class PageContextEligibilityHelper;
@@ -385,11 +418,6 @@ class TabFeatures {
     return js_optimizations_page_action_controller_.get();
   }
 
-  IntentPickerViewPageActionController*
-  intent_picker_view_page_action_controller() {
-    return intent_picker_view_page_action_controller_.get();
-  }
-
   FileSystemAccessPageActionController*
   file_system_access_page_action_controller() {
     return file_system_access_page_action_controller_.get();
@@ -402,10 +430,6 @@ class TabFeatures {
 
   zoom::ZoomViewController* zoom_view_controller() {
     return zoom_view_controller_.get();
-  }
-
-  memory_saver::MemorySaverChipController* memory_saver_chip_controller() {
-    return memory_saver_chip_controller_.get();
   }
 
   LensOverlayController* lens_overlay_controller();
@@ -687,6 +711,8 @@ class TabFeatures {
 
   std::unique_ptr<MemorySaverChipTabHelper> memory_saver_chip_helper_;
 
+  std::unique_ptr<ChildTabAlertHelper> child_tab_alert_helper_;
+
   std::unique_ptr<TabAlertController> tab_alert_controller_;
 
   std::unique_ptr<ContextHighlightTabFeature> context_highlight_tab_feature_;
@@ -814,6 +840,8 @@ class TabFeatures {
   std::unique_ptr<mahi::MahiTabHelper> mahi_tab_helper_;
   std::unique_ptr<ash::app_time::WebTimeNavigationObserver>
       web_time_navigation_observer_;
+  std::unique_ptr<ash::BootTimesRecorderTabHelper>
+      boot_times_recorder_tab_helper_;
 #endif
 
 #if BUILDFLAG(ENABLE_RLZ)
@@ -825,9 +853,17 @@ class TabFeatures {
   std::unique_ptr<PluginObserver> plugin_observer_;
 #endif
 
+#if BUILDFLAG(ENABLE_COMPOSE)
+  std::unique_ptr<ChromeComposeClient> compose_client_;
+#endif
+
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   std::unique_ptr<contextual_tasks::SearchAiModePromoTabHelper>
       search_ai_mode_promo_tab_helper_;
+#endif
+
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+  std::unique_ptr<extensions::AppTabHelper> app_tab_helper_;
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -907,6 +943,28 @@ class TabFeatures {
 
   std::unique_ptr<download::DownloadNavigationObserver>
       download_navigation_observer_;
+
+  std::unique_ptr<history::WebContentsTopSitesObserver>
+      web_contents_top_sites_observer_;
+
+  std::unique_ptr<client_hints::ClientHintsWebContentsObserver>
+      client_hints_web_contents_observer_;
+
+  std::unique_ptr<ChainedBackNavigationTracker>
+      chained_back_navigation_tracker_;
+
+  std::unique_ptr<FileSystemAccessTabHelper> file_system_access_tab_helper_;
+
+  std::unique_ptr<SearchEngineTabHelper> search_engine_tab_helper_;
+
+  std::unique_ptr<chrome_browser_net::NetErrorTabHelper> net_error_tab_helper_;
+
+  std::unique_ptr<SupervisedUserNavigationObserver>
+      supervised_user_navigation_observer_;
+
+#if BUILDFLAG(ENABLE_OFFLINE_PAGES)
+  std::unique_ptr<offline_pages::RecentTabHelper> recent_tab_helper_;
+#endif
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

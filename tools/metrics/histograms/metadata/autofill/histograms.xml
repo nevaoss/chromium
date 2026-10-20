@@ -1613,7 +1613,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram
     name="Autofill.AddressSuggestionOnTypingShown.DaysSinceLastUse.Profile"
-    units="days" expires_after="2027-01-24">
+    units="days" expires_after="2027-03-28">
   <owner>brunobraga@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -1705,7 +1705,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram
     name="Autofill.Ai.Deduplication.NumberOfLocalEntitiesDeduped.AllEntities"
-    units="entities" expires_after="2026-12-06">
+    units="entities" expires_after="2027-03-28">
   <owner>brunobraga@chromium.org</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -2655,6 +2655,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     <variant name="Iban" summary="with IBAN type"/>
     <variant name="KnownTravelerNumber"
         summary="with Known Traveler Number type"/>
+    <variant name="LoyaltyCard" summary="with loyalty card type"/>
     <variant name="MultipleTypes" summary="with multiple data types"/>
     <variant name="NationalIdCard" summary="with national id card type"/>
     <variant name="Order" summary="with order type"/>
@@ -2929,7 +2930,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.AutofillAi.ModelCache.InitSuccess" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>jkeitel@google.com</owner>
   <owner>schwering@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -4449,7 +4450,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.DropdownDetection.DetectedType"
-    enum="AutofillJavaScriptDropdownType" expires_after="2026-12-12">
+    enum="AutofillJavaScriptDropdownType" expires_after="2027-03-28">
   <owner>jihadghanna@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -4461,7 +4462,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram
     name="Autofill.DropdownDetection.JavaScriptModificationTime{ModificationType}"
-    units="ms" expires_after="2026-12-12">
+    units="ms" expires_after="2027-03-28">
   <owner>jihadghanna@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -5781,7 +5782,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.iOS.FormActivity.SendRatio" units="%"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>vincb@google.com</owner>
   <owner>eic@google.com</owner>
   <owner>bling-transactions@google.com</owner>
@@ -6212,42 +6213,6 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
-<histogram name="Autofill.LogEvent.{LogEventTypes}" units="units"
-    expires_after="2027-02-14">
-  <owner>battre@chromium.org</owner>
-  <owner>chrome-autofill-alerts@google.com</owner>
-  <summary>
-    The number of log events of type {LogEventTypes} which have been recorded
-    until the FieldInfo metric is recorded into UKM at form submission or form
-    destruction time (whatever comes first).
-  </summary>
-  <token key="LogEventTypes">
-    <variant name="AblationEvent"
-        summary="total number of AblationEvent events recorded"/>
-    <variant name="All" summary="total number of all the log events recorded"/>
-    <variant name="AskForValuesToFillEvent"
-        summary="total number of AskForValuesToFillFieldLogEvent events
-                 recorded"/>
-    <variant name="AutocompleteAttributeEvent"
-        summary="total number of AutocompleteAttributeFieldLogEvent events
-                 recorded"/>
-    <variant name="FillEvent"
-        summary="total number of FillFieldLogEvent events recorded"/>
-    <variant name="HeuristicPredictionEvent"
-        summary="total number of HeuristicPredictionFieldLogEvent events
-                 recorded"/>
-    <variant name="RationalizationEvent"
-        summary="total number of RationalizationFieldLogEvent events recorded"/>
-    <variant name="ServerPredictionEvent"
-        summary="total number of ServerPredictionFieldLogEvent events
-                 recorded"/>
-    <variant name="TriggerFillEvent"
-        summary="total number of TriggerFillFieldLogEvent events recorded"/>
-    <variant name="TypingEvent"
-        summary="total number of TypingFieldLogEvent events recorded"/>
-  </token>
-</histogram>
-
 <histogram name="Autofill.LoyaltyCard.EmailOrLoyaltyCardAcceptance"
     enum="AutofillEmailOrLoyaltyCardAcceptanceMetricValue"
     expires_after="2027-06-01">
@@ -6444,7 +6409,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.NumberOfFieldsPerAutofill" units="count"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>schwering@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -7421,7 +7386,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.PopupHidingReason"
-    enum="AutofillSuggestionHidingReason" expires_after="2027-01-24">
+    enum="AutofillSuggestionHidingReason" expires_after="2027-03-28">
   <owner>koerber@google.com</owner>
   <owner>mamir@chromium.org</owner>
   <summary>
@@ -8181,7 +8146,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.ResetAutofillPrefToChrome" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>friedrichh@chromium.org</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -10925,14 +10890,31 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   <owner>payments-autofill-team@google.com</owner>
   <summary>
     Records the outcome of attempting to show the reminder notice after a credit
-    card form submission (e.g. shown successfully, or suppressed due to user
-    acknowledgement, network error, etc.). Logged when a notice presentation
-    attempt completes.
+    card or Wallet pass form action (e.g. shown successfully, or suppressed due
+    to user acknowledgement, network error, etc.). Logged when a notice
+    presentation attempt completes.
   </summary>
 </histogram>
 
+<histogram name="Autofill.WalletReminderNotice.ShowResult.{FlowType}"
+    enum="AutofillWalletReminderNoticeShowResult" expires_after="2027-04-30">
+  <owner>ferny@google.com</owner>
+  <owner>jamessun@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Records the outcome of attempting to show the Wallet Reminder Notice for the
+    {FlowType} flow (e.g. shown successfully, or suppressed due to user
+    acknowledgement, network error, etc.). Logged when a notice presentation
+    attempt completes.
+  </summary>
+  <token key="FlowType">
+    <variant name="ChromeDownstream" summary="Chrome downstream credit card"/>
+    <variant name="WalletPass" summary="Wallet pass"/>
+  </token>
+</histogram>
+
 <histogram name="Autofill.WebOTP.OneTimeCode.FillDuration.FromInteraction"
-    units="ms" expires_after="2027-01-26">
+    units="ms" expires_after="2027-03-28">
   <owner>yigu@chromium.org</owner>
   <owner>battre@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>

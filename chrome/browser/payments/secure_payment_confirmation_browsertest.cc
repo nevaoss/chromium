@@ -25,12 +25,12 @@
 #include "components/autofill/core/browser/test_utils/test_event_waiter.h"
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/payments/content/secure_payment_confirmation_controller.h"
-#include "components/payments/content/web_payments_web_data_service.h"
 #include "components/payments/core/error_strings.h"
 #include "components/payments/core/features.h"
 #include "components/payments/core/native_error_strings.h"
 #include "components/payments/core/secure_payment_confirmation_credential.h"
 #include "components/payments/core/secure_payment_confirmation_metrics.h"
+#include "components/payments/core/web_payments_web_data_service.h"
 #include "components/webdata/common/web_data_results.h"
 #include "components/webdata_services/web_data_service_wrapper_factory.h"
 #include "content/public/common/content_features.h"
@@ -390,9 +390,10 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationTest,
       GetCancelErrorMessage(),
       content::EvalJs(GetActiveWebContents(), "getOutstandingStatusPromise()"));
 
-  histogram_tester.ExpectUniqueSample("SecurePaymentRequest.Fallback.Outcome",
-                                      SecurePaymentRequestOutcome::kCancel,
-                                      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.SecurePaymentConfirmation.Fallback.Outcome",
+      SecurePaymentRequestOutcome::kCancel,
+      /*expected_bucket_count=*/1);
 }
 
 IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationTest,
@@ -411,9 +412,10 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationTest,
       GetWebAuthnErrorMessage(),
       content::EvalJs(GetActiveWebContents(), "getOutstandingStatusPromise()"));
 
-  histogram_tester.ExpectUniqueSample("SecurePaymentRequest.Fallback.Outcome",
-                                      SecurePaymentRequestOutcome::kAccept,
-                                      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.SecurePaymentConfirmation.Fallback.Outcome",
+      SecurePaymentRequestOutcome::kAccept,
+      /*expected_bucket_count=*/1);
 }
 
 #endif  // !BUILDFLAG(IS_ANDROID)

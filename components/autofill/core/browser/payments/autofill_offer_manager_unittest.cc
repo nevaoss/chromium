@@ -90,27 +90,6 @@ class AutofillOfferManagerTest : public testing::Test {
     return offer_data;
   }
 
-  // TODO(crbug.com/546252995): Reuse test::GetPromoCodeOfferData from
-  // autofill_test_util instead of this helper.
-  AutofillOfferData CreatePromoCodeOffer(std::vector<GURL> merchant_origins = {
-                                             GURL(kTestUrl)}) {
-    std::string offer_id = "5555";
-    base::Time expiry = AutofillClock::Now() + base::Days(2);
-    GURL offer_details_url = GURL(kOfferDetailsUrl);
-    std::string promo_code = "5PCTOFFSHOES";
-    DisplayStrings display_strings;
-    display_strings.value_prop_text = "5% off on shoes. Up to $50.";
-    display_strings.see_details_text = "See details";
-    display_strings.usage_instructions_text =
-        "Click the promo code field at checkout to autofill it.";
-    std::string offer_reward_amount = "5%";
-
-    AutofillOfferData offer_data = AutofillOfferData::GPayPromoCodeOffer(
-        offer_id, expiry, merchant_origins, offer_details_url, display_strings,
-        offer_reward_amount);
-    return offer_data;
-  }
-
   TestPersonalDataManager& personal_data_manager() {
     return autofill_client_.GetPersonalDataManager();
   }
@@ -137,7 +116,6 @@ TEST_F(AutofillOfferManagerTest, IsUrlEligible) {
       {GURL("http://www.google.com"), GURL("http://www.youtube.com")}));
   payments_data_manager().AddAutofillOfferData(CreateCreditCardOfferForCard(
       card2, "10%", /*expired=*/false, {GURL("http://maps.google.com")}));
-  autofill_offer_manager_->UpdateEligibleMerchantDomains();
 
   EXPECT_TRUE(
       autofill_offer_manager_->IsUrlEligible(GURL("http://www.google.com")));

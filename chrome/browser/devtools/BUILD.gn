@@ -260,7 +260,6 @@ static_library("devtools") {
       deps += [
         "//chrome/browser:certificate_viewer",
         "//chrome/browser/ui:browser_commands",
-        "//chrome/browser/ui:browser_tabstrip",
         "//chrome/browser/ui:scoped_tabbed_browser_displayer",
       ]
     }
@@ -289,6 +288,18 @@ static_library("devtools") {
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//ui/base",
     ]
+    if (enable_printing) {
+      sources += [
+        "protocol/page_handler.cc",
+        "protocol/page_handler.h",
+        "protocol/page_handler_android.cc",
+      ]
+      deps += [
+        "//chrome/browser/printing",
+        "//components/printing/browser/headless",
+        "//components/printing/browser/print_to_pdf",
+      ]
+    }
   } else {
     public_deps += [
       "//chrome/browser/ui:browser_tab_strip",
@@ -434,6 +445,7 @@ static_library("devtools") {
       "//chrome/app:command_ids",
       "//chrome/browser/badging",
       "//chrome/browser/custom_handlers",
+      "//chrome/browser/origin_gating",
       "//chrome/browser/private_verification_tokens",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/media_router",
@@ -460,6 +472,10 @@ static_library("devtools") {
     sources += [
       "devtools_navigation_gating_rule_manager.cc",
       "devtools_navigation_gating_rule_manager.h",
+      "devtools_navigation_gating_service.cc",
+      "devtools_navigation_gating_service.h",
+      "devtools_navigation_gating_service_factory.cc",
+      "devtools_navigation_gating_service_factory.h",
       "devtools_navigation_throttle.cc",
       "devtools_navigation_throttle.h",
       "protocol/ads_handler.cc",
@@ -474,6 +490,7 @@ static_library("devtools") {
       "protocol/extensions_handler.h",
       "protocol/page_handler.cc",
       "protocol/page_handler.h",
+      "protocol/page_handler_desktop.cc",
       "protocol/pwa_handler.cc",
       "protocol/pwa_handler.h",
       "protocol/security_handler.cc",
@@ -603,6 +620,8 @@ source_set("unit_tests") {
     if (!is_android) {
       sources += [
         "devtools_navigation_gating_rule_manager_unittest.cc",
+        "devtools_navigation_gating_service_factory_unittest.cc",
+        "devtools_navigation_gating_service_unittest.cc",
         "remote_debugging_server_unittest.cc",
       ]
     }
@@ -619,10 +638,12 @@ source_set("unit_tests") {
 
     deps += [
       "//chrome/browser/media/router",
+      "//chrome/browser/origin_gating",
       "//chrome/browser/web_applications:web_applications_test_support",
       "//components/media_router/browser",
       "//components/media_router/browser:test_support",
       "//components/media_router/common:test_support",
+      "//components/origin_gating/core",
       "//crypto:test_support",
     ]
 
@@ -678,6 +699,7 @@ if (enable_devtools_frontend) {
       "//chrome/browser/sync/test/integration:sync_integration_test_support",
       "//chrome/browser/ui/autofill",
       "//chrome/test:test_support",
+      "//chrome/test/base:browser_test_waiters",
       "//chrome/test/base:chrome_test_utils",
       "//components/autofill/content/browser:test_support",
       "//components/autofill/core/browser:test_support",
@@ -705,6 +727,11 @@ if (enable_devtools_frontend) {
     }
 
     if (is_android) {
+      if (enable_printing) {
+        sources += [ "protocol/devtools_printtopdf_android_browsertest.cc" ]
+        deps += [ "//third_party/inspector_protocol:crdtp" ]
+      }
+
       deps += [
         "//chrome/browser/ui/android/tab_model:test_support",
         "//components/privacy_sandbox/privacy_sandbox_attestations",

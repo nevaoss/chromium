@@ -1884,7 +1884,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.DeviceBoundSessions.GoogleRegistrationIsFromStandard"
-    enum="Boolean" expires_after="2027-01-24">
+    enum="Boolean" expires_after="2027-03-28">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -2175,7 +2175,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.DeviceBoundSessions.RequestDeferralDecision3"
-    enum="DeviceBoundSessionUsage2" expires_after="2027-01-24">
+    enum="DeviceBoundSessionUsage2" expires_after="2027-03-28">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3432,6 +3432,18 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Net.ErrorCodesForHTTPSGoogleSubresources" enum="NetErrorCodes"
+    expires_after="never">
+<!-- expires-never: Core network stack health metric -->
+
+  <owner>nidhijaju@chromium.org</owner>
+  <owner>chrome-network-stack@google.com</owner>
+  <summary>
+    Positive net error codes that subresource requests to https://www.google.com
+    end with, including net::OK and net::ERR_ABORTED.
+  </summary>
+</histogram>
+
 <histogram name="Net.ErrorCodesForIsolatedAppScheme" enum="NetErrorCodes"
     expires_after="2027-03-14">
   <owner>giovax@chromium.org</owner>
@@ -3987,7 +3999,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.HttpStreamFactory.OnStreamReadyCallbackDelay" units="ms"
-    expires_after="2026-11-15">
+    expires_after="2027-03-28">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -7699,6 +7711,18 @@ chromium-metrics-reviews@google.com.
   <token key="SuccessOrFailure" variants="SuccessOrFailure"/>
 </histogram>
 
+<histogram name="Net.QuicSessionPool.JobCompleteTime.{SuccessOrFailure}"
+    units="ms" expires_after="2027-09-28">
+  <owner>bashi@chromium.org</owner>
+  <owner>blink-network-stack@google.com</owner>
+  <summary>
+    The time from when a QuicSessionPool::Job is created to when it completes.
+    Recorded when a QuicSessionPool::Job completes synchronously or
+    asynchronously.
+  </summary>
+  <token key="SuccessOrFailure" variants="SuccessOrFailure"/>
+</histogram>
+
 <histogram name="Net.QuicStreamFactory.AttemptMigrationBeforeHandshake"
     enum="BooleanAttempted" expires_after="2027-02-02">
   <owner>dschinazi@chromium.org</owner>
@@ -9507,7 +9531,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.StructuredHeaders.DecimalWithZeroFractionalDigits"
-    enum="Boolean" expires_after="2027-01-24">
+    enum="Boolean" expires_after="2027-03-28">
   <owner>apaseltiner@chromium.org</owner>
   <owner>net-dev@chromium.org</owner>
   <summary>
@@ -9956,7 +9980,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.HasHeaderClient" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
@@ -9966,7 +9990,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.OnBeforeSendHeadersDuration" units="ms"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>

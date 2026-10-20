@@ -31,7 +31,7 @@ bool IsProcessOverheadExperimentActive() {
 namespace features {
 
 // Enables the migration of browser commands to Action API.
-BASE_FEATURE(kUseActionsForBrowserCommands, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUseActionsForBrowserCommands, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the use of WGC for the Eye Dropper screen capture.
 BASE_FEATURE(kAllowEyeDropperWGCScreenCapture,
@@ -42,7 +42,7 @@ BASE_FEATURE(kAllowEyeDropperWGCScreenCapture,
 #endif  // BUILDFLAG(IS_WIN)
 );
 
-BASE_FEATURE(kCtrlTabMru, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCtrlTabMru, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -141,7 +141,7 @@ BASE_FEATURE(kExtensionsCollapseMainMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, newly installed extensions are pinned to the toolbar by
 // default.
-BASE_FEATURE(kExtensionsPinnedByDefault, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kExtensionsPinnedByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
@@ -355,11 +355,6 @@ bool IsPageActionsElevatedToolbarEnabled() {
 }
 
 BASE_FEATURE(kByDateHistoryInSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kTabsFromOtherDevicesSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kTabsFromOtherDevicesSidePanelPinnedByDefault,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNonMilestoneUpdateToast, base::FEATURE_ENABLED_BY_DEFAULT);
 

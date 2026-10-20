@@ -80,7 +80,6 @@
 #include "content/browser/back_forward_cache/back_forward_cache_impl.h"
 #include "content/browser/bad_message.h"
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"
-#include "content/browser/blob_storage/file_backed_blob_factory_frame_impl.h"
 #include "content/browser/bluetooth/web_bluetooth_service_impl.h"
 #include "content/browser/broadcast_channel/broadcast_channel_provider.h"
 #include "content/browser/broadcast_channel/broadcast_channel_service.h"
@@ -92,7 +91,6 @@
 #include "content/browser/data_url_loader_factory.h"
 #include "content/browser/declarative_performance_observer/declarative_performance_observer.h"
 #include "content/browser/devtools/devtools_instrumentation.h"
-#include "content/browser/digital_credentials/digital_identity_request_impl.h"
 #include "content/browser/dom_storage/dom_storage_context_wrapper.h"
 #include "content/browser/dom_storage/session_storage_namespace_handle_impl.h"
 #include "content/browser/download/data_url_blob_reader.h"
@@ -113,9 +111,7 @@
 #include "content/browser/loader/subresource_proxying_url_loader_service.h"
 #include "content/browser/loader/url_loader_factory_utils.h"
 #include "content/browser/log_console_message.h"
-#include "content/browser/media/key_system_support_impl.h"
 #include "content/browser/media/media_devices_util.h"
-#include "content/browser/media/media_interface_proxy.h"
 #include "content/browser/media/webaudio/audio_context_manager_impl.h"
 #include "content/browser/navigation_or_document_handle.h"
 #include "content/browser/network/cross_origin_embedder_policy_reporter.h"
@@ -139,12 +135,10 @@
 #include "content/browser/renderer_host/frame_tree_node.h"
 #include "content/browser/renderer_host/holding_blocking_idb_lock_handle.h"
 #include "content/browser/renderer_host/initiator_navigation_state_impl.h"
-#include "content/browser/renderer_host/input/input_injector_impl.h"
 #include "content/browser/renderer_host/ipc_utils.h"
 #include "content/browser/renderer_host/local_network_access_util.h"
 #include "content/browser/renderer_host/media/peer_connection_tracker_host.h"
 #include "content/browser/renderer_host/mixed_content_checker.h"
-#include "content/browser/renderer_host/model_context_user_data.h"
 #include "content/browser/renderer_host/navigation_controller_impl.h"
 #include "content/browser/renderer_host/navigation_entry_impl.h"
 #include "content/browser/renderer_host/navigation_metrics_utils.h"
@@ -185,7 +179,6 @@
 #include "content/browser/webauth/authenticator_impl.h"
 #include "content/browser/webauth/webauth_request_security_checker_impl.h"
 #include "content/browser/webid/flags.h"
-#include "content/browser/webid/request_service.h"
 #include "content/browser/websockets/websocket_connector_impl.h"
 #include "content/browser/webtransport/web_transport_connector_impl.h"
 #include "content/browser/webui/url_data_manager_backend.h"
@@ -8245,7 +8238,7 @@ void RenderFrameHostImpl::AllowBindings(BindingsPolicySet bindings) {
                "render_frame_host", this, "bindings_flags",
                bindings.ToEnumBitmask());
 
-  BindingsPolicySet webui_bindings =
+  const BindingsPolicySet webui_bindings =
       Intersection(bindings, kWebUIBindingsPolicySet);
 
   // Ensure callers that specify non-zero WebUI bindings are doing so on a
@@ -8298,8 +8291,10 @@ void RenderFrameHostImpl::AllowBindings(BindingsPolicySet bindings) {
   }
 
   if (!webui_bindings.empty()) {
+    // ChildProcessSecurityPolicy does not track individual types of bindings,
+    // just whether any WebUI bindings have been granted.
     ChildProcessSecurityPolicyImpl::GetInstance()->GrantWebUIBindings(
-        GetProcess()->GetDeprecatedID(), webui_bindings);
+        GetProcess()->GetDeprecatedID());
   }
 
   enabled_bindings_.PutAll(bindings);
@@ -10251,27 +10246,6 @@ bool RenderFrameHostImpl::ResetBrowserInterfaceBrokerReceiverForTesting() {
     broker_holder_.reset();
   }
   return is_valid;
-}
-
-void RenderFrameHostImpl::BindAssociatedInterfaceProviderReceiver(
-    mojo::PendingAssociatedReceiver<blink::mojom::AssociatedInterfaceProvider>
-        receiver) {
-  CHECK(receiver.is_valid());
-  associated_interface_provider_receiver_.Bind(std::move(receiver));
-}
-
-void RenderFrameHostImpl::BindDomOperationControllerHostReceiver(
-    mojo::PendingAssociatedReceiver<mojom::DomAutomationControllerHost>
-        receiver) {
-  CHECK(receiver.is_valid());
-  // In the renderer side, the remote is document-associated so the receiver on
-  // the browser side can be reused after a cross-document navigation.
-  // TODO(dcheng): Make this document-associated?
-  dom_automation_controller_receiver_.reset();
-  dom_automation_controller_receiver_.Bind(std::move(receiver));
-  dom_automation_controller_receiver_.SetFilter(
-      CreateMessageFilterForAssociatedReceiver(
-          mojom::DomAutomationControllerHost::Name_));
 }
 
 void RenderFrameHostImpl::SetKeepAliveTimeoutForTesting(
@@ -12893,7 +12867,9 @@ void RenderFrameHostImpl::CommitNavigation(
           url_loader_factory::CreatePendingRemote(
               ContentBrowserClient::URLLoaderFactoryType::kDocumentSubResource,
               url_loader_factory::TerminalParams::ForNonNetwork(
-                  CreateWebUIURLLoaderFactory(this, effective_scheme, {}),
+                  CreateWebUIURLLoaderFactory(
+                      this, effective_scheme, {},
+                      subresource_loader_factories_config.origin()),
                   GetProcess()->GetDeprecatedID()),
               url_loader_factory::ContentClientParams(
                   browser_context, this, GetProcess()->GetDeprecatedID(),
@@ -13390,6 +13366,7 @@ void RenderFrameHostImpl::DiscardFrame(base::OnceClosure on_discarded_cb) {
     // responding. The RenderWidgetHostImpl::SetIsDiscarding() is cleared by the
     // destructor of RenderFrameHostImpl because RenderWidgetHostImpl will be
     // reused on reloading.
+    mojo::UrgentMessageScope scope;
     GetAssociatedLocalMainFrame()->Discard(base::BindOnce(
         [](base::WeakPtr<RenderFrameHostImpl> self) {
           if (!self) {
@@ -13397,6 +13374,18 @@ void RenderFrameHostImpl::DiscardFrame(base::OnceClosure on_discarded_cb) {
           }
           self->MaybeNotifyDiscardedFrame();
           self->GetRenderWidgetHost()->SetIsDiscarding(false);
+          // Now that the renderer has committed the empty document and finished
+          // running any unload handlers, attempt fast shutdown (skipping unload
+          // handlers) if this process is dedicated to this single outermost
+          // main frame. This matches legacy discard where WebViewImpl::Close()
+          // terminated dedicated renderer processes after running unload
+          // handlers.
+          self->GetProcess()->FastShutdownIfPossible(
+              1u, /*skip_unload_handlers=*/true,
+              /*ignore_workers=*/false,
+              /*ignore_keep_alive=*/false,
+              /*ignore_pending_reuse=*/false,
+              /*use_outermost_main_frame_check=*/true);
         },
         weak_ptr_factory_.GetWeakPtr()));
   }
@@ -13697,13 +13686,6 @@ void RenderFrameHostImpl::ClearFocusedElement() {
   focused_editable_level_ = EditableLevel::kNotEditable;
   focused_editable_dom_node_id_ = blink::DOMNodeIdType();
   GetAssociatedLocalFrame()->ClearFocusedElement();
-}
-
-void RenderFrameHostImpl::BindDevToolsAgent(
-    mojo::PendingAssociatedRemote<blink::mojom::DevToolsAgentHost> host,
-    mojo::PendingAssociatedReceiver<blink::mojom::DevToolsAgent> receiver) {
-  GetAssociatedLocalFrame()->BindDevToolsAgent(std::move(host),
-                                               std::move(receiver));
 }
 
 bool RenderFrameHostImpl::IsSameSiteInstance(
@@ -14704,15 +14686,6 @@ void RenderFrameHostImpl::BindRenderAccessibilityHost(
       .WithArgs(std::move(receiver));
 }
 
-void RenderFrameHostImpl::BindNonAssociatedLocalFrameHost(
-    mojo::PendingReceiver<blink::mojom::NonAssociatedLocalFrameHost> receiver) {
-  if (non_associated_local_frame_host_receiver_.is_bound()) {
-    mojo::ReportBadMessage("NonAssociatedLocalFrameHost is already bound.");
-    return;
-  }
-  non_associated_local_frame_host_receiver_.Bind(std::move(receiver));
-}
-
 FrameTreeNode* RenderFrameHostImpl::GetPrerenderOuterMostMainFrame() {
   // A prerendered page is identified by its root FrameTreeNode id, so if this
   // RenderFrameHost is in any way embedded, we need to iterate up to the
@@ -14816,18 +14789,6 @@ void RenderFrameHostImpl::RendererWillActivateForPrerendering() {
   mojo_binder_policy_applier_->PrepareToGrantAll();
 }
 
-void RenderFrameHostImpl::BindMediaInterfaceFactoryReceiver(
-    mojo::PendingReceiver<media::mojom::InterfaceFactory> receiver) {
-  MediaInterfaceProxy::GetOrCreateForCurrentDocument(this)->Bind(
-      std::move(receiver));
-}
-
-void RenderFrameHostImpl::BindKeySystemSupportReceiver(
-    mojo::PendingReceiver<media::mojom::KeySystemSupport> receiver) {
-  KeySystemSupportImpl::GetOrCreateForCurrentDocument(this)->Bind(
-      std::move(receiver));
-}
-
 void RenderFrameHostImpl::BindMediaMetricsProviderReceiver(
     mojo::PendingReceiver<media::mojom::MediaMetricsProvider> receiver) {
   // Only save decode stats when BrowserContext provides a VideoPerfHistory.
@@ -14862,16 +14823,6 @@ void RenderFrameHostImpl::BindMediaMetricsProviderReceiver(
       std::move(receiver));
 }
 
-void RenderFrameHostImpl::BindVideoEncoderMetricsProviderReceiver(
-    mojo::PendingReceiver<media::mojom::VideoEncoderMetricsProvider> receiver) {
-  // Ensure the frame is not in the prerendering state as we don't record UKM
-  // while prerendering. This is ensured as the BrowserInterfaceBinders defers
-  // binding until the frame's activation.
-  CHECK(!IsInLifecycleState(LifecycleState::kPrerendering));
-  media::MojoVideoEncoderMetricsProviderService::Create(GetPageUkmSourceId(),
-                                                        std::move(receiver));
-}
-
 #if BUILDFLAG(ENABLE_MEDIA_REMOTING)
 void RenderFrameHostImpl::BindMediaRemoterFactoryReceiver(
     mojo::PendingReceiver<media::mojom::RemoterFactory> receiver) {
@@ -14885,6 +14836,10 @@ void RenderFrameHostImpl::CreateWebSocketConnector(
     mojo::PendingReceiver<blink::mojom::WebSocketConnector> receiver) {
   if (is_mhtml_document()) {
     mojo::ReportBadMessage("WebSockets are not allowed in MHTML documents.");
+    return;
+  }
+  if (GetSiteInstance()->IsPdf()) {
+    mojo::ReportBadMessage("WebSockets are not allowed in PDF documents.");
     return;
   }
   net::StorageAccessApiStatus storage_access_api_status =
@@ -14976,13 +14931,6 @@ void RenderFrameHostImpl::CreateDedicatedWorkerHostFactory(
       /*creator_coep_reporter=*/coep_reporter, GetNetworkRestrictionsID());
 }
 
-#if BUILDFLAG(IS_ANDROID) || (BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_IOS_TVOS))
-void RenderFrameHostImpl::BindNFCReceiver(
-    mojo::PendingReceiver<device::mojom::NFC> receiver) {
-  delegate_->GetNFC(this, std::move(receiver));
-}
-#endif
-
 void RenderFrameHostImpl::BindSerialService(
     mojo::PendingReceiver<blink::mojom::SerialService> receiver) {
   if (!IsFeatureEnabled(network::mojom::PermissionsPolicyFeature::kSerial)) {
@@ -15009,11 +14957,6 @@ void RenderFrameHostImpl::BindSerialService(
   }
 
   SerialService::GetOrCreateForCurrentDocument(this)->Bind(std::move(receiver));
-}
-
-void RenderFrameHostImpl::BindModelContextHost(
-    mojo::PendingReceiver<blink::mojom::ModelContextHost> receiver) {
-  ModelContextUserData::Bind(this, std::move(receiver));
 }
 
 void RenderFrameHostImpl::GetHidService(
@@ -15116,30 +15059,12 @@ void RenderFrameHostImpl::BindCacheStorageInternal(
       std::move(dip_reporter_remote), bucket_locator, std::move(receiver));
 }
 
-void RenderFrameHostImpl::BindInputInjectorReceiver(
-    mojo::PendingReceiver<mojom::InputInjector> receiver) {
-  InputInjectorImpl::Create(weak_ptr_factory_.GetWeakPtr(),
-                            std::move(receiver));
-}
-
 void RenderFrameHostImpl::BindWebOTPServiceReceiver(
     mojo::PendingReceiver<blink::mojom::WebOTPService> receiver) {
   auto* fetcher = SmsFetcher::Get(GetProcess()->GetBrowserContext());
   if (WebOTPService::Create(fetcher, this, std::move(receiver))) {
     document_used_web_otp_ = true;
   }
-}
-
-void RenderFrameHostImpl::BindDigitalIdentityRequestReceiver(
-    mojo::PendingReceiver<blink::mojom::DigitalIdentityRequest> receiver) {
-  DigitalIdentityRequestImpl::CreateInstance(*this, std::move(receiver));
-}
-
-void RenderFrameHostImpl::BindFederatedRequestServiceReceiver(
-    mojo::PendingReceiver<blink::mojom::FederatedRequestService> receiver) {
-  webid::RequestService* service =
-      webid::RequestService::GetOrCreateForCurrentDocument(this);
-  service->BindFederatedRequestService(std::move(receiver));
 }
 
 void RenderFrameHostImpl::BindRestrictedCookieManager(
@@ -19762,11 +19687,6 @@ void RenderFrameHostImpl::RecordDocumentCreatedUkmEvent(
       .Record(ukm_recorder);
 }
 
-void RenderFrameHostImpl::BindReportingObserver(
-    mojo::PendingReceiver<blink::mojom::ReportingObserver> receiver) {
-  GetAssociatedLocalFrame()->BindReportingObserver(std::move(receiver));
-}
-
 mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
 RenderFrameHostImpl::CreateURLLoaderNetworkObserver() {
   return GetStoragePartition()->CreateURLLoaderNetworkObserverForFrame(
@@ -19775,11 +19695,6 @@ RenderFrameHostImpl::CreateURLLoaderNetworkObserver() {
 
 PeerConnectionTrackerHost& RenderFrameHostImpl::GetPeerConnectionTrackerHost() {
   return *PeerConnectionTrackerHost::GetOrCreateForCurrentDocument(this);
-}
-
-void RenderFrameHostImpl::BindPeerConnectionTrackerHost(
-    mojo::PendingReceiver<blink::mojom::PeerConnectionTrackerHost> receiver) {
-  GetPeerConnectionTrackerHost().BindReceiver(std::move(receiver));
 }
 
 void RenderFrameHostImpl::EnableWebRtcEventLogOutput(int lid,
@@ -20385,13 +20300,6 @@ bool RenderFrameHostImpl::LoadedWithCacheControlNoStoreHeader() {
   return GetBackForwardCacheDisablingFeatures().Has(
       blink::scheduler::WebSchedulerTrackedFeature::
           kMainResourceHasCacheControlNoStore);
-}
-
-void RenderFrameHostImpl::BindFileBackedBlobFactory(
-    mojo::PendingAssociatedReceiver<blink::mojom::FileBackedBlobFactory>
-        receiver) {
-  FileBackedBlobFactoryFrameImpl::CreateForCurrentDocument(this,
-                                                           std::move(receiver));
 }
 
 bool RenderFrameHostImpl::ShouldChangeRenderFrameHostOnSameSiteNavigation()

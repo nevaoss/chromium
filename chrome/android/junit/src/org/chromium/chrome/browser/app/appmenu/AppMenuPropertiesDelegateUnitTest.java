@@ -111,7 +111,6 @@ public class AppMenuPropertiesDelegateUnitTest {
     @Mock private TabModel mTabModel;
     @Mock private TabModel mIncognitoTabModel;
     @Mock private ToolbarManager mToolbarManager;
-    @Mock private View mDecorView;
     @Mock private LayoutStateProvider mLayoutStateProvider;
     @Mock private UpdateMenuItemHelper mUpdateMenuItemHelper;
     @Mock private UserPrefs.Natives mUserPrefsJniMock;
@@ -128,6 +127,7 @@ public class AppMenuPropertiesDelegateUnitTest {
     @Mock private ReadAloudController mReadAloudController;
     @Mock private TranslateBridge.Natives mTranslateBridgeJniMock;
     @Mock private DomDistillerUrlUtilsJni mDomDistillerUrlUtilsJni;
+    private final View mDecorView = new View(ContextUtils.getApplicationContext());
     private final ActivityTabProvider mActivityTabProvider = new ActivityTabProvider();
     private final OneshotSupplierImpl<LayoutStateProvider> mLayoutStateProviderSupplier =
             new OneshotSupplierImpl<>();

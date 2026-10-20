@@ -8923,48 +8923,6 @@
           }
         ]
       },
-      "ios-angle-builder": {
-        "contact_team_email": "angle-team@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "ios-angle-intel": {
-        "contact_team_email": "angle-team@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
       "ios-angle-m2": {
         "contact_team_email": "angle-team@google.com",
         "problem_specs": [
@@ -10516,26 +10474,6 @@
       },
       "linux-rel-cft": {
         "contact_team_email": "browser-automation-staff@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "linux-rel-no-external-ip": {
         "problem_specs": [
           {
             "name": "Unhealthy",
@@ -13315,26 +13253,6 @@
       },
       "win10-enterprise-companion-tester-rel": {
         "contact_team_email": "omaha-client-dev@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "win10-rel-no-external-ip": {
         "problem_specs": [
           {
             "name": "Unhealthy",

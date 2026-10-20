@@ -378,6 +378,7 @@
 #include "chrome/browser/badging/badge_manager_factory.h"
 #include "chrome/browser/device_api/managed_configuration_api_factory.h"
 #include "chrome/browser/devtools/device/devtools_android_bridge.h"
+#include "chrome/browser/devtools/devtools_navigation_gating_service_factory.h"
 #include "chrome/browser/dictation/dictation_keyed_service_factory.h"
 #include "chrome/browser/download/offline_item_model_manager_factory.h"
 #include "chrome/browser/hid/hid_connection_tracker_factory.h"
@@ -396,7 +397,6 @@
 #include "chrome/browser/record_replay/task_service_factory.h"
 #include "chrome/browser/record_replay/task_store_factory.h"
 #include "chrome/browser/screen_ai/screen_ai_service_router_factory.h"
-#include "chrome/browser/search/instant_service_factory.h"
 #include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service_factory.h"
 #include "chrome/browser/speech/speech_recognition_client_browser_interface_factory.h"
 #include "chrome/browser/speech/speech_recognition_service_factory.h"
@@ -609,6 +609,7 @@
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
 #include "chrome/browser/new_tab_page/modules/file_suggestion/drive_service_factory.h"
 #include "chrome/browser/new_tab_page/one_google_bar/one_google_bar_service_factory.h"
+#include "chrome/browser/search/instant_service_factory.h"
 #endif
 
 #if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS) || BUILDFLAG(IS_ANDROID) || \
@@ -940,6 +941,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #if !BUILDFLAG(IS_ANDROID)
   DependencyParserModelLoaderFactory::GetInstance();
   DevToolsAndroidBridge::Factory::GetInstance();
+  DevToolsNavigationGatingServiceFactory::GetInstance();
 #endif
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   DiceMigrationServiceFactory::GetInstance();
@@ -1107,7 +1109,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #endif  // !BUILDFLAG(IS_ANDROID)
   InMemoryURLIndexFactory::GetInstance();
   visited_url_ranking::VisitedURLRankingServiceFactory::GetInstance();
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   InstantServiceFactory::GetInstance();
 #endif
 #if !BUILDFLAG(IS_ANDROID)

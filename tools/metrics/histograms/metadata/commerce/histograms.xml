@@ -158,7 +158,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.Discounts.DiscountBubble.SourceTypeOnShow"
-    enum="DiscountType" expires_after="2027-01-26">
+    enum="DiscountType" expires_after="2027-03-28">
   <owner>ihsuanchen@google.com</owner>
   <owner>chrome-shopping@google.com</owner>
   <summary>
@@ -178,7 +178,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.Discounts.DiscountsBubble.SourceTypeOnCopy"
-    enum="DiscountType" expires_after="2027-01-26">
+    enum="DiscountType" expires_after="2027-03-28">
   <owner>ihsuanchen@google.com</owner>
   <owner>chrome-shopping@google.com</owner>
   <summary>
@@ -189,7 +189,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.Discounts.DiscountsBubble.TypeOnCopy"
-    enum="DiscountClusterType" expires_after="2027-01-26">
+    enum="DiscountClusterType" expires_after="2027-03-28">
   <owner>meiliang@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
   <summary>
@@ -496,7 +496,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.PriceDrops.{ManagementType}.NotificationCount"
-    units="notifications" expires_after="2026-10-04">
+    units="notifications" expires_after="2027-09-28">
   <owner>zhiyuancai@chromium.org</owner>
   <owner>ayman@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
@@ -510,7 +510,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.PriceDrops.{ManagementType}.NotificationReachedCap"
-    enum="Boolean" expires_after="2026-06-08">
+    enum="Boolean" expires_after="2027-09-28">
   <owner>ayman@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
   <summary>
@@ -518,6 +518,9 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
     by default) has reached the cap limit for specified management type.
     Recorded when we are trying to show any price drop notifications.
     Implemented for Android.
+
+    Warning: this histogram was expired from 2026-06-08 to 2026-09-28; data may
+    be missing.
   </summary>
   <token key="ManagementType" variants="ManagementTypes"/>
 </histogram>
@@ -711,7 +714,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.PriceTracking.PriceInsightsSidePanel.{Action}"
-    enum="PriceInsightsPriceBucket" expires_after="2027-01-25">
+    enum="PriceInsightsPriceBucket" expires_after="2027-03-28">
   <owner>yuezhanggg@chromium.org</owner>
   <owner>mdjones@chromium.org</owner>
   <summary>
@@ -726,7 +729,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="Commerce.PriceTracking.PriceTrackedProductCount"
-    units="subscriptions" expires_after="2027-01-24">
+    units="subscriptions" expires_after="2027-03-28">
   <owner>ayman@chromium.org</owner>
   <owner>mdjones@chromium.org</owner>
   <owner>chrome-shopping@google.org</owner>
@@ -821,20 +824,6 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
     the shopping service's product info API is enabled and is recorded only
     after the local, on-page fallback is run (since we need both server-provided
     and local to record the right value).
-  </summary>
-</histogram>
-
-<histogram name="Commerce.Subscriptions.TabEligible" enum="Boolean"
-    expires_after="2023-04-25">
-  <owner>zhiyuancai@chromium.org</owner>
-  <owner>ayman@chromium.org</owner>
-  <owner>chrome-shopping@google.com</owner>
-  <summary>
-    Records whether a tab is eligible for commerce subscriptions. True when the
-    tab has offer and the tab is stale (Last opened time between 1 and 90 days).
-    Recorded when we initialize commerce subscriptions (For eligible users, we
-    initialize subscriptions when Chrome becomes foreground app but at most once
-    in a one-day moving window). Implemented for Android.
   </summary>
 </histogram>
 
@@ -962,7 +951,7 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
 </histogram>
 
 <histogram name="MerchantTrust.BottomSheet.OpenSource"
-    enum="MerchantTrustBottomSheetOpenedSource" expires_after="2026-04-25">
+    enum="MerchantTrustBottomSheetOpenedSource" expires_after="2027-09-30">
   <owner>zhiyuancai@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
   <summary>
@@ -970,6 +959,9 @@ https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histogra
     sheet is opened. Implemented for Android.
 
     Warning: this histogram was expired from 2023-04-25 to 2024-09-18; data may
+    be missing.
+
+    Warning: this histogram was expired from 2026-04-25 to 2026-09-30; data may
     be missing.
   </summary>
 </histogram>

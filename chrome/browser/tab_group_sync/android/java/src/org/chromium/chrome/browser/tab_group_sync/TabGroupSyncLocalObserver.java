@@ -279,7 +279,7 @@ public final class TabGroupSyncLocalObserver {
             }
 
             @Override
-            public void willMoveTabOutOfGroup(Tab movedTab, @Nullable Token destinationTabGroupId) {
+            public void willMoveTabOutOfGroup(Tab movedTab) {
                 if (!mIsObserving) return;
                 LogUtils.log(TAG, "willMoveTabOutOfGroup, tab id = " + movedTab.getId());
 
@@ -290,11 +290,10 @@ public final class TabGroupSyncLocalObserver {
             }
 
             @Override
-            public void didCreateNewGroup(Tab destinationTab) {
+            public void didCreateNewGroup(Token tabGroupId) {
                 if (!mIsObserving) return;
                 LogUtils.log(TAG, "didCreateNewGroup");
-                LocalTabGroupId localTabGroupId =
-                        assertNonNull(TabGroupSyncUtils.getLocalTabGroupId(destinationTab));
+                LocalTabGroupId localTabGroupId = new LocalTabGroupId(tabGroupId);
                 if (groupExistsInSync(localTabGroupId)) return;
 
                 mRemoteTabGroupMutationHelper.createRemoteTabGroup(localTabGroupId);

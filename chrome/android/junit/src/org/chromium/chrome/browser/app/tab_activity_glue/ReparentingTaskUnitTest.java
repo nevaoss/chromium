@@ -62,6 +62,7 @@ import java.util.Map;
 
 /** Unit test for {@link ReparentingTask}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class ReparentingTaskUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -362,7 +363,6 @@ public class ReparentingTaskUnitTest {
                 /* tabGroupTitle= */ "Group",
                 /* mhtmlTabTitle= */ null,
                 /* tabGroupCollapsed= */ false,
-                /* isGroupShared= */ false,
                 /* isIncognito= */ false);
     }
 

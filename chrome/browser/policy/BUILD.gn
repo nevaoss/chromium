@@ -355,7 +355,10 @@ source_set("policy_specific_browser_tests") {
     "//chrome/browser/component_updater",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/media/webrtc",
+    "//chrome/browser/net",
+    "//chrome/browser/policy",
     "//chrome/browser/preloading:prefs",
+    "//chrome/browser/profiles:misc",
     "//chrome/browser/ui/autofill",
     "//chrome/common",
     "//chrome/test:test_support",
@@ -364,6 +367,7 @@ source_set("policy_specific_browser_tests") {
     "//components/content_settings/core/common",
     "//components/heap_profiling/in_process",
     "//components/policy/core/common",
+    "//components/policy/core/common:test_support",
     "//components/prefs",
     "//components/proxy_config",
     "//components/safe_browsing:buildflags",
@@ -374,6 +378,9 @@ source_set("policy_specific_browser_tests") {
     "//components/unified_consent",
     "//content/test:test_support",
     "//media",
+    "//services/cert_verifier/public/mojom",
+    "//services/network:test_support",
+    "//services/network/public/mojom",
     "//testing/gmock",
   ]
 
@@ -643,6 +650,16 @@ source_set("browser_tests") {
     sources += [ "test/network_service_sandbox_enabled_browsertest.cc" ]
   }
 
+  if (!is_android) {
+    sources += [ "cloud/component_cloud_policy_browsertest.cc" ]
+
+    deps += [
+      "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui:browser_window_header",
+      "//chrome/test:test_support",
+    ]
+  }
+
   if (!is_android && !is_chromeos) {
     sources += [
       "cloud/chrome_browser_cloud_management_browsertest_delegate_desktop.cc",
@@ -690,7 +707,6 @@ source_set("browser_tests") {
 
   if (!is_android) {
     sources += [
-      "cloud/component_cloud_policy_browsertest.cc",
       "cpu_performance_override_browsertest.cc",
       "policy_initialization_browsertest.cc",
       "test/cast_policy_browsertest.cc",
@@ -714,15 +730,11 @@ source_set("browser_tests") {
       "//chrome/browser/content_settings",
       "//chrome/browser/search_engines",
       "//chrome/browser/site_protection:utils",
-      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_otr_state",
-      "//chrome/browser/ui:browser_tabstrip",
-      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/search:test_support_ui",
       "//chrome/browser/ui/toolbar/cast",
       "//chrome/browser/usb",
-      "//chrome/test:test_support",
       "//components/collaboration/public:prefs",
       "//components/history_clusters/core",
       "//device/bluetooth:mocks",
@@ -876,7 +888,14 @@ source_set("unit_tests") {
 
   if (!is_android) {
     sources += [ "policy_path_parser_unittest.cc" ]
-    deps += [ ":path_parser" ]
+    deps += [
+      ":path_parser",
+      "//chrome/browser/device_api",
+      "//chrome/browser/web_applications",
+      "//chrome/browser/web_applications:web_applications_test_support",
+      "//components/webapps/isolated_web_apps",
+      "//services/data_decoder/public/cpp:test_support",
+    ]
   }
 
   if (enable_extensions_core) {
@@ -1277,7 +1296,7 @@ source_set("impl") {
     "//chrome/browser/ui/toolbar/chrome_labs",
     "//chrome/browser/ui/webui/version",
     "//chrome/browser/webauthn",
-    "//components/autofill/core/browser/at_memory/policy",
+    "//components/autofill/core/browser/policy",
     "//components/blocked_content",
     "//components/bookmarks/managed",
     "//components/certificate_transparency",
@@ -1404,14 +1423,19 @@ source_set("impl") {
     sources += [
       "device_account_initializer.cc",
       "managed_account_policy_handler.cc",
+      "value_provider/web_app_managed_configuration_value_provider.cc",
+      "value_provider/web_app_managed_configuration_value_provider.h",
     ]
     deps += [
+      "//chrome/browser/device_api",
       "//chrome/browser/device_identity",
       "//chrome/browser/indigo",
       "//chrome/browser/performance_manager/public/user_tuning",
       "//chrome/browser/web_applications",
       "//components/headless/policy",
       "//components/live_caption",
+      "//components/web_package",
+      "//components/webapps/isolated_web_apps",
     ]
 
     if (!is_chromeos) {

@@ -441,7 +441,6 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.THREADED_BODY_LOADER,
                 "If enabled, reads and decodes navigation body data off the main thread."),
         Flag.baseFeature(BlinkFeatures.EXPAND_COMPOSITED_CULL_RECT),
-        Flag.baseFeature(BlinkFeatures.MERGE_FIXED_LAYERS),
         Flag.baseFeature(BlinkFeatures.MERGE_STICKY_LAYERS),
         Flag.baseFeature(CcFeatures.NEW_CONTENT_FOR_CHECKERBOARDED_SCROLLS),
         Flag.baseFeature(CcFeatures.PRESERVE_DISCARDABLE_IMAGE_MAP_QUALITY),
@@ -1286,10 +1285,6 @@ public final class ProductionSupportedFlagList {
                 "No-op experiment to verify WebView uses low entropy source provided by the"
                         + " nonembedded WebView services work."),
         Flag.baseFeature(
-                PaymentFeatureList.PAYMENT_REQUEST_USE_RENDERER_URL_LOADER,
-                "When enabled, the PaymentRequest will use the URL loader from the renderer instead"
-                        + " of the browser process."),
-        Flag.baseFeature(
                 ContentFeatures.PREVIEW_HANDWRITING_GESTURE,
                 "When enabled, it allows users to see a preview of their handwriting gestures"),
         Flag.baseFeature(
@@ -1340,6 +1335,11 @@ public final class ProductionSupportedFlagList {
                 BaseFeatures.SHUTDOWN_PRE_NATIVE_THREAD_POOL_AFTER_STARTUP,
                 "When enabled, after start up the thread pool in PostTask.java"
                         + " will be shutdown so it doesn't consume resources when not needed."),
+        Flag.baseFeature(
+                "AsyncThreadPoolInit",
+                "When enabled, thread pool initialization creates various thread groups'"
+                        + " initial threads asynchronously on the service thread instead of"
+                        + " synchronously on UI thread."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_PERSIST_HTTP_SERVER_PROPERTIES,
                 "When enabled, WebView will save Alt-Svc information across sessions."),
@@ -1527,6 +1527,13 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_IGNORE_DEFAULT_VIDEO_POSTER,
                 "Use Chromium's usual video poster logic instead of"
                         + " WebChromeClient.getDefaultVideoPoster()"),
+        Flag.baseFeature(
+                GpuFeatures.VULKAN_IMAGINATION_MSAA,
+                "Enables Ganesh/Vulkan MSAA support on Imagination (PowerVR) GPUs."),
+        Flag.baseFeature(
+                MediaFeatures.AUDIO_RENDERER_MIXER_IMMEDIATE_PAUSE,
+                "Immediately pauses the underlying audio output stream on explicit media"
+                        + " player pauses instead of waiting for the 10-second mixer pause delay."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

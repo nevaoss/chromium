@@ -87,6 +87,12 @@ void RecordPermissionElementInvalidStyleReason(const QualifiedName& tag_name,
       reason);
 }
 
+void RecordGeolocationRequestInitiationFlow(
+    CapabilityElementGeolocationRequestFlow flow) {
+  base::UmaHistogramEnumeration(
+      "Blink.CapabilityElement.Geolocation.RequestInitiationFlow", flow);
+}
+
 void RecordGeolocationRequestResult(CapabilityElementGeolocationResult result) {
   base::UmaHistogramEnumeration(
       "Blink.CapabilityElement.Geolocation.RequestResult", result);
@@ -106,6 +112,12 @@ void RecordGeolocationTimeToPosition(base::TimeDelta duration) {
 void RecordGeolocationTimeToError(base::TimeDelta duration) {
   base::UmaHistogramMediumTimes(
       "Blink.CapabilityElement.Geolocation.TimeToError", duration);
+}
+
+void RecordGeolocationAccuracyMode(
+    CapabilityElementGeolocationAccuracyMode mode) {
+  base::UmaHistogramEnumeration(
+      "Blink.CapabilityElement.Geolocation.AccuracyMode", mode);
 }
 
 }  // namespace blink

@@ -11,8 +11,6 @@
 #include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
-#include "base/metrics/histogram_functions.h"
-#include "base/notimplemented.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
@@ -24,6 +22,7 @@
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/actor/actor_metrics.h"
 #include "chrome/browser/actor/actor_proto_conversion.h"
+#include "chrome/browser/actor/actor_surface_registry.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "components/sessions/core/session_id.h"
@@ -36,6 +35,7 @@
 #include "chrome/browser/actor/actor_util.h"
 #include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/execution_engine.h"
+#include "chrome/browser/actor/headless_web_contents_manager.h"
 #include "chrome/browser/actor/tab_observation_strategy.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/ui/actor_ui_state_manager.h"
@@ -44,14 +44,11 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
-#include "chrome/browser/tab_list/tab_removed_reason.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/common/actor.mojom.h"
 #include "chrome/common/actor/action_result.h"
-#include "chrome/common/webui_url_constants.h"
 #include "components/actor/core/actor_features.h"
 #include "components/actor/core/actor_switches.h"
 #include "components/actor/core/aggregated_journal.h"
@@ -67,8 +64,6 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
-#include "content/public/common/content_switches.h"
-#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/abseil-cpp/absl/strings/str_format.h"
 #include "ui/base/window_open_disposition.h"
 
@@ -152,6 +147,10 @@ using ui::ActorUiStateManagerInterface;
 
 ActorKeyedService::ActorKeyedService(Profile* profile) : profile_(profile) {
   actor_ui_state_manager_ = std::make_unique<ui::ActorUiStateManager>(*this);
+  headless_web_contents_manager_ =
+      std::make_unique<HeadlessWebContentsManager>(profile_);
+  surface_registry_ = std::make_unique<ActorSurfaceRegistry>(
+      headless_web_contents_manager_.get());
   profile_observation_.Observe(profile_);
   actor::InitActionBlocklist(profile_);
 
@@ -219,6 +218,8 @@ void ActorKeyedService::Shutdown() {
   // Ensure tasks get deleted synchronously to avoid dangling refs.
   CHECK(active_tasks_.empty());
   pending_delete_tasks_.clear();
+  surface_registry_.reset();
+  headless_web_contents_manager_.reset();
   trace_file_serializer_.reset();
 }
 
@@ -541,6 +542,8 @@ TaskId ActorKeyedService::CreateTaskImpl(
 
 #if !BUILDFLAG(IS_ANDROID)
   ui_state_manager->LazyInitTabTracker();
+  active_tasks_[task_id]->SetNavigationDelegate(
+      ui_state_manager->GetNavigationDelegate());
 #endif
 
   NotifyTaskStateChanged(*active_tasks_[task_id]);

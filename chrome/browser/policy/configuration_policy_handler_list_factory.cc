@@ -62,8 +62,8 @@
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
-#include "components/autofill/core/browser/at_memory/policy/find_and_fill_with_gemini_settings_policy_handler.h"
 #include "components/autofill/core/browser/permissions/autofill_policy_handler.h"
+#include "components/autofill/core/browser/policy/autofill_gen_ai_settings_policy_handler.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/blocked_content/pref_names.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
@@ -1974,6 +1974,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kPrintingLPACSandboxEnabled,
     prefs::kPrintingLPACSandboxEnabled,
     base::Value::Type::BOOLEAN },
+  { key::kLaunchOnStartupEnabled,
+    prefs::kForegroundLaunchOnLogin,
+    base::Value::Type::BOOLEAN },
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
@@ -1995,6 +1998,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
 #endif  // !BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  { key::kDynamicPatchingEnabled,
+    prefs::kDynamicPatchingEnabled,
+    base::Value::Type::BOOLEAN },
   { key::kPrintPdfAsImageAvailability,
     prefs::kPrintPdfAsImageAvailability,
     base::Value::Type::BOOLEAN },
@@ -3593,9 +3599,14 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
   gen_ai_default_policies.emplace_back(
+      key::kAutofillGenAiSettings,
+      optimization_guide::prefs::kFindAndFillWithGeminiSettings);
+  gen_ai_default_policies.emplace_back(
       key::kAutofillPredictionSettings,
       optimization_guide::prefs::
-          kAutofillPredictionImprovementsEnterprisePolicyAllowed);
+          kAutofillPredictionImprovementsEnterprisePolicyAllowed,
+      key::kAutofillGenAiSettings,
+      GenAiDefaultSettingsPolicyHandler::PolicyValueToPrefMap());
 #if BUILDFLAG(IS_CHROMEOS)
   gen_ai_default_policies.emplace_back(key::kGenAIWallpaperSettings,
                                        ash::prefs::kGenAIWallpaperSettings);
@@ -3684,9 +3695,6 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       contextual_search::kSearchContentSharingSettings,
       GenAiDefaultSettingsPolicyHandler::PolicyValueToPrefMap(
           {{0, 0}, {1, 0}, {2, 1}}));
-  gen_ai_default_policies.emplace_back(
-      key::kFindAndFillWithGeminiSettings,
-      optimization_guide::prefs::kFindAndFillWithGeminiSettings);
   handlers->AddHandler(std::make_unique<GenAiDefaultSettingsPolicyHandler>(
       gen_ai_default_policies));
 #if !BUILDFLAG(IS_ANDROID)
@@ -3697,10 +3705,9 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       std::make_unique<GenAiDefaultSettingsPolicyHandler>(
           gen_ai_default_policies)));
 #endif
-  handlers->AddHandler(
-      std::make_unique<FindAndFillWithGeminiSettingsPolicyHandler>(
-          std::make_unique<GenAiDefaultSettingsPolicyHandler>(
-              gen_ai_default_policies)));
+  handlers->AddHandler(std::make_unique<AutofillGenAiSettingsPolicyHandler>(
+      std::make_unique<GenAiDefaultSettingsPolicyHandler>(
+          gen_ai_default_policies)));
   handlers->AddHandler(std::make_unique<GeminiActOnWebSettingsPolicyHandler>(
       std::make_unique<GenAiDefaultSettingsPolicyHandler>(
           std::move(gen_ai_default_policies))));

@@ -11,14 +11,22 @@ import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.RecyclerViewActions.scrollTo;
+import static androidx.test.espresso.intent.Intents.intended;
+import static androidx.test.espresso.intent.Intents.intending;
+import static androidx.test.espresso.intent.matcher.IntentMatchers.hasAction;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
 import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isFocused;
+import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -27,18 +35,24 @@ import static org.junit.Assert.assertTrue;
 import static org.chromium.base.test.util.Batch.PER_CLASS;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 
+import android.app.Activity;
+import android.app.Instrumentation.ActivityResult;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Rect;
 import android.os.Build;
+import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.espresso.Espresso;
+import androidx.test.espresso.intent.Intents;
 import androidx.test.espresso.matcher.BoundedMatcher;
 import androidx.test.filters.MediumTest;
+import androidx.test.runner.lifecycle.Stage;
 
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -49,15 +63,21 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import org.chromium.base.PackageManagerUtils;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
+import org.chromium.chrome.browser.privacy.settings.PrivacySettings;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
@@ -300,6 +320,113 @@ public class SettingsPageTest {
         onViewWaiting(withText("Microsoft Bing")).check(matches(isDisplayed()));
     }
 
+    /**
+     * Recreates the activity the way a real theme change does. Unlike {@link
+     * ChromeTabbedActivityTestRule#recreateActivity()}, which calls {@link
+     * android.app.Activity#recreate()} directly, this goes through {@link
+     * org.chromium.chrome.browser.app.ChromeActivity#onNightModeStateChanged()}, which detaches
+     * tabs for reparenting before recreating the activity.
+     */
+    private void recreateActivityForThemeChange() {
+        ChromeTabbedActivity activity = mActivityTestRule.getActivity();
+        ChromeTabbedActivity newActivity =
+                ApplicationTestUtils.waitForActivityWithClass(
+                        ChromeTabbedActivity.class,
+                        Stage.RESUMED,
+                        activity::onNightModeStateChanged);
+        mActivityTestRule.setActivity(newActivity);
+    }
+
+    /** Regression test for crbug.com/566898692. */
+    @Test
+    @MediumTest
+    @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    public void testThemeSwitchWithTabReparentingRestoresDetailFragment() {
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+        onViewWaiting(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
+
+        // Open the SearchEngineSettings detail fragment.
+        var matcher =
+                allOf(
+                        withId(R.id.recycler_view),
+                        hasDescendant(withText(R.string.search_engine_settings)));
+        onViewWaiting(matcher)
+                .perform(scrollTo(hasDescendant(withText(R.string.search_engine_settings))));
+        onViewWaiting(withText(R.string.search_engine_settings)).perform(click());
+        onViewWaiting(withText("Microsoft Bing")).check(matches(isDisplayed()));
+
+        // Recreate the activity through the theme change path, which detaches the tab.
+        recreateActivityForThemeChange();
+
+        // Verify the header pane and the SearchEngineSettings detail fragment are restored.
+        onViewWaiting(allOf(withId(R.id.action_bar), isDisplayed())).check(matches(isDisplayed()));
+        onViewWaiting(allOf(withText(R.string.prefs_privacy_security), isDisplayed()))
+                .check(matches(isDisplayed()));
+        onViewWaiting(allOf(withText("Microsoft Bing"), isDisplayed()))
+                .check(matches(isDisplayed()));
+    }
+
+    /**
+     * Regression test for crbug.com/566132507: after a theme change, the toolbar back arrow on a
+     * nested detail page should return to its parent page instead of navigating the tab away from
+     * settings. Without SettingsInTabUrlNav this fails, because the TAB_HISTORY back press handler
+     * outranks the settings page's NATIVE_PAGE handler, so nested-page back depends on fragment
+     * callback registration order.
+     */
+    @Test
+    @MediumTest
+    @Restriction({
+        DeviceFormFactor.ONLY_TABLET,
+        // Automotive devices do not support display rotation.
+        DeviceRestriction.RESTRICTION_TYPE_NON_AUTO,
+    })
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
+    public void testThemeSwitchInSingleColumnThenToolbarBackOnNestedPage() {
+        ensureActivityOrientation(Configuration.ORIENTATION_PORTRAIT);
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+        ensureSingleColumnMode();
+
+        // Open Privacy and security, then its nested Delete browsing data page.
+        var matcher =
+                allOf(
+                        withId(R.id.recycler_view),
+                        hasDescendant(withText(R.string.prefs_privacy_security)));
+        onViewWaiting(matcher)
+                .perform(scrollTo(hasDescendant(withText(R.string.prefs_privacy_security))));
+        onViewWaiting(allOf(withText(R.string.prefs_privacy_security), isDisplayed()))
+                .perform(click());
+        onViewWaiting(allOf(withText(R.string.clear_browsing_data_title), isDisplayed()))
+                .perform(click());
+        onViewWaiting(allOf(withText(R.string.clear_cookies_and_site_data_title), isDisplayed()))
+                .check(matches(isDisplayed()));
+
+        recreateActivityForThemeChange();
+        ensureSingleColumnMode();
+        onViewWaiting(allOf(withText(R.string.clear_cookies_and_site_data_title), isDisplayed()))
+                .check(matches(isDisplayed()));
+
+        // Tap the toolbar back arrow. Privacy and security should be shown in the same tab.
+        onViewWaiting(
+                        allOf(
+                                withContentDescription(R.string.back),
+                                isDescendantOfA(withId(R.id.action_bar)),
+                                isDisplayed()))
+                .perform(click());
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    var activity = mActivityTestRule.getActivity();
+                    Tab tab = activity.getActivityTab();
+                    Criteria.checkThat(
+                            "Tab should still show settings",
+                            tab != null && tab.getNativePage() instanceof SettingsPage,
+                            is(true));
+                    var hostFragment = SettingsHostFragment.get(activity);
+                    Criteria.checkThat(hostFragment, notNullValue());
+                    Criteria.checkThat(
+                            hostFragment.getMainFragment(), instanceOf(PrivacySettings.class));
+                });
+    }
+
     /** Regression test for https://crbug.com/535695748. */
     @Test
     @MediumTest
@@ -423,6 +550,66 @@ public class SettingsPageTest {
 
         // Verify Autofill and passwords is highlighted.
         onView(autofillInHeader).check(matches(isHighlighted()));
+    }
+
+    /** Regression test for https://crbug.com/565417618 under SettingsInTabUrlNav. */
+    @Test
+    @MediumTest
+    @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
+    public void testExternalActivityPreferenceKeepsHighlight_urlNav() {
+        // The test requires an emulator wide enough to use two-column mode.
+        Resources res = mActivityTestRule.getActivity().getResources();
+        int minWidth = res.getDimensionPixelSize(R.dimen.settings_min_multi_column_screen_width);
+        int screenWidth = res.getDisplayMetrics().widthPixels;
+        Assume.assumeTrue("Test requires two-column mode.", screenWidth >= minWidth);
+        Assume.assumeTrue(
+                "Test requires the notification settings row.",
+                PackageManagerUtils.canResolveActivity(
+                        new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)));
+
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+
+        int searchEngineTitle = R.string.search_engine_settings;
+        int notificationsTitle = R.string.prefs_notifications;
+        onViewWaiting(withText(searchEngineTitle)).check(matches(isDisplayed()));
+
+        var headerRecyclerViewMatcher =
+                allOf(withId(R.id.recycler_view), isDescendantOfA(withId(R.id.preferences_header)));
+
+        // Open Search engine in the detail pane.
+        onView(headerRecyclerViewMatcher)
+                .perform(scrollTo(hasDescendant(withText(searchEngineTitle))));
+        var searchEngineInHeader =
+                allOf(
+                        isDescendantOfA(withId(R.id.preferences_header)),
+                        withText(searchEngineTitle));
+        onView(searchEngineInHeader).perform(click());
+        onView(searchEngineInHeader).check(matches(isHighlighted()));
+
+        Intents.init();
+        try {
+            // Stub the Android notification settings activity.
+            intending(hasAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS))
+                    .respondWith(new ActivityResult(Activity.RESULT_OK, null));
+
+            onView(headerRecyclerViewMatcher)
+                    .perform(scrollTo(hasDescendant(withText(notificationsTitle))));
+            var notificationsInHeader =
+                    allOf(
+                            isDescendantOfA(withId(R.id.preferences_header)),
+                            withText(notificationsTitle));
+            onView(notificationsInHeader).perform(click());
+            intended(hasAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS));
+
+            // The detail pane didn't change, so neither should the highlight.
+            onView(notificationsInHeader).check(matches(not(isHighlighted())));
+            onView(headerRecyclerViewMatcher)
+                    .perform(scrollTo(hasDescendant(withText(searchEngineTitle))));
+            onView(searchEngineInHeader).check(matches(isHighlighted()));
+        } finally {
+            Intents.release();
+        }
     }
 
     @Test
@@ -692,7 +879,12 @@ public class SettingsPageTest {
                 .check(doesNotExist());
     }
 
-    /** Regression test for https://crbug.com/549509308. */
+    /**
+     * Regression test for https://crbug.com/549509308.
+     *
+     * <p>TODO(crbug.com/521895796): Remove once SettingsInTabUrlNav is enabled by default, in favor
+     * of {@link #testSearchBoxAlignmentInPortrait_urlNav()}.
+     */
     @Test
     @MediumTest
     @Restriction({
@@ -700,40 +892,9 @@ public class SettingsPageTest {
         // Automotive devices do not support display rotation.
         DeviceRestriction.RESTRICTION_TYPE_NON_AUTO,
     })
+    @DisableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
     public void testSearchBoxAlignmentInPortrait() {
-        // Ensure portrait.
-        ensureActivityOrientation(Configuration.ORIENTATION_PORTRAIT);
-
-        // Load settings.
-        mActivityTestRule.loadUrl("chrome-native://settings/");
-        onViewWaiting(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
-
-        // Capture search_box screen bounds.
-        Rect searchBoxBounds = getViewScreenBounds(R.id.search_box);
-
-        // Tap on search box to enter search state.
-        onViewWaiting(withId(R.id.search_box)).perform(click());
-        onViewWaiting(withId(R.id.search_query_container)).check(matches(isDisplayed()));
-
-        // Verify search_query_container matches search_box horizontal screen bounds.
-        Rect queryBounds = getViewScreenBounds(R.id.search_query_container);
-        assertEquals(
-                "Search query container should align horizontally with search box",
-                searchBoxBounds.left,
-                queryBounds.left);
-        assertEquals(
-                "Search query container should match search box width",
-                searchBoxBounds.width(),
-                queryBounds.width());
-
-        // Type "Theme" in search query.
-        onViewWaiting(withId(R.id.search_query)).perform(replaceText("Theme"), closeSoftKeyboard());
-
-        // Wait for search results to appear and click "Theme".
-        onViewWaiting(allOf(withId(android.R.id.title), withText(R.string.theme_settings)))
-                .check(matches(isDisplayed()));
-        onView(allOf(withId(android.R.id.title), withText(R.string.theme_settings)))
-                .perform(click());
+        Rect searchBoxBounds = openThemeSettingsFromSearchInPortrait();
 
         // Simulate theme switch / activity recreation.
         mActivityTestRule.recreateActivity();
@@ -744,21 +905,83 @@ public class SettingsPageTest {
         // Exit search state back to MainSettings.
         Espresso.pressBack();
 
-        // Tap on search box again.
+        tapSearchBoxAndAssertQueryAlignment(searchBoxBounds, "after navigating back");
+    }
+
+    /**
+     * Regression test for https://crbug.com/549509308, with URL navigation.
+     *
+     * <p>Search is not part of the URL, so it does not survive activity recreation: the page is
+     * rebuilt from the committed URL, chrome://settings.
+     */
+    @Test
+    @MediumTest
+    @Restriction({
+        DeviceFormFactor.ONLY_TABLET,
+        // Automotive devices do not support display rotation.
+        DeviceRestriction.RESTRICTION_TYPE_NON_AUTO,
+    })
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
+    public void testSearchBoxAlignmentInPortrait_urlNav() {
+        Rect searchBoxBounds = openThemeSettingsFromSearchInPortrait();
+
+        // Simulate theme switch / activity recreation.
+        mActivityTestRule.recreateActivity();
+
+        // Search is closed, leaving MainSettings.
+        onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
+        onView(withId(R.id.search_query_container)).check(matches(not(isDisplayed())));
+
+        tapSearchBoxAndAssertQueryAlignment(searchBoxBounds, "after activity recreation");
+    }
+
+    /**
+     * Loads settings in portrait, enters search, and opens ThemeSettings from the search results.
+     *
+     * @return The screen bounds of the search box before entering search.
+     */
+    private Rect openThemeSettingsFromSearchInPortrait() {
+        // Ensure portrait.
+        ensureActivityOrientation(Configuration.ORIENTATION_PORTRAIT);
+
+        // Load settings.
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+        onViewWaiting(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
+
+        // Capture search_box screen bounds.
+        Rect searchBoxBounds = getViewScreenBounds(R.id.search_box);
+
+        tapSearchBoxAndAssertQueryAlignment(searchBoxBounds, "on entering search");
+
+        // Type "Theme" in search query.
+        onViewWaiting(withId(R.id.search_query)).perform(replaceText("Theme"), closeSoftKeyboard());
+
+        // Wait for search results to appear and click "Theme".
+        onViewWaiting(allOf(withId(android.R.id.title), withText(R.string.theme_settings)))
+                .check(matches(isDisplayed()));
+        onView(allOf(withId(android.R.id.title), withText(R.string.theme_settings)))
+                .perform(click());
+
+        return searchBoxBounds;
+    }
+
+    /**
+     * Taps the search box to enter search state, and verifies that search_query_container matches
+     * the given search_box horizontal screen bounds.
+     */
+    private void tapSearchBoxAndAssertQueryAlignment(Rect searchBoxBounds, String when) {
         onViewWaiting(withId(R.id.search_box)).perform(click());
         onViewWaiting(withId(R.id.search_query_container)).check(matches(isDisplayed()));
 
-        // Verify search_query_container still matches search_box horizontal screen bounds.
-        Rect queryBoundsAfterBack = getViewScreenBounds(R.id.search_query_container);
+        Rect queryBounds = getViewScreenBounds(R.id.search_query_container);
         assertEquals(
-                "Search query container should align horizontally with search box after navigating"
-                        + " back",
+                "Search query container should align horizontally with search box " + when,
                 searchBoxBounds.left,
-                queryBoundsAfterBack.left);
+                queryBounds.left);
         assertEquals(
-                "Search query container should match search box width after navigating back",
+                "Search query container should match search box width " + when,
                 searchBoxBounds.width(),
-                queryBoundsAfterBack.width());
+                queryBounds.width());
     }
 
     /** Regression test for https://crbug.com/548848118. */

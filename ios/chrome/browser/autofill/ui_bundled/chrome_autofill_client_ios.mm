@@ -101,6 +101,7 @@
 #import "ios/chrome/browser/personal_context/model/ios_personal_context_first_run_service_factory.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/public/commands/autofill_commands.h"
+#import "ios/chrome/browser/shared/public/commands/form_input_accessory_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
@@ -308,8 +309,12 @@ void ChromeAutofillClientIOS::GetAiPageContent(
 
   base::OnceCallback<void(PageContextWrapperCallbackResponse)>
       page_context_completion_callback = base::BindOnce(
-          [](GetAiPageContentCallback inner_callback,
+          [](base::WeakPtr<ChromeAutofillClientIOS> weak_self,
+             GetAiPageContentCallback inner_callback,
              PageContextWrapperCallbackResponse response) {
+            if (weak_self) {
+              weak_self->page_context_wrapper_ = nil;
+            }
             if (!response.has_value()) {
               std::move(inner_callback).Run(std::nullopt);
               return;
@@ -318,13 +323,21 @@ void ChromeAutofillClientIOS::GetAiPageContent(
             std::move(inner_callback)
                 .Run((*response)->annotated_page_content());
           },
-          std::move(callback));
+          weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+
+  PageContextWrapperConfigBuilder config_builder;
+  config_builder.SetDefaultRichExtraction(true)
+      .SetExtractAutofill(true)
+      .SetUseRichExtractionWithActionable(base::FeatureList::IsEnabled(
+          features::kAutofillActionableAIPageContent));
 
   // Populate the PageContext proto and then execute the query.
-  // TODO(crbug.com/519079870): Make sure that geometry information is
-  // extracted.
+  // TODO(crbug.com/519079870): Populate `FormFieldData::form_control_ax_id` to
+  // match the APC `dom_node_id` and extract `NodeGeometry` for `TEXT_NODE`s on
+  // iOS so that neighbourhood context can be extracted from APC.
   page_context_wrapper_ = [[PageContextWrapper alloc]
         initWithWebState:web_state()
+                  config:config_builder.Build()
       completionCallback:std::move(page_context_completion_callback)];
   [page_context_wrapper_ setShouldGetAnnotatedPageContent:YES];
   [page_context_wrapper_ setShouldGetSnapshot:NO];
@@ -613,7 +626,8 @@ void ChromeAutofillClientIOS::HideSuggestions(
   current_field_id_ = {};
   [bridge_ hideAutofillPopup];
   if (reason == SuggestionHidingReason::kAcceptSuggestion) {
-    [commands_handler_ legacyResetAutofillSuggestionsLoadingStates];
+    [form_input_accessory_commands_handler_
+        resetAutofillSuggestionsLoadingStates];
   }
 }
 

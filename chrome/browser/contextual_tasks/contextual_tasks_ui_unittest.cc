@@ -21,6 +21,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_post_rearchitecture.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_page.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
@@ -893,14 +894,13 @@ TEST_F(ContextualTasksUiTest, AreUrlsEqual) {
 }
 
 TEST_F(ContextualTasksUiTest, GetContextualTasksLoadTimeData) {
-  // The feature is enabled by default; disable it so this test covers the
-  // platform voice search path regardless of the device's form factor.
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      contextual_tasks::kContextualTasksWebUiVoiceSearchDesktopAndroid);
-
   base::DictValue load_time_data =
       ContextualTasksUI::GetContextualTasksLoadTimeData(profile_);
+
+  // The in-panel WebUI voice search UI is only used on large-screen Android
+  // devices (tablet or desktop form factor); it is always false elsewhere.
+  const bool expect_webui_voice_search =
+      contextual_tasks::IsAndroidLargeFormFactor();
 
   // Only set when the in-panel WebUI voice search UI in desktop Android is
   // active. It drives audio wave simulation, since that UI cannot open its own
@@ -908,14 +908,14 @@ TEST_F(ContextualTasksUiTest, GetContextualTasksLoadTimeData) {
   std::optional<bool> android_speech_recognition =
       load_time_data.FindBool("androidSpeechRecognition");
   ASSERT_TRUE(android_speech_recognition.has_value());
-  EXPECT_FALSE(android_speech_recognition.value());
+  EXPECT_EQ(android_speech_recognition.value(), expect_webui_voice_search);
 
-  // With the feature disabled, Android delegates to the platform voice
-  // recognition activity.
+  // Android phones delegate to the platform voice recognition activity.
   std::optional<bool> is_system_voice_search_enabled =
       load_time_data.FindBool("isSystemVoiceSearchEnabled");
   ASSERT_TRUE(is_system_voice_search_enabled.has_value());
-  EXPECT_EQ(is_system_voice_search_enabled.value(), !!BUILDFLAG(IS_ANDROID));
+  EXPECT_EQ(is_system_voice_search_enabled.value(),
+            !!BUILDFLAG(IS_ANDROID) && !expect_webui_voice_search);
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -2393,6 +2393,7 @@ class MockToolbarPage : public contextual_tasks_toolbar::mojom::Page {
   void FlushForTesting() { receiver_.FlushForTesting(); }
 
   MOCK_METHOD(void, OnSidePanelPinStateChanged, (bool is_pinned), (override));
+  MOCK_METHOD(void, OnAiPageStatusChanged, (bool is_ai_page), (override));
 
  private:
   mojo::Receiver<contextual_tasks_toolbar::mojom::Page> receiver_{this};
@@ -2684,6 +2685,91 @@ TEST_F(ContextualTasksUiTest, OpenFeedbackUi_NoBrowser_SafeNoOp) {
   ASSERT_NE(base_ui, nullptr);
 
   base_ui->OpenFeedbackUi();
+}
+
+TEST_F(ContextualTasksUiTest, MoveTaskUiToNewTab_NoBrowser_SafeNoOp) {
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  ContextualTasksUIConfig config;
+  std::unique_ptr<content::WebUIController> controller =
+      config.CreateWebUIController(&web_ui, GURL("chrome://contextual-tasks"));
+  ASSERT_TRUE(controller);
+  auto* base_ui = static_cast<ContextualTasksUIBase*>(controller.get());
+  ASSERT_NE(base_ui, nullptr);
+
+  base_ui->MoveTaskUiToNewTab();
+}
+
+TEST_F(ContextualTasksUiTest, MoveTaskUiToNewTab_CallsUiService) {
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  auto contextual_tasks_ui = std::make_unique<ContextualTasksUI>(&web_ui);
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  contextual_tasks_ui->SetTaskId(task_id);
+
+  EXPECT_CALL(*service_for_nav_, MoveTaskUiToNewTab(task_id, _, _)).Times(1);
+
+  contextual_tasks_ui->MoveTaskUiToNewTab();
+}
+
+// MockToolbarPage and the toolbar page remote are desktop-only, so these tests
+// cannot be compiled on Android.
+#if !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextualTasksUiTest, OnAiPageStatusChanged) {
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  auto contextual_tasks_ui = std::make_unique<ContextualTasksUI>(&web_ui);
+
+  MockToolbarPage toolbar_page;
+  mojo::PendingRemote<contextual_tasks_toolbar::mojom::Page> remote =
+      toolbar_page.BindAndGetRemote();
+
+  mojo::Remote<contextual_tasks_toolbar::mojom::PageHandler> page_handler;
+  contextual_tasks_ui->CreatePageHandler(
+      std::move(remote), page_handler.BindNewPipeAndPassReceiver());
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(toolbar_page, OnAiPageStatusChanged(true))
+      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
+  contextual_tasks_ui->SetIsAiPage(true);
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksUiTest, NotifyAiPageStatusChanged_Unbound_SafeNoOp) {
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  auto contextual_tasks_ui = std::make_unique<ContextualTasksUI>(&web_ui);
+  contextual_tasks_ui->NotifyAiPageStatusChanged(true);
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+TEST_F(ContextualTasksUiTest, ShowThreadHistory_SafeNoOp) {
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  ContextualTasksUIConfig config;
+  std::unique_ptr<content::WebUIController> controller =
+      config.CreateWebUIController(&web_ui, GURL("chrome://contextual-tasks"));
+  ASSERT_TRUE(controller);
+  auto* base_ui = static_cast<ContextualTasksUIBase*>(controller.get());
+  ASSERT_NE(base_ui, nullptr);
+
+  base_ui->ShowThreadHistory();
+}
+
+TEST_F(ContextualTasksUiTest, ShowThreadHistory_PostRearchitecture_SafeNoOp) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      {kContextualTasks, kContextualTasksSidePanelRearchitecture}, {});
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  ContextualTasksUIConfig config;
+  std::unique_ptr<content::WebUIController> controller =
+      config.CreateWebUIController(&web_ui, GURL("chrome://contextual-tasks"));
+  ASSERT_TRUE(controller);
+  auto* base_ui = static_cast<ContextualTasksUIBase*>(controller.get());
+  ASSERT_NE(base_ui, nullptr);
+
+  base_ui->ShowThreadHistory();
 }
 
 }  // namespace contextual_tasks

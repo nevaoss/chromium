@@ -28,6 +28,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadows.ShadowNotification;
 
@@ -54,13 +55,14 @@ public class ActorNotificationFactoryTest {
     @Mock private Profile mProfile;
     @Mock private ProfileResolver.Natives mProfileResolverNatives;
     @Mock private ActorForegroundServiceController mServiceController;
-    @Mock private Activity mActivity;
 
+    private Activity mActivity;
     private Context mContext;
     private static final String TASK_TITLE = "Test Task";
 
     @Before
     public void setUp() {
+        mActivity = Robolectric.buildActivity(Activity.class).get();
         mContext = RuntimeEnvironment.application;
         ProfileResolverJni.setInstanceForTesting(mProfileResolverNatives);
         ActorForegroundServiceController.setInstanceForTesting(mServiceController);
@@ -242,6 +244,9 @@ public class ActorNotificationFactoryTest {
         assertTrue(
                 "Notification should have auto-cancel enabled",
                 (notification.flags & Notification.FLAG_AUTO_CANCEL) != 0);
+        assertFalse(
+                "Live notification should be allowed to alert",
+                (notification.flags & Notification.FLAG_ONLY_ALERT_ONCE) != 0);
 
         assertSmallIcon(notification);
         assertAction(notification);
@@ -259,6 +264,9 @@ public class ActorNotificationFactoryTest {
         assertFalse(
                 "Non-live completed notification should not be ongoing",
                 (nonLiveNotification.flags & Notification.FLAG_ONGOING_EVENT) != 0);
+        assertTrue(
+                "Non-live completed notification should only alert once",
+                (nonLiveNotification.flags & Notification.FLAG_ONLY_ALERT_ONCE) != 0);
         assertFalse(
                 "Non-live completed notification should not request promoted ongoing",
                 nonLiveNotification.extras.getBoolean(

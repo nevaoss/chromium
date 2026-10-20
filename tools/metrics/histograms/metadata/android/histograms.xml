@@ -1414,7 +1414,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BrowserControls.RenderDrivenShowConstraint"
-    enum="Boolean" expires_after="2026-10-04">
+    enum="Boolean" expires_after="2027-10-04">
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
   <summary>
@@ -1522,7 +1522,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessBinding.SetPriorityLatency"
-    units="microseconds" expires_after="2027-01-24">
+    units="microseconds" expires_after="2027-03-28">
   <owner>kawasin@google.com</owner>
   <owner>yfriedman@chromium.org</owner>
   <summary>
@@ -1872,7 +1872,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.DefaultBrowserPromo.EntryPoint.{Source}"
-    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-01-26">
+    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-03-28">
   <owner>eleanorlee@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -1965,7 +1965,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.DesktopWindowHeuristicResult4"
-    enum="DesktopWindowHeuristicResult" expires_after="2027-01-24">
+    enum="DesktopWindowHeuristicResult" expires_after="2027-03-28">
   <owner>aishwaryarj@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -2554,7 +2554,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Handoff.Enabled.{UpdateType}" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>zheliooo@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -2626,6 +2626,33 @@ chromium-metrics-reviews@google.com.
     Reports under which context (incognito or non-incognito) and visual
     component (search box or loupe) Hub Search is entered through. This includes
     tablet specific data which only has the loupe icon enabled.
+  </summary>
+</histogram>
+
+<histogram name="Android.InAppUpdate.DiscoverySnackbar.Event"
+    enum="InAppUpdateSnackbarEvent" expires_after="2027-03-10">
+  <owner>vakh@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records impressions and interactions with the in-app update Discovery
+    Snackbar in Chrome for Android, tracking whether the snackbar was shown,
+    tapped by the user to start a flexible download, dismissed without action,
+    or dismissed by lifecycle interruption. Note: Impression is recorded when
+    the snackbar is enqueued with SnackbarManager.
+  </summary>
+</histogram>
+
+<histogram name="Android.InAppUpdate.RestartSnackbar.Event"
+    enum="InAppUpdateSnackbarEvent" expires_after="2027-03-10">
+  <owner>vakh@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records impressions and interactions with the in-app update Restart Snackbar
+    in Chrome for Android, tracking whether the snackbar was shown after a
+    background update finished downloading, tapped by the user to restart
+    Chrome, dismissed without action, or dismissed by lifecycle interruption.
+    Note: Impression is recorded when the snackbar is enqueued with
+    SnackbarManager.
   </summary>
 </histogram>
 
@@ -3268,7 +3295,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MaybeCopyContentAreaAsBitmap.Time" units="ms"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <owner>clank-app-team@google.com</owner>
@@ -3556,7 +3583,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiInstance.NumInstances.DesktopWindow"
-    units="instances" expires_after="2027-01-24">
+    units="instances" expires_after="2027-03-28">
   <owner>aishwaryarj@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -3627,7 +3654,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiInstance.WindowManager.DesktopWindowModeState"
-    enum="DesktopWindowModeState" expires_after="2027-01-24">
+    enum="DesktopWindowModeState" expires_after="2027-03-28">
   <owner>aishwaryarj@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -5159,7 +5186,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DocumentLoad" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5181,7 +5208,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DocumentLoadResult.Detail"
-    enum="AndroidPdfLoadResult" expires_after="2027-01-24">
+    enum="AndroidPdfLoadResult" expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5216,7 +5243,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DownloadUrlDecoded" enum="Boolean"
-    expires_after="2026-12-01">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5227,7 +5254,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DownloadUrlEncoded" enum="Boolean"
-    expires_after="2026-12-01">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5237,7 +5264,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.FindInPageCounts" units="count"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5259,7 +5286,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.IsFrozenWhenDisplayed" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5281,7 +5308,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.SelectionMenuItem"
-    enum="AndroidPdfSelectionMenuItem" expires_after="2027-01-10">
+    enum="AndroidPdfSelectionMenuItem" expires_after="2027-03-28">
   <owner>rathomas@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5291,7 +5318,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.ToolbarAction" enum="AndroidPdfToolbarAction"
-    expires_after="2027-01-10">
+    expires_after="2027-03-28">
   <owner>rathomas@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5302,7 +5329,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.UriIsNull" enum="Boolean"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5422,7 +5449,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RequestDesktopSite.Changed" enum="SiteLayout"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -5433,7 +5460,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RequestDesktopSite.DomainSettingChanged"
-    enum="Boolean" expires_after="2027-01-24">
+    enum="Boolean" expires_after="2027-03-28">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -6933,17 +6960,6 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<histogram name="Android.Wallet.BoardingPass.Detected" enum="BooleanDetected"
-    expires_after="2024-12-31">
-  <owner>hanfeng@google.com</owner>
-  <owner>wallet-1p-integrations@google.com</owner>
-  <summary>
-    Records detected flight boarding pass barcode images on each page load. It's
-    only enabled on the Chrome Android app. It's only emitted once on page load,
-    either detected or not detected.
-  </summary>
-</histogram>
-
 <histogram name="Android.WebView.AgsaProcessName" enum="AgsaProcessName"
     expires_after="2026-11-30">
   <owner>elabadysayed@chromium.org</owner>
@@ -7878,7 +7894,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.HistoricalApplicationExitInfo.Counts2"
-    enum="AndroidProcessExitReason" expires_after="2027-03-14">
+    enum="AndroidProcessExitReason" expires_after="2027-09-30">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -7891,7 +7907,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.HistoricalApplicationExitInfo.Counts2.BACKGROUND"
-    enum="AndroidProcessExitReason" expires_after="2026-11-11">
+    enum="AndroidProcessExitReason" expires_after="2027-09-30">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -7905,7 +7921,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.HistoricalApplicationExitInfo.Counts2.DESTROYED"
-    enum="AndroidProcessExitReason" expires_after="2026-11-11">
+    enum="AndroidProcessExitReason" expires_after="2027-09-30">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -7919,7 +7935,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.HistoricalApplicationExitInfo.Counts2.FOREGROUND"
-    enum="AndroidProcessExitReason" expires_after="2026-11-11">
+    enum="AndroidProcessExitReason" expires_after="2027-09-30">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -7932,7 +7948,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.HistoricalApplicationExitInfo.Counts2.STARTUP"
-    enum="AndroidProcessExitReason" expires_after="2027-03-14">
+    enum="AndroidProcessExitReason" expires_after="2027-09-30">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -7945,7 +7961,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.HistoricalApplicationExitInfo.Counts2.UNKNOWN"
-    enum="AndroidProcessExitReason" expires_after="2026-11-11">
+    enum="AndroidProcessExitReason" expires_after="2027-09-30">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -8172,21 +8188,6 @@ chromium-metrics-reviews@google.com.
     Records whether a call to loadUrl succeeds or not, with regards to whether
     NavigationController.loadUrl returns a non-null NavigationHandle. This is
     logged once per call to loadUrl.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.LoadUrl.UrlScheme" enum="WebViewUrlScheme"
-    expires_after="2024-06-13">
-  <owner>ntfschr@chromium.org</owner>
-  <owner>torne@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records the scheme for the URL loaded by a browser-initiated navigation.
-    Specifically, this is the scheme of the URL passed to loadUrl() (and its
-    overloads), postUrl(), and loadData() (this is implicitly
-    &quot;data:&quot;). also records if this value is &quot;empty&quot;, which
-    means either null or &quot;about:blank&quot;. This intentionally excludes
-    loadDataWithBaseURL().
   </summary>
 </histogram>
 
@@ -10025,7 +10026,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ChromiumAndroidLinker.RelroSharingStatus2"
-    enum="RelroSharingStatus" expires_after="2027-01-17">
+    enum="RelroSharingStatus" expires_after="2027-03-28">
   <owner>lizeb@chromium.org</owner>
   <owner>pasko@chromium.org</owner>
   <summary>

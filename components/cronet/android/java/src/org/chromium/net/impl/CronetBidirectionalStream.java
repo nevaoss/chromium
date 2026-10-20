@@ -4,8 +4,6 @@
 
 package org.chromium.net.impl;
 
-import static java.lang.Math.max;
-
 import android.os.Build;
 import android.os.Process;
 
@@ -151,6 +149,8 @@ public class CronetBidirectionalStream extends ExperimentalBidirectionalStream {
     private int mNonfinalUserCallbackExceptionCount;
     private int mReadCount;
     private int mFlushCount;
+    private long mRequestBodyBytesSent;
+    private long mResponseBodyBytesReceived;
     private boolean mFinalUserCallbackThrew;
 
     /*
@@ -678,6 +678,7 @@ public class CronetBidirectionalStream extends ExperimentalBidirectionalStream {
             failWithException(new CronetExceptionImpl("Invalid number of bytes read", null));
             return;
         }
+        mResponseBodyBytesReceived += bytesRead;
         byteBuffer.position(initialPosition + bytesRead);
         assert mOnReadCompletedTask.mByteBuffer == null;
         mOnReadCompletedTask.mByteBuffer = byteBuffer;
@@ -710,6 +711,7 @@ public class CronetBidirectionalStream extends ExperimentalBidirectionalStream {
                                 "ByteBuffer modified externally during write", null));
                 return;
             }
+            mRequestBodyBytesSent += initialLimits[i] - initialPositions[i];
             // Current implementation always writes the complete buffer.
             buffer.position(buffer.limit());
             postTaskToExecutor(
@@ -959,53 +961,29 @@ public class CronetBidirectionalStream extends ExperimentalBidirectionalStream {
         final Map<String, List<String>> responseHeaders;
         final String negotiatedProtocol;
         final int httpStatusCode;
-        final boolean wasCached;
+        final CronetTrafficInfo.CacheState cacheState;
         final Boolean isProxied = mResponseInfo != null ? mResponseInfo.isProxied() : null;
         if (mResponseInfo != null) {
             responseHeaders = mResponseInfo.getAllHeaders();
             negotiatedProtocol = mResponseInfo.getNegotiatedProtocol();
             httpStatusCode = mResponseInfo.getHttpStatusCode();
-            wasCached = mResponseInfo.wasCached();
+            cacheState =
+                    mResponseInfo.wasCached()
+                            ? CronetTrafficInfo.CacheState.CACHE_HIT
+                            : CronetTrafficInfo.CacheState.NOT_CACHED;
         } else {
             responseHeaders = Collections.emptyMap();
             negotiatedProtocol = "";
             httpStatusCode = 0;
-            wasCached = false;
+            cacheState = CronetTrafficInfo.CacheState.UNSPECIFIED;
         }
 
-        // TODO(stefanoduo): A better approach might be keeping track of the total length of an
-        // upload and use that value as the request body size instead.
-        final long requestTotalSizeInBytes = mMetrics.getSentByteCount();
-        final long requestHeaderSizeInBytes;
-        final long requestBodySizeInBytes;
-        // Cached responses might still need to be revalidated over the network before being served
-        // (from UrlResponseInfo#wasCached documentation).
-        if (wasCached && requestTotalSizeInBytes == 0) {
-            // Served from cache without the need to revalidate.
-            requestHeaderSizeInBytes = 0;
-            requestBodySizeInBytes = 0;
-        } else {
-            // Served from cache with the need to revalidate or served from the network directly.
-            requestHeaderSizeInBytes =
-                    CronetRequestCommon.estimateHeadersSizeInBytes(mRequestHeaders);
-            requestBodySizeInBytes = max(0, requestTotalSizeInBytes - requestHeaderSizeInBytes);
-        }
-
-        final long responseTotalSizeInBytes = mMetrics.getReceivedByteCount();
-        final long responseBodySizeInBytes;
-        final long responseHeaderSizeInBytes;
-        // Cached responses might still need to be revalidated over the network before being served
-        // (from UrlResponseInfo#wasCached documentation).
-        if (wasCached && responseTotalSizeInBytes == 0) {
-            // Served from cache without the need to revalidate.
-            responseBodySizeInBytes = 0;
-            responseHeaderSizeInBytes = 0;
-        } else {
-            // Served from cache with the need to revalidate or served from the network directly.
-            responseHeaderSizeInBytes =
-                    CronetRequestCommon.estimateHeadersSizeInBytes(responseHeaders);
-            responseBodySizeInBytes = max(0, responseTotalSizeInBytes - responseHeaderSizeInBytes);
-        }
+        final long requestHeaderSizeInBytes =
+                CronetRequestCommon.estimateHeadersSizeInBytes(mRequestHeaders);
+        final long requestBodySizeInBytes = mRequestBodyBytesSent;
+        final long responseHeaderSizeInBytes =
+                CronetRequestCommon.estimateHeadersSizeInBytes(responseHeaders);
+        final long responseBodySizeInBytes = mResponseBodyBytesReceived;
 
         final Duration totalLatency;
         if (mMetrics.getRequestStart() != null && mMetrics.getRequestEnd() != null) {
@@ -1072,7 +1050,8 @@ public class CronetBidirectionalStream extends ExperimentalBidirectionalStream {
                 mMetrics.getTimeToWriteFirstByteInMicroseconds(),
                 mMetrics.getTimeToReceiveHeaderLastByteMicroseconds(),
                 isProxied,
-                mIsAdaptiveNetworkStream);
+                mIsAdaptiveNetworkStream,
+                cacheState);
     }
 
     public void setOnDestroyedCallbackForTesting(Runnable onDestroyedCallbackForTesting) {

@@ -521,7 +521,6 @@ targets.legacy_basic_suite(
                 autotest_name = "chromium",
                 timeout_sec = 5400,
             ),
-            experiment_percentage = 100,
         ),
         "sql_unittests": targets.legacy_test_config(
             skylab = targets.skylab(
@@ -1369,7 +1368,7 @@ targets.legacy_basic_suite(
                 "chromedriver",
                 "--binary",
                 "chrome",
-                "--use-xvfb",
+                "--no-xvfb",
             ],
             mac_args = [
                 "--chromedriver",

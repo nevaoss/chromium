@@ -56,6 +56,7 @@ import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Unit tests for {@link NestedLayoutDelegate}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -72,7 +73,6 @@ public class NestedLayoutDelegateUnitTest {
     @Mock private Tab mTab2;
     @Mock private Tab mTab3;
     @Mock private TabModel mTabModel;
-    @Mock private View mView;
 
     private TabListModel mModelList;
     private NestedLayoutDelegate mDelegate;
@@ -1063,7 +1063,7 @@ public class NestedLayoutDelegateUnitTest {
         assertTrue(
                 mDelegate.performAccessibilityAction(
                         view, R.id.move_tab_down, /* args= */ null, groupHeaderModel));
-        verify(mTabModel).moveRelatedTabs(TAB1_ID, 1);
+        verify(mTabModel).moveGroupToIndex(TAB_GROUP_ID, 1);
         assertTrue(
                 userActionTester.getActions().contains("TabGrid.AccessibilityDelegate.Reordered"));
     }
@@ -1090,19 +1090,22 @@ public class NestedLayoutDelegateUnitTest {
     @Test
     public void testPerformAccessibilityAction_ExpandCollapse() {
         PropertyModel model = addGroupHeaderToModelList(TAB1_ID);
+        View view = new View(ApplicationProvider.getApplicationContext());
+        AtomicInteger clickCount = new AtomicInteger();
+        view.setOnClickListener(v -> clickCount.incrementAndGet());
 
         assertTrue(
                 mDelegate.performAccessibilityAction(
-                        mView, AccessibilityAction.ACTION_EXPAND.getId(), /* args= */ null, model));
-        verify(mView).performClick();
+                        view, AccessibilityAction.ACTION_EXPAND.getId(), /* args= */ null, model));
+        assertEquals(1, clickCount.get());
 
         assertTrue(
                 mDelegate.performAccessibilityAction(
-                        mView,
+                        view,
                         AccessibilityAction.ACTION_COLLAPSE.getId(),
                         /* args= */ null,
                         model));
-        verify(mView, times(2)).performClick();
+        assertEquals(2, clickCount.get());
     }
 
     @Test

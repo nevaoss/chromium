@@ -194,6 +194,7 @@ import java.util.stream.IntStream;
     ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU
 })
 @EnableFeatures(ChromeFeatureList.TAB_STRIP_AUTO_SELECT_ON_CLOSE_CHANGE)
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class StripLayoutHelperTest {
     private static final Token TAB_GROUP_ID_1 = new Token(1L, 1L);
     private static final Token TAB_GROUP_ID_2 = new Token(1L, 2L);
@@ -7326,14 +7327,12 @@ public class StripLayoutHelperTest {
         StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
         StripLayoutGroupTitle group = (StripLayoutGroupTitle) views[1]; // Group 1
         group.setKeyboardFocused(true);
-        int lastShownTabId = ((StripLayoutTab) views[2]).getTabId();
-        when(mModel.getGroupLastShownTabId(group.getTabGroupId())).thenReturn(lastShownTabId);
 
         // Action: Move Group 1 to the right, past tab 3.
         mStripLayoutHelper.moveSelectedStripView(false);
 
         // Verify: The group has moved.
-        verify(mModel, times(1)).moveRelatedTabs(lastShownTabId, 3);
+        verify(mModel, times(1)).moveGroupToIndex(group.getTabGroupId(), 3);
         verify(mTabUngrouper, never()).ungroupTabs(any(), anyBoolean(), anyBoolean(), any());
     }
 
@@ -7349,14 +7348,12 @@ public class StripLayoutHelperTest {
         StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
         StripLayoutGroupTitle group = (StripLayoutGroupTitle) views[0]; // Group A
         group.setKeyboardFocused(true);
-        int lastShownTabId = ((StripLayoutTab) views[1]).getTabId();
-        when(mModel.getGroupLastShownTabId(group.getTabGroupId())).thenReturn(lastShownTabId);
 
         // Action: Move Group A to the right, past Group B.
         mStripLayoutHelper.moveSelectedStripView(false);
 
         // Verify: The groups have swapped positions.
-        verify(mModel, times(1)).moveRelatedTabs(lastShownTabId, 3);
+        verify(mModel, times(1)).moveGroupToIndex(group.getTabGroupId(), 3);
         verify(mTabUngrouper, never()).ungroupTabs(any(), anyBoolean(), anyBoolean(), any());
     }
 
@@ -7371,14 +7368,12 @@ public class StripLayoutHelperTest {
         StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
         StripLayoutGroupTitle group = (StripLayoutGroupTitle) views[2]; // Group 1
         group.setKeyboardFocused(true);
-        int lastShownTabId = ((StripLayoutTab) views[3]).getTabId();
-        when(mModel.getGroupLastShownTabId(group.getTabGroupId())).thenReturn(lastShownTabId);
 
         // Action: Move Group 1 to the left, past tab 1.
         mStripLayoutHelper.moveSelectedStripView(true);
 
         // Verify: The group has moved.
-        verify(mModel, times(1)).moveRelatedTabs(lastShownTabId, 1);
+        verify(mModel, times(1)).moveGroupToIndex(group.getTabGroupId(), 1);
         verify(mTabUngrouper, never()).ungroupTabs(any(), anyBoolean(), anyBoolean(), any());
     }
 
@@ -7394,14 +7389,12 @@ public class StripLayoutHelperTest {
         StripLayoutView[] views = mStripLayoutHelper.getStripLayoutViewsForTesting();
         StripLayoutGroupTitle group = (StripLayoutGroupTitle) views[3]; // Group B
         group.setKeyboardFocused(true);
-        int lastShownTabId = ((StripLayoutTab) views[4]).getTabId();
-        when(mModel.getGroupLastShownTabId(group.getTabGroupId())).thenReturn(lastShownTabId);
 
         // Action: Move Group B to the left, past Group A.
         mStripLayoutHelper.moveSelectedStripView(true);
 
         // Verify: The groups have swapped positions.
-        verify(mModel, times(1)).moveRelatedTabs(lastShownTabId, 0);
+        verify(mModel, times(1)).moveGroupToIndex(group.getTabGroupId(), 0);
         verify(mTabUngrouper, never()).ungroupTabs(any(), anyBoolean(), anyBoolean(), any());
     }
 
@@ -7418,14 +7411,12 @@ public class StripLayoutHelperTest {
         StripLayoutGroupTitle group = (StripLayoutGroupTitle) views[0]; // Group A
         mStripLayoutHelper.collapseTabGroupForTesting((StripLayoutGroupTitle) views[3], true);
         group.setKeyboardFocused(true);
-        int lastShownTabId = ((StripLayoutTab) views[1]).getTabId();
-        when(mModel.getGroupLastShownTabId(group.getTabGroupId())).thenReturn(lastShownTabId);
 
         // Action: Move Group A to the right, past Group B.
         mStripLayoutHelper.moveSelectedStripView(false);
 
         // Verify: The groups have swapped positions.
-        verify(mModel, times(1)).moveRelatedTabs(lastShownTabId, 3);
+        verify(mModel, times(1)).moveGroupToIndex(group.getTabGroupId(), 3);
         verify(mTabUngrouper, never()).ungroupTabs(any(), anyBoolean(), anyBoolean(), any());
     }
 
@@ -7442,14 +7433,12 @@ public class StripLayoutHelperTest {
         StripLayoutGroupTitle group = (StripLayoutGroupTitle) views[3]; // Group B
         group.setKeyboardFocused(true);
         mStripLayoutHelper.collapseTabGroupForTesting((StripLayoutGroupTitle) views[0], true);
-        int lastShownTabId = ((StripLayoutTab) views[4]).getTabId();
-        when(mModel.getGroupLastShownTabId(group.getTabGroupId())).thenReturn(lastShownTabId);
 
         // Action: Move Group B to the left, past Group A.
         mStripLayoutHelper.moveSelectedStripView(true);
 
         // Verify: The groups have swapped positions.
-        verify(mModel, times(1)).moveRelatedTabs(lastShownTabId, 0);
+        verify(mModel, times(1)).moveGroupToIndex(group.getTabGroupId(), 0);
         verify(mTabUngrouper, never()).ungroupTabs(any(), anyBoolean(), anyBoolean(), any());
     }
 

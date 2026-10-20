@@ -408,7 +408,7 @@ void CreateAndTruncateFile(
 }
 
 bool IsValidTransferToken(FileSystemAccessTransferTokenImpl* token,
-                          const url::Origin& expected_origin,
+                          const blink::StorageKey& expected_storage_key,
                           HandleType expected_handle_type) {
   if (!token) {
     return false;
@@ -418,7 +418,15 @@ bool IsValidTransferToken(FileSystemAccessTransferTokenImpl* token,
     return false;
   }
 
-  if (token->origin() != expected_origin) {
+  if (token->origin() != expected_storage_key.origin()) {
+    return false;
+  }
+
+  // kFileSystemTypeTemporary is the sandboxed OPFS backend. OPFS handles are
+  // partitioned by StorageKey, so the redeeming context's StorageKey must match
+  // the token's, not just its origin.
+  if (token->url().type() == storage::kFileSystemTypeTemporary &&
+      token->url().storage_key() != expected_storage_key) {
     return false;
   }
 
@@ -1621,8 +1629,7 @@ void FileSystemAccessManagerImpl::DidResolveTransferTokenForFileHandle(
     FileSystemAccessTransferTokenImpl* resolved_token) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!IsValidTransferToken(resolved_token,
-                            binding_context.storage_key.origin(),
+  if (!IsValidTransferToken(resolved_token, binding_context.storage_key,
                             HandleType::kFile)) {
     // Fail silently. In practice, the FileSystemAccessManager should not
     // receive any invalid tokens. Before redeeming a token, the render process
@@ -1647,8 +1654,7 @@ void FileSystemAccessManagerImpl::DidResolveTransferTokenForDirectoryHandle(
     FileSystemAccessTransferTokenImpl* resolved_token) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!IsValidTransferToken(resolved_token,
-                            binding_context.storage_key.origin(),
+  if (!IsValidTransferToken(resolved_token, binding_context.storage_key,
                             HandleType::kDirectory)) {
     // Fail silently. See comment above in
     // DidResolveTransferTokenForFileHandle() for details.
@@ -2129,8 +2135,23 @@ FileSystemAccessManagerImpl::GetSharedHandleStateForNonSandboxedPath(
     HandleType handle_type,
     FileSystemAccessPermissionContext::AccessTrigger access_trigger) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   scoped_refptr<FileSystemAccessPermissionGrant> read_grant, write_grant;
-  if (permission_context_) {
+  if (storage_key.IsThirdPartyContext()) {
+    // Non-sandboxed paths in third-party contexts bypass embedder permission
+    // prompts. Drag-and-drop explicitly confers transient read access via user
+    // drop intent, while writes and non-drop reads are strictly denied.
+    if (access_trigger ==
+        FileSystemAccessPermissionContext::AccessTrigger::kDragAndDrop) {
+      read_grant = base::MakeRefCounted<FixedFileSystemAccessPermissionGrant>(
+          PermissionStatus::GRANTED, path_info);
+    } else {
+      read_grant = base::MakeRefCounted<FixedFileSystemAccessPermissionGrant>(
+          PermissionStatus::DENIED, path_info);
+    }
+    write_grant = base::MakeRefCounted<FixedFileSystemAccessPermissionGrant>(
+        PermissionStatus::DENIED, path_info);
+  } else if (permission_context_) {
     read_grant = permission_context_->GetReadPermissionGrant(
         storage_key.origin(), path_info, handle_type, access_trigger);
     write_grant = permission_context_->GetWritePermissionGrant(

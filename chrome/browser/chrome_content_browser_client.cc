@@ -128,6 +128,7 @@
 #include "chrome/browser/metrics/chrome_feature_list_creator.h"
 #include "chrome/browser/navigation_predictor/anchor_element_preloader.h"
 #include "chrome/browser/net/chrome_network_delegate.h"
+#include "chrome/browser/net/disk_cache_dir_util.h"
 #include "chrome/browser/net/profile_network_context_service.h"
 #include "chrome/browser/net/profile_network_context_service_factory.h"
 #include "chrome/browser/net/system_network_context_manager.h"
@@ -183,7 +184,9 @@
 #include "chrome/browser/site_protection/site_familiarity_process_selection_deferring_condition.h"
 #include "chrome/browser/site_protection/site_familiarity_process_selection_user_data.h"
 #include "chrome/browser/site_protection/site_familiarity_utils.h"
+#include "chrome/browser/site_token_provider/site_token_proxying_url_loader_factory.h"
 #include "chrome/browser/site_token_provider/site_token_url_loader_factory.h"
+#include "chrome/browser/site_token_provider/site_token_url_loader_header_client.h"
 #include "chrome/browser/speech/chrome_speech_recognition_manager_delegate.h"
 #include "chrome/browser/speech/on_device_speech_recognition_util.h"
 #include "chrome/browser/ssl/chrome_security_blocking_page_factory.h"
@@ -455,6 +458,7 @@
 #include "ui/gfx/color_utils.h"
 #include "ui/gfx/switches.h"
 #include "ui/native_theme/native_theme.h"
+#include "ui/webui/buildflags.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 #include "url/third_party/mozilla/url_parse.h"
@@ -580,8 +584,6 @@
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
 #include "chrome/browser/screen_ai/screen_ai_install_state.h"
-#include "chrome/browser/search/instant_service.h"
-#include "chrome/browser/search/instant_service_factory.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -704,6 +706,7 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
+#include "extensions/browser/mime_handler/mime_handler_fallback_url_loader_request_interceptor.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
@@ -813,6 +816,11 @@
 
 #if BUILDFLAG(ENABLE_REQUEST_HEADER_INTEGRITY)
 #include "chrome/common/request_header_integrity/request_header_integrity_url_loader_throttle.h"  // nogncheck crbug.com/40147906
+#endif
+
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
+#include "chrome/browser/search/instant_service.h"
+#include "chrome/browser/search/instant_service_factory.h"
 #endif
 
 #include "base/win/windows_h_disallowed.h"
@@ -1164,7 +1172,7 @@ GetNoStatePrefetchCanceler(
   return canceler;
 }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
 mojo::AssociatedRemote<chrome::mojom::RendererConfiguration>
 GetRendererConfiguration(content::RenderProcessHost* render_process_host) {
   IPC::ChannelProxy* channel = render_process_host->GetChannel();
@@ -1173,7 +1181,7 @@ GetRendererConfiguration(content::RenderProcessHost* render_process_host) {
   channel->GetRemoteAssociatedInterface(&renderer_configuration);
   return renderer_configuration;
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
+#endif
 
 bool ShouldHonorPolicies() {
   bool management_check_required = false;
@@ -1893,7 +1901,7 @@ std::optional<GURL> ChromeContentBrowserClient::GetEffectiveURL(
     return std::nullopt;
   }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   // If the input |url| should be assigned to the Instant renderer, make its
   // effective URL distinct from other URLs on the search provider's domain.
   // This needs to happen even if |url| corresponds to an isolated origin; see
@@ -1919,7 +1927,7 @@ std::optional<GURL> ChromeContentBrowserClient::GetEffectiveURL(
 void ChromeContentBrowserClient::OnRendererProcessLockedStateUpdated(
     content::RenderProcessHost* host,
     const GURL& site_url) {
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   // If the feature `kInstantUsesSpareRenderer` is not enabled, we continue
   // relying on the `kInstantProcess` command line switch to handle instant
   // process related logic.
@@ -1941,7 +1949,7 @@ void ChromeContentBrowserClient::OnRendererProcessLockedStateUpdated(
   auto renderer_configuration = GetRendererConfiguration(host);
   renderer_configuration->SetConfigurationOnProcessLockUpdate(
       std::move(params));
-#endif  // !BUILDFLAG(IS_ANDROID)
+#endif
 }
 
 bool ChromeContentBrowserClient::
@@ -1986,7 +1994,7 @@ bool ChromeContentBrowserClient::ShouldUseProcessPerSite(
     }
   }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   if (search::ShouldUseProcessPerSiteForSecurityPrincipal(security_principal,
                                                           profile)) {
     return true;
@@ -2057,7 +2065,7 @@ bool ChromeContentBrowserClient::ShouldUseSpareRenderProcessHost(
     return false;
   }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   // Instant renderers passed by command line should not use a spare process,
   // because they require passing switches::kInstantProcess to the renderer
   // process when it launches. A spare process is launched earlier, before
@@ -2449,7 +2457,7 @@ bool ChromeContentBrowserClient::IsSuitableHost(
     return true;
   }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   // Instant URLs should only be in the instant process and instant process
   // should only have Instant URLs.
   InstantService* instant_service =
@@ -2588,7 +2596,7 @@ void ChromeContentBrowserClient::SiteInstanceGotProcessAndSite(
                                              std::make_unique<NTPUserData>());
   }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   // Remember the ID of the Instant process to signal the renderer process
   // on startup in |AppendExtraCommandLineSwitches| below.
   if (search::ShouldAssignSecurityPrincipalToInstantRenderer(
@@ -3101,7 +3109,11 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
             blink::switches::kDisableReduceAcceptLanguage);
       }
 
-#if !BUILDFLAG(IS_ANDROID)
+      if (process->GetUserData(search::kIsNTPProcessKey)) {
+        command_line->AppendSwitch(switches::kNtpProcess);
+      }
+
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
       InstantService* instant_service =
           InstantServiceFactory::GetForProfile(profile);
       if (instant_service &&
@@ -3109,7 +3121,8 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
           !base::FeatureList::IsEnabled(features::kInstantUsesSpareRenderer)) {
         command_line->AppendSwitch(switches::kInstantProcess);
       }
-
+#endif
+#if !BUILDFLAG(IS_ANDROID)
       // Enable SharedArrayBuffer on desktop if allowed by Enterprise Policy.
       // TODO(crbug.com/40155376) Remove when migration to COOP+COEP is
       // complete.
@@ -3715,12 +3728,8 @@ bool ChromeContentBrowserClient::AllowWorkerWriteToClipboard(
   if (origin.scheme() != extensions::kExtensionScheme) {
     return false;
   }
-  const extensions::Extension* extension =
-      extensions::ExtensionRegistry::Get(browser_context)
-          ->enabled_extensions()
-          .GetByID(origin.host());
-  return extension && extension->permissions_data()->HasAPIPermission(
-                          extensions::mojom::APIPermissionID::kClipboardWrite);
+  return extensions::ChromeContentBrowserClientExtensionsPart::
+      ExtensionHasClipboardWritePermission(browser_context, origin.host());
 #else
   return false;
 #endif
@@ -3898,8 +3907,8 @@ ChromeContentBrowserClient::GetGeneratedCodeCacheSettings(
   PrefService* local_state = g_browser_process->local_state();
   if (local_state) {
     size_in_bytes = local_state->GetInteger(prefs::kDiskCacheSize);
-    base::FilePath disk_cache_dir =
-        local_state->GetFilePath(prefs::kDiskCacheDir);
+    const base::FilePath disk_cache_dir =
+        chrome_browser_net::GetDiskCacheDir(local_state);
     if (!disk_cache_dir.empty()) {
       cache_path = disk_cache_dir.Append(cache_path.BaseName());
     }
@@ -4567,9 +4576,10 @@ bool ChromeContentBrowserClient::CanCreateWindow(
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-  BlockedWindowParams blocked_params(
-      target_url, source_origin, opener->GetSiteInstance(), referrer,
-      frame_name, disposition, features, user_gesture, opener_suppressed);
+  const BlockedWindowParams blocked_params(
+      target_url, opener->GetGlobalFrameToken(), source_origin,
+      opener->GetSiteInstance(), referrer, frame_name, disposition, features,
+      user_gesture, opener_suppressed);
   NavigateParams nav_params =
       blocked_params.CreateNavigateParams(opener->GetProcess(), web_contents);
   return !blocked_content::ConsiderForPopupBlocking(disposition) ||
@@ -5850,18 +5860,18 @@ void ChromeContentBrowserClient::InitOnUIThread() {
   DCHECK(!cache_dir.empty());
   // On some platforms, the cache is a child of the user_data_dir so only
   // return the one path.
-  if (!user_data_dir.IsParent(cache_dir)) {
+  if (cache_dir != user_data_dir && !user_data_dir.IsParent(cache_dir)) {
     network_contexts_parent_directory_.push_back(cache_dir);
   }
 
-  // If the cache location has been overridden by a switch or preference,
-  // include that as well.
-  if (auto* local_state = g_browser_process->local_state()) {
-    base::FilePath pref_cache_dir =
-        local_state->GetFilePath(prefs::kDiskCacheDir);
-    if (!pref_cache_dir.empty() && !user_data_dir.IsParent(cache_dir)) {
-      network_contexts_parent_directory_.push_back(pref_cache_dir);
-    }
+  // If the cache location has been overridden by a switch or policy to a
+  // directory outside `user_data_dir` and `cache_dir`, include that as well.
+  const base::FilePath pref_cache_dir =
+      chrome_browser_net::GetDiskCacheDir(g_browser_process->local_state());
+  if (!pref_cache_dir.empty() && pref_cache_dir != user_data_dir &&
+      !user_data_dir.IsParent(pref_cache_dir) && pref_cache_dir != cache_dir &&
+      !cache_dir.IsParent(pref_cache_dir)) {
+    network_contexts_parent_directory_.push_back(pref_cache_dir);
   }
 }
 
@@ -6082,7 +6092,14 @@ std::unique_ptr<blink::URLLoaderThrottle> CreateGoogleURLLoaderThrottle(
               policy::policy_prefs::kForceGoogleSafeSearch),
           profile->GetPrefs()->GetInteger(
               policy::policy_prefs::kForceYouTubeRestrict),
-          profile->GetPrefs()->GetString(prefs::kAllowedDomainsForApps));
+          profile->GetPrefs()->GetString(prefs::kAllowedDomainsForApps)
+#if BUILDFLAG(ENABLE_REQUEST_HEADER_INTEGRITY) && !BUILDFLAG(IS_ANDROID)
+              ,
+          // Only the copy pushed to renderers carries this; the throttle
+          // built here reads the block from its own process instead.
+          net::HttpRequestHeaders()
+#endif
+      );
   return std::make_unique<GoogleURLLoaderThrottle>(
 #if BUILDFLAG(IS_ANDROID)
       client_data_header,
@@ -6355,7 +6372,7 @@ void AddChromeSchemeFactoriesForWorker(
     factories->emplace(content::kChromeUIScheme,
                        content::CreateWebUIURLLoaderFactoryForWorker(
                            browser_context, content::kChromeUIScheme,
-                           std::move(allowed_webui_hosts)));
+                           std::move(allowed_webui_hosts), *request_initiator));
   }
 }
 }  // namespace
@@ -6584,6 +6601,7 @@ bool IsSystemFeatureURLDisabled(const GURL& url) {
   return false;
 }
 #endif
+}  // namespace
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 void InitializeFileURLLoaderFactoryForExtension(
@@ -6603,16 +6621,16 @@ void InitializeFileURLLoaderFactoryForExtension(
         SpecialAccessFileURLLoaderFactory::Create(render_process_id));
   }
 }
-void AddChromeSchemeFactories(
+
+void ChromeContentBrowserClient::AddChromeSchemeFactories(
     int render_process_id,
     content::RenderFrameHost* frame_host,
     content::WebContents* web_contents,
     const extensions::Extension* extension,
     ChromeContentBrowserClient::NonNetworkURLLoaderFactoryMap* factories) {
-  // Android does not support instant.
-#if !BUILDFLAG(IS_ANDROID)
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
   InstantService* instant_service =
       InstantServiceFactory::GetForProfile(profile);
   // The test below matches when a remote 3P NTP is loaded. The effective
@@ -6624,11 +6642,12 @@ void AddChromeSchemeFactories(
   // Profile.
   if (instant_service && instant_service->IsInstantProcess(render_process_id)) {
     factories->emplace(chrome::kChromeSearchScheme,
-                       content::CreateWebUIURLLoaderFactory(
+                       content::CreateWebUIURLLoaderFactoryWithoutOriginLock(
+                           content::WebUIURLLoaderFactoryPasskey::GetPassKey(),
                            frame_host, chrome::kChromeSearchScheme,
                            /*allowed_hosts=*/base::flat_set<std::string>()));
   }
-#endif  // !BUILDFLAG(IS_ANDROID)
+#endif
 
   extensions::ExtensionWebContentsObserver* web_observer =
       extensions::ExtensionWebContentsObserver::GetForWebContents(web_contents);
@@ -6662,14 +6681,14 @@ void AddChromeSchemeFactories(
     allowed_webui_hosts.emplace_back(chrome::kChromeUIAppIconHost);
   }
   if (!allowed_webui_hosts.empty()) {
-    factories->emplace(content::kChromeUIScheme,
-                       content::CreateWebUIURLLoaderFactory(
-                           frame_host, content::kChromeUIScheme,
-                           std::move(allowed_webui_hosts)));
+    factories->emplace(
+        content::kChromeUIScheme,
+        content::CreateWebUIURLLoaderFactoryWithoutOriginLock(
+            content::WebUIURLLoaderFactoryPasskey::GetPassKey(), frame_host,
+            content::kChromeUIScheme, std::move(allowed_webui_hosts)));
   }
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-}  // namespace
 
 void ChromeContentBrowserClient::
     RegisterNonNetworkSubresourceURLLoaderFactories(
@@ -6865,6 +6884,18 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
   MaybeSetTargetNetwork(GetBoundNetworkFromRenderFrameHost(frame),
                         factory_builder, is_for_network_service);
 
+  // The proxying factory only sets kURLLoadOptionUseHeaderClient on matching
+  // requests, so it does nothing without a header client. Site token headers
+  // are only injected for top-level document navigations (not subresources or
+  // iframes).
+  if (header_client && type == URLLoaderFactoryType::kNavigation && frame &&
+      !frame->GetParentOrOuterDocument()) {
+    site_token_provider::SiteTokenProxyingURLLoaderFactory::MaybeProxyRequest(
+        browser_context, factory_builder);
+    site_token_provider::SiteTokenURLLoaderHeaderClient::MaybeWrap(
+        browser_context, header_client);
+  }
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
   // WARNING: This must be the last wrapper in the chain for
@@ -6902,6 +6933,13 @@ ChromeContentBrowserClient::WillCreateURLLoaderRequestInterceptors(
       interceptors.push_back(std::move(pdf_interceptor));
     }
   }
+#endif
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+  interceptors.push_back(
+      std::make_unique<extensions::mime_handler::
+                           MimeHandlerFallbackURLLoaderRequestInterceptor>(
+          frame_tree_node_id, navigation_id));
 #endif
 
   interceptors.push_back(std::make_unique<SearchPrefetchURLLoaderInterceptor>(
@@ -7325,6 +7363,7 @@ ChromeContentBrowserClient::CreateLoginDelegate(
     const GURL& url,
     scoped_refptr<net::HttpResponseHeaders> response_headers,
     bool first_auth_attempt,
+    bool do_not_prompt_for_login,
     content::GuestPageHolder* guest,
     content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) {
 #if BUILDFLAG(IS_CHROMEOS)
@@ -7335,7 +7374,9 @@ ChromeContentBrowserClient::CreateLoginDelegate(
   // nullptr instead of LoginDelegate to fail authentication. (See b/260522530).
   if (auth_info.scheme ==
       net::HttpAuth::SchemeToString(net::HttpAuth::AUTH_SCHEME_NEGOTIATE)) {
-    ash::KerberosInBrowserDialog::Show();
+    if (!do_not_prompt_for_login) {
+      ash::KerberosInBrowserDialog::Show();
+    }
     return nullptr;
   }
 
@@ -7349,7 +7390,7 @@ ChromeContentBrowserClient::CreateLoginDelegate(
         std::move(auth_required_callback));
   }
 
-  if (ash::HttpAuthDialog::IsEnabled()) {
+  if (!do_not_prompt_for_login && ash::HttpAuthDialog::IsEnabled()) {
     return ash::HttpAuthDialog::Create(auth_info, web_contents, url,
                                        std::move(auth_required_callback));
   }
@@ -7361,7 +7402,8 @@ ChromeContentBrowserClient::CreateLoginDelegate(
   return http_auth_coordinator_->CreateLoginDelegate(
       web_contents, browser_context, auth_info, request_id,
       is_request_for_primary_main_frame_navigation, is_request_for_navigation,
-      url, response_headers, guest, std::move(auth_required_callback));
+      url, response_headers, do_not_prompt_for_login, guest,
+      std::move(auth_required_callback));
 }
 
 bool ChromeContentBrowserClient::HandleExternalProtocol(
@@ -8089,6 +8131,16 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
   return false;
+}
+
+bool ChromeContentBrowserClient::IsClipboardAllowedForServiceWorker(
+    const url::Origin& origin) {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  return extensions::ChromeContentBrowserClientExtensionsPart::
+      IsClipboardAllowedForServiceWorker(origin);
+#else
+  return false;
+#endif
 }
 
 void ChromeContentBrowserClient::IsClipboardPasteAllowedByPolicy(

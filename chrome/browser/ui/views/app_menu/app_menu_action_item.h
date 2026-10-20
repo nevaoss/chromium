@@ -56,6 +56,7 @@ class AppMenuActionItem {
     std::optional<bool> is_checkable;
     std::optional<ItemHeight> item_height;
     std::optional<std::u16string> minor_text;
+    std::optional<std::u16string> secondary_text;
     std::optional<int> action_param;
     raw_ptr<const base::Feature> new_badge_feature;
     ui::ElementIdentifier element_id;
@@ -68,6 +69,7 @@ class AppMenuActionItem {
   static const ui::ClassProperty<ui::ImageModel*>* const kIconOverrideKey;
   static const ui::ClassProperty<ui::ImageModel*>* const kMinorIconKey;
   static const ui::ClassProperty<std::u16string*>* const kMinorTextKey;
+  static const ui::ClassProperty<std::u16string*>* const kSecondaryTextKey;
   static const ui::ClassProperty<ui::MenuSeparatorType>* const kSeparatorKey;
   static const ui::ClassProperty<std::u16string*>* const kChipTextKey;
   static const ui::ClassProperty<bool>* const kIsCheckableKey;
@@ -91,7 +93,8 @@ class AppMenuActionItem {
   // Creates the Action Item for the headers of each section in the app menu.
   static std::unique_ptr<actions::ActionItem> CreateHeader(
       std::u16string text,
-      std::optional<ui::ColorId> container_color = std::nullopt);
+      std::optional<ui::ColorId> container_color = std::nullopt,
+      ui::ElementIdentifier element_id = ui::ElementIdentifier());
 
   static std::unique_ptr<actions::ActionItem> CreateDivider(
       ui::MenuSeparatorType separator_type =

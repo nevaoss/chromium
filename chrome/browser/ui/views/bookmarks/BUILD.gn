@@ -15,6 +15,7 @@ source_set("bookmarks") {
   public = [
     "bookmark_account_storage_move_dialog.h",
     "bookmark_account_storage_move_dialog_delegate.h",
+    "bookmark_bar_menu_delegate.h",
     "bookmark_bar_view.h",
     "bookmark_bubble_view.h",
     "bookmark_button.h",
@@ -66,6 +67,7 @@ source_set("impl") {
   sources = [
     "bookmark_account_storage_move_dialog.cc",
     "bookmark_account_storage_move_dialog_delegate.cc",
+    "bookmark_bar_menu_delegate.cc",
     "bookmark_bar_view.cc",
     "bookmark_bubble_view.cc",
     "bookmark_button.cc",
@@ -221,7 +223,6 @@ source_set("browser_tests") {
     "//chrome/browser/preloading/bookmarkbar_preload",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/ui",
-    "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui:browser_window_header",
     "//chrome/browser/ui:tab_ui_helper",
     "//chrome/browser/ui/commerce:test_support",
@@ -271,7 +272,6 @@ if (!is_chromeos_device) {
       "//chrome/browser/gcm",
       "//chrome/browser/tab_group_sync:factories",
       "//chrome/browser/ui",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:ui_controller_factory",
       "//chrome/browser/ui/actions",
       "//chrome/browser/ui/tabs:tab_menu",

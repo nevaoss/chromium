@@ -14,6 +14,7 @@
 #include "chrome/browser/tips/tips_service_factory.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/prefs/testing_pref_service.h"
+#include "components/segmentation_platform/public/constants.h"
 #include "components/segmentation_platform/public/testing/mock_segmentation_platform_service.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "content/public/test/browser_task_environment.h"
@@ -27,7 +28,10 @@ class MockTipsService : public tips::TipsService {
   MockTipsService() : tips::TipsService(nullptr, nullptr) {}
   ~MockTipsService() override = default;
 
-  MOCK_METHOD(void, DetermineBestTip, (OnBestTipChosen), (override));
+  MOCK_METHOD(void,
+              DetermineBestTip,
+              ((std::map<std::string, float>), OnBestTipChosen),
+              (override));
 };
 
 class TipsAgentAndroidTest : public testing::Test {
@@ -73,7 +77,7 @@ TEST_F(TipsAgentAndroidTest, TestScheduleNewNotification) {
   // Verify that GetClassificationResult is called by default.
   EXPECT_CALL(*mock_segmentation_service_, GetClassificationResult(_, _, _, _))
       .Times(1);
-  EXPECT_CALL(*mock_tips_service_, DetermineBestTip(_)).Times(0);
+  EXPECT_CALL(*mock_tips_service_, DetermineBestTip(_, _)).Times(0);
 
   TipsAgentAndroid::ScheduleNewNotification(
       profile_.get(), /*is_bottom_omnibox=*/false, &mock_service_);
@@ -84,14 +88,26 @@ TEST_F(TipsAgentAndroidTest,
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(chrome::android::kTipsSelfService);
 
+  notifications::NotificationData test_data;
+  test_data.title = u"Test Title";
+  test_data.custom_data["feature_type"] = "1";
+
   EXPECT_CALL(*mock_segmentation_service_, GetClassificationResult(_, _, _, _))
       .Times(0);
-  EXPECT_CALL(*mock_tips_service_, DetermineBestTip(_))
-      .WillOnce([](tips::TipsService::OnBestTipChosen callback) {
-        std::move(callback).Run(
-            tips::TipsNotificationsFeatureType::kEnhancedSafeBrowsing);
+  EXPECT_CALL(*mock_tips_service_,
+              DetermineBestTip(
+                  std::map<std::string, float>{
+                      {segmentation_platform::kBottomOmniboxStatus, 0.0f}},
+                  _))
+      .WillOnce([&](std::map<std::string, float> custom_signals,
+                    tips::TipsService::OnBestTipChosen callback) {
+        std::move(callback).Run(test_data);
       });
-  EXPECT_CALL(mock_service_, Schedule(_)).Times(1);
+  EXPECT_CALL(
+      mock_service_,
+      Schedule(::testing::Pointee(::testing::Field(
+          &notifications::NotificationParams::notification_data, test_data))))
+      .Times(1);
 
   TipsAgentAndroid::ScheduleNewNotification(
       profile_.get(), /*is_bottom_omnibox=*/false, &mock_service_);
@@ -104,21 +120,32 @@ TEST_F(TipsAgentAndroidTest,
 
   EXPECT_CALL(*mock_segmentation_service_, GetClassificationResult(_, _, _, _))
       .Times(0);
-  EXPECT_CALL(*mock_tips_service_, DetermineBestTip(_))
-      .WillOnce([](tips::TipsService::OnBestTipChosen callback) {
+  EXPECT_CALL(*mock_tips_service_,
+              DetermineBestTip(
+                  std::map<std::string, float>{
+                      {segmentation_platform::kBottomOmniboxStatus, 1.0f}},
+                  _))
+      .WillOnce([](std::map<std::string, float> custom_signals,
+                   tips::TipsService::OnBestTipChosen callback) {
         std::move(callback).Run(std::nullopt);
       });
   EXPECT_CALL(mock_service_, Schedule(_)).Times(0);
 
   TipsAgentAndroid::ScheduleNewNotification(
-      profile_.get(), /*is_bottom_omnibox=*/false, &mock_service_);
+      profile_.get(), /*is_bottom_omnibox=*/true, &mock_service_);
 }
 
 TEST_F(TipsAgentAndroidTest, TestOnBestTipChosen) {
-  EXPECT_CALL(mock_service_, Schedule(_)).Times(1);
-  TipsAgentAndroid::OnBestTipChosen(
-      &mock_service_,
-      tips::TipsNotificationsFeatureType::kEnhancedSafeBrowsing);
+  notifications::NotificationData test_data;
+  test_data.title = u"Test Title";
+  test_data.custom_data["feature_type"] = "1";
+
+  EXPECT_CALL(
+      mock_service_,
+      Schedule(::testing::Pointee(::testing::Field(
+          &notifications::NotificationParams::notification_data, test_data))))
+      .Times(1);
+  TipsAgentAndroid::OnBestTipChosen(&mock_service_, test_data);
 
   EXPECT_CALL(mock_service_, Schedule(_)).Times(0);
   TipsAgentAndroid::OnBestTipChosen(&mock_service_, std::nullopt);
@@ -129,6 +156,10 @@ TEST_F(TipsAgentAndroidTest,
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(chrome::android::kTipsSelfService);
 
+  notifications::NotificationData test_data;
+  test_data.title = u"Test Title";
+  test_data.custom_data["feature_type"] = "1";
+
   std::unique_ptr<notifications::NotificationParams> scheduled_params;
   EXPECT_CALL(mock_service_, Schedule(_))
       .WillOnce([&](std::unique_ptr<notifications::NotificationParams> params) {
@@ -136,12 +167,11 @@ TEST_F(TipsAgentAndroidTest,
       });
 
   base::Time before = base::Time::Now();
-  TipsAgentAndroid::OnBestTipChosen(
-      &mock_service_,
-      tips::TipsNotificationsFeatureType::kEnhancedSafeBrowsing);
+  TipsAgentAndroid::OnBestTipChosen(&mock_service_, test_data);
   base::Time after = base::Time::Now();
 
   ASSERT_TRUE(scheduled_params);
+  EXPECT_EQ(scheduled_params->notification_data, test_data);
   // Default start_time_minutes is 120 (>= 5), so priority should be kLow.
   EXPECT_EQ(scheduled_params->schedule_params.priority,
             notifications::ScheduleParams::Priority::kLow);
@@ -163,6 +193,10 @@ TEST_F(TipsAgentAndroidTest,
                                           {"window_time_minutes", "1"},
                                           {"instant_scheduling", "true"}});
 
+  notifications::NotificationData test_data;
+  test_data.title = u"Test Title";
+  test_data.custom_data["feature_type"] = "1";
+
   std::unique_ptr<notifications::NotificationParams> scheduled_params;
   EXPECT_CALL(mock_service_, Schedule(_))
       .WillOnce([&](std::unique_ptr<notifications::NotificationParams> params) {
@@ -170,12 +204,11 @@ TEST_F(TipsAgentAndroidTest,
       });
 
   base::Time before = base::Time::Now();
-  TipsAgentAndroid::OnBestTipChosen(
-      &mock_service_,
-      tips::TipsNotificationsFeatureType::kEnhancedSafeBrowsing);
+  TipsAgentAndroid::OnBestTipChosen(&mock_service_, test_data);
   base::Time after = base::Time::Now();
 
   ASSERT_TRUE(scheduled_params);
+  EXPECT_EQ(scheduled_params->notification_data, test_data);
   // With start_time_minutes = 0 (< 5), priority should be kNoThrottle.
   EXPECT_EQ(scheduled_params->schedule_params.priority,
             notifications::ScheduleParams::Priority::kNoThrottle);

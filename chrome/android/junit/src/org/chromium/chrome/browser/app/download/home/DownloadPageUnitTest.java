@@ -60,10 +60,7 @@ import org.chromium.ui.modaldialog.ModalDialogManager;
 import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures({
-    ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES,
-    ChromeFeatureList.SHOW_BLOCKED_SENSITIVE_DOWNLOAD
-})
+@EnableFeatures({ChromeFeatureList.SHOW_BLOCKED_SENSITIVE_DOWNLOAD})
 public class DownloadPageUnitTest {
 
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -73,11 +70,11 @@ public class DownloadPageUnitTest {
             new ActivityScenarioRule<>(TestActivity.class);
 
     // Arguments for DownloadPage constructor.
-    @Mock private Activity mActivity;
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private ModalDialogManager mModalDialogManager;
     @Mock private OtrProfileId mOtrProfileId;
     @Mock private NativePageHost mNativePageHost;
+    private Activity mActivity;
 
     // Dependencies for DownloadManagerCoordinatorFactory.create.
     @Mock private Profile mProfile;

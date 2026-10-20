@@ -2147,6 +2147,9 @@ bool PDFiumEngine::OnLeftMouseDown(const blink::WebMouseEvent& event) {
       FORM_OnLButtonDoubleClick(form(), page, event.GetModifiers(),
                                 point_data.pdf_point.x(),
                                 point_data.pdf_point.y());
+      if (point_data.area == PDFiumPage::FORM_TEXT_AREA) {
+        SetFormSelectedText(form(), page);
+      }
     }
     if (point_data.form_type != FPDF_FORMFIELD_UNKNOWN) {
       return true;  // Return now before we get into the selection code.
@@ -3116,8 +3119,8 @@ void PDFiumEngine::HandleAccessibilityAction(
       return;
     }
     case AccessibilityAction::kSetSelection: {
-      if (IsPageCharacterIndexInBounds(action_data.selection_start_index) &&
-          IsPageCharacterIndexInBounds(action_data.selection_end_index)) {
+      if (IsSelectionBoundaryInBounds(action_data.selection_start_index) &&
+          IsSelectionBoundaryInBounds(action_data.selection_end_index)) {
         SetSelection(action_data.selection_start_index,
                      action_data.selection_end_index);
         gfx::Rect target_rect = action_data.target_rect;
@@ -4896,6 +4899,7 @@ void PDFiumEngine::SetFieldFocus(PDFiumEngineClient::FocusFieldType type) {
   // is set to `FocusFieldType::kText`, this is the Renderer. After it flips,
   // the MimeHandler is notified.
   if (focus_field_type_ == FocusFieldType::kText) {
+    selected_form_text_.clear();
     client_->SetSelectedText("");
   }
 
@@ -4944,10 +4948,17 @@ void PDFiumEngine::KillTouchTimer() {
   touch_timer_.Stop();
 }
 
-bool PDFiumEngine::IsPageCharacterIndexInBounds(
+bool PDFiumEngine::IsSelectionBoundaryInBounds(
     const PageCharacterIndex& index) const {
-  return PageIndexInBounds(index.page_index) &&
-         pages_[index.page_index]->IsCharIndexInBounds(index.char_index);
+  if (!PageIndexInBounds(index.page_index)) {
+    return false;
+  }
+  // Selection boundaries are between characters, so the index just past the
+  // last character is valid, e.g. for a selection that ends at the end of a
+  // page's text. SetSelection() treats the end index as exclusive.
+  int char_count = pages_[index.page_index]->GetCharCount();
+  return char_count >= 0 &&
+         index.char_index <= static_cast<uint32_t>(char_count);
 }
 
 FPDF_BOOL PDFiumEngine::Pause_NeedToPauseNow(IFSDK_PAUSE* param) {

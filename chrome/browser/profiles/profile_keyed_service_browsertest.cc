@@ -532,6 +532,7 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "ClientHints",
     "ConnectorsService",
     "DataControlsRulesService",
+    "DevToolsNavigationGatingService",
 #if !BUILDFLAG(IS_CHROMEOS)
     // TODO(crbug.com/374351946): This is most likely unnesssary on CrOS because
     // it has its own UI, but factory is created, which should probably be
@@ -675,7 +676,6 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
 #endif // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)|| BUILDFLAG(IS_WIN)
     "AppTerminationObserver",
     "AppWindowRegistry",
-    "AudioAPI",
     "AutocompleteActionPredictor",
     "AutocompleteHistoryManager",
     "AutocompleteScoringModelService",
@@ -687,6 +687,7 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "BackgroundSyncService",
     "Blocklist",
 #if BUILDFLAG(IS_CHROMEOS)
+    "AudioAPI",
     "BluetoothAPI",
     "BluetoothApiSocketManager",
     "BluetoothApiAdvertisementManager",

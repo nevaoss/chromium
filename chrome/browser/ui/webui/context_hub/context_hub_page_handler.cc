@@ -23,11 +23,14 @@
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank_entry.h"
 #include "chrome/browser/history/history_service_factory.h"
+#include "chrome/browser/page_image_service/image_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/journeys/journey.h"
 #include "components/history/core/browser/journeys/journey_row.h"
 #include "components/keyed_service/core/service_access_type.h"
+#include "components/page_image_service/image_service.h"
+#include "components/page_image_service/mojom/page_image_service.mojom.h"
 #include "components/sessions/core/session_id.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
@@ -846,7 +849,8 @@ browser::context_hub::mojom::TopicPtr ToMojoTopic(
   visits.reserve(journey.visits.size());
   for (history::journeys::JourneyVisit& visit : journey.visits) {
     visits.push_back(browser::context_hub::mojom::TopicVisit::New(
-        std::move(visit.url), base::UTF16ToUTF8(visit.title)));
+        std::move(visit.url), base::UTF16ToUTF8(visit.title),
+        visit.visit_time));
   }
 
   std::vector<browser::context_hub::mojom::TopicContinuationQueryPtr>
@@ -859,11 +863,15 @@ browser::context_hub::mojom::TopicPtr ToMojoTopic(
             std::move(query.title), std::move(query.prompt)));
   }
 
+  // TODO(crbug.com/558572977): Send the topic's collections once the topic
+  // generation backend produces them.
   return browser::context_hub::mojom::Topic::New(
       /*id=*/std::move(journey.journey_id), std::move(journey.title),
       journey.creation_time, std::move(journey.emoji),
       std::move(journey.overview), std::move(journey.short_overview),
-      std::move(visits), std::move(continuation_queries));
+      std::move(visits), std::move(continuation_queries),
+      /*collections=*/
+      std::vector<browser::context_hub::mojom::TopicCollectionPtr>());
 }
 
 std::vector<browser::context_hub::mojom::TopicPtr> ToMojoTopics(
@@ -920,6 +928,31 @@ void ContextHubPageHandler::GetTopic(const std::string& id,
           },
           std::move(callback)),
       &topics_task_tracker_);
+}
+
+void ContextHubPageHandler::GetTopicPageImageUrl(
+    const GURL& page_url,
+    GetTopicPageImageUrlCallback callback) {
+  page_image_service::ImageService* image_service =
+      page_image_service::ImageServiceFactory::GetForBrowserContext(profile_);
+  if (!image_service || !page_url.is_valid() ||
+      !page_url.SchemeIsHTTPOrHTTPS()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  // The reply does not touch this handler, and the service always replies, so
+  // there is nothing to cancel if the handler goes away first.
+  image_service->FetchImageFor(
+      page_image_service::mojom::ClientId::ContextHubTopics, page_url,
+      page_image_service::mojom::Options(),
+      base::BindOnce(
+          [](GetTopicPageImageUrlCallback callback, const GURL& image_url) {
+            std::move(callback).Run(image_url.is_valid()
+                                        ? std::make_optional(image_url)
+                                        : std::nullopt);
+          },
+          std::move(callback)));
 }
 
 void ContextHubPageHandler::OpenTopic(

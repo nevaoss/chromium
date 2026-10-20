@@ -5,11 +5,11 @@
 #import "ios/chrome/browser/home_customization/coordinator/home_customization_coordinator.h"
 
 #import "base/feature_list.h"
-#import "base/strings/sys_string_conversions.h"
 #import "components/feature_engagement/public/feature_constants.h"
 #import "components/feature_engagement/public/tracker.h"
 #import "components/image_fetcher/ios/ios_image_data_fetcher_wrapper.h"
 #import "components/prefs/pref_service.h"
+#import "components/segmentation_platform/embedder/home_modules/tips_manager/signal_constants.h"
 #import "components/sync/base/features.h"
 #import "ios/chrome/browser/commerce/model/shopping_service_factory.h"
 #import "ios/chrome/browser/discover_feed/model/discover_feed_visibility_browser_agent.h"
@@ -48,6 +48,8 @@
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
+#import "ios/chrome/browser/tips_manager/model/tips_manager_ios.h"
+#import "ios/chrome/browser/tips_manager/model/tips_manager_ios_factory.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
@@ -153,7 +155,10 @@ CGFloat const kSheetCornerRadius = 30;
                                       imageFetcher:imageFetcher
                         homeBackgroundImageService:nil
                           userUploadedImageManager:userUploadedImageManager
-                                       prefService:self.profile->GetPrefs()];
+                                       prefService:self.profile->GetPrefs()
+                          featureEngagementTracker:
+                              feature_engagement::TrackerFactory::GetForProfile(
+                                  self.profile)];
   }
 
   // The Customization menu consists of a stack of presenting view controllers.
@@ -171,6 +176,21 @@ CGFloat const kSheetCornerRadius = 30;
 }
 
 - (void)stop {
+  // Notify `TipsManagerIOS` only when a non-default background or color theme
+  // was actually selected and kept during this session (ignoring sessions where
+  // no changes were made, a preview was canceled, or the background was reset
+  // to default). Must be checked before `saveCurrentTheme` resets
+  // `themeHasChanged`.
+  if (_backgroundConfigurationMediator.themeHasChanged &&
+      (_backgroundService->GetCurrentCustomBackground() ||
+       _backgroundService->GetCurrentColorTheme())) {
+    if (TipsManagerIOS* tipsManager =
+            TipsManagerIOSFactory::GetForProfile(self.profile)) {
+      tipsManager->NotifySignal(
+          segmentation_platform::tips_manager::signals::kNTPBackgroundSelected);
+    }
+  }
+
   [_backgroundConfigurationMediator saveCurrentTheme];
 
   if (IsPageActionMenuEnabled()) {
@@ -197,13 +217,6 @@ CGFloat const kSheetCornerRadius = 30;
   [_activeSearchEngineLogoMediator removeAllObjects];
 
   if (self.openedForUserEducation) {
-    feature_engagement::Tracker* tracker =
-        feature_engagement::TrackerFactory::GetForProfile(self.profile);
-    if (tracker) {
-      tracker->Dismissed(
-          feature_engagement::kIPHiOSPromoBackgroundCustomizationFeature);
-    }
-
     [self.promosManagerUIHandler promoWasDismissed];
   }
 
@@ -612,22 +625,6 @@ CGFloat const kSheetCornerRadius = 30;
         URLLoadingBrowserAgent:URLLoadingBrowserAgent
         sharedURLLoaderFactory:sharedURLLoaderFactory
                   offTheRecord:offTheRecord];
-    if ([key hasSuffix:[NSString
-                           stringWithFormat:@"_%ld",
-                                            HomeCustomizationBackgroundStyle::
-                                                kEphemeral]]) {
-      const base::DictValue& themeData =
-          profile->GetPrefs()->GetDict(prefs::kIosNtpEphemeralThemeData);
-      const std::string* lightPath =
-          themeData.FindString(kEphemeralThemeGoogleLogoLightPathKey);
-      const std::string* darkPath =
-          themeData.FindString(kEphemeralThemeGoogleLogoDarkPathKey);
-      if (lightPath && darkPath) {
-        [searchEngineLogoMediator
-            setOverrideLogoPath:base::SysUTF8ToNSString(*lightPath)
-                   darkLogoPath:base::SysUTF8ToNSString(*darkPath)];
-      }
-    }
     _activeSearchEngineLogoMediator[key] = searchEngineLogoMediator;
   }
 

@@ -9,9 +9,13 @@
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/android/ui/actor_ui_tab_controller_android.h"
+#include "chrome/browser/android/media_state_observer.h"
 #include "chrome/browser/android/oom_intervention/oom_intervention_tab_helper.h"
+#include "chrome/browser/android/persisted_tab_data/language_persisted_tab_data_android.h"
+#include "chrome/browser/android/persisted_tab_data/sensitivity_persisted_tab_data_android.h"
 #include "chrome/browser/android/policy/policy_auditor_bridge.h"
 #include "chrome/browser/android/tab_android.h"
+#include "chrome/browser/chained_back_navigation_tracker.h"
 #include "chrome/browser/complex_tasks/task_tab_helper.h"
 #include "chrome/browser/content_settings/sound_content_setting_observer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
@@ -22,6 +26,7 @@
 #include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_navigation_observer.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_observer.h"
+#include "chrome/browser/file_system_access/file_system_access_tab_helper.h"
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/finds/core/finds_tab_helper.h"
 #include "chrome/browser/finds/finds_service_factory.h"
@@ -33,15 +38,19 @@
 #include "chrome/browser/glic/public/widget/glic_side_panel_coordinator_desktop_android.h"
 #include "chrome/browser/glic/service/glic_instance_helper.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_helper.h"
+#include "chrome/browser/history/top_sites_factory.h"
 #include "chrome/browser/history_embeddings/history_embeddings_service_factory.h"
 #include "chrome/browser/history_embeddings/history_embeddings_tab_helper.h"
 #include "chrome/browser/loader/from_gws_navigation_and_keep_alive_request_observer.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_preconnect_client.h"
 #include "chrome/browser/net/http_auth_cache_status.h"
+#include "chrome/browser/net/net_error_tab_helper.h"
 #include "chrome/browser/net/qwac_web_contents_observer.h"
 #include "chrome/browser/offline_pages/android/auto_fetch_page_load_watcher.h"
+#include "chrome/browser/offline_pages/recent_tab_helper.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
+#include "chrome/browser/page_content_annotations/page_content_annotations_service_factory.h"
 #include "chrome/browser/page_info/about_this_site_tab_helper.h"
 #include "chrome/browser/page_info/page_info_features.h"
 #include "chrome/browser/payments/web_payments_observer.h"
@@ -58,14 +67,17 @@
 #include "chrome/browser/storage_access_api/storage_access_api_service_factory.h"
 #include "chrome/browser/storage_access_api/storage_access_api_service_impl.h"
 #include "chrome/browser/storage_access_api/storage_access_api_tab_helper.h"
+#include "chrome/browser/supervised_user/supervised_user_navigation_observer.h"
 #include "chrome/browser/sync/sessions/sync_sessions_router_tab_helper.h"
 #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router_factory.h"
 #include "chrome/browser/sync_tab_context/tab_context_decryption_token_tab_helper.h"
 #include "chrome/browser/tab_contents/navigation_metrics_recorder.h"
+#include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service_factory.h"
+#include "chrome/browser/ui/search_engines/search_engine_tab_helper.h"
 #include "chrome/browser/ui/side_panel/android/android_side_panel_enabled_fn.h"
 #include "chrome/browser/ui/side_panel/internal/android/dev/side_panel_tab_scoped_dev_feature.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
@@ -76,6 +88,8 @@
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_features.h"
 #include "components/actor/core/actor_features.h"
+#include "components/client_hints/browser/client_hints_web_contents_observer.h"
+#include "components/content_capture/common/content_capture_features.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/download/content/factory/navigation_monitor_factory.h"
 #include "components/download/content/public/download_navigation_observer.h"
@@ -83,6 +97,8 @@
 #include "components/enterprise/data_protection/features.h"
 #include "components/enterprise/net/content/enterprise_proxy_tab_helper.h"
 #include "components/favicon/content/content_favicon_driver.h"
+#include "components/history/content/browser/web_contents_top_sites_observer.h"
+#include "components/history/core/browser/top_sites.h"
 #include "components/payments/core/features.h"
 #include "components/search/ntp_features.h"
 #include "components/security_interstitials/core/features.h"
@@ -384,6 +400,100 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
       std::make_unique<download::DownloadNavigationObserver>(
           web_contents, download::NavigationMonitorFactory::GetForKey(
                             profile->GetProfileKey()));
+
+  web_contents_top_sites_observer_ =
+      std::make_unique<history::WebContentsTopSitesObserver>(
+          web_contents, TopSitesFactory::GetForProfile(profile).get());
+
+  client_hints_web_contents_observer_ =
+      std::make_unique<client_hints::ClientHintsWebContentsObserver>(
+          web_contents);
+
+  chained_back_navigation_tracker_ =
+      GetUserDataFactory().CreateInstance<ChainedBackNavigationTracker>(
+          *tab, *tab, web_contents);
+
+  task_manager::WebContentsTags::CreateForTabContents(web_contents);
+
+  media_state_observer_ = std::make_unique<MediaStateObserver>(web_contents);
+
+  file_system_access_tab_helper_ =
+      std::make_unique<FileSystemAccessTabHelper>(web_contents);
+
+  search_engine_tab_helper_ =
+      GetUserDataFactory().CreateInstance<SearchEngineTabHelper>(*tab, *tab,
+                                                                 web_contents);
+
+  net_error_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<chrome_browser_net::NetErrorTabHelper>(*tab, *tab,
+                                                                 web_contents);
+
+  if (!profile->IsOffTheRecord()) {
+    supervised_user_navigation_observer_ =
+        GetUserDataFactory().CreateInstance<SupervisedUserNavigationObserver>(
+            *tab, *tab, web_contents);
+  }
+
+  recent_tab_helper_ =
+      GetUserDataFactory().CreateInstance<offline_pages::RecentTabHelper>(
+          *tab, *tab, web_contents);
+
+  // Register LanguagePersistedTabDataAndroid for non-incognito Android tabs to
+  // persist language details.
+  if (!profile->IsOffTheRecord() &&
+      content_capture::features::ShouldSendMetadataForDataShare()) {
+    if (auto* tab_android = TabAndroid::FromWebContents(web_contents);
+        tab_android) {
+      LanguagePersistedTabDataAndroid::From(
+          tab_android,
+          base::BindOnce(
+              [](base::WeakPtr<content::WebContents> web_contents,
+                 PersistedTabDataAndroid* persisted_tab_data) {
+                if (!web_contents) {
+                  return;
+                }
+                ChromeTranslateClient* chrome_translate_client =
+                    ChromeTranslateClient::FromWebContents(web_contents.get());
+
+                if (!chrome_translate_client) {
+                  return;
+                }
+
+                auto* language_persisted_tab_data_android =
+                    static_cast<LanguagePersistedTabDataAndroid*>(
+                        persisted_tab_data);
+                language_persisted_tab_data_android->RegisterTranslateDriver(
+                    chrome_translate_client->translate_driver());
+              },
+              web_contents->GetWeakPtr()));
+    }
+  }
+
+  // If enabled, save sensitivity data for each non-incognito Android tab.
+  // TODO(crbug.com/40276584): Consider moving check conditions or the
+  // registration logic to sensitivity_persisted_tab_data_android.*
+  if (!profile->IsOffTheRecord()) {
+    if (auto* page_content_annotations_service =
+            PageContentAnnotationsServiceFactory::GetForProfile(profile)) {
+      if (auto* tab_android = TabAndroid::FromWebContents(web_contents);
+          tab_android) {
+        SensitivityPersistedTabDataAndroid::From(
+            tab_android,
+            base::BindOnce(
+                [](page_content_annotations::PageContentAnnotationsService*
+                       page_content_annotations_service,
+                   PersistedTabDataAndroid* persisted_tab_data) {
+                  auto* sensitivity_persisted_tab_data_android =
+                      static_cast<SensitivityPersistedTabDataAndroid*>(
+                          persisted_tab_data);
+                  sensitivity_persisted_tab_data_android->RegisterPCAService(
+                      page_content_annotations_service);
+                },
+                page_content_annotations_service));
+      }
+    }
+  }
 }
 
 TabFeatures::~TabFeatures() = default;

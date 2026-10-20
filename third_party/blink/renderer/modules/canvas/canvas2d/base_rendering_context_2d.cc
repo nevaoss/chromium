@@ -12,6 +12,7 @@
 #include <optional>
 #include <utility>
 
+#include "base/byte_size.h"
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/location.h"
@@ -49,7 +50,6 @@
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/core/geometry/dom_matrix.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_font_cache.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_performance_monitor.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
@@ -160,8 +160,48 @@ BaseRenderingContext2D::BaseRenderingContext2D(
   UpdateRecordingLimits(/*is_graphite=*/false);
 }
 
+BaseRenderingContext2D::~BaseRenderingContext2D() = default;
+
 const MemoryManagedPaintRecorder* BaseRenderingContext2D::Recorder() const {
   return recorder_.get();
+}
+
+bool BaseRenderingContext2D::HasResourceProvider() const {
+  return shared_image_provider_ != nullptr || bitmap_provider_ != nullptr;
+}
+
+bool BaseRenderingContext2D::IsResourceProviderValid() const {
+  if (shared_image_provider_) {
+    return shared_image_provider_->IsValid();
+  }
+  return bitmap_provider_ != nullptr;
+}
+
+bool BaseRenderingContext2D::IsPaintable() const {
+  return HasResourceProvider();
+}
+
+base::ByteSize BaseRenderingContext2D::AllocatedBufferSize() const {
+  if (shared_image_provider_) {
+    return shared_image_provider_->EstimatedSizeInBytes();
+  }
+  if (bitmap_provider_) {
+    return bitmap_provider_->EstimatedSizeInBytes();
+  }
+  return base::ByteSize();
+}
+
+scoped_refptr<StaticBitmapImage>
+BaseRenderingContext2D::PaintRenderingResultsToSnapshot(
+    SourceDrawingBuffer source_buffer) {
+  if (!IsResourceProviderValid()) {
+    return nullptr;
+  }
+  FlushCanvas(FlushReason::kOther);
+  if (shared_image_provider_) {
+    return shared_image_provider_->Snapshot();
+  }
+  return bitmap_provider_->Snapshot();
 }
 
 const MemoryManagedPaintCanvas* BaseRenderingContext2D::GetPaintCanvas() const {
@@ -776,6 +816,19 @@ void BaseRenderingContext2D::InitializeForRecording(
 
 void BaseRenderingContext2D::RecordingCleared() {
   clear_frame_ = true;
+  if (shared_image_provider_) {
+    shared_image_provider_->RecordingCleared();
+  }
+}
+
+void BaseRenderingContext2D::OnFlushForImage(
+    cc::PaintImage::ContentId content_id) {
+  if (shared_image_provider_ && !shared_image_provider_->IsSoftware()) {
+    if (Recorder()->getRecordingCanvas().IsCachingImage(content_id)) {
+      FlushCanvas(FlushReason::kOther);
+    }
+    shared_image_provider_->OnFlushForImage(content_id);
+  }
 }
 
 void BaseRenderingContext2D::Reset() {
@@ -783,8 +836,6 @@ void BaseRenderingContext2D::Reset() {
 }
 
 std::optional<cc::PaintRecord> BaseRenderingContext2D::FlushCanvasInternal(
-    Canvas2DResourceProvider* shared_image_provider,
-    Canvas2DBitmapProvider* bitmap_provider,
     FlushReason reason) {
   MemoryManagedPaintRecorder* recorder = Recorder();
   if (!recorder || !recorder->HasReleasableDrawOps()) {
@@ -794,17 +845,17 @@ std::optional<cc::PaintRecord> BaseRenderingContext2D::FlushCanvasInternal(
   cc::PaintRecord recording = recorder->ReleaseMainRecording();
   DidFlushRecording(recording, clear_frame_, reason);
   clear_frame_ = false;
-  if (shared_image_provider) {
-    ScopedRasterTimer timer(shared_image_provider->IsAccelerated()
-                                ? shared_image_provider->RasterInterface()
+  if (shared_image_provider_) {
+    ScopedRasterTimer timer(shared_image_provider_->IsAccelerated()
+                                ? shared_image_provider_->RasterInterface()
                                 : nullptr,
-                            *shared_image_provider);
-    shared_image_provider->RasterRecord(recording);
-    shared_image_provider->ReleaseImageProviderImages();
-  } else if (bitmap_provider) {
-    ScopedRasterTimer timer(nullptr, *bitmap_provider);
-    bitmap_provider->RasterRecord(recording);
-    bitmap_provider->ReleaseImageProviderImages();
+                            *shared_image_provider_);
+    shared_image_provider_->RasterRecord(recording);
+    shared_image_provider_->ReleaseImageProviderImages();
+  } else if (bitmap_provider_) {
+    ScopedRasterTimer timer(nullptr, *bitmap_provider_);
+    bitmap_provider_->RasterRecord(recording);
+    bitmap_provider_->ReleaseImageProviderImages();
   }
   if (Host()) {
     Host()->DidFlush();
@@ -1406,23 +1457,20 @@ int BaseRenderingContext2D::LayerCount() const {
   return Canvas2DRecorderContext::LayerCount();
 }
 
-V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
-    ScriptState* script_state,
+void BaseRenderingContext2D::drawElementImage(
     const V8UnionElementOrElementImage* element,
     double dx,
     double dy,
     const DrawElementImageOptions* options,
     ExceptionState& exception_state) {
-  return DrawElementInternal(script_state, element,
-                             /*sx*/ std::nullopt, /*sy*/ std::nullopt,
-                             /*swidth*/ std::nullopt, /*sheight*/ std::nullopt,
-                             dx, dy,
-                             /*dwidth*/ std::nullopt, /*dheight*/ std::nullopt,
-                             options, exception_state);
+  DrawElementInternal(element,
+                      /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+                      /*swidth*/ std::nullopt, /*sheight*/ std::nullopt, dx, dy,
+                      /*dwidth*/ std::nullopt, /*dheight*/ std::nullopt,
+                      options, exception_state);
 }
 
-V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
-    ScriptState* script_state,
+void BaseRenderingContext2D::drawElementImage(
     const V8UnionElementOrElementImage* element,
     double dx,
     double dy,
@@ -1430,14 +1478,13 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
     double dheight,
     const DrawElementImageOptions* options,
     ExceptionState& exception_state) {
-  return DrawElementInternal(script_state, element,
-                             /*sx*/ std::nullopt, /*sy*/ std::nullopt,
-                             /*swidth*/ std::nullopt, /*sheight*/ std::nullopt,
-                             dx, dy, dwidth, dheight, options, exception_state);
+  DrawElementInternal(element,
+                      /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+                      /*swidth*/ std::nullopt, /*sheight*/ std::nullopt, dx, dy,
+                      dwidth, dheight, options, exception_state);
 }
 
-V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
-    ScriptState* script_state,
+void BaseRenderingContext2D::drawElementImage(
     const V8UnionElementOrElementImage* element,
     double sx,
     double sy,
@@ -1447,14 +1494,12 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
     double dy,
     const DrawElementImageOptions* options,
     ExceptionState& exception_state) {
-  return DrawElementInternal(script_state, element, sx, sy, swidth, sheight, dx,
-                             dy, /*dwidth*/ std::nullopt,
-                             /*dheight*/ std::nullopt, options,
-                             exception_state);
+  DrawElementInternal(element, sx, sy, swidth, sheight, dx, dy,
+                      /*dwidth*/ std::nullopt,
+                      /*dheight*/ std::nullopt, options, exception_state);
 }
 
-V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
-    ScriptState* script_state,
+void BaseRenderingContext2D::drawElementImage(
     const V8UnionElementOrElementImage* element,
     double sx,
     double sy,
@@ -1466,12 +1511,11 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::drawElementImage(
     double dheight,
     const DrawElementImageOptions* options,
     ExceptionState& exception_state) {
-  return DrawElementInternal(script_state, element, sx, sy, swidth, sheight, dx,
-                             dy, dwidth, dheight, options, exception_state);
+  DrawElementInternal(element, sx, sy, swidth, sheight, dx, dy, dwidth, dheight,
+                      options, exception_state);
 }
 
-V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
-    ScriptState* script_state,
+void BaseRenderingContext2D::DrawElementInternal(
     const V8UnionElementOrElementImage* element,
     std::optional<double> sx,
     std::optional<double> sy,
@@ -1486,27 +1530,13 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
   CHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled(
       GetCanvasRenderingContextHost()->GetTopExecutionContext()));
 
-  bool element_canvas_transform_enabled =
-      RuntimeEnabledFeatures::ElementCanvasTransformEnabled(
-          GetCanvasRenderingContextHost()->GetTopExecutionContext());
-
-  auto degenerate_return_value = [&script_state,
-                                  element_canvas_transform_enabled]() {
-    if (element_canvas_transform_enabled) {
-      return V8UnionDOMMatrixOrUndefined::Ret(script_state,
-                                              ToV8UndefinedGenerator());
-    }
-    return V8UnionDOMMatrixOrUndefined::Ret(script_state, DOMMatrix::Create());
-  };
-
   if (!GetOrCreatePaintCanvas()) {
-    return degenerate_return_value();
+    return;
   }
 
   if (!IsDrawElementImageEligible(element, "DrawElementImage",
                                   exception_state)) {
-    return V8UnionDOMMatrixOrUndefined::Ret(script_state,
-                                            ToV8UndefinedGenerator());
+    return;
   }
 
   std::optional<CanvasChildPaintRecord> child_paint_record;
@@ -1528,8 +1558,7 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
       exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                         "No cached paint record for element.");
     }
-    return V8UnionDOMMatrixOrUndefined::Ret(script_state,
-                                            ToV8UndefinedGenerator());
+    return;
   }
 
   float dpr = child_paint_record->paint_state.effective_zoom;
@@ -1540,7 +1569,7 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
   }
 
   if (src_rect.IsEmpty()) {
-    return degenerate_return_value();
+    return;
   }
 
   // The filter needs to be resolved before calling Draw, because it
@@ -1566,7 +1595,7 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
   gfx::RectF dst_rect(x, y, dw, dh);
 
   if (dst_rect.IsEmpty()) {
-    return degenerate_return_value();
+    return;
   }
 
   cc::PaintRecord paint_record = std::move(child_paint_record->record);
@@ -1654,32 +1683,30 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
       CanvasRenderingContext2DState::kNonOpaqueImage,
       CanvasPerformanceMonitor::DrawType::kElement);
 
-  // Compute the transform, in canvas grid coordinates, that we just drew with.
-  // We start from the context's CTM, then offset by x,y, and finally apply any
-  // dest scaling.
-  gfx::Transform draw_transform = GetState().GetTransform().ToTransform();
-  draw_transform.Translate(dst_rect.x(), dst_rect.y());
-  // The drawing commands above scale by `dst_rect.size() / src_rect.size()`,
-  // which does two things: 1) scales the drawing commands of `paint_record` (in
-  // physical pixels) to canvas grid coordinates, and 2) applies any additional
-  // dest scaling. We are only returning #2 in the logic below.
-  draw_transform.Scale(dst_rect.width() / ideal_dst_size.width(),
-                       dst_rect.height() / ideal_dst_size.height());
+  if (!options || !options->preserveElementGeometry()) {
+    // Compute the transform, in canvas grid coordinates, that we just drew
+    // with. We start from the context's CTM, then offset by x,y, and finally
+    // apply any dest scaling.
+    gfx::Transform draw_transform = GetState().GetTransform().ToTransform();
+    draw_transform.Translate(dst_rect.x(), dst_rect.y());
+    // The drawing commands above scale by `dst_rect.size() / src_rect.size()`,
+    // which does two things: 1) scales the drawing commands of `paint_record`
+    // (in physical pixels) to canvas grid coordinates, and 2) applies any
+    // additional dest scaling. We are only returning #2 in the logic below.
+    draw_transform.Scale(dst_rect.width() / ideal_dst_size.width(),
+                         dst_rect.height() / ideal_dst_size.height());
 
-  if (sx && sy) {
-    draw_transform.Translate(-src_rect.x() * scale_factor.x(),
-                             -src_rect.y() * scale_factor.y());
-  }
+    if (sx && sy) {
+      draw_transform.Translate(-src_rect.x() * scale_factor.x(),
+                               -src_rect.y() * scale_factor.y());
+    }
 
-  // This call will take our draw transform in canvas grid coordinates, and
-  // convert it to a transform in CSS pixels suitable for positioning the
-  // element.
-  gfx::Transform result_transform = blink::GetElementTransform(
-      child_paint_record->paint_state, Host()->Size(), draw_transform,
-      element_canvas_transform_enabled);
+    // This call will take our draw transform in canvas grid coordinates, and
+    // convert it to a transform in CSS pixels suitable for positioning the
+    // element.
+    gfx::Transform result_transform = blink::GetElementTransform(
+        child_paint_record->paint_state, Host()->Size(), draw_transform);
 
-  if ((!options || !options->preserveElementGeometry()) &&
-      element_canvas_transform_enabled) {
     FloatClipRect canvas_clip;
     if (sx && sy && swidth && sheight) {
       canvas_clip = FloatClipRect(gfx::RectF(*sx, *sy, *swidth, *sheight));
@@ -1695,15 +1722,6 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
                                          /*update_hit_test_order=*/true);
     }
   }
-
-  if (element_canvas_transform_enabled) {
-    return V8UnionDOMMatrixOrUndefined::Ret(script_state,
-                                            ToV8UndefinedGenerator());
-  }
-
-  return V8UnionDOMMatrixOrUndefined::Ret(
-      script_state, MakeGarbageCollected<DOMMatrix>(
-                        result_transform, result_transform.Is2dTransform()));
 }
 
 scoped_refptr<const cc::AnimatedImageFrameIndexMap>

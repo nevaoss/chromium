@@ -76,7 +76,7 @@ missing_new_fields,chrome/browser/supervised_user/kids_chrome_management/kids_ch
 missing_new_fields,chrome/browser/tab/java/src/org/chromium/chrome/browser/tab/state/CouponPersistedTabData.java
 missing_new_fields,components/content_creation/notes/core/server/notes_server_saver.cc
 missing_new_fields,components/content_creation/notes/core/templates/template_fetcher.cc
-missing_new_fields,components/image_fetcher/image_fetcher_bridge.cc
+missing_new_fields,components/image_fetcher/android/image_fetcher_bridge.cc
 missing_new_fields,components/minidump_uploader/android/java/src/org/chromium/components/minidump_uploader/util/HttpURLConnectionFactoryImpl.java
 missing_new_fields,components/variations/android/java/src/org/chromium/components/variations/firstrun/VariationsSeedFetcher.java
 
@@ -345,5 +345,4 @@ missing_new_fields,extensions/browser/guest_view/web_view/controlled_frame_embed
 missing_new_fields,chrome/browser/ash/app_list/search/essential_search/socs_cookie_fetcher.cc
 
 # Header files with traffic annotations that existed before the new check was introduced.
-all,chrome/browser/ash/app_list/search/omnibox/omnibox_util.h
 all,chrome/browser/predictors/predictors_traffic_annotations.h

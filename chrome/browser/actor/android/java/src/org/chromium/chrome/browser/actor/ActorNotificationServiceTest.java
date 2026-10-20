@@ -14,11 +14,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 
@@ -36,15 +39,19 @@ import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.actor.ui.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
+import org.chromium.chrome.browser.notifications.NotificationIntentInterceptor;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.browser_ui.notifications.BaseNotificationManagerProxyFactory;
 import org.chromium.components.browser_ui.notifications.MockNotificationManagerProxy;
 import org.chromium.components.browser_ui.notifications.NotificationWrapper;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Unit tests for {@link ActorNotificationService}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -54,6 +61,7 @@ public class ActorNotificationServiceTest {
 
     @Mock private ActorKeyedService mKeyedService;
     @Mock private ActorTask mTask;
+    @Mock private ActorTask.Natives mActorTaskJni;
     @Mock private ActorForegroundServiceController mServiceController;
 
     private ActorNotificationService mNotificationService;
@@ -84,6 +92,7 @@ public class ActorNotificationServiceTest {
     public void tearDown() {
         mNotificationService.clearAll();
         ActorForegroundServiceManager.resetInstanceForTesting();
+        ActorTaskJni.setInstanceForTesting(null);
     }
 
     @Test
@@ -1021,8 +1030,7 @@ public class ActorNotificationServiceTest {
                 taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
         assertEquals(1, mMockNotificationManager.getMutationCountAndDecrement());
 
-        java.util.concurrent.atomic.AtomicBoolean notifiedDuringMaybeStop =
-                new java.util.concurrent.atomic.AtomicBoolean(false);
+        AtomicBoolean notifiedDuringMaybeStop = new AtomicBoolean(false);
         doAnswer(
                         invocation -> {
                             // At the moment maybeStopServiceNow is called, nonLiveWrapper
@@ -1055,6 +1063,34 @@ public class ActorNotificationServiceTest {
         assertNotNull(demoted);
         assertFalse(
                 "After demotion, notification should not request promoted ongoing",
+                demoted.extras.getBoolean(ActorNotificationFactory.EXTRA_REQUEST_PROMOTED_ONGOING));
+    }
+
+    @Test
+    public void testDemoteNow_DoesNotCallMaybeStopServiceNow() {
+        int taskId = 1;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.FINISHED);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        ActorForegroundServiceManager fgsManager = mock(ActorForegroundServiceManager.class);
+        ActorForegroundServiceManager.setInstanceForTesting(fgsManager);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        mNotificationService.demoteNow(taskId);
+
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId));
+        verify(fgsManager, never()).maybeStopServiceNow();
+        Notification demoted =
+                mNotificationService.getCachedNotification(
+                        taskId, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted);
+        assertFalse(
+                "After demoteNow, notification should not request promoted ongoing",
                 demoted.extras.getBoolean(ActorNotificationFactory.EXTRA_REQUEST_PROMOTED_ONGOING));
     }
 
@@ -1199,5 +1235,70 @@ public class ActorNotificationServiceTest {
                 "A late step progress update must not revive a finished task's notification",
                 0,
                 mMockNotificationManager.getMutationCountAndDecrement());
+    }
+
+    @Test
+    public void testDemotion_AfterClearNativePtr_PreservesTabIdOnPendingIntent() {
+        long nativeTaskPtr = 1234L;
+        int taskId = 50;
+        int expectedTabId = 99;
+        ActorTaskJni.setInstanceForTesting(mActorTaskJni);
+        when(mActorTaskJni.getState(nativeTaskPtr)).thenReturn(ActorTaskState.FINISHED);
+        when(mActorTaskJni.getLastActuatedTabId(nativeTaskPtr)).thenReturn(expectedTabId);
+
+        ActorTask realTask =
+                new ActorTask(
+                        nativeTaskPtr, taskId, "Test Task", mock(Profile.class), "conv-id-50");
+        when(mKeyedService.getTask(taskId)).thenReturn(realTask);
+        when(mServiceController.createTrustedBringTabToFrontIntent(any()))
+                .thenAnswer(
+                        invocation -> {
+                            ActorTask task = invocation.getArgument(0);
+                            Intent intent = new Intent("BRING_TAB_TO_FRONT_ACTION");
+                            intent.putExtra(
+                                    IntentHandler.BRING_TAB_TO_FRONT_EXTRA, task.getTargetTabId());
+                            intent.putExtra(
+                                    NotificationConstants.EXTRA_ACTOR_TASK_STATE, task.getState());
+                            return intent;
+                        });
+
+        // Post terminal live notification while native task is still alive.
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        // Native ActorTask is destroyed on the next UI message-loop tick after task completion.
+        realTask.clearNativePtr();
+        when(mKeyedService.getTask(taskId)).thenReturn(null);
+
+        assertEquals(expectedTabId, realTask.getLastActuatedTabId());
+        assertEquals(expectedTabId, realTask.getTargetTabId());
+        assertEquals(ActorTaskState.FINISHED, realTask.getState());
+
+        // Advance looper to fire demotion runnable after native task destruction.
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        Notification demoted =
+                mNotificationService.getCachedNotification(
+                        taskId, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted);
+        assertNotNull(demoted.contentIntent);
+
+        Intent demotedIntent = shadowOf(demoted.contentIntent).getSavedIntent();
+        if (NotificationIntentInterceptor.INTENT_ACTION.equals(demotedIntent.getAction())) {
+            PendingIntent wrappedPendingIntent =
+                    NotificationIntentInterceptor.getPendingIntentForTesting(demotedIntent);
+            demotedIntent = shadowOf(wrappedPendingIntent).getSavedIntent();
+        }
+        assertEquals(
+                "Demoted notification PendingIntent must preserve the last actuated tab ID",
+                expectedTabId,
+                demotedIntent.getIntExtra(
+                        IntentHandler.BRING_TAB_TO_FRONT_EXTRA, Tab.INVALID_TAB_ID));
+        assertEquals(
+                ActorTaskState.FINISHED,
+                demotedIntent.getIntExtra(
+                        NotificationConstants.EXTRA_ACTOR_TASK_STATE, ActorTaskState.CREATED));
     }
 }

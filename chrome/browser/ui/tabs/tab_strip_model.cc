@@ -2675,7 +2675,7 @@ bool TabStripModel::IsContextMenuCommandEnabled(
 
     case CommandCloseOtherTabs:
     case CommandCloseTabsToRight: {
-      return !GetIndicesClosedByCommand(context_index, command_id).empty();
+      return HasIndicesClosedByCommand(context_index, command_id);
     }
     case CommandDuplicate: {
       std::vector<int> indices = GetIndicesForCommand(context_index);
@@ -3761,12 +3761,10 @@ std::vector<tabs::TabInterface*> TabStripModel::GetTabsForCommand(
       selection_model_.selected_tabs().end());
 }
 
-std::vector<int> TabStripModel::GetIndicesClosedByCommand(
-    int index,
-    ContextMenuCommand id) const {
-  std::vector<int> indices;
+bool TabStripModel::HasIndicesClosedByCommand(int index,
+                                              ContextMenuCommand id) const {
   if (!ContainsIndex(index)) {
-    return indices;
+    return false;
   }
   DCHECK(id == CommandCloseTabsToRight || id == CommandCloseOtherTabs);
   bool is_selected = IsTabSelected(index);
@@ -3789,7 +3787,6 @@ std::vector<int> TabStripModel::GetIndicesClosedByCommand(
           ? GetIndexRangeOfSplit(invoked_tab->GetSplit().value())
           : gfx::Range(index, index + 1);
 
-  // NOTE: callers expect the vector to be sorted in descending order.
   std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
   for (int i = count() - 1; i > last_unclosed_tab; --i) {
     // Skip tabs that are not part of the focused group.
@@ -3798,10 +3795,10 @@ std::vector<int> TabStripModel::GetIndicesClosedByCommand(
     }
     if (!indices_to_exclude.Contains(gfx::Range(i, i + 1)) && !IsTabPinned(i) &&
         (!is_selected || !IsTabSelected(i))) {
-      indices.push_back(i);
+      return true;
     }
   }
-  return indices;
+  return false;
 }
 
 std::vector<tabs::TabInterface*> TabStripModel::GetTabsClosedByCommand(
@@ -4311,8 +4308,8 @@ TabStripSelectionChange TabStripModel::SetSelection(
       }
     }
 
-    TabStripModelChange change;
-    OnChange(change, selection);
+    OnChange(TabStripModelChange(TabStripModelChange::SelectionOnly()),
+             selection);
   }
 
   return selection;
@@ -4594,8 +4591,8 @@ split_tabs::SplitTabId TabStripModel::AddToSplitImpl(
     TabStripSelectionChange selection(
         GetActiveTab(), old_selection_model.GetListSelectionModel());
     selection.new_model = selection_model().GetListSelectionModel();
-    TabStripModelChange change;
-    OnChange(change, selection);
+    OnChange(TabStripModelChange(TabStripModelChange::SelectionOnly()),
+             selection);
   }
 
   NotifySplitTabCreated(split_id, tabs_with_indices, reason, visual_data);
@@ -4625,13 +4622,13 @@ void TabStripModel::RemoveSplitImpl(
   if (old_selection_model != selection_model_) {
     TabStripSelectionChange selection(
         GetActiveTab(), old_selection_model.GetListSelectionModel());
-    TabStripModelChange change;
     selection.new_tab = GetActiveTab();
     selection.new_contents = GetActiveWebContents();
     selection.new_model = selection_model().GetListSelectionModel();
     selection.reason = TabStripModelObserver::CHANGE_REASON_NONE;
 
-    OnChange(change, selection);
+    OnChange(TabStripModelChange(TabStripModelChange::SelectionOnly()),
+             selection);
   }
 
   NotifySplitTabRemoved(split_id, tabs_with_indices, reason);

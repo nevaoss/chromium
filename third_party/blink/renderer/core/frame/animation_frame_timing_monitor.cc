@@ -66,7 +66,7 @@ constexpr base::TimeDelta kCongestionIdleGap = base::Milliseconds(5);
 
 AnimationFrameTimingMonitor::AnimationFrameTimingMonitor(Client& client,
                                                          CoreProbeSink* sink)
-    : client_(client) {
+    : client_(&client) {
   Thread::Current()->AddTaskTimeObserver(this);
   if (!IsMainThread()) {
     CHECK(RuntimeEnabledFeatures::LongAnimationFrameWorkerEnabled());
@@ -763,6 +763,7 @@ void AnimationFrameTimingMonitor::Trace(Visitor* visitor) const {
   visitor->Trace(frame_handling_input_);
   visitor->Trace(task_attributed_window_);
   visitor->Trace(congestion_scripts_);
+  visitor->Trace(client_);
 }
 
 BASE_FEATURE(kAlwaysLogLOAFURL, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -944,14 +945,9 @@ void AnimationFrameTimingMonitor::WillHandlePromise(
       .class_like_name = class_like_name,
       .property_like_name = property_like_name,
       .source_location = {.url = location->Url(script_state->GetIsolate()),
-                          .char_position = location->CharPosition()}};
-
-  if (RuntimeEnabledFeatures::LongAnimationFrameSourceLineColumnEnabled()) {
-    pending_script_info_->source_location.line_number =
-        location->LineNumber() + 1;
-    pending_script_info_->source_location.column_number =
-        location->ColumnNumber() + 1;
-  }
+                          .char_position = location->CharPosition(),
+                          .line_number = location->LineNumber(),
+                          .column_number = location->ColumnNumber()}};
 }
 
 void AnimationFrameTimingMonitor::Will(

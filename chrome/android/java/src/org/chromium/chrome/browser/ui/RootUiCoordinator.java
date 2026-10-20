@@ -433,7 +433,7 @@ public class RootUiCoordinator
     protected final @ActivityType int mActivityType;
     protected final Supplier<Boolean> mIsInOverviewModeSupplier;
     private final AppMenuDelegate mAppMenuDelegate;
-    protected final Supplier<TabContentManager> mTabContentManagerSupplier;
+    protected final Supplier<@Nullable TabContentManager> mTabContentManagerSupplier;
     private final IntentRequestTracker mIntentRequestTracker;
     private final boolean mInitializeUiWithIncognitoColors;
     protected final SettableMonotonicObservableSupplier<EphemeralTabCoordinator>
@@ -563,7 +563,7 @@ public class RootUiCoordinator
             MonotonicObservableSupplier<TabCreatorManager> tabCreatorManagerSupplier,
             FullscreenManager fullscreenManager,
             MonotonicObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier,
-            Supplier<TabContentManager> tabContentManagerSupplier,
+            Supplier<@Nullable TabContentManager> tabContentManagerSupplier,
             MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
             SettableMonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
             TopInsetProvider topInsetProvider,
@@ -815,8 +815,6 @@ public class RootUiCoordinator
                             }
                         });
 
-        // TODO(crbug.com/433576895): Remove useSlider parameter and legacy seekbar
-        // logic.
         mPageZoomBarCoordinator =
                 new PageZoomBarCoordinator(
                         new PageZoomBarCoordinatorDelegate() {
@@ -838,7 +836,6 @@ public class RootUiCoordinator
                             }
                         },
                         mPageZoomManager,
-                        /* useSlider= */ true,
                         getBottomSheetControllerSupplier());
 
         if (ChromeFeatureList.sEnableExclusiveAccessManager.isEnabled()) {
@@ -1439,9 +1436,9 @@ public class RootUiCoordinator
         }
 
         // TODO(crbug.com/498302496): Remove TopInsetCoordinator creation and
-        // TransitiveTopInsetProvider once sEdgelessTopInset is fully launched and
+        // TransitiveTopInsetProvider once sEdgeToEdgeTopInset is fully launched and
         // TopInsetCoordinator is deleted.
-        if (!EdgeToEdgeUtils.isEdgelessTopInsetEnabled()
+        if (!EdgeToEdgeUtils.isEdgeToEdgeRefactorEnabled()
                 && mWindowAndroid.getInsetObserver() != null
                 && NtpCustomizationUtils.supportsEnableEdgeToEdgeOnTop(mWindowAndroid, mIsTablet)) {
             // Only create TopInsetCoordinator if there's a valid TransitiveTopInsetProvider
@@ -2266,7 +2263,7 @@ public class RootUiCoordinator
                             mMultiWindowModeStateDispatcher,
                             assertNonNull(getBottomSheetController()),
                             getDataSharingTabManager(),
-                            mTabContentManagerSupplier.get(),
+                            assertNonNull(mTabContentManagerSupplier.get()),
                             mTabCreatorManagerSupplier.asNonNull().get(),
                             getMerchantTrustSignalsCoordinatorSupplier(),
                             omniboxActionDelegate,
@@ -2510,6 +2507,9 @@ public class RootUiCoordinator
                 };
 
         manager.addObserver(mFindToolbarObserver);
+        if (mToolbarManager != null) {
+            mToolbarManager.setFindToolbarManager(manager);
+        }
         return manager;
     }
 
@@ -2681,7 +2681,7 @@ public class RootUiCoordinator
             // TODO(crbug.com/498302496): Pass mEdgeToEdgeController directly to downstream
             // consumers (e.g. ToolbarManager, NewTabAnimationLayout) instead of using
             // TransitiveTopInsetProvider.
-            if (EdgeToEdgeUtils.isEdgelessTopInsetEnabled()
+            if (EdgeToEdgeUtils.isEdgeToEdgeRefactorEnabled()
                     && mTopInsetProvider
                             instanceof TransitiveTopInsetProvider transitiveTopInsetProvider) {
                 transitiveTopInsetProvider.set(mEdgeToEdgeController);

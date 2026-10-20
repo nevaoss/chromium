@@ -19,7 +19,6 @@
 #import "components/variations/service/variations_service.h"
 #import "components/variations/service/variations_service_utils.h"
 #import "components/version_info/channel.h"
-#import "crypto/features.h"
 #import "ios/chrome/app/background_mode_buildflags.h"
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_constants.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
@@ -102,7 +101,7 @@ BASE_FEATURE(kIOSChooseFromDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSDateToCalendarSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kIOSSaveToDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIOSSaveToDriveSignedOut, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSSaveToPhotosSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -330,10 +329,6 @@ bool IsPinnedTabsEnabled() {
 BASE_FEATURE(kEnableAppBackgroundRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAppBackgroundRefreshEnabled() {
-  if (!base::FeatureList::IsEnabled(
-          crypto::features::kMigrateIOSKeychainAccessibility)) {
-    return false;
-  }
   return base::FeatureList::IsEnabled(kEnableAppBackgroundRefresh);
 }
 
@@ -756,7 +751,7 @@ bool IsAIMEligibilityRefreshNTPModulesEnabled() {
   return base::FeatureList::IsEnabled(kAIMEligibilityRefreshNTPModules);
 }
 
-BASE_FEATURE(kIOSWebContextMenuNewTitle, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIOSWebContextMenuNewTitle, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsIOSWebContextMenuNewTitleEnabled() {
   return base::FeatureList::IsEnabled(kIOSWebContextMenuNewTitle);
@@ -1019,6 +1014,15 @@ bool IsPlusButtonInFakeboxEnabled() {
 // Returns true if the plus button contextual menu in NTP fakebox is enabled.
 bool IsPlusButtonMenuInFakeboxEnabled() {
   return base::FeatureList::IsEnabled(kPlusButtonMenuInFakebox);
+}
+
+// Enables the submenu with more options in the plus menu.
+BASE_FEATURE(kPlusButtonMenuMoreOptionsSubmenu,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Returns true if the submenu groupping is enabled in the plus menu.
+bool IsPlusButtonMenuMoreOptionsSubmenu() {
+  return base::FeatureList::IsEnabled(kPlusButtonMenuMoreOptionsSubmenu);
 }
 
 BASE_FEATURE(kAssistantAimMinimizedState, base::FEATURE_DISABLED_BY_DEFAULT);

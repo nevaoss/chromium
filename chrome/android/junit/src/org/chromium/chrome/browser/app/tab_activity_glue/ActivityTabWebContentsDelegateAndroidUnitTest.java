@@ -81,6 +81,7 @@ import java.util.function.Supplier;
     ChromeFeatureList.FORCE_WEB_CONTENTS_DARK_MODE,
     ChromeFeatureList.DOCUMENT_PICTURE_IN_PICTURE_API
 })
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class ActivityTabWebContentsDelegateAndroidUnitTest {
     static class TestActivityTabWebContentsDelegateAndroid
             extends ActivityTabWebContentsDelegateAndroid {
@@ -274,8 +275,7 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
         Tab parentTab = mock(Tab.class);
         Tab newTab = mock(Tab.class);
         when(parentTab.getTabGroupId()).thenReturn(Token.createRandom());
-        when(mTabCreator.createTabWithWebContents(
-                        any(), anyBoolean(), any(), anyInt(), any(), any()))
+        when(mTabCreator.createTabWithWebContents(any(), anyBoolean(), any(), anyInt(), any()))
                 .thenReturn(newTab);
         when(mTabModel.isTabInTabGroup(any())).thenReturn(true);
         when(mTabModel.isTabModelRestored()).thenReturn(true);
@@ -316,7 +316,6 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
                         eq(false),
                         eq(mNewWebContents),
                         eq(TabLaunchType.FROM_LONGPRESS_BACKGROUND),
-                        eq(TARGET_URL),
                         any());
     }
 
@@ -339,7 +338,6 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
                         eq(false),
                         eq(mNewWebContents),
                         eq(TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP),
-                        eq(TARGET_URL),
                         any());
     }
 
@@ -362,7 +360,6 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
                         eq(false),
                         eq(mNewWebContents),
                         eq(TabLaunchType.FROM_LONGPRESS_FOREGROUND),
-                        eq(TARGET_URL),
                         any());
     }
 
@@ -385,7 +382,6 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
                         eq(false),
                         eq(mNewWebContents),
                         eq(TabLaunchType.FROM_LONGPRESS_FOREGROUND_IN_GROUP),
-                        eq(TARGET_URL),
                         any());
     }
 
@@ -408,7 +404,6 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
                         eq(false),
                         eq(mNewWebContents),
                         eq(TabLaunchType.FROM_LONGPRESS_FOREGROUND),
-                        eq(TARGET_URL),
                         any());
     }
 
@@ -431,7 +426,6 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
                         eq(false),
                         eq(mNewWebContents),
                         eq(TabLaunchType.FROM_LONGPRESS_FOREGROUND),
-                        eq(TARGET_URL),
                         any());
     }
 
@@ -442,8 +436,7 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
         Token tabGroupId = Token.createRandom();
         when(parentTab.getTabGroupId()).thenReturn(tabGroupId);
         when(newTab.getTabGroupId()).thenReturn(tabGroupId);
-        when(mTabCreator.createTabWithWebContents(
-                        any(), anyBoolean(), any(), anyInt(), any(), any()))
+        when(mTabCreator.createTabWithWebContents(any(), anyBoolean(), any(), anyInt(), any()))
                 .thenReturn(newTab);
         when(mTabModel.isTabInTabGroup(any())).thenReturn(true);
         when(mTabModel.isTabModelRestored()).thenReturn(true);
@@ -467,7 +460,7 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
         Tab newTab = mock(Tab.class);
         doReturn(newTab)
                 .when(mTabCreator)
-                .createTabWithWebContents(any(), anyBoolean(), any(), anyInt(), any(), any());
+                .createTabWithWebContents(any(), anyBoolean(), any(), anyInt(), any());
 
         mTabWebContentsDelegateAndroid.addNewContents(
                 mWebContents,
@@ -480,7 +473,7 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
 
         verify(mTabCreator, times(1))
                 .createTabWithWebContents(
-                        any(), anyBoolean(), any(), anyInt(), any(), mFutureCaptor.capture());
+                        any(), anyBoolean(), any(), anyInt(), mFutureCaptor.capture());
         CompletableFuture<Boolean> capturedFuture = mFutureCaptor.getValue();
         assertTrue(
                 "The final decision to add the tab to the TabModel should have already been made",
@@ -496,7 +489,7 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
         Tab newTab = mock(Tab.class);
         doReturn(newTab)
                 .when(mTabCreator)
-                .createTabWithWebContents(any(), anyBoolean(), any(), anyInt(), any(), any());
+                .createTabWithWebContents(any(), anyBoolean(), any(), anyInt(), any());
 
         mTabWebContentsDelegateAndroid.addNewContents(
                 mWebContents,
@@ -509,7 +502,7 @@ public class ActivityTabWebContentsDelegateAndroidUnitTest {
 
         verify(mTabCreator, times(1))
                 .createTabWithWebContents(
-                        any(), anyBoolean(), any(), anyInt(), any(), mFutureCaptor.capture());
+                        any(), anyBoolean(), any(), anyInt(), mFutureCaptor.capture());
         CompletableFuture<Boolean> capturedFuture = mFutureCaptor.getValue();
         assertTrue(
                 "The final decision to add the tab to the TabModel should have already been made",

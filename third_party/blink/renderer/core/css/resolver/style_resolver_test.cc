@@ -16,6 +16,7 @@
 #include "third_party/blink/renderer/core/css/css_flip_revert_value.h"
 #include "third_party/blink/renderer/core/css/css_image_set_value.h"
 #include "third_party/blink/renderer/core/css/css_image_value.h"
+#include "third_party/blink/renderer/core/css/css_style_declaration.h"
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/media_feature_names.h"
@@ -45,6 +46,7 @@
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/style/anchor_specifier_value.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
+#include "third_party/blink/renderer/core/testing/color_scheme_helper.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/geometry/calculation_value.h"
@@ -446,6 +448,85 @@ TEST_F(StyleResolverTest,
   EXPECT_TRUE(reverse_transition);
   EXPECT_EQ(before_reversal_font_size,
             ComputedValue("font-size", *StyleForId("target")));
+}
+
+TEST_F(StyleResolverTest, TransitionOnNewlyInsertedElement) {
+  GetDocument().documentElement()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      #target {
+        opacity: 0;
+        transition: opacity 1000s steps(2, start);
+      }
+      #target.visible { opacity: 1; }
+      #no-transition {
+        opacity: 0;
+        transition: none;
+      }
+      #no-transition.visible { opacity: 1; }
+    </style>
+    <div id=target></div>
+    <div id=no-transition></div>
+  )HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  ASSERT_TRUE(target);
+  // Merely declaring a transition does not require a base computed style.
+  EXPECT_FALSE(target->GetElementAnimations());
+  EXPECT_FALSE(target->GetComputedStyle()->GetBaseComputedStyle());
+  EXPECT_EQ("0", ComputedValue("opacity", *StyleForId("target")));
+
+  Element* no_transition =
+      GetDocument().getElementById(AtomicString("no-transition"));
+  ASSERT_TRUE(no_transition);
+  EXPECT_FALSE(no_transition->GetElementAnimations());
+  EXPECT_FALSE(no_transition->GetComputedStyle()->GetBaseComputedStyle());
+
+  target->setAttribute(html_names::kClassAttr, AtomicString("visible"));
+  no_transition->setAttribute(html_names::kClassAttr, AtomicString("visible"));
+  UpdateAllLifecyclePhasesForTest();
+
+  ElementAnimations* element_animations = target->GetElementAnimations();
+  ASSERT_TRUE(element_animations);
+  EXPECT_EQ(1u, element_animations->Animations().size());
+  EXPECT_TRUE(target->GetComputedStyle()->GetBaseComputedStyle());
+  EXPECT_EQ("0.5", ComputedValue("opacity", *StyleForId("target")));
+
+  EXPECT_FALSE(no_transition->GetElementAnimations());
+  EXPECT_FALSE(no_transition->GetComputedStyle()->GetBaseComputedStyle());
+  EXPECT_EQ("1", ComputedValue("opacity", *StyleForId("no-transition")));
+}
+
+TEST_F(StyleResolverTest, TransitionWithIncrementalInlineStyle) {
+  GetDocument().documentElement()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      #target {
+        transition: opacity 1000s steps(2, start);
+      }
+    </style>
+    <div id=target style="opacity: 0"></div>
+  )HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  ASSERT_TRUE(target);
+  EXPECT_FALSE(target->GetElementAnimations());
+  EXPECT_FALSE(target->GetComputedStyle()->GetBaseComputedStyle());
+  EXPECT_EQ("0", ComputedValue("opacity", *StyleForId("target")));
+
+  // Mutating an existing independent inline property via CSSStyleDeclaration
+  // sets kInlineIndependentStyleChange, which must still fall back to full
+  // cascade resolution when a transition can start.
+  target->style()->setProperty(GetDocument().GetExecutionContext(), "opacity",
+                               "1", "", ASSERT_NO_EXCEPTION);
+  EXPECT_EQ(kInlineIndependentStyleChange, target->GetStyleChangeType());
+  UpdateAllLifecyclePhasesForTest();
+
+  ElementAnimations* element_animations = target->GetElementAnimations();
+  ASSERT_TRUE(element_animations);
+  EXPECT_EQ(1u, element_animations->Animations().size());
+  EXPECT_TRUE(target->GetComputedStyle()->GetBaseComputedStyle());
+  EXPECT_EQ("0.5", ComputedValue("opacity", *StyleForId("target")));
 }
 
 class StyleResolverFontRelativeUnitTest
@@ -4158,13 +4239,19 @@ TEST_F(StyleResolverTestCQ, ContainerUnitContext) {
         width: 200px;
         height: 200px;
       }
+      #between {
+        width: 150px;
+        height: 150px;
+      }
       #div {
         width: 100px;
         height: 100px;
       }
     </style>
     <div id="container">
-      <div id="div"></div>
+      <div id="between">
+        <div id="div"></div>
+      </div>
     </div>
   )HTML");
 
@@ -4777,6 +4864,42 @@ TEST_F(StyleResolverTest, FindContainerForElement_SkeletonPseudo) {
             nullptr);
   EXPECT_EQ(StyleResolver::FindContainerForElement(&skeleton, named_selector),
             nullptr);
+}
+
+TEST_F(StyleResolverTest, IncrementalStyleResetsColorIsDerivedFromParent) {
+  SetBodyInnerHTML(R"HTML(
+    <div id="target"
+         style="color: color-mix(in srgb, currentColor 50%, red)"></div>
+  )HTML");
+  Element* target = GetElementById("target");
+  EXPECT_TRUE(target->GetComputedStyle()->ColorIsDerivedFromParent());
+
+  // Incremental style starts from a copy of the old style.
+  target->style()->setProperty(GetDocument().GetExecutionContext(), "color",
+                               "blue", "", ASSERT_NO_EXCEPTION);
+  EXPECT_EQ(kInlineIndependentStyleChange, target->GetStyleChangeType());
+  UpdateAllLifecyclePhasesForTest();
+  EXPECT_FALSE(target->GetComputedStyle()->ColorIsDerivedFromParent());
+}
+
+TEST_F(StyleResolverTest, PreserveParentColorSkipsFastPath) {
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetInForcedColors(GetDocument(), true);
+  SetBodyInnerHTML(R"HTML(
+    <style>
+      #parent.on { color: rgb(200, 0, 0); }
+      #preserve { forced-color-adjust: preserve-parent-color; }
+    </style>
+    <div id="parent"><div id="preserve"></div></div>
+  )HTML");
+  auto color_of = [&](const char* id) {
+    return GetElementById(id)->GetComputedStyle()->VisitedDependentColor(
+        GetCSSPropertyColor());
+  };
+  GetElementById("parent")->classList().Add(AtomicString("on"));
+  UpdateAllLifecyclePhasesForTest();
+  // The parent's used color is forced, not its computed rgb(200, 0, 0).
+  EXPECT_EQ(color_of("parent"), color_of("preserve"));
 }
 
 }  // namespace blink

@@ -1196,8 +1196,7 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
                                    driver().GetPageUkmSourceId());
     }
     if (autofill_metrics::FormEventLoggerBase* logger =
-            GetEventFormLogger(*autofill_field);
-        logger && ShouldBeParsed(*form_structure, /*log_manager=*/nullptr)) {
+            GetEventFormLogger(*autofill_field)) {
       if (logger == &metrics_->credit_card_form_event_logger) {
         metrics_->credit_card_form_event_logger.set_signin_state_for_metrics(
             metrics_->signin_state_for_metrics);
@@ -1832,6 +1831,7 @@ void BrowserAutofillManager::FillOrPreviewForm(
     const FieldGlobalId& trigger_field_id,
     const FillingPayload& filling_payload,
     AutofillTriggerSource trigger_source,
+    bool require_user_confirmation,
     const base::flat_set<FieldGlobalId>& blocked_fields) {
   auto [form, trigger_field] =
       FindMutableFormAndField(form_id, trigger_field_id);
@@ -1854,7 +1854,8 @@ void BrowserAutofillManager::FillOrPreviewForm(
                        FillOrPreviewCreditCardForm(
                            action_persistence, CHECK_DEREF(form),
                            CHECK_DEREF(trigger_field), *credit_card,
-                           trigger_source, blocked_fields);
+                           trigger_source, require_user_confirmation,
+                           blocked_fields);
                      },
                      [&](const EntityInstance*) {
                        form_filler_->FillOrPreviewForm(
@@ -1992,6 +1993,7 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
     const AutofillField& trigger_field,
     const CreditCard& credit_card,
     AutofillTriggerSource trigger_source,
+    bool require_user_confirmation,
     const base::flat_set<FieldGlobalId>& blocked_fields) {
   bool require_card_fetching = [&] {
     if (action_persistence == mojom::ActionPersistence::kPreview) {
@@ -2114,7 +2116,7 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
 
   if (require_card_fetching) {
     GetCreditCardAccessManager()->FetchCreditCard(
-        &credit_card,
+        &credit_card, require_user_confirmation,
         base::BindOnce(on_fetched, weak_ptr_factory_.GetWeakPtr(),
                        fill_or_preview, form.global_id(),
                        trigger_field.global_id(), trigger_field.origin(),
@@ -2122,11 +2124,15 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
   } else if (fetched_independently) {
     // Cards fetched independently, such as for BNPL, have all of their data on
     // creation and do not need further fetching.
+    // TODO(crbug.com/561395976): Check if additional authentication is needed
+    // for BNPL credit cards.
     on_fetched(weak_ptr_factory_.GetWeakPtr(), fill_or_preview,
                form.global_id(), trigger_field.global_id(),
                trigger_field.origin(), trigger_source, blocked_fields,
                credit_card);
   } else {
+    // TODO(crbug.com/561395976): Trigger additional authentication for already
+    // fetched credit cards.
     fill_or_preview(*this, action_persistence, form.global_id(),
                     trigger_field.global_id(), credit_card, trigger_source,
                     blocked_fields);
@@ -3361,10 +3367,6 @@ void BrowserAutofillManager::ReportAutofillWebOTPMetrics(bool used_web_otp) {
 
 void BrowserAutofillManager::ProcessFieldLogEventsInForm(
     const FormStructure& form_structure) {
-  // TODO(crbug.com/40225658): Log metrics if at least one field in the form was
-  // classified as a certain type.
-  LogEventCountsUMAMetric(form_structure);
-
   // ShouldUploadUkm reduces the UKM load by ignoring e.g. search boxes at best
   // effort.
   bool should_upload_ukm =
@@ -3405,79 +3407,6 @@ void BrowserAutofillManager::ProcessFieldLogEventsInForm(
     // Clear log events.
     autofill_field->ClearLogEvents();
   }
-}
-
-void BrowserAutofillManager::LogEventCountsUMAMetric(
-    const FormStructure& form_structure) {
-  size_t num_ask_for_values_to_fill_event = 0;
-  size_t num_trigger_fill_event = 0;
-  size_t num_fill_event = 0;
-  size_t num_typing_event = 0;
-  size_t num_heuristic_prediction_event = 0;
-  size_t num_autocomplete_attribute_event = 0;
-  size_t num_server_prediction_event = 0;
-  size_t num_rationalization_event = 0;
-  size_t num_ablation_event = 0;
-
-  for (const std::unique_ptr<AutofillField>& autofill_field : form_structure) {
-    for (const AutofillField::FieldLogEventType& log_event :
-         autofill_field->field_log_events()) {
-      static_assert(
-          std::variant_size<AutofillField::FieldLogEventType>() == 10,
-          "When adding new variants check that this function does not "
-          "need to be updated.");
-      if (std::holds_alternative<AskForValuesToFillFieldLogEvent>(log_event)) {
-        ++num_ask_for_values_to_fill_event;
-      } else if (std::holds_alternative<TriggerFillFieldLogEvent>(log_event)) {
-        ++num_trigger_fill_event;
-      } else if (std::holds_alternative<FillFieldLogEvent>(log_event)) {
-        ++num_fill_event;
-      } else if (std::holds_alternative<TypingFieldLogEvent>(log_event)) {
-        ++num_typing_event;
-      } else if (std::holds_alternative<HeuristicPredictionFieldLogEvent>(
-                     log_event)) {
-        ++num_heuristic_prediction_event;
-      } else if (std::holds_alternative<AutocompleteAttributeFieldLogEvent>(
-                     log_event)) {
-        ++num_autocomplete_attribute_event;
-      } else if (std::holds_alternative<ServerPredictionFieldLogEvent>(
-                     log_event)) {
-        ++num_server_prediction_event;
-      } else if (std::holds_alternative<RationalizationFieldLogEvent>(
-                     log_event)) {
-        ++num_rationalization_event;
-      } else if (std::holds_alternative<AblationFieldLogEvent>(log_event)) {
-        ++num_ablation_event;
-      } else {
-        NOTREACHED();
-      }
-    }
-  }
-
-  size_t total_num_log_events =
-      num_ask_for_values_to_fill_event + num_trigger_fill_event +
-      num_fill_event + num_typing_event + num_heuristic_prediction_event +
-      num_autocomplete_attribute_event + num_server_prediction_event +
-      num_rationalization_event + num_ablation_event;
-  // Record the number of each type of log events into UMA to decide if we need
-  // to clear them before the form is submitted or destroyed.
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.AskForValuesToFillEvent",
-                             num_ask_for_values_to_fill_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.TriggerFillEvent",
-                             num_trigger_fill_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.FillEvent", num_fill_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.TypingEvent", num_typing_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.HeuristicPredictionEvent",
-                             num_heuristic_prediction_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.AutocompleteAttributeEvent",
-                             num_autocomplete_attribute_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.ServerPredictionEvent",
-                             num_server_prediction_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.RationalizationEvent",
-                             num_rationalization_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.AblationEvent",
-                             num_ablation_event);
-  UMA_HISTOGRAM_COUNTS_10000("Autofill.LogEvent.All", total_num_log_events);
 }
 
 void BrowserAutofillManager::InitializeSuggestionGenerators(

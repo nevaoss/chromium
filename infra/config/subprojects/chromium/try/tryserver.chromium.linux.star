@@ -143,7 +143,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-annotator-rel",
-    description_html = "Runs tests for the Network Traffic Annotation Auditor on Linux, mirroring linux-annotator-rel.",
     mirrors = ["ci/linux-annotator-rel"],
     gn_args = gn_args.config(
         configs = [
@@ -380,10 +379,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-surface-embed-rel",
-    description_html = (
-        "Runs web_tests and wpt_tests using surface embed " +
-        "against complete desktop Chrome browser."
-    ),
     mirrors = ["ci/linux-surface-embed-rel"],
     gn_args = "ci/linux-surface-embed-rel",
     contact_team_email = "chrome-webium-product-eng@google.com",
@@ -588,24 +583,25 @@ try_.builder(
     check_for_flakiness_with_resultdb = False,
     contact_team_email = "chrome-linux-engprod@google.com",
     coverage_test_types = ["unit", "overall"],
-    cq_settings = try_.cq_settings(
-        location_filters = [
-            "chrome/browser/.+uitest.+",
-            "chrome/browser/ui/views/.+test.+",
-            "chrome/browser/ui/views/tabs/.+",
-            "testing/xvfb\\.py",
-            "third_party/glib/.+",
-            "third_party/gvdb/.+",
-            "third_party/libdisplay-info/.+",
-            "third_party/libgudev/.+",
-            "third_party/libinput/.+",
-            "third_party/mutter/.+",
-            "third_party/wayland/.+",
-            "third_party/wayland-protocols/.+",
-            "ui/ozone/platform/wayland/.+",
-            "ui/views/widget/.+test.+",
-        ],
-    ),
+    # TODO(crbug.com/568014496): Restore to the CQ if/when it's safe to do so.
+    # cq_settings = try_.cq_settings(
+    #     location_filters = [
+    #         "chrome/browser/.+uitest.+",
+    #         "chrome/browser/ui/views/.+test.+",
+    #         "chrome/browser/ui/views/tabs/.+",
+    #         "testing/xvfb\\.py",
+    #         "third_party/glib/.+",
+    #         "third_party/gvdb/.+",
+    #         "third_party/libdisplay-info/.+",
+    #         "third_party/libgudev/.+",
+    #         "third_party/libinput/.+",
+    #         "third_party/mutter/.+",
+    #         "third_party/wayland/.+",
+    #         "third_party/wayland-protocols/.+",
+    #         "ui/ozone/platform/wayland/.+",
+    #         "ui/views/widget/.+test.+",
+    #     ],
+    # ),
     use_clang_coverage = True,
 )
 
@@ -1104,7 +1100,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-no-initial-webui-rel",
-    description_html = "Mirror of Linux No Initial WebUI CI builder",
     mirrors = [
         "ci/Linux Builder",
         "ci/linux-no-initial-webui-rel",
@@ -1293,7 +1288,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-separate-renderer-rel",
-    description_html = "Runs separate renderer tests on Linux, mirroring linux-separate-renderer-fyi-rel.",
     mirrors = [
         "ci/linux-separate-renderer-fyi-rel",
     ],

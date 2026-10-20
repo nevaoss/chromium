@@ -512,6 +512,11 @@ bool RenderWidgetHostViewBase::ShouldInitiateStylusWriting() {
   return false;
 }
 
+std::optional<gfx::Vector2dF>
+RenderWidgetHostViewBase::GetStylusHandwritingPixelsPerInch() {
+  return std::nullopt;
+}
+
 bool RenderWidgetHostViewBase::RequestRepaintOnNewSurface() {
   return false;
 }
@@ -790,7 +795,17 @@ void RenderWidgetHostViewBase::ProcessMouseWheelEvent(
     NOTREACHED();
   }
 
-  host()->ForwardWheelEventWithLatencyInfo(event, latency);
+  blink::WebMouseWheelEvent wheel_event = event;
+  if (wheel_event.phase == blink::WebMouseWheelEvent::kPhaseNone &&
+      wheel_event.momentum_phase == blink::WebMouseWheelEvent::kPhaseNone) {
+    if (MouseWheelPhaseHandler* phase_handler = GetMouseWheelPhaseHandler()) {
+      phase_handler->AddPhaseIfNeededAndScheduleEndEvent(
+          wheel_event, /*should_route_event=*/false,
+          /*is_fling_capable=*/false);
+    }
+  }
+
+  host()->ForwardWheelEventWithLatencyInfo(wheel_event, latency);
 }
 
 void RenderWidgetHostViewBase::ProcessTouchEvent(

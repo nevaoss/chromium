@@ -7574,8 +7574,7 @@ const Node* AXObject::GetParentNodeAcrossFrames(const Node* node) {
   if (!node) {
     return nullptr;
   }
-  if (const Element* parent =
-          FlatTreeTraversal::ParentElementSkippingSlots(*node)) {
+  if (const Element* parent = FlatTreeTraversal::ParentElement(*node)) {
     return parent;
   }
   return node->GetDocument().LocalOwner();
@@ -8488,6 +8487,7 @@ bool AXObject::IsFrame(const Node* node) {
     case FrameOwnerElementType::kIframe:
     case FrameOwnerElementType::kFrame:
     case FrameOwnerElementType::kFencedframe:
+    case FrameOwnerElementType::kPersistentwidget:
       return true;
     case FrameOwnerElementType::kObject:
     case FrameOwnerElementType::kEmbed:

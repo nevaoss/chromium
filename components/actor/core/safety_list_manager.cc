@@ -6,25 +6,29 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
-#include "base/feature_list.h"
+#include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
-#include "base/run_loop.h"
 #include "base/sequence_checker.h"
+#include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
+#include "base/threading/thread_restrictions.h"
 #include "base/types/expected.h"
 #include "base/values.h"
 #include "components/actor/core/actor_features.h"
-#include "components/content_settings/core/common/content_settings_metadata.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/content_settings/core/common/content_settings_utils.h"
 #include "components/content_settings/core/common/host_indexed_content_settings.h"
+#include "url/gurl.h"
 
 namespace actor {
 
@@ -120,10 +124,25 @@ std::unique_ptr<SafetyListManager> SafetyListManager::CreateForTesting() {
   return base::WrapUnique(new SafetyListManager());
 }
 
-SafetyListManager::Decision SafetyListManager::Find(
+void SafetyListManager::Find(const GURL& source,
+                             const GURL& destination,
+                             FindCallback callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (load_safety_lists_closure_ || IsParseInProgress()) {
+    pending_finds_.emplace_back(
+        base::BindOnce(&SafetyListManager::Find, weak_ptr_factory_.GetWeakPtr(),
+                       source, destination, std::move(callback)));
+
+    MaybeStartParse();
+  } else {
+    std::move(callback).Run(FindSync(source, destination));
+  }
+}
+
+SafetyListManager::Decision SafetyListManager::FindSync(
     const GURL& source,
     const GURL& destination) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   const content_settings::RuleEntry* rule_entry =
       navigation_settings_->Find(source, destination);
 
@@ -184,14 +203,14 @@ SafetyListManager::ParseSafetyListsInternal(std::string_view json_string) {
   base::expected<std::vector<SafetyListEntry>, SafetyListManager::ParseResult>
       blocked_result = parse_one_list(kNavigationBlockedFieldName);
   std::unique_ptr<content_settings::HostIndexedContentSettings>
-      navigation_settings = nullptr;
+      navigation_settings;
   if (allowed_result.has_value() || blocked_result.has_value()) {
     navigation_settings =
         std::make_unique<content_settings::HostIndexedContentSettings>();
     SetAll(SpanOverExpected(allowed_result),
-           ContentSetting::CONTENT_SETTING_ALLOW, *navigation_settings.get());
+           ContentSetting::CONTENT_SETTING_ALLOW, *navigation_settings);
     SetAll(SpanOverExpected(blocked_result),
-           ContentSetting::CONTENT_SETTING_BLOCK, *navigation_settings.get());
+           ContentSetting::CONTENT_SETTING_BLOCK, *navigation_settings);
   }
 
   return {allowed_result.error_or(ParseResult::kSuccess),
@@ -201,9 +220,14 @@ SafetyListManager::ParseSafetyListsInternal(std::string_view json_string) {
 
 // static
 std::unique_ptr<content_settings::HostIndexedContentSettings>
-SafetyListManager::DoParseSafetyLists(std::string json_string) {
+SafetyListManager::DoParseSafetyLists(LoadSafetyListsClosure closure) {
+  base::AssertBlockingAllowed();
+  std::optional<std::string> json_string = std::move(closure).Run();
+  if (!json_string.has_value()) {
+    return nullptr;
+  }
   SafetyListManager::ParseResultsAndSettings result =
-      ParseSafetyListsInternal(json_string);
+      ParseSafetyListsInternal(*json_string);
   base::UmaHistogramEnumeration(kNavigationAllowedHistogramName,
                                 result.allowed_result);
   base::UmaHistogramEnumeration(kNavigationBlockedHistogramName,
@@ -212,33 +236,58 @@ SafetyListManager::DoParseSafetyLists(std::string json_string) {
 }
 
 void SafetyListManager::OnParsedSafetyLists(
-    base::OnceClosure done_callback,
     std::unique_ptr<content_settings::HostIndexedContentSettings>
         new_navigation_settings) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // Need to explicitly invalidate weak pointers here so that
+  // `IsParseInProgress()` returns false, before running any pending `Find`
+  // operations.
+  parse_weak_ptr_factory_.InvalidateWeakPtrs();
+
   if (new_navigation_settings) {
     navigation_settings_ = std::move(new_navigation_settings);
   }
-  if (done_callback) {
-    std::move(done_callback).Run();
+  PendingFinds pending = std::exchange(pending_finds_, {});
+  for (base::OnceClosure& closure : pending) {
+    std::move(closure).Run();
   }
 }
 
-void SafetyListManager::ParseSafetyLists(std::string json_string,
-                                         base::OnceClosure done_callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&DoParseSafetyLists, std::move(json_string)),
-      base::BindOnce(&SafetyListManager::OnParsedSafetyLists,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(done_callback)));
+bool SafetyListManager::IsParseInProgress() const {
+  return parse_weak_ptr_factory_.HasWeakPtrs();
 }
 
-void ParseSafetyListsForTesting(SafetyListManager* manager,
-                                const std::string json) {
+void SafetyListManager::SetLoadSafetyListsClosure(
+    LoadSafetyListsClosure closure) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(closure);
+  load_safety_lists_closure_ = std::move(closure);
+
+  if (pending_finds_.empty()) {
+    return;
+  }
+  MaybeStartParse();
+}
+
+void SafetyListManager::MaybeStartParse() {
+  if (!load_safety_lists_closure_) {
+    return;
+  }
+  parse_weak_ptr_factory_.InvalidateWeakPtrs();
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock()},
+      base::BindOnce(&SafetyListManager::DoParseSafetyLists,
+                     std::move(load_safety_lists_closure_)),
+      base::BindOnce(&SafetyListManager::OnParsedSafetyLists,
+                     parse_weak_ptr_factory_.GetWeakPtr()));
+}
+
+void SetSafetyListsForTesting(SafetyListManager* manager, std::string json) {
   CHECK(manager);
-  base::RunLoop run_loop;
-  manager->ParseSafetyLists(std::move(json), run_loop.QuitClosure());
-  run_loop.Run();
+  manager->SetLoadSafetyListsClosure(base::BindOnce(
+      [](std::string json) -> std::optional<std::string> { return json; },
+      std::move(json)));
 }
 
 }  // namespace actor

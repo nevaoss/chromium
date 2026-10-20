@@ -7,12 +7,19 @@
 #include <memory>
 
 #include "base/check.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "chrome/browser/actor/actor_surface_impl.h"
+#include "components/actor/core/actor_features.h"
 
 namespace actor {
 
-ActorSurfaceRegistry::ActorSurfaceRegistry() = default;
+ActorSurfaceRegistry::ActorSurfaceRegistry(
+    HeadlessWebContentsManager* headless_manager)
+    : headless_manager_(headless_manager) {
+  CHECK(headless_manager_);
+  headless_manager_observation_.Observe(headless_manager_.get());
+}
 
 ActorSurfaceRegistry::~ActorSurfaceRegistry() = default;
 
@@ -43,10 +50,18 @@ ActorSurface* ActorSurfaceRegistry::GetOrCreateForTab(tabs::TabHandle tab) {
   if (ActorSurface* existing = GetForTab(tab)) {
     return existing;
   }
-  ActorSurfaceId id = next_surface_id_.GenerateNextId();
+  ActorSurfaceId id =
+      base::FeatureList::IsEnabled(kGenerateIndependentIdsForActorSurface)
+          ? next_surface_id_.GenerateNextId()
+          : ActorSurfaceId(tab.raw_value());
+  CHECK(!surfaces_.contains(id));
   surfaces_.emplace(id, std::make_unique<ActorSurfaceImpl>(id, tab));
   StartTrackingTab(id, tab);
   return Get(id);
+}
+
+ActorSurface* ActorSurfaceRegistry::CreateHeadlessWebContents() {
+  return CreateForHeadless(headless_manager_->Create());
 }
 
 ActorSurface* ActorSurfaceRegistry::CreateForHeadless(
@@ -54,7 +69,11 @@ ActorSurface* ActorSurfaceRegistry::CreateForHeadless(
   if (ActorSurface* existing = GetForHeadless(contents)) {
     return existing;
   }
-  ActorSurfaceId id = next_surface_id_.GenerateNextId();
+  ActorSurfaceId id =
+      base::FeatureList::IsEnabled(kGenerateIndependentIdsForActorSurface)
+          ? next_surface_id_.GenerateNextId()
+          : ActorSurfaceId(next_headless_surface_id_++);
+  CHECK(!surfaces_.contains(id));
   surfaces_.emplace(id, std::make_unique<ActorSurfaceImpl>(id, contents));
   return Get(id);
 }
@@ -91,8 +110,18 @@ void ActorSurfaceRegistry::DestroySurface(ActorSurfaceId id) {
   }
   if (std::optional<tabs::TabHandle> tab = surface->GetTabHandle()) {
     StopTrackingTab(*tab);
+    surfaces_.erase(id);
+  } else {
+    content::WebContents* contents = surface->GetWebContents();
+    surfaces_.erase(id);
+    headless_manager_->Destroy(contents);
   }
-  surfaces_.erase(id);
+}
+
+void ActorSurfaceRegistry::OnHeadlessContentsWillBeDestroyed(
+    content::WebContents* contents) {
+  // Intentionally empty: the registry drops headless surfaces in
+  // DestroySurface() before asking the manager to destroy the WebContents.
 }
 
 ActorSurfaceImpl* ActorSurfaceRegistry::GetImpl(ActorSurfaceId id) const {

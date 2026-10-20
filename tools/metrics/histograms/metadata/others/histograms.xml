@@ -76,6 +76,8 @@ chromium-metrics-reviews@google.com.
 <variants name="PageImageServiceClientId">
   <variant name="" summary="all requests"/>
   <variant name=".Bookmarks" summary="from Bookmarks"/>
+  <variant name=".ContextHubTopics"
+      summary="from the topic details page in Context Hub"/>
   <variant name=".HistoryEmbeddings"
       summary="from the AI results inside History"/>
   <variant name=".Journeys" summary="from Journeys inside History"/>
@@ -691,7 +693,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ComponentUpdater.InstallResult" enum="ComponentManagerError"
-    expires_after="2027-01-25">
+    expires_after="2027-03-28">
   <owner>wanghaifan@google.com</owner>
   <owner>cros-demo-mode-eng@google.com</owner>
   <owner>src/components/component_updater/OWNERS</owner>
@@ -745,7 +747,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="ComponentUpdater.PlatformRuntime.InstallTrigger"
     enum="PlatformRuntimeInstallTrigger" expires_after="2027-03-07">
-  <owner>marwant@google.com</owner>
+  <owner>quarz@chromium.org</owner>
   <owner>src/chrome/browser/component_updater/OWNERS</owner>
   <summary>
     Counts the different reasons/ways the platform runtime component got
@@ -754,13 +756,39 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="ComponentUpdater.PlatformRuntime.RequestHeaderIntegrityResult"
-    enum="PlatformRuntimeIntegrityResult" expires_after="2027-03-07">
+<histogram name="ComponentUpdater.PlatformRuntime.ProcessHeadersStatus"
+    enum="PlatformRuntimeProcessHeadersStatus" expires_after="2027-03-07">
   <owner>quarz@chromium.org</owner>
-  <owner>src/chrome/common/platform_runtime/OWNERS</owner>
+  <owner>src/chrome/services/platform_runtime/OWNERS</owner>
   <summary>
-    Counts the different outcomes when processing request headers for integrity
-    checks.
+    The outcome of one invocation of the Platform Runtime library in the utility
+    process. Recorded by the browser once per refresh, currently every few
+    minutes, not per network request.
+  </summary>
+</histogram>
+
+<histogram name="ComponentUpdater.PlatformRuntime.RefreshTimedOut"
+    enum="BooleanTimedOut" expires_after="2027-03-07">
+  <owner>quarz@chromium.org</owner>
+  <owner>src/chrome/services/platform_runtime/OWNERS</owner>
+  <summary>
+    Whether a Platform Runtime refresh gave up waiting for the utility process
+    instead of receiving a reply. Recorded once per refresh attempt that reaches
+    a conclusion. A refresh that ends in a crash or other disconnect is not
+    recorded here at all, so the true bucket isolates the case where the service
+    is alive but not answering.
+  </summary>
+</histogram>
+
+<histogram name="ComponentUpdater.PlatformRuntime.RequestHeaderApplyResult"
+    enum="PlatformRuntimeApplyResult" expires_after="2027-03-07">
+  <owner>quarz@chromium.org</owner>
+  <owner>src/chrome/services/platform_runtime/OWNERS</owner>
+  <summary>
+    Whether the most recently distributed Platform Runtime header block was
+    applied to an outgoing request or redirect, in whichever process issues it.
+    Subsampled: recorded for a random 1% of requests, so absolute counts are not
+    meaningful, only the relative bucket proportions.
   </summary>
 </histogram>
 
@@ -852,7 +880,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DirectSockets.TCPNetworkFailures" enum="NetErrorCodes"
-    expires_after="2026-09-27">
+    expires_after="2027-09-27">
   <owner>greengrape@google.com</owner>
   <owner>iwa-team@google.com</owner>
   <summary>
@@ -2881,7 +2909,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Mojo.Channel.WriteMessageSize" units="bytes"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>amistry@chromium.org</owner>
   <owner>bgeffon@chromium.org</owner>
   <owner>rockot@google.com</owner>
@@ -4075,7 +4103,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ReadingList.AddOrReplaceEntry" enum="ReadingListStorageState"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>mastiz@chromium.org</owner>
   <owner>mmrashad@google.com</owner>
   <owner>treib@chromium.org</owner>
@@ -4916,7 +4944,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SiteIsolatedCodeCache.JS.Behaviour"
-    enum="SiteIsolatedCodeCacheJSBehaviour" expires_after="2027-01-24">
+    enum="SiteIsolatedCodeCacheJSBehaviour" expires_after="2027-03-28">
   <owner>awillia@chromium.org</owner>
   <owner>loading-dev@chromium.org</owner>
   <summary>
@@ -5767,7 +5795,7 @@ should be kept until we use this API.  -->
 </histogram>
 
 <histogram name="UpgradeDetector.DaysBeforeUpgrade" units="days"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -5780,7 +5808,7 @@ should be kept until we use this API.  -->
 </histogram>
 
 <histogram name="UpgradeDetector.HoursBeforeUpgrade" units="hours"
-    expires_after="2027-01-24">
+    expires_after="2027-03-28">
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>

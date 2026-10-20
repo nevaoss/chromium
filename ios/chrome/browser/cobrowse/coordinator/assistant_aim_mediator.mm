@@ -30,6 +30,7 @@
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_history_item.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_ui_constants.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_url_utils.h"
+#import "ios/chrome/browser/net/model/network_change_observer_bridge.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/features/system_flags.h"
@@ -39,6 +40,7 @@
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/web/public/js_messaging/web_frame.h"
 #import "ios/web/public/js_messaging/web_frames_manager_observer_bridge.h"
+#import "ios/web/public/navigation/navigation_context.h"
 #import "ios/web/public/navigation/navigation_manager.h"
 #import "ios/web/public/navigation/web_state_policy_decider_bridge.h"
 #import "ios/web/public/web_client.h"
@@ -46,6 +48,7 @@
 #import "ios/web/public/web_state_delegate_bridge.h"
 #import "ios/web/public/web_state_observer_bridge.h"
 #import "net/base/apple/url_conversions.h"
+#import "net/base/network_change_notifier.h"
 #import "third_party/lens_server_proto/aim_communication.pb.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "ui/base/page_transition_types.h"
@@ -54,7 +57,8 @@
 @interface AssistantAIMMediator () <CRWWebFramesManagerObserver,
                                     CRWWebStateDelegate,
                                     CRWWebStateObserver,
-                                    CRWWebStatePolicyDecider>
+                                    CRWWebStatePolicyDecider,
+                                    NetworkChangeObserving>
 @end
 
 @implementation AssistantAIMMediator {
@@ -62,6 +66,8 @@
   std::unique_ptr<web::WebStatePolicyDeciderBridge> _policyDeciderBridge;
   std::unique_ptr<web::WebStateDelegateBridge> _webStateDelegateBridge;
   std::unique_ptr<web::WebStateObserverBridge> _webStateObserverBridge;
+  // Bridge to observe network changes and reload the page on reconnect.
+  std::unique_ptr<NetworkChangeObserverBridge> _networkChangeObserver;
   __weak id<AssistantAIMConsumer> _consumer;
   CobrowseContext* _context;
   id<AssistantContainerCommands> _containerHandler;
@@ -86,6 +92,8 @@
   BOOL _hasProcessedInitialContextLibrary;
   // Whether dark mode is currently active.
   BOOL _isDarkMode;
+  // Whether the last page load failed.
+  BOOL _pageLoadFailed;
 }
 
 @synthesize consumer = _consumer;
@@ -114,6 +122,8 @@
     _webStateDelegateBridge =
         std::make_unique<web::WebStateDelegateBridge>(self);
     _webState->SetDelegate(_webStateDelegateBridge.get());
+    _networkChangeObserver =
+        std::make_unique<NetworkChangeObserverBridge>(self);
     _cobrowseBrowserAgent = cobrowseBrowserAgent;
     if (_cobrowseBrowserAgent) {
       _context = _cobrowseBrowserAgent->GetCobrowseContext();
@@ -191,6 +201,7 @@
 }
 
 - (void)disconnect {
+  _networkChangeObserver.reset();
   _policyDeciderBridge.reset();
   _handshakeTimer.Stop();
   if (_webFramesManagerObserverBridge) {
@@ -297,6 +308,10 @@
   GURL urlWithTheme = net::AppendOrReplaceQueryParameter(
       baseContextURL, "cs", _isDarkMode ? "1" : "0");
   web::NavigationManager::WebLoadParams params(urlWithTheme);
+  // Clear the failure flag synchronously, as WebKit calls
+  // `webState:didStartNavigation:` asynchronously. Otherwise, a network
+  // reconnection in between would trigger a redundant reload.
+  _pageLoadFailed = NO;
   _webState->GetNavigationManager()->LoadURLWithParams(params);
 }
 
@@ -620,7 +635,29 @@
   return _capabilities;
 }
 
+#pragma mark - NetworkChangeObserving
+
+// Reloads the page if the network reconnected after a failed page load.
+- (void)onNetworkChanged:(net::NetworkChangeNotifier::ConnectionType)type {
+  if (type == net::NetworkChangeNotifier::ConnectionType::CONNECTION_NONE ||
+      !_pageLoadFailed || !_webState) {
+    return;
+  }
+  _pageLoadFailed = NO;
+  [self loadAIMURL];
+}
+
 #pragma mark - CRWWebStateObserver
+
+- (void)webState:(web::WebState*)webState
+    didStartNavigation:(web::NavigationContext*)navigationContext {
+  // Reset `_pageLoadFailed` when a new non-error document navigation starts so
+  // that a network reconnection while this navigation is in-flight does not
+  // trigger a redundant reload.
+  if (!navigationContext->IsSameDocument() && !navigationContext->GetError()) {
+    _pageLoadFailed = NO;
+  }
+}
 
 - (void)webState:(web::WebState*)webState
     didFinishNavigation:(web::NavigationContext*)navigationContext {
@@ -641,12 +678,17 @@
   }
 }
 
+- (void)webState:(web::WebState*)webState didLoadPageWithSuccess:(BOOL)success {
+  _pageLoadFailed = !success;
+}
+
 - (void)webStateDestroyed:(web::WebState*)webState {
   if (_webState) {
     _webState->RemoveObserver(_webStateObserverBridge.get());
     _webState.reset();
   }
   _webStateObserverBridge.reset();
+  _networkChangeObserver.reset();
 }
 
 @end

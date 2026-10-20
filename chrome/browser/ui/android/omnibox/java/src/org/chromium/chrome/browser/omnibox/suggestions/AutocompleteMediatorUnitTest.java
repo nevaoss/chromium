@@ -33,7 +33,6 @@ import android.os.Handler;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.Window;
 
 import androidx.annotation.Nullable;
 
@@ -47,6 +46,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
+import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowPausedSystemClock;
@@ -168,9 +168,6 @@ public class AutocompleteMediatorUnitTest {
     @Mock private NavigationHandle mNavigationHandle;
     @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     @Mock private WindowAndroid mWindowAndroid;
-    @Mock private Activity mActivity;
-    @Mock private Window mWindow;
-    @Mock private View mDecorView;
     @Mock private OmniboxSuggestionsDropdownEmbedder mEmbedder;
     @Mock private InsetObserver mInsetObserver;
     @Mock private OmniboxSuggestionsVisualStateObserver mVisualStateObserver;
@@ -199,6 +196,7 @@ public class AutocompleteMediatorUnitTest {
     @Captor private ArgumentCaptor<AutocompleteInput> mAutocompleteInputCaptor;
     @Captor private ArgumentCaptor<PropertyModel> mDialogCaptor;
 
+    private Activity mActivity;
     private PropertyModel mListModel;
     private OmniboxResourceProvider mResourceProvider;
     private AutocompleteMediator mMediator;
@@ -243,11 +241,12 @@ public class AutocompleteMediatorUnitTest {
                         .with(SuggestionListProperties.SUGGESTION_MODELS, mSuggestionModels)
                         .build();
 
+        var controller = Robolectric.buildActivity(Activity.class).setup();
+        controller.windowFocusChanged(true);
+        RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
+        mActivity = controller.get();
         lenient().doReturn(mInsetObserver).when(mWindowAndroid).getInsetObserver();
         lenient().doReturn(new WeakReference<>(mActivity)).when(mWindowAndroid).getActivity();
-        lenient().doReturn(true).when(mActivity).hasWindowFocus();
-        lenient().doReturn(mWindow).when(mWindowAndroid).getWindow();
-        lenient().doReturn(mDecorView).when(mWindow).getDecorView();
         lenient()
                 .doReturn(mToolbarPositionSupplier)
                 .when(mLocationBarDataProvider)
@@ -1994,6 +1993,22 @@ public class AutocompleteMediatorUnitTest {
             mMediator.onInputChanged();
             verify(mMockCachedZeroSuggestionsManager, never()).saveToCache(anyInt(), any());
             clearInvocations(mMockCachedZeroSuggestionsManager);
+        }
+    }
+
+    @Test
+    @DisableFeatures(OmniboxFeatureList.SERVE_JAVA_CACHED_ZERO_SUGGEST)
+    public void cachedZeroSuggest_notInvokedWhenFeatureDisabled() {
+        for (@PageClassification int pageClass = PageClassification.MIN_VALUE;
+                pageClass <= PageClassification.MAX_VALUE;
+                pageClass++) {
+            var session = createSession(PAGE_URL, PAGE_TITLE, pageClass);
+            mMediator.beginInput(session);
+            mMediator.serveCachedZeroSuggest(session.getAutocompleteInput());
+            mMediator.onSuggestionsReceived(mAutocompleteResult, true);
+
+            verify(mMockCachedZeroSuggestionsManager, never()).readFromCache(anyInt());
+            verify(mMockCachedZeroSuggestionsManager, never()).saveToCache(anyInt(), any());
         }
     }
 

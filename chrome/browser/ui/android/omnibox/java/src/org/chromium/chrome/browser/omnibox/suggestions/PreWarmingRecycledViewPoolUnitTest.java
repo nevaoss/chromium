@@ -17,13 +17,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-import org.mockito.quality.Strictness;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
@@ -40,18 +35,15 @@ import java.util.Arrays;
 /** Unit tests for {@link PreWarmingRecycledViewPool}. */
 @RunWith(BaseRobolectricTestRunner.class)
 public class PreWarmingRecycledViewPoolUnitTest {
-    @Rule
-    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
-
-    @Mock private View mView;
-
     private Context mContext;
+    private View mView;
     private OmniboxViewHolderFactory mFactory;
     private PreWarmingRecycledViewPool mPool;
 
     @Before
     public void setUp() {
         mContext = ApplicationProvider.getApplicationContext();
+        mView = new View(mContext);
         mFactory =
                 spy(
                         new OmniboxViewHolderFactory() {

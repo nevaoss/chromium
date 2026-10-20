@@ -161,6 +161,13 @@ class BrowserAutofillManager : public AutofillManager {
   // in `filling_payload`.
   // `action_persistence` denotes whether the operation is a fill or preview.
   // `trigger_source` is the reason for triggering the filling operation.
+  // `require_user_confirmation` indicates if some form of user confirmation
+  // should always be required.
+  // Note that:
+  // - Setting it to `false` does not suppress all confirmation/reauth -
+  //   it may still happen.
+  // - This parameter is initially only respected for credit card filling on
+  //   Android.
   // `blocked_fields` are fields which must not be filled because another
   // filling product of higher priority claims them.
   virtual void FillOrPreviewForm(
@@ -169,6 +176,7 @@ class BrowserAutofillManager : public AutofillManager {
       const FieldGlobalId& trigger_field_id,
       const FillingPayload& filling_payload,
       AutofillTriggerSource trigger_source,
+      bool require_user_confirmation,
       const base::flat_set<FieldGlobalId>& blocked_fields);
 
   // Routes calls from external components to FormFiller::FillOrPreviewField.
@@ -472,6 +480,7 @@ class BrowserAutofillManager : public AutofillManager {
       const AutofillField& trigger_field,
       const CreditCard& credit_card,
       AutofillTriggerSource trigger_source,
+      bool require_user_confirmation,
       const base::flat_set<FieldGlobalId>& blocked_fields);
 
   // If `metrics_->initial_interaction_timestamp` is unset or is set to a later
@@ -628,11 +637,6 @@ class BrowserAutofillManager : public AutofillManager {
   // Iterate through all the fields in the form to process the log events for
   // each field and record into FieldInfo UKM event.
   void ProcessFieldLogEventsInForm(const FormStructure& form_structure);
-
-  // Log the number of log events of all types which have been recorded until
-  // the FieldInfo metric is recorded into UKM at form submission or form
-  // destruction time (whatever comes first).
-  void LogEventCountsUMAMetric(const FormStructure& form_structure);
 
   // Handles the credit card specific logic after `form` is filled, including
   // logging the fill operation and recording card usage.

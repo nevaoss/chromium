@@ -42,8 +42,9 @@ BASE_DECLARE_FEATURE(kDlpScanPastedImages);
 BASE_DECLARE_FEATURE(kGlicBulkDataEntrySupport);
 
 #if BUILDFLAG(IS_ANDROID)
-// Controls whether WebProtect download on Clank is enabled.
-BASE_DECLARE_FEATURE(kEnableDownloadEnterpriseScanOnClank);
+// Controls whether files attached to web pages (file picker, drag-and-drop)
+// are scanned by enterprise content analysis on Clank.
+BASE_DECLARE_FEATURE(kEnableFileAttachedEnterpriseScanOnClank);
 #endif
 
 // Controls whether cancellation of uploads is enabled for content analysis.

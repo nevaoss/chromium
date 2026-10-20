@@ -410,8 +410,9 @@ class SendTabToSelfIphInteractiveUiTest : public InteractiveFeaturePromoTest {
   void SendTabAndCloseContextMenu() {
     content::WebContents* const web_contents =
         browser()->tab_strip_model()->GetActiveWebContents();
-    SendTabToSelfContextMenuDelegate(web_contents, ShareEntryPoint::kTabMenu)
-        .ExecuteCommand(IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_DEVICE1, 0);
+    SendTabToSelfContextMenuDelegate::MaybeCreateForTab(
+        web_contents, ShareEntryPoint::kTabMenu)
+        ->ExecuteCommand(IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_DEVICE1, 0);
 
     static_cast<BrowserTabStripController*>(
         BrowserView::GetBrowserViewForBrowser(browser())
@@ -463,8 +464,16 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfIphInteractiveUiTest,
       WaitForPromo(feature_engagement::kIPHSendTabToSelfTutorialFeature));
 }
 
+// TODO(crbug.com/565062574): Re-enable on mac
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_TutorialFlowCompletesOnTabSend \
+  DISABLED_TutorialFlowCompletesOnTabSend
+#else
+#define MAYBE_TutorialFlowCompletesOnTabSend \
+  TutorialFlowCompletesOnTabSend
+#endif
 IN_PROC_BROWSER_TEST_F(SendTabToSelfIphInteractiveUiTest,
-                       TutorialFlowCompletesOnTabSend) {
+                       MAYBE_TutorialFlowCompletesOnTabSend) {
   const GURL eligible_url =
       embedded_https_test_server().GetURL("example.com", "/title1.html");
 

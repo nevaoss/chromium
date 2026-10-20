@@ -295,10 +295,11 @@ DOMArrayBuffer* ToDOMArrayBuffer(v8::Isolate* isolate,
     return array_buffer;
   }
 
-  // Transfer the ownership of the allocated memory to a DOMArrayBuffer without
-  // copying.
-  ArrayBufferContents contents(v8_array_buffer->GetBackingStore());
-  DOMArrayBuffer* array_buffer = DOMArrayBuffer::Create(contents);
+  ArrayBufferContents contents;
+  if (!v8_array_buffer->WasDetached()) [[likely]] {
+    contents = ArrayBufferContents(v8_array_buffer->GetBackingStore());
+  }
+  DOMArrayBuffer* array_buffer = DOMArrayBuffer::Create(std::move(contents));
   v8::Local<v8::Object> wrapper = array_buffer->AssociateWithWrapper(
       isolate, array_buffer->GetWrapperTypeInfo(), v8_array_buffer);
   DCHECK(wrapper == v8_array_buffer);

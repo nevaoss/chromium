@@ -142,7 +142,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &autofill::features::kAutofillEnableBuyNowPayLater,
     &autofill::features::kAutofillEnableGradientGoogleLogos,
     &autofill::features::kAutofillEnableNewCardBenefitsToggleText,
-    &autofill::features::kAutofillEnableNewFopDisplayAndroid,
     &autofill::features::kAutofillEnablePayNowPayLaterTabs,
     &autofill::features::kAutofillEnableScanCardOptionWhenNoCardsSaved,
     &autofill::features::kAutofillEnableSecurityTouchEventFilteringAndroid,
@@ -262,6 +261,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidDesktopBookmarkLayout,
     &kAndroidDesktopBookmarkPopup,
     &kAndroidDesktopHistoryLayout,
+    &kAndroidDesktopWebUiHistory,
     &kAndroidDeviceSignalsDisclaimer,
     &kAndroidElegantTextHeight,
     &kAndroidFirstRunLaunchBounds,
@@ -269,12 +269,14 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidHistoryClustering,
     &kAndroidKeyboardShortcutOpenFile,
     &kAndroidNewManagementNotice,
+    &kAndroidNewTabButtonTabstripWebUI,
     &kAndroidNoVisibleHintForDifferentTLD,
     &kAndroidOmniboxFocusedNewTabPage,
     &kAndroidOpenIncognitoAsWindowRestrictions,
     &kAndroidPageInfoAsAppMenuItem,
     &kAndroidProgressBarVisualUpdate,
     &kAndroidSaveCardNonBlockingDialog,
+    &kAndroidSetGoogleAccountInHelp,
     &kAndroidSettingsUrl,
     &kAndroidSetupList,
     &kAndroidStartupImprovements,
@@ -401,20 +403,18 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kEdgeToEdgeExtraLogs,
     &kEdgeToEdgeMonitorConfigurations,
     &kEdgeToEdgeTablet,
+    &kEdgeToEdgeTopInset,
     &kEdgeToEdgeUseBackupNavbarInsets,
-    &kEdgelessTopInset,
     &kEnableAndroidSidePanel,
     &kEnableAndroidSidePanelDevFeature,
     &kEnableAndroidSidePanelLogs,
     &kEnableAndroidSidePanelManualResizing,
     &kEnableBrowserWindowInterfaceForCustomTabActivity,
-    &kEnableEscapeHandlingForSecondaryActivities,
     &kEnableSwipeToSwitchPane,
     &kEnableToolbarPositioningInResizeMode,
     &kEnableXAxisActivityTransition,
     &kEnforceIncognitoIsolation,
     &kExcludeChromeInIncognitoShareSheet,
-    &kExperimentsForAgsa,
     &kFaviconDisableHostFallback,
     &kFlyoutInBookmarksBar,
     &kForceTranslucentNotificationTrampoline,
@@ -432,7 +432,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kIncognitoAsWindowFullScreen,
     &kIncognitoModeForcedAndroid,
     &kIncognitoScreenshot,
-    &kIncognitoThemeOverlayTesting,
     &kInlinePdfV2,
     &kInlinePdfV2Download,
     &kInlinePdfV2Incognito,
@@ -542,10 +541,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kToolbarTabletResizeRefactor,
     &kTouchToSearchCallout,
     &kTrustedWebActivityContactsDelegation,
-    &kTweakApplicationPreloadLoadNativeFirst,
-    &kTweakApplicationPreloadMoveWarmUp,
-    &kTweakApplicationPreloadSkipNewInstance,
-    &kTweakApplicationPreloadSkipWarmUp,
     &kUmaBackgroundSessions,
     &kUmaSessionCorrectnessFixes,
     &kUndoableTabClosureRework,
@@ -695,6 +690,7 @@ BASE_FEATURE(kAndroidDesktopBookmarkDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidDesktopBookmarkLayout, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidDesktopBookmarkPopup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidDesktopHistoryLayout, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidDesktopWebUiHistory, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables additional text shown during profile creation for managed users,
 // informing them about device signal collection for security purposes.
 BASE_FEATURE(kAndroidDeviceSignalsDisclaimer, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -706,12 +702,14 @@ BASE_FEATURE(kAndroidKeyboardShortcutOpenFile, base::FEATURE_DISABLED_BY_DEFAULT
 // When enabled, the existing enterprise management notice shown during the
 // sign-in flow on Android is replaced with the new management notice.
 BASE_FEATURE(kAndroidNewManagementNotice, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidNewTabButtonTabstripWebUI, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidNoVisibleHintForDifferentTLD, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidOmniboxFocusedNewTabPage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidOpenIncognitoAsWindowRestrictions, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidPageInfoAsAppMenuItem, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidProgressBarVisualUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSaveCardNonBlockingDialog, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidSetGoogleAccountInHelp, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSettingsUrl, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSetupList, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidStartupImprovements, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -841,20 +839,18 @@ BASE_FEATURE(kEdgeToEdgeEverywhere, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeExtraLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeMonitorConfigurations, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeTablet, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kEdgeToEdgeTopInset, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeUseBackupNavbarInsets, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kEdgelessTopInset, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanelDevFeature, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanelLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanelManualResizing, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableBrowserWindowInterfaceForCustomTabActivity, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kEnableEscapeHandlingForSecondaryActivities, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableSwipeToSwitchPane, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableToolbarPositioningInResizeMode, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableXAxisActivityTransition, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnforceIncognitoIsolation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kExcludeChromeInIncognitoShareSheet, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kExperimentsForAgsa, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kFaviconDisableHostFallback, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kFlyoutInBookmarksBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kForceTranslucentNotificationTrampoline, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -872,7 +868,6 @@ BASE_FEATURE(kInAppWindowManagerDeprecation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIncognitoAsWindowFullScreen, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIncognitoModeForcedAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIncognitoScreenshot, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIncognitoThemeOverlayTesting, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kInlinePdfV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kInlinePdfV2Download, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kInlinePdfV2Incognito, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -942,7 +937,7 @@ BASE_FEATURE(kSessionRestoreAfterCrash, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsInTab, base::FEATURE_DISABLED_BY_DEFAULT);
 // SettingsInTab kill switch for desktop Android. https://crbug.com/556881398
 BASE_FEATURE(kSettingsInTabDesktop, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kSettingsInTabUrlNav, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSettingsInTabUrlNav, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsMultiColumn, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsSingleActivity, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kShareCustomActionsInCCT, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -987,10 +982,6 @@ BASE_FEATURE(kToolbarSnapshotRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kToolbarTabletResizeRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTouchToSearchCallout, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTrustedWebActivityContactsDelegation, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kTweakApplicationPreloadLoadNativeFirst, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kTweakApplicationPreloadMoveWarmUp, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kTweakApplicationPreloadSkipNewInstance, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kTweakApplicationPreloadSkipWarmUp, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, keep logging and reporting UMA while chrome is backgrounded.
 BASE_FEATURE(kUmaBackgroundSessions,"UMABackgroundSessions", base::FEATURE_ENABLED_BY_DEFAULT);
 // Correctness fixes to Activity tagging for UMA sessions.

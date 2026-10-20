@@ -192,6 +192,18 @@ class FuseboxViewBinder {
                     FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE,
                     view.popup.mMoreOptionsButton);
             view.popup.setAccordionEnabled(visible);
+        } else if (propertyKey == FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE) {
+            view.popup.mPinnedSectionBottomDivider.setVisibility(
+                    model.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE)
+                            ? View.VISIBLE
+                            : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE) {
+            view.popup.mPinnedSectionTopDivider.setVisibility(
+                    model.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE)
+                            ? View.VISIBLE
+                            : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST) {
+            updatePinnedToolButtons(model, view);
         } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_BUTTON_DATA_LIST) {
             updateRecentTabsButtons(model, view);
         } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_DIVIDER_VISIBLE) {
@@ -356,6 +368,21 @@ class FuseboxViewBinder {
         if (topDivider != null) topDivider.setVisibility(visibility);
     }
 
+    private static void updatePinnedToolButtons(PropertyModel model, FuseboxViewHolder view) {
+        ViewGroup container = view.popup.mPinnedToolsContainer;
+        List<PopupButtonData> buttonDataList =
+                model.get(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST);
+        container.setVisibility(buttonDataList.isEmpty() ? View.GONE : View.VISIBLE);
+
+        updateButtons(
+                model,
+                view,
+                container,
+                buttonDataList,
+                /* startIndex= */ 0,
+                container.getChildCount());
+    }
+
     private static void updateRecentTabsButtons(PropertyModel model, FuseboxViewHolder view) {
         ViewGroup container = view.popup.mRecentTabsContainer;
         List<PopupButtonData> buttonDataList =
@@ -421,16 +448,19 @@ class FuseboxViewBinder {
         ColorStateList iconBackgroundTint =
                 OmniboxResourceProvider.getFuseboxPopupIconBackgroundTintList(
                         buttonView.getContext(), brandedColorScheme, isBottomSheet);
-        themeButton(buttonView, textAppearance, subtextAppearance, iconTint, iconBackgroundTint);
-
         @Px
         int iconSize =
                 OmniboxResourceProvider.getFuseboxPopupIconSize(
                         buttonView.getContext(), isBottomSheet);
+        themeButton(
+                buttonView,
+                textAppearance,
+                subtextAppearance,
+                iconTint,
+                iconBackgroundTint,
+                iconSize);
 
         holder.mHasColor = data.hasColor;
-        updateIconSize(holder.mActionIcon, iconSize);
-        updateIconSize(holder.mActionEndIcon, iconSize);
 
         if (data.customIcon != null) {
             var drawable = new BitmapDrawable(res, data.customIcon);
@@ -524,7 +554,8 @@ class FuseboxViewBinder {
             @StyleRes int textAppearance,
             @StyleRes int subtextAppearance,
             ColorStateList iconTint,
-            @Nullable ColorStateList iconBackgroundTint) {
+            @Nullable ColorStateList iconBackgroundTint,
+            @Px int iconSize) {
         FuseboxItemViewHolder holder = getViewHolder(buttonView);
         TextView textView = holder.mActionText;
         TextView subtextView = holder.mActionSubtext;
@@ -543,6 +574,9 @@ class FuseboxViewBinder {
         if (endImageView != null) {
             endImageView.setImageTintList(iconTint);
         }
+
+        updateIconSize(imageView, iconSize);
+        updateIconSize(endImageView, iconSize);
 
         // The icon background is only present for horizontal attachments, so null-checking is
         // necessary.
@@ -641,19 +675,33 @@ class FuseboxViewBinder {
         int textAppearance = mResourceProvider.getPopupButtonTextRes();
         @StyleRes int smallTextAppearance = mResourceProvider.getPopupHeaderVisibilityTextRes();
 
+        @Px int iconSize = mResourceProvider.getFuseboxPopupIconSize(isBottomSheet);
         themeButton(
                 popup.mMoreOptionsButton,
                 textAppearance,
                 smallTextAppearance,
                 iconTint,
-                iconBackgroundTint);
+                iconBackgroundTint,
+                iconSize);
 
         for (View button : popup.mAttachmentButtons) {
-            themeButton(button, textAppearance, smallTextAppearance, iconTint, iconBackgroundTint);
+            themeButton(
+                    button,
+                    textAppearance,
+                    smallTextAppearance,
+                    iconTint,
+                    iconBackgroundTint,
+                    iconSize);
         }
 
         for (View button : popup.mDynamicThemedButtons) {
-            themeButton(button, textAppearance, smallTextAppearance, iconTint, iconBackgroundTint);
+            themeButton(
+                    button,
+                    textAppearance,
+                    smallTextAppearance,
+                    iconTint,
+                    iconBackgroundTint,
+                    iconSize);
         }
 
         for (TextView header : popup.mHeaders) {

@@ -410,7 +410,9 @@ void CastContentBrowserClient::AppendExtraCommandLineSwitches(
         switches::kCastAppBackgroundColor,
         switches::kForceMediaResolutionHeight,
         switches::kForceMediaResolutionWidth,
-        network::switches::kUnsafelyTreatInsecureOriginAsSecure};
+        network::switches::kUnsafelyTreatInsecureOriginAsSecure,
+        switches::kCastAssetsDir,
+        switches::kHomeEnvOverride};
     command_line->CopySwitchesFrom(*browser_command_line, kForwardSwitches);
   } else if (process_type == switches::kUtilityProcess) {
     if (browser_command_line->HasSwitch(switches::kAudioOutputChannels)) {
@@ -794,8 +796,9 @@ void CastContentBrowserClient::RegisterNonNetworkSubresourceURLLoaderFactories(
 
   factories->emplace(
       kChromeResourceScheme,
-      content::CreateWebUIURLLoaderFactory(
-          frame_host, kChromeResourceScheme,
+      content::CreateWebUIURLLoaderFactoryWithoutOriginLock(
+          content::WebUIURLLoaderFactoryPasskey::GetPassKey(), frame_host,
+          kChromeResourceScheme,
           /*allowed_webui_hosts=*/base::flat_set<std::string>()));
 }
 

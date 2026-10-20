@@ -39,6 +39,7 @@ import org.chromium.ui.base.WindowAndroid;
 
 /** Unit tests for {@link TouchToFillAutofillViewBridge}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class TouchToFillAutofillViewBridgeTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -77,6 +78,15 @@ public class TouchToFillAutofillViewBridgeTest {
     @Test
     public void testShow_RegistersObserver() {
         mBridge.showPersonalContextNotice();
+        ArgumentCaptor<BottomSheetObserver> captor =
+                ArgumentCaptor.forClass(BottomSheetObserver.class);
+        verify(mBottomSheetController, atLeastOnce()).addObserver(captor.capture());
+        assertNotNull(captor.getAllValues().get(0));
+    }
+
+    @Test
+    public void testShowPrivateInferenceNotice_RegistersObserver() {
+        mBridge.showPrivateInferenceNotice();
         ArgumentCaptor<BottomSheetObserver> captor =
                 ArgumentCaptor.forClass(BottomSheetObserver.class);
         verify(mBottomSheetController, atLeastOnce()).addObserver(captor.capture());

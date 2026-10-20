@@ -299,6 +299,8 @@ class ReadAnythingAppController
   bool IsSpeechTreeInitialized();
   bool ShouldBold(ui::AXNodeID ax_node_id) const;
   bool IsOverline(ui::AXNodeID ax_node_id) const;
+  bool IsSuperscript(ui::AXNodeID ax_node_id) const;
+  bool IsSubscript(ui::AXNodeID ax_node_id) const;
   bool IsLeafNode(ui::AXNodeID ax_node_id) const;
   bool IsReadAnythingPinned() const;
   void OnConnected();
@@ -471,10 +473,9 @@ class ReadAnythingAppController
   // preparation for a new content distillation.
   void PrepareForNewContentDistillation();
 
-  // Returns the initial distillation method state based on feature flags and
-  // page type (e.g. if it's PDF).
-  ReadAnythingAppModel::DistillationMethod GetInitialDistillationMethod(
-      bool is_pdf) const;
+  // Returns the initial distillation method based on feature flags and the
+  // active tree's page type (e.g. if it's a PDF).
+  ReadAnythingAppModel::DistillationMethod GetInitialDistillationMethod() const;
 
   void ExecuteJavaScript(const std::string& script);
 

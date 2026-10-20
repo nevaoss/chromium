@@ -71,12 +71,12 @@ public class ScrollCaptureCallbackDelegateTest {
     @Mock private LongScreenshotsEntry mEntry;
     @Mock private Callback<Rect> mRectConsumer;
     @Mock private PaintPreviewCompositorUtils.Natives mCompositorUtils;
-    @Mock private View mView;
     @Mock private Runnable mOnReady;
     @Mock private Surface mSurface;
     @Mock private Canvas mCanvas;
 
     private Activity mActivity;
+    private View mView;
 
     @Captor private ArgumentCaptor<BitmapGeneratorObserver> mObserverCaptor;
     @Captor private ArgumentCaptor<Rect> mRectCaptor;
@@ -94,6 +94,7 @@ public class ScrollCaptureCallbackDelegateTest {
         doReturn(false).when(mCompositorUtils).stopWarmCompositor();
         doNothing().when(mCompositorUtils).warmupCompositor();
         mActivity = Robolectric.setupActivity(Activity.class);
+        mView = new View(mActivity);
         when(mTab.getContext()).thenReturn(mActivity);
 
         when(mTab.getView()).thenReturn(mView);

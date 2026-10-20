@@ -30,6 +30,7 @@
 
 class ProfileIOS;
 @protocol GeminiCommands;
+@protocol LocationBarBadgeCommands;
 
 namespace feature_engagement {
 class Tracker;
@@ -121,21 +122,38 @@ class ContextualCueingTabHelper
   std::optional<page_content_annotations::CategoryType> GetActiveCategoryType()
       const;
 
+  // Sets the location bar badge commands handler.
+  void SetLocationBarBadgeCommandsHandler(id<LocationBarBadgeCommands> handler);
+
+  // Sets the Gemini commands handler.
+  void SetGeminiHandler(id<GeminiCommands> handler);
+
+  // Returns the prepopulated prompt for the active contextual cue, or nil if
+  // no cue or prompt is available.
+  NSString* GetContextualCuePrompt() const;
+
   // Shows the contextual cue infobar banner for the current cue. Returns true
   // if presentation succeeded or was queued.
   bool ShowContextualCueInfobar(id<GeminiCommands> gemini_handler = nil);
+
+  // Shows the contextual cue omnibox chip for the current cue. Returns true
+  // if presentation succeeded or was queued.
+  bool ShowContextualCueChip(id<LocationBarBadgeCommands> badge_handler = nil);
 
   // Records that a contextual cue was shown to the user. Must only be called
   // once per cue presentation. Returns true if the cue is allowed to be shown.
   // Returns false if the Feature Engagement Tracker rejected the promo, in
   // which case the cue is invalidated and callers MUST hide the chip.
-  [[nodiscard]] bool RecordCueShown();
+  bool RecordCueShown();
 
   // Records that a contextual cue was explicitly dismissed by the user.
   void RecordCueDismissed();
 
   // Records that a contextual cue was clicked by the user.
   void RecordCueClicked();
+
+  // Sets the contextual cue directly for testing purposes.
+  void SetContextualCueForTesting(optimization_guide::proto::ContextualCue cue);
 
   // web::WebStateObserver:
   void DidFinishNavigation(web::WebState* web_state,
@@ -196,6 +214,10 @@ class ContextualCueingTabHelper
   void NotifyContextualCueReceived(
       std::optional<optimization_guide::proto::ContextualCue> cue);
 
+  // Automatically presents the current contextual cue on the appropriate UI
+  // surface (infobar or omnibox chip). Returns true if presentation succeeded.
+  bool PresentContextualCue();
+
   // Clears `cue_` and notifies observers that the cue is no longer valid. No-op
   // if there is no cue.
   void InvalidateCue();
@@ -242,11 +264,16 @@ class ContextualCueingTabHelper
   std::optional<PageClassificationResult> page_classification_result_;
   // The top eligible category type determined for the current page.
   std::optional<page_content_annotations::CategoryType> active_category_type_;
-  // The contextual cue proto payload returned from server model execution,
-  // containing UI labels and the prompt.
+  // TODO(crbug.com/559227915): Replace
+  // `optimization_guide::proto::ContextualCue` with a dedicated model struct
+  // holding only the validated fields required for UI presentation and cap
+  // tracking. The contextual cue proto payload returned from server model
+  // execution, containing UI labels and the prompt.
   std::optional<optimization_guide::proto::ContextualCue> cue_;
   // The UI surface (`kMessage` or `kOmniboxChip`) selected for `cue_`.
   std::optional<ContextualCueUiType> cue_ui_type_;
+  // Whether `cue_` has already been presented on a UI surface.
+  bool has_presented_cue_ = false;
   bool is_model_execution_in_flight_ = false;
 
   std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry_;
@@ -255,6 +282,11 @@ class ContextualCueingTabHelper
 
   base::ScopedObservation<web::WebState, web::WebStateObserver>
       web_state_observation_{this};
+
+  // Handler for dispatching location bar badge commands.
+  id<LocationBarBadgeCommands> location_bar_badge_handler_ = nil;
+  // Handler for dispatching Gemini commands.
+  id<GeminiCommands> gemini_handler_ = nil;
 
   base::WeakPtrFactory<ContextualCueingTabHelper> weak_ptr_factory_{this};
 };

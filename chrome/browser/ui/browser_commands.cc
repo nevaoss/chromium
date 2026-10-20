@@ -1057,7 +1057,8 @@ void MaybeShowFeatureBackNavigationMenuPromo(BrowserWindowInterface* browser,
 
   bool should_show_feature_promo;
   const ChainedBackNavigationTracker* tracker =
-      ChainedBackNavigationTracker::FromWebContents(web_contents);
+      ChainedBackNavigationTracker::From(
+          tabs::TabInterface::GetFromContents(web_contents));
   CHECK(tracker);
   switch (static_cast<BackNavigationMenuIPHTrigger>(
       base::GetFieldTrialParamByFeatureAsInt(
@@ -1929,7 +1930,14 @@ void FocusPreviousTabGroup(BrowserWindowInterface* browser) {
 }
 
 bool CanGroupAllUngroupedTabs(BrowserWindowInterface* browser) {
-  return !GetUngroupedTabIndices(browser).empty();
+  // Only whether such a tab exists matters here; do not build the list.
+  TabStripModel* tab_strip_model = browser->GetTabStripModel();
+  if (!tab_strip_model->SupportsTabGroups()) {
+    return false;
+  }
+  return std::ranges::any_of(*tab_strip_model, [](const tabs::TabInterface* t) {
+    return !t->GetGroup() && !t->IsPinned();
+  });
 }
 
 bool GroupAllUngroupedTabs(BrowserWindowInterface* browser) {

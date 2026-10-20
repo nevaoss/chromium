@@ -95,6 +95,8 @@ DEFINE_VARIATION_PARAM(kIPHAutoDarkUserEducationMessageFeature,
                        "IPH_AutoDarkUserEducationMessage");
 DEFINE_VARIATION_PARAM(kIPHAutoDarkUserEducationMessageOptInFeature,
                        "IPH_AutoDarkUserEducationMessageOptIn");
+DEFINE_VARIATION_PARAM(kIPHBookmarkBarVisibilityFeature,
+                       "IPH_BookmarkBarVisibility");
 DEFINE_VARIATION_PARAM(kIPHAppRatingPromptFeature, "IPH_AppRatingPrompt");
 DEFINE_VARIATION_PARAM(kIPHAppSpecificHistory, "IPH_AppSpecificHistory");
 DEFINE_VARIATION_PARAM(kIPHCCTHistory, "IPH_CCTHistory");
@@ -147,14 +149,6 @@ DEFINE_VARIATION_PARAM(kIPHIncognitoIndicatorCloseAllWindows,
                        "IPH_IncognitoIndicatorCloseAllWindows");
 DEFINE_VARIATION_PARAM(kIPHInstanceSwitcherFeature, "IPH_InstanceSwitcher");
 DEFINE_VARIATION_PARAM(kIPHRecentTabsFeature, "IPH_RecentTabs");
-DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryAddressFillingFeature,
-                       "IPH_KeyboardAccessoryAddressFilling");
-DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryBarSwipingFeature,
-                       "IPH_KeyboardAccessoryBarSwiping");
-DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryPasswordFillingFeature,
-                       "IPH_KeyboardAccessoryPasswordFilling");
-DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryPaymentFillingFeature,
-                       "IPH_KeyboardAccessoryPaymentFilling");
 DEFINE_VARIATION_PARAM(kIPHKeyboardAccessoryPaymentOfferFeature,
                        "IPH_KeyboardAccessoryPaymentOffer");
 DEFINE_VARIATION_PARAM(kIPHMicToolbarFeature, "IPH_MicToolbar");
@@ -382,6 +376,7 @@ DEFINE_VARIATION_PARAM(kIPHiOSHomepageLensNewBadge,
                        "IPH_iOSHomepageLensNewBadge");
 DEFINE_VARIATION_PARAM(kIPHiOSHomepageCustomizationNewBadge,
                        "IPH_iOSHomepageCustomizationNewBadge");
+DEFINE_VARIATION_PARAM(kIPHiOSBackgroundNewBadge, "IPH_iOSBackgroundNewBadge");
 DEFINE_VARIATION_PARAM(kIPHiOSAIHubNewBadge, "IPH_iOSAIHubNewBadge");
 DEFINE_VARIATION_PARAM(kIPHiOSGeminiLiveNewBadgeFeature,
                        "IPH_iOSGeminiLiveNewBadgeFeature");
@@ -685,6 +680,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHAutoDarkOptOutFeature),
         VARIATION_ENTRY(kIPHAutoDarkUserEducationMessageFeature),
         VARIATION_ENTRY(kIPHAutoDarkUserEducationMessageOptInFeature),
+        VARIATION_ENTRY(kIPHBookmarkBarVisibilityFeature),
         VARIATION_ENTRY(kIPHCCTHistory),
         VARIATION_ENTRY(kIPHCCTMinimized),
         VARIATION_ENTRY(kIPHChromeHomeExpandFeature),
@@ -718,10 +714,6 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHIdentityDiscFeature),
         VARIATION_ENTRY(kIPHIncognitoIndicatorCloseAllWindows),
         VARIATION_ENTRY(kIPHInstanceSwitcherFeature),
-        VARIATION_ENTRY(kIPHKeyboardAccessoryAddressFillingFeature),
-        VARIATION_ENTRY(kIPHKeyboardAccessoryBarSwipingFeature),
-        VARIATION_ENTRY(kIPHKeyboardAccessoryPasswordFillingFeature),
-        VARIATION_ENTRY(kIPHKeyboardAccessoryPaymentFillingFeature),
         VARIATION_ENTRY(kIPHKeyboardAccessoryPaymentOfferFeature),
         VARIATION_ENTRY(kIPHMenuAddToGroup),
         VARIATION_ENTRY(kIPHMicToolbarFeature),
@@ -798,6 +790,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHHomeCustomizationMenuFeature),
         VARIATION_ENTRY(kIPHiOSAIHubNewBadge),
         VARIATION_ENTRY(kIPHiOSBackendPromoFeature),
+        VARIATION_ENTRY(kIPHiOSBackgroundNewBadge),
         VARIATION_ENTRY(kIPHiOSContextualPanelPriceInsightsFeature),
         VARIATION_ENTRY(kIPHiOSContextualPanelSampleModelFeature),
         VARIATION_ENTRY(kIPHiOSDefaultBrowserBannerPromoFeature),

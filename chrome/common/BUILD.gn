@@ -7,6 +7,7 @@ import("//build/config/chrome_build.gni")
 import("//build/util/process_version.gni")
 import("//chrome/browser/downgrade/buildflags.gni")
 import("//chrome/common/features.gni")
+import("//chrome/common/request_header_integrity/buildflags.gni")
 import("//components/cdm/common/playready.gni")
 import("//components/offline_pages/buildflags/features.gni")
 import("//components/signin/features.gni")
@@ -200,7 +201,6 @@ static_library("common_lib") {
     "//chrome/app/theme:theme_resources",
     "//chrome/common:constants",
     "//chrome/common/net",
-    "//chrome/common/platform_runtime",
     "//chrome/common/profiler",
     "//chrome/common/search:mojo_bindings",
     "//chrome/installer/util:with_no_strings",
@@ -804,6 +804,11 @@ mojom("mojo_bindings") {
 
   if (enable_pdf) {
     enabled_features += [ "enable_pdf" ]
+  }
+
+  if (enable_request_header_integrity && !is_android) {
+    enabled_features += [ "enable_request_header_integrity" ]
+    public_deps += [ "//services/network/public/mojom:url_loader_base" ]
   }
 }
 

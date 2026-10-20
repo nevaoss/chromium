@@ -964,6 +964,8 @@ chromium-metrics-reviews@google.com.
   <int value="209" label="WebViewCompat.createSharedArrayBuffer"/>
   <int value="210" label="WebMessagePayload.getAsSharedArrayBuffer"/>
   <int value="211" label="WebViewProviderFactory.createWebSurface"/>
+  <int value="212" label="NavigationRedirectParameters.getResponseHeaders"/>
+  <int value="213" label="NavigationRedirectParameters.getStatusCode"/>
 <!-- LINT.ThenChange(/android_webview/support_library/java/src/org/chromium/support_lib_glue/SupportLibWebViewChromiumFactory.java:ApiCall) -->
 
 </enum>
@@ -1434,6 +1436,17 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/hub/internal/android/java/src/org/chromium/chrome/browser/hub/HubToolbarMediator.java:HubSearchEntrypoint) -->
+
+<!-- LINT.IfChange(InAppUpdateSnackbarEvent) -->
+
+<enum name="InAppUpdateSnackbarEvent">
+  <int value="0" label="Impression"/>
+  <int value="1" label="Action Tapped"/>
+  <int value="2" label="Dismissed No Action"/>
+  <int value="3" label="Dismissed By Lifecycle"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/omaha/android/java/src/org/chromium/chrome/browser/omaha/inline/InAppUpdateSnackbarEvent.java:InAppUpdateSnackbarEvent) -->
 
 <enum name="IncognitoReauthPromoActionType">
   <int value="0" label="Promo accepted"/>

@@ -469,6 +469,7 @@ public class Features {
 
     // Profile.addQuicHints
     public static final String ADD_QUIC_HINTS_V1 = "ADD_QUIC_HINTS_V1";
+    public static final String ADD_QUIC_HINTS_WILDCARDS = "ADD_QUIC_HINTS_WILDCARDS";
 
     // JsReplyProxy.executeJavaScript
     // WebViewCompat.addJavaScriptOnEvent
@@ -514,6 +515,13 @@ public class Features {
             "CROSS_ORIGIN_ISOLATED_ALLOW_LIST";
 
     // Navigation.getResponseHeaders
+    //
+    // WebViewNavigationListener.onNavigationRedirected(WebViewNavigation,
+    // NavigationRedirectParameters)
+    //
+    // NavigationRedirectParameters.getResponseHeaders
+    //
+    // NavigationRedirectParameters.getStatusCode
     public static final String NAVIGATION_GET_RESPONSE_HEADERS = "NAVIGATION_GET_RESPONSE_HEADERS";
 
     // WebViewNavigation.getNavigationStartUptimeMillis

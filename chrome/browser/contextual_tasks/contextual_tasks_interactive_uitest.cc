@@ -10,6 +10,7 @@
 #include "base/command_line.h"
 #include "base/files/file_util.h"
 #include "base/functional/callback_forward.h"
+#include "base/memory/weak_ptr.h"
 #include "base/path_service.h"
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
@@ -17,13 +18,17 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
+#include "base/test/metrics/user_action_tester.h"
+#include "base/test/run_until.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/uuid.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_extension_bridge.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_interactive_test_base.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -35,6 +40,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
+#include "chrome/browser/extensions/component_loader.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -68,6 +74,7 @@
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
 #include "components/contextual_search/pref_names.h"
+#include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/host_override.h"
@@ -91,6 +98,8 @@
 #include "content/public/test/file_system_chooser_test_helpers.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/url_loader_interceptor.h"
+#include "extensions/common/constants.h"
+#include "extensions/common/extension_features.h"
 #include "net/base/net_errors.h"
 #include "net/base/url_util.h"
 #include "net/dns/mock_host_resolver.h"
@@ -340,6 +349,24 @@ class ContextualTasksInteractiveUiTestBase
 
   auto WaitForComposeboxFilesCount(int expected_count) {
     return WaitForComposeboxFilesCount(kPrimaryTab, expected_count);
+  }
+
+  // Waits until the composebox holds `expected_count` attachments and every
+  // attachment upload has reached a terminal status. Interacting with a chip
+  // (e.g. removing it) while its upload is still in flight races with the
+  // asynchronous upload status updates on slow bots.
+  auto WaitForComposeboxFileUploadsComplete(
+      const ui::ElementIdentifier& contents_id,
+      int expected_count) {
+    StateChange change;
+    change.type = StateChange::Type::kExistsAndConditionTrue;
+    change.where = {"contextual-tasks-app", "#composebox", "#composebox"};
+    change.test_function = base::StringPrintf(
+        "el => !!el.attachedContext && el.attachedContext.size === %d && "
+        "el.fileUploadsComplete === true",
+        expected_count);
+    change.event = kElementExistsEvent;
+    return WaitForStateChange(contents_id, change);
   }
 
   auto WaitForFaviconGroupWithTitle(const ui::ElementIdentifier& contents_id,
@@ -984,16 +1011,16 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksPinnedToolbarInteractiveUiTest,
 }
 
 // TODO(crbug.com/500717050): Parameterize this test suite on the feature flag.
-// TODO(crbug.com/524797987): Re-enable this test on ChromeOS and Linux.
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
-#define MAYBE_AddAndRemovePdfChipFromComposebox \
-  DISABLED_AddAndRemovePdfChipFromComposebox
-#else
-#define MAYBE_AddAndRemovePdfChipFromComposebox \
-  AddAndRemovePdfChipFromComposebox
-#endif
+// This tests the following CUJ:
+//  (1) User opens the Contextual Tasks side panel.
+//  (2) User clicks the add context entrypoint in the composebox.
+//  (3) User selects "Upload file" and picks a PDF file.
+//  (4) User sees the PDF document chip with the file name, and its upload
+//      finishes.
+//  (5) User clicks the remove button on the document chip.
+//  (6) User sees the document chip removed and no attachments remain.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
-                       MAYBE_AddAndRemovePdfChipFromComposebox) {
+                       AddAndRemovePdfChipFromComposebox) {
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("download.pdf");
@@ -1018,33 +1045,38 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                                            "cr-composebox-file-thumbnail",
                                            "#removeDocumentButton"};
 
-  const DeepQuery kDocumentChipTitle = {"contextual-tasks-app",
-                                        "#composebox",
-                                        "#composebox",
-                                        "#carousel",
-                                        "cr-composebox-file-thumbnail",
-                                        "#documentTitle"};
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      // Wait for the embedded thread frame to finish loading before attaching
+      // a file. Its initial navigation can reset the task, which clears any
+      // attachment added before it completes on slow bots.
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
-  RunTestSequence(InstrumentTab(kPrimaryTab, 0),
-                  SelectTab(kTabStripElementId, 0),
-                  OpenContextualTasksInSidePanel(kSidePanelId),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "fileUpload"),
 
-                  ForceClickAddContextEntrypoint(kSidePanelId),
-                  ForceClickMenuButton(kSidePanelId, "fileUpload"),
+      WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
+      WaitForElementVisible(kSidePanelId, kDocumentChip),
+      // Ensure the upload has settled before removing the chip so the removal
+      // does not race with in-flight upload status updates.
+      WaitForComposeboxFileUploadsComplete(kSidePanelId, 1),
 
-                  WaitForDocumentChipWithTitle(kSidePanelId, "download.pdf"),
-                  WaitForElementVisible(kSidePanelId, kDocumentChip),
-                  WaitForComposeboxFilesCount(kSidePanelId, 1),
-
-                  WaitForElementVisible(kSidePanelId, kRemoveDocumentButton),
-                  ClickButton(kSidePanelId, kRemoveDocumentButton),
-                  WaitForElementDoesNotExist(kSidePanelId, kDocumentChip),
-                  WaitForComposeboxFilesCount(kSidePanelId, 0));
+      WaitForElementVisible(kSidePanelId, kRemoveDocumentButton),
+      ClickButton(kSidePanelId, kRemoveDocumentButton),
+      WaitForElementDoesNotExist(kSidePanelId, kDocumentChip),
+      WaitForComposeboxFilesCount(kSidePanelId, 0));
 }
 
-// TODO(crbug.com/524797987): Re-enable this test.
+// This tests the following CUJ:
+//  (1) User opens the Contextual Tasks side panel.
+//  (2) User clicks the add context entrypoint in the composebox.
+//  (3) User selects "Upload image" and picks an image file.
+//  (4) The image chip appears in the composebox carousel.
+//  (5) User clicks the remove button on the image chip.
+//  (6) The image chip is removed and no attachments remain.
 IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
-                       DISABLED_AddAndRemoveImageChipFromComposebox) {
+                       AddAndRemoveImageChipFromComposebox) {
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
   base::FilePath file_path = test_data_dir.AppendASCII("handbag.png");
@@ -1066,19 +1098,25 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
                                       "cr-composebox-file-thumbnail",
                                       "#removeImgButton"};
 
-  RunTestSequence(InstrumentTab(kPrimaryTab, 0),
-                  SelectTab(kTabStripElementId, 0),
-                  OpenContextualTasksInSidePanel(kSidePanelId),
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInSidePanel(kSidePanelId),
+      // Wait for the thread webview to load before attaching an image. During
+      // zero-state initialization, ContextualTasksAppElement (app.ts) calls
+      // forceComposeboxFocus(), which clears manually added attachments,
+      // before loading the thread URL. An image attached before then would be
+      // silently removed.
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelId, 0),
 
-                  ForceClickAddContextEntrypoint(kSidePanelId),
-                  ForceClickMenuButton(kSidePanelId, "imageUpload"),
+      ForceClickAddContextEntrypoint(kSidePanelId),
+      ForceClickMenuButton(kSidePanelId, "imageUpload"),
 
-                  WaitForElementVisible(kSidePanelId, kImgChip),
-                  WaitForComposeboxFilesCount(kSidePanelId, 1),
+      WaitForElementVisible(kSidePanelId, kImgChip),
+      WaitForComposeboxFilesCount(kSidePanelId, 1),
 
-                  ClickButton(kSidePanelId, kRemoveImgButton),
-                  WaitForElementDoesNotExist(kSidePanelId, kImgChip),
-                  WaitForComposeboxFilesCount(kSidePanelId, 0));
+      ClickButton(kSidePanelId, kRemoveImgButton),
+      WaitForElementDoesNotExist(kSidePanelId, kImgChip),
+      WaitForComposeboxFilesCount(kSidePanelId, 0));
 }
 
 // TODO(crbug.com/524797987, crbug.com/529701663): Re-enable this test.
@@ -3327,6 +3365,151 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksCopyUrlTest, FocusAndBlur) {
                               /*fail_if_not_instrumented=*/false));
 }
 
+// Enables the ephemeral branded toolbar entry point, which surfaces the
+// ephemeral Contextual Tasks toolbar button after the side panel is closed on a
+// tab associated with a task.
+class ContextualTasksEphemeralToolbarInteractiveUiTest
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  void SetUpFeatureList() override {
+    std::vector<base::test::FeatureRefAndParams> enabled =
+        GetDefaultEnabledFeatures();
+    // The ephemeral button only shows when it matches the side panel dock.
+    // Enable the right-hand variant so the test does not depend on the
+    // default side panel alignment.
+    enabled.push_back(
+        {kContextualTasksEphemeralBrandedEntryPoint,
+         {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"},
+          {"enable-right-hand-contextual-tasks-ephemeral-button", "true"}}});
+    enabled.push_back({kContextualTasksForceEntryPointEligibility, {}});
+    feature_list_.InitWithFeaturesAndParameters(enabled,
+                                                GetDefaultDisabledFeatures());
+  }
+
+  std::optional<base::Uuid> GetTaskIdForActiveTab() {
+    content::WebContents* const web_contents =
+        browser()->tab_strip_model()->GetActiveWebContents();
+    std::optional<ContextualTask> task =
+        CHECK_DEREF(ContextualTasksServiceFactory::GetForProfile(
+                        browser()->GetProfile()))
+            .GetContextualTaskForTab(
+                sessions::SessionTabHelper::IdForTab(web_contents));
+    if (!task.has_value()) {
+      return std::nullopt;
+    }
+    return task->GetTaskId();
+  }
+
+  content::WebContents* GetActiveSidePanelWebContents() {
+    return ContextualTasksPanelController::From(browser())
+        ->GetActiveWebContents();
+  }
+};
+
+// This tests the following CUJ:
+//  (1) User navigates to a webpage and starts a Lens region search from the
+//      Chrome app menu.
+//  (2) Contextual Tasks side panel opens with an active task for the tab.
+//  (3) User clicks the close button in the Contextual Tasks side panel
+//      toolbar.
+//  (4) Side panel closes and the ephemeral Contextual Tasks button appears in
+//      the browser toolbar.
+//  (5) User clicks the ephemeral toolbar button.
+//  (6) Contextual Tasks side panel reopens and restores the same task and
+//      side panel contents.
+//  (7) Ephemeral toolbar button hides while the side panel is open.
+IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralToolbarInteractiveUiTest,
+                       EphemeralToolbarButtonReopen) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kReopenedSidePanelId);
+
+  const DeepQuery kCloseButton = {"contextual-tasks-app", "#toolbar",
+                                  "#closeButton"};
+
+  auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  auto off_center_point = base::BindLambdaForTesting([browser_view]() {
+    gfx::Point off_center =
+        browser_view->GetContentsView()->GetBoundsInScreen().CenterPoint();
+    off_center.Offset(100, 100);
+    return off_center;
+  });
+
+  std::optional<base::Uuid> task_id_before_close;
+  base::WeakPtr<content::WebContents> side_panel_contents_before_close;
+
+  RunTestSequence(
+      // (1) Navigate to a page and start a Lens region search.
+      OpenLensOverlayWithRegionSearch(kPrimaryTab, kOverlayId,
+                                      std::move(off_center_point)),
+
+      // (2) The Contextual Tasks side panel opens with an active task.
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "EphemeralReopenSidePanelContents",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelId, "EphemeralReopenSidePanelContents"),
+      WaitForElementVisible(kSidePanelId, kCloseButton),
+      EnsureNotPresent(kContextualTasksEphemeralToolbarButtonElementId),
+      Do([&]() {
+        task_id_before_close = GetTaskIdForActiveTab();
+        content::WebContents* const contents = GetActiveSidePanelWebContents();
+        if (contents) {
+          side_panel_contents_before_close = contents->GetWeakPtr();
+        }
+      }),
+      Check([&]() { return task_id_before_close.has_value(); },
+            "Active tab is associated with a task before closing"),
+      Check([&]() { return !!side_panel_contents_before_close; },
+            "Side panel WebContents exist before closing"),
+
+      // (3) Close the side panel via the toolbar close button. The clicked
+      // WebUI hides in response, so do not wait for a JS round trip.
+      ClickElement(kSidePanelId, kCloseButton, ExecuteJsMode::kFireAndForget),
+
+      // (4) The side panel closes and the ephemeral button appears.
+      WaitForHide(kContextualTasksSidePanelWebViewElementId),
+      UninstrumentWebContents(kSidePanelId,
+                              /*fail_if_not_instrumented=*/false),
+      WaitForShow(kContextualTasksEphemeralToolbarButtonElementId),
+      Check([&]() { return GetTaskIdForActiveTab() == task_id_before_close; },
+            "Active tab stays associated with the task after closing"),
+
+      // (5) Click the ephemeral toolbar button.
+      PressButton(kContextualTasksEphemeralToolbarButtonElementId),
+
+      // (6) The side panel reopens and restores the same task and contents.
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      Check(
+          [&]() {
+            return ContextualTasksPanelController::From(browser())
+                ->IsPanelOpenForContextualTask();
+          },
+          "Side panel is open for the contextual task"),
+      Check([&]() { return GetTaskIdForActiveTab() == task_id_before_close; },
+            "Reopened side panel restores the same task"),
+      Check(
+          [&]() {
+            return side_panel_contents_before_close &&
+                   side_panel_contents_before_close.get() ==
+                       GetActiveSidePanelWebContents();
+          },
+          "Reopened side panel restores the same WebContents"),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "EphemeralReopenedSidePanelContents",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kReopenedSidePanelId,
+                              "EphemeralReopenedSidePanelContents"),
+      WaitForElementVisible(kReopenedSidePanelId, kCloseButton),
+
+      // (7) The ephemeral button hides while the side panel is open.
+      WaitForHide(kContextualTasksEphemeralToolbarButtonElementId));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     All,
     ContextualTasksCopyUrlTest,
@@ -3357,6 +3540,201 @@ INSTANTIATE_TEST_SUITE_P(All,
 
 INSTANTIATE_TEST_SUITE_P(All,
                          ContextualTasksInteractiveUiTestWithChips,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
+
+class ContextualTasksExtensionLensButtonInteractiveUiTest
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  ContextualTasksExtensionLensButtonInteractiveUiTest() {
+    extensions::ComponentLoader::EnableBackgroundExtensionsForTesting();
+  }
+  ~ContextualTasksExtensionLensButtonInteractiveUiTest() override = default;
+
+  void SetUpFeatureList() override {
+    auto enabled = GetDefaultEnabledFeatures();
+    enabled.push_back({kContextualTasksRearchitecture, {}});
+    enabled.push_back({kContextualTasksSidePanelRearchitecture, {}});
+    enabled.push_back({extensions_features::kApiContextualTasksPrivate, {}});
+    feature_list_.InitWithFeaturesAndParameters(enabled,
+                                                GetDefaultDisabledFeatures());
+  }
+
+  void SetUpOnMainThread() override {
+    ContextualTasksInteractiveUiTest::SetUpOnMainThread();
+    ContextualTasksExtensionBridge::Get(browser()->GetProfile());
+  }
+
+  static content::RenderFrameHost* MountAndWaitForLensButtonFrame(
+      content::WebContents* host_contents) {
+    EXPECT_TRUE(content::ExecJs(host_contents, R"(
+      (() => {
+        let iframe = document.getElementById('lens-button-iframe');
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = 'lens-button-iframe';
+          document.body.appendChild(iframe);
+        }
+      })();
+    )"));
+    const GURL lens_button_url(
+        base::StringPrintf("chrome-extension://%s/lens_button.html?cs=0",
+                           extension_misc::kContextualTasksExtensionId));
+    EXPECT_TRUE(content::NavigateIframeToURL(
+        host_contents, "lens-button-iframe", lens_button_url));
+
+    content::RenderFrameHost* button_rfh = nullptr;
+    EXPECT_TRUE(base::test::RunUntil([&]() -> bool {
+      button_rfh = content::FrameMatchingPredicateOrNullptr(
+          host_contents->GetPrimaryPage(),
+          base::BindRepeating([](content::RenderFrameHost* rfh) {
+            return rfh->GetLastCommittedURL().ExtractFileName() ==
+                   "lens_button.html";
+          }));
+      return button_rfh != nullptr;
+    }));
+    if (!button_rfh) {
+      return nullptr;
+    }
+
+    EXPECT_TRUE(base::test::RunUntil([&]() -> bool {
+      auto result = content::EvalJs(button_rfh, R"(
+        (() => {
+          const app = document.querySelector('lens-button-app');
+          if (!app || !app.shadowRoot) return false;
+          const btn = app.shadowRoot.querySelector('#lensButton');
+          return Boolean(btn && !btn.disabled);
+        })();
+      )");
+      return result.is_ok() && result.ExtractBool();
+    }));
+    return button_rfh;
+  }
+};
+
+// This tests the following CUJ:
+// 1. User navigates a regular browser tab to a Google page that embeds the
+//    Contextual Tasks extension's lens_button.html iframe.
+// 2. User clicks the embedded Lens button in the regular tab; because the
+//    button is not embedded in the Contextual Tasks side panel, nothing happens
+//    and the Lens overlay does not open.
+// 3. User opens the Contextual Tasks side panel, which embeds lens_button.html,
+//    and clicks the Lens button; the Lens overlay opens.
+IN_PROC_BROWSER_TEST_P(ContextualTasksExtensionLensButtonInteractiveUiTest,
+                       LensButtonClickOnlyWorksInSidePanel) {
+  SkipIfIncognito(
+      "Contextual Tasks component extension is not enabled in Incognito.");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+  const GURL kRegularTabUrl("https://www.google.com/search?q=regular_tab");
+  const GURL kAimUrl("https://www.google.com/search?udm=50");
+  base::UserActionTester user_action_tester;
+
+  RunTestSequence(
+      // 1. Navigate the regular tab to a Google page and embed
+      // lens_button.html.
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      NavigateWebContents(kPrimaryTab, kRegularTabUrl),
+      WaitForWebContentsPainted(kPrimaryTab),
+      WaitForWebContentsReady(kPrimaryTab, kRegularTabUrl),
+
+      // 2. Click the Lens button inside the regular tab's iframe and verify it
+      // is a no-op.
+      Do([&]() {
+        content::WebContents* tab_contents =
+            browser()->tab_strip_model()->GetActiveWebContents();
+        ASSERT_NE(tab_contents, nullptr);
+        content::RenderFrameHost* tab_button_rfh =
+            MountAndWaitForLensButtonFrame(tab_contents);
+        ASSERT_NE(tab_button_rfh, nullptr);
+
+        // Click #lensButton and perform a round-trip call on the same
+        // composebox::mojom::PageHandler remote pipe so HandleLensButtonClick()
+        // is guaranteed to have been processed on the browser UI thread.
+        EXPECT_EQ(true, content::EvalJs(tab_button_rfh, R"(
+          (async () => {
+            const app = document.querySelector('lens-button-app');
+            const btn = app.shadowRoot.querySelector('#lensButton');
+            btn.click();
+            await app.getPageHandler_().getSmartTabSharingActive();
+            return !app.active;
+          })();
+        )"));
+
+        auto* search_controller =
+            LensSearchController::FromTabWebContents(tab_contents);
+        ASSERT_NE(search_controller, nullptr);
+        EXPECT_TRUE(search_controller->IsOff());
+        EXPECT_FALSE(search_controller->IsShowingUI());
+        EXPECT_EQ(
+            0, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
+      }),
+      EnsureNotPresent(LensOverlayController::kOverlayId),
+
+      // 3. Open the Contextual Tasks side panel and embed lens_button.html
+      // inside the side panel WebContents.
+      Do([&]() {
+        ContextualTasksUiService* ui_service =
+            ContextualTasksUiServiceFactory::GetForBrowserContext(
+                browser()->GetProfile());
+        tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+        ui_service->StartTaskUiInSidePanel(browser(), tab, kAimUrl, nullptr);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      WaitForWebContentsReady(kSidePanelWebContentsId),
+
+      // 4. Click the Lens button inside the side panel's iframe and verify the
+      // Lens overlay opens.
+      Do([&]() {
+        content::WebContents* side_panel_contents =
+            ContextualTasksPanelController::From(browser())
+                ->GetActiveWebContents();
+        ASSERT_NE(side_panel_contents, nullptr);
+        content::RenderFrameHost* panel_button_rfh =
+            MountAndWaitForLensButtonFrame(side_panel_contents);
+        ASSERT_NE(panel_button_rfh, nullptr);
+
+        EXPECT_EQ(true, content::EvalJs(panel_button_rfh, R"(
+          (() => {
+            const app = document.querySelector('lens-button-app');
+            const btn = app.shadowRoot.querySelector('#lensButton');
+            btn.click();
+            return true;
+          })();
+        )"));
+      }),
+      WaitForShow(LensOverlayController::kOverlayId), Do([&]() {
+        content::WebContents* tab_contents =
+            browser()->tab_strip_model()->GetActiveWebContents();
+        auto* search_controller =
+            LensSearchController::FromTabWebContents(tab_contents);
+        ASSERT_NE(search_controller, nullptr);
+        EXPECT_TRUE(search_controller->IsShowingUI());
+        EXPECT_EQ(
+            1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
+      }));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksExtensionLensButtonInteractiveUiTest,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksEphemeralToolbarInteractiveUiTest,
                          testing::Values(UserVariation::kSignedIn,
                                          UserVariation::kSignedOut,
                                          UserVariation::kIncognito),

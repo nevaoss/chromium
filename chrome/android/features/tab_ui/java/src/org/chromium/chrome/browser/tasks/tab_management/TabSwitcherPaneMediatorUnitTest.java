@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
@@ -32,7 +33,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
+import android.widget.FrameLayout;
 
 import org.junit.After;
 import org.junit.Before;
@@ -92,14 +93,14 @@ public class TabSwitcherPaneMediatorUnitTest {
     @Mock private Runnable mOnTabSwitcherShownRunnable;
     @Mock private Profile mProfile;
     @Mock private TabListEditorController mTabListEditorController;
-    @Mock private ViewGroup mContainerView;
-    @Mock private View mCustomView;
     @Mock private Runnable mCustomViewBackPressRunnable;
     @Mock private Callback<Integer> mOnTabClickedCallback;
     @Mock private Runnable mAllOnLayoutChangedAfterInitialScrollListener;
     @Mock private TabIndexLookup mTabIndexLookup;
     @Mock private BottomSheetController mBottomSheetController;
-    @Mock private LinearLayout mSupplementaryDataContainer;
+
+    private final ViewGroup mContainerView = new FrameLayout(ContextUtils.getApplicationContext());
+    private final View mCustomView = new View(ContextUtils.getApplicationContext());
 
     @Captor private ArgumentCaptor<TabModelObserver> mTabModelObserverCaptor;
     @Captor private ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverCaptor;
@@ -199,9 +200,6 @@ public class TabSwitcherPaneMediatorUnitTest {
                         mBottomSheetController,
                         mAllOnLayoutChangedAfterInitialScrollListener,
                         mHubSearchBoxVisibilitySupplier);
-
-        when(mContainerView.findViewById(R.id.supplementary_data_container))
-                .thenReturn(mSupplementaryDataContainer);
 
         assertTrue(mTabModelSupplier.hasObservers());
         assertTrue(mIsVisibleSupplier.hasObservers());
@@ -447,7 +445,7 @@ public class TabSwitcherPaneMediatorUnitTest {
         mMediator.addCustomView(
                 mCustomView, mCustomViewBackPressRunnable, /* clearTabList= */ true);
         verify(mResetHandler).resetWithListOfTabs(null);
-        verify(mContainerView).addView(mCustomView);
+        assertSame(mContainerView, mCustomView.getParent());
         verify(mTabListEditorController).hide();
         when(mTabListEditorController.isVisible()).thenReturn(false);
 
@@ -456,7 +454,7 @@ public class TabSwitcherPaneMediatorUnitTest {
         verify(mCustomViewBackPressRunnable).run();
 
         mMediator.removeCustomView(mCustomView);
-        verify(mContainerView).removeView(mCustomView);
+        assertNull(mCustomView.getParent());
         assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
     }
 
@@ -468,7 +466,7 @@ public class TabSwitcherPaneMediatorUnitTest {
         mMediator.addCustomView(
                 mCustomView, mCustomViewBackPressRunnable, /* clearTabList= */ false);
         verify(mResetHandler, never()).resetWithListOfTabs(null);
-        verify(mContainerView).addView(mCustomView);
+        assertSame(mContainerView, mCustomView.getParent());
         verify(mTabGridDialogController).hideDialog(false);
         when(mTabGridDialogController.isVisible()).thenReturn(false);
 
@@ -477,7 +475,7 @@ public class TabSwitcherPaneMediatorUnitTest {
         verify(mCustomViewBackPressRunnable).run();
 
         mMediator.removeCustomView(mCustomView);
-        verify(mContainerView).removeView(mCustomView);
+        assertNull(mCustomView.getParent());
         assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
     }
 

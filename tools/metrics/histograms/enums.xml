@@ -5091,6 +5091,7 @@ shown properly on the user-facing crash UI.
   <int value="-2147024726" label="ERROR_BUSY"/>
   <int value="-2147024713" label="ERROR_ALREADY_EXISTS"/>
   <int value="-2147024703" label="ERROR_BAD_EXE_FORMAT"/>
+  <int value="-2147024696" label="ERROR_RING2SEG_MUST_BE_MOVABLE"/>
   <int value="-2147024671" label="ERROR_VIRUS_INFECTED"/>
   <int value="-2147024663" label="ERROR_PIPE_NOT_CONNECTED"/>
   <int value="-2147024641" label="ERROR_EA_LIST_INCONSISTENT"/>
@@ -5104,6 +5105,7 @@ shown properly on the user-facing crash UI.
   <int value="-2147024156" label="ERROR_ELEVATION_REQUIRED"/>
   <int value="-2147024110" label="ERROR_ACCESS_DISABLED_NO_SAFER_UI_BY_POLICY"/>
   <int value="-2147023901" label="ERROR_OPERATION_ABORTED"/>
+  <int value="-2147023897" label="ERROR_SWAPERROR"/>
   <int value="-2147023878" label="ERROR_KEY_DELETED"/>
   <int value="-2147023843" label="ERROR_SERVICE_REQUEST_TIMEOUT"/>
   <int value="-2147023838" label="ERROR_SERVICE_DISABLED"/>
@@ -5274,6 +5276,7 @@ shown properly on the user-facing crash UI.
   <int value="-1073741801" label="STATUS_INVALID_PARAMETER_2"/>
   <int value="-1073741795" label="STATUS_ILLEGAL_INSTRUCTION"/>
   <int value="-1073741790" label="STATUS_ACCESS_DENIED"/>
+  <int value="-1073741772" label="STATUS_OBJECT_NAME_NOT_FOUND"/>
   <int value="-1073741670" label="STATUS_INSUFFICIENT_RESOURCES"/>
   <int value="-1073741571" label="STATUS_STACK_OVERFLOW"/>
   <int value="-1073741523" label="STATUS_CANT_WAIT"/>
@@ -8915,6 +8918,7 @@ from previous Chrome versions.
   <int value="-1830472348" label="CryptAuthV2DeviceSync:enabled"/>
   <int value="-1830199297" label="force-empty-corb-allowlist"/>
   <int value="-1829053093" label="PrivateStateTokens:enabled"/>
+  <int value="-1828466588" label="AndroidNewTabButtonTabstripWebUI:enabled"/>
   <int value="-1827753249" label="ExtensionManifestV2Disabled:enabled"/>
   <int value="-1827599944" label="QueryTilesLocalOrdering:enabled"/>
   <int value="-1827136280" label="AndroidComposeplate:disabled"/>
@@ -10513,6 +10517,7 @@ from previous Chrome versions.
   <int value="-1346261029" label="PageInfoAboutThisSiteMoreLangs:disabled"/>
   <int value="-1346055284" label="WebSerialWiredDevicesAndroid:enabled"/>
   <int value="-1345931804" label="TabbedAppOverflowMenuIcons:disabled"/>
+  <int value="-1345569802" label="GlicMessageFirstFre:enabled"/>
   <int value="-1345471133" label="JourneysOmniboxAction:enabled"/>
   <int value="-1344775211"
       label="SyncChromeOSExplicitPassphraseSharing:disabled"/>
@@ -11015,6 +11020,7 @@ from previous Chrome versions.
   <int value="-1190174011" label="enable-hdr"/>
   <int value="-1190171773" label="NtpHistoryClustersModuleTextOnly:enabled"/>
   <int value="-1189429241" label="AndroidBottomBar:disabled"/>
+  <int value="-1188631364" label="AndroidNewTabButtonTabstripWebUI:disabled"/>
   <int value="-1188087884" label="OpenDownloadInPreferredApp:enabled"/>
   <int value="-1188066168" label="Mahi:disabled"/>
   <int value="-1188052495" label="MediaAppImageMantisExpandBackground:enabled"/>
@@ -12478,6 +12484,7 @@ from previous Chrome versions.
   <int value="-743590125" label="TabEngagementReportingAndroid:enabled"/>
   <int value="-743504893" label="MobilePromoOnDesktopWithQRCode:enabled"/>
   <int value="-743103250" label="enable-linkable-ephemeral-apps"/>
+  <int value="-743021832" label="EdgeToEdgeTopInset:enabled"/>
   <int value="-742730757" label="VulkanFromANGLE:disabled"/>
   <int value="-742469530" label="DriveFS:disabled"/>
   <int value="-742455458"
@@ -13552,6 +13559,7 @@ from previous Chrome versions.
   <int value="-418041538" label="HelpAppHomePageAppArticles:disabled"/>
   <int value="-417633330" label="MessagesForAndroidInfrastructure:enabled"/>
   <int value="-416660617" label="EnforceTLS13Downgrade:disabled"/>
+  <int value="-416246546" label="AudioRendererMixerImmediatePause:disabled"/>
   <int value="-415762341" label="ElementCapture:disabled"/>
   <int value="-415186532" label="AndroidSiteSettingsUIRefresh:enabled"/>
   <int value="-414900505" label="ScrollCapture:enabled"/>
@@ -13709,6 +13717,7 @@ from previous Chrome versions.
   <int value="-364325011" label="enable-files-quick-view"/>
   <int value="-364267715" label="disable-native-cups"/>
   <int value="-363885137" label="StoragePressureEvent:disabled"/>
+  <int value="-363560573" label="ImmersiveReadAnythingPrint:enabled"/>
   <int value="-363237269" label="OmniboxNumWebZpsMostVisitedUrls:disabled"/>
   <int value="-363145046" label="LegacyTechReportTopLevelUrl:disabled"/>
   <int value="-362821234" label="ExperimentalUi:enabled"/>
@@ -15027,6 +15036,7 @@ from previous Chrome versions.
   <int value="35364948" label="SafetyHubFollowup:enabled"/>
   <int value="35716183" label="MagnifierNewFocusFollowing:disabled"/>
   <int value="36110634" label="AllowScrollSettings:disabled"/>
+  <int value="36364890" label="EdgeToEdgeTopInset:disabled"/>
   <int value="36422284"
       label="AutofillSaveCardDialogUnlabeledExpirationDate:enabled"/>
   <int value="36536806"
@@ -15434,6 +15444,7 @@ from previous Chrome versions.
   <int value="161008398" label="NearbyKeepAliveFix:disabled"/>
   <int value="161694478" label="OmniboxNewAnswerLayout:enabled"/>
   <int value="161706692" label="ContextualPageActionPriceTracking:disabled"/>
+  <int value="162029143" label="AndroidSetGoogleAccountInHelp:disabled"/>
   <int value="165007022" label="MigrateAccountManagerDelegate:enabled"/>
   <int value="165429419" label="DrawNativeEdgeToEdge:disabled"/>
   <int value="165912610"
@@ -18472,6 +18483,7 @@ from previous Chrome versions.
   <int value="1097764935" label="ReadAnythingDocsLoadMoreButton:disabled"/>
   <int value="1097935876" label="CrostiniShowMicSetting:enabled"/>
   <int value="1097981222" label="OneGoogleBarModalOverlays:disabled"/>
+  <int value="1098252390" label="AndroidSetGoogleAccountInHelp:enabled"/>
   <int value="1098461149" label="AppToAppLinkCapturing:disabled"/>
   <int value="1098610349" label="UseHDRTransferFunction:disabled"/>
   <int value="1098823967" label="ash-enable-window-cycle-ui"/>
@@ -18741,6 +18753,7 @@ from previous Chrome versions.
   <int value="1186484930"
       label="AutofillEnableLogFormEventsToAllParsedFormTypes:disabled"/>
   <int value="1186830151" label="EnableFullscreenToAnyScreenAndroid:enabled"/>
+  <int value="1187038472" label="AudioRendererMixerImmediatePause:enabled"/>
   <int value="1187103825" label="OmniboxSuggestionsWrapAround:enabled"/>
   <int value="1187692916" label="TheoraVideoCodec:enabled"/>
   <int value="1187868655" label="FloatingWorkspaceV2:disabled"/>
@@ -19745,6 +19758,7 @@ from previous Chrome versions.
   <int value="1474104225" label="NearbySharingWifiDirect:disabled"/>
   <int value="1474268803" label="TabCaptureInfobarLinks:enabled"/>
   <int value="1474433736" label="NtpRealboxTailSuggest:enabled"/>
+  <int value="1474591882" label="ImmersiveReadAnythingPrint:disabled"/>
   <int value="1474707811" label="Jelly:enabled"/>
   <int value="1474822376" label="SyncGeminiThread:disabled"/>
   <int value="1474861626" label="disable-multi-mirroring"/>
@@ -19890,6 +19904,7 @@ from previous Chrome versions.
   <int value="1519067750" label="ActionableContentSettings:disabled"/>
   <int value="1519228932" label="OmniboxAnswerActions:enabled"/>
   <int value="1519310490" label="FloatingSnackbar:disabled"/>
+  <int value="1519509694" label="GlicMessageFirstFre:disabled"/>
   <int value="1520181151" label="PrintServerScaling:disabled"/>
   <int value="1520232917" label="NewTabPageTriggerForPrefetch:enabled"/>
   <int value="1520754417" label="ConfirmationChip:enabled"/>
@@ -23914,6 +23929,16 @@ Called by update_net_error_codes.py.-->
   <int value="3" label="Not rejected or not shown"/>
 </enum>
 
+<!-- LINT.IfChange(PdfAccessibilityHeaderFooterRepetition) -->
+
+<enum name="PdfAccessibilityHeaderFooterRepetition">
+  <int value="0" label="Unique"/>
+  <int value="1" label="Repeating"/>
+  <int value="2" label="Incremental"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/pdf/renderer/pdf_accessibility_tree.h:HeaderFooterRepetition) -->
+
 <!-- LINT.IfChange(PdfAccessibilityHeadingClassifier) -->
 
 <enum name="PdfAccessibilityHeadingClassifier">
@@ -24176,6 +24201,16 @@ Called by update_net_error_codes.py.-->
   <int value="16" label="I/O"/>
 </enum>
 
+<enum name="PlatformRuntimeApplyResult">
+  <summary>
+    The outcome of applying the most recently distributed Platform Runtime
+    header block to an outgoing request.
+  </summary>
+  <int value="0" label="No header block available in this process"/>
+  <int value="1" label="Not applicable: request carried none of the headers"/>
+  <int value="2" label="Applied"/>
+</enum>
+
 <enum name="PlatformRuntimeInstallationResult">
   <summary>
     The result or failure status when installing the Platform Runtime component
@@ -24218,14 +24253,14 @@ Called by update_net_error_codes.py.-->
   <int value="2" label="Via the background updater process"/>
 </enum>
 
-<enum name="PlatformRuntimeIntegrityResult">
+<enum name="PlatformRuntimeProcessHeadersStatus">
   <summary>
-    The outcome status when attempting to process request headers for integrity
-    checks.
+    The outcome of one invocation of the Platform Runtime library in the utility
+    process.
   </summary>
-  <int value="0" label="(Obsolete) Component unavailable"/>
-  <int value="1" label="Library unavailable"/>
-  <int value="2" label="Success"/>
+  <int value="0" label="Library unavailable"/>
+  <int value="1" label="Success"/>
+  <int value="2" label="Ran but produced no output"/>
   <int value="3" label="Failure"/>
 </enum>
 
@@ -27662,17 +27697,6 @@ Called by update_net_error_codes.py.-->
   <int value="2" label="Closed"/>
 </enum>
 
-<!-- LINT.IfChange(TabsFromOtherDevicesSidePanelEvent) -->
-
-<enum name="TabsFromOtherDevicesSidePanelEvent">
-  <int value="0" label="Startup"/>
-  <int value="1" label="Opened"/>
-  <int value="2" label="Closed"/>
-  <int value="3" label="TabOpened"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_metrics.h:Event) -->
-
 <enum name="TestOnlyModesetOutcome">
   <int value="0" label="Success"/>
   <int value="1" label="Success with fallback"/>
@@ -27850,6 +27874,8 @@ Called by update_net_error_codes.py.-->
   <int value="2" label="Clear badge"/>
 </enum>
 
+<!-- LINT.IfChange(UpdateClientError) -->
+
 <enum name="UpdateClientErrors">
   <int value="0" label="(No Error)"/>
   <int value="1" label="Update in progress"/>
@@ -27860,7 +27886,10 @@ Called by update_net_error_codes.py.-->
   <int value="6" label="CRX not found"/>
   <int value="7" label="Invalid argument"/>
   <int value="8" label="Bad CRX data callback"/>
+  <int value="9" label="Update disabled"/>
 </enum>
+
+<!-- LINT.ThenChange(//components/update_client/update_client_errors.h:UpdateClientError) -->
 
 <enum name="UpdateEngineAttemptResult">
   <int value="0" label="Update Succeeded"/>
@@ -28058,6 +28087,9 @@ Called by update_net_error_codes.py.-->
 <enum name="UpdateValidatedOriginAssociationsResult">
   <int value="0" label="Success"/>
   <int value="1" label="(Obsolete) NotNeeded"/>
+<!-- Revalidation was skipped because the app is ineligible or its next check
+     is not yet due. -->
+
   <int value="2" label="Throttled"/>
   <int value="3" label="WebAppNotInstalled"/>
   <int value="4" label="UnvalidatedItemsRemain"/>

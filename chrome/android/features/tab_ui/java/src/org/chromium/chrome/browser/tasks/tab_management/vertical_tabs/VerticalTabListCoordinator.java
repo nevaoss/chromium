@@ -198,7 +198,7 @@ public class VerticalTabListCoordinator {
     private final @Nullable UndoBarThrottle mUndoBarThrottle;
     private final @Nullable TabUnderlineManager mTabUnderlineManager;
     private final BrowserControlsStateProvider mBrowserControlsStateProvider;
-    private final Supplier<TabContentManager> mTabContentManagerSupplier;
+    private final Supplier<@Nullable TabContentManager> mTabContentManagerSupplier;
     private final List<VerticalTabListItemTouchHelperCallback> mTouchHelperCallbacks =
             new ArrayList<>();
     private @Nullable TabStripContextMenuCoordinator mTabStripContextMenuCoordinator;
@@ -328,7 +328,7 @@ public class VerticalTabListCoordinator {
             @Nullable BooleanSupplier canActivateTabLayoutToggleMenuSupplier,
             @Nullable ViewStub tabHoverCardViewStub,
             @Nullable ViewStub tabGroupHoverCardViewStub,
-            Supplier<TabContentManager> tabContentManagerSupplier,
+            Supplier<@Nullable TabContentManager> tabContentManagerSupplier,
             @Nullable UndoBarThrottle undoBarThrottle,
             BrowserControlsStateProvider browserControlsStateProvider,
             BackPressManager backPressManager) {
@@ -422,15 +422,13 @@ public class VerticalTabListCoordinator {
                 new ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        @SuppressWarnings("NullAway")
-        Supplier<@Nullable TabContentManager> nullableSupplier = tabContentManagerSupplier;
         mTabHoverController =
                 new VerticalTabHoverController(
                         mContainerView,
                         tabHoverCardViewStub,
                         tabGroupHoverCardViewStub,
                         tabModelSelector,
-                        nullableSupplier,
+                        tabContentManagerSupplier,
                         this::isAnyContextMenuShowing);
 
         VerticalTabListRecyclerView recyclerView = mContainerView.getRecyclerView();
@@ -2020,7 +2018,7 @@ public class VerticalTabListCoordinator {
         if (mContainerModel != null) {
             @RailCollapseState
             int collapseState = mContainerModel.get(VerticalTabListProperties.COLLAPSE_STATE);
-            if (collapseState == RailCollapseState.COLLAPSED) {
+            if (VerticalTabRailCollapseController.shouldUseCollapsedPositioning(collapseState)) {
                 return COLLAPSED_GRID_SPAN_COUNT;
             }
         }
@@ -2525,13 +2523,14 @@ public class VerticalTabListCoordinator {
         outRect.right = isRtl ? left : right;
     }
 
-    // Only show the separator if 1. The rail is collapsed, 2. The rail contains pinned tabs, and 3.
-    // The rail contains regular tabs (a tab group cannot exist without at least one regular tab).
+    // Only show the separator if 1. The rail uses collapsed positioning (collapsed or expanded for
+    // hovering), 2. The rail contains pinned tabs, and 3. The rail contains regular tabs (a tab
+    // group cannot exist without at least one regular tab).
     private void updatePinnedTabsSeparatorVisibility() {
         boolean isCollapsed =
                 mContainerModel != null
-                        && mContainerModel.get(VerticalTabListProperties.COLLAPSE_STATE)
-                                == RailCollapseState.COLLAPSED;
+                        && VerticalTabRailCollapseController.shouldUseCollapsedPositioning(
+                                mContainerModel.get(VerticalTabListProperties.COLLAPSE_STATE));
 
         TabModel model = mTabModelSelector.getCurrentModel();
         int pinnedCount = model != null ? model.getPinnedTabsCount() : 0;

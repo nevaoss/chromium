@@ -18,11 +18,11 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +42,7 @@ import android.provider.MediaStore;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.View;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.test.core.app.ApplicationProvider;
@@ -57,11 +58,10 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
-import org.robolectric.Robolectric;
-import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
+import org.chromium.base.Callback;
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.Promise;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -70,6 +70,7 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.build.annotations.Nullable;
@@ -102,6 +103,7 @@ import org.chromium.components.browser_ui.util.ChromeItemPickerUtils;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler.BackPressResult;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+import org.chromium.components.contextual_search.DisclaimerStatus;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.contextual_search.InputStateBuilder;
 import org.chromium.components.feature_engagement.Tracker;
@@ -129,7 +131,6 @@ import org.chromium.content_public.browser.RenderWidgetHostView;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.MimeTypeUtils;
-import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -257,7 +258,6 @@ public class FuseboxMediatorUnitTest {
     @Rule
     public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
-    @Mock private FuseboxViewHolder mViewHolder;
     @Mock private FuseboxPopup mPopup;
     @Mock private Profile mProfile;
     @Mock private FuseboxSessionState mSession;
@@ -284,12 +284,13 @@ public class FuseboxMediatorUnitTest {
     @Mock private Tab mTab;
     @Mock private PropertyObserver<PropertyKey> mPropertyObserver;
     @Mock private DriveFilePickerClient mDriveFilePickerClient;
+    @Mock private DriveDisclaimerBridge.Natives mDriveDisclaimerBridgeNatives;
     @Mock private TabLoadingService mTabLoadingService;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
     @Captor private ArgumentCaptor<WindowAndroid.IntentCallback> mIntentCallbackCaptor;
 
-    private ActivityController<TestActivity> mActivityController;
+    private FuseboxViewHolder mViewHolder;
     private Context mContext;
     private Resources mResources;
     private PropertyModel mModel;
@@ -316,12 +317,8 @@ public class FuseboxMediatorUnitTest {
     @Before
     public void setUp() {
         OmniboxFeatures.sMultiattachmentFusebox.setForTesting(/* overrideValue= */ true);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ false);
         mTabModelSelectorSupplier = ObservableSuppliers.createNonNull(mTabModelSelector);
-        mActivityController = Robolectric.buildActivity(TestActivity.class).setup();
-        Activity activity = mActivityController.get();
-        ConstraintLayout viewGroup = new ConstraintLayout(activity);
-        activity.setContentView(viewGroup);
-        LayoutInflater.from(activity).inflate(R.layout.fusebox_layout, viewGroup, true);
 
         ProfileResolverJni.setInstanceForTesting(mProfileResolverNatives);
         TrackerFactory.setTrackerForTests(mTracker);
@@ -331,6 +328,8 @@ public class FuseboxMediatorUnitTest {
                 new ContextThemeWrapper(
                         ApplicationProvider.getApplicationContext(),
                         R.style.Theme_BrowserUI_DayNight);
+        ConstraintLayout viewGroup = new ConstraintLayout(mContext);
+        LayoutInflater.from(mContext).inflate(R.layout.fusebox_layout, viewGroup, true);
         mResources = mContext.getResources();
         mResourceProvider = new OmniboxResourceProvider(mContext, BrandedColorScheme.APP_DEFAULT);
         mModel = new PropertyModel(FuseboxProperties.ALL_KEYS);
@@ -386,6 +385,7 @@ public class FuseboxMediatorUnitTest {
                 .doReturn(Promise.fulfilled(null))
                 .when(mDriveFilePickerClient)
                 .launchPicker(any(), any(), any());
+        DriveDisclaimerBridgeJni.setInstanceForTesting(mDriveDisclaimerBridgeNatives);
 
         mInputStateSupplier.set(DEFAULT_INPUT_STATE);
 
@@ -400,7 +400,6 @@ public class FuseboxMediatorUnitTest {
         if (mResourceProvider != null) {
             mResourceProvider.destroy();
         }
-        mActivityController.close();
     }
 
     private static InputStateBuilder createDefaultInputStateBuilder() {
@@ -580,6 +579,17 @@ public class FuseboxMediatorUnitTest {
         when(data.getIntegerArrayListExtra(ChromeItemPickerExtras.EXTRA_ATTACHMENT_TAB_IDS))
                 .thenReturn(new ArrayList<>(tabIds));
         return data;
+    }
+
+    private void setDriveConsentStatus(@DisclaimerStatus int status) {
+        doAnswer(
+                        invocation -> {
+                            Callback<Integer> callback = invocation.getArgument(1);
+                            callback.onResult(status);
+                            return null;
+                        })
+                .when(mDriveDisclaimerBridgeNatives)
+                .checkConsentStatus(any(), any());
     }
 
     @Test
@@ -961,10 +971,12 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void onHidePopup_bottomSheet_showsKeyboardIfFocused() {
         OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
-        ConstraintLayout spyParent = spy(mViewHolder.parentView);
-        doReturn(mViewHolder.plusButton).when(spyParent).findFocus();
-        mViewHolder = new FuseboxViewHolder(spyParent, mPopup);
         recreateMediator();
+
+        mViewHolder.plusButton.setVisibility(View.VISIBLE);
+        mViewHolder.plusButton.setFocusableInTouchMode(true);
+        assertTrue(mViewHolder.plusButton.requestFocus());
+        assertEquals(mViewHolder.plusButton, mViewHolder.parentView.findFocus());
 
         // Show popup first
         mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run();
@@ -972,7 +984,7 @@ public class FuseboxMediatorUnitTest {
         // Hide popup
         mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run();
 
-        verify(mKeyboardVisibilityDelegate).showKeyboard(any());
+        verify(mKeyboardVisibilityDelegate).showKeyboard(mViewHolder.plusButton);
     }
 
     @Test
@@ -1174,6 +1186,83 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void pinnedSectionDividers_contextMenu_showsBoth() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(false);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST).isEmpty());
+        assertTrue(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE));
+        assertTrue(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE));
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void pinnedSectionDividers_noPinnedTools_hidesBoth() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(false);
+        when(mComposeboxQueryControllerBridge.getInputStateSupplier())
+                .thenReturn(ObservableSuppliers.createMonotonic());
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertTrue(mModel.get(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST).isEmpty());
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE));
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE));
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void pinnedSectionDividers_bottomSheet_hidesBottom() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
+        OmniboxFeatures.setUseCarouselForTesting(/* value= */ true);
+        OmniboxFeatures.setUseScrollableCarouselForTesting(/* value= */ false);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertTrue(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE));
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE));
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void pinnedSectionDividers_scrollableCarousel_hidesBoth() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
+        OmniboxFeatures.setUseCarouselForTesting(/* value= */ true);
+        OmniboxFeatures.setUseScrollableCarouselForTesting(/* value= */ true);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE));
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE));
+    }
+
+    @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void pinnedSectionDividers_variationsDisabled_hidesBoth() {
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE));
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE));
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void pinnedSectionDividers_desktop_hidesBoth() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(/* isDesktopPlatform= */ true);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_TOP_DIVIDER_VISIBLE));
+        assertFalse(mModel.get(FuseboxProperties.POPUP_PINNED_SECTION_BOTTOM_DIVIDER_VISIBLE));
+    }
+
+    @Test
     public void onCameraClicked_permissionGranted_launchesCamera() {
         doReturn(true).when(mWindowAndroid).hasPermission(any());
 
@@ -1263,6 +1352,7 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void activateAiMode_fromToolMenu_recordsMetrics() {
         mMediator.onPlusButtonClicked();
 
@@ -1274,6 +1364,7 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void clickSelectedTool_transitionsToSearchMode() {
         mMediator.onPlusButtonClicked();
 
@@ -1421,6 +1512,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void onDrivePickerClicked_pickerSuccess_attachesDriveFile() {
+        setDriveConsentStatus(DisclaimerStatus.ACCEPTED);
         DriveAttachmentMetadata metadata =
                 new DriveAttachmentMetadata(
                         "drive_id",
@@ -1444,6 +1536,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void onDrivePickerClicked_pickerCanceled_handlesPickerCanceled() {
+        setDriveConsentStatus(DisclaimerStatus.ACCEPTED);
         mInput.setFocusReason(OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP);
         recreateMediator();
 
@@ -1453,6 +1546,24 @@ public class FuseboxMediatorUnitTest {
         assertFalse(mModel.get(FuseboxProperties.ATTACHMENTS_VISIBLE));
         assertEquals(0, mAttachments.size());
         verify(mOnFirstPickerInteractionCanceledCallback).run();
+    }
+
+    @Test
+    public void onDrivePickerClicked_consentRestricted_cancelsWithoutPicker() {
+        setDriveConsentStatus(DisclaimerStatus.RESTRICTED);
+
+        mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
+
+        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any());
+    }
+
+    @Test
+    public void onDrivePickerClicked_consentNotAccepted_cancelsWithoutPicker() {
+        setDriveConsentStatus(DisclaimerStatus.NOT_ACCEPTED);
+
+        mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
+
+        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any());
     }
 
     @Test
@@ -2061,8 +2172,6 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void onInputStateChange_updatesDriveButton() {
-        FeatureOverrides.overrideFlag(
-                OmniboxFeatureList.COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION, true);
         setInputState(
                 createDefaultInputStateBuilder()
                         .withAllowedInputTypes(InputType.INPUT_TYPE_DRIVE_VALUE)
@@ -2078,8 +2187,6 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void onInputStateChange_driveNotAvailable_hidesDriveButton() {
-        FeatureOverrides.overrideFlag(
-                OmniboxFeatureList.COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION, true);
         doReturn(false).when(mDriveFilePickerClient).isAvailable(any(), any());
         setInputState(
                 createDefaultInputStateBuilder()
@@ -2471,6 +2578,7 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void testOnInputStateChange_unknownIconResourceIds() {
 
         int unknownIconId = 9999;
@@ -2670,27 +2778,67 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void popupHeaders_accordionEnabled_suppressed() {
         OmniboxFeatures.setUseAccordionForTesting(true);
         recreateMediator();
         mMediator.onPlusButtonClicked();
 
-        assertEquals(4, mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST).size());
+        assertEquals(3, mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST).size());
         assertEquals(2, mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST).size());
         assertFalse(mModel.get(FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE));
         assertFalse(mModel.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE));
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void popupHeaders_accordionDisabled_visible() {
         OmniboxFeatures.setUseAccordionForTesting(false);
         recreateMediator();
         mMediator.onPlusButtonClicked();
 
-        assertEquals(4, mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST).size());
+        assertEquals(3, mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST).size());
         assertEquals(2, mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST).size());
         assertTrue(mModel.get(FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE));
         assertTrue(mModel.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE));
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void toolsList_scrollableCarousel_includesAiModeInToolsList() {
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
+        OmniboxFeatures.setUseCarouselForTesting(/* value= */ true);
+        OmniboxFeatures.setUseScrollableCarouselForTesting(/* value= */ true);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        List<PopupButtonData> tools = mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST);
+        assertEquals(ToolMode.TOOL_MODE_UNSPECIFIED, tools.get(0).protoId);
+        assertTrue(mModel.get(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST).isEmpty());
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void toolsList_fixedCarouselOrVertical_pinsAiMode() {
+        OmniboxFeatures.setUseScrollableCarouselForTesting(/* value= */ false);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        List<PopupButtonData> pinnedTools =
+                mModel.get(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST);
+        assertEquals(1, pinnedTools.size());
+        assertEquals(ToolMode.TOOL_MODE_UNSPECIFIED, pinnedTools.get(0).protoId);
+    }
+
+    @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void toolsList_variationsDisabled_includesAiModeInToolsList() {
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        List<PopupButtonData> tools = mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST);
+        assertEquals(ToolMode.TOOL_MODE_UNSPECIFIED, tools.get(0).protoId);
+        assertTrue(mModel.get(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST).isEmpty());
     }
 
     @Test
@@ -2773,6 +2921,7 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void testPopupToolButton_hasColor() {
         setInputState(
                 createDefaultInputStateBuilder()

@@ -24,17 +24,23 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent.GlowSpec;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetView.SheetLayoutMode;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetView.TouchHandler;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
 /** Unit tests for {@link BottomSheetViewBinder}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class BottomSheetViewBinderUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private BottomSheetView mView;
+    private @Mock BottomSheetView mView;
+    private @Mock TouchHandler mTouchHandler;
+    private @Mock OnClickListener mClickListener;
+    private @Mock Runnable mCallback;
     private PropertyModel mModel;
 
     @Before
@@ -153,6 +159,45 @@ public class BottomSheetViewBinderUnitTest {
     public void testSheetFocusable() {
         mModel.set(BottomSheetProperties.SHEET_FOCUSABLE, true);
         verify(mView).setSheetFocusable(true);
+    }
+
+    @Test
+    public void testContentBottomPadding() {
+        mModel.set(BottomSheetProperties.CONTENT_BOTTOM_PADDING, 24);
+        verify(mView).setContentContainerPaddingBottom(24);
+    }
+
+    @Test
+    public void testBackgroundHeight() {
+        mModel.set(BottomSheetProperties.BACKGROUND_HEIGHT, 600);
+        verify(mView).updateBackgroundHeight(600);
+    }
+
+    @Test
+    public void testTouchHandler() {
+        mModel.set(BottomSheetProperties.TOUCH_HANDLER, mTouchHandler);
+        verify(mView).setTouchHandler(mTouchHandler);
+    }
+
+    @Test
+    public void testHandlebarClickListener() {
+        mModel.set(BottomSheetProperties.HANDLEBAR_CLICK_LISTENER, mClickListener);
+        verify(mView).setHandlebarClickListener(mClickListener);
+    }
+
+    @Test
+    public void testToolbarSizeChangedCallback() {
+        mModel.set(BottomSheetProperties.TOOLBAR_SIZE_CHANGED_CALLBACK, mCallback);
+        verify(mView).setToolbarSizeChangedCallback(mCallback);
+    }
+
+    @Test
+    public void testCurrentSheetState() {
+        mModel.set(BottomSheetProperties.CURRENT_SHEET_STATE, SheetState.PEEK);
+        verify(mView).sendPaneChangeAccessibilityEvent(true);
+
+        mModel.set(BottomSheetProperties.CURRENT_SHEET_STATE, SheetState.HIDDEN);
+        verify(mView).sendPaneChangeAccessibilityEvent(false);
     }
 
     @Test

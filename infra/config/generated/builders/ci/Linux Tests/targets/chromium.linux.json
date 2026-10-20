@@ -140,7 +140,8 @@
       },
       {
         "args": [
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {
@@ -1275,7 +1276,8 @@
         "args": [
           "--enable-features=TreesInViz",
           "--test-launcher-filter-file=../../testing/buildbot/filters/trees_in_viz.blink_platform_unittests.filter",
-          "--git-revision=${got_revision}"
+          "--git-revision=${got_revision}",
+          "--bypass-skia-gold-functionality"
         ],
         "isolate_profile_data": true,
         "merge": {
@@ -1591,6 +1593,11 @@
         "swarming": {
           "dimensions": {
             "os": "Ubuntu-22.04"
+          },
+          "optional_dimensions": {
+            "30": {
+              "cpu": "x86-64-e4"
+            }
           },
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
           "shards": 9
@@ -1974,6 +1981,11 @@
           "dimensions": {
             "os": "Ubuntu-22.04"
           },
+          "optional_dimensions": {
+            "30": {
+              "cpu": "x86-64-e4"
+            }
+          },
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
           "shards": 25
         },
@@ -2184,6 +2196,11 @@
         "swarming": {
           "dimensions": {
             "os": "Ubuntu-22.04"
+          },
+          "optional_dimensions": {
+            "30": {
+              "cpu": "x86-64-e4"
+            }
           },
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
           "shards": 15

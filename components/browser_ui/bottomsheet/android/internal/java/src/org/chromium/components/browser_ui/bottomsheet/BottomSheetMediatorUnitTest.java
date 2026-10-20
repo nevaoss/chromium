@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.core.view.WindowInsetsCompat;
@@ -36,13 +37,14 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 /** Unit tests for {@link BottomSheetMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class BottomSheetMediatorUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private BottomSheetObserver mObserver;
-    @Mock private BottomSheetContent mContent;
-    @Mock private View mContentView;
-    @Mock private View mToolbarView;
+    private @Mock BottomSheetObserver mObserver;
+    private @Mock BottomSheetContent mContent;
+    private @Mock View mContentView;
+    private @Mock View mToolbarView;
 
     private PropertyModel mModel;
     private BottomSheetMediator mMediator;
@@ -57,6 +59,7 @@ public class BottomSheetMediatorUnitTest {
     @Test
     public void testPropertyModel() {
         assertEquals(mModel, mMediator.getModelForTesting());
+        assertEquals(mMediator, mModel.get(BottomSheetProperties.TOUCH_HANDLER));
     }
 
     @Test
@@ -89,23 +92,30 @@ public class BottomSheetMediatorUnitTest {
     public void testSetInternalCurrentState() {
         mMediator.setInternalCurrentState(SheetState.HALF);
         assertEquals(SheetState.HALF, mMediator.getSheetState());
+        assertEquals(SheetState.HALF, mModel.get(BottomSheetProperties.CURRENT_SHEET_STATE));
+        assertTrue(mModel.get(BottomSheetProperties.SHEET_FOCUSABLE));
         assertFalse(mMediator.isSheetOpen());
         assertTrue(mModel.get(BottomSheetProperties.CONTAINER_TOUCH_ENABLED));
 
         mMediator.setInternalCurrentState(SheetState.SCROLLING);
         assertEquals(SheetState.SCROLLING, mMediator.getSheetState());
+        assertEquals(SheetState.SCROLLING, mModel.get(BottomSheetProperties.CURRENT_SHEET_STATE));
         assertFalse(mModel.get(BottomSheetProperties.CONTAINER_TOUCH_ENABLED));
 
         mMediator.setInternalCurrentState(SheetState.PEEK);
         assertEquals(SheetState.PEEK, mMediator.getSheetState());
+        assertEquals(SheetState.PEEK, mModel.get(BottomSheetProperties.CURRENT_SHEET_STATE));
         assertTrue(mModel.get(BottomSheetProperties.CONTAINER_TOUCH_ENABLED));
 
         mMediator.setInternalCurrentState(SheetState.FULL);
         assertEquals(SheetState.FULL, mMediator.getSheetState());
+        assertEquals(SheetState.FULL, mModel.get(BottomSheetProperties.CURRENT_SHEET_STATE));
+        assertTrue(mModel.get(BottomSheetProperties.SHEET_FOCUSABLE));
         assertTrue(mModel.get(BottomSheetProperties.CONTAINER_TOUCH_ENABLED));
 
         mMediator.setInternalCurrentState(SheetState.HIDDEN);
         assertEquals(SheetState.HIDDEN, mMediator.getSheetState());
+        assertEquals(SheetState.HIDDEN, mModel.get(BottomSheetProperties.CURRENT_SHEET_STATE));
         assertTrue(mModel.get(BottomSheetProperties.CONTAINER_TOUCH_ENABLED));
     }
 
@@ -502,6 +512,25 @@ public class BottomSheetMediatorUnitTest {
     }
 
     @Test
+    public void testTouchHandlerInterceptionAndTouchEvents() {
+        MotionEvent downInside = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 100, 100, 0);
+        MotionEvent downOutside = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 100, -10, 0);
+
+        // Outside usable area ignores DOWN.
+        assertFalse(mMediator.onInterceptTouchEvent(downOutside));
+        assertFalse(mMediator.onTouchEvent(downOutside));
+
+        // Touch disabled acts as black hole.
+        mMediator.setTouchEnabled(false);
+        assertTrue(mMediator.onInterceptTouchEvent(downInside));
+        assertTrue(mMediator.onTouchEvent(downInside));
+
+        mMediator.setTouchEnabled(true);
+        mMediator.setIsHidingSupplier(() -> true);
+        assertFalse(mMediator.onInterceptTouchEvent(downInside));
+    }
+
+    @Test
     public void testIsTouchEventInUsableArea() {
         assertTrue(mMediator.isTouchEventInUsableArea(/* y= */ 50f));
         assertFalse(mMediator.isTouchEventInUsableArea(/* y= */ 0f));
@@ -552,6 +581,7 @@ public class BottomSheetMediatorUnitTest {
     @Test
     public void testSetContainerHeight() {
         mMediator.setContainerHeight(750);
+        assertEquals(750, mMediator.getContainerHeight());
         assertEquals(750, mModel.get(BottomSheetProperties.CONTAINER_HEIGHT));
     }
 
@@ -951,5 +981,31 @@ public class BottomSheetMediatorUnitTest {
         mMediator.setGlowSpec(new GlowSpec(Color.RED, GlowSpec.ShadowSize.DEFAULT));
         mMediator.updateBackgroundGlow();
         assertEquals(spec, mModel.get(BottomSheetProperties.GLOW_SPEC));
+    }
+
+    @Test
+    public void testContentBottomPadding() {
+        mMediator.setContentBottomPadding(80);
+        assertEquals(80, mModel.get(BottomSheetProperties.CONTENT_BOTTOM_PADDING));
+    }
+
+    @Test
+    public void testBackgroundHeight() {
+        mMediator.setBackgroundHeight(920);
+        assertEquals(920, mModel.get(BottomSheetProperties.BACKGROUND_HEIGHT));
+    }
+
+    @Test
+    public void testHandlebarClickListener() {
+        View.OnClickListener listener = v -> {};
+        mMediator.setHandlebarClickListener(listener);
+        assertEquals(listener, mModel.get(BottomSheetProperties.HANDLEBAR_CLICK_LISTENER));
+    }
+
+    @Test
+    public void testToolbarSizeChangedCallback() {
+        Runnable callback = () -> {};
+        mMediator.setToolbarSizeChangedCallback(callback);
+        assertEquals(callback, mModel.get(BottomSheetProperties.TOOLBAR_SIZE_CHANGED_CALLBACK));
     }
 }

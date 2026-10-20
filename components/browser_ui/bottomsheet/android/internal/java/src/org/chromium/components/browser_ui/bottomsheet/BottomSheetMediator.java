@@ -6,14 +6,16 @@ package org.chromium.components.browser_ui.bottomsheet;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.view.MotionEvent;
+import android.view.View.OnClickListener;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.Px;
 import androidx.annotation.StringRes;
-import androidx.annotation.VisibleForTesting;
 import androidx.core.view.WindowInsetsCompat;
 
 import org.chromium.base.CallbackUtils;
@@ -27,14 +29,17 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent.HeightM
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetView.SheetLayoutMode;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetView.TouchHandler;
 import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.util.ColorUtils;
 import org.chromium.ui.util.TokenHolder;
 
+import java.util.function.Supplier;
+
 /** Coordinates the bottom sheet UI lifecycle, state transitions, and event notifications. */
 @NullMarked
-class BottomSheetMediator {
+class BottomSheetMediator implements TouchHandler {
     private static final String TAG = "BottomSheet";
 
     /** Duration for transition to {@link SheetState#FULL}. */
@@ -69,6 +74,9 @@ class BottomSheetMediator {
     private @SheetState int mStateBeforeKeyboardShown = SheetState.NONE;
     private int mKeyboardToken = TokenHolder.INVALID_TOKEN;
     private boolean mIsSheetOpen;
+    private @Nullable BottomSheetSwipeDetector mSwipeDetector;
+    private boolean mIsTouchEnabled = true;
+    private @Nullable Supplier<Boolean> mIsHidingSupplier;
 
     /**
      * Creates a new BottomSheetMediator.
@@ -77,6 +85,7 @@ class BottomSheetMediator {
      */
     BottomSheetMediator(PropertyModel model) {
         mModel = model;
+        mModel.set(BottomSheetProperties.TOUCH_HANDLER, this);
     }
 
     /**
@@ -110,6 +119,92 @@ class BottomSheetMediator {
     /** Clears all registered observers when destroying the mediator. */
     void destroy() {
         mObservers.clear();
+        mIsTouchEnabled = false;
+    }
+
+    /**
+     * Initializes the swipe detector for handling gesture navigation on the bottom sheet.
+     *
+     * @param context The Android context.
+     * @param delegate The delegate bottom sheet that receives swipe gestures.
+     */
+    void initSwipeDetector(
+            Context context, BottomSheetSwipeDetector.SwipeableBottomSheet delegate) {
+        mSwipeDetector = new BottomSheetSwipeDetector(context, delegate);
+    }
+
+    void setSwipeDetectorForTesting(BottomSheetSwipeDetector swipeDetector) {
+        mSwipeDetector = swipeDetector;
+    }
+
+    /**
+     * Sets a supplier to determine if the bottom sheet is currently hiding.
+     *
+     * @param isHidingSupplier The supplier returning whether the sheet is hiding.
+     */
+    void setIsHidingSupplier(Supplier<Boolean> isHidingSupplier) {
+        mIsHidingSupplier = isHidingSupplier;
+    }
+
+    /**
+     * Sets whether touch events are enabled on the bottom sheet.
+     *
+     * @param enabled Whether touch events are enabled.
+     */
+    void setTouchEnabled(boolean enabled) {
+        mIsTouchEnabled = enabled;
+    }
+
+    /**
+     * @return Whether the user is currently scrolling the bottom sheet.
+     */
+    boolean isScrolling() {
+        return mSwipeDetector != null && mSwipeDetector.isScrolling();
+    }
+
+    /**
+     * Sets whether long press should move the bottom sheet.
+     *
+     * @param shouldLongPressMoveSheet Whether long press moves the sheet.
+     */
+    void setShouldLongPressMoveSheet(boolean shouldLongPressMoveSheet) {
+        if (mSwipeDetector != null) {
+            mSwipeDetector.setShouldLongPressMoveSheet(shouldLongPressMoveSheet);
+        }
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent e) {
+        if (!isTouchEventInUsableArea(e.getY()) && e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            return false;
+        }
+
+        // If touch is disabled, act like a black hole and consume touch events without doing
+        // anything with them.
+        if (!mIsTouchEnabled) return true;
+
+        if (mIsHidingSupplier != null && mIsHidingSupplier.get()) return false;
+
+        if (mSwipeDetector == null) return false;
+
+        return mSwipeDetector.onInterceptTouchEvent(e);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent e) {
+        if (!isTouchEventInUsableArea(e.getY()) && e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            return false;
+        }
+
+        // If touch is disabled, act like a black hole and consume touch events without doing
+        // anything with them.
+        if (!mIsTouchEnabled) return true;
+
+        if (mSwipeDetector != null) {
+            mSwipeDetector.onTouchEvent(e);
+        }
+
+        return true;
     }
 
     /**
@@ -192,6 +287,15 @@ class BottomSheetMediator {
                         : SheetState.NONE; // Not scrolling anymore.
         mModel.set(BottomSheetProperties.CONTAINER_TOUCH_ENABLED, state != SheetState.SCROLLING);
         mCurrentState = state;
+        if (state == SheetState.HALF || state == SheetState.FULL) {
+            // TalkBack will announce the pane title via sendPaneChangeAccessibilityEvent and
+            // shift focus when the state settles. We set the focusability here so it is ready
+            // when the pane change event is dispatched below. We avoid setting a container-level
+            // contentDescription on BottomSheet so that non-interactive descendant views inside
+            // the sheet remain discoverable to screen readers during linear navigation.
+            setSheetFocusable(true);
+        }
+        mModel.set(BottomSheetProperties.CURRENT_SHEET_STATE, state);
     }
 
     /**
@@ -273,6 +377,18 @@ class BottomSheetMediator {
     void notifySheetStateChanged(@SheetState int newState, @StateChangeReason int reason) {
         for (BottomSheetObserver o : mObservers) {
             o.onSheetStateChanged(newState, reason);
+        }
+    }
+
+    /**
+     * Notifies observers that every observer has been notified of the latest state change.
+     *
+     * @param newState The current sheet state.
+     * @param reason The reason for the latest state change.
+     */
+    void notifySheetStateChangeCommitted(@SheetState int newState, @StateChangeReason int reason) {
+        for (BottomSheetObserver o : mObservers) {
+            o.onSheetStateChangeCommitted(newState, reason);
         }
     }
 
@@ -646,6 +762,11 @@ class BottomSheetMediator {
         mModel.set(BottomSheetProperties.CONTAINER_HEIGHT, height);
     }
 
+    /** Returns the container height from the model. */
+    int getContainerHeight() {
+        return mModel.get(BottomSheetProperties.CONTAINER_HEIGHT);
+    }
+
     /**
      * Sets the sheet layout mode in the model.
      *
@@ -748,6 +869,42 @@ class BottomSheetMediator {
      */
     void setSheetFocusable(boolean focusable) {
         mModel.set(BottomSheetProperties.SHEET_FOCUSABLE, focusable);
+    }
+
+    /**
+     * Sets bottom padding on the content container in the model.
+     *
+     * @param paddingBottom The bottom padding in pixels.
+     */
+    void setContentBottomPadding(@Px int paddingBottom) {
+        mModel.set(BottomSheetProperties.CONTENT_BOTTOM_PADDING, paddingBottom);
+    }
+
+    /**
+     * Sets the background height in the model.
+     *
+     * @param height The target background height in pixels.
+     */
+    void setBackgroundHeight(int height) {
+        mModel.set(BottomSheetProperties.BACKGROUND_HEIGHT, height);
+    }
+
+    /**
+     * Sets the click listener for the drag handlebar in the model.
+     *
+     * @param listener The click listener.
+     */
+    void setHandlebarClickListener(@Nullable OnClickListener listener) {
+        mModel.set(BottomSheetProperties.HANDLEBAR_CLICK_LISTENER, listener);
+    }
+
+    /**
+     * Sets the callback invoked when the toolbar holder's size changes in the model.
+     *
+     * @param callback The callback to invoke on toolbar size change, or null.
+     */
+    void setToolbarSizeChangedCallback(@Nullable Runnable callback) {
+        mModel.set(BottomSheetProperties.TOOLBAR_SIZE_CHANGED_CALLBACK, callback);
     }
 
     /** Updates the background glow specification in the model based on current content. */
@@ -911,7 +1068,6 @@ class BottomSheetMediator {
         return currentX > startX && currentX < endX;
     }
 
-    @VisibleForTesting
     void setIsSheetOpenForTesting(boolean isSheetOpen) {
         mIsSheetOpen = isSheetOpen;
     }

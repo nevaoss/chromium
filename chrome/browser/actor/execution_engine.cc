@@ -21,7 +21,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
-#include "base/logging.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
@@ -32,7 +31,6 @@
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "base/types/expected.h"
-#include "base/types/id_type.h"
 #include "base/types/optional_ref.h"
 #include "base/types/pass_key.h"
 #include "chrome/browser/actor/action_tracker_for_metrics.h"
@@ -44,7 +42,6 @@
 #include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/site_policy.h"
 #include "chrome/browser/actor/tools/attempt_login_tool.h"
-#include "chrome/browser/actor/tools/navigate_tool_request.h"
 #include "chrome/browser/actor/tools/tool_controller.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/ui/event_dispatcher.h"
@@ -81,7 +78,6 @@
 #include "components/password_manager/core/browser/actor_login/actor_login_service.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_service_impl.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_types.h"
-#include "components/password_manager/core/browser/features/password_features.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
@@ -89,7 +85,6 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
-#include "mojo/public/cpp/base/proto_wrapper.h"
 #include "net/base/schemeful_site.h"
 #include "net/http/http_response_headers.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
@@ -98,6 +93,7 @@
 #include "third_party/abseil-cpp/absl/strings/str_format.h"
 #include "third_party/blink/public/common/mime_util/mime_util.h"
 #include "ui/event_dispatcher.h"
+#include "url/gurl.h"
 #include "url/origin.h"
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
@@ -336,22 +332,26 @@ std::optional<std::string> ExtractMimeType(
 
 CustomPredicate CreateSafetyListPredicate() {
   return CustomPredicate(
-      base::BindRepeating([](origin_gating::GatingDecisionContext*,
-                             const GateableEvent& event) {
-        const GURL& destination_url = event.destination();
-        const GURL& effective_source =
-            event.source() && !event.source()->is_empty() ? *event.source()
-                                                          : destination_url;
-        switch (SafetyListManager::GetInstance()->Find(effective_source,
-                                                       destination_url)) {
-          case SafetyListManager::Decision::kNone:
-            return origin_gating::Decision::kNoDecision;
-          case SafetyListManager::Decision::kAllow:
-            return origin_gating::Decision::kAllowed;
-          case SafetyListManager::Decision::kBlock:
-            return origin_gating::Decision::kBlocked;
-        }
-      }),
+      base::BindRepeating(
+          [](origin_gating::GatingDecisionContext*, const GateableEvent& event,
+             base::OnceCallback<void(origin_gating::Decision)> callback) {
+            const GURL& destination_url = event.destination();
+            const GURL& effective_source =
+                event.source() && !event.source()->is_empty() ? *event.source()
+                                                              : destination_url;
+            SafetyListManager::GetInstance()->Find(
+                effective_source, destination_url,
+                base::BindOnce([](SafetyListManager::Decision decision) {
+                  switch (decision) {
+                    case SafetyListManager::Decision::kNone:
+                      return origin_gating::Decision::kNoDecision;
+                    case SafetyListManager::Decision::kAllow:
+                      return origin_gating::Decision::kAllowed;
+                    case SafetyListManager::Decision::kBlock:
+                      return origin_gating::Decision::kBlocked;
+                  }
+                }).Then(std::move(callback)));
+          }),
       ActorCustomPredicate::kSafetyList);
 }
 

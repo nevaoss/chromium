@@ -98,6 +98,7 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     ComposeboxEntrypoint entrypoint) {
   switch (entrypoint) {
     case ComposeboxEntrypoint::kNTPAIMButton:
+    case ComposeboxEntrypoint::kNTPImageGenerationButton:
     case ComposeboxEntrypoint::kNTPPlusButton:
       return contextual_search::ContextualSearchSource::kNewTabPage;
     case ComposeboxEntrypoint::kNTPFakebox:
@@ -440,7 +441,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)composeboxViewControllerDidCompleteInitialPresentation:
     (ComposeboxInputPlateViewController*)composeboxViewController {
-  if (_entrypoint == ComposeboxEntrypoint::kNTPPlusButton) {
+  if (_entrypoint == ComposeboxEntrypoint::kNTPPlusButton &&
+      !(IsPlusButtonMenuInFakeboxEnabled())) {
     [composeboxViewController showMultimodalMenu];
   }
 }
@@ -482,8 +484,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)composeboxViewControllerDidTapPlusButton:
             (ComposeboxInputPlateViewController*)composeboxViewController
-                                withUIInputState:
-                                    (ComposeboxUIInputState*)state {
+                                withUIInputState:(ComposeboxUIInputState*)state
+                                          button:(UIButton*)button {
   if (IsComposeboxPlusButtonBottomSheet()) {
     _menuCoorinator = [[ComposeboxMenuCoordinator alloc]
         initWithBaseViewController:_viewController
@@ -495,6 +497,7 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     _menuCoorinator.inputPlateDelegate = self;
     _menuCoorinator.delegate = self;
     [_menuCoorinator start];
+    [_menuCoorinator presentBottomSheetMenu];
 
     // Hide the input plate when the bottom sheet modal is open.
     if (_entrypoint == ComposeboxEntrypoint::kCobrowse) {

@@ -48,6 +48,8 @@ DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuTextOverrideInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ui::ImageModel, kAppMenuIconOverrideInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ui::ImageModel, kAppMenuMinorIconInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuMinorTextInternal)
+DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string,
+                                   kAppMenuSecondaryTextInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuChipTextInternal)
 
 const ui::ClassProperty<AppMenuActionItem::DisplayType>* const
@@ -67,6 +69,9 @@ const ui::ClassProperty<ui::ImageModel*>* const
 
 const ui::ClassProperty<std::u16string*>* const
     AppMenuActionItem::kMinorTextKey = kAppMenuMinorTextInternal;
+
+const ui::ClassProperty<std::u16string*>* const
+    AppMenuActionItem::kSecondaryTextKey = kAppMenuSecondaryTextInternal;
 
 const ui::ClassProperty<ui::MenuSeparatorType>* const
     AppMenuActionItem::kSeparatorKey = kAppMenuSeparatorInternal;
@@ -141,6 +146,11 @@ std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
                                          params.minor_text.value()));
   }
 
+  if (params.secondary_text.has_value()) {
+    item->SetProperty(kSecondaryTextKey, std::make_unique<std::u16string>(
+                                             params.secondary_text.value()));
+  }
+
   if (params.chip_text.has_value()) {
     item->SetProperty(kChipTextKey, std::make_unique<std::u16string>(
                                         params.chip_text.value()));
@@ -155,13 +165,18 @@ std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
 
 std::unique_ptr<actions::ActionItem> AppMenuActionItem::CreateHeader(
     std::u16string text,
-    std::optional<ui::ColorId> container_color) {
+    std::optional<ui::ColorId> container_color,
+    ui::ElementIdentifier element_id) {
   auto header_item = actions::ActionItem::Builder().SetText(text).Build();
 
   header_item->SetProperty(kDisplayTypeKey, DisplayType::kHeader);
 
   if (container_color.has_value()) {
     header_item->SetProperty(kContainerColorKey, container_color.value());
+  }
+
+  if (element_id) {
+    header_item->SetProperty(views::kElementIdentifierKey, element_id);
   }
 
   return header_item;

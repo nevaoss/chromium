@@ -173,7 +173,6 @@
 #include "chrome/browser/ui/views/side_panel/comments/comments_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_utils.h"
-#include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/views/toolbar/ai_overlay_toolbar_button.h"
@@ -438,17 +437,6 @@ void BrowserActions::InitializeSidePanelActions() {
                                                         : kReadingListOldIcon,
                       kActionSidePanelShowReadingList, bwi, true)
           .Build());
-  if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile)) {
-    root_action_item_->AddChild(
-        SidePanelAction(SidePanelEntryId::kTabsFromOtherDevices,
-                        IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
-                        IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
-                        features::IsRoundedIconsEnabled()
-                            ? kDevicesIcon
-                            : kDevicesChromeRefreshOldIcon,
-                        kActionSidePanelShowTabsFromOtherDevices, bwi, true)
-            .Build());
-  }
   root_action_item_->AddChild(
       SidePanelAction(SidePanelEntryId::kAboutThisSite,
                       IDS_PAGE_INFO_ABOUT_THIS_PAGE_TITLE,
@@ -1065,6 +1053,7 @@ void BrowserActions::InitializeChromeMenuActions() {
           .SetProperty(actions::kShortTitleTextKey,
                        new std::u16string(
                            l10n_util::GetStringUTF16(IDS_APP_MENU_INCOGNITO)))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_NEW_INCOGNITO_WINDOW))
           .Build());
 
   root_action_item_->AddChild(
@@ -1084,6 +1073,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               : vector_icons::kBusinessChromeRefreshOldIcon)
           .SetEnabled(
               enterprise_isolated_mode::IsolatedModeReplacesIncognito(profile))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_NEW_INCOGNITO_WINDOW))
           .Build());
 
   root_action_item_->AddChild(
@@ -1248,6 +1238,8 @@ void BrowserActions::InitializeChromeMenuActions() {
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
+          .SetAccelerator(
+              ui::Accelerator(GetAcceleratorForCommandId(IDC_NEW_TAB)))
           .SetImage(ui::ImageModel::FromVectorIcon(
               features::IsRoundedIconsEnabled()
                   ? vector_icons::kAddWeight500CustomIcon

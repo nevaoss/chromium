@@ -13,8 +13,6 @@
 #include "base/debug/crash_logging.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_macros.h"
-#include "base/rand_util.h"
 #include "cc/base/features.h"
 #include "cc/layers/solid_color_scrollbar_layer.h"
 #include "cc/paint/display_item_list.h"
@@ -124,6 +122,7 @@ void PaintArtifactCompositor::Trace(Visitor* visitor) const {
   visitor->Trace(painted_scroll_translations_);
   visitor->Trace(synthesized_clip_cache_);
   visitor->Trace(range_dependent_scrolls_);
+  PropertyTreeManagerClient::Trace(visitor);
 }
 
 void PaintArtifactCompositor::SetTracksRasterInvalidations(bool should_track) {
@@ -928,8 +927,7 @@ void PaintArtifactCompositor::Layerizer::LayerizeGroup(
                                            .Transform()
                                            .NearestDirectlyCompositedAncestor();
     if (composited_transform &&
-        (!RuntimeEnabledFeatures::MergeFixedLayersEnabled() ||
-         !composited_transform->RequiresCompositingForFixedPositionOnly()) &&
+        !composited_transform->RequiresCompositingForFixedPositionOnly() &&
         (!RuntimeEnabledFeatures::MergeStickyLayersEnabled() ||
          !composited_transform->RequiresCompositingForStickyPositionOnly()) &&
         directly_composited_transforms_.insert(composited_transform)
@@ -1226,13 +1224,6 @@ void PaintArtifactCompositor::Update(
     property_tree_manager.EnsureCompositorScrollAndTransformNode(*node);
   }
 
-  // For metrics.
-  const bool report_metrics = base::ShouldRecordSubsampledMetric(0.01);
-  int fixed_count = 0;
-  int merged_fixed_count = 0;
-  int sticky_count = 0;
-  int merged_sticky_count = 0;
-
   cc::LayerSelection layer_selection;
   HashSet<int> layers_having_text;
   HashSet<int> layers_having_video;
@@ -1321,28 +1312,6 @@ void PaintArtifactCompositor::Update(
 
     if (layer.subtree_property_changed())
       root_layer_->SetNeedsCommit();
-
-    if (report_metrics) {
-      if (transform.RequiresCompositingForFixedPosition()) {
-        ++fixed_count;
-        merged_fixed_count +=
-            pending_layer.MergedAcrossCompositingBoundaryCount();
-      }
-      if (transform.RequiresCompositingForStickyPosition()) {
-        ++sticky_count;
-        merged_sticky_count +=
-            pending_layer.MergedAcrossCompositingBoundaryCount();
-      }
-    }
-  }
-
-  if (report_metrics) {
-    UMA_HISTOGRAM_COUNTS_100("Blink.Compositor.FixedLayerCount", fixed_count);
-    UMA_HISTOGRAM_COUNTS_100("Blink.Compositor.MergedFixedLayerCount",
-                             merged_fixed_count);
-    UMA_HISTOGRAM_COUNTS_100("Blink.Compositor.StickyLayerCount", sticky_count);
-    UMA_HISTOGRAM_COUNTS_100("Blink.Compositor.MergedStickyLayerCount",
-                             merged_sticky_count);
   }
 
   root_layer_->layer_tree_host()->RegisterSelection(layer_selection);

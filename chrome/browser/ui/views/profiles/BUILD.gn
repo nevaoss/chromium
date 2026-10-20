@@ -203,7 +203,6 @@ if (is_win || is_mac || is_linux || is_chromeos) {
       "//chrome/browser/profiles:profile_util",
       "//chrome/browser/signin",
       "//chrome/browser/sync",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/color:color_headers",
@@ -344,6 +343,7 @@ if (toolkit_views) {
       "//chrome/browser/profiles/keep_alive",
       "//chrome/browser/signin",
       "//chrome/browser/signin:identity_test_support",
+      "//chrome/browser/signin:test_support",
       "//chrome/browser/subscription_eligibility",
       "//chrome/browser/sync:factories",
       "//chrome/browser/themes",
@@ -633,14 +633,7 @@ if (is_win || is_mac || is_linux) {
       "//skia",
       "//ui/base/unowned_user_data",
     ]
-  }
-
-  source_set("profile_customization_bubble_sync_controller_impl") {
     sources = [ "profile_customization_bubble_sync_controller.cc" ]
-    public_deps = [
-      ":profile_customization_bubble_sync_controller",
-      "//chrome/browser:browser_public_dependencies",
-    ]
     deps = [
       ":avatar_toolbar_button",
       "//base",
@@ -1004,7 +997,6 @@ if (enable_dice_support) {
       "//chrome/browser/profiles:profile",
       "//chrome/browser/profiles/keep_alive",
       "//chrome/browser/signin",
-      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/signin",
       "//chrome/browser/ui/views/frame:browser_view_header",
@@ -1215,6 +1207,7 @@ if (enable_dice_support) {
       ":profile_picker_flow_controller",
       ":profile_picker_post_sign_in_adapter",
       "//base",
+      "//base/i18n:language_tag",
       "//chrome/app:branded_strings",
       "//chrome/app:generated_resources",
       "//chrome/browser:browser_process",

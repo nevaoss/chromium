@@ -15,7 +15,6 @@
 #include "base/notreached.h"
 #include "base/time/time.h"
 #include "cc/paint/paint_record.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_union_dommatrix_undefined.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_fill_rule.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_image_smoothing_quality.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
@@ -26,6 +25,7 @@
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_deferred_paint_record.h"
+#include "third_party/blink/renderer/platform/graphics/flush_for_image_listener.h"
 #include "third_party/blink/renderer/platform/graphics/flush_reason.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
@@ -78,11 +78,15 @@ enum class PredefinedColorSpace;
 class MODULES_EXPORT BaseRenderingContext2D
     : public CanvasRenderingContext,
       public Canvas2DRecorderContext,
-      public MemoryManagedPaintRecorder::Client {
+      public MemoryManagedPaintRecorder::Client,
+      public FlushForImageObserver {
  public:
   // MemoryManagedPaintRecorder::Client implementation.
   void InitializeForRecording(cc::PaintCanvas* canvas) const override;
   void RecordingCleared() override;
+
+  // FlushForImageObserver implementation.
+  void OnFlushForImage(cc::PaintImage::ContentId content_id) override;
 
   using Canvas2DRecorderContext::Recorder;
   const MemoryManagedPaintRecorder* Recorder() const final;
@@ -112,6 +116,8 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   BaseRenderingContext2D(const BaseRenderingContext2D&) = delete;
   BaseRenderingContext2D& operator=(const BaseRenderingContext2D&) = delete;
+
+  ~BaseRenderingContext2D() override;
 
   void ResetInternal() override;
 
@@ -152,6 +158,8 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   virtual bool CanCreateResourceProvider() = 0;
   virtual bool InitializeResourceProvider() = 0;
+  bool HasResourceProvider() const;
+  virtual bool IsResourceProviderValid() const;
 
   std::optional<cc::PaintRecord> FlushCanvas(FlushReason) override = 0;
 
@@ -213,60 +221,50 @@ class MODULES_EXPORT BaseRenderingContext2D
     return context_lost_mode_ != kNotLostContext;
   }
 
-  V8UnionDOMMatrixOrUndefined::Ret drawElementImage(
-      ScriptState* script_state,
-      const V8UnionElementOrElementImage* element,
-      double dx,
-      double dy,
-      const DrawElementImageOptions* options,
-      ExceptionState& exception_state);
-  V8UnionDOMMatrixOrUndefined::Ret drawElementImage(
-      ScriptState* script_state,
-      const V8UnionElementOrElementImage* element,
-      double dx,
-      double dy,
-      double dwidth,
-      double dheight,
-      const DrawElementImageOptions* options,
-      ExceptionState& exception_state);
-  V8UnionDOMMatrixOrUndefined::Ret drawElementImage(
-      ScriptState* script_state,
-      const V8UnionElementOrElementImage* element,
-      double sx,
-      double sy,
-      double swidth,
-      double sheight,
-      double dx,
-      double dy,
-      const DrawElementImageOptions* options,
-      ExceptionState& exception_state);
-  V8UnionDOMMatrixOrUndefined::Ret drawElementImage(
-      ScriptState* script_state,
-      const V8UnionElementOrElementImage* element,
-      double sx,
-      double sy,
-      double swidth,
-      double sheight,
-      double dx,
-      double dy,
-      double dwidth,
-      double dheight,
-      const DrawElementImageOptions* options,
-      ExceptionState& exception_state);
+  void drawElementImage(const V8UnionElementOrElementImage* element,
+                        double dx,
+                        double dy,
+                        const DrawElementImageOptions* options,
+                        ExceptionState& exception_state);
+  void drawElementImage(const V8UnionElementOrElementImage* element,
+                        double dx,
+                        double dy,
+                        double dwidth,
+                        double dheight,
+                        const DrawElementImageOptions* options,
+                        ExceptionState& exception_state);
+  void drawElementImage(const V8UnionElementOrElementImage* element,
+                        double sx,
+                        double sy,
+                        double swidth,
+                        double sheight,
+                        double dx,
+                        double dy,
+                        const DrawElementImageOptions* options,
+                        ExceptionState& exception_state);
+  void drawElementImage(const V8UnionElementOrElementImage* element,
+                        double sx,
+                        double sy,
+                        double swidth,
+                        double sheight,
+                        double dx,
+                        double dy,
+                        double dwidth,
+                        double dheight,
+                        const DrawElementImageOptions* options,
+                        ExceptionState& exception_state);
 
-  V8UnionDOMMatrixOrUndefined::Ret DrawElementInternal(
-      ScriptState* script_state,
-      const V8UnionElementOrElementImage* element,
-      std::optional<double> sx,
-      std::optional<double> sy,
-      std::optional<double> swidth,
-      std::optional<double> sheight,
-      double x,
-      double y,
-      std::optional<double> dwidth,
-      std::optional<double> dheight,
-      const DrawElementImageOptions* options,
-      ExceptionState& exception_state);
+  void DrawElementInternal(const V8UnionElementOrElementImage* element,
+                           std::optional<double> sx,
+                           std::optional<double> sy,
+                           std::optional<double> swidth,
+                           std::optional<double> sheight,
+                           double x,
+                           double y,
+                           std::optional<double> dwidth,
+                           std::optional<double> dheight,
+                           const DrawElementImageOptions* options,
+                           ExceptionState& exception_state);
 
   scoped_refptr<const cc::AnimatedImageFrameIndexMap>
   GetAnimatedImageFrameIndexMap(uint32_t id) const override;
@@ -277,6 +275,10 @@ class MODULES_EXPORT BaseRenderingContext2D
   bool IsOpaque() const final {
     return color_params_.GetAlphaType() == kOpaque_SkAlphaType;
   }
+  bool IsPaintable() const override;
+  base::ByteSize AllocatedBufferSize() const override;
+  scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
+      SourceDrawingBuffer source_buffer) override;
   void DisableAccelerationForCanvas2D() final { DisableAcceleration(); }
   void PageVisibilityChanged() override {}
   void Reset() override;
@@ -294,10 +296,7 @@ class MODULES_EXPORT BaseRenderingContext2D
   unsigned try_restore_context_attempt_count_ = 0;
 
  protected:
-  std::optional<cc::PaintRecord> FlushCanvasInternal(
-      Canvas2DResourceProvider* shared_image_provider,
-      Canvas2DBitmapProvider* bitmap_provider,
-      FlushReason reason);
+  std::optional<cc::PaintRecord> FlushCanvasInternal(FlushReason reason);
 
   void FlushIfRecordingLimitExceeded();
 
@@ -349,6 +348,8 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   bool context_restorable_{true};
   Canvas2DColorParams color_params_;
+  std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
+  std::unique_ptr<Canvas2DBitmapProvider> bitmap_provider_;
 
  private:
   void UpdateRecordingLimits(bool is_graphite);

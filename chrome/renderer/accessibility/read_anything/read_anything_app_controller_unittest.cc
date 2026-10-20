@@ -1960,7 +1960,7 @@ TEST_F(ReadAnythingAppControllerTest, ShouldBold_PDFFontWeight) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
       features::kPdfAccessibilityHeuristicEnhancements);
-  model().set_is_pdf(true);
+  model().SetIsPdf(true);
 
   ui::AXNodeData semibold_node;
   semibold_node.id = 3;
@@ -1985,6 +1985,77 @@ TEST_F(ReadAnythingAppControllerTest, IsOverline) {
   OnAXTreeDistilled(tree_id_, {});
   EXPECT_EQ(true, controller().IsOverline(2));
   EXPECT_EQ(false, controller().IsOverline(3));
+}
+
+TEST_F(ReadAnythingAppControllerTest, IsSuperscriptAndIsSubscript_Pdf) {
+  base::test::ScopedFeatureList feature_list(
+      features::kPdfAccessibilityHeuristicEnhancements);
+  model().SetIsPdf(true);
+
+  ui::AXNodeData sup_node;
+  sup_node.id = 2;
+  sup_node.SetTextPosition(ax::mojom::TextPosition::kSuperscript);
+
+  ui::AXNodeData sub_node;
+  sub_node.id = 3;
+  sub_node.SetTextPosition(ax::mojom::TextPosition::kSubscript);
+
+  ui::AXNodeData normal_node;
+  normal_node.id = 4;
+
+  SendUpdateWithNodes(
+      {std::move(sup_node), std::move(sub_node), std::move(normal_node)});
+  OnAXTreeDistilled(tree_id_, {});
+
+  EXPECT_TRUE(controller().IsSuperscript(2));
+  EXPECT_FALSE(controller().IsSuperscript(3));
+  EXPECT_FALSE(controller().IsSuperscript(4));
+
+  EXPECT_FALSE(controller().IsSubscript(2));
+  EXPECT_TRUE(controller().IsSubscript(3));
+  EXPECT_FALSE(controller().IsSubscript(4));
+}
+
+TEST_F(ReadAnythingAppControllerTest, IsSuperscriptAndIsSubscript_NotPdf) {
+  base::test::ScopedFeatureList feature_list(
+      features::kPdfAccessibilityHeuristicEnhancements);
+  model().SetIsPdf(false);
+
+  ui::AXNodeData sup_node;
+  sup_node.id = 2;
+  sup_node.SetTextPosition(ax::mojom::TextPosition::kSuperscript);
+
+  ui::AXNodeData sub_node;
+  sub_node.id = 3;
+  sub_node.SetTextPosition(ax::mojom::TextPosition::kSubscript);
+
+  SendUpdateWithNodes({std::move(sup_node), std::move(sub_node)});
+  OnAXTreeDistilled(tree_id_, {});
+
+  EXPECT_FALSE(controller().IsSuperscript(2));
+  EXPECT_FALSE(controller().IsSubscript(3));
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       IsSuperscriptAndIsSubscript_FeatureDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kPdfAccessibilityHeuristicEnhancements);
+  model().SetIsPdf(true);
+
+  ui::AXNodeData sup_node;
+  sup_node.id = 2;
+  sup_node.SetTextPosition(ax::mojom::TextPosition::kSuperscript);
+
+  ui::AXNodeData sub_node;
+  sub_node.id = 3;
+  sub_node.SetTextPosition(ax::mojom::TextPosition::kSubscript);
+
+  SendUpdateWithNodes({std::move(sup_node), std::move(sub_node)});
+  OnAXTreeDistilled(tree_id_, {});
+
+  EXPECT_FALSE(controller().IsSuperscript(2));
+  EXPECT_FALSE(controller().IsSubscript(3));
 }
 
 TEST_F(ReadAnythingAppControllerTest, GetTextDirection) {
@@ -2236,6 +2307,32 @@ TEST_F(ReadAnythingAppControllerTest, OnActiveAXTreeIDChanged) {
   controller().OnActiveAXTreeIDChanged(tree_ids[2], ukm::kInvalidSourceId,
                                        false);
   Mock::VerifyAndClearExpectations(distiller_);
+}
+
+TEST_F(ReadAnythingAppControllerTest, OnActiveAXTreeIDChanged_Pdf) {
+  ui::AXTreeID pdf_tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  ui::AXTreeID web_tree_id = ui::AXTreeID::CreateNewAXTreeID();
+
+  // Changing to a PDF tree updates IsPdf() to true and distillation method to
+  // Screen2x.
+  controller().OnActiveAXTreeIDChanged(pdf_tree_id, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/true);
+  EXPECT_TRUE(controller().IsPdf());
+  EXPECT_TRUE(model().IsPdf());
+  EXPECT_EQ(ReadAnythingAppModel::DistillationMethod::kScreen2x,
+            model().next_distillation_method());
+
+  // Changing to a non-PDF tree updates IsPdf() to false.
+  controller().OnActiveAXTreeIDChanged(web_tree_id, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/false);
+  EXPECT_FALSE(controller().IsPdf());
+  EXPECT_FALSE(model().IsPdf());
+
+  // Changing back to the PDF tree restores IsPdf() to true.
+  controller().OnActiveAXTreeIDChanged(pdf_tree_id, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/true);
+  EXPECT_TRUE(controller().IsPdf());
+  EXPECT_TRUE(model().IsPdf());
 }
 
 TEST_F(ReadAnythingAppControllerTest, IsGoogleDocs) {
@@ -3636,6 +3733,57 @@ TEST_F(ReadAnythingAppControllerTest,
                       kDistillationWithContent))
       .Times(1);
   task_environment_.FastForwardBy(base::Milliseconds(500));
+  page_handler_.FlushForTesting();
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnPdfDebounceFinished_DistillationRunning_DefersToOnAXTreeDistilled) {
+  // Set up a PDF and start the debouncer. This also starts a distillation,
+  // which the mock distiller doesn't complete.
+  controller().OnActiveAXTreeIDChanged(tree_id_, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/true);
+  page_handler_.FlushForTesting();
+  ASSERT_TRUE(model().screen2x_distiller_running());
+  Mock::VerifyAndClearExpectations(&page_handler_);
+
+  // The debouncer finishing mid-distillation doesn't draw the stale model.
+  EXPECT_CALL(page_handler_, OnDistillationStateChanged(testing::_)).Times(0);
+  task_environment_.FastForwardBy(base::Milliseconds(500));
+  page_handler_.FlushForTesting();
+  Mock::VerifyAndClearExpectations(&page_handler_);
+
+  // The result is drawn once distillation completes.
+  EXPECT_CALL(page_handler_,
+              OnDistillationStateChanged(
+                  read_anything::mojom::ReadAnythingDistillationState::
+                      kDistillationWithContent))
+      .Times(1);
+  OnAXTreeDistilled(tree_id_, {1});
+  page_handler_.FlushForTesting();
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       AccessibilityEventReceived_PdfDistillationRunning_ResetsDebouncer) {
+  // Set up a PDF and start the debouncer. This also starts a distillation,
+  // which the mock distiller doesn't complete.
+  controller().OnActiveAXTreeIDChanged(tree_id_, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/true);
+  ASSERT_TRUE(model().screen2x_distiller_running());
+  task_environment_.FastForwardBy(base::Milliseconds(500));
+  ASSERT_FALSE(IsPdfDrawDebouncerRunning());
+
+  // An update queued behind the running distillation restarts the debouncer.
+  ui::AXNodeData node;
+  node.id = 2;
+  SendUpdateWithNodes({std::move(node)});
+  EXPECT_FALSE(model().pending_updates_for_testing().empty());
+  EXPECT_TRUE(IsPdfDrawDebouncerRunning());
+
+  // An empty result isn't drawn before the queued update is processed.
+  page_handler_.FlushForTesting();
+  Mock::VerifyAndClearExpectations(&page_handler_);
+  EXPECT_CALL(page_handler_, OnDistillationStateChanged(testing::_)).Times(0);
+  OnAXTreeDistilled(tree_id_, {});
   page_handler_.FlushForTesting();
 }
 
@@ -5827,6 +5975,28 @@ TEST_F(ReadAnythingAppControllerTest, ProcessModelUpdates_ResetsPdfDebouncer) {
 }
 
 TEST_F(ReadAnythingAppControllerTest,
+       ProcessModelUpdates_ResetsPdfDebouncerBeforeDistilling) {
+  controller().OnActiveAXTreeIDChanged(tree_id_, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/true);
+  OnAXTreeDistilled(tree_id_, {});
+  task_environment_.FastForwardBy(base::Milliseconds(500));
+  ASSERT_FALSE(IsPdfDrawDebouncerRunning());
+
+  // Distillation can complete synchronously, so the debouncer must already be
+  // running when it starts.
+  bool debouncer_running_on_distill = false;
+  EXPECT_CALL(*distiller_, Distill).WillOnce(testing::InvokeWithoutArgs([&] {
+    debouncer_running_on_distill = IsPdfDrawDebouncerRunning();
+  }));
+  model().set_requires_distillation(true);
+  model().set_reset_distillation_delay_timer(true);
+  ProcessModelUpdates();
+  Mock::VerifyAndClearExpectations(distiller_);
+
+  EXPECT_TRUE(debouncer_running_on_distill);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
        MaybeLogAXTreeReady_LogsTimeFromActiveAXTreeIDChangedToAXTreeReady) {
   base::HistogramTester histogram_tester;
   ui::AXTreeID new_tree_id = ui::AXTreeID::CreateNewAXTreeID();
@@ -6193,7 +6363,7 @@ TEST_F(ReadAnythingAppControllerTest,
 TEST_F(ReadAnythingAppControllerTest, LogPageDuration_PdfInSidePanel) {
   base::HistogramTester histograms;
 
-  model().set_is_pdf(true);
+  model().SetIsPdf(true);
   model().set_active_presentation_state(
       read_anything::mojom::ReadAnythingPresentationState::kInSidePanel);
   model().set_page_start_time(base::TimeTicks::Now() - base::Seconds(15));
@@ -6209,7 +6379,7 @@ TEST_F(ReadAnythingAppControllerTest, LogPageDuration_PdfInSidePanel) {
 TEST_F(ReadAnythingAppControllerTest, LogPageDuration_WebPageInFullPage) {
   base::HistogramTester histograms;
 
-  model().set_is_pdf(false);
+  model().SetIsPdf(false);
   model().set_active_presentation_state(
       read_anything::mojom::ReadAnythingPresentationState::kInImmersiveOverlay);
   model().set_page_start_time(base::TimeTicks::Now() - base::Seconds(30));

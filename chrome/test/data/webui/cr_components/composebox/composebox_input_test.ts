@@ -4,10 +4,11 @@
 
 import 'chrome://resources/cr_components/composebox/composebox_input.js';
 
+import {CHIP_CLASS, CHIP_LABEL_CLASS, createChipElement, getChipPolicyForTesting, NON_BREAKING_SPACE} from 'chrome://resources/cr_components/composebox/composebox_input.js';
 import type {ComposeboxInputElement} from 'chrome://resources/cr_components/composebox/composebox_input.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 async function pollUntil(predicate: () => boolean, timeoutMs = 1000):
     Promise<void> {
@@ -746,5 +747,334 @@ suite('ComposeboxCaretGeometry', () => {
 
     // The last space span should wrap to a line below the first span.
     assertTrue(lastSpanRect.top > firstSpanRect.top);
+  });
+});
+
+suite('ComposeboxSkills', () => {
+  let inputElement: ComposeboxInputElement;
+
+  setup(async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    inputElement = document.createElement('cr-composebox-input');
+    inputElement.composeboxSkillsEnabled = true;
+    document.body.appendChild(inputElement);
+    await inputElement.updateComplete;
+  });
+
+  test('CaretPlacedAtEndWhenSkillsEnabledAndInputChanges', async () => {
+    const input = inputElement.$.input;
+    const caret = inputElement.shadowRoot.querySelector<HTMLElement>('#caret');
+    const mirror =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#mirror');
+    assertTrue(!!input);
+    assertTrue(!!caret);
+    assertTrue(!!mirror);
+
+    input.focus();
+    await inputElement.updateComplete;
+
+    inputElement.input = 'hello world';
+    await inputElement.updateComplete;
+    await microtasksFinished();
+
+    assertEquals(11, inputElement.getSelectionEnd());
+
+    const lastSpan = mirror.childNodes[10] as HTMLElement;
+    assertTrue(!!lastSpan);
+    assertEquals('--cursor-char', lastSpan.style.anchorName);
+    assertFalse(caret.classList.contains('at-start'));
+  });
+
+  test('MirrorReplicatesChips', async () => {
+    inputElement.composeboxSkillsEnabled = true;
+    await inputElement.updateComplete;
+
+    inputElement.insertSkillChip({id: 'chip1', text: '/Search'});
+    await inputElement.updateComplete;
+
+    const chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+    assertTrue(isVisible(chip));
+
+    const mirror =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#mirror');
+    assertTrue(!!mirror);
+
+    const mirrorChip = mirror.querySelector(`.${CHIP_CLASS}`);
+    assertTrue(!!mirrorChip);
+
+    // Mirror chip contains character spans for '/Search'.
+    const charSpans = mirrorChip.querySelectorAll('span');
+    assertEquals(7, charSpans.length);
+    assertEquals('/', charSpans[0]!.textContent);
+    assertEquals('S', charSpans[1]!.textContent);
+  });
+
+  test('CaretAnchorsToLastCharacterSpanWithChip', async () => {
+    inputElement.composeboxSkillsEnabled = true;
+    await inputElement.updateComplete;
+
+    const inputDiv = inputElement.$.input;
+    inputElement.insertSkillChip({id: 'chip1', text: '/Translate'});
+    await inputElement.updateComplete;
+
+    const chip = inputDiv.querySelector(`.${CHIP_CLASS}`);
+    assertTrue(isVisible(chip));
+
+    inputDiv.focus();
+    const range = document.createRange();
+    range.selectNodeContents(inputDiv);
+    range.collapse(/*toStart=*/ false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    inputDiv.dispatchEvent(new Event('keyup', {bubbles: true}));
+    await inputElement.updateComplete;
+
+    const mirror =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#mirror');
+    assertTrue(!!mirror);
+
+    const charSpans = mirror.querySelectorAll(`span:not(.${CHIP_CLASS})`);
+    assertEquals(11, charSpans.length);
+
+    // The last character span is the trailing space (offset 11), which should
+    // have the anchor.
+    const lastCharSpan = charSpans[10] as HTMLElement;
+    assertEquals(NON_BREAKING_SPACE, lastCharSpan.textContent);
+    assertEquals('--cursor-char', lastCharSpan.style.anchorName);
+
+    // The second-to-last span ('e') should NOT have the anchor.
+    const secondToLastCharSpan = charSpans[9] as HTMLElement;
+    assertEquals('e', secondToLastCharSpan.textContent);
+    assertEquals('', secondToLastCharSpan.style.anchorName);
+  });
+
+  test('InputWithNewlinePreservedWhenSkillsEnabled', async () => {
+    inputElement.composeboxSkillsEnabled = true;
+    await inputElement.updateComplete;
+
+    const inputDiv = inputElement.$.input;
+    inputDiv.textContent = '\n';
+    inputDiv.dispatchEvent(new Event('input', {bubbles: true}));
+    await inputElement.updateComplete;
+
+    assertEquals('\n', inputElement.input);
+    assertEquals(1, inputDiv.childNodes.length);
+  });
+
+  test('ResetCaretAnchorsToFirstSpanWithChipWhenSkillsEnabled', async () => {
+    inputElement.composeboxSkillsEnabled = true;
+    await inputElement.updateComplete;
+
+    const inputDiv = inputElement.$.input;
+    const chipEl = createChipElement({id: 'chip1', text: '/Search'});
+    inputDiv.appendChild(chipEl);
+    inputElement.input = '/Search';
+    await inputElement.updateComplete;
+
+    const caret = inputElement.shadowRoot.querySelector<HTMLElement>('#caret');
+    const mirror =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#mirror');
+    assertTrue(!!caret);
+    assertTrue(!!mirror);
+
+    inputElement.resetCaret();
+
+    const firstCharSpan =
+        mirror.querySelector<HTMLElement>(`span:not(.${CHIP_CLASS})`);
+    assertTrue(!!firstCharSpan);
+    assertEquals('/', firstCharSpan.textContent);
+    assertEquals('--cursor-char', firstCharSpan.style.anchorName);
+    assertTrue(caret.classList.contains('at-start'));
+  });
+
+  test(
+      'InputPropertyChangeOverwritesExistingChipsWhenSkillsEnabled',
+      async () => {
+        inputElement.composeboxSkillsEnabled = true;
+        await inputElement.updateComplete;
+
+        const inputDiv = inputElement.$.input;
+        const chipEl = createChipElement({id: 'chip1', text: '/Search'});
+        inputDiv.appendChild(chipEl);
+        inputElement.input = '/Search';
+        await inputElement.updateComplete;
+        assertEquals(1, inputDiv.querySelectorAll(`.${CHIP_CLASS}`).length);
+
+        inputDiv.focus();
+        inputElement.input = 'new query';
+        await inputElement.updateComplete;
+        await microtasksFinished();
+
+        assertEquals(0, inputDiv.querySelectorAll(`.${CHIP_CLASS}`).length);
+        assertEquals('new query', inputDiv.innerText);
+        assertEquals(9, inputElement.getSelectionEnd());
+      });
+
+  test(
+      'InputPropertyClearedRemovesExistingChipsWhenSkillsEnabled',
+      async () => {
+        inputElement.composeboxSkillsEnabled = true;
+        await inputElement.updateComplete;
+
+        const inputDiv = inputElement.$.input;
+        const chipEl = createChipElement({id: 'chip1', text: '/Search'});
+        inputDiv.appendChild(chipEl);
+        inputElement.input = '/Search';
+        await inputElement.updateComplete;
+        assertEquals(1, inputDiv.querySelectorAll(`.${CHIP_CLASS}`).length);
+
+        inputElement.input = '';
+        await inputElement.updateComplete;
+
+        assertEquals(0, inputDiv.querySelectorAll(`.${CHIP_CLASS}`).length);
+        assertEquals(0, inputDiv.childNodes.length);
+      });
+
+  test('SanitizationPipelinePreservesValidChip', () => {
+    const chipEl = createChipElement({
+      id: 'chip1',
+      text: '/Search',
+      emoji: '🔍',
+      iconUrl: 'https://example.com/icon.png',
+    });
+    const policy = getChipPolicyForTesting();
+    assertTrue(!!policy);
+    const rawHtml = `${chipEl.outerHTML}&nbsp;`;
+    const trustedHtml = policy.createHTML(rawHtml);
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = trustedHtml as unknown as string;
+
+    const chip = tempDiv.querySelector<HTMLElement>(`.${CHIP_CLASS}`);
+    assertTrue(!!chip);
+    assertEquals('chip1', chip.dataset['chipId']);
+    assertEquals('/Search', chip.dataset['chipText']);
+    assertEquals('🔍', chip.dataset['chipEmoji']);
+    assertEquals('https://example.com/icon.png', chip.dataset['chipIconUrl']);
+    assertEquals('false', chip.getAttribute('contenteditable'));
+    assertEquals('-1', chip.getAttribute('tabindex'));
+    assertEquals('/Search', chip.getAttribute('title'));
+
+    const label = chip.querySelector(`.${CHIP_LABEL_CLASS}`);
+    assertTrue(!!label);
+    assertEquals('/Search', label.textContent);
+  });
+
+  test('SanitizationPipelineStripsDisallowedTagsAndAttributes', () => {
+    const policy = getChipPolicyForTesting();
+    assertTrue(!!policy);
+
+    // Use a data URI to comply with WebUI img-src CSP.
+    const dummyIconUrl =
+        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+    // Disallowed elements (<script>, <iframe>) and attributes (style,
+    // invalid-attr) are stripped, while allowed elements and
+    // attributes are preserved.
+    // NOTE: Inline event handlers (onclick, onerror) are intentionally excluded
+    // from this test string because setHTML() triggers a CSP violation report
+    // when parsing them, which intentionally crashes the WebUI test runner.
+    const maliciousHtml =
+        '<script>console.log("xss")</script><iframe src="about:blank"></iframe>' +
+        '<span class="aim-chip" style="color: red;" ' +
+        'data-chip-text="valid" invalid-attr="bad">' +
+        '<img src="' + dummyIconUrl + '" class="chip-icon" alt="icon" ' +
+        'style="display:none">' +
+        '</span>';
+
+    const trustedHtml = policy.createHTML(maliciousHtml);
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = trustedHtml as unknown as string;
+
+    assertEquals(0, tempDiv.querySelectorAll('script').length);
+    assertEquals(0, tempDiv.querySelectorAll('iframe').length);
+
+    const span = tempDiv.querySelector('span');
+    assertTrue(!!span);
+    assertFalse(span.hasAttribute('style'));
+    assertFalse(span.hasAttribute('invalid-attr'));
+    assertEquals('aim-chip', span.getAttribute('class'));
+    assertEquals('valid', span.getAttribute('data-chip-text'));
+
+    const img = tempDiv.querySelector('img');
+    assertTrue(!!img);
+    assertFalse(img.hasAttribute('style'));
+    assertEquals(dummyIconUrl, img.getAttribute('src'));
+    assertEquals('chip-icon', img.getAttribute('class'));
+    assertEquals('icon', img.getAttribute('alt'));
+  });
+
+  test(
+      'InsertingChipAtStartPreservedWhenInputPropertyUpdatedWithRegularSpace',
+      async () => {
+        inputElement.composeboxSkillsEnabled = true;
+        await inputElement.updateComplete;
+
+        inputElement.insertSkillChip({id: 'chip1', text: '/Search'});
+        await inputElement.updateComplete;
+
+        let chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+        assertTrue(isVisible(chip));
+
+        // When autocomplete selects the first match or updates input with
+        // a regular space ('\u0020'), the chip should not be stripped.
+        inputElement.input = '/Search ';
+        await inputElement.updateComplete;
+
+        chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+        assertTrue(isVisible(chip));
+        assertEquals('/Search ', inputElement.input);
+      });
+
+  test(
+      'InsertingChipAtStartPreservedWhenInputPropertyUpdatedWithTrimmedText',
+      async () => {
+        inputElement.composeboxSkillsEnabled = true;
+        await inputElement.updateComplete;
+
+        inputElement.insertSkillChip({id: 'chip1', text: '/Search'});
+        await inputElement.updateComplete;
+
+        let chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+        assertTrue(isVisible(chip));
+
+        // When autocomplete returns a match whose fillIntoEdit omits the
+        // trailing space (e.g. '/Search'), the chip should still be preserved.
+        inputElement.input = '/Search';
+        await inputElement.updateComplete;
+
+        chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+        assertTrue(isVisible(chip));
+      });
+
+  test('InsertingChipAtStartOfExistingTextPreserved', async () => {
+    inputElement.composeboxSkillsEnabled = true;
+    await inputElement.updateComplete;
+
+    inputElement.input = 'hello';
+    await inputElement.updateComplete;
+
+    // Place selection at the start (offset 0).
+    const range = document.createRange();
+    range.setStart(inputElement.$.input.firstChild!, 0);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+
+    inputElement.insertSkillChip({id: 'chip1', text: '/Search'});
+    await inputElement.updateComplete;
+
+    let chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+    assertTrue(isVisible(chip));
+
+    inputElement.input = '/Search hello';
+    await inputElement.updateComplete;
+
+    chip = inputElement.$.input.querySelector(`.${CHIP_CLASS}`);
+    assertTrue(isVisible(chip));
   });
 });
