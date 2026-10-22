@@ -254,11 +254,6 @@ should be able to be added at any place in this file.
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
   <variant name="_AimActivationHint"
       summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
-  <variant name="_AndroidBottomBarAim"
-      summary="Describes the AI Mode button added in the bottom bar."/>
-  <variant name="_AndroidBottomBarAimPromoDialog"
-      summary="For the promo dialog shown to introduce AI Mode with the
-               bottom bar."/>
   <variant name="_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="_AndroidBottomBarNewTab"
@@ -503,6 +498,8 @@ should be able to be added at any place in this file.
       summary="For generic always show help UI feature."/>
   <variant name="_GestureUserEducation"
       summary="For gesture user edcuation IPH feature."/>
+  <variant name="_GlassFrameOptIn"
+      summary="For GlassFrame opt-in IPH feature."/>
   <variant name="_GlicPromo" summary="For Glic feature."/>
   <variant name="_GlicPromoAndroid" summary="For Glic promotion on Android."/>
   <variant name="_GlicTrustFirstOnboardingShortcutSnoozePromo"
@@ -852,16 +849,12 @@ should be able to be added at any place in this file.
   <variant name="_SharedHighlightingReceiver"
       summary="For SharedHighlightingReceiver feature."/>
   <variant name="_ShareScreenshot" summary="For ShareScreenshot feature."/>
-  <variant name="_SharingHubLinkToggle"
-      summary="For Sharing Hub link toggle feature."/>
   <variant name="_SharingHubWebnotesStylize"
       summary="For SharingHubWebnotesStylize feature."/>
   <variant name="_ShoppingCollectionFeature"
       summary="For the explanation of what the shopping collection is."/>
   <variant name="_ShoppingListMenuItem"
       summary="For ShoppingListMenuItem feature."/>
-  <variant name="_ShoppingListSaveFlow"
-      summary="For ShoppingListSaveFlow feature."/>
   <variant name="_SideBySidePinnableFeature"
       summary="For side by side split view pinning feature."/>
   <variant name="_SideBySideTabSwitchFeature"
@@ -1070,6 +1063,7 @@ should be able to be added at any place in this file.
       summary="Enhanced Protection setting has been synced to On"/>
   <variant name=".Translate" summary="Translate"/>
   <variant name=".TtcGenericError" summary="TTC generic error"/>
+  <variant name=".TtcNoMicrophoneError" summary="TTC no microphone error"/>
 </variants>
 
 <variants name="UserEducation_WhatsNew_Module_Type">
@@ -5921,25 +5915,6 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user clicks the link on the payment methods settings page
     to manage Google Pay payment methods.
-  </description>
-</action>
-
-<action name="Autofill.PaymentMethodsSettingsPage.ScanCardClicked">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <description>
-    Recorded when the user clicks the scan card button in the payment methods
-    settings card edit page.
-  </description>
-</action>
-
-<action name="Autofill.PaymentMethodsSettingsPage.ScannerCannotScan"
-    not_user_triggered="true">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <description>
-    Recorded when the user arrives on the payment methods settings card edit
-    page and the scanner for the scan card feature is not available.
   </description>
 </action>
 
@@ -19655,15 +19630,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="MobileBottomBar.Aim.Clicked">
-  <owner>madhavpruthi@google.com</owner>
-  <owner>ckitagawa@chromium.org</owner>
-  <owner>polardz@google.com</owner>
-  <description>
-    Recorded when the AI Mode button in the Android Bottom Bar is clicked.
-  </description>
-</action>
-
 <action name="MobileBottomToolbarNewTabButton">
   <owner>mdjones@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -24842,6 +24808,36 @@ should be able to be added at any place in this file.
   <owner>meridian@google.com</owner>
   <description>
     The user tapped on the Assistant button in the toolbar.
+  </description>
+</action>
+
+<action name="MobileToolbarAssistantCustomizationAccountSelected">
+  <owner>gambard@chromium.org</owner>
+  <owner>bling-meridian@google.com</owner>
+  <description>
+    The user selected the 'Account' entry of the menu shown when long pressing
+    the Assistant button in the AppBar. Recorded even if the entry was already
+    selected.
+  </description>
+</action>
+
+<action name="MobileToolbarAssistantCustomizationAskGeminiSelected">
+  <owner>gambard@chromium.org</owner>
+  <owner>bling-meridian@google.com</owner>
+  <description>
+    The user selected the 'Ask Gemini' entry of the menu shown when long
+    pressing the Assistant button in the AppBar. Recorded even if the entry was
+    already selected.
+  </description>
+</action>
+
+<action name="MobileToolbarAssistantCustomizationLensSelected">
+  <owner>gambard@chromium.org</owner>
+  <owner>bling-meridian@google.com</owner>
+  <description>
+    The user selected the 'Lens' entry of the menu shown when long pressing the
+    Assistant button in the AppBar. Recorded even if the entry was already
+    selected.
   </description>
 </action>
 

@@ -5328,8 +5328,8 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_EXTENSION_PROMPT_EXTENSION_CONNECT_FROM_INCOGNITO" desc="Shown when a website tries to connect to an extension from Incognito mode, prompting the user to allow or deny the request.">
         <ph name="ORIGIN">$1<ex>http://www.google.com</ex></ph> wants to communicate with the extension "<ph name="EXTENSION_NAME">$2<ex>Gmail Checker</ex></ph>"
       </message>
-      <message name="IDS_EXTENSION_PROMPT_GRANT_PERMISSIONS_CHECKBOX" desc="Label next to the checkbox in the extension or app installation prompt, which indicates if a user wants to grant access to all requested sites.">
-        Grant access to all requested sites.
+      <message name="IDS_EXTENSION_PROMPT_ALLOW_SITE_ACCESS_TITLE" desc="Title of the section in the extension or app installation prompt that allows the user to choose site access permissions.">
+        Allow site access
       </message>
 
       <message name="IDS_EXTENSION_PERMISSION_LINE" desc="Template for item in list of privileges that an extension or app has">
@@ -8684,11 +8684,26 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_ENTRYPOINT" desc="The text for the compose entrypoint in the searchbox on the New Tab Page.">
         AI Mode
       </message>
-      <message name="IDS_NTP_COMPOSE_ENTRYPOINT_A11Y_LABEL" desc="The accessibility label for the compose entrypoint in the searchbox on the New Tab Page." formatter_data="android_java">
+      <message name="IDS_NTP_COMPOSE_ENTRYPOINT_A11Y_LABEL" desc="The accessibility label for the compose entrypoint in the searchbox on the New Tab Page.">
         Ask AI Mode in Google Search
+      </message>
+      <message name="IDS_NTP_COMPOSE_ENTRYPOINT_SHORTENED_A11Y_LABEL" desc="The accessibility label for the AI Mode button in a searchbox (Omnibox, Realbox) to enter AI Mode search.">
+        Ask in AI Mode
+      </message>
+      <message name="IDS_NTP_COMPOSE_EXIT_A11Y_LABEL" desc="The accessibility label for the AI Mode button in a searchbox (Omnibox, Realbox) to exit AI Mode search.">
+        Exit AI Mode
+      </message>
+      <message name="IDS_NTP_COMPOSE_SEND_A11Y_LABEL" desc="The accessibility label for the AI Mode button in a searchbox (Omnibox, Realbox) to submit the query.">
+        Ask in AI Mode
       </message>
       <message name="IDS_NTP_COMPOSE_PLACEHOLDER_TEXT" desc="The placeholder for the input in the compose box.">
         Ask AI Mode
+      </message>
+      <message name="IDS_NTP_COMPOSE_PLACEHOLDER_TEXT_GREETING_NO_NAME" desc="The placeholder text for the searchbox input (Omnibox, Realbox) in AI Mode. Shown when the user is signed out.">
+        Hi, what's on your mind?
+      </message>
+      <message name="IDS_NTP_COMPOSE_PLACEHOLDER_TEXT_GREETING_NAMED" desc="The placeholder text for the searchbox input (Omnibox, Realbox) in AI Mode. Shown when the user is signed in.">
+        Hi <ph name="FIRST_NAME">$1<ex>Camille</ex></ph>, what's on your mind?
       </message>
       <message name="IDS_NTP_COMPOSE_CANCEL_BUTTON_A11Y_LABEL" desc="The accessibility label for the cancel button on the compose box when there is no input." formatter_data="android_java">
         Dismiss
@@ -10590,9 +10605,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_ENABLED_IPH_BODY" desc="The body for the vertical tabs expand on hover IPH, when expand on hover is default enabled.">
         You can now expand your tabs by hovering over them. To turn this off, right-click here.
       </message>
-      <message name="IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_DISABLED_IPH_BODY" desc="The body for the vertical tabs expand on hover IPH, when expand on hover is default disabled.">
-        You can now expand your tabs by hovering over them. To turn this on, right-click here.
-      </message>
       <message name="IDS_VERTICAL_RESIZE_AREA" is_accessibility_with_no_ui="true" desc="The accessibility label for the resize area in the vertical tab strip.">
             Vertical Tab Strip Resize Handle (Draggable)
       </message>
@@ -10685,6 +10697,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_ORGANIZER_PANEL_CROSS_DEVICE_TABS" desc="The label on the organizer panel list section corresponding to tabs on other devices.">
         Tabs on other devices
+      </message>
+      <message name="IDS_TAB_STRIP_BUTTON_TOOLTIP" desc="The tooltip for the tab strip button.">
+        Tab strip
       </message>
       <if expr="use_titlecase">
         <message name="IDS_TAB_STRIP_UNPIN_TAB_SEARCH" desc="In Title Case: Name of the tab strip system menu item for unpinning tab search.">
@@ -11337,6 +11352,18 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_DISCARD_RING_SETTINGS_TOAST" desc="A toast bubble that highlights where the inactive tabs look can be changed in settings.">
         Manage the look of inactive tabs here
+      </message>
+      <message name="IDS_GLASS_FRAME_OPT_IN_IPH_TITLE" desc="The title for the glass frame opt-in in-product help promo bubble.">
+        Give your tabs a new transparent look
+      </message>
+      <message name="IDS_GLASS_FRAME_OPT_IN_IPH_BODY" desc="The body text shown for the glass frame opt-in in-product help promo bubble.">
+        Try the new style in settings. You can always switch back to the classic look.
+      </message>
+      <message name="IDS_GLASS_FRAME_IPH_SETTINGS_BUTTON" desc="The text on the action button text for the glass frame opt-in in-product promo bubble to navigate to the settings page.">
+        Settings
+      </message>
+      <message name="IDS_GLASS_FRAME_IPH_SETTINGS_PAGE" desc="The text on chrome://settings/appearance page that is anchored to the tab styling drop down for users to enable glass frame.">
+        Set this setting to Modern to try the new transparent look for your tabs.
       </message>
 
       <!-- User Education Tutorial Strings -->
@@ -12889,9 +12916,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_UNFOCUS_GROUP" desc="The label for unfocus group in the tab group editor bubble.">
         Unfocus group
       </message>
-      <message name="IDS_TAB_GROUP_HEADER_UNFOCUS_BUTTON" desc="The label for the unfocus button header attached to a focused tab group.">
-        Unfocus
-      </message>
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_CREATE_GROUP" desc="The label for create button in the tab group editor bubble when creating a permanent tab group from an ephemeral one.">
         Create
       </message>
@@ -14038,11 +14062,8 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
        <message name="IDS_SEND_TAB_TO_SELF_MANAGE_DEVICES_LINK" desc="Text with a link to a page where the user can manage the devices they can share a tab to.">
         <ph name="BEGIN_LINK">$1</ph>Your devices<ph name="END_LINK">$2</ph> · <ph name="EMAIL">$3<ex>foo@gmail.com</ex></ph>
       </message>
-      <message name="IDS_SEND_TAB_TO_SELF_SIGN_IN_PROMO_LABEL" desc = "Text when a signed out user attempts to use send-tab-to-self, then sees a sign-in promo.">
-        To send this tab to another device, sign in to Chrome on both devices
-      </message>
-      <message name="IDS_SEND_TAB_TO_SELF_NO_TARGET_DEVICE_LABEL" desc = "Text shown when a user with no available target devices attempts to use send-tab-to-self.">
-        To send this tab to another device, sign in to Chrome there
+      <message name="IDS_SEND_TAB_TO_SELF_NO_TARGET_DEVICE_BODY_QR" desc="Subtitle of the QR code bubble shown when a user with no available target devices attempts to use send-tab-to-self, prompting to sign in with the same account.">
+        To send links between devices, sign in with the same account.
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_SIGN_IN_PROMO_BODY" desc="Body label text of the send-tab-to-self sign-in promo bubble.">
         To send links between devices, ensure both are signed in to the same Google account.
@@ -15404,7 +15425,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
           Didn't work?
         </message>
         <message name="IDS_DEFAULT_BROWSER_VISUAL_GUIDED_SETTER_OPEN_WINDOWS_SETTINGS" desc="Button label to open Windows settings in the default browser visual guided setter.">
-          Open windows settings
+          Open Windows settings
         </message>
       </if>
 
@@ -15841,9 +15862,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <!-- TTC -->
       <message name="IDS_TTC_ENTRYPOINT_LABEL" desc="Text label of the TTC menu item." translateable="false">
         TTC
-      </message>
-      <message name="IDS_TTC_GENERIC_ERROR_TOAST" desc="Generic text of an error during a TTC session." translateable="false">
-        Something went wrong. Try again later
       </message>
 
       <!-- Web and message center notifications -->
@@ -18065,17 +18083,23 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_RELAUNCH_REQUIRED_CANCEL_BUTTON" desc="The text in the cancel button that dismisses a dialog telling users the browser must be relaunched.">
         Dismiss
       </message>
-      <message name="IDS_RELAUNCH_RECOMMENDED_RESTART_NOW" desc="Button label to restart immediately." translateable="false">
-        Restart now
+      <message name="IDS_RELAUNCH_RECOMMENDED_RESTART_NOW" desc="Button label to relaunch immediately.">
+        Relaunch now
       </message>
-      <message name="IDS_RELAUNCH_RECOMMENDED_RESTART_WHEN_IDLE" desc="Button label to restart when idle." translateable="false">
-        Restart when idle
+      <message name="IDS_RELAUNCH_RECOMMENDED_RESTART_WHEN_IDLE" desc="Button label to schedule an update when the user steps away.">
+        Update when I step away
       </message>
-      <message name="IDS_RELAUNCH_RECOMMENDED_BODY_SCHEDULE" desc="The body text for the scheduled restart reminder bubble dialog." translateable="false">
-        Restart now to finish updating, or restart next time you're idle for 5 minutes. Your open tabs and windows will restore. Incognito windows won't reopen.
+      <message name="IDS_RELAUNCH_RECOMMENDED_BODY_SCHEDULE_IMPORTANT_UPDATE" desc="Emphasized phrase inside the first body paragraph of the scheduled restart reminder bubble dialog.">
+        important security update
       </message>
-      <message name="IDS_APP_MENU_BUTTON_RESTART_SCHEDULED" desc="Short label next to app-menu button when a scheduled restart is pending." translateable="false">
-        Restart scheduled
+      <message name="IDS_RELAUNCH_RECOMMENDED_BODY_SCHEDULE_IDLE_DURATION" desc="Emphasized idle duration inside the first body paragraph of the scheduled restart reminder bubble dialog.">
+        5 minutes
+      </message>
+      <message name="IDS_RELAUNCH_RECOMMENDED_BODY_SCHEDULE_TABS_REOPEN" desc="The second body paragraph for the scheduled restart reminder bubble dialog.">
+        All of your open tabs and windows will reopen automatically.
+      </message>
+      <message name="IDS_APP_MENU_BUTTON_RESTART_SCHEDULED" desc="Short label next to app-menu button when a scheduled update is pending.">
+        Update scheduled
       </message>
     </if>
 
@@ -18570,6 +18594,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
 
       <!-- WebAuthn passkey / password selector UIs -->
+      <message name="IDS_AMBIENT_LOGIN_TITLE" desc="The title of a prompt that tells the user to choose an account to sign in with.">
+        Choose your account
+      </message>
       <message name="IDS_WEBAUTHN_SIGN_IN_TO_WEBSITE_DIALOG_TITLE" desc="The title of a bubble that displays passkeys or passwords for signing in to a given site.">
         Sign in to <ph name="RP_ID">$1<ex>webauthn.io</ex></ph>
       </message>

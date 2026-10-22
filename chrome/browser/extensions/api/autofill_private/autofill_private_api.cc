@@ -597,18 +597,9 @@ ExtensionFunction::ResponseAction AutofillPrivateSaveCreditCardFunction::Run() {
     paydm->UpdateCreditCard(credit_card);
     base::RecordAction(base::UserMetricsAction("AutofillCreditCardsEdited"));
   } else {
-    int current_card_count = paydm->GetCreditCards().size();
     paydm->AddCreditCard(credit_card);
 
     base::RecordAction(base::UserMetricsAction("AutofillCreditCardsAdded"));
-
-    base::UmaHistogramCounts100(
-        "Autofill.PaymentMethods.SettingsPage."
-        "StoredCreditCardCountBeforeCardAdded",
-        current_card_count);
-    base::UmaHistogramBoolean(
-        "Autofill.PaymentMethodsSettingsPage.CardAddedWithoutExistingCards",
-        current_card_count == 0);
 
     if (credit_card.HasNonEmptyValidNickname()) {
       base::RecordAction(
@@ -1430,7 +1421,15 @@ void AutofillPrivateGetDetailsForUpsertPassFunction::
         base::expected<
             autofill::WalletPassAccessManager::GetDetailsForUpsertPassResponse,
             wallet::WalletHttpClient::WalletRequestError> response) {
-  if (!response.has_value() || response->context_token.empty()) {
+  const bool should_see_legal_message_notice =
+      response.has_value() &&
+      response->user_eligibility ==
+          autofill::WalletPassAccessManager::UserEligibility::kEligible;
+  const bool fallback_to_local =
+      !response.has_value() || (should_see_legal_message_notice &&
+                                (response->legal_message_lines.empty() ||
+                                 response->context_token.empty()));
+  if (fallback_to_local) {
     Respond(NoArguments());
     return;
   }

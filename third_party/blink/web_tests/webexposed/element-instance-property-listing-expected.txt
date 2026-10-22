@@ -187,6 +187,7 @@ namespace http://www.w3.org/1999/xhtml
     property moveBefore
     property namespaceURI
     property nextElementSibling
+    property nextFocusable
     property nextSibling
     property nodeName
     property nodeType
@@ -332,6 +333,7 @@ namespace http://www.w3.org/1999/xhtml
     property prependHTML
     property prependHTMLUnsafe
     property previousElementSibling
+    property previousFocusable
     property previousSibling
     property pseudo
     property querySelector
@@ -592,7 +594,6 @@ html element canvas
     property getContext
     property getElementTransform
     property height
-    property layoutSubtree
     property onelementgeometryupdate
     property onpaint
     property requestPaint
@@ -663,12 +664,6 @@ html element embed
     property name
     property src
     property type
-    property width
-html element fencedframe
-    property allow
-    property config
-    property height
-    property sandbox
     property width
 html element fieldset
     property checkValidity
@@ -1574,6 +1569,7 @@ namespace http://www.w3.org/2000/svg
     property moveBefore
     property namespaceURI
     property nextElementSibling
+    property nextFocusable
     property nextSibling
     property nodeName
     property nodeType
@@ -1711,6 +1707,7 @@ namespace http://www.w3.org/2000/svg
     property prependHTML
     property prependHTMLUnsafe
     property previousElementSibling
+    property previousFocusable
     property previousSibling
     property pseudo
     property querySelector

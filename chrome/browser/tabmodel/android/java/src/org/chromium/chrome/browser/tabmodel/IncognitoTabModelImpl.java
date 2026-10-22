@@ -525,16 +525,6 @@ class IncognitoTabModelImpl implements IncognitoTabModelInternal {
     }
 
     @Override
-    public int getCurrentRepresentativeTabIndex() {
-        return mDelegateModel.getCurrentRepresentativeTabIndex();
-    }
-
-    @Override
-    public @Nullable Tab getCurrentRepresentativeTab() {
-        return mDelegateModel.getCurrentRepresentativeTab();
-    }
-
-    @Override
     public @Nullable Tab getRepresentativeTabAt(int index) {
         return mDelegateModel.getRepresentativeTabAt(index);
     }

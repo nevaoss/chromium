@@ -924,7 +924,7 @@ void AutocompleteResult::GroupAndDemoteMatchesInGroups() {
     any_matches_in_groups = true;
 
     // Record suggestion group information into the additional_info field
-    // for chrome://omnibox.
+    // for chrome://omnibox-internals.
     match.RecordAdditionalInfo("group id", group_id);
     match.RecordAdditionalInfo("group header",
                                GetHeaderForSuggestionGroup(group_id));
@@ -1716,13 +1716,6 @@ bool AutocompleteResult::UndedupeTopSearchEntityMatch(ACMatches* matches) {
     // iterators, including |top_match|.
     AutocompleteMatch non_entity_match_copy{std::move(*non_entity_it)};
     top_match->duplicate_matches.erase(non_entity_it);
-
-    // When we spawn our non-entity match copy, we still want to preserve any
-    // entity ID that was provided by the server for logging purposes, even if
-    // we don't display it.
-    if (non_entity_match_copy.entity_id.empty()) {
-      non_entity_match_copy.entity_id = top_match->entity_id;
-    }
 
     // Unless the entity match has Actions in Suggest, promote the non-entity
     // match to the top. Otherwise keep the entity match at the top followed by

@@ -52,6 +52,7 @@
 #include "components/sync/test/test_sync_service.h"
 #include "components/sync_bookmarks/switches.h"
 #include "content/public/test/browser_task_environment.h"
+#include "device/bluetooth/bluetooth_adapter.h"
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "device/bluetooth/test/mock_bluetooth_adapter.h"
 #include "extensions/common/extension_builder.h"
@@ -236,6 +237,9 @@ TEST_F(SigninPromoUrlTest, SigninURLForDicePasskeyFeatureDisabledAddsNoParam) {
       GetChromeSyncURLForDice({}));
 }
 
+using HybridTransportFuture =
+    base::test::TestFuture<bool, scoped_refptr<device::BluetoothAdapter>>;
+
 TEST(SigninPromoTest,
      IsHybridTransportSupportedForQrCodeSignin_LeNotSupported) {
   base::test::SingleThreadTaskEnvironment task_environment;
@@ -243,9 +247,10 @@ TEST(SigninPromoTest,
       device::BluetoothAdapterFactory::Get()->InitGlobalOverrideValues();
   bluetooth_override_values->SetLESupported(false);
 
-  base::test::TestFuture<bool> future;
+  HybridTransportFuture future;
   IsHybridTransportSupportedForQrCodeSignin(future.GetCallback());
-  EXPECT_FALSE(future.Get());
+  EXPECT_FALSE(future.Get<0>());
+  EXPECT_FALSE(future.Get<1>());
   task_environment.RunUntilIdle();
 }
 
@@ -260,9 +265,10 @@ TEST(SigninPromoTest,
   ON_CALL(*mock_adapter, IsPresent()).WillByDefault(testing::Return(false));
   device::BluetoothAdapterFactory::SetAdapterForTesting(mock_adapter);
 
-  base::test::TestFuture<bool> future;
+  HybridTransportFuture future;
   IsHybridTransportSupportedForQrCodeSignin(future.GetCallback());
-  EXPECT_FALSE(future.Get());
+  EXPECT_FALSE(future.Get<0>());
+  EXPECT_EQ(future.Get<1>().get(), mock_adapter.get());
   task_environment.RunUntilIdle();
 }
 
@@ -281,9 +287,10 @@ TEST(SigninPromoTest,
   ON_CALL(*mock_adapter, IsPowered()).WillByDefault(testing::Return(true));
   device::BluetoothAdapterFactory::SetAdapterForTesting(mock_adapter);
 
-  base::test::TestFuture<bool> future;
+  HybridTransportFuture future;
   IsHybridTransportSupportedForQrCodeSignin(future.GetCallback());
-  EXPECT_TRUE(future.Get());
+  EXPECT_TRUE(future.Get<0>());
+  EXPECT_EQ(future.Get<1>().get(), mock_adapter.get());
   task_environment.RunUntilIdle();
 }
 
@@ -302,9 +309,10 @@ TEST(SigninPromoTest,
   ON_CALL(*mock_adapter, IsPowered()).WillByDefault(testing::Return(false));
   device::BluetoothAdapterFactory::SetAdapterForTesting(mock_adapter);
 
-  base::test::TestFuture<bool> future;
+  HybridTransportFuture future;
   IsHybridTransportSupportedForQrCodeSignin(future.GetCallback());
-  EXPECT_FALSE(future.Get());
+  EXPECT_FALSE(future.Get<0>());
+  EXPECT_EQ(future.Get<1>().get(), mock_adapter.get());
   task_environment.RunUntilIdle();
 }
 
@@ -322,9 +330,10 @@ TEST(SigninPromoTest,
           testing::Return(device::BluetoothAdapter::PermissionStatus::kDenied));
   device::BluetoothAdapterFactory::SetAdapterForTesting(mock_adapter);
 
-  base::test::TestFuture<bool> future;
+  HybridTransportFuture future;
   IsHybridTransportSupportedForQrCodeSignin(future.GetCallback());
-  EXPECT_FALSE(future.Get());
+  EXPECT_FALSE(future.Get<0>());
+  EXPECT_EQ(future.Get<1>().get(), mock_adapter.get());
   task_environment.RunUntilIdle();
 }
 
@@ -342,9 +351,10 @@ TEST(SigninPromoTest,
           device::BluetoothAdapter::PermissionStatus::kUndetermined));
   device::BluetoothAdapterFactory::SetAdapterForTesting(mock_adapter);
 
-  base::test::TestFuture<bool> future;
+  HybridTransportFuture future;
   IsHybridTransportSupportedForQrCodeSignin(future.GetCallback());
-  EXPECT_FALSE(future.Get());
+  EXPECT_FALSE(future.Get<0>());
+  EXPECT_EQ(future.Get<1>().get(), mock_adapter.get());
   task_environment.RunUntilIdle();
 }
 
@@ -358,9 +368,14 @@ TEST(SigninPromoTest, IsSignInPromo_SendTabToSelf) {
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
-// ChromeOS currently does not show any sign in promos.
+// ChromeOS does not show any sign in promos when
+// `kReplaceSyncPromosWithSignInPromos` is disabled.
 #if BUILDFLAG(IS_CHROMEOS)
 TEST(SigninPromoTest, IsSignInPromo) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      syncer::kReplaceSyncPromosWithSignInPromos);
+
   EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kPasswordBubble));
   EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kAddressBubble));
   EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kBookmarkBubble));
@@ -368,7 +383,21 @@ TEST(SigninPromoTest, IsSignInPromo) {
       IsSignInPromo(signin_metrics::AccessPoint::kExtensionInstallBubble));
   EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kSendTabToSelfPromo));
 }
-#endif  // !BUILDFLAG(IS_CHROMEOS)
+
+// With `kReplaceSyncPromosWithSignInPromos` enabled, the extension install
+// bubble access point counts as a sign in promo on ChromeOS.
+TEST(SigninPromoTest, IsSignInPromo_ReplaceSyncPromosWithSignInPromos) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(syncer::kReplaceSyncPromosWithSignInPromos);
+
+  EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kPasswordBubble));
+  EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kAddressBubble));
+  EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kBookmarkBubble));
+  EXPECT_TRUE(
+      IsSignInPromo(signin_metrics::AccessPoint::kExtensionInstallBubble));
+  EXPECT_FALSE(IsSignInPromo(signin_metrics::AccessPoint::kSendTabToSelfPromo));
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Extensions explicit signin is not enabled in ChromeOS.
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -1072,231 +1101,27 @@ TEST_F(ShowSigninPromoTestWithoutPhase2FollowUp,
   EXPECT_TRUE(ShouldShowBookmarkSignInPromo(*profile.get()));
 }
 
-class ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment
-    : public ShowSigninPromoTestWithFeatureFlags {
- public:
-  void SetUp() override {
-    ShowSigninPromoTestWithFeatureFlags::SetUp();
-    scoped_feature_list_.InitAndEnableFeature(
-        switches::kSigninPromoLimitsExperiment);
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       DoNotShowAddressPromoAfterMaxTimesShown) {
-  ASSERT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kAddressSignInPromoShownCountPerProfileForLimitsExperiment,
-      switches::kContextualSigninPromoShownThreshold.Get());
-
-  EXPECT_FALSE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-  EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       DoNotShowPasswordPromoAfterMaxTimesShown) {
-  ASSERT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kPasswordSignInPromoShownCountPerProfileForLimitsExperiment,
-      switches::kContextualSigninPromoShownThreshold.Get());
-
-  EXPECT_FALSE(ShouldShowPasswordSignInPromo(*profile()));
-  EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       DoNotShowBookmarkPromoAfterMaxTimesShown) {
-  ASSERT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment, 20);
-
-  EXPECT_FALSE(ShouldShowBookmarkSignInPromo(*profile()));
-  EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       RecordSignInPromoShownWithoutAccount) {
-  // Add an account without cookies. The per-profile pref will be recorded.
-  AccountInfo account =
-      MakeAccountAvailable(identity_manager(), "test@email.com");
-
-  RecordSignInPromoShown(signin_metrics::AccessPoint::kPasswordBubble,
-                         profile());
-  RecordSignInPromoShown(signin_metrics::AccessPoint::kAddressBubble,
-                         profile());
-  RecordSignInPromoShown(signin_metrics::AccessPoint::kBookmarkBubble,
-                         profile());
-
-  EXPECT_EQ(
-      1,
-      profile()->GetPrefs()->GetInteger(
-          prefs::kPasswordSignInPromoShownCountPerProfileForLimitsExperiment));
-  EXPECT_EQ(
-      1,
-      profile()->GetPrefs()->GetInteger(
-          prefs::kAddressSignInPromoShownCountPerProfileForLimitsExperiment));
-  EXPECT_EQ(
-      1,
-      profile()->GetPrefs()->GetInteger(
-          prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment));
-  EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
-  EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
-  EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetBookmarkSigninPromoImpressionCount(account.GetGaiaId()));
-
-  EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
-  EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-  EXPECT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       RecordSignInPromoShownWithAccount) {
-  // Test setup for adding an account with cookies.
-  network::TestURLLoaderFactory url_loader_factory =
-      network::TestURLLoaderFactory();
-
-  TestingProfile::Builder builder;
-  builder.AddTestingFactories(
-      IdentityTestEnvironmentProfileAdaptor::
-          GetIdentityTestEnvironmentFactoriesWithAppendedFactories(
-              {TestingProfile::TestingFactory{
-                  ChromeSigninClientFactory::GetInstance(),
-                  base::BindRepeating(&BuildChromeSigninClientWithURLLoader,
-                                      &url_loader_factory)}}));
-
-  std::unique_ptr<TestingProfile> profile = builder.Build();
-  auto identity_test_env_adaptor =
-      std::make_unique<IdentityTestEnvironmentProfileAdaptor>(profile.get());
-  auto* identity_test_env = identity_test_env_adaptor->identity_test_env();
-  identity_test_env->SetTestURLLoaderFactory(&url_loader_factory);
-
-  // Add an account with cookies, which will record the per-account prefs.
-  AccountInfo account = identity_test_env->MakeAccountAvailable(
-      identity_test_env->CreateAccountAvailabilityOptionsBuilder()
-          .WithCookie(true)
-          .Build("test@email.com"));
-
-  RecordSignInPromoShown(signin_metrics::AccessPoint::kPasswordBubble,
-                         profile.get());
-  RecordSignInPromoShown(signin_metrics::AccessPoint::kAddressBubble,
-                         profile.get());
-  RecordSignInPromoShown(signin_metrics::AccessPoint::kBookmarkBubble,
-                         profile.get());
-
-  EXPECT_EQ(
-      0,
-      profile.get()->GetPrefs()->GetInteger(
-          prefs::kPasswordSignInPromoShownCountPerProfileForLimitsExperiment));
-  EXPECT_EQ(
-      0,
-      profile.get()->GetPrefs()->GetInteger(
-          prefs::kAddressSignInPromoShownCountPerProfileForLimitsExperiment));
-  EXPECT_EQ(
-      0,
-      profile.get()->GetPrefs()->GetInteger(
-          prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment));
-  EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
-  EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
-  EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetBookmarkSigninPromoImpressionCount(account.GetGaiaId()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       SkipCheckForNonExperimentNumberOfTimesShownForPasswordPromo) {
-  ASSERT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kPasswordSignInPromoShownCountPerProfile, INT_MAX);
-
-  EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       SkipCheckForNonExperimentNumberOfTimesShownForAddressPromo) {
-  ASSERT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kAddressSignInPromoShownCountPerProfile, INT_MAX);
-
-  EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       SkipCheckForNonExperimentNumberOfTimesShownForBookmarkPromo) {
-  ASSERT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kBookmarkSignInPromoShownCountPerProfile, INT_MAX);
-
-  EXPECT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       DoNotShowPasswordPromoAfterMaxTimesDismissed) {
-  EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment,
-      switches::kContextualSigninPromoDismissedThreshold.Get());
-
-  EXPECT_FALSE(ShouldShowPasswordSignInPromo(*profile()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       DoNotShowAddressPromoAfterMaxTimesDismissed) {
-  EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kAddressSignInPromoDismissCountPerProfileForLimitsExperiment,
-      switches::kContextualSigninPromoDismissedThreshold.Get());
-
-  EXPECT_FALSE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       DoNotShowBookmarkPromoAfterMaxTimesDismissed) {
-  base::test::ScopedFeatureList scoped_feature_list{syncer::kUnoPhase2FollowUp};
-
-  EXPECT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));
-
-  profile()->GetPrefs()->SetInteger(
-      prefs::kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment,
-      switches::kContextualSigninPromoDismissedThreshold.Get());
-
-  EXPECT_FALSE(ShouldShowBookmarkSignInPromo(*profile()));
-}
-
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
-       SearchAIModePromoIgnoresOtherExperimentThresholds) {
+TEST_F(ShowSigninPromoTestWithFeatureFlags,
+       SearchAIModePromoIgnoresOtherPromoThresholds) {
   ASSERT_TRUE(ShouldShowSearchAIModeSignInPromo(*profile()));
   ASSERT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));
 
-  // Set the bookmark promo shown limit to max (6 times).
+  // Set the bookmark promo shown limit to max (5 times).
   profile()->GetPrefs()->SetInteger(
-      prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment, 6);
+      prefs::kBookmarkSignInPromoShownCountPerProfile, 5);
   EXPECT_FALSE(ShouldShowBookmarkSignInPromo(*profile()));
   EXPECT_TRUE(ShouldShowSearchAIModeSignInPromo(*profile()));
 
   // Set the bookmark promo impression and dismissal limit to max (2 times).
   profile()->GetPrefs()->SetInteger(
-      prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment, 2);
+      prefs::kBookmarkSignInPromoShownCountPerProfile, 2);
   profile()->GetPrefs()->SetInteger(
-      prefs::kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment, 2);
+      prefs::kAutofillSignInPromoDismissCountPerProfile, 2);
   EXPECT_FALSE(ShouldShowBookmarkSignInPromo(*profile()));
   EXPECT_TRUE(ShouldShowSearchAIModeSignInPromo(*profile()));
 }
 
-TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
+TEST_F(ShowSigninPromoTestWithFeatureFlags,
        SearchAIModePromoLimitsDoNotAffectOtherPromos) {
   ASSERT_TRUE(ShouldShowSearchAIModeSignInPromo(*profile()));
   ASSERT_TRUE(ShouldShowBookmarkSignInPromo(*profile()));

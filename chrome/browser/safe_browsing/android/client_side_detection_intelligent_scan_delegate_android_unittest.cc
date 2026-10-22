@@ -149,6 +149,26 @@ TEST_F(ClientSideDetectionIntelligentScanDelegateAndroidTest,
 }
 
 TEST_F(ClientSideDetectionIntelligentScanDelegateAndroidTest,
+       ShouldShowScamWarning_BillingVerdictFeatureDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(kClientSideDetectionTrickToBill);
+  CreateDelegate(/*is_enhanced_protection_enabled=*/true);
+
+  EXPECT_FALSE(delegate_->ShouldShowScamWarning(
+      IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_BILLING));
+}
+
+TEST_F(ClientSideDetectionIntelligentScanDelegateAndroidTest,
+       ShouldShowScamWarning_BillingVerdictFeatureEnabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kClientSideDetectionTrickToBill);
+  CreateDelegate(/*is_enhanced_protection_enabled=*/true);
+
+  EXPECT_TRUE(delegate_->ShouldShowScamWarning(
+      IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_BILLING));
+}
+
+TEST_F(ClientSideDetectionIntelligentScanDelegateAndroidTest,
        ShouldShowScamWarning) {
   CreateDelegate(/*is_enhanced_protection_enabled=*/true);
   EXPECT_FALSE(delegate_->ShouldShowScamWarning(std::nullopt));
@@ -167,8 +187,8 @@ TEST_F(ClientSideDetectionIntelligentScanDelegateAndroidTest,
   EXPECT_TRUE(delegate_->ShouldShowScamWarning(
       IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_4));
   // Undefined verdict doesn't show warning.
-  EXPECT_FALSE(
-      delegate_->ShouldShowScamWarning(static_cast<IntelligentScanVerdict>(6)));
+  EXPECT_FALSE(delegate_->ShouldShowScamWarning(
+      static_cast<IntelligentScanVerdict>(99)));
   EXPECT_TRUE(delegate_->ShouldShowScamWarning(
       IntelligentScanVerdict::SCAM_EXPERIMENT_CATCH_ALL_ENFORCEMENT));
   // Do not show warnings if the enum value is unknown.

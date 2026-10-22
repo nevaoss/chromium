@@ -136,6 +136,7 @@
 #include "third_party/blink/renderer/core/dom/first_letter_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
+#include "third_party/blink/renderer/core/dom/focusable.h"
 #include "third_party/blink/renderer/core/dom/geometry_utils.h"
 #include "third_party/blink/renderer/core/dom/indexed_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/interest_invoker_target_data.h"
@@ -3912,7 +3913,8 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
     if (parentNode()) {
       UpdateFocusgroup(params.new_value);
     }
-  } else if (RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+  } else if (RuntimeEnabledFeatures::OverscrollAreasEnabled(
+                 GetExecutionContext()) &&
              name == html_names::kOverscrollcontainerAttr) {
     if (params.new_value.IsNull() || params.old_value.IsNull()) {
       // TODO(crbug.com/467968812): We can optimize this in some cases since a
@@ -3927,7 +3929,8 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
       SetNeedsStyleRecalc(kLocalStyleChange,
                           StyleChangeReasonForTracing::FromAttribute(name));
     }
-  } else if (RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+  } else if (RuntimeEnabledFeatures::OverscrollAreasEnabled(
+                 GetExecutionContext()) &&
              name == html_names::kOverscrollareaAttr) {
     // See OverscrollAreaTracker::UpdateOverscrollArea().
     SetNeedsStyleRecalc(kLocalStyleChange,
@@ -4849,7 +4852,7 @@ void Element::AttachLayoutTree(AttachContext& context) {
   AttachContext children_context(context);
   LayoutObject* layout_object = nullptr;
   if (being_rendered) {
-    LayoutTreeBuilderForElement builder(*this, context, style);
+    LayoutTreeBuilderForElement builder(*this, context, *style);
     builder.CreateLayoutObject();
 
     layout_object = GetLayoutObject();
@@ -8503,6 +8506,16 @@ void Element::focusForBindings(const FocusOptions* options) {
   Focus(params);
 }
 
+Focusable* Element::nextFocusable() {
+  return Focusable::FindAdjacentFocusable(*this, GetTreeScope(),
+                                          mojom::blink::FocusType::kForward);
+}
+
+Focusable* Element::previousFocusable() {
+  return Focusable::FindAdjacentFocusable(*this, GetTreeScope(),
+                                          mojom::blink::FocusType::kBackward);
+}
+
 void Element::Focus() {
   Focus(FocusParams());
 }
@@ -9211,22 +9224,15 @@ void Element::OverscrollTargetStateChanged() {
 }
 
 bool Element::MatchesOverscrollOpen() const {
-  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
     return false;
   }
-  if (auto* pseudo = GetPseudoElement(kPseudoIdOverscrollAreaParent)) {
-    if (auto* box_model_object =
-            DynamicTo<LayoutBoxModelObject>(pseudo->GetLayoutObject())) {
-      auto* scrollable_area = DynamicTo<PaintLayerScrollableArea>(
-          box_model_object->GetScrollableArea());
-      return scrollable_area->IsCurrentlyOverscrolling();
-    }
-  }
-  return false;
+  Element* container = GetOverscrollContainer();
+  return container && container->GetOverscrollAreaTracker()->IsOpen(*this);
 }
 
 bool Element::MatchesOverscrollClosed() const {
-  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
     return false;
   }
   return IsValidOverscrollArea() && !MatchesOverscrollOpen();
@@ -10813,7 +10819,7 @@ void Element::UpdateBackdropPseudoElement(
 
 bool Element::ShouldUpdateOverscrollBackdropPseudoElement(
     const StyleRecalcChange change) {
-  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
     return false;
   }
   PseudoElement* element =
@@ -11661,7 +11667,8 @@ bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const {
       return IsInTopLayer();
     }
     if (pseudo_id == kPseudoIdOverscrollBackdrop) {
-      return RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+      return RuntimeEnabledFeatures::OverscrollAreasEnabled(
+                 GetExecutionContext()) &&
              IsValidOverscrollArea();
     }
     return style->CanGeneratePseudoElement(pseudo_id);
@@ -11958,7 +11965,7 @@ void Element::SetIsInTopLayer(bool in_top_layer) {
 
     // Top layer elements can't be overscroll areas. An element leaving the top
     // layer isn't a valid area yet, but may become one.
-    if (RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+    if (RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()) &&
         FastHasAttribute(html_names::kOverscrollareaAttr)) {
       SetNeedsStyleRecalc(
           kLocalStyleChange,

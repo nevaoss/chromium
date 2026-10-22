@@ -107,10 +107,10 @@ public class EdgeToEdgeUtils {
 
     /**
      * Returns whether the configuration of the device should allow Edge To Edge bottom chin. Note
-     * the results are false-positive, if the method is called before the |activity|'s decor view
+     * the results are false-negative, if the method is called before the |activity|'s decor view
      * being attached to the window.
      */
-    public static boolean isEdgeToEdgeBottomChinEnabled(Activity activity) {
+    public static boolean isEdgeToEdgeBottomChinSupportedByDevice(Activity activity) {
         // Make sure we test SDK version before checking the Feature so Field Trials only collect
         // from qualifying devices.
         if (!EdgeToEdgeFieldTrialImpl.getBottomChinOverrides().isEnabledForManufacturerVersion()) {
@@ -127,7 +127,8 @@ public class EdgeToEdgeUtils {
 
         // Not supported on tablet unless the flag is on and it meets the minimum screen size.
         if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(activity)
-                && (!isEdgeToEdgeTabletEnabled() || !EdgeToEdgeUtils.isSupportedTablet(activity))) {
+                && (!isEdgeToEdgeTabletEnabled()
+                        || !isBottomEdgeToEdgeSupportedOnTablet(activity))) {
             return false;
         }
 
@@ -159,17 +160,18 @@ public class EdgeToEdgeUtils {
     }
 
     /**
-     * Whether the device is a tablet and supports edge-to-edge.
+     * Returns whether the tablet's smallest screen width meets the minimum width threshold ({@code
+     * MinWidthThreshold}) for bottom edge-to-edge.
      *
      * <ul>
-     *   <li>width < MinWidthThreshold: e2e disabled.
-     *   <li>MinWidthThreshold <= width < InvisibleBottomChinMinWidth: e2e enabled and the bottom
-     *       chin is visible by default. Same as behavior on phone.
+     *   <li>width < MinWidthThreshold: bottom e2e disabled.
+     *   <li>MinWidthThreshold <= width < InvisibleBottomChinMinWidth: bottom e2e enabled and the
+     *       bottom chin is visible by default. Same as behavior on phone.
      *   <li>InvisibleBottomChinMinWidth <= width: fully e2e and the bottom chin is invisible by
      *       default.
      * </ul>
      */
-    public static boolean isSupportedTablet(Context context) {
+    public static boolean isBottomEdgeToEdgeSupportedOnTablet(Context context) {
         int widthThreshold = ChromeFeatureList.sEdgeToEdgeTabletMinWidthThreshold.getValue();
         if (widthThreshold == -1) {
             return true;
@@ -177,8 +179,12 @@ public class EdgeToEdgeUtils {
         return DisplayUtil.getCurrentSmallestScreenWidth(context) >= widthThreshold;
     }
 
-    /** Whether the device is a tablet and supports edge-to-edge. */
-    public static boolean defaultVisibilityOfBottomChinOnTablet(Context context) {
+    /**
+     * Returns {@code true} when the tablet's smallest screen width is below {@code
+     * InvisibleBottomChinMinWidth} (meaning the bottom chin is visible by default like on phones,
+     * whereas wider tablets hide the bottom chin by default).
+     */
+    public static boolean shouldShowBottomChinByDefaultOnTablet(Context context) {
         int widthThreshold =
                 ChromeFeatureList.sEdgeToEdgeTabletInvisibleBottomChinMinWidth.getValue();
         if (widthThreshold == -1) {
@@ -254,7 +260,8 @@ public class EdgeToEdgeUtils {
 
         // Not supported on tablet unless the flag is on and it meets the minimum screen size.
         if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(activity)
-                && (!isEdgeToEdgeTabletEnabled() || !EdgeToEdgeUtils.isSupportedTablet(activity))) {
+                && (!isEdgeToEdgeTabletEnabled()
+                        || !isBottomEdgeToEdgeSupportedOnTablet(activity))) {
             eligible = false;
             RecordHistogram.recordEnumeratedHistogram(
                     ineligibleName, IneligibilityReason.FORM_FACTOR, IneligibilityReason.NUM_TYPES);
@@ -288,15 +295,15 @@ public class EdgeToEdgeUtils {
     }
 
     /**
-     * @param isPageOptedIntoEdgeToEdge Whether the page has opted into edge-to-edge.
+     * @param isPageOptedIntoBottomEdgeToEdge Whether the page has opted into bottom edge-to-edge.
      * @param layoutType The active layout type being shown.
      * @param bottomInset The bottom inset representing the height of the bottom OS navbar.
-     * @return whether we should draw ToEdge based only on the given Tab and the viewport-fit value
-     *     from the tracking data of the Display Cutout Controller.
+     * @return whether we should draw to the bottom edge based on the given page opt-in status,
+     *     active layout type, and bottom inset.
      */
-    static boolean shouldDrawToEdge(
-            boolean isPageOptedIntoEdgeToEdge, @LayoutType int layoutType, int bottomInset) {
-        return isPageOptedIntoEdgeToEdge
+    static boolean shouldDrawToBottomEdge(
+            boolean isPageOptedIntoBottomEdgeToEdge, @LayoutType int layoutType, int bottomInset) {
+        return isPageOptedIntoBottomEdgeToEdge
                 || isBottomChinAllowed(layoutType, bottomInset)
                 || (layoutType == LayoutType.HUB);
     }
@@ -321,11 +328,13 @@ public class EdgeToEdgeUtils {
     }
 
     /**
-     * @return whether the page is opted into edge-to-edge based on the given Tab
+     * Returns whether the page is opted into bottom edge-to-edge based on the given Tab.
+     *
+     * @param tab The tab to check.
      */
-    public static boolean isPageOptedIntoEdgeToEdge(@Nullable Tab tab) {
+    public static boolean isPageOptedIntoBottomEdgeToEdge(@Nullable Tab tab) {
         if (tab == null || tab.isNativePage()) {
-            return isNativeTabDrawingToEdge(tab);
+            return isNativeTabDrawingToBottomEdge(tab);
         }
         if (sAlwaysDrawWebEdgeToEdgeForTesting || tab.shouldEnableEmbeddedMediaExperience()) {
             return true;
@@ -334,13 +343,16 @@ public class EdgeToEdgeUtils {
     }
 
     /**
-     * @return whether the page is opted into edge-to-edge based on the given Tab and the given new
-     *     viewport-fit value.
+     * Returns whether the page is opted into bottom edge-to-edge based on the given Tab and the
+     * given new viewport-fit value.
+     *
+     * @param tab The tab to check.
+     * @param value The new viewport-fit value of the root frame.
      */
-    static boolean isPageOptedIntoEdgeToEdge(
+    static boolean isPageOptedIntoBottomEdgeToEdge(
             @Nullable Tab tab, @WebContentsObserver.ViewportFitType int value) {
         if (tab == null || tab.isNativePage()) {
-            return isNativeTabDrawingToEdge(tab);
+            return isNativeTabDrawingToBottomEdge(tab);
         }
         if (sAlwaysDrawWebEdgeToEdgeForTesting || tab.shouldEnableEmbeddedMediaExperience()) {
             return true;
@@ -357,13 +369,13 @@ public class EdgeToEdgeUtils {
         return safeAreaInsetsTracker != null && safeAreaInsetsTracker.hasSafeAreaConstraint();
     }
 
-    /** Whether a native tab will be drawn edge to edge. */
-    static boolean isNativeTabDrawingToEdge(@Nullable Tab activeTab) {
+    /** Whether a native tab will be drawn to the bottom edge. */
+    static boolean isNativeTabDrawingToBottomEdge(@Nullable Tab activeTab) {
         // TODO(crbug.com/339025702): Check if we are in tab switcher when activeTab is null.
         if (activeTab == null) return false;
 
         NativePage nativePage = activeTab.getNativePage();
-        return nativePage != null && nativePage.supportsEdgeToEdge();
+        return nativePage != null && nativePage.supportsEdgeToEdgeOnBottom();
     }
 
     /** Whether a native tab will be drawn top edge to edge. */
@@ -502,12 +514,24 @@ public class EdgeToEdgeUtils {
     }
 
     /**
+     * Returns whether top edge-to-edge (edgeless top inset) is supported for the given activity.
+     * Top edge-to-edge is supported on phones and not on tablets or automotive devices.
+     */
+    public static boolean isEdgelessTopInsetSupported(@Nullable Activity activity) {
+        if (activity == null || !isEdgeToEdgeRefactorEnabled()) {
+            return false;
+        }
+        return !DeviceFormFactor.isNonMultiDisplayContextOnTablet(activity)
+                && !DeviceInfo.isAutomotive();
+    }
+
+    /**
      * Returns whether the given Tab supports drawing top edge to edge.
      *
      * @param tab The Tab to check.
      * @return True if the tab is a native page that supports top edge to edge, false otherwise.
      */
-    public static boolean supportsEnableTopEdgeToEdge(@Nullable Tab tab) {
+    public static boolean tabSupportsTopEdgeToEdge(@Nullable Tab tab) {
         // TODO(crbug.com/498302496): Currently top edge-to-edge is only supported on native pages.
         // Support for web pages (e.g. viewport-fit=cover) will be added in future iterations and
         // will check isTopEdgeToEdgeEnabled().

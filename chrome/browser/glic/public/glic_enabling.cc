@@ -777,15 +777,9 @@ bool GlicGlobalEnabling::IsSystemRequirementMet() const {
 #if BUILDFLAG(IS_ANDROID)
     if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
             switches::kTestType)) {
-      ui::DeviceFormFactor form_factor = ui::GetDeviceFormFactor();
-
-      bool form_factor_allowed =
-          form_factor == ui::DEVICE_FORM_FACTOR_PHONE ||
-          form_factor == ui::DEVICE_FORM_FACTOR_FOLDABLE ||
-          form_factor == ui::DEVICE_FORM_FACTOR_DESKTOP ||
-          (form_factor == ui::DEVICE_FORM_FACTOR_TABLET &&
-           base::FeatureList::IsEnabled(features::kGlicAndroidTablet));
-      if (!form_factor_allowed) {
+      if (!IsAndroidFormFactorAllowed(
+              ui::GetDeviceFormFactor(),
+              base::android::device_info::is_foldable())) {
         return false;
       }
     }
@@ -806,6 +800,19 @@ bool GlicGlobalEnabling::IsSystemRequirementMet() const {
 
   return supported_system_requirements;
 }
+
+#if BUILDFLAG(IS_ANDROID)
+// static
+bool GlicGlobalEnabling::IsAndroidFormFactorAllowed(
+    ui::DeviceFormFactor form_factor,
+    bool is_foldable) {
+  return form_factor == ui::DEVICE_FORM_FACTOR_PHONE ||
+         form_factor == ui::DEVICE_FORM_FACTOR_FOLDABLE || is_foldable ||
+         form_factor == ui::DEVICE_FORM_FACTOR_DESKTOP ||
+         (form_factor == ui::DEVICE_FORM_FACTOR_TABLET &&
+          base::FeatureList::IsEnabled(features::kGlicAndroidTablet));
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 bool GlicGlobalEnabling::IsOsVersionSupported() {
 #if BUILDFLAG(IS_ANDROID)

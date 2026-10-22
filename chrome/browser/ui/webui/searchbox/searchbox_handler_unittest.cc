@@ -2104,6 +2104,31 @@ TEST_F(WebuiOmniboxHandlerTest, OpenPopupSelection_CtrlEnterWithNoMatch) {
       std::move(selection), WindowOpenDisposition::CURRENT_TAB);
 }
 
+TEST_F(WebuiOmniboxHandlerTest, OpenPopupSelection_CtrlEnterWithMatch) {
+  page_.FlushForTesting();
+  testing::Mock::VerifyAndClearExpectations(&page_);
+
+  test_omnibox_view_->SetUserText(u"google");
+  omnibox_controller_->edit_model()->StartAutocomplete(false);
+
+  TestOmniboxClient* client =
+      static_cast<TestOmniboxClient*>(omnibox_controller_->client());
+  EXPECT_CALL(*client, OnAutocompleteAccept(GURL("http://www.google.com/"), _,
+                                            WindowOpenDisposition::CURRENT_TAB,
+                                            _, _, _, _, _, _, _, _))
+      .Times(1);
+
+  // When dropdown is showing suggestions, line 0 is selected.
+  auto selection = searchbox::mojom::OmniboxPopupSelection::New();
+  selection->line = 0;
+  selection->state = searchbox::mojom::SelectionLineState::kCtrlEnter;
+  selection->action_index = 0;
+
+  handler_->OpenPopupSelection(
+      omnibox_controller_->autocomplete_controller()->result().sequence_id(),
+      std::move(selection), WindowOpenDisposition::CURRENT_TAB);
+}
+
 TEST_F(WebuiOmniboxHandlerTest, OpenLensSearch) {
   // Set a mock AutocompleteController.
   auto mock_client = std::make_unique<MockAutocompleteProviderClient>();
@@ -2338,6 +2363,127 @@ TEST_F(WebuiOmniboxHandlerTest,
   ASSERT_EQ(1u, received_result->matches.size());
   EXPECT_FALSE(received_result->matches[0]
                    ->show_contextual_description);  // Header not empty -> False
+}
+
+// Verifies that `swap_contents_and_description` is resolved in the handler so
+// that the WebUI always renders `contents` as the primary text.
+TEST_F(WebuiOmniboxHandlerTest, SwapContentsAndDescriptionResolvedInHandler) {
+  page_.FlushForTesting();
+  testing::Mock::VerifyAndClearExpectations(&page_);
+
+  scoped_refptr<FakeAutocompleteProvider> provider =
+      new FakeAutocompleteProvider(AutocompleteProvider::Type::kHistoryQuick);
+
+  AutocompleteMatch swapped_match(
+      provider.get(), 1000, false,
+      omnibox::AutocompleteMatchType::kHistoryUrl);
+  swapped_match.destination_url = GURL("https://example.com/");
+  swapped_match.contents = u"example.com";
+  swapped_match.contents_class = {{0, ACMatchClassification::URL}};
+  swapped_match.description = u"Example Title";
+  swapped_match.description_class = {{0, ACMatchClassification::MATCH}};
+  swapped_match.swap_contents_and_description = true;
+
+  AutocompleteMatch unswapped_match(
+      provider.get(), 900, false,
+      omnibox::AutocompleteMatchType::kHistoryUrl);
+  unswapped_match.destination_url = GURL("https://other.com/");
+  unswapped_match.contents = u"other.com";
+  unswapped_match.contents_class = {{0, ACMatchClassification::URL}};
+  unswapped_match.description = u"Other Title";
+  unswapped_match.description_class = {{0, ACMatchClassification::MATCH}};
+  unswapped_match.swap_contents_and_description = false;
+
+  auto fake_autocomplete_controller =
+      std::make_unique<FakeAutocompleteController>(&task_environment_);
+  fake_autocomplete_controller->providers_.push_back(provider);
+  fake_autocomplete_controller->published_result_.AppendMatches(
+      {swapped_match, unswapped_match});
+
+  handler_->autocomplete_controller_observation_.Reset();
+  handler_->SetAutocompleteControllerForTesting(
+      std::move(fake_autocomplete_controller));
+
+  searchbox::mojom::AutocompleteResultPtr received_result;
+  EXPECT_CALL(page_, AutocompleteResultChanged)
+      .WillOnce(
+          [&received_result](searchbox::mojom::AutocompleteResultPtr result) {
+            received_result = std::move(result);
+          });
+
+  handler_->OnResultChanged(handler_->autocomplete_controller(), false);
+  page_.FlushForTesting();
+
+  ASSERT_TRUE(received_result);
+  ASSERT_EQ(2u, received_result->matches.size());
+
+  // Swapped: the title becomes the primary text, the URL the secondary text,
+  // and classifications travel with their text.
+  const auto& swapped = received_result->matches[0];
+  EXPECT_EQ(u"Example Title", swapped->contents);
+  ASSERT_EQ(1u, swapped->contents_class.size());
+  EXPECT_EQ(ACMatchClassification::MATCH, swapped->contents_class[0]->style);
+  EXPECT_EQ(u"example.com", swapped->description);
+  ASSERT_EQ(1u, swapped->description_class.size());
+  EXPECT_EQ(ACMatchClassification::URL, swapped->description_class[0]->style);
+
+  // Unswapped: passed through unchanged.
+  const auto& unswapped = received_result->matches[1];
+  EXPECT_EQ(u"other.com", unswapped->contents);
+  ASSERT_EQ(1u, unswapped->contents_class.size());
+  EXPECT_EQ(ACMatchClassification::URL, unswapped->contents_class[0]->style);
+  EXPECT_EQ(u"Other Title", unswapped->description);
+  ASSERT_EQ(1u, unswapped->description_class.size());
+  EXPECT_EQ(ACMatchClassification::MATCH,
+            unswapped->description_class[0]->style);
+}
+
+// Verifies that `show_aim_activity_link` is set on the result only when a
+// match belongs to the MIA recommendations group.
+TEST_F(WebuiOmniboxHandlerTest, ShowAimActivityLink) {
+  scoped_refptr<FakeAutocompleteProvider> provider =
+      new FakeAutocompleteProvider(AutocompleteProvider::Type::kSearch);
+
+  auto fake_autocomplete_controller =
+      std::make_unique<FakeAutocompleteController>(&task_environment_);
+  fake_autocomplete_controller->providers_.push_back(provider);
+  auto* controller_ptr = fake_autocomplete_controller.get();
+
+  handler_->autocomplete_controller_observation_.Reset();
+  handler_->SetAutocompleteControllerForTesting(
+      std::move(fake_autocomplete_controller));
+
+  for (const bool has_mia_match : {false, true}) {
+    SCOPED_TRACE(has_mia_match);
+    page_.FlushForTesting();
+    testing::Mock::VerifyAndClearExpectations(&page_);
+
+    AutocompleteMatch match1(provider.get(), 1000, false,
+                             omnibox::AutocompleteMatchType::kSearchSuggest);
+    match1.contents = u"query 1";
+    AutocompleteMatch match2(provider.get(), 900, false,
+                             omnibox::AutocompleteMatchType::kSearchSuggest);
+    match2.contents = u"query 2";
+    if (has_mia_match) {
+      match2.suggestion_group_id = omnibox::GROUP_MIA_RECOMMENDATIONS;
+    }
+
+    controller_ptr->published_result_.Reset();
+    controller_ptr->published_result_.AppendMatches({match1, match2});
+
+    searchbox::mojom::AutocompleteResultPtr received_result;
+    EXPECT_CALL(page_, AutocompleteResultChanged)
+        .WillOnce(
+            [&received_result](searchbox::mojom::AutocompleteResultPtr result) {
+              received_result = std::move(result);
+            });
+
+    handler_->OnResultChanged(handler_->autocomplete_controller(), false);
+    page_.FlushForTesting();
+
+    ASSERT_TRUE(received_result);
+    EXPECT_EQ(has_mia_match, received_result->show_aim_activity_link);
+  }
 }
 
 class WebuiOmniboxHandlerTabScopingTest : public WebuiOmniboxHandlerTest {

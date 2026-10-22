@@ -217,11 +217,7 @@ interface ToolbarUIService {
   OnToolbarDropFile(gfx.mojom.PointF drop_position);
 
   // Shows the avatar menu bubble.
-  ShowAvatarMenu(bool is_pointer_interaction) =>
-      result<mojo_base.mojom.Empty, mojo_base.mojom.Error>;
-
-  // Notifies the browser that a mouse press occurred on the avatar button.
-  OnAvatarButtonMousePressed();
+  ShowAvatarMenu() => result<mojo_base.mojom.Empty, mojo_base.mojom.Error>;
 
   // Notifies the browser of the hover state of the avatar button.
   SetAvatarButtonHovered(bool hovered) =>
@@ -258,10 +254,7 @@ interface ToolbarUIService {
   OnPerformanceInterventionButtonMousePressed();
 
   // Called when the media button is clicked.
-  OnMediaButtonClicked(bool is_mouse_interaction);
-
-  // Called when the media button is pressed (e.g. pointerdown).
-  OnMediaButtonMousePressed();
+  OnMediaButtonClicked();
 
   // Called when the Glic button is clicked to toggle or open the Glic panel.
   OnGlicButtonClicked();

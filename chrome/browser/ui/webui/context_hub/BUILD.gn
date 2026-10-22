@@ -51,6 +51,14 @@ mojom("mojo_bindings") {
           cpp = "::context_hub::AutoTodosGenerationMetadata"
         },
         {
+          mojom = "browser.context_hub.mojom.EntryType"
+          cpp = "::context_hub::MemoryBankType"
+        },
+        {
+          mojom = "browser.context_hub.mojom.MemoryBankEntry"
+          cpp = "::context_hub::MemoryBankEntry"
+        },
+        {
           mojom = "browser.context_hub.mojom.SmartSearchResult"
           cpp = "::personal_context::proto::SmartSearchItem"
         },
@@ -60,6 +68,7 @@ mojom("mojo_bindings") {
       traits_deps = [
         "//base",
         "//chrome/browser/context_hub/auto_todos",
+        "//chrome/browser/context_hub/memory_bank",
         "//components/personal_context/proto:personal_context_proto",
         "//mojo/public/mojom/base",
         "//third_party/abseil-cpp:absl",
@@ -141,6 +150,8 @@ source_set("context_hub") {
 
   if (!is_android) {
     deps += [
+      "//chrome/browser/glic",
+      "//chrome/browser/glic/actor",
       "//chrome/browser/ui/webui:favicon_source",
       "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
     ]
@@ -159,6 +170,7 @@ source_set("unit_tests") {
     "//chrome/browser/personal_context",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//components/history/core/browser",
     "//components/history/core/test",
     "//components/personal_context/core:test_support",

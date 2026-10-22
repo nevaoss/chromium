@@ -101,6 +101,7 @@ struct AccessibilityTextRunInfo {
   AccessibilityTextDirection direction = AccessibilityTextDirection::kNone;
   AccessibilityTextStyleInfo style;
   bool is_searchified = false;
+  std::string language;
 };
 
 struct AccessibilityImageInfo {
@@ -175,6 +176,7 @@ struct AccessibilityDocInfo {
   std::unique_ptr<AccessibilityStructureElement> structure_tree_root;
   bool text_accessible = false;
   bool text_copyable = false;
+  std::string language;
 };
 
 struct AccessibilityPageInfo {

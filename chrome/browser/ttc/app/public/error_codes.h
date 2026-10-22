@@ -5,6 +5,8 @@
 #ifndef CHROME_BROWSER_TTC_APP_PUBLIC_ERROR_CODES_H_
 #define CHROME_BROWSER_TTC_APP_PUBLIC_ERROR_CODES_H_
 
+#include <iosfwd>
+
 namespace ttc {
 
 enum class ErrorCode {
@@ -25,8 +27,19 @@ enum class ErrorCode {
   kOptimizationGuideUnavailable = 1001,
 
   // Encountered a failure when trying to create a RemoteModelExecutionSession.
-  kExecutionSessionCreationFailed = 1002
+  kExecutionSessionCreationFailed = 1002,
+
+  // No usable microphone was detected.
+  kAudioNoMicrophoneDetected = 1003,
+
+  // The microphone is already in use by another application.
+  kAudioMicrophoneInUse = 1004,
+
+  // Audio capture encountered an unknown error.
+  kAudioUnknownError = 1005,
 };
+
+std::ostream& operator<<(std::ostream& os, ErrorCode error);
 
 }  // namespace ttc
 

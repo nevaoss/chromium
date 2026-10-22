@@ -64,6 +64,7 @@
 #include "chrome/browser/ash/bluetooth/bluetooth_log_controller.h"
 #include "chrome/browser/ash/boot_times_recorder/boot_times_recorder.h"
 #include "chrome/browser/ash/browser_delegate/browser_controller_impl.h"
+#include "chrome/browser/ash/browser_delegate/keyed_service_provider/bookmark_model_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/consent_auditor_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/desk_sync_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/favicon_service_provider_impl.h"
@@ -242,7 +243,6 @@
 #include "chromeos/ash/components/network/network_cert_loader.h"
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/network/system_token_cert_db_storage.h"
-#include "chromeos/ash/components/network/traffic_counters_handler.h"
 #include "chromeos/ash/components/pcie_peripheral/ash_usb_detector.h"
 #include "chromeos/ash/components/peripheral_notification/peripheral_notification_manager.h"
 #include "chromeos/ash/components/policy/device_local_account/device_local_account_type.h"
@@ -968,6 +968,7 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
 
   // List of instances providing KeyedService related services.
   app_service_registry_ = std::make_unique<apps::AppServiceRegistry>();
+  bookmark_model_provider_ = std::make_unique<BookmarkModelProviderImpl>();
   consent_auditor_provider_ = std::make_unique<ConsentAuditorProviderImpl>();
   desk_sync_service_provider_ = std::make_unique<DeskSyncServiceProviderImpl>();
   favicon_service_provider_ = std::make_unique<FaviconServiceProviderImpl>();
@@ -1368,11 +1369,6 @@ void ChromeBrowserMainPartsAsh::PostProfileInit(Profile* profile,
     // Create the service connection to CrosHealthd platform service instance.
     cros_healthd::ServiceConnection::GetInstance();
 
-    // Initialize the TrafficCountersHandler instance.
-    if (features::IsTrafficCountersEnabled()) {
-      traffic_counters::TrafficCountersHandler::Initialize();
-    }
-
     // Initialize input methods.
     input_method::InputMethodManager* manager =
         input_method::InputMethodManager::Get();
@@ -1720,9 +1716,6 @@ void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
   login_screen_extensions_storage_cleaner_.reset();
   debugd_notification_handler_.reset();
   shortcut_mapping_pref_service_.reset();
-  if (features::IsTrafficCountersEnabled()) {
-    traffic_counters::TrafficCountersHandler::Shutdown();
-  }
   bluetooth_pref_state_observer_.reset();
   auth_events_recorder_.reset();
 
@@ -1901,6 +1894,7 @@ void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
   favicon_service_provider_.reset();
   desk_sync_service_provider_.reset();
   consent_auditor_provider_.reset();
+  bookmark_model_provider_.reset();
   app_service_registry_.reset();
   services_customization_document_.reset();
   user_session_manager_.reset();

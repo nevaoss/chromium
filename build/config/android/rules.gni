@@ -1724,6 +1724,7 @@ if (!is_robolectric && enable_java_templates) {
   #   jar_included_patterns: List of globs for paths to include (optional).
   #   resource_excluded_patterns: Resource path glob list to exclude (optional)
   #   resource_included_patterns: Resource path glob list to include (optional)
+  #   proguard_excluded_patterns: Proguard config glob list to exclude (optional)
   #
   # Example
   #   dist_aar("my_aar") {
@@ -1830,6 +1831,11 @@ if (!is_robolectric && enable_java_templates) {
       if (defined(invoker.resource_excluded_patterns)) {
         args += [
           "--resource-excluded-globs=${invoker.resource_excluded_patterns}",
+        ]
+      }
+      if (defined(invoker.proguard_excluded_patterns)) {
+        args += [
+          "--proguard-excluded-globs=${invoker.proguard_excluded_patterns}",
         ]
       }
     }
@@ -2027,11 +2033,6 @@ if (!is_robolectric && enable_java_templates) {
         defines += [ "_VERSION_CODE=$android_default_version_code" ]
       }
 
-      if (defined(invoker.resources_version_variable)) {
-        defines += [
-          "_RESOURCES_VERSION_VARIABLE=${invoker.resources_version_variable}",
-        ]
-      }
       if (defined(invoker.apk_assets_suffixed_list)) {
         defines += [
           "_APK_ASSETS_SUFFIXED_LIST=${invoker.apk_assets_suffixed_list}",
@@ -2722,11 +2723,6 @@ if (!is_robolectric && enable_java_templates) {
         min_sdk_version = _min_sdk_version
         write_clang_profiling_data =
             use_clang_coverage && _generate_native_libraries_java
-        if (defined(invoker.build_config_include_product_version_resource) &&
-            invoker.build_config_include_product_version_resource) {
-          resources_version_variable =
-              "org.chromium.base.R.string.product_version"
-        }
         if (defined(invoker.suffix_apk_assets_used_by)) {
           deps = [ ":$_build_config_target" ]
           inputs = [ _build_config ]
@@ -3381,7 +3377,6 @@ if (!is_robolectric && enable_java_templates) {
             "assert_no_deps",
             "assert_no_native_deps",
             "asset_deps",
-            "build_config_include_product_version_resource",
             "bundles_supported",
             "bytecode_rewriter_target",
             "chromium_code",
@@ -3534,7 +3529,6 @@ if (!is_robolectric && enable_java_templates) {
             "assert_no_native_deps",
             "asset_deps",
             "base_module_target",
-            "build_config_include_product_version_resource",
             "bundle_target",
             "chromium_code",
             "custom_assertion_handler",

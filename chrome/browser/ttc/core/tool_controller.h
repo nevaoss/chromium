@@ -19,6 +19,7 @@
 #include "chrome/browser/ttc/app/public/tool_types.h"
 #include "components/tabs/public/tab_interface.h"
 
+class BrowserWindowInterface;
 class Profile;
 
 namespace actor {
@@ -28,7 +29,10 @@ class ToolRequest;
 namespace ttc {
 
 class SessionControllerImpl;
+class SessionJournal;
 
+// Executes the session's tool calls in an actor task. The task is started on
+// construction and stopped on destruction.
 class ToolController {
  public:
   explicit ToolController(SessionControllerImpl& session_controller);
@@ -40,6 +44,10 @@ class ToolController {
   // Returns the definitions of the tools this controller can execute, for
   // registration with the model backend.
   std::vector<ToolDefinition> GetToolDefinitions();
+
+  // Returns the session's journal, which records events under the current
+  // actor task.
+  SessionJournal& journal() { return *journal_; }
 
  private:
   Profile* GetProfile();
@@ -65,18 +73,36 @@ class ToolController {
   void PauseVideo(ToolResponseCallback callback);
   void SeekToTimestamp(const base::DictValue& arguments,
                        ToolResponseCallback callback);
+  void TranslatePage(const base::DictValue& arguments,
+                     ToolResponseCallback callback);
+  void SetFullscreen(const base::DictValue& arguments,
+                     ToolResponseCallback callback);
+
+  // Returns the browser window the session is acting on, or null if there
+  // isn't one.
+  BrowserWindowInterface* GetActiveBrowser();
 
   // Runs the tool request returned by `create_action` against the session's
   // active tab, replying to `callback` with the result. Replies with an error
-  // if there's no window or tab to act on, or if the actor service is
-  // unavailable, in which case `create_action` isn't invoked.
+  // if there's no window or tab to act on, in which case `create_action` isn't
+  // invoked.
   void PerformActionOnActiveTab(
       base::FunctionRef<std::unique_ptr<actor::ToolRequest>(tabs::TabHandle)>
           create_action,
       ToolResponseCallback callback);
 
+  // Like PerformActionOnActiveTab(), but for tool requests that target the
+  // session's active browser window rather than a tab.
+  void PerformActionOnActiveWindow(
+      base::FunctionRef<std::unique_ptr<actor::ToolRequest>(
+          BrowserWindowInterface&)> create_action,
+      ToolResponseCallback callback);
+
+  // Runs `action` in the actor task, creating the task if needed, and replies
+  // to `callback` with the result.
   void PerformAction(std::unique_ptr<actor::ToolRequest> action,
                      ToolResponseCallback callback);
+
   void OnActionsFinished(
       ToolResponseCallback callback,
       std::vector<actor::ActionResultWithLatencyInfo> results,
@@ -86,7 +112,14 @@ class ToolController {
   // Owns this object.
   const raw_ref<SessionControllerImpl> session_controller_;
 
+  // The task can be stopped outside of this class, e.g. when the user closes a
+  // tab it acted on (see EnsureTaskCreated()), in which case it's replaced by a
+  // new one.
   actor::TaskId task_id_;
+  // Journals the session's events under `task_id_`, following it if the task is
+  // replaced. Created in the constructor, so never null.
+  std::unique_ptr<SessionJournal> journal_;
+
   base::WeakPtrFactory<ToolController> weak_factory_{this};
 };
 

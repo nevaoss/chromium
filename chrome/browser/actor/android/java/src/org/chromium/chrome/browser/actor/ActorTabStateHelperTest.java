@@ -32,6 +32,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
 import org.robolectric.Shadows;
 
 import org.chromium.base.Callback;
@@ -66,6 +67,8 @@ import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
+import org.chromium.chrome.test.util.browser.tabmodel.MockTabModel;
+import org.chromium.chrome.test.util.browser.tabmodel.MockTabModelSelector;
 import org.chromium.components.tab_group_sync.LocalTabGroupId;
 import org.chromium.components.tab_group_sync.SavedTabGroup;
 import org.chromium.components.tab_group_sync.SavedTabGroupTab;
@@ -80,7 +83,6 @@ import java.util.List;
 
 /** Unit tests for {@link ActorTabStateHelper}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class ActorTabStateHelperTest {
     private static final int TAB_ID = 100;
     private static final boolean IS_PINNED = false;
@@ -98,13 +100,15 @@ public class ActorTabStateHelperTest {
     @Mock private Callback<Tab> mOnTabDetaching;
     @Mock private Callback<Tab> mOnTabSelected;
     @Mock private LayoutManager mLayoutManager;
-    @Mock private Activity mActivity;
     @Mock private ProfileProvider mProfileProvider;
     @Mock private GlicKeyedService mGlicKeyedService;
     @Captor private ArgumentCaptor<TabModelObserver> mTabModelObserverCaptor;
 
+    private Activity mActivity;
+
     @Before
     public void setUp() {
+        mActivity = Robolectric.buildActivity(Activity.class).get();
         ActorKeyedServiceFactory.setForTesting(mActorKeyedService);
         when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
         when(mTabModelSelector.getCurrentTabModelSupplier())
@@ -376,6 +380,73 @@ public class ActorTabStateHelperTest {
                         eq(mTab),
                         eq(1),
                         eq(TabGroupMergeNotificationType.DONT_NOTIFY));
+    }
+
+    @Test
+    public void testCreateAndInsertPlaceholder_IndexPositioningWithMockTabModelSelector() {
+        MockTabModelSelector selector =
+                new MockTabModelSelector(
+                        mProfile,
+                        mProfile,
+                        /* tabCount= */ 0,
+                        /* incognitoTabCount= */ 0,
+                        /* delegate= */ null);
+        MockTabModel mockModel = (MockTabModel) selector.getModel(false);
+        mockModel.setTabCreatorForTesting(mTabCreator);
+        mockModel.setTabRemoverForTesting(mTabRemover);
+
+        Tab tab0 = mock(Tab.class);
+        when(tab0.getId()).thenReturn(200);
+        when(tab0.getIsPinned()).thenReturn(false);
+
+        Tab tab1 = mock(Tab.class);
+        when(tab1.getId()).thenReturn(201);
+        when(tab1.getIsPinned()).thenReturn(false);
+
+        Tab tab2 = mock(Tab.class);
+        when(tab2.getId()).thenReturn(202);
+        when(tab2.getIsPinned()).thenReturn(false);
+
+        mockModel.addTab(
+                tab0, 0, TabLaunchType.FROM_CHROME_UI, TabCreationState.LIVE_IN_FOREGROUND);
+        mockModel.addTab(
+                tab1, 1, TabLaunchType.FROM_CHROME_UI, TabCreationState.LIVE_IN_FOREGROUND);
+        mockModel.addTab(
+                tab2, 2, TabLaunchType.FROM_CHROME_UI, TabCreationState.LIVE_IN_FOREGROUND);
+
+        assertEquals(3, mockModel.getCount());
+        assertEquals(0, mockModel.indexOf(tab0));
+        assertEquals(1, mockModel.indexOf(tab1));
+        assertEquals(2, mockModel.indexOf(tab2));
+
+        TabState tab1State = new TabState();
+        TabStateExtractor.setTabStateForTesting(201, tab1State);
+
+        Tab placeholder = mock(Tab.class);
+        when(placeholder.getId()).thenReturn(300);
+
+        when(mTabCreator.createFrozenTab(eq(tab1State), anyInt(), eq(2)))
+                .thenAnswer(
+                        invocation -> {
+                            int targetIndex = invocation.getArgument(2);
+                            mockModel.addTab(
+                                    placeholder,
+                                    targetIndex,
+                                    TabLaunchType.FROM_RESTORE,
+                                    TabCreationState.FROZEN_ON_RESTORE);
+                            return placeholder;
+                        });
+
+        Tab result = ActorTabStateHelper.createAndInsertPlaceholder(tab1, mockModel);
+
+        assertEquals(placeholder, result);
+        assertEquals(4, mockModel.getCount());
+        assertEquals(tab0, mockModel.getTabAt(0));
+        assertEquals(tab1, mockModel.getTabAt(1));
+        assertEquals(placeholder, mockModel.getTabAt(2));
+        assertEquals(tab2, mockModel.getTabAt(3));
+        assertEquals(2, mockModel.indexOf(placeholder));
+        assertEquals(3, mockModel.indexOf(tab2));
     }
 
     @Test
@@ -704,8 +775,6 @@ public class ActorTabStateHelperTest {
         when(mProfileProvider.getOriginalProfile()).thenReturn(mProfile);
         when(mTab.isIncognito()).thenReturn(false);
         when(mTab.isDestroyed()).thenReturn(false);
-        when(mActivity.isFinishing()).thenReturn(false);
-        when(mActivity.isDestroyed()).thenReturn(false);
 
         OneshotSupplierImpl<ProfileProvider> supplier = new OneshotSupplierImpl<>();
         supplier.set(mProfileProvider);
@@ -741,8 +810,6 @@ public class ActorTabStateHelperTest {
         when(regularTab.isIncognito()).thenReturn(false);
         when(regularTab.isDestroyed()).thenReturn(false);
         when(mTabModelSelector.getCurrentTab()).thenReturn(regularTab);
-        when(mActivity.isFinishing()).thenReturn(false);
-        when(mActivity.isDestroyed()).thenReturn(false);
 
         OneshotSupplierImpl<ProfileProvider> supplier = new OneshotSupplierImpl<>();
         supplier.set(mProfileProvider);
@@ -764,7 +831,7 @@ public class ActorTabStateHelperTest {
         when(mProfileProvider.getOriginalProfile()).thenReturn(mProfile);
         when(mTab.isIncognito()).thenReturn(false);
         when(mTab.isDestroyed()).thenReturn(false);
-        when(mActivity.isFinishing()).thenReturn(true);
+        mActivity.finish();
 
         OneshotSupplierImpl<ProfileProvider> supplier = new OneshotSupplierImpl<>();
         supplier.set(mProfileProvider);
@@ -781,8 +848,6 @@ public class ActorTabStateHelperTest {
         when(mProfileProvider.getOriginalProfile()).thenReturn(mProfile);
         when(mTab.isIncognito()).thenReturn(false);
         when(mTab.isDestroyed()).thenReturn(true);
-        when(mActivity.isFinishing()).thenReturn(false);
-        when(mActivity.isDestroyed()).thenReturn(false);
 
         OneshotSupplierImpl<ProfileProvider> supplier = new OneshotSupplierImpl<>();
         supplier.set(mProfileProvider);

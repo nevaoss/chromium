@@ -418,7 +418,7 @@ public class TabListMediator implements TabListNotificationHandler {
                     if (!mTrackingTabs) return;
                     Tab tab = getCurrentTabModelChecked().getTabById(state.tabId);
                     if (tab != null) {
-                        mTabListLayoutDelegate.onUiTabStateChanged(tab, state);
+                        mTabListLayoutDelegate.onUiTabStateChanged(tab);
                     }
                 }
             };
@@ -513,7 +513,7 @@ public class TabListMediator implements TabListNotificationHandler {
                     assumeNonNull(mTabGroupSyncService);
                     SavedTabGroup tabGroup = mTabGroupSyncService.getGroup(syncId);
                     if (tabGroup != null) {
-                        updateThumbnailFetcher(model, tabGroup);
+                        updateThumbnailFetcherForSavedTabGroup(model, tabGroup);
                     }
                 }
             };
@@ -1054,7 +1054,7 @@ public class TabListMediator implements TabListNotificationHandler {
         } else if (componentId == TabComponentId.VERTICAL_TABS) {
             from = TabClosedFrom.VERTICAL_TABS;
         } else {
-            Log.w(TAG, "Attempting to close tab from Unknown UI: " + componentId);
+            Log.w(TAG, "Attempting to close tab from Unknown UI: %s", componentId);
             return;
         }
         mTabClosedFrom.put(tabId, from);
@@ -1067,7 +1067,7 @@ public class TabListMediator implements TabListNotificationHandler {
         } else if (mComponentId == TabComponentId.VERTICAL_TABS) {
             from = TabClosedFrom.VERTICAL_TABS_GROUP;
         } else {
-            Log.w(TAG, "Attempting to close tab group from Unknown UI: " + mComponentId);
+            Log.w(TAG, "Attempting to close tab group from Unknown UI: %s", mComponentId);
             return;
         }
         mTabClosedFrom.put(tabId, from);
@@ -1285,8 +1285,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
         updateFaviconForTab(model, tab, null, null);
 
-        ActorUiTabController controller = ActorUiTabController.from(tab);
-        updateActorUiState(model, controller == null ? null : controller.getUiTabState());
+        updateActorUiState(model, tab);
 
         boolean forceUpdate = model.get(TabProperties.IS_SELECTED) && !quickMode;
         boolean forceUpdateLastSelected =
@@ -1306,13 +1305,16 @@ public class TabListMediator implements TabListNotificationHandler {
         }
     }
 
-    void updateActorUiState(PropertyModel model, @Nullable UiTabState state) {
-        boolean isTabGroupCard = TabProperties.isTabGroupHeader(model);
+    void updateActorUiState(PropertyModel model, Tab tab) {
+        if (TabProperties.isTabGroupHeader(model) || tab.isNativePage()) {
+            model.set(TabProperties.ACTOR_UI_STATE, null);
+            return;
+        }
+        ActorUiTabController controller = ActorUiTabController.from(tab);
+        UiTabState state = controller == null ? null : controller.getUiTabState();
         model.set(
                 TabProperties.ACTOR_UI_STATE,
-                (isTabGroupCard || state == null || state.tabIndicator == TabIndicatorStatus.NONE)
-                        ? null
-                        : state);
+                (state == null || state.tabIndicator == TabIndicatorStatus.NONE) ? null : state);
     }
 
     boolean isTabInTabGroup(Tab tab) {
@@ -1782,8 +1784,7 @@ public class TabListMediator implements TabListNotificationHandler {
                         .with(TabProperties.SHOW_THUMBNAIL_SPINNER, false)
                         .build();
 
-        ActorUiTabController controller = ActorUiTabController.from(tab);
-        updateActorUiState(tabInfo, controller == null ? null : controller.getUiTabState());
+        updateActorUiState(tabInfo, tab);
 
         if (mRailCollapseStateSupplier != null) {
             tabInfo.set(TabProperties.RAIL_COLLAPSE_STATE, mRailCollapseStateSupplier.get());
@@ -1935,7 +1936,7 @@ public class TabListMediator implements TabListNotificationHandler {
                 TabProperties.GRID_CARD_SIZE,
                 new Size(mDefaultGridCardSize.getWidth(), mDefaultGridCardSize.getHeight()));
 
-        updateThumbnailFetcher(tabGroupInfo, savedTabGroup);
+        updateThumbnailFetcherForSavedTabGroup(tabGroupInfo, savedTabGroup);
     }
 
     /**
@@ -2534,7 +2535,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
             PropertyModel model = getModelFromTabId(tab.getId());
             if (model != null) {
-                updateActorUiState(model, controller.getUiTabState());
+                updateActorUiState(model, tab);
             }
         }
 
@@ -3054,28 +3055,25 @@ public class TabListMediator implements TabListNotificationHandler {
     void updateThumbnailFetcher(PropertyModel model, int tabId) {
         if (mThumbnailProvider == null) return;
 
-        @Nullable ThumbnailFetcher oldFetcher = model.get(THUMBNAIL_FETCHER);
+        ThumbnailFetcher oldFetcher = model.get(THUMBNAIL_FETCHER);
         if (oldFetcher != null) oldFetcher.cancel();
 
-        @Nullable ThumbnailFetcher newFetcher = null;
+        ThumbnailFetcher newFetcher = null;
         if (tabId != Tab.INVALID_TAB_ID) {
             TabModel tabModel = getCurrentTabModelChecked();
-            Tab tab = tabModel.getTabById(tabId);
-            if (tab == null) return;
+            if (tabModel.getTabById(tabId) == null) return;
 
-            Token tabGroupId = tab.getTabGroupId();
-            boolean isInTabGroup = tabModel.tabGroupExists(tabGroupId);
-            @TabGroupColorId
-            Integer tabGroupColor =
-                    isInTabGroup
-                            ? tabModel.getTabGroupColorWithFallback(assumeNonNull(tabGroupId))
-                            : null;
-
-            List<Integer> actingTabIds = Collections.emptyList();
-            if (TabProperties.isTabGroupHeader(model) && isInTabGroup) {
-                actingTabIds = new ArrayList<>();
+            MultiThumbnailMetadata metadata;
+            Token tabGroupId = model.get(TabProperties.TAB_GROUP_HEADER_ID);
+            if (tabGroupId != null && tabModel.tabGroupExists(tabGroupId)) {
+                @TabGroupColorId
+                int tabGroupColor = tabModel.getTabGroupColorWithFallback(tabGroupId);
+                List<Integer> actingTabIds = new ArrayList<>();
                 // Group headers display active indicators for all member tabs.
-                for (Tab groupTab : tabModel.getTabsInGroup(assumeNonNull(tabGroupId))) {
+                for (Tab groupTab : tabModel.getTabsInGroup(tabGroupId)) {
+                    if (groupTab.isClosing() || groupTab.isDestroyed() || groupTab.isNativePage()) {
+                        continue;
+                    }
                     ActorUiTabController controller = ActorUiTabController.from(groupTab);
                     if (controller != null) {
                         UiTabState state = controller.getUiTabState();
@@ -3084,22 +3082,22 @@ public class TabListMediator implements TabListNotificationHandler {
                         }
                     }
                 }
+                metadata =
+                        MultiThumbnailMetadata.createMetadataForTabGroup(
+                                tabGroupId,
+                                tabModel.isIncognitoBranded(),
+                                tabGroupColor,
+                                actingTabIds);
+            } else {
+                metadata = MultiThumbnailMetadata.createMetadataForSingleTab(tabId);
             }
-
-            newFetcher =
-                    new ThumbnailFetcher(
-                            mThumbnailProvider,
-                            MultiThumbnailMetadata.createMetadataWithActingTabs(
-                                    tabId,
-                                    isInTabGroup,
-                                    tabModel.isIncognitoBranded(),
-                                    tabGroupColor,
-                                    actingTabIds));
+            newFetcher = new ThumbnailFetcher(mThumbnailProvider, metadata);
         }
         model.set(THUMBNAIL_FETCHER, newFetcher);
     }
 
-    private void updateThumbnailFetcher(PropertyModel model, SavedTabGroup savedTabGroup) {
+    private void updateThumbnailFetcherForSavedTabGroup(
+            PropertyModel model, SavedTabGroup savedTabGroup) {
         if (mThumbnailProvider == null) return;
 
         ThumbnailFetcher oldFetcher = model.get(THUMBNAIL_FETCHER);
@@ -3114,12 +3112,8 @@ public class TabListMediator implements TabListNotificationHandler {
         ThumbnailFetcher newFetcher =
                 new ThumbnailFetcher(
                         mThumbnailProvider,
-                        MultiThumbnailMetadata.createMetadataWithUrls(
-                                Tab.INVALID_TAB_ID,
-                                urlList,
-                                /* isInTabGroup= */ true,
-                                isIncognito,
-                                savedTabGroup.color));
+                        MultiThumbnailMetadata.createMetadataForSavedTabGroup(
+                                urlList, isIncognito, savedTabGroup.color));
         model.set(THUMBNAIL_FETCHER, newFetcher);
     }
 

@@ -1514,6 +1514,9 @@
                   'ios/chrome/browser/experimental_flags\.(h|mm)|'\
                   'ios/chrome/browser/resources/Settings.bundle/Experimental\.plist',
     },
+    'ios_intelligence': {
+      'filepath': 'ios/chrome/browser/intelligence/'
+    },
     'ios_intelligence_actor': {
       'filepath': 'ios/chrome/browser/intelligence/actor(?!/tools)'
     },
@@ -1548,6 +1551,14 @@
     },
     'ios_web_view': {
       'filepath': 'ios/web_view/',
+    },
+    'ios_webauthn': {
+      'filepath': 'components/webauthn/ios/|'\
+                  'ios/chrome/browser/credential_exchange/|'\
+                  'ios/chrome/browser/credential_provider|'\
+                  'ios/chrome/browser/webauthn/|'\
+                  'ios/chrome/common/credential_provider/|'\
+                  'ios/chrome/credential_provider_extension/',
     },
     'ios_widget_kit': {
       'filepath': 'ios/chrome/common/widget_kit|'\
@@ -2075,6 +2086,9 @@
     },
     'runtime_enabled_features': {
       'filepath' : 'third_party/blink/renderer/platform/runtime_enabled_features.json5'
+    },
+    'rust': {
+      'filepath' : 'tools/rust/'
     },
     'safe_browsing': {
       'filepath': 'chrome/(browser|common|renderer)/safe_browsing/|'\
@@ -2816,7 +2830,6 @@
     'blink_permissions': ['permissions-reviews@chromium.org'],
     'blink_platform': ['kinuko+watch@chromium.org'],
     'blink_platform_graphics': ['blink-reviews-platform-graphics@chromium.org',
-                                'drott+blinkwatch@chromium.org',
                                 'dschulze@chromium.org',
                                 'fmalita+watch@chromium.org',
                                 'fserb+watch@chromium.org',
@@ -3091,8 +3104,7 @@
     'firmware_update': ['jimmyxgong+firmware-watch@chromium.org',
                         'michaelcheco+firmware-watch@google.com'],
     'float': ['toshikikikuchi+watch-float@chromium.org'],
-    'freetype_update': ['drott+watch@chromium.org',
-                        'thestig@chromium.org'],
+    'freetype_update': ['thestig@chromium.org'],
     'fsp': ['mtomasz+watch@chromium.org'],
     'fuchsia': ['fuchsia-reviews@chromium.org',
                 'zijiehe@google.com'],
@@ -3155,6 +3167,7 @@
     'ios_credential_provider': ['rkgibson+watch@chromium.org'],
     'ios_enterprise': ['eic+watch@google.com'],
     'ios_flags': ['noyau+watch@chromium.org'],
+    'ios_intelligence': ['adamta+watch@google.com'],
     'ios_intelligence_actor': ['ios-actor-watchlist@google.com'],
     'ios_intelligence_actor_tools': ['bling-ai-foundations-reviews-external@google.com'],
     'ios_ntp': ['thegreenfrog+watch@chromium.org'],
@@ -3162,6 +3175,7 @@
     'ios_transactions': ['tmartino+transactions-watch@chromium.org'],
     'ios_web': ['ios-reviews+web@chromium.org'],
     'ios_web_view': ['ios-web-view-eng+reviews@google.com'],
+    'ios_webauthn': ['rgod+watch@google.com'],
     'ios_widget_kit': ['rkgibson+watch@chromium.org'],
     'ipcz': ['andreaorru+watch@chromium.org'],
     'isolated_web_apps_apis': ['greengrape@google.com',
@@ -3342,6 +3356,7 @@
     'rlz_id': ['gab+watch@chromium.org',
                'robertshield+watch@chromium.org'],
     'runtime_enabled_features': ['jmedley+watch@chromium.org'],
+    'rust': ['hans@chromium.org'],
       'safe_browsing': ['nwokedi+watch@chromium.org',
                       'vakh+safe_browsing_watch@chromium.org',
                       'xinghuilu+watch@chromium.org',

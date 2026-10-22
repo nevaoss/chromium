@@ -29,6 +29,9 @@
 
 namespace {
 constexpr CGFloat kContainedLayoutTabStripTopMargin = 4.0;
+// Minimum top margin between the TabStrip and the top of the screen when there
+// is no safe area top inset (e.g. unfolded Duo on iOS 27.0).
+constexpr CGFloat kNoSafeAreaTabStripTopMargin = 16.0;
 }  // namespace
 
 @interface BrowserLayoutViewController () <SceneLayoutStateObserver>
@@ -125,8 +128,7 @@ constexpr CGFloat kContainedLayoutTabStripTopMargin = 4.0;
   // `browserViewController`. If this happens during startup, it may be the BVC
   // adding launch screen as a child VC of this VC (BVC's parent).
   // TODO:(crbug.com/472278494): This fires frequently in stable.
-  CHECK_EQ(_browserViewController, browserViewController,
-           base::NotFatalUntil::M150);
+  CHECK_EQ(_browserViewController, browserViewController);
 
   [self updateCurrentBVCLayoutInsetsWithTopInset:[self topInset]];
 }
@@ -385,8 +387,12 @@ constexpr CGFloat kContainedLayoutTabStripTopMargin = 4.0;
 - (CGFloat)topInsetForContainedLayout:(BOOL)containedLayout {
   CGFloat topInset = containedLayout ? self.view.safeAreaInsets.top
                                      : self.safeAreaProvider.safeArea.top;
-  if (CanShowTabStrip(self) && containedLayout) {
-    topInset += kContainedLayoutTabStripTopMargin;
+  if (CanShowTabStrip(self)) {
+    if (containedLayout) {
+      topInset += kContainedLayoutTabStripTopMargin;
+    } else if (topInset == 0) {
+      topInset = kNoSafeAreaTabStripTopMargin;
+    }
   }
   return topInset;
 }

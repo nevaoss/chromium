@@ -13,6 +13,7 @@ import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.intent.Intents.intended;
+import static androidx.test.espresso.intent.Intents.intending;
 import static androidx.test.espresso.intent.matcher.BundleMatchers.hasEntry;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasAction;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasExtras;
@@ -67,6 +68,8 @@ import static org.chromium.chrome.browser.tasks.tab_management.TabUiTestHelper.w
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 import static org.chromium.ui.test.util.ViewUtils.waitForVisibleView;
 
+import android.app.Activity;
+import android.app.Instrumentation.ActivityResult;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -184,6 +187,7 @@ import java.util.concurrent.TimeoutException;
 })
 @Batch(Batch.PER_CLASS)
 @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/394671175
+@DisableIf.Build(sdk_equals = Build.VERSION_CODES.S, message = "https://crbug.com/568493482")
 public class TabGridDialogTest {
     private static final String CUSTOMIZED_TITLE1 = "wfh tips";
     private static final String CUSTOMIZED_TITLE2 = "wfh funs";
@@ -242,6 +246,11 @@ public class TabGridDialogTest {
     @Before
     public void setUp() {
         Intents.init();
+        // Keep ACTION_CHOOSER from launching the real system share sheet, which would background
+        // Chrome and leave the rest of the test (and tearDown) running against a non-resumed
+        // Activity. Tests still verify the Intent with intended().
+        intending(hasAction(Intent.ACTION_CHOOSER))
+                .respondWith(new ActivityResult(Activity.RESULT_OK, null));
         // Some of the tests may finish the activity using moveTaskToBack.
         ChromeTabbedActivity.interceptMoveTaskToBackForTesting();
         mPage = mActivityTestRule.startOnBlankPage();
@@ -1254,6 +1263,7 @@ public class TabGridDialogTest {
 
     @Test
     @MediumTest
+    @DisableIf.Device(DeviceFormFactor.PHONE) // https://crbug.com/568493482
     public void testTabGroupNaming() throws ExecutionException {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         createTabs(cta, false, 2);
@@ -1294,6 +1304,7 @@ public class TabGridDialogTest {
     @Test
     @MediumTest
     @RequiresRestart("Group creation modal dialog is sometimes persistent when dismissing")
+    @DisableIf.Device(DeviceFormFactor.PHONE) // https://crbug.com/568493482
     public void testTabGroupNaming_KeyboardVisibility() throws ExecutionException {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         createTabs(cta, false, 2);
@@ -1433,6 +1444,7 @@ public class TabGridDialogTest {
     @DisableFeatures({DATA_SHARING, DATA_SHARING_JOIN_ONLY}) // Needs new goldens post-launch.
     @RequiresRestart("Group creation modal dialog is sometimes persistent when dismissing")
     @ParameterAnnotations.UseMethodParameter(NightModeTestUtils.NightModeParams.class)
+    @DisableIf.Device(DeviceFormFactor.PHONE) // https://crbug.com/568493482
     public void testRenderDialog_3Tabs_Landscape_NewAspectRatio(boolean nightModeEnabled)
             throws Exception {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();

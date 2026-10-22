@@ -60,6 +60,7 @@
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -87,6 +88,35 @@
 #endif
 
 namespace glic {
+
+namespace {
+
+[[nodiscard]] TestResult<> WaitForWebContentsSizeToMatchPanel(
+    GlicInstanceImpl* instance) {
+  if (!instance) {
+    return base::unexpected("GlicInstance is null");
+  }
+  bool success = base::test::RunUntil([&]() {
+    auto* wc = instance->host().webui_contents();
+    return wc && wc->GetRenderWidgetHostView() &&
+           !instance->GetPanelSize().IsEmpty() &&
+           wc->GetRenderWidgetHostView()->GetVisibleViewportSize() ==
+               instance->GetPanelSize();
+  });
+  if (!success) {
+    std::stringstream ss;
+    auto* wc = instance->host().webui_contents();
+    auto* rwhv = wc ? wc->GetRenderWidgetHostView() : nullptr;
+    ss << "Timed out waiting for WebContents size to match panel size. "
+       << "Panel size: " << instance->GetPanelSize().ToString()
+       << ", Viewport size: "
+       << (rwhv ? rwhv->GetVisibleViewportSize().ToString() : "null RWHV");
+    return base::unexpected(ss.str());
+  }
+  return base::ok();
+}
+
+}  // namespace
 
 class GlicInstanceCoordinatorBrowserTest
     : public GlicBrowserTestMixin<PlatformBrowserTest> {
@@ -518,19 +548,31 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 
   auto* instance = coordinator().GetInstanceImplForTab(tab1);
 
-  EXPECT_OK(WaitForActiveEmbedderToMatchTab(instance, tab2));
+  EXPECT_OK(
+      WaitForSidePanelState(tab2, GlicSidePanelCoordinator::State::kShown));
+  EXPECT_OK(WaitForEmbedderActivationOrPeek(instance, tab2));
+  EXPECT_OK(WaitForWebContentsSizeToMatchPanel(instance));
 
   // Switch back to tab 1.
   ActivateTab(tab1);
+  EXPECT_OK(
+      WaitForSidePanelState(tab1, GlicSidePanelCoordinator::State::kShown));
   EXPECT_OK(WaitForEmbedderActivationOrPeek(instance, tab1));
+  EXPECT_OK(WaitForWebContentsSizeToMatchPanel(instance));
 
   // Switch to tab 2.
   ActivateTab(tab2);
+  EXPECT_OK(
+      WaitForSidePanelState(tab2, GlicSidePanelCoordinator::State::kShown));
   EXPECT_OK(WaitForEmbedderActivationOrPeek(instance, tab2));
+  EXPECT_OK(WaitForWebContentsSizeToMatchPanel(instance));
 
   // Tab 1 shows peek or becomes active if tab2 is closed
   tab2->Close();
+  EXPECT_OK(
+      WaitForSidePanelState(tab1, GlicSidePanelCoordinator::State::kShown));
   EXPECT_OK(WaitForEmbedderActivationOrPeek(instance, tab1));
+  EXPECT_OK(WaitForWebContentsSizeToMatchPanel(instance));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -858,9 +900,8 @@ class GlicInstanceCoordinatorActorTaskTest
     : public GlicInstanceCoordinatorBrowserTest {
  public:
   GlicInstanceCoordinatorActorTaskTest() {
-    feature_list_.InitAndEnableFeatureWithParameters(
-        ::features::kGlicActor,
-        {{::features::kGlicActorPolicyControlExemption.name, "true"}});
+    feature_list_.InitAndEnableFeature(
+        features::kGlicActorPolicyControlExemption);
   }
 
  private:
@@ -1289,9 +1330,8 @@ class GlicInstanceCoordinatorActuationBrowserTest
     : public GlicInstanceCoordinatorBrowserTest {
  public:
   GlicInstanceCoordinatorActuationBrowserTest() {
-    feature_list_.InitAndEnableFeatureWithParameters(
-        ::features::kGlicActor,
-        {{::features::kGlicActorPolicyControlExemption.name, "true"}});
+    feature_list_.InitAndEnableFeature(
+        features::kGlicActorPolicyControlExemption);
   }
 
  private:
@@ -1771,35 +1811,6 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorRemoveBlankInstancesTest,
 
   // Wait for the blank instance to be deleted asynchronously.
   ASSERT_OK(WaitForInstanceDeletion(weak_instance));
-}
-
-// TODO(crbug.com/563549946): Fix flakiness.
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorRemoveBlankInstancesTest,
-                       DISABLED_DoNotRemoveBlankInstanceWhenInvoking) {
-  // Start an invocation. This asynchronously initializes the web client.
-  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
-  GlicInvokeOptions options(glic::Target(*tab),
-                            mojom::InvocationSource::kOsButton);
-  coordinator().Invoke(std::move(options));
-
-  // The instance should be created and in the invoking state.
-  GlicInstanceImpl* instance = GetInstanceForTab(tab);
-  ASSERT_TRUE(instance);
-
-  EXPECT_TRUE(instance->IsInvoking());
-
-  // Close the panel before the invocation finishes initializing.
-  instance->CloseAllEmbedders();
-  ASSERT_OK(WaitForGlicClose());
-
-  // Wait a bit to ensure the timeout has passed, but the instance shouldn't
-  // be deleted. The timer delay is 100ms.
-  base::RunLoop run_loop;
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE, run_loop.QuitClosure(), base::Milliseconds(200));
-  run_loop.Run();
-
-  EXPECT_EQ(GetInstanceForTab(tab), instance);
 }
 
 #if !BUILDFLAG(IS_ANDROID)

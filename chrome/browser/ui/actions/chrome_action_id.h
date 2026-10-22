@@ -262,6 +262,8 @@
     IDC_CONTENT_CONTEXT_SEARCHLENSFORIMAGE) \
   E(kActionContentContextGlicShareImage, \
     IDC_CONTENT_CONTEXT_GLICSHAREIMAGE) \
+  E(kActionContentContextGlicSmartSuggestion, \
+    IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION) \
   E(kActionContentContextTranslateImageWithWeb) \
   E(kActionContentContextTranslateImageWithLens) \
   /* Audio/video items. */ \
@@ -313,6 +315,8 @@
     IDC_CONTENT_CONTEXT_RESTART_PACKAGED_APP) \
   E(kActionContentContextLensRegionSearch, \
     IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH) \
+  E(kActionContentContextAskGoogleAboutThisPage, \
+    IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE) \
   E(kActionAiMode) \
   E(kActionLensOverlayHomework) \
   E(kActionContentContextWebRegionSearch, \
@@ -371,8 +375,6 @@
   E(kActionContentContextSharingSubmenu, IDC_CONTENT_CONTEXT_SHARING_SUBMENU) \
   E(kActionContentContextSendTabToSelfSignIn, \
     IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_SIGN_IN) \
-  E(kActionContentContextSendTabToSelfSignInOnPhone, \
-    IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_SIGN_IN_ON_PHONE) \
   /* Context menu item to show the clipboard history menu */ \
   E(kActionContentPasteFromClipboard, IDC_CONTENT_PASTE_FROM_CLIPBOARD) \
   /* Context menu items in the status tray */ \
@@ -513,7 +515,7 @@
   E(kActionSidePanelShowLens) \
   E(kActionSidePanelShowLensOverlayResults) \
   E(kActionSidePanelShowReadAnything) \
-  E(kActionShowReadingModeSidePanel, IDC_SHOW_READING_MODE_SIDE_PANEL) \
+  E(kActionShowReadingModeSidePanel, IDC_SHOW_READING_MODE) \
   E(kActionShowReadingModeKeyboard, IDC_SHOW_READING_MODE_KEYBOARD) \
   E(kActionSidePanelShowReadingList, IDC_READING_LIST_MENU_SHOW_UI) \
   E(kActionSidePanelShowSearchCompanion) \

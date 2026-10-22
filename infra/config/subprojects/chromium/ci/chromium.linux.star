@@ -248,8 +248,8 @@ ci.builder(
             "x64",
         ],
     ),
+    builderless = False,
     ssd = True,
-    free_space = builders.free_space.high,
     # Don't use the default tree closer, which filters by step name, and instead
     # enable tree closing for any step failure.
     tree_closing_notifiers = args.ignore_default(["close-on-any-step-failure"]),
@@ -952,6 +952,10 @@ ci.thin_tester(
     ),
     cq_mirrors_console_view = "mirrors",
     contact_team_email = "chrome-linux-engprod@google.com",
+    experiments = {
+        "luci.buildbucket.run_in_turboci": 100,
+        "luci.buildbucket.run_in_turboci.grpc_client": 100,
+    },
 )
 
 ci.thin_tester(

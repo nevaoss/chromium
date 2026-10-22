@@ -1876,6 +1876,7 @@ component("platform") {
     "//components/language_detection/core",
     "//gpu/command_buffer/client:raster_interface",
     "//media/capture:capture_lib",
+    "//media/capture/mojom:video_capture_blink",
     "//mojo/public/cpp/base",
     "//mojo/public/cpp/bindings",
     "//services/network/public/mojom:mojom_headers",
@@ -1924,7 +1925,6 @@ component("platform") {
     "//gpu/webgpu:common",
     "//media",
     "//media/capture:capture_switches",
-    "//media/capture/mojom:video_capture",
     "//media/mojo/clients",
     "//media/webrtc",
     "//mojo/public/cpp/bindings:wtf_support",
@@ -3162,7 +3162,6 @@ source_set("unit_tests") {
   visibility = [ "//third_party/blink/renderer/*" ]
   sources = [
     "graphics/animation_worklet_mutator_dispatcher_impl_test.cc",
-    "graphics/canvas_2d_bitmap_provider_test.cc",
     "graphics/canvas_2d_resource_provider_test.cc",
     "graphics/canvas_hibernation_handler_test.cc",
     "graphics/canvas_non_2d_resource_provider_test.cc",

@@ -71,10 +71,13 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites() {
 
 BASE_FEATURE(kGlicSelectionOverlayPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicSelectionOverlayPromptBox, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicSelectionSuggestions, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSelectionSmallChip, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop{
     &kGlicSelectionSmallChip, "on_top", true};
+
+BASE_FEATURE(kGlicSuggestionContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -169,6 +172,9 @@ BASE_FEATURE_ENUM_PARAM(GlicActorEnterprisePrefDefault,
                         "glic_actor_enterprise_pref_default",
                         GlicActorEnterprisePrefDefault::kDisabledByDefault,
                         &kGlicActorEnterprisePrefDefaultOptions);
+
+BASE_FEATURE(kGlicActorPolicyControlExemption,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 namespace {
 
@@ -346,6 +352,7 @@ bool IsGlicNoWebviewEnabled() {
   return base::FeatureList::IsEnabled(kGlicNoWebview) ||
          (base::FeatureList::IsEnabled(kGeic) && kGeicEnabledParam.Get());
 }
+BASE_FEATURE(kGlicSetAuthUser, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 // Whether to disallow webview communication directly with the glic host
 // (chrome/browser/resources/glic/glic_api_impl/host). When enabled, some
 // functionality implemented by glic's webview.ts is implemented instead by c++

@@ -29,11 +29,13 @@ using ::testing::IsEmpty;
 DevicePreview CreateDevicePreview(
     const std::string& guid,
     base::Time last_updated,
-    sync_pb::SyncEnums_DeviceFormFactor form_factor) {
+    sync_pb::SyncEnums_DeviceFormFactor form_factor,
+    syncer::DataTypeSet interested_data_types = {}) {
   DevicePreview device;
   device.cache_guid = guid;
   device.last_updated = last_updated;
   device.form_factor = form_factor;
+  device.interested_data_types = interested_data_types;
   return device;
 }
 
@@ -154,23 +156,28 @@ TEST_F(AccountPreviewHeuristicTest,
   auto pref_no_devices =
       ComputeAccountPreviewPreference(GaiaId("user1"), no_devices);
   ASSERT_TRUE(pref_no_devices.has_value());
-  EXPECT_EQ(pref_no_devices->other_device_form_factor,
-            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_UNSPECIFIED);
+  EXPECT_EQ(pref_no_devices->other_device_info, PreferredDeviceInfo());
 
   base::Time now = base::Time::Now();
   AccountPreviewData data_with_devices = CreatePreviewData(
       {}, {CreateDevicePreview(
                "guid1", now - base::Days(2),
-               sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP),
+               sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP,
+               {syncer::BOOKMARKS}),
            CreateDevicePreview(
                "guid2", now - base::Days(1),
-               sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE)});
+               sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE,
+               {syncer::PASSWORDS, syncer::SESSIONS})});
 
   auto pref_with_devices =
       ComputeAccountPreviewPreference(GaiaId("user2"), data_with_devices);
   ASSERT_TRUE(pref_with_devices.has_value());
-  EXPECT_EQ(pref_with_devices->other_device_form_factor,
-            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE);
+  EXPECT_EQ(
+      pref_with_devices->other_device_info,
+      (PreferredDeviceInfo{
+          .form_factor =
+              sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE,
+          .enabled_data_types = {syncer::PASSWORDS, syncer::SESSIONS}}));
 }
 
 TEST_F(AccountPreviewHeuristicTest,
@@ -227,8 +234,11 @@ TEST_F(AccountPreviewHeuristicTest, SingleValidAccountReturnsPreference) {
               ElementsAre(PreferredDataTypeInfo{
                   .data_type = syncer::PASSWORDS,
                   .quartile = SyncDataQuartile::kMedianToQ3}));
-  EXPECT_EQ(pref->other_device_form_factor,
-            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE);
+  EXPECT_EQ(
+      pref->other_device_info,
+      (PreferredDeviceInfo{
+          .form_factor =
+              sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_PHONE}));
 }
 
 TEST_F(AccountPreviewHeuristicTest,
@@ -665,8 +675,11 @@ TEST_F(AccountPreviewHeuristicTest,
   auto pref = ComputePreferredAccountForPromo({acc1, acc2, acc3}).preference;
   ASSERT_TRUE(pref.has_value());
   EXPECT_EQ(pref->gaia_id, GaiaId("acc3"));
-  EXPECT_EQ(pref->other_device_form_factor,
-            sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_TABLET);
+  EXPECT_EQ(
+      pref->other_device_info,
+      (PreferredDeviceInfo{
+          .form_factor =
+              sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_TABLET}));
 
   // Tie between acc1 and acc2 preserves the earlier account (acc1).
   pref = ComputePreferredAccountForPromo({acc1, acc2}).preference;

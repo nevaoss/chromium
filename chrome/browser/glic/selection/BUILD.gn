@@ -12,18 +12,20 @@ source_set("selection") {
   sources = [
     "explain_selection_trigger.cc",
     "explain_selection_trigger.h",
+    "explain_suggestion.cc",
+    "explain_suggestion.h",
     "inline_cue_blocklist_utils.cc",
     "inline_cue_blocklist_utils.h",
-    "prompt_suggestion.cc",
-    "prompt_suggestion.h",
     "quick_answers_tool.cc",
     "quick_answers_tool.h",
     "selection_overlay_controller.cc",
     "selection_overlay_controller.h",
     "selection_overlay_untrusted_ui.cc",
     "selection_overlay_untrusted_ui.h",
-    "static_selection_suggestion_tool.cc",
-    "static_selection_suggestion_tool.h",
+    "selection_suggestion.cc",
+    "selection_suggestion.h",
+    "selection_suggestion_tool.cc",
+    "selection_suggestion_tool.h",
   ]
 
   public_deps = [
@@ -35,6 +37,7 @@ source_set("selection") {
 
   deps = [
     "//base",
+    "//chrome/browser:browser_process",
     "//chrome/browser/actor",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/glic:mojo_bindings",
@@ -45,6 +48,7 @@ source_set("selection") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/resources/glic/selection_overlay:resources",
     "//chrome/browser/resources/lens/overlay:resources_grit",
+    "//chrome/browser/search_engines",
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/tabs:tab_strip",
@@ -55,12 +59,16 @@ source_set("selection") {
     "//components/content_settings/core/common",
     "//components/optimization_guide/core",
     "//components/optimization_guide/proto:optimization_guide_proto",
+    "//components/search_engines",
     "//mojo/public/mojom/base",
   ]
 }
 
 mojom("mojo_bindings") {
-  sources = [ "selection_overlay.mojom" ]
+  sources = [
+    "explain_fulfillment.mojom",
+    "selection_overlay.mojom",
+  ]
   public_deps = [
     "//chrome/browser/selection/mojom:mojo_bindings",
     "//skia/public/mojom",
@@ -78,14 +86,19 @@ source_set("interactive_ui_tests") {
     "//chrome/browser/actor:test_support",
     "//chrome/browser/background/glic",
     "//chrome/browser/glic",
+    "//chrome/browser/glic/browser_ui",
     "//chrome/browser/glic/test_support",
+    "//chrome/browser/optimization_guide",
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/browser/ui/views/frame:browser_view_header",
     "//chrome/browser/ui/views/frame:multi_contents_view",
     "//chrome/common:constants",
     "//chrome/test:test_support",
+    "//components/optimization_guide/core",
+    "//components/optimization_guide/proto:optimization_guide_proto",
     "//content/test:test_support",
     "//testing/gtest",
+    "//ui/base",
     "//ui/base:ozone_buildflags",
     "//ui/base/interaction",
   ]
@@ -103,10 +116,15 @@ source_set("browser_tests") {
     "//base",
     "//chrome/browser/glic",
     "//chrome/browser/glic/test_support",
+    "//chrome/browser/optimization_guide",
+    "//chrome/browser/search_engines",
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/common:constants",
     "//chrome/test:test_interfaces",
     "//chrome/test:test_support",
+    "//components/optimization_guide/core",
+    "//components/optimization_guide/proto:optimization_guide_proto",
+    "//components/search_engines",
     "//content/test:test_support",
     "//testing/gtest",
     "//ui/gfx/geometry",
@@ -118,6 +136,8 @@ source_set("unit_tests") {
   sources = [
     "explain_selection_trigger_unittest.cc",
     "inline_cue_blocklist_utils_unittest.cc",
+    "quick_answers_tool_unittest.cc",
+    "selection_suggestion_tool_unittest.cc",
   ]
   deps = [
     ":selection",
@@ -132,9 +152,11 @@ source_set("unit_tests") {
     "//components/content_settings/core/common",
     "//components/optimization_guide/core:test_support",
     "//components/optimization_guide/proto:optimization_guide_proto",
+    "//components/tabs:test_support",
     "//content/test:test_support",
     "//services/network:test_support",
     "//services/network/public/cpp",
+    "//testing/gmock",
     "//testing/gtest",
   ]
 }

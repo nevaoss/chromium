@@ -8,38 +8,24 @@
 #include <memory>
 #include <optional>
 
-#include "base/byte_size.h"
 #include "base/functional/function_ref.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
-#include "cc/paint/paint_image.h"
 #include "cc/paint/paint_record.h"
 #include "components/viz/common/resources/shared_image_format.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/image_orientation.h"
-#include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
-#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
-#include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/skia/include/core/SkAlphaType.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
+#include "ui/gfx/color_space.h"
 
-namespace cc {
-class SkiaPaintCanvas;
-}  // namespace cc
+class SkCanvas;
+class SkSurface;
 
 namespace gfx {
-class ColorSpace;
-struct HDRMetadata;
 class Size;
 }  // namespace gfx
-
-namespace trace_event {
-class ProcessMemoryDump;
-}  // namespace trace_event
 
 namespace blink {
 
@@ -50,9 +36,7 @@ class CanvasImageProvider;
 // as a last-case resort when it is not possible to create
 // Canvas2DResourceProvider.
 class PLATFORM_EXPORT Canvas2DBitmapProvider final
-    : public CanvasMemoryDumpClient,
-      public ScopedRasterTimer::Host,
-      public WebGraphicsContext3DProviderWrapper::DestructionObserver {
+    : public CanvasMemoryDumpClient {
  public:
   // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DBitmapProvider> CreateWithClear(
@@ -60,69 +44,28 @@ class PLATFORM_EXPORT Canvas2DBitmapProvider final
       viz::SharedImageFormat format,
       SkAlphaType alpha_type,
       const gfx::ColorSpace& color_space,
-      const gfx::HDRMetadata& hdr_metadata,
       CanvasResourceProviderDelegate* delegate = nullptr);
 
-  static std::unique_ptr<Canvas2DBitmapProvider> CreateForTesting(
-      gfx::Size size,
-      const Canvas2DColorParams& color_params);
+  ~Canvas2DBitmapProvider();
 
-  ~Canvas2DBitmapProvider() override;
-
-  void SetDelegate(CanvasResourceProviderDelegate* delegate) {
-    delegate_ = delegate;
-  }
-  scoped_refptr<StaticBitmapImage> Snapshot(
-      ImageOrientation = ImageOrientationEnum::kDefault);
-  void ReleaseImageProviderImages();
-
-  void RasterRecord(cc::PaintRecord last_recording);
-  bool WritePixels(const SkImageInfo& orig_info,
-                   const void* pixels,
-                   size_t row_bytes,
-                   int x,
-                   int y);
-
-  base::ByteSize EstimatedSizeInBytes() const {
-    return base::ByteSize(format_.EstimatedSizeInBytes(size_));
-  }
+  void RasterRecord(cc::PaintRecord last_recording,
+                    CanvasImageProvider* image_provider);
+  SkSurface* surface() const { return surface_.get(); }
 
  private:
   Canvas2DBitmapProvider(sk_sp<SkSurface> surface,
-                         gfx::Size size,
-                         viz::SharedImageFormat format,
-                         const gfx::ColorSpace& color_space,
-                         const gfx::HDRMetadata& hdr_metadata,
                          CanvasResourceProviderDelegate* delegate);
 
   // CanvasMemoryDumpClient implementation.
   void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
   size_t GetSize() const override;
 
-  // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
-  void OnContextDestroyed() override;
+  void ApplyAnimatedImageFrameIndexesForId(CanvasImageProvider* image_provider,
+                                           SkCanvas* canvas,
+                                           uint32_t id);
 
-  void ApplyAnimatedImageFrameIndexesForId(SkCanvas* canvas, uint32_t id);
-
-  CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
-
-  std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
-  gfx::Size size_;
-  viz::SharedImageFormat format_;
-  gfx::ColorSpace color_space_;
-  gfx::HDRMetadata hdr_metadata_;
   WeakPersistent<CanvasResourceProviderDelegate> delegate_;
   const sk_sp<SkSurface> surface_;
-  std::unique_ptr<cc::SkiaPaintCanvas> skia_canvas_;
-  const cc::PaintImage::Id snapshot_paint_image_id_;
-  cc::PaintImage::ContentId snapshot_paint_image_content_id_ =
-      cc::PaintImage::kInvalidContentId;
-  uint32_t snapshot_sk_image_id_ = 0u;
-
-  // Even though this is a bitmap provider, it may be called upon to rasterize a
-  // texture-backed resource, and that resource must be bound to a gpu context
-  // for the current thread.
-  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
 };
 
 }  // namespace blink

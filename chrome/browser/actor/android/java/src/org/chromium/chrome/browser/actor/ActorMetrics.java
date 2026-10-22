@@ -10,6 +10,7 @@ import android.util.Pair;
 
 import androidx.annotation.IntDef;
 
+import org.chromium.base.ThreadUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -31,6 +32,8 @@ import java.util.WeakHashMap;
 /** Helper class for recording Actor-related UMA metrics. */
 @NullMarked
 public class ActorMetrics implements ActorKeyedService.Observer {
+    public static final String ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES =
+            "Actor.Notification.TimeBetweenWorklogUpdates";
     private static final int INVALID_TASK_ID = -1;
     private static final int INVALID_TASK_STATE = -1;
     private static final Set<Intent> sRecordedIntents =
@@ -82,6 +85,23 @@ public class ActorMetrics implements ActorKeyedService.Observer {
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/enums.xml:ActorPipUserInteraction)
 
+    // LINT.IfChange(ActorNotificationPermissionState)
+
+    @IntDef({
+        ActorNotificationPermissionState.ENABLED,
+        ActorNotificationPermissionState.CHANNEL_DISABLED,
+        ActorNotificationPermissionState.OS_DISABLED
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActorNotificationPermissionState {
+        int ENABLED = 0;
+        int CHANNEL_DISABLED = 1;
+        int OS_DISABLED = 2;
+        int NUM_ENTRIES = 3;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/enums.xml:ActorNotificationPermissionState)
+
     @IntDef({
         ActorPauseResumeSource.PIP,
     })
@@ -105,6 +125,7 @@ public class ActorMetrics implements ActorKeyedService.Observer {
     private final Map<@ActorTaskId Integer, LatencyTracker> mTrackers = new HashMap<>();
     private final Map<@ActorTaskId Integer, Integer> mOmniboxClickCounts = new HashMap<>();
     private final Set<@ActorTaskId Integer> mStoppedTasks = new HashSet<>();
+    private final Set<@ActorTaskId Integer> mRecordedBackgroundActuationTaskIds = new HashSet<>();
     private @ActorMode int mCurrentGlobalMode = ActorMode.FOREGROUND;
 
     /**
@@ -118,6 +139,21 @@ public class ActorMetrics implements ActorKeyedService.Observer {
         }
         return sInstance;
     }
+
+    // LINT.IfChange(ActorBackgroundActuationTrigger)
+
+    @IntDef({
+        ActorBackgroundActuationTrigger.TASK_INIT_BY_CHROME,
+        ActorBackgroundActuationTrigger.TASK_INIT_BY_FCM,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActorBackgroundActuationTrigger {
+        int TASK_INIT_BY_CHROME = 0;
+        int TASK_INIT_BY_FCM = 1;
+        int NUM_ENTRIES = 2;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/enums.xml:ActorBackgroundActuationTrigger)
 
     private ActorMetrics() {}
 
@@ -164,6 +200,52 @@ public class ActorMetrics implements ActorKeyedService.Observer {
         mOmniboxClickCounts.remove(taskId);
     }
 
+    /**
+     * Records the elapsed time in milliseconds between consecutive worklog updates on an active
+     * Actor task notification.
+     */
+    public static void recordTimeBetweenWorklogUpdates(long durationMs) {
+        RecordHistogram.recordMediumTimesHistogram(
+                ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES, durationMs);
+    }
+
+    /** Records the trigger source that initiated background actuation. */
+    public static void recordBackgroundActuationTrigger(
+            @ActorBackgroundActuationTrigger int trigger) {
+        RecordHistogram.recordEnumeratedHistogram(
+                "Actor.BackgroundActuation.Trigger",
+                trigger,
+                ActorBackgroundActuationTrigger.NUM_ENTRIES);
+    }
+
+    /**
+     * Records the trigger source that initiated background actuation for a task if not already
+     * recorded for that task.
+     *
+     * @param taskId The task ID to check and record for.
+     * @param trigger The trigger source.
+     */
+    public static void maybeRecordBackgroundActuationTrigger(
+            @ActorTaskId int taskId, @ActorBackgroundActuationTrigger int trigger) {
+        ThreadUtils.assertOnUiThread();
+        if (!getInstance().mRecordedBackgroundActuationTaskIds.add(taskId)) {
+            return;
+        }
+        recordBackgroundActuationTrigger(trigger);
+    }
+
+    /**
+     * Marks a task as having already had its background actuation trigger recorded (e.g. when the
+     * task was originally initiated via FCM) so subsequent foreground-to-background transitions do
+     * not record {@link ActorBackgroundActuationTrigger#TASK_INIT_BY_CHROME}.
+     *
+     * @param taskId The task ID to mark as recorded.
+     */
+    public static void markBackgroundActuationTriggerRecorded(@ActorTaskId int taskId) {
+        ThreadUtils.assertOnUiThread();
+        getInstance().mRecordedBackgroundActuationTaskIds.add(taskId);
+    }
+
     /** Records the PiP status (Enter/Exit). */
     public static void recordPipStatus(@ActorPipStatus int status) {
         RecordHistogram.recordEnumeratedHistogram(
@@ -185,6 +267,15 @@ public class ActorMetrics implements ActorKeyedService.Observer {
     public static void recordPipUserInteraction(@ActorPipUserInteraction int interaction) {
         RecordHistogram.recordEnumeratedHistogram(
                 "Actor.Pip.UserInteractions", interaction, ActorPipUserInteraction.NUM_ENTRIES);
+    }
+
+    /** Records the notification permission state when an Actor task starts. */
+    public static void recordNotificationPermissionState(
+            @ActorNotificationPermissionState int state) {
+        RecordHistogram.recordEnumeratedHistogram(
+                "Actor.Notification.PermissionState",
+                state,
+                ActorNotificationPermissionState.NUM_ENTRIES);
     }
 
     /**
@@ -297,6 +388,9 @@ public class ActorMetrics implements ActorKeyedService.Observer {
     public void onTaskStateChanged(@ActorTaskId int taskId, @ActorTaskState int newState) {
         LatencyTracker tracker = mTrackers.get(taskId);
         if (tracker == null) {
+            if (!ActorUtils.isCompletedState(newState)) {
+                recordNotificationPermissionState(ActorUtils.getActorNotificationPermissionState());
+            }
             tracker = new LatencyTracker(newState, mCurrentGlobalMode);
             mTrackers.put(taskId, tracker);
         } else {
@@ -306,6 +400,7 @@ public class ActorMetrics implements ActorKeyedService.Observer {
         if (ActorUtils.isCompletedState(newState)) {
             tracker.recordTaskMetrics();
             mTrackers.remove(taskId);
+            mRecordedBackgroundActuationTaskIds.remove(taskId);
             if (!mStoppedTasks.contains(taskId)) {
                 @StoppedReason
                 int defaultReason =

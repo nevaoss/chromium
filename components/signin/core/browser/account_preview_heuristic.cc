@@ -167,7 +167,7 @@ std::vector<PreferredDataTypeInfo> ExtractPreferredDataTypes(
   return result;
 }
 
-sync_pb::SyncEnums_DeviceFormFactor ExtractOtherDeviceFormFactor(
+PreferredDeviceInfo ExtractPreferredOtherDevice(
     const AccountPreviewData& data) {
   const DevicePreview* most_recent_device = nullptr;
   for (const auto& device : data.devices) {
@@ -181,10 +181,14 @@ sync_pb::SyncEnums_DeviceFormFactor ExtractOtherDeviceFormFactor(
     }
   }
 
-  return most_recent_device
-             ? most_recent_device->form_factor
-             : sync_pb::
-                   SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_UNSPECIFIED;
+  if (!most_recent_device) {
+    return {};
+  }
+
+  return PreferredDeviceInfo{
+      .form_factor = most_recent_device->form_factor,
+      .enabled_data_types = most_recent_device->interested_data_types,
+  };
 }
 
 // This function is needed as `SyncDataQuartileToValue()` should only be used
@@ -302,7 +306,7 @@ ComputeAccountPreviewPreference(const GaiaId& gaia_id,
   AccountPreviewDataService::AccountPreviewPreference preference;
   preference.gaia_id = gaia_id;
   preference.preferred_data_types = ExtractPreferredDataTypes(data);
-  preference.other_device_form_factor = ExtractOtherDeviceFormFactor(data);
+  preference.other_device_info = ExtractPreferredOtherDevice(data);
   return preference;
 }
 

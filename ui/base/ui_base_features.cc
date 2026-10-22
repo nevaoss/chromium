@@ -81,12 +81,13 @@ BASE_FEATURE(kHideCursorWhileTyping, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kOnlyUseWindowResizeHelperOnResize,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Controls replacement of CATransactionCoordinator with a new implementation.
-BASE_FEATURE(kCATransactionV2, base::FEATURE_DISABLED_BY_DEFAULT);
+// Re-create the CAContext on window resize to try to better synchronize the
+// resize.
+BASE_FEATURE(kCAContextFenceOnResize, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Make live-resize of an NSWindow be asynchronous (so it doesn't block the
 // UI thread).
-BASE_FEATURE(kAsyncLiveResize, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAsyncLiveResize, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Keeps the NSWindow invisible (via its `alphaValue`) until the first
 // compositor frame has been received.
@@ -237,7 +238,7 @@ BASE_FEATURE(kDragDropOnlySynthesizeHttpOrHttpsUrlsFromText,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables applying scroll railing in the renderer.
-BASE_FEATURE(kApplyScrollRailingInRenderer, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kApplyScrollRailingInRenderer, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_CHROMEOS)
 bool IsImprovedKeyboardShortcutsEnabled() {
@@ -514,6 +515,7 @@ BASE_FEATURE(kDesktopGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlassFrame, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool, kGlassExpandOnHoverEnabled, &kGlassFrame, true);
+BASE_FEATURE_PARAM(bool, kGlassFrameEnabledByDefault, &kGlassFrame, true);
 
 BASE_FEATURE(kRoundedIcons, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebUIRoundedIcons, base::FEATURE_DISABLED_BY_DEFAULT);

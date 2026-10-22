@@ -109,6 +109,7 @@ import org.chromium.components.browser_ui.widget.displaystyle.DisplayStyleObserv
 import org.chromium.components.browser_ui.widget.displaystyle.HorizontalDisplayStyle;
 import org.chromium.components.browser_ui.widget.displaystyle.UiConfig;
 import org.chromium.components.browser_ui.widget.displaystyle.VerticalDisplayStyle;
+import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatureList;
 import org.chromium.components.search_engines.AiModeButtonUiConfig;
@@ -134,7 +135,6 @@ import java.util.function.Supplier;
     SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS,
     SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT
 })
-@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class NewTabPageCoordinatorUnitTest {
     private static final String THIRD_PARTY_AI_MODE_NAVIGATION_URL =
             JUnitTestGURLs.EXAMPLE_URL.getSpec();
@@ -175,12 +175,12 @@ public class NewTabPageCoordinatorUnitTest {
     @Mock private LogoCoordinator mMockLogo;
     @Mock private MostVisitedTilesCoordinator mMockTiles;
     @Mock private ComposeplateCoordinator mMockComposeplate;
-    @Mock private View mMockSearchBoxView;
     @Mock private BrowserControlsVisibilityManager mBrowserControlsVisibilityManager;
-    @Mock private RecyclerView mRecyclerView;
     @Captor private ArgumentCaptor<DisplayStyleObserver> mDisplayStyleObserverCaptor;
 
     private Activity mActivity;
+    private View mSearchBoxView;
+    private RecyclerView mRecyclerView;
     private NewTabPageLayout mNewTabPageLayout;
     private NewTabPageCoordinator mCoordinator;
     private BrowserStateBrowserControlsVisibilityDelegate mVisibilityDelegate;
@@ -196,6 +196,8 @@ public class NewTabPageCoordinatorUnitTest {
     public void setUp() {
         mActivity = Robolectric.buildActivity(Activity.class).setup().get();
         mActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
+        mSearchBoxView = new View(mActivity);
+        mRecyclerView = new RecyclerView(mActivity);
 
         // Setup for MV tiles.
         mSuggestionsDeps.getFactory().mostVisitedSites = new FakeMostVisitedSites();
@@ -693,7 +695,7 @@ public class NewTabPageCoordinatorUnitTest {
         assertNull(mCoordinator.getComposeplateCoordinatorForTesting());
 
         SearchBoxCoordinator mockSearchBox = mock(SearchBoxCoordinator.class);
-        when(mockSearchBox.getView()).thenReturn(mock(View.class));
+        when(mockSearchBox.getView()).thenReturn(new View(mActivity));
         mCoordinator.setSearchBoxCoordinatorForTesting(mockSearchBox);
 
         mCoordinator.initializeComposeplate();
@@ -766,8 +768,8 @@ public class NewTabPageCoordinatorUnitTest {
         // Setup mock SearchBoxCoordinator to verify side effect of
         // setSearchBoxHeightBoundsVerticalInset().
         SearchBoxCoordinator mockSearchBox = mock(SearchBoxCoordinator.class);
-        View mockView = mock(View.class);
-        when(mockSearchBox.getView()).thenReturn(mockView);
+        View view = new View(mActivity);
+        when(mockSearchBox.getView()).thenReturn(view);
         mCoordinator.setSearchBoxCoordinatorForTesting(mockSearchBox);
 
         // Enables composeplate eligibility so it is ready to be initialized.
@@ -1087,7 +1089,7 @@ public class NewTabPageCoordinatorUnitTest {
     }
 
     private void setupMockSubCoordinators() {
-        when(mMockSearchBox.getView()).thenReturn(mMockSearchBoxView);
+        when(mMockSearchBox.getView()).thenReturn(mSearchBoxView);
         mCoordinator.setSearchBoxCoordinatorForTesting(mMockSearchBox);
         mCoordinator.setLogoCoordinatorForTesting(mMockLogo);
         mCoordinator.setMostVisitedTilesCoordinatorForTesting(mMockTiles);
@@ -1526,5 +1528,22 @@ public class NewTabPageCoordinatorUnitTest {
         mDisplayStyleObserverCaptor.getValue().onDisplayStyleChanged(null);
 
         verify(mMockLogo).updateDoodleOnTablet(anyBoolean());
+    }
+
+    @Test
+    public void testSearchBoxTextWatcher_ForwardsTextAndClearsSearchBox() {
+        TextView searchBoxTextView = mNewTabPageLayout.findViewById(R.id.search_box_text);
+        assertNotNull(searchBoxTextView);
+
+        searchBoxTextView.setText("first paste");
+        verify(mManager)
+                .focusSearchBox(false, AutocompleteRequestType.SEARCH, false, "first paste");
+        assertEquals("", searchBoxTextView.getText().toString());
+
+        clearInvocations(mManager);
+        searchBoxTextView.setText("second paste");
+        verify(mManager)
+                .focusSearchBox(false, AutocompleteRequestType.SEARCH, false, "second paste");
+        assertEquals("", searchBoxTextView.getText().toString());
     }
 }

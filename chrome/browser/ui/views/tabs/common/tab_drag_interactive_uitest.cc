@@ -1098,7 +1098,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragToScroll) {
       ReleaseMouse());
 }
 
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
 IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragToDetachIntoNewWindow) {
   if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
     GTEST_SKIP() << "Skipping test because it fails with InitialWebUI enabled. "
@@ -1201,10 +1201,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragToDetachThenReattach) {
       ClickMouse(ui_controls::MouseButton::LEFT, /*release=*/false),
       MoveMouseOutOfTabstrip(), WaitForState(kBrowserCountPoller, 2u),
       WaitForDetachedWindowVisible(), NameTabViewAt("Target tab", 1),
-      MoveMouseTo("Target tab", base::BindOnce([](ui::TrackedElement* el) {
-                    return views::test::InteractiveViewsTestApi::AsView(el)
-                               ->GetBoundsInScreen()
-                               .CenterPoint() +
+      MoveMouseTo("Target tab",
+                  base::BindLambdaForTesting([this](ui::TrackedElement* el) {
+                    return AsView(el)->GetBoundsInScreen().CenterPoint() +
                            gfx::Vector2d(0, -5);
                   })),
       WaitForState(kBrowserCountPoller, 1u), ReleaseMouse(),
@@ -1312,8 +1311,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DetachTabPreservesActiveTab) {
       CheckResult([this]() { return browser()->GetTabStripModel()->count(); },
                   2));
 }
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
 
+#if !BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_MAC)
 // TODO(crbug.com/40249472): Remove the VerticalTabDragDetachTest fixture and
 // associated tests once other platforms are migrated to the robust Kombucha
 // verbs and verified.
@@ -1363,14 +1363,7 @@ class VerticalTabDragDetachTest : public VerticalTabDragTest {
   }
 };
 
-// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac.
-#if !BUILDFLAG(IS_MAC)
-#define MAYBE_DragToDetachIntoNewWindow DragToDetachIntoNewWindow
-#else
-#define MAYBE_DragToDetachIntoNewWindow DISABLED_DragToDetachIntoNewWindow
-#endif
-IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
-                       MAYBE_DragToDetachIntoNewWindow) {
+IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest, DragToDetachIntoNewWindow) {
   if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
     GTEST_SKIP() << "Skipping test because it fails with InitialWebUI enabled. "
                     "See b/464087732.";
@@ -1393,10 +1386,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
       }));
 }
 
-// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac, and
-// flakes on Wayland. Fails on Windows.
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_LINUX) && \
-    !BUILDFLAG(IS_WIN)
+// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS. Fails on
+// Windows.
+#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_WIN)
 #define MAYBE_DragToDetachIntoNewWindowWithVerticalTabsState \
   DragToDetachIntoNewWindowWithVerticalTabsState
 #else
@@ -1430,15 +1422,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
       }));
 }
 
-// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac, and
-// flakes on Wayland. Fails on Windows.
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_LINUX)
-#define MAYBE_DragToDetachThenCancel DragToDetachThenCancel
-#else
-#define MAYBE_DragToDetachThenCancel DISABLED_DragToDetachThenCancel
-#endif
-IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
-                       MAYBE_DragToDetachThenCancel) {
+IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest, DragToDetachThenCancel) {
   if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
     GTEST_SKIP() << "Skipping test because it fails with InitialWebUI enabled. "
                     "See b/464087732.";
@@ -1461,15 +1445,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
       }));
 }
 
-// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac, and
-// flakes on Wayland
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_LINUX)
-#define MAYBE_DragToDetachThenReattach DragToDetachThenReattach
-#else
-#define MAYBE_DragToDetachThenReattach DISABLED_DragToDetachThenReattach
-#endif
-IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
-                       MAYBE_DragToDetachThenReattach) {
+IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest, DragToDetachThenReattach) {
   if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
     GTEST_SKIP() << "Skipping test because it fails with InitialWebUI enabled. "
                     "See b/464087732.";
@@ -1491,7 +1467,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
       }));
 }
 
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_DetachMultipleTabs DetachMultipleTabs
 #else
 #define MAYBE_DetachMultipleTabs DISABLED_DetachMultipleTabs
@@ -1529,9 +1505,9 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest, MAYBE_DetachMultipleTabs) {
       }));
 }
 
-// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac, and
-// flakes on Wayland
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_WIN)
+// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS. Fails on
+// Windows.
+#if !BUILDFLAG(IS_WIN)
 #define MAYBE_DetachPinnedTab DetachPinnedTab
 #else
 #define MAYBE_DetachPinnedTab DISABLED_DetachPinnedTab
@@ -1561,15 +1537,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest, MAYBE_DetachPinnedTab) {
       }));
 }
 
-// TODO(crbug.com/40249472): Tab DnD tests not working on ChromeOS and Mac, and
-// flakes on Wayland
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_LINUX)
-#define MAYBE_DetachTabPreservesActiveTab DetachTabPreservesActiveTab
-#else
-#define MAYBE_DetachTabPreservesActiveTab DISABLED_DetachTabPreservesActiveTab
-#endif
-IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
-                       MAYBE_DetachTabPreservesActiveTab) {
+IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest, DetachTabPreservesActiveTab) {
   if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
     GTEST_SKIP() << "Skipping test because it fails with InitialWebUI enabled. "
                     "See b/464087732.";
@@ -1595,6 +1563,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragDetachTest,
         EXPECT_EQ(2, browser()->GetTabStripModel()->count());
       }));
 }
+#endif  // !BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_MAC)
 
 // TODO(crbug.com/490650365): Add regression test once detach tests are working.
 

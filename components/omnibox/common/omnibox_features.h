@@ -108,6 +108,8 @@ BASE_DECLARE_FEATURE(kOmniboxWebUISizeWebViewToPreferredHeight);
 BASE_DECLARE_FEATURE(kOmniboxFullWebUISizeWebViewToPreferredHeight);
 BASE_DECLARE_FEATURE(kOmniboxWebUIPopupHideOnCreation);
 BASE_DECLARE_FEATURE(kOmniboxFullWebUIDestroyWidgetOnHide);
+BASE_DECLARE_FEATURE(kOmniboxAimDestroyWidgetOnHide);
+BASE_DECLARE_FEATURE(kOmniboxWebUIDestroyWidgetOnHide);
 BASE_DECLARE_FEATURE(kWebUISearchboxWithoutModelController);
 
 // Omnibox UI - these affect the UI or function of the location bar (not the
@@ -126,6 +128,13 @@ extern const base::FeatureParam<bool> kAim3pEntrypointDebug;
 
 // Enables popup variations (e.g. accordion menu) for mobile Fusebox.
 BASE_DECLARE_FEATURE(kOmniboxFuseboxPopupVariations);
+
+// Enables Fusebox user education features on Android.
+BASE_DECLARE_FEATURE(kOmniboxFuseboxUserEdModelSubtitles);
+BASE_DECLARE_FEATURE(kOmniboxFuseboxUserEdPlusButtonIph);
+BASE_DECLARE_FEATURE(kOmniboxFuseboxUserEdTabPickerIph);
+BASE_DECLARE_FEATURE(kOmniboxFuseboxUserEdFakeboxAnimation);
+BASE_DECLARE_FEATURE(kOmniboxFuseboxUserEdGuidedTour);
 
 // Navigation experiments.
 BASE_DECLARE_FEATURE(kDefaultTypedNavigationsToHttps);
@@ -168,6 +177,9 @@ BASE_DECLARE_FEATURE(kAiModeStartPack);
 BASE_DECLARE_FEATURE(kAblateSearchProviderWarmup);
 BASE_DECLARE_FEATURE(kReportApplicationLanguageInSearchRequest);
 BASE_DECLARE_FEATURE(kOmniboxAppendInvocationSource);
+BASE_DECLARE_FEATURE(kTruncateSearchSuggestOq);
+inline constexpr base::FeatureParam<int> kTruncateSearchSuggestOqLength{
+    &kTruncateSearchSuggestOq, "truncate_search_suggest_oq_length", 2048};
 
 BASE_DECLARE_FEATURE(kOmniboxAsyncViewInflation);
 BASE_DECLARE_FEATURE(kOmniboxFuseboxAsyncInflation);

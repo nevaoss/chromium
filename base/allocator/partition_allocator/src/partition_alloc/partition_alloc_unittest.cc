@@ -2142,7 +2142,8 @@ TEST_P(PartitionAllocTest, Realloc) {
                     ->InSlotMetadataPointerFromObjectForTesting(ptr2)
                     ->IsSmuggledSizeAvailable());
     EXPECT_EQ(internal::GetSmuggledSize(
-                  ptr2, allocator.root()->GetSlotUsableSize(slot_span)),
+                  UntaggedSlotStart::Unchecked(UntagPtr(ptr2)),
+                  allocator.root()->GetSlotUsableSize(slot_span)),
               size + 1);
   }
 #endif  // PA_BUILDFLAG(CHECKED_SPAN_HAS_METADATA_SUPPORT)
@@ -6238,6 +6239,29 @@ TEST_P(PartitionAllocTest, CheckReservationType) {
   EXPECT_DEATH_IF_SUPPORTED(table.IsReservationStart(address_to_check), "");
 #endif  //  PA_BUILDFLAG(DCHECKS_ARE_ON) && (!PA_BUILDFLAG(OFFICIAL)
         //  || PA_BUILDFLAG(IS_DEBUG))
+}
+
+TEST_P(PartitionAllocTest, IsAlwaysDirectMapped) {
+  static_assert(!IsAlwaysDirectMapped(BucketIndexLookup::kMaxBucketSize));
+  static_assert(IsAlwaysDirectMapped(BucketIndexLookup::kMaxBucketSize + 1));
+
+  for (size_t size : {BucketIndexLookup::kMaxBucketSize + 1,
+                      2 * BucketIndexLookup::kMaxBucketSize}) {
+    SCOPED_TRACE(size);
+    ASSERT_TRUE(IsAlwaysDirectMapped(size));
+
+    void* ptr = allocator.root()->Alloc(size, type_name);
+    ASSERT_TRUE(ptr);
+    EXPECT_TRUE(
+        IsManagedByDirectMapForTesting(UntagPtr(ptr), allocator.root()));
+    allocator.root()->Free(ptr);
+
+    ptr = allocator.root()->AlignedAlloc(64, size);
+    ASSERT_TRUE(ptr);
+    EXPECT_TRUE(
+        IsManagedByDirectMapForTesting(UntagPtr(ptr), allocator.root()));
+    allocator.root()->Free(ptr);
+  }
 }
 
 // Test for crash http://crbug.com/1169003.

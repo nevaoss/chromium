@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <optional>
@@ -44,6 +45,7 @@
 #include "components/autofill/core/browser/form_processing/autofill_ai/determine_attribute_types.h"
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
+#include "components/autofill/core/browser/foundations/autofill_driver.h"
 #include "components/autofill/core/browser/foundations/autofill_driver_factory.h"
 #include "components/autofill/core/browser/foundations/autofill_manager.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
@@ -58,6 +60,7 @@
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/autofill_util.h"
+#include "components/autofill/core/common/form_data.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom.h"
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/personal_context/core/personal_context_types.h"
@@ -74,6 +77,9 @@ namespace {
 
 // Duration between advances of the fetching suggestion message.
 constexpr base::TimeDelta kFetchingMessageInterval = base::Seconds(3);
+
+// Maximum number of impressions for the keyboard shortcut settings promo.
+constexpr int kMaxShortcutSettingsPromoImpressions = 2;
 
 constexpr std::array<int, 3> kFetchingStringIds = std::to_array<int>({
     IDS_AUTOFILL_AT_MEMORY_FETCHING_FINDING_INFO_WITH_GEMINI,
@@ -396,13 +402,18 @@ AtMemoryManager::AtMemoryManager(AutofillClient* client,
                      // `state_manager_` is a direct member of `this` and does
                      // not invoke the callback during destruction.
                      base::BindRepeating(&AtMemoryManager::OnStateReset,
-                                         base::Unretained(this))) {}
+                                         base::Unretained(this))) {
+  autofill_managers_observation_.Observe(
+      client, ScopedAutofillManagersObservation::InitializationPolicy::
+                  kObservePreexistingManagers);
+}
 
 AtMemoryManager::~AtMemoryManager() = default;
 
 AtMemorySearchState AtMemoryManager::GetStateForField(
     const FieldGlobalId& field_id,
-    const url::Origin& field_origin) {
+    const url::Origin& field_origin,
+    std::optional<AutofillSuggestionTriggerSource> trigger_source) {
   if (base::FeatureList::IsEnabled(
           features::kAutofillAtMemorySearchStatefulness)) {
     if (const std::optional<AtMemorySearchState>& state =
@@ -412,7 +423,8 @@ AtMemorySearchState AtMemoryManager::GetStateForField(
   } else {
     target_field_origin_ = field_origin;
   }
-  return {.suggestions = GetEmptyQuerySuggestions()};
+  return {.suggestions =
+              GetEmptyQuerySuggestions(/*on_popup_open=*/true, trigger_source)};
 }
 
 const url::Origin& AtMemoryManager::target_field_origin() const {
@@ -433,6 +445,10 @@ void AtMemoryManager::OnPopupShown(
   if (!IsAtMemoryTriggerSource(trigger_source)) {
     return;
   }
+
+  hats_survey_dismissal_timer_.Stop();
+  last_field_id_ = field_id;
+
   if (!metadata.is_subpopup() && !popup_state_) {
     // TODO(crbug.com/541160371): Address the case when the search statefulness
     // is enabled and `state_manager_.field_id() != field_id `.
@@ -496,6 +512,20 @@ bool AtMemoryManager::OnSearchSubmitted(const std::u16string& filter) {
 }
 
 void AtMemoryManager::OnPopupHidden() {
+  if (AtMemoryMetricsRecorder* recorder = metrics_recorder()) {
+    recorder->OnPopupHidden();
+
+    if (!recorder->IsFilled()) {
+      // AtMemory was dismissed without filling any suggestion. Delay the survey
+      // to avoid triggering on accidental dismissal.
+      hats_survey_dismissal_timer_.Start(
+          FROM_HERE, base::Seconds(15),
+          base::BindOnce(
+              &AutofillClient::TriggerAtMemoryPersonalizationAndTrustSurvey,
+              base::Unretained(client_), /*is_dismissed=*/true,
+              HatsSurveyStringData{}));
+    }
+  }
   if (!base::FeatureList::IsEnabled(
           features::kAutofillAtMemorySearchStatefulness)) {
     CancelPendingQueries();
@@ -530,11 +560,7 @@ IsAsync AtMemoryManager::FillSearchResult(
     if (metrics) {
       metrics->MarkFilled();
     }
-    bam.FillOrPreviewField(mojom::ActionPersistence::kFill,
-                           mojom::FieldActionType::kReplaceSelectionForAtMemory,
-                           form_id, field_id, payload.value,
-                           FillingProduct::kAtMemory,
-                           /*field_type_used=*/std::nullopt);
+    FillField(bam, form_id, field_id, payload.value);
     return IsAsync(false);
   };
 
@@ -724,6 +750,15 @@ void AtMemoryManager::RecordLoyaltyCardUse(
   vdm->RecordLoyaltyCardUsed(*valuable_id, base::Time::Now());
 }
 
+void AtMemoryManager::RecordShortcutSettingsPromoImpression() {
+  if (PrefService* prefs = client_->GetPrefs()) {
+    const int count =
+        prefs->GetInteger(prefs::kAutofillAtMemoryShortcutPromoImpressionCount);
+    prefs->SetInteger(prefs::kAutofillAtMemoryShortcutPromoImpressionCount,
+                      count + 1);
+  }
+}
+
 bool AtMemoryManager::IsSearching() const {
   if (base::FeatureList::IsEnabled(
           features::kAutofillAtMemorySearchStatefulness)) {
@@ -767,6 +802,31 @@ void AtMemoryManager::MaybeAppendPreviouslyFilledSuggestions(
   suggestions.insert(suggestions.end(),
                      std::make_move_iterator(prev_suggestions.rbegin()),
                      std::make_move_iterator(prev_suggestions.rend()));
+}
+
+void AtMemoryManager::MaybeAppendShortcutSettingsPromo(
+    bool on_popup_open,
+    std::optional<AutofillSuggestionTriggerSource> trigger_source,
+    std::vector<Suggestion>& suggestions) const {
+  if (!on_popup_open ||
+      trigger_source == AutofillSuggestionTriggerSource::kAtMemoryContextMenu) {
+    return;
+  }
+  const PrefService* prefs = client_->GetPrefs();
+  if (!prefs ||
+      prefs->GetInteger(prefs::kAutofillAtMemoryShortcutPromoImpressionCount) >=
+          kMaxShortcutSettingsPromoImpressions) {
+    return;
+  }
+  if (!suggestions.empty()) {
+    suggestions.emplace_back(SuggestionType::kSeparator);
+    suggestions.back().filtration_policy =
+        Suggestion::FiltrationPolicy::kStatic;
+  }
+  suggestions.emplace_back(SuggestionType::kAtMemoryShortcutSettingsPromo);
+  suggestions.back().acceptability =
+      Suggestion::Acceptability::kUnselectableAndUnacceptable;
+  suggestions.back().filtration_policy = Suggestion::FiltrationPolicy::kStatic;
 }
 
 void AtMemoryManager::ExecuteQuery(const std::u16string& filter) {
@@ -938,16 +998,18 @@ void AtMemoryManager::ShowFetchingStateSuggestions() {
   SendSuggestions(std::move(suggestions));
 }
 
-std::vector<Suggestion> AtMemoryManager::GetEmptyQuerySuggestions() const {
+std::vector<Suggestion> AtMemoryManager::GetEmptyQuerySuggestions(
+    bool on_popup_open,
+    std::optional<AutofillSuggestionTriggerSource> trigger_source) const {
   std::vector<Suggestion> suggestions;
   MaybeAppendPreviouslyFilledSuggestions(suggestions);
   MaybeAppendPersonalContextNotice(suggestions);
+  MaybeAppendShortcutSettingsPromo(on_popup_open, trigger_source, suggestions);
   return suggestions;
 }
 
 void AtMemoryManager::ShowEmptyQuerySuggestions() {
-  std::vector<Suggestion> suggestions = GetEmptyQuerySuggestions();
-  SendSuggestions(std::move(suggestions));
+  SendSuggestions(GetEmptyQuerySuggestions(/*on_popup_open=*/false));
 }
 
 void AtMemoryManager::ShowQueryTypingSuggestions(const std::u16string& query) {
@@ -1113,11 +1175,7 @@ void AtMemoryManager::FillIban(
               Iban mutable_iban = *iban;
               pdm.RecordUseOfIban(mutable_iban);
             }
-            bam->FillOrPreviewField(
-                mojom::ActionPersistence::kFill,
-                mojom::FieldActionType::kReplaceSelectionForAtMemory, form_id,
-                field_id, *unmasked_value, FillingProduct::kAtMemory,
-                /*field_type_used=*/std::nullopt);
+            manager->FillField(*bam, form_id, field_id, *unmasked_value);
           },
           fill_weak_ptr_factory_.GetWeakPtr(),
           bam.GetBrowserAutofillManagerWeakPtr(), form_id, field_id, suggestion,
@@ -1185,11 +1243,7 @@ void AtMemoryManager::FillCreditCard(
               default:
                 NOTREACHED();
             }
-            bam->FillOrPreviewField(
-                mojom::ActionPersistence::kFill,
-                mojom::FieldActionType::kReplaceSelectionForAtMemory, form_id,
-                field_id, fill_value, FillingProduct::kAtMemory,
-                /*field_type_used=*/std::nullopt);
+            manager->FillField(*bam, form_id, field_id, fill_value);
           },
           fill_weak_ptr_factory_.GetWeakPtr(),
           bam.GetBrowserAutofillManagerWeakPtr(), form_id, field_id, suggestion,
@@ -1282,11 +1336,69 @@ void AtMemoryManager::OnAutofillAiFetched(
     edm->RecordEntityUsed(fetched_entity.guid(), base::Time::Now());
   }
 
-  bam->FillOrPreviewField(mojom::ActionPersistence::kFill,
-                          mojom::FieldActionType::kReplaceSelectionForAtMemory,
-                          form_id, field_id, std::move(*attribute_fill_value),
-                          FillingProduct::kAtMemory,
-                          /*field_type_used=*/std::nullopt);
+  FillField(*bam, form_id, field_id, *attribute_fill_value);
+}
+
+void AtMemoryManager::FillField(BrowserAutofillManager& bam,
+                                const FormGlobalId& form_id,
+                                const FieldGlobalId& field_id,
+                                const std::u16string& value) {
+  bam.FillOrPreviewField(mojom::ActionPersistence::kFill,
+                         mojom::FieldActionType::kReplaceSelectionForAtMemory,
+                         form_id, field_id, value, FillingProduct::kAtMemory,
+                         /*field_type_used=*/std::nullopt);
+  client_->TriggerAtMemoryPersonalizationAndTrustSurvey(
+      /*is_dismissed=*/false,
+      /*product_specific_data=*/{});
+}
+
+void AtMemoryManager::OnAutofillManagerStateChanged(
+    AutofillManager& manager,
+    AutofillManager::LifecycleState previous,
+    AutofillManager::LifecycleState new_state) {
+  const bool is_last_frame_or_main_frame =
+      manager.driver().GetFrameToken() == last_field_id_.frame_token ||
+      !manager.driver().GetParent();
+  if (is_last_frame_or_main_frame &&
+      new_state != AutofillManager::LifecycleState::kActive) {
+    hats_survey_dismissal_timer_.Stop();
+  }
+}
+
+void AtMemoryManager::OnFillOrPreviewForm(
+    AutofillManager& manager,
+    FormGlobalId form_id,
+    FieldGlobalId trigger_field_id,
+    mojom::ActionPersistence action_persistence,
+    const base::flat_set<FieldGlobalId>& filled_field_ids,
+    const base::flat_map<FieldGlobalId, DenseSet<FieldFillingSkipReason>>&
+        skip_reasons,
+    const FillingPayload& filling_payload) {
+  if (action_persistence == mojom::ActionPersistence::kFill &&
+      filled_field_ids.contains(last_field_id_)) {
+    hats_survey_dismissal_timer_.Stop();
+  }
+}
+
+void AtMemoryManager::OnFillOrPreviewField(
+    AutofillManager& manager,
+    FormGlobalId form_id,
+    FieldGlobalId field_id,
+    mojom::ActionPersistence action_persistence,
+    const std::u16string& value,
+    std::optional<FieldType> field_type_used) {
+  if (action_persistence == mojom::ActionPersistence::kFill &&
+      field_id == last_field_id_) {
+    hats_survey_dismissal_timer_.Stop();
+  }
+}
+
+void AtMemoryManager::OnAfterFormSubmitted(AutofillManager& manager,
+                                           const FormData& form) {
+  if (std::ranges::contains(form.fields(), last_field_id_,
+                            &FormFieldData::global_id)) {
+    hats_survey_dismissal_timer_.Stop();
+  }
 }
 
 }  // namespace autofill

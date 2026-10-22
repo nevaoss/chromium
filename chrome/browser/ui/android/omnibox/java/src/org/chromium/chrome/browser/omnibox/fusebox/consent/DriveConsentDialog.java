@@ -7,6 +7,9 @@ package org.chromium.chrome.browser.omnibox.fusebox.consent;
 import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.Browser;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,8 +19,10 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.CheckResult;
 import androidx.annotation.ColorInt;
+import androidx.browser.customtabs.CustomTabsIntent;
 
 import org.chromium.base.Callback;
+import org.chromium.base.IntentUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.lifetime.LifetimeAssert;
 import org.chromium.base.version_info.VersionInfo;
@@ -28,6 +33,8 @@ import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.DriveDisclaimerBridge;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+import org.chromium.components.embedder_support.delegate.WebContentsDelegateAndroid;
+import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.origin_matcher.OriginMatcher;
 import org.chromium.components.thinwebview.ThinWebView;
@@ -50,6 +57,7 @@ import org.chromium.ui.modaldialog.ModalDialogProperties.DialogStyles;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.util.ColorUtils;
 import org.chromium.ui.widget.LoadingView;
+import org.chromium.url.GURL;
 
 import java.lang.ref.WeakReference;
 import java.util.List;
@@ -72,11 +80,22 @@ public class DriveConsentDialog
     private @Nullable Callback<Boolean> mOnConsentComplete;
     private final boolean mIsDarkMode;
     private final @Nullable LifetimeAssert mLifetimeAssert = LifetimeAssert.create(this);
+    private final WebContentsDelegateAndroid mWebContentsDelegate =
+            new WebContentsDelegateAndroid() {
+                @Override
+                public boolean shouldCreateWebContents(GURL targetUrl) {
+                    openCustomTab(targetUrl);
+                    // Return false so native IsWebContentsCreationOverridden returns true,
+                    // preventing an unparented WebContents popup from being created.
+                    return false;
+                }
+            };
 
     private @Nullable WebContents mWebContents;
     private @Nullable ThinWebView mThinWebView;
     private @Nullable DriveConsentKitClient mClient;
     private @Nullable LoadingView mSpinner;
+    private @Nullable View mLoadingOverlay;
     private @Nullable PropertyModel mModalDialogModel;
     private boolean mDestroyed;
     private boolean mConsentGranted;
@@ -167,8 +186,10 @@ public class DriveConsentDialog
 
         // Build the layout with a loading spinner and display the modal dialog.
         FrameLayout container = buildContentContainer(thinWebView.getView());
+        // An opaque overlay as the background for the spinner, ensuring smooth UI transition.
+        mLoadingOverlay = container.findViewById(R.id.drive_consent_loading_overlay);
         LoadingView spinner = container.findViewById(R.id.drive_consent_spinner);
-        spinner.showLoadingUi();
+        spinner.showLoadingUi(/* skipDelay= */ true);
         mSpinner = spinner;
 
         PropertyModel modalDialogModel = buildModalDialogModel(container);
@@ -212,7 +233,6 @@ public class DriveConsentDialog
             IntentRequestTracker tracker,
             @ColorInt int backgroundColor) {
         ThinWebViewConstraints constraints = new ThinWebViewConstraints();
-        constraints.supportsOpacity = true;
         constraints.backgroundColor = backgroundColor;
         ThinWebView thinWebView =
                 ThinWebViewFactory.create(
@@ -220,7 +240,10 @@ public class DriveConsentDialog
         thinWebView.attachWebContents(
                 webContents,
                 contentView,
-                new ThinWebViewAttachParams.Builder().setSupportTheming(true).build());
+                new ThinWebViewAttachParams.Builder()
+                        .setSupportTheming(true)
+                        .setWebContentsDelegate(mWebContentsDelegate)
+                        .build());
         return thinWebView;
     }
 
@@ -260,6 +283,9 @@ public class DriveConsentDialog
 
     @Override
     public void onPageFirstPaint() {
+        if (mLoadingOverlay != null) {
+            mLoadingOverlay.setVisibility(View.GONE);
+        }
         if (mSpinner != null) {
             mSpinner.hideLoadingUi();
         }
@@ -273,6 +299,24 @@ public class DriveConsentDialog
     @Override
     public void onConsentComplete(boolean granted) {
         finish(granted);
+    }
+
+    private void openCustomTab(GURL url) {
+        if (mDestroyed || !UrlUtilities.isHttpOrHttps(url)) return;
+        CustomTabsIntent customTabsIntent =
+                new CustomTabsIntent.Builder()
+                        .setShowTitle(true)
+                        .setColorScheme(
+                                mIsDarkMode
+                                        ? CustomTabsIntent.COLOR_SCHEME_DARK
+                                        : CustomTabsIntent.COLOR_SCHEME_LIGHT)
+                        .build();
+        Intent intent = customTabsIntent.intent;
+        intent.setData(Uri.parse(url.getSpec()));
+        intent.setPackage(mActivity.getPackageName());
+        intent.putExtra(Browser.EXTRA_APPLICATION_ID, mActivity.getPackageName());
+        IntentUtils.addTrustedIntentExtras(intent);
+        IntentUtils.safeStartActivity(mActivity, intent);
     }
 
     private void finish(boolean granted) {
@@ -324,6 +368,7 @@ public class DriveConsentDialog
             mSpinner.destroy();
             mSpinner = null;
         }
+        mLoadingOverlay = null;
 
         notifyConsentComplete(mConsentGranted);
     }
@@ -332,11 +377,19 @@ public class DriveConsentDialog
         mSpinner = spinner;
     }
 
+    void setLoadingOverlayForTesting(View loadingOverlay) {
+        mLoadingOverlay = loadingOverlay;
+    }
+
     void setModalDialogModelForTesting(PropertyModel model) {
         mModalDialogModel = model;
     }
 
     boolean isDestroyedForTesting() {
         return mDestroyed;
+    }
+
+    WebContentsDelegateAndroid getWebContentsDelegateForTesting() {
+        return mWebContentsDelegate;
     }
 }

@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 
+#include "chrome/browser/ui/views/app_menu/app_menu_drag_and_drop_delegate.h"
 #include "ui/actions/action_id.h"
 #include "ui/actions/actions.h"
 #include "ui/base/class_property.h"
@@ -18,6 +19,7 @@
 
 DEFINE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::DisplayType)
 DEFINE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::ItemHeight)
+DEFINE_UI_CLASS_PROPERTY_TYPE(AppMenuDragAndDropDelegate*)
 DEFINE_UI_CLASS_PROPERTY_TYPE(const base::Feature*)
 DEFINE_UI_CLASS_PROPERTY_TYPE(ui::ImageModel*)
 DEFINE_UI_CLASS_PROPERTY_TYPE(ui::MenuSeparatorType)
@@ -35,14 +37,18 @@ DEFINE_UI_CLASS_PROPERTY_KEY(ui::MenuSeparatorType,
                              ui::NORMAL_SEPARATOR)
 
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kAppMenuIsCheckableInternal, false)
+DEFINE_UI_CLASS_PROPERTY_KEY(bool, kAppMenuIsSubmenuInternal, false)
 DEFINE_UI_CLASS_PROPERTY_KEY(AppMenuActionItem::ItemHeight,
                              kAppMenuItemHeightInternal,
-                             AppMenuActionItem::ItemHeight::kDefault)
+                             AppMenuActionItem::ItemHeight::kCompact)
 DEFINE_UI_CLASS_PROPERTY_KEY(const base::Feature*,
                              kAppMenuNewBadgeFeatureInternal,
                              nullptr)
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kAppMenuIsAlertedInternal, false)
 DEFINE_UI_CLASS_PROPERTY_KEY(int, kAppMenuActionParamInternal, -1)
+DEFINE_UI_CLASS_PROPERTY_KEY(AppMenuDragAndDropDelegate*,
+                             kAppMenuDragAndDropDelegateInternal,
+                             nullptr)
 
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuTextOverrideInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ui::ImageModel, kAppMenuIconOverrideInternal)
@@ -82,6 +88,9 @@ const ui::ClassProperty<std::u16string*>* const
 const ui::ClassProperty<bool>* const AppMenuActionItem::kIsCheckableKey =
     kAppMenuIsCheckableInternal;
 
+const ui::ClassProperty<bool>* const AppMenuActionItem::kIsSubmenuKey =
+    kAppMenuIsSubmenuInternal;
+
 const ui::ClassProperty<AppMenuActionItem::ItemHeight>* const
     AppMenuActionItem::kItemHeightKey = kAppMenuItemHeightInternal;
 
@@ -93,6 +102,10 @@ const ui::ClassProperty<bool>* const AppMenuActionItem::kIsAlertedKey =
 
 const ui::ClassProperty<int>* const AppMenuActionItem::kActionParamKey =
     kAppMenuActionParamInternal;
+
+const ui::ClassProperty<AppMenuDragAndDropDelegate*>* const
+    AppMenuActionItem::kDragAndDropDelegateKey =
+        kAppMenuDragAndDropDelegateInternal;
 
 std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
     actions::ActionId action_id,
@@ -115,9 +128,8 @@ std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
     action->SetProperty(kIsCheckableKey, params.is_checkable.value());
   }
 
-  if (params.item_height.has_value()) {
-    action->SetProperty(kItemHeightKey, params.item_height.value());
-  }
+  action->SetProperty(kItemHeightKey,
+                      params.item_height.value_or(ItemHeight::kCompact));
 
   action->SetProperty(kNewBadgeFeatureKey, params.new_badge_feature.get());
 

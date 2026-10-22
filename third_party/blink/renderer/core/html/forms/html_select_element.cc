@@ -360,6 +360,13 @@ void HTMLSelectElement::SetAutofillOption(HTMLOptionElement* option,
   interacted_state_ = interacted_state;
 }
 
+void HTMLSelectElement::SetAutofillState(WebAutofillState autofill_state) {
+  if (autofill_state != WebAutofillState::kPreviewed) {
+    SetSuggestedOption(nullptr);
+  }
+  HTMLFormControlElementWithState::SetAutofillState(autofill_state);
+}
+
 String HTMLSelectElement::SuggestedValue() const {
   return suggested_option_ ? suggested_option_->value() : "";
 }
@@ -393,9 +400,9 @@ void HTMLSelectElement::SetSuggestedOption(HTMLOptionElement* option) {
   if (suggested_option_ == option) {
     return;
   }
+  suggested_option_ = option;
   SetAutofillState(option ? WebAutofillState::kPreviewed
                           : WebAutofillState::kNotFilled);
-  suggested_option_ = option;
 
   select_type_->DidSetSuggestedOption(option);
 }
@@ -1020,6 +1027,9 @@ void HTMLSelectElement::OptionRemoved(HTMLOptionElement& option,
 
   if (RuntimeEnabledFeatures::FilterableSelectEnabled()) {
     CountedElementRemoved(&option, nearest_ancestor_select_child);
+    if (active_option_ == &option) {
+      active_option_ = nullptr;
+    }
   }
 
   if (!GetDocument().IsActive())
@@ -2341,7 +2351,10 @@ bool HTMLSelectElement::ShouldIgnoreDescendantsForElementTraversals(
 
 void HTMLSelectElement::StartFiltering() {
   CHECK(RuntimeEnabledFeatures::FilterableSelectEnabled());
-  CHECK(!active_option_);
+  // Call StopFiltering() to clear active_option_ in case a previously focused
+  // input lost its association with this select before blurring (skipping
+  // StopFiltering() on blur).
+  StopFiltering();
   for (HTMLOptionElement& option : GetOptionList()) {
     if (option.SupportsActiveOptionPseudo()) {
       active_option_ = option;
@@ -2370,7 +2383,13 @@ bool SupportsActive(HTMLOptionElement& option) {
 
 void HTMLSelectElement::MoveActiveOptionForwards() {
   CHECK(RuntimeEnabledFeatures::FilterableSelectEnabled());
-  CHECK(active_option_);
+  if (!active_option_) {
+    StartFiltering();
+    if (active_option_) {
+      active_option_->scrollIntoViewIfNeeded(/*center_if_needed=*/false);
+    }
+    return;
+  }
   if (HTMLOptionElement* new_option =
           GetOptionList().FindNextElement(*active_option_, &SupportsActive)) {
     HTMLOptionElement* old_active_option = active_option_;
@@ -2383,7 +2402,13 @@ void HTMLSelectElement::MoveActiveOptionForwards() {
 
 void HTMLSelectElement::MoveActiveOptionBackwards() {
   CHECK(RuntimeEnabledFeatures::FilterableSelectEnabled());
-  CHECK(active_option_);
+  if (!active_option_) {
+    StartFiltering();
+    if (active_option_) {
+      active_option_->scrollIntoViewIfNeeded(/*center_if_needed=*/false);
+    }
+    return;
+  }
   if (HTMLOptionElement* new_option = GetOptionList().FindPreviousElement(
           *active_option_, &SupportsActive)) {
     HTMLOptionElement* old_active_option = active_option_;
@@ -2395,8 +2420,9 @@ void HTMLSelectElement::MoveActiveOptionBackwards() {
 }
 
 void HTMLSelectElement::ToggleActiveOption(Event& event) {
-  CHECK(active_option_);
-  active_option_->ChooseOption(event);
+  if (active_option_) {
+    active_option_->ChooseOption(event);
+  }
 }
 
 }  // namespace blink

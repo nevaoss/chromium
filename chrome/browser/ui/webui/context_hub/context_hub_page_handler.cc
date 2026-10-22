@@ -12,6 +12,7 @@
 #include "base/check.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/to_vector.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/strings/utf_string_conversions.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/page_image_service/image_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/journeys/journey.h"
 #include "components/history/core/browser/journeys/journey_row.h"
@@ -42,6 +44,7 @@
 #include "chrome/browser/glic/public/glic_instance.h"             // nogncheck
 #include "chrome/browser/glic/public/glic_invoke_options.h"       // nogncheck
 #include "chrome/browser/glic/public/glic_keyed_service.h"        // nogncheck
+#include "chrome/browser/glic/public/glic_passkeys.h"             // nogncheck
 #include "chrome/browser/ui/webui/context_hub/context_hub_tab_provider_desktop.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/tabs/public/tab_interface.h"  // nogncheck
@@ -132,6 +135,29 @@ void ContextHubPageHandler::OnFirstPartyAutoTodosGenerationStateChanged(
 void ContextHubPageHandler::OnThirdPartyAutoTodosGenerationStateChanged(
     bool is_generating) {
   page_->OnThirdPartyAutoTodosGenerationStateChanged(is_generating);
+}
+
+void ContextHubPageHandler::OnMemoryBankEntryAdded(
+    const context_hub::MemoryBankEntry& entry) {
+  page_->OnMemoryBankEntryAdded(entry);
+}
+
+void ContextHubPageHandler::OnMemoryBankEntryUpdated(
+    int64_t id,
+    const std::vector<std::string>& tags,
+    const std::optional<std::string>& note,
+    const std::optional<std::string>& collection) {
+  auto annotations =
+      browser::context_hub::mojom::MemoryBankEntryAnnotations::New();
+  annotations->collection = collection;
+  annotations->note = note;
+  annotations->tags = tags;
+  page_->OnMemoryBankEntryUpdated(id, std::move(annotations));
+}
+
+void ContextHubPageHandler::OnMemoryBankEntriesDeleted(
+    const std::vector<int64_t>& ids) {
+  page_->OnMemoryBankEntriesDeleted(ids);
 }
 
 void ContextHubPageHandler::GenerateFirstPartyAutoTodos(
@@ -300,30 +326,7 @@ void ContextHubPageHandler::GetAllMemoryBankEntries(
   service->GetAllEntries(base::BindOnce(
       [](GetAllMemoryBankEntriesCallback callback,
          std::vector<context_hub::MemoryBankEntry> entries) {
-        std::vector<browser::context_hub::mojom::MemoryBankEntryPtr>
-            mojo_entries;
-        for (const auto& entry : entries) {
-          auto mojo_entry = browser::context_hub::mojom::MemoryBankEntry::New();
-          mojo_entry->id = entry.id;
-          switch (entry.type) {
-            case context_hub::MemoryBankType::kTab:
-              mojo_entry->type = browser::context_hub::mojom::EntryType::kTab;
-              break;
-            case context_hub::MemoryBankType::kTextSelection:
-              mojo_entry->type =
-                  browser::context_hub::mojom::EntryType::kTextSelection;
-              break;
-          }
-          mojo_entry->timestamp = entry.timestamp;
-          mojo_entry->url = entry.url;
-          mojo_entry->tab_title = entry.tab_title;
-          mojo_entry->selected_text = entry.selected_text;
-          mojo_entry->tags = entry.tags;
-          mojo_entry->note = entry.note;
-          mojo_entry->collection = entry.collection;
-          mojo_entries.push_back(std::move(mojo_entry));
-        }
-        std::move(callback).Run(std::move(mojo_entries));
+        std::move(callback).Run(entries);
       },
       std::move(callback)));
 }
@@ -807,6 +810,15 @@ void ContextHubPageHandler::OpenUrlsInTabGroup(
     const std::string& group_label,
     const std::vector<GURL>& urls,
     OpenUrlsInTabGroupCallback callback) {
+  if (!base::FeatureList::IsEnabled(browser::context_hub::mojom::kTopics) &&
+      !base::FeatureList::IsEnabled(
+          browser::context_hub::mojom::kSmartSearch)) {
+    receiver_.ReportBadMessage(
+        "OpenUrlsInTabGroup cannot be called without Topics or SmartSearch "
+        "enabled.");
+    return;
+  }
+
   if (!tab_provider_) {
     std::move(callback).Run(false);
     return;
@@ -1038,5 +1050,47 @@ void ContextHubPageHandler::OpenGlicPanel(
   }
 
   glic_service->Invoke(std::move(options));
+#endif
+}
+
+void ContextHubPageHandler::RunTodoTask(const std::string& prompt,
+                                        RunTodoTaskCallback callback) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (prompt.empty()) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  glic::GlicKeyedService* glic_service = GetGlicServiceIfEnabled(profile_);
+  if (!glic_service || !web_contents_) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(web_contents_);
+  if (!tab) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  glic::GlicInvokeOptions options(
+      glic::mojom::InvocationSource::kContextHubAutoTodos);
+  options.prompts.push_back(prompt);
+  options.target.conversation = glic::NewConversation();
+  options.feature_mode = glic::mojom::FeatureMode::kActuation;
+  options.target.actuation_target = glic::mojom::ActuationTarget::kAgentDecides;
+  options.target.surface =
+      glic::DefaultSurface{tab->GetBrowserWindowInterface()};
+
+  glic::GlicInvokeWithAutoSubmitOptions auto_submit_options;
+  auto_submit_options.show_panel = true;
+
+  glic_service->InvokeWithAutoSubmit(
+      glic::InvokeWithAutoSubmitPasskeyProvider::GetPassKey(),
+      std::move(options), std::move(auto_submit_options));
+  std::move(callback).Run(true);
+#else
+  std::move(callback).Run(false);
 #endif
 }

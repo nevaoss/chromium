@@ -319,12 +319,10 @@ GlicInstanceImpl::GlicInstanceImpl(
       GlobalBrowserCollection::GetInstance());
   host_.SetDelegate(&empty_embedder_delegate_);
   host_observation_.Observe(&host_);
-  if (base::FeatureList::IsEnabled(features::kGlicBindPinnedUnboundTab)) {
-    pinned_tabs_change_subscription_ =
-        GetSharingManagerInternal().AddTabPinningStatusEventCallback(
-            base::BindRepeating(&GlicInstanceImpl::OnTabPinningStatusEvent,
-                                weak_ptr_factory_.GetWeakPtr()));
-  }
+  pinned_tabs_change_subscription_ =
+      GetSharingManagerInternal().AddTabPinningStatusEventCallback(
+          base::BindRepeating(&GlicInstanceImpl::OnTabPinningStatusEvent,
+                              weak_ptr_factory_.GetWeakPtr()));
 }
 
 GlicInstanceImpl::~GlicInstanceImpl() {
@@ -464,6 +462,8 @@ void GlicInstanceImpl::Show(ShowOptions options) {
   TRACE_EVENT("glic", "GlicInstanceImpl::Show",
               perfetto::Flow::FromPointer(this));
 
+  instance_metrics().MaybeSetInitialInvocationSource(options.invocation_source);
+
   if (tab_group_binding_ && options.propagate_to_group) {
     ShowForTabGroup(tab_group_binding_->id, options);
     return;
@@ -478,7 +478,6 @@ void GlicInstanceImpl::Show(ShowOptions options) {
           std::get_if<SidePanelShowOptions>(&options.embedder_options);
       side_panel_options) {
     if (ShouldShowInactiveSidePanel(*side_panel_options)) {
-      instance_metrics().OnShowInactiveSidePanel(options.invocation_source);
       ShowInactiveSidePanelEmbedderFor(*side_panel_options);
       return;
     }
@@ -791,7 +790,8 @@ void GlicInstanceImpl::OnInteractionModeChange(mojom::WebClientMode new_mode) {
   ContextAccessIndicatorChanged(host().IsContextAccessIndicatorEnabled());
 }
 
-void GlicInstanceImpl::UnbindEmbedder(EmbedderKey key) {
+void GlicInstanceImpl::UnbindEmbedder(EmbedderKey key,
+                                      InstanceRemovalReason removal_reason) {
   instance_metrics_.OnUnbindEmbedder(key);
   tabs::TabInterface* tab = GetTabFromEmbedderKey(key);
 
@@ -827,7 +827,7 @@ void GlicInstanceImpl::UnbindEmbedder(EmbedderKey key) {
 
   UpdateFloatingPanelCanAttach();
 
-  MaybeRemoveInstance();
+  MaybeRemoveInstance(removal_reason);
 
   if (tab && tab_group_binding_) {
     EnsureTabNotInGroup(tab, tab_group_binding_->id);
@@ -1278,7 +1278,7 @@ void GlicInstanceImpl::OnBoundTabDestroyed(tabs::TabInterface* tab) {
   NotifyVisibilityChange();
   UpdateFloatingPanelCanAttach();
   MaybeActivateForegroundEmbedder();
-  MaybeRemoveInstance();
+  MaybeRemoveInstance(InstanceRemovalReason::kUnbound);
 }
 
 void GlicInstanceImpl::OnBoundTabActivated(tabs::TabInterface* tab) {
@@ -1698,7 +1698,7 @@ void GlicInstanceImpl::MaybeRemoveBlankInstanceOnClose() {
     return;
   }
 
-  UnbindTab(tab);
+  UnbindEmbedder(key, InstanceRemovalReason::kBlankInstanceClosed);
 }
 
 void GlicInstanceImpl::NotifyInstanceActivationChanged(bool is_active) {
@@ -1778,7 +1778,7 @@ void GlicInstanceImpl::OnTabPinningStatusEvent(tabs::TabInterface* tab,
   }
   if (!pinned) {
     helper->OnUnpinnedByInstance(this);
-    MaybeRemoveInstance();
+    MaybeRemoveInstance(InstanceRemovalReason::kUnbound);
     return;
   }
   helper->OnPinnedByInstance(this);
@@ -1948,21 +1948,21 @@ std::string GlicInstanceImpl::DescribeForTesting() {
   return ss.str();
 }
 
-void GlicInstanceImpl::MaybeRemoveInstance() {
+void GlicInstanceImpl::MaybeRemoveInstance(InstanceRemovalReason reason) {
   if (CanBeRemoved() && coordinator_delegate_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&GlicInstanceImpl::ExecuteRemoveInstance,
-                                  weak_ptr_factory_.GetWeakPtr()));
+                                  weak_ptr_factory_.GetWeakPtr(), reason));
   }
 }
 
-void GlicInstanceImpl::ExecuteRemoveInstance() {
+void GlicInstanceImpl::ExecuteRemoveInstance(InstanceRemovalReason reason) {
   // Re-verify that the instance is still ready to be removed when this task
   // executes. For example, if a tab was closed and then restored synchronously
   // before this task ran, the instance will have been reused, so we must not
   // remove it.
   if (CanBeRemoved() && coordinator_delegate_) {
-    coordinator_delegate_->RemoveInstance(id_);
+    coordinator_delegate_->RemoveInstance(id_, reason);
   }
 }
 

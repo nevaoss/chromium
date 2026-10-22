@@ -16,6 +16,8 @@
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/notimplemented.h"
@@ -1006,6 +1008,42 @@ void ChromeAutofillClient::TriggerPersonalizationAndTrustSurveys(
       /*product_specific_string_data=*/field_filling_stats_data);
 }
 
+void ChromeAutofillClient::TriggerAtMemoryPersonalizationAndTrustSurvey(
+    bool is_dismissed,
+    const HatsSurveyStringData& product_specific_data) {
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  HatsService* hats_service =
+      HatsServiceFactory::GetForProfile(profile, /*create_if_necessary=*/true);
+  if (!hats_service) {
+    return;
+  }
+
+  const std::string hats_trigger =
+      is_dismissed
+          ? kHatsSurveyTriggerAutofillPersonalizationAndTrustAtMemoryDismissed
+          : kHatsSurveyTriggerAutofillPersonalizationAndTrustAtMemoryFilled;
+
+  if (is_dismissed) {
+    // The survey for dismissing AtMemory is only triggered after a delay
+    // during which the user didn't use the feature again. Launch immediately
+    // without binding to `web_contents()`, allowing the survey to display
+    // even if the user has switched tabs.
+    hats_service->LaunchSurvey(
+        hats_trigger,
+        /*success_callback=*/base::DoNothing(),
+        /*failure_callback=*/base::DoNothing(),
+        /*product_specific_bits_data=*/{},
+        /*product_specific_string_data=*/product_specific_data);
+  } else {
+    hats_service->LaunchDelayedSurveyForWebContents(
+        hats_trigger, web_contents(),
+        /*timeout_ms=*/5000,
+        /*product_specific_bits_data=*/{},
+        /*product_specific_string_data=*/product_specific_data);
+  }
+}
+
 bool ChromeAutofillClient::IsTabInActorMode() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return actor_autofill_manager_ && actor_autofill_manager_->IsTabInActorMode();
@@ -1168,7 +1206,7 @@ void ChromeAutofillClient::SetTouchToFillAutofillControllerForTesting(
       std::move(touch_to_fill_autofill_controller);
 }
 
-bool ChromeAutofillClient::ShowAmbientAutoFillNotice(
+bool ChromeAutofillClient::ShowAmbientAutofillNotice(
     base::WeakPtr<TouchToFillAutofillDelegate> delegate) {
   if (!touch_to_fill_autofill_controller_) {
     return false;
@@ -1178,7 +1216,17 @@ bool ChromeAutofillClient::ShowAmbientAutoFillNotice(
       std::move(delegate));
 }
 
-void ChromeAutofillClient::HideAmbientAutoFillNotice() {
+bool ChromeAutofillClient::ShowPrivateInferenceNoticeBottomSheet(
+    base::WeakPtr<TouchToFillAutofillDelegate> delegate) {
+  if (!touch_to_fill_autofill_controller_) {
+    return false;
+  }
+  return touch_to_fill_autofill_controller_->ShowPrivateInferenceNotice(
+      std::make_unique<TouchToFillAutofillViewImpl>(web_contents()),
+      std::move(delegate));
+}
+
+void ChromeAutofillClient::HideAmbientAutofillNotice() {
   if (touch_to_fill_autofill_controller_) {
     touch_to_fill_autofill_controller_->Hide();
   }
@@ -1381,8 +1429,33 @@ void ChromeAutofillClient::ShowEmailVerificationPopup(
     std::move(callback).Run(EmailVerificationPermissionUiStatus::kOther);
     return;
   }
+  auto decision_callback = base::MakeRefCounted<base::RefCountedData<
+      base::OnceCallback<void(EmailVerificationPermissionUiStatus)>>>(
+      std::move(callback));
+
+  auto on_accepted = base::BindOnce(
+      [](scoped_refptr<base::RefCountedData<base::OnceCallback<void(
+             EmailVerificationPermissionUiStatus)>>> cb) {
+        if (cb->data) {
+          std::move(cb->data).Run(
+              EmailVerificationPermissionUiStatus::kAllowed);
+        }
+      },
+      decision_callback);
+
+  auto on_dismissed = base::BindOnce(
+      [](scoped_refptr<base::RefCountedData<
+             base::OnceCallback<void(EmailVerificationPermissionUiStatus)>>> cb,
+         EmailVerificationPermissionUiStatus reason) {
+        if (cb->data) {
+          std::move(cb->data).Run(reason);
+        }
+      },
+      decision_callback);
+
   email_verification_bottom_sheet_bridge_->RequestShowContent(
-      base::UTF8ToUTF16(issuer_site.Serialize()), email, std::move(callback));
+      base::UTF8ToUTF16(issuer_site.Serialize()), email, std::move(on_accepted),
+      std::move(on_dismissed));
 #else
   const gfx::Rect client_area = web_contents()->GetContainerBounds();
   const gfx::RectF element_bounds_in_screen_space =

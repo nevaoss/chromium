@@ -17,6 +17,7 @@ class Profile;
 namespace ttc {
 
 class Conversation;
+class SessionJournal;
 
 // High-level lifecycle coordinator for a TTC session. Manages the lifetime
 // of the session UI (SessionView) and the model interaction (Conversation).
@@ -32,11 +33,15 @@ class SessionController {
   virtual void OnError(ErrorCode error) = 0;
 
   // Fetches the context of the page this session is operating on, invoking
-  // `callback` with the result.
+  // `callback` with the result. Any fetch already in flight is cancelled and
+  // its callback will not be run.
   virtual void GetPageContext(FetchCompleteCallback callback) = 0;
 
   // The profile this session belongs to.
   virtual Profile* GetProfile() = 0;
+
+  // The journal this session's events are recorded in.
+  virtual SessionJournal& GetJournal() = 0;
 
   // The current lifecycle state of this session.
   virtual SessionLifecycle GetSessionLifecycle() const = 0;

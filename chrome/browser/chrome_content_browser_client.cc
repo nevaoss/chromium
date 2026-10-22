@@ -57,6 +57,7 @@
 #include "build/build_config.h"
 #include "build/config/chromebox_for_meetings/buildflags.h"  // PLATFORM_CFM
 #include "chrome/browser/accessibility/caption_settings_dialog.h"
+#include "chrome/browser/accessibility/page_colors_controller.h"
 #include "chrome/browser/actor/actor_commit_deferring_condition.h"
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/ai/ai_manager.h"
@@ -393,6 +394,7 @@
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
+#include "content/public/common/url_utils.h"
 #include "content/public/common/window_container_type.mojom-shared.h"
 #include "device/vr/buildflags/buildflags.h"
 #include "extensions/browser/browser_frame_context_data.h"
@@ -2929,6 +2931,155 @@ void MaybeAppendBlinkSettingsSwitchForFieldTrial(
                                   base::JoinString(blink_settings, ","));
 }
 
+void AppendExtraCommandLineSwitchesFromPrefs(base::CommandLine* command_line,
+                                             PrefService* prefs) {
+  PrefService* local_state = g_browser_process->local_state();
+  // Currently this pref is only registered if applied via a policy.
+  if (prefs->HasPrefPath(prefs::kDisable3DAPIs) &&
+      prefs->GetBoolean(prefs::kDisable3DAPIs)) {
+    // Turn this policy into a command line switch.
+    command_line->AppendSwitch(switches::kDisable3DAPIs);
+  }
+
+  if (prefs->GetBoolean(prefs::kPrintPreviewDisabled)) {
+    command_line->AppendSwitch(switches::kDisablePrintPreview);
+  }
+
+  if (prefs->GetBoolean(prefs::kDataUrlInSvgUseEnabled)) {
+    command_line->AppendSwitch(blink::switches::kDataUrlInSvgUseEnabled);
+  }
+
+  if (prefs->FindPreference(policy::policy_prefs::kXSLTEnabled)->IsManaged()) {
+    command_line->AppendSwitchASCII(
+        blink::switches::kXSLTEnabledPolicy,
+        prefs->GetBoolean(policy::policy_prefs::kXSLTEnabled) ? "true"
+                                                              : "false");
+  }
+
+  if (prefs
+          ->FindPreference(policy::policy_prefs::
+                               kRestrictBackgroundFetchFromServiceWorkerEnabled)
+          ->IsManaged()) {
+    command_line->AppendSwitchASCII(
+        blink::switches::kRestrictBackgroundFetchFromServiceWorker,
+        prefs->GetBoolean(policy::policy_prefs::
+                              kRestrictBackgroundFetchFromServiceWorkerEnabled)
+            ? "true"
+            : "false");
+  }
+
+  if (!prefs->GetBoolean(prefs::kPartitionedBlobUrlUsage)) {
+    command_line->AppendSwitch(blink::switches::kDisableBlobUrlPartitioning);
+  }
+
+  if (!prefs->GetBoolean(
+          policy::policy_prefs::kStandardizedBrowserZoomEnabled)) {
+    command_line->AppendSwitch(
+        blink::switches::kDisableStandardizedBrowserZoom);
+  }
+  if (prefs->GetBoolean(
+          policy::policy_prefs::kCSSCustomStateDeprecatedSyntaxEnabled)) {
+    command_line->AppendSwitch(
+        blink::switches::kCSSCustomStateDeprecatedSyntaxEnabled);
+  }
+
+  if (prefs->GetBoolean(
+          policy::policy_prefs::kForcePermissionPolicyUnloadDefaultEnabled)) {
+    command_line->AppendSwitch(
+        network::switches::kForcePermissionPolicyUnloadDefaultEnabled);
+  }
+
+  if (local_state->GetBoolean(
+          policy::policy_prefs::
+              kLocalNetworkAccessPermissionsPolicyDefaultEnabled)) {
+    command_line->AppendSwitch(
+        network::switches::kLocalNetworkAccessPermissionsPolicyDefaultEnabled);
+  }
+
+  if (prefs->GetBoolean(prefs::kWebAudioOutputBufferingEnabled)) {
+    command_line->AppendSwitch(
+        blink::switches::kWebAudioBypassOutputBufferingOptOut);
+  }
+
+  if (!prefs->GetBoolean(
+          policy::policy_prefs::kBackForwardCacheForWebSocketsAllowed)) {
+    command_line->AppendSwitch(
+        blink::switches::kDisableBackForwardCacheForWebSockets);
+  }
+
+  if (!prefs->GetBoolean(prefs::kReduceAcceptLanguageEnabled)) {
+    command_line->AppendSwitch(blink::switches::kDisableReduceAcceptLanguage);
+  }
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Enable SharedArrayBuffer on desktop if allowed by Enterprise Policy.
+  // TODO(crbug.com/40155376) Remove when migration to COOP+COEP is
+  // complete.
+  if (prefs->GetBoolean(prefs::kSharedArrayBufferUnrestrictedAccessAllowed)) {
+    command_line->AppendSwitch(
+        switches::kSharedArrayBufferUnrestrictedAccessAllowed);
+  }
+#endif
+  if (!prefs->GetBoolean(prefs::kSandboxExternalProtocolBlocked)) {
+    command_line->AppendSwitch(kDisableSandboxExternalProtocolSwitch);
+  }
+
+  if (prefs->HasPrefPath(prefs::kAllowDinosaurEasterEgg) &&
+      !prefs->GetBoolean(prefs::kAllowDinosaurEasterEgg)) {
+    command_line->AppendSwitch(error_page::switches::kDisableDinosaurEasterEgg);
+  }
+
+  MaybeAppendSecureOriginsAllowlistSwitch(command_line);
+
+  if (prefs->HasPrefPath(prefs::kScrollToTextFragmentEnabled) &&
+      !prefs->GetBoolean(prefs::kScrollToTextFragmentEnabled)) {
+    command_line->AppendSwitch(switches::kDisableScrollToTextFragment);
+  }
+
+  if (!prefs->GetList(enterprise_reporting::kCloudLegacyTechReportAllowlist)
+           .empty()) {
+    command_line->AppendSwitch(blink::switches::kLegacyTechReportPolicyEnabled);
+  }
+
+  // The IntensiveWakeUpThrottling feature is typically managed via a
+  // base::Feature, but it has a managed policy override. The override is
+  // communicated to blink via a custom command-line flag. See
+  // PageSchedulerImpl for the other half of related logic.
+  const PrefService::Preference* pref = local_state->FindPreference(
+      policy::policy_prefs::kIntensiveWakeUpThrottlingEnabled);
+  if (pref && pref->IsManaged()) {
+    command_line->AppendSwitchASCII(
+        blink::switches::kIntensiveWakeUpThrottlingPolicy,
+        pref->GetValue()->GetBool()
+            ? blink::switches::kIntensiveWakeUpThrottlingPolicy_ForceEnable
+            : blink::switches::kIntensiveWakeUpThrottlingPolicy_ForceDisable);
+  }
+
+#if BUILDFLAG(IS_ANDROID)
+  // Communicating to content/ for BackForwardCache.
+  if (prefs->HasPrefPath(policy::policy_prefs::kBackForwardCacheEnabled) &&
+      !prefs->GetBoolean(policy::policy_prefs::kBackForwardCacheEnabled)) {
+    command_line->AppendSwitch(switches::kDisableBackForwardCache);
+  }
+#endif  // BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Make the WebAuthenticationRemoteProxiedRequestsAllowed policy enable
+  // the experimental WebAuthenticationRemoteDesktopSupport Blink runtime
+  // feature.
+  if (prefs->GetBoolean(webauthn::pref_names::kRemoteProxiedRequestsAllowed)) {
+    command_line->AppendSwitch(switches::kWebAuthRemoteDesktopSupport);
+  }
+#endif
+  // Make the WebAuthenticationRemoteDesktopAllowedOrigins policy enable the
+  // experimental WebAuthenticationRemoteDesktopSupport Blink runtime
+  // feature.
+  if (!prefs->GetList(webauthn::pref_names::kRemoteDesktopAllowedOrigins)
+           .empty()) {
+    command_line->AppendSwitch(switches::kWebAuthRemoteDesktopSupport);
+  }
+}
+
 }  // namespace
 
 void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
@@ -3024,90 +3175,8 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
     if (process) {
       Profile* profile =
           Profile::FromBrowserContext(process->GetBrowserContext());
-      PrefService* prefs = profile->GetPrefs();
-      PrefService* local_state = g_browser_process->local_state();
-      // Currently this pref is only registered if applied via a policy.
-      if (prefs->HasPrefPath(prefs::kDisable3DAPIs) &&
-          prefs->GetBoolean(prefs::kDisable3DAPIs)) {
-        // Turn this policy into a command line switch.
-        command_line->AppendSwitch(switches::kDisable3DAPIs);
-      }
-
-      if (prefs->GetBoolean(prefs::kPrintPreviewDisabled)) {
-        command_line->AppendSwitch(switches::kDisablePrintPreview);
-      }
-
-      if (prefs->GetBoolean(prefs::kDataUrlInSvgUseEnabled)) {
-        command_line->AppendSwitch(blink::switches::kDataUrlInSvgUseEnabled);
-      }
-
-      if (prefs->FindPreference(policy::policy_prefs::kXSLTEnabled)
-              ->IsManaged()) {
-        command_line->AppendSwitchASCII(
-            blink::switches::kXSLTEnabledPolicy,
-            prefs->GetBoolean(policy::policy_prefs::kXSLTEnabled) ? "true"
-                                                                  : "false");
-      }
-
-      if (prefs
-              ->FindPreference(
-                  policy::policy_prefs::
-                      kRestrictBackgroundFetchFromServiceWorkerEnabled)
-              ->IsManaged()) {
-        command_line->AppendSwitchASCII(
-            blink::switches::kRestrictBackgroundFetchFromServiceWorker,
-            prefs->GetBoolean(
-                policy::policy_prefs::
-                    kRestrictBackgroundFetchFromServiceWorkerEnabled)
-                ? "true"
-                : "false");
-      }
-
-      if (!prefs->GetBoolean(prefs::kPartitionedBlobUrlUsage)) {
-        command_line->AppendSwitch(
-            blink::switches::kDisableBlobUrlPartitioning);
-      }
-
-      if (!prefs->GetBoolean(
-              policy::policy_prefs::kStandardizedBrowserZoomEnabled)) {
-        command_line->AppendSwitch(
-            blink::switches::kDisableStandardizedBrowserZoom);
-      }
-      if (prefs->GetBoolean(
-              policy::policy_prefs::kCSSCustomStateDeprecatedSyntaxEnabled)) {
-        command_line->AppendSwitch(
-            blink::switches::kCSSCustomStateDeprecatedSyntaxEnabled);
-      }
-
-      if (prefs->GetBoolean(policy::policy_prefs::
-                                kForcePermissionPolicyUnloadDefaultEnabled)) {
-        command_line->AppendSwitch(
-            network::switches::kForcePermissionPolicyUnloadDefaultEnabled);
-      }
-
-      if (local_state->GetBoolean(
-              policy::policy_prefs::
-                  kLocalNetworkAccessPermissionsPolicyDefaultEnabled)) {
-        command_line->AppendSwitch(
-            network::switches::
-                kLocalNetworkAccessPermissionsPolicyDefaultEnabled);
-      }
-
-      if (prefs->GetBoolean(prefs::kWebAudioOutputBufferingEnabled)) {
-        command_line->AppendSwitch(
-            blink::switches::kWebAudioBypassOutputBufferingOptOut);
-      }
-
-      if (!prefs->GetBoolean(
-              policy::policy_prefs::kBackForwardCacheForWebSocketsAllowed)) {
-        command_line->AppendSwitch(
-            blink::switches::kDisableBackForwardCacheForWebSockets);
-      }
-
-      if (!prefs->GetBoolean(prefs::kReduceAcceptLanguageEnabled)) {
-        command_line->AppendSwitch(
-            blink::switches::kDisableReduceAcceptLanguage);
-      }
+      AppendExtraCommandLineSwitchesFromPrefs(command_line,
+                                              profile->GetPrefs());
 
       if (process->GetUserData(search::kIsNTPProcessKey)) {
         command_line->AppendSwitch(switches::kNtpProcess);
@@ -3122,78 +3191,6 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
         command_line->AppendSwitch(switches::kInstantProcess);
       }
 #endif
-#if !BUILDFLAG(IS_ANDROID)
-      // Enable SharedArrayBuffer on desktop if allowed by Enterprise Policy.
-      // TODO(crbug.com/40155376) Remove when migration to COOP+COEP is
-      // complete.
-      if (prefs->GetBoolean(
-              prefs::kSharedArrayBufferUnrestrictedAccessAllowed)) {
-        command_line->AppendSwitch(
-            switches::kSharedArrayBufferUnrestrictedAccessAllowed);
-      }
-#endif
-      if (!prefs->GetBoolean(prefs::kSandboxExternalProtocolBlocked)) {
-        command_line->AppendSwitch(kDisableSandboxExternalProtocolSwitch);
-      }
-
-      if (prefs->HasPrefPath(prefs::kAllowDinosaurEasterEgg) &&
-          !prefs->GetBoolean(prefs::kAllowDinosaurEasterEgg)) {
-        command_line->AppendSwitch(
-            error_page::switches::kDisableDinosaurEasterEgg);
-      }
-
-      MaybeAppendSecureOriginsAllowlistSwitch(command_line);
-
-      if (prefs->HasPrefPath(prefs::kScrollToTextFragmentEnabled) &&
-          !prefs->GetBoolean(prefs::kScrollToTextFragmentEnabled)) {
-        command_line->AppendSwitch(switches::kDisableScrollToTextFragment);
-      }
-
-      if (!prefs->GetList(enterprise_reporting::kCloudLegacyTechReportAllowlist)
-               .empty()) {
-        command_line->AppendSwitch(
-            blink::switches::kLegacyTechReportPolicyEnabled);
-      }
-
-      // The IntensiveWakeUpThrottling feature is typically managed via a
-      // base::Feature, but it has a managed policy override. The override is
-      // communicated to blink via a custom command-line flag. See
-      // PageSchedulerImpl for the other half of related logic.
-      const PrefService::Preference* pref = local_state->FindPreference(
-          policy::policy_prefs::kIntensiveWakeUpThrottlingEnabled);
-      if (pref && pref->IsManaged()) {
-        command_line->AppendSwitchASCII(
-            blink::switches::kIntensiveWakeUpThrottlingPolicy,
-            pref->GetValue()->GetBool()
-                ? blink::switches::kIntensiveWakeUpThrottlingPolicy_ForceEnable
-                : blink::switches::
-                      kIntensiveWakeUpThrottlingPolicy_ForceDisable);
-      }
-
-#if BUILDFLAG(IS_ANDROID)
-      // Communicating to content/ for BackForwardCache.
-      if (prefs->HasPrefPath(policy::policy_prefs::kBackForwardCacheEnabled) &&
-          !prefs->GetBoolean(policy::policy_prefs::kBackForwardCacheEnabled)) {
-        command_line->AppendSwitch(switches::kDisableBackForwardCache);
-      }
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if !BUILDFLAG(IS_ANDROID)
-      // Make the WebAuthenticationRemoteProxiedRequestsAllowed policy enable
-      // the experimental WebAuthenticationRemoteDesktopSupport Blink runtime
-      // feature.
-      if (prefs->GetBoolean(
-              webauthn::pref_names::kRemoteProxiedRequestsAllowed)) {
-        command_line->AppendSwitch(switches::kWebAuthRemoteDesktopSupport);
-      }
-#endif
-      // Make the WebAuthenticationRemoteDesktopAllowedOrigins policy enable the
-      // experimental WebAuthenticationRemoteDesktopSupport Blink runtime
-      // feature.
-      if (!prefs->GetList(webauthn::pref_names::kRemoteDesktopAllowedOrigins)
-               .empty()) {
-        command_line->AppendSwitch(switches::kWebAuthRemoteDesktopSupport);
-      }
     }
 
     MaybeAppendBlinkSettingsSwitchForFieldTrial(browser_command_line,
@@ -4030,7 +4027,8 @@ bool ShouldDisableForcedColorsForWebContent(content::WebContents* contents,
   return false;
 }
 
-blink::mojom::PreferredContrast GetPreferredContrast() {
+blink::mojom::PreferredContrast GetPreferredContrast(
+    content::WebContents* web_contents) {
   using NC = ui::NativeTheme::PreferredContrast;
   using BC = blink::mojom::PreferredContrast;
   static constexpr auto kContrastMap =
@@ -4038,14 +4036,17 @@ blink::mojom::PreferredContrast GetPreferredContrast() {
                                       {NC::kMore, BC::kMore},
                                       {NC::kLess, BC::kLess},
                                       {NC::kCustom, BC::kCustom}});
-  return kContrastMap.at(
-      ui::NativeTheme::GetInstanceForWeb()->preferred_contrast());
+  const NC preferred_contrast =
+      PageColorsController::GetEffectivePageColors(web_contents)
+          .preferred_contrast;
+  return kContrastMap.at(preferred_contrast);
 }
 
 std::tuple<bool, bool> GetForcedColorsForWebContent(WebContents* web_contents) {
+  const auto forced_colors =
+      PageColorsController::GetEffectivePageColors(web_contents).forced_colors;
   const bool in_forced_colors =
-      ui::NativeTheme::GetInstanceForWeb()->forced_colors() !=
-      ui::ColorProviderKey::ForcedColors::kNone;
+      forced_colors != ui::ColorProviderKey::ForcedColors::kNone;
   const bool is_forced_colors_disabled =
       ShouldDisableForcedColorsForWebContent(web_contents, in_forced_colors);
   return {in_forced_colors && !is_forced_colors_disabled,
@@ -4084,19 +4085,29 @@ GetPreferredColorScheme(const WebPreferences& web_prefs,
 #else  // !BUILDFLAG(IS_ANDROID)
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
-  if (profile->IsEnterpriseIsolatedModeProfile() && !security_principal.IsWebUI()) {
+  if (profile->IsEnterpriseIsolatedModeProfile() &&
+      !security_principal.IsWebUI()) {
     preferred_color_scheme = blink::mojom::PreferredColorScheme::kLight;
-  } else if (profile->IsIncognitoProfile() && !security_principal.IsWebUI()) {
-    // Incognito contents follow the device color mode.
-    preferred_color_scheme = ToBlinkPreferredColorScheme(
-        ui::NativeTheme::GetInstanceForWeb()->preferred_color_scheme());
   } else {
-    // WebUI and regular pages follow the browser theme color mode, provided by
-    // the color provider.
-    preferred_color_scheme =
-        web_contents->GetColorMode() == ui::ColorProviderKey::ColorMode::kLight
-            ? blink::mojom::PreferredColorScheme::kLight
-            : blink::mojom::PreferredColorScheme::kDark;
+    if (profile->IsIncognitoProfile() && !security_principal.IsWebUI()) {
+      // Incognito contents follow the device color mode by default.
+      preferred_color_scheme = ToBlinkPreferredColorScheme(
+          ui::NativeTheme::GetInstanceForWeb()->preferred_color_scheme());
+    } else {
+      // WebUI and regular pages follow the browser theme color mode, provided
+      // by the color provider.
+      preferred_color_scheme = web_contents->GetColorMode() ==
+                                       ui::ColorProviderKey::ColorMode::kLight
+                                   ? blink::mojom::PreferredColorScheme::kLight
+                                   : blink::mojom::PreferredColorScheme::kDark;
+    }
+    const auto effective_page_colors =
+        PageColorsController::GetEffectivePageColors(web_contents);
+    if (effective_page_colors.forced_colors !=
+        ui::ColorProviderKey::ForcedColors::kNone) {
+      preferred_color_scheme = ToBlinkPreferredColorScheme(
+          effective_page_colors.preferred_color_scheme);
+    }
   }
   // Update the preferred root scrollbar color based on the lightness level of
   // the toolbar's color.
@@ -4470,6 +4481,11 @@ bool ChromeContentBrowserClient::CanCreateWindow(
   // outright, so window.open() returns null and target=_blank openers get
   // nothing. Any legitimate off-PWC navigation is the feature's own concern.
   if (web_contents->IsPrivileged()) {
+    if (auto* privileged =
+            pwc::PrivilegedWebContents::FromWebContents(web_contents)) {
+      privileged->HandleWindowCreation(opener, target_url, disposition,
+                                       features);
+    }
     return false;
   }
 
@@ -4940,7 +4956,7 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       IsFileOrDirectoryPickerWithoutGestureAllowed(web_contents);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-  web_prefs->preferred_contrast = GetPreferredContrast();
+  web_prefs->preferred_contrast = GetPreferredContrast(web_contents);
 
   std::tie(web_prefs->in_forced_colors, web_prefs->is_forced_colors_disabled) =
       GetForcedColorsForWebContent(web_contents);
@@ -5122,7 +5138,7 @@ bool ChromeContentBrowserClient::
         WebContents& web_contents,
         const SiteInstance& main_frame_site) const {
   const WebPreferences& prefs = web_contents.GetOrCreateWebPreferences();
-  return GetPreferredContrast() != prefs.preferred_contrast ||
+  return GetPreferredContrast(&web_contents) != prefs.preferred_contrast ||
          GetForcedColorsForWebContent(&web_contents) !=
              std::tie(prefs.in_forced_colors,
                       prefs.is_forced_colors_disabled) ||
@@ -5132,6 +5148,13 @@ bool ChromeContentBrowserClient::
                       prefs.preferred_root_scrollbar_color_scheme) ||
          GetRootScrollbarThemeColor(&web_contents) !=
              prefs.root_scrollbar_theme_color;
+}
+
+ui::ColorProviderKey::ForcedColors
+ChromeContentBrowserClient::GetForcedColorsForWebContents(
+    WebContents& web_contents) const {
+  return PageColorsController::GetEffectivePageColors(&web_contents)
+      .forced_colors;
 }
 
 void ChromeContentBrowserClient::BrowserURLHandlerCreated(
@@ -6523,6 +6546,11 @@ class SpecialAccessFileURLLoaderFactory
   int child_id_;
 };
 
+// The former host of chrome://omnibox-internals. HandleWebUI() rewrites it to
+// the new host so that existing links, bookmarks, and docs keep working.
+// TODO(crbug.com/566702581): Remove once the new host is well-known.
+constexpr char kLegacyOmniboxInternalsHost[] = "omnibox";
+
 bool IsDisabledInternalWebUI(const GURL& url) {
   if (!content::IsInternalWebUI(url)) {
     return false;
@@ -7561,6 +7589,16 @@ bool ChromeContentBrowserClient::HandleWebUI(
     content::BrowserContext* browser_context) {
   DCHECK(browser_context);
 
+  // Rewrite chrome://omnibox to chrome://omnibox-internals, keeping the path,
+  // query, and fragment. This must happen before the internal debug pages check
+  // below. HandleWebUIReverse() makes the new URL the displayed one.
+  if (url->SchemeIs(content::kChromeUIScheme) &&
+      url->host() == kLegacyOmniboxInternalsHost) {
+    GURL::Replacements replacements;
+    replacements.SetHostStr(chrome::kChromeUIOmniboxInternalsHost);
+    *url = url->ReplaceComponents(replacements);
+  }
+
   // Rewrite chrome://help to chrome://settings/help.
   if (url->SchemeIs(content::kChromeUIScheme) &&
       url->host() == chrome::kChromeUIHelpHost) {
@@ -7673,6 +7711,14 @@ bool ChromeContentBrowserClient::HandleWebUIReverse(
     return true;
   }
 #endif  // BUILDFLAG(CHROME_ROOT_STORE_CERT_MANAGEMENT_UI)
+
+  // No need to actually reverse-rewrite the URL, but return true to update the
+  // displayed URL when rewriting chrome://omnibox to
+  // chrome://omnibox-internals.
+  if (url->SchemeIs(content::kChromeUIScheme) &&
+      url->host() == chrome::kChromeUIOmniboxInternalsHost) {
+    return true;
+  }
 
   // No need to actually reverse-rewrite the URL, but return true to update the
   // displayed URL when rewriting chrome://help to chrome://settings/help.
@@ -8313,7 +8359,10 @@ ChromeContentBrowserClient::ShouldOverrideLocalNetworkAccessRequestPolicy(
 
   Profile* profile = Profile::FromBrowserContext(browser_context);
 
-  if (profile->GetPrefs()->GetBoolean(
+  // The opt-out preference below is only registered for profiles that support
+  // enterprise policies. Skip the check for profiles that do not support them.
+  if (profile->GetProfilePolicyConnector() &&
+      profile->GetPrefs()->GetBoolean(
           prefs::kManagedLocalNetworkAccessRestrictionsTemporaryOptOut)) {
     return content::ContentBrowserClient::
         LocalNetworkAccessRequestPolicyOverride::kWarnInsteadOfBlock;
@@ -9278,6 +9327,27 @@ bool ChromeContentBrowserClient::
   return true;
 }
 
+bool ChromeContentBrowserClient::IsUrlAllowedForBackForwardCache(
+    content::BrowserContext* browser_context,
+    const GURL& url) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  // Match PolicyBlocklistNavigationThrottle, which never checks URLs that don't
+  // go through the network stack (e.g. about:blank, about:srcdoc) or blob:
+  // URLs.
+  if (!content::IsURLHandledByNetworkStack(url) ||
+      url.SchemeIs(url::kBlobScheme)) {
+    return true;
+  }
+  Profile* profile = Profile::FromBrowserContext(browser_context);
+  PolicyBlocklistService* service =
+      ChromePolicyBlocklistServiceFactory::GetForProfile(profile);
+  if (!service) {
+    return true;
+  }
+  return service->GetURLBlocklistState(url) !=
+         policy::URLBlocklist::URLBlocklistState::URL_IN_BLOCKLIST;
+}
+
 bool ChromeContentBrowserClient::IsBlobUrlPartitioningEnabled(
     content::BrowserContext* browser_context) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -9511,13 +9581,20 @@ void ChromeContentBrowserClient::BindLanguageDetectionDriver(
     base::SupportsUserData* context_user_data,
     mojo::PendingReceiver<
         language_detection::mojom::ContentLanguageDetectionDriver> receiver) {
-  auto language_detection_driver =
-      std::make_unique<language_detection::ContentLanguageDetectionDriver>(
-          LanguageDetectionModelServiceFactory::GetForProfile(
-              Profile::FromBrowserContext(browser_context)));
+  if (!context_user_data->GetUserData(
+          kContentLanguageDetectionDriverUserDataKey)) {
+    context_user_data->SetUserData(
+        kContentLanguageDetectionDriverUserDataKey,
+        std::make_unique<language_detection::ContentLanguageDetectionDriver>(
+            LanguageDetectionModelServiceFactory::GetForProfile(
+                Profile::FromBrowserContext(browser_context))));
+  }
+
+  auto* language_detection_driver =
+      static_cast<language_detection::ContentLanguageDetectionDriver*>(
+          context_user_data->GetUserData(
+              kContentLanguageDetectionDriverUserDataKey));
   language_detection_driver->AddReceiver(std::move(receiver));
-  context_user_data->SetUserData(kContentLanguageDetectionDriverUserDataKey,
-                                 std::move(language_detection_driver));
 }
 
 #if !BUILDFLAG(IS_ANDROID)

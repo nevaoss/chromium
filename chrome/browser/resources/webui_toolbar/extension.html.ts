@@ -13,11 +13,12 @@ export function getHtml(this: ExtensionElement) {
       ?is-menu-open="${this.trackedHighlighted}"
       title="${this.state.tooltip}"
       aria-label="${this.state.accessibleName || this.state.tooltip}"
+      aria-haspopup="menu"
       draggable="${this.isDraggable()}"
       @dragstart="${this.onDragstart}"
       @dragend="${this.onDragend}"
       @keydown="${this.onKeydown}"
-      @pointerdown="${this.onPointerdown_}"
+      @pointerdown="${this.highlightTracker.onPointerdown}"
       @click="${this.onClick_}"
       @contextmenu="${this.onContextmenu_}">
       <icon-from-table .iconHandle="${this.state.icon}"></icon-from-table>

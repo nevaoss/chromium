@@ -236,34 +236,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="CustomTabs.ConnectionStatusOnReturn.GSA"
-    enum="CustomTabsConnection" expires_after="2025-03-09">
-  <owner>kgrosu@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <owner>cct-team@google.com</owner>
-  <summary>
-    Android: Recorded whenever user closes the custom tab by hitting the close
-    button or back to return to the caller app. Keeps track of the connection
-    status and whether the app was using a KeepAlive connection. Recorded only
-    for AGSA. Starting with M84 this is is also recorded for webapps/WebAPKs.
-    Filter the platform for just CCT/TWA data.
-  </summary>
-</histogram>
-
-<histogram name="CustomTabs.ConnectionStatusOnReturn.NonGSA"
-    enum="CustomTabsConnection" expires_after="2025-07-13">
-  <owner>kgrosu@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <owner>cct-team@google.com</owner>
-  <summary>
-    Android: Recorded whenever user closes the custom tab by hitting the close
-    button or back to return to the caller app. Keeps track of the connection
-    status and whether the app was using a KeepAlive connection. Recorded for
-    all apps other than AGSA. Starting with M84 this is is also recorded for
-    webapps/WebAPKs. Filter the platform for just CCT/TWA data.
-  </summary>
-</histogram>
-
 <histogram name="CustomTabs.ContextMenu.DisplayedContextualCustomActionType"
     enum="ContextualCustomActionType" expires_after="2027-10-31">
   <owner>adelm@google.com</owner>
@@ -285,19 +257,6 @@ chromium-metrics-reviews@google.com.
     Custom Tab, broken down by the type of content the action was for (e.g. Link
     or Image). This allows for tracking overall engagement with custom actions
     of different types.
-  </summary>
-</histogram>
-
-<histogram
-    name="CustomTabs.DetachedResourceRequest.Duration.{DetachedResourceRequestFinalStatus}{DetachedResourceRequestSource}"
-    units="ms" expires_after="2024-03-17">
-  <owner>lizeb@chromium.org</owner>
-  <owner>cct-team@google.com</owner>
-  <summary>
-    Time between the start of a detached resource request and its completion
-    (failure or success). Android only. Starting with M84 this is is also
-    recorded for webapps/WebAPKs. Filter the platform for just CCT/TWA data.
-    {DetachedResourceRequestFinalStatus} {DetachedResourceRequestSource}
   </summary>
 </histogram>
 

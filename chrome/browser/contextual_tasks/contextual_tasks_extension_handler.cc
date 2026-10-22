@@ -5,14 +5,18 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h"
 
 #include <algorithm>
+#include <iterator>
 
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
+#include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
@@ -86,7 +90,50 @@ lens::LensOverlayVisualSearchInteractionData CreateCropInteractionData(
       lens::CLIENT_PLATFORM_LENS_OVERLAY);
   return vsint;
 }
+
+void RemoveAttachedTabUnderline(
+    std::optional<int32_t> session_tab_id,
+    content::WebContents* host_web_contents,
+    BrowserWindowInterface* browser_window_interface) {
+  if (!session_tab_id.has_value() || !browser_window_interface) {
+    return;
+  }
+  if (auto* tab_list = TabListInterface::From(browser_window_interface)) {
+    for (tabs::TabInterface* tab : tab_list->GetAllTabs()) {
+      if (!tab || !tab->GetContents()) {
+        continue;
+      }
+      if (sessions::SessionTabHelper::IdForTab(tab->GetContents()).id() ==
+          *session_tab_id) {
+        contextual_tasks::RemoveTabUnderline(tab->GetHandle().raw_value(),
+                                             browser_window_interface);
+        return;
+      }
+    }
+  }
+  if (host_web_contents) {
+    if (auto* user_data = contextual_tasks::ContextualTasksWebContentsUserData::
+            FromWebContents(host_web_contents)) {
+      if (std::optional<int32_t> tab_handle_id =
+              user_data->GetTabHandleForSessionTabId(*session_tab_id)) {
+        contextual_tasks::RemoveTabUnderline(*tab_handle_id,
+                                             browser_window_interface);
+      }
+    }
+  }
+}
 #endif
+
+void DeleteTabToken(
+    contextual_search::ContextualSearchSessionHandle* session_handle,
+    const base::UnguessableToken& token) {
+  if (!session_handle) {
+    return;
+  }
+  if (!session_handle->DeleteFile(token)) {
+    session_handle->RemoveUploadedContextToken(token);
+  }
+}
 
 }  // namespace
 
@@ -242,13 +289,18 @@ void ContextualTasksExtensionHandler::OnWebviewMessage(
       }
       contextual_tasks_page_->OnHandshakeComplete();
       RecordTimeToHandshakeComplete();
-      if (!selected_tabs_.empty()) {
+      if (!GetSelectedTabs().empty()) {
         SendMountContextLibrary();
       }
       return;
     }
     if (search_to_client_message.has_on_submit_query_request()) {
       HandleOnSubmitQueryRequest();
+      return;
+    }
+    if (search_to_client_message.has_open_link_in_side_panel_mode()) {
+      HandleOpenLinkInSidePanelMode(
+          search_to_client_message.open_link_in_side_panel_mode().url());
       return;
     }
   }
@@ -262,6 +314,9 @@ void ContextualTasksExtensionHandler::OnWebviewMessage(
   if (aim_to_client_message.has_handshake_response()) {
     contextual_tasks_page_->OnHandshakeComplete();
     RecordTimeToHandshakeComplete();
+  } else if (aim_to_client_message.has_open_link_in_side_panel_mode()) {
+    HandleOpenLinkInSidePanelMode(
+        aim_to_client_message.open_link_in_side_panel_mode().url());
   }
 }
 
@@ -331,8 +386,6 @@ void ContextualTasksExtensionHandler::HandleOnSubmitQueryRequest() {
   UploadSnapshotTabContextIfPresent();
 
   std::optional<base::UnguessableToken> overlay_token = GetLensOverlayToken();
-  CloseLensOverlaySync(
-      lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
 
   if (auto lens_added_context = GetLensAddedContext()) {
     *on_submit_response->add_added_contexts() = std::move(*lens_added_context);
@@ -343,12 +396,11 @@ void ContextualTasksExtensionHandler::HandleOnSubmitQueryRequest() {
 
   PostSearchMessage(response_message);
 
-#if !BUILDFLAG(IS_ANDROID)
-  if (auto* controller = GetLensSearchController()) {
-    controller->CloseLensAsync(
-        lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
-  }
-#endif
+  // Submission moved the uploaded tabs into the session's persisted tabs, so
+  // the context library chip state may have changed.
+  UpdateContextLibraryInputState();
+
+  DoSubmitQueryCleanup();
 }
 
 void ContextualTasksExtensionHandler::AppendTabContextsToOnSubmitQueryResponse(
@@ -357,6 +409,22 @@ void ContextualTasksExtensionHandler::AppendTabContextsToOnSubmitQueryResponse(
     const std::optional<base::UnguessableToken>& overlay_token) {
   auto* on_submit_response =
       response_message->mutable_on_submit_query_response();
+
+  // Report persisted tabs the user removed since the last turn (deselected,
+  // closed, or navigated away) before reading the uploaded tokens, since this
+  // also drops tokens for closed tabs. `TakeRemovedContexts()` also carries
+  // Smart Tab Sharing removals, but this surface never produces them:
+  // `SetSmartTabSharingActive()` is a no-op here because the AIM page is a
+  // website and must not be able to trigger tab sharing without a user
+  // gesture. If Smart Tab Sharing is enabled for this surface later, that
+  // gating belongs in `SetSmartTabSharingActive()` and the recent interaction
+  // check in `HandleOnSubmitQueryRequest()`, not here.
+  for (const auto& removed_id : session_handle->TakeRemovedContexts()) {
+    *on_submit_response->add_removed_contexts()->mutable_request_id() =
+        removed_id;
+  }
+
+  const auto selected_tabs = GetSelectedTabs();
   // Add uploaded tab contexts directly from the session handle.
   for (const auto& file_info : session_handle->GetUploadedContextFileInfos()) {
     if (!file_info.request_id.has_value()) {
@@ -367,7 +435,10 @@ void ContextualTasksExtensionHandler::AppendTabContextsToOnSubmitQueryResponse(
     if (overlay_token.has_value() && file_info.file_token == *overlay_token) {
       continue;
     }
-    if (!IsTokenSelected(file_info.file_token)) {
+    if (std::ranges::none_of(
+            selected_tabs, [&](const contextual_search::TabInfo& selected_tab) {
+              return selected_tab.context_token == file_info.file_token;
+            })) {
       continue;
     }
     auto* added = on_submit_response->add_added_contexts();
@@ -383,12 +454,52 @@ void ContextualTasksExtensionHandler::AppendTabContextsToOnSubmitQueryResponse(
     }
   }
 
-  for (const auto& removed_id :
-       session_handle->sts_toggled_removed_contexts()) {
-    auto* removed = on_submit_response->add_removed_contexts();
-    *removed->mutable_request_id() = removed_id;
+  // The page owns the query text, so no query length metrics are recorded
+  // here. This moves the uploaded tabs into the session's persisted tabs so
+  // they are tracked across turns and are not re-added on the next
+  // submission.
+  session_handle->MarkQuerySubmitted(/*file_tokens=*/{},
+                                     /*query_text_length=*/std::nullopt);
+}
+
+void ContextualTasksExtensionHandler::HandleOpenLinkInSidePanelMode(
+    std::string_view url) {
+  GURL target_url(url);
+  // Only accept valid URLs that are HTTP or HTTPS.
+  if (!target_url.is_valid() || !target_url.SchemeIsHTTPOrHTTPS()) {
+    return;
   }
-  session_handle->set_smart_tab_sharing_toggled_since_last_turn(false);
+
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(&render_frame_host());
+  if (!web_contents) {
+    return;
+  }
+
+  auto* ui_service =
+      contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
+          render_frame_host().GetBrowserContext());
+  if (!ui_service) {
+    return;
+  }
+
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(web_contents);
+  BrowserWindowInterface* browser = GetBrowserWindowInterface();
+
+  base::Uuid task_id = task_id_.value_or(base::Uuid());
+  if (!task_id.is_valid()) {
+    if (auto* helper =
+            ContextualSearchWebContentsHelper::FromWebContents(web_contents);
+        helper && helper->task_id().has_value()) {
+      task_id = *helper->task_id();
+    }
+  }
+
+  ui_service->OnThreadLinkClicked(
+      target_url, task_id, tab ? tab->GetWeakPtr() : nullptr,
+      browser ? browser->GetWeakPtr() : nullptr,
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin());
 }
 
 std::optional<lens::AddedContext>
@@ -505,6 +616,24 @@ ContextualTasksExtensionHandler::GetLensAddedContext() {
   return added;
 #else
   return std::nullopt;
+#endif
+}
+
+void ContextualTasksExtensionHandler::DoSubmitQueryCleanup() {
+  if (auto model = GetOrCreateInputStateModel()) {
+    model->RemoveLensCrop();
+  }
+
+  CloseLensAsync(
+      lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
+}
+
+void ContextualTasksExtensionHandler::CloseLensAsync(
+    lens::LensOverlayDismissalSource dismissal_source) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* controller = GetLensSearchController()) {
+    controller->CloseLensAsync(dismissal_source);
+  }
 #endif
 }
 
@@ -731,20 +860,25 @@ void ContextualTasksExtensionHandler::AddTabContext(
     return;
   }
 
-  if (auto it = selected_tabs_.find(tab_id); it != selected_tabs_.end()) {
-    if (tab_context_snapshot_.has_value() &&
-        tab_context_snapshot_->first == it->second) {
-      tab_context_snapshot_.reset();
+  tabs::TabInterface* const tab = tabs::TabHandle(tab_id).Get();
+  content::WebContents* const tab_contents = tab ? tab->GetContents() : nullptr;
+  SessionID session_id =
+      tab_contents ? sessions::SessionTabHelper::IdForTab(tab_contents)
+                   : SessionID::InvalidValue();
+  if (session_id.is_valid()) {
+    for (const auto& selected_tab : GetSelectedTabs()) {
+      if (selected_tab.tab_id == session_id.id()) {
+        if (tab_context_snapshot_.has_value() &&
+            tab_context_snapshot_->first == selected_tab.context_token) {
+          tab_context_snapshot_.reset();
+        }
+        DeleteTabToken(session_handle, selected_tab.context_token);
+      }
     }
-    session_handle->DeleteFile(it->second);
-    selected_tabs_.erase(it);
   }
 
   auto result = contextual_tasks::CaptureAndUploadTabContext(
-      /*tab_id=*/tab_id,
-      /*session_handle=*/session_handle,
-      /*delay_upload=*/delay_upload,
-      /*on_context_changed_cb=*/
+      tab_id, session_handle, delay_upload,
       base::BindRepeating(
           [](base::WeakPtr<ContextualTasksExtensionHandler> self) {
             if (self && self->input_state_model_) {
@@ -752,20 +886,24 @@ void ContextualTasksExtensionHandler::AddTabContext(
             }
           },
           weak_ptr_factory_.GetWeakPtr()),
-      /*browser_window_interface=*/GetBrowserWindowInterface(),
-      /*is_token_selected_cb=*/
-      base::BindRepeating(
-          [](base::WeakPtr<ContextualTasksExtensionHandler> self,
-             const base::UnguessableToken& token) {
-            return self && self->IsTokenSelected(token);
-          },
-          weak_ptr_factory_.GetWeakPtr()),
-      /*on_snapshot_captured_cb=*/
+      GetBrowserWindowInterface(),
       base::BindOnce(&ContextualTasksExtensionHandler::OnTabContextSnapshot,
-                     weak_ptr_factory_.GetWeakPtr()),
-      /*on_tab_context_uploaded_cb=*/
-      base::BindOnce(&ContextualTasksExtensionHandler::OnTabContextUploaded,
-                     weak_ptr_factory_.GetWeakPtr(), tab_id));
+                     weak_ptr_factory_.GetWeakPtr()));
+  if (result.has_value() && tab_contents && session_id.is_valid()) {
+    if (auto* host_web_contents =
+            content::WebContents::FromRenderFrameHost(&render_frame_host())) {
+      contextual_tasks::ContextualTasksWebContentsUserData::
+          GetOrCreateForWebContents(host_web_contents)
+              ->RecordTabIdMapping(tab_id, session_id.id());
+    }
+    session_handle->AddDelayedTabContext(
+        *result, session_id.id(), tab_contents->GetLastCommittedURL(),
+        base::UTF16ToUTF8(tab_contents->GetTitle()));
+    // Associate the tab with the task as soon as it is attached as context so
+    // the task knows which tabs are part of it.
+    AssociateTabWithTask(session_id);
+    UpdateContextLibraryInputState();
+  }
 
   std::move(callback).Run(result);
 #else
@@ -782,58 +920,83 @@ void ContextualTasksExtensionHandler::DeleteContext(
       tab_context_snapshot_->first == file_token) {
     tab_context_snapshot_.reset();
   }
-#endif
-  std::erase_if(selected_tabs_, [&](const auto& entry) {
-    if (entry.second != file_token) {
-      return false;
+  auto* host_web_contents =
+      content::WebContents::FromRenderFrameHost(&render_frame_host());
+  for (const auto& selected_tab : GetSelectedTabs()) {
+    if (selected_tab.context_token == file_token) {
+      RemoveAttachedTabUnderline(selected_tab.tab_id, host_web_contents,
+                                 GetBrowserWindowInterface());
+      break;
     }
-#if !BUILDFLAG(IS_ANDROID)
-    contextual_tasks::RemoveTabUnderline(entry.first,
-                                         GetBrowserWindowInterface());
-#endif
-    return true;
-  });
-  if (auto* session_handle = GetOrCreateContextualSessionHandle()) {
-    session_handle->DeleteFile(file_token);
   }
+#endif
+  DeleteTabToken(GetOrCreateContextualSessionHandle(), file_token);
   if (input_state_model_) {
     input_state_model_->OnContextChanged();
   }
   UpdateContextLibraryInputState();
+  RefreshActiveTaskContext();
 }
 
 void ContextualTasksExtensionHandler::DeleteTabContext(int32_t tab_id) {
-  auto it = selected_tabs_.find(tab_id);
-  if (it != selected_tabs_.end()) {
-    base::UnguessableToken token = it->second;
-    selected_tabs_.erase(it);
-#if !BUILDFLAG(IS_ANDROID)
-    if (tab_context_snapshot_.has_value() &&
-        tab_context_snapshot_->first == token) {
-      tab_context_snapshot_.reset();
+  std::optional<int32_t> session_tab_id;
+  if (tabs::TabInterface* const tab = tabs::TabHandle(tab_id).Get();
+      tab && tab->GetContents()) {
+    SessionID session_id =
+        sessions::SessionTabHelper::IdForTab(tab->GetContents());
+    if (session_id.is_valid()) {
+      session_tab_id = session_id.id();
     }
-    contextual_tasks::RemoveTabUnderline(tab_id, GetBrowserWindowInterface());
-#endif
-    if (auto* session_handle = GetOrCreateContextualSessionHandle()) {
-      session_handle->DeleteFile(token);
-    }
-    if (input_state_model_) {
-      input_state_model_->OnContextChanged();
-    }
-    UpdateContextLibraryInputState();
   }
+  if (!session_tab_id.has_value()) {
+    if (auto* host_web_contents =
+            content::WebContents::FromRenderFrameHost(&render_frame_host())) {
+      if (auto* user_data =
+              contextual_tasks::ContextualTasksWebContentsUserData::
+                  FromWebContents(host_web_contents)) {
+        session_tab_id = user_data->GetSessionTabIdForTabHandle(tab_id);
+      }
+    }
+  }
+  if (!session_tab_id.has_value()) {
+    return;
+  }
+  auto selected_tabs = GetSelectedTabs();
+  auto it = std::ranges::find_if(
+      selected_tabs, [&](const contextual_search::TabInfo& tab_info) {
+        return tab_info.tab_id == *session_tab_id;
+      });
+  if (it == selected_tabs.end()) {
+    return;
+  }
+  base::UnguessableToken token = it->context_token;
+#if !BUILDFLAG(IS_ANDROID)
+  if (tab_context_snapshot_.has_value() &&
+      tab_context_snapshot_->first == token) {
+    tab_context_snapshot_.reset();
+  }
+  contextual_tasks::RemoveTabUnderline(tab_id, GetBrowserWindowInterface());
+#endif
+  DeleteTabToken(GetOrCreateContextualSessionHandle(), token);
+  if (input_state_model_) {
+    input_state_model_->OnContextChanged();
+  }
+  UpdateContextLibraryInputState();
+  RefreshActiveTaskContext();
 }
 
 void ContextualTasksExtensionHandler::ClearFiles(
     bool should_block_auto_suggested_tabs) {
 #if !BUILDFLAG(IS_ANDROID)
   tab_context_snapshot_.reset();
+  auto* host_web_contents =
+      content::WebContents::FromRenderFrameHost(&render_frame_host());
   auto* browser_window_interface = GetBrowserWindowInterface();
-  for (const auto& entry : selected_tabs_) {
-    contextual_tasks::RemoveTabUnderline(entry.first, browser_window_interface);
+  for (const auto& selected_tab : GetSelectedTabs()) {
+    RemoveAttachedTabUnderline(selected_tab.tab_id, host_web_contents,
+                               browser_window_interface);
   }
 #endif
-  selected_tabs_.clear();
   if (auto* session_handle = GetOrCreateContextualSessionHandle()) {
     session_handle->ClearFiles();
   }
@@ -841,6 +1004,7 @@ void ContextualTasksExtensionHandler::ClearFiles(
     input_state_model_->OnContextChanged();
   }
   UpdateContextLibraryInputState();
+  RefreshActiveTaskContext();
 }
 void ContextualTasksExtensionHandler::SubmitQuery(const std::string& query_text,
                                                   uint8_t mouse_button,
@@ -910,7 +1074,25 @@ void ContextualTasksExtensionHandler::PostSearchMessage(
 }
 
 void ContextualTasksExtensionHandler::UpdateContextLibraryInputState() {
-  bool has_tabs = !selected_tabs_.empty();
+  if (!IsPrimarySearchMessageSender()) {
+    if (auto* web_contents =
+            content::WebContents::FromRenderFrameHost(&render_frame_host())) {
+      web_contents->ForEachRenderFrameHostWithAction(
+          [](content::RenderFrameHost* rfh) {
+            if (auto* handler =
+                    ContextualTasksExtensionHandler::GetForCurrentDocument(
+                        rfh)) {
+              if (handler->IsPrimarySearchMessageSender()) {
+                handler->UpdateContextLibraryInputState();
+                return content::RenderFrameHost::FrameIterationAction::kStop;
+              }
+            }
+            return content::RenderFrameHost::FrameIterationAction::kContinue;
+          });
+    }
+    return;
+  }
+  bool has_tabs = !GetSelectedTabs().empty();
   if (has_tabs == context_library_is_active_) {
     return;
   }
@@ -933,6 +1115,31 @@ ContextualTasksExtensionHandler::GetBrowserWindowInterface() const {
              : webui::GetBrowserWindowInterface(host_contents);
 }
 
+void ContextualTasksExtensionHandler::AssociateTabWithTask(
+    SessionID tab_session_id) {
+  if (!task_id_.has_value() || !tab_session_id.is_valid()) {
+    return;
+  }
+  Profile* profile =
+      Profile::FromBrowserContext(render_frame_host().GetBrowserContext());
+  if (auto* service =
+          contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
+              profile)) {
+    service->AssociateTabWithTask(*task_id_, tab_session_id);
+  }
+}
+
+void ContextualTasksExtensionHandler::RefreshActiveTaskContext() {
+  auto* browser_window_interface = GetBrowserWindowInterface();
+  if (!browser_window_interface) {
+    return;
+  }
+  if (auto* provider = contextual_tasks::ActiveTaskContextProvider::From(
+          browser_window_interface)) {
+    provider->RefreshContext();
+  }
+}
+
 bool ContextualTasksExtensionHandler::IsEmbeddedInSidePanel() const {
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(&render_frame_host());
@@ -940,16 +1147,32 @@ bool ContextualTasksExtensionHandler::IsEmbeddedInSidePanel() const {
       web_contents);
 }
 
-bool ContextualTasksExtensionHandler::IsTokenSelected(
-    const base::UnguessableToken& token) const {
-  return std::ranges::any_of(
-      selected_tabs_, [&](const auto& entry) { return entry.second == token; });
+std::vector<contextual_search::TabInfo>
+ContextualTasksExtensionHandler::GetSelectedTabs() {
+  auto* session_handle = GetOrCreateContextualSessionHandle();
+  if (!session_handle) {
+    return {};
+  }
+  const auto& attached_tabs = session_handle->GetTabContextState().attached;
+  const auto uploaded_tokens = session_handle->GetUploadedContextTokens();
+  std::vector<contextual_search::TabInfo> selected_tabs;
+  std::ranges::copy_if(attached_tabs, std::back_inserter(selected_tabs),
+                       [&](const contextual_search::TabInfo& tab) {
+                         return std::ranges::contains(uploaded_tokens,
+                                                      tab.context_token);
+                       });
+  return selected_tabs;
 }
 
 #if !BUILDFLAG(IS_ANDROID)
 void ContextualTasksExtensionHandler::OnTabContextSnapshot(
     const base::UnguessableToken& context_token,
     std::unique_ptr<lens::ContextualInputData> page_content_data) {
+  if (tab_context_snapshot_.has_value() &&
+      tab_context_snapshot_->first != context_token) {
+    DeleteTabToken(GetOrCreateContextualSessionHandle(),
+                   tab_context_snapshot_->first);
+  }
   tab_context_snapshot_.emplace(context_token, std::move(page_content_data));
   if (searchbox_page_) {
     searchbox_page_->OnContextualInputStatusChanged(
@@ -958,15 +1181,6 @@ void ContextualTasksExtensionHandler::OnTabContextSnapshot(
   }
 }
 #endif
-
-void ContextualTasksExtensionHandler::CloseLensOverlaySync(
-    lens::LensOverlayDismissalSource dismissal_source) {
-#if !BUILDFLAG(IS_ANDROID)
-  if (auto* controller = GetLensSearchController()) {
-    controller->CloseLensSync(dismissal_source);
-  }
-#endif
-}
 
 void ContextualTasksExtensionHandler::UploadSnapshotTabContextIfPresent() {
 #if !BUILDFLAG(IS_ANDROID)
@@ -983,13 +1197,6 @@ void ContextualTasksExtensionHandler::UploadSnapshotTabContextIfPresent() {
         contextual_tasks::CreateImageEncodingOptions());
   }
 #endif
-}
-
-void ContextualTasksExtensionHandler::OnTabContextUploaded(
-    int32_t tab_id,
-    const base::UnguessableToken& token) {
-  selected_tabs_[tab_id] = token;
-  UpdateContextLibraryInputState();
 }
 
 contextual_search::ContextualSearchSessionHandle*

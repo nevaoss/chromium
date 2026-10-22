@@ -595,7 +595,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Accessibility.Android.TextFormatting.Performance.DurationForRangeCount.{Bucket}"
-    units="microseconds" expires_after="2026-10-04">
+    units="microseconds" expires_after="2026-12-04">
   <owner>aluh@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -618,7 +618,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Accessibility.Android.TextFormatting.Performance.{Operation}Duration{WithStyleData}"
-    units="microseconds" expires_after="2026-10-04">
+    units="microseconds" expires_after="2026-12-04">
   <owner>aluh@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -641,7 +641,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Accessibility.Android.TextFormatting.Ranges.CountForTextLength.{Bucket}"
-    units="ranges" expires_after="2026-10-04">
+    units="ranges" expires_after="2026-12-04">
   <owner>aluh@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -663,7 +663,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Accessibility.Android.TextFormatting.Ranges.TotalCount"
-    units="ranges" expires_after="2026-10-04">
+    units="ranges" expires_after="2026-12-04">
   <owner>aluh@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -675,7 +675,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Accessibility.Android.TextFormatting.TextLength{WithStyleData}"
-    units="characters" expires_after="2026-10-04">
+    units="characters" expires_after="2026-12-04">
   <owner>aluh@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -2776,7 +2776,7 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram
     name="Accessibility.Performance.BrowserAccessibilityCocoa::childrenChanged"
-    units="microseconds" expires_after="2026-10-04">
+    units="microseconds" expires_after="2026-12-04">
   <owner>dtseng@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -2852,7 +2852,7 @@ recorded in the same way, even if they fit the naming pattern. -->
 </histogram>
 
 <histogram name="Accessibility.Performance.FinalizingTreeLifecycleStage"
-    units="microseconds" expires_after="2026-10-04">
+    units="microseconds" expires_after="2026-12-04">
   <owner>lucasradaelli@google.com</owner>
   <owner>mschillaci@google.com</owner>
   <owner>lucasradaelli@google.com</owner>
@@ -3461,6 +3461,29 @@ recorded in the same way, even if they fit the naming pattern. -->
     Records whether a text selection was present in the main browser tab at the
     moment Reading Mode was opened. Recorded once per Reading Mode session (Open
     to Close), excluding tab switches or view-mode transitions.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.ReadAnything.MathML.DistillationStatus"
+    enum="ReadAnythingMathMlDistillationStatus" expires_after="2027-03-01">
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <summary>
+    Records the distillation status of math on a page that was detected to have
+    at least one MathML element on the original web page. Recorded when the page
+    structure metrics are logged for a distilled page in Reading Mode.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.ReadAnything.MathML.PresentOnPage"
+    enum="Boolean" expires_after="2027-03-01">
+  <owner>lwinston@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records whether at least one MathML element was detected on the original web
+    page. Recorded for every distilled page in Reading Mode when page structure
+    metrics are logged, allowing comparison of pages containing math versus
+    pages without math.
   </summary>
 </histogram>
 

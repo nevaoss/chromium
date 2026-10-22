@@ -292,6 +292,20 @@ chromium-metrics-reviews@google.com.
   <int value="7" label="ParcelCarrier"/>
 </enum>
 
+<!-- LINT.IfChange(IOSAppBarAssistantButtonPreferredState) -->
+
+<enum name="IOSAppBarAssistantButtonPreferredState">
+  <summary>
+    The entry point chosen by the user for the App Bar assistant button.
+  </summary>
+  <int value="0" label="Default">The user didn't choose any entry point.</int>
+  <int value="1" label="Lens"/>
+  <int value="2" label="Ask (Gemini)"/>
+  <int value="3" label="Account"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/app_bar/ui/app_bar_constants.h:AppBarAssistantButtonPreferredState) -->
+
 <enum name="IOSAppModeFetchingOutcomeType">
   <int value="0" label="Incognito"/>
   <int value="1" label="Non-Incognito"/>
@@ -1628,6 +1642,17 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Microphone permission"/>
   <int value="2" label="Camera and Microphone permissions"/>
 </enum>
+
+<!-- LINT.IfChange(IOSPermissionRequestResolution) -->
+
+<enum name="IOSPermissionRequestResolution">
+  <int value="0" label="Prompt shown"/>
+  <int value="1" label="Allowed by saved setting (no prompt)"/>
+  <int value="2" label="Denied by saved setting (no prompt)"/>
+  <int value="3" label="Blocked by parental controls (no prompt)"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/permissions/model/permissions_metrics.h:IOSPermissionRequestResolution) -->
 
 <!-- LINT.IfChange(IOSPersistTabContextDeleteDirectoryResult) -->
 

@@ -319,7 +319,6 @@
     {
       // Interest Group JS API/runtimeflag.
       name: "AdInterestGroupAPI",
-      status: "stable",
       origin_trial_feature_name: "AdInterestGroupAPI",
       implied_by: ["Fledge", "Parakeet"],
       public: true,
@@ -391,6 +390,27 @@
     {
       name: "AIPageContentIncludeSVGSubtree",
       status: "stable"
+    },
+    // Add label sources in actionable APC.
+    {
+      name: "AIPageContentLabelExpandFallbackSources",
+      status: "stable",
+    },
+    // Remove labels that duplicate extracted text in any node in its subtree
+    // or its image caption. Remove SVG root text when extracted child nodes
+    // already contain it.
+    {
+      name: "AIPageContentLabelRemoveRedundant",
+    },
+    // Match labels to whole words or phrases in extracted text in any node in
+    // its subtree or its image caption, ignoring case. For example:
+    // - "Password" matches "Enter your password".
+    // - "lock" does not match "unlock".
+    // Exact matching still occurs when this is disabled, provided
+    // AIPageContentLabelRemoveRedundant is enabled.
+    {
+      name: "AIPageContentLabelRemoveRedundantWholeWordMatching",
+      depends_on: ["AIPageContentLabelRemoveRedundant"],
     },
     // Use MapToVisualRectInAncestorSpace for outer bounding boxes, for
     // math consistent with visual bounding boxes.
@@ -1921,7 +1941,7 @@
       // Support for `position-visibility: anchor-valid`.
       // See crbug.com/333421963.
       name: "CSSPositionVisibilityAnchorValid",
-      status: "experimental",
+      status: "stable",
     },
     {
       // The @private rule declares lexically-scoped custom properties that are
@@ -1954,6 +1974,13 @@
     },
     {
       name: "CSSPseudoElementScrollButton",
+      depends_on: ["CSSPseudoElementInterface"],
+      status: "experimental",
+    },
+    {
+      // CSSPseudoElement.selectorText.
+      // https://drafts.csswg.org/css-pseudo-4/#dom-csspseudoelement-selectortext
+      name: "CSSPseudoElementSelectorText",
       depends_on: ["CSSPseudoElementInterface"],
       status: "experimental",
     },
@@ -2483,6 +2510,14 @@
       status: "stable",
     },
     {
+      // Dispatches a securitypolicyviolation event for CSP violations
+      // detected while fetching a worker's or worklet's module graph
+      // (top-level script, redirects, and nested static imports).
+      // See https://crbug.com/40612680
+      name: "DispatchWorkerCSPViolationEventForModuleGraphFetching",
+      status: "experimental",
+    },
+    {
       // Allowing elements with display:contents to have focus.
       // See https://crbug.com/1366037
       name: "DisplayContentsFocusable",
@@ -2659,6 +2694,14 @@
       status: "test"
     },
     {
+      // Schedule a main frame when EditContext.updateControlBounds() or
+      // updateSelectionBounds() changes the bounds of the active EditContext,
+      // so the new bounds are sent to the browser in TextInputStateChanged even
+      // when called from an async task that doesn't otherwise cause a frame.
+      name: "EditContextBoundsUpdateSchedulesFrame",
+      status: "stable",
+    },
+    {
       // Support code point-based deletion calculations in
       // DeleteSurroundingTextInCodePoints() for EditContext.
       name: "EditContextCodePointDeletion",
@@ -2733,6 +2776,11 @@
       // This was added in M151 and can be removed after M153.
       // https://issues.chromium.org/issues/525074815
       name: "EmbeddedContentCenterAlignBaseline",
+      status: "stable",
+    },
+    {
+      // Kill switch for https://crbug.com/41384307.
+      name: "EmojiZWJVerticalOrientation",
       status: "stable",
     },
     {
@@ -3124,6 +3172,11 @@
       status: "stable",
     },
     {
+      // https://github.com/w3c/csswg-drafts/issues/13926
+      name: "FirstLineAndLetterExcludeInputTextarea",
+      status: "stable",
+    },
+    {
       // It turned out that this fix was wrong. The plan is to turn it off, and
       // remove if that goes well. crbug.com/41362700
       name: "FirstLineTextMetrics",
@@ -3163,7 +3216,6 @@
     },
     {
       name: "Fledge",
-      status: "stable",
       public: true,
     },
     {
@@ -3654,6 +3706,12 @@
       status: "stable",
     },
     {
+      // Kill switch for ignoring head start tags in the "in head noscript"
+      // insertion mode. https://crbug.com/40775952
+      name: "HTMLParserIgnoreHeadInNoscript",
+      status: "stable",
+    },
+    {
       // Killswitch for crbug.com/40727112: emit a bogus comment for an
       // incomplete markup declaration at end of input instead of dropping the
       // rest of the document.
@@ -3815,10 +3873,8 @@
       // Enables InputMultipleFieldsUI on all platforms by tweaking the inner
       // fields to be non-focusable and making the whole input element
       // focusable for coarse input devices. When this flag is removed, the
-      // InputMultipleFieldsUI flag can also be removed. Enabled in M154, safe
-      // to remove in M158.
+      // InputMultipleFieldsUI flag can also be removed.
       name: "InputMultipleFieldsUIWithPointerChecks",
-      status: "stable",
     },
     // Enables the `alpha` and `colorspace` content/IDL attributes on
     // <input type=color>, allowing alpha and Display P3 color values.
@@ -3904,13 +3960,6 @@
       name: "KeyboardAccessibleTooltip",
       status: "experimental",
       base_feature: "none",
-    },
-    {
-      // Adds `encryptionScheme` field based on
-      // https://www.w3.org/TR/media-capabilities/#keysystemtrackconfiguration.
-      // See https://crbug.com/498284510 for more details.
-      name: "KeySystemTrackConfigurationEncryptionScheme",
-      status: "stable",
     },
     {
       // Checks interactive content using EventPath captured at
@@ -4119,6 +4168,12 @@
     {
       name: "MacDisableCtrlHomeEnd",
       status: "stable",
+    },
+    {
+      // Read font weight from the OpenType OS/2 table first during macOS font
+      // family style matching, falling back to AppKit/CoreText weights if the
+      // OS/2 table is unavailable. See https://crbug.com/543243014.
+      name: "MacFontWeightFromOS2",
     },
     {
       name: "MachineLearningNeuralNetwork",
@@ -4554,6 +4609,10 @@
       status: "stable",
     },
     {
+      name: "OfflineAudioContextIncrementalRendering",
+      status: "test",
+    },
+    {
       name: "OffscreenCanvasGetContextAttributes",
       status: "stable",
     },
@@ -4769,8 +4828,9 @@
     },
     {
       // https://chromestatus.com/feature/5261280285949952
-      name: "OverscrollGestures",
+      name: "OverscrollAreas",
       status: "experimental",
+      origin_trial_feature_name: "OverscrollAreas",
       depends_on: ["CSSScrollSnapTypePair"],
     },
     {
@@ -5412,9 +5472,7 @@
     {
       name: "RTCDiagnosticLogging",
       origin_trial_feature_name: "RTCDiagnosticLogging",
-      status: "experimental",
-      base_feature_status: "enabled",
-      copied_from_base_feature_if: "overridden",
+      status: "stable",
     },
     {
       name: "RTCEncodedAudioFrameConstructor",
@@ -5459,6 +5517,11 @@
       origin_trial_feature_name: "RTCLegacyCallbackBasedGetStats",
       status: "experimental",
       base_feature: "none",
+    },
+    {
+      name: "RTCLegacyDiagnosticLogging",
+      origin_trial_feature_name: "RTCDiagnosticLogging",
+      status: "experimental",
     },
     // Enables the use of |RTCRtpEncodingParameters.codec|
     {
@@ -5998,6 +6061,13 @@
       status: "stable",
     },
     {
+      // Kill switch for crbug.com/41254682: skips paint invalidation for
+      // paint-only style changes (e.g. animation frames) on objects that were
+      // and stay visibility:hidden.
+      name: "SkipPaintInvalidationWhileStayingInvisible",
+      status: "stable",
+    },
+    {
       // crbug.com/517761566
       name: "SkipStaleUndoStepsInIdleSpellCheck",
       status: "stable",
@@ -6231,6 +6301,14 @@
     {
       name: "SvgAvoidResettingFilterQualityForTiledPattern",
       status: "stable",
+    },
+    {
+      // Apply CSS 3D transforms (perspective(), rotateX/Y, translateZ, ...)
+      // to SVG child elements when painting instead of flattening them to a
+      // 2D affine matrix.
+      // https://issues.chromium.org/41310059
+      name: "SvgCss3dTransforms",
+      status: "experimental",
     },
     {
       // Treat SVG documents in <object>/<embed> as replaced elements
@@ -7401,7 +7479,7 @@
     },
     {
       name: "WebTransportHeaders",
-      status: "experimental",
+      status: "stable",
       base_feature: "none",
     },
     {

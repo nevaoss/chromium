@@ -48,9 +48,16 @@ inline constexpr char kActorServiceLoggingName[] = "ActorServiceLogging";
 inline constexpr char kActorServiceLoggingDescription[] =
     "Enables Actor logging, which is for debugging only.";
 
-inline constexpr char kAiAvatarRingIosName[] = "AiAvatarRing";
-inline constexpr char kAiAvatarRingIosDescription[] =
-    "Display a ring around the avatar if the primary account has a AI Tier";
+inline constexpr char kAiSubscriptionAvatarRingFollowupIosName[] =
+    "AiAvatarFollowupRing";
+inline constexpr char kAiSubscriptionAvatarRingFollowupIosDescription[] =
+    "Display a ring around the avatar in the Overflow Menu, Settings and "
+    "Manage Accounts views if the primary account has a AI Tier";
+
+inline constexpr char kAiSubscriptionAvatarRingIosName[] = "AiAvatarRing";
+inline constexpr char kAiSubscriptionAvatarRingIosDescription[] =
+    "Display a ring around the avatar in the NTP and Account Menu if the "
+    "primary account has a AI Tier";
 
 inline constexpr char kAimButtonRefactorName[] = "AIM Button Refactor";
 inline constexpr char kAimButtonRefactorDescription[] =
@@ -87,6 +94,12 @@ inline constexpr char kAppBackgroundRefreshName[] =
 inline constexpr char kAppBackgroundRefreshDescription[] =
     "Schedules app background refresh after some minimum period of time has "
     "passed after the last refresh.";
+
+inline constexpr char kAppBarAssistantCustomizationName[] =
+    "AppBar Assistant Customization";
+inline constexpr char kAppBarAssistantCustomizationDescription[] =
+    "When enabled, long pressing the AppBar assistant button shows a menu to "
+    "choose which entry point the button shows.";
 
 inline constexpr char kAppSwitcherAISummarizationName[] =
     "App Switcher AI summarization";
@@ -134,12 +147,6 @@ inline constexpr char kAtMemoryContextMenuEntryPointName[] =
     "AtMemory context menu entry point";
 inline constexpr char kAtMemoryContextMenuEntryPointDescription[] =
     "Enables an entry point in the edit context menu for the AtMemory feature.";
-
-inline constexpr char kAutofillAddChromeUserContextFieldsName[] =
-    "Add client type and version to request context in Payments calls";
-inline constexpr char kAutofillAddChromeUserContextFieldsDescription[] =
-    "When enabled, calls to Google Payments include the Chrome client type and "
-    "major version, instead of parsing the user agent.";
 
 inline constexpr char kAutofillAiAlwaysShowPrivateAiNoticeName[] =
     "Autofill AI always show Private AI notice";
@@ -394,6 +401,13 @@ inline constexpr char kClientSideDetectionIosName[] =
     "Client Side Detection on iOS";
 inline constexpr char kClientSideDetectionIosDescription[] =
     "Enables Client Side Detection (CSD) for phishing on iOS.";
+
+inline constexpr char kClientSideDetectionServerModelForScamDetectionIosName[] =
+    "Client Side Detection Server Model for Scam Detection on iOS";
+inline constexpr char
+    kClientSideDetectionServerModelForScamDetectionIosDescription[] =
+        "Enables server model for scam detection on iOS. Requires "
+        "#client-side-detection-ios to be enabled.";
 
 inline constexpr char kCollaborationMessagingName[] = "Collaboration Messaging";
 inline constexpr char kCollaborationMessagingDescription[] =
@@ -1046,6 +1060,12 @@ inline constexpr char kIOSDefaultBrowserContextualPromoName[] =
 inline constexpr char kIOSDefaultBrowserContextualPromoDescription[] =
     "Enables the contextual default browser promo half-sheet.";
 
+inline constexpr char kIOSDeviceTrustConnectorName[] =
+    "iOS Device Trust Connector";
+inline constexpr char kIOSDeviceTrustConnectorDescription[] =
+    "Enables the enterprise Device Trust Connector on iOS, which exposes the "
+    "chrome.enterprise.deviceTrust attestation API on allowlisted pages.";
+
 inline constexpr char kIOSEnableCloudProfileReportingName[] =
     "Enable profile reporting on iOS";
 inline constexpr char kIOSEnableCloudProfileReportingDescription[] =
@@ -1543,12 +1563,6 @@ inline constexpr char kOmniboxPastePromoExperimentDescription[] =
     "Enables non-modal default browser promo experiment arms for Omnibox "
     "navigation.";
 
-inline constexpr char kOmniboxSuggestionAnswerMigrationName[] =
-    "Omnibox suggestion answer migration";
-inline constexpr char kOmniboxSuggestionAnswerMigrationDescription[] =
-    "Enables omnibox Suggestion answer migration, when enabled the omnibox "
-    "will use the migrated Answer_template instead of answer.";
-
 inline constexpr char kOmniboxUIMaxAutocompleteMatchesName[] =
     "Omnibox UI Max Autocomplete Matches";
 inline constexpr char kOmniboxUIMaxAutocompleteMatchesDescription[] =
@@ -1692,11 +1706,6 @@ inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerName[] =
     "Popup Blocker";
 inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerDescription[] =
     "Enables the popup blocker feature row in the Page Action Menu.";
-
-inline constexpr char kReaderModeSupportNewFontsName[] =
-    "Reader Mode support new fonts";
-inline constexpr char kReaderModeSupportNewFontsDescription[] =
-    "Enables new accessible font options in Reader Mode.";
 
 inline constexpr char kRecoverTabsOfLastClosedWindowName[] =
     "Recover Tabs of last closed window";
@@ -1934,11 +1943,6 @@ inline constexpr char kVariationsRestrictDogfoodName[] =
     "Variations restrict dogfood";
 inline constexpr char kVariationsRestrictDogfoodDescription[] =
     "When enabled, request dogfood variations from the variations server.";
-
-inline constexpr char kViewCertificateInformationName[] =
-    "View Certificate Information";
-inline constexpr char kViewCertificateInformationDescription[] =
-    "Enables viewing detailed certificate information in Page Info.";
 
 inline constexpr char kWaitThresholdMillisecondsForCapabilitiesApiName[] =
     "Maximum wait time (in seconds) for a response from the Account "

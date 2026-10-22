@@ -1930,6 +1930,10 @@ BASE_FEATURE(kLocalCompileHints, base::FEATURE_ENABLED_BY_DEFAULT);
 // cross-origin requests.
 BASE_FEATURE(kReducedReferrerGranularity, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When disabled, cropTo() is rejected while other tracks share the source, as
+// it was before per-track cropping was supported.
+BASE_FEATURE(kRegionCaptureOfClonedTracks, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Whether `blink::MemoryCache` and `blink::ResourceFetcher` release their
 // strong references to resources on memory pressure.
 BASE_FEATURE(kReleaseResourceStrongReferencesOnMemoryPressure,
@@ -1952,6 +1956,9 @@ BASE_FEATURE(kReleaseResourceDecodedDataOnMemoryPressure,
 // Flag guard for removing usage of the CommitNavigationParams.redirects
 // array of URLs in the renderer process.
 BASE_FEATURE(kRemoveCommitRedirectUrlsArray, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kRequiresLoadIgnoreLimitsForDomWindowsOnly,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Allows same-document available-image reuse for no-store images.
 BASE_FEATURE(kReuseNoStoreImageOnSameSrcReassignment,

@@ -60,6 +60,7 @@
 #import "ios/chrome/browser/shared/ui/table_view/table_view_navigation_controller_constants.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_coordinator.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_params.h"
+#import "ios/chrome/browser/signin/model/account_preview_data_service_factory.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/signin/model/chrome_account_manager_service_factory.h"
@@ -105,13 +106,13 @@
 }
 
 - (void)dealloc {
-  CHECK(!self.recentTabsNavigationController, base::NotFatalUntil::M150);
-  CHECK(!self.recentTabsTableViewController, base::NotFatalUntil::M150);
-  CHECK(!self.mediator, base::NotFatalUntil::M150);
-  CHECK(!self.sharingCoordinator, base::NotFatalUntil::M150);
-  CHECK(!_authenticationService, base::NotFatalUntil::M150);
-  CHECK(!_syncService, base::NotFatalUntil::M150);
-  CHECK(!_reauthCoordinator, base::NotFatalUntil::M150);
+  CHECK(!self.recentTabsNavigationController);
+  CHECK(!self.recentTabsTableViewController);
+  CHECK(!self.mediator);
+  CHECK(!self.sharingCoordinator);
+  CHECK(!_authenticationService);
+  CHECK(!_syncService);
+  CHECK(!_reauthCoordinator);
   CHECK(!_signinCoordinator, base::NotFatalUntil::M156);
   CHECK(!_signinPromoViewMediator, base::NotFatalUntil::M156);
 }
@@ -177,6 +178,8 @@
                                             GetForProfile(profile)
                             authService:authService
                             prefService:profile->GetPrefs()
+              accountPreviewDataService:AccountPreviewDataServiceFactory::
+                                            GetForProfile(profile)
                             syncService:_syncService
                             accessPoint:signin_metrics::AccessPoint::kRecentTabs
                                delegate:self
@@ -535,7 +538,7 @@
 
 - (void)signinDidCompleteWithCoordinator:(SigninCoordinator*)coordinator
                                   result:(SigninCoordinatorResult)result {
-  CHECK_EQ(_signinCoordinator, coordinator, base::NotFatalUntil::M151);
+  CHECK_EQ(_signinCoordinator, coordinator);
   [_signinPromoViewMediator signinDidCompleteWithResult:result];
   [self stopSigninCoordinator];
   [self showHistorySyncOptInAfterDedicatedSignIn:YES];

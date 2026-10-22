@@ -279,6 +279,23 @@ AudioData::AudioData(ScriptState* script_state,
     return;
   }
 
+  if (init->sampleRate() <= 0) {
+    exception_state.ThrowTypeError("sampleRate must be greater than 0.");
+    return;
+  }
+
+  int sample_rate = base::saturated_cast<int>(init->sampleRate());
+  if (sample_rate < media::limits::kMinSampleRate ||
+      sample_rate > media::limits::kMaxSampleRate) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotSupportedError,
+        Format("sampleRate is outside of supported implementation limits: need "
+               "between {} and {}, received {}.",
+               media::limits::kMinSampleRate, media::limits::kMaxSampleRate,
+               sample_rate));
+    return;
+  }
+
   uint32_t bytes_per_sample =
       media::SampleFormatToBytesPerChannel(media_format);
 
@@ -291,7 +308,8 @@ AudioData::AudioData(ScriptState* script_state,
     return;
   }
 
-  base::span<uint8_t> array_span = AsSpan(init->data());
+  base::span<uint8_t> array_span =
+      AsSpan<SharedBufferPolicy::kAllow>(*init->data());
   if (!array_span.data()) {
     exception_state.ThrowTypeError("data is detached.");
     return;
@@ -312,18 +330,6 @@ AudioData::AudioData(ScriptState* script_state,
   auto buffer_contents = TransferArrayBufferForSpan(
       init->transfer(), array_span, exception_state, isolate);
   if (exception_state.HadException()) {
-    return;
-  }
-
-  int sample_rate = base::saturated_cast<int>(init->sampleRate());
-  if (sample_rate < media::limits::kMinSampleRate ||
-      sample_rate > media::limits::kMaxSampleRate) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kNotSupportedError,
-        Format("sampleRate is outside of supported implementation limits: need "
-               "between {} and {}, received {}.",
-               media::limits::kMinSampleRate, media::limits::kMaxSampleRate,
-               sample_rate));
     return;
   }
 
@@ -521,7 +527,8 @@ void AudioData::copyTo(AllowSharedBufferSource* destination,
     return;
 
   // Validate destination buffer.
-  base::span<uint8_t> dest_wrapper = AsSpan(destination);
+  base::span<uint8_t> dest_wrapper =
+      AsSpan<SharedBufferPolicy::kAllow>(*destination);
   if (!dest_wrapper.data()) {
     exception_state.ThrowRangeError("destination is detached.");
     return;

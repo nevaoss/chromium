@@ -12,7 +12,7 @@ import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_as
 import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searchbox/test_searchbox_browser_proxy.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
-import {AppMenuIconType, AppMenuSeverity, AvatarToolbarButtonState, BrowserProxyImpl, INVALID_FOCUS_REQUEST_HANDLE, resetInitialStateForTesting, SearchboxBrowserProxy, SecurityChipRole, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
+import {AppMenuIconType, AppMenuSeverity, AvatarToolbarButtonState, BrowserProxyImpl, createDefaultLocationBarState, INVALID_FOCUS_REQUEST_HANDLE, resetInitialStateForTesting, SearchboxBrowserProxy, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
 import type {BrowserProxy, FocusRequestListener, LhsChipIdentifier, NavigationControlsStateListener, ToolbarAppElement} from 'chrome://webui-toolbar.top-chrome/app.js';
 
 import {TestToolbarUiHandler} from './test_toolbar_browser_proxy.js';
@@ -137,39 +137,7 @@ function createMockNavigationState() {
       shouldBeShown: false,
       isContextMenuVisible: false,
     },
-    locationBarState: {
-      omniboxViewState: {
-        textPieces: [],
-        inlineAutocompletion: '',
-        a11yFriendlySuggestionText: '',
-        selection: null,
-        textIsUrl: false,
-      },
-      locationBarFlags: {
-        userInputInProgress: false,
-        popupOpen: false,
-      },
-      contentSettingImageStates: [],
-      pageActionStates: [],
-      lhsChipsState: {
-        securityChip: {
-          icon: {handleId: 0n},
-          securityLevel: 0,
-          text: '',
-          tooltip: '',
-          isClickable: false,
-          isTextDangerous: false,
-          isVisible: true,
-          accessibilityState: {
-            role: SecurityChipRole.kButton,
-            label: '',
-            description: '',
-          },
-        },
-        activityIndicators: [],
-        permissionDashboard: null,
-      },
-    },
+    locationBarState: createDefaultLocationBarState(),
     avatarControlState: {
       state: AvatarToolbarButtonState.kNormal,
       icon: {handleId: 0n},
@@ -207,11 +175,17 @@ suite('ToolbarAppTest', () => {
 
   let startTrackingCalls: Array<[HTMLElement, string]> = [];
   let stopTrackingCalls: HTMLElement[] = [];
+  let highlightCallbacks = new Map<string, (highlighted: boolean) => void>();
 
   const mockManager = {
-    startTracking: (element: HTMLElement, nativeId: string) => {
-      startTrackingCalls.push([element, nativeId]);
-    },
+    startTracking:
+        (element: HTMLElement, nativeId: string,
+         options?: {onHighlightChanged?: (highlighted: boolean) => void}) => {
+          startTrackingCalls.push([element, nativeId]);
+          if (options?.onHighlightChanged) {
+            highlightCallbacks.set(nativeId, options.onHighlightChanged);
+          }
+        },
     stopTracking: (element: HTMLElement) => {
       stopTrackingCalls.push(element);
     },
@@ -222,6 +196,7 @@ suite('ToolbarAppTest', () => {
 
     startTrackingCalls = [];
     stopTrackingCalls = [];
+    highlightCallbacks = new Map();
     TrackedElementManager.setInstance(mockManager as any);
 
     const handler = new TestHelpBubbleHandler();
@@ -802,6 +777,53 @@ suite('ToolbarAppTest', () => {
     await microtasksFinished();
 
     assertFalse(innerChip.classList.contains('help-anchor-highlight'));
+  });
+
+  test('AvatarButtonClickSuppression', async () => {
+    app = document.createElement('toolbar-app');
+    document.body.appendChild(app);
+    await microtasksFinished();
+
+    const avatarButton = app.shadowRoot.querySelector('avatar-button')!;
+    const innerChip = avatarButton.shadowRoot.querySelector('#button')!;
+    const setHighlighted =
+        highlightCallbacks.get('kToolbarAvatarButtonElementId')!;
+    assertTrue(!!setHighlighted);
+    const handler = browserProxy.toolbarUIHandler;
+
+    const dispatchMouseClick = () => {
+      innerChip.dispatchEvent(new PointerEvent(
+          'pointerdown', {bubbles: true, button: 0, pointerType: 'mouse'}));
+      innerChip.dispatchEvent(new PointerEvent(
+          'click', {bubbles: true, button: 0, pointerType: 'mouse'}));
+    };
+
+    // 1. Normal click when not highlighted opens the menu.
+    dispatchMouseClick();
+    assertEquals(1, handler.getCallCount('showAvatarMenu'));
+
+    // 2. Click while highlighted (profile menu open) is suppressed.
+    setHighlighted(true);
+    dispatchMouseClick();
+    assertEquals(1, handler.getCallCount('showAvatarMenu'));
+
+    // 3. Click right after unhighlighting (< 100ms) is suppressed.
+    setHighlighted(false);
+    dispatchMouseClick();
+    assertEquals(1, handler.getCallCount('showAvatarMenu'));
+
+    // 4. Keyboard activation (empty pointerType) is not suppressed even after
+    // a pointerdown that armed click skipping.
+    innerChip.dispatchEvent(new PointerEvent(
+        'pointerdown', {bubbles: true, button: 0, pointerType: 'mouse'}));
+    innerChip.dispatchEvent(
+        new PointerEvent('click', {bubbles: true, button: 0, pointerType: ''}));
+    assertEquals(2, handler.getCallCount('showAvatarMenu'));
+
+    // 5. Click >= 100ms after unhighlighting opens the menu.
+    await new Promise(resolve => setTimeout(resolve, 150));
+    dispatchMouseClick();
+    assertEquals(3, handler.getCallCount('showAvatarMenu'));
   });
 
   test('AvatarButtonDoesNotAnimateOnNewWindow', async () => {

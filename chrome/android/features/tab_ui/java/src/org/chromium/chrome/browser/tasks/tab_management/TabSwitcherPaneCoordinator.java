@@ -268,7 +268,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
      * @param snackbarManager The activity-level {@link SnackbarManager}.
      * @param modalDialogManager The modal dialog manager for the activity.
      * @param bottomSheetController The {@link BottomSheetController} for the current activity.
-     * @param dataSharingTabManager The {@link} DataSharingTabManager managing communication between
+     * @param dataSharingTabManager The {@link DataSharingTabManager} managing communication between
      *     UI and DataSharing services.
      * @param messageManager The {@link TabSwitcherMessageManager} for the message service.
      * @param parentView The view to use as a parent.
@@ -410,7 +410,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
                             isVisibleSupplier,
                             isAnimatingSupplier,
                             onTabClickCallback,
-                            this::getNthTabIndexInModel,
+                            this::getIndexFromTabId,
                             bottomSheetController,
                             this::addOnLayoutChangedAfterInitialScrollListener,
                             hubSearchBoxVisibilitySupplier);
@@ -918,11 +918,10 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
      * Scrolls to the specified group and animates open a dialog. It is the caller's responsibility
      * to ensure that this pane is showing before calling this.
      *
-     * @param tabId The id of any tab in the group.
+     * @param tabGroupId The tab group ID of the group.
      */
-    public void requestOpenTabGroupDialog(int tabId) {
-        mMediator.scrollToTabById(tabId);
-        mMediator.openTabGroupDialog(tabId);
+    public void requestOpenTabGroupDialog(Token tabGroupId) {
+        mMediator.openTabGroupDialog(tabGroupId, /* shouldScroll= */ true);
     }
 
     /** Returns the range (inclusive) of visible view indexes. */
@@ -1145,14 +1144,8 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
         return mTabListCoordinator.indexOfTabCardsOrInvalid(viewIndex);
     }
 
-    private int getNthTabIndexInModel(int filterIndex) {
-        assert mTabListCoordinator != null;
-        int indexInModel = mTabListCoordinator.getIndexOfNthTabCard(filterIndex);
-        // If the tab list coordinator doesn't contain tab data yet assume filterIndex is a
-        // sufficient approximation as the offset would be caused by message cards.
-        if (indexInModel == TabList.INVALID_TAB_INDEX) return filterIndex;
-
-        return indexInModel;
+    private int getIndexFromTabId(@TabId int tabId) {
+        return mTabListCoordinator.getIndexFromTabId(tabId);
     }
 
     private void updateBottomPadding() {

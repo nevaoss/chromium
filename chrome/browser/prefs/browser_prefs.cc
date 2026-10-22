@@ -157,6 +157,7 @@
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/browser/zero_suggest_provider.h"
 #include "components/on_device_translation/buildflags/buildflags.h"
+#include "components/optimization_guide/core/delivery/prefs.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/optimization_guide/core/optimization_guide_prefs.h"
@@ -1066,6 +1067,10 @@ inline constexpr char kNearbyPresenceSchedulingDownloadPrefName[] =
     "nearby_presence.scheduling.download";
 inline constexpr char kNearbyPresenceSchedulingCredentialDailySyncPrefName[] =
     "nearby_presence.scheduling.daily_sync";
+inline constexpr char kHatsBluetoothRevampCycleEndTs[] =
+    "hats_bluetooth_revamp_cycle_end_timestamp";
+inline constexpr char kHatsBluetoothRevampIsSelected[] =
+    "hats_bluetooth_revamp_is_selected";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Deprecated 09/2026.
@@ -1088,6 +1093,20 @@ constexpr char kTabsFromOtherDevicesAutoPinnedMigration[] =
 constexpr char kAudioApiStableDeviceIds[] =
     "extensions.audio.stable_device_ids";
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+// Deprecated 09/2026.
+constexpr char kAddressSignInPromoShownCountPerProfileForLimitsExperiment[] =
+    "signin.AddressSignInPromoShownCountForLimitsExperiment";
+constexpr char kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment[] =
+    "signin.BookmarkSignInPromoShownCountForLimitsExperiment";
+constexpr char kPasswordSignInPromoShownCountPerProfileForLimitsExperiment[] =
+    "signin.PasswordSignInPromoShownCountForLimitsExperiment";
+constexpr char kAddressSignInPromoDismissCountPerProfileForLimitsExperiment[] =
+    "signin.AddressSignInPromoDismissCountForLimitsExperiment";
+constexpr char kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment[] =
+    "signin.BookmarkSignInPromoDismissCountForLimitsExperiment";
+constexpr char kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment[] =
+    "signin.PasswordSignInPromoDismissCountForLimitsExperiment";
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1506,6 +1525,8 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterDictionaryPref(kNearbyPresenceSchedulingDownloadPrefName);
   registry->RegisterDictionaryPref(
       kNearbyPresenceSchedulingCredentialDailySyncPrefName);
+  registry->RegisterInt64Pref(kHatsBluetoothRevampCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsBluetoothRevampIsSelected, false);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Deprecated 09/2026.
@@ -1524,6 +1545,20 @@ void RegisterProfilePrefsForMigration(
   // TODO(b/566104798): Clean up deleted pref code after 1 year.
   registry->RegisterListPref(kAudioApiStableDeviceIds);
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+  // Deprecated 09/2026.
+  registry->RegisterIntegerPref(
+      kAddressSignInPromoShownCountPerProfileForLimitsExperiment, 0);
+  registry->RegisterIntegerPref(
+      kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment, 0);
+  registry->RegisterIntegerPref(
+      kPasswordSignInPromoShownCountPerProfileForLimitsExperiment, 0);
+  registry->RegisterIntegerPref(
+      kAddressSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
+  registry->RegisterIntegerPref(
+      kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
+  registry->RegisterIntegerPref(
+      kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
 }
 
 }  // namespace
@@ -2895,6 +2930,8 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kNearbyPresenceSchedulingDownloadPrefName);
   profile_prefs->ClearPref(
       kNearbyPresenceSchedulingCredentialDailySyncPrefName);
+  profile_prefs->ClearPref(kHatsBluetoothRevampCycleEndTs);
+  profile_prefs->ClearPref(kHatsBluetoothRevampIsSelected);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Added 09/2026.
@@ -2912,6 +2949,20 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   // TODO(b/566104798): Clean up deleted pref code after 1 year.
   profile_prefs->ClearPref(kAudioApiStableDeviceIds);
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+  // Added 09/2026.
+  profile_prefs->ClearPref(
+      kAddressSignInPromoShownCountPerProfileForLimitsExperiment);
+  profile_prefs->ClearPref(
+      kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment);
+  profile_prefs->ClearPref(
+      kPasswordSignInPromoShownCountPerProfileForLimitsExperiment);
+  profile_prefs->ClearPref(
+      kAddressSignInPromoDismissCountPerProfileForLimitsExperiment);
+  profile_prefs->ClearPref(
+      kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment);
+  profile_prefs->ClearPref(
+      kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

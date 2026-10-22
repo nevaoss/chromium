@@ -193,7 +193,6 @@ import java.util.stream.IntStream;
     TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS,
     ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU
 })
-@EnableFeatures(ChromeFeatureList.TAB_STRIP_AUTO_SELECT_ON_CLOSE_CHANGE)
 @SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class StripLayoutHelperTest {
     private static final Token TAB_GROUP_ID_1 = new Token(1L, 1L);
@@ -1029,8 +1028,7 @@ public class StripLayoutHelperTest {
                 .closeTabs(TabClosureParams.closeAllTabs().build(), /* allowDialog= */ false);
 
         // Notify strip of tab closure
-        mStripLayoutHelper.willCloseTabs(
-                List.of(), /* isAllTabs= */ true, /* allowUndo= */ false);
+        mStripLayoutHelper.willCloseTabs(List.of(), /* isAllTabs= */ true, /* allowUndo= */ false);
 
         // Verify strip has no tabs.
         assertTrue(mStripLayoutHelper.getStripLayoutTabsForTesting().length == 0);
@@ -2058,31 +2056,19 @@ public class StripLayoutHelperTest {
     public void testCloseButtonHoverOnDown() {
         // Setup
         initializeTest(false, false, 2);
-        StripLayoutTab[] tabs = mStripLayoutHelper.getStripLayoutTabsForTesting();
+        mStripLayoutHelper.onSizeChanged(
+                STRIP_WIDTH, STRIP_HEIGHT, false, TIMESTAMP, PADDING_LEFT, PADDING_RIGHT, 0f);
+        mStripLayoutHelper.updateLayout(TIMESTAMP);
+        mStripLayoutHelper.setTabContextMenuCoordinatorForTesting(mTabContextMenuCoordinator);
         TintedCompositorButton closeButton =
-                new TintedCompositorButton(
-                        mContext,
-                        false,
-                        ButtonType.TAB_CLOSE,
-                        tabs[0],
-                        24.f,
-                        24.f,
-                        mTooltipHandler,
-                        mClickHandler,
-                        mKeyboardFocusHandler,
-                        R.drawable.ic_tab_close_tabstrip_24dp,
-                        R.drawable.tab_close_button_bg_24dp,
-                        0f);
-        closeButton.setOpacity(1.f);
-        int x = (int) closeButton.getDrawX();
-        int y = (int) closeButton.getDrawY();
-        tabs[0].setCloseButtonForTesting(closeButton);
+                mStripLayoutHelper.getStripLayoutTabsForTesting()[0].getCloseButton();
+        float x = closeButton.getDrawX();
+        float y = closeButton.getDrawY();
 
         // Verify close button is in pressed state, not hover state, when clicked from mouse.
         mStripLayoutHelper.onDown(x + 1, y + 1, 1);
         assertFalse("Close button should not be hovered", closeButton.isHovered());
-        mStripLayoutHelper.onDown((int) x + 1, y + 1, 1);
-        assertFalse("Close should NOT be hovered", closeButton.isPressedFromMouse());
+        assertTrue("Close button should be pressed from mouse", closeButton.isPressedFromMouse());
 
         // Verify close button is not in hover state or press state when long-pressed.
         mStripLayoutHelper.onLongPress(x + 1, y + 1);
@@ -2539,6 +2525,40 @@ public class StripLayoutHelperTest {
                 expectedScrollOffset,
                 actualScrollOffset,
                 EPSILON);
+    }
+
+    @Test
+    public void testTabCreated_SelectedNewTab_Autoscrolls_Rtl() {
+        initializeTest(
+                /* rtl= */ true, /* incognito= */ false, /* tabIndex= */ 9, /* numTabs= */ 10);
+        mStripLayoutHelper.onSizeChanged(
+                STRIP_WIDTH, STRIP_HEIGHT, false, TIMESTAMP, PADDING_LEFT, PADDING_RIGHT, 0f);
+        mStripLayoutHelper.updateLayout(TIMESTAMP);
+        mStripLayoutHelper.finishAnimationsAndPushTabUpdates();
+        mStripLayoutHelper.finishScrollForTesting();
+        mStripLayoutHelper.updateLayout(TIMESTAMP);
+
+        // Create a new selected tab at the end of the full strip in RTL.
+        mModel.addTab("new tab");
+        int newTabId = mModel.getTabAt(10).getId();
+        mModel.setIndex(10);
+        mStripLayoutHelper.tabCreated(
+                TIMESTAMP,
+                newTabId,
+                /* selected= */ true,
+                /* closureCancelled= */ false,
+                /* onStartup= */ false);
+        mStripLayoutHelper.finishAnimationsAndPushTabUpdates();
+        mStripLayoutHelper.finishScrollForTesting();
+        mStripLayoutHelper.updateLayout(TIMESTAMP);
+
+        StripLayoutTab newStripTab = mStripLayoutHelper.findTabById(newTabId);
+        assertEquals(
+                "We should scroll to the new selected tab at the end of the strip in RTL.",
+                mStripLayoutHelper.getScrollOffsetLimitForTesting(),
+                mStripLayoutHelper.getScrollOffset(),
+                EPSILON);
+        assertTrue("New selected tab in RTL should be visible.", newStripTab.isVisible());
     }
 
     @Test
@@ -3449,6 +3469,64 @@ public class StripLayoutHelperTest {
         verify(mTabStripContextMenuCoordinator)
                 .showMenu(rectProviderCaptor.capture(), eq(mIncognito), any());
         Rect rect = rectProviderCaptor.getValue().getRect();
+        int tabWidthPx =
+                Math.round(
+                        mStripLayoutHelper.getUnpinnedTabWidth()
+                                * mContext.getResources().getDisplayMetrics().density);
+        assertEquals(new Rect(x, y, x + tabWidthPx, y), rect);
+    }
+
+    @Test
+    public void testOnLongPress_OnNewTabButton() {
+        // Initialize.
+        initializeTest(false, false, 0);
+        mStripLayoutHelper.onSizeChanged(STRIP_WIDTH, STRIP_HEIGHT, false, 0, 0, 0, 0);
+        mStripLayoutHelper.updateLayout(0);
+        mStripLayoutHelper.setTabStripContextMenuCoordinatorForTesting(
+                mTabStripContextMenuCoordinator);
+
+        TintedCompositorButton ntb = mStripLayoutHelper.getNewTabButton();
+        int x = Math.round(ntb.getDrawX() + 1);
+        int y = Math.round(ntb.getDrawY() + 1);
+        mStripLayoutHelper.onDown(x, y, 0);
+        assertTrue("New tab button should be pressed on down.", ntb.isPressed());
+
+        mStripLayoutHelper.onLongPress(x, y);
+        assertFalse("New tab button should not remain pressed on long press.", ntb.isPressed());
+
+        var rectProviderCaptor = ArgumentCaptor.forClass(RectProvider.class);
+        verify(mTabStripContextMenuCoordinator)
+                .showMenu(rectProviderCaptor.capture(), eq(mIncognito), any());
+        Rect rect = rectProviderCaptor.getValue().getRect();
+        int tabWidthPx =
+                Math.round(
+                        mStripLayoutHelper.getUnpinnedTabWidth()
+                                * mContext.getResources().getDisplayMetrics().density);
+        assertEquals(new Rect(x, y, x + tabWidthPx, y), rect);
+    }
+
+    @Test
+    public void testNewTabButtonLongClick_ShowsStripContextMenu() {
+        // Initialize.
+        initializeTest(false, false, 0);
+        float topPadding = 10f;
+        mStripLayoutHelper.onSizeChanged(STRIP_WIDTH, STRIP_HEIGHT, false, 0, 0, 0, topPadding);
+        mStripLayoutHelper.updateLayout(0);
+        mStripLayoutHelper.setTabStripContextMenuCoordinatorForTesting(
+                mTabStripContextMenuCoordinator);
+
+        TintedCompositorButton ntb = mStripLayoutHelper.getNewTabButton();
+        assertTrue(
+                "New tab button should support long click action for accessibility.",
+                ntb.hasLongClickAction());
+        assertTrue("Handling long click on new tab button should succeed.", ntb.handleLongClick());
+
+        var rectProviderCaptor = ArgumentCaptor.forClass(RectProvider.class);
+        verify(mTabStripContextMenuCoordinator)
+                .showMenu(rectProviderCaptor.capture(), eq(mIncognito), any());
+        Rect rect = rectProviderCaptor.getValue().getRect();
+        int x = Math.round(ntb.getDrawX());
+        int y = Math.round(ntb.getDrawY() + topPadding);
         int tabWidthPx =
                 Math.round(
                         mStripLayoutHelper.getUnpinnedTabWidth()
@@ -6662,6 +6740,19 @@ public class StripLayoutHelperTest {
                 "Expected openKeyboardFocusedContextMenu to return true if tab context menu opened",
                 mStripLayoutHelper.openKeyboardFocusedContextMenu());
         verify(mTabGroupContextMenuCoordinator, times(1)).showMenu(any(), any());
+    }
+
+    @Test
+    public void testOpenContextMenu_newTabButton() {
+        initializeTest(false, false, 0);
+        mStripLayoutHelper.setTabStripContextMenuCoordinatorForTesting(
+                mTabStripContextMenuCoordinator);
+        mStripLayoutHelper.getNewTabButton().setKeyboardFocused(true);
+        assertTrue(
+                "Expected openKeyboardFocusedContextMenu to return true if strip context menu"
+                        + " opened",
+                mStripLayoutHelper.openKeyboardFocusedContextMenu());
+        verify(mTabStripContextMenuCoordinator, times(1)).showMenu(any(), eq(false), any());
     }
 
     @Test

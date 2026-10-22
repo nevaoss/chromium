@@ -30,7 +30,6 @@
 #include "third_party/blink/renderer/core/workers/worker_settings.h"
 #include "third_party/blink/renderer/modules/canvas/htmlcanvas/canvas_context_creation_attributes_helpers.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_2d_bitmap_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
@@ -172,19 +171,6 @@ bool OffscreenCanvasRenderingContext2D::CanCreateResourceProvider() {
   return InitializeResourceProvider();
 }
 
-bool OffscreenCanvasRenderingContext2D::Is2DCanvasAccelerated() const {
-  if (shared_image_provider_) {
-    return shared_image_provider_->IsAccelerated();
-  }
-  if (bitmap_provider_) {
-    return false;
-  }
-  if (!Host()) {
-    return false;
-  }
-  return Host()->ShouldTryToUseGpuRaster();
-}
-
 bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
   DCHECK(Host() && Host()->IsOffscreenCanvas());
   OffscreenCanvas* host = HostAsOffscreenCanvas();
@@ -195,24 +181,18 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
     return false;
   }
 
-  if (shared_image_provider_) {
-    if (!shared_image_provider_->IsValid()) {
-      // The canvas context is not lost but the provider is invalid. This
-      // happens if the GPU process dies in the middle of a render task. The
-      // canvas is notified of GPU context losses via the `NotifyGpuContextLost`
-      // callback and restoration happens in `TryRestoreContextEvent`. Both
-      // callbacks are executed in their own separate task. If the GPU context
-      // goes invalid in the middle of a render task, the canvas won't
-      // immediately know about it and canvas APIs will continue using the
-      // provider that is now invalid. We can early return here, trying to
-      // re-create the provider right away would just fail. We need to let
-      // `TryRestoreContextEvent` wait for the GPU process to up again.
-      return false;
-    }
-    return true;
-  }
-  if (bitmap_provider_) {
-    return true;
+  if (HasResourceProvider()) {
+    // The canvas context is not lost but the provider may be invalid if the
+    // GPU process dies in the middle of a render task. The canvas is notified
+    // of GPU context losses via the `NotifyGpuContextLost` callback and
+    // restoration happens in `TryRestoreContextEvent`. Both callbacks are
+    // executed in their own separate task. If the GPU context goes invalid in
+    // the middle of a render task, the canvas won't immediately know about it
+    // and canvas APIs will continue using the provider that is now invalid. We
+    // can early return here, trying to re-create the provider right away would
+    // just fail. We need to let `TryRestoreContextEvent` wait for the GPU
+    // process to up again.
+    return IsResourceProviderValid();
   }
 
   if (!host->IsValidImageSize() && !host->Size().IsEmpty()) {
@@ -283,11 +263,10 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
     // visible on screen, but at least readbacks will work. Failure to create
     // another type of resource prover above is a sign that the graphics
     // pipeline is in a bad state (e.g. gpu process crashed, out of memory)
-    bitmap_provider_ = Canvas2DBitmapProvider::CreateWithClear(
-        host->Size(), format, alpha_type, color_space, hdr_metadata, host);
+    CreateBitmapProvider();
   }
 
-  if (shared_image_provider_ || bitmap_provider_) {
+  if (HasResourceProvider()) {
     ConfigureRecorder(host->Size(), shared_image_provider_ &&
                                         shared_image_provider_->IsGraphite());
   } else {
@@ -304,7 +283,7 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
     host->DidDraw();
     return true;
   }
-  if (bitmap_provider_) {
+  if (HasResourceProvider()) {
     base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
                               false);
     base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
@@ -390,10 +369,7 @@ scoped_refptr<StaticBitmapImage> OffscreenCanvasRenderingContext2D::GetImage() {
   FinalizeFrame(FlushReason::kOther);
   if (!IsPaintable())
     return nullptr;
-  if (shared_image_provider_) {
-    return shared_image_provider_->Snapshot();
-  }
-  return bitmap_provider_->Snapshot();
+  return Snapshot();
 }
 
 V8RenderingContext* OffscreenCanvasRenderingContext2D::AsV8RenderingContext() {
@@ -420,7 +396,7 @@ OffscreenCanvasRenderingContext2D::GetOrCreatePaintCanvas() {
 void OffscreenCanvasRenderingContext2D::WillDraw(
     const gfx::Rect& dirty_rect,
     CanvasPerformanceMonitor::DrawType draw_type) {
-  CHECK(shared_image_provider_ || bitmap_provider_);
+  CHECK(HasResourceProvider());
   gfx::Rect adjusted_dirty_rect = dirty_rect;
   if (GetState().ShouldAntialias()) {
     adjusted_dirty_rect.Outset(1);
@@ -437,11 +413,6 @@ void OffscreenCanvasRenderingContext2D::WillDraw(
 
 sk_sp<PaintFilter> OffscreenCanvasRenderingContext2D::StateGetFilter() {
   return GetState().GetFilterForOffscreenCanvas(Host()->Size(), this);
-}
-
-void OffscreenCanvasRenderingContext2D::ResetResourceProvider() {
-  shared_image_provider_.reset();
-  bitmap_provider_.reset();
 }
 
 void OffscreenCanvasRenderingContext2D::Dispose() {
@@ -480,11 +451,7 @@ bool OffscreenCanvasRenderingContext2D::WritePixels(
   if (!IsResourceProviderValid()) {
     return false;
   }
-  if (shared_image_provider_) {
-    return shared_image_provider_->WritePixels(orig_info, pixels, row_bytes, x,
-                                               y);
-  }
-  return bitmap_provider_->WritePixels(orig_info, pixels, row_bytes, x, y);
+  return WritePixelsToProvider(orig_info, pixels, row_bytes, x, y);
 }
 
 bool OffscreenCanvasRenderingContext2D::ResolveFont(const String& new_font) {

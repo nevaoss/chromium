@@ -2081,9 +2081,7 @@ void MaybeRegisterChromeFeaturePromos(
 
   // kIPHVerticalTabsExpandOnHoverFeature:
   const auto expand_on_hover_iph_body_string_id =
-      tabs::kVerticalTabsExpandOnHoverDefaultEnabled.Get()
-          ? IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_ENABLED_IPH_BODY
-          : IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_DISABLED_IPH_BODY;
+      IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_ENABLED_IPH_BODY;
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForSnoozePromo(
           feature_engagement::kIPHVerticalTabsExpandOnHoverFeature,
@@ -2165,6 +2163,35 @@ void MaybeRegisterChromeFeaturePromos(
                          "enabled with the direct access feature param off, "
                          "and the user creates a side by side split.")));
   }
+
+  // kIPHGlassFrameOptInFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForCustomAction(
+          feature_engagement::kIPHGlassFrameOptInFeature, kTabStripElementId,
+          IDS_GLASS_FRAME_OPT_IN_IPH_BODY, IDS_GLASS_FRAME_IPH_SETTINGS_BUTTON,
+          base::BindRepeating(
+              [](ContextPtr ctx,
+                 user_education::FeaturePromoHandle promo_handle) {
+                if (BrowserWindowInterface* const browser = GetBrowser(ctx)) {
+                  ShowPromoInPage::Params params;
+                  params.target_url =
+                      chrome::GetSettingsUrl(chrome::kAppearanceSubPage);
+                  params.bubble_anchor_id = kTabStylingSettingElementId;
+                  params.bubble_arrow = HelpBubbleArrow::kBottomRight;
+                  params.bubble_text = l10n_util::GetStringUTF16(
+                      IDS_GLASS_FRAME_IPH_SETTINGS_PAGE);
+                  params.close_button_alt_text_id = IDS_CLOSE_PROMO;
+                  ShowPromoInPage::Start(browser, std::move(params));
+                }
+              }))
+          .SetBubbleTitleText(IDS_GLASS_FRAME_OPT_IN_IPH_TITLE)
+          .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+          .SetCustomActionDismissText(IDS_NO_THANKS)
+          .SetCustomActionIsDefault(true)
+          .SetMetadata(
+              156, "stluong@chromium.org",
+              "Triggered on startup when glass frame is available and the user "
+              "has not enabled it in settings.")));
 }
 
 void MaybeRegisterChromeFeaturePromos(

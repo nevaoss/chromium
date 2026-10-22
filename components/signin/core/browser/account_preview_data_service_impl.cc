@@ -39,6 +39,8 @@ constexpr char kPreferredAccountDictDataTypeKey[] = "data_type";
 constexpr char kPreferredAccountDictQuartileKey[] = "quartile";
 constexpr char kPreferredAccountDictOtherDeviceFormFactorKey[] =
     "other_device_form_factor";
+constexpr char kPreferredAccountDictOtherDeviceEnabledDataTypesKey[] =
+    "other_device_enabled_data_types";
 #if BUILDFLAG(IS_ANDROID)
 constexpr char kExternalAppAccountDictGaiaIdKey[] = "gaia_id";
 constexpr char kExternalAppAccountDictTimestampKey[] = "timestamp";
@@ -725,8 +727,21 @@ AccountPreviewDataServiceImpl::ReadPreferredAccountFromPrefs() const {
       dict.FindInt(kPreferredAccountDictOtherDeviceFormFactorKey);
   if (form_factor_int.has_value() &&
       sync_pb::SyncEnums::DeviceFormFactor_IsValid(*form_factor_int)) {
-    preference.other_device_form_factor =
+    preference.other_device_info.form_factor =
         static_cast<sync_pb::SyncEnums_DeviceFormFactor>(*form_factor_int);
+  }
+
+  if (const base::ListValue* other_device_data_types_list =
+          dict.FindList(kPreferredAccountDictOtherDeviceEnabledDataTypesKey)) {
+    for (const base::Value& val : *other_device_data_types_list) {
+      if (std::optional<int> dt_int = val.GetIfInt()) {
+        syncer::DataType data_type =
+            syncer::GetDataTypeFromStableIdentifier(*dt_int);
+        if (syncer::IsRealDataType(data_type)) {
+          preference.other_device_info.enabled_data_types.Put(data_type);
+        }
+      }
+    }
   }
 
   return preference;
@@ -752,7 +767,15 @@ void AccountPreviewDataServiceImpl::WritePreferredAccountToPrefs(
   }
   dict.Set(kPreferredAccountDictDataTypesKey, std::move(data_types_list));
   dict.Set(kPreferredAccountDictOtherDeviceFormFactorKey,
-           static_cast<int>(preference->other_device_form_factor));
+           static_cast<int>(preference->other_device_info.form_factor));
+  base::ListValue other_device_data_types_list;
+  for (syncer::DataType data_type :
+       preference->other_device_info.enabled_data_types) {
+    other_device_data_types_list.Append(
+        syncer::DataTypeToStableIdentifier(data_type));
+  }
+  dict.Set(kPreferredAccountDictOtherDeviceEnabledDataTypesKey,
+           std::move(other_device_data_types_list));
   profile_prefs_->SetDict(prefs::kAccountPreviewPreference, std::move(dict));
 }
 

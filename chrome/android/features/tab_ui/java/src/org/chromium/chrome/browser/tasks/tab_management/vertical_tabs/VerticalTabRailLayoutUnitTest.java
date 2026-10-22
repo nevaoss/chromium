@@ -10,14 +10,16 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Outline;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.view.DragEvent;
 import android.view.Gravity;
@@ -43,11 +45,8 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 
-import org.chromium.base.Callback;
 import org.chromium.base.DeviceInfo;
-import org.chromium.base.FeatureOverrides;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabListRecyclerView;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
@@ -63,7 +62,7 @@ import org.chromium.ui.modelutil.PropertyModel;
 public class VerticalTabRailLayoutUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private Callback<Integer> mMockHoverListener;
+    @Mock private VerticalTabRailLayout.RailEventListener mMockRailEventListener;
     @Mock private View.OnClickListener mSearchClickListener;
     @Mock private View.OnClickListener mNewTabClickListener;
     @Mock private View.OnClickListener mIncognitoClickListener;
@@ -89,13 +88,10 @@ public class VerticalTabRailLayoutUnitTest {
                 (VerticalTabRailLayout)
                         LayoutInflater.from(mActivity)
                                 .inflate(R.layout.vertical_tab_layout, null, false);
-        mRailLayout.setExpandOrCollapseOnHoverListener(mMockHoverListener);
+        mRailLayout.setRailEventListener(mMockRailEventListener);
 
         mModel =
                 new PropertyModel.Builder(VerticalTabListProperties.ALL_KEYS)
-                        .with(
-                                VerticalTabListProperties.EXPAND_OR_COLLAPSE_ON_HOVER_LISTENER,
-                                mMockHoverListener)
                         .with(
                                 VerticalTabListProperties.ON_SEARCH_CLICK_LISTENER,
                                 mSearchClickListener)
@@ -292,6 +288,97 @@ public class VerticalTabRailLayoutUnitTest {
     }
 
     @Test
+    public void testExpandedForHovering_ClipsToRoundedRightCorners() {
+        int radius =
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tabs_hover_overlay_corner_radius);
+        mRailLayout.layout(0, 0, 200, 800);
+
+        // The outline is shifted left by the radius, so only the right corners are rounded.
+        Outline outline = new Outline();
+        mRailLayout.getOutlineProvider().getOutline(mRailLayout, outline);
+        Rect rect = new Rect();
+        assertTrue(outline.getRect(rect));
+        assertEquals(new Rect(-radius, 0, 200, 800), rect);
+        assertEquals(radius, outline.getRadius(), 0f);
+
+        // Only the hover overlay is clipped to the outline.
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
+        assertTrue(mRailLayout.getClipToOutline());
+
+        mRailLayout.setCollapseState(RailCollapseState.COLLAPSED);
+        assertFalse(mRailLayout.getClipToOutline());
+
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
+        assertTrue(mRailLayout.getClipToOutline());
+
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED);
+        assertFalse(mRailLayout.getClipToOutline());
+    }
+
+    @Test
+    public void testExpandedForHovering_SearchButtonSpansRailWithLabel() {
+        View searchButton = mRailLayout.findViewById(R.id.tab_search_button);
+        View searchIcon = mRailLayout.findViewById(R.id.tab_search_icon);
+        View searchLabel = mRailLayout.findViewById(R.id.tab_search_label);
+        int buttonWidth = mRailLayout.getHeaderButtonWidthPxForTesting();
+
+        // Hovering: the button spans the rail and shows the label 8dp after the icon.
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, searchButton.getLayoutParams().width);
+        assertEquals(buttonWidth, searchIcon.getLayoutParams().width);
+        assertEquals(View.VISIBLE, searchLabel.getVisibility());
+        assertEquals(
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tabs_tab_search_label_margin_start),
+                ((ViewGroup.MarginLayoutParams) searchLabel.getLayoutParams()).getMarginStart());
+
+        // Collapsed: icon-only button.
+        mRailLayout.setCollapseState(RailCollapseState.COLLAPSED);
+        assertEquals(buttonWidth, searchButton.getLayoutParams().width);
+        assertEquals(buttonWidth, searchIcon.getLayoutParams().width);
+        assertEquals(View.GONE, searchLabel.getVisibility());
+
+        // Expanded: icon-only button.
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED);
+        assertEquals(buttonWidth, searchButton.getLayoutParams().width);
+        assertEquals(buttonWidth, searchIcon.getLayoutParams().width);
+        assertEquals(View.GONE, searchLabel.getVisibility());
+    }
+
+    @Test
+    public void testExpandedForHovering_SeparatorSpansTabWidth() {
+        ConstraintLayout.LayoutParams params =
+                (ConstraintLayout.LayoutParams)
+                        mRailLayout.getPinnedTabsSeparatorView().getLayoutParams();
+        int separatorWidth =
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.vertical_tabs_pinned_separator_width);
+        int expectedMarginStart =
+                VerticalTabRailLayout.getCollapsedRailCenteringMarginStart(
+                        mActivity, TabVerticalViewBinder.getCollapsedTabItemWidth(mActivity));
+
+        // Hovering: spans the tab row width.
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
+        assertEquals(ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, params.width);
+        assertEquals(expectedMarginStart, params.getMarginStart());
+
+        // Collapsed: fixed width, centered.
+        mRailLayout.setCollapseState(RailCollapseState.COLLAPSED);
+        assertEquals(separatorWidth, params.width);
+        assertEquals(0, params.getMarginStart());
+
+        // Expanded: fixed width, centered.
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
+        mRailLayout.setCollapseState(RailCollapseState.EXPANDED);
+        assertEquals(separatorWidth, params.width);
+        assertEquals(0, params.getMarginStart());
+    }
+
+    @Test
     public void testSetDesktopWindowSpacerVisible() {
         View spacer = mRailLayout.findViewById(R.id.desktop_window_spacer);
         mRailLayout.setDesktopWindowSpacerVisible(true);
@@ -302,26 +389,38 @@ public class VerticalTabRailLayoutUnitTest {
     }
 
     @Test
-    public void testDispatchGenericMotionEvent_HoverInsideAndOutside() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
-        mRailLayout.setCollapseState(RailCollapseState.COLLAPSED);
+    public void testDispatchEvents_ForwardedToRailEventListener() {
         measureAndLayout(mRailLayout, 200, 500);
 
-        // Hover inside
-        MotionEvent hoverEnter =
-                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 50f, 50f, 0);
-        hoverEnter.setSource(InputDevice.SOURCE_MOUSE);
-        mRailLayout.dispatchGenericMotionEvent(hoverEnter);
-        verify(mMockHoverListener).onResult(RailCollapseState.EXPANDED_FOR_HOVERING);
+        MotionEvent hoverEvent = obtainMouseEvent(MotionEvent.ACTION_HOVER_MOVE);
+        mRailLayout.dispatchGenericMotionEvent(hoverEvent);
+        verify(mMockRailEventListener).onGenericMotionEventDispatched(hoverEvent);
+        hoverEvent.recycle();
 
-        // Hover outside
-        mRailLayout.setCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
-        MotionEvent hoverExit =
-                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_EXIT, 500f, 50f, 0);
-        hoverExit.setSource(InputDevice.SOURCE_MOUSE);
-        mRailLayout.dispatchGenericMotionEvent(hoverExit);
-        verify(mMockHoverListener).onResult(RailCollapseState.COLLAPSED);
+        MotionEvent touchEvent = obtainMouseEvent(MotionEvent.ACTION_UP);
+        mRailLayout.dispatchTouchEvent(touchEvent);
+        verify(mMockRailEventListener).onTouchEventDispatched(touchEvent);
+        touchEvent.recycle();
+
+        DragEvent dragEvent = mockDragEvent(DragEvent.ACTION_DRAG_STARTED);
+        mRailLayout.dispatchDragEvent(dragEvent);
+        verify(mMockRailEventListener).onDragEventDispatched(dragEvent);
+    }
+
+    @Test
+    public void testDispatchEvents_NotForwardedWithoutListener() {
+        mRailLayout.setRailEventListener(null);
+        measureAndLayout(mRailLayout, 200, 500);
+
+        MotionEvent hoverEvent = obtainMouseEvent(MotionEvent.ACTION_HOVER_MOVE);
+        mRailLayout.dispatchGenericMotionEvent(hoverEvent);
+        hoverEvent.recycle();
+        MotionEvent touchEvent = obtainMouseEvent(MotionEvent.ACTION_UP);
+        mRailLayout.dispatchTouchEvent(touchEvent);
+        touchEvent.recycle();
+        mRailLayout.dispatchDragEvent(mockDragEvent(DragEvent.ACTION_DRAG_STARTED));
+
+        verifyNoInteractions(mMockRailEventListener);
     }
 
     @Test
@@ -344,23 +443,16 @@ public class VerticalTabRailLayoutUnitTest {
         assertFalse(mRailLayout.dispatchGenericMotionEvent(otherEvent));
     }
 
-    @Test
-    public void testOnWindowFocusChanged_CollapsesRailOnFocusLost() {
-        mRailLayout.onWindowFocusChanged(false);
-        verify(mMockHoverListener).onResult(RailCollapseState.COLLAPSED);
+    private static MotionEvent obtainMouseEvent(int action) {
+        MotionEvent event = MotionEvent.obtain(0, 0, action, 100f, 250f, 0);
+        event.setSource(InputDevice.SOURCE_MOUSE);
+        return event;
     }
 
-    @Test
-    public void testOnDragEvent_CollapsesRailOnDragExitedOrEnded() {
-        DragEvent exitEvent = mock(DragEvent.class);
-        when(exitEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_EXITED);
-        mRailLayout.onDragEvent(exitEvent);
-        verify(mMockHoverListener).onResult(RailCollapseState.COLLAPSED);
-
-        DragEvent endEvent = mock(DragEvent.class);
-        when(endEvent.getAction()).thenReturn(DragEvent.ACTION_DRAG_ENDED);
-        mRailLayout.onDragEvent(endEvent);
-        verify(mMockHoverListener, times(2)).onResult(RailCollapseState.COLLAPSED);
+    private static DragEvent mockDragEvent(int action) {
+        DragEvent event = mock(DragEvent.class);
+        when(event.getAction()).thenReturn(action);
+        return event;
     }
 
     @Test
@@ -681,7 +773,7 @@ public class VerticalTabRailLayoutUnitTest {
                 tabletLayout.getIncognitoChipSizePxForTesting());
 
         ImageView tabletCollapseButton = tabletLayout.findViewById(R.id.collapse_button);
-        ImageView tabletSearchButton = tabletLayout.findViewById(R.id.tab_search_button);
+        ImageView tabletSearchButton = tabletLayout.findViewById(R.id.tab_search_icon);
         assertEquals(
                 R.drawable.vertical_tabs_menu_collapse_24dp,
                 shadowOf(tabletCollapseButton.getDrawable()).getCreatedFromResId());
@@ -714,7 +806,7 @@ public class VerticalTabRailLayoutUnitTest {
                         .getDimensionPixelSize(R.dimen.vertical_tabs_footer_button_height),
                 desktopLayout.getIncognitoChipSizePxForTesting());
         ImageView desktopCollapseButton = desktopLayout.findViewById(R.id.collapse_button);
-        ImageView desktopSearchButton = desktopLayout.findViewById(R.id.tab_search_button);
+        ImageView desktopSearchButton = desktopLayout.findViewById(R.id.tab_search_icon);
         assertEquals(
                 R.drawable.vertical_tabs_menu_collapse,
                 shadowOf(desktopCollapseButton.getDrawable()).getCreatedFromResId());

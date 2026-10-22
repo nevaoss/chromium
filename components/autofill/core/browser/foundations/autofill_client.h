@@ -714,6 +714,13 @@ class AutofillClient {
       FillingProduct filling_product,
       const HatsSurveyStringData& field_filling_stats_data);
 
+  // Triggers a survey to ask the user about their experience regarding
+  // AtMemory. `is_dismissed` specifies whether the survey is for dismissing
+  // AtMemory without accepting any suggestion.
+  virtual void TriggerAtMemoryPersonalizationAndTrustSurvey(
+      bool is_dismissed,
+      const HatsSurveyStringData& product_specific_data);
+
   // Returns whether there is an active actor task for this client's tab (if
   // one exists).
   virtual bool IsTabInActorMode() const;
@@ -774,11 +781,16 @@ class AutofillClient {
 #if BUILDFLAG(IS_ANDROID)
   // Shows the Personal Context ambient autofill notice. Returns whether the
   // notice was successfully shown.
-  virtual bool ShowAmbientAutoFillNotice(
+  virtual bool ShowAmbientAutofillNotice(
+      base::WeakPtr<TouchToFillAutofillDelegate> delegate);
+
+  // Shows the Autofill AI private inference notice in the Touch To Fill bottom
+  // sheet. Returns whether the notice was successfully shown.
+  virtual bool ShowPrivateInferenceNoticeBottomSheet(
       base::WeakPtr<TouchToFillAutofillDelegate> delegate);
 
   // Hides the Personal Context ambient autofill notice.
-  virtual void HideAmbientAutoFillNotice();
+  virtual void HideAmbientAutofillNotice();
 
   // The AutofillSnackbarController is used to show a snackbar notification
   // on Android.

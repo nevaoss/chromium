@@ -508,17 +508,9 @@ IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest, FocusLossClosesPopup1) {
 }
 
 // Test that the extension popup is closed when the browser window is focused.
-// TODO(crbug.com/556054354): Flaky on Windows.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_FocusLossClosesPopup2 DISABLED_FocusLossClosesPopup2
-#else
-#define MAYBE_FocusLossClosesPopup2 FocusLossClosesPopup2
-#endif
-IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest,
-                       MAYBE_FocusLossClosesPopup2) {
-  // Load a first extension that can open a popup.
+IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest, FocusLossClosesPopup2) {
   ASSERT_TRUE(
-      LoadExtension(test_data_dir_.AppendASCII("browser_action/popup")));
+      LoadExtension(test_data_dir_.AppendASCII("browser_action/open_popup")));
   const Extension* extension = GetSingleLoadedExtension();
   ASSERT_TRUE(extension) << message_;
   OpenPopupViaToolbar(extension->id());
@@ -856,7 +848,7 @@ IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest,
 // Regression test for crbug.com/40455833.
 IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest, OpenPopupOnPopup) {
   // Open a new web popup window.
-  NavigateParams params(browser(), GURL("http://www.google.com/"),
+  NavigateParams params(browser(), GURL("https://www.google.com/"),
                         ui::PAGE_TRANSITION_LINK);
   params.disposition = WindowOpenDisposition::NEW_POPUP;
   params.window_action = NavigateParams::WindowAction::kShowWindow;
@@ -864,16 +856,9 @@ IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest, OpenPopupOnPopup) {
   ASSERT_TRUE(params.browser);
   BrowserWindowInterface* popup_browser = params.browser;
   // Verify it is a popup, and it is the active window.
-  // The window isn't considered "active" on MacOSX for odd reasons. The more
-  // important test is that it *is* considered the last active browser, since
-  // that's what we check when we try to open the popup.
-  // TODO(crbug.com/40711219): Now that this is an interactive test, is this
-  // ifdef still necessary?
-#if !BUILDFLAG(IS_MAC)
   ui_test_utils::BrowserActivationWaiter waiter(popup_browser);
   waiter.WaitForActivation();
   EXPECT_TRUE(popup_browser->GetWindow()->IsActive());
-#endif
   EXPECT_FALSE(browser()->GetWindow()->IsActive());
   EXPECT_FALSE(
       WindowFeatureController::From(popup_browser)

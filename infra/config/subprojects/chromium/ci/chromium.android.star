@@ -2587,6 +2587,9 @@ ci.builder(
             "base_unittests_android_death_tests": targets.mixin(
                 ci_only = True,
             ),
+            "blink_unittests": targets.mixin(
+                enable_rts_filtering = True,
+            ),
             "chrome_public_test_apk": targets.mixin(
                 args = [
                     "--disable-field-trial-config",
@@ -2608,6 +2611,7 @@ ci.builder(
                     "--disable-field-trial-config",
                     "--skia-gold-consider-unsupported",
                 ],
+                enable_rts_filtering = True,
             ),
             "components_browsertests": targets.mixin(
                 swarming = targets.swarming(
@@ -2650,6 +2654,7 @@ ci.builder(
                     "--disable-field-trial-config",
                     "--skia-gold-consider-unsupported",
                 ],
+                enable_rts_filtering = True,
                 swarming = targets.swarming(
                     dimensions = {
                         # use 8-core to shorten runtime
@@ -4228,10 +4233,16 @@ ci.builder(
             "base_unittests_android_death_tests": targets.mixin(
                 ci_only = True,
             ),
+            "blink_unittests": targets.mixin(
+                enable_rts_filtering = True,
+            ),
             "components_browsertests": targets.mixin(
                 swarming = targets.swarming(
                     shards = 3,
                 ),
+            ),
+            "components_unittests": targets.mixin(
+                enable_rts_filtering = True,
             ),
             "content_shell_freeze_test": targets.mixin(
                 # TODO (b/511219429): Remove once stability is established and also add to android_rel_isolated_scripts
@@ -4261,6 +4272,9 @@ ci.builder(
                     },
                     shards = 47,
                 ),
+            ),
+            "chrome_public_unit_test_apk": targets.mixin(
+                enable_rts_filtering = True,
             ),
             "content_browsertests": targets.mixin(
                 args = [

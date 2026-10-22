@@ -15,6 +15,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -36,8 +37,10 @@ import org.mockito.InOrder;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowNotificationManager;
 
+import org.chromium.base.ResettersForTesting;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -47,6 +50,7 @@ import org.chromium.components.browser_ui.media.MediaNotificationInfo;
 import org.chromium.components.browser_ui.media.MediaNotificationManager;
 import org.chromium.components.browser_ui.notifications.NotificationProxyUtils;
 import org.chromium.components.browser_ui.notifications.PendingIntentProvider;
+import org.chromium.components.browser_ui.util.BrowserUiUtilsCachedFlags;
 import org.chromium.services.media_session.MediaMetadata;
 
 import java.util.concurrent.TimeUnit;
@@ -374,6 +378,122 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
     }
 
     @Test
+    @EnableFeatures(ChromeFeatureList.ALLOW_MULTIPLE_MEDIA_NOTIFICATIONS)
+    public void testDetachedControllerIgnoredByFallbackPromotionAndIsServiceNeeded() {
+        NotificationProxyUtils.setNotificationEnabledForTest(true);
+        MediaNotificationManager.setMultipleMediaNotificationsEnabled(true);
+        setUpService();
+        getController().mService = mService;
+        getController().mMediaNotificationInfo =
+                mMediaNotificationInfoBuilder.setPaused(false).build();
+
+        MediaNotificationInfo activeTabInfo =
+                mMediaNotificationInfoBuilder.setInstanceId(99).setPaused(false).build();
+        ChromeMediaNotificationManager.show(activeTabInfo);
+        int activeNotificationId = MediaNotificationManager.getUniqueId(99, getNotificationId());
+        MediaNotificationController activeController =
+                MediaNotificationManager.getControllerByNotificationId(activeNotificationId);
+        activeController.mPendingIntentActionSwipe = mock(PendingIntentProvider.class);
+        advanceTimeByMillis(500);
+        activeController.onServiceStarted(mService);
+        assertTrue(activeController.isForeground());
+
+        // Detach getController() via stopListenerService() while mMediaNotificationInfo is still
+        // non-null/playing (simulating the window before delayed hide() runs).
+        getController().stopListenerService();
+        assertNull(getController().mService);
+        assertFalse(getController().isPaused());
+
+        // Pausing activeController should not promote the detached getController().
+        clearInvocations(mMockForegroundServiceUtils);
+        ChromeMediaNotificationManager.show(
+                mMediaNotificationInfoBuilder.setInstanceId(99).setPaused(true).build());
+        advanceTimeByMillis(500);
+        waitForAsync();
+        assertFalse(getController().isForeground());
+        assertFalse(activeController.isForeground());
+
+        // Stopping activeController should see isServiceNeeded() == false and stop the service.
+        activeController.stopListenerService();
+        verify(mService).stopSelf();
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ALLOW_MULTIPLE_MEDIA_NOTIFICATIONS)
+    public void testStopListenerServicePromotesFallbackPlayingControllerWhenServiceStillNeeded() {
+        NotificationProxyUtils.setNotificationEnabledForTest(true);
+        MediaNotificationManager.setMultipleMediaNotificationsEnabled(true);
+        setUpService();
+        getController().mService = mService;
+        getController().mMediaNotificationInfo =
+                mMediaNotificationInfoBuilder.setPaused(false).build();
+
+        MediaNotificationInfo activeTabInfo =
+                mMediaNotificationInfoBuilder.setInstanceId(99).setPaused(false).build();
+        ChromeMediaNotificationManager.show(activeTabInfo);
+        int activeNotificationId = MediaNotificationManager.getUniqueId(99, getNotificationId());
+        MediaNotificationController activeController =
+                MediaNotificationManager.getControllerByNotificationId(activeNotificationId);
+        activeController.mPendingIntentActionSwipe = mock(PendingIntentProvider.class);
+        advanceTimeByMillis(500);
+        activeController.onServiceStarted(mService);
+        assertTrue(activeController.isForeground());
+        assertFalse(getController().isForeground());
+        clearInvocations(mMockForegroundServiceUtils);
+
+        activeController.stopListenerService();
+        waitForAsync();
+
+        InOrder order = inOrder(mMockForegroundServiceUtils);
+        order.verify(mMockForegroundServiceUtils)
+                .stopForeground(eq(mService), eq(Service.STOP_FOREGROUND_REMOVE));
+        order.verify(mMockForegroundServiceUtils)
+                .startForeground(
+                        eq(mService),
+                        eq(getNotificationId()),
+                        any(Notification.class),
+                        eq(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK));
+        assertFalse(activeController.isForeground());
+        assertTrue(getController().isForeground());
+        assertTrue(MediaNotificationManager.isNotificationActive(getNotificationId()));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ALLOW_MULTIPLE_MEDIA_NOTIFICATIONS)
+    public void testStopListenerServiceClearsActiveIdWhenFallbackPromotionFails() {
+        NotificationProxyUtils.setNotificationEnabledForTest(true);
+        MediaNotificationManager.setMultipleMediaNotificationsEnabled(true);
+        setUpService();
+        getController().mService = mService;
+        getController().mMediaNotificationInfo =
+                mMediaNotificationInfoBuilder.setPaused(false).build();
+
+        MediaNotificationInfo activeTabInfo =
+                mMediaNotificationInfoBuilder.setInstanceId(99).setPaused(false).build();
+        ChromeMediaNotificationManager.show(activeTabInfo);
+        int activeNotificationId = MediaNotificationManager.getUniqueId(99, getNotificationId());
+        MediaNotificationController activeController =
+                MediaNotificationManager.getControllerByNotificationId(activeNotificationId);
+        activeController.mPendingIntentActionSwipe = mock(PendingIntentProvider.class);
+        advanceTimeByMillis(500);
+        activeController.onServiceStarted(mService);
+        assertTrue(activeController.isForeground());
+        assertTrue(MediaNotificationManager.isNotificationActive(activeNotificationId));
+
+        doThrow(new RuntimeException("FGS restricted"))
+                .when(mMockForegroundServiceUtils)
+                .startForeground(any(), anyInt(), any(), anyInt());
+
+        activeController.stopListenerService();
+        waitForAsync();
+
+        assertFalse(activeController.isForeground());
+        assertFalse(getController().isForeground());
+        assertFalse(MediaNotificationManager.isNotificationActive(activeNotificationId));
+        assertFalse(MediaNotificationManager.isNotificationActive(getNotificationId()));
+    }
+
+    @Test
     public void updateNotificationSetsServiceBackgroundWhenPausedButDoesntSupportSwipeAway() {
         mMediaNotificationInfoBuilder.setPaused(true).setActions(0);
         setUpService();
@@ -405,6 +525,52 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
                         eq(getNotificationId()),
                         any(Notification.class),
                         eq(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK));
+    }
+
+    @Test
+    public void promoteDoesNotRepostNotificationAfterStopListenerService() {
+        BrowserUiUtilsCachedFlags.getInstance().setAsyncNotificationManagerFlag(true);
+        ResettersForTesting.register(
+                () ->
+                        BrowserUiUtilsCachedFlags.getInstance()
+                                .setAsyncNotificationManagerFlag(false));
+        mMediaNotificationInfoBuilder.setPaused(false);
+        setUpService();
+        getController().mService = mService;
+        getController().mMediaNotificationInfo = mMediaNotificationInfoBuilder.build();
+
+        getController().promote();
+        getController().stopListenerService();
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        assertEquals(0, getShadowNotificationManager().getAllNotifications().size());
+    }
+
+    @Test
+    public void promoteWhileDemoteNotifyPendingOverwritesDemotedNotification() {
+        BrowserUiUtilsCachedFlags.getInstance().setAsyncNotificationManagerFlag(true);
+        ResettersForTesting.register(
+                () ->
+                        BrowserUiUtilsCachedFlags.getInstance()
+                                .setAsyncNotificationManagerFlag(false));
+        setUpService();
+        getController().mService = mService;
+        getController().setIsForegroundForTesting(true);
+
+        getController().mMediaNotificationInfo =
+                mMediaNotificationInfoBuilder.setPaused(true).build();
+        getController().demote();
+
+        getController().mMediaNotificationInfo =
+                mMediaNotificationInfoBuilder.setPaused(false).build();
+        getController().promote();
+
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        assertEquals(1, getShadowNotificationManager().getAllNotifications().size());
+        Notification finalNotification =
+                getShadowNotificationManager().getAllNotifications().get(0);
+        assertTrue(shadowOf(finalNotification).isOngoing());
     }
 
     private ShadowNotificationManager getShadowNotificationManager() {

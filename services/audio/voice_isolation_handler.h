@@ -16,10 +16,12 @@
 #include "base/sequence_checker.h"
 #include "base/thread_annotations.h"
 #include "base/time/time.h"
+#include "base/types/expected.h"
 #include "base/unguessable_token.h"
 #include "media/audio/audio_debug_recording_helper.h"
 #include "media/base/audio_glitch_info.h"
 #include "media/base/audio_parameters.h"
+#include "services/audio/crossfader.h"
 
 namespace media {
 class AudioBus;
@@ -27,6 +29,7 @@ class AudioDebugRecordingManager;
 class MlModelHandle;
 class VoiceIsolation;
 class VoiceIsolationComponent;
+enum class VoiceIsolationCreationResult;
 }  // namespace media
 
 namespace audio {
@@ -45,7 +48,7 @@ class VoiceIsolationHandler {
       const media::AudioBus& audio_bus,
       base::TimeTicks audio_capture_time,
       const media::AudioGlitchInfo& audio_glitch_info)>;
-
+  using ErrorCallback = base::OnceClosure;
   using LogCallback = base::RepeatingCallback<void(std::string_view)>;
 
   VoiceIsolationHandler(const VoiceIsolationHandler&) = delete;
@@ -53,10 +56,18 @@ class VoiceIsolationHandler {
 
   ~VoiceIsolationHandler();
 
+  // Attempts to create a VoiceIsolationHandler. Returns nullptr if a model is
+  // not available from `ml_model_manager`.
+  //
+  // `error_callback`: Invoked asynchronously on the calling/owning sequence if
+  // background component creation fails, notifying the caller (e.g.
+  // InputController) so it can terminate the stream. Never invoked
+  // synchronously within MaybeCreate().
   static std::unique_ptr<VoiceIsolationHandler> MaybeCreate(
       MlModelManager& ml_model_manager,
       const media::AudioParameters& output_params,
       DeliverProcessedAudioCallback deliver_processed_audio_callback,
+      ErrorCallback error_callback,
       LogCallback log_callback = base::DoNothing(),
       media::AudioDebugRecordingManager* debug_recording_manager = nullptr);
 
@@ -114,6 +125,7 @@ class VoiceIsolationHandler {
       std::unique_ptr<media::AudioDebugRecorder> debug_recorder,
       const media::AudioParameters& output_params,
       DeliverProcessedAudioCallback deliver_processed_audio_callback,
+      ErrorCallback error_callback,
       LogCallback log_callback);
 
   VoiceIsolationHandler(
@@ -126,7 +138,8 @@ class VoiceIsolationHandler {
   std::unique_ptr<ProcessingAudioFifo> MaybeCreateProcessingFifo();
 
   void OnComponentCreated(
-      std::unique_ptr<media::VoiceIsolationComponent> component);
+      base::expected<std::unique_ptr<media::VoiceIsolationComponent>,
+                     media::VoiceIsolationCreationResult> component_or_error);
 
   bool IsVoiceIsolationBypassed() const;
 
@@ -144,11 +157,18 @@ class VoiceIsolationHandler {
   const scoped_refptr<media::MlModelHandle> model_handle_;
   const media::AudioParameters output_params_;
   const DeliverProcessedAudioCallback deliver_processed_audio_callback_;
+
+  // Null on the CreateForTesting() path, which never posts a creation task.
+  ErrorCallback error_callback_;
   const LogCallback log_callback_;
 
   // Preallocated buffer for processed audio, accessed exclusively in
   // ProcessCapturedAudioInternal() on the capture or FIFO thread.
   std::unique_ptr<media::AudioBus> output_bus_;
+
+  // Smooths enable/disable transitions within a single buffer. Immutable and
+  // real-time safe, used only in ProcessCapturedAudioInternal().
+  const Crossfader transition_crossfader_;
 
   // Thread-safe recorder feeding debug audio data. Immutable after
   // construction.
@@ -169,8 +189,9 @@ class VoiceIsolationHandler {
   std::atomic<bool> bypass_voice_isolation_{true};
 
   // Tracks whether voice isolation was bypassed on the previous captured audio
-  // frame to detect ON -> OFF transitions and clear internal buffers. Only used
-  // in ProcessCapturedAudioInternal().
+  // frame to detect OFF -> ON transitions (fade to silence while priming) and
+  // ON -> OFF transitions (crossfade to microphone and clear internal
+  // buffers). Only used in ProcessCapturedAudioInternal().
   bool was_previously_bypassed_ = true;
 
   class StartupMetricsLogger;

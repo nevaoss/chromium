@@ -32,7 +32,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
 #include "base/no_destructor.h"
-#include "base/not_fatal_until.h"
 #include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/rand_util.h"
@@ -4007,6 +4006,14 @@ void NavigationRequest::OnRequestRedirected(
   commit_params_->redirects.push_back(common_params_->url);
   common_params_->url = redirect_info.new_url;
   common_params_->method = redirect_info.new_method;
+
+  // Clear the host filter match on redirect so that it only applies to the
+  // final URL. The ad tagged (regardless of host filter match) state is sticky,
+  // so we set it to kAdTagged rather than kNone.
+  if (ad_status_ == AdStatus::kAdTaggedByHostFilter) {
+    ad_status_ = AdStatus::kAdTagged;
+  }
+
   common_params_->referrer->url = GURL(redirect_info.new_referrer);
   common_params_->referrer = Referrer::SanitizeForRequest(
       common_params_->url, *common_params_->referrer);
@@ -5545,7 +5552,11 @@ void NavigationRequest::SelectFrameHostForOnResponseStarted(
     // url that doesn't require a site assignment, if this new commit will be
     // assigning an incompatible site to the previous SiteInstance. This ensures
     // the new SiteInstance can be used with the old entry if we return to it.
-    // See http://crbug.com/992198 for further context.
+    // Note that if the new navigation swapped to a different SiteInstance
+    // (e.g., due to Cross-Origin-Opener-Policy: same-origin), the previous
+    // entry's SiteInstance remains unassigned in its original BrowsingInstance
+    // and does not need to be replaced. See http://crbug.com/992198 and
+    // http://crbug.com/493236843 for further context.
     NavigationEntryImpl* nav_entry =
         frame_tree_node_->navigator().controller().GetLastCommittedEntry();
     if (nav_entry && !nav_entry->GetURL().IsAboutBlank() &&
@@ -5553,23 +5564,30 @@ void NavigationRequest::SelectFrameHostForOnResponseStarted(
         SiteInstanceImpl::ShouldAssignSiteForUrlInfo(GetUrlInfo())) {
       scoped_refptr<FrameNavigationEntry> frame_entry =
           nav_entry->root_node()->frame_entry;
-      scoped_refptr<SiteInstanceImpl> new_site_instance =
-          base::WrapRefCounted<SiteInstanceImpl>(static_cast<SiteInstanceImpl*>(
-              instance->GetRelatedSiteInstance(frame_entry->url()).get()));
-      nav_entry->AddOrUpdateFrameEntry(
-          frame_tree_node_, NavigationEntryImpl::UpdatePolicy::kReplace,
-          frame_entry->item_sequence_number(),
-          frame_entry->document_sequence_number(),
-          frame_entry->navigation_api_key(), new_site_instance.get(),
-          frame_entry->source_site_instance(), frame_entry->url(),
-          frame_entry->committed_origin(), frame_entry->referrer(),
-          frame_entry->initiator_origin(), frame_entry->initiator_base_url(),
-          frame_entry->redirect_chain(), frame_entry->page_state(),
-          frame_entry->method(), frame_entry->post_id(),
-          frame_entry->blob_url_loader_factory(),
-          frame_entry->policy_container_policies()
-              ? frame_entry->policy_container_policies()->ClonePtr()
-              : nullptr);
+      if (!base::FeatureList::IsEnabled(
+              features::
+                  kKeepUnassignedSiteInstanceInOriginalBrowsingInstance) ||
+          frame_entry->site_instance() == instance) {
+        scoped_refptr<SiteInstanceImpl> new_site_instance =
+            base::WrapRefCounted<SiteInstanceImpl>(
+                static_cast<SiteInstanceImpl*>(
+                    instance->GetRelatedSiteInstance(frame_entry->url())
+                        .get()));
+        nav_entry->AddOrUpdateFrameEntry(
+            frame_tree_node_, NavigationEntryImpl::UpdatePolicy::kReplace,
+            frame_entry->item_sequence_number(),
+            frame_entry->document_sequence_number(),
+            frame_entry->navigation_api_key(), new_site_instance.get(),
+            frame_entry->source_site_instance(), frame_entry->url(),
+            frame_entry->committed_origin(), frame_entry->referrer(),
+            frame_entry->initiator_origin(), frame_entry->initiator_base_url(),
+            frame_entry->redirect_chain(), frame_entry->page_state(),
+            frame_entry->method(), frame_entry->post_id(),
+            frame_entry->blob_url_loader_factory(),
+            frame_entry->policy_container_policies()
+                ? frame_entry->policy_container_policies()->ClonePtr()
+                : nullptr);
+      }
     }
   }
 
@@ -7014,7 +7032,7 @@ void NavigationRequest::CommitErrorPage(
       net_error_, extended_error_code_, error_page_content, *document_token_);
   UpdateNavigationHandleTimingsOnCommitSent();
 
-  SendDeferredConsoleMessages();
+  SendDeferredConsoleMessages(/*origin_to_commit=*/std::nullopt);
 }
 
 void NavigationRequest::AddOldPageInfoToCommitParamsIfNeeded() {
@@ -7481,7 +7499,7 @@ void NavigationRequest::CommitNavigation() {
   RenderProcessHostImpl::NotifySpareManagerAboutRecentlyUsedSiteInstance(
       GetRenderFrameHost()->GetSiteInstance());
 
-  SendDeferredConsoleMessages();
+  SendDeferredConsoleMessages(origin_to_commit);
 }
 
 void NavigationRequest::UpdateViewTransitionStateForDestinationOrigin(
@@ -12226,13 +12244,28 @@ bool NavigationRequest::IsWaitingForBeforeUnload() {
 
 void NavigationRequest::AddDeferredConsoleMessage(
     blink::mojom::ConsoleMessageLevel level,
-    std::string message) {
+    std::string message,
+    std::optional<url::Origin> required_origin) {
   CHECK_LE(state_, READY_TO_COMMIT);
-  console_messages_.push_back(ConsoleMessage{level, std::move(message)});
+  console_messages_.push_back(
+      ConsoleMessage{level, std::move(message), std::move(required_origin)});
 }
 
-void NavigationRequest::SendDeferredConsoleMessages() {
+void NavigationRequest::SendDeferredConsoleMessages(
+    const std::optional<url::Origin>& origin_to_commit) {
   for (auto& message : console_messages_) {
+    if (message.required_origin) {
+      // Only send origin-restricted messages to a document of the same
+      // origin. Error pages have an opaque origin, and may be committed in the
+      // initiator or destination process unless error page isolation is
+      // enabled, so only send the messages to them when they are isolated.
+      bool can_send = origin_to_commit
+                          ? *origin_to_commit == *message.required_origin
+                          : frame_tree_node_->IsErrorPageIsolationEnabled();
+      if (!can_send) {
+        continue;
+      }
+    }
     // TODO(crbug.com/40520047): We should have a way of sending console
     // messages to devtools without going through the renderer.
     GetRenderFrameHost()->AddMessageToConsole(message.level,
@@ -13419,7 +13452,7 @@ void NavigationRequest::ValidateCommitOrigin(
     // In the meantime, it’s safe for a stale committed_origin() to stick
     // around **only** if there’s no origin-related state (e.g., PageState)
     // being sent in commit_params_.
-    CHECK(commit_params_->page_state.empty(), base::NotFatalUntil::M140)
+    CHECK(commit_params_->page_state.empty())
         << "PageState wasn't cleared after a commit origin mismatch."
         << "expected_origin: " << expected_origin
         << ", origin_to_commit: " << origin_to_commit;

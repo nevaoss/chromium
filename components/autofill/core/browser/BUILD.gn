@@ -495,6 +495,25 @@ compiled_action("generate_country_native_names") {
   deps = [ "//third_party/icu:copy_icudata($default_toolchain)" ]
 }
 
+source_set("country_names_impl") {
+  visibility = [ ":browser" ]
+  public = []
+  sources = get_target_outputs(":generate_country_native_names") + [
+              "geo/country_names.cc",
+              "geo/country_names.h",
+              "geo/country_names_for_locale.h",
+            ]
+  deps = [
+    ":buildflags",
+    ":country_data",
+    ":generate_country_native_names",
+    "//base",
+    "//base:i18n",
+    "//components/autofill/core/common",
+    "//third_party/icu",
+  ]
+}
+
 proto_library("amount_extraction_heuristic_regexes_proto") {
   sources = [ "payments/amount_extraction_heuristic_regexes.proto" ]
 }
@@ -797,7 +816,6 @@ static_library("browser") {
     "geo/alternative_state_name_map_updater.h",
     "geo/autofill_country.cc",
     "geo/autofill_country.h",
-    "geo/country_names.cc",
     "geo/country_names.h",
     "geo/country_names_for_locale.cc",
     "geo/country_names_for_locale.h",
@@ -854,6 +872,8 @@ static_library("browser") {
     "integrators/one_time_tokens/otp_manager.h",
     "integrators/one_time_tokens/otp_manager_impl.cc",
     "integrators/one_time_tokens/otp_manager_impl.h",
+    "integrators/one_time_tokens/otp_manager_legacy_impl.cc",
+    "integrators/one_time_tokens/otp_manager_legacy_impl.h",
     "integrators/one_time_tokens/otp_metrics_tracker.cc",
     "integrators/one_time_tokens/otp_metrics_tracker.h",
     "integrators/one_time_tokens/otp_phish_guard_delegate.h",
@@ -1356,7 +1376,6 @@ static_library("browser") {
     "webdata/valuables/valuables_table.h",
   ]
 
-  sources += get_target_outputs(":generate_country_native_names")
   sources += get_target_outputs(":regex_patterns_inl_h")
   sources += get_target_outputs(":entity_schema_enums_and_functions")
 
@@ -1480,8 +1499,8 @@ static_library("browser") {
     ":autofill_address_rewriter_resources",
     ":autofill_alternative_state_name_map_resources",
     ":buildflags",
+    ":country_names_impl",
     ":entity_schema_enums_and_functions",
-    ":generate_country_native_names",
     ":regex_patterns_inl_h",
     "//base",
     "//base:i18n",
@@ -1629,6 +1648,7 @@ if (is_android) {
       "$target_gen_dir/data_model/autofill_ai/entity_type_names.h",
       "data_model/autofill_ai/entity_instance.h",
       "data_model/autofill_ai/entity_type.h",
+      "integrators/autofill_ai/metrics/autofill_ai_metrics.h",
       "permissions/autofill_ai/autofill_ai_permission_util.h",
     ]
     deps = [ ":entity_schema_enums_and_functions" ]
@@ -1743,6 +1763,7 @@ static_library("test_support") {
     "integrators/one_time_tokens/mock_otp_manager.cc",
     "integrators/one_time_tokens/mock_otp_manager.h",
     "integrators/one_time_tokens/otp_manager_impl_test_api.h",
+    "integrators/one_time_tokens/otp_manager_legacy_impl_test_api.h",
     "integrators/optimization_guide/mock_autofill_optimization_guide_decider.cc",
     "integrators/optimization_guide/mock_autofill_optimization_guide_decider.h",
     "integrators/password_manager/mock_password_manager_delegate.cc",
@@ -2145,6 +2166,7 @@ source_set("unit_tests") {
     "integrators/one_time_tokens/metrics/otp_form_event_logger_unittest.cc",
     "integrators/one_time_tokens/otp_field_detector_unittest.cc",
     "integrators/one_time_tokens/otp_manager_impl_unittest.cc",
+    "integrators/one_time_tokens/otp_manager_legacy_impl_unittest.cc",
     "integrators/one_time_tokens/otp_metrics_tracker_unittest.cc",
     "integrators/one_time_tokens/otp_suggestion_unittest.cc",
     "integrators/optimization_guide/autofill_optimization_guide_decider_unittest.cc",

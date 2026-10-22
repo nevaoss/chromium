@@ -9,6 +9,7 @@ import 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 
+import {recordTabPickerTabSelected, TabPickerSurface} from 'chrome://resources/cr_components/composebox/common.js';
 import {AnchorAlignment} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
@@ -181,6 +182,7 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
   }
 
   protected onShareTabsRowPointerleave_() {
+    this.$.shareTabsTrigger.blur();
     this.scheduleCloseTimer_();
   }
 
@@ -209,6 +211,9 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
 
   protected onMenuClose_() {
     this.tabMenuOpen = false;
+    requestAnimationFrame(() => {
+      this.$.shareTabsTrigger.blur();
+    });
   }
 
   protected onTabClick_(e: Event) {
@@ -226,6 +231,11 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
     } else {
       this.selectedTabs = [...this.selectedTabs, tab];
       this.browserProxy_.addTabContext(tab.tabId);
+      const hasActiveTab =
+          this.tabSuggestions.some(t => t.showInCurrentTabChip);
+      recordTabPickerTabSelected(
+          TabPickerSurface.CONTEXTUAL_TASKS_EXTENSION, tab.showInCurrentTabChip,
+          index, hasActiveTab);
     }
     this.fire('tab-selected', {tab, selected: !isSelected});
   }
@@ -251,6 +261,7 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
     this.closeTimer_ = window.setTimeout(() => {
       if (this.$.tabMenu.open) {
         this.$.tabMenu.close();
+        this.$.shareTabsTrigger.blur();
       }
     }, 300);
   }

@@ -13,6 +13,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
+#include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/notifications/notification_display_service_tester.h"
@@ -20,7 +21,7 @@
 #include "chrome/browser/renderer_context_menu/render_view_context_menu_test_util.h"
 #include "chrome/browser/signin/signin_browser_test_base.h"
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
-#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_context_menu_delegate.h"
+#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_sub_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
@@ -49,6 +50,14 @@
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/test/widget_test.h"
+#include "ui/views/widget/widget.h"
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#include "components/signin/public/base/signin_switches.h"
+#include "components/signin/public/identity_manager/account_info.h"
+#include "google_apis/gaia/google_service_auth_error.h"
+#include "ui/views/widget/any_widget_observer.h"
+#endif
 
 namespace send_tab_to_self {
 
@@ -326,11 +335,11 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfPostSendToastBrowserTest,
   TestSendTabToSelfModelObserver observer(
       sync_service->GetSendTabToSelfModel());
 
-  std::unique_ptr<SendTabToSelfContextMenuDelegate> delegate =
-      SendTabToSelfContextMenuDelegate::MaybeCreateForTab(
+  std::unique_ptr<SendTabToSelfSubMenuModel> submenu =
+      SendTabToSelfSubMenuModel::MaybeCreateForTab(
           web_contents, ShareEntryPoint::kContentMenu);
-  ASSERT_TRUE(delegate);
-  delegate->ExecuteCommand(IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_DEVICE1, 0);
+  ASSERT_TRUE(submenu);
+  submenu->ExecuteCommand(IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_DEVICE1, 0);
 
   observer.WaitForNextEntry();
 
@@ -752,6 +761,126 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfBubbleControllerBrowserTest,
   EXPECT_FALSE(controller->IsBubbleShown());
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+class SendTabToSelfNoTargetDeviceQrBubbleBrowserTest
+    : public SendTabToSelfBubbleControllerBrowserTest {
+ public:
+  explicit SendTabToSelfNoTargetDeviceQrBubbleBrowserTest(
+      bool qr_bubble_enabled = true) {
+    if (qr_bubble_enabled) {
+      feature_list_.InitWithFeatures({switches::kCrossDeviceSigninFromDesktop,
+                                      kSendTabToSelfNoTargetDeviceQrCode},
+                                     {});
+    } else {
+      feature_list_.InitWithFeatures({switches::kCrossDeviceSigninFromDesktop},
+                                     {kSendTabToSelfNoTargetDeviceQrCode});
+    }
+  }
+
+  void SetUpOnMainThread() override {
+    SendTabToSelfBubbleControllerBrowserTest::SetUpOnMainThread();
+    primary_account_ = identity_test_env()->MakePrimaryAccountAvailable(
+        "user@gmail.com", signin::ConsentLevel::kSignin);
+    GetStubSyncService()->SetEntryPointDisplayReason(
+        EntryPointDisplayReason::kInformNoTargetDevice);
+  }
+
+  views::Widget* ShowQrBubble(SendTabToSelfBubbleController* controller) {
+    views::NamedWidgetShownWaiter waiter(views::test::AnyWidgetTestPasskey{},
+                                         "CrossDeviceSigninQrBubbleViews");
+    controller->ShowBubble(ShareEntryPoint::kToolbarIcon);
+    return waiter.WaitIfNeededAndGet();
+  }
+
+ protected:
+  AccountInfo primary_account_;
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Verifies that when no target device is available, `ShowBubble()` opens the
+// cross-device QR code bubble and resets controller state when closed.
+IN_PROC_BROWSER_TEST_F(SendTabToSelfNoTargetDeviceQrBubbleBrowserTest,
+                       ShowsQrBubbleAndResetsStateOnClose) {
+  base::HistogramTester histogram_tester;
+  SendTabToSelfBubbleController* controller =
+      NavigateToUrlAndGetController(empty_url());
+  ASSERT_TRUE(controller);
+
+  views::Widget* bubble_widget = ShowQrBubble(controller);
+  ASSERT_TRUE(bubble_widget);
+  EXPECT_TRUE(controller->IsBubbleShown());
+  EXPECT_EQ(controller->send_tab_to_self_bubble_view(), nullptr);
+  histogram_tester.ExpectUniqueSample("Sharing.SendTabToSelf.TargetDeviceCount",
+                                      SendTabToSelfDeviceCount::kZeroDevices,
+                                      1);
+
+  views::test::WidgetDestroyedWaiter destroyed_waiter(bubble_widget);
+  bubble_widget->CloseNow();
+  destroyed_waiter.Wait();
+
+  EXPECT_FALSE(controller->IsBubbleShown());
+}
+
+// Verifies that navigating to a new page keeps the cross-device QR code
+// bubble open, matching other cross-device sign-in promos.
+IN_PROC_BROWSER_TEST_F(SendTabToSelfNoTargetDeviceQrBubbleBrowserTest,
+                       KeepsQrBubbleOpenOnNavigation) {
+  SendTabToSelfBubbleController* controller =
+      NavigateToUrlAndGetController(empty_url());
+  ASSERT_TRUE(controller);
+
+  views::Widget* bubble_widget = ShowQrBubble(controller);
+  ASSERT_TRUE(bubble_widget);
+
+  ASSERT_TRUE(
+      content::NavigateToURL(GetActiveWebContents(), GURL("chrome://flags")));
+  EXPECT_FALSE(bubble_widget->IsClosed());
+  EXPECT_TRUE(controller->IsBubbleShown());
+}
+
+// Verifies that when the primary account has a persistent auth error,
+// `ShowBubble()` falls back to `SendTabToSelfNoTargetDeviceBubbleView`.
+IN_PROC_BROWSER_TEST_F(SendTabToSelfNoTargetDeviceQrBubbleBrowserTest,
+                       FallsBackToNoTargetDeviceBubbleOnAuthError) {
+  identity_test_env()->UpdatePersistentErrorOfRefreshTokenForAccount(
+      primary_account_.GetAccountId(),
+      GoogleServiceAuthError::FromInvalidGaiaCredentialsReason(
+          GoogleServiceAuthError::InvalidGaiaCredentialsReason::UNKNOWN));
+
+  SendTabToSelfBubbleController* controller =
+      NavigateToUrlAndGetController(empty_url());
+  ASSERT_TRUE(controller);
+
+  controller->ShowBubble(ShareEntryPoint::kToolbarIcon);
+  EXPECT_TRUE(controller->IsBubbleShown());
+  EXPECT_NE(controller->send_tab_to_self_bubble_view(), nullptr);
+}
+
+class SendTabToSelfNoTargetDeviceQrBubbleDisabledBrowserTest
+    : public SendTabToSelfNoTargetDeviceQrBubbleBrowserTest {
+ public:
+  SendTabToSelfNoTargetDeviceQrBubbleDisabledBrowserTest()
+      : SendTabToSelfNoTargetDeviceQrBubbleBrowserTest(
+            /*qr_bubble_enabled=*/false) {}
+};
+
+// Verifies that when `kSendTabToSelfNoTargetDeviceQrCode` is disabled,
+// `ShowBubble()` falls back to `SendTabToSelfNoTargetDeviceBubbleView`.
+IN_PROC_BROWSER_TEST_F(
+    SendTabToSelfNoTargetDeviceQrBubbleDisabledBrowserTest,
+    FallsBackToNoTargetDeviceBubbleWhenFeatureDisabled) {
+  SendTabToSelfBubbleController* controller =
+      NavigateToUrlAndGetController(empty_url());
+  ASSERT_TRUE(controller);
+
+  controller->ShowBubble(ShareEntryPoint::kToolbarIcon);
+  EXPECT_TRUE(controller->IsBubbleShown());
+  EXPECT_NE(controller->send_tab_to_self_bubble_view(), nullptr);
+}
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 class SendTabToSelfContextMenuParamsTest
     : public SendTabToSelfBubbleControllerBrowserTest,

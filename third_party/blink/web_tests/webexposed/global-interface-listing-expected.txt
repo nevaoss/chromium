@@ -1020,6 +1020,7 @@ interface CSSPseudoElement
     attribute @@toStringTag
     getter element
     getter parent
+    getter selectorText
     getter type
     method constructor
     method convertPointFromNode
@@ -1027,6 +1028,8 @@ interface CSSPseudoElement
     method convertRectFromNode
     method focus
     method getBoxQuads
+    method nextFocusable
+    method previousFocusable
     method pseudo
 interface CSSRGB : CSSColorValue
     attribute @@toStringTag
@@ -2432,22 +2435,10 @@ interface DocumentType : Node
     getter publicId
     getter systemId
     method after
-    method afterHTML
-    method afterHTMLUnsafe
     method before
-    method beforeHTML
-    method beforeHTMLUnsafe
     method constructor
     method remove
     method replaceWith
-    method replaceWithHTML
-    method replaceWithHTMLUnsafe
-    method streamAfterHTML
-    method streamAfterHTMLUnsafe
-    method streamBeforeHTML
-    method streamBeforeHTMLUnsafe
-    method streamReplaceWithHTML
-    method streamReplaceWithHTMLUnsafe
 interface DragEvent : MouseEvent
     attribute @@toStringTag
     getter dataTransfer
@@ -2629,9 +2620,11 @@ interface Element : Node
     method matchContainer
     method matches
     method moveBefore
+    method nextFocusable
     method prepend
     method prependHTML
     method prependHTMLUnsafe
+    method previousFocusable
     method pseudo
     method querySelector
     method querySelectorAll
@@ -3001,15 +2994,6 @@ interface FederatedCredential : Credential
     getter protocol
     getter provider
     method constructor
-interface Fence
-    attribute @@toStringTag
-    method constructor
-    method getNestedConfigs
-    method reportEvent
-    method setReportEventDataForAutomaticBeacons
-interface FencedFrameConfig
-    attribute @@toStringTag
-    method constructor
 interface FetchLaterResult
     attribute @@toStringTag
     getter activated
@@ -3108,6 +3092,8 @@ interface Focusable
     getter target
     method constructor
     method focus
+    method nextFocusable
+    method previousFocusable
 interface FontData
     attribute @@toStringTag
     getter family
@@ -3933,7 +3919,6 @@ interface HTMLCanvasElement : HTMLElement
     attribute @@toStringTag
     getter content
     getter height
-    getter layoutSubtree
     getter onelementgeometryupdate
     getter onpaint
     getter width
@@ -3951,7 +3936,6 @@ interface HTMLCanvasElement : HTMLElement
     method updateElementGeometry
     setter content
     setter height
-    setter layoutSubtree
     setter onelementgeometryupdate
     setter onpaint
     setter width
@@ -4341,19 +4325,6 @@ interface HTMLEmbedElement : HTMLElement
     setter name
     setter src
     setter type
-    setter width
-interface HTMLFencedFrameElement : HTMLElement
-    attribute @@toStringTag
-    getter allow
-    getter config
-    getter height
-    getter sandbox
-    getter width
-    method constructor
-    setter allow
-    setter config
-    setter height
-    setter sandbox
     setter width
 interface HTMLFieldSetElement : HTMLElement
     attribute @@toStringTag
@@ -6119,18 +6090,18 @@ interface LanguageModel : EventTarget
 interface LanguageModelToolCall
     attribute @@toStringTag
     getter arguments
-    getter callID
+    getter callId
     getter name
     method constructor
 interface LanguageModelToolError
     attribute @@toStringTag
-    getter callID
+    getter callId
     getter errorMessage
     getter name
     method constructor
 interface LanguageModelToolSuccess
     attribute @@toStringTag
-    getter callID
+    getter callId
     getter name
     getter result
     method constructor
@@ -13847,7 +13818,6 @@ namespace console
     getter documentPictureInPicture
     getter event
     getter external
-    getter fence
     getter frameElement
     getter frames
     getter history

@@ -306,8 +306,12 @@ bool IsLiquidGlassEffectEnabled();
 // foreground inactive state after opening an external app.
 BASE_DECLARE_FEATURE(kInactiveNavigationAfterAppLaunchKillSwitch);
 
+// Returns whether the current device is an iPhone Duo device.
+bool IsDuoDevice();
+
 // Convenience method for determining if Pinned Tabs is enabled.
-// The Pinned Tabs feature is fully enabled on iPhone and disabled on iPad.
+// The Pinned Tabs feature is fully enabled on standard iPhone and disabled
+// on iPad and iPhone Duo.
 bool IsPinnedTabsEnabled();
 
 // Feature flag for caching the ios module ranker.
@@ -870,12 +874,19 @@ BASE_DECLARE_FEATURE(kIdentityAwareness);
 // Returns true if the IdentityAwareness feature is enabled.
 bool IsIdentityAwarenessEnabled();
 
-// Finch experiment flag to display a ring around the avatar for users with an
-// AI subscription.
+// Finch experiment flag to display a ring around the avatar in the NTP and
+// account menu for users with an AI subscription.
 BASE_DECLARE_FEATURE(kAiSubscriptionAvatarRingIOS);
+
+// Finch experiment flag to display a ring around the avatar in the overflow
+// menu, settings and manage accounts for users with an AI subscription.
+BASE_DECLARE_FEATURE(kAiSubscriptionAvatarRingFollowupIOS);
 
 // Returns true if the AiSubscriptionAvatarRingIOS feature is enabled.
 bool IsAiSubscriptionAvatarRingIOSEnabled();
+
+// Returns true if the AiSubscriptionAvatarRingFollowupIOS feature is enabled.
+bool IsAiSubscriptionAvatarRingFollowupIOSEnabled();
 
 // Feature flag to enable the Infobar Banner Revamp (UI Refactor of the
 // Infobar/Banner Component).
@@ -964,5 +975,12 @@ BASE_DECLARE_FEATURE(kAimCobrowseWebSelectionSearch);
 
 // Returns true if the AimCobrowseWebSelectionSearch feature is enabled.
 bool IsAimCobrowseWebSelectionSearchEnabled();
+
+// Enables a long-press menu on the AppBar assistant button letting the user
+// choose which entry point the button shows.
+BASE_DECLARE_FEATURE(kAppBarAssistantCustomization);
+
+// Returns true if the AppBarAssistantCustomization feature is enabled.
+bool IsAppBarAssistantCustomizationEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

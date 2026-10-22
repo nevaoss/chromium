@@ -51,13 +51,6 @@ public final class EventConstants {
     public static final String ADAPTIVE_TOOLBAR_PAGE_SUMMARY_WEB_USED =
             "adaptive_toolbar_page_summary_web_used";
 
-    /** The user interacted with the promo dialog shown to introduce AI Mode with the bottom bar. */
-    public static final String ANDROID_BOTTOM_BAR_AIM_PROMO_DIALOG_USED =
-            "android_bottom_bar_aim_promo_dialog_used";
-
-    /** The user interacted with the AI Mode button on the new bottom bar. */
-    public static final String ANDROID_BOTTOM_BAR_AIM_USED = "android_bottom_bar_aim_used";
-
     /** The user interacted with the GLIC button on the new bottom bar. */
     public static final String ANDROID_BOTTOM_BAR_GLIC_USED = "android_bottom_bar_glic_used";
 
@@ -249,9 +242,6 @@ public final class EventConstants {
 
     /** Screenshot events */
     public static final String SHARE_SCREENSHOT_SELECTED = "share_screenshot_clicked";
-
-    /** Sharing Hub link toggle events. */
-    public static final String SHARING_HUB_LINK_TOGGLE_CLICKED = "sharing_hub_link_toggle_clicked";
 
     /** The option to track the price of a product was selected from the main menu. */
     public static final String SHOPPING_LIST_PRICE_TRACK_FROM_MENU =

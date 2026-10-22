@@ -142,6 +142,15 @@ chromium-metrics-reviews@google.com.
   <int value="16" label="kRateExtension"/>
 </enum>
 
+<!-- LINT.IfChange(ExtensionContextMenuRateExtensionOutcome) -->
+
+<enum name="ExtensionContextMenuRateExtensionOutcome">
+  <int value="0" label="Not clicked"/>
+  <int value="1" label="Clicked"/>
+</enum>
+
+<!-- LINT.ThenChange(/chrome/browser/extensions/extension_context_menu_model.h:ExtensionContextMenuRateExtensionOutcome) -->
+
 <enum name="ExtensionDisableReason">
   <int value="0" label="UNKNOWN"/>
   <int value="1" label="USER_ACTION"/>
@@ -2927,6 +2936,7 @@ Called by update_extension_histograms.py.-->
   <int value="1989" label="ENTERPRISE_WEBRTC_GETSNAPSHOT"/>
   <int value="1990" label="AUTOFILLPRIVATE_GETDETAILSFORUPSERTPASS"/>
   <int value="1991" label="AUTOFILLPRIVATE_PRELOADDETAILSFORUPSERTPASS"/>
+  <int value="1992" label="EXPERIMENTALAIDATA_GETAPCSNAPSHOT"/>
 </enum>
 
 <!-- LINT.ThenChange(//extensions/browser/extension_function_histogram_value.h:HistogramValue) -->
@@ -3553,6 +3563,19 @@ Called by update_extension_permission.py.-->
   <int value="6" label="Load failed - Ruleset file size limit exceeded"/>
 </enum>
 
+<!-- LINT.IfChange(LowTrustPolicyBlockAction) -->
+
+<enum name="LowTrustPolicyBlockAction">
+  <int value="0" label="BlockedOnInstall"/>
+  <int value="1" label="SkippedDownload"/>
+  <int value="2" label="BlockedPolicyTakeoverOfUserInstall"/>
+  <int value="3" label="UninstalledOnTrustLoss"/>
+  <int value="4" label="CacheClearedOnPolicyRemoval"/>
+  <int value="5" label="CacheClearedOnTtlExpiration"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/extensions/policy_dse_ntp_override_metrics_reporter.h:LowTrustPolicyBlockAction) -->
+
 <enum name="ManifestInvalidAppStatusError">
   <int value="0" label="Unknown"/>
   <int value="1" label="Error unknown application"/>
@@ -3648,6 +3671,18 @@ Called by update_extension_permission.py.-->
       label="Channel not opened (opener port using different message
              serialization format)"/>
 </enum>
+
+<!-- LINT.IfChange(PolicyExtensionStatus) -->
+
+<enum name="PolicyExtensionStatus">
+  <int value="0" label="Disabled"/>
+  <int value="1" label="Enabled"/>
+  <int value="2" label="Blocked"/>
+  <int value="3" label="UserInstalledEnabled"/>
+  <int value="4" label="UserInstalledDisabled"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/extensions/policy_dse_ntp_override_metrics_reporter.h:PolicyExtensionStatus) -->
 
 <enum name="ReadDynamicRulesJSONStatus">
   <int value="0" label="kSuccess"/>

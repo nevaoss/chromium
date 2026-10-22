@@ -451,7 +451,6 @@
       {
         "args": [
           "--git-revision=${got_revision}",
-          "--bypass-skia-gold-functionality",
           "--avd-config=../../tools/android/avd/proto/android_29_google_apis_x86.textpb",
           "--gs-results-bucket=chromium-result-details",
           "--recover-devices"
@@ -511,6 +510,7 @@
           "--recover-devices"
         ],
         "description": "Run with android_29_google_apis_x86",
+        "enable_rts_filtering": true,
         "isolate_profile_data": true,
         "merge": {
           "args": [
@@ -901,7 +901,6 @@
       {
         "args": [
           "--git-revision=${got_revision}",
-          "--bypass-skia-gold-functionality",
           "--avd-config=../../tools/android/avd/proto/android_29_google_apis_x86.textpb",
           "--disable-field-trial-config",
           "--skia-gold-consider-unsupported",
@@ -961,7 +960,6 @@
       {
         "args": [
           "--git-revision=${got_revision}",
-          "--bypass-skia-gold-functionality",
           "--avd-config=../../tools/android/avd/proto/android_29_google_apis_x86.textpb",
           "--disable-field-trial-config",
           "--skia-gold-consider-unsupported",
@@ -969,6 +967,7 @@
           "--recover-devices"
         ],
         "description": "Run with android_29_google_apis_x86",
+        "enable_rts_filtering": true,
         "isolate_profile_data": true,
         "merge": {
           "args": [
@@ -1185,6 +1184,7 @@
           "--recover-devices"
         ],
         "description": "Run with android_29_google_apis_x86",
+        "enable_rts_filtering": true,
         "isolate_profile_data": true,
         "merge": {
           "args": [

@@ -592,17 +592,8 @@ void Page::ForcedColorsChanged() {
 }
 
 void Page::PlatformColorsChanged() {
-  for (const Page* page : AllPages()) {
-    for (Frame* frame = page->MainFrame(); frame;
-         frame = frame->Tree().TraverseNext()) {
-      if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
-        if (Document* document = local_frame->GetDocument()) {
-          document->PlatformColorsChanged();
-        }
-        if (LayoutView* view = local_frame->ContentLayoutObject())
-          view->InvalidatePaintForViewAndDescendants();
-      }
-    }
+  for (Page* page : AllPages()) {
+    page->InvalidatePlatformColors();
   }
 }
 
@@ -1226,7 +1217,8 @@ void Page::SettingsChanged(ChangeType change_type) {
       break;
     }
     case ChangeType::kForcedColors: {
-      ForcedColorsChanged();
+      InvalidatePlatformColors();
+      InvalidateColorScheme();
       break;
     }
     case ChangeType::kAcceptLanguages:
@@ -1249,6 +1241,20 @@ void Page::InvalidateColorScheme() {
         if (auto* preferences = NavigatorPreferences::preferences(*navigator)) {
           preferences->PreferenceMaybeChanged();
         }
+      }
+    }
+  }
+}
+
+void Page::InvalidatePlatformColors() {
+  for (Frame* frame = MainFrame(); frame;
+       frame = frame->Tree().TraverseNext()) {
+    if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
+      if (Document* document = local_frame->GetDocument()) {
+        document->PlatformColorsChanged();
+      }
+      if (LayoutView* view = local_frame->ContentLayoutObject()) {
+        view->InvalidatePaintForViewAndDescendants();
       }
     }
   }

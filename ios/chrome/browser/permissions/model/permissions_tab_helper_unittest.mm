@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/permissions/model/permissions_tab_helper.h"
 
 #import "base/functional/callback_helpers.h"
+#import "base/test/metrics/histogram_tester.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/task_environment.h"
 #import "base/test/test_future.h"
@@ -25,6 +26,7 @@
 #import "ios/chrome/browser/overlays/model/public/overlay_response.h"
 #import "ios/chrome/browser/overlays/model/public/web_content_area/permissions_dialog_overlay.h"
 #import "ios/chrome/browser/permissions/model/permissions_infobar_delegate.h"
+#import "ios/chrome/browser/permissions/model/permissions_metrics.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/web/public/permissions/permissions.h"
@@ -311,6 +313,7 @@ TEST_F(PermissionsTabHelperTest,
        TestPresentDialogAlwaysAllowCommitsContentSetting) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+  base::HistogramTester histogram_tester;
 
   web_state_.SetCurrentURL(GURL(kTestURL));
   PermissionsTabHelper* tab_helper =
@@ -320,6 +323,10 @@ TEST_F(PermissionsTabHelperTest,
   tab_helper->PresentPermissionsDecisionDialogWithCompletionHandler(
       @[ @(web::PermissionCamera) ],
       base::CallbackToBlock(decision_future.GetCallback()));
+
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptShownHistogram,
+      PermissionRequestTypeForUma::kPermissionMediaStreamCamera, 1);
 
   OverlayRequestQueue* queue = OverlayRequestQueue::FromWebState(
       &web_state_, OverlayModality::kWebContentArea);
@@ -331,6 +338,9 @@ TEST_F(PermissionsTabHelperTest,
   queue->CancelAllRequests();
 
   EXPECT_EQ(web::PermissionDecisionGrant, decision_future.Get());
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptVideoCaptureModalDialogActionHistogram,
+      PermissionPromptAction::kGranted, 1);
 
   HostContentSettingsMap* settings_map =
       ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
@@ -346,6 +356,7 @@ TEST_F(PermissionsTabHelperTest,
        TestPresentDialogDontAllowCommitsContentSetting) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+  base::HistogramTester histogram_tester;
 
   web_state_.SetCurrentURL(GURL(kTestURL));
   PermissionsTabHelper* tab_helper =
@@ -355,6 +366,10 @@ TEST_F(PermissionsTabHelperTest,
   tab_helper->PresentPermissionsDecisionDialogWithCompletionHandler(
       @[ @(web::PermissionMicrophone) ],
       base::CallbackToBlock(decision_future.GetCallback()));
+
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptShownHistogram,
+      PermissionRequestTypeForUma::kPermissionMediaStreamMic, 1);
 
   OverlayRequestQueue* queue = OverlayRequestQueue::FromWebState(
       &web_state_, OverlayModality::kWebContentArea);
@@ -366,6 +381,9 @@ TEST_F(PermissionsTabHelperTest,
   queue->CancelAllRequests();
 
   EXPECT_EQ(web::PermissionDecisionDeny, decision_future.Get());
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptAudioCaptureModalDialogActionHistogram,
+      PermissionPromptAction::kDenied, 1);
 
   HostContentSettingsMap* settings_map =
       ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
@@ -381,6 +399,7 @@ TEST_F(PermissionsTabHelperTest,
        TestPresentDialogAllowThisTimeDoesNotCommitContentSetting) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+  base::HistogramTester histogram_tester;
 
   web_state_.SetCurrentURL(GURL(kTestURL));
   PermissionsTabHelper* tab_helper =
@@ -401,6 +420,9 @@ TEST_F(PermissionsTabHelperTest,
   queue->CancelAllRequests();
 
   EXPECT_EQ(web::PermissionDecisionGrant, decision_future.Get());
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptVideoCaptureModalDialogActionHistogram,
+      PermissionPromptAction::kGrantedOnce, 1);
 
   HostContentSettingsMap* settings_map =
       ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
@@ -409,12 +431,46 @@ TEST_F(PermissionsTabHelperTest,
                                      ContentSettingsType::MEDIASTREAM_CAMERA));
 }
 
+// Tests that cancelling a combined camera and microphone dialog without a
+// response records kIgnored.
+TEST_F(PermissionsTabHelperTest,
+       TestPresentDialogCancelledRecordsIgnoredForCombinedPermissions) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+  base::HistogramTester histogram_tester;
+
+  web_state_.SetCurrentURL(GURL(kTestURL));
+  PermissionsTabHelper* tab_helper =
+      PermissionsTabHelper::FromWebState(&web_state_);
+
+  base::test::TestFuture<web::PermissionDecision> decision_future;
+  tab_helper->PresentPermissionsDecisionDialogWithCompletionHandler(
+      @[ @(web::PermissionCamera), @(web::PermissionMicrophone) ],
+      base::CallbackToBlock(decision_future.GetCallback()));
+
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptShownHistogram,
+      PermissionRequestTypeForUma::kMultipleAudioAndVideoCapture, 1);
+
+  OverlayRequestQueue* queue = OverlayRequestQueue::FromWebState(
+      &web_state_, OverlayModality::kWebContentArea);
+  ASSERT_EQ(1U, queue->size());
+
+  queue->CancelAllRequests();
+
+  EXPECT_EQ(web::PermissionDecisionDeny, decision_future.Get());
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptAudioAndVideoCaptureModalDialogActionHistogram,
+      PermissionPromptAction::kIgnored, 1);
+}
+
 // Tests that when kDomainLevelSitePermissions is disabled, legacy dialog grants
 // do not commit changes to HostContentSettingsMap.
 TEST_F(PermissionsTabHelperTest,
        TestPresentDialogFeatureDisabledDoesNotCommitContentSetting) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndDisableFeature(kDomainLevelSitePermissions);
+  base::HistogramTester histogram_tester;
 
   web_state_.SetCurrentURL(GURL(kTestURL));
   PermissionsTabHelper* tab_helper =
@@ -435,10 +491,108 @@ TEST_F(PermissionsTabHelperTest,
   queue->CancelAllRequests();
 
   EXPECT_EQ(web::PermissionDecisionGrant, decision_future.Get());
+  histogram_tester.ExpectUniqueSample(
+      kPermissionsPromptVideoCaptureModalDialogActionHistogram,
+      PermissionPromptAction::kGrantedOnce, 1);
 
   HostContentSettingsMap* settings_map =
       ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
   EXPECT_EQ(CONTENT_SETTING_ASK, settings_map->GetContentSetting(
                                      GURL(kTestURL), GURL(kTestURL),
                                      ContentSettingsType::MEDIASTREAM_CAMERA));
+}
+
+// Test that setting a site exception to CONTENT_SETTING_BLOCK in
+// HostContentSettingsMap revokes an allowed permission on the WebState, and
+// continues observing even after a stream returns to
+// PermissionStateNotAccessible.
+TEST_F(PermissionsTabHelperTest,
+       TestContentSettingBlockRevokesAllowedPermission) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+
+  GURL url(kTestURL);
+  web_state_.SetCurrentURL(url);
+  web_state_.SetStateForPermission(web::PermissionStateAllowed,
+                                   web::PermissionCamera);
+
+  HostContentSettingsMap* settings_map =
+      ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA, CONTENT_SETTING_BLOCK);
+  EXPECT_EQ(web::PermissionStateNotAccessible,
+            web_state_.GetStateForPermission(web::PermissionCamera));
+
+  // Even after transitioning to PermissionStateNotAccessible, observation
+  // remains active if the permission becomes active again and is subsequently
+  // blocked.
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA, CONTENT_SETTING_ALLOW);
+  web_state_.SetStateForPermission(web::PermissionStateAllowed,
+                                   web::PermissionCamera);
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA, CONTENT_SETTING_BLOCK);
+  EXPECT_EQ(web::PermissionStateNotAccessible,
+            web_state_.GetStateForPermission(web::PermissionCamera));
+}
+
+// Test that changing the default content setting to CONTENT_SETTING_BLOCK
+// revokes a one-time allowed permission on the WebState.
+TEST_F(PermissionsTabHelperTest,
+       TestDefaultContentSettingBlockRevokesOneTimeAllowedPermission) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+
+  GURL url(kTestURL);
+  web_state_.SetCurrentURL(url);
+  web_state_.SetStateForPermission(web::PermissionStateAllowed,
+                                   web::PermissionMicrophone);
+
+  HostContentSettingsMap* settings_map =
+      ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
+  settings_map->SetDefaultContentSetting(ContentSettingsType::MEDIASTREAM_MIC,
+                                         CONTENT_SETTING_BLOCK);
+  EXPECT_EQ(web::PermissionStateNotAccessible,
+            web_state_.GetStateForPermission(web::PermissionMicrophone));
+}
+
+// Test that deleting an allowed or blocked site exception (resetting to
+// CONTENT_SETTING_DEFAULT) does not revoke an allowed permission or re-enable a
+// revoked permission on the WebState.
+TEST_F(PermissionsTabHelperTest,
+       TestDeletingSiteExceptionsDoesNotMutateActivePermissionState) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kDomainLevelSitePermissions);
+
+  GURL url(kTestURL);
+  web_state_.SetCurrentURL(url);
+  HostContentSettingsMap* settings_map =
+      ios::HostContentSettingsMapFactory::GetForProfile(profile_.get());
+
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA, CONTENT_SETTING_ALLOW);
+  web_state_.SetStateForPermission(web::PermissionStateAllowed,
+                                   web::PermissionCamera);
+
+  // Deleting the ALLOW site exception resets to ASK and keeps the session
+  // permission allowed.
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA,
+      CONTENT_SETTING_DEFAULT);
+  EXPECT_EQ(web::PermissionStateAllowed,
+            web_state_.GetStateForPermission(web::PermissionCamera));
+
+  // Blocking the site revokes the session permission.
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA, CONTENT_SETTING_BLOCK);
+  EXPECT_EQ(web::PermissionStateNotAccessible,
+            web_state_.GetStateForPermission(web::PermissionCamera));
+
+  // Deleting the BLOCK site exception resets to ASK and keeps the session
+  // permission revoked.
+  settings_map->SetContentSettingDefaultScope(
+      url, url, ContentSettingsType::MEDIASTREAM_CAMERA,
+      CONTENT_SETTING_DEFAULT);
+  EXPECT_EQ(web::PermissionStateNotAccessible,
+            web_state_.GetStateForPermission(web::PermissionCamera));
 }

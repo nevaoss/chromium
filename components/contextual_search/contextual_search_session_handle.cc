@@ -87,6 +87,19 @@ FileInfo* MarkFileSuperceded(ContextualSearchContextController* controller,
   return mutable_file_info;
 }
 
+// Appends `request_id` to `request_ids` unless an equal request ID is already
+// present.
+void AppendUniqueRequestId(std::vector<lens::LensOverlayRequestId>& request_ids,
+                           const lens::LensOverlayRequestId& request_id) {
+  const std::string serialized = request_id.SerializeAsString();
+  for (const auto& existing : request_ids) {
+    if (existing.SerializeAsString() == serialized) {
+      return;
+    }
+  }
+  request_ids.push_back(request_id);
+}
+
 }  // namespace
 
 ContextualSearchSessionHandle::ContextualSearchSessionHandle(
@@ -320,6 +333,17 @@ void ContextualSearchSessionHandle::StartTabContextUploadFlow(
           lens::LensOverlayContextualInputUploadType::
               CONTEXTUAL_INPUT_UPLOAD_TYPE_EXPLICIT;
     }
+    if (contextual_input_data->tab_session_id.has_value()) {
+      TabInfo tab;
+      tab.context_token = file_token;
+      tab.tab_id = contextual_input_data->tab_session_id->id();
+      tab.url = contextual_input_data->page_url.value_or(GURL());
+      tab.title = contextual_input_data->page_title.value_or("");
+      tab.uploaded = !contextual_input_data->is_implicit_upload;
+      // Updates in place if the tab is already attached (e.g. it was
+      // attached before upload, or is being re-uploaded with a new token).
+      AddAttachedTab(std::move(tab));
+    }
     controller->StartFileUploadFlow(
         file_token, std::move(contextual_input_data), image_options);
   }
@@ -411,6 +435,9 @@ bool ContextualSearchSessionHandle::DeleteFile(
 
   const auto* file_info = context_controller->GetFileInfo(file_token);
   if (file_info == nullptr) {
+    // A delayed tab has not been uploaded yet, so it has no file info in the
+    // controller, but it may still be attached.
+    RemoveAttachedTabForToken(file_token);
     return false;
   }
 
@@ -469,6 +496,12 @@ bool ContextualSearchSessionHandle::DeleteFile(
     metrics_recorder->RecordFileDeletedMetrics(success, file_type, file_status);
   }
 
+  // Only remove the attached tab if it still refers to this token, so deleting
+  // a superseded token for a re-uploaded tab keeps the tab attached.
+  if (success) {
+    RemoveAttachedTabForToken(file_token);
+  }
+
   // Clean up associated stale tokens with this tab. Do not erase
   // `persisted_tabs` since that has the `request_id` required to send a
   // deletion request to the server.
@@ -503,6 +536,7 @@ bool ContextualSearchSessionHandle::DeleteFile(
 
 bool ContextualSearchSessionHandle::RemoveUploadedContextToken(
     const base::UnguessableToken& file_token) {
+  RemoveAttachedTabForToken(file_token);
   return std::erase(uploaded_context_tokens_, file_token) > 0;
 }
 
@@ -510,8 +544,21 @@ void ContextualSearchSessionHandle::ClearFiles(bool query_submitted) {
   if (query_submitted) {
     // When submitting query, always track tab tokens in `persisted_tabs_`
     // before clearing them from `uploaded_context_tokens_`.
+    // Do not clear `tab_context_.attached` since they are now submitted
+    // and not cleared.
     for (const auto& token : uploaded_context_tokens_) {
       MaybeAddTabToPersistedTabs(token);
+    }
+  } else {
+    // On cancel, drop attached tabs that were never submitted. Submitted tabs
+    // stay attached.
+    const base::flat_set<base::UnguessableToken> pending(
+        uploaded_context_tokens_.begin(), uploaded_context_tokens_.end());
+
+    if (std::erase_if(tab_context_.attached, [&pending](const TabInfo& tab) {
+          return pending.contains(tab.context_token);
+        }) > 0) {
+      NotifyTabContextSubscribers();
     }
   }
   // `uploaded_context_tokens_` is always cleared upon query submission or
@@ -712,14 +759,12 @@ void ContextualSearchSessionHandle::OnSmartTabSharingToggled(bool active) {
   smart_tab_sharing_active_ = active;
 }
 
-lens::ClientToAimMessage
-ContextualSearchSessionHandle::CreateClientToAimRequest(
-    std::unique_ptr<contextual_search::ContextualSearchContextController::
-                        CreateClientToAimRequestInfo>
-        create_client_to_aim_request_info) {
+std::vector<lens::LensOverlayRequestId>
+ContextualSearchSessionHandle::TakeRemovedContexts() {
+  std::vector<lens::LensOverlayRequestId> removed_contexts;
   auto* context_controller = GetController();
   if (!context_controller) {
-    return lens::ClientToAimMessage();
+    return removed_contexts;
   }
 
   auto* tab_validator = GetTabValidator();
@@ -727,20 +772,8 @@ ContextualSearchSessionHandle::CreateClientToAimRequest(
   if (smart_tab_sharing_toggled_since_last_turn_ ||
       !sts_toggled_removed_contexts_.empty()) {
     for (const auto& req_id : sts_toggled_removed_contexts_) {
-      bool already_present = false;
-      std::string req_id_str = req_id.SerializeAsString();
-      for (const auto& existing :
-           create_client_to_aim_request_info->removed_contexts) {
-        if (existing.SerializeAsString() == req_id_str) {
-          already_present = true;
-          break;
-        }
-      }
-      if (!already_present) {
-        create_client_to_aim_request_info->removed_contexts.push_back(req_id);
-      }
+      AppendUniqueRequestId(removed_contexts, req_id);
     }
-
     sts_toggled_removed_contexts_.clear();
     smart_tab_sharing_toggled_since_last_turn_ = false;
   }
@@ -808,88 +841,110 @@ ContextualSearchSessionHandle::CreateClientToAimRequest(
   // of any of these tracking removals.
   for (const auto& session_id : deleted_tabs) {
     auto it = persisted_tabs_.find(session_id);
-    if (it != persisted_tabs_.end()) {
-      create_client_to_aim_request_info->removed_contexts.push_back(
-          it->second.second);
+    if (it == persisted_tabs_.end()) {
+      continue;
+    }
+    AppendUniqueRequestId(removed_contexts, it->second.second);
 
-      // If the tab is closed, we remove all tokens associated with it.
-      // If the tab is still open (navigated), we only remove the superceded
-      // token that failed validation (stored_token).
-      bool tab_still_open = false;
-      if (tab_validator) {
-        // If there is an active (potentially new) token for this tab, check if
-        // it is valid. If it is valid, the tab is still open (navigated).
-        base::UnguessableToken active_token = GetActiveTokenForTab(session_id);
-        base::UnguessableToken validated_token =
-            context_management_enabled ? active_token : it->second.first;
-        // If context management is enabled, always validate the active token
-        // if present (it might be a deselected tab skipped during validation
-        // earlier). If disabled, only validate if it is a new token
-        // (navigated).
-        if (!active_token.is_empty() &&
-            (context_management_enabled || active_token != validated_token)) {
-          const auto* active_file_info =
-              context_controller->GetFileInfo(active_token);
-          if (active_file_info &&
-              tab_validator->IsTabValidAndPointingToUrl(*active_file_info)) {
-            tab_still_open = true;
-          }
+    // If the tab is closed, we remove all tokens associated with it.
+    // If the tab is still open (navigated), we only remove the superceded
+    // token that failed validation (stored_token).
+    bool tab_still_open = false;
+    if (tab_validator) {
+      // If there is an active (potentially new) token for this tab, check if
+      // it is valid. If it is valid, the tab is still open (navigated).
+      base::UnguessableToken active_token = GetActiveTokenForTab(session_id);
+      base::UnguessableToken validated_token =
+          context_management_enabled ? active_token : it->second.first;
+      // If context management is enabled, always validate the active token
+      // if present (it might be a deselected tab skipped during validation
+      // earlier). If disabled, only validate if it is a new token
+      // (navigated).
+      if (!active_token.is_empty() &&
+          (context_management_enabled || active_token != validated_token)) {
+        const auto* active_file_info =
+            context_controller->GetFileInfo(active_token);
+        if (active_file_info &&
+            tab_validator->IsTabValidAndPointingToUrl(*active_file_info)) {
+          tab_still_open = true;
         }
       }
-
-      if (!tab_still_open) {
-        // If closed, remove all tab tokens associated with this tab session id.
-        // `isTabToken()` is not needed here to verify contexts are a tab
-        // because successfully matching session id's with a valid `session_id`
-        // means that the context must be a tab.
-        std::erase_if(uploaded_context_tokens_, [&](const auto& token) {
-          const auto* file_info = context_controller->GetFileInfo(token);
-          return file_info && file_info->tab_session_id == session_id;
-        });
-        std::erase_if(submitted_context_tokens_, [&](const auto& token) {
-          const auto* file_info = context_controller->GetFileInfo(token);
-          return file_info && file_info->tab_session_id == session_id;
-        });
-      } else {
-        // Remove only the expired token that navigation made irrelevant.
-        std::erase(uploaded_context_tokens_, it->second.first);
-        std::erase(submitted_context_tokens_, it->second.first);
-      }
-
-      persisted_tabs_.erase(it);
     }
+
+    if (!tab_still_open) {
+      // If closed, remove all tab tokens associated with this tab session id.
+      // `isTabToken()` is not needed here to verify contexts are a tab
+      // because successfully matching session id's with a valid `session_id`
+      // means that the context must be a tab.
+      std::erase_if(uploaded_context_tokens_, [&](const auto& token) {
+        const auto* file_info = context_controller->GetFileInfo(token);
+        return file_info && file_info->tab_session_id == session_id;
+      });
+      std::erase_if(submitted_context_tokens_, [&](const auto& token) {
+        const auto* file_info = context_controller->GetFileInfo(token);
+        return file_info && file_info->tab_session_id == session_id;
+      });
+    } else {
+      // Remove only the expired token that navigation made irrelevant.
+      std::erase(uploaded_context_tokens_, it->second.first);
+      std::erase(submitted_context_tokens_, it->second.first);
+    }
+
+    persisted_tabs_.erase(it);
   }
 
-  // Move the uploaded tokens to the request's file_tokens, preserving upload
-  // order while deduplicating any tokens already in ClientToAimRequestInfo.
-  std::vector<base::UnguessableToken> final_file_tokens =
-      std::move(create_client_to_aim_request_info->file_tokens);
+  return removed_contexts;
+}
+
+std::vector<base::UnguessableToken>
+ContextualSearchSessionHandle::MarkQuerySubmitted(
+    std::vector<base::UnguessableToken> file_tokens,
+    std::optional<size_t> query_text_length) {
+  // Append the uploaded tokens, preserving upload order while deduplicating
+  // any tokens already in `file_tokens`.
   for (const auto& token : uploaded_context_tokens_) {
-    if (!std::ranges::contains(final_file_tokens, token)) {
-      final_file_tokens.push_back(token);
+    if (!std::ranges::contains(file_tokens, token)) {
+      file_tokens.push_back(token);
     }
   }
   // Keep tabs but clear the files. Move any tab tokens in current
   // turn/submission into `persisted_tabs_`.
   ClearFiles(/*query_submitted=*/true);
-  create_client_to_aim_request_info->file_tokens = std::move(final_file_tokens);
 
-  if (!create_client_to_aim_request_info->file_tokens.empty()) {
+  if (!file_tokens.empty()) {
     has_submitted_context_ = true;
   }
 
   // Copy the tokens from this request to the list of all submitted tokens.
-  submitted_context_tokens_.insert(
-      submitted_context_tokens_.end(),
-      create_client_to_aim_request_info->file_tokens.begin(),
-      create_client_to_aim_request_info->file_tokens.end());
+  submitted_context_tokens_.insert(submitted_context_tokens_.end(),
+                                   file_tokens.begin(), file_tokens.end());
 
-  if (GetMetricsRecorder()) {
+  if (query_text_length.has_value() && GetMetricsRecorder()) {
     NotifyQuerySubmittedSessionState(
-        TokensToFileInfos(GetController(),
-                          create_client_to_aim_request_info->file_tokens),
-        create_client_to_aim_request_info->query_text.size());
+        TokensToFileInfos(GetController(), file_tokens), *query_text_length);
   }
+
+  return file_tokens;
+}
+
+lens::ClientToAimMessage
+ContextualSearchSessionHandle::CreateClientToAimRequest(
+    std::unique_ptr<contextual_search::ContextualSearchContextController::
+                        CreateClientToAimRequestInfo>
+        create_client_to_aim_request_info) {
+  auto* context_controller = GetController();
+  if (!context_controller) {
+    return lens::ClientToAimMessage();
+  }
+
+  for (const auto& req_id : TakeRemovedContexts()) {
+    AppendUniqueRequestId(create_client_to_aim_request_info->removed_contexts,
+                          req_id);
+  }
+
+  create_client_to_aim_request_info->file_tokens = MarkQuerySubmitted(
+      std::move(create_client_to_aim_request_info->file_tokens),
+      create_client_to_aim_request_info->query_text.size());
 
   return context_controller->CreateClientToAimRequest(
       std::move(create_client_to_aim_request_info));
@@ -983,6 +1038,53 @@ void ContextualSearchSessionHandle::SetRestoredTabs(std::vector<TabInfo> tabs) {
     return;
   }
   tab_context_.restored = std::move(rebuilt_restored);
+  NotifyTabContextSubscribers();
+}
+
+void ContextualSearchSessionHandle::AddDelayedTabContext(
+    const base::UnguessableToken& file_token,
+    int32_t tab_id,
+    const GURL& url,
+    const std::string& title) {
+  // Exit early if the token was deleted before the delayed tab was recorded.
+  if (std::ranges::find(uploaded_context_tokens_, file_token) ==
+      uploaded_context_tokens_.end()) {
+    return;
+  }
+  TabInfo tab;
+  tab.context_token = file_token;
+  tab.tab_id = tab_id;
+  tab.url = url;
+  tab.title = title;
+  // The upload happens later via `StartTabContextUploadFlow()`, which
+  // updates `tab.uploaded` to true.
+  tab.uploaded = false;
+  AddAttachedTab(std::move(tab));
+}
+
+void ContextualSearchSessionHandle::AddAttachedTab(TabInfo tab) {
+  CHECK(tab.tab_id.has_value());
+  tab.restored_from_aim = false;
+  auto it =
+      std::ranges::find(tab_context_.attached, tab.tab_id, &TabInfo::tab_id);
+  // De-duplicate tabs.
+  if (it == tab_context_.attached.end()) {
+    tab_context_.attached.push_back(std::move(tab));
+  } else if (*it == tab) {
+    return;
+  } else {
+    *it = std::move(tab);
+  }
+  NotifyTabContextSubscribers();
+}
+
+void ContextualSearchSessionHandle::RemoveAttachedTabForToken(
+    const base::UnguessableToken& file_token) {
+  if (std::erase_if(tab_context_.attached, [&file_token](const TabInfo& tab) {
+        return tab.context_token == file_token;
+      }) == 0) {
+    return;
+  }
   NotifyTabContextSubscribers();
 }
 

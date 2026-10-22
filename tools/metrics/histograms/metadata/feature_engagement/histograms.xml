@@ -60,11 +60,6 @@ chromium-metrics-reviews@google.com.
                their home screen (using a text bubble)"/>
   <variant name="IPH_AimActivationHint"
       summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
-  <variant name="IPH_AndroidBottomBarAim"
-      summary="Describes the AI Mode button added in the bottom bar."/>
-  <variant name="IPH_AndroidBottomBarAimPromoDialog"
-      summary="For the promo dialog shown to introduce AI Mode with the
-               bottom bar."/>
   <variant name="IPH_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="IPH_AndroidBottomBarNewTab"
@@ -319,6 +314,8 @@ chromium-metrics-reviews@google.com.
       summary="generic feature to always show help Ui whenever asked"/>
   <variant name="IPH_GestureUserEducation"
       summary="IPH for gesture user education"/>
+  <variant name="IPH_GlassFrameOptIn"
+      summary="IPH for opting into the transparent glass frame tab styling"/>
   <variant name="IPH_GlicPromo" summary="Glic promotion"/>
   <variant name="IPH_GlicPromoAndroid" summary="Glic promotion on Android"/>
   <variant name="IPH_GlicTrustFirstOnboardingShortcutSnoozePromo"
@@ -710,8 +707,6 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_SharedHighlightingReceiver"
       summary="the in product help message encouraging users to create
                highlights"/>
-  <variant name="IPH_SharingHubLinkToggle"
-      summary="turning on link sharing in the Sharing Hub"/>
   <variant name="IPH_SharingHubWebnotesStylize"
       summary="informing users about the Webnotes Stylize feature in Sharing
                Hub"/>

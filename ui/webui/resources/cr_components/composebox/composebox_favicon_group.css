@@ -25,14 +25,11 @@
   --skeleton-stagger-delay: 0ms;
   aspect-ratio: 1/1;
   background-color: #fff;
+  border: 2px solid var(--composebox-favicon-border-color, #f2f2f2);
   border-radius: 50%;
-  box-sizing: border-box;
-  display: inline-block;
-  height: 20px;
-  outline: 2px solid
-      var(--composebox-favicon-border-color, #f2f2f2);
-  outline-offset: 2px;
+  height: 16px;
   position: relative;
+  width: 16px;
 }
 
 .favicon-item:nth-child(1) {
@@ -77,10 +74,13 @@
   transition: none;
 }
 
-/* Placeholder: surface-variant coin. Fades current -> 0% when swapped out. */
+/* Placeholder: surface-variant coin. Fades current -> 0% when swapped out.
+ * Like the coin background and border above, the default is intentionally not
+ * tied to the color scheme because the realbox is always a light surface.
+ * Themed hosts (omnibox, Lens searchbox, context menu) override
+ * --composebox-favicon-skeleton-color with a theme-aware token. */
 .favicon-item::before {
-  background-color: var(--color-sys-surface-variant,
-      var(--cr-fallback-color-surface-variant));
+  background-color: var(--composebox-favicon-skeleton-color, #e1e3e1);
   border-radius: 50%;
   content: '';
   inset: 0;

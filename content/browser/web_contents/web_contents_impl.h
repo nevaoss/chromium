@@ -1087,7 +1087,7 @@ class CONTENT_EXPORT WebContentsImpl
       PreloadingHoldbackStatus holdback_status_override,
       std::optional<base::TimeDelta> ttl,
       bool should_ignore_saver_modes,
-      bool is_ahead_of_actual_navigation) override;
+      bool is_ahead_of_imminent_navigation) override;
   std::unique_ptr<PrerenderHandle> StartPrerendering(
       const GURL& prerendering_url,
       PreloadingTriggerType trigger_type,
@@ -1110,7 +1110,7 @@ class CONTENT_EXPORT WebContentsImpl
                             WindowOpenDisposition disposition) override;
   void SetOwnerLocationForDebug(
       std::optional<base::Location> owner_location) override;
-  blink::ColorProviderColorMaps GetColorProviderColorMaps() const override;
+  blink::ColorProviderColorMaps GetColorProviderColorMaps() override;
 
   BackForwardTransitionAnimationManager*
   GetBackForwardTransitionAnimationManager() override;

@@ -1224,10 +1224,13 @@ crbug.com/495458814 [ Linux ] external/wpt/css/css-values/rlh-on-root-lengths.ht
 crbug.com/495458814 [ Linux ] external/wpt/css/cssom/font-family-serialization-001.html [ Failure Pass ]
 crbug.com/495458814 [ Linux ] external/wpt/css/css-overflow/text-overflow-005.html [ Failure Pass ]
 
+# ::scroll-marker not updated when scroll container status changes
+crbug.com/500793607 external/wpt/css/css-overflow/scroll-markers/scroll-marker-group-scroll-container-change-001.html [ Failure ]
+crbug.com/500793607 external/wpt/css/css-overflow/scroll-markers/scroll-marker-group-scroll-container-change-002.html [ Failure ]
+crbug.com/500793607 external/wpt/css/css-overflow/scroll-markers/scroll-marker-group-scroll-container-change-crash.html [ Crash Timeout ]
+
 # Table color must quirk-inherit
 crbug.com/494341468 external/wpt/quirks/tables-inherit-color-from-body-quirk-003.html [ Failure ]
-crbug.com/494341468 external/wpt/quirks/tables-inherit-color-from-body-quirk-004.html [ Failure ]
-crbug.com/494341468 external/wpt/quirks/tables-inherit-color-from-body-quirk-005.html [ Failure ]
 
 crbug.com/537801217 external/wpt/css/selectors/active-observable.html [ Failure Pass Timeout ]
 crbug.com/553155260 [ Win ] external/wpt/css/css-values/acos-asin-atan-atan2-computed.html [ Pass Timeout ]
@@ -1513,10 +1516,6 @@ crbug.com/1311165 printing/fixed-positioned-but-static-headers-and-footers.html 
 crbug.com/1371431 printing/fixed-positioned-headers-and-footers-clipped.html [ Failure ]
 
 crbug.com/1204498 external/wpt/service-workers/service-worker/client-navigate.https.html [ Failure Pass Timeout ]
-
-# On all platforms media tests don't currently use gpu-accelerated (proprietary)
-# codecs, so no benefit to running them again with gpu acceleration enabled.
-crbug.com/555703 virtual/media-gpu-accelerated/* [ Failure Skip ]
 
 # switching to apache-win32: needs triaging.
 crbug.com/528062 [ Win ] http/tests/css/missing-repaint-after-slow-style-sheet.pl [ Failure ]
@@ -1908,7 +1907,6 @@ crbug.com/40244183 [ Linux ] external/wpt/css/css-fonts/font-variant-emoji-2.htm
 
 # ::first-line issues
 crbug.com/1085772 external/wpt/css/css-pseudo/first-line-opacity-001.html [ Failure ]
-crbug.com/519984271 external/wpt/css/css-pseudo/first-line-input-textarea.tentative.html [ Failure ]
 
 
 # Various css-values WPT failures
@@ -1997,6 +1995,11 @@ crbug.com/354881878 external/wpt/webrtc-encoded-transform/script-transform-gener
 
 # This test should pass when prefetch behavior in iframe is fixed.
 crbug.com/1371358 external/wpt/navigation-timing/prefetch-transfer-size-iframe.html [ Failure ]
+
+# This usually fails due to both an expectation failure and a harness failure
+# (cleanup function failed), but can also fail with just a different harness
+# error (target frame detached).
+crbug.com/532911229 external/wpt/navigation-timing/response-start-after-coop-bcg-switch.https.html [ Failure ]
 
 # css-highlight-inheritance/
 crbug.com/1467328 virtual/forced-high-contrast-colors/fast/css/forced-colors-mode/forced-colors-mode-15.html [ Failure ]
@@ -2519,7 +2522,6 @@ crbug.com/526677153 external/wpt/intersection-observer/transformed-iframe-004-cr
 
 # Floating point output likely flaky
 crbug.com/540322301 external/wpt/webaudio/the-audio-api/the-oscillatornode-interface/sub-sample-start.html [ Failure ]
-crbug.com/567285529 external/wpt/svg/text/scripted/lengthadjust-char-positions.html [ Failure ]
 crbug.com/567254391 virtual/webnn-service-on-cpu/external/wpt/webnn/conformance_tests/triangular.https.any.html?cpu [ Failure ]
 crbug.com/567254391 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/triangular.https.any.html?gpu [ Failure ]
 crbug.com/567254391 virtual/webnn-service-on-npu/external/wpt/webnn/conformance_tests/triangular.https.any.html?npu [ Failure ]
@@ -2536,13 +2538,11 @@ crbug.com/567247688 external/wpt/html/semantics/forms/the-select-element/customi
 crbug.com/567285529 external/wpt/svg/styling/css-linked-parameters/link-parameters-currentcolor-typed.html [ Failure ]
 crbug.com/567285529 external/wpt/svg/styling/css-linked-parameters/link-parameters-currentcolor-untyped.html [ Failure ]
 crbug.com/567285529 external/wpt/svg/styling/css-linked-parameters/link-parameters-invalid-typed-value.html [ Failure ]
-crbug.com/567285529 external/wpt/svg/types/scripted/SVGGraphicsElement.getBBox-02.html [ Timeout ]
 crbug.com/567247689 external/wpt/webdriver/tests/bidi/browsing_context/capture_screenshot/image_size.py [ Failure ]
 crbug.com/567247689 external/wpt/webdriver/tests/bidi/browsing_context/start_screencast/destination_folder.py [ Failure ]
 crbug.com/567247689 external/wpt/webdriver/tests/bidi/external/permissions/set_permission/set_permission.py [ Failure ]
 crbug.com/563060354 external/wpt/geolocation/getCurrentPosition-accuracyMode-cache.https.html [ Failure ]
 crbug.com/563046526 external/wpt/svg/render/order/z-index.tentative.svg [ Failure ]
-crbug.com/562529671 external/wpt/css/css-overflow/line-clamp/line-clamp-auto-062.html [ Failure ]
 crbug.com/562303032 external/wpt/css/css-text/hyphens/hyphenate-limit-lines-001.html [ Failure ]
 crbug.com/562303032 external/wpt/css/css-text/word-spacing/word-spacing-combining-mark-002.html [ Failure ]
 crbug.com/562529675 external/wpt/html/semantics/forms/the-input-element/image-width-height.html [ Failure ]
@@ -2564,14 +2564,6 @@ crbug.com/562425277 external/wpt/webrtc-encoded-transform/RTCRtpScriptTransform-
 crbug.com/562513487 external/wpt/webrtc/RTCIceTransport-peer-reflexive-remote.html [ Failure Skip Timeout ]
 crbug.com/562551187 external/wpt/webvtt/rendering/cues-with-video/processing-model/2_tracks.html [ Timeout ]
 crbug.com/562551187 external/wpt/webvtt/rendering/cues-with-video/processing-model/3_tracks.html [ Timeout ]
-crbug.com/562529671 virtual/disable-css-line-clamp-line-breaking-ellipsis/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-062.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp-longhands/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-062.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-048.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-058.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-059.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-060.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-061.html [ Failure ]
-crbug.com/562529671 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-062.html [ Failure ]
 crbug.com/562303034 virtual/select-parsing-filtering-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-appearance-optgroup-legend-not-first.html [ Failure ]
 crbug.com/556296547 external/wpt/webdriver/tests/bidi/input/perform_actions/pointer_touch_simultaneous.py [ Failure ]
 crbug.com/556296547 [ Android ] external/wpt/webdriver/tests/classic/external/webauthn/set_credential_properties/invalid.py [ Failure ]
@@ -2589,7 +2581,6 @@ crbug.com/555949816 external/wpt/svg/styling/css-linked-parameters/link-paramete
 crbug.com/555949816 external/wpt/svg/styling/css-linked-parameters/link-parameters-per-container.html [ Failure ]
 crbug.com/555895001 external/wpt/webdriver/tests/bidi/input/release_actions/sequence.py [ Failure ]
 crbug.com/555895001 external/wpt/webdriver/tests/classic/release_actions/sequence.py [ Failure ]
-crbug.com/555893256 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-block-in-inline-001.html [ Failure ]
 crbug.com/553525690 external/wpt/html-aam/accname-computation-by-element/phrasing-elements.html [ Pass Timeout ]
 crbug.com/553525690 external/wpt/html-aam/accname-computation-by-element/section-and-grouping-elements.html [ Pass Timeout ]
 crbug.com/552761891 external/wpt/css/css-borders/corner-shape/corner-shape-box-shadow-spread-bevel.html [ Failure ]
@@ -2874,7 +2865,15 @@ crbug.com/471016766 [ Mac ] external/wpt/webaudio/the-audio-api/the-mediastreama
 crbug.com/471016766 [ Win ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Pass Timeout ]
 crbug.com/471016766 [ Linux ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Failure Pass Timeout ]
 [ Mac ] external/wpt/html/browsers/history/the-location-interface/location-ancestor-origins.sub.html [ Pass Timeout ]
-crbug.com/469618144 external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
+# Android API-35 passes contexts.py; leave it unsuppressed to catch regressions.
+# Linux can time out, so accept Pass/Timeout there. Other platforms retain
+# their prior Crash/Failure/Timeout allowances pending updated results.
+crbug.com/469618144 [ Fuchsia ] external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
+crbug.com/469618144 [ Linux ] external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Pass Timeout ]
+crbug.com/469618144 [ Mac ] external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
+crbug.com/469618144 [ Webview ] external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
+crbug.com/469618144 [ Win ] external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
+crbug.com/469618144 [ iOS26-simulator ] external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
 crbug.com/469481151 external/wpt/css/css-anchor-position/scroll-to-anchored-fixed-000.html [ Failure ]
 crbug.com/469481567 external/wpt/css/css-text-decor/text-decoration-thickness-length-rounding-002.html [ Failure ]
 crbug.com/469467862 [ Win ] external/wpt/css/motion/animation/offset-path-interpolation-002.html [ Pass Timeout ]
@@ -2913,7 +2912,8 @@ external/wpt/notifications/event-onclose.https.html [ Timeout ]
 crbug.com/443965740 [ Mac14 ] external/wpt/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?9-last [ Crash Pass ]
 crbug.com/443965740 [ Mac15 ] external/wpt/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?9-last [ Crash Pass ]
 crbug.com/443773822 external/wpt/webdriver/tests/classic/element_clear/scroll_into_view.py [ Failure ]
-crbug.com/443773822 external/wpt/webdriver/tests/classic/element_click/scroll_into_view.py [ Failure ]
+crbug.com/443773822 [ Mac ] external/wpt/webdriver/tests/classic/element_click/scroll_into_view.py [ Failure ]
+crbug.com/443773822 [ Win ] external/wpt/webdriver/tests/classic/element_click/scroll_into_view.py [ Failure ]
 crbug.com/443773822 external/wpt/webdriver/tests/classic/element_send_keys/scroll_into_view.py [ Failure ]
 crbug.com/443773822 external/wpt/webdriver/tests/classic/take_element_screenshot/scroll_into_view.py [ Failure ]
 crbug.com/443427214 [ Mac14 ] external/wpt/html/cross-origin-embedder-policy/credentialless/dedicated-worker.https.window.html [ Skip Timeout ]
@@ -3582,7 +3582,6 @@ crbug.com/376126805 [ Mac14 ] external/wpt/webcodecs/video-encoder-content-hint.
 crbug.com/376126805 [ Mac13 ] external/wpt/webcodecs/video-encoder-flush.https.any.worker.html?av1 [ Timeout ]
 crbug.com/376126805 [ Mac14 ] external/wpt/webcodecs/video-encoder-flush.https.any.worker.html?av1 [ Timeout ]
 crbug.com/376126805 [ Mac15 ] external/wpt/webcodecs/video-encoder-flush.https.any.worker.html?av1 [ Timeout ]
-crbug.com/375262152 external/wpt/html/semantics/embedded-content/the-img-element/update-the-image-data/src-then-lazy-load.html [ Timeout ]
 crbug.com/374812621 external/wpt/encrypted-media/media-element-event-handler-attributes.html [ Timeout ]
 crbug.com/375204273 [ Mac13 ] external/wpt/fs/FileSystemObserver.https.tentative.any.worker.html [ Failure Timeout ]
 crbug.com/371061343 [ Mac ] external/wpt/html/webappapis/system-state-and-capabilities/the-navigator-object/protocol-handler-fragment-nosw.https.html [ Skip Timeout ]
@@ -3693,7 +3692,6 @@ crbug.com/356913465 [ Linux ] virtual/threaded/external/wpt/css/css-backgrounds/
 crbug.com/356913465 [ Win ] virtual/threaded/external/wpt/css/css-backgrounds/background-gradient-interpolation-003.html [ Failure ]
 crbug.com/356955226 virtual/fedcm-accounts-push/external/wpt/fedcm/fedcm-accounts-push/fedcm-identity-create-store-collect.tentative.sub.https.html [ Timeout ]
 crbug.com/356955226 virtual/fedcm-accounts-push/external/wpt/fedcm/fedcm-accounts-push/fedcm-identity-discovery.tentative.sub.https.html [ Timeout ]
-crbug.com/353583104 [ Win11-arm64 ] external/wpt/html/semantics/embedded-content/media-elements/preserves-pitch.html [ Timeout ]
 crbug.com/353583105 [ Win11-arm64 ] virtual/fenced-frame-mparch/external/wpt/fenced-frame/config-cross-origin-apis.https.html [ Timeout ]
 crbug.com/353228155 [ Mac ] external/wpt/svg/text/reftests/textpath-letter-spacing-01.svg [ Failure ]
 crbug.com/352390127 [ Win11-arm64 ] external/wpt/webcodecs/video-encoder-config.https.any.worker.html [ Failure Timeout ]
@@ -5005,7 +5003,7 @@ crbug.com/952717 [ Debug Linux ] http/tests/xmlhttprequest/redirect-cross-origin
 # Sheriff 2020-05-18
 crbug.com/1084256 [ Linux ] http/tests/misc/insert-iframe-into-xml-document-before-xsl-transform.html [ Failure Pass ]
 crbug.com/1084256 [ Mac ] http/tests/misc/insert-iframe-into-xml-document-before-xsl-transform.html [ Failure Pass ]
-crbug.com/1084256 [ Win11-arm64 ] http/tests/misc/insert-iframe-into-xml-document-before-xsl-transform.html [ Failure Pass ]
+crbug.com/1084256 [ Win ] http/tests/misc/insert-iframe-into-xml-document-before-xsl-transform.html [ Failure Pass ]
 
 crbug.com/1071189 [ Debug Linux ] editing/selection/programmatic-selection-on-mac-is-directionless.html [ Pass Timeout ]
 
@@ -5120,6 +5118,10 @@ crbug.com/1179461 external/wpt/webxr/depth-sensing/gpu/depth_sensing_gpu_staleVi
 crbug.com/485140575 http/tests/devtools/console/console-linkify-relative-links.js [ Failure Pass ]
 crbug.com/485140575 http/tests/devtools/sources/debugger-pause/debugger-eval-while-paused-throws.js [ Failure Pass ]
 crbug.com/485140575 http/tests/devtools/console/console-uncaught-exception-in-eval.js [ Failure Pass ]
+
+# Temporarily disabled to land https://crrev.com/c/8500839
+crbug.com/407751692 http/tests/devtools/console/console-dirxml.js [ Failure Pass ]
+crbug.com/407751692 http/tests/devtools/console/console-xml-document.js [ Failure Pass ]
 # Sheriff 2021-03-08
 crbug.com/1092462 [ Linux ] http/tests/media/media-source/mediasource-duration.html [ Failure Pass ]
 
@@ -5574,6 +5576,14 @@ crbug.com/1283865 external/wpt/webmessaging/without-ports/020.html [ Failure Pas
 
 # Sheriff 2022-01-05
 crbug.com/40814447 virtual/threaded/http/tests/devtools/isolated-code-cache/same-origin-module-test.js [ Crash Failure Pass Timeout ]
+
+# Temporarily disabled to land https://crrev.com/c/8498574
+crbug.com/535451658 http/tests/devtools/console/shadow-element.js [ Failure Pass ]
+
+# Temporarily disabled to land https://crrev.com/c/8460005
+crbug.com/545412300 http/tests/devtools/a11y-axe-core/sources/scope-pane-a11y-test.js [ Failure Pass ]
+crbug.com/545412300 http/tests/devtools/sources/debugger/debugger-es6-harmony-scopes.js [ Failure Pass ]
+crbug.com/545412300 http/tests/devtools/sources/debugger/debugger-scope-resolve-this.js [ Failure Pass ]
 
 # These tests expose issues with host defined options. The way in which they expose those issues is changing
 crbug.com/409953792 external/wpt/html/semantics/scripting-1/the-script-element/module/dynamic-import/code-cache-nonce.html [ Failure Pass ]
@@ -6428,9 +6438,6 @@ crbug.com/1396185 accessibility/reach-and-scroll-overflow-div-without-mouse.html
 # TODO(crbug.com/1401396): Re-enable this test
 external/wpt/webrtc/simulcast/setParameters-active.https.html [ Pass Timeout ]
 
-# TODO(crbug.com/1419063): Deflake.
-http/tests/media/media-load-nonmedia-crossorigin.html [ Failure Pass Timeout ]
-
 # TODO(crbug.com/1404614): Fix this test on MacOS (sheriff 2023-01-03).
 crbug.com/1404614 [ Mac ] external/wpt/url/url-setters-a-area.window.html?exclude=(file|javascript|mailto) [ Failure Pass ]
 
@@ -6858,7 +6865,6 @@ crbug.com/41490297 external/wpt/speculation-rules/prerender/prerender-while-prer
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/browsing_context/get_tree/frames.py [ Failure ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/script/evaluate/remote_values.py [ Failure ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/script/get_realms/get_realms.py [ Failure Timeout ]
-crbug.com/324436866 external/wpt/webdriver/tests/bidi/script/realm_destroyed/realm_destroyed.py [ Failure ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/storage/set_cookie/partition.py [ Failure ]
 
 # TODO(crbug.com/328677885): Re-enable this test.
@@ -7096,7 +7102,6 @@ crbug.com/40777750 fast/peerconnection/RTCPeerConnection-undelivered-events-gc.h
 [ Debug Mac14-arm64 ] external/wpt/webtransport/streams-close.https.any.html [ Failure Pass ]
 crbug.com/40261737 [ Mac14-arm64 ] external/wpt/webtransport/streams-close.https.any.sharedworker.html [ Failure Pass ]
 crbug.com/40261737 [ Mac14-arm64 ] external/wpt/webtransport/streams-close.https.any.worker.html [ Failure Pass ]
-crbug.com/40912755 [ Mac14-arm64 ] http/tests/devtools/a11y-axe-core/sources/scope-pane-a11y-test.js [ Failure Pass ]
 crbug.com/41493566 [ Mac14-arm64 ] http/tests/security/frameNavigation/xss-ALLOWED-top-navigation-after-postMessage.html [ Failure Pass ]
 
 crbug.com/446116790 [ Linux ] external/wpt/pointerevents/persistentDeviceId/get-persistendeviceid-from-pointer-event.tentative.html [ Failure Pass ]
@@ -7641,6 +7646,7 @@ crbug.com/371033184 external/wpt/css/css-writing-modes/wm-propagation-body-049.h
 crbug.com/371033184 external/wpt/css/css-writing-modes/wm-propagation-body-054.html [ Failure ]
 
 # line-clamp
+crbug.com/568010387 external/wpt/css/css-overflow/line-clamp/line-clamp-auto-045.html [ Failure ]
 crbug.com/40336192 external/wpt/css/css-overflow/line-clamp/line-clamp-balance-003.html [ Failure ]
 crbug.com/40336192 external/wpt/css/css-overflow/line-clamp/line-clamp-balance-006.html [ Failure ]
 crbug.com/40336192 external/wpt/css/css-overflow/line-clamp/line-clamp-balance-009.html [ Failure ]
@@ -7803,9 +7809,15 @@ crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-042.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-043.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-044.html [ Failure ]
-crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-045.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-046.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-047.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-048.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-058.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-059.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-060.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-061.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-062.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-063.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-with-ruby-001.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-with-ruby-002.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-auto-with-ruby-003.html [ Failure ]
@@ -7844,6 +7856,7 @@ crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-abspos-021.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-abspos-022.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-abspos-023.html [ Failure ]
+crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-block-in-inline-001.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-fixed-pos-001.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-fixed-pos-002.html [ Failure ]
 crbug.com/40336192 virtual/disable-css-line-clamp/external/wpt/css/css-overflow/line-clamp/line-clamp-with-fixed-pos-003.html [ Failure ]
@@ -8041,7 +8054,6 @@ crbug.com/522828603 [ Mac ] external/wpt/html/dom/usvstring-reflection.https.htm
 crbug.com/358437652 [ Linux ] external/wpt/dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html [ Failure ]
 crbug.com/358437652 [ Mac ] external/wpt/dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html [ Failure ]
 crbug.com/358437652 [ Win ] external/wpt/dom/events/scrolling/wheel-event-transactions-multiple-action-chains.html [ Failure ]
-crbug.com/359519774 [ Linux ] external/wpt/webdriver/tests/bidi/input/perform_actions/pointer_touch.py [ Failure Pass ]
 
 
 # Flaky scheduler/integration_tests
@@ -8145,7 +8157,6 @@ crbug.com/374661016 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context
 
 # Fail or Crash after enable swiftshader on headless shell
 crbug.com/339041663 external/wpt/css/geometry/DOMMatrix2DInit-validate-fixup.html [ Failure Pass ]
-crbug.com/339041663 [ Linux ] external/wpt/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https.html [ Failure ]
 crbug.com/339041663 external/wpt/mediacapture-insertable-streams/legacy/MediaStreamTrackGenerator-video.https.html [ Crash Failure Timeout ]
 crbug.com/339041663 external/wpt/mediacapture-insertable-streams/tentative/VideoTrackGenerator.https.html [ Crash Failure Timeout ]
 
@@ -8253,7 +8264,6 @@ crbug.com/390068099 [ Mac ] fast/mediarecorder/MediaRecorder-error-on-oversize-f
 # Gardener 2025-01-15
 crbug.com/389960979 external/wpt/webdriver/tests/bidi/browsing_context/locate_nodes/locator.py [ Failure ]  # Randomized context ID
 crbug.com/390162925 [ Win10.20h2 ] virtual/gpu-rasterization/images/png-suite/test.html [ Failure ]
-crbug.com/383667702 [ Linux ] external/wpt/html/interaction/focus/the-autofocus-attribute/spin-by-blocking-style-sheet.html [ Failure ]
 
 # Gardener 2025-01-16
 crbug.com/40839871 http/tests/inspector-protocol/network/cookies-protocol-test.js [ Skip Timeout ]
@@ -8345,7 +8355,6 @@ crbug.com/391006701 [ Debug Mac ] images/yuv-decode-eligible/color-profile-image
 crbug.com/391006701 [ Debug Mac ] images/yuv-decode-eligible/webp-image-decoding.html [ Skip Timeout ]
 
 # Gardener 2025-03-19
-crbug.com/402521712 [ Linux ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedFrame-timestamps.html [ Failure ]
 crbug.com/404571518 [ Win11 ] external/wpt/mediacapture-record/MediaRecorder-canvas-media-source.https.html?mimeType=video/mp4;codecs=av01,mp4a.40.2 [ Failure ]
 crbug.com/404571518 [ Win11 ] external/wpt/mediacapture-record/MediaRecorder-canvas-media-source.https.html?mimeType=video/mp4;codecs=avc3.64003E,mp4a.40.2 [ Failure ]
 crbug.com/404571518 [ Win11 ] external/wpt/mediacapture-record/MediaRecorder-canvas-media-source.https.html?mimeType=video/webm;codecs=vp9,opus [ Failure ]
@@ -8730,7 +8739,6 @@ crbug.com/495770240 [ Linux ] external/wpt/css/css-ruby/ruby-text-combine-uprigh
 crbug.com/495770240 [ Linux ] external/wpt/css/css-writing-modes/text-combine-upright-decorations-001.html [ Failure Pass ]
 
 # Gardener 2026-03-25
-crbug.com/496047707 external/wpt/html/semantics/embedded-content/the-img-element/sizes/sizes-auto-dynamic-attributes.html [ Failure Pass ]
 
 # Gardener 2026-03-31
 crbug.com/431038526 external/wpt/css/css-ruby/ruby-text-combine-upright-001a.html [ Failure Pass ]
@@ -9080,7 +9088,6 @@ crbug.com/565447575 [ Linux ] external/wpt/webdriver/tests/bidi/external/bluetoo
 crbug.com/565447575 [ Linux ] external/wpt/webdriver/tests/bidi/input/perform_actions/pointer_mouse_drag.py [ Failure Pass ]
 crbug.com/565447575 [ Linux ] external/wpt/webdriver/tests/bidi/input/perform_actions/pointer_mouse_multiclick.py [ Failure Pass ]
 crbug.com/565447575 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_response/cookies.py [ Crash Failure Pass Timeout ]
-crbug.com/565447575 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_response/credentials.py [ Failure Pass ]
 crbug.com/565447575 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_with_auth/invalid.py [ Failure Pass ]
 crbug.com/559885106 [ Linux ] external/wpt/webdriver/tests/classic/new_session/unhandled_prompt_behavior.py [ Failure Pass ]
 crbug.com/560754596 [ Linux ] external/wpt/webdriver/tests/classic/perform_actions/key_events.py [ Failure Pass ]
@@ -9114,3 +9121,30 @@ crbug.com/560925587 [ Debug Linux ] external/wpt/webdriver/tests/classic/perform
 
 # Gardener 2026-09-30
 crbug.com/567713221 [ Debug Linux ] external/wpt/css/css-display/select-4-option-optgroup-display-none.html [ Failure Pass ]
+crbug.com/527852129 [ Linux ] external/wpt/scroll-animations/animation-trigger/animation-trigger-state.tentative.html [ Failure Pass ]
+crbug.com/527852129 [ Mac ] external/wpt/scroll-animations/animation-trigger/animation-trigger-state.tentative.html [ Failure Pass ]
+crbug.com/527852129 [ Linux ] virtual/compositor-timeline-trigger/external/wpt/scroll-animations/animation-trigger/animation-trigger-state.tentative.html [ Failure Pass ]
+crbug.com/527852129 [ Mac ] virtual/compositor-timeline-trigger/external/wpt/scroll-animations/animation-trigger/animation-trigger-state.tentative.html [ Failure Pass ]
+
+# Gardener 2026-10-01
+crbug.com/564804235 inspector-protocol/emulation/device-emulation-text-size-adjust-two-pages.js [ Failure ]
+
+# TODO(crbug.com/568343392): Re-enable these tests.
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context/reload/wait.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context/user_prompt_opened/beforeunload.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/emulation/set_media_features_override/contexts.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/external/bluetooth/simulate_characteristic_response/invalid.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/input/perform_actions/wheel_origin.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_response/credentials.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_response/headers.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/network/continue_response/reason_phrase.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/bidi/script/call_function/csp_tentative.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/classic/element_click/scroll_into_view.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/classic/execute_script/collections.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/classic/new_session/page_load_strategy.py [ Failure Pass ]
+crbug.com/568343392 [ Linux ] external/wpt/webdriver/tests/classic/set_timeouts/user_prompts.py [ Failure Pass ]
+
+# Gardener 2026-10-02
+crbug.com/568811068 [ Linux ] external/wpt/html/semantics/embedded-content/the-img-element/update-the-image-data/src-then-lazy-load.html [ Failure Pass ]
+crbug.com/568811068 [ Win ] external/wpt/html/semantics/embedded-content/the-img-element/update-the-image-data/src-then-lazy-load.html [ Failure Pass ]
+

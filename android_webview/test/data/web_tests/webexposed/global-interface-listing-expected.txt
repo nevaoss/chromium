@@ -972,6 +972,7 @@ interface CSSPseudoElement
     attribute @@toStringTag
     getter element
     getter parent
+    getter selectorText
     getter type
     method constructor
     method convertPointFromNode
@@ -979,6 +980,8 @@ interface CSSPseudoElement
     method convertRectFromNode
     method focus
     method getBoxQuads
+    method nextFocusable
+    method previousFocusable
     method pseudo
 interface CSSRGB : CSSColorValue
     attribute @@toStringTag
@@ -2339,22 +2342,10 @@ interface DocumentType : Node
     getter publicId
     getter systemId
     method after
-    method afterHTML
-    method afterHTMLUnsafe
     method before
-    method beforeHTML
-    method beforeHTMLUnsafe
     method constructor
     method remove
     method replaceWith
-    method replaceWithHTML
-    method replaceWithHTMLUnsafe
-    method streamAfterHTML
-    method streamAfterHTMLUnsafe
-    method streamBeforeHTML
-    method streamBeforeHTMLUnsafe
-    method streamReplaceWithHTML
-    method streamReplaceWithHTMLUnsafe
 interface DragEvent : MouseEvent
     attribute @@toStringTag
     getter dataTransfer
@@ -2535,9 +2526,11 @@ interface Element : Node
     method matchContainer
     method matches
     method moveBefore
+    method nextFocusable
     method prepend
     method prependHTML
     method prependHTMLUnsafe
+    method previousFocusable
     method pseudo
     method querySelector
     method querySelectorAll
@@ -3001,6 +2994,8 @@ interface Focusable
     getter target
     method constructor
     method focus
+    method nextFocusable
+    method previousFocusable
 interface FontFace
     attribute @@toStringTag
     getter ascentOverride
@@ -3771,7 +3766,6 @@ interface HTMLCanvasElement : HTMLElement
     attribute @@toStringTag
     getter content
     getter height
-    getter layoutSubtree
     getter onelementgeometryupdate
     getter onpaint
     getter width
@@ -3789,7 +3783,6 @@ interface HTMLCanvasElement : HTMLElement
     method updateElementGeometry
     setter content
     setter height
-    setter layoutSubtree
     setter onelementgeometryupdate
     setter onpaint
     setter width

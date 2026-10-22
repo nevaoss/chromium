@@ -15,7 +15,9 @@
 #include "chrome/browser/android/persisted_tab_data/sensitivity_persisted_tab_data_android.h"
 #include "chrome/browser/android/policy/policy_auditor_bridge.h"
 #include "chrome/browser/android/tab_android.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/chained_back_navigation_tracker.h"
+#include "chrome/browser/commerce/shopping_service_factory.h"
 #include "chrome/browser/complex_tasks/task_tab_helper.h"
 #include "chrome/browser/content_settings/sound_content_setting_observer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
@@ -26,6 +28,7 @@
 #include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_navigation_observer.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_observer.h"
+#include "chrome/browser/facilitated_payments/ui/chrome_facilitated_payments_client.h"
 #include "chrome/browser/file_system_access/file_system_access_tab_helper.h"
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/finds/core/finds_tab_helper.h"
@@ -47,6 +50,7 @@
 #include "chrome/browser/net/net_error_tab_helper.h"
 #include "chrome/browser/net/qwac_web_contents_observer.h"
 #include "chrome/browser/offline_pages/android/auto_fetch_page_load_watcher.h"
+#include "chrome/browser/offline_pages/offline_page_tab_helper.h"
 #include "chrome/browser/offline_pages/recent_tab_helper.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -54,6 +58,7 @@
 #include "chrome/browser/page_info/about_this_site_tab_helper.h"
 #include "chrome/browser/page_info/page_info_features.h"
 #include "chrome/browser/payments/web_payments_observer.h"
+#include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
 #include "chrome/browser/plugins/plugin_observer_android.h"
 #include "chrome/browser/preloading/new_tab_page_preload/new_tab_page_preload_pipeline_manager.h"
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_tab_helper.h"
@@ -87,8 +92,11 @@
 #include "chrome/browser/v8_compile_hints/v8_compile_hints_tab_helper.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/chrome_isolated_world_ids.h"
 #include "components/actor/core/actor_features.h"
+#include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/client_hints/browser/client_hints_web_contents_observer.h"
+#include "components/commerce/content/browser/commerce_tab_helper.h"
 #include "components/content_capture/common/content_capture_features.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/download/content/factory/navigation_monitor_factory.h"
@@ -99,13 +107,18 @@
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/history/content/browser/web_contents_top_sites_observer.h"
 #include "components/history/core/browser/top_sites.h"
+#include "components/metrics/content/metrics_services_web_contents_observer.h"
+#include "components/metrics_services_manager/metrics_services_manager.h"
 #include "components/payments/core/features.h"
 #include "components/search/ntp_features.h"
+#include "components/search/search.h"
 #include "components/security_interstitials/core/features.h"
 #include "components/tabs/public/tab_interface.h"
+#include "components/webapps/browser/installable/ml_installability_promoter.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "extensions/buildflags/buildflags.h"
+#include "media/base/media_switches.h"
 #include "net/base/features.h"
 #include "ui/base/device_form_factor.h"
 #include "ui/base/unowned_user_data/user_data_factory.h"
@@ -118,6 +131,7 @@
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
 #include "chrome/browser/ui/customize_chrome/side_panel_controller_android.h"
+#include "chrome/browser/ui/search/search_tab_helper.h"
 #endif
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
@@ -287,6 +301,10 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
     customize_chrome_side_panel_controller_ =
         std::make_unique<customize_chrome::SidePanelControllerAndroid>(*tab);
   }
+  if (search::IsInstantExtendedAPIEnabled()) {
+    search_tab_helper_ = GetUserDataFactory().CreateInstance<SearchTabHelper>(
+        *tab, *tab, web_contents);
+  }
 #endif
 
   if (base::FeatureList::IsEnabled(enterprise_reporting::kSaasUsageReporting)) {
@@ -435,9 +453,50 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
             *tab, *tab, web_contents);
   }
 
+  offline_page_tab_helper_ =
+      GetUserDataFactory().CreateInstance<offline_pages::OfflinePageTabHelper>(
+          *tab, *tab, web_contents);
+
   recent_tab_helper_ =
       GetUserDataFactory().CreateInstance<offline_pages::RecentTabHelper>(
           *tab, *tab, web_contents);
+
+  if (base::FeatureList::IsEnabled(media::kAutoPictureInPictureAndroid)) {
+    auto_picture_in_picture_tab_helper_ =
+        GetUserDataFactory().CreateInstance<AutoPictureInPictureTabHelper>(
+            *tab, *tab, web_contents);
+  }
+
+  ml_installability_promoter_ =
+      GetUserDataFactory().CreateInstance<webapps::MLInstallabilityPromoter>(
+          *tab, *tab, web_contents);
+
+  auto* optimization_guide_decider =
+      OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
+  if (autofill::ContentAutofillClient::FromWebContents(web_contents) &&
+      optimization_guide_decider) {
+    chrome_facilitated_payments_client_ =
+        GetUserDataFactory().CreateInstance<ChromeFacilitatedPaymentsClient>(
+            *tab, *tab, web_contents, optimization_guide_decider,
+            base::BindRepeating([](content::WebContents* web_contents) {
+              auto* tab_android = TabAndroid::FromWebContents(web_contents);
+              return tab_android && tab_android->IsCustomTab();
+            }));
+  }
+
+  commerce_tab_helper_ = std::make_unique<commerce::CommerceTabHelper>(
+      web_contents, profile->IsOffTheRecord(),
+      commerce::ShoppingServiceFactory::GetForBrowserContext(profile),
+      ISOLATED_WORLD_ID_CHROME_INTERNAL);
+
+  if (auto* metrics_services_manager =
+          g_browser_process->GetMetricsServicesManager()) {
+    metrics_services_web_contents_observer_ =
+        std::make_unique<metrics::MetricsServicesWebContentsObserver>(
+            web_contents, metrics_services_manager->GetOnDidStartLoadingCb(),
+            metrics_services_manager->GetOnDidStopLoadingCb(),
+            metrics_services_manager->GetOnRendererUnresponsiveCb());
+  }
 
   // Register LanguagePersistedTabDataAndroid for non-incognito Android tabs to
   // persist language details.

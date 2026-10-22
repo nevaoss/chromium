@@ -90,7 +90,6 @@
 #include "third_party/omnibox_proto/chrome_searchbox_stats.pb.h"
 #include "third_party/omnibox_proto/groups.pb.h"
 #include "third_party/omnibox_proto/input_type.pb.h"
-#include "third_party/omnibox_proto/rich_answer_template.pb.h"
 #include "third_party/omnibox_proto/rule_set.pb.h"
 #include "third_party/omnibox_proto/searchbox_config.pb.h"
 #include "third_party/omnibox_proto/suggest_template_info.pb.h"
@@ -806,12 +805,19 @@ SearchboxHandler::CreateAutocompleteResult(
     bookmarks::BookmarkModel* bookmark_model,
     const PrefService* prefs,
     const TemplateURLService* turl_service) const {
+  // The AIM suggestion activity link is shown below the dropdown when any
+  // match is a non-canned AIM suggestion.
+  const bool show_aim_activity_link =
+      std::ranges::any_of(result, [](const AutocompleteMatch& match) {
+        return match.suggestion_group_id == omnibox::GROUP_MIA_RECOMMENDATIONS;
+      });
   return searchbox::mojom::AutocompleteResult::New(
       query_id, result.sequence_id(), input,
       CreateSuggestionGroupsMap(result, prefs, result.suggestion_groups_map()),
       CreateAutocompleteMatches(result, bookmark_model,
                                 result.suggestion_groups_map(), turl_service),
-      base::UTF8ToUTF16(result.smart_compose_inline_hint()));
+      base::UTF8ToUTF16(result.smart_compose_inline_hint()),
+      show_aim_activity_link);
 }
 
 base::flat_map<int32_t, searchbox::mojom::SuggestionGroupPtr>
@@ -967,14 +973,25 @@ SearchboxHandler::CreateAutocompleteMatch(
       searchbox::mojom::AutocompleteMatch::New();
   mojom_match->is_hidden = match.ShouldHideBasedOnStarterPack(turl_service);
   mojom_match->allowed_to_be_default_match = match.allowed_to_be_default_match;
-  mojom_match->contents = match.contents;
-  for (const auto& contents_class : match.contents_class) {
+  // Resolve `swap_contents_and_description` here so the UI can always render
+  // `contents` as the primary text and `description` as the secondary text.
+  const bool swap = match.swap_contents_and_description;
+  const std::u16string& primary_text =
+      swap ? match.description : match.contents;
+  const ACMatchClassifications& primary_class =
+      swap ? match.description_class : match.contents_class;
+  const std::u16string& secondary_text =
+      swap ? match.contents : match.description;
+  const ACMatchClassifications& secondary_class =
+      swap ? match.contents_class : match.description_class;
+  mojom_match->contents = primary_text;
+  for (const auto& contents_class : primary_class) {
     mojom_match->contents_class.push_back(
         searchbox::mojom::ACMatchClassification::New(contents_class.offset,
                                                      contents_class.style));
   }
-  mojom_match->description = match.description;
-  for (const auto& description_class : match.description_class) {
+  mojom_match->description = secondary_text;
+  for (const auto& description_class : secondary_class) {
     mojom_match->description_class.push_back(
         searchbox::mojom::ACMatchClassification::New(description_class.offset,
                                                      description_class.style));
@@ -1012,8 +1029,6 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->fill_into_edit = match.fill_into_edit;
   mojom_match->inline_autocompletion = match.inline_autocompletion;
   mojom_match->is_search_type = AutocompleteMatch::IsSearchType(match.type);
-  mojom_match->swap_contents_and_description =
-      match.swap_contents_and_description;
   mojom_match->show_contextual_description = false;
   mojom_match->type = omnibox::AutocompleteMatchTypeToString(match.type);
   mojom_match->supports_deletion = match.SupportsDeletion();
@@ -1057,9 +1072,6 @@ SearchboxHandler::CreateAutocompleteMatch(
   // `PopulateAccessibilityLabels()`, since they depend on the whole result.
 
   mojom_match->tail_suggest_common_prefix = match.tail_suggest_common_prefix;
-
-  mojom_match->is_noncanned_aim_suggestion =
-      match.suggestion_group_id == omnibox::GROUP_MIA_RECOMMENDATIONS;
 
   mojom_match->is_contextual_suggestion = match.IsContextualSearchSuggestion();
 
@@ -1606,7 +1618,8 @@ OmniboxPopupSelection ConvertSelection(
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonContextEntrypoint:
     case searchbox::mojom::SelectionLineState::kFocusedButtonVoiceSearch:
-    case searchbox::mojom::SelectionLineState::kFocusedButtonLensSearch: {
+    case searchbox::mojom::SelectionLineState::kFocusedButtonLensSearch:
+    case searchbox::mojom::SelectionLineState::kFocusedButtonContextualChip: {
       // Handled directly by webui omnibox popup.
       NOTREACHED();
     }
@@ -1657,9 +1670,14 @@ void SearchboxHandler::OpenPopupSelection(
 
   if (!base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
+    // OmniboxEditModel does not have a persistent `kCtrlEnter` state, so for
+    // Ctrl+Enter selections verify that the selected line matches.
     const bool selection_matched =
         popup_selection == edit_model()->GetPopupSelection() ||
-        popup_selection.IsNonMatchSelection();
+        popup_selection.IsNonMatchSelection() ||
+        (popup_selection.state ==
+             OmniboxPopupSelection::LineState::kCtrlEnter &&
+         popup_selection.line == edit_model()->GetPopupSelection().line);
     base::UmaHistogramBoolean("Omnibox.WebUI.SelectionMatched",
                               selection_matched);
     base::UmaHistogramBoolean(

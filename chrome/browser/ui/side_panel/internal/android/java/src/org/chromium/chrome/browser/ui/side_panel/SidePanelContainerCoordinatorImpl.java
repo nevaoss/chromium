@@ -351,7 +351,7 @@ final class SidePanelContainerCoordinatorImpl
      * side panel won't open the panel until {@link #simulateAutoRestoreConditionForTesting()} is
      * called.
      *
-     * @see org.chromium.chrome.browser.ui.side_ui.SideUiContainer#onWillAutoClose()
+     * @see org.chromium.chrome.browser.ui.side_ui.SideUiContainer#onWillAutoClose
      */
     void simulateAutoCloseConditionForTesting() {
         mSimulateAutoCloseConditionForTesting = true;
@@ -377,6 +377,13 @@ final class SidePanelContainerCoordinatorImpl
         // container will never _request_ to be auto-restored.
         mSideUiCoordinator.updateUi(
                 UiUpdateRequest.getConfigurationChangeRequestForTesting( // IN-TEST
+                        /* suppressAnimations= */ true));
+    }
+
+    /** Simulates a top controls height change that triggers a UI update. */
+    void simulateTopControlsHeightChangeForTesting() {
+        mSideUiCoordinator.updateUi(
+                UiUpdateRequest.getTopControlsHeightChangeRequestForTesting( // IN-TEST
                         /* suppressAnimations= */ true));
     }
 
@@ -545,9 +552,10 @@ final class SidePanelContainerCoordinatorImpl
     }
 
     @Override
-    public void onWillAutoClose() {
+    public void onWillAutoClose(boolean isShowable) {
         mIsPreparingForAutoClose = true;
-        assertNonNull(mNativeBridgeSelector.getCurrentCoordinatorBridge()).onWillAutoClose();
+        assertNonNull(mNativeBridgeSelector.getCurrentCoordinatorBridge())
+                .onWillAutoClose(isShowable);
         mIsPreparingForAutoClose = false;
     }
 

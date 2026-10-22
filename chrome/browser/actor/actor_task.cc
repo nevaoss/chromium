@@ -19,6 +19,7 @@
 #include "chrome/browser/actor/action_tracker_for_metrics.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_metrics.h"
+#include "chrome/browser/actor/actor_surface_registry.h"
 #include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/execution_engine.h"
 #include "chrome/browser/actor/tab_observation_strategy.h"
@@ -653,6 +654,8 @@ void ActorTask::AddTab(tabs::TabHandle tab_handle,
       GURL(), id(), "ActorTask::AddTab",
       JournalDetailsBuilder().Add("tab_id", tab_handle.raw_value()).Build());
 
+  actor_keyed_service().GetSurfaceRegistry().GetOrCreateForTab(tab_handle);
+
   controlled_tabs_.emplace(
       tab_handle,
       std::make_unique<ActorControlledTabState>(this, stop_task_on_detach));
@@ -684,8 +687,7 @@ void ActorTask::HandleDiscardContents(tabs::TabInterface* tab,
   CHECK(controlled_tabs_.contains(tab->GetHandle()));
   if (!IsUnderActorControl()) {
     // The observer should only be attached when we're under actor control.
-    NOTREACHED(base::NotFatalUntil::M145);
-    return;
+    NOTREACHED();
   }
   ActorControlledTabState* state = controlled_tabs_[tab->GetHandle()].get();
   DidContentsEnterActorControl(state, new_contents);

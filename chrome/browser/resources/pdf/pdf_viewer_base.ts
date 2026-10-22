@@ -481,23 +481,23 @@ export abstract class PdfViewerBaseElement extends HelpBubbleCrLitElementBase {
 
     if (params.position) {
       this.viewport_.goToPageAndXy(
-          params.page || 0, params.position.x, params.position.y);
+          params.pageIndex || 0, params.position.x, params.position.y);
     }
 
     if (params.view) {
       this.isUserInitiatedEvent = false;
       const fittingTypeParams = {
         boundingBox: params.boundingBox,
-        page: params.page || 0,
+        pageIndex: params.pageIndex || 0,
         viewPosition: params.viewPosition,
         fitToWidth: params.view === FittingType.FIT_TO_BOUNDING_BOX_WIDTH,
       };
       this.viewport_.setFittingType(params.view, fittingTypeParams);
       this.forceFit(params.view);
       this.isUserInitiatedEvent = true;
-    } else if (!params.position && params.page !== undefined) {
+    } else if (!params.position && params.pageIndex !== undefined) {
       // No fitting type provided, so just go to page.
-      this.viewport_.goToPage(params.page);
+      this.viewport_.goToPage(params.pageIndex);
     }
   }
 
@@ -531,7 +531,13 @@ export abstract class PdfViewerBaseElement extends HelpBubbleCrLitElementBase {
           'type' in message &&
           (message.type === 'documentLoaded' ||
            message.type === 'passwordPrompted')) {
-        targetOrigin = '*';
+        // Address these to the origin the embedder had when it contacted the
+        // viewer, so that they are not delivered to a different origin if the
+        // embedder has since navigated away. An embedder with an opaque
+        // origin, such as one loaded from a data: or file: URL, reports its
+        // origin as 'null', which cannot be named as a target origin, so the
+        // wildcard remains the only way to reach it.
+        targetOrigin = this.parentOrigin_ === 'null' ? '*' : this.parentOrigin_;
       } else {
         targetOrigin = this.originalUrl;
       }

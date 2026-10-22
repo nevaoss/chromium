@@ -1167,38 +1167,15 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.BottomBar.Aim.IneligibilityReason"
-    enum="AndroidBottomBarAimIneligibilityReason" expires_after="2027-05-26">
-  <owner>madhavpruthi@google.com</owner>
-  <owner>ckitagawa@chromium.org</owner>
-  <owner>polardz@google.com</owner>
-  <summary>
-    Records the reason why AI Mode was evaluated and determined to be ineligible
-    or not shown in the Android Bottom Bar.
-  </summary>
-</histogram>
-
-<histogram name="Android.BottomBar.Aim.LaunchResult"
-    enum="AndroidBottomBarAimLaunchResult" expires_after="2027-05-26">
-  <owner>madhavpruthi@google.com</owner>
-  <owner>ckitagawa@chromium.org</owner>
-  <owner>polardz@google.com</owner>
-  <summary>
-    Records the result of attempting to launch AI Mode when the AI Mode button
-    is pressed in the Android Bottom Bar.
-  </summary>
-</histogram>
-
 <histogram name="Android.BottomBar.ExtraAction.CandidateDecisionTime"
     units="ms" expires_after="2027-05-26">
   <owner>madhavpruthi@google.com</owner>
   <owner>ckitagawa@chromium.org</owner>
   <owner>polardz@google.com</owner>
   <summary>
-    Records the time taken to evaluate and decide the candidate extra action
-    (GLIC or AI Mode) in the bottom bar. This includes the time spent in
-    GlicEnabling and geofencing checks. Recorded when the candidate extra action
-    resolution is evaluated.
+    Records the time taken to evaluate and decide the candidate extra action in
+    the bottom bar. This includes the time spent in GlicEnabling and geofencing
+    checks. Recorded when the candidate extra action resolution is evaluated.
   </summary>
 </histogram>
 
@@ -1209,8 +1186,8 @@ chromium-metrics-reviews@google.com.
   <owner>polardz@google.com</owner>
   <summary>
     Records the candidate action resolved for the Android Bottom Bar's extra
-    button container slot (None, Glic, or Aim). Recorded when the candidate
-    resolution is computed.
+    button container slot (None or Glic). Recorded when the candidate resolution
+    is computed.
   </summary>
 </histogram>
 
@@ -1274,7 +1251,6 @@ chromium-metrics-reviews@google.com.
 <!-- LINT.IfChange(AndroidBottomBarIphFeature) -->
 
   <token key="IPHType">
-    <variant name="Aim" summary="AI Mode button"/>
     <variant name="Glic" summary="Gemini button"/>
     <variant name="NewTab" summary="New Tab button"/>
   </token>
@@ -1410,19 +1386,6 @@ chromium-metrics-reviews@google.com.
     Typically the value should be 0 or maybe 1 for a very short amount of time.
     Large numbers here indicate there's a bug that's keeping the controls
     visible.
-  </summary>
-</histogram>
-
-<histogram name="Android.BrowserControls.RenderDrivenShowConstraint"
-    enum="Boolean" expires_after="2027-10-04">
-  <owner>wenyufu@chromium.org</owner>
-  <owner>clank-app-team@google.com</owner>
-  <summary>
-    Records when browser controls constraint is set to &quot;SHOWN&quot;,
-    whether the render is capable to drive the browser controls show animation.
-    The record is used for crbug.com/449011189. Recorded after native is fully
-    initialized and when feature BrowserControlsRenderDrivenShowConstraint is
-    enabled.
   </summary>
 </histogram>
 
@@ -2446,38 +2409,6 @@ chromium-metrics-reviews@google.com.
     <variant name="Extension"/>
     <variant name="Web"/>
   </token>
-</histogram>
-
-<histogram name="Android.FocusChanged.FocusOwningWebContents" enum="Boolean"
-    expires_after="2025-09-28">
-  <owner>amanvr@google.com</owner>
-  <owner>nuskos@chromium.org</owner>
-  <summary>
-    Records whether the WebContents associated with the RenderWidgetHost
-    responsible for handling input is focused specifically on TouchStart or
-    GestureTap or MouseDown events. This histogram is recorded for each input
-    event sequence on TouchStart/GestureTap/MouseDown input events. This would
-    help us in understanding if focus changes on input events need to be handled
-    by Viz once it starts receiving transferred input events after InputVizard
-    (go/chrome-inputvizard).
-  </summary>
-</histogram>
-
-<histogram
-    name="Android.FocusChanged.RenderWidgetHostViewChildFrame.RootViewFocusState"
-    enum="RootViewFocusState" expires_after="2025-09-28">
-  <owner>amanvr@google.com</owner>
-  <owner>nuskos@chromium.org</owner>
-  <summary>
-    Tracks if the RenderWidgetHostViewChildFrame requests focus on the root
-    RenderWidgetHostViewAndroid or not during the beginning of a touch
-    interaction. This tracking occurs every time the function
-    RenderWidgetHostViewChildFrame::PreProcessTouchEvent() is called when a
-    touch sequence begins (on TouchStart). This would help us in understanding
-    if focus changes on touch input events need to be handled by Viz once it
-    starts receiving transferred input events after InputVizard
-    (go/chrome-inputvizard).
-  </summary>
 </histogram>
 
 <histogram name="Android.Foldable.PageLoadedInTabletMode" enum="Boolean"
@@ -5877,15 +5808,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.ShowSelectionMenuSourceType" enum="MenuSourceType"
-    expires_after="2026-08-23">
-  <owner>mvanouwerkerk@chromium.org</owner>
-  <owner>wbjacksonjr@chromium.org</owner>
-  <summary>
-    Records the menu source type when a selection menu is shown. Android only.
-  </summary>
-</histogram>
-
 <histogram name="Android.SideUi.ResizeHandle.TouchState"
     enum="AndroidSideUiResizeHandleTouchState" expires_after="2026-12-16">
   <owner>spdonghao@google.com</owner>
@@ -8125,6 +8047,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.WebView.LoadDataWithBaseUrl.ContentAccessDestination"
+    enum="RequestDestination" expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the RequestDestination when a content:// URL resource is requested
+    by a document with a non-content origin (such as a page loaded via
+    loadDataWithBaseURL).
+
+    Each RequestDestination is recorded at most once per page load.
+  </summary>
+</histogram>
+
 <histogram name="Android.WebView.LoadDataWithBaseUrl.DataSize.DataScheme"
     units="characters" expires_after="2026-06-01">
   <owner>peconn@chromium.org</owner>
@@ -8142,6 +8077,19 @@ chromium-metrics-reviews@google.com.
   <summary>
     The size of the 'data' string passed to loadDataWithBaseURL() when the
     'baseUrl' does not start with 'data:'.
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.LoadDataWithBaseUrl.FileAccessDestination"
+    enum="RequestDestination" expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the RequestDestination when a local file:// URL resource is
+    requested by a document with a non-file origin (such as a page loaded via
+    loadDataWithBaseURL).
+
+    Each RequestDestination is recorded at most once per page load.
   </summary>
 </histogram>
 
@@ -8965,6 +8913,28 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.WebView.ServiceWorker.SetAllowContentAccess"
+    enum="BooleanAllowed" expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether content URL access is being allowed following every call
+    initiated by the hosting Android app to
+    ServiceWorkerWebSettings.setAllowContentAccess().
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.ServiceWorker.SetAllowFileAccess"
+    enum="BooleanAllowed" expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether file system access is being allowed following every call
+    initiated by the hosting Android app to
+    ServiceWorkerWebSettings.setAllowFileAccess().
+  </summary>
+</histogram>
+
 <histogram name="Android.WebView.SetAcceptThirdPartyCookies"
     enum="BooleanAccepted" expires_after="2027-04-01">
   <owner>jdeabreu@chromium.org</owner>
@@ -8974,6 +8944,50 @@ chromium-metrics-reviews@google.com.
     Records whether third party cookies are being accepted following every
     Android API call, initiated by the hosting Android app, to
     CookieManager.setAcceptThirdPartyCookies().
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.SetAllowContentAccess" enum="BooleanAllowed"
+    expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether content URL access is being allowed following every call
+    initiated by the hosting Android app to WebSettings.setAllowContentAccess().
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.SetAllowFileAccess" enum="BooleanAllowed"
+    expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether file system access is being allowed following every call
+    initiated by the hosting Android app to WebSettings.setAllowFileAccess().
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.SetAllowFileAccessFromFileURLs"
+    enum="BooleanAllowed" expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether JavaScript running in the context of a file scheme URL
+    should be allowed to access content from other file scheme URLs, recorded
+    following every call initiated by the hosting Android app to
+    WebSettings.setAllowFileAccessFromFileURLs().
+  </summary>
+</histogram>
+
+<histogram name="Android.WebView.SetAllowUniversalAccessFromFileURLs"
+    enum="BooleanAllowed" expires_after="2027-04-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether JavaScript running in the context of a file scheme URL
+    should be allowed to access content from any origin, recorded following
+    every call initiated by the hosting Android app to
+    WebSettings.setAllowUniversalAccessFromFileURLs().
   </summary>
 </histogram>
 

@@ -29,6 +29,7 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/signin/cross_device_signin_promo_manager.h"
 #include "chrome/browser/ui/webui/signin/signin_email_confirmation_dialog.h"
 #endif
 
@@ -103,13 +104,6 @@ class SigninViewController {
   // Returns true if Chrome new tab page/blank is displayed in `contents`.
   static bool IsNTPTab(content::WebContents* contents);
 
-  // Shows the signin attached to |browser_|'s active web contents.
-  // |access_point| indicates the access point used to open the Gaia sign in
-  // page.
-  // DEPRECATED: Use ShowDiceEnableSyncTab instead.
-  void ShowSignin(signin_metrics::AccessPoint access_point,
-                  const GURL& redirect_url = chrome::ChromeUINewTabURLAsGURL());
-
   // Shows a Chrome Sync signin tab. |email_hint| may be empty.
   // Note: If the user has already set a primary account, then this is
   // considered a reauth of the primary account, and |email_hint| is ignored.
@@ -168,8 +162,10 @@ class SigninViewController {
   // Shows the cross-device sign-in QR code bubble. The bubble is anchored to
   // the profile menu button if available, or centered on the browser window
   // otherwise.
-  void ShowCrossDeviceSigninQrBubble(GURL qr_code_url,
-                                     base::OnceClosure closing_callback);
+  void ShowCrossDeviceSigninQrBubble(
+      GURL qr_code_url,
+      base::OnceClosure closing_callback,
+      CrossDeviceSigninPromoEntryPoint entry_point);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
   // Shows the modal sync confirmation dialog as a browser-modal dialog on top

@@ -482,7 +482,9 @@ public final class ChromePreferenceKeys {
     public static final String IMAGE_DESCRIPTIONS_DONT_ASK_AGAIN =
             "Chrome.ImageDescriptions.DontAskAgain";
 
-    public static final String INCOGNITO_SHORTCUT_ADDED = "incognito-shortcut-added";
+    // DYNAMIC_SHORTCUTS_ADDED used to only track the incognito launcher shortcut, thus the
+    // "incognito-" prefix. The string should NOT be changed without some sort of migration.
+    public static final String DYNAMIC_SHORTCUTS_ADDED = "incognito-shortcut-added";
 
     /** Indicates how many times the Incognito re-auth promo card was shown in the tab switcher. */
     public static final String INCOGNITO_REAUTH_PROMO_SHOW_COUNT =
@@ -700,13 +702,6 @@ public final class ChromePreferenceKeys {
      */
     public static final String PERSISTENT_OFFLINE_CONTENT_AVAILABILITY_STATUS =
             "Chrome.OfflineIndicatorV2.HasPersistentOfflineContent";
-
-    /**
-     * Indicates whether Page Insights Hub's Privacy Notice has been closed by user; used to ensure
-     * user does not see it again.
-     */
-    public static final String PIH_PRIVACY_NOTICE_CLOSED =
-            "Chrome.PageInsightsHub.PrivacyNoticeClosedByUser";
 
     /** Whether NTP magic stack cards are enabled (if false, no cards can show). */
     public static final String HOME_MODULE_CARDS_ENABLED = "Chrome.HomeModules.Enabled";
@@ -929,9 +924,6 @@ public final class ChromePreferenceKeys {
     /** Stores the timestamp of the last performed Safety check. */
     public static final String SETTINGS_SAFETY_CHECK_LAST_RUN_TIMESTAMP =
             "Chrome.SafetyCheck.LastRunTimestamp";
-
-    /** Stores the number of times the user has performed Safety check. */
-    public static final String SETTINGS_SAFETY_CHECK_RUN_COUNTER = "Chrome.SafetyCheck.RunCounter";
 
     public static final String SETTINGS_WEBSITE_FAILED_BUILD_VERSION =
             "ManagedSpace.FailedBuildVersion";
@@ -1294,7 +1286,6 @@ public final class ChromePreferenceKeys {
                 OS_ADVANCED_PROTECTION_SETTING_UPDATED_TIME,
                 PASSWORD_PROTECTION_ACCOUNTS,
                 PERSISTENT_OFFLINE_CONTENT_AVAILABILITY_STATUS,
-                PIH_PRIVACY_NOTICE_CLOSED,
                 POLICY_USER_FEEDBACK_ALLOWED,
                 PRICE_TRACKING_ANNOTATIONS_ENABLED_METRICS_TIMESTAMP,
                 PRICE_TRACKING_CHROME_MANAGED_NOTIFICATIONS_TIMESTAMPS,
@@ -1329,7 +1320,6 @@ public final class ChromePreferenceKeys {
                 SETUP_LIST_COMPLETED_KEY_PREFIX.pattern(),
                 SETTINGS_RECENT_SEARCH_ENTRIES,
                 SETTINGS_SAFETY_CHECK_LAST_RUN_TIMESTAMP,
-                SETTINGS_SAFETY_CHECK_RUN_COUNTER,
                 SHARING_LAST_SHARED_COMPONENT_NAME,
                 SHARING_TABS_WITH_OS,
                 SHOW_HOME_BUTTON_POLICY_STATE,

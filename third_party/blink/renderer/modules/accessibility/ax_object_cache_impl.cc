@@ -3595,6 +3595,25 @@ bool AXObjectCacheImpl::CommitAXUpdates(Document& document, bool force) {
   if (serialize_immediately_) {
     force = true;
     serialize_immediately_ = false;
+    if (IsSerializationInFlight()) {
+      // CommitAXUpdates() will update the AX tree now, but the subsequent call
+      // to SerializeAXUpdatesIfNeeded() will return early without sending an
+      // IPC because another serialization is still in flight. Record that an
+      // immediate serialization is still owed once OnSerializationReceived()
+      // gets the ACK, and keep `serialize_immediately_for_action_` intact so
+      // ScheduleAXUpdate() can schedule a visual frame when the ACK arrives.
+      serialize_immediately_after_current_serialization_ = true;
+    } else {
+      // No serialization is in flight, so the subsequent call to
+      // SerializeAXUpdatesIfNeeded() will send the updates to the browser now.
+      // The action's immediate serialization request is fulfilled.
+      serialize_immediately_for_action_ = false;
+    }
+  } else if (force && !IsSerializationInFlight()) {
+    // A caller forced an immediate update (e.g. UpdateAXForAllDocuments()) and
+    // no serialization is in flight, so SerializeAXUpdatesIfNeeded() will send
+    // all pending updates now. Clear any pending action flag.
+    serialize_immediately_for_action_ = false;
   }
 
   if (!force) {
@@ -4295,8 +4314,9 @@ void AXObjectCacheImpl::ScheduleAXUpdate() const {
   // A visual update will force accessibility to be updated as well.
   // Scheduling visual updates before the document is finished loading can
   // interfere with event ordering. In any case, at least one visual update will
-  // occur between now and when the document load is complete.
-  if (!GetDocument().IsLoadCompleted())
+  // occur between now and when the document load is complete, unless an
+  // accessibility action explicitly requires immediate serialization.
+  if (!GetDocument().IsLoadCompleted() && !serialize_immediately_for_action_)
     return;
 
   // If there was a document change that doesn't trigger a lifecycle update on
@@ -5715,6 +5735,12 @@ void AXObjectCacheImpl::AddEventToSerializationQueue(
       obj, event.event_from, event.event_from_action, event.event_intents);
 
   if (immediate_serialization) {
+    // Allow ScheduleAXUpdate() to schedule a visual update for this action even
+    // if the document is still loading.
+    if (event.event_from == ax::mojom::blink::EventFrom::kAction ||
+        event.event_from_action != ax::mojom::blink::Action::kNone) {
+      serialize_immediately_for_action_ = true;
+    }
     ScheduleImmediateSerialization();
   }
 }
@@ -5748,6 +5774,12 @@ void AXObjectCacheImpl::OnSerializationReceived() {
 }
 
 void AXObjectCacheImpl::ScheduleImmediateSerialization() {
+  // Track action-triggered requests so OnSerializationReceived() can schedule
+  // a visual update even while the document is still loading.
+  if (active_event_from_ == ax::mojom::blink::EventFrom::kAction ||
+      active_event_from_action_ != ax::mojom::blink::Action::kNone) {
+    serialize_immediately_for_action_ = true;
+  }
   if (IsSerializationInFlight()) {
     // Wait until current serialization message has been received.
     serialize_immediately_after_current_serialization_ = true;
@@ -6125,15 +6157,17 @@ void AXObjectCacheImpl::UpdateActiveAriaModalDialog(Node* focused_node) {
   // - Is visible in AXTree (not display:none / visibility:hidden / aria-hidden)
   if (active_aria_modal_dialog_) {
     const AXObject* ax_dialog = Get(active_aria_modal_dialog_);
-    bool is_valid_modal = ax_dialog && !ax_dialog->IsIgnored() &&
-                          ax_dialog->IsVisible() && ax_dialog->IsModal();
+    bool is_valid_modal = active_aria_modal_dialog_->isConnected() &&
+                          ax_dialog && !ax_dialog->IsMissingParent() &&
+                          !ax_dialog->IsIgnored() && ax_dialog->IsVisible() &&
+                          ax_dialog->IsModal();
     if (!is_valid_modal) {
       active_aria_modal_dialog_ = nullptr;
       MarkDocumentDirty();
     }
   }
 
-  if (!focused_node) {
+  if (!focused_node || !focused_node->isConnected()) {
     return;
   }
 
@@ -6170,8 +6204,8 @@ void AXObjectCacheImpl::UpdateActiveAriaModalDialog(Node* focused_node) {
     // If focus is on a strict ancestor of the active modal dialog in the a11y
     // tree (e.g. body/root), preserve active_aria_modal_dialog_.
     if (ax_dialog && ax_focus) {
-      for (const AXObject* ancestor = ax_dialog->ParentObject(); ancestor;
-           ancestor = ancestor->ParentObject()) {
+      for (const AXObject* ancestor = ax_dialog->ParentObjectIfPresent();
+           ancestor; ancestor = ancestor->ParentObjectIfPresent()) {
         if (ancestor == ax_focus) {
           return;
         }
@@ -6185,12 +6219,12 @@ void AXObjectCacheImpl::UpdateActiveAriaModalDialog(Node* focused_node) {
 }
 
 Element* AXObjectCacheImpl::AncestorAriaModalDialog(Node* node) {
-  if (!node) {
+  if (!node || !node->isConnected()) {
     return nullptr;
   }
 
   if (const AXObject* obj = Get(node)) {
-    for (; obj; obj = obj->ParentObject()) {
+    for (; obj; obj = obj->ParentObjectIfPresent()) {
       if (obj->IsModal()) {
         return obj->GetElement();
       }

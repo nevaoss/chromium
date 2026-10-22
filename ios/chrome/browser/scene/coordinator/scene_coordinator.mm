@@ -5,7 +5,6 @@
 #import "ios/chrome/browser/scene/coordinator/scene_coordinator.h"
 
 #import "base/cancelable_callback.h"
-#import "base/ios/ios_util.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/metrics/histogram_macros.h"
 #import "base/metrics/user_metrics.h"
@@ -59,6 +58,7 @@
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_container_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_entry_flow_coordinator.h"
+#import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_web_modal_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/first_run/coordinator/gemini_first_run_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
@@ -196,6 +196,7 @@ inline LayoutStateScenePassKey PassKey() {
 }  // namespace
 
 @interface SceneCoordinator () <AccountMenuCoordinatorDelegate,
+                                GeminiWebModalCoordinatorDelegate,
                                 HistoryCoordinatorDelegate,
                                 IncognitoInterstitialCoordinatorDelegate,
                                 ManagedProfileCreationCoordinatorDelegate,
@@ -243,6 +244,7 @@ inline LayoutStateScenePassKey PassKey() {
   // container coordinator.
   GeminiFirstRunCoordinator* _geminiLiveFirstRunCoordinator;
   GeminiEntryFlowCoordinator* _geminiEntryFlowCoordinator;
+  GeminiWebModalCoordinator* _geminiWebModalCoordinator;
   // Coordinator for display of the Password Checkup.
   PasswordCheckupCoordinator* _passwordCheckupCoordinator;
   // Coordinator for display of Password Settings.
@@ -416,6 +418,8 @@ inline LayoutStateScenePassKey PassKey() {
   _geminiLiveFirstRunCoordinator = nil;
   [_geminiEntryFlowCoordinator stop];
   _geminiEntryFlowCoordinator = nil;
+  [_geminiWebModalCoordinator stop];
+  _geminiWebModalCoordinator = nil;
 
   _incognitoBrowser = nullptr;
 }
@@ -779,6 +783,11 @@ inline LayoutStateScenePassKey PassKey() {
   [_historyCoordinator start];
 }
 
+- (void)showAssistantWithNewSession {
+  [self closeAssistant];
+  [self showAssistant];
+}
+
 - (void)showAssistant {
   [self showAssistantInMinimizedState:NO];
 }
@@ -1092,7 +1101,7 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)openNewWindowWithActivity:(NSUserActivity*)userActivity {
-  if (!base::ios::IsMultipleScenesSupported()) {
+  if (!self.sceneState.multipleScenesAvailable) {
     return;  // silent no-op.
   }
 
@@ -1897,6 +1906,15 @@ inline LayoutStateScenePassKey PassKey() {
   [self stopPasswordSettingsCoordinator];
 }
 
+#pragma mark - GeminiWebModalCoordinatorDelegate
+
+- (void)geminiWebModalCoordinatorDidDismiss:
+    (GeminiWebModalCoordinator*)coordinator {
+  CHECK_EQ(_geminiWebModalCoordinator, coordinator);
+  [_geminiWebModalCoordinator stop];
+  _geminiWebModalCoordinator = nil;
+}
+
 #pragma mark - HistoryCoordinatorDelegate
 
 - (void)closeHistoryWithCompletion:(ProceduralBlock)completion {
@@ -2123,7 +2141,7 @@ inline LayoutStateScenePassKey PassKey() {
                               identity:(id<SystemIdentity>)identity
                             completion:(SigninCoordinatorCompletionCallback)
                                            completion {
-  CHECK_EQ(coordinator, _signinCoordinator, base::NotFatalUntil::M151);
+  CHECK_EQ(coordinator, _signinCoordinator);
 
   if (completion) {
     completion(coordinator, result, identity);
@@ -2849,6 +2867,23 @@ inline LayoutStateScenePassKey PassKey() {
   if (geminiBrowserAgent) {
     geminiBrowserAgent->CollapseFloatyIfInvoked();
   }
+}
+
+- (void)showGeminiWebModalForURL:(const GURL&)URL {
+  CHECK(IsPageActionMenuEnabled());
+  if (_geminiWebModalCoordinator) {
+    return;
+  }
+
+  UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
+                                             ? _viewController
+                                             : self.activeViewController;
+  _geminiWebModalCoordinator = [[GeminiWebModalCoordinator alloc]
+      initWithBaseViewController:baseViewController
+                         browser:_regularBrowser.get()
+                             URL:URL];
+  _geminiWebModalCoordinator.delegate = self;
+  [_geminiWebModalCoordinator start];
 }
 
 #pragma mark - Helper methods for Gemini entry flow

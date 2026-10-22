@@ -97,8 +97,6 @@ struct AutocompleteMatch {
   string image_url;
   // Used to determine if the match is a contextual suggestion.
   bool is_contextual_suggestion;
-  // Used to determine if the match is a non-canned AI suggestion.
-  bool is_noncanned_aim_suggestion;
   // Used to determine if the match should be rendered in a two-row layout
   // (e.g. calculator, entity images, people search).
   bool is_two_row_suggestion;
@@ -109,7 +107,6 @@ struct AutocompleteMatch {
   bool is_enterprise_search_aggregator_people_type;
   string type;  // Result of omnibox::AutocompleteMatchTypeToString().
   mojo_base.mojom.String16 remove_button_a11y_label;
-  bool swap_contents_and_description;
   // Whether to show the description for a contextual match.
   bool show_contextual_description;
   // ID of the group the suggestion belongs to. 0 if it does not belong to any.
@@ -294,6 +291,9 @@ struct AutocompleteResult {
   map<int32, SuggestionGroup> suggestion_groups_map;
   array<AutocompleteMatch> matches;
   mojo_base.mojom.String16? smart_compose_inline_hint;
+  // Whether to show the AIM suggestion activity link below the matches. True
+  // when any match is a non-canned AIM suggestion.
+  bool show_aim_activity_link;
 };
 
 enum SelectionLineState {
@@ -306,6 +306,7 @@ enum SelectionLineState {
   kCtrlEnter = 7,
   kFocusedButtonVoiceSearch = 8,
   kFocusedButtonLensSearch = 9,
+  kFocusedButtonContextualChip = 10,
 };
 
 // See components/omnibox/browser/omnibox_popup_selection.h

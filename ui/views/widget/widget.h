@@ -371,6 +371,11 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
 
     bool accept_events = true;
 
+    // Whether drag and drop should be enabled for this widget. If nullopt, it
+    // is inferred based on `accept_events` and `type` (e.g. disabled if
+    // `!accept_events` or `type == TYPE_TOOLTIP` or `type == TYPE_DRAG`).
+    std::optional<bool> accept_drag_drop;
+
     Activatable activatable = Activatable::kDefault;
 
     // The class of window and its overall z-order level. This level is visible
@@ -1395,7 +1400,8 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
 
   // Enables input activation protection. Installs standard policies (window
   // activation, click-spam) if `custom_protector` is nullptr. Otherwise, the
-  // caller must configure the provided protector with the desired policies.
+  // caller must configure the provided protector with the desired policies. A
+  // `custom_protector` may only be provided when first enabling protection.
   //
   // Enabling this also activates occlusion protection for non-located events
   // (e.g. keyboard action keys like Space or Return) in

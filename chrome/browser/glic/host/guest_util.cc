@@ -23,6 +23,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
+#include "chrome/browser/glic/common/glic_navigation.h"
 #include "chrome/browser/glic/gemini_enterprise/geic_enabling.h"
 #include "chrome/browser/glic/glic_hotkey.h"
 #include "chrome/browser/glic/glic_pref_names.h"
@@ -41,7 +42,9 @@
 #include "chrome/browser/glic/suggestions/contextual_cueing_features.h"
 #include "chrome/browser/permissions/system/system_permission_settings.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/skills/skills_service_factory.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/prefs/prefs_tab_helper.h"
 #include "chrome/browser/ui/tabs/page_context_eligibility_helper.h"
 #include "chrome/common/chrome_features.h"
@@ -55,6 +58,7 @@
 #include "components/optimization_guide/content/browser/page_context_eligibility.h"
 #include "components/origin_matcher/origin_matcher.h"
 #include "components/prefs/pref_service.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/skills/features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/clipboard_types.h"
@@ -79,6 +83,7 @@
 #include "third_party/blink/public/common/web_preferences/web_preferences.h"
 #include "third_party/blink/public/mojom/autoplay/autoplay.mojom.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
+#include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkRegion.h"
 #include "ui/base/clipboard/clipboard.h"
@@ -86,6 +91,7 @@
 #include "ui/base/clipboard/clipboard_metadata.h"
 #include "ui/base/clipboard/clipboard_monitor.h"
 #include "ui/base/clipboard/clipboard_observer.h"
+#include "ui/display/screen.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "url/gurl.h"
 
@@ -252,6 +258,40 @@ void ConfigureGuestZoom(content::WebContents& guest_contents) {
 #endif
 }
 
+GURL MaybeAppendAuthUser(const GURL& guest_url,
+                         content::BrowserContext* browser_context) {
+  if (!base::FeatureList::IsEnabled(features::kGlicSetAuthUser) ||
+      !features::IsGlicNoWebviewEnabled()) {
+    return guest_url;
+  }
+  if (guest_url.is_empty() || !guest_url.is_valid()) {
+    return guest_url;
+  }
+  std::string unused_output;
+  if (net::GetValueForKeyInQuery(guest_url, "authuser", &unused_output)) {
+    return guest_url;
+  }
+  if (!browser_context) {
+    return guest_url;
+  }
+  Profile* profile = Profile::FromBrowserContext(browser_context);
+  if (!profile) {
+    return guest_url;
+  }
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+  if (!identity_manager) {
+    return guest_url;
+  }
+  std::string email =
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
+          .email;
+  if (email.empty()) {
+    return guest_url;
+  }
+  return net::AppendQueryParameter(guest_url, "authuser", email);
+}
+
 }  // namespace
 
 void PrepareGlicGuestWebContents(content::WebContents& guest_contents,
@@ -289,6 +329,70 @@ void SetHostForGuest(content::WebContents& guest_contents, Host* host) {
 bool IsGlicGuest(const content::WebContents* web_contents) {
   return web_contents &&
          GlicGuestObserver::FromWebContents(web_contents) != nullptr;
+}
+
+bool MaybeHandleGlicWindowCreation(
+    content::RenderFrameHost* opener,
+    const GURL& target_url,
+    WindowOpenDisposition disposition,
+    const blink::mojom::WindowFeatures& window_features) {
+  if (!opener) {
+    return false;
+  }
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(opener);
+  if (!web_contents || !IsGlicGuest(web_contents)) {
+    return false;
+  }
+  if (!target_url.is_valid() || !target_url.SchemeIsHTTPOrHTTPS()) {
+    return false;
+  }
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+
+  bool is_popup = (disposition == WindowOpenDisposition::NEW_POPUP) ||
+                  window_features.is_popup;
+  if (base::FeatureList::IsEnabled(features::kGlicPopupWindowsEnabled) &&
+      (is_popup || window_features.has_x || window_features.has_y ||
+       window_features.has_width || window_features.has_height)) {
+    int32_t popup_width =
+        window_features.has_width && window_features.bounds.width() > 0
+            ? window_features.bounds.width()
+            : 500;
+    int32_t popup_height =
+        window_features.has_height && window_features.bounds.height() > 0
+            ? window_features.bounds.height()
+            : 500;
+
+    int x = 0;
+    int y = 0;
+    gfx::NativeView native_view = web_contents->GetContentNativeView();
+    if (display::Screen::Get() && native_view) {
+      const display::Display& display =
+          display::Screen::Get()->GetDisplayNearestView(native_view);
+      const gfx::Rect work_area = display.work_area();
+      x = work_area.x() + (work_area.width() - popup_width) / 2;
+      y = work_area.y() + (work_area.height() - popup_height) / 2;
+    }
+
+    std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
+        profile, target_url, ui::PAGE_TRANSITION_LINK);
+    params->disposition = WindowOpenDisposition::NEW_POPUP;
+    params->opened_by_another_window = true;
+    params->window_features.bounds = gfx::Rect(x, y, popup_width, popup_height);
+    glic::NavigateAsync(std::move(params), base::DoNothing());
+    return true;
+  }
+
+  // TODO(b/568778823): Make non-popups use createTab.
+  std::unique_ptr<NavigateParams> params = std::make_unique<NavigateParams>(
+      profile, target_url, ui::PAGE_TRANSITION_LINK);
+  params->disposition =
+      (disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB)
+          ? WindowOpenDisposition::NEW_BACKGROUND_TAB
+          : WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  glic::NavigateAsync(std::move(params), base::DoNothing());
+  return true;
 }
 
 void MarkProcessAsGlic(content::RenderProcessHost* rph) {
@@ -365,6 +469,7 @@ GURL GetGuestURL(content::BrowserContext* browser_context) {
     return GURL();
   }
 
+  url = MaybeAppendAuthUser(url, browser_context);
   return GetLocalizedGuestURL(url);
 }
 

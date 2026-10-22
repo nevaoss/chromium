@@ -4,12 +4,16 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 
+#include <optional>
+#include <string>
 #include <utility>
 
 #include "base/functional/callback.h"
 #include "base/logging.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ghost_loader_view.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_base.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
@@ -27,12 +31,17 @@
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/file_select_listener.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/page_navigator.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/view_type_utils.h"
+#include "net/base/url_util.h"
 #include "third_party/blink/public/common/web_preferences/web_preferences.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/webview/web_contents_set_background_color.h"
@@ -48,8 +57,12 @@ constexpr SkColor kDarkModeBackgroundColor = SkColorSetRGB(16, 18, 23);
 }  // namespace
 
 ContextualTasksWebView::ContextualTasksWebView(
-    BrowserWindowInterface* browser_window)
-    : browser_window_(browser_window) {
+    BrowserWindowInterface* browser_window,
+    content::WebContents* toolbar_web_contents,
+    content::WebContents* ghost_loader_web_contents)
+    : browser_window_(browser_window),
+      owns_toolbar_web_contents_(toolbar_web_contents == nullptr),
+      owns_ghost_loader_web_contents_(ghost_loader_web_contents == nullptr) {
   SetProperty(views::kElementIdentifierKey,
               kContextualTasksSidePanelWebViewElementId);
 
@@ -66,6 +79,9 @@ ContextualTasksWebView::ContextualTasksWebView(
 
     toolbar_web_view_ = AddChildView(
         std::make_unique<views::WebView>(browser_window->GetProfile()));
+    if (toolbar_web_contents) {
+      toolbar_web_view_->SetWebContents(toolbar_web_contents);
+    }
     views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
         toolbar_web_view_->GetWebContents(), SK_ColorTRANSPARENT);
     toolbar_web_view_->GetWebContents()->SetPageBaseBackgroundColor(
@@ -78,10 +94,12 @@ ContextualTasksWebView::ContextualTasksWebView(
     toolbar_web_view_->GetWebContents()->SetWebPreferences(prefs);
 
     toolbar_web_view_->SetPreferredSize(gfx::Size(0, 46));
-    toolbar_web_view_->LoadInitialURL(
-        GURL(chrome::kChromeUIContextualTasksToolbarURL));
     webui::SetBrowserWindowInterface(toolbar_web_view_->GetWebContents(),
                                      browser_window);
+    if (owns_toolbar_web_contents_) {
+      toolbar_web_view_->LoadInitialURL(
+          GURL(chrome::kChromeUIContextualTasksToolbarURL));
+    }
 
     auto content_container = std::make_unique<views::View>();
     content_container->SetLayoutManager(std::make_unique<views::FillLayout>());
@@ -93,7 +111,7 @@ ContextualTasksWebView::ContextualTasksWebView(
 
     ghost_loader_view_ = content_container->AddChildView(
         std::make_unique<ContextualTasksGhostLoaderView>(
-            browser_window->GetProfile()));
+            browser_window->GetProfile(), ghost_loader_web_contents));
     views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
         ghost_loader_view_->GetWebContents(), background_color);
     ghost_loader_view_->GetWebContents()->SetPageBaseBackgroundColor(
@@ -115,12 +133,20 @@ ContextualTasksWebView::ContextualTasksWebView(
 ContextualTasksWebView::~ContextualTasksWebView() {
   Observe(nullptr);
   if (toolbar_web_view_ && toolbar_web_view_->web_contents()) {
-    webui::SetBrowserWindowInterface(toolbar_web_view_->GetWebContents(),
-                                     nullptr);
+    if (owns_toolbar_web_contents_) {
+      webui::SetBrowserWindowInterface(toolbar_web_view_->GetWebContents(),
+                                       nullptr);
+    } else {
+      toolbar_web_view_->SetWebContents(nullptr);
+    }
   }
   if (ghost_loader_view_ && ghost_loader_view_->web_contents()) {
-    webui::SetBrowserWindowInterface(ghost_loader_view_->GetWebContents(),
-                                     nullptr);
+    if (owns_ghost_loader_web_contents_) {
+      webui::SetBrowserWindowInterface(ghost_loader_view_->GetWebContents(),
+                                       nullptr);
+    } else {
+      ghost_loader_view_->SetWebContents(nullptr);
+    }
   }
   SetWebContents(nullptr);
 }
@@ -148,6 +174,7 @@ void ContextualTasksWebView::SetWebContents(content::WebContents* wc) {
   if (IsContextualTasksSidePanelRearchitectureEnabled()) {
     ignore_next_stop_loading_for_about_blank_ = false;
     Observe(wc);
+    UpdateToolbarStateFromWebContents(wc);
     if (wc) {
       bool should_show_ghost_loader = false;
       if (browser_window_ && browser_window_->GetProfile()) {
@@ -238,6 +265,9 @@ void ContextualTasksWebView::DidStartNavigation(
     SetGhostLoaderVisible(false);
   } else {
     SetGhostLoaderVisible(true);
+    if (auto* toolbar_ui = GetToolbarUI()) {
+      toolbar_ui->SetIsAiPage(false);
+    }
   }
 }
 
@@ -266,6 +296,9 @@ void ContextualTasksWebView::DidRedirectNavigation(
     SetGhostLoaderVisible(false);
   } else {
     SetGhostLoaderVisible(true);
+    if (auto* toolbar_ui = GetToolbarUI()) {
+      toolbar_ui->SetIsAiPage(false);
+    }
   }
 }
 
@@ -281,36 +314,69 @@ void ContextualTasksWebView::DidFinishNavigation(
       ignore_next_stop_loading_for_about_blank_ = true;
       return;
     }
+  }
 
-    if (!navigation_handle->HasCommitted() ||
-        navigation_handle->IsErrorPage()) {
+  if (!navigation_handle->HasCommitted()) {
+    if (!navigation_handle->IsSameDocument()) {
+      UpdateToolbarStateFromWebContents(web_contents(),
+                                        /*use_last_committed_url=*/true);
       if (IsTaskWaitingForUrl()) {
         return;
       }
       SetGhostLoaderVisible(false);
     }
-  }
-
-  if (!navigation_handle->HasCommitted() || navigation_handle->IsErrorPage()) {
     return;
   }
 
+  if (navigation_handle->IsErrorPage()) {
+    if (auto* toolbar_ui = GetToolbarUI()) {
+      toolbar_ui->SetIsAiPage(false);
+      toolbar_ui->SetThreadTitle(std::nullopt);
+    }
+    if (IsTaskWaitingForUrl()) {
+      return;
+    }
+    SetGhostLoaderVisible(false);
+    return;
+  }
+
+  auto* toolbar_ui = GetToolbarUI();
+  if (!toolbar_ui) {
+    return;
+  }
+
+  ContextualTasksUiService* ui_service = nullptr;
   if (browser_window_ && browser_window_->GetProfile()) {
-    if (auto* ui_service =
-            ContextualTasksUiServiceFactory::GetForBrowserContext(
-                browser_window_->GetProfile())) {
-      const GURL& previous_url =
-          navigation_handle->GetPreviousPrimaryMainFrameURL();
-      const bool was_on_srp = ui_service->IsSearchResultsUrl(previous_url) &&
-                              !ui_service->IsAiUrl(previous_url);
-      if (was_on_srp && ui_service->IsAiUrl(navigation_handle->GetURL())) {
-        if (auto* tab = browser_window_->GetActiveTabInterface()) {
-          if (auto* controller = LensSearchController::From(tab)) {
-            // TODO(crbug.com/566315172): Update to a dedicated dismissal source
-            // for SRP to AIM transitions.
-            controller->CloseLensAsync(lens::LensOverlayDismissalSource::
-                                           kContextualTasksQuerySubmitted);
-          }
+    ui_service = ContextualTasksUiServiceFactory::GetForBrowserContext(
+        browser_window_->GetProfile());
+  }
+
+  const GURL& url = navigation_handle->GetURL();
+  const bool is_ai_url = ui_service && ui_service->IsAiUrl(url);
+  toolbar_ui->SetIsAiPage(is_ai_url);
+
+  if (!is_ai_url || ContextualTasksUI::IsZeroState(url, ui_service)) {
+    toolbar_ui->SetThreadTitle(std::nullopt);
+  } else {
+    std::string query_value;
+    if (net::GetValueForKeyInQuery(url, "q", &query_value) &&
+        !query_value.empty()) {
+      toolbar_ui->SetThreadTitle(query_value);
+    }
+  }
+
+  if (ui_service) {
+    const GURL& previous_url =
+        navigation_handle->GetPreviousPrimaryMainFrameURL();
+    const bool was_on_srp = ui_service->IsSearchResultsUrl(previous_url) &&
+                            !ui_service->IsAiUrl(previous_url);
+    if (was_on_srp && ui_service->IsAiUrl(navigation_handle->GetURL())) {
+      if (auto* tab = browser_window_->GetActiveTabInterface()) {
+        if (auto* controller = LensSearchController::From(tab)) {
+          // TODO(crbug.com/566315172): Update to a dedicated dismissal source
+          // for SRP to AIM transitions.
+          controller->CloseLensAsync(
+              lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
         }
       }
     }
@@ -367,13 +433,94 @@ content::WebContents* ContextualTasksWebView::OpenURLFromTab(
     const content::OpenURLParams& params,
     base::OnceCallback<void(content::NavigationHandle&)>
         navigation_handle_callback) {
-  BrowserWindowInterface* browser = webui::GetBrowserWindowInterface(source);
-  if (browser) {
-    return browser->OpenURL(params, std::move(navigation_handle_callback));
-  } else {
+  if (!source || source != web_contents()) {
+    return nullptr;
+  }
+
+  // Allow the side panel's own WebUI (`chrome://contextual-tasks`) to reload or
+  // navigate itself in-place without forwarding to the active browser tab.
+  if (params.disposition == WindowOpenDisposition::CURRENT_TAB &&
+      ContextualTasksUiService::IsContextualTasksUrl(params.url)) {
+    content::NavigationController::LoadURLParams load_url_params(params);
+    base::WeakPtr<content::NavigationHandle> navigation_handle =
+        source->GetController().LoadURLWithParams(load_url_params);
+    if (navigation_handle_callback && navigation_handle) {
+      std::move(navigation_handle_callback).Run(*navigation_handle);
+    }
+    return source;
+  }
+
+  if (!browser_window_) {
     VLOG(1) << "Cannot find browser to open URL from tab.";
     return nullptr;
   }
+
+  tabs::TabInterface* active_tab = browser_window_->GetActiveTabInterface();
+  if (!active_tab) {
+    return nullptr;
+  }
+
+  // Resolve the frame that requested this navigation.
+  content::RenderFrameHost* source_rfh = nullptr;
+  if (params.initiator_frame_token.has_value()) {
+    source_rfh = content::RenderFrameHost::FromFrameToken(
+        content::GlobalRenderFrameHostToken(
+            params.initiator_process_id, params.initiator_frame_token.value()));
+  } else {
+    source_rfh = content::RenderFrameHost::FromID(
+        params.source_render_process_id, params.source_render_frame_id);
+  }
+  // Only an initiator that actually lives in this side panel (including an
+  // embedded <webview> guest) may be trusted; treat anything else as an unknown
+  // initiator so that its state (notably user activation) is not attributed to
+  // this side panel.
+  if (source_rfh && content::WebContents::FromRenderFrameHost(source_rfh)
+                            ->GetOutermostWebContents() != web_contents()) {
+    source_rfh = nullptr;
+  }
+
+  // Restrict forwarded navigations to valid HTTP/HTTPS URLs.
+  if (!params.url.is_valid() || !params.url.SchemeIsHTTPOrHTTPS()) {
+    return nullptr;
+  }
+
+  content::OpenURLParams modified_params = params;
+
+  // Sanitize `user_gesture` and `disposition` unless the request was created by
+  // the browser for a context menu command. Note that IPCs sent from the legacy
+  // `chrome://contextual-tasks` WebUI frame have `is_renderer_initiated`
+  // cleared by `Navigator::RequestOpenURL()`, so checking
+  // `!params.started_from_context_menu` ensures those IPCs are still validated.
+  if (params.is_renderer_initiated || !params.started_from_context_menu) {
+    if (modified_params.user_gesture &&
+        (!source_rfh || !source_rfh->HasTransientUserActivation())) {
+      modified_params.user_gesture = false;
+    }
+
+    switch (modified_params.disposition) {
+      case WindowOpenDisposition::NEW_FOREGROUND_TAB:
+      case WindowOpenDisposition::NEW_BACKGROUND_TAB:
+      case WindowOpenDisposition::NEW_POPUP:
+      case WindowOpenDisposition::NEW_WINDOW:
+        break;
+      default:
+        modified_params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+        break;
+    }
+  }
+
+  // Reset frame_tree_node_id to prevent mismatched frame tree lookups in the
+  // target navigation controller.
+  modified_params.frame_tree_node_id = content::FrameTreeNodeId();
+
+  // Pass the active tab's WebContents as the source so the navigation pipeline
+  // has the correct context to evaluate disposition and popup blocking rules.
+  content::WebContents* tab_contents = active_tab->GetContents();
+  if (tab_contents && tab_contents->GetDelegate()) {
+    return tab_contents->GetDelegate()->OpenURLFromTab(
+        tab_contents, modified_params, std::move(navigation_handle_callback));
+  }
+  return nullptr;
 }
 
 void ContextualTasksWebView::RunFileChooser(
@@ -429,6 +576,47 @@ bool ContextualTasksWebView::IsTaskWaitingForUrl() const {
       ContextualSearchWebContentsHelper::FromWebContents(web_contents());
   return ui_service && helper && helper->task_id().has_value() &&
          ui_service->IsTaskWaitingForUrl(helper->task_id().value());
+}
+
+ContextualTasksUIBase* ContextualTasksWebView::GetToolbarUI() const {
+  if (!toolbar_web_view_) {
+    return nullptr;
+  }
+  return ContextualTasksUIBase::FromWebContents(
+      toolbar_web_view_->web_contents());
+}
+
+void ContextualTasksWebView::UpdateToolbarStateFromWebContents(
+    content::WebContents* wc,
+    bool use_last_committed_url) {
+  auto* toolbar_ui = GetToolbarUI();
+  if (!toolbar_ui) {
+    return;
+  }
+
+  if (!wc || !browser_window_ || !browser_window_->GetProfile()) {
+    toolbar_ui->SetIsAiPage(false);
+    toolbar_ui->SetThreadTitle(std::nullopt);
+    return;
+  }
+
+  auto* ui_service = ContextualTasksUiServiceFactory::GetForBrowserContext(
+      browser_window_->GetProfile());
+  const GURL& url =
+      use_last_committed_url ? wc->GetLastCommittedURL() : wc->GetVisibleURL();
+  const bool is_ai_url = ui_service && ui_service->IsAiUrl(url);
+  toolbar_ui->SetIsAiPage(is_ai_url);
+
+  if (!is_ai_url || ContextualTasksUI::IsZeroState(url, ui_service)) {
+    toolbar_ui->SetThreadTitle(std::nullopt);
+    return;
+  }
+
+  std::string query_value;
+  if (net::GetValueForKeyInQuery(url, "q", &query_value) &&
+      !query_value.empty()) {
+    toolbar_ui->SetThreadTitle(query_value);
+  }
 }
 
 BEGIN_METADATA(ContextualTasksWebView)

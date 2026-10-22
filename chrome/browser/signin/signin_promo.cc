@@ -122,29 +122,30 @@ GURL GetChromeSyncURLForDice(ChromeSyncUrlArgs args) {
   static const char kMagiChromeHybridTransportSupportedHistogram[] =
       "Signin.MagiChrome.HybridTransportSupported";
   // Record hybrid transport signal histogram.
-  IsHybridTransportSupportedForQrCodeSignin(base::BindOnce([](bool can_start) {
-    base::UmaHistogramBoolean(kMagiChromeHybridTransportSupportedHistogram,
-                              can_start);
-  }));
+  IsHybridTransportSupportedForQrCodeSignin(base::BindOnce(
+      [](bool can_start, scoped_refptr<device::BluetoothAdapter>) {
+        base::UmaHistogramBoolean(kMagiChromeHybridTransportSupportedHistogram,
+                                  can_start);
+      }));
 
   return url;
 }
 
 void IsHybridTransportSupportedForQrCodeSignin(
-    base::OnceCallback<void(bool)> callback) {
+    HybridTransportSupportedCallback callback) {
   if (!device::BluetoothAdapterFactory::Get()->IsLowEnergySupported()) {
-    std::move(callback).Run(false);
+    std::move(callback).Run(false, nullptr);
     return;
   }
   device::BluetoothAdapterFactory::Get()->GetAdapter(base::BindOnce(
-      [](base::OnceCallback<void(bool)> callback,
+      [](HybridTransportSupportedCallback callback,
          scoped_refptr<device::BluetoothAdapter> adapter) {
         bool can_show =
             adapter && adapter->IsPresent() &&
             adapter->GetOsPermissionStatus() ==
                 device::BluetoothAdapter::PermissionStatus::kAllowed &&
             adapter->IsPowered();
-        std::move(callback).Run(can_show);
+        std::move(callback).Run(can_show, std::move(adapter));
       },
       std::move(callback)));
 }
@@ -229,19 +230,6 @@ void RegisterProfilePrefs(
   registry->RegisterBooleanPref(
       prefs::kHistoryPageHistorySyncPromoShownAfterDismissalPerProfile, false);
 
-  // Signin promo limits experiment prefs.
-  registry->RegisterIntegerPref(
-      prefs::kAddressSignInPromoShownCountPerProfileForLimitsExperiment, 0);
-  registry->RegisterIntegerPref(
-      prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment, 0);
-  registry->RegisterIntegerPref(
-      prefs::kPasswordSignInPromoShownCountPerProfileForLimitsExperiment, 0);
-  registry->RegisterIntegerPref(
-      prefs::kAddressSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
-  registry->RegisterIntegerPref(
-      prefs::kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
-  registry->RegisterIntegerPref(
-      prefs::kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
   registry->RegisterIntegerPref(
       prefs::kSearchAIModeSignInPromoShownCountPerProfile, 0);
   registry->RegisterIntegerPref(

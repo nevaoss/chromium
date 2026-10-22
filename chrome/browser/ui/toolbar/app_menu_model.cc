@@ -75,7 +75,7 @@
 #include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_constants.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_util.h"
-#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_context_menu_delegate.h"
+#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_sub_menu_model.h"
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_manager.h"
@@ -801,33 +801,24 @@ class SaveAndShareSubMenuModel : public ui::SimpleMenuModel {
   ~SaveAndShareSubMenuModel() override = default;
 
  private:
-  // Builds Send Tab to Self target device submenu when enhanced desktop UI is
-  // enabled.
-  void BuildSendTabToSelfSubmenu(BrowserWindowInterface* browser,
-                                 content::WebContents* web_contents);
+  // Builds the Send Tab to Self submenu or simple menu item.
+  void BuildSendTabToSelfItem(BrowserWindowInterface* browser);
 
-  // Fallback helper to add simple Send Tab to Self menu item.
-  void BuildSendTabToSelfSimpleItem();
-
-  std::unique_ptr<send_tab_to_self::SendTabToSelfContextMenuDelegate>
-      send_tab_to_self_submenu_delegate_;
   std::unique_ptr<ui::SimpleMenuModel> send_tab_to_self_submenu_;
 };
 
-void SaveAndShareSubMenuModel::BuildSendTabToSelfSubmenu(
-    BrowserWindowInterface* browser,
-    content::WebContents* web_contents) {
-  send_tab_to_self_submenu_delegate_ =
-      send_tab_to_self::SendTabToSelfContextMenuDelegate::MaybeCreateForTab(
-          web_contents, send_tab_to_self::ShareEntryPoint::kShareMenu);
-  if (!send_tab_to_self_submenu_delegate_) {
-    BuildSendTabToSelfSimpleItem();
+void SaveAndShareSubMenuModel::BuildSendTabToSelfItem(
+    BrowserWindowInterface* browser) {
+  send_tab_to_self_submenu_ =
+      send_tab_to_self::SendTabToSelfSubMenuModel::MaybeCreateForTab(
+          browser->tab_strip_model()->GetActiveWebContents(),
+          send_tab_to_self::ShareEntryPoint::kShareMenu);
+  if (!send_tab_to_self_submenu_) {
+    AddItemWithStringIdAndVectorIcon(this, IDC_SEND_TAB_TO_SELF,
+                                     IDS_MENU_SEND_TAB_TO_SELF,
+                                     GetSendTabToSelfIcon());
     return;
   }
-  send_tab_to_self_submenu_ = std::make_unique<ui::SimpleMenuModel>(
-      send_tab_to_self_submenu_delegate_.get());
-  send_tab_to_self_submenu_delegate_->PopulateSubmenu(
-      send_tab_to_self_submenu_.get());
 
   AddSubMenuWithStringIdAndIcon(
       IDC_SEND_TAB_TO_SELF, IDS_MENU_SEND_TAB_TO_SELF,
@@ -838,12 +829,6 @@ void SaveAndShareSubMenuModel::BuildSendTabToSelfSubmenu(
                     UserEducationService::MaybeShowNewBadge(
                         browser->GetProfile(),
                         send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2));
-}
-
-void SaveAndShareSubMenuModel::BuildSendTabToSelfSimpleItem() {
-  AddItemWithStringIdAndVectorIcon(this, IDC_SEND_TAB_TO_SELF,
-                                   IDS_MENU_SEND_TAB_TO_SELF,
-                                   GetSendTabToSelfIcon());
 }
 
 SaveAndShareSubMenuModel::SaveAndShareSubMenuModel(
@@ -894,13 +879,7 @@ SaveAndShareSubMenuModel::SaveAndShareSubMenuModel(
           features::IsRoundedIconsEnabled() ? vector_icons::kLinkIcon
                                             : kLinkChromeRefreshOldIcon);
 
-      if (base::FeatureList::IsEnabled(
-              send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2)) {
-        BuildSendTabToSelfSubmenu(
-            browser, browser->tab_strip_model()->GetActiveWebContents());
-      } else {
-        BuildSendTabToSelfSimpleItem();
-      }
+      BuildSendTabToSelfItem(browser);
 
       AddItemWithStringIdAndVectorIcon(
           this, IDC_QRCODE_GENERATOR, IDS_APP_MENU_CREATE_QR_CODE,
@@ -1098,12 +1077,11 @@ void ToolsMenuModel::Build(BrowserWindowInterface* browser) {
   AddSeparator(ui::NORMAL_SEPARATOR);
 
   AddItemWithStringIdAndVectorIcon(
-      this, IDC_SHOW_READING_MODE_SIDE_PANEL, IDS_SHOW_READING_MODE_SIDE_PANEL,
+      this, IDC_SHOW_READING_MODE, IDS_SHOW_READING_MODE_SIDE_PANEL,
       features::IsRoundedIconsEnabled() ? kMenuBookIcon
                                         : kMenuBookChromeRefreshOldIcon);
-  SetElementIdentifierAt(
-      GetIndexOfCommandId(IDC_SHOW_READING_MODE_SIDE_PANEL).value(),
-      kReadingModeMenuItem);
+  SetElementIdentifierAt(GetIndexOfCommandId(IDC_SHOW_READING_MODE).value(),
+                         kReadingModeMenuItem);
 
   AddSeparator(ui::NORMAL_SEPARATOR);
 
@@ -1288,7 +1266,7 @@ void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
   switch (command_id) {
     case IDC_SHOW_BOOKMARK_SIDE_PANEL:
     case IDC_SHOW_HISTORY_CLUSTERS_SIDE_PANEL:
-    case IDC_SHOW_READING_MODE_SIDE_PANEL:
+    case IDC_SHOW_READING_MODE:
     case IDC_READING_LIST_MENU_SHOW_UI:
     case IDC_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL: {
       actions::ActionInvocationContext context =
@@ -1637,7 +1615,7 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
       }
       LogMenuAction(MENU_ACTION_SHOW_HISTORY_CLUSTER_SIDE_PANEL);
       break;
-    case IDC_SHOW_READING_MODE_SIDE_PANEL:
+    case IDC_SHOW_READING_MODE:
       if (!uma_action_recorded_) {
         base::UmaHistogramMediumTimes(
             "WrenchMenu.TimeToAction.ShowReadingModeSidePanel", delta);
@@ -2046,7 +2024,7 @@ bool AppMenuModel::GetAcceleratorForCommandId(
   // Reading mode uses different command IDs for different ways of opening
   // it, so adjust to use the command ID for the keyboard shortcut to grab
   // the proper accelerator.
-  if (command_id == IDC_SHOW_READING_MODE_SIDE_PANEL) {
+  if (command_id == IDC_SHOW_READING_MODE) {
     return provider_->GetAcceleratorForCommandId(IDC_SHOW_READING_MODE_KEYBOARD,
                                                  accelerator);
   }

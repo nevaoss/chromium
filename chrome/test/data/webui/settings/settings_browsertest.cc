@@ -459,7 +459,13 @@ IN_PROC_BROWSER_TEST_F(SettingsTest, GlicPage) {
   RunTest("settings/glic_page_test.js", "runMochaSuite('GlicPage Default')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsTest, GlicSubpage) {
+// TODO(crbug.com/568786600): Flaky on Linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_GlicSubpage DISABLED_GlicSubpage
+#else
+#define MAYBE_GlicSubpage GlicSubpage
+#endif
+IN_PROC_BROWSER_TEST_F(SettingsTest, MAYBE_GlicSubpage) {
   RunTest("settings/glic_subpage_test.js",
           "runMochaSuite('GlicSubpage Default')");
 }
@@ -769,10 +775,6 @@ class SettingsGlicSubPageWebActuationTableTest
   SettingsGlicSubPageWebActuationTableTest() {
     const WebActuationTestParams& p = GetParam();
 
-    base::FieldTrialParams actor_params;
-    actor_params[features::kGlicActorPolicyControlExemption.name] =
-        p.policy_control_exemption ? "true" : "false";
-
     std::vector<base::test::FeatureRefAndParams> enabled;
     std::vector<base::test::FeatureRef> disabled;
 
@@ -791,7 +793,11 @@ class SettingsGlicSubPageWebActuationTableTest
       disabled.emplace_back(features::kGlicWebActuationSettingsToggle);
     }
 
-    enabled.emplace_back(features::kGlicActor, actor_params);
+    if (p.policy_control_exemption) {
+      enabled.push_back({features::kGlicActorPolicyControlExemption, {}});
+    } else {
+      disabled.emplace_back(features::kGlicActorPolicyControlExemption);
+    }
     enabled.push_back(
         {features::kGlicActorEligibleTiers,
          {{features::kGlicActorEligibleTiersParam.name, p.eligible_tiers}}});
@@ -1798,7 +1804,14 @@ IN_PROC_BROWSER_TEST_F(SettingsSecurityPageTest, SafeBrowsingRadio) {
 
 using SettingsSecurityPageV2Test = SettingsBrowserTest;
 
-IN_PROC_BROWSER_TEST_F(SettingsSecurityPageV2Test, Main) {
+// TODO(crbug.com/568529249): This test is failing flakily on Linux debug
+// builders because of timed out.
+#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
+#define MAYBE_Main DISABLED_Main
+#else
+#define MAYBE_Main Main
+#endif
+IN_PROC_BROWSER_TEST_F(SettingsSecurityPageV2Test, MAYBE_Main) {
   RunTest("settings/security/security_page_v2_test.js",
           "runMochaSuite('Main')");
 }

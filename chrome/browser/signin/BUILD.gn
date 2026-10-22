@@ -183,6 +183,7 @@ source_set("signin") {
 }
 
 source_set("impl") {
+  public = []
   sources = [
     "about_signin_internals_factory.cc",
     "account_consistency_mode_manager.cc",
@@ -238,6 +239,7 @@ source_set("impl") {
     "//components/skills:features",
     "//components/supervised_user/core/browser",
     "//components/sync_bookmarks",
+    "//components/tabs:public",
     "//extensions/buildflags",
   ]
 
@@ -702,6 +704,7 @@ source_set("unit_tests") {
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/webui/signin:signin_ui_error",
       "//chrome/test:test_support",
+      "//chrome/test/base:browser_with_test_window_test",
       "//components/metrics",
       "//components/signin/core/browser:test_support",
       "//components/signin/public/base",

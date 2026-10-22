@@ -5,6 +5,9 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_UI_BASE_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_UI_BASE_H_
 
+#include <optional>
+#include <string>
+
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
@@ -22,6 +25,7 @@
 #endif
 
 class BrowserWindowInterface;
+class GURL;
 
 namespace content {
 class WebContents;
@@ -35,6 +39,7 @@ namespace contextual_tasks {
 
 class ContextualTasksPanelController;
 class ContextualTasksPermissionController;
+class ContextualTasksUiService;
 
 // Base WebUI controller class for Contextual Tasks.
 //
@@ -71,6 +76,12 @@ class ContextualTasksUIBase
   ContextualTasksUIBase& operator=(const ContextualTasksUIBase&) = delete;
   ~ContextualTasksUIBase() override;
 
+  Profile* GetProfile();
+  content::WebContents* GetWebUIWebContents();
+  BrowserWindowInterface* GetBrowser();
+  contextual_tasks::ContextualTasksPanelController* GetPanelController();
+  contextual_tasks::ContextualTasksUiService* GetUiService();
+
   static content::WebUIDataSource* RegisterWebUIDataSource(Profile* profile);
   static base::DictValue GetContextualTasksLoadTimeData(Profile* profile);
 
@@ -88,6 +99,9 @@ class ContextualTasksUIBase
   void OpenFeedbackUi() override;
   void MoveTaskUiToNewTab() override;
   void ShowThreadHistory() override;
+  void OnTabClickedFromSourcesMenu(int32_t tab_id, const GURL& url) override;
+  void OnFileClickedFromSourcesMenu(const GURL& url) override;
+  void OnImageClickedFromSourcesMenu(const GURL& url) override;
 
 #if !BUILDFLAG(IS_ANDROID)
   // PinnedToolbarActionsModel::Observer:
@@ -129,11 +143,6 @@ class ContextualTasksUIBase
       toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
   void OnChipCollapseAnimationEnded(
       toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
-
-  Profile* GetProfile();
-  content::WebContents* GetWebUIWebContents();
-  BrowserWindowInterface* GetBrowser();
-  ContextualTasksPanelController* GetPanelController();
   contextual_tasks_toolbar::mojom::Page* GetToolbarPageRemote() {
     return toolbar_page_.is_bound() ? toolbar_page_.get() : nullptr;
   }
@@ -153,6 +162,39 @@ class ContextualTasksUIBase
   // Notifies the toolbar page that the AI page status has changed.
   void NotifyAiPageStatusChanged(bool is_ai_page);
 
+  // Whether the active side panel contents is currently displaying an AI page.
+  //
+  // Lifecycle:
+  // - Set to false proactively in `DidStartNavigation` and
+  //   `DidRedirectNavigation` whenever navigating to a non-AI destination, so
+  //   the toolbar UI updates immediately without waiting for commit.
+  // - Set to true when an AI navigation successfully commits in
+  //   `DidFinishNavigation`, or when `SetWebContents` is called with a contents
+  //   already committed on an AI URL.
+  // - Reverted to the last committed state if an uncommitted navigation aborts,
+  //   or reset to false on navigation errors or when `SetWebContents` receives
+  //   null/non-AI contents.
+  // - Calling `SetIsAiPage` forwards the state to subscribed WebUI clients
+  //   (`toolbar_page_`), updating toolbar buttons and the overflow menu (e.g.
+  //   showing or hiding the Thread History item).
+  bool IsAiPage() const { return is_ai_page_; }
+  virtual void SetIsAiPage(bool is_ai_page);
+
+  // The title of the active conversation thread, or nullopt if no thread is
+  // active (e.g. on AI zero-state landing pages or non-AI URLs).
+  //
+  // Lifecycle:
+  // - Extracted from query parameters (e.g. 'q') upon committed AI thread
+  //   navigations or same-document SPA transitions.
+  // - Preserved across follow-up AI navigations within the same thread that
+  //   omit query parameters.
+  // - Reset to nullopt when navigating to AI zero-state, non-AI pages, error
+  //   pages, or when `SetWebContents` receives null/non-AI contents.
+  // - Calling `SetThreadTitle` forwards the title to subscribed WebUI clients
+  //   (`page_`) to update the header title displayed in the toolbar.
+  virtual const std::optional<std::string>& GetThreadTitle();
+  virtual void SetThreadTitle(std::optional<std::string> title);
+
  protected:
   // Helper to dynamically resolve the active tab's permission controller.
   virtual ContextualTasksPermissionController* GetActiveController();
@@ -171,6 +213,8 @@ class ContextualTasksUIBase
       toolbar_ui_observers_;
   toolbar_ui_api::mojom::PermissionDashboardStatePtr
       last_pushed_permission_dashboard_state_;
+  bool is_ai_page_ = false;
+  std::optional<std::string> thread_title_;
 
 #if !BUILDFLAG(IS_ANDROID)
   base::ScopedObservation<PinnedToolbarActionsModel,

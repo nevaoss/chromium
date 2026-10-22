@@ -12,10 +12,12 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/web/web_ax_object.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_tester.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_view_transition_callback.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/dom/document_parser.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
@@ -1500,6 +1502,72 @@ TEST_F(AccessibilityTest,
   EXPECT_EQ(cache->GetActiveAriaModalDialog(), dialog);
 }
 
+TEST_F(AccessibilityTest, AriaModalMoveBeforeAncestorDoesNotCrash) {
+  GetDocument().GetSettings()->SetAriaModalPrunesAXTree(true);
+
+  SetBodyInnerHTML(R"HTML(
+    <div class="row" id="row">
+      <p>Parent of the dialog (this is what gets moved)</p>
+      <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" id="dlg">
+        <h2 id="dlg-title">Dialog</h2>
+        <button id="btn_a">A: moveBefore</button>
+        <button id="btn_c">C: moveBefore, focus kept</button>
+      </div>
+    </div>
+    <div id="log"></div>
+  )HTML");
+
+  // Insert hidden pantry right after <body>, matching
+  // aria-modal-move-before-crash.html.
+  Element* pantry = GetDocument().CreateRawElement(html_names::kDivTag);
+  pantry->setAttribute(html_names::kHiddenAttr, g_empty_atom);
+  GetDocument().documentElement()->appendChild(pantry);
+
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  cache.UpdateAXForAllDocuments();
+
+  Element* row = GetElementById("row");
+  Element* dlg = GetElementById("dlg");
+  Element* btn_a = GetElementById("btn_a");
+  Element* btn_c = GetElementById("btn_c");
+  Element* log = GetElementById("log");
+  ASSERT_NE(row, nullptr);
+  ASSERT_NE(dlg, nullptr);
+  ASSERT_NE(btn_a, nullptr);
+  ASSERT_NE(btn_c, nullptr);
+  ASSERT_NE(log, nullptr);
+
+  // Case A: Focus button inside dialog, disable it so focus falls back to
+  // <body> (keeping #dlg as the active aria-modal dialog), then moveBefore()
+  // #row into the hidden pantry after <body>.
+  btn_a->Focus();
+  cache.HandleFocusedUIElementChanged(nullptr, btn_a);
+  btn_a->setAttribute(html_names::kDisabledAttr, g_empty_atom);
+  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
+  cache.HandleFocusedUIElementChanged(btn_a, GetDocument().body());
+  cache.UpdateAXForAllDocuments();
+  EXPECT_EQ(cache.GetActiveAriaModalDialog(), dlg);
+
+  pantry->moveBefore(row, nullptr, ASSERT_NO_EXCEPTION);
+  cache.UpdateAXForAllDocuments();
+
+  // Move row back into body and re-enable button, matching
+  // aria-modal-move-before-crash.html.
+  GetDocument().body()->insertBefore(row, log, ASSERT_NO_EXCEPTION);
+  btn_a->removeAttribute(html_names::kDisabledAttr);
+  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
+  cache.UpdateAXForAllDocuments();
+
+  // Case C: Focus kept inside the dialog during moveBefore().
+  btn_c->Focus();
+  cache.HandleFocusedUIElementChanged(GetDocument().body(), btn_c);
+  cache.UpdateAXForAllDocuments();
+  EXPECT_EQ(cache.GetActiveAriaModalDialog(), dlg);
+
+  pantry->moveBefore(row, nullptr, ASSERT_NO_EXCEPTION);
+  cache.UpdateAXForAllDocuments();
+}
+
 TEST_F(AccessibilityTest, AriaOwnsWithUnmappedOrDetachedChildDoesNotCrash) {
   // Test case based on ClusterFuzz issue 521081377 reproducer.
   SetBodyInnerHTML(R"HTML(
@@ -1767,6 +1835,200 @@ TEST_F(AccessibilityTest,
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
 
   EXPECT_EQ(1u, SerializeAndGetRadioGroupSize(cache, GetDocument(), r1_id));
+}
+
+TEST_F(AccessibilityTest,
+       SelectionSerializedBeforeNextActionWhileDocumentLoading) {
+  SetBodyInnerHTML(R"HTML(<p id="p">Hello</p>)HTML");
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  cache.SetAXMode(ui::kAXModeComplete);
+
+  AXObject* paragraph = GetAXObjectByElementId("p");
+  ASSERT_NE(nullptr, paragraph);
+  AXObject* text = paragraph->FirstChildIncludingIgnored();
+  ASSERT_NE(nullptr, text);
+  ASSERT_EQ(ax::mojom::blink::Role::kStaticText, text->RoleValue());
+
+  // Establish a clean baseline tree.
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  // Simulate a document whose subresources or subframes are still loading.
+  GetDocument().SetReadyState(Document::kLoading);
+  ASSERT_FALSE(GetDocument().IsLoadCompleted());
+
+  // Non-action updates (even with serialize_immediately_ set) should not
+  // schedule a visual update while loading.
+  cache.serialize_immediately_ = true;
+  cache.serialize_immediately_for_action_ = false;
+  GetChromeClient().UnsetAnimationScheduled();
+  cache.ScheduleAXUpdate();
+  EXPECT_FALSE(GetChromeClient().AnimationScheduled());
+  cache.serialize_immediately_ = false;
+
+  // Simulate PerformAction(kSetSelection) when a pre-action dirty object
+  // causes UpdateAXForAllDocuments() to send an in-flight serialization
+  // before the selection action runs.
+  cache.MarkAXObjectDirty(paragraph);
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+  cache.OnSerializationStartSend();
+  ASSERT_TRUE(cache.IsSerializationInFlight());
+
+  cache.ScheduleImmediateSerialization();
+  EXPECT_FALSE(cache.serialize_immediately_);
+  EXPECT_TRUE(cache.serialize_immediately_after_current_serialization_);
+
+  WebAXObject web_text(text);
+  EXPECT_TRUE(web_text.SetSelection(web_text, 0, web_text, 1));
+  EXPECT_TRUE(cache.serialize_immediately_for_action_);
+
+  // When the visual frame for painting the selection runs while the
+  // pre-action serialization is still in flight, CommitAXUpdates defers.
+  EXPECT_FALSE(cache.CommitAXUpdates(GetDocument(), /*force=*/false));
+
+  // When the in-flight serialization ACK arrives while the document is still
+  // loading, OnSerializationReceived() must schedule a visual update so the
+  // new selection is serialized without waiting for the next action.
+  GetChromeClient().UnsetAnimationScheduled();
+  cache.OnSerializationReceived();
+  EXPECT_FALSE(cache.IsSerializationInFlight());
+  EXPECT_TRUE(cache.serialize_immediately_);
+  EXPECT_TRUE(cache.serialize_immediately_for_action_);
+  EXPECT_TRUE(GetChromeClient().AnimationScheduled());
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/false));
+  EXPECT_FALSE(cache.serialize_immediately_for_action_);
+  std::vector<ui::AXTreeUpdate> updates;
+  std::vector<ui::AXEvent> events;
+  bool had_end_of_test_event = false;
+  bool had_load_complete_messages = false;
+  {
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(
+        updates, events, had_end_of_test_event, had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  ASSERT_FALSE(updates.empty());
+  EXPECT_TRUE(updates.back().has_tree_data);
+  EXPECT_EQ(text->AXObjectID(), updates.back().tree_data.sel_anchor_object_id);
+  EXPECT_EQ(0, updates.back().tree_data.sel_anchor_offset);
+  EXPECT_EQ(text->AXObjectID(), updates.back().tree_data.sel_focus_object_id);
+  EXPECT_EQ(1, updates.back().tree_data.sel_focus_offset);
+}
+
+TEST_F(
+    AccessibilityTest,
+    CommitAXUpdatesPreservesSerializeImmediatelyAcrossParserPauseAndInFlight) {
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  cache.SetAXMode(ui::kAXModeComplete);
+
+  DocumentParser* parser = GetDocument().ImplicitOpen(kForceSynchronousParsing);
+  ASSERT_NE(nullptr, parser);
+  parser->Append("<p id=\"p\">Hallo</p>");
+  UpdateAllLifecyclePhasesForTest();
+  ASSERT_TRUE(cache.IsParsingMainDocument());
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  // While the main document is parsing and tree update pauses remain,
+  // non-forced commits are deferred without clearing serialize_immediately_.
+  cache.allowed_tree_update_pauses_remaining_ = 1;
+  cache.ScheduleImmediateSerialization();
+  ASSERT_TRUE(cache.serialize_immediately_);
+  EXPECT_FALSE(cache.CommitAXUpdates(GetDocument(), /*force=*/false));
+  EXPECT_TRUE(cache.serialize_immediately_);
+
+  cache.allowed_tree_update_pauses_remaining_ = 0;
+  EXPECT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/false));
+  EXPECT_FALSE(cache.serialize_immediately_);
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+  parser->Finish();
+
+  // If CommitAXUpdates consumes serialize_immediately_ while a serialization
+  // is already in flight, it must preserve the immediate follow-up flag for
+  // OnSerializationReceived().
+  cache.serialize_immediately_ = true;
+  cache.serialize_immediately_for_action_ = true;
+  cache.serialize_immediately_after_current_serialization_ = false;
+  cache.OnSerializationStartSend();
+  EXPECT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/false));
+  EXPECT_FALSE(cache.serialize_immediately_);
+  EXPECT_TRUE(cache.serialize_immediately_for_action_);
+  EXPECT_TRUE(cache.serialize_immediately_after_current_serialization_);
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  GetDocument().SetReadyState(Document::kLoading);
+  GetChromeClient().UnsetAnimationScheduled();
+  cache.OnSerializationReceived();
+  EXPECT_TRUE(cache.serialize_immediately_);
+  EXPECT_TRUE(cache.serialize_immediately_for_action_);
+  EXPECT_TRUE(GetChromeClient().AnimationScheduled());
+}
+
+TEST_F(AccessibilityTest, WebAXObjectClearSelectionAnnotatesAction) {
+  SetBodyInnerHTML(R"HTML(<p id="p">Hello</p>)HTML");
+  AXObjectCacheImpl& cache = GetAXObjectCache();
+  cache.SetAXMode(ui::kAXModeComplete);
+
+  AXObject* paragraph = GetAXObjectByElementId("p");
+  ASSERT_NE(nullptr, paragraph);
+  AXObject* text = paragraph->FirstChildIncludingIgnored();
+  ASSERT_NE(nullptr, text);
+
+  WebAXObject web_text(text);
+  ASSERT_TRUE(web_text.SetSelection(web_text, 0, web_text, 2));
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  {
+    std::vector<ui::AXTreeUpdate> initial_updates;
+    std::vector<ui::AXEvent> initial_events;
+    bool had_end_of_test_event = false;
+    bool had_load_complete_messages = false;
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(initial_updates, initial_events,
+                                              had_end_of_test_event,
+                                              had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  WebAXObject web_root(cache.Root());
+  EXPECT_TRUE(web_root.SetSelection(web_root, ax::mojom::kNoSelectionOffset,
+                                    web_root, ax::mojom::kNoSelectionOffset));
+
+  ASSERT_TRUE(cache.CommitAXUpdates(GetDocument(), /*force=*/true));
+  std::vector<ui::AXTreeUpdate> updates;
+  std::vector<ui::AXEvent> events;
+  bool had_end_of_test_event = false;
+  bool had_load_complete_messages = false;
+  {
+    ScopedFreezeAXCache freeze(cache);
+    cache.GetUpdatesAndEventsForSerialization(
+        updates, events, had_end_of_test_event, had_load_complete_messages);
+  }
+  cache.ClearObjectsPendingSerializationForTesting();
+  cache.ResetLifecycleForTesting();
+
+  bool found_selection_event = false;
+  for (const ui::AXEvent& event : events) {
+    if (event.event_type ==
+        ax::mojom::blink::Event::kDocumentSelectionChanged) {
+      found_selection_event = true;
+      EXPECT_EQ(ax::mojom::blink::EventFrom::kAction, event.event_from);
+      EXPECT_EQ(ax::mojom::blink::Action::kSetSelection,
+                event.event_from_action);
+    }
+  }
+  EXPECT_TRUE(found_selection_event);
 }
 
 }  // namespace blink

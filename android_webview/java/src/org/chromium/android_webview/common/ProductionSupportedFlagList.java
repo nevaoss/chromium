@@ -1520,6 +1520,9 @@ public final class ProductionSupportedFlagList {
                 "Boosts the thread types of IO threads in the video capture and network utility"
                         + " processes on the WebRTC media path."),
         Flag.baseFeature(
+                "RequiresLoadIgnoreLimitsForDomWindowsOnly",
+                "When Enabled, Sync-XHR in workers cannot bypass load limits."),
+        Flag.baseFeature(
                 BlinkFeatures.LAZY_PARSE_INLINE_STYLE_SHEETS,
                 "Defers declaration block parsing in inline stylesheets until rules match or"
                         + " are queried."),
@@ -1534,6 +1537,16 @@ public final class ProductionSupportedFlagList {
                 MediaFeatures.AUDIO_RENDERER_MIXER_IMMEDIATE_PAUSE,
                 "Immediately pauses the underlying audio output stream on explicit media"
                         + " player pauses instead of waiting for the 10-second mixer pause delay."),
+        Flag.baseFeature(
+                PaymentFeatureList.PAYMENT_REQUEST_ENFORCE_LNA_WITH_CLIENT_SECURITY_STATE,
+                "When enabled, the PaymentRequest will enforce LNA with ClientSecurityState."),
+        Flag.baseFeature(
+                BlinkFeatures.RESAMPLING_SCROLL_EVENTS,
+                "Enables resampling GestureScrollUpdate events at VSync time."),
+        Flag.baseFeature(
+                BlinkFeatures.SCROLL_PREDICTOR_REFINED_HAS_PREDICTION,
+                "Refines ScrollPredictor::HasPrediction() to check prediction availability before"
+                        + " generating synthetic scroll updates."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

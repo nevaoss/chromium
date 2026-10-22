@@ -66,6 +66,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_string_trustedscript.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_wasm_response_extensions.h"
 #include "third_party/blink/renderer/bindings/core/v8/worker_or_worklet_script_controller.h"
+#include "third_party/blink/renderer/core/ad_tracker/script_initiation_monitor.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_forbidden_scope.h"
 #include "third_party/blink/renderer/core/events/error_event.h"
@@ -475,19 +476,17 @@ void V8Initializer::FailedAccessCheckCallbackInMainThread(
 static bool ContentSecurityPolicyCodeGenerationCheck(
     v8::Local<v8::Context> context,
     v8::Local<v8::String> source) {
-  if (ExecutionContext* execution_context = ToExecutionContext(context)) {
-    // Note this callback is only triggered for contexts which have eval
-    // disabled. Hence we don't need to handle the case of isolated world
-    // contexts with no CSP specified. (They should be exempt from the page CSP.
-    // See crbug.com/982388.)
-
-    if (ContentSecurityPolicy* policy =
-            execution_context->GetContentSecurityPolicyForCurrentWorld()) {
-      v8::Context::Scope scope(context);
-      return policy->AllowEval(ReportingDisposition::kReport,
-                               ContentSecurityPolicy::kWillThrowException,
-                               ToBlinkString(context, source, 0));
-    }
+  // Note this callback is only triggered for contexts which have eval
+  // disabled. Hence we don't need to handle the case of isolated world
+  // contexts with no CSP specified. (They should be exempt from the page CSP.
+  // See crbug.com/982388.)
+  if (ContentSecurityPolicy* policy =
+          ToExecutionContext(context)
+              ->GetContentSecurityPolicyForCurrentWorld()) {
+    v8::Context::Scope scope(context);
+    return policy->AllowEval(ReportingDisposition::kReport,
+                             ContentSecurityPolicy::kWillThrowException,
+                             ToBlinkString(context, source, 0));
   }
   return false;
 }
@@ -496,14 +495,13 @@ static bool ContentSecurityPolicyCodeGenerationCheck(
 // context, via the "script-src 'trusted-types-eval'" directive + keyword.
 static bool ContentSecurityPolicyTrustedTypesCodeGenerationCheck(
     v8::Local<v8::Context> context) {
-  if (ExecutionContext* execution_context = ToExecutionContext(context)) {
-    if (ContentSecurityPolicy* policy =
-            execution_context->GetContentSecurityPolicyForCurrentWorld()) {
-      v8::Context::Scope scope(context);
-      return policy->AllowTrustedTypesEval(
-          ReportingDisposition::kReport,
-          ContentSecurityPolicy::kWillThrowException);
-    }
+  if (ContentSecurityPolicy* policy =
+          ToExecutionContext(context)
+              ->GetContentSecurityPolicyForCurrentWorld()) {
+    v8::Context::Scope scope(context);
+    return policy->AllowTrustedTypesEval(
+        ReportingDisposition::kReport,
+        ContentSecurityPolicy::kWillThrowException);
   }
   return false;
 }
@@ -569,10 +567,8 @@ V8Initializer::CodeGenerationCheckCallbackInMainThread(
     bool is_code_like) {
   // The code generation callback should only be installed on "normal" JS
   // contexts, which in turn should always have an associated ExecutionContext.
-  // If this invariant holds, we can simplify this code a little bit.
-  // We're probing this invariant to ensure it won't cause issues in practice.
   // See also: Discussion on crrev.com/c/7207201.
-  CHECK(ToExecutionContext(context), base::NotFatalUntil::M150);
+  CHECK(ToExecutionContext(context));
 
   // The TC39 "Dynamic Code Brand Check" feature is currently behind a flag.
   if (!RuntimeEnabledFeatures::TrustedTypesUseCodeLikeEnabled())
@@ -857,6 +853,14 @@ bool IsDOMExceptionWrapper(v8::Isolate* isolate, v8::Local<v8::Object> object) {
   return V8DOMException::HasInstance(isolate, object);
 }
 
+void DynamicScriptCompiledFromEmbedderCallback(v8::Local<v8::Context> context,
+                                               int script_id) {
+  if (auto* monitor = ScriptInitiationMonitor::FromExecutionContext(
+          ToExecutionContext(context))) {
+    monitor->DidRegisterDynamicScript(V8ScriptId(script_id));
+  }
+}
+
 void EmitDevToolsEvent(v8::Isolate* isolate) {
   TRACE_EVENT_INSTANT(
       TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "UpdateCounters", "data",
@@ -901,6 +905,8 @@ void V8Initializer::InitializeV8Common(v8::Isolate* isolate) {
   isolate->SetHostInitializeImportMetaObjectCallback(
       HostGetImportMetaProperties);
   isolate->SetIsJSApiWrapperNativeErrorCallback(IsDOMExceptionWrapper);
+  isolate->SetDynamicScriptCompiledFromEmbedderCallback(
+      DynamicScriptCompiledFromEmbedderCallback);
   DOMArrayBuffer::SetArrayBufferDetachCallback(isolate);
   isolate->SetMetricsRecorder(std::make_shared<V8MetricsRecorder>(isolate));
 

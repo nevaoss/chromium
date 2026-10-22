@@ -94,6 +94,8 @@
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/passwords/manage_passwords_ui_controller.h"
 #include "chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
@@ -205,6 +207,7 @@
 #include "pdf/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "rlz/buildflags/buildflags.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
@@ -212,6 +215,7 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/keyboard_codes.h"
+#include "ui/views/focus/focus_manager.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -2647,30 +2651,67 @@ void Zoom(BrowserWindowInterface* browser, content::PageZoom zoom) {
                        zoom);
 }
 
+namespace {
+
+// Keyboard focus commands (e.g. cmd+L) can run while a child window of the
+// browser window, such as a tab-modal dialog, is key. On Mac, moving focus to a
+// view in the browser window doesn't change the key window, so keystrokes would
+// keep going to the child window rather than to the newly focused browser UI.
+// Make the browser window key in that case. Mouse clicks don't need this, since
+// AppKit makes the clicked window key.
+//
+// This must be called after focus has moved. Otherwise, if the web contents is
+// still first responder, making the browser window key would hand key status
+// straight back to the tab-modal dialog (see ChromeRenderWidgetHostViewMac
+// Delegate's -windowDidBecomeKey).
+void ActivateWindowAfterFocusCommand(BrowserWindowInterface* browser) {
+#if BUILDFLAG(IS_MAC)
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
+  if (!browser_view || browser_view->IsActive()) {
+    return;
+  }
+  // Pane focus commands can move focus into a separate widget, such as a toast
+  // or a help bubble, which is then key. Only make the browser window key if
+  // focus landed in it.
+  views::FocusManager* focus_manager = browser_view->GetFocusManager();
+  if (!focus_manager || !focus_manager->GetFocusedView()) {
+    return;
+  }
+  browser_view->Activate();
+#endif
+}
+
+}  // namespace
+
 void FocusToolbar(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("FocusToolbar"));
   BrowserWindow::FromBrowser(browser)->FocusToolbar();
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusLocationBar(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("FocusLocation"));
   BrowserWindow::FromBrowser(browser)->SetFocusToLocationBar(true);
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusSearch(BrowserWindowInterface* browser) {
   // TODO(beng): replace this with FocusLocationBar
   base::RecordAction(UserMetricsAction("FocusSearch"));
   BrowserWindow::FromBrowser(browser)->GetLocationBar()->FocusSearch();
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusAppMenu(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("FocusAppMenu"));
   BrowserWindow::FromBrowser(browser)->FocusAppMenu();
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusBookmarksToolbar(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("FocusBookmarksToolbar"));
   BookmarkBarController::From(browser)->FocusBookmarksToolbar();
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusInactivePopupForAccessibility(BrowserWindowInterface* browser) {
@@ -2681,11 +2722,13 @@ void FocusInactivePopupForAccessibility(BrowserWindowInterface* browser) {
 void FocusNextPane(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("FocusNextPane"));
   BrowserFocusController::From(browser)->RotatePaneFocus(true);
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusPreviousPane(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("FocusPreviousPane"));
   BrowserFocusController::From(browser)->RotatePaneFocus(false);
+  ActivateWindowAfterFocusCommand(browser);
 }
 
 void FocusWebContentsPane(BrowserWindowInterface* browser) {
@@ -3086,6 +3129,38 @@ void ExecLensRegionSearch(BrowserWindowInterface* browser) {
         /*use_fullscreen_capture=*/false, is_google_dsp, entry_point);
   }
 #endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
+}
+
+void ExecAskGoogleAboutThisPage(BrowserWindowInterface* browser) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!browser) {
+    return;
+  }
+  if (contextual_tasks::kContextualTasksContextMenuRouteAskGoogleToOmnibox
+          .Get()) {
+    BrowserWindow* window = BrowserWindow::FromBrowser(browser);
+    LocationBar* location_bar = window ? window->GetLocationBar() : nullptr;
+    OmniboxController* omnibox_controller =
+        location_bar ? location_bar->GetOmniboxController() : nullptr;
+    if (omnibox_controller && omnibox_controller->edit_model()) {
+      window->SetFocusToLocationBar(/*is_user_initiated=*/true);
+      omnibox_controller->edit_model()->OpenComposeboxForAskG();
+    }
+    return;
+  }
+  tabs::TabInterface* const active_tab = browser->GetActiveTabInterface();
+  if (!active_tab || !active_tab->GetContents()) {
+    return;
+  }
+  LensSearchController* const controller =
+      LensSearchController::From(active_tab);
+  if (controller) {
+    controller->StartZeroStateSessionInSidePanel(
+        omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION,
+        lens::LensOverlayInvocationSource::kContentAreaContextMenuPage,
+        /*open_lens_overlay=*/false);
+  }
+#endif
 }
 
 }  // namespace chrome

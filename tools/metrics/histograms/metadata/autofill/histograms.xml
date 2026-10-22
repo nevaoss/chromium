@@ -396,6 +396,9 @@ chromium-metrics-reviews@google.com.
                retrieval is autofilled."/>
   <variant name="MandatoryReauth"
       summary="Snackbar shown after opting into mandatory reauth."/>
+  <variant name="ResurrectChurnedUsers"
+      summary="Snackbar shown after a churned user re-enables payment
+               autofill."/>
   <variant name="SaveCardSuccess"
       summary="Snackbar shown after card has been successfully saved."/>
   <variant name="SaveServerIbanSuccess"
@@ -2349,6 +2352,17 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.Ai.WalletNotice.Save.Funnel"
+    enum="AutofillAiWalletNoticeFunnelEvents" expires_after="2027-03-22">
+  <owner>brunobraga@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Records the funnel of events related to fetching and displaying the Google
+    Wallet public pass legal disclosure notice in the Autofill AI save prompt
+    during form submission.
+  </summary>
+</histogram>
+
 <histogram name="Autofill.Ai.{PromptType}.AllEntities"
     enum="AutofillAiBubbleResult" expires_after="2027-03-14">
   <owner>brunobraga@google.com</owner>
@@ -2556,18 +2570,6 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     from the fly-out menu when a suggestion is accepted. Logs -1 if the user
     accepted the top-level primary attribute directly without selecting from the
     fly-out menu. Emitted when a suggestion is accepted.
-  </summary>
-</histogram>
-
-<histogram name="Autofill.AtMemory.FetchPersonalContextPiiData.FailureReason"
-    enum="AutofillAtMemorySpiiRetrievalFailureReason"
-    expires_after="2027-03-09">
-  <owner>picarella@google.com</owner>
-  <owner>chrome-autofill-alerts@google.com</owner>
-  <summary>
-    Records the failure reason for an unsuccessful fetch request for sensitive
-    PII data to Personal Context in AtMemory. Emitted when the authentication
-    and fetching process fails.
   </summary>
 </histogram>
 
@@ -6674,10 +6676,9 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.OneTimeTokens.Backend.Sms.ErrorCode"
-    enum="OneTimeTokensBackendErrorCode" expires_after="2026-10-31">
-  <owner>luchenpeng@google.com</owner>
+    enum="OneTimeTokensBackendErrorCode" expires_after="2027-05-01">
   <owner>koerber@google.com</owner>
-  <owner>battre@chromium.org</owner>
+  <owner>src/components/one_time_tokens/OWNERS</owner>
   <summary>
     Records the error encountered while attempting to retrieve sms one time
     token from the GMSCore backend. This is recorded after the asynchronous call
@@ -6686,10 +6687,9 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.OneTimeTokens.Backend.Sms.ErrorLatency" units="ms"
-    expires_after="2026-10-31">
-  <owner>luchenpeng@google.com</owner>
+    expires_after="2027-05-01">
   <owner>koerber@google.com</owner>
-  <owner>battre@chromium.org</owner>
+  <owner>src/components/one_time_tokens/OWNERS</owner>
   <summary>
     Real-time duration of the asynchronous attempt to retrieve sms one time
     token from the GMSCore backend. Recorded when the asynchronous job failed.
@@ -6710,10 +6710,9 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.OneTimeTokens.Backend.Sms.SuccessLatency" units="ms"
-    expires_after="2026-10-31">
-  <owner>luchenpeng@google.com</owner>
+    expires_after="2027-05-01">
   <owner>koerber@google.com</owner>
-  <owner>battre@chromium.org</owner>
+  <owner>src/components/one_time_tokens/OWNERS</owner>
   <summary>
     Real-time duration of the asynchronous attempt to retrieve sms one time
     token from the GMSCore backend. Only recorded when the asynchronous job has
@@ -7177,85 +7176,6 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     interacts with the prompt. Mandatory reauth requires the user to unlock
     their device or pass a biometric auth when autofilling payment method
     information.
-  </summary>
-</histogram>
-
-<histogram
-    name="Autofill.PaymentMethods.SettingsPage.StoredCreditCardCountBeforeCardAdded"
-    units="cards" expires_after="2026-10-01">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <summary>
-    Tracks the number of stored credit cards (both local and server) after a
-    user adds a new local card through the Chrome payment methods settings page.
-    The number of existing cards is calculated before saving the new card, but
-    the value is recorded after saving the new card. Note that the new local
-    card is not counted towards this number (i.e. if there aren't any existing
-    cards when adding the new card, the &quot;cards&quot; bucket labeled 0 will
-    be incremented).
-  </summary>
-</histogram>
-
-<histogram
-    name="Autofill.PaymentMethodsSettingsPage.AddCardClickedWithoutExistingCards2"
-    enum="Boolean" expires_after="2026-10-01">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <summary>
-    Logs true when the add card flow is started when the user does not have any
-    existing cards. If the user has existing cards, this metric is logged as
-    false. Recorded when a user starts the flow to add a new card through the
-    Chrome payment methods settings page and they do not have any existing
-    cards.
-
-    Note that a previous version of this histogram incorrectly measured both add
-    and edit cases, and was obsoleted in mid-June 2025.
-  </summary>
-</histogram>
-
-<histogram
-    name="Autofill.PaymentMethodsSettingsPage.CardAddedWithoutExistingCards"
-    enum="Boolean" expires_after="2026-10-01">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <summary>
-    Logs true when a card is saved when the user does not have any existing
-    cards. If the user has existing cards, this metric is logged as false.
-    Recorded when a user adds a new card through the Chrome payment methods
-    settings page and they do not have any existing cards.
-  </summary>
-</histogram>
-
-<histogram
-    name="Autofill.PaymentMethodsSettingsPage.CardsViewedWithoutExistingCards"
-    enum="Boolean" expires_after="2026-10-01">
-  <owner>darwinyang@google.com</owner>
-  <owner>smcgruer@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <summary>
-    Logs true when the cards are viewed when the user does not have any existing
-    cards. If the user has existing cards, this metric is logged as false.
-    Recorded only if Autofill for Payment methods is enabled, when a user either
-    enters the Payment Methods Settings Page or if that page is rebuilt while
-    the user is on it (e.g., if a preference toggle is changed or new payment
-    methods are synced).
-
-    Note that this metric does not care about the presence or absence of other
-    payment methods (e.g., IBAN, pay over time, etc). It only measures whether
-    or not there are local or server cards shown on the settings page.
-  </summary>
-</histogram>
-
-<histogram name="Autofill.PaymentMethodsSettingsPage.ScanCardResult"
-    enum="AutofillScanCreditCardResult" expires_after="2026-12-06">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <summary>
-    Logs how (or if) the credit card scanner is used by the user in the payment
-    methods settings page. Recorded when a user hits the save button to save a
-    new credit card through the Chrome payment methods settings page and there
-    is a credit card scanner shown to the user on the payments methods settings
-    page.
   </summary>
 </histogram>
 
@@ -8894,20 +8814,6 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     Tracks whether the card was scanned with OCR (camera) or NFC (tap). Logged
     when a credit card scan completes.
   </summary>
-</histogram>
-
-<histogram name="Autofill.ScanCreditCard.Duration{CreditCardScanSuccess}"
-    units="ms" expires_after="2026-10-01">
-  <owner>darwinyang@google.com</owner>
-  <owner>chrome-payments-eng@google.com</owner>
-  <summary>
-    How long a credit card took to scan. {CreditCardScanSuccess}
-  </summary>
-  <token key="CreditCardScanSuccess">
-    <variant name=""/>
-    <variant name="_Cancelled" summary="Credit card scan was cancelled."/>
-    <variant name="_Completed" summary="Credit card scan completed."/>
-  </token>
 </histogram>
 
 <histogram name="Autofill.ScanCreditCardPrompt"

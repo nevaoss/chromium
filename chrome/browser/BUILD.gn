@@ -1264,6 +1264,7 @@ source_set("core") {
     "//services/metrics",
     "//ui/base:ozone_buildflags",
     "//ui/display/util",
+    "//ui/events/blink:blink_features",
     "//ui/gl:buildflags",
     "//ui/message_center",
     "//ui/webui",
@@ -3723,11 +3724,6 @@ group("browser_generated_files") {
         [ "//chrome/browser/compose:compose_optimization_guide_proto" ]
   }
 
-  if (is_win || is_mac || is_linux) {
-    public_deps +=
-        [ "//chrome/browser/new_tab_page/chrome_colors:generate_colors_info" ]
-  }
-
   if (is_win || is_linux || is_android || is_chromeos) {
     public_deps += [ "//chrome/browser/privacy:traffic_annotation_proto" ]
   }
@@ -4162,6 +4158,7 @@ source_set("core_unit_tests") {
     "//components/services/unzip/public/mojom",
     "//components/site_isolation",
     "//components/sync_preferences:test_support",
+    "//components/tabs:public",
     "//components/tabs:test_support",
     "//components/ukm",
     "//components/universal_optout",
@@ -4399,6 +4396,7 @@ if (!is_android) {
       "//components/privacy_sandbox/privacy_sandbox_attestations:test_support",
       "//components/site_isolation",
       "//components/tabs:public",
+      "//components/webui/chrome_urls",
       "//content/test:browsertest_support",
       "//content/test:test_support",
       "//pdf:features",

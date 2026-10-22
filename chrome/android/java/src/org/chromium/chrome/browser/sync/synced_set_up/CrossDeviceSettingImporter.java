@@ -318,6 +318,15 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
             };
 
     /**
+     * Returns whether {@link CrossDeviceSettingImporter} has any pending import or snackbar work
+     * and should be instantiated.
+     */
+    public static boolean shouldCreateImporter() {
+        return sPendingSnackbar != null
+                || !hasImportedAllSettings(ChromeSharedPreferences.getInstance());
+    }
+
+    /**
      * @param activityLifecycleDispatcher The {@link ActivityLifecycleDispatcher} for the current
      *     activity.
      * @param activityTabSupplier The supplier for the current activity's {@link Tab}.
@@ -463,6 +472,9 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         @Nullable Profile profile = currentTab.getProfile();
         if (profile == null || profile.isOffTheRecord()) return;
 
+        SharedPreferencesManager sharedPrefManager = ChromeSharedPreferences.getInstance();
+        boolean isCurrentTabNtp = UrlUtilities.isNtpUrl(currentTab.getUrl());
+
         if (sPendingSnackbar != null && matchesCurrentTask(sPendingSnackbar.taskId)) {
             boolean wasNonNtp = sPendingSnackbar.nonNtp;
             // Show the pending snackbar if the task ID matches.
@@ -474,30 +486,21 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
             if (!maybeShowPendingSnackbar(profile)) {
                 return;
             }
-            boolean isCurrentTabNtp = UrlUtilities.isNtpUrl(currentTab.getUrl());
             boolean needsNtpImport =
-                    isCurrentTabNtp
-                            && wasNonNtp
-                            && !ChromeSharedPreferences.getInstance()
-                                    .readBoolean(
-                                            ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS,
-                                            /* defaultValue= */ true);
+                    isCurrentTabNtp && wasNonNtp && !hasImportedAllSettings(sharedPrefManager);
             if (!needsNtpImport) {
                 return;
             }
         }
 
-        SharedPreferencesManager sharedPrefManager = ChromeSharedPreferences.getInstance();
-        boolean nonNtp = !UrlUtilities.isNtpUrl(currentTab.getUrl());
-        boolean alreadyImported =
-                nonNtp
-                        ? hasImportedNonNtpSettings(sharedPrefManager)
-                        : sharedPrefManager.readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS,
-                                /* defaultValue= */ true);
-        if (!alreadyImported) {
-            ensureNtpCustomizationConfigManagerInitialized();
+        boolean nonNtp = !isCurrentTabNtp;
+        if (nonNtp
+                ? hasImportedNonNtpSettings(sharedPrefManager)
+                : hasImportedAllSettings(sharedPrefManager)) {
+            return;
         }
+
+        ensureNtpCustomizationConfigManagerInitialized();
 
         boolean localStateReady = LocalStatePrefs.areNativePrefsLoaded();
 
@@ -669,13 +672,9 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         }
         boolean nonNtp = !UrlUtilities.isNtpUrl(tab.getUrl());
         SharedPreferencesManager sharedPrefManager = ChromeSharedPreferences.getInstance();
-        if (nonNtp) {
-            if (hasImportedNonNtpSettings(sharedPrefManager)) {
-                return;
-            }
-        } else if (sharedPrefManager.readBoolean(
-                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS,
-                /* defaultValue= */ true)) {
+        if (nonNtp
+                ? hasImportedNonNtpSettings(sharedPrefManager)
+                : hasImportedAllSettings(sharedPrefManager)) {
             return;
         }
 
@@ -728,7 +727,15 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         }
     }
 
+    private static boolean hasImportedAllSettings(SharedPreferencesManager sharedPrefManager) {
+        return sharedPrefManager.readBoolean(
+                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, /* defaultValue= */ true);
+    }
+
     private static boolean hasImportedNonNtpSettings(SharedPreferencesManager sharedPrefManager) {
+        if (hasImportedAllSettings(sharedPrefManager)) {
+            return true;
+        }
         if (sharedPrefManager.contains(
                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS)) {
             return sharedPrefManager.readBoolean(
@@ -741,6 +748,7 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
                         /* defaultValue= */ false);
         sharedPrefManager.writeBoolean(
                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, oldValue);
+        sharedPrefManager.removeKey(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX);
         return oldValue;
     }
 
@@ -1031,32 +1039,19 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
             return null;
         }
 
-        // Match by CustomBackgroundInfo (URL, collection ID, upload/daily-refresh flags) rather
-        // than NtpBackgroundDataThemeCollection#equals().
-        if (!Objects.equals(
-                targetCollection.getCustomBackgroundInfo(),
-                downloadedCollection.getCustomBackgroundInfo())) {
-            return null;
-        }
-
-        // NtpBackgroundDataThemeCollection#equals() requires identical mPrimaryColor, which is null
-        // on an in-flight Android targetCollection before bitmap download and non-null on
-        // downloadedCollection after NtpSyncedThemeManager extracts the seed color from the bitmap.
-        // Only reject when both have a non-null primaryColor and they differ.
-        if (targetCollection.getPrimaryColor() != null
-                && downloadedCollection.getPrimaryColor() != null
-                && !Objects.equals(
-                        targetCollection.getPrimaryColor(),
-                        downloadedCollection.getPrimaryColor())) {
+        // Match the same wallpaper with a compatible primary color. targetCollection's color is
+        // null on an in-flight Android download, while downloadedCollection's color is non-null
+        // once NtpSyncedThemeManager extracts the seed color from the bitmap. Only reject when
+        // both have a non-null primary color and they differ.
+        if (!targetCollection.hasSameThemeAndCompatibleColor(downloadedCollection)) {
             return null;
         }
 
         // Construct a new NtpBackgroundDataThemeCollection rather than mutating targetCollection in
         // place:
         // 1. Preserves targetCollection's mPlatformType and mCustomBackgroundInfo.
-        // 2. mPrimaryColor participates in NtpBackgroundDataImageBase#equals() and #hashCode().
-        //    Mutating targetCollection in place would alter the equals()/hashCode() identity of
-        //    the instance still held by the original SyncedSetupSettings or any cached reference.
+        // 2. Avoids changing the bitmap and primary color of the instance still held by the
+        //    original SyncedSetupSettings or any cached reference.
         return new NtpBackgroundDataThemeCollection(
                 targetCollection.getPlatformType(),
                 targetCollection.getCustomBackgroundInfo(),
@@ -1390,7 +1385,9 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         if (!isThemeFeatureEnabled() || candidateTheme == null) {
             return false;
         }
-        return !candidateTheme.hasSameThemeAndColor(currentTheme);
+        // A null primary color means "unknown" (e.g. iOS never sends one), so the same image with a
+        // null color on either side is not a theme change.
+        return !candidateTheme.hasSameThemeAndCompatibleColor(currentTheme);
     }
 
     /**

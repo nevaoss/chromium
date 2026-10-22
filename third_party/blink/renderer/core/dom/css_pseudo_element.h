@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_CSS_PSEUDO_ELEMENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_CSS_PSEUDO_ELEMENT_H_
 
+#include "third_party/blink/public/mojom/input/focus_type.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/dom/node_rare_data_field.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 
@@ -19,6 +20,7 @@ class DOMQuad;
 class DOMQuadInit;
 class DOMRectReadOnly;
 class ExceptionState;
+class Focusable;
 class FocusOptions;
 class V8UnionCSSPseudoElementOrDocumentOrElementOrText;
 class V8UnionCSSPseudoElementOrElement;
@@ -82,6 +84,14 @@ class CSSPseudoElement final : public ScriptWrappable {
   // sub-pseudo-elements, parent will return a CSSPseudoElement while element
   // returns an Element.
   V8UnionCSSPseudoElementOrElement* parent() const { return parent_; }
+  // The selectorText attribute is the normalized selector text used to select
+  // this pseudo-element, including any argument. For example, "::after" or
+  // "::view-transition-group(name)". For sub-pseudo-elements this is only the
+  // last compound, e.g. "::marker" for `::before::marker`. For scroll buttons,
+  // the argument is the logical direction the button is identified by, since
+  // e.g. `::scroll-button(up)` and `::scroll-button(block-start)` return the
+  // same object in horizontal writing modes.
+  String selectorText() const;
   // The pseudo(type) method returns the CSSPseudoElement interface representing
   // the sub-pseudo-element referenced in its argument, if such a
   // sub-pseudo-element could exist and would be valid, and null otherwise.
@@ -90,6 +100,8 @@ class CSSPseudoElement final : public ScriptWrappable {
   CSSPseudoElement* pseudo(PseudoId pseudo_id,
                            const AtomicString& pseudo_argument = g_null_atom);
   void focus(const FocusOptions* options);
+  Focusable* nextFocusable();
+  Focusable* previousFocusable();
 
   // Returns the CSSPseudoElement proxy chain for the given PseudoElement,
   // creating it if necessary. Handles nested pseudos (e.g. ::after::marker)
@@ -125,6 +137,8 @@ class CSSPseudoElement final : public ScriptWrappable {
   void Trace(Visitor* v) const final;
 
  private:
+  Focusable* FindAdjacentFocusable(mojom::blink::FocusType type);
+
   PseudoId pseudo_id_;
   AtomicString pseudo_argument_;
   Member<Element> element_;
