@@ -53,6 +53,7 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_block_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_chip_view.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_drag_and_drop_delegate.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
@@ -84,7 +85,12 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/actions/actions.h"
+#include "ui/base/dragdrop/drag_drop_types.h"
+#include "ui/base/dragdrop/drop_target_event.h"
+#include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
+#include "ui/base/dragdrop/os_exchange_data.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/compositor/layer_tree_owner.h"
 #include "ui/events/event.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/strings/grit/ax_strings.h"
@@ -235,6 +241,33 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->top_radius, 0);
   EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->bottom_radius, 12);
 
+  // Check vertical padding on multi-row cards: above the first standard-height
+  // row and below the last row. Expanded and middle rows get none.
+  views::MenuItemView* more_tools_item =
+      root->GetMenuItemByID(kActionDeveloperSubmenu);
+  ASSERT_TRUE(more_tools_item);
+  ASSERT_TRUE(more_tools_item->GetMenuItemBackground().has_value());
+  const int card_padding = ChromeLayoutProvider::Get()->GetDistanceMetric(
+      DISTANCE_ACTION_APP_MENU_CONTAINER_VERTICAL_PADDING);
+#if !BUILDFLAG(IS_CHROMEOS)
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->bottom_padding, 0);
+#endif
+  EXPECT_EQ(password_item->GetMenuItemBackground()->top_padding, card_padding);
+  EXPECT_EQ(password_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(downloads_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(downloads_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->bottom_padding,
+            card_padding);
+  EXPECT_EQ(zoom_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(zoom_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(print_item->GetMenuItemBackground()->top_padding, card_padding);
+  EXPECT_EQ(print_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(more_tools_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(more_tools_item->GetMenuItemBackground()->bottom_padding,
+            card_padding);
+
   // Standard items (32dp row height): (32 - 16) / 2 = 8dp.
 #if !BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(profile_item->GetTopMargin(), 12);
@@ -251,7 +284,7 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   // Check hover selection color matching subtle state.
 #if !BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(profile_item->GetSelectedColorId(),
-            ui::kColorSysStateHoverOnSubtle);
+            ui::kColorAppMenuRowBackgroundHovered);
   EXPECT_EQ(menu.GetLabelFontList(profile_item->GetCommand()),
             &views::TypographyProvider::Get().GetFont(
                 views::style::CONTEXT_MENU, views::style::STYLE_BODY_3_MEDIUM));
@@ -276,9 +309,11 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   EXPECT_EQ(item_separator->GetColorId(), ui::kColorMenuBackground);
 #endif
   EXPECT_EQ(password_item->GetSelectedColorId(),
-            ui::kColorSysStateHoverOnSubtle);
-  EXPECT_EQ(print_item->GetSelectedColorId(), ui::kColorSysStateHoverOnSubtle);
-  EXPECT_EQ(zoom_item->GetSelectedColorId(), ui::kColorSysStateHoverOnSubtle);
+            ui::kColorAppMenuRowBackgroundHovered);
+  EXPECT_EQ(print_item->GetSelectedColorId(),
+            ui::kColorAppMenuRowBackgroundHovered);
+  EXPECT_EQ(zoom_item->GetSelectedColorId(),
+            ui::kColorAppMenuRowBackgroundHovered);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -430,18 +465,19 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenu) {
   }
   ASSERT_NE(child_item, nullptr);
 
-  // Empty folder containing disabled "(empty)" placeholder item.
+  // Empty folder is a submenu that populates a kEmpty MenuItemView when its
+  // empty menu state is updated.
   ASSERT_NE(empty_folder_item, nullptr);
   EXPECT_TRUE(empty_folder_item->HasSubmenu());
-  views::MenuItemView* empty_item = nullptr;
-  for (views::MenuItemView* item :
-       empty_folder_item->GetSubmenu()->GetMenuItems()) {
-    if (item->title() == l10n_util::GetStringUTF16(IDS_MENU_EMPTY_SUBMENU)) {
-      empty_item = item;
-      break;
-    }
-  }
+  EXPECT_TRUE(empty_folder_item->GetSubmenu()->GetMenuItems().empty());
+  empty_folder_item->ChildrenChanged();
+  ASSERT_EQ(empty_folder_item->GetSubmenu()->children().size(), 1u);
+  auto* empty_item = views::AsViewClass<views::MenuItemView>(
+      empty_folder_item->GetSubmenu()->children().front());
   ASSERT_NE(empty_item, nullptr);
+  EXPECT_EQ(empty_item->GetType(), views::MenuItemView::Type::kEmpty);
+  EXPECT_EQ(empty_item->title(),
+            l10n_util::GetStringUTF16(IDS_MENU_EMPTY_SUBMENU));
   EXPECT_FALSE(empty_item->GetEnabled());
 
   // Other bookmarks folder containing child bookmark.
@@ -826,7 +862,7 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtons) {
   }
   ASSERT_TRUE(incognito_label);
   EXPECT_EQ(incognito_label->GetText(),
-            l10n_util::GetStringUTF16(IDS_INCOGNITO));
+            l10n_util::GetStringUTF16(IDS_APP_MENU_INCOGNITO));
   EXPECT_EQ(incognito_button->GetViewAccessibility().GetCachedName(),
             BrowserActions::GetCleanTitleAndTooltipText(
                 l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_WINDOW)));
@@ -1568,7 +1604,7 @@ TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
   // Verify empty border with insets and background is transparent.
   ASSERT_NE(search_bar->GetBorder(), nullptr);
   int icon_size =
-      provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE);
+      provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE);
   int icon_padding = 12;
   int icon_text_spacing =
       provider->GetDistanceMetric(DISTANCE_RELATED_CONTROL_HORIZONTAL_SMALL);
@@ -1890,6 +1926,8 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
           kActionUpgradeDialog, browser_actions_->root_action_item());
   ASSERT_NE(upgrade_action, nullptr);
   upgrade_action->SetVisible(true);
+  upgrade_action->SetImage(ui::ImageModel::FromVectorIcon(
+      kRocketLaunchIcon, ui::kColorMenuIconOnEmphasizedBackground));
 
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
@@ -1917,6 +1955,9 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
   ASSERT_TRUE(upgrade_item);
   EXPECT_TRUE(upgrade_item->GetVisible());
   EXPECT_EQ(upgrade_item->title(), u"Update Chrome");
+  EXPECT_EQ(upgrade_item->GetIcon().Size(), gfx::Size(18, 18));
+  EXPECT_EQ(upgrade_item->GetTopMargin(), 9);
+  EXPECT_EQ(upgrade_item->GetBottomMargin(), 9);
   AppMenuMinorTextView* minor_text_view = nullptr;
   for (views::View* child : upgrade_item->children()) {
     if (auto* candidate = views::AsViewClass<AppMenuMinorTextView>(child)) {
@@ -2039,6 +2080,12 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationHiddenWhenInvisible) {
 #endif
 
 TEST_F(ActionAppMenuTest, MenuItemVerticalMarginExpandedHeight) {
+  actions::ActionItem* global_error_action =
+      actions::ActionManager::Get().FindAction(
+          kActionGlobalError, browser_actions_->root_action_item());
+  ASSERT_NE(global_error_action, nullptr);
+  global_error_action->SetVisible(true);
+
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
@@ -2051,13 +2098,27 @@ TEST_F(ActionAppMenuTest, MenuItemVerticalMarginExpandedHeight) {
   const auto* provider = ChromeLayoutProvider::Get();
   const int expected_normal_margin =
       (provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT) -
-       provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE)) /
+       provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE)) /
+      2;
+  const int expected_notification_margin =
+      (provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_MEDIUM_ITEM_HEIGHT) -
+       provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_NOTIFICATION_ICON_SIZE)) /
       2;
   const int expected_expanded_margin =
       (provider->GetDistanceMetric(
            DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT) -
-       provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE)) /
+       provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE)) /
       2;
+
+  views::MenuItemView* global_error_item =
+      root->GetMenuItemByID(kActionGlobalError);
+  ASSERT_TRUE(global_error_item);
+  EXPECT_EQ(global_error_item->GetTopMargin(), expected_notification_margin);
+  EXPECT_EQ(global_error_item->GetBottomMargin(), expected_notification_margin);
 
   views::MenuItemView* zoom_item = root->GetMenuItemByID(kActionZoomSubmenu);
   ASSERT_TRUE(zoom_item);
@@ -2447,6 +2508,8 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
   ASSERT_TRUE(upgrade_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_radius, 12);
   EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_radius, 12);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_padding, 0);
 
   views::MenuItemView* global_error_item =
       root->GetMenuItemByID(kActionGlobalError);
@@ -2454,6 +2517,8 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
   ASSERT_TRUE(global_error_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 12);
   EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 12);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_padding, 0);
 
   ASSERT_GE(submenu->children().size(), 3u);
   EXPECT_EQ(submenu->children()[0], upgrade_item);
@@ -2734,6 +2799,140 @@ TEST_F(ActionAppMenuTest, SendTabToSelfMetrics) {
   histogram_tester.ExpectTotalCount(
       "Sharing.SendTabToSelf.TargetDeviceCount.ShareMenu", 0);
   menu_manager.OnMenuClosed();
+}
+
+class MockAppMenuDragAndDropDelegate : public AppMenuDragAndDropDelegate {
+ public:
+  MOCK_METHOD(bool,
+              GetDropFormats,
+              (actions::BaseAction*, int*, std::set<ui::ClipboardFormatType>*),
+              (override));
+  MOCK_METHOD(bool, AreDropTypesRequired, (actions::BaseAction*), (override));
+  MOCK_METHOD(bool,
+              CanDrop,
+              (actions::BaseAction*, const ui::OSExchangeData&),
+              (override));
+  MOCK_METHOD(ui::mojom::DragOperation,
+              GetDropOperation,
+              (actions::BaseAction*,
+               const ui::DropTargetEvent&,
+               views::MenuDelegate::DropPosition*),
+              (override));
+  MOCK_METHOD(views::View::DropCallback,
+              GetDropCallback,
+              (actions::BaseAction*,
+               views::MenuDelegate::DropPosition,
+               const ui::DropTargetEvent&),
+              (override));
+  MOCK_METHOD(bool, CanDrag, (actions::BaseAction*), (override));
+  MOCK_METHOD(void,
+              WriteDragData,
+              (actions::BaseAction*, ui::OSExchangeData*),
+              (override));
+  MOCK_METHOD(int, GetDragOperations, (actions::BaseAction*), (override));
+};
+
+TEST_F(ActionAppMenuTest, DragAndDropDelegateForwarding) {
+  testing::StrictMock<MockAppMenuDragAndDropDelegate> mock_delegate;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot,
+      BrowserActions::From(&mock_window_interface_)->root_action_item());
+  ASSERT_TRUE(app_menu_root);
+
+  auto submenu_action = actions::ActionItem::Builder()
+                            .SetText(u"Test DnD Submenu")
+                            .SetProperty(AppMenuActionItem::kIsSubmenuKey, true)
+                            .SetPopulateChildrenCallback(base::DoNothing())
+                            .Build();
+  submenu_action->SetProperty(
+      AppMenuActionItem::kDragAndDropDelegateKey,
+      static_cast<AppMenuDragAndDropDelegate*>(&mock_delegate));
+
+  auto* item_a_action = submenu_action->AddChild(
+      actions::ActionItem::Builder().SetText(u"Item A").Build());
+  app_menu_root->AddChild(std::move(submenu_action));
+
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* submenu_item = nullptr;
+  for (views::MenuItemView* item : root->GetSubmenu()->GetMenuItems()) {
+    if (item->title() == u"Test DnD Submenu") {
+      submenu_item = item;
+      break;
+    }
+  }
+  ASSERT_TRUE(submenu_item);
+  ASSERT_TRUE(submenu_item->HasSubmenu());
+  menu.WillShowMenu(submenu_item);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 1u);
+  views::MenuItemView* item_a_view =
+      submenu_item->GetSubmenu()->GetMenuItemAt(0);
+  EXPECT_EQ(item_a_view->title(), u"Item A");
+
+  // Verify drag-and-drop calls on child MenuItemView route to mock_delegate
+  // with item_a_action.
+  int formats = 0;
+  std::set<ui::ClipboardFormatType> format_types;
+  EXPECT_CALL(mock_delegate,
+              GetDropFormats(item_a_action, &formats, &format_types))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.GetDropFormats(item_a_view, &formats, &format_types));
+
+  EXPECT_CALL(mock_delegate, AreDropTypesRequired(item_a_action))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.AreDropTypesRequired(item_a_view));
+
+  ui::OSExchangeData data;
+  EXPECT_CALL(mock_delegate, CanDrop(item_a_action, testing::_))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.CanDrop(item_a_view, data));
+
+  ui::DropTargetEvent drop_event(data, gfx::PointF(), gfx::PointF(),
+                                 ui::DragDropTypes::DRAG_MOVE);
+  views::MenuDelegate::DropPosition position =
+      views::MenuDelegate::DropPosition::kBefore;
+  EXPECT_CALL(mock_delegate,
+              GetDropOperation(item_a_action, testing::_, &position))
+      .WillOnce(testing::Return(ui::mojom::DragOperation::kMove));
+  EXPECT_EQ(menu.GetDropOperation(item_a_view, drop_event, &position),
+            ui::mojom::DragOperation::kMove);
+
+  bool drop_callback_ran = false;
+  EXPECT_CALL(mock_delegate,
+              GetDropCallback(item_a_action, position, testing::_))
+      .WillOnce(testing::Return(base::BindLambdaForTesting(
+          [&](const ui::DropTargetEvent&, ui::mojom::DragOperation& output_op,
+              std::unique_ptr<ui::LayerTreeOwner>) {
+            drop_callback_ran = true;
+            output_op = ui::mojom::DragOperation::kMove;
+          })));
+  views::View::DropCallback cb =
+      menu.GetDropCallback(item_a_view, position, drop_event);
+  ui::mojom::DragOperation output_op = ui::mojom::DragOperation::kNone;
+  std::move(cb).Run(drop_event, output_op, nullptr);
+  EXPECT_TRUE(drop_callback_ran);
+  EXPECT_EQ(output_op, ui::mojom::DragOperation::kMove);
+
+  EXPECT_CALL(mock_delegate, CanDrag(item_a_action))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.CanDrag(item_a_view));
+
+  EXPECT_CALL(mock_delegate, WriteDragData(item_a_action, &data));
+  menu.WriteDragData(item_a_view, &data);
+
+  EXPECT_CALL(mock_delegate, GetDragOperations(item_a_action))
+      .WillOnce(testing::Return(ui::DragDropTypes::DRAG_MOVE));
+  EXPECT_EQ(menu.GetDragOperations(item_a_view), ui::DragDropTypes::DRAG_MOVE);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
 }
 
 }  // namespace

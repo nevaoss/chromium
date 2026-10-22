@@ -2,20 +2,35 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/strings/strcat.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
+#include "chrome/browser/glic/glic_selection_observer.h"
 #include "chrome/browser/glic/public/features.h"
-#include "chrome/browser/glic/selection/prompt_suggestion.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/selection/explain_suggestion.h"
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
+#include "chrome/browser/glic/selection/selection_suggestion.h"
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/selection/mojom/action.mojom.h"
 #include "chrome/browser/selection/suggestion_service.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/mojom/echo.test-mojom.h"
+#include "components/optimization_guide/core/model_execution/feature_keys.h"
+#include "components/optimization_guide/proto/features/quick_answers.pb.h"
 #include "components/optimization_guide/proto/features/smart_selection_suggestions.pb.h"
+#include "components/search_engines/template_url.h"
+#include "components/search_engines/template_url_data.h"
+#include "components/search_engines/template_url_service.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
@@ -25,6 +40,7 @@
 #include "mojo/public/cpp/test_support/fake_message_dispatch_context.h"
 #include "mojo/public/cpp/test_support/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/gfx/geometry/rect.h"
 
 namespace glic {
 
@@ -93,21 +109,21 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayBrowserTest,
 
 namespace {
 
-class TestSuggestedActionsListener
-    : public selection::SuggestedActionsListener {
+class TestSuggestedActionsListener {
  public:
   TestSuggestedActionsListener() = default;
-  ~TestSuggestedActionsListener() override = default;
+  ~TestSuggestedActionsListener() = default;
 
-  mojo::PendingRemote<selection::SuggestedActionsListener>
-  BindNewPipeAndPassRemote() {
-    return receiver_.BindNewPipeAndPassRemote();
+  SelectionOverlayController::SuggestedActionsCallback GetCallback() {
+    return base::BindRepeating(
+        &TestSuggestedActionsListener::OnSuggestedActionsAvailable,
+        weak_ptr_factory_.GetWeakPtr());
   }
 
   void OnSuggestedActionsAvailable(
-      std::vector<selection::SuggestedActionPtr> actions) override {
-    for (auto& action : actions) {
-      actions_.push_back(std::move(action));
+      const std::vector<selection::SuggestedActionPtr>& actions) {
+    for (const auto& action : actions) {
+      actions_.push_back(action->Clone());
     }
     batches_received_++;
     if (run_loop_ && batches_received_ >= expected_batches_) {
@@ -129,11 +145,11 @@ class TestSuggestedActionsListener
   }
 
  private:
-  mojo::Receiver<selection::SuggestedActionsListener> receiver_{this};
   std::vector<selection::SuggestedActionPtr> actions_;
   size_t batches_received_ = 0;
   size_t expected_batches_ = 0;
   std::unique_ptr<base::RunLoop> run_loop_;
+  base::WeakPtrFactory<TestSuggestedActionsListener> weak_ptr_factory_{this};
 };
 
 }  // namespace
@@ -148,8 +164,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayBrowserTest,
   controller->Show(/*options=*/nullptr);
 
   TestSuggestedActionsListener listener;
-  static_cast<selection::SelectionOverlayPageHandler*>(controller)
-      ->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
   listener.WaitForBatches(1);
   EXPECT_TRUE(listener.actions().empty());
 }
@@ -185,15 +200,16 @@ class FakeStaticSelectionSuggestionTool
   void RequestSuggestions(const ::selection::AreaOfInterest& processed_area,
                           ::selection::SuggestionsCallback callback) override {
     std::vector<std::unique_ptr<::selection::Suggestion>> suggestions;
-    suggestions.push_back(std::make_unique<PromptSuggestion>(
+    suggestions.push_back(std::make_unique<SelectionSuggestion>(
         *tab_, u"Explain", "Explain the selection in a few sentences."));
-    suggestions.push_back(std::make_unique<PromptSuggestion>(
+    suggestions.push_back(std::make_unique<SelectionSuggestion>(
         *tab_, u"Summarize", "Summarize the selection in a few sentences."));
-    suggestions.push_back(std::make_unique<PromptSuggestion>(
+    suggestions.push_back(std::make_unique<SelectionSuggestion>(
         *tab_, u"Create Image",
         "Create a cartoon styled image from the selection."));
     std::move(callback).Run(std::move(suggestions), /*complete=*/true);
   }
+
 
  private:
   raw_ptr<tabs::TabInterface> tab_;
@@ -207,21 +223,22 @@ class FakeSelectionSuggestionTool
   ~FakeSelectionSuggestionTool() override = default;
 
   ToolId GetToolId() const override {
-    return optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME;
+    return optimization_guide::proto::SMART_SELECTION_TOOL_GOOGLE_LENS;
   }
 
   void RequestSuggestions(const ::selection::AreaOfInterest& processed_area,
                           ::selection::SuggestionsCallback callback) override {
     std::vector<std::unique_ptr<::selection::Suggestion>> suggestions;
-    suggestions.push_back(std::make_unique<PromptSuggestion>(
+    suggestions.push_back(std::make_unique<SelectionSuggestion>(
         *tab_, u"Translate to Spanish",
         "Translate the selected text to Spanish."));
-    suggestions.push_back(std::make_unique<PromptSuggestion>(
+    suggestions.push_back(std::make_unique<SelectionSuggestion>(
         *tab_, u"Fact check", "Fact check the claims in this section."));
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback), std::move(suggestions),
                                   /*complete=*/true));
   }
+
 
  private:
   raw_ptr<tabs::TabInterface> tab_;
@@ -273,7 +290,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
       /*is_using_keyboard=*/false);
 
   TestSuggestedActionsListener listener;
-  handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
   listener.WaitForBatches(1);
   const auto& actions = listener.actions();
   ASSERT_EQ(actions.size(), 3u);
@@ -325,7 +342,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayStaticSuggestionsBrowserTest,
       /*is_using_keyboard=*/false);
 
   TestSuggestedActionsListener listener;
-  handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
   listener.WaitForBatches(1);
   const auto& actions = listener.actions();
   ASSERT_EQ(actions.size(), 1u);
@@ -353,10 +370,26 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayQuickAnswersSuggestionsBrowserTest,
   tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
   content::WebContents* web_contents = tab->GetContents();
 
+  ASSERT_TRUE(content::ExecJs(web_contents, R"(
+    document.body.innerText = 'Before text Selected target After text';
+    const textNode = document.body.firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 12);
+    range.setEnd(textNode, 27);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  )"));
+
   auto* controller =
       SelectionOverlayController::FromTabWebContents(web_contents);
   ASSERT_TRUE(controller);
-  controller->Show(/*options=*/nullptr);
+  gfx::Rect view_bounds = web_contents->GetViewBounds();
+  gfx::Rect selection_bounds(view_bounds.x() + 10, view_bounds.y() + 10, 100,
+                             50);
+  controller->ShowWithSelection(web_contents->GetPrimaryMainFrame(),
+                                selection_bounds,
+                                selection::InteractionOptions::New());
   ASSERT_OK(RunUntilEqual(
       [&]() { return controller->state(); },
       SelectionOverlayController::State::kOverlay,
@@ -364,14 +397,8 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayQuickAnswersSuggestionsBrowserTest,
 
   auto* handler =
       static_cast<selection::SelectionOverlayPageHandler*>(controller);
-  handler->AdjustRegion(
-      selection::SelectedRegion::New(
-          base::UnguessableToken::Create(),
-          selection::RegionShape::NewRect(gfx::RectF(0.5f, 0.5f, 0.2f, 0.2f))),
-      /*is_using_keyboard=*/false);
-
   TestSuggestedActionsListener listener;
-  handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
   listener.WaitForBatches(1);
   const auto& actions = listener.actions();
   ASSERT_EQ(actions.size(), 1u);
@@ -379,6 +406,18 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayQuickAnswersSuggestionsBrowserTest,
   ASSERT_TRUE(actions[0]->action->is_inline_fulfillment());
   EXPECT_EQ(actions[0]->action->get_inline_fulfillment()->resource_name,
             "explain_fulfillment.js");
+
+  // Adjusting the region without text selection should not present the Explain
+  // suggestion.
+  handler->AdjustRegion(
+      selection::SelectedRegion::New(
+          base::UnguessableToken::Create(),
+          selection::RegionShape::NewRect(gfx::RectF(0.5f, 0.5f, 0.2f, 0.2f))),
+      /*is_using_keyboard=*/false);
+  TestSuggestedActionsListener adjusted_listener;
+  controller->GetSuggestedActionsForTesting(adjusted_listener.GetCallback());
+  adjusted_listener.WaitForBatches(1);
+  EXPECT_TRUE(adjusted_listener.actions().empty());
 }
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
@@ -392,7 +431,9 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
   gfx::Rect view_bounds = web_contents->GetViewBounds();
   gfx::Rect selection_bounds(view_bounds.x() + 10, view_bounds.y() + 10, 100,
                              50);
-  controller->ShowWithSelection(selection_bounds);
+  controller->ShowWithSelection(web_contents->GetPrimaryMainFrame(),
+                                selection_bounds,
+                                selection::InteractionOptions::New());
 
   EXPECT_EQ(controller->GetSelectedRegionCount(), 1u);
 
@@ -412,7 +453,9 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
   gfx::Rect view_bounds = web_contents->GetViewBounds();
   gfx::Rect selection_bounds(view_bounds.x() + 10, view_bounds.y() + 10, 100,
                              50);
-  controller->ShowWithSelection(selection_bounds);
+  controller->ShowWithSelection(web_contents->GetPrimaryMainFrame(),
+                                selection_bounds,
+                                selection::InteractionOptions::New());
 
   EXPECT_EQ(controller->GetSelectedRegionCount(), 1u);
 
@@ -424,6 +467,143 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
 
   controller->Close();
   EXPECT_EQ(controller->GetSelectedRegionCount(), 0u);
+}
+
+class SelectionOverlayTextSelectionBrowserTest : public GlicBrowserTest {
+ public:
+  SelectionOverlayTextSelectionBrowserTest() {
+    // The inline cue widget is not needed to pre-select the text selection.
+    scoped_feature_list_.InitWithFeatures(
+        {::features::kGlicCaptureRegion,
+         ::features::kGlicSelectionOverlayPrompt,
+         ::features::kGlicSelectionSmallChip},
+        {::features::kGlicSelectionPrompt});
+  }
+  ~SelectionOverlayTextSelectionBrowserTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Same as `SelectionOverlayTextSelectionBrowserTest`, but with the small chip
+// disabled.
+class SelectionOverlayTextSelectionNoSmallChipBrowserTest
+    : public GlicBrowserTest {
+ public:
+  SelectionOverlayTextSelectionNoSmallChipBrowserTest() {
+    scoped_feature_list_.InitWithFeatures(
+        {::features::kGlicCaptureRegion,
+         ::features::kGlicSelectionOverlayPrompt},
+        {::features::kGlicSelectionSmallChip,
+         ::features::kGlicSelectionPrompt});
+  }
+  ~SelectionOverlayTextSelectionNoSmallChipBrowserTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+namespace {
+
+// Starts a capture session the way the web client does. The observer's
+// receiver is dropped because these tests only check browser state.
+void StartCaptureRegion(tabs::TabInterface* tab) {
+  mojo::PendingRemote<mojom::CaptureRegionObserver> observer;
+  std::ignore = observer.InitWithNewPipeAndPassReceiver();
+  SelectionOverlayController::CaptureRegion(
+      tab,
+      GlicKeyedService::Get(tab->GetProfile())
+          ->active_instance_sharing_manager(),
+      std::move(observer), /*options=*/nullptr);
+}
+
+// Selects all text on the page and waits for the renderer to report the
+// selection bounds, which arrive asynchronously.
+[[nodiscard]] bool SelectAllAndWaitForBounds(
+    content::WebContents* web_contents) {
+  web_contents->SelectAll();
+  return base::test::RunUntil([&]() {
+    std::optional<gfx::Rect> bounds = web_contents->GetTextSelectionBounds(
+        web_contents->GetPrimaryMainFrame());
+    return bounds.has_value() && !bounds->IsEmpty();
+  });
+}
+
+}  // namespace
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayTextSelectionBrowserTest,
+                       CaptureRegionPreselectsTextSelection) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  content::WebContents* web_contents = tab->GetContents();
+  auto* controller =
+      SelectionOverlayController::FromTabWebContents(web_contents);
+  ASSERT_TRUE(controller);
+  auto* selection_observer = GlicSelectionObserver::From(tab);
+  ASSERT_TRUE(selection_observer);
+
+  ASSERT_TRUE(SelectAllAndWaitForBounds(web_contents));
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return selection_observer->GetCurrentSelectionBounds().has_value();
+  }));
+  ASSERT_TRUE(OpenGlicForActiveTab().has_value());
+
+  StartCaptureRegion(tab);
+
+  EXPECT_EQ(controller->GetSelectedRegionCount(), 1u);
+
+  controller->Close();
+  EXPECT_EQ(controller->GetSelectedRegionCount(), 0u);
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayTextSelectionNoSmallChipBrowserTest,
+                       CaptureRegionIgnoresSelectionWithoutSmallChip) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  content::WebContents* web_contents = tab->GetContents();
+  auto* controller =
+      SelectionOverlayController::FromTabWebContents(web_contents);
+  ASSERT_TRUE(controller);
+
+  // A text selection exists, but the small chip is disabled.
+  ASSERT_TRUE(SelectAllAndWaitForBounds(web_contents));
+  ASSERT_TRUE(OpenGlicForActiveTab().has_value());
+
+  StartCaptureRegion(tab);
+
+  EXPECT_EQ(controller->GetSelectedRegionCount(), 0u);
+
+  controller->Close();
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayTextSelectionBrowserTest,
+                       CaptureRegionIgnoresClearedSelection) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  content::WebContents* web_contents = tab->GetContents();
+  auto* controller =
+      SelectionOverlayController::FromTabWebContents(web_contents);
+  ASSERT_TRUE(controller);
+  auto* selection_observer = GlicSelectionObserver::From(tab);
+  ASSERT_TRUE(selection_observer);
+
+  // Select text so that the observer records the selected frame.
+  ASSERT_TRUE(SelectAllAndWaitForBounds(web_contents));
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return selection_observer->GetCurrentSelectionBounds().has_value();
+  }));
+
+  // Clear the selection. Starting a capture session afterwards must not reuse
+  // the previous selection.
+  ASSERT_TRUE(content::ExecJs(web_contents,
+                              "window.getSelection().removeAllRanges();"));
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return !selection_observer->GetCurrentSelectionBounds().has_value();
+  }));
+  ASSERT_TRUE(OpenGlicForActiveTab().has_value());
+
+  StartCaptureRegion(tab);
+
+  EXPECT_EQ(controller->GetSelectedRegionCount(), 0u);
+
+  controller->Close();
 }
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
@@ -456,7 +636,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
       /*is_using_keyboard=*/false);
 
   TestSuggestedActionsListener listener;
-  handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
   listener.WaitForBatches(2);
   const auto& actions = listener.actions();
   ASSERT_EQ(actions.size(), 5u);
@@ -489,21 +669,31 @@ class CountingSelectionSuggestionTool
     request_count_++;
     last_aoi_screenshot_ = processed_area.screenshot;
     last_aoi_apc_ = processed_area.apc;
+    last_selected_text_ = processed_area.selected_text;
+    last_text_surrounding_selection_ =
+        processed_area.text_surrounding_selection;
     if (std::holds_alternative<gfx::Rect>(processed_area.bounds)) {
       last_rect_ = std::get<gfx::Rect>(processed_area.bounds);
     }
     std::vector<std::unique_ptr<::selection::Suggestion>> suggestions;
     std::u16string label = u"Action " + base::NumberToString16(request_count_);
     suggestions.push_back(
-        std::make_unique<PromptSuggestion>(*tab_, label, "Prompt"));
+        std::make_unique<SelectionSuggestion>(*tab_, label, "Prompt"));
     std::move(callback).Run(std::move(suggestions), /*complete=*/true);
   }
+
 
   int request_count() const { return request_count_; }
   const gfx::Rect& last_rect() const { return last_rect_; }
   const SkBitmap& last_aoi_screenshot() const { return last_aoi_screenshot_; }
   const optimization_guide::proto::AnnotatedPageContent& last_aoi_apc() const {
     return last_aoi_apc_;
+  }
+  const std::optional<std::u16string>& last_selected_text() const {
+    return last_selected_text_;
+  }
+  const std::optional<std::u16string>& last_text_surrounding_selection() const {
+    return last_text_surrounding_selection_;
   }
 
  private:
@@ -512,9 +702,57 @@ class CountingSelectionSuggestionTool
   gfx::Rect last_rect_;
   SkBitmap last_aoi_screenshot_;
   optimization_guide::proto::AnnotatedPageContent last_aoi_apc_;
+  std::optional<std::u16string> last_selected_text_;
+  std::optional<std::u16string> last_text_surrounding_selection_;
 };
 
 }  // namespace
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
+                       ShowWithSelectionPopulatesSurroundingText) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  content::WebContents* web_contents = tab->GetContents();
+
+  auto* suggestion_service = ::selection::SuggestionService::From(tab);
+  ASSERT_TRUE(suggestion_service);
+  CountingSelectionSuggestionTool counting_tool(tab);
+  ScopedToolRegistration registration(suggestion_service, &counting_tool);
+
+  ASSERT_TRUE(content::ExecJs(web_contents, R"(
+    document.body.innerText = 'Before text Selected target After text';
+    const textNode = document.body.firstChild;
+    const range = document.createRange();
+    range.setStart(textNode, 12);
+    range.setEnd(textNode, 27);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  )"));
+
+  auto* controller =
+      SelectionOverlayController::FromTabWebContents(web_contents);
+  ASSERT_TRUE(controller);
+
+  gfx::Rect view_bounds = web_contents->GetViewBounds();
+  gfx::Rect selection_bounds(view_bounds.x() + 10, view_bounds.y() + 10, 100,
+                             50);
+  controller->ShowWithSelection(web_contents->GetPrimaryMainFrame(),
+                                selection_bounds,
+                                selection::InteractionOptions::New());
+  ASSERT_OK(RunUntilEqual(
+      [&]() { return controller->state(); },
+      SelectionOverlayController::State::kOverlay,
+      "Timeout waiting for SelectionOverlayController state to be kOverlay"));
+
+  TestSuggestedActionsListener listener;
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
+  listener.WaitForBatches(1);
+
+  EXPECT_EQ(counting_tool.request_count(), 1);
+  EXPECT_EQ(counting_tool.last_selected_text(), u"Selected target");
+  EXPECT_EQ(counting_tool.last_text_surrounding_selection(),
+            u"Before text Selected target After text");
+}
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
                        SuggestionsCachedPerRegionAndRefetchedOnAdjust) {
@@ -542,7 +780,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
   // fetching.
   {
     TestSuggestedActionsListener listener;
-    handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+    controller->GetSuggestedActionsForTesting(listener.GetCallback());
     listener.WaitForBatches(1);
     EXPECT_TRUE(listener.actions().empty());
     EXPECT_EQ(counting_tool.request_count(), 0);
@@ -558,7 +796,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
   base::UnguessableToken region1_action_id;
   {
     TestSuggestedActionsListener listener;
-    handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+    controller->GetSuggestedActionsForTesting(listener.GetCallback());
     listener.WaitForBatches(1);
     ASSERT_EQ(listener.actions().size(), 1u);
     EXPECT_EQ(listener.actions()[0]->title, "Action 1");
@@ -572,7 +810,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
   // suggestions without refetching.
   {
     TestSuggestedActionsListener listener;
-    handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+    controller->GetSuggestedActionsForTesting(listener.GetCallback());
     listener.WaitForBatches(1);
     ASSERT_EQ(listener.actions().size(), 1u);
     EXPECT_EQ(listener.actions()[0]->title, "Action 1");
@@ -590,7 +828,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
       /*is_using_keyboard=*/false);
   {
     TestSuggestedActionsListener listener;
-    handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+    controller->GetSuggestedActionsForTesting(listener.GetCallback());
     listener.WaitForBatches(1);
     ASSERT_EQ(listener.actions().size(), 1u);
     EXPECT_EQ(listener.actions()[0]->title, "Action 2");
@@ -602,7 +840,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
   handler->DeleteRegion(region2_id, /*is_using_keyboard=*/false);
   {
     TestSuggestedActionsListener listener;
-    handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+    controller->GetSuggestedActionsForTesting(listener.GetCallback());
     listener.WaitForBatches(1);
     ASSERT_EQ(listener.actions().size(), 1u);
     EXPECT_EQ(listener.actions()[0]->title, "Action 1");
@@ -619,7 +857,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
       /*is_using_keyboard=*/false);
   {
     TestSuggestedActionsListener listener;
-    handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+    controller->GetSuggestedActionsForTesting(listener.GetCallback());
     listener.WaitForBatches(1);
     ASSERT_EQ(listener.actions().size(), 1u);
     EXPECT_EQ(listener.actions()[0]->title, "Action 3");
@@ -642,10 +880,11 @@ class FakePromptSuggestionTool : public ::selection::SuggestionTool {
   void RequestSuggestions(const ::selection::AreaOfInterest& processed_area,
                           ::selection::SuggestionsCallback callback) override {
     std::vector<std::unique_ptr<::selection::Suggestion>> suggestions;
-    suggestions.push_back(std::make_unique<PromptSuggestion>(
+    suggestions.push_back(std::make_unique<SelectionSuggestion>(
         *tab_, u"Explain", "Explain the selection in a few sentences."));
     std::move(callback).Run(std::move(suggestions), /*complete=*/true);
   }
+
 
  private:
   raw_ptr<tabs::TabInterface> tab_;
@@ -704,6 +943,7 @@ class FakeInlineSuggestionTool : public ::selection::SuggestionTool {
     std::move(callback).Run(std::move(suggestions), /*complete=*/true);
   }
 
+
   InlineSuggestion* last_suggestion() { return last_suggestion_; }
 
  private:
@@ -722,7 +962,7 @@ class FakeInlineSuggestionTool : public ::selection::SuggestionTool {
       /*is_using_keyboard=*/false);
 
   TestSuggestedActionsListener listener;
-  handler->GetSuggestedActions(listener.BindNewPipeAndPassRemote());
+  controller->GetSuggestedActionsForTesting(listener.GetCallback());
   listener.WaitForBatches(1);
   if (listener.actions().empty()) {
     return nullptr;
@@ -843,6 +1083,127 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayPromptBrowserTest,
 
   ASSERT_TRUE(tool.last_suggestion());
   EXPECT_FALSE(tool.last_suggestion()->channel_bound());
+}
+
+namespace {
+
+void Connect(ExplainSuggestion& suggestion,
+             mojo::AssociatedRemote<selection::ExplainFulfillment>& remote) {
+  suggestion.Execute(mojo::GenericPendingAssociatedReceiver(
+      remote.BindNewEndpointAndPassDedicatedReceiver()));
+}
+
+}  // namespace
+
+using ExplainSuggestionBrowserTest = SelectionOverlayBrowserTest;
+
+IN_PROC_BROWSER_TEST_F(ExplainSuggestionBrowserTest, GetExplanation) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  static constexpr char kExpectedExplanation[] =
+      "An explanation of your selection.";
+  optimization_guide::proto::QuickAnswersResponse response_msg;
+  response_msg.set_answer(kExpectedExplanation);
+  optimization_guide::proto::Any any;
+  any.set_value(response_msg.SerializeAsString());
+  any.set_type_url(
+      base::StrCat({"type.googleapis.com/", response_msg.GetTypeName()}));
+  OptimizationGuideKeyedServiceFactory::GetForProfile(tab->GetProfile())
+      ->AddExecutionResultForTesting(
+          optimization_guide::ModelBasedCapabilityKey::kQuickAnswers,
+          optimization_guide::OptimizationGuideModelExecutionResult(
+              std::move(any), nullptr));
+
+  ExplainSuggestion suggestion(*tab, /*request=*/{});
+  mojo::AssociatedRemote<selection::ExplainFulfillment> remote;
+  Connect(suggestion, remote);
+
+  base::test::TestFuture<const std::string&> explanation;
+  remote->GetExplanation(explanation.GetCallback());
+  EXPECT_EQ(explanation.Get(), kExpectedExplanation);
+}
+
+namespace {
+
+// Makes `search_url` the default search engine.
+void SetTestDefaultSearchEngine(Profile* profile, const GURL& search_url) {
+  TemplateURLService* template_url_service =
+      TemplateURLServiceFactory::GetForProfile(profile);
+  search_test_utils::WaitForTemplateURLServiceToLoad(template_url_service);
+  TemplateURLData data;
+  data.SetShortName(u"Test");
+  data.SetKeyword(u"test");
+  data.SetURL(search_url.spec());
+  template_url_service->SetUserSelectedDefaultSearchProvider(
+      template_url_service->Add(std::make_unique<TemplateURL>(data)));
+}
+
+// Shows the overlay on `tab` and returns the overlay WebUI's main frame.
+content::RenderFrameHost* ShowOverlay(tabs::TabInterface* tab) {
+  auto* controller =
+      SelectionOverlayController::FromTabWebContents(tab->GetContents());
+  CHECK(controller);
+  controller->Show(/*options=*/nullptr);
+  EXPECT_OK(RunUntilEqual(
+      [&]() { return controller->state(); },
+      SelectionOverlayController::State::kOverlay,
+      "Timeout waiting for SelectionOverlayController state to be kOverlay"));
+  return controller->GetOverlayMainFrame();
+}
+
+}  // namespace
+
+IN_PROC_BROWSER_TEST_F(ExplainSuggestionBrowserTest,
+                       OpenTabForSearchUsesDefaultSearchEngine) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  SetTestDefaultSearchEngine(tab->GetProfile(),
+                             GetTestUrl("page.html?q={searchTerms}"));
+  content::RenderFrameHost* overlay = ShowOverlay(tab);
+  ASSERT_TRUE(overlay);
+
+  ExplainSuggestion suggestion(*tab, /*request=*/{});
+  mojo::AssociatedRemote<selection::ExplainFulfillment> remote;
+  Connect(suggestion, remote);
+  auto* tabs = GetTabListInterface();
+  const int tab_count = tabs->GetTabCount();
+
+  // Gives the overlay a user activation, like the click on the card.
+  ASSERT_TRUE(content::ExecJs(overlay, "true"));
+  remote->OpenTabForSearch("hello");
+  remote.FlushForTesting();
+
+  // The search opens in a new foreground tab.
+  EXPECT_EQ(tabs->GetTabCount(), tab_count + 1);
+  EXPECT_EQ(tabs->GetActiveTab()->GetContents()->GetVisibleURL(),
+            GetTestUrl("page.html?q=hello"));
+}
+
+IN_PROC_BROWSER_TEST_F(ExplainSuggestionBrowserTest,
+                       OpenTabForSearchNeedsUserActivation) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  SetTestDefaultSearchEngine(tab->GetProfile(),
+                             GetTestUrl("page.html?q={searchTerms}"));
+  ASSERT_TRUE(ShowOverlay(tab));
+
+  ExplainSuggestion suggestion(*tab, /*request=*/{});
+  mojo::AssociatedRemote<selection::ExplainFulfillment> remote;
+  Connect(suggestion, remote);
+  auto* tabs = GetTabListInterface();
+  const int tab_count = tabs->GetTabCount();
+
+  remote->OpenTabForSearch("hello");
+  remote.FlushForTesting();
+
+  EXPECT_EQ(tabs->GetTabCount(), tab_count);
+}
+
+IN_PROC_BROWSER_TEST_F(ExplainSuggestionBrowserTest, AskGeminiOpensGlic) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+  ExplainSuggestion suggestion(*tab, /*request=*/{});
+  mojo::AssociatedRemote<selection::ExplainFulfillment> remote;
+  Connect(suggestion, remote);
+
+  remote->AskGemini();
+  EXPECT_TRUE(WaitForGlicOpen(tab).has_value());
 }
 
 }  // namespace glic

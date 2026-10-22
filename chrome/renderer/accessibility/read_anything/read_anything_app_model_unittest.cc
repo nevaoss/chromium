@@ -61,6 +61,7 @@ TEST_F(ReadAnythingAppModelNoInitTest,
        GetOriginalPageMetrics_EmptyBeforeTreeInitialization) {
   ReadAnythingAppModel::OriginalPageMetrics metrics =
       model().GetOriginalPageMetrics();
+  EXPECT_FALSE(metrics.has_mathml);
   EXPECT_FALSE(metrics.maybe_has_key_points);
 }
 
@@ -2714,7 +2715,10 @@ TEST_F(ReadAnythingAppModelTest,
   ApplyAccessibilityUpdates(tree_id_, {update});
   model().SetActiveTreeId(tree_id_);
 
-  EXPECT_TRUE(model().GetOriginalPageMetrics().maybe_has_key_points);
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics.maybe_has_key_points);
+  EXPECT_FALSE(metrics.has_mathml);
 }
 
 TEST_F(ReadAnythingAppModelTest, GetOriginalPageMetrics_ReturnsFalseForH1) {
@@ -2738,7 +2742,181 @@ TEST_F(ReadAnythingAppModelTest, GetOriginalPageMetrics_ReturnsFalseForH1) {
   ApplyAccessibilityUpdates(tree_id_, {update});
   model().SetActiveTreeId(tree_id_);
 
-  EXPECT_FALSE(model().GetOriginalPageMetrics().maybe_has_key_points);
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_FALSE(metrics.maybe_has_key_points);
+  EXPECT_FALSE(metrics.has_mathml);
+}
+
+TEST_F(ReadAnythingAppModelTest, GetOriginalPageMetrics_ReturnsTrueForMathML) {
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  ui::AXNodeData root;
+  root.id = 1;
+
+  ui::AXNodeData math_node;
+  math_node.id = 2;
+  math_node.role = ax::mojom::Role::kMathMLMath;
+
+  root.child_ids = {math_node.id};
+  update.root_id = root.id;
+  update.nodes = {root, math_node};
+
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().SetActiveTreeId(tree_id_);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics.has_mathml);
+  EXPECT_FALSE(metrics.maybe_has_key_points);
+}
+
+TEST_F(ReadAnythingAppModelTest,
+       GetOriginalPageMetrics_CapturesMathMLAfterKeyPoints) {
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  ui::AXNodeData root;
+  root.id = 1;
+
+  ui::AXNodeData heading;
+  heading.id = 2;
+  heading.role = ax::mojom::Role::kHeading;
+  heading.AddIntAttribute(ax::mojom::IntAttribute::kHierarchicalLevel, 2);
+  ui::AXNodeData text = test::TextNode(3, u"Summary");
+  heading.child_ids = {text.id};
+
+  ui::AXNodeData math_node;
+  math_node.id = 4;
+  math_node.role = ax::mojom::Role::kMathMLMath;
+
+  root.child_ids = {heading.id, math_node.id};
+  update.root_id = root.id;
+  update.nodes = {root, heading, text, math_node};
+
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().SetActiveTreeId(tree_id_);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics.has_mathml);
+  EXPECT_TRUE(metrics.maybe_has_key_points);
+}
+
+TEST_F(ReadAnythingAppModelTest,
+       GetOriginalPageMetrics_CapturesKeyPointsAfterMathML) {
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  ui::AXNodeData root;
+  root.id = 1;
+
+  ui::AXNodeData math_node;
+  math_node.id = 2;
+  math_node.role = ax::mojom::Role::kMathMLMath;
+
+  ui::AXNodeData heading;
+  heading.id = 3;
+  heading.role = ax::mojom::Role::kHeading;
+  heading.AddIntAttribute(ax::mojom::IntAttribute::kHierarchicalLevel, 2);
+  ui::AXNodeData text = test::TextNode(4, u"Key Points");
+  heading.child_ids = {text.id};
+
+  root.child_ids = {math_node.id, heading.id};
+  update.root_id = root.id;
+  update.nodes = {root, math_node, heading, text};
+
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().SetActiveTreeId(tree_id_);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics.has_mathml);
+  EXPECT_TRUE(metrics.maybe_has_key_points);
+}
+
+TEST_F(ReadAnythingAppModelTest,
+       GetOriginalPageMetrics_ReturnsTrueForDeeplyNestedMathML) {
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  ui::AXNodeData root;
+  root.id = 1;
+
+  ui::AXNodeData section;
+  section.id = 2;
+  section.role = ax::mojom::Role::kSection;
+
+  ui::AXNodeData paragraph;
+  paragraph.id = 3;
+  paragraph.role = ax::mojom::Role::kParagraph;
+
+  ui::AXNodeData math_node;
+  math_node.id = 4;
+  math_node.role = ax::mojom::Role::kMathMLMath;
+
+  paragraph.child_ids = {math_node.id};
+  section.child_ids = {paragraph.id};
+  root.child_ids = {section.id};
+  update.root_id = root.id;
+  update.nodes = {root, section, paragraph, math_node};
+
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().SetActiveTreeId(tree_id_);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics.has_mathml);
+  EXPECT_FALSE(metrics.maybe_has_key_points);
+}
+
+TEST_F(ReadAnythingAppModelTest,
+       GetOriginalPageMetrics_ReturnsTrueForOtherMathRoles) {
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  ui::AXNodeData root;
+  root.id = 1;
+
+  ui::AXNodeData math_node;
+  math_node.id = 2;
+  math_node.role = ax::mojom::Role::kMath;
+
+  root.child_ids = {math_node.id};
+  update.root_id = root.id;
+  update.nodes = {root, math_node};
+
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().SetActiveTreeId(tree_id_);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics.has_mathml);
+}
+
+TEST_F(ReadAnythingAppModelTest,
+       GetOriginalPageMetrics_ReturnsCachedMetricsOnSubsequentCalls) {
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  ui::AXNodeData root;
+  root.id = 1;
+
+  ui::AXNodeData math_node;
+  math_node.id = 2;
+  math_node.role = ax::mojom::Role::kMathMLMath;
+
+  root.child_ids = {math_node.id};
+  update.root_id = root.id;
+  update.nodes = {root, math_node};
+
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().SetActiveTreeId(tree_id_);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics1 =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics1.has_mathml);
+
+  ReadAnythingAppModel::OriginalPageMetrics metrics2 =
+      model().GetOriginalPageMetrics();
+  EXPECT_TRUE(metrics2.has_mathml);
+  EXPECT_EQ(metrics1.has_mathml, metrics2.has_mathml);
+  EXPECT_EQ(metrics1.maybe_has_key_points, metrics2.maybe_has_key_points);
 }
 
 TEST_F(ReadAnythingAppModelTest, GetActiveTreeUrl) {
@@ -3215,6 +3393,149 @@ TEST_F(
 
   // New selection should trigger a draw.
   EXPECT_TRUE(model().PostProcessSelection());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+}
+
+// Tests for image captions and select-to-distill behavior.
+class ReadAnythingAppModelCaptionTest
+    : public ReadAnythingAppModelScreen2xTest {
+ public:
+  static constexpr ui::AXNodeID kRootId = 1;
+  static constexpr ui::AXNodeID kParagraphId = 2;
+  static constexpr ui::AXNodeID kFigureId = 3;
+  static constexpr ui::AXNodeID kImageId = 4;
+  static constexpr ui::AXNodeID kFigcaptionId = 5;
+  static constexpr ui::AXNodeID kCaptionTextId = 6;
+
+  ReadAnythingAppModelCaptionTest() = default;
+  ~ReadAnythingAppModelCaptionTest() override = default;
+
+  void SetUp() override {
+    ReadAnythingAppModelScreen2xTest::SetUp();
+
+    // Tree structure:
+    // 1: Root container
+    //   2: Paragraph text (not in figure)
+    //   3: <figure>
+    //     4: Image
+    //     5: <figcaption>
+    //       6: Caption text
+    ui::AXTreeUpdate update;
+    test::SetUpdateTreeID(&update, tree_id_);
+
+    ui::AXNodeData root = test::GenericContainerNode(kRootId);
+    ui::AXNodeData paragraph = test::TextNode(kParagraphId);
+
+    ui::AXNodeData figure = test::GenericContainerNode(kFigureId);
+    figure.role = ax::mojom::Role::kFigure;
+    figure.AddStringAttribute(ax::mojom::StringAttribute::kHtmlTag, "figure");
+
+    ui::AXNodeData image =
+        test::ImageNode(kImageId, "https://test.com/img.jpg");
+
+    ui::AXNodeData figcaption = test::GenericContainerNode(kFigcaptionId);
+    figcaption.role = ax::mojom::Role::kFigcaption;
+    figcaption.AddStringAttribute(ax::mojom::StringAttribute::kHtmlTag,
+                                  "figcaption");
+
+    ui::AXNodeData caption_text = test::TextNode(kCaptionTextId);
+
+    figcaption.child_ids = {kCaptionTextId};
+    figure.child_ids = {kImageId, kFigcaptionId};
+    root.child_ids = {kParagraphId, kFigureId};
+    update.nodes = {root, paragraph, figure, image, figcaption, caption_text};
+
+    ApplyAccessibilityUpdates(tree_id_, {update});
+    ProcessDisplayNodes({kParagraphId, kFigureId});
+  }
+
+  void SetSelection(ui::AXNodeID anchor_id,
+                    int anchor_offset,
+                    ui::AXNodeID focus_id,
+                    int focus_offset) {
+    ui::AXTreeUpdate update;
+    test::SetUpdateTreeID(&update, tree_id_);
+    update.tree_data.sel_anchor_object_id = anchor_id;
+    update.tree_data.sel_focus_object_id = focus_id;
+    update.tree_data.sel_anchor_offset = anchor_offset;
+    update.tree_data.sel_focus_offset = focus_offset;
+    update.tree_data.sel_is_backward = false;
+    ApplyAccessibilityUpdates(tree_id_, {update});
+  }
+};
+
+TEST_F(ReadAnythingAppModelCaptionTest,
+       CaptionSelection_ImagesEnabled_RemainsInMainContentMode) {
+  model().set_images_enabled(true);
+  SetSelection(kCaptionTextId, 0, kCaptionTextId, 4);
+
+  EXPECT_FALSE(model().PostProcessSelection());
+  EXPECT_TRUE(model().IsSelectionInDistilledContent());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+}
+
+TEST_F(ReadAnythingAppModelCaptionTest,
+       CaptionSelection_ImagesDisabled_TriggersSelectionMode) {
+  model().set_images_enabled(false);
+  SetSelection(kCaptionTextId, 0, kCaptionTextId, 4);
+
+  EXPECT_TRUE(model().PostProcessSelection());
+  EXPECT_FALSE(model().IsSelectionInDistilledContent());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kSelection);
+}
+
+TEST_F(
+    ReadAnythingAppModelCaptionTest,
+    SelectionSpanningParagraphToCaption_ImagesDisabled_TriggersSelectionMode) {
+  model().set_images_enabled(false);
+  SetSelection(kParagraphId, 0, kCaptionTextId, 4);
+
+  EXPECT_TRUE(model().PostProcessSelection());
+  EXPECT_FALSE(model().IsSelectionInDistilledContent());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kSelection);
+}
+
+TEST_F(
+    ReadAnythingAppModelCaptionTest,
+    SelectionSpanningCaptionToParagraph_ImagesDisabled_TriggersSelectionMode) {
+  model().set_images_enabled(false);
+  SetSelection(kCaptionTextId, 0, kParagraphId, 4);
+
+  EXPECT_TRUE(model().PostProcessSelection());
+  EXPECT_FALSE(model().IsSelectionInDistilledContent());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kSelection);
+}
+
+TEST_F(ReadAnythingAppModelCaptionTest,
+       ParagraphSelection_ImagesDisabled_RemainsInMainContentMode) {
+  model().set_images_enabled(false);
+  SetSelection(kParagraphId, 0, kParagraphId, 4);
+
+  EXPECT_FALSE(model().PostProcessSelection());
+  EXPECT_TRUE(model().IsSelectionInDistilledContent());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+}
+
+TEST_F(ReadAnythingAppModelCaptionTest,
+       ParagraphSelection_AfterEnteringSelectionMode_ReturnsToMainContent) {
+  model().set_images_enabled(false);
+
+  // First select caption to enter selection mode.
+  SetSelection(kCaptionTextId, 0, kCaptionTextId, 4);
+  EXPECT_TRUE(model().PostProcessSelection());
+  EXPECT_EQ(model().side_panel_distillation_mode(),
+            ReadAnythingAppModel::SidePanelDistillationMode::kSelection);
+
+  // Subsequent selection in paragraph returns to main content mode.
+  SetSelection(kParagraphId, 0, kParagraphId, 4);
+  EXPECT_TRUE(model().PostProcessSelection());
+  EXPECT_TRUE(model().IsSelectionInDistilledContent());
   EXPECT_EQ(model().side_panel_distillation_mode(),
             ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
 }

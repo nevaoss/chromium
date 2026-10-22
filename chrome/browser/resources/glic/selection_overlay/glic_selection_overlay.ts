@@ -7,6 +7,7 @@ import '/lens/post_selection_renderer.js';
 import '/lens/overlay_border_glow.js';
 import '/lens/overlay_shimmer_canvas.js';
 import '/strings.m.js';
+import './inline_fulfillment_host.js';
 import '//resources/cr_elements/cr_button/cr_button.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import '//resources/cr_elements/cr_toast/cr_toast.js';
@@ -24,8 +25,9 @@ import {DragFeature, GestureState} from '/lens/selection_utils.js';
 
 import {getCss} from './glic_selection_overlay.css.js';
 import {getHtml} from './glic_selection_overlay.html.js';
+import type {InlineFulfillmentHostElement} from './inline_fulfillment_host.js';
 import {DismissOverlayReason, SuggestedActionsListenerCallbackRouter} from './selection_overlay.mojom-webui.js';
-import type {SuggestedAction} from './selection_overlay.mojom-webui.js';
+import type {InteractionOptions, SuggestedAction} from './selection_overlay.mojom-webui.js';
 import type {SelectionOverlayBaseHandlerImpl} from './selection_overlay_base_handler_impl.js';
 
 const GLIC_BORDER_GLOW_COLORS: string[] = [
@@ -83,6 +85,8 @@ export class SelectionOverlayElementElement extends
       suggestedActions: {type: Array},
       enableSelectionOverlayPrompt: {type: Boolean},
       enableSelectionOverlayPromptBox: {type: Boolean},
+      hideHandles: {type: Boolean},
+      disableMultiSelect: {type: Boolean},
     };
   }
 
@@ -98,9 +102,21 @@ export class SelectionOverlayElementElement extends
       loadTimeData.getBoolean('enableSelectionOverlayPrompt');
   accessor enableSelectionOverlayPromptBox: boolean =
       loadTimeData.getBoolean('enableSelectionOverlayPromptBox');
+  accessor hideHandles: boolean = false;
+  accessor disableMultiSelect: boolean = false;
 
   constructor() {
     super();
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    const handlerImpl = this.baseHandler as SelectionOverlayBaseHandlerImpl;
+    this.listenerIds.push(handlerImpl.addSetInteractionOptionsListener(
+        (options: InteractionOptions) => {
+          this.hideHandles = options.hideHandles;
+          this.disableMultiSelect = options.disableMultiSelect;
+        }));
   }
 
   override get selectionElements() {
@@ -211,6 +227,7 @@ export class SelectionOverlayElementElement extends
     this.eventTracker_.add(document, 'post-selection-cleared', () => {
       this.activeSelection = null;
       this.showFloatingPrompt = false;
+      this.clearInlineFulfillment_();
     });
 
     if (this.enableSelectionOverlayPrompt) {
@@ -222,7 +239,26 @@ export class SelectionOverlayElementElement extends
         this.updateFloatingPromptPosition();
       }
     });
+
+    const container =
+        this.shadowRoot.querySelector<HTMLElement>('#floatingPromptContainer');
+    if (container) {
+      this.floatingPromptResizeObserver_.observe(container);
+    }
   }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.floatingPromptResizeObserver_.disconnect();
+  }
+
+  // Repositions the prompt when its size changes, e.g. when a card is added
+  // or its content grows, so it doesn't overflow the viewport.
+  private floatingPromptResizeObserver_ = new ResizeObserver(() => {
+    if (this.showFloatingPrompt) {
+      this.updateFloatingPromptPosition();
+    }
+  });
 
   private updateThemeColors() {
     const selectionColor = this.getSelectionElementColor();
@@ -233,6 +269,20 @@ export class SelectionOverlayElementElement extends
     if (primaryColor) {
       this.style.setProperty('--color-primary', primaryColor);
     }
+  }
+
+  // Only rendered when the prompt is enabled.
+  private get inlineFulfillmentHost_(): InlineFulfillmentHostElement|null {
+    return this.shadowRoot.querySelector<InlineFulfillmentHostElement>(
+        '#inlineFulfillmentHost');
+  }
+
+  // The action whose card is showing, if any.
+  private shownInlineAction_: SuggestedAction|null = null;
+
+  private clearInlineFulfillment_() {
+    this.shownInlineAction_ = null;
+    this.inlineFulfillmentHost_?.clear();
   }
 
   private suggestedActionsListenerRouter_:
@@ -246,6 +296,8 @@ export class SelectionOverlayElementElement extends
       this.suggestedActionsListenerRouter_.$.close();
     }
     this.suggestedActions = [];
+    // A card belongs to the previous selection's actions.
+    this.clearInlineFulfillment_();
     this.suggestedActionsListenerRouter_ =
         new SuggestedActionsListenerCallbackRouter();
     this.suggestedActionsListenerRouter_.onSuggestedActionsAvailable
@@ -464,13 +516,34 @@ export class SelectionOverlayElementElement extends
     }
   }
 
-  protected onSuggestedActionClick(e: Event) {
+  protected async onSuggestedActionClick(e: Event) {
     const index = Number((e.currentTarget as HTMLElement).dataset['index']);
     const action = this.suggestedActions[index];
-    if (action) {
-      (this.baseHandler as SelectionOverlayBaseHandlerImpl)
-          .executeSuggestedAction(action.id);
+    if (!action) {
+      return;
     }
+    const handler = this.baseHandler as SelectionOverlayBaseHandlerImpl;
+    const inlineFulfillment = action.action.inlineFulfillment;
+    if (!inlineFulfillment) {
+      handler.executeSuggestedAction(action.id, null);
+      return;
+    }
+    const host = this.inlineFulfillmentHost_;
+    // Its card is already showing. Executing it again would send the browser
+    // a second channel for the same action.
+    if (!host || action === this.shownInlineAction_) {
+      return;
+    }
+    // TODO(liuwilliam): We should consider moving this to pointerdown to save
+    // ~200ms of click time.
+    //
+    // `show()` sends the channel only if the card loaded and no newer click or
+    // selection replaced it. Otherwise nothing is sent, since the browser
+    // rejects an inline action without a channel.
+    await host.show(inlineFulfillment.resourceName, channel => {
+      this.shownInlineAction_ = action;
+      handler.executeSuggestedAction(action.id, channel);
+    });
   }
 
   protected submitPrompt(prompt: string) {

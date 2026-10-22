@@ -163,6 +163,8 @@
 #include "chrome/common/child_module/child_module_helper.h"
 #include "chrome/common/chrome_constants.h"
 #include "components/password_manager/core/common/password_manager_features.h"
+#include "components/tabs/public/mock_tab_interface.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/child_process_host.h"
 #include "media/base/picture_in_picture_events_info.h"
 #include "third_party/blink/public/mojom/installedapp/related_application.mojom.h"
@@ -763,7 +765,10 @@ TEST_F(ChromeContentBrowserClientTestWithWebContents,
        GetAutoPipInfo_AutoPipReason) {
   ChromeContentBrowserClient client;
 
-  AutoPictureInPictureTabHelper::CreateForWebContents(web_contents());
+  tabs::MockTabInterface mock_tab;
+  tabs::TabLookupFromWebContents::CreateForWebContents(web_contents(),
+                                                       &mock_tab);
+  AutoPictureInPictureTabHelper tab_helper_instance(mock_tab, web_contents());
   auto* tab_helper =
       AutoPictureInPictureTabHelper::FromWebContents(web_contents());
   ASSERT_NE(nullptr, tab_helper);
@@ -1191,6 +1196,49 @@ TEST_F(ChromeContentSettingsRedirectTest, RedirectDebugURL) {
   dest_url = debug_url;
   test_content_browser_client.HandleWebUI(&dest_url, &profile_);
   EXPECT_EQ(debug_url, dest_url);
+}
+
+// chrome://omnibox is the former name of chrome://omnibox-internals.
+TEST_F(ChromeContentSettingsRedirectTest, RedirectLegacyOmniboxURL) {
+  TestChromeContentBrowserClient test_content_browser_client;
+  TestingBrowserProcess::GetGlobal()->local_state()->SetBoolean(
+      chrome_urls::kInternalOnlyUisEnabled, true);
+
+  GURL dest_url("chrome://omnibox/");
+  test_content_browser_client.HandleWebUI(&dest_url, &profile_);
+  EXPECT_EQ(GURL(chrome::kChromeUIOmniboxInternalsURL), dest_url);
+
+  // The path, query, and fragment are kept.
+  const GURL expected_url("chrome://omnibox-internals/ml?signals=1,2#ref");
+  dest_url = GURL("chrome://omnibox/ml?signals=1,2#ref");
+  test_content_browser_client.HandleWebUI(&dest_url, &profile_);
+  EXPECT_EQ(expected_url, dest_url);
+
+  // The new URL is the one displayed.
+  EXPECT_TRUE(
+      test_content_browser_client.HandleWebUIReverse(&dest_url, &profile_));
+  EXPECT_EQ(expected_url, dest_url);
+
+  // Other omnibox WebUI hosts are not rewritten.
+  const GURL omnibox_popup_url("chrome://omnibox-popup.top-chrome/");
+  dest_url = omnibox_popup_url;
+  test_content_browser_client.HandleWebUI(&dest_url, &profile_);
+  EXPECT_EQ(omnibox_popup_url, dest_url);
+}
+
+TEST_F(ChromeContentSettingsRedirectTest,
+       RedirectLegacyOmniboxURLWithInternalDebugPagesDisabled) {
+  TestChromeContentBrowserClient test_content_browser_client;
+  TestingBrowserProcess::GetGlobal()->local_state()->SetBoolean(
+      chrome_urls::kInternalOnlyUisEnabled, false);
+
+  // The internal debug pages disabled page refers to the new URL.
+  GURL dest_url("chrome://omnibox/");
+  test_content_browser_client.HandleWebUI(&dest_url, &profile_);
+  EXPECT_EQ(chrome::kChromeUIInternalDebugPagesDisabledHost,
+            dest_url.GetHost());
+  EXPECT_EQ(std::string("host=") + chrome::kChromeUIOmniboxInternalsURL,
+            dest_url.GetQuery());
 }
 
 #if BUILDFLAG(IS_CHROMEOS)

@@ -15,6 +15,8 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.ui.native_page.NativePage;
+import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.ui.base.DeviceFormFactor;
 
@@ -35,11 +37,6 @@ public class BottomBarConfigUtils {
                 && ChromeFeatureList.sAndroidBottomBar.isEnabled();
     }
     // LINT.ThenChange(//chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/ToolbarVariationUtils.java:isToolbarUiRefactorEnabled)
-
-    /** Whether AI Mode is enabled in the bottom bar. */
-    public static boolean isAimEnabled() {
-        return ChromeFeatureList.sAndroidBottomBarAim.isEnabled();
-    }
 
     /**
      * Returns the configured height of the bottom bar in DP (clamped to [{@link
@@ -82,7 +79,7 @@ public class BottomBarConfigUtils {
      */
     public static boolean isNtpScrollOffEnabled(@Nullable Tab tab, @Nullable Context context) {
         if (tab == null || context == null) return false;
-        return !tab.isIncognito()
+        return !tab.isOffTheRecord()
                 && isNtpWithBottomBar(tab, context)
                 && ChromeFeatureList.sAndroidBottomBarNtpScrollOffEnabled.getValue();
     }
@@ -100,14 +97,14 @@ public class BottomBarConfigUtils {
             @Nullable Tab tab, @Nullable Context context) {
         if (tab == null || context == null) return false;
 
-        if (isNtp(tab) && !tab.isIncognito() && shouldDisableOnNtp()) return false;
+        if (isRegularNtp(tab) && shouldDisableOnNtp()) return false;
 
         return tab.isNativePage() || UrlUtilities.isInternalScheme(tab.getUrl());
     }
 
     /** Whether the given tab is a regular NTP (excludes incognito). */
     public static boolean isRegularNtp(@Nullable Tab tab) {
-        return isNtp(tab) && !assumeNonNull(tab).isIncognito();
+        return isNtp(tab) && !assumeNonNull(tab).isOffTheRecord();
     }
 
     /** Whether to always use the filled GLIC icon. */
@@ -120,22 +117,22 @@ public class BottomBarConfigUtils {
         return ChromeFeatureList.sAndroidBottomBarBypassGlicGeofencing.getValue();
     }
 
-    /** Whether to bypass geofencing country check for AI Mode. */
-    public static boolean bypassAimGeofencing() {
-        return ChromeFeatureList.sAndroidBottomBarBypassAimGeofencing.getValue();
-    }
-
     private static boolean isNtpWithBottomBar(Tab tab, Context context) {
         return isNtp(tab)
                 && isBottomBarEnabled(context)
-                && (tab.isIncognito() || !shouldDisableOnNtp());
+                && (tab.isOffTheRecord() || !shouldDisableOnNtp());
     }
 
-    /** Whether the given tab is any NTP (regular or incognito). */
+    /**
+     * Whether the given tab is showing any NTP (regular or incognito).
+     *
+     * <p>Keys off the native page rather than the URL: the visible URL changes when a navigation
+     * starts, but the native page is only swapped when it commits. Frozen tabs keep a
+     * FrozenNativePage with the original host.
+     */
     private static boolean isNtp(@Nullable Tab tab) {
-        return tab != null
-                && tab.getNativePage() != null
-                && "newtab".equals(tab.getNativePage().getHost());
+        NativePage nativePage = tab == null ? null : tab.getNativePage();
+        return nativePage != null && UrlConstants.NTP_HOST.equals(nativePage.getHost());
     }
 
     /** Whether the feature parameter to show the GLIC setting toggle is enabled. */

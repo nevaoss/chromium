@@ -97,8 +97,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
     virtual void OnToolbarDropFile(const gfx::PointF& drop_position) = 0;
     virtual base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
     OnOmniboxAction(toolbar_ui_api::mojom::OmniboxActionPtr action) = 0;
-    virtual void ShowAvatarMenu(bool is_pointer_interaction) = 0;
-    virtual void OnAvatarButtonMousePressed() = 0;
+    virtual void ShowAvatarMenu() = 0;
     virtual void SetAvatarButtonHovered(bool hovered) = 0;
     virtual void SetAvatarButtonFocused(bool focused) = 0;
     virtual void SetAvatarButtonIPHPromoShowing(bool showing) = 0;
@@ -114,8 +113,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
     virtual void OnPerformanceInterventionButtonClicked(
         bool is_mouse_interaction) = 0;
     virtual void OnPerformanceInterventionButtonMousePressed() = 0;
-    virtual void OnMediaButtonClicked(bool is_mouse_interaction) = 0;
-    virtual void OnMediaButtonMousePressed() = 0;
+    virtual void OnMediaButtonClicked() = 0;
     virtual void OnGlicButtonClicked() = 0;
   };
 
@@ -200,9 +198,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
   void OnHomeButtonDropFile(const gfx::PointF& drop_position) override;
   void OnHomeButtonDropText(const std::string& text) override;
   void OnToolbarDropFile(const gfx::PointF& drop_position) override;
-  void ShowAvatarMenu(bool is_pointer_interaction,
-                      ShowAvatarMenuCallback callback) override;
-  void OnAvatarButtonMousePressed() override;
+  void ShowAvatarMenu(ShowAvatarMenuCallback callback) override;
   void SetAvatarButtonHovered(bool hovered,
                               SetAvatarButtonHoveredCallback callback) override;
   void SetAvatarButtonFocused(bool focused,
@@ -221,8 +217,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
   void OnPerformanceInterventionButtonClicked(
       bool is_mouse_interaction) override;
   void OnPerformanceInterventionButtonMousePressed() override;
-  void OnMediaButtonClicked(bool is_mouse_interaction) override;
-  void OnMediaButtonMousePressed() override;
+  void OnMediaButtonClicked() override;
   // Handles click events from the WebUI Glic button by forwarding them to the
   // delegate.
   void OnGlicButtonClicked() override;

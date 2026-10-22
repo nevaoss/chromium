@@ -94,6 +94,9 @@ struct StaticTextState {
 
   // Whether `node` is superscript or subscript, when style tracking is active.
   std::optional<ax::mojom::TextPosition> text_position;
+
+  // The language of `node`.
+  std::string language;
 };
 
 // Computed page-specific metrics, styling properties, and classification
@@ -136,6 +139,10 @@ struct HeuristicPageProperties {
   // Runs starting at or below this Y-coordinate are within the non-page-number
   // bottom margin.
   float bottom_non_page_number_margin = 0.0f;
+
+  // X-coordinate thresholds for the left and right side margins.
+  float left_margin = 0.0f;
+  float right_margin = 0.0f;
 
   // The dominant body text color on the page (in ARGB format), if multiple
   // colors exist.
@@ -214,6 +221,11 @@ class PdfAccessibilityTreeBuilderHeuristic {
   uint32_t current_link_index_ = 0;
   uint32_t current_image_index_ = 0;
   uint32_t current_highlight_index_ = 0;
+
+  // The block node currently being built and the static text nodes created
+  // while the block still has a uniform language.
+  raw_ptr<ui::AXNodeData> current_block_node_ = nullptr;
+  std::vector<raw_ptr<ui::AXNodeData>> current_block_static_text_nodes_;
 };
 
 }  // namespace pdf

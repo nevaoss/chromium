@@ -143,6 +143,14 @@ ContextualTasksPanelController* ContextualTasksUIBase::GetPanelController() {
   return ContextualTasksPanelController::From(browser);
 }
 
+contextual_tasks::ContextualTasksUiService*
+ContextualTasksUIBase::GetUiService() {
+  Profile* profile = GetProfile();
+  return profile
+             ? ContextualTasksUiServiceFactory::GetForBrowserContext(profile)
+             : nullptr;
+}
+
 content::WebUIDataSource* ContextualTasksUIBase::RegisterWebUIDataSource(
     Profile* profile) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
@@ -255,7 +263,7 @@ base::DictValue ContextualTasksUIBase::GetContextualTasksLoadTimeData(
       aim_eligibility_service && aim_eligibility_service->IsAimEligible();
   dict.Set("isAimEligible", is_aim_eligible);
 
-  dict.Set("darkMode", false);
+  dict.Set("darkMode", contextual_tasks::ShouldUseDarkMode(profile));
   dict.Set("isAiPage", false);
   dict.Set("isSignedIn", false);
   dict.Set("expandButtonEnabled", false);
@@ -285,6 +293,9 @@ void ContextualTasksUIBase::CreatePageHandler(
     }
   }
 #endif
+  if (IsAiPage()) {
+    NotifyAiPageStatusChanged(true);
+  }
 }
 
 void ContextualTasksUIBase::PinSidePanel() {
@@ -384,6 +395,28 @@ void ContextualTasksUIBase::OnActionsChanged() {
 }
 #endif
 
+void ContextualTasksUIBase::OnTabClickedFromSourcesMenu(int32_t tab_id,
+                                                        const GURL& url) {
+  auto* ui_service = GetUiService();
+  if (ui_service) {
+    ui_service->OnTabClickedFromSourcesMenu(tab_id, url, GetBrowser());
+  }
+}
+
+void ContextualTasksUIBase::OnFileClickedFromSourcesMenu(const GURL& url) {
+  auto* ui_service = GetUiService();
+  if (ui_service) {
+    ui_service->OnFileClickedFromSourcesMenu(url, GetBrowser());
+  }
+}
+
+void ContextualTasksUIBase::OnImageClickedFromSourcesMenu(const GURL& url) {
+  auto* ui_service = GetUiService();
+  if (ui_service) {
+    ui_service->OnImageClickedFromSourcesMenu(url, GetBrowser());
+  }
+}
+
 void ContextualTasksUIBase::BindInterface(
     mojo::PendingReceiver<contextual_tasks_toolbar::mojom::PageHandlerFactory>
         pending_receiver) {
@@ -470,6 +503,19 @@ void ContextualTasksUIBase::NotifyPermissionDashboardStateChanged(
   for (auto& observer : toolbar_ui_observers_) {
     observer->OnPermissionDashboardStateChanged(state.Clone());
   }
+}
+
+void ContextualTasksUIBase::SetIsAiPage(bool is_ai_page) {
+  is_ai_page_ = is_ai_page;
+  NotifyAiPageStatusChanged(is_ai_page);
+}
+
+const std::optional<std::string>& ContextualTasksUIBase::GetThreadTitle() {
+  return thread_title_;
+}
+
+void ContextualTasksUIBase::SetThreadTitle(std::optional<std::string> title) {
+  thread_title_ = std::move(title);
 }
 
 void ContextualTasksUIBase::GetInitialState(GetInitialStateCallback callback) {

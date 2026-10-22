@@ -23,12 +23,18 @@ Steps used to create the current version (or roll a newer one):
 2. Add back chromium's on-upstream files (from this directory):
 
    $ git checkout origin/main -- BUILD.gn DEPS DIR_METADATA OWNERS \
-     README.chromium gen_extra_chromium_files.py proto_library.gni \
-     proto_sources.gni proto_wkt.gni patches/
+     PRESUBMIT.py PRESUBMIT_test.py README.chromium \
+     check_file_lists.py check_file_lists_test.py \
+     gen_extra_chromium_files.py proto_library.gni proto_sources.gni \
+     proto_wkt.gni ':(glob)patches/*'
 
    Note: The `patches/` directory is already a part of the protobuf repository,
-   but it uses subdirectories for its content, while in Chromium we store our
-   patches directly in the `patches/` directory.
+   but it uses subdirectories (`patches/protobuf_vNN/`) for its content, while
+   in Chromium we store our patches directly in `patches/`. Use a single
+   `':(glob)patches/*'` pathspec so `*` stops at `/` instead of matching
+   upstream's subdirectories (plain `'patches/*.patch'` still matches across
+   `/`), and avoid separate `.patch` and `.md` globs (`git checkout` exits 1
+   and restores nothing if any single pathspec matches no files).
 
    Note: Ideally we wouldn't do this but instead have a
    `third_party/protobuf/src/` subdirectory where upstream code goes directly
@@ -94,7 +100,11 @@ Steps used to create the current version (or roll a newer one):
 
    Manually update BUILD.gn and proto_sources.gni as necessary. Hopefully this
    means just adding or moving around some source files, but might also include
-   tweaks like modifying compiler flags or macro defines.
+   tweaks like modifying compiler flags or macro defines. To see which source
+   files upstream added or removed in `src/file_lists.cmake` since `origin/main`
+   that `BUILD.gn` and `proto_sources.gni` do not follow yet, run:
+
+   $ ./check_file_lists.py --old-rev origin/main
 
    You may need to add new code modifications and diffs in patches/ as well.
    To do this, make the necessary changes in your current local branch, and then

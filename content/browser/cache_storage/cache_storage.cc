@@ -131,7 +131,8 @@ class CacheStorage::CacheLoader {
                               CacheStorageError status)>;
   using BoolCallback = base::OnceCallback<void(bool)>;
   using CacheStorageIndexLoadCallback =
-      base::OnceCallback<void(std::unique_ptr<CacheStorageIndex>)>;
+      base::OnceCallback<void(std::unique_ptr<CacheStorageIndex>,
+                              CacheStorageError)>;
 
   CacheLoader(base::SequencedTaskRunner* cache_task_runner,
               scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
@@ -246,7 +247,8 @@ class CacheStorage::MemoryLoader : public CacheStorage::CacheLoader {
   }
 
   void LoadIndex(CacheStorageIndexLoadCallback callback) override {
-    std::move(callback).Run(std::make_unique<CacheStorageIndex>());
+    std::move(callback).Run(std::make_unique<CacheStorageIndex>(),
+                            CacheStorageError::kSuccess);
   }
 
   void NotifyCacheCreated(const std::u16string& cache_name,
@@ -297,8 +299,9 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
       int64_t cache_size,
       int64_t cache_padding) override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    CHECK(cache_name_to_cache_dir_.contains(cache_name),
-          base::NotFatalUntil::M158);
+    // TODO(crbug.com/567709524): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(cache_name_to_cache_dir_.contains(cache_name));
 
     std::string cache_dir = cache_name_to_cache_dir_[cache_name];
     base::FilePath cache_path = directory_path_.AppendASCII(cache_dir);
@@ -468,12 +471,17 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
                        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
   }
 
-  void LoadIndexDidReadIndex(CacheStorageIndexLoadCallback callback,
-                             proto::CacheStorageIndex protobuf_index) {
+  void LoadIndexDidReadIndex(
+      CacheStorageIndexLoadCallback callback,
+      base::expected<proto::CacheStorageIndex, CacheStorageError> result) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-    std::unique_ptr<std::set<std::string>> cache_dirs(
-        new std::set<std::string>);
+    const auto error =
+        result.has_value() ? CacheStorageError::kSuccess : result.error();
+    auto protobuf_index =
+        std::move(result).value_or(proto::CacheStorageIndex());
+
+    auto cache_dirs = std::make_unique<std::set<std::string>>();
 
     auto index = std::make_unique<CacheStorageIndex>();
     for (int i = 0, max = protobuf_index.cache_size(); i < max; ++i) {
@@ -525,7 +533,7 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
     cache_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&DeleteUnreferencedCachesInPool,
                                   directory_path_, std::move(cache_dirs)));
-    std::move(callback).Run(std::move(index));
+    std::move(callback).Run(std::move(index), error);
   }
 
   void NotifyCacheDoomed(CacheStorageCacheHandle cache_handle) override {
@@ -561,7 +569,8 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
   }
 
   // Runs on cache_task_runner_
-  static proto::CacheStorageIndex ReadAndMigrateIndexInPool(
+  static base::expected<proto::CacheStorageIndex, CacheStorageError>
+  ReadAndMigrateIndexInPool(
       const base::FilePath& directory_path,
       scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
       const storage::BucketLocator& bucket_locator) {
@@ -570,9 +579,15 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
 
     proto::CacheStorageIndex index;
     std::string body;
-    if (!base::ReadFileToString(index_path, &body) ||
-        !index.ParseFromString(body))
-      return proto::CacheStorageIndex();
+    if (!base::ReadFileToString(index_path, &body)) {
+      if (!base::PathExists(index_path)) {
+        return proto::CacheStorageIndex();
+      }
+      return base::unexpected(CacheStorageError::kErrorStorage);
+    }
+    if (!index.ParseFromString(body)) {
+      return base::unexpected(CacheStorageError::kErrorStorage);
+    }
     body.clear();
 
     base::File::Info file_info;
@@ -616,10 +631,9 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
         } while (base::PathExists(cache_path));
 
         if (!base::Move(legacy_cache_path, cache_path)) {
-          // If the move fails then the cache is in a bad state. Return an empty
-          // index so that the CacheStorage can start fresh. The unreferenced
-          // caches will be discarded later in initialization.
-          return proto::CacheStorageIndex();
+          // The loader will start fresh and discard unreferenced caches, but
+          // callers must still be able to distinguish this from an empty index.
+          return base::unexpected(CacheStorageError::kErrorStorage);
         }
 
         index.mutable_cache(i)->set_cache_dir(cache_dir);
@@ -645,7 +659,7 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
           !WriteIndexWriteToFileInPool(tmp_path, index_path, body,
                                        std::move(quota_manager_proxy),
                                        bucket_locator)) {
-        return proto::CacheStorageIndex();
+        return base::unexpected(CacheStorageError::kErrorStorage);
       }
     }
 
@@ -815,6 +829,11 @@ void CacheStorage::EnumerateCaches(int64_t trace_id,
           &CacheStorage::EnumerateCachesImpl, weak_factory_.GetWeakPtr(),
           trace_id,
           scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
+}
+
+bool CacheStorage::HasCaches() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return !cache_map_.empty();
 }
 
 void CacheStorage::MatchCache(const std::u16string& cache_name,
@@ -1076,7 +1095,8 @@ void CacheStorage::LazyInitImpl() {
 }
 
 void CacheStorage::LazyInitDidLoadIndex(
-    std::unique_ptr<CacheStorageIndex> index) {
+    std::unique_ptr<CacheStorageIndex> index,
+    CacheStorageError error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(cache_map_.empty(), base::NotFatalUntil::M158);
 
@@ -1086,6 +1106,7 @@ void CacheStorage::LazyInitDidLoadIndex(
 
   CHECK(!cache_index_, base::NotFatalUntil::M158);
   cache_index_ = std::move(index);
+  index_load_error_ = error;
 
   initializing_ = false;
   initialized_ = true;
@@ -1159,6 +1180,9 @@ void CacheStorage::CreateCacheDidWriteIndex(
               perfetto::Flow::Global(trace_id));
 
   // TODO(jkarlin): Handle !success.
+  if (success) {
+    index_load_error_ = CacheStorageError::kSuccess;
+  }
 
   std::move(callback).Run(std::move(cache_handle), CacheStorageError::kSuccess);
 }
@@ -1264,7 +1288,7 @@ void CacheStorage::EnumerateCachesImpl(int64_t trace_id,
     list.push_back(metadata.name);
   }
 
-  std::move(callback).Run(std::move(list));
+  std::move(callback).Run(std::move(list), index_load_error_);
 }
 
 void CacheStorage::MatchCacheImpl(
@@ -1410,7 +1434,9 @@ CacheStorageCacheHandle CacheStorage::GetLoadedCache(
   if (!cache) {
     const CacheStorageIndex::CacheMetadata* metadata =
         cache_index_->GetMetadata(cache_name);
-    CHECK(metadata, base::NotFatalUntil::M158);
+    // TODO(crbug.com/568292495): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(metadata);
     std::unique_ptr<CacheStorageCache> new_cache = cache_loader_->CreateCache(
         cache_name, metadata->size, metadata->padding);
     CacheStorageCache* cache_ptr = new_cache.get();

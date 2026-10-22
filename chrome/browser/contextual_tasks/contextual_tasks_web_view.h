@@ -42,6 +42,7 @@ class WebContentsModalDialogHost;
 namespace contextual_tasks {
 
 class ContextualTasksGhostLoaderView;
+class ContextualTasksUIBase;
 
 class ContextualTasksWebView
     : public views::View,
@@ -51,7 +52,10 @@ class ContextualTasksWebView
   METADATA_HEADER(ContextualTasksWebView, views::View)
 
  public:
-  explicit ContextualTasksWebView(BrowserWindowInterface* browser_window);
+  explicit ContextualTasksWebView(
+      BrowserWindowInterface* browser_window,
+      content::WebContents* toolbar_web_contents = nullptr,
+      content::WebContents* ghost_loader_web_contents = nullptr);
   ~ContextualTasksWebView() override;
 
   base::WeakPtr<ContextualTasksWebView> GetWeakPtr();
@@ -126,6 +130,13 @@ class ContextualTasksWebView
   // for its initial thread URL to be generated.
   bool IsTaskWaitingForUrl() const;
 
+  // Returns the toolbar WebUI controller, or nullptr if unavailable.
+  ContextualTasksUIBase* GetToolbarUI() const;
+
+  // Synchronizes the toolbar WebUI's AI page status and thread title with `wc`.
+  void UpdateToolbarStateFromWebContents(content::WebContents* wc,
+                                         bool use_last_committed_url = false);
+
   // The browser window interface associated with this view.
   raw_ptr<BrowserWindowInterface> browser_window_ = nullptr;
 
@@ -138,6 +149,10 @@ class ContextualTasksWebView
 
   // The placeholder ghost loader view overlaying the content WebView.
   raw_ptr<ContextualTasksGhostLoaderView> ghost_loader_view_ = nullptr;
+
+  // Whether this view created and owns the toolbar / ghost loader WebContents.
+  bool owns_toolbar_web_contents_ = false;
+  bool owns_ghost_loader_web_contents_ = false;
 
   // Whether the next DidStopLoading() corresponds to an initial or aborted
   // about:blank navigation that should not dismiss the ghost loader.

@@ -41,6 +41,10 @@ namespace client_hints {
 class ClientHintsWebContentsObserver;
 }  // namespace client_hints
 
+namespace commerce {
+class CommerceTabHelper;
+}  // namespace commerce
+
 namespace content {
 class WebContents;
 }  // namespace content
@@ -85,6 +89,7 @@ class WebContentsTopSitesObserver;
 
 namespace offline_pages {
 class AutoFetchNavigationObserver;
+class OfflinePageTabHelper;
 class RecentTabHelper;
 }  // namespace offline_pages
 
@@ -95,6 +100,10 @@ class SyncSessionsRouterTabHelper;
 namespace lens {
 class TabContextualizationController;
 }  // namespace lens
+
+namespace metrics {
+class MetricsServicesWebContentsObserver;
+}  // namespace metrics
 
 namespace payments {
 class WebPaymentsObserver;
@@ -122,8 +131,14 @@ namespace v8_compile_hints {
 class V8CompileHintsTabHelper;
 }  // namespace v8_compile_hints
 
+namespace webapps {
+class MLInstallabilityPromoter;
+}  // namespace webapps
+
 class AboutThisSiteTabHelper;
+class AutoPictureInPictureTabHelper;
 class ChainedBackNavigationTracker;
+class ChromeFacilitatedPaymentsClient;
 class ConnectionHelpTabHelper;
 class ExternalProtocolObserver;
 class FileSystemAccessTabHelper;
@@ -145,6 +160,7 @@ class SupervisedUserNavigationObserver;
 class TabContextDecryptionTokenTabHelper;
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
+class SearchTabHelper;
 namespace customize_chrome {
 class SidePanelController;
 }  // namespace customize_chrome
@@ -228,6 +244,7 @@ class TabFeatures {
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
   std::unique_ptr<customize_chrome::SidePanelController>
       customize_chrome_side_panel_controller_;
+  std::unique_ptr<SearchTabHelper> search_tab_helper_;
 #endif
   std::unique_ptr<tabs::PageContextEligibilityHelper>
       page_context_eligibility_helper_;
@@ -283,7 +300,17 @@ class TabFeatures {
   std::unique_ptr<chrome_browser_net::NetErrorTabHelper> net_error_tab_helper_;
   std::unique_ptr<SupervisedUserNavigationObserver>
       supervised_user_navigation_observer_;
+  std::unique_ptr<offline_pages::OfflinePageTabHelper> offline_page_tab_helper_;
   std::unique_ptr<offline_pages::RecentTabHelper> recent_tab_helper_;
+  std::unique_ptr<AutoPictureInPictureTabHelper>
+      auto_picture_in_picture_tab_helper_;
+  std::unique_ptr<webapps::MLInstallabilityPromoter>
+      ml_installability_promoter_;
+  std::unique_ptr<ChromeFacilitatedPaymentsClient>
+      chrome_facilitated_payments_client_;
+  std::unique_ptr<commerce::CommerceTabHelper> commerce_tab_helper_;
+  std::unique_ptr<metrics::MetricsServicesWebContentsObserver>
+      metrics_services_web_contents_observer_;
 
   // Holds the WebUI embedding context subscription.
   base::CallbackListSubscription tab_subscription_;

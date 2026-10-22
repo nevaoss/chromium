@@ -287,12 +287,17 @@ const AutofillAblationStudy& AutofillClient::GetAblationStudy() const {
 }
 
 #if BUILDFLAG(IS_ANDROID)
-bool AutofillClient::ShowAmbientAutoFillNotice(
+bool AutofillClient::ShowAmbientAutofillNotice(
     base::WeakPtr<TouchToFillAutofillDelegate> delegate) {
   return false;
 }
 
-void AutofillClient::HideAmbientAutoFillNotice() {}
+bool AutofillClient::ShowPrivateInferenceNoticeBottomSheet(
+    base::WeakPtr<TouchToFillAutofillDelegate> delegate) {
+  return false;
+}
+
+void AutofillClient::HideAmbientAutofillNotice() {}
 
 AutofillSnackbarControllerImpl*
 AutofillClient::GetAutofillSnackbarController() {
@@ -315,6 +320,12 @@ void AutofillClient::TriggerDeclinedSaveAddressReasonSurvey() {
 void AutofillClient::TriggerPersonalizationAndTrustSurveys(
     FillingProduct filling_product,
     const HatsSurveyStringData& field_filling_stats_data) {
+  NOTIMPLEMENTED();
+}
+
+void AutofillClient::TriggerAtMemoryPersonalizationAndTrustSurvey(
+    bool is_dismissed,
+    const HatsSurveyStringData& product_specific_data) {
   NOTIMPLEMENTED();
 }
 

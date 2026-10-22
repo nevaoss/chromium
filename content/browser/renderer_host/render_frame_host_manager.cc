@@ -1654,7 +1654,14 @@ void RenderFrameHostManager::RestorePage(
 }
 
 void RenderFrameHostManager::ClearRFHsPendingShutdown() {
-  pending_delete_hosts_.clear();
+  // Move the pending-delete RenderFrameHosts to a local set before destroying
+  // them so that `pending_delete_hosts_` is already empty while their
+  // destructors run, and verify that nothing re-entrantly adds new entries to
+  // `pending_delete_hosts_` during destruction (see https://crbug.com/567160164).
+  RFHPendingDeleteSet pending_delete_hosts;
+  pending_delete_hosts_.swap(pending_delete_hosts);
+  pending_delete_hosts.clear();
+  CHECK(pending_delete_hosts_.empty());
 }
 
 void RenderFrameHostManager::ClearWebUIInstances() {
@@ -2858,7 +2865,7 @@ RenderFrameHostManager::ShouldSwapBrowsingInstancesForNavigation(
   // For security, we should transition between processes when one is a Web UI
   // page and one isn't, or if the WebUI types differ.
   if (ChildProcessSecurityPolicyImpl::GetInstance()->HasWebUIBindings(
-          render_frame_host_->GetProcess()->GetDeprecatedID()) ||
+          render_frame_host_->GetProcess()->GetID()) ||
       WebUIControllerFactoryRegistry::GetInstance()->UseWebUIForURL(
           browser_context, current_effective_url)) {
     // If so, force a swap if destination is not an acceptable URL for Web UI.

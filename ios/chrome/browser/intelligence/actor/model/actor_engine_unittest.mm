@@ -10,6 +10,7 @@
 #import "base/test/test_future.h"
 #import "components/actor/core/aggregated_journal.h"
 #import "components/actor/core/safety_list_manager.h"
+#import "components/actor/core/task_source_info.h"
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
 #import "components/origin_gating/core/origin_gating_checker.h"
@@ -43,6 +44,11 @@
 namespace actor {
 namespace {
 
+// Returns the provenance attributed to tasks created by these tests.
+TaskSourceInfo TestSource() {
+  return TaskSourceInfo(TaskSourceInfo::Client::kTest, /*id=*/std::nullopt);
+}
+
 struct DelegateCall {
   ToolType tool_type;
   web::WebStateID web_state_id;
@@ -64,7 +70,6 @@ class MockActorEngineExecutionUpdatesDelegate
   std::vector<DelegateCall> calls_;
   bool on_will_execute_called_ = false;
 };
-
 }  // namespace
 
 // Test fixture for ActorEngine.
@@ -78,7 +83,7 @@ class ActorEngineTest : public PlatformTest {
     journal_ = std::make_unique<AggregatedJournal>();
     tool_factory_ = std::make_unique<ActorToolFactory>(profile_.get());
     task_ = std::make_unique<ActorTask>(
-        ActorTaskId(1), "Test Task",
+        ActorTaskId(1), "Test Task", TestSource(),
         /*allow_incognito_web_states=*/false, journal_.get(),
         tool_factory_.get(), BrowserListFactory::GetForProfile(profile_.get()));
     engine_ = std::make_unique<ActorEngine>(&execution_updates_delegate_,
@@ -680,8 +685,9 @@ TEST_F(ActorEngineOriginGatingTest, Act_NavigationAllowedByOriginGating) {
 
   auto fake_web_state = std::make_unique<web::FakeWebState>();
   fake_web_state->SetBrowserState(profile_.get());
-  auto fake_navigation_manager = std::make_unique<web::FakeNavigationManager>();
-  web::FakeNavigationManager* fake_navigation_manager_ptr =
+  auto fake_navigation_manager =
+      std::make_unique<CompletingFakeNavigationManager>(fake_web_state.get());
+  CompletingFakeNavigationManager* fake_navigation_manager_ptr =
       fake_navigation_manager.get();
   fake_web_state->SetNavigationManager(std::move(fake_navigation_manager));
   fake_web_state->SetCurrentURL(GURL("https://safe.com"));

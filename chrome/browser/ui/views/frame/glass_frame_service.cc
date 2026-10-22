@@ -5,11 +5,19 @@
 #include "chrome/browser/ui/views/frame/glass_frame_service.h"
 
 #include <algorithm>
+#include <memory>
+#include <string>
 #include <utility>
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/location.h"
+#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
+#include "base/values.h"
+#include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/performance_manager/public/user_tuning/battery_saver_mode_manager.h"
@@ -20,14 +28,64 @@
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
 #include "chrome/common/pref_names.h"
+#include "components/feature_engagement/public/feature_constants.h"
+#include "components/metrics/daily_event.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
+#include "ui/base/ui_base_features.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "base/mac/mac_util.h"
 #endif
+
+namespace {
+
+// The interval at which the DailyEvent::CheckInterval function should be
+// called.
+constexpr base::TimeDelta kDailyEventIntervalTimeDelta = base::Minutes(30);
+
+}  // namespace
+
+class GlassFrameMetricsReporter {
+ public:
+  explicit GlassFrameMetricsReporter(PrefService* pref_service)
+      : pref_service_(pref_service),
+        daily_event_(std::make_unique<metrics::DailyEvent>(
+            pref_service,
+            prefs::kGlassFrameDailySample,
+            /*histogram_name=*/std::string())) {
+    daily_event_->AddObserverClosure(base::BindRepeating(
+        &GlassFrameMetricsReporter::OnDailyEvent, base::Unretained(this)));
+    daily_event_->CheckInterval();
+    daily_event_timer_.Start(FROM_HERE, kDailyEventIntervalTimeDelta,
+                             daily_event_.get(),
+                             &metrics::DailyEvent::CheckInterval);
+  }
+
+  ~GlassFrameMetricsReporter() = default;
+
+ private:
+  void OnDailyEvent() {
+    base::UmaHistogramBoolean(
+        "Browser.GlassFrame.Enabled.Daily",
+        pref_service_->GetBoolean(prefs::kGlassFrameEnabled));
+    const PrefService::Preference* const pref =
+        pref_service_->FindPreference(prefs::kGlassFrameEnabled);
+    CHECK(pref);
+    base::UmaHistogramBoolean("Browser.GlassFrame.IsDefault.Daily",
+                              pref->IsDefaultValue());
+  }
+
+  raw_ptr<PrefService> pref_service_ = nullptr;
+  std::unique_ptr<metrics::DailyEvent> daily_event_;
+
+  // The timer used to periodically check if the daily event should be
+  // triggered.
+  base::RepeatingTimer daily_event_timer_;
+};
 
 DEFINE_USER_DATA(GlassFrameService);
 
@@ -43,6 +101,7 @@ void GlassFrameService::RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   default_enabled = false;
 #endif  // defined (ARCH_CPU_X86_FAMILY)
   registry->RegisterBooleanPref(prefs::kGlassFrameEnabled, default_enabled);
+  metrics::DailyEvent::RegisterPref(registry, prefs::kGlassFrameDailySample);
 }
 
 GlassFrameService::GlassFrameService(BrowserProcess& process)
@@ -55,6 +114,11 @@ GlassFrameService::GlassFrameService(BrowserProcess& process)
   CHECK(g_browser_process);
   PrefService* const pref_service = g_browser_process->local_state();
   CHECK(pref_service);
+#if !defined(ARCH_CPU_X86_FAMILY)
+  pref_service->SetDefaultPrefValue(
+      prefs::kGlassFrameEnabled,
+      base::Value(features::kGlassFrameEnabledByDefault.Get()));
+#endif  // !defined(ARCH_CPU_X86_FAMILY)
   is_glass_frame_enabled_ = pref_service->GetBoolean(prefs::kGlassFrameEnabled);
   pref_change_registrar_.Init(pref_service);
   pref_change_registrar_.Add(
@@ -76,6 +140,9 @@ GlassFrameService::GlassFrameService(BrowserProcess& process)
       },
       BrowserCollection::Order::kActivation);
 
+  metrics_reporter_ = std::make_unique<GlassFrameMetricsReporter>(
+      g_browser_process->local_state());
+
   LogGlassFramePreferredLook();
 }
 
@@ -96,6 +163,7 @@ bool GlassFrameService::IsBrowserWindowEligible(
 void GlassFrameService::OnBrowserActivated(BrowserWindowInterface* browser) {
   MaybeTrackBrowser(browser);
   OnEligibleStateChanged();
+  MaybeShowOptInPromo(browser);
 }
 
 void GlassFrameService::OnBrowserClosed(BrowserWindowInterface* browser) {
@@ -121,6 +189,12 @@ void GlassFrameService::OnBatterySaverModeManagerDestroyed() {
 
 void GlassFrameService::OnThemeChanged() {
   OnEligibleStateChanged();
+}
+
+void GlassFrameService::ResetMetricsReporterForTesting() {
+  PrefService* const pref_service = g_browser_process->local_state();
+  CHECK(pref_service);
+  metrics_reporter_ = std::make_unique<GlassFrameMetricsReporter>(pref_service);
 }
 
 base::flat_set<BrowserWindowInterface*>
@@ -180,6 +254,16 @@ void GlassFrameService::OnGlassFrameEnabledPrefChanged() {
     return;
   }
   is_glass_frame_enabled_ = is_enabled;
+  if (is_glass_frame_enabled_) {
+    for (BrowserWindowInterface* browser : tracked_browsers_) {
+      if (auto* const user_education =
+              BrowserUserEducationInterface::From(browser)) {
+        user_education->NotifyFeaturePromoFeatureUsed(
+            feature_engagement::kIPHGlassFrameOptInFeature,
+            FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+      }
+    }
+  }
   OnEligibleStateChanged();
 }
 
@@ -188,6 +272,18 @@ void GlassFrameService::OnEligibleStateChanged() {
       GetEligibleBrowserWindowInterfaces();
   for (auto& [browser, callback_list] : window_callbacks_) {
     callback_list.Notify(eligible.contains(browser));
+  }
+}
+
+void GlassFrameService::MaybeShowOptInPromo(BrowserWindowInterface* browser) {
+  if (is_glass_frame_enabled_ || is_battery_saver_mode_active_ ||
+      !ActivationOrderedEligibleBrowsers().contains(browser)) {
+    return;
+  }
+  if (auto* const user_education =
+          BrowserUserEducationInterface::From(browser)) {
+    user_education->MaybeShowStartupFeaturePromo(
+        feature_engagement::kIPHGlassFrameOptInFeature);
   }
 }
 

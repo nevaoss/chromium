@@ -47,6 +47,21 @@
             ]
         }
     ],
+    "ANGLEPurgeableBufferPool": [
+        {
+            "platforms": [
+                "mac"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "ANGLEPurgeableBufferPool"
+                    ]
+                }
+            ]
+        }
+    ],
     "AVFoundationCaptureForwardSampleTimestamps": [
         {
             "platforms": [
@@ -406,6 +421,21 @@
                     "name": "Enabled",
                     "enable_features": [
                         "EnableAiSubscriptionAvatarRing"
+                    ]
+                }
+            ]
+        }
+    ],
+    "AiSubscriptionAvatarRingFollowupIOS": [
+        {
+            "platforms": [
+                "ios"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "AiSubscriptionAvatarRingFollowupIOS"
                     ]
                 }
             ]
@@ -1077,6 +1107,27 @@
             ]
         }
     ],
+    "AndroidWindowOcclusion": [
+        {
+            "platforms": [
+                "android"
+            ],
+            "experiments": [
+                {
+                    "name": "FlexibleOcclusionMediumRateLimit",
+                    "params": {
+                        "calculate_occlusion_rate_limit_ms": "100",
+                        "minimum_visibility_size_threshold": "10",
+                        "occlusion_optimizations": "true",
+                        "tracking_mode": "self_occlusion"
+                    },
+                    "enable_features": [
+                        "AndroidWindowOcclusion"
+                    ]
+                }
+            ]
+        }
+    ],
     "AndroidYuvOverlayEvenAlignment": [
         {
             "platforms": [
@@ -1294,6 +1345,21 @@
                     "name": "Enabled",
                     "enable_features": [
                         "AppMenuGlowUp"
+                    ]
+                }
+            ]
+        }
+    ],
+    "AppShimNotificationAttribution": [
+        {
+            "platforms": [
+                "mac"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "AppShimNotificationAttribution"
                     ]
                 }
             ]
@@ -1719,26 +1785,6 @@
             ]
         }
     ],
-    "AutofillAiImportConstraintsForSync": [
-        {
-            "platforms": [
-                "android",
-                "chromeos",
-                "ios",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "AutofillAiImportConstraintsForSync"
-                    ]
-                }
-            ]
-        }
-    ],
     "AutofillAiIos": [
         {
             "platforms": [
@@ -2076,27 +2122,6 @@
                         "AutofillEnableBuyNowPayLater",
                         "AutofillEnablePayNowPayLaterTabs",
                         "AutofillEnableTouchToFillReshowForBnpl"
-                    ]
-                }
-            ]
-        }
-    ],
-    "AutofillEnableResurrectingPaymentsUsers": [
-        {
-            "platforms": [
-                "chromeos",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled_Security",
-                    "params": {
-                        "autofill_enable_resurrecting_payments_churned_users_treatment": "1"
-                    },
-                    "enable_features": [
-                        "AutofillEnableResurrectingPaymentsUsers"
                     ]
                 }
             ]
@@ -3423,6 +3448,26 @@
                     "name": "Enabled",
                     "enable_features": [
                         "BrowsingHistorySimilarVisitsGrouping"
+                    ]
+                }
+            ]
+        }
+    ],
+    "BuildTFLiteModelExecutionTaskOnLoadingThread": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "ios",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "BuildTFLiteModelExecutionTaskOnLoadingThread"
                     ]
                 }
             ]
@@ -4840,6 +4885,25 @@
             ]
         }
     ],
+    "ClientSideDetectionScamDetectionRequestWithUrl": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "ClientSideDetectionScamDetectionRequestWithUrl"
+                    ]
+                }
+            ]
+        }
+    ],
     "ClientSideDetectionServerModelForScamDetectionDesktop": [
         {
             "platforms": [
@@ -4853,6 +4917,41 @@
                     "name": "Enabled",
                     "enable_features": [
                         "ClientSideDetectionServerModelForScamDetectionDesktop"
+                    ]
+                }
+            ]
+        }
+    ],
+    "ClientSideDetectionServerModelForScamDetectionIos": [
+        {
+            "platforms": [
+                "ios"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "ClientSideDetectionServerModelForScamDetectionIos"
+                    ]
+                }
+            ]
+        }
+    ],
+    "ClientSideDetectionTrickToBill": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "ios",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "ClientSideDetectionTrickToBill"
                     ]
                 }
             ]
@@ -5285,14 +5384,13 @@
                 {
                     "name": "Enabled",
                     "params": {
-                        "ContextualCueingV2EduClassifierThreshold": "0.6",
+                        "ContextualCueingV2ClickBackoffTime": "4h",
+                        "ContextualCueingV2EduClassifierThreshold": "0.75",
                         "ContextualCueingV2EnablePrivateInsightsLogging": "true",
+                        "ContextualCueingV2MinTimeBetweenNudges": "8h",
                         "ContextualCueingV2MultiSourceAnnotationTimeout": "300s",
-                        "MinDaysSinceLastInvocation": "2",
-                        "fcp_population_name_contextual_cues": "chrome/private_insights/contextual_cues",
-                        "fcp_server_uri": "https://federatedcompute-pa.googleapis.com/",
-                        "fcp_use_attestation_transparency_verifier": "true",
-                        "upload_interval": "10m"
+                        "ContextualCueingV2ShoppingClassifierThreshold": "0.9",
+                        "MinDaysSinceLastInvocation": "2"
                     },
                     "enable_features": [
                         "ContextualCueingV2",
@@ -5300,8 +5398,7 @@
                         "ContextualCueingV2MultiSource",
                         "GlicContextualCueV2ActiveUserBackoff",
                         "GlicContextualCueingV2AutoSubmit",
-                        "IndigoContextualCueingV2",
-                        "PrivateInsightsFeature"
+                        "IndigoContextualCueingV2"
                     ]
                 }
             ]
@@ -5374,6 +5471,21 @@
                     "name": "Enabled",
                     "enable_features": [
                         "ContextualTasksUploadChunking"
+                    ]
+                }
+            ]
+        }
+    ],
+    "ContextualTasks_AllowSignedOutUserInDesktopAndroid": [
+        {
+            "platforms": [
+                "android"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "AllowSignedOutUserInDesktopAndroid"
                     ]
                 }
             ]
@@ -5719,37 +5831,6 @@
             ]
         }
     ],
-    "CrossDeviceSigninFromDesktop": [
-        {
-            "platforms": [
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled_with_new_badge",
-                    "params": {
-                        "show_new_badge": "true",
-                        "url": "https://www.google.com/chrome/go-mobile?entry_point_id=1&email=$1"
-                    },
-                    "enable_features": [
-                        "CrossDeviceSigninFromDesktop"
-                    ]
-                },
-                {
-                    "name": "Enabled_without_new_badge",
-                    "params": {
-                        "show_new_badge": "false",
-                        "url": "https://www.google.com/chrome/go-mobile?entry_point_id=1&email=$1"
-                    },
-                    "enable_features": [
-                        "CrossDeviceSigninFromDesktop"
-                    ]
-                }
-            ]
-        }
-    ],
     "D3D12VideoEncodeAccelerator": [
         {
             "platforms": [
@@ -5819,6 +5900,10 @@
         {
             "platforms": [
                 "android"
+            ],
+            "form_factors": [
+                "phone",
+                "tablet"
             ],
             "experiments": [
                 {
@@ -6163,24 +6248,6 @@
                     "name": "Enabled",
                     "enable_features": [
                         "DesktopAndroidUnifiedCompositorLimits"
-                    ]
-                }
-            ]
-        }
-    ],
-    "DesktopAppOriginMigration": [
-        {
-            "platforms": [
-                "chromeos",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "WebAppMigrationApi"
                     ]
                 }
             ]
@@ -6694,6 +6761,23 @@
             ]
         }
     ],
+    "DisableDragDropForUnneededWidgets": [
+        {
+            "platforms": [
+                "chromeos",
+                "linux",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "DisableDragDropForUnneededWidgets"
+                    ]
+                }
+            ]
+        }
+    ],
     "DisableGlicActorUiMagicCursorAnimation": [
         {
             "platforms": [
@@ -6796,6 +6880,8 @@
                 {
                     "name": "Enabled",
                     "enable_features": [
+                        "DetectSpaceChangeViaOcclusion",
+                        "NotifyCompositorOfSpaceVisibilityOnMacOs",
                         "NotifyCompositorOfWindowVisibilityOnMacOs",
                         "VizBufferQueueDiscardOnVisibilityChange"
                     ]
@@ -7159,6 +7245,21 @@
             ]
         }
     ],
+    "EagerlyResolveCoreDllsImports": [
+        {
+            "platforms": [
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "EagerlyResolveCoreDllsImports"
+                    ]
+                }
+            ]
+        }
+    ],
     "EarlyCookieLoadOnPreconnect": [
         {
             "platforms": [
@@ -7245,20 +7346,6 @@
     "EnableAccountPreviewPreferredAccount": [
         {
             "platforms": [
-                "android"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "EnableAccountPreviewPreferredAccount",
-                        "EnableAccountPreviewUseAppAccount"
-                    ]
-                }
-            ]
-        },
-        {
-            "platforms": [
                 "chromeos",
                 "ios",
                 "linux",
@@ -7270,6 +7357,22 @@
                     "name": "Enabled",
                     "enable_features": [
                         "EnableAccountPreviewPreferredAccount"
+                    ]
+                }
+            ]
+        }
+    ],
+    "EnableAccountPreviewPreferredAccountAndroid": [
+        {
+            "platforms": [
+                "android"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "EnableAccountPreviewPreferredAccount",
+                        "EnableAccountPreviewUseAppAccount"
                     ]
                 }
             ]
@@ -7338,26 +7441,6 @@
                     "enable_features": [
                         "EnableBestEffortTaskInhibitingPolicy",
                         "ScopedBestEffortExecutionFenceForTaskQueue"
-                    ]
-                }
-            ]
-        }
-    ],
-    "EnableCancelUploadOnContentAnalysis": [
-        {
-            "platforms": [
-                "android",
-                "chromeos",
-                "linux",
-                "mac",
-                "windows",
-                "ios"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "EnableCancelUploadOnContentAnalysis"
                     ]
                 }
             ]
@@ -7700,6 +7783,25 @@
                     "name": "Enabled",
                     "enable_features": [
                         "EnablePixAccountLinking"
+                    ]
+                }
+            ]
+        }
+    ],
+    "EnablePixAccountLinkingNative": [
+        {
+            "platforms": [
+                "android"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled_VariationA_Delay3s",
+                    "params": {
+                        "prompt_variant": "VariationA",
+                        "trigger_delay_seconds": "3"
+                    },
+                    "enable_features": [
+                        "EnablePixAccountLinkingNative"
                     ]
                 }
             ]
@@ -8280,6 +8382,32 @@
             ]
         }
     ],
+    "FencedFramesDeprecation": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Disabled",
+                    "disable_features": [
+                        "FencedFrames",
+                        "FencedFramesAPIChanges",
+                        "FencedFramesAutomaticBeaconCredentials",
+                        "FencedFramesCrossOriginAutomaticBeaconData",
+                        "FencedFramesCrossOriginEventReporting",
+                        "FencedFramesLocalUnpartitionedDataAccess",
+                        "FencedFramesReportEventHeaderChanges",
+                        "FencedFramesSrcPermissionsPolicy"
+                    ]
+                }
+            ]
+        }
+    ],
     "FetchAccountCapabilitiesOnRestart": [
         {
             "platforms": [
@@ -8506,12 +8634,9 @@
                     "name": "Enabled",
                     "params": {
                         "geolocation_request_max_location_age_millis": "2147483647",
-                        "geolocation_request_min_update_interval_millis": "0",
-                        "location_request_max_location_age_mills": "2147483647",
-                        "location_request_min_update_interval_millis": "0"
+                        "geolocation_request_min_update_interval_millis": "0"
                     },
                     "enable_features": [
-                        "GmsCoreLocationRequestParamOverride",
                         "UseFusedLocationProvider"
                     ]
                 }
@@ -8650,14 +8775,16 @@
                     "name": "Enabled_Dogfood_And_Allowlist",
                     "params": {
                         "glic-actor-eligible-tiers": "0,1,2",
-                        "glic_actor_enterprise_pref_default": "enabled_by_default",
-                        "glic_actor_policy_control_exemption": "false"
+                        "glic_actor_enterprise_pref_default": "enabled_by_default"
                     },
                     "enable_features": [
                         "GlicActor",
                         "GlicActorEligibleTiers",
                         "GlicActorEnterprisePrefDefault",
                         "GlicActorUi"
+                    ],
+                    "disable_features": [
+                        "GlicActorPolicyControlExemption"
                     ]
                 }
             ]
@@ -8725,10 +8852,10 @@
                 {
                     "name": "Enabled",
                     "enable_features": [
-                        "ActorLiveNotification",
                         "ActorNotificationIntentRouting",
                         "ActorStepProgressNotification",
-                        "GlicBackgroundActuation"
+                        "GlicBackgroundActuation",
+                        "GlicBackgroundActuationTabGroupSync"
                     ]
                 }
             ]
@@ -12699,6 +12826,25 @@
             ]
         }
     ],
+    "NtpMostVisitedHighDpiFavicons": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "NtpMostVisitedHighDpiFavicons"
+                    ]
+                }
+            ]
+        }
+    ],
     "NtpNextScaledAIMerch": [
         {
             "platforms": [
@@ -13792,6 +13938,27 @@
             ]
         }
     ],
+    "PMWithheldFromViewVoter": [
+        {
+            "platforms": [
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "PMWithheldFromViewVoter"
+                    ],
+                    "disable_features": [
+                        "PMSidePanelLoadingVoter"
+                    ]
+                }
+            ]
+        }
+    ],
     "PageActionAnchoredMessageEasyDismiss": [
         {
             "platforms": [
@@ -14457,6 +14624,26 @@
                     "name": "Enabled",
                     "enable_features": [
                         "PaymentHandlerDialogUseInitiatorInUrlLoad"
+                    ]
+                }
+            ]
+        }
+    ],
+    "PaymentRequestEnforceLNAWithClientSecurityState": [
+        {
+            "platforms": [
+                "android",
+                "android_webview",
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "PaymentRequestEnforceLNAWithClientSecurityState"
                     ]
                 }
             ]
@@ -15488,17 +15675,25 @@
             ]
         }
     ],
-    "PrivateUserMetricsForRegionalCapabilities": [
+    "PrivateInsights": [
         {
             "platforms": [
-                "ios"
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
             ],
             "experiments": [
                 {
                     "name": "Enabled",
+                    "params": {
+                        "fcp_population_name_contextual_cues": "chrome/private_insights/contextual_cues",
+                        "fcp_server_uri": "https://federatedcompute-pa.googleapis.com/",
+                        "fcp_use_attestation_transparency_verifier": "true",
+                        "upload_interval": "10m"
+                    },
                     "enable_features": [
-                        "PrivateMetricsPuma",
-                        "PrivateMetricsPumaRc"
+                        "PrivateInsightsFeature"
                     ]
                 }
             ]
@@ -16078,6 +16273,26 @@
             ]
         }
     ],
+    "RequiresLoadIgnoreLimitsForDomWindowsOnly": [
+        {
+            "platforms": [
+                "android",
+                "android_webview",
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "RequiresLoadIgnoreLimitsForDomWindowsOnly"
+                    ]
+                }
+            ]
+        }
+    ],
     "ResampleScrollEventsForFling": [
         {
             "platforms": [
@@ -16521,6 +16736,25 @@
                     "name": "Enabled",
                     "enable_features": [
                         "ScrollJankV4MetricReportAndroidAppJankStats"
+                    ]
+                }
+            ]
+        }
+    ],
+    "ScrollPredictorEnhancements": [
+        {
+            "platforms": [
+                "android_webview"
+            ],
+            "experiments": [
+                {
+                    "name": "ResampleLimit35ms_WebView_20261001",
+                    "params": {
+                        "max_resample_time": "35ms"
+                    },
+                    "enable_features": [
+                        "ResamplingScrollEvents",
+                        "ScrollPredictorRefinedHasPrediction"
                     ]
                 }
             ]
@@ -17050,23 +17284,6 @@
             ]
         }
     ],
-    "SigninPromoLimitsExperiment": [
-        {
-            "platforms": [
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Control",
-                    "disable_features": [
-                        "SigninPromoLimitsExperiment"
-                    ]
-                }
-            ]
-        }
-    ],
     "SimdutfBase64Encode": [
         {
             "platforms": [
@@ -17444,6 +17661,24 @@
             ]
         }
     ],
+    "SmartSuggestions": [
+        {
+            "platforms": [
+                "chromeos",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "GlicSelectionPrompt"
+                    ]
+                }
+            ]
+        }
+    ],
     "SmartTabSharing_Desktop": [
         {
             "platforms": [
@@ -17701,26 +17936,6 @@
             ]
         }
     ],
-    "StructuredHeadersInRust": [
-        {
-            "platforms": [
-                "android",
-                "android_webview",
-                "chromeos",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled_20260730",
-                    "enable_features": [
-                        "StructuredHeadersInRust"
-                    ]
-                }
-            ]
-        }
-    ],
     "SubmenusInAppMenuLff": [
         {
             "platforms": [
@@ -17806,6 +18021,26 @@
                     },
                     "enable_features": [
                         "SyncIncreaseNudgeDelayForSingleClient"
+                    ]
+                }
+            ]
+        }
+    ],
+    "SyncNigoriImplicitPassphraseMigration": [
+        {
+            "platforms": [
+                "android",
+                "chromeos",
+                "ios",
+                "linux",
+                "mac",
+                "windows"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "SyncMigrateFromImplicitPassphrase"
                     ]
                 }
             ]
@@ -18147,24 +18382,6 @@
                     "name": "Enabled",
                     "enable_features": [
                         "TextSafetyScanLanguageDetection"
-                    ]
-                }
-            ]
-        }
-    ],
-    "TextSelectionInlineCue": [
-        {
-            "platforms": [
-                "chromeos",
-                "linux",
-                "mac",
-                "windows"
-            ],
-            "experiments": [
-                {
-                    "name": "Enabled",
-                    "enable_features": [
-                        "GlicSelectionPrompt"
                     ]
                 }
             ]
@@ -18792,6 +19009,21 @@
                         "UseFrameIntervalDeciderAdaptiveFrameRate"
                     ],
                     "min_os_version": "15"
+                }
+            ]
+        }
+    ],
+    "UseNewEtc1Decoder": [
+        {
+            "platforms": [
+                "android"
+            ],
+            "experiments": [
+                {
+                    "name": "Enabled",
+                    "enable_features": [
+                        "UseNewEtc1Decoder"
+                    ]
                 }
             ]
         }
@@ -20382,6 +20614,8 @@
                         "InitialWebUI",
                         "InitialWebUISurfaceSync",
                         "InitialWebUIWithoutExtensions",
+                        "InitialWebUIWithoutSpellCheckForNtp",
+                        "InitialWebUIWithoutTranslateForNtp",
                         "LazyKeyedServiceInstantiation",
                         "PerDependencyDeadlines",
                         "PrioritizeResizeTaskRunnerOnStartup",

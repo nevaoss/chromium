@@ -357,6 +357,31 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="IOS.AppBar.AssistantButtonDefaultStateOnLoad"
+    enum="IOSAppBarAssistantButtonState" expires_after="2027-03-07">
+  <owner>gambard@chromium.org</owner>
+  <owner>bling-meridian@google.com</owner>
+  <summary>
+    The state that the assistant button in the App Bar would show if the user
+    hadn't chosen an entry point in the menu shown when long pressing it. Only
+    recorded for users who chose an entry point, once per App Bar
+    initialization, along with IOS.AppBar.AssistantButtonStateOnLoad and
+    IOS.AppBar.AssistantButtonPreferredStateOnLoad.
+  </summary>
+</histogram>
+
+<histogram name="IOS.AppBar.AssistantButtonPreferredStateOnLoad"
+    enum="IOSAppBarAssistantButtonPreferredState" expires_after="2027-03-07">
+  <owner>gambard@chromium.org</owner>
+  <owner>bling-meridian@google.com</owner>
+  <summary>
+    The entry point chosen by the user for the assistant button in the App Bar,
+    in the menu shown when long pressing it, or Default if the user didn't
+    choose any. Recorded once per App Bar initialization, along with
+    IOS.AppBar.AssistantButtonStateOnLoad.
+  </summary>
+</histogram>
+
 <histogram name="IOS.AppBar.AssistantButtonStateOnLoad"
     enum="IOSAppBarAssistantButtonState" expires_after="2027-03-07">
   <owner>gambard@chromium.org</owner>
@@ -5960,6 +5985,23 @@ chromium-metrics-reviews@google.com.
     Logs media permission events when the user changes the state of a permission
     (e.g. the microphone permission) from the page info.
   </summary>
+</histogram>
+
+<histogram name="IOS.Permission.RequestResolution.{PermissionType}"
+    enum="IOSPermissionRequestResolution" expires_after="2027-06-01">
+  <owner>scottyoder@google.com</owner>
+  <owner>hiramahmood@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <summary>
+    Records how a site permission request for {PermissionType} was resolved in
+    Chrome on iOS (whether a prompt was shown, or the request was immediately
+    allowed/denied from a previously saved site setting or parental controls).
+  </summary>
+  <token key="PermissionType">
+    <variant name="Camera" summary="camera"/>
+    <variant name="CameraAndMicrophone" summary="camera and microphone"/>
+    <variant name="Microphone" summary="microphone"/>
+  </token>
 </histogram>
 
 <histogram name="IOS.Permission.Requests" enum="IOSPermissionRequest"

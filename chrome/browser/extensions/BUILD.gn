@@ -2133,6 +2133,7 @@ source_set("unit_tests") {
     sources += [
       "api/device_permissions_manager_unittest.cc",
       "api/enterprise_reporting_private/enterprise_reporting_private_unittest.cc",
+      "api/experimental_ai_data/experimental_ai_data_api_unittest.cc",
       "api/experimental_ai_data/experimental_ai_data_policy_unittest.cc",
       "api/file_system/file_system_api_unittest.cc",
       "api/identity/gaia_remote_consent_flow_unittest.cc",
@@ -2265,6 +2266,7 @@ source_set("unit_tests") {
       "//chromeos/ash/services/device_sync/public/cpp:test_support",
       "//chromeos/ash/services/multidevice_setup/public/cpp:test_support",
       "//chromeos/ash/services/secure_channel/public/cpp/client:test_support",
+      "//chromeos/components/kiosk:test_support",
       "//chromeos/dbus/missive",
       "//components/account_id:test_support",
       "//extensions/browser/api/system_display:display_info_provider",
@@ -2564,6 +2566,11 @@ source_set("browser_tests") {
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:test_launcher_utils",
     "//chrome/test/base:testing_browser_process",
+  ]
+  if (!is_android) {
+    deps += [ "//chrome/test/base:test_browser_window" ]
+  }
+  deps += [
     "//chrome/test/base:tracing",
     "//chrome/test/base:web_ui_test_support",
     "//components/back_forward_cache",
@@ -2651,6 +2658,7 @@ source_set("browser_tests") {
     ]
     deps += [
       "//chrome/browser/ui/android/tab_model",
+      "//chrome/browser/ui/android/tab_model:test_support",
       "//chrome/test:test_support_jni_headers",
       "//components/feed:feature_list",
       "//components/messages/android:test_support",
@@ -2800,6 +2808,7 @@ source_set("browser_tests") {
       "//chrome/browser/ui/login",
       "//chrome/browser/ui/views/notifications",
       "//chrome/browser/ui/webui/ash/parent_access:test_support",
+      "//chrome/test/base:scoped_test_system_nss_key_slot_mixin",
       "//chromeos/ash/components/browser_context_helper",
       "//chromeos/ash/components/chaps_util:test_support",
       "//chromeos/ash/components/dbus/audio",
@@ -3020,6 +3029,7 @@ source_set("browser_tests") {
       sources += [
         "//chrome/browser/ui/views/web_apps/file_handler_launch_dialog_browsertest.cc",
         "api/experimental_actor/experimental_actor_apitest.cc",
+        "api/experimental_ai_data/experimental_ai_data_apitest.cc",
         "api/proxy_override_rules/proxy_override_rules_private_apitest.cc",
         "api/web_authentication_proxy/web_authentication_proxy_apitest.cc",
       ]

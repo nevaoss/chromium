@@ -172,8 +172,7 @@ class MockToolbarUIServiceDelegate
               OnOmniboxAction,
               (toolbar_ui_api::mojom::OmniboxActionPtr action_ptr),
               (override));
-  MOCK_METHOD(void, ShowAvatarMenu, (bool), (override));
-  MOCK_METHOD(void, OnAvatarButtonMousePressed, (), (override));
+  MOCK_METHOD(void, ShowAvatarMenu, (), (override));
   MOCK_METHOD(void, SetAvatarButtonHovered, (bool), (override));
   MOCK_METHOD(void, SetAvatarButtonFocused, (bool), (override));
   MOCK_METHOD(void, SetAvatarButtonIPHPromoShowing, (bool), (override));
@@ -197,11 +196,7 @@ class MockToolbarUIServiceDelegate
               OnPerformanceInterventionButtonMousePressed,
               (),
               (override));
-  MOCK_METHOD(void,
-              OnMediaButtonClicked,
-              (bool is_mouse_interaction),
-              (override));
-  MOCK_METHOD(void, OnMediaButtonMousePressed, (), (override));
+  MOCK_METHOD(void, OnMediaButtonClicked, (), (override));
   MOCK_METHOD(void, OnGlicButtonClicked, (), (override));
 };
 

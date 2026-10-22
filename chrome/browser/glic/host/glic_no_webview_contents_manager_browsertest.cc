@@ -6,18 +6,21 @@
 
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/features.h"
@@ -26,6 +29,9 @@
 #include "chrome/browser/glic/test_support/glic_test_tab_added_waiter.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/common/chrome_features.h"
+#include "components/metrics/structured/buildflags/buildflags.h"
+#include "components/metrics/structured/structured_events.h"
+#include "components/metrics/structured/test/test_structured_metrics_recorder.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/prefs/pref_service.h"
 #include "components/tabs/public/tab_interface.h"
@@ -33,6 +39,9 @@
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/dns/mock_host_resolver.h"
+#include "net/test/embedded_test_server/http_request.h"
+#include "net/test/embedded_test_server/http_response.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
@@ -40,6 +49,37 @@ namespace glic {
 
 namespace {
 
+#if BUILDFLAG(STRUCTURED_METRICS_ENABLED)
+using StructuredErrorReason =
+    metrics::structured::events::v2::glic::GlicClientLoadErrorReason;
+
+std::vector<StructuredErrorReason> GetRecordedClientLoadErrors(
+    metrics::structured::TestStructuredMetricsRecorder& recorder) {
+  std::vector<StructuredErrorReason> reasons;
+  const std::string expected_name =
+      metrics::structured::events::v2::glic::ClientLoadError().event_name();
+  for (const auto& event : recorder.GetEvents()) {
+    if (event.event_name() == expected_name) {
+      reasons.push_back(static_cast<StructuredErrorReason>(
+          event.metric_values().at("Reason").value.GetInt()));
+    }
+  }
+  return reasons;
+}
+#endif  // BUILDFLAG(STRUCTURED_METRICS_ENABLED)
+
+std::unique_ptr<net::test_server::HttpResponse> SorryPageRequestHandler(
+    const net::test_server::HttpRequest& request) {
+  if (request.method != net::test_server::METHOD_GET ||
+      !base::StartsWith(request.relative_url, "/sorry/")) {
+    return nullptr;
+  }
+  auto result = std::make_unique<net::test_server::BasicHttpResponse>();
+  result->set_code(net::HttpStatusCode::HTTP_OK);
+  result->set_content_type("text/html");
+  result->set_content("<html><body>Sorry CAPTCHA</body></html>");
+  return result;
+}
 GlicNoWebviewContentsManager* GetNoWebviewContentsManager(
     GlicInstanceImpl* instance) {
   if (!instance) {
@@ -87,15 +127,18 @@ class TestHostObserver : public Host::Observer {
 
   void ClientLoadErrorOccurred(ClientLoadErrorReason reason) override {
     last_error_reason_ = reason;
+    ++error_count_;
   }
 
   std::optional<ClientLoadErrorReason> last_error_reason() const {
     return last_error_reason_;
   }
+  int error_count() const { return error_count_; }
 
  private:
   base::ScopedObservation<Host, Host::Observer> observation_{this};
   std::optional<ClientLoadErrorReason> last_error_reason_;
+  int error_count_ = 0;
 };
 
 }  // namespace
@@ -106,11 +149,45 @@ class GlicNoWebviewContentsManagerBrowserTest : public GlicBrowserTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{features::kGlicNoWebview},
         /*disabled_features=*/{});
+    embedded_https_test_server().RegisterRequestHandler(
+        base::BindRepeating(&SorryPageRequestHandler));
   }
 
   void SetUpOnMainThread() override {
     embedded_https_test_server().SetCertHostnames(
         {"login.corp.google.com", "127.0.0.1"});
+    embedded_https_test_server().RegisterRequestHandler(base::BindRepeating(
+        [](const net::test_server::HttpRequest& request)
+            -> std::unique_ptr<net::test_server::HttpResponse> {
+          if (request.relative_url == "/_up" ||
+              request.relative_url.starts_with("/_up/")) {
+            auto http_response =
+                std::make_unique<net::test_server::BasicHttpResponse>();
+            http_response->set_code(net::HTTP_OK);
+            http_response->set_content_type("text/html");
+            http_response->set_content("<html><body>Proxy Auth</body></html>");
+            return http_response;
+          }
+          if (request.relative_url == "/status/404") {
+            auto http_response =
+                std::make_unique<net::test_server::BasicHttpResponse>();
+            http_response->set_code(net::HTTP_NOT_FOUND);
+            http_response->set_content_type("text/html");
+            http_response->set_content(
+                "<html><body>404 Not Found</body></html>");
+            return http_response;
+          }
+          if (request.relative_url == "/status/500") {
+            auto http_response =
+                std::make_unique<net::test_server::BasicHttpResponse>();
+            http_response->set_code(net::HTTP_INTERNAL_SERVER_ERROR);
+            http_response->set_content_type("text/html");
+            http_response->set_content(
+                "<html><body>500 Internal Error</body></html>");
+            return http_response;
+          }
+          return nullptr;
+        }));
     embedded_https_test_server().ServeFilesFromSourceDirectory(
         "chrome/test/data");
     GlicBrowserTest::SetUpOnMainThread();
@@ -179,6 +256,101 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
       1);
 }
 
+#if BUILDFLAG(STRUCTURED_METRICS_ENABLED)
+// Several of these paths render the same generic error panel, so the panel
+// type alone cannot tell them apart. Each one must report its own cause.
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       ErrorPathsReportDistinctCauses) {
+  metrics::structured::TestStructuredMetricsRecorder recorder;
+  recorder.Initialize();
+
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+  ASSERT_THAT(GetRecordedClientLoadErrors(recorder), testing::IsEmpty());
+
+  // An error occurring while warming (before AttachToHost) is stashed and
+  // logged once attached.
+  {
+    GlicNoWebviewContentsManager warming_manager(GetProfile(),
+                                                 &service()->enabling(),
+                                                 /*initially_hidden=*/true);
+    warming_manager.OnGuestNavigated(GURL("https://example.com/"),
+                                     /*is_api_allowed=*/true,
+                                     mojom::GuestPageType::kLoadError,
+                                     /*is_initial_commit=*/true);
+    EXPECT_THAT(GetRecordedClientLoadErrors(recorder), testing::IsEmpty());
+    warming_manager.AttachToHost(&instance->host());
+    EXPECT_THAT(GetRecordedClientLoadErrors(recorder),
+                testing::ElementsAre(StructuredErrorReason::GUEST_LOAD_FAILED));
+  }
+
+  manager->OnWebClientStateChanged(mojom::WebClientState::kError);
+  EXPECT_THAT(GetRecordedClientLoadErrors(recorder),
+              testing::ElementsAre(StructuredErrorReason::GUEST_LOAD_FAILED,
+                                   StructuredErrorReason::CLIENT_ERROR));
+
+  manager->OnGuestProcessGone(base::TERMINATION_STATUS_PROCESS_CRASHED);
+  EXPECT_THAT(GetRecordedClientLoadErrors(recorder),
+              testing::ElementsAre(StructuredErrorReason::GUEST_LOAD_FAILED,
+                                   StructuredErrorReason::CLIENT_ERROR,
+                                   StructuredErrorReason::GUEST_PROCESS_GONE));
+
+  manager->OnGuestNavigated(GURL("https://example.com/"),
+                            /*is_api_allowed=*/true,
+                            mojom::GuestPageType::kLogin,
+                            /*is_initial_commit=*/true);
+  // A web login page is shown to the user directly rather than as an error, so
+  // it is not reported.
+  EXPECT_THAT(GetRecordedClientLoadErrors(recorder),
+              testing::ElementsAre(StructuredErrorReason::GUEST_LOAD_FAILED,
+                                   StructuredErrorReason::CLIENT_ERROR,
+                                   StructuredErrorReason::GUEST_PROCESS_GONE));
+
+  manager->OnGuestNavigated(GURL("https://example.com/"),
+                            /*is_api_allowed=*/true,
+                            mojom::GuestPageType::kDisabledByAdmin,
+                            /*is_initial_commit=*/true);
+  EXPECT_THAT(GetRecordedClientLoadErrors(recorder),
+              testing::ElementsAre(StructuredErrorReason::GUEST_LOAD_FAILED,
+                                   StructuredErrorReason::CLIENT_ERROR,
+                                   StructuredErrorReason::GUEST_PROCESS_GONE,
+                                   StructuredErrorReason::DISABLED_BY_ADMIN));
+
+  // A transient error does not replace a policy error, so it is not reported.
+  manager->OnWebClientStateChanged(mojom::WebClientState::kError);
+  EXPECT_THAT(GetRecordedClientLoadErrors(recorder),
+              testing::ElementsAre(StructuredErrorReason::GUEST_LOAD_FAILED,
+                                   StructuredErrorReason::CLIENT_ERROR,
+                                   StructuredErrorReason::GUEST_PROCESS_GONE,
+                                   StructuredErrorReason::DISABLED_BY_ADMIN));
+}
+#endif  // BUILDFLAG(STRUCTURED_METRICS_ENABLED)
+
+// An error that occurs while warming but is resolved before AttachToHost() is
+// not reported, since the user never sees it.
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       WarmingErrorResolvedBeforeAttachIsNotReported) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+
+  InvalidateAccount(GetProfile());
+  ASSERT_EQ(GlicEnabling::GetProfileReadyState(GetProfile()),
+            mojom::ProfileReadyState::kSignInRequired);
+  GlicNoWebviewContentsManager warming_manager(GetProfile(),
+                                               &service()->enabling(),
+                                               /*initially_hidden=*/true);
+  ASSERT_EQ(warming_manager.error_type(), mojom::ErrorPanelType::kSignIn);
+
+  ReauthAccount(GetProfile());
+  ASSERT_EQ(GlicEnabling::GetProfileReadyState(GetProfile()),
+            mojom::ProfileReadyState::kReady);
+  ASSERT_EQ(warming_manager.error_type(), std::nullopt);
+
+  TestHostObserver observer(instance->host());
+  warming_manager.AttachToHost(&instance->host());
+  EXPECT_EQ(observer.error_count(), 0);
+}
+
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                        OverlayNotCreatedOnWarming) {
   GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
@@ -194,14 +366,16 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_EQ(manager.state(),
             GlicNoWebviewContentsManager::DisplayState::kWarming);
   EXPECT_FALSE(manager.ShouldReloadOnShow());
-  manager.SetErrorState(mojom::ErrorPanelType::kError);
+  manager.SetErrorState(mojom::ErrorPanelType::kError,
+                        ClientLoadErrorReason::kClientError);
   EXPECT_TRUE(manager.ShouldReloadOnShow());
   EXPECT_EQ(manager.overlay_contents(), nullptr);
   EXPECT_EQ(manager.state(),
             GlicNoWebviewContentsManager::DisplayState::kWarming);
 
   // Deterministic error panels (like sign-in) should not trigger a reload.
-  manager.SetErrorState(mojom::ErrorPanelType::kSignIn);
+  manager.SetErrorState(mojom::ErrorPanelType::kSignIn,
+                        ClientLoadErrorReason::kSignIn);
   EXPECT_FALSE(manager.ShouldReloadOnShow());
 
   // Becoming visible transitions to kShowingOverlay and creates overlay.
@@ -258,10 +432,9 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
             GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
 
   // Navigate guest to a /sorry/ CAPTCHA or error page.
-  manager.OnGuestNavigated(GURL("https://gemini.google.com/sorry/index"),
-                           /*is_api_allowed=*/false,
-                           mojom::GuestPageType::kGuestError,
-                           /*is_initial_commit=*/false);
+  ASSERT_TRUE(content::NavigateToURL(
+      manager.guest_contents(),
+      embedded_https_test_server().GetURL("/sorry/index")));
 
   // Guest contents should be shown so user can view/solve the CAPTCHA.
   EXPECT_EQ(manager.state(),
@@ -364,7 +537,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   // Put the manager into a transient error state that requires reload on show.
   manager = GetNoWebviewContentsManager(instance);
   ASSERT_TRUE(manager);
-  manager->SetErrorState(mojom::ErrorPanelType::kOffline);
+  manager->SetErrorState(mojom::ErrorPanelType::kOffline,
+                         ClientLoadErrorReason::kOffline);
   EXPECT_TRUE(manager->ShouldReloadOnShow());
 
   // Close the panel while in the error state.
@@ -393,7 +567,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
 
-  manager->SetErrorState(mojom::ErrorPanelType::kIneligibleAccount);
+  manager->SetErrorState(mojom::ErrorPanelType::kIneligibleAccount,
+                         ClientLoadErrorReason::kIneligibleAccount);
 
   GlicTestTabAddedWaiter waiter(GetProfile());
   ClickOverlayElement(manager->overlay_contents(),
@@ -413,7 +588,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
 
-  manager->SetErrorState(mojom::ErrorPanelType::kLocationMismatch);
+  manager->SetErrorState(mojom::ErrorPanelType::kLocationMismatch,
+                         ClientLoadErrorReason::kLocationMismatch);
 
   GlicTestTabAddedWaiter waiter(GetProfile());
   ClickOverlayElement(manager->overlay_contents(),
@@ -433,7 +609,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
 
-  manager->SetErrorState(mojom::ErrorPanelType::kDisabledByAdminWithLink);
+  manager->SetErrorState(mojom::ErrorPanelType::kDisabledByAdminWithLink,
+                         ClientLoadErrorReason::kDisabledByAdmin);
 
   base::UserActionTester user_action_tester;
   GlicTestTabAddedWaiter waiter(GetProfile());
@@ -468,7 +645,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
 
-  manager->SetErrorState(mojom::ErrorPanelType::kDisabledByAdmin);
+  manager->SetErrorState(mojom::ErrorPanelType::kDisabledByAdmin,
+                         ClientLoadErrorReason::kDisabledByAdmin);
 
   ClickOverlayElement(manager->overlay_contents(),
                       "#disabledByAdminCloseButton");
@@ -482,7 +660,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
 
-  manager->SetErrorState(mojom::ErrorPanelType::kOffline);
+  manager->SetErrorState(mojom::ErrorPanelType::kOffline,
+                         ClientLoadErrorReason::kOffline);
   ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kOffline));
   ASSERT_TRUE(content::WaitForLoadStop(manager->overlay_contents()));
 
@@ -498,7 +677,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager->overlay_contents());
   ASSERT_TRUE(content::WaitForLoadStop(manager->guest_contents()));
 
-  manager->SetErrorState(mojom::ErrorPanelType::kError);
+  manager->SetErrorState(mojom::ErrorPanelType::kError,
+                         ClientLoadErrorReason::kClientError);
   ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kError));
   ASSERT_TRUE(manager->overlay_contents());
   ASSERT_TRUE(content::WaitForLoadStop(manager->overlay_contents()));
@@ -548,7 +728,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
 
-  manager->SetErrorState(mojom::ErrorPanelType::kError);
+  manager->SetErrorState(mojom::ErrorPanelType::kError,
+                         ClientLoadErrorReason::kClientError);
   ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kError));
 
   // Browser-side guard: OnShowErrorClicked is a no-op when disallowed.
@@ -711,7 +892,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
             GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
 
   // Set a transient error (e.g. generic failure or offline).
-  manager.SetErrorState(mojom::ErrorPanelType::kError);
+  manager.SetErrorState(mojom::ErrorPanelType::kError,
+                        ClientLoadErrorReason::kGuestLoadFailed);
   EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kError);
   EXPECT_EQ(manager.state(),
             GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
@@ -734,7 +916,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   manager.SetVisibility(content::Visibility::VISIBLE);
 
   // Set a policy error (e.g. sign-in required).
-  manager.SetErrorState(mojom::ErrorPanelType::kSignIn);
+  manager.SetErrorState(mojom::ErrorPanelType::kSignIn,
+                        ClientLoadErrorReason::kSignIn);
   EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kSignIn);
 
   // Guest client connects in background; policy error must not be cleared.
@@ -751,7 +934,8 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                                        /*initially_hidden=*/false);
   manager.SetVisibility(content::Visibility::VISIBLE);
 
-  manager.SetErrorState(mojom::ErrorPanelType::kOffline);
+  manager.SetErrorState(mojom::ErrorPanelType::kOffline,
+                        ClientLoadErrorReason::kOffline);
   EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kOffline);
 
   // Starting a new guest navigation clears the transient error and displays
@@ -768,15 +952,15 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                                        /*initially_hidden=*/false);
   manager.SetVisibility(content::Visibility::VISIBLE);
 
-  manager.SetErrorState(mojom::ErrorPanelType::kError);
+  manager.SetErrorState(mojom::ErrorPanelType::kError,
+                        ClientLoadErrorReason::kGuestLoadFailed);
   EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kError);
 
   // Guest navigates to /sorry/ CAPTCHA page; transient error is cleared to show
   // CAPTCHA.
-  manager.OnGuestNavigated(GURL("https://gemini.google.com/sorry/index"),
-                           /*is_api_allowed=*/false,
-                           mojom::GuestPageType::kGuestError,
-                           /*is_initial_commit=*/false);
+  ASSERT_TRUE(content::NavigateToURL(
+      manager.guest_contents(),
+      embedded_https_test_server().GetURL("/sorry/index")));
   EXPECT_EQ(manager.error_type(), std::nullopt);
   EXPECT_EQ(manager.state(),
             GlicNoWebviewContentsManager::DisplayState::kShowingGuest);
@@ -805,34 +989,66 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   EXPECT_TRUE(manager.ShouldReloadOnShow());
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       HttpStatusErrorsTreatedAsLoadError) {
+  GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
+                                       /*initially_hidden=*/false);
+  manager.SetVisibility(content::Visibility::VISIBLE);
+
+  // Navigate to a 404 URL. Should be treated as a load error immediately.
+  ASSERT_TRUE(content::NavigateToURL(
+      manager.guest_contents(),
+      embedded_https_test_server().GetURL("/status/404")));
+  EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kError);
+
+  manager.ClearErrorState();
+
+  // Navigate to a 500 URL. Should be treated as a load error immediately.
+  ASSERT_TRUE(content::NavigateToURL(
+      manager.guest_contents(),
+      embedded_https_test_server().GetURL("/status/500")));
+  EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kError);
+
+  manager.ClearErrorState();
+
+  // Navigate to a 200 URL. Should clear the error state and continue loading
+  // normally.
+  ASSERT_TRUE(content::NavigateToURL(
+      manager.guest_contents(),
+      embedded_https_test_server().GetURL("/title1.html")));
+  EXPECT_EQ(manager.error_type(), std::nullopt);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                        LoadingTimerCancelledWhenGuestBecomesReady) {
   GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
                                        /*initially_hidden=*/false);
   manager.SetVisibility(content::Visibility::VISIBLE);
   EXPECT_TRUE(manager.loading_timer_for_testing().IsRunning());
 
-  // Guest client connects.
-  manager.OnWebClientCreated();
+  // Wait for guest client to connect and dismiss loading timer.
+  ASSERT_OK(
+      RunUntilEqual([&]() { return manager.state(); },
+                    GlicNoWebviewContentsManager::DisplayState::kShowingGuest));
   EXPECT_FALSE(manager.loading_timer_for_testing().IsRunning());
-  EXPECT_EQ(manager.state(),
-            GlicNoWebviewContentsManager::DisplayState::kShowingGuest);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
-                       LoadingTimerCancelledWhenPanelHidden) {
+                       LoadingTimerContinuesWhenPanelHidden) {
   GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
                                        /*initially_hidden=*/false);
   manager.SetVisibility(content::Visibility::VISIBLE);
   EXPECT_TRUE(manager.loading_timer_for_testing().IsRunning());
 
-  // Hiding the panel cancels the loading timer.
+  // Hiding the panel keeps the loading timer running.
   manager.SetVisibility(content::Visibility::HIDDEN);
-  EXPECT_FALSE(manager.loading_timer_for_testing().IsRunning());
-
-  // Showing the panel restarts the loading timer if still unready.
-  manager.SetVisibility(content::Visibility::VISIBLE);
   EXPECT_TRUE(manager.loading_timer_for_testing().IsRunning());
+
+  // Firing the loading timeout while hidden sets error and requires reload on
+  // show.
+  manager.loading_timer_for_testing().FireNow();
+  EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kError);
+  EXPECT_TRUE(manager.ShouldReloadOnShow());
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
@@ -850,8 +1066,87 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
 
   EXPECT_EQ(observer.last_error_reason(),
             ClientLoadErrorReason::kClientLoadTimeout);
+  EXPECT_EQ(observer.error_count(), 1);
   EXPECT_EQ(manager->error_type(), mojom::ErrorPanelType::kError);
   ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kError));
 }
 
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       ProxyAuthPathShowsGuestDirectly) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+  ASSERT_TRUE(manager->overlay_contents());
+  ASSERT_TRUE(content::WaitForLoadStop(manager->guest_contents()));
+
+  // Navigating the guest to a proxy auth path (/_up/auth) classifies as
+  // kLogin and swaps directly to the guest WebContents so the user can
+  // authenticate, without waiting for the loading timeout.
+  const GURL proxy_auth_url =
+      embedded_https_test_server().GetURL("127.0.0.1", "/_up/auth");
+  ASSERT_TRUE(
+      content::NavigateToURL(manager->guest_contents(), proxy_auth_url));
+
+  EXPECT_EQ(manager->error_type(), std::nullopt);
+  EXPECT_EQ(manager->state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingGuest);
+  EXPECT_EQ(manager->active_web_contents(), manager->guest_contents());
+  EXPECT_EQ(manager->guest_state().get(),
+            GlicNoWebviewContentsManager::GuestState::kLogin);
+  EXPECT_FALSE(manager->loading_timer_for_testing().IsRunning());
+  EXPECT_FALSE(manager->ShouldReloadOnShow());
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       WarmingContentsTimesOutAndReloadsOnShow) {
+  GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
+                                       /*initially_hidden=*/true);
+  EXPECT_EQ(manager.state(),
+            GlicNoWebviewContentsManager::DisplayState::kWarming);
+  EXPECT_TRUE(manager.loading_timer_for_testing().IsRunning());
+  EXPECT_FALSE(manager.ShouldReloadOnShow());
+
+  // Fire the loading timeout while warming in the background.
+  manager.loading_timer_for_testing().FireNow();
+
+  EXPECT_FALSE(manager.guest_contents()->IsLoading());
+  EXPECT_EQ(manager.error_type(), mojom::ErrorPanelType::kError);
+  EXPECT_TRUE(manager.ShouldReloadOnShow());
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       TakeContainerDiscardsTimedOutWarmingContainer) {
+  base::HistogramTester histogram_tester;
+  auto& warming_pool = coordinator().GetWebContentsWarmingPoolForTesting();
+  ASSERT_TRUE(warming_pool.MaybeStartWarming(GlicWarmingTrigger::kStartup));
+  ASSERT_TRUE(warming_pool.HasWarmedContainerForTesting());
+
+  auto* manager = static_cast<GlicNoWebviewContentsManager*>(
+      warming_pool.GetWarmedContainerForTesting());
+  ASSERT_TRUE(manager);
+  EXPECT_TRUE(manager->loading_timer_for_testing().IsRunning());
+
+  base::WeakPtr<content::WebContents> old_guest =
+      manager->guest_contents()->GetWeakPtr();
+  ASSERT_TRUE(old_guest);
+
+  // Fire timeout on background container.
+  manager->loading_timer_for_testing().FireNow();
+  EXPECT_FALSE(manager->guest_contents()->IsLoading());
+  EXPECT_TRUE(manager->ShouldReloadOnShow());
+
+  // TakeContainer sees ShouldReloadOnShow() == true and discards the timed-out
+  // container.
+  std::unique_ptr<GlicWebContentsManager> taken = warming_pool.TakeContainer();
+  ASSERT_TRUE(taken);
+  EXPECT_FALSE(old_guest);
+  EXPECT_NE(taken->guest_contents(), nullptr);
+  EXPECT_FALSE(taken->ShouldReloadOnShow());
+  histogram_tester.ExpectBucketCount(
+      "Glic.WarmingPool.HitStatus",
+      GlicWebContentsWarmingPool::WarmingPoolStatus::kCrashed, 1);
+  histogram_tester.ExpectBucketCount(
+      "Glic.WarmingPool.WarmedContainerFate",
+      GlicWebContentsWarmingPool::WarmedContainerFate::kCrashed, 1);
+}
 }  // namespace glic

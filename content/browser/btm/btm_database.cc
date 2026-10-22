@@ -701,8 +701,9 @@ size_t BtmDatabase::ClearExpiredRows() {
     ")<?";
   // clang-format on
 
-  CHECK(db_->IsSQLValid(kClearAllExpiredBouncesTableSql),
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/564966486): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kClearAllExpiredBouncesTableSql));
   sql::Statement bounces_statement(
       db_->GetCachedStatement(SQL_FROM_HERE, kClearAllExpiredBouncesTableSql));
   bounces_statement.BindTime(
@@ -1301,7 +1302,9 @@ bool BtmDatabase::SetConfigValue(std::string_view key, int64_t value) {
 
   static constexpr char kInsertValueSql[] =
       "INSERT OR REPLACE INTO config(key,int_value) VALUES(?,?)";
-  CHECK(db_->IsSQLValid(kInsertValueSql), base::NotFatalUntil::M158);
+  // TODO(566054600): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kInsertValueSql));
   sql::Statement statement(
       db_->GetCachedStatement(SQL_FROM_HERE, kInsertValueSql));
   statement.BindString(0, key);

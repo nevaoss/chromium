@@ -1827,6 +1827,9 @@ Your Google account may have other forms of browsing history like searches and a
       <message name="IDS_HISTORY_FILTER_BY_HOST" desc="Text used in the host filter button and in the header of host filter sheet." translateable="false">
         Filter by host
       </message>
+      <message name="IDS_HISTORY_FILTER_BY_CLIENT" desc="Text used in the client filter button and in the header of client filter sheet." translateable="false">
+        Filter by device
+      </message>
       <message name="IDS_HISTORY_IPH_BUBBLE_TEXT" desc="The message on the text bubble shown to educate users about the app history filter.">
         Search by app, date, and more.
       </message>
@@ -4744,9 +4747,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_PRICE_HISTORY_MULTIPLE_CATALOGS_TITLE" desc="The title when a user see the price history graph for multiple catalog in the price insights bottom sheet.">
         Price history across the web for this option
       </message>
-      <message name="IDS_IPH_SHOPPING_LIST_SAVE_FLOW" desc="In-product help text that notifies a user that they can organize their saved products from a folder in bookmarks.">
-        Organize your tracked products in Bookmarks
-      </message>
       <message name="IDS_SORT_SUBMENU"  desc="Sub-menu in the bookmarks manager for sort/view options. [CHAR_LIMIT=24]">
         Sort and view options
       </message>
@@ -5151,9 +5151,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_ACCESSIBILITY_TOOLBAR_BTN_HOME" desc="Content description for the home button.">
         Open the home page
-      </message>
-      <message name="IDS_ACCESSIBILITY_BOTTOM_BAR_AI_MODE_BUTTON" desc="Content description for the AI search button in the bottom bar.">
-        Ask AI Mode
       </message>
       <message name="IDS_ACCESSIBILITY_BTN_REFRESH" desc="Content description for the refresh page button.">
         Reload this page
@@ -5861,6 +5858,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_HID_SYSTEM_PERMISSION_EXPLANATION_DIALOG_BODY" desc="Body of the dialog explaining that Chrome needs system permission to access HID devices and how to navigate to Special app access settings.">
         <ph name="APP_NAME">%1$s<ex>Chrome</ex></ph> needs permission to access human interface devices (HIDs) for this site. You can change this setting later in Settings &gt; Apps &gt; Special app access.
       </message>
+      <message name="IDS_HID_SYSTEM_PERMISSION_EXPLANATION_DIALOG_BODY_DIRECT" desc="Body of the dialog explaining that Chrome needs system permission to access HID devices for this site.">
+        <ph name="APP_NAME">%1$s<ex>Chrome</ex></ph> needs permission to access human interface devices (HIDs) for this site.
+      </message>
 
       <!-- Special locale UI strings -->
       <message name="IDS_SEARCH_WITH_SOGOU" desc="Text telling the user that the search engine will be switched to Sogou.">
@@ -6275,20 +6275,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_IPH_ANDROID_BOTTOM_BAR_NEW_TAB" desc="The in-product-help message for the New Tab button in the bottom bar.">
         Open a new tab
       </message>
-      <message name="IDS_IPH_ANDROID_BOTTOM_BAR_AIM" desc="The in-product-help message for the AI Mode button in the bottom bar.">
-        Search with AI Mode
-      </message>
       <message name="IDS_IPH_ANDROID_BOTTOM_BAR_DIALOG_TITLE" desc="Title for the in-product help dialog introducing Gemini in the bottom bar.">
         Introducing Gemini in Chrome
       </message>
-      <message name="IDS_IPH_ANDROID_BOTTOM_BAR_AIM_DIALOG_TITLE" desc="Title for the in-product help dialog introducing AI Mode in the bottom bar.">
-        Introducing AI Mode in Chrome
-      </message>
       <message name="IDS_IPH_ANDROID_BOTTOM_BAR_DIALOG_DESCRIPTION" desc="Description for the bottom bar Gemini introduction dialog.">
         Some tools have moved to give you easy access to Gemini while you browse
-      </message>
-      <message name="IDS_IPH_ANDROID_BOTTOM_BAR_AIM_DIALOG_DESCRIPTION" desc="Description for the bottom bar AI Mode introduction dialog.">
-        Some tools have moved to help you search with AI Mode
       </message>
       <message name="IDS_IPH_ANDROID_BOTTOM_BAR_TRIGGER_IPH" desc="Text on the button that triggers the in-product-help sequence.">
         Show me
@@ -6690,9 +6681,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         New
       </message>
 
-      <message name="IDS_LINK_TOGGLE_IPH" desc="In product help for the Sharing Hub link toggle feature.">
-        Include a link to the page
-      </message>
 
       <message name="IDS_LINK_TOGGLE_INCLUDE_LINK" desc="Toast displayed when the toggle is clicked for a generic share and a link is included.">
         Include link
@@ -8056,6 +8044,21 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_CANCEL_BUTTON_TEXT" desc="Cancel button text of the enterprise signals disclaimer dialog.">
         Sign out
+      </message>
+      <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_FRE_TITLE" desc="Title of the enterprise signals disclaimer shown during the First Run Experience, before the user signs in with a managed account.">
+        About this profile
+      </message>
+      <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_FRE_DESCRIPTION" desc="Description of the enterprise signals disclaimer shown during the First Run Experience, before the user signs in with a managed account.">
+        To secure your work on Chrome, your organization will be able to view or manage certain information when you’re signed-in to Chrome
+      </message>
+      <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_FRE_ACCEPT_BUTTON_TEXT" desc="Text of the button that accepts the enterprise signals disclaimer and continues signing in during the First Run Experience.">
+        Continue
+      </message>
+      <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_FRE_CANCEL_BUTTON_TEXT" desc="Text of the button that declines the enterprise signals disclaimer and cancels signing in during the First Run Experience.">
+        Cancel
+      </message>
+      <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_FRE_FOOTER" desc="Footer shown below the buttons of the enterprise signals disclaimer during the First Run Experience. The link opens a help center article.">
+        Learn more about <ph name="BEGIN_LINK">&lt;LINK&gt;</ph>information your organization can view or manage<ph name="END_LINK">&lt;/LINK&gt;</ph>
       </message>
       <message name="IDS_ENTERPRISE_SIGNALS_DISCLAIMER_SHEET_FULL_HEIGHT" desc="Accessibility string read when the Enterprise Signals Disclaimer bottom sheet is opened at full height.">
         Enterprise signals disclaimer bottom sheet opened at full height

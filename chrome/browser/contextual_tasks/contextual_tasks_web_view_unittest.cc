@@ -20,6 +20,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ghost_loader_view.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_base.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
@@ -35,6 +36,7 @@
 #include "components/tabs/public/mock_tab_interface.h"
 #include "components/variations/scoped_variations_ids_provider.h"
 #include "content/public/browser/file_select_listener.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/navigation_simulator.h"
@@ -441,7 +443,7 @@ TEST_F(ContextualTasksWebViewTest, RunFileChooserOpensFileDialog) {
   ui::FakeSelectFileDialog* dialog = factory->GetLastDialog();
   ASSERT_NE(dialog, nullptr);
 
-  // Close the dialog so that `FileSelectHelper` releases its self-reference.
+  // Close the dialog so that  releases its self-reference.
   dialog->CallFileSelectionCanceled();
   EXPECT_TRUE(listener->canceled());
 }
@@ -501,46 +503,6 @@ TEST_F(ContextualTasksWebViewTest,
   sim->CommitSameDocument();
 }
 
-TEST_F(ContextualTasksWebViewTest, InitialNavigationToAiPageDoesNotCloseLens) {
-  tabs::MockTabInterface mock_tab;
-  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
-  ON_CALL(*browser_window_, GetActiveTabInterface())
-      .WillByDefault(Return(&mock_tab));
-
-  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
-  std::unique_ptr<content::WebContents> web_contents =
-      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
-  web_view_->SetWebContents(web_contents.get());
-
-  EXPECT_CALL(mock_lens_controller, CloseLensAsync(_)).Times(0);
-  content::NavigationSimulator::NavigateAndCommitFromBrowser(
-      web_contents.get(), GURL("https://ai.google.com/search?q=test"));
-}
-
-TEST_F(ContextualTasksWebViewTest,
-       SetWebContentsAlreadyOnSrpThenTransitionToAiPageClosesLens) {
-  tabs::MockTabInterface mock_tab;
-  NiceMock<MockLensSearchController> mock_lens_controller(&mock_tab);
-  ON_CALL(*browser_window_, GetActiveTabInterface())
-      .WillByDefault(Return(&mock_tab));
-
-  std::unique_ptr<content::WebContents> web_contents =
-      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
-  content::NavigationSimulator::NavigateAndCommitFromBrowser(
-      web_contents.get(), GURL("https://www.google.com/search?q=test"));
-
-  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
-  web_view_->SetWebContents(web_contents.get());
-
-  EXPECT_CALL(
-      mock_lens_controller,
-      CloseLensAsync(
-          lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted))
-      .Times(1);
-  content::NavigationSimulator::NavigateAndCommitFromBrowser(
-      web_contents.get(), GURL("https://ai.google.com/search?q=test"));
-}
-
 TEST_F(ContextualTasksWebViewTest,
        TransitionFromSrpToNonSrpThenAiPageDoesNotCloseLens) {
   tabs::MockTabInterface mock_tab;
@@ -560,6 +522,408 @@ TEST_F(ContextualTasksWebViewTest,
       web_contents.get(), GURL("https://example.com"));
   content::NavigationSimulator::NavigateAndCommitFromBrowser(
       web_contents.get(), GURL("https://ai.google.com/search?q=test"));
+}
+
+class MockTabWebContentsDelegate : public content::WebContentsDelegate {
+ public:
+  MOCK_METHOD(content::WebContents*,
+              OpenURLFromTab,
+              (content::WebContents * source,
+               const content::OpenURLParams& params,
+               base::OnceCallback<void(content::NavigationHandle&)>
+                   navigation_handle_callback),
+              (override));
+};
+
+TEST_F(ContextualTasksWebViewTest, OpenURLFromTab_RejectsNonWebSchemes) {
+  tabs::MockTabInterface mock_tab;
+  std::unique_ptr<content::WebContents> tab_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  NiceMock<MockTabWebContentsDelegate> tab_delegate;
+  tab_contents->SetDelegate(&tab_delegate);
+  ON_CALL(mock_tab, GetContents()).WillByDefault(Return(tab_contents.get()));
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> panel_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(panel_contents.get());
+
+  EXPECT_CALL(tab_delegate, OpenURLFromTab(_, _, _)).Times(0);
+  EXPECT_CALL(*browser_window_, OpenURL(_, _)).Times(0);
+
+  const GURL kNonWebUrls[] = {
+      GURL("chrome://settings"), GURL("javascript:alert(1)"),
+      GURL("data:text/html,hi"), GURL("file:///etc/passwd"),
+      GURL("about:blank"),
+  };
+  for (const GURL& url : kNonWebUrls) {
+    content::OpenURLParams params(url, content::Referrer(),
+                                  WindowOpenDisposition::NEW_FOREGROUND_TAB,
+                                  ui::PAGE_TRANSITION_LINK,
+                                  /*is_renderer_initiated=*/true);
+    params.user_gesture = true;
+    EXPECT_EQ(nullptr, web_view_->OpenURLFromTab(panel_contents.get(), params,
+                                                 base::NullCallback()));
+  }
+
+  tab_contents->SetDelegate(nullptr);
+}
+
+TEST_F(
+    ContextualTasksWebViewTest,
+    OpenURLFromTab_SanitizesSpoofedGestureAndDispositionAndRoutesThroughActiveTab) {
+  tabs::MockTabInterface mock_tab;
+  std::unique_ptr<content::WebContents> tab_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  NiceMock<MockTabWebContentsDelegate> tab_delegate;
+  tab_contents->SetDelegate(&tab_delegate);
+  ON_CALL(mock_tab, GetContents()).WillByDefault(Return(tab_contents.get()));
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> panel_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(panel_contents.get());
+
+  content::RenderFrameHost* panel_rfh = panel_contents->GetPrimaryMainFrame();
+  ASSERT_FALSE(panel_rfh->HasTransientUserActivation());
+
+  const GURL kTargetUrl("https://example.com/target");
+  content::OpenURLParams params(kTargetUrl, content::Referrer(),
+                                WindowOpenDisposition::CURRENT_TAB,
+                                ui::PAGE_TRANSITION_LINK,
+                                /*is_renderer_initiated=*/true);
+  params.user_gesture = true;
+  params.source_render_process_id = panel_rfh->GetProcess()->GetDeprecatedID();
+  params.source_render_frame_id = panel_rfh->GetRoutingID();
+  params.frame_tree_node_id = panel_rfh->GetFrameTreeNodeId();
+
+  EXPECT_CALL(*browser_window_, OpenURL(_, _)).Times(0);
+  EXPECT_CALL(tab_delegate, OpenURLFromTab(tab_contents.get(), _, _))
+      .WillOnce([&](content::WebContents* source,
+                    const content::OpenURLParams& forwarded_params,
+                    base::OnceCallback<void(content::NavigationHandle&)>) {
+        EXPECT_EQ(kTargetUrl, forwarded_params.url);
+        EXPECT_FALSE(forwarded_params.user_gesture);
+        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
+                  forwarded_params.disposition);
+        EXPECT_TRUE(forwarded_params.frame_tree_node_id.is_null());
+        return tab_contents.get();
+      });
+
+  EXPECT_EQ(tab_contents.get(),
+            web_view_->OpenURLFromTab(panel_contents.get(), params,
+                                      base::NullCallback()));
+
+  tab_contents->SetDelegate(nullptr);
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       OpenURLFromTab_PreservesVerifiedUserActivation) {
+  tabs::MockTabInterface mock_tab;
+  std::unique_ptr<content::WebContents> tab_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  NiceMock<MockTabWebContentsDelegate> tab_delegate;
+  tab_contents->SetDelegate(&tab_delegate);
+  ON_CALL(mock_tab, GetContents()).WillByDefault(Return(tab_contents.get()));
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> panel_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(panel_contents.get());
+
+  content::RenderFrameHost* panel_rfh = panel_contents->GetPrimaryMainFrame();
+  content::RenderFrameHostTester::For(panel_rfh)->SimulateUserActivation();
+  ASSERT_TRUE(panel_rfh->HasTransientUserActivation());
+
+  content::OpenURLParams params(
+      GURL("https://example.com/target"), content::Referrer(),
+      WindowOpenDisposition::NEW_BACKGROUND_TAB, ui::PAGE_TRANSITION_LINK,
+      /*is_renderer_initiated=*/true);
+  params.user_gesture = true;
+  params.source_render_process_id = panel_rfh->GetProcess()->GetDeprecatedID();
+  params.source_render_frame_id = panel_rfh->GetRoutingID();
+
+  EXPECT_CALL(tab_delegate, OpenURLFromTab(tab_contents.get(), _, _))
+      .WillOnce([&](content::WebContents* source,
+                    const content::OpenURLParams& forwarded_params,
+                    base::OnceCallback<void(content::NavigationHandle&)>) {
+        EXPECT_TRUE(forwarded_params.user_gesture);
+        EXPECT_EQ(WindowOpenDisposition::NEW_BACKGROUND_TAB,
+                  forwarded_params.disposition);
+        return tab_contents.get();
+      });
+
+  EXPECT_EQ(tab_contents.get(),
+            web_view_->OpenURLFromTab(panel_contents.get(), params,
+                                      base::NullCallback()));
+
+  tab_contents->SetDelegate(nullptr);
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       OpenURLFromTab_RejectsCrossWebContentsInitiatorActivation) {
+  tabs::MockTabInterface mock_tab;
+  std::unique_ptr<content::WebContents> tab_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  NiceMock<MockTabWebContentsDelegate> tab_delegate;
+  tab_contents->SetDelegate(&tab_delegate);
+  ON_CALL(mock_tab, GetContents()).WillByDefault(Return(tab_contents.get()));
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> panel_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(panel_contents.get());
+
+  // Activate `tab_contents` (outside the panel) and attempt to spoof its frame
+  // ID as the source of a panel OpenURL request.
+  content::RenderFrameHostTester::For(tab_contents->GetPrimaryMainFrame())
+      ->SimulateUserActivation();
+  ASSERT_TRUE(
+      tab_contents->GetPrimaryMainFrame()->HasTransientUserActivation());
+
+  content::OpenURLParams params(
+      GURL("https://example.com/target"), content::Referrer(),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK,
+      /*is_renderer_initiated=*/true);
+  params.user_gesture = true;
+  params.source_render_process_id =
+      tab_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID();
+  params.source_render_frame_id =
+      tab_contents->GetPrimaryMainFrame()->GetRoutingID();
+
+  EXPECT_CALL(tab_delegate, OpenURLFromTab(tab_contents.get(), _, _))
+      .WillOnce([&](content::WebContents* source,
+                    const content::OpenURLParams& forwarded_params,
+                    base::OnceCallback<void(content::NavigationHandle&)>) {
+        EXPECT_FALSE(forwarded_params.user_gesture);
+        return nullptr;
+      });
+
+  web_view_->OpenURLFromTab(panel_contents.get(), params, base::NullCallback());
+
+  tab_contents->SetDelegate(nullptr);
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       OpenURLFromTab_ContextMenuPreservesDispositionAndGesture) {
+  tabs::MockTabInterface mock_tab;
+  std::unique_ptr<content::WebContents> tab_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  NiceMock<MockTabWebContentsDelegate> tab_delegate;
+  tab_contents->SetDelegate(&tab_delegate);
+  ON_CALL(mock_tab, GetContents()).WillByDefault(Return(tab_contents.get()));
+  ON_CALL(*browser_window_, GetActiveTabInterface())
+      .WillByDefault(Return(&mock_tab));
+
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  std::unique_ptr<content::WebContents> panel_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(panel_contents.get());
+
+  content::OpenURLParams params(
+      GURL("https://example.com/incognito"), content::Referrer(),
+      WindowOpenDisposition::OFF_THE_RECORD, ui::PAGE_TRANSITION_LINK,
+      /*is_renderer_initiated=*/false);
+  params.user_gesture = true;
+  params.started_from_context_menu = true;
+
+  EXPECT_CALL(tab_delegate, OpenURLFromTab(tab_contents.get(), _, _))
+      .WillOnce([&](content::WebContents* source,
+                    const content::OpenURLParams& forwarded_params,
+                    base::OnceCallback<void(content::NavigationHandle&)>) {
+        EXPECT_TRUE(forwarded_params.user_gesture);
+        EXPECT_EQ(WindowOpenDisposition::OFF_THE_RECORD,
+                  forwarded_params.disposition);
+        return tab_contents.get();
+      });
+
+  EXPECT_EQ(tab_contents.get(),
+            web_view_->OpenURLFromTab(panel_contents.get(), params,
+                                      base::NullCallback()));
+
+  tab_contents->SetDelegate(nullptr);
+}
+
+TEST_F(ContextualTasksWebViewTest, PropagatesAiPageAndThreadTitleOnNavigation) {
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  auto* toolbar_ui = ContextualTasksUIBase::FromWebContents(
+      web_view_->toolbar_web_view()->GetWebContents());
+  ASSERT_NE(toolbar_ui, nullptr);
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  // Navigate to an AI URL with a query parameter.
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search?q=hello+world&mtid=1"),
+      web_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "hello world");
+
+  // Follow-up AI navigation without  preserves the existing thread title.
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search?mtid=1&mstk=2"),
+      web_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "hello world");
+
+  // Starting a navigation to a non-AI URL immediately sets IsAiPage to false,
+  // and committing it clears the thread title.
+  auto srp_sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=srp+query"),
+      web_contents->GetPrimaryMainFrame());
+  srp_sim->Start();
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+
+  srp_sim->Commit();
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+
+  // Navigating to an AI zero-state URL sets IsAiPage to true and clears title.
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search"),
+      web_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       SameDocumentNavigationUpdatesAiPageAndThreadTitle) {
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  auto* toolbar_ui = ContextualTasksUIBase::FromWebContents(
+      web_view_->toolbar_web_view()->GetWebContents());
+  ASSERT_NE(toolbar_ui, nullptr);
+
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  // Start at AI zero state.
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search"),
+      web_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+
+  // Same-document SPA navigation to an active AI thread with query.
+  auto spa_sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://ai.google.com/search?q=spa+query&mtid=123"),
+      web_contents->GetPrimaryMainFrame());
+  spa_sim->CommitSameDocument();
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "spa query");
+
+  // Same-document SPA navigation back to AI zero state clears title.
+  auto zero_state_sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://ai.google.com/search"),
+      web_contents->GetPrimaryMainFrame());
+  zero_state_sim->CommitSameDocument();
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+}
+
+TEST_F(ContextualTasksWebViewTest, SetWebContentsUpdatesAiPageAndThreadTitle) {
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  auto* toolbar_ui = ContextualTasksUIBase::FromWebContents(
+      web_view_->toolbar_web_view()->GetWebContents());
+  ASSERT_NE(toolbar_ui, nullptr);
+
+  // WebContents 1: AI thread with query in the URL.
+  std::unique_ptr<content::WebContents> wc1 =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search?q=first+thread&mtid=1"),
+      wc1->GetPrimaryMainFrame());
+
+  // WebContents 2: Non-AI search results page.
+  std::unique_ptr<content::WebContents> wc2 =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://www.google.com/search?q=search+query"),
+      wc2->GetPrimaryMainFrame());
+
+  // WebContents 3: AI zero-state page.
+  std::unique_ptr<content::WebContents> wc3 =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search"), wc3->GetPrimaryMainFrame());
+
+  web_view_->SetWebContents(wc1.get());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "first thread");
+
+  web_view_->SetWebContents(wc2.get());
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+
+  web_view_->SetWebContents(wc1.get());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "first thread");
+
+  web_view_->SetWebContents(wc3.get());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+
+  web_view_->SetWebContents(nullptr);
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
+}
+
+TEST_F(ContextualTasksWebViewTest,
+       FailedNavigationAndRedirectUpdateAiPageAndThreadTitle) {
+  web_view_ = std::make_unique<ContextualTasksWebView>(browser_window_.get());
+  auto* toolbar_ui = ContextualTasksUIBase::FromWebContents(
+      web_view_->toolbar_web_view()->GetWebContents());
+  ASSERT_NE(toolbar_ui, nullptr);
+
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile_, nullptr);
+  web_view_->SetWebContents(web_contents.get());
+
+  content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL("https://ai.google.com/search?q=active+thread&mtid=1"),
+      web_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "active thread");
+
+  // Starting a non-AI navigation sets IsAiPage to false; aborting it restores
+  // the committed AI page state.
+  auto aborted_sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://www.google.com/search?q=aborted"),
+      web_contents->GetPrimaryMainFrame());
+  aborted_sim->Start();
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+
+  aborted_sim->Fail(net::ERR_ABORTED);
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), "active thread");
+
+  // Redirecting from an AI URL to a non-AI URL sets IsAiPage to false, and
+  // committing an error page clears both IsAiPage and ThreadTitle.
+  auto redirect_sim = content::NavigationSimulator::CreateRendererInitiated(
+      GURL("https://ai.google.com/search?q=redirect"),
+      web_contents->GetPrimaryMainFrame());
+  redirect_sim->Start();
+  EXPECT_TRUE(toolbar_ui->IsAiPage());
+
+  redirect_sim->Redirect(GURL("https://www.google.com/search?q=redirect"));
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+
+  redirect_sim->Fail(net::ERR_FAILED);
+  redirect_sim->CommitErrorPage();
+  EXPECT_FALSE(toolbar_ui->IsAiPage());
+  EXPECT_EQ(toolbar_ui->GetThreadTitle(), std::nullopt);
 }
 
 }  // namespace

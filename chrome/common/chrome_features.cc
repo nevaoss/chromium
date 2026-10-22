@@ -47,7 +47,8 @@ BASE_FEATURE(kAppShimLaunchChromeSilently, base::FEATURE_ENABLED_BY_DEFAULT);
 // When enabled, notifications coming from PWAs will be displayed via their app
 // shim processes, rather than directly by chrome.
 // https://crbug.com/40616749
-BASE_FEATURE(kAppShimNotificationAttribution, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAppShimNotificationAttribution,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, app shims used by PWAs will be signed with an ad-hoc signature
 // https://crbug.com/40276068
@@ -437,9 +438,6 @@ const base::FeatureParam<bool>
 const base::FeatureParam<bool> kGlicActorIncrementalTypingClearAutoSelection{
     &kGlicActorIncrementalTyping,
     "glic-actor-incremental-typing-clear-auto-selection", false};
-
-const base::FeatureParam<bool> kGlicActorPolicyControlExemption{
-    &kGlicActor, "glic_actor_policy_control_exemption", false};
 
 BASE_FEATURE(kGlicActorWorkspaceExemptFromTierCheckRegressionFixKillswitch,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -855,8 +853,6 @@ BASE_FEATURE(kGlicDefaultTabContextSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicDefaultContextPinOnBind, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicUnloadOnClose, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kGlicBindPinnedUnboundTab, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, don't try to update the views background color based on the
 // glic client background color.
@@ -1367,8 +1363,9 @@ constexpr base::FeatureParam<int> kLinuxLowMemoryMonitorCriticalLevel{
 BASE_FEATURE(kListWebAppsSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-// When enabled, keyed services are instantiated lazily rather than eagerly at
-// startup.
+// When enabled, keyed services that do not register startup observers or
+// perform proactive background work at profile startup are instantiated lazily
+// on demand rather than eagerly at startup.
 BASE_FEATURE(kLazyKeyedServiceInstantiation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, autofill and password manager keyed services are instantiated
@@ -1432,6 +1429,23 @@ BASE_FEATURE_PARAM(bool,
                    kLazyKeyedServiceInstantiationStorageNotification,
                    &kLazyKeyedServiceInstantiation,
                    true);
+
+// When enabled, extension socket, USB, and printer provider API keyed services
+// are instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationExtensionsSocketsAndUsb,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+#if BUILDFLAG(IS_CHROMEOS)
+// When enabled, ChromeOS extension API resource manager and dispatcher keyed
+// services (which do not register startup observers or perform proactive
+// background work at profile startup) are instantiated lazily on demand.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationExtensionsChromeOSResources,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+#endif
 
 // Enables the use of system notification centers instead of using the Message
 // Center for displaying the toasts. The feature is hardcoded to enabled for
@@ -1896,14 +1910,6 @@ BASE_FEATURE(kWebAppMigratePreinstalledChat, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebAppInstallDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kWebAppInstallDialogWinPin, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// When this feature is enabled, the web app sync code will process the
-// `migrated_from_manifest_id` field in its sync data to possibly treat new
-// applications that come in via sync as being the result of a migration.
-// Unless `blink::features::kWebAppMigrationApi` is enabled on some other
-// synced profile, no such data should exist in sync.
-BASE_FEATURE(kWebAppHandleAppMigrationViaSync,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kWebAppUpgradeToDatabaseVersion6,

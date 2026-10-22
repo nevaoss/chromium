@@ -10,8 +10,11 @@
 #include "base/functional/bind.h"
 #include "base/notimplemented.h"
 #include "chrome/browser/ttc/app/audio_controller.h"
+#include "chrome/browser/ttc/app/public/error_codes.h"
 #include "chrome/browser/ttc/core/session_controller.h"
+#include "chrome/browser/ttc/core/session_journal.h"
 #include "chrome/browser/ttc/core/states.h"
+#include "components/actor/core/journal_details_builder.h"
 
 namespace ttc {
 
@@ -40,6 +43,9 @@ void ConversationImpl::Start() {
   playback_completion_subscription_ =
       audio_controller_->AddPlaybackCompletionListener(base::BindRepeating(
           &ConversationImpl::OnPlaybackCompleted, base::Unretained(this)));
+  audio_capture_error_subscription_ =
+      audio_controller_->AddErrorListener(base::BindRepeating(
+          &ConversationImpl::OnApplicationError, base::Unretained(this)));
   audio_controller_->StartCapture();
 
   backend_->Connect(this);
@@ -54,6 +60,7 @@ void ConversationImpl::Stop() {
   audio_capture_subscription_ = {};
   audio_energy_subscription_ = {};
   playback_completion_subscription_ = {};
+  audio_capture_error_subscription_ = {};
 
   audio_controller_->StopCapture();
   audio_controller_->StopPlayback();
@@ -97,10 +104,17 @@ void ConversationImpl::OnApplicationInitialized() {
 }
 
 void ConversationImpl::OnApplicationClosed() {
+  session_controller_->GetJournal().Log("TtcBackendClosed", {});
   session_controller_->SetSessionLifecycle(SessionLifecycle::kFinished);
 }
 
 void ConversationImpl::OnApplicationError(ErrorCode error) {
+  session_controller_->GetJournal().Log(
+      "TtcError", actor::JournalDetailsBuilder().AddError(error).Build());
+  if (ending_due_to_error_) {
+    return;
+  }
+  ending_due_to_error_ = true;
   session_controller_->OnError(error);
   session_controller_->SetSessionLifecycle(SessionLifecycle::kFinished);
 }
@@ -119,6 +133,12 @@ void ConversationImpl::OnAudioOutput(base::span<const int16_t> audio_data,
 void ConversationImpl::OnGenerationStateChanged(bool started,
                                                 bool completed,
                                                 bool interrupted) {
+  session_controller_->GetJournal().Log("TtcGenerationStateChanged",
+                                        actor::JournalDetailsBuilder()
+                                            .Add("started", started)
+                                            .Add("completed", completed)
+                                            .Add("interrupted", interrupted)
+                                            .Build());
   if (interrupted) {
     audio_controller_->ClearPlaybackQueue();
   }

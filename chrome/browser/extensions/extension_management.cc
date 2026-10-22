@@ -105,7 +105,7 @@ BASE_FEATURE(kDisableForceInstalledExtensionsInLowTrustEnviromentWhenGreylisted,
 
 // Blocks DSE/NTP override policy extensions in low-trust environments.
 BASE_FEATURE(kBlockPolicyDseNtpOverridesInLowTrust,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 ExtensionManagement::ExtensionManagement(Profile* profile)
@@ -139,6 +139,12 @@ ExtensionManagement::ExtensionManagement(Profile* profile)
 
   pref_change_registrar_.Add(pref_names::kExtensionUnpublishedAvailability,
                              pref_change_callback);
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  pref_change_registrar_.Add(
+      pref_names::kExtensionForceInstallWithSearchOrNewTabOverridesEnabled,
+      pref_change_callback);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
   // Note that both |global_settings_| and |default_settings_| will be null
   // before first call to Refresh(), so in order to resolve this, Refresh() must
@@ -258,6 +264,18 @@ bool ExtensionManagement::IsForcedOrRecommendedInstallConfigured(
       GetConfiguredInstallationMode(extension_id, update_url);
   return mode == ManagedInstallationMode::kForced ||
          mode == ManagedInstallationMode::kRecommended;
+}
+
+bool ExtensionManagement::IsPolicyInstalled(const Extension& extension) {
+  if (Manifest::IsPolicyLocation(extension.location())) {
+    return true;
+  }
+  // Verify policy settings for recommended extensions because the
+  // `kExternalPrefDownload` location is shared with non-policy installs
+  // and default apps.
+  return extension.location() ==
+             mojom::ManifestLocation::kExternalPrefDownload &&
+         IsForcedOrRecommendedInstallConfigured(extension);
 }
 
 base::DictValue ExtensionManagement::GetForceInstallList() const {
@@ -535,10 +553,11 @@ bool ExtensionManagement::IsLowTrustEnforcementActive() const {
 
 bool ExtensionManagement::IsDseNtpOverrideBlockingActive() const {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-  if (!base::FeatureList::IsEnabled(kBlockPolicyDseNtpOverridesInLowTrust)) {
+  if (!base::FeatureList::IsEnabled(kBlockPolicyDseNtpOverridesInLowTrust) ||
+      global_settings_->allow_low_trust_dse_ntp_overrides) {
     return false;
   }
-#endif
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
   return IsLowTrustEnforcementActive();
 }
 
@@ -553,16 +572,7 @@ bool ExtensionManagement::ShouldBlockPolicyInstalledDseNtpOverrideExtension(
   }
 
   // Block policy install attempts while allowing user-driven installs.
-  bool is_forced_policy = Manifest::IsPolicyLocation(extension.location());
-
-  // We must verify policy settings for recommended policy because the
-  // `kExternalPrefDownload` location is shared with non-policy installs
-  // and default apps.
-  bool is_recommended_policy =
-      extension.location() == mojom::ManifestLocation::kExternalPrefDownload &&
-      IsForcedOrRecommendedInstallConfigured(extension);
-
-  return is_forced_policy || is_recommended_policy;
+  return IsPolicyInstalled(extension);
 }
 
 bool ExtensionManagement::IsExtensionBlockedByLowTrust(
@@ -736,6 +746,11 @@ void ExtensionManagement::Refresh() {
   const base::Value* unpublished_availability_pref =
       LoadPreference(pref_names::kExtensionUnpublishedAvailability,
                      /*force_managed=*/true, base::Value::Type::INTEGER);
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  const base::Value* allow_overrides_pref = LoadPreference(
+      pref_names::kExtensionForceInstallWithSearchOrNewTabOverridesEnabled,
+      /*force_managed=*/true, base::Value::Type::BOOLEAN);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
   // Reset all settings.
   global_settings_ = std::make_unique<internal::GlobalSettings>();
@@ -827,6 +842,13 @@ void ExtensionManagement::Refresh() {
         static_cast<internal::GlobalSettings::UnpublishedAvailability>(
             unpublished_availability_pref->GetInt());
   }
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  if (allow_overrides_pref) {
+    global_settings_->allow_low_trust_dse_ntp_overrides =
+        allow_overrides_pref->GetBool();
+  }
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
   if (dict_pref) {
     // Parse new extension management preference.

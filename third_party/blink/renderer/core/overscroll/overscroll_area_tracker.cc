@@ -5,10 +5,12 @@
 #include "third_party/blink/renderer/core/overscroll/overscroll_area_tracker.h"
 
 #include "cc/input/scroll_snap_data.h"
+#include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/node.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
@@ -130,7 +132,8 @@ void AdjustInvokerInertness(const Element& element,
 }  // namespace
 
 OverscrollAreaTracker::OverscrollAreaTracker(Element* element)
-    : container_(element) {}
+    : PostLayoutSnapshotClient(element->GetDocument().GetFrame()),
+      container_(element) {}
 
 void OverscrollAreaTracker::AddOverscroll(Element* element) {
   CHECK(!element->GetOverscrollContainer());
@@ -155,7 +158,8 @@ const VectorOf<Element>& OverscrollAreaTracker::DOMSortedElements() {
 
 // static
 bool OverscrollAreaTracker::ShouldBeOverscrollArea(Element& element) {
-  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled() ||
+  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(
+          element.GetExecutionContext()) ||
       !element.FastHasAttribute(html_names::kOverscrollareaAttr)) {
     return false;
   }
@@ -213,20 +217,58 @@ bool OverscrollAreaTracker::HasOpenAreaAbove(const Element* area) {
     if (member == area) {
       break;
     }
-    if (member->MatchesOverscrollOpen()) {
+    if (IsOpen(*member)) {
       return true;
     }
   }
   return false;
 }
 
-bool OverscrollAreaTracker::HasAnyOpenArea() const {
-  for (Element* member : overscroll_members_) {
-    if (member->MatchesOverscrollOpen()) {
-      return true;
-    }
+bool OverscrollAreaTracker::UpdateOpenState(Element& area) {
+  DCHECK_EQ(area.GetOverscrollContainer(), container_);
+  auto* scrollable_area = GetScrollableAreaFor(&area);
+  bool open = scrollable_area && scrollable_area->IsCurrentlyOverscrolling();
+  if (open == IsOpen(area)) {
+    return false;
   }
-  return false;
+  if (open) {
+    open_areas_.insert(&area);
+  } else {
+    open_areas_.erase(&area);
+  }
+  InvalidateOpenStateDependents();
+  return true;
+}
+
+bool OverscrollAreaTracker::UpdateSnapshot() {
+  if (overscroll_members_.empty() && open_areas_.empty()) {
+    return false;
+  }
+  bool changed = false;
+  // Drop areas that are no longer areas of this container. They already don't
+  // match :overscroll-open, but the rest of the content is inert until they're
+  // dropped.
+  wtf_size_t open_count = open_areas_.size();
+  open_areas_.erase_if([this](const Member<const Element>& area) {
+    return area->GetOverscrollContainer() != container_;
+  });
+  if (open_areas_.size() != open_count) {
+    InvalidateOpenStateDependents();
+    changed = true;
+  }
+  for (Element* area : overscroll_members_) {
+    changed |= UpdateOpenState(*area);
+  }
+  return changed;
+}
+
+void OverscrollAreaTracker::InvalidateOpenStateDependents() {
+  // :overscroll-open on the areas, and the inertness of the areas, the rest of
+  // the content, and the invokers inside them. Areas are flat tree children of
+  // the container, so this covers them too.
+  container_->SetNeedsStyleRecalc(
+      kSubtreeStyleChange,
+      StyleChangeReasonForTracing::Create(style_change_reason::kOverscroll));
 }
 
 const Element* OverscrollAreaTracker::ContainingOverscrollArea(
@@ -282,7 +324,8 @@ void OverscrollAreaTracker::RemoveOverscroll(Element* element) {
 }
 
 void OverscrollAreaTracker::ToggleArea(Element* overscroll_area) {
-  CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+  CHECK(RuntimeEnabledFeatures::OverscrollAreasEnabled(
+      overscroll_area->GetExecutionContext()));
   auto* scrollable_area = GetScrollableAreaFor(overscroll_area);
   if (!scrollable_area) {
     return;
@@ -305,7 +348,8 @@ void OverscrollAreaTracker::ToggleArea(Element* overscroll_area) {
 }
 
 void OverscrollAreaTracker::OpenArea(Element* overscroll_area) {
-  CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+  CHECK(RuntimeEnabledFeatures::OverscrollAreasEnabled(
+      overscroll_area->GetExecutionContext()));
   auto* scrollable_area = GetScrollableAreaFor(overscroll_area);
   if (!scrollable_area) {
     return;
@@ -352,7 +396,8 @@ void OverscrollAreaTracker::OpenArea(Element* overscroll_area) {
 }
 
 void OverscrollAreaTracker::CloseArea(Element* overscroll_area) {
-  CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+  CHECK(RuntimeEnabledFeatures::OverscrollAreasEnabled(
+      overscroll_area->GetExecutionContext()));
   auto* scrollable_area = GetScrollableAreaFor(overscroll_area);
   if (!scrollable_area) {
     return;
@@ -371,6 +416,8 @@ void OverscrollAreaTracker::Trace(Visitor* visitor) const {
 
   visitor->Trace(container_);
   visitor->Trace(overscroll_members_);
+  visitor->Trace(open_areas_);
+  PostLayoutSnapshotClient::Trace(visitor);
 }
 
 }  // namespace blink

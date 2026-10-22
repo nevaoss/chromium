@@ -46,6 +46,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
+import org.robolectric.android.controller.ActivityController;
 
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
@@ -110,7 +112,6 @@ import java.util.function.Supplier;
 @RunWith(BaseRobolectricTestRunner.class)
 @DisableFeatures(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)
 @EnableFeatures(ChromeFeatureList.NEW_TAB_PAGE_CUSTOMIZATION_THEME_SYNC)
-@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class CrossDeviceSettingImporterUnitTest {
     @Rule
     public ActivityScenarioRule<TestActivity> mActivityScenarioRule =
@@ -170,8 +171,6 @@ public class CrossDeviceSettingImporterUnitTest {
                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         sharedPrefManager.writeBoolean(
                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
-        sharedPrefManager.writeBoolean(
-                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
 
         // PrefService and ConfigManager mocks.
         UserPrefs.setPrefServiceForTesting(mPrefService);
@@ -270,12 +269,14 @@ public class CrossDeviceSettingImporterUnitTest {
 
     @Test
     public void testPendingSnackbar_recreateSurvival_undoSnackbar() {
-        Activity spyActivity1 = spy(mActivity);
+        ActivityController<Activity> activityController =
+                Robolectric.buildActivity(Activity.class).setup();
+        Activity activity1 = activityController.get();
         CrossDeviceSettingImporter importer1 =
                 new CrossDeviceSettingImporter(
                         mActivityLifecycleDispatcher,
                         mActivityTabSupplier,
-                        spyActivity1,
+                        activity1,
                         mModalDialogManagerSupplier,
                         mSnackbarManagerSupplier);
         Map<String, Object> prefs = Map.of(Pref.MAGIC_STACK_HOME_MODULE_ENABLED, false);
@@ -289,7 +290,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         // Simulate activity terminating due to configuration change (theme recreate or rotation):
         // SnackbarManager.onStop() calls onDismissNoAction(), followed by importer1.destroy().
-        doReturn(true).when(spyActivity1).isChangingConfigurations();
+        activityController.recreate();
         initialSnackbar.getController().onDismissNoAction(null);
         importer1.destroy();
 
@@ -301,12 +302,12 @@ public class CrossDeviceSettingImporterUnitTest {
         assertEquals(toApply, pending.settingsToApply);
 
         // Simulate activity recreation: new importer instance with same task ID.
-        Activity spyActivity2 = spy(mActivity);
+        Activity activity2 = activityController.get();
         CrossDeviceSettingImporter importer2 =
                 new CrossDeviceSettingImporter(
                         mActivityLifecycleDispatcher,
                         mActivityTabSupplier,
-                        spyActivity2,
+                        activity2,
                         mModalDialogManagerSupplier,
                         mSnackbarManagerSupplier);
 
@@ -327,7 +328,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         // Simulate a second activity recreation before timeout (e.g. screen rotation while snackbar
         // is active): pending snackbar should survive and be restored again.
-        doReturn(true).when(spyActivity2).isChangingConfigurations();
+        activityController.recreate();
         restoredSnackbar.getController().onDismissNoAction(null);
         importer2.destroy();
 
@@ -353,12 +354,13 @@ public class CrossDeviceSettingImporterUnitTest {
 
     @Test
     public void testDestroy_clearsPendingSnackbarWhenNotChangingConfigurations() {
-        Activity spyActivity = spy(mActivity);
+        ActivityController<Activity> activityController =
+                Robolectric.buildActivity(Activity.class).setup();
         CrossDeviceSettingImporter importer =
                 new CrossDeviceSettingImporter(
                         mActivityLifecycleDispatcher,
                         mActivityTabSupplier,
-                        spyActivity,
+                        activityController.get(),
                         mModalDialogManagerSupplier,
                         mSnackbarManagerSupplier);
         SyncedSetupSettings prev =
@@ -372,7 +374,7 @@ public class CrossDeviceSettingImporterUnitTest {
                 CrossDeviceSettingImporter.getPendingSnackbarForTesting());
 
         // Destroy with configuration change promotes active snackbar to static pending snackbar.
-        doReturn(true).when(spyActivity).isChangingConfigurations();
+        activityController.recreate();
         importer.destroy();
         assertNotNull(CrossDeviceSettingImporter.getPendingSnackbarForTesting());
 
@@ -402,12 +404,14 @@ public class CrossDeviceSettingImporterUnitTest {
 
     @Test
     public void testPendingSnackbar_recreateSurvival_redoSnackbar() {
-        Activity spyActivity1 = spy(mActivity);
+        ActivityController<Activity> activityController =
+                Robolectric.buildActivity(Activity.class).setup();
+        Activity activity1 = activityController.get();
         CrossDeviceSettingImporter importer1 =
                 new CrossDeviceSettingImporter(
                         mActivityLifecycleDispatcher,
                         mActivityTabSupplier,
-                        spyActivity1,
+                        activity1,
                         mModalDialogManagerSupplier,
                         mSnackbarManagerSupplier);
         SyncedSetupSettings toApply =
@@ -418,7 +422,7 @@ public class CrossDeviceSettingImporterUnitTest {
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar initialSnackbar = mSnackbarCaptor.getValue();
 
-        doReturn(true).when(spyActivity1).isChangingConfigurations();
+        activityController.recreate();
         initialSnackbar.getController().onDismissNoAction(null);
         importer1.destroy();
 
@@ -429,12 +433,12 @@ public class CrossDeviceSettingImporterUnitTest {
         assertTrue(pending.hadThemeChange);
 
         // Simulate activity recreation: new importer instance with same task ID.
-        Activity spyActivity2 = spy(mActivity);
+        Activity activity2 = activityController.get();
         CrossDeviceSettingImporter importer2 =
                 new CrossDeviceSettingImporter(
                         mActivityLifecycleDispatcher,
                         mActivityTabSupplier,
-                        spyActivity2,
+                        activity2,
                         mModalDialogManagerSupplier,
                         mSnackbarManagerSupplier);
 
@@ -452,7 +456,7 @@ public class CrossDeviceSettingImporterUnitTest {
         verify(mSnackbarManager, times(3)).showSnackbar(mSnackbarCaptor.capture());
         Snackbar undoSnackbarAfterRedo = mSnackbarCaptor.getValue();
 
-        doReturn(true).when(spyActivity2).isChangingConfigurations();
+        activityController.recreate();
         undoSnackbarAfterRedo.getController().onDismissNoAction(null);
         importer2.destroy();
 
@@ -786,7 +790,7 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
         when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
@@ -815,7 +819,7 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus())
                 .thenReturn(ServiceStatus.SYNC_NOT_CONFIGURED);
@@ -870,14 +874,37 @@ public class CrossDeviceSettingImporterUnitTest {
     }
 
     @Test
+    @EnableFeatures(ChromeFeatureList.XPLAT_SYNCED_SETUP_THEMES)
     public void testOnTabChange_AlreadyImported_NoSnackbar() {
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, true);
+        SharedPreferencesManager sharedPrefManager = ChromeSharedPreferences.getInstance();
+        sharedPrefManager.writeBoolean(
+                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, true);
+        assertTrue(CrossDeviceSettingImporter.shouldCreateImporter());
 
-        when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
+        sharedPrefManager.writeBoolean(
+                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
+        sharedPrefManager.writeBoolean(
+                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, true);
+        assertFalse(CrossDeviceSettingImporter.shouldCreateImporter());
 
-        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+        CrossDeviceSettingImporter.setPendingSnackbarForTesting(
+                new PendingSnackbar(
+                        /* isRedo= */ false,
+                        /* previousSettings= */ null,
+                        new SyncedSetupSettings(Map.of()),
+                        /* hadThemeChange= */ false,
+                        /* nonNtp= */ false,
+                        INVALID_TASK_ID));
+        assertTrue(CrossDeviceSettingImporter.shouldCreateImporter());
+        CrossDeviceSettingImporter.setPendingSnackbarForTesting(null);
 
+        CrossDeviceSettingImporter importer = initializeCrossDeviceSettingImporter();
+        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
+        importer.onTabChangeOrGainFocus(mTab);
+        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
+        importer.onTabChangeOrGainFocus(mTab);
+
+        verify(mCrossDevicePrefTracker, never()).getServiceStatus();
         verify(mNtpCustomizationConfigManager, never()).ensureInitialized(any());
         verify(mSnackbarManager, never()).showSnackbar(any());
     }
@@ -985,7 +1012,7 @@ public class CrossDeviceSettingImporterUnitTest {
                 .onDependenciesReady(
                         mCrossDevicePrefTracker, ServiceStatus.AVAILABLE, mProfile, mTab, true);
 
-        // Should return early and migrate the key to true.
+        // Should return early, migrate the key to true, and remove the old key.
         verify(mSnackbarManager, never()).showSnackbar(any());
         assertTrue(
                 "Old key value should migrate into CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS.",
@@ -993,6 +1020,10 @@ public class CrossDeviceSettingImporterUnitTest {
                         .readBoolean(
                                 ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS,
                                 false));
+        assertFalse(
+                "Deprecated CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX key should be removed.",
+                ChromeSharedPreferences.getInstance()
+                        .contains(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX));
     }
 
     @Test
@@ -1229,7 +1260,7 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(status);
         when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
@@ -1269,7 +1300,7 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
         when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
@@ -1296,7 +1327,7 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
         when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
@@ -1335,7 +1366,7 @@ public class CrossDeviceSettingImporterUnitTest {
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
         ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS, false);
 
         when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
         when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
@@ -1984,6 +2015,25 @@ public class CrossDeviceSettingImporterUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.XPLAT_SYNCED_SETUP_THEMES)
+    public void testOnTabChange_IosThemeCollection_SameImageNullColor_NoSnackbar() {
+        // iOS never sends a primary color. The null color is "unknown", so the same image is not a
+        // theme change.
+        doTestOnTabChange_ThemeCollectionSameImage(
+                PlatformType.IOS, /* remotePrimaryColor= */ null, /* expectSnackbar= */ false);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.XPLAT_SYNCED_SETUP_THEMES)
+    public void testOnTabChange_DesktopThemeCollection_SameImageDifferentColor_ShowsSnackbar() {
+        // Both colors are known and differ, so this is a theme change.
+        doTestOnTabChange_ThemeCollectionSameImage(
+                PlatformType.DESKTOP,
+                /* remotePrimaryColor= */ 0xFF445566,
+                /* expectSnackbar= */ true);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.XPLAT_SYNCED_SETUP_THEMES)
     public void testPendingSnackbar_asyncActivityRecreateFromInFlightImageDownload() {
         CustomBackgroundInfo bgInfo =
                 new CustomBackgroundInfo(
@@ -2003,7 +2053,8 @@ public class CrossDeviceSettingImporterUnitTest {
         when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
         when(mLocalPrefService.getBoolean(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION)).thenReturn(false);
 
-        Activity spyActivity = spy(mActivity);
+        ActivityController<Activity> activityController =
+                Robolectric.buildActivity(Activity.class).setup();
         SyncedSetUpUtilsBridge.setCrossDeviceSettingsForTesting(
                 Map.of(Pref.IS_OMNIBOX_IN_BOTTOM_POSITION, true));
         CrossDeviceSettingImporter importer =
@@ -2011,7 +2062,7 @@ public class CrossDeviceSettingImporterUnitTest {
                         new CrossDeviceSettingImporter(
                                 mActivityLifecycleDispatcher,
                                 mActivityTabSupplier,
-                                spyActivity,
+                                activityController.get(),
                                 mModalDialogManagerSupplier,
                                 mSnackbarManagerSupplier));
         doReturn(123).when(importer).getTaskId();
@@ -2035,10 +2086,9 @@ public class CrossDeviceSettingImporterUnitTest {
                         /* fileIdHash= */ "hash_1");
         when(mNtpCustomizationConfigManager.getNtpBackgroundData()).thenReturn(downloadedTheme);
 
-        doReturn(true).when(spyActivity).isChangingConfigurations();
+        activityController.recreate();
         initialUndoSnackbar.getController().onDismissNoAction(null);
         importer.destroy();
-        doReturn(false).when(spyActivity).isChangingConfigurations();
 
         // 3. Activity 2 starts up and restores the Undo snackbar.
         CrossDeviceSettingImporter recreatedImporter =
@@ -2046,7 +2096,7 @@ public class CrossDeviceSettingImporterUnitTest {
                         new CrossDeviceSettingImporter(
                                 mActivityLifecycleDispatcher,
                                 mActivityTabSupplier,
-                                spyActivity,
+                                activityController.get(),
                                 mModalDialogManagerSupplier,
                                 mSnackbarManagerSupplier));
         doReturn(123).when(recreatedImporter).getTaskId();
@@ -2067,10 +2117,9 @@ public class CrossDeviceSettingImporterUnitTest {
         // 5. Simulate Activity recreate caused by Undo reverting the theme (with destroy() called
         // before onDismissNoAction() to verify order independence).
         when(mNtpCustomizationConfigManager.getNtpBackgroundData()).thenReturn(null);
-        doReturn(true).when(spyActivity).isChangingConfigurations();
+        activityController.recreate();
         recreatedImporter.destroy();
         redoSnackbar.getController().onDismissNoAction(null);
-        doReturn(false).when(spyActivity).isChangingConfigurations();
 
         // 6. Activity 3 starts up and restores the Redo snackbar.
         CrossDeviceSettingImporter thirdImporter =
@@ -2078,7 +2127,7 @@ public class CrossDeviceSettingImporterUnitTest {
                         new CrossDeviceSettingImporter(
                                 mActivityLifecycleDispatcher,
                                 mActivityTabSupplier,
-                                spyActivity,
+                                activityController.get(),
                                 mModalDialogManagerSupplier,
                                 mSnackbarManagerSupplier));
         doReturn(123).when(thirdImporter).getTaskId();
@@ -2251,5 +2300,51 @@ public class CrossDeviceSettingImporterUnitTest {
         verify(mNtpCustomizationConfigManager, never()).onBackgroundDataChanged(any(), any());
         verify(mNtpCustomizationConfigManager)
                 .maybeApplyBackgroundUpdateFromDeviceSync(eq(mActivity));
+    }
+
+    /**
+     * Imports a remote theme collection with the same image as the local theme collection and
+     * verifies whether the snackbar is shown.
+     *
+     * @param remotePlatformType The platform type of the remote theme.
+     * @param remotePrimaryColor The primary color of the remote theme, or null if unknown. The
+     *     local theme's primary color is always 0xFF112233.
+     * @param expectSnackbar Whether the snackbar is expected to be shown.
+     */
+    private void doTestOnTabChange_ThemeCollectionSameImage(
+            @PlatformType int remotePlatformType,
+            @Nullable Integer remotePrimaryColor,
+            boolean expectSnackbar) {
+        CustomBackgroundInfo bgInfo =
+                new CustomBackgroundInfo(
+                        new GURL("https://example.com/theme.png"),
+                        "collection_1",
+                        /* isUploadedImage= */ false,
+                        /* isDailyRefreshEnabled= */ false);
+        NtpBackgroundDataThemeCollection remoteTheme =
+                new NtpBackgroundDataThemeCollection(
+                        remotePlatformType,
+                        bgInfo,
+                        /* backgroundImageInfo= */ null,
+                        /* bitmap= */ null,
+                        remotePrimaryColor,
+                        /* fileIdHash= */ null);
+        NtpBackgroundDataThemeCollection localTheme =
+                new NtpBackgroundDataThemeCollection(
+                        PlatformType.ANDROID,
+                        bgInfo,
+                        /* backgroundImageInfo= */ null,
+                        mock(Bitmap.class),
+                        /* primaryColor= */ 0xFF112233,
+                        /* fileIdHash= */ "hash_1");
+
+        when(mNtpCustomizationConfigManager.getNtpBackgroundData()).thenReturn(localTheme);
+        when(mCrossDeviceThemeTracker.getThemeForDeviceGuid(any(), any())).thenReturn(remoteTheme);
+        when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(ServiceStatus.AVAILABLE);
+        when(mPrefService.isDefaultValuePreference(any(String.class))).thenReturn(true);
+
+        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+
+        verify(mSnackbarManager, times(expectSnackbar ? 1 : 0)).showSnackbar(any());
     }
 }

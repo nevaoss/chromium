@@ -1500,13 +1500,19 @@ void ContextualSearchboxHandler::OnDriveUploadClicked(
     // TODO(crbug.com/545561312): Handle visibility of the Drive option when
     // `browser_window_interface` is null (e.g., with `kOmniboxEverywhere`).
     if (browser_window_interface) {
+      if (auto* helper = OmniboxPopupWebContentsHelper::FromWebContents(
+              web_contents_.get())) {
+        if (auto* controller = helper->get_omnibox_controller()) {
+          controller->StopAutocomplete(/*clear_result=*/true);
+          controller->popup_state_manager()->SetPopupState(
+              OmniboxPopupState::kNone);
+        }
+      }
       if (content::WebContents* target_web_contents =
               GetActiveTabWebContents(web_contents_)) {
-        if (!composebox_drive_signin_promo_controller_) {
-          composebox_drive_signin_promo_controller_ =
-              std::make_unique<ComposeboxDriveSignInPromoController>(
-                  target_web_contents);
-        }
+        composebox_drive_signin_promo_controller_ =
+            std::make_unique<ComposeboxDriveSignInPromoController>(
+                target_web_contents);
         composebox_drive_signin_promo_controller_->MaybeShowPromo(
             browser_window_interface);
       }
@@ -2374,6 +2380,12 @@ void ContextualSearchboxHandler::SnapshotTabContext(
         contextual_session_handle->GetUploadedContextFileInfos().size() > 0
             ? std::nullopt
             : std::optional(*page_content_data);
+    if (page_content_data->tab_session_id.has_value()) {
+      contextual_session_handle->AddDelayedTabContext(
+          context_token, page_content_data->tab_session_id->id(),
+          page_content_data->page_url.value_or(GURL()),
+          page_content_data->page_title.value_or(""));
+    }
   }
   tab_context_snapshot_.emplace(context_token, std::move(page_content_data));
 

@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.signin;
 
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
@@ -21,6 +22,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.atLeastOnce;
@@ -492,6 +494,49 @@ public class SigninFirstRunFragmentTest {
         verify(mSigninManagerMock, never()).signin(any(), anyInt(), any());
         verify(mFirstRunPageDelegateMock, never()).advanceToNextPage();
         checkFragmentWithSelectedAccount(TestAccounts.MANAGED_ACCOUNT);
+    }
+
+    @Test
+    @MediumTest
+    @Restriction({DeviceRestriction.RESTRICTION_TYPE_NON_AUTO})
+    @EnableFeatures(ChromeFeatureList.ANDROID_NEW_MANAGEMENT_NOTICE)
+    public void testManagementNoticeDismissedWithBackPress() {
+        setUpManagedAccountSignin();
+        launchActivityWithFragment();
+        checkFragmentWithSelectedAccount(TestAccounts.MANAGED_ACCOUNT);
+
+        clickContinueButton(getContinueAsButtonText(TestAccounts.MANAGED_ACCOUNT, true));
+        checkManagementNoticeIsDisplayed();
+
+        pressBack();
+
+        // Back press should be treated as declining the notice: the sign-in is aborted and the
+        // main FRE view is brought back.
+        onView(withId(R.id.disclaimer_title)).check(doesNotExist());
+        verify(mSigninManagerMock, never()).setUserAcceptedAccountManagement(true);
+        verify(mSigninManagerMock, never()).signin(any(), anyInt(), any());
+        verify(mFirstRunPageDelegateMock, never()).advanceToNextPage();
+        checkFragmentWithSelectedAccount(TestAccounts.MANAGED_ACCOUNT);
+    }
+
+    @Test
+    @MediumTest
+    @Restriction({DeviceRestriction.RESTRICTION_TYPE_NON_AUTO})
+    @EnableFeatures(ChromeFeatureList.ANDROID_NEW_MANAGEMENT_NOTICE)
+    public void testManagementNoticeLearnMoreLinkClicked() {
+        setUpManagedAccountSignin();
+        launchActivityWithFragment();
+        checkFragmentWithSelectedAccount(TestAccounts.MANAGED_ACCOUNT);
+
+        clickContinueButton(getContinueAsButtonText(TestAccounts.MANAGED_ACCOUNT, true));
+        checkManagementNoticeIsDisplayed();
+
+        onView(withId(R.id.disclaimer_footer)).perform(ViewUtils.clickOnClickableSpan(0));
+
+        // The exact URL is verified in EnterpriseSignalsDisclaimerMediatorUnitTest.
+        verify(mFirstRunPageDelegateMock).showInfoPage(anyString());
+        checkManagementNoticeIsDisplayed();
+        verify(mSigninManagerMock, never()).signin(any(), anyInt(), any());
     }
 
     @Test

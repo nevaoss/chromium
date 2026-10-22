@@ -5,6 +5,7 @@
 #ifndef IOS_CHROME_BROWSER_INTELLIGENCE_ACTOR_MODEL_ACTOR_TASK_H_
 #define IOS_CHROME_BROWSER_INTELLIGENCE_ACTOR_MODEL_ACTOR_TASK_H_
 
+#import <optional>
 #import <string>
 #import <string_view>
 #import <vector>
@@ -15,6 +16,8 @@
 #import "base/memory/weak_ptr.h"
 #import "base/scoped_multi_source_observation.h"
 #import "base/timer/timer.h"
+#import "components/actor/core/task_source_info.h"
+#import "components/actor/public/mojom/actor_types.mojom-forward.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_engine.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_web_state_policy_decider.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_control_state.h"
@@ -54,6 +57,7 @@ class ActorTask : public web::WebStateObserver,
  public:
   ActorTask(ActorTaskId task_id,
             const std::string& title,
+            const TaskSourceInfo& source_info,
             bool allow_incognito_web_states,
             AggregatedJournal* journal,
             ActorToolFactory* tool_factory,
@@ -73,6 +77,9 @@ class ActorTask : public web::WebStateObserver,
 
   const std::string& title() const { return title_; }
 
+  // Returns information about the client that created this task.
+  const TaskSourceInfo& source_info() const { return source_info_; }
+
   // Returns the unique identifier of the task.
   ActorTaskId task_id() const { return task_id_; }
 
@@ -84,10 +91,16 @@ class ActorTask : public web::WebStateObserver,
 
   // Begins executing the given sequence of actions on the underlying execution
   // engine with a string update blurb in plain language about what the actor is
-  // doing.
+  // doing. `callback` runs exactly once, either:
+  // - with the engine results once actions complete and pages finish loading;
+  // - posted with a single `kExecutionEngineExistingAction` result if a
+  //   previous `Act()` is pending.
   void Act(std::vector<std::unique_ptr<ActorToolRequest>> actions,
            const std::string& task_update,
            ActCallback callback);
+
+  // Returns whether an `Act()` is pending.
+  bool HasPendingAct() const;
 
   // Adds a WebState to the set of controlled WebStates.
   void AddControlledWebState(web::WebState* web_state);
@@ -156,6 +169,21 @@ class ActorTask : public web::WebStateObserver,
  private:
   friend class ActorTaskTest;
 
+  // A pending `Act()` request.
+  struct PendingAct {
+    explicit PendingAct(ActCallback callback);
+    PendingAct(PendingAct&&);
+    PendingAct& operator=(PendingAct&&);
+    ~PendingAct();
+
+    // Callback of the `Act()` request.
+    ActCallback callback;
+
+    // Engine results held while the reply waits for controlled WebStates to
+    // finish loading. Unset while the engine is still executing actions.
+    std::optional<std::vector<ActionResult>> deferred_results;
+  };
+
   // Sets the `ActorControlState` on all controlled `WebState`s based on
   // `control_state`.
   void SetControlStateOnWebStates(ActorControlState control_state);
@@ -166,20 +194,27 @@ class ActorTask : public web::WebStateObserver,
   // Sets the task state and logs the transition.
   void SetState(ActorTaskState new_state);
 
-  // Called when tools execution is completed.
-  void OnActCompleted(ActCallback callback, std::vector<ActionResult> results);
+  // Called when the engine finishes executing the pending `Act()` actions.
+  void OnActCompleted(std::vector<ActionResult> results);
 
   // Starts observing controlled WebStates that are loading. Returns true if any
   // observations are active, and false otherwise.
   bool ObserveLoadingWebStates();
 
-  // Defers the `Act()` completion callback and registers the safety timeout
-  // timer.
-  void DeferActCompletion(ActCallback callback,
-                          std::vector<ActionResult> results);
+  // Holds `results` in `pending_act_` until controlled WebStates finish loading
+  // and registers the safety timeout timer.
+  void DeferActCompletion(std::vector<ActionResult> results);
+
+  // Transitions to `kReflecting` and replies to the pending `Act()` with
+  // `results`.
+  void FinishAct(std::vector<ActionResult> results);
+
+  // Calls `FinishAct()` with the deferred results. `pending_act_` must hold
+  // deferred results.
+  void FinishDeferredAct();
 
   // Handles observation removal when a WebState finishes loading or is
-  // destroyed. Also resolves the deferred callback if no more WebStates are
+  // destroyed. Also finishes the deferred `Act()` if no more WebStates are
   // loading.
   void OnWebStateFinishedLoading(web::WebState* web_state);
 
@@ -253,6 +288,9 @@ class ActorTask : public web::WebStateObserver,
   // The task's title.
   const std::string title_;
 
+  // Information about the client that created this task.
+  const TaskSourceInfo source_info_;
+
   const bool allow_incognito_web_states_;
 
   // The execution engine for this task.
@@ -279,9 +317,8 @@ class ActorTask : public web::WebStateObserver,
   base::ScopedMultiSourceObservation<web::WebState, web::WebStateObserver>
       scoped_web_state_observations_{this};
 
-  // Deferred Act callback. The `Act()` callback can be deferred if any of the
-  // controlled WebStates are loading when Act is done executing actions.
-  base::OnceClosure deferred_act_callback_;
+  // The pending `Act()` request, if any.
+  std::optional<PendingAct> pending_act_;
 
   // Timer to enforce the page load timeout. The timeout exists to limit the
   // amount of time ActorTask can wait for a page to finish loading before

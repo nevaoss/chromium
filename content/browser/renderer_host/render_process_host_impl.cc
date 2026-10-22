@@ -1721,6 +1721,7 @@ RenderProcessHostImpl::RenderProcessHostImpl(
                 true /* boost_for_pending_views */,
                 false /*boost_for_loading*/,
                 false /* boost_for_discard */,
+                false /* boost_for_background_execution */,
 #if BUILDFLAG(IS_ANDROID)
                 is_spare_renderer,
                 ChildProcessImportance::NORMAL
@@ -3447,6 +3448,21 @@ void RenderProcessHostImpl::OnBoostForLoadingRemoved() {
   }
 }
 
+void RenderProcessHostImpl::OnBoostForBackgroundExecutionAdded() {
+  ++boost_for_background_execution_count_;
+  if (boost_for_background_execution_count_ == 1) {
+    UpdateProcessPriority();
+  }
+}
+
+void RenderProcessHostImpl::OnBoostForBackgroundExecutionRemoved() {
+  CHECK_GT(boost_for_background_execution_count_, 0);
+  --boost_for_background_execution_count_;
+  if (boost_for_background_execution_count_ == 0) {
+    UpdateProcessPriority();
+  }
+}
+
 void RenderProcessHostImpl::OnImmersiveXrSessionStarted() {
   // TODO(https://crbug.com/397907158): Evaluate upgrading to CHECK.
   DUMP_WILL_BE_CHECK(!has_immersive_xr_session_);
@@ -5043,7 +5059,7 @@ bool RenderProcessHostImpl::IsSuitableHost(
   // from |site_url| if an effective URL is used.
   bool host_has_web_ui_bindings =
       ChildProcessSecurityPolicyImpl::GetInstance()->HasWebUIBindings(
-          host->GetDeprecatedID());
+          host->GetID());
   if (host->HostHasNotBeenUsed()) {
     // If the host hasn't been used, it won't have the expected WebUI bindings
     // or origin locks just *yet* - skip the checks in this case.  One example
@@ -6060,6 +6076,7 @@ void RenderProcessHostImpl::UpdateProcessPriority() {
       foreground_service_worker_count_ > 0, frame_depth_, intersects_viewport_,
       pending_views_ > 0, /* boost_for_pending_views */
       boost_for_loading_count_ > 0, is_discarding_,
+      boost_for_background_execution_count_ > 0,
 #if BUILDFLAG(IS_ANDROID)
       spare_renderer_priority_status_ == SpareRendererPriorityStatus::kSpare,
       GetEffectiveImportance()

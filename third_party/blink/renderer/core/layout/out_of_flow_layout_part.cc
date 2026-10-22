@@ -49,6 +49,7 @@
 #include "third_party/blink/renderer/core/layout/simplified_oof_layout_algorithm.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
@@ -558,7 +559,7 @@ OutOfFlowLayoutPart::OutOfFlowLayoutPart(BoxFragmentBuilder* container_builder)
   const ConstraintSpace& space = GetConstraintSpace();
   const WritingDirectionMode writing_direction = space.GetWritingDirection();
   const bool is_scroll_container = node.IsScrollContainer();
-  const bool is_hidden_for_paint = space.IsHiddenForPaint();
+  const bool is_hidden_due_to_layout = space.IsHiddenDueToLayout();
 
   const BoxStrut border_scrollbar =
       container_builder_.Borders() + container_builder_.Scrollbar();
@@ -585,12 +586,13 @@ OutOfFlowLayoutPart::OutOfFlowLayoutPart(BoxFragmentBuilder* container_builder)
                                       *inflow_bounds);
   }
 
-  default_containing_block_ = {.writing_direction = writing_direction,
-                               .is_scroll_container = is_scroll_container,
-                               .is_hidden_for_paint = is_hidden_for_paint,
-                               .rect = container_rect,
-                               .scroll_rect = scroll_rect,
-                               .scroll_direction = scroll_direction};
+  default_containing_block_ = {
+      .writing_direction = writing_direction,
+      .is_scroll_container = is_scroll_container,
+      .is_hidden_due_to_layout = is_hidden_due_to_layout,
+      .rect = container_rect,
+      .scroll_rect = scroll_rect,
+      .scroll_direction = scroll_direction};
 
   if (std::optional<LogicalSize> viewport_size =
           InitialContainingBlockFixedSize(node)) {
@@ -600,7 +602,7 @@ OutOfFlowLayoutPart::OutOfFlowLayoutPart(BoxFragmentBuilder* container_builder)
     viewport_containing_block_ = {
         .writing_direction = writing_direction,
         .is_scroll_container = is_scroll_container,
-        .is_hidden_for_paint = is_hidden_for_paint,
+        .is_hidden_due_to_layout = is_hidden_due_to_layout,
         .rect = {container_rect.offset,
                  ShrinkLogicalSize(*viewport_size, border_scrollbar)},
         .scroll_rect = std::nullopt,
@@ -841,7 +843,7 @@ OutOfFlowLayoutPart::GetContainingBlockInfo(
       ContainingBlockInfo containing_block_info{
           writing_direction,
           containing_block_fragment->IsScrollContainer(),
-          containing_block_fragment->IsHiddenForPaint(),
+          containing_block_fragment->IsHiddenDueToLayout(),
           padding_box_rect,
           std::nullopt,
           std::nullopt,
@@ -1093,7 +1095,7 @@ void OutOfFlowLayoutPart::AddInlineContainingBlockInfo(
         block_info.key.Get(),
         ContainingBlockInfo{inline_writing_direction,
                             /* is_scroll_container */ false,
-                            geometry.is_hidden_for_paint,
+                            geometry.is_hidden_due_to_layout,
                             LogicalRect(container_offset, inline_cb_size),
                             /* scroll_rect */ std::nullopt,
                             /* scroll_limit_rect */ std::nullopt,
@@ -2067,6 +2069,13 @@ OutOfFlowLayoutPart::OffsetInfo OutOfFlowLayoutPart::CalculateOffset(
       CreateAnchorEvaluator(node_info.base_container_info, node_info.node,
                             is_inside_fragmentation_context);
 
+  Element* element = To<Element>(node_info.node.GetDOMNode());
+  // DevTools can force a specific position-try option:
+  // - std::nullopt: no option is forced.
+  // - 0: force the base position (without any position-try fallback).
+  // - 1..N: force the 1-based index into `position-try-fallbacks`.
+  std::optional<wtf_size_t> forced_index;
+  probe::ForcePositionTryOption(element, &forced_index);
   const ComputedStyle& current_style = node_info.node.Style();
   bool has_try_fallbacks = !!current_style.GetPositionTryFallbacks();
   EPositionTryOrder position_try_order = current_style.PositionTryOrder();
@@ -2075,7 +2084,8 @@ OutOfFlowLayoutPart::OffsetInfo OutOfFlowLayoutPart::CalculateOffset(
   // If `position-try-fallbacks` or `position-visibility: no-overflow` exists,
   // let |TryCalculateOffset| check if the result fits the available space.
   bool try_fit_available_space =
-      has_try_fallbacks || has_no_overflow_visibility;
+      (has_try_fallbacks || has_no_overflow_visibility) &&
+      !forced_index.has_value();
   // Non-overflowing candidates (i.e. successfully placed candidates) are
   // collected into a vector. If position-try-order is non-normal, then we
   // collect *all* such candidates into the vector, and sort them according
@@ -2083,12 +2093,11 @@ OutOfFlowLayoutPart::OffsetInfo OutOfFlowLayoutPart::CalculateOffset(
   HeapVector<NonOverflowingCandidate, kMaxTryAttempts>
       non_overflowing_candidates;
 
-  Element* element = To<Element>(node_info.node.GetDOMNode());
   const OutOfFlowData* oof_data =
       element ? element->GetOutOfFlowData() : nullptr;
   std::optional<wtf_size_t> last_successful_index;
   bool find_last_successful_option = false;
-  if (oof_data) {
+  if (oof_data && !forced_index.has_value()) {
     // Unless `position-try-fallbacks` has changed, prefer the last successful
     // option.
     if (oof_data->HasLastSuccessfulPositionFallback() &&
@@ -2196,9 +2205,13 @@ OutOfFlowLayoutPart::OffsetInfo OutOfFlowLayoutPart::CalculateOffset(
           ? std::optional<OffsetInfo>()
           : non_overflowing_candidates.front().offset_info;
 
-  if (try_fit_available_space) {
+  if (try_fit_available_space || forced_index.has_value()) {
     bool overflows_containing_block = false;
-    if (non_overflowing_candidates.empty()) {
+    if (forced_index.has_value()) {
+      iter.MoveToChosenTryFallbackIndex(
+          *forced_index == 0 ? std::nullopt
+                             : std::optional<wtf_size_t>(*forced_index - 1));
+    } else if (non_overflowing_candidates.empty()) {
       // None of the fallbacks worked out.
       // Fall back to style without any fallbacks applied.
       iter.MoveToLastSuccessfulOrStyleWithoutFallbacks();
@@ -2307,7 +2320,7 @@ OutOfFlowLayoutPart::TryCalculateOffset(
                                    /* is_new_fc */ true);
     builder.SetAvailableSize(container_rect.size);
     builder.SetPercentageResolutionSize(container_rect.size);
-    builder.SetIsHiddenForPaint(container_info.is_hidden_for_paint);
+    builder.SetIsHiddenDueToLayout(container_info.is_hidden_due_to_layout);
 
     if (GetConstraintSpace().IsInitialColumnBalancingPass()) {
       // The |fragmentainer_offset_delta| will not make a difference in the
@@ -2745,8 +2758,8 @@ const LayoutResult* OutOfFlowLayoutPart::GenerateFragment(
                                 : offset_info.imcb_block_size});
   builder.SetPercentageResolutionSize(offset_info.container_content_size);
   builder.SetIsFixedInlineSize(true);
-  builder.SetIsHiddenForPaint(
-      node_info.base_container_info.is_hidden_for_paint);
+  builder.SetIsHiddenDueToLayout(
+      node_info.base_container_info.is_hidden_due_to_layout);
 
   if (is_replaced) {
     builder.SetIsFixedBlockSize(true);

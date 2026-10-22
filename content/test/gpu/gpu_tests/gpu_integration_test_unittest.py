@@ -36,6 +36,7 @@ from telemetry.testing import serially_executed_browser_test_case
 
 import gpu_path_util
 import gpu_project_config
+from gpu_tests import common_browser_args as cba
 from gpu_tests import common_typing as ct
 from gpu_tests import context_lost_integration_test
 from gpu_tests import gpu_helper
@@ -1263,15 +1264,20 @@ class RetrieveAboutGpuUnittest(unittest.TestCase):
     GpuTestClass._args_changed_this_browser_start = True
     GpuTestClass._about_gpu_content = None
     GpuTestClass._test_that_started_browser = None
+    GpuTestClass._about_gpu_cache = {}
+    GpuTestClass._last_launched_browser_info = (
+      gpu_integration_test._BrowserLaunchInfo()
+    )
     GpuTestClass.browser = mock.MagicMock()
     GpuTestClass.browser.browser_type = 'release'
     GpuTestClass.tab = mock.MagicMock()
 
   def testRetrieveAboutGpuWaitsForDawnInfo(self):
     expected_content = 'a' * 2000
-    GpuTestClass.tab.action_runner.EvaluateJavaScript.return_value = (
-      expected_content
-    )
+    GpuTestClass.tab.action_runner.EvaluateJavaScript.side_effect = [
+      True,
+      expected_content,
+    ]
 
     GpuTestClass._RetrieveAboutGpu()
 
@@ -1279,17 +1285,19 @@ class RetrieveAboutGpuUnittest(unittest.TestCase):
     GpuTestClass.tab.action_runner.WaitForElement.assert_called_once_with(
       selector='info-view'
     )
+    GpuTestClass.tab.action_runner.WaitForJavaScriptCondition.assert_called_once_with(
+      'document.getElementsByTagName("info-view")[0].getSelectionText '
+      '!= undefined'
+    )
     self.assertEqual(
-      GpuTestClass.tab.action_runner.WaitForJavaScriptCondition.call_args_list,
+      GpuTestClass.tab.action_runner.EvaluateJavaScript.call_args_list,
       [
         mock.call(
-          'document.getElementsByTagName("info-view")[0].getSelectionText '
-          '!= undefined'
+          'document.getElementsByTagName("info-view")[0]'
+          '.getSelectionText(true).includes("Dawn Info")'
         ),
         mock.call(
-          'document.getElementsByTagName("info-view")[0]'
-          '.getSelectionText(true).includes("Dawn Info")',
-          timeout=15,
+          'document.getElementsByTagName("info-view")[0].getSelectionText(true)'
         ),
       ],
     )
@@ -1297,20 +1305,98 @@ class RetrieveAboutGpuUnittest(unittest.TestCase):
 
   def testRetrieveAboutGpuDawnInfoTimeoutStillCapturesContent(self):
     expected_content = 'a' * 2000
-    GpuTestClass.tab.action_runner.WaitForJavaScriptCondition.side_effect = [
-      None,
-      py_utils.TimeoutException('Timed out'),
-    ]
     GpuTestClass.tab.action_runner.EvaluateJavaScript.return_value = (
       expected_content
     )
 
-    GpuTestClass._RetrieveAboutGpu()
+    with mock.patch.object(
+      py_utils, 'WaitFor', side_effect=py_utils.TimeoutException('Timed out')
+    ) as mock_wait_for:
+      GpuTestClass._RetrieveAboutGpu()
 
-    self.assertEqual(
-      GpuTestClass.tab.action_runner.WaitForJavaScriptCondition.call_count, 2
+    mock_wait_for.assert_called_once_with(mock.ANY, timeout=15)
+    self.assertEqual(GpuTestClass._about_gpu_content, expected_content)
+
+  def testRetrieveAboutGpuSkipsDawnInfoWaitWhenGpuDisabled(self):
+    expected_content = 'a' * 2000
+    GpuTestClass._last_launched_browser_info = (
+      gpu_integration_test._BrowserLaunchInfo(browser_args={cba.DISABLE_GPU})
+    )
+    GpuTestClass.tab.action_runner.EvaluateJavaScript.return_value = (
+      expected_content
+    )
+
+    with mock.patch.object(py_utils, 'WaitFor') as mock_wait_for:
+      GpuTestClass._RetrieveAboutGpu()
+
+    mock_wait_for.assert_not_called()
+    GpuTestClass.tab.action_runner.EvaluateJavaScript.assert_called_once_with(
+      'document.getElementsByTagName("info-view")[0].getSelectionText(true)'
     )
     self.assertEqual(GpuTestClass._about_gpu_content, expected_content)
+
+  def testRetrieveAboutGpuCachesByBrowserArgs(self):
+    content_a = 'a' * 2000
+    content_b = 'b' * 2000
+    GpuTestClass.tab.action_runner.EvaluateJavaScript.side_effect = [
+      True,
+      content_a,
+      True,
+      content_b,
+    ]
+    instance = GpuTestClass('runTest')
+    instance.artifacts = mock.MagicMock()
+
+    # First launch with --arg-a.
+    GpuTestClass._last_launched_browser_info = (
+      gpu_integration_test._BrowserLaunchInfo(browser_args={'--arg-a'})
+    )
+    GpuTestClass._args_changed_this_browser_start = True
+    GpuTestClass._RetrieveAboutGpu()
+    instance._ReportAboutGpu('test_a1')
+    self.assertEqual(GpuTestClass._about_gpu_content, content_a)
+    self.assertEqual(GpuTestClass._test_that_started_browser, 'test_a1')
+    self.assertEqual(GpuTestClass.tab.Navigate.call_count, 1)
+
+    # Switch to --arg-b.
+    GpuTestClass._last_launched_browser_info = (
+      gpu_integration_test._BrowserLaunchInfo(browser_args={'--arg-b'})
+    )
+    GpuTestClass._args_changed_this_browser_start = True
+    GpuTestClass._RetrieveAboutGpu()
+    instance._ReportAboutGpu('test_b1')
+    self.assertEqual(GpuTestClass._about_gpu_content, content_b)
+    self.assertEqual(GpuTestClass._test_that_started_browser, 'test_b1')
+    self.assertEqual(GpuTestClass.tab.Navigate.call_count, 2)
+
+    # Switch back to --arg-a: should use cache without navigating to
+    # chrome://gpu.
+    GpuTestClass._last_launched_browser_info = (
+      gpu_integration_test._BrowserLaunchInfo(browser_args={'--arg-a'})
+    )
+    GpuTestClass._args_changed_this_browser_start = True
+    GpuTestClass._RetrieveAboutGpu()
+    self.assertEqual(GpuTestClass.tab.Navigate.call_count, 2)
+    self.assertEqual(GpuTestClass._about_gpu_content, content_a)
+    self.assertEqual(GpuTestClass._test_that_started_browser, 'test_a1')
+
+    instance._ReportAboutGpu('test_a2')
+    instance.artifacts.CreateInMemoryTextArtifact.assert_called_once_with(
+      'about_gpu', 'See artifacts for test_a1'
+    )
+
+  def testRestartBrowserClearsArgsChangedFlag(self):
+    GpuTestClass._args_changed_this_browser_start = True
+    GpuTestClass.platform = mock.MagicMock()
+    GpuTestClass._finder_options = mock.MagicMock()
+    with (
+      mock.patch.object(GpuTestClass, 'StopBrowser'),
+      mock.patch.object(GpuTestClass, 'SetBrowserOptions'),
+      mock.patch.object(GpuTestClass, 'StartBrowser'),
+    ):
+      GpuTestClass._RestartBrowser('test failure')
+
+    self.assertFalse(GpuTestClass._args_changed_this_browser_start)
 
 
 def _ExtractTestResults(

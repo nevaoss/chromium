@@ -1917,6 +1917,11 @@ inline constexpr char kMouseReverseScroll[] = "settings.mouse.reverse_scroll";
 inline constexpr char kMultipasteMenuLastTimeShown[] =
     "ash.clipboard.multipaste_menu.last_time_shown";
 
+// An integer pref that indicates whether Clipboard History is enabled by
+// policy. Values correspond to `clipboard_history_util::PolicyValue`.
+inline constexpr char kClipboardHistoryEnabled[] =
+    "ash.clipboard.history_enabled";
+
 // A dictionary storing the number of times and most recent time the multipaste
 // contextual nudge was shown.
 inline constexpr char kMultipasteNudges[] = "ash.clipboard.multipaste_nudges";
@@ -3557,16 +3562,6 @@ inline constexpr char kHatsBluetoothAudioSurveyCycleEndTs[] =
 // survey
 inline constexpr char kHatsBluetoothAudioDeviceIsSelected[] =
     "hats_bluetooth_audio_device_is_selected";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the Bluetooth revamp experience survey.
-inline constexpr char kHatsBluetoothRevampCycleEndTs[] =
-    "hats_bluetooth_revamp_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the HaTS Bluetooth
-// revamp experience survey.
-inline constexpr char kHatsBluetoothRevampIsSelected[] =
-    "hats_bluetooth_revamp_is_selected";
 
 // An int64 pref. This is the timestamp, microseconds after epoch, that
 // indicates the end of the most recent Camera App survey cycle.

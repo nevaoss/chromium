@@ -118,6 +118,11 @@ constexpr float kHeaderMarginRatio = 0.10f;
 constexpr float kPageNumberFooterMarginRatio = 0.90f;
 constexpr float kNonPageNumberFooterMarginRatio = 0.95f;
 
+// Initial margin ratio for the left and right side margins, expressed as a
+// fraction of the page width, before clamping outward to any body text that
+// extends closer to the page edges.
+constexpr float kSideMarginRatio = 0.085f;
+
 // Largest width, as a fraction of the page width, allowed for text in the
 // margins to be considered a page number.
 constexpr float kMaxPageNumberWidthRatio = 0.30f;
@@ -574,6 +579,14 @@ std::optional<uint32_t> ComputeColors(
 HeuristicPageProperties ComputeHeuristicPageProperties(
     const std::vector<chrome_pdf::AccessibilityTextRunInfo>& text_runs,
     const gfx::RectF& page_bounds) {
+  const float max_page_number_width =
+      page_bounds.width() * kMaxPageNumberWidthRatio;
+  const float top_margin = page_bounds.height() * kHeaderMarginRatio;
+  const float bottom_page_number_margin =
+      page_bounds.height() * kPageNumberFooterMarginRatio;
+  float left_margin = page_bounds.width() * kSideMarginRatio;
+  float right_margin = page_bounds.width() - left_margin;
+
   std::vector<float> font_sizes;
   std::map<float, uint32_t> font_size_char_counts;
   std::vector<float> line_spacings;
@@ -587,6 +600,18 @@ HeuristicPageProperties ComputeHeuristicPageProperties(
     // visually indistinguishable but non-identical colors together.
     all_color_char_counts[run.style.fill_color] += run.len;
 
+    // Clamp side margins to the horizontal bounds of body runs that overlap the
+    // central body area so that short body lines or narrow table columns on
+    // pages with narrow margins are not mistaken for side-margin artifacts.
+    // Exclude runs in the top and bottom margins so wide headers or footers do
+    // not shift the side margins outward.
+    if (run.bounds.right() > left_margin && run.bounds.x() < right_margin &&
+        run.bounds.bottom() > top_margin &&
+        run.bounds.y() < bottom_page_number_margin) {
+      left_margin = std::min(left_margin, run.bounds.x());
+      right_margin = std::max(right_margin, run.bounds.right());
+    }
+
     if (i > 0) {
       const auto& cur = run.bounds;
       const auto& prev = text_runs[i - 1].bounds;
@@ -599,13 +624,13 @@ HeuristicPageProperties ComputeHeuristicPageProperties(
   HeuristicPageProperties page_properties;
   page_properties.page_height = page_bounds.height();
   page_properties.page_offset_y = page_bounds.y();
-  page_properties.max_page_number_width =
-      page_bounds.width() * kMaxPageNumberWidthRatio;
-  page_properties.top_margin = page_bounds.height() * kHeaderMarginRatio;
-  page_properties.bottom_page_number_margin =
-      page_bounds.height() * kPageNumberFooterMarginRatio;
+  page_properties.max_page_number_width = max_page_number_width;
+  page_properties.top_margin = top_margin;
+  page_properties.bottom_page_number_margin = bottom_page_number_margin;
   page_properties.bottom_non_page_number_margin =
       page_bounds.height() * kNonPageNumberFooterMarginRatio;
+  page_properties.left_margin = left_margin;
+  page_properties.right_margin = right_margin;
   ComputeFontSizes(std::move(font_sizes), font_size_char_counts,
                    &page_properties.heading_font_size_threshold,
                    &page_properties.median_font_size,
@@ -825,8 +850,12 @@ ax::mojom::TextPosition ClassifySuperOrSubScriptRelativeToHost(
       host.bounds.height() * kSuperOrSubScriptVerticalToleranceRatio;
 
   // Superscript: vertical center sits above the host's vertical center, and
-  // bottom does not sink significantly below the host's bottom.
-  if (candidate_mid < host_mid && candidate_bottom <= host_bottom + tolerance) {
+  // bottom does not extend significantly past the host's vertical center.
+  // Bounds come from glyph boxes, so a smaller run on the host's baseline that
+  // lacks descenders while the host has a descender (e.g. 'p' or 'g') ends at
+  // the shared baseline rather than in the upper half of the host's box, and is
+  // not a superscript.
+  if (candidate_mid < host_mid && candidate_bottom <= host_mid + tolerance) {
     return ax::mojom::TextPosition::kSuperscript;
   }
 
@@ -1005,6 +1034,17 @@ std::optional<ax::mojom::Role> GetAXRoleForHeaderFooterRole(
   }
 }
 
+bool IsInSideMargin(const chrome_pdf::AccessibilityTextRunInfo& run,
+                    const HeuristicPageProperties& page_properties) {
+  CHECK(features::IsPdfAccessibilityHeuristicEnhancementsEnabled());
+  const bool in_left_margin =
+      run.bounds.right() <= page_properties.left_margin &&
+      run.bounds.right() > 0.0f;
+  const bool in_right_margin = run.bounds.x() >= page_properties.right_margin;
+  return (in_left_margin || in_right_margin) &&
+         run.bounds.width() <= page_properties.max_page_number_width;
+}
+
 std::string_view GetFontWithoutSubset(std::string_view font_name) {
   // As defined in ISO 32000-1:2008, section 9.6.4: "Font Subsets".
   // For a font subset, the PostScript name shall begin with 6 uppercase letters
@@ -1132,12 +1172,21 @@ void UpdateHeaderFooterRoleForSameLineRun(
   HeaderFooterRole role = GetHeaderFooterRole(run_context, page_properties,
                                               &unused_page_number_kind);
 
+  // Block bounds are in document coordinates, so subtract the page offset to
+  // compare against page-relative margins.
+  float block_page_y =
+      block_node->relative_bounds.bounds.y() - page_properties.page_offset_y;
+
   // Wide text that is not a page number reads as body content, so demote the
-  // footer back to a paragraph.
+  // footer back to a paragraph. Also demote when a block that started in the
+  // side margin (outside the bottom margin) continues onto a run outside the
+  // side margin on the same visual line (e.g. a bullet or footnote marker).
   if (block_node->role == ax::mojom::Role::kSectionFooter &&
       role == HeaderFooterRole::kNone) {
     if (run_context.run->bounds.width() >
-        page_properties.max_page_number_width) {
+            page_properties.max_page_number_width ||
+        (block_page_y < page_properties.bottom_page_number_margin &&
+         !IsInSideMargin(*run_context.run, page_properties))) {
       block_node->role = ax::mojom::Role::kParagraph;
     }
     return;
@@ -1155,8 +1204,6 @@ void UpdateHeaderFooterRoleForSameLineRun(
                             page_properties.page_offset_y;
   bool is_header = role == HeaderFooterRole::kHeader &&
                    block_page_bottom <= page_properties.top_margin;
-  float block_page_y =
-      block_node->relative_bounds.bounds.y() - page_properties.page_offset_y;
   bool is_footer = role == HeaderFooterRole::kFooter &&
                    block_page_y >= page_properties.bottom_page_number_margin &&
                    block_node->relative_bounds.bounds.width() <=
@@ -1168,11 +1215,13 @@ void UpdateHeaderFooterRoleForSameLineRun(
   }
 }
 
-// Returns whether to break the current block at the header or footer boundary
-// `next_run_context` crosses, or `std::nullopt` when the transition says
-// nothing about breaking. Demotes `block_node` back to a paragraph when a block
-// already classified as a header or footer turns out to be body content.
+// Returns whether to break the current block at the header, footer, or
+// side-margin boundary between `current_run_context` and `next_run_context`, or
+// `std::nullopt` when the transition says nothing about breaking. Demotes
+// `block_node` back to a paragraph when a block already classified as a header
+// or bottom footer turns out to be body content.
 std::optional<bool> BreakAtHeaderFooterBoundary(
+    const TextRunContext& current_run_context,
     const TextRunContext& next_run_context,
     const HeuristicPageProperties& page_properties,
     bool is_large_line_spacing_break,
@@ -1185,6 +1234,23 @@ std::optional<bool> BreakAtHeaderFooterBoundary(
   } else if (block_node->role == ax::mojom::Role::kSectionFooter) {
     current_role = HeaderFooterRole::kFooter;
   }
+
+  // Always break when transitioning into or out of the side margin so that
+  // side-margin artifacts are isolated from body blocks.
+  bool current_in_side_margin =
+      current_role == HeaderFooterRole::kFooter &&
+      IsInSideMargin(*current_run_context.run, page_properties);
+  bool next_in_side_margin =
+      IsInSideMargin(*current_run_context.next_run, page_properties);
+  if (current_in_side_margin != next_in_side_margin) {
+    return true;
+  }
+
+  // Consecutive runs in the side margin break only on a paragraph-sized gap.
+  if (current_in_side_margin) {
+    return is_large_line_spacing_break;
+  }
+
   PageNumberKind next_page_number_kind = PageNumberKind::kNone;
   HeaderFooterRole next_role = GetHeaderFooterRole(
       next_run_context, page_properties, &next_page_number_kind);
@@ -1243,8 +1309,10 @@ bool BreakParagraph(uint32_t text_run_index,
                     HeadingClassifier heading_classifier,
                     const PageLayoutData& layout,
                     const HeuristicPageProperties& page_properties) {
+  const TextRunContext current_run_context =
+      GetTextRunContext(layout, text_run_index);
   const chrome_pdf::AccessibilityTextRunInfo& current_run =
-      layout.text_runs[text_run_index];
+      *current_run_context.run;
   const TextRunContext next_run_context =
       GetTextRunContext(layout, text_run_index + 1);
   const chrome_pdf::AccessibilityTextRunInfo& next_run = *next_run_context.run;
@@ -1254,9 +1322,9 @@ bool BreakParagraph(uint32_t text_run_index,
 
   // Header and footer boundaries take precedence over the rules below.
   if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
-    std::optional<bool> header_footer_break =
-        BreakAtHeaderFooterBoundary(next_run_context, page_properties,
-                                    is_large_line_spacing_break, block_node);
+    std::optional<bool> header_footer_break = BreakAtHeaderFooterBoundary(
+        current_run_context, next_run_context, page_properties,
+        is_large_line_spacing_break, block_node);
     if (header_footer_break.has_value()) {
       return header_footer_break.value();
     }
@@ -1290,20 +1358,34 @@ bool BreakParagraph(uint32_t text_run_index,
   return heading_classifier != next_classifier;
 }
 
-// Returns whether `style` or `text_position` differs from the in-progress
-// static text node, which requires starting a new one so that text runs of
-// different styles (e.g. bold vs regular, or superscript vs normal) are not
-// merged into a single static text node.
+// Returns whether `text_run` differs in style, language, or position from the
+// in-progress static text node, which requires starting a new one so that text
+// runs of different styles (e.g. bold vs regular, or superscript vs normal) or
+// languages are not merged into a single static text node.
 bool BreaksStaticTextNode(const StaticTextState& static_text_state,
-                          const chrome_pdf::AccessibilityTextStyleInfo& style,
+                          const chrome_pdf::AccessibilityTextRunInfo& text_run,
                           ax::mojom::TextPosition text_position) {
-  if (!static_text_state.node || !static_text_state.style) {
+  // Check for an active node first; when none is open, `language` is empty and
+  // comparing it against a non-empty `text_run.language` would falsely report a
+  // break on the opening run of a block.
+  if (!static_text_state.node) {
+    return false;
+  }
+  // Check `language` before `style` because `language` is tracked on all static
+  // text nodes, including inside headings where `style` is left unset.
+  if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled() &&
+      static_text_state.language != text_run.language) {
+    return true;
+  }
+  // Guard the style and `text_position` checks below, which are only populated
+  // for non-heading nodes when the flag is enabled.
+  if (!static_text_state.style) {
     return false;
   }
   // `style` is only ever set when the flag is enabled.
   CHECK(features::IsPdfAccessibilityHeuristicEnhancementsEnabled());
   return !PdfAccessibilityTreeBuilder::AreStylesEquivalent(
-             *static_text_state.style, style) ||
+             *static_text_state.style, text_run.style) ||
          static_text_state.text_position != text_position;
 }
 
@@ -1318,6 +1400,7 @@ void BuildStaticNode(StaticTextState* static_text_state) {
   static_text_state->node = nullptr;
   static_text_state->style.reset();
   static_text_state->text_position.reset();
+  static_text_state->language.clear();
 }
 
 void ConnectPreviousAndNextOnLine(ui::AXNodeData* previous_on_line_node,
@@ -1465,10 +1548,10 @@ void PdfAccessibilityTreeBuilderHeuristic::BuildPageTree() {
           (builder_->highlights())[current_highlight_index_++], block_node,
           &previous_on_line_node, &text_run_index);
     } else {
-      // A style or text position change starts a new static text node, which
-      // ends any heading the current block was classified as.
+      // A style, language, or text position change starts a new static text
+      // node, which ends any heading the current block was classified as.
       if (BreaksStaticTextNode(
-              static_text_state, text_run.style,
+              static_text_state, text_run,
               GetTextPosition(builder_->text_runs(), text_run_index,
                               run_context.chars))) {
         current_heading_classifier = HeadingClassifier::kNone;
@@ -1555,9 +1638,22 @@ ui::AXNodeData* PdfAccessibilityTreeBuilderHeuristic::CreateBlockLevelNode(
       ax::mojom::Role::kParagraph, ax::mojom::Restriction::kReadOnly);
   block_node->AddBoolAttribute(ax::mojom::BoolAttribute::kIsLineBreakingObject,
                                true);
+  current_block_node_ = block_node;
+  current_block_static_text_nodes_.clear();
+  if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled() &&
+      !run_context.run->language.empty()) {
+    block_node->AddStringAttribute(ax::mojom::StringAttribute::kLanguage,
+                                   run_context.run->language);
+  }
   *out_heading_classifier = HeadingClassifier::kNone;
 
   if (!builder_->mark_headings_using_heuristic()) {
+    return block_node;
+  }
+
+  if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled() &&
+      IsInSideMargin(*run_context.run, page_properties)) {
+    block_node->role = ax::mojom::Role::kSectionFooter;
     return block_node;
   }
 
@@ -1640,7 +1736,25 @@ ui::AXNodeData* PdfAccessibilityTreeBuilderHeuristic::AddTextRunToNode(
                       base::span(builder_->chars())
                           .subspan(page_char_index.char_index, text_run.len));
 
-  if (BreaksStaticTextNode(*static_text_state, text_run.style, text_position)) {
+  // If the current block was given the opening run's language and a later run
+  // in the block has a different language, move the language attribute from the
+  // block node onto its individual static text children.
+  ax::mojom::StringAttribute lang_attr = ax::mojom::StringAttribute::kLanguage;
+  if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled() &&
+      current_block_node_ &&
+      current_block_node_->HasStringAttribute(lang_attr)) {
+    std::string block_language =
+        current_block_node_->GetStringAttribute(lang_attr);
+    if (text_run.language != block_language) {
+      for (ui::AXNodeData* node : current_block_static_text_nodes_) {
+        node->AddStringAttribute(lang_attr, block_language);
+      }
+      current_block_static_text_nodes_.clear();
+      current_block_node_->RemoveStringAttribute(lang_attr);
+    }
+  }
+
+  if (BreaksStaticTextNode(*static_text_state, text_run, text_position)) {
     BuildStaticNode(static_text_state);
   }
 
@@ -1662,6 +1776,16 @@ ui::AXNodeData* PdfAccessibilityTreeBuilderHeuristic::AddTextRunToNode(
       }
     } else {
       static_text_state->node = builder_->CreateStaticTextNode(page_char_index);
+    }
+    static_text_state->language = text_run.language;
+    if (features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
+      if (current_block_node_ && current_block_node_->HasStringAttribute(
+                                     ax::mojom::StringAttribute::kLanguage)) {
+        current_block_static_text_nodes_.push_back(static_text_state->node);
+      } else if (!text_run.language.empty()) {
+        static_text_state->node->AddStringAttribute(
+            ax::mojom::StringAttribute::kLanguage, text_run.language);
+      }
     }
     parent_node->child_ids.push_back(static_text_state->node->id);
   }

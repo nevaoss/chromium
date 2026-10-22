@@ -43,9 +43,11 @@
 
 class AboutThisSiteTabHelper;
 class AskBeforeHttpDialogController;
+class AutoPictureInPictureTabHelper;
 class BookmarkBarPreloadPipelineManager;
 class BookmarkPageActionController;
 class BrowserSyncedTabDelegate;
+class ChromeFacilitatedPaymentsClient;
 class CollaborationMessagingPageActionController;
 class CommitLimitOOMRecoveryTracker;
 class ConnectionHelpTabHelper;
@@ -70,6 +72,7 @@ class LensOverlayController;
 class LensOverlayHomeworkPageActionController;
 class LensSearchController;
 class ManagePasswordsPageActionController;
+class ManagePasswordsUIController;
 class MemorySaverChipTabHelper;
 class NavigationMetricsRecorder;
 class NavigationPredictorPreconnectClient;
@@ -86,6 +89,7 @@ class SadTabHelper;
 class SearchEngineChoiceTabHelper;
 class SearchEngineTabHelper;
 class SearchPromotionNavigationObserver;
+class SearchTabHelper;
 class SecurityStateEventObserver;
 class SharedHighlightingPromo;
 class SidePanelRegistry;
@@ -94,6 +98,7 @@ class StorageAccessAPITabHelper;
 class SupervisedUserNavigationObserver;
 class TabCaptureContentsBorderHelper;
 class TabContextDecryptionTokenTabHelper;
+class TabDialogs;
 class TabResourceUsageTabHelper;
 class TabUIHelper;
 class ThumbnailTabHelper;
@@ -140,6 +145,7 @@ class NetErrorTabHelper;
 }  // namespace chrome_browser_net
 
 namespace commerce {
+class CommerceTabHelper;
 class CommerceUiTabHelper;
 class DiscountsPageActionViewController;
 class InStockNotificationManager;
@@ -206,6 +212,7 @@ class GlicTabIndicatorHelper;
 class GlicSidePanelCoordinator;
 class GlicSelectionObserver;
 class SelectionOverlayController;
+class SelectionSuggestionTool;
 class GlicPageFeaturesManager;
 }  // namespace glic
 
@@ -235,6 +242,7 @@ class V8CompileHintsTabHelper;
 
 namespace webapps {
 class AppBannerManagerDesktop;
+class MLInstallabilityPromoter;
 }  // namespace webapps
 
 namespace web_app {
@@ -282,11 +290,12 @@ namespace lens {
 class TabContextualizationController;
 }  // namespace lens
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 namespace metrics {
+class MetricsServicesWebContentsObserver;
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 class DesktopSessionDurationObserver;
-}  // namespace metrics
 #endif
+}  // namespace metrics
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -328,6 +337,7 @@ class ChromeComposeClient;
 
 #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
 namespace offline_pages {
+class OfflinePageTabHelper;
 class RecentTabHelper;
 }  // namespace offline_pages
 #endif
@@ -538,6 +548,7 @@ class TabFeatures {
   std::unique_ptr<ReadAnythingController> read_anything_controller_;
 
   // Responsible for commerce related features.
+  std::unique_ptr<commerce::CommerceTabHelper> commerce_tab_helper_;
   std::unique_ptr<commerce::CommerceUiTabHelper> commerce_ui_tab_helper_;
   std::unique_ptr<commerce::InStockNotificationManager>
       in_stock_notification_manager_;
@@ -604,6 +615,9 @@ class TabFeatures {
   // outlive it.
   std::unique_ptr<webapps::AppBannerManagerDesktop> app_banner_manager_;
 
+  std::unique_ptr<webapps::MLInstallabilityPromoter>
+      ml_installability_promoter_;
+
   // Responsible for managing all page actions of a tab. Other controllers
   // interact with this to have their feature's page action shown.
   std::unique_ptr<page_actions::PageActionController> page_action_controller_;
@@ -665,6 +679,8 @@ class TabFeatures {
   std::unique_ptr<glic::GlicSelectionObserver> glic_selection_observer_;
   std::unique_ptr<selection::SuggestionService>
       selection_suggestion_service_;
+  std::unique_ptr<glic::SelectionSuggestionTool>
+      glic_selection_suggestion_tool_;
   std::unique_ptr<glic::SelectionOverlayController>
       glic_selection_overlay_controller_;
 
@@ -963,8 +979,24 @@ class TabFeatures {
       supervised_user_navigation_observer_;
 
 #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
+  std::unique_ptr<offline_pages::OfflinePageTabHelper> offline_page_tab_helper_;
   std::unique_ptr<offline_pages::RecentTabHelper> recent_tab_helper_;
 #endif
+
+  std::unique_ptr<SearchTabHelper> search_tab_helper_;
+
+  std::unique_ptr<AutoPictureInPictureTabHelper>
+      auto_picture_in_picture_tab_helper_;
+
+  std::unique_ptr<TabDialogs> tab_dialogs_;
+
+  std::unique_ptr<ManagePasswordsUIController> manage_passwords_ui_controller_;
+
+  std::unique_ptr<ChromeFacilitatedPaymentsClient>
+      chrome_facilitated_payments_client_;
+
+  std::unique_ptr<metrics::MetricsServicesWebContentsObserver>
+      metrics_services_web_contents_observer_;
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

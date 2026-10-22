@@ -134,7 +134,7 @@ public class MediaNotificationManager {
             int id = sControllers.keyAt(i);
             if (id == excludeId || getMediaTypeId(id) != mediaTypeId) continue;
             MediaNotificationController c = sControllers.valueAt(i);
-            if (c != null && !c.isPaused()) {
+            if (c != null && c.mService != null && !c.isPaused()) {
                 return id;
             }
         }
@@ -165,6 +165,20 @@ public class MediaNotificationManager {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Promotes a fallback playing controller to the foreground service when the specified
+     * foreground controller stops, or clears the active notification ID if no fallback controller
+     * can be promoted.
+     *
+     * @param mediaTypeId The media type ID of the foreground service.
+     * @param notificationId The unique notification ID of the stopping controller.
+     */
+    static void handleFallbackOnStop(@MediaTypeId int mediaTypeId, int notificationId) {
+        if (!tryFallbackPromotion(mediaTypeId, notificationId)) {
+            sActiveNotificationIds.delete(mediaTypeId);
+        }
     }
 
     private static void handleFallbackOnPause(
@@ -397,7 +411,7 @@ public class MediaNotificationManager {
             int id = sControllers.keyAt(i);
             if (id == excludeNotificationId || getMediaTypeId(id) != mediaTypeId) continue;
             MediaNotificationController c = sControllers.valueAt(i);
-            if (c != null && (!c.isPaused() || c.isForeground())) {
+            if (c != null && c.mService != null && (!c.isPaused() || c.isForeground())) {
                 return true;
             }
         }

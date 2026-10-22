@@ -7,8 +7,10 @@
 #include "base/callback_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/global_features.h"
@@ -16,7 +18,9 @@
 #include "chrome/browser/themes/theme_helper.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/frame/base_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -24,13 +28,18 @@
 #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/common/pref_names.h"
+#include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "chrome/test/user_education/interactive_feature_promo_test.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/performance_manager/public/user_tuning/prefs.h"
 #include "components/prefs/pref_service.h"
+#include "components/user_education/views/help_bubble_view.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/interaction/element_identifier.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/unowned_user_data/user_data_factory.h"
 #include "ui/views/view_utils.h"
@@ -459,3 +468,86 @@ IN_PROC_BROWSER_TEST_F(GlassFrameServiceInteractiveTest,
   EXPECT_TRUE(glass_frame_service->IsBrowserWindowEligible(browser1));
   EXPECT_TRUE(GlassFrameEligibilityMatchesTabStrip(browser1));
 }
+
+IN_PROC_BROWSER_TEST_F(GlassFrameServiceInteractiveTest, DailyMetric) {
+  if (!features::IsGlassFrameEnabled()) {
+    GTEST_SKIP();
+  }
+
+  PrefService* const local_state = g_browser_process->local_state();
+  ASSERT_TRUE(local_state);
+  GlassFrameService* const glass_frame_service =
+      GlassFrameService::GetInstance();
+  ASSERT_TRUE(glass_frame_service);
+  EXPECT_TRUE(local_state->GetBoolean(prefs::kGlassFrameEnabled));
+
+  base::HistogramTester histogram_tester;
+  const auto advance_day_and_report = [&]() {
+    const base::Time last_time = base::Time::Now() - base::Hours(25);
+    local_state->SetInt64(prefs::kGlassFrameDailySample,
+                          last_time.since_origin().InMicroseconds());
+    // `metrics::DailyEvent` caches the last fired timestamp in memory and only
+    // reads `prefs::kGlassFrameDailySample` on its first `CheckInterval()`
+    // call. Resetting the reporter creates a new `DailyEvent` that reads the
+    // updated pref and immediately runs `CheckInterval()`.
+    glass_frame_service->ResetMetricsReporterForTesting();
+  };
+
+  // Since the daily sample was already recorded on startup, resetting the
+  // reporter before a day has elapsed should not emit another sample.
+  glass_frame_service->ResetMetricsReporterForTesting();
+  histogram_tester.ExpectTotalCount("Browser.GlassFrame.Enabled.Daily", 0);
+  histogram_tester.ExpectTotalCount("Browser.GlassFrame.IsDefault.Daily", 0);
+
+  // Simulate a day elapsing while glass is enabled and in its default state.
+  advance_day_and_report();
+  histogram_tester.ExpectUniqueSample("Browser.GlassFrame.Enabled.Daily", true,
+                                      1);
+  histogram_tester.ExpectUniqueSample("Browser.GlassFrame.IsDefault.Daily",
+                                      true, 1);
+
+  // Disable the glass frame pref and simulate another day elapsing.
+  local_state->SetBoolean(prefs::kGlassFrameEnabled, false);
+  advance_day_and_report();
+  histogram_tester.ExpectBucketCount("Browser.GlassFrame.Enabled.Daily", false,
+                                     1);
+  histogram_tester.ExpectTotalCount("Browser.GlassFrame.Enabled.Daily", 2);
+  histogram_tester.ExpectBucketCount("Browser.GlassFrame.IsDefault.Daily",
+                                     false, 1);
+  histogram_tester.ExpectTotalCount("Browser.GlassFrame.IsDefault.Daily", 2);
+}
+
+#if BUILDFLAG(IS_MAC)
+class GlassFrameServiceOptInPromoInteractiveTest
+    : public InteractiveFeaturePromoTestMixin<
+          GlassFrameServiceInteractiveTest> {
+ public:
+  GlassFrameServiceOptInPromoInteractiveTest()
+      : InteractiveFeaturePromoTestMixin(
+            InteractiveFeaturePromoTestApi::UseDefaultTrackerAllowingPromos(
+                {feature_engagement::kIPHGlassFrameOptInFeature})) {
+    scoped_feature_list_.InitAndEnableFeatureWithParameters(
+        features::kGlassFrame,
+        {{features::kGlassFrameEnabledByDefault.name, "false"}});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlassFrameServiceOptInPromoInteractiveTest,
+                       ShowsOptInPromoOnStartup) {
+  if (!features::IsGlassFrameEnabled()) {
+    GTEST_SKIP();
+  }
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSettingsTabContents);
+  RunTestSequence(WaitForPromo(feature_engagement::kIPHGlassFrameOptInFeature),
+                  PressDefaultPromoButton(),
+                  InstrumentTab(kSettingsTabContents, 1),
+                  WaitForWebContentsReady(
+                      kSettingsTabContents,
+                      chrome::GetSettingsUrl(chrome::kAppearanceSubPage)),
+                  InAnyContext(WaitForShow(kTabStylingSettingElementId)));
+}
+#endif  // BUILDFLAG(IS_MAC)

@@ -128,13 +128,13 @@ final class SidePanelCoordinatorAndroidBridge implements ChromeAndroidTaskFeatur
     }
 
     /**
-     * @see org.chromium.chrome.browser.ui.side_ui.SideUiContainer#onWillAutoClose()
+     * @see org.chromium.chrome.browser.ui.side_ui.SideUiContainer#onWillAutoClose
      */
-    void onWillAutoClose() {
-        log(TAG, "onWillAutoClose");
+    void onWillAutoClose(boolean isShowable) {
+        log(TAG, "onWillAutoClose", "isShowable:" + isShowable);
         if (mNativeSidePanelCoordinatorAndroid != 0) {
             SidePanelCoordinatorAndroidBridgeJni.get()
-                    .onWillAutoClose(mNativeSidePanelCoordinatorAndroid);
+                    .onWillAutoClose(mNativeSidePanelCoordinatorAndroid, isShowable);
         }
     }
 
@@ -248,6 +248,12 @@ final class SidePanelCoordinatorAndroidBridge implements ChromeAndroidTaskFeatur
     }
 
     @CalledByNativeForTesting
+    private void simulateTopControlsHeightChangeForTesting(@JniType("Profile*") Profile profile) {
+        log(TAG, "simulateTopControlsHeightChangeForTesting", profile);
+        mNativeBridgeSelector.simulateTopControlsHeightChangeForTesting(profile); // IN-TEST
+    }
+
+    @CalledByNativeForTesting
     private void disableAnimationsForTesting() {
         log(TAG, "disableAnimationsForTesting");
         mDisableAnimationsForTesting = true;
@@ -302,7 +308,7 @@ final class SidePanelCoordinatorAndroidBridge implements ChromeAndroidTaskFeatur
         void onActiveChanged(long nativeSidePanelCoordinatorAndroid, boolean active);
 
         /** See {@link SidePanelCoordinatorAndroidBridge#onWillAutoClose}. */
-        void onWillAutoClose(long nativeSidePanelCoordinatorAndroid);
+        void onWillAutoClose(long nativeSidePanelCoordinatorAndroid, boolean isShowable);
 
         /** See {@link SidePanelCoordinatorAndroidBridge#onWillAutoRestore}. */
         void onWillAutoRestore(long nativeSidePanelCoordinatorAndroid);

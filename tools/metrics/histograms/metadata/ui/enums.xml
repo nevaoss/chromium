@@ -80,6 +80,7 @@ chromium-metrics-reviews@google.com.
   <int value="32" label="Create image with Gemini in Chrome"/>
   <int value="33" label="Remove from dictionary"/>
   <int value="34" label="Open link in isolated window"/>
+  <int value="35" label="Ask Google about this page"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
@@ -429,6 +430,9 @@ chromium-metrics-reviews@google.com.
   <int value="167" label="IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY"/>
   <int value="168" label="IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS"/>
   <int value="169" label="IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED"/>
+  <int value="170" label="IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE"/>
+  <int value="171" label="IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU"/>
+  <int value="172" label="IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
@@ -848,6 +852,7 @@ chromium-metrics-reviews@google.com.
   <int value="-1222744253" label="chrome-untrusted://ai-overlay-dialog/"/>
   <int value="-1203248739" label="chrome://scanning/"/>
   <int value="-1198437953" label="chrome://download-shelf.top-chrome/"/>
+  <int value="-1187235642" label="chrome://omnibox-internals/"/>
   <int value="-1179878260" label="chrome://user-education-internals/"/>
   <int value="-1177126000" label="chrome://profile-internals/"/>
   <int value="-1176451566" label="chrome://access-code-cast/"/>

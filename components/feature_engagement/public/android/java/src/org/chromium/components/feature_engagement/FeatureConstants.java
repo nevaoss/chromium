@@ -28,8 +28,6 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_VOICE_SEARCH_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_PIN_GLIC_TOOLBAR_BUTTON_FEATURE,
     FeatureConstants.AIM_ACTIVATION_HINT,
-    FeatureConstants.ANDROID_BOTTOM_BAR_AIM,
-    FeatureConstants.ANDROID_BOTTOM_BAR_AIM_PROMO_DIALOG,
     FeatureConstants.ANDROID_BOTTOM_BAR_GLIC,
     FeatureConstants.ANDROID_BOTTOM_BAR_NEW_TAB,
     FeatureConstants.ANDROID_BOTTOM_BAR_PROMO_DIALOG,
@@ -81,7 +79,6 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.IPH_MIC_TOOLBAR_FEATURE,
     FeatureConstants.IPH_PDF_PAGE_DOWNLOAD,
     FeatureConstants.IPH_SHARE_SCREENSHOT_FEATURE,
-    FeatureConstants.IPH_SHARING_HUB_LINK_TOGGLE_FEATURE,
     FeatureConstants.IPH_TAB_SWITCHER_XR,
     FeatureConstants.IPH_TAB_TEARING_XR,
     FeatureConstants.IPH_TOUCH_TO_SEARCH_CALLOUT,
@@ -121,7 +118,6 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.SHARED_HIGHLIGHTING_RECEIVER_FEATURE,
     FeatureConstants.SHARING_HUB_WEBNOTES_STYLIZE_FEATURE,
     FeatureConstants.SHOPPING_LIST_MENU_ITEM_FEATURE,
-    FeatureConstants.SHOPPING_LIST_SAVE_FLOW_FEATURE,
     FeatureConstants.SITE_CONTROLS_FEATURE,
     FeatureConstants.TAB_GROUPS_DRAG_AND_DROP_FEATURE,
     FeatureConstants.TAB_GROUPS_REMOTE_GROUP,
@@ -173,12 +169,6 @@ public @interface FeatureConstants {
 
     /** A hint to activate AI Mode on Android Desktop via keystrokes. */
     String AIM_ACTIVATION_HINT = "IPH_AimActivationHint";
-
-    /** Describes the AI Mode button added in the bottom bar. */
-    String ANDROID_BOTTOM_BAR_AIM = "IPH_AndroidBottomBarAim";
-
-    /** For the promo dialog shown to introduce AI Mode with the bottom bar. */
-    String ANDROID_BOTTOM_BAR_AIM_PROMO_DIALOG = "IPH_AndroidBottomBarAimPromoDialog";
 
     /** Describes the GLIC button on the new bottom bar. */
     String ANDROID_BOTTOM_BAR_GLIC = "IPH_AndroidBottomBarGlic";
@@ -329,9 +319,6 @@ public @interface FeatureConstants {
     /** An IPH feature to inform users about the screenshot sharing feature. */
     String IPH_SHARE_SCREENSHOT_FEATURE = "IPH_ShareScreenshot";
 
-    /** An IPH feature to inform users about the Sharing Hub link toggle. */
-    String IPH_SHARING_HUB_LINK_TOGGLE_FEATURE = "IPH_SharingHubLinkToggle";
-
     /** An IPH feature to inform users about the tab switcher feature on an XR device. */
     String IPH_TAB_SWITCHER_XR = "IPH_TabSwitcherXR";
 
@@ -441,9 +428,6 @@ public @interface FeatureConstants {
      * item is available to track price.
      */
     String SHOPPING_LIST_MENU_ITEM_FEATURE = "IPH_ShoppingListMenuItem";
-
-    /** An IPH that shows in the bookmark save flow when bookmarking a product. */
-    String SHOPPING_LIST_SAVE_FLOW_FEATURE = "IPH_ShoppingListSaveFlow";
 
     /** An IPH feature to inform users that Site Controls have moved to the app menu. */
     String SITE_CONTROLS_FEATURE = "IPH_SiteControls";

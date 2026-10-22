@@ -2016,6 +2016,8 @@ inline constexpr char kAuthSchemes[] = "auth.schemes";
 // from "auth.schemes".
 inline constexpr char kAllHttpAuthSchemesAllowedForOrigins[] =
     "auth.http_auth_allowed_for_origins";
+inline constexpr char kAllHttpAuthSchemesAllowedForProxies[] =
+    "auth.http_auth_allowed_for_proxies";
 
 // Boolean that specifies whether to disable CNAME lookups when generating
 // Kerberos SPN.
@@ -2278,6 +2280,12 @@ inline constexpr char kSameOriginTabCaptureAllowedByOrigins[] =
 // Boolean determining whether the glass frame is enabled.
 inline constexpr char kGlassFrameEnabled[] = "glass_frame.enabled";
 
+// Int64 pref used by the metrics::DailyEvent owned by
+// GlassFrameMetricsReporter to record the last time daily glass frame
+// metrics were sampled.
+inline constexpr char kGlassFrameDailySample[] =
+    "glass_frame.last_daily_sample";
+
 #if BUILDFLAG(IS_CHROMEOS)
 // An any-api scoped refresh token for enterprise-enrolled devices.  Allows
 // for connection to Google APIs when the user isn't logged in.  Currently used
@@ -2476,6 +2484,11 @@ inline constexpr char kNetworkProfileLastWarningTime[] =
 // shell_integration::win::MigrateTaskbarPins() completed.
 inline constexpr char kShortcutMigrationVersion[] =
     "browser.shortcut_migration_version";
+
+// The last time at which shell_integration::win::MigrateTaskbarPins()
+// completed.
+inline constexpr char kShortcutMigrationTime[] =
+    "browser.shortcut_migration_time";
 #endif  // BUILDFLAG(IS_WIN)
 
 // An integer that is incremented whenever changes are made to app shortcuts.

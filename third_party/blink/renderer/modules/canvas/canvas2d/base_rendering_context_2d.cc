@@ -27,7 +27,9 @@
 #include "cc/paint/paint_canvas.h"
 #include "cc/paint/paint_flags.h"
 #include "cc/paint/paint_image.h"
+#include "cc/paint/paint_image_builder.h"
 #include "cc/paint/record_paint_canvas.h"
+#include "components/viz/common/resources/shared_image_format.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
 #include "third_party/blink/public/common/features.h"
@@ -83,6 +85,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_bitmap_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_deferred_paint_record.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_image_provider.h"
 #include "third_party/blink/renderer/platform/graphics/flush_reason.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/webgpu_cpp.h"
@@ -94,6 +97,7 @@
 #include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+#include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/video_frame_image_util.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
@@ -108,6 +112,8 @@
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#include "third_party/skia/include/core/SkCanvas.h"
+#include "third_party/skia/include/core/SkSurface.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/geometry/vector2d_f.h"
 
@@ -160,7 +166,11 @@ BaseRenderingContext2D::BaseRenderingContext2D(
   UpdateRecordingLimits(/*is_graphite=*/false);
 }
 
-BaseRenderingContext2D::~BaseRenderingContext2D() = default;
+BaseRenderingContext2D::~BaseRenderingContext2D() {
+  if (context_provider_wrapper_) {
+    context_provider_wrapper_->RemoveObserver(this);
+  }
+}
 
 const MemoryManagedPaintRecorder* BaseRenderingContext2D::Recorder() const {
   return recorder_.get();
@@ -177,8 +187,31 @@ bool BaseRenderingContext2D::IsResourceProviderValid() const {
   return bitmap_provider_ != nullptr;
 }
 
+void BaseRenderingContext2D::ResetResourceProvider() {
+  shared_image_provider_.reset();
+  bitmap_provider_.reset();
+  canvas_image_provider_.reset();
+  if (context_provider_wrapper_) {
+    context_provider_wrapper_->RemoveObserver(this);
+    context_provider_wrapper_.reset();
+  }
+}
+
 bool BaseRenderingContext2D::IsPaintable() const {
   return HasResourceProvider();
+}
+
+bool BaseRenderingContext2D::Is2DCanvasAccelerated() const {
+  if (shared_image_provider_) {
+    return shared_image_provider_->IsAccelerated();
+  }
+  if (bitmap_provider_) {
+    return false;
+  }
+  if (!Host()) {
+    return false;
+  }
+  return Host()->ShouldTryToUseGpuRaster();
 }
 
 base::ByteSize BaseRenderingContext2D::AllocatedBufferSize() const {
@@ -186,9 +219,107 @@ base::ByteSize BaseRenderingContext2D::AllocatedBufferSize() const {
     return shared_image_provider_->EstimatedSizeInBytes();
   }
   if (bitmap_provider_) {
-    return bitmap_provider_->EstimatedSizeInBytes();
+    return base::ByteSize(
+        color_params_.GetSharedImageFormat().EstimatedSizeInBytes(
+            Host()->Size()));
   }
   return base::ByteSize();
+}
+
+void BaseRenderingContext2D::CreateBitmapProvider() {
+  bitmap_provider_ = Canvas2DBitmapProvider::CreateWithClear(
+      Host()->Size(), color_params_.GetSharedImageFormat(),
+      color_params_.GetAlphaType(), color_params_.GetGfxColorSpace(), Host());
+  if (bitmap_provider_) {
+    sw_snapshot_paint_image_id_ = cc::PaintImage::GetNextId();
+    sw_snapshot_paint_image_content_id_ = cc::PaintImage::kInvalidContentId;
+    sw_snapshot_sk_image_id_ = 0u;
+  }
+}
+
+void BaseRenderingContext2D::OnContextDestroyed() {
+  canvas_image_provider_ = nullptr;
+}
+
+CanvasImageProvider*
+BaseRenderingContext2D::GetOrCreateSWCanvasImageProvider() {
+  if (canvas_image_provider_) {
+    return canvas_image_provider_.get();
+  }
+
+  cc::ImageDecodeCache* cache_f16 = nullptr;
+  if (color_params_.GetSharedImageFormat() ==
+      viz::SinglePlaneFormat::kRGBA_F16) {
+    cache_f16 = &Image::SharedCCDecodeCache(kRGBA_F16_SkColorType);
+  }
+
+  cc::ImageDecodeCache* cache_rgba8 =
+      &Image::SharedCCDecodeCache(kN32_SkColorType);
+
+  if (!context_provider_wrapper_) {
+    context_provider_wrapper_ = SharedGpuContext::ContextProviderWrapper();
+    if (context_provider_wrapper_) {
+      context_provider_wrapper_->AddObserver(this);
+    }
+  }
+  canvas_image_provider_ = std::make_unique<CanvasImageProvider>(
+      cache_rgba8, cache_f16, color_params_.GetGfxColorSpace(),
+      color_params_.GetSharedImageFormat(),
+      cc::PlaybackImageProvider::RasterMode::kSoftware,
+      context_provider_wrapper_);
+
+  return canvas_image_provider_.get();
+}
+
+scoped_refptr<StaticBitmapImage>
+BaseRenderingContext2D::UnacceleratedSnapshot() {
+  cc::PaintImage paint_image;
+  auto sk_image = bitmap_provider_->surface()->makeImageSnapshot();
+  if (sk_image) {
+    auto last_snapshot_sk_image_id = sw_snapshot_sk_image_id_;
+    sw_snapshot_sk_image_id_ = sk_image->uniqueID();
+
+    // Ensure that a new PaintImage::ContentId is used only when the underlying
+    // SkImage changes. This is necessary to ensure that the same image results
+    // in a cache hit in cc's ImageDecodeCache.
+    if (sw_snapshot_paint_image_content_id_ ==
+            cc::PaintImage::kInvalidContentId ||
+        last_snapshot_sk_image_id != sw_snapshot_sk_image_id_) {
+      sw_snapshot_paint_image_content_id_ = cc::PaintImage::GetNextContentId();
+    }
+
+    paint_image =
+        cc::PaintImageBuilder::WithDefault()
+            .set_id(sw_snapshot_paint_image_id_)
+            .set_image(std::move(sk_image), sw_snapshot_paint_image_content_id_)
+            .set_hdr_metadata(color_params_.GetGfxHdrMetadata())
+            .TakePaintImage();
+  }
+  DCHECK(!paint_image.IsTextureBacked());
+  return UnacceleratedStaticBitmapImage::Create(std::move(paint_image));
+}
+
+scoped_refptr<StaticBitmapImage> BaseRenderingContext2D::Snapshot() {
+  if (shared_image_provider_) {
+    return shared_image_provider_->Snapshot();
+  }
+  return UnacceleratedSnapshot();
+}
+
+bool BaseRenderingContext2D::WritePixelsToProvider(const SkImageInfo& orig_info,
+                                                   const void* pixels,
+                                                   size_t row_bytes,
+                                                   int x,
+                                                   int y) {
+  if (shared_image_provider_) {
+    return shared_image_provider_->WritePixels(orig_info, pixels, row_bytes, x,
+                                               y);
+  }
+  if (bitmap_provider_) {
+    return bitmap_provider_->surface()->getCanvas()->writePixels(
+        orig_info, pixels, row_bytes, x, y);
+  }
+  return false;
 }
 
 scoped_refptr<StaticBitmapImage>
@@ -198,10 +329,7 @@ BaseRenderingContext2D::PaintRenderingResultsToSnapshot(
     return nullptr;
   }
   FlushCanvas(FlushReason::kOther);
-  if (shared_image_provider_) {
-    return shared_image_provider_->Snapshot();
-  }
-  return bitmap_provider_->Snapshot();
+  return Snapshot();
 }
 
 const MemoryManagedPaintCanvas* BaseRenderingContext2D::GetPaintCanvas() const {
@@ -849,13 +977,13 @@ std::optional<cc::PaintRecord> BaseRenderingContext2D::FlushCanvasInternal(
     ScopedRasterTimer timer(shared_image_provider_->IsAccelerated()
                                 ? shared_image_provider_->RasterInterface()
                                 : nullptr,
-                            *shared_image_provider_);
+                            shared_image_provider_.get());
     shared_image_provider_->RasterRecord(recording);
     shared_image_provider_->ReleaseImageProviderImages();
   } else if (bitmap_provider_) {
-    ScopedRasterTimer timer(nullptr, *bitmap_provider_);
-    bitmap_provider_->RasterRecord(recording);
-    bitmap_provider_->ReleaseImageProviderImages();
+    ScopedRasterTimer timer(nullptr, nullptr);
+    bitmap_provider_->RasterRecord(recording,
+                                   GetOrCreateSWCanvasImageProvider());
   }
   if (Host()) {
     Host()->DidFlush();

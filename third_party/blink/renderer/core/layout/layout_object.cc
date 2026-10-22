@@ -72,6 +72,7 @@
 #include "third_party/blink/renderer/core/html/forms/html_field_set_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
+#include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_body_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/html_hr_element.h"
@@ -1989,7 +1990,7 @@ LayoutObject* LayoutObject::ContainingBlockForTextOverflow() const {
   if (block && block->IsAnonymous()) {
     block = block->Parent();
   }
-  if (block && !block->BehavesLikeBlockContainer()) {
+  if (block && !block->CanApplyTextOverflow()) {
     return nullptr;
   }
   return block;
@@ -3031,6 +3032,21 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
   SetStyle(pseudo_style);
 }
 
+// Returns true if the object paints nothing both before and after the style
+// change, so paint invalidation (and the visual updates and pre-paint tree
+// walks it schedules, e.g. per animation frame on a visibility:hidden
+// element) can be skipped (crbug.com/41254682). Visible descendants get
+// their own style diffs and invalidate themselves independently.
+static bool InvisibleBeforeAndAfterStyleChange(const LayoutObject& object,
+                                               const ComputedStyle* old_style,
+                                               const ComputedStyle& new_style) {
+  return RuntimeEnabledFeatures::
+             SkipPaintInvalidationWhileStayingInvisibleEnabled() &&
+         old_style && object.VisualRectRespectsVisibility() &&
+         old_style->Visibility() != EVisibility::kVisible &&
+         new_style.Visibility() != EVisibility::kVisible;
+}
+
 DISABLE_CFI_PERF
 void LayoutObject::SetStyle(const ComputedStyle& new_style,
                             ApplyStyleChanges apply_changes) {
@@ -3151,7 +3167,11 @@ void LayoutObject::SetStyle(const ComputedStyle& new_style,
   // invalidate paints.
   StyleDifference updated_diff = AdjustStyleDifference(diff);
 
-  if (updated_diff.NeedsSimplePaintInvalidation()) {
+  const bool invisible_before_and_after_style_change =
+      InvisibleBeforeAndAfterStyleChange(*this, old_style, new_style);
+
+  if (updated_diff.NeedsSimplePaintInvalidation() &&
+      !invisible_before_and_after_style_change) {
     DCHECK(!diff.NeedsNormalPaintInvalidation());
     constexpr int kMaxDepth = 5;
     if (auto* painting_layer = PaintingLayer(kMaxDepth)) {
@@ -3198,7 +3218,9 @@ void LayoutObject::SetStyle(const ComputedStyle& new_style,
     if (IsSVGRoot()) {
       // LayoutSVGRoot::LocalVisualRect() depends on some styles.
       SetShouldDoFullPaintInvalidation();
-    } else {
+    } else if (!invisible_before_and_after_style_change) {
+      // Skipped when the object paints nothing before and after the change; see
+      // InvisibleBeforeAndAfterStyleChange().
       // We'll set needing geometry change later if the style change does cause
       // possible layout change or visual overflow change.
       SetShouldDoFullPaintInvalidationWithoutLayoutChange(
@@ -3235,7 +3257,7 @@ void LayoutObject::UpdateFirstLineImageObservers(
   NOT_DESTROYED();
   bool has_new_first_line_style =
       new_style && new_style->HasPseudoElementStyle(kPseudoIdFirstLine) &&
-      BehavesLikeBlockContainer();
+      CanHaveFirstLineOrLetter();
   DCHECK(!has_new_first_line_style || new_style == &StyleRef());
 
   if (!registered_as_first_line_image_observer_ && !has_new_first_line_style) {
@@ -3453,7 +3475,8 @@ void LayoutObject::StyleDidChange(
     }
   }
 
-  if (diff.NeedsNormalPaintInvalidation() && old_style) {
+  if (diff.NeedsNormalPaintInvalidation() && old_style &&
+      !InvisibleBeforeAndAfterStyleChange(*this, old_style, new_style)) {
     if (ResolveColor(*old_style, GetCSSPropertyBackgroundColor()) !=
             ResolveColor(new_style, GetCSSPropertyBackgroundColor()) ||
         old_style->BackgroundLayers() != new_style.BackgroundLayers()) {
@@ -3593,7 +3616,7 @@ void LayoutObject::ApplyFirstLineChanges(const ComputedStyle* old_style) {
     diff.SetNeedsFullLayout();
   }
 
-  if (BehavesLikeBlockContainer() &&
+  if (CanHaveFirstLineOrLetter() &&
       (diff.NeedsNormalPaintInvalidation() ||
        diff.text_decoration_or_color_changed || first_line_highlight_changed)) {
     if (auto* first_line_container =
@@ -4628,6 +4651,20 @@ bool LayoutObject::NodeAtPoint(HitTestResult&,
   return false;
 }
 
+bool LayoutObject::CanHaveFirstLineOrLetter() const {
+  NOT_DESTROYED();
+  // Only block containers have a first formatted line.
+  if (!IsLayoutBlockFlow() || !StyleRef().IsDisplayBlockContainer()) {
+    return false;
+  }
+  // https://github.com/w3c/csswg-drafts/issues/13926
+  if (RuntimeEnabledFeatures::FirstLineAndLetterExcludeInputTextareaEnabled() &&
+      IsA<TextControlElement>(GetNode())) {
+    return false;
+  }
+  return true;
+}
+
 const ComputedStyle* LayoutObject::FirstLineStyleWithoutFallback() const {
   NOT_DESTROYED();
   DCHECK(GetDocument().GetStyleEngine().UsesFirstLineRules());
@@ -4645,7 +4682,7 @@ const ComputedStyle* LayoutObject::FirstLineStyleWithoutFallback() const {
     return nullptr;
   }
 
-  if (BehavesLikeBlockContainer()) {
+  if (CanHaveFirstLineOrLetter()) {
     if (const ComputedStyle* cached =
             StyleRef().GetCachedPseudoElementStyle(kPseudoIdFirstLine)) {
       // If the style is cached by getComputedStyle(element, "::first-line"), it

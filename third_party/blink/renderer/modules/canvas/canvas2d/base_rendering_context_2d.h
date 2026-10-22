@@ -29,6 +29,7 @@
 #include "third_party/blink/renderer/platform/graphics/flush_reason.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+#include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/forward.h"  // IWYU pragma: keep (blink::Visitor)
 #include "third_party/blink/renderer/platform/heap/member.h"
@@ -57,6 +58,7 @@ namespace blink {
 class Canvas2DResourceProvider;
 class Canvas2DBitmapProvider;
 class CanvasContextCreationAttributesCore;
+class CanvasImageProvider;
 class CanvasRenderingContext2DSettings;
 class DrawElementImageOptions;
 class ExceptionState;
@@ -79,7 +81,8 @@ class MODULES_EXPORT BaseRenderingContext2D
     : public CanvasRenderingContext,
       public Canvas2DRecorderContext,
       public MemoryManagedPaintRecorder::Client,
-      public FlushForImageObserver {
+      public FlushForImageObserver,
+      public WebGraphicsContext3DProviderWrapper::DestructionObserver {
  public:
   // MemoryManagedPaintRecorder::Client implementation.
   void InitializeForRecording(cc::PaintCanvas* canvas) const override;
@@ -160,6 +163,7 @@ class MODULES_EXPORT BaseRenderingContext2D
   virtual bool InitializeResourceProvider() = 0;
   bool HasResourceProvider() const;
   virtual bool IsResourceProviderValid() const;
+  virtual void ResetResourceProvider();
 
   std::optional<cc::PaintRecord> FlushCanvas(FlushReason) override = 0;
 
@@ -276,6 +280,7 @@ class MODULES_EXPORT BaseRenderingContext2D
     return color_params_.GetAlphaType() == kOpaque_SkAlphaType;
   }
   bool IsPaintable() const override;
+  bool Is2DCanvasAccelerated() const override;
   base::ByteSize AllocatedBufferSize() const override;
   scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
       SourceDrawingBuffer source_buffer) override;
@@ -286,6 +291,9 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   void SetRestoreFailedCallbackForTesting(base::RepeatingClosure callback) {
     on_restore_failed_callback_for_testing_ = std::move(callback);
+  }
+  Canvas2DBitmapProvider* GetBitmapProviderForTesting() const {
+    return bitmap_provider_.get();
   }
 
   HeapTaskRunnerTimer<BaseRenderingContext2D>
@@ -322,6 +330,11 @@ class MODULES_EXPORT BaseRenderingContext2D
                            int y) {
     NOTREACHED();
   }
+  bool WritePixelsToProvider(const SkImageInfo& orig_info,
+                             const void* pixels,
+                             size_t row_bytes,
+                             int x,
+                             int y);
 
   PredefinedColorSpace GetDefaultImageDataColorSpace() const final {
     return color_params_.ColorSpace();
@@ -346,10 +359,12 @@ class MODULES_EXPORT BaseRenderingContext2D
                                  bool clear_frame,
                                  FlushReason reason) {}
 
+  void CreateBitmapProvider();
+  scoped_refptr<StaticBitmapImage> Snapshot();
+
   bool context_restorable_{true};
   Canvas2DColorParams color_params_;
   std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
-  std::unique_ptr<Canvas2DBitmapProvider> bitmap_provider_;
 
  private:
   void UpdateRecordingLimits(bool is_graphite);
@@ -372,6 +387,23 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   void WillUseCurrentFont() const;
 
+  scoped_refptr<StaticBitmapImage> UnacceleratedSnapshot();
+
+  // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
+  void OnContextDestroyed() override;
+
+  CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
+
+  std::unique_ptr<Canvas2DBitmapProvider> bitmap_provider_;
+  std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
+  // Even when using a software bitmap provider, it may be called upon to
+  // rasterize a texture-backed resource, and that resource must be bound to a
+  // gpu context for the current thread.
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
+  cc::PaintImage::Id sw_snapshot_paint_image_id_ = cc::PaintImage::kInvalidId;
+  cc::PaintImage::ContentId sw_snapshot_paint_image_content_id_ =
+      cc::PaintImage::kInvalidContentId;
+  uint32_t sw_snapshot_sk_image_id_ = 0u;
   std::unique_ptr<MemoryManagedPaintRecorder> recorder_;
   bool clear_frame_ = true;
   size_t max_recorded_op_bytes_ = 0;

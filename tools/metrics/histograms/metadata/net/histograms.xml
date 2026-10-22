@@ -43,6 +43,21 @@ chromium-metrics-reviews@google.com.
   <variant name=".Unknown" summary=""/>
 </variants>
 
+<!-- LINT.IfChange(PrewarmOutcome) -->
+
+<variants name="DeviceBoundSessionPrewarmOutcome">
+  <variant name=".FatalError"
+      summary="with a fatal error that terminated the session"/>
+  <variant name=".NotYetNeeded"
+      summary="with no session needing a refresh yet"/>
+  <variant name=".OtherTransientError"
+      summary="with a server or signing error"/>
+  <variant name=".Success" summary="with a successful refresh"/>
+  <variant name=".Unreachable" summary="with the refresh endpoint unreachable"/>
+</variants>
+
+<!-- LINT.ThenChange(//chrome/browser/net/device_bound_session_prewarmer.cc:PrewarmOutcome) -->
+
 <variants name="DnsOverHttpsSecure">
   <variant name="Insecure" summary="DoH is not enabled"/>
   <variant name="Secure" summary="DoH is enabled"/>
@@ -1954,8 +1969,6 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<!-- LINT.IfChange(PrewarmDurationOutcome) -->
-
 <histogram name="Net.DeviceBoundSessions.Prewarm.Duration{Outcome}" units="ms"
     expires_after="2027-09-30">
   <owner>ahijazi@chromium.org</owner>
@@ -1972,20 +1985,8 @@ chromium-metrics-reviews@google.com.
     one, in this order: .OtherTransientError, .Unreachable, .FatalError,
     .Success, .NotYetNeeded.
   </summary>
-  <token key="Outcome">
-    <variant name=".FatalError"
-        summary="with a fatal error that terminated the session"/>
-    <variant name=".NotYetNeeded"
-        summary="with no session needing a refresh yet"/>
-    <variant name=".OtherTransientError"
-        summary="with a server or signing error"/>
-    <variant name=".Success" summary="with a successful refresh"/>
-    <variant name=".Unreachable"
-        summary="with the refresh endpoint unreachable"/>
-  </token>
+  <token key="Outcome" variants="DeviceBoundSessionPrewarmOutcome"/>
 </histogram>
-
-<!-- LINT.ThenChange(//chrome/browser/net/device_bound_session_prewarmer.cc:PrewarmDurationOutcome) -->
 
 <histogram name="Net.DeviceBoundSessions.Prewarm.NextRefreshDelay" units="ms"
     expires_after="2027-09-30">
@@ -2002,6 +2003,25 @@ chromium-metrics-reviews@google.com.
     returned a next refresh time, i.e. whenever that time is used to schedule
     the next pre-warm.
   </summary>
+</histogram>
+
+<histogram name="Net.DeviceBoundSessions.Prewarm.Trigger{Outcome}"
+    enum="DeviceBoundSessionPrewarmTrigger" expires_after="2027-09-30">
+  <owner>ahijazi@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records what caused a Device Bound Session
+    (https://github.com/w3c/webappsec-dbsc/blob/main/README.md) pre-warm to be
+    issued, e.g. the pre-warmer starting, the next refresh time being reached, a
+    retry after an error, connectivity returning, or a new session. Recorded for
+    a pre-warm that completed {Outcome}.
+
+    Logged once per completed pre-warm that found at least one bound session,
+    i.e. alongside Net.DeviceBoundSessions.Prewarm.Duration.
+  </summary>
+  <token key="Outcome" variants="DeviceBoundSessionPrewarmOutcome">
+    <variant name="" summary="with any result"/>
+  </token>
 </histogram>
 
 <histogram name="Net.DeviceBoundSessions.PrewarmResult.{PrewarmType}"
@@ -2460,35 +2480,6 @@ chromium-metrics-reviews@google.com.
     <variant name="2"/>
     <variant name="3"/>
   </token>
-</histogram>
-
-<histogram name="Net.DNS.DnsHosts.Count" units="count"
-    expires_after="2024-09-01">
-  <owner>horo@chromium.org</owner>
-  <owner>net-dev@chromium.org</owner>
-  <summary>
-    The number of hosts parsed from a Hosts file. Reported whenever a Hosts file
-    is read and parsed.
-  </summary>
-</histogram>
-
-<histogram name="Net.DNS.DnsHosts.EstimateMemoryUsage" units="bytes"
-    expires_after="2024-09-01">
-  <owner>horo@chromium.org</owner>
-  <owner>net-dev@chromium.org</owner>
-  <summary>
-    Estimated memory usage to keep the parsed result of a Hosts file. Reported
-    whenever a Hosts file is read and parsed.
-  </summary>
-</histogram>
-
-<histogram name="Net.DNS.DnsHosts.FileSize" units="bytes"
-    expires_after="2024-09-01">
-  <owner>horo@chromium.org</owner>
-  <owner>net-dev@chromium.org</owner>
-  <summary>
-    The file size of a Hosts file. Reported whenever a Hosts file is read.
-  </summary>
 </histogram>
 
 <histogram name="Net.DNS.DnsPlatformAndroidAttempt.FdAlreadyReadable"
@@ -3502,6 +3493,20 @@ chromium-metrics-reviews@google.com.
     the alternative error page (rather than the dino) is shown. Reported when
     the error page html is being prepared. See
     `NetErrorHelper::GenerateLocalizedErrorPage` (crbug.com/1280518).
+  </summary>
+</histogram>
+
+<histogram name="Net.HttpAuth.SchemeAllowedByAllSchemesPolicy"
+    enum="HttpAuthSchemeAllowedTarget" expires_after="2027-02-01">
+  <owner>ydago@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Recorded when HTTP authentication challenge scheme resolution succeeds
+    specifically because the target (proxy or server/origin) was allowed to use
+    all HTTP authentication schemes by enterprise policy (either
+    AllHttpAuthSchemesAllowedForOrigins or AllHttpAuthSchemesAllowedForProxies),
+    despite the scheme not being in the default or administrator-configured
+    AuthSchemes.
   </summary>
 </histogram>
 
@@ -4525,30 +4530,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="Net.NetworkTransaction.Create{StreamType}Time3{HostType}.{Protocol}{AddressFamily}"
-    units="ms" expires_after="2027-01-31">
-  <owner>bashi@chromium.org</owner>
-  <owner>blink-network-stack@google.com</owner>
-  <summary>Deprecated. Replaced by Create{StreamType}Time4.</summary>
-  <token key="StreamType">
-    <variant name="HttpStream"/>
-    <variant name="WebSocketStream"/>
-  </token>
-  <token key="HostType">
-    <variant name=""/>
-    <variant name=".GoogleHost"/>
-  </token>
-  <token key="Protocol" variants="NegotiatedProtocolCoalesced"/>
-  <token key="AddressFamily">
-    <variant name=""/>
-    <variant name=".IPv4"/>
-    <variant name=".IPv6"/>
-    <variant name=".Unspecified"/>
-  </token>
-</histogram>
-
-<histogram
-    name="Net.NetworkTransaction.Create{StreamType}Time4{HostType}.{Protocol}{AddressFamily}"
+    name="Net.NetworkTransaction.Create{StreamType}Time{HistogramVersion}{HostType}.{Protocol}{AddressFamily}"
     units="ms" expires_after="2027-01-31">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
@@ -4556,10 +4538,18 @@ chromium-metrics-reviews@google.com.
     The time taken for creating a(n) {StreamType}. Recorded in
     HttpNetworkTransaction::DoCreateStreamComplete when the stream creation
     completes successfully for the first time (i.e. not for retries).
+    {HistogramVersion}
   </summary>
   <token key="StreamType">
     <variant name="HttpStream"/>
     <variant name="WebSocketStream"/>
+  </token>
+  <token key="HistogramVersion">
+    <variant name="4"
+        summary="Deprecated (capped at 10 seconds). Replaced by version 5."/>
+    <variant name="5"
+        summary="Version 5 extends the maximum bucket range from 10 seconds
+                 to 3 minutes."/>
   </token>
   <token key="HostType">
     <variant name=""/>
@@ -5046,6 +5036,8 @@ chromium-metrics-reviews@google.com.
         summary="the certificate veriier changed"/>
     <variant name="ClockSkewDetected" summary="a clock skew was detected"/>
     <variant name="IPAddressChanged" summary="an IP address changed"/>
+    <variant name="SSLContextConfigChanged"
+        summary="the SSLContextConfig changed"/>
   </token>
 </histogram>
 

@@ -58,6 +58,7 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs.SideUiSize;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
+import org.chromium.chrome.tab_ui.R;
 import org.chromium.ui.base.ViewUtils;
 
 import java.util.Map;
@@ -323,7 +324,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
         // Hover enter: the rail renders expanded over the web contents, but keeps reserving its
         // collapsed width so nothing outside the rail moves.
-        mCollapseController.expandOrCollapseOnHover(RailCollapseState.EXPANDED_FOR_HOVERING);
+        mCollapseController.setHovering(true);
         assertEquals(
                 RailCollapseState.EXPANDED_FOR_HOVERING,
                 mCoordinator.getRailCollapseStateForTesting());
@@ -332,7 +333,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
                 .updateUi(any(SideUiCoordinator.UiUpdateRequest.class));
 
         // Hover exit: rail collapses back
-        mCollapseController.expandOrCollapseOnHover(RailCollapseState.COLLAPSED);
+        mCollapseController.setHovering(false);
         assertEquals(RailCollapseState.COLLAPSED, mCoordinator.getRailCollapseStateForTesting());
         assertShowableSize(mCollapsedRailWidth, mCollapsedRailWidth, mWideWindowWidth);
         verify(mMockSideUiCoordinator, times(3))
@@ -348,7 +349,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
                 .updateUi(any(SideUiCoordinator.UiUpdateRequest.class));
 
         // Hover expand
-        mCollapseController.expandOrCollapseOnHover(RailCollapseState.EXPANDED_FOR_HOVERING);
+        mCollapseController.setHovering(true);
         assertEquals(
                 RailCollapseState.EXPANDED_FOR_HOVERING,
                 mCoordinator.getRailCollapseStateForTesting());
@@ -372,28 +373,60 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
     }
 
     @Test
-    public void testHoverExpanded_DoesNotSupportManualResize() {
+    public void testExpandOnHover_OnlyExpandedRailSupportsManualResize() {
         enableManualResize();
-        mCollapseController.toggleCollapseState();
+        enableExpandOnHover();
+        assertEquals(RailCollapseState.EXPANDED, mCoordinator.getRailCollapseStateForTesting());
         assertTrue(mCoordinator.supportsManualResize());
 
-        mCollapseController.expandOrCollapseOnHover(RailCollapseState.EXPANDED_FOR_HOVERING);
+        mCollapseController.toggleCollapseState();
         assertFalse(mCoordinator.supportsManualResize());
 
-        mCollapseController.expandOrCollapseOnHover(RailCollapseState.COLLAPSED);
+        mCollapseController.setHovering(true);
+        assertFalse(mCoordinator.supportsManualResize());
+
+        mCollapseController.setHovering(false);
+        assertFalse(mCoordinator.supportsManualResize());
+
+        mCollapseController.toggleCollapseState();
         assertTrue(mCoordinator.supportsManualResize());
     }
 
     @Test
-    public void testHoverExpanded_RendersUserResizedWidth() {
+    public void testResizeHandleWidth_MatchesRailHorizontalPadding() {
+        assertEquals(
+                Integer.valueOf(
+                        mActivity
+                                .getResources()
+                                .getDimensionPixelSize(
+                                        R.dimen.vertical_tabs_rail_horizontal_margin)),
+                mCoordinator.getResizeHandleWidthPx());
+    }
+
+    @Test
+    public void testHoverExpanded_IgnoresUserResizedWidth() {
         enableManualResize();
         mCoordinator.onResizeCommitted(ViewUtils.dpToPx(mActivity, 300));
         mCollapseController.toggleCollapseState();
         assertEquals(RailCollapseState.COLLAPSED, mCoordinator.getRailCollapseStateForTesting());
 
-        // The hover overlay previews the width the rail would be pinned at.
-        mCollapseController.expandOrCollapseOnHover(RailCollapseState.EXPANDED_FOR_HOVERING);
-        assertShowableSize(mCollapsedRailWidth, ViewUtils.dpToPx(mActivity, 300), mWideWindowWidth);
+        // The hover overlay always renders at the fixed container width.
+        mCollapseController.setHovering(true);
+        assertShowableSize(mCollapsedRailWidth, mExpandedRailWidth, mWideWindowWidth);
+    }
+
+    @Test
+    public void testHoverExpanded_IgnoresDynamicWindowWidth() {
+        // A medium window auto-resizes the expanded rail below the fixed container width.
+        setWindowWidthPx(mMediumWindowWidth);
+        assertTrue(determineShowableSize(mMediumWindowWidth).mRenderedWidth < mExpandedRailWidth);
+
+        mCollapseController.toggleCollapseState();
+        assertEquals(RailCollapseState.COLLAPSED, mCoordinator.getRailCollapseStateForTesting());
+
+        // The hover overlay always renders at the fixed container width.
+        mCollapseController.setHovering(true);
+        assertShowableSize(mCollapsedRailWidth, mExpandedRailWidth, mMediumWindowWidth);
     }
 
     @Test
@@ -767,6 +800,14 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
     private void enableManualResize() {
         FeatureOverrides.newBuilder()
                 .param(ChromeFeatureList.ANDROID_VERTICAL_TABS, "manual_resize", true)
+                .apply();
+    }
+
+    /** Enables expand-on-hover, keeping manual resize enabled. */
+    private void enableExpandOnHover() {
+        FeatureOverrides.newBuilder()
+                .param(ChromeFeatureList.ANDROID_VERTICAL_TABS, "manual_resize", true)
+                .param(ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true)
                 .apply();
     }
 

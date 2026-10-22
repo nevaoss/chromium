@@ -202,6 +202,13 @@ class WebUIToolbarWebView
   // ToolbarView::DestroyWebUIToolbarWebContents) as well as in the destructor.
   void DestroyWebContents();
 
+  // Called by the owner (e.g. `ToolbarView::Init()`) once all toolbar
+  // components needed by `WebUIToolbarUI::Init()` (such as the location bar)
+  // have been initialized. Triggers `MaybeInitWebUI()`, which initializes the
+  // WebUI immediately if its navigation has already finished and committed, or
+  // defers initialization until `DidFinishNavigation()`.
+  void ToolbarInitialized();
+
   // May be nullptr.
   WebUILocationBar* GetLocationBar() { return location_bar_.get(); }
 
@@ -284,8 +291,7 @@ class WebUIToolbarWebView
   void OnToolbarDropFile(const gfx::PointF& drop_position) override;
   base::expected<std::monostate, mojo_base::mojom::ErrorPtr> OnOmniboxAction(
       toolbar_ui_api::mojom::OmniboxActionPtr action) override;
-  void ShowAvatarMenu(bool is_pointer_interaction) override;
-  void OnAvatarButtonMousePressed() override;
+  void ShowAvatarMenu() override;
   void SetAvatarButtonHovered(bool hovered) override;
   void SetAvatarButtonFocused(bool focused) override;
   void SetAvatarButtonIPHPromoShowing(bool showing) override;
@@ -300,8 +306,7 @@ class WebUIToolbarWebView
   void OnPerformanceInterventionButtonClicked(
       bool is_mouse_interaction) override;
   void OnPerformanceInterventionButtonMousePressed() override;
-  void OnMediaButtonClicked(bool is_mouse_interaction) override;
-  void OnMediaButtonMousePressed() override;
+  void OnMediaButtonClicked() override;
   void OnGlicButtonClicked() override;
 
   // BrowserControlsService::BrowserControlsServiceDelegate:
@@ -535,6 +540,9 @@ class WebUIToolbarWebView
   void PostPushNavigationState();
   void MaybeInitializePageDependentControls();
   void PushNavigationState();
+  // Initializes `WebUIToolbarUI` once both `is_toolbar_initialized_` and
+  // `is_webui_navigation_finished_` are true.
+  void MaybeInitWebUI();
   toolbar_ui_api::mojom::BackForwardControlStatePtr GetBackForwardState() const;
 
   // Which buttons have overflowed, and the size of the location bar, if
@@ -677,6 +685,13 @@ class WebUIToolbarWebView
 
   // True if the WebContents was pre-loaded.
   bool is_preloaded_ = false;
+
+  // True once the WebUI page navigation has finished and committed.
+  bool is_webui_navigation_finished_ = false;
+
+  // True once the owner has called `ToolbarInitialized()`, i.e. all
+  // dependencies needed by `WebUIToolbarUI::Init()` are ready.
+  bool is_toolbar_initialized_ = false;
 
   std::unique_ptr<content::ScopedAccessibilityMode> scoped_accessibility_mode_;
 

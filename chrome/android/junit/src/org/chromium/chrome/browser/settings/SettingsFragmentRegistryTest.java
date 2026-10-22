@@ -61,6 +61,7 @@ import org.chromium.chrome.browser.tracing.settings.TracingSettings;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.components.browser_ui.site_settings.AllSiteSettings;
 import org.chromium.components.browser_ui.site_settings.ChosenObjectSettings;
+import org.chromium.components.browser_ui.site_settings.CookieSettings;
 import org.chromium.components.browser_ui.site_settings.GroupedWebsitesSettings;
 import org.chromium.components.browser_ui.site_settings.LocationPermissionSubpageSettings;
 import org.chromium.components.browser_ui.site_settings.SingleCategorySettings;
@@ -71,6 +72,7 @@ import org.chromium.components.browser_ui.site_settings.StorageAccessSubpageSett
 import org.chromium.components.browser_ui.site_settings.Website;
 import org.chromium.components.browser_ui.site_settings.WebsiteAddress;
 import org.chromium.components.browser_ui.site_settings.WebsiteGroup;
+import org.chromium.components.content_settings.CookieControlsMode;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 
 import java.util.Collections;
@@ -131,6 +133,44 @@ public class SettingsFragmentRegistryTest {
         assertEquals(
                 TracingSettings.CategoryType.NON_DEFAULT,
                 validTypeRes.args.getInt(TracingCategoriesSettings.EXTRA_CATEGORY_TYPE));
+    }
+
+    @Test
+    public void testResolveCookies_showsPageForExplainedModes() {
+        for (int mode :
+                new int[] {
+                    CookieControlsMode.BLOCK_THIRD_PARTY, CookieControlsMode.INCOGNITO_ONLY
+                }) {
+            SettingsFragmentRegistry.Resolution resolution =
+                    resolve("chrome://settings/cookies?mode=" + mode);
+            assertNull(resolution.redirectUrl);
+            assertEquals(CookieSettings.class, resolution.fragmentClass);
+            assertEquals(mode, resolution.args.getInt(CookieSettings.EXTRA_COOKIE_PAGE_STATE));
+        }
+    }
+
+    @Test
+    public void testResolveCookies_redirectsWithoutExplainedMode() {
+        String thirdPartyCookiesUrl =
+                "chrome://settings/siteSettings/category?category=third_party_cookies";
+        assertRedirects("chrome://settings/cookies", thirdPartyCookiesUrl);
+        assertRedirects(
+                "chrome://settings/cookies?mode=" + CookieControlsMode.OFF, thirdPartyCookiesUrl);
+        assertRedirects("chrome://settings/cookies?mode=nonsense", thirdPartyCookiesUrl);
+        // The raw argument key, as written before the "mode" parameter was registered, is read
+        // back as a String rather than a mode.
+        assertRedirects(
+                "chrome://settings/cookies?cookie_page_state="
+                        + CookieControlsMode.BLOCK_THIRD_PARTY,
+                thirdPartyCookiesUrl);
+
+        // The redirect lands on the category page itself rather than redirecting again.
+        SettingsFragmentRegistry.Resolution resolution = resolve(thirdPartyCookiesUrl);
+        assertNull(resolution.redirectUrl);
+        assertEquals(SingleCategorySettings.class, resolution.fragmentClass);
+        assertEquals(
+                SiteSettingsCategory.preferenceKey(SiteSettingsCategory.Type.THIRD_PARTY_COOKIES),
+                resolution.args.getString(SingleCategorySettings.EXTRA_CATEGORY));
     }
 
     @Test
@@ -404,6 +444,15 @@ public class SettingsFragmentRegistryTest {
                 GlicNavigationUtils.FIELD_LOCATION_PERMISSION);
         String url = SettingsFragmentRegistry.createUrlForFragment(GlicSettings.class, args);
         assertEquals("chrome://settings/ai/gemini?highlight=location_permission", url);
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs(url, args));
+    }
+
+    @Test
+    public void testUrlPreservesArgs_cookiePageStateRoundTrips() {
+        Bundle args = new Bundle();
+        args.putInt(CookieSettings.EXTRA_COOKIE_PAGE_STATE, CookieControlsMode.BLOCK_THIRD_PARTY);
+        String url = SettingsFragmentRegistry.createUrlForFragment(CookieSettings.class, args);
+        assertEquals("chrome://settings/cookies?mode=" + CookieControlsMode.BLOCK_THIRD_PARTY, url);
         assertTrue(SettingsFragmentRegistry.urlPreservesArgs(url, args));
     }
 

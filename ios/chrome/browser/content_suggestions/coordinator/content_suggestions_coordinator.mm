@@ -738,7 +738,7 @@ using segmentation_platform::TipIdentifier;
 
 - (void)openTipDestination:(segmentation_platform::TipIdentifier)tip {
   CHECK(_tipsMediator);
-
+  [self.customizationDelegate dismissCustomizationMenu];
   // Log the Tips (Magic Stack) Module that the user tapped on.
   base::UmaHistogramEnumeration(kTipsMagicStackModuleTappedTypeHistogram, tip);
   switch (tip) {
@@ -799,6 +799,12 @@ using segmentation_platform::TipIdentifier;
       [HandlerForProtocol(self.browser->GetCommandDispatcher(),
                           TipsPasswordsCommands)
           showPasswordsTipForIdentifier:_tipsMediator.config.identifier];
+      break;
+    }
+    case TipIdentifier::kNTPTheme: {
+      CHECK(!segmentation_platform::features::
+                IsMagicStackTipsV2IosActionableEnabled());
+      [self.delegate openMainCustomizationMenu];
       break;
     }
   }

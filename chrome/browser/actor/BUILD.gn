@@ -26,6 +26,7 @@ source_set("actor") {
     "actor_navigation_throttle.h",
     "actor_proto_conversion.h",
     "actor_surface.h",
+    "actor_surface_handle.h",
     "actor_surface_registry.h",
     "actor_tab_close_skip_beforeunload_user_data.h",
     "actor_tab_data.h",
@@ -69,6 +70,7 @@ source_set("actor") {
   public_deps = [
     ":types",
     "//base",
+    "//chrome/browser/actor/tools/registry",
     "//chrome/browser/actor/ui:dom_node_geometry",
     "//chrome/browser/glic:mojo_bindings",
     "//chrome/browser/origin_gating",
@@ -131,11 +133,11 @@ source_set("impl") {
     "actor_proto_conversion.cc",
     "actor_script_tool_receiver.cc",
     "actor_script_tool_receiver.h",
+    "actor_surface_handle.cc",
     "actor_surface_impl.cc",
     "actor_surface_impl.h",
     "actor_surface_registry.cc",
     "actor_tab_close_skip_beforeunload_user_data.cc",
-    "actor_tab_data.cc",
     "actor_task.cc",
     "actor_task_metadata.cc",
     "actor_util.cc",
@@ -219,8 +221,10 @@ source_set("impl") {
   ]
   deps = [
     ":actor",
+    ":actor_tab_data_impl",
     ":variants",
     "//chrome/browser:browser_process",
+    "//chrome/browser/actor/tools/registry:impl",
     "//chrome/browser/actor/ui",
     "//chrome/browser/actor/ui:event_dispatcher",
     "//chrome/browser/affiliations",
@@ -263,7 +267,6 @@ source_set("impl") {
     "//components/lookalikes/core",
     "//components/one_time_tokens/core/browser",
     "//components/optimization_guide/proto:optimization_guide_proto",
-    "//components/optimization_guide/proto:optimization_guide_proto_extras",
     "//components/page_load_metrics/browser",
     "//components/password_manager/core/browser",
     "//components/password_manager/core/browser/actor_login:actor_login_service_impl",
@@ -332,6 +335,27 @@ source_set("impl") {
       "//chrome/browser/ui:browser_window_header",
     ]
   }
+}
+
+# actor_tab_data.cc is split from :impl into an internal source_set with
+# public = [] to isolate the dependency on proto_extras, which otherwise
+# propagates heavy order-only build dependencies to downstream targets.
+source_set("actor_tab_data_impl") {
+  visibility = [ ":*" ]
+  public = []
+  sources = [ "actor_tab_data.cc" ]
+  deps = [
+    ":actor",
+    "//base",
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/actor/ui:dom_node_geometry",
+    "//chrome/browser/ui/tabs:tabs_public",
+    "//chrome/common",
+    "//components/optimization_guide/proto:optimization_guide_proto",
+    "//components/optimization_guide/proto:optimization_guide_proto_extras_equal",
+    "//ui/base/metadata",
+    "//ui/base/unowned_user_data",
+  ]
 }
 
 source_set("variants") {
@@ -447,6 +471,7 @@ source_set("unit_tests") {
     "ui:event_dispatcher",
     "ui:test_support",
     "//base/test:test_support",
+    "//chrome/browser/actor/tools/registry:unit_tests",
     "//chrome/browser/autofill/actor",
     "//chrome/browser/bookmarks",
     "//chrome/browser/critical_actions",
@@ -555,6 +580,11 @@ source_set("browser_tests") {
     "//chrome/test:test_support",
     "//chrome/test/base:chrome_test_utils",
     "//chrome/test/base:testing_browser_process",
+  ]
+  if (!is_android) {
+    deps += [ "//chrome/test/base:test_browser_window" ]
+  }
+  deps += [
     "//components/affiliations/core/browser:test_support",
     "//components/favicon/core/test:test_support",
     "//components/javascript_dialogs",

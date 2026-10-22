@@ -9,9 +9,12 @@
 #include "base/check_op.h"
 #include "base/memory/ptr_util.h"
 #include "base/trace_event/trace_event.h"
+#include "base/types/expected.h"
+#include "base/types/expected_macros.h"
 #include "media/base/audio_bus.h"
 #include "media/base/audio_parameters.h"
 #include "media/base/converting_audio_fifo.h"
+#include "media/webrtc/voice_isolation/band_split_voice_isolation.h"
 #include "media/webrtc/voice_isolation/passthrough_voice_isolation.h"
 #include "media/webrtc/voice_isolation/stft_voice_isolation.h"
 #include "media/webrtc/voice_isolation/tflite_voice_isolation.h"
@@ -21,31 +24,31 @@
 namespace media {
 
 namespace {
-constexpr size_t kVoiceIsolationFrameSize = 320;
-constexpr size_t kVoiceIsolationFramesPerSecond = 50;
+// StftVoiceIsolation consumes one waveform frame per two DFTs.
+constexpr size_t kVoiceIsolationFrameSize =
+    BandSplitVoiceIsolation::kFrameSize / BandSplitVoiceIsolation::kNumDfts;
+constexpr size_t kVoiceIsolationFramesPerSecond =
+    BandSplitVoiceIsolation::kFramesPerSecond;
+constexpr int kVoiceIsolationSampleRate = 48000;
+static_assert(kVoiceIsolationFrameSize * kVoiceIsolationFramesPerSecond ==
+              kVoiceIsolationSampleRate);
 
-std::unique_ptr<VoiceIsolationComponent> CreateVoiceIsolation(
-    const tflite::FlatBufferModel* model) {
-  // Internally the model expects two sets of complex coefficients of two DFT of
-  // 160 samples.
-  constexpr size_t kModelFrameSize = 2 * kVoiceIsolationFrameSize;
+base::expected<std::unique_ptr<VoiceIsolationComponent>,
+               VoiceIsolationCreationResult>
+CreateVoiceIsolation(const tflite::FlatBufferModel* model) {
   CHECK(model);
 
-  std::unique_ptr<VoiceIsolationComponent> tflite =
-      TfLiteVoiceIsolation::MaybeCreate(model);
-  // TODO(barrerap): We are assuming the model is always correct. This is
-  // because VoiceIsolationHandler, the caller to `VoiceIsolation::Create`,
-  // expects that we always are able to create a valid. In the future we will
-  // handle both incorrect initializations and delayed initializations
-  // (`TfLiteVoiceIsolation::MaybeCreate` might be slow).
-  CHECK(tflite);
-  CHECK_EQ(tflite->FrameSize(), 640u);
-  CHECK_EQ(tflite->FramesPerSecond(), kVoiceIsolationFramesPerSecond);
+  // Create the TfLite inference component (expects two 16kHz DFTs of 160
+  // complex bins each).
+  ASSIGN_OR_RETURN(std::unique_ptr<VoiceIsolationComponent> tflite,
+                   TfLiteVoiceIsolation::MaybeCreate(model));
 
-  auto stft = std::make_unique<StftVoiceIsolation>(std::move(tflite));
-  CHECK_EQ(stft->FrameSize(), kModelFrameSize / 2);
-  CHECK_EQ(stft->FramesPerSecond(), kVoiceIsolationFramesPerSecond);
-  return stft;
+  // Wrap TfLite with BandSplitVoiceIsolation, which CHECKs the model layout,
+  // to split 48kHz DFTs down to 16kHz and zero-pad high bands on
+  // reconstruction. StftVoiceIsolation performs the 48kHz STFT and iSTFT. The
+  // VoiceIsolationImpl constructor CHECKs the layout of the returned component.
+  return std::make_unique<StftVoiceIsolation>(
+      std::make_unique<BandSplitVoiceIsolation>(std::move(tflite)));
 }
 
 class VoiceIsolationImpl : public VoiceIsolation {
@@ -71,13 +74,21 @@ VoiceIsolationImpl::VoiceIsolationImpl(
     std::unique_ptr<VoiceIsolationComponent> internal_voice_isolation,
     const media::AudioParameters& audio_params)
     : voice_isolation_component_(std::move(internal_voice_isolation)) {
-  CHECK(audio_params.IsValid());
   CHECK(voice_isolation_component_);
+  CHECK(audio_params.IsValid());
+  CHECK_EQ(audio_params.sample_rate(), kVoiceIsolationSampleRate);
+
+  // The FIFOs below feed the component mono frames of
+  // `kVoiceIsolationFrameSize` samples, `kVoiceIsolationFramesPerSecond` times
+  // per second. Create() accepts any component, so CHECK that it expects this
+  // exact frame layout.
+  CHECK_EQ(voice_isolation_component_->FrameSize(), kVoiceIsolationFrameSize);
+  CHECK_EQ(voice_isolation_component_->FramesPerSecond(),
+           kVoiceIsolationFramesPerSecond);
 
   media::AudioParameters mono_internal(
       media::AudioParameters::AUDIO_PCM_LOW_LATENCY,
-      media::ChannelLayoutConfig::Mono(),
-      kVoiceIsolationFrameSize * kVoiceIsolationFramesPerSecond,
+      media::ChannelLayoutConfig::Mono(), kVoiceIsolationSampleRate,
       kVoiceIsolationFrameSize);
 
   forward_fifo_ =
@@ -137,8 +148,9 @@ void VoiceIsolationImpl::ClearBuffers() {
 }
 }  // namespace
 
-std::unique_ptr<VoiceIsolationComponent> VoiceIsolation::CreateComponent(
-    const tflite::FlatBufferModel* model) {
+base::expected<std::unique_ptr<VoiceIsolationComponent>,
+               VoiceIsolationCreationResult>
+VoiceIsolation::CreateComponent(const tflite::FlatBufferModel* model) {
   return CreateVoiceIsolation(model);
 }
 
@@ -153,7 +165,10 @@ std::unique_ptr<VoiceIsolation> VoiceIsolation::Create(
 std::unique_ptr<VoiceIsolation> VoiceIsolation::Create(
     const tflite::FlatBufferModel* model,
     const media::AudioParameters& audio_params) {
-  return Create(CreateComponent(model), audio_params);
+  auto component_or_error = CreateComponent(model);
+  return component_or_error.has_value()
+             ? Create(std::move(*component_or_error), audio_params)
+             : nullptr;
 }
 
 }  // namespace media

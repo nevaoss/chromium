@@ -1347,6 +1347,25 @@ bool ChromeExtensionsBrowserClient::IsLazyKeyedServiceInstantiationEnabled()
          features::kLazyKeyedServiceInstantiationExtensionsApi.Get();
 }
 
+bool ChromeExtensionsBrowserClient::
+    IsLazySocketAndUsbKeyedServiceInstantiationEnabled() const {
+  return base::FeatureList::IsEnabled(
+             features::kLazyKeyedServiceInstantiation) &&
+         features::kLazyKeyedServiceInstantiationExtensionsSocketsAndUsb.Get();
+}
+
+bool ChromeExtensionsBrowserClient::
+    IsLazyChromeOSResourceKeyedServiceInstantiationEnabled() const {
+#if BUILDFLAG(IS_CHROMEOS)
+  return base::FeatureList::IsEnabled(
+             features::kLazyKeyedServiceInstantiation) &&
+         features::kLazyKeyedServiceInstantiationExtensionsChromeOSResources
+             .Get();
+#else
+  return false;
+#endif
+}
+
 void ChromeExtensionsBrowserClient::SetAPIClientForTest(
     std::unique_ptr<ExtensionsAPIClient> client) {
   api_client_ = std::move(client);

@@ -101,9 +101,14 @@ struct TabContextState {
 
   bool operator==(const TabContextState& other) const;
 
-  // Tabs that have been selected in the tab picker, in the order they were
-  // attached. These may be uploaded, or may not be uploaded. At most one entry
-  // per tab ID.
+  // Tabs attached in this session, in the order they were attached. Kept in
+  // sync by `StartTabContextUploadFlow()`, `AddDelayedTabContext()`,
+  // `DeleteFile()` and `RemoveUploadedContextToken()`. `ClearFiles()` only
+  // removes tabs that were never submitted, so tabs stay attached after
+  // submission. Delayed tabs are attached with `uploaded` false
+  // before their upload starts, and are changed to true once uploaded.
+  // Does not include restored tabs, only tabs manually attached in the
+  // current session. At most one entry per tab ID.
   std::vector<TabInfo> attached;
 
   // Tabs carried from past history in this thread from the server, in the
@@ -354,11 +359,33 @@ class ContextualSearchSessionHandle {
                           CreateSearchUrlRequestInfo> search_url_request_info,
       base::OnceCallback<void(GURL)> callback);
 
-  // Returns the client to aim message for a new query for posting.
+  // Returns the client to aim message for a new query for posting. Equivalent
+  // to calling `TakeRemovedContexts()` and `MarkQuerySubmitted()` and then
+  // building the request from the controller.
   lens::ClientToAimMessage CreateClientToAimRequest(
       std::unique_ptr<contextual_search::ContextualSearchContextController::
                           CreateClientToAimRequestInfo>
           create_client_to_aim_request_info);
+
+  // Returns the request IDs of contexts removed since the last query that the
+  // server has not yet been told about: contexts dropped by a Smart Tab Sharing
+  // toggle, and persisted tabs that were deselected, closed, or navigated away
+  // from their uploaded page. Clears the returned contexts from this handle, so
+  // each removal is only reported once. Callers that submit queries outside of
+  // `CreateClientToAimRequest()` must call this on every submission and
+  // forward the result to the server as removed contexts.
+  std::vector<lens::LensOverlayRequestId> TakeRemovedContexts();
+
+  // Records that a query was submitted with `file_tokens` plus any uploaded
+  // context tokens not already in `file_tokens`. Moves submitted tabs into
+  // `persisted_tabs_`, clears `uploaded_context_tokens_`, appends to the
+  // submitted context tokens, and records query metrics when
+  // `query_text_length` is provided. Returns the full list of submitted
+  // tokens in upload order. Callers that submit queries outside of
+  // `CreateClientToAimRequest()` must call this on every submission.
+  std::vector<base::UnguessableToken> MarkQuerySubmitted(
+      std::vector<base::UnguessableToken> file_tokens,
+      std::optional<size_t> query_text_length);
 
   // Returns the list of uploaded but not yet committed context tokens for this
   // particular instance of the session.
@@ -455,12 +482,33 @@ class ContextualSearchSessionHandle {
   // changed.
   void SetRestoredTabs(std::vector<TabInfo> tabs);
 
+  // Records the URL, title, tab id for a tab whose upload is
+  // delayed until query submission. `tab_id` is the tab's SessionID
+  // (`SessionID::id()`). It is attached with `uploaded` set to false and is
+  // later updated in place when `StartTabContextUploadFlow()` is called for the
+  // same tab. No-op if `file_token` is not an uploaded context token. This is
+  // the only function that must be called outside of usual session handle
+  // workflow in order to update the `TabContextState`.
+  // TODO(crbug.com/568013317): Have the session handle own delayed tab IDs,
+  // remove the tab context snapshot code from
+  // `ContextualTasksExtensionHandler`, and upload delayed tabs at submit time
+  // via QueryContextualizer, like `ContextualTasksComposeboxHandler`. Then the
+  // session handle is the single source of truth for delayed tabs and nothing
+  // is tracked on the side, and this public `TabContextState` API is not
+  // needed.
+  void AddDelayedTabContext(const base::UnguessableToken& file_token,
+                            int32_t tab_id,
+                            const GURL& url,
+                            const std::string& title);
+
  private:
   friend class ContextualSearchService;
   friend class MockContextualSearchSessionHandle;
   FRIEND_TEST_ALL_PREFIXES(
       ContextualSearchSessionHandleTest,
       NotifyQuerySubmittedSessionState_TabAttachmentCount);
+  FRIEND_TEST_ALL_PREFIXES(ContextualSearchSessionHandleTest,
+                           AddAttachedTabAppendsInOrderAndUpdatesInPlace);
 
   ContextualSearchSessionHandle(
       base::WeakPtr<ContextualSearchService> service,
@@ -469,6 +517,18 @@ class ContextualSearchSessionHandle {
 
   // Notifies tab context subscribers of the current `tab_context_`.
   void NotifyTabContextSubscribers();
+
+  // Adds `tab` to the attached tabs. `tab.tab_id` must be set. If a tab with
+  // the same ID is already attached, it is updated in place so it keeps its
+  // position; otherwise it is appended. `restored_from_aim` is forced to
+  // false. Notifies tab context subscribers if the attached tabs changed.
+  // Called by normal session handle workflow via `StartTabContextUploadFlow()`
+  // and `AddDelayedTabContext()`.
+  void AddAttachedTab(TabInfo tab);
+
+  // Removes attached tabs whose `context_token` is `file_token`. Notifies tab
+  // context subscribers if any tabs were removed.
+  void RemoveAttachedTabForToken(const base::UnguessableToken& file_token);
 
   // Notifies the metrics recorder that a query has been submitted, providing
   // information about the presence of tab and non-tab context.

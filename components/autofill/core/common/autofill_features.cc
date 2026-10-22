@@ -222,7 +222,7 @@ BASE_FEATURE_PARAM(std::string,
 // received through AUTOFILL_VALUABLE.
 // TODO(crbug.com/542468992): Clean up when launched.
 BASE_FEATURE(kAutofillAiImportConstraintsForSync,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, Autofill AI suggestion width can be limited.
 BASE_FEATURE(kAutofillAiLimitSuggestionWidth,
@@ -934,6 +934,8 @@ BASE_FEATURE(kAutofillPaymentsFieldSwapping, base::FEATURE_DISABLED_BY_DEFAULT);
 // TODO(crbug.com/543741063): Transform to killswitch after some time.
 BASE_FEATURE(kAutofillPersonalizationAndTrustAddressSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillPersonalizationAndTrustAtMemorySurvey,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillPersonalizationAndTrustAutofillAiSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillPersonalizationAndTrustCreditCardSurvey,
@@ -1010,6 +1012,11 @@ BASE_FEATURE(kAutofillServerExperimentalSignatures,
 // Enables uploading of more data to the Autofill server to use for computing
 // signatures: go/autofill-signatures-more-data.
 BASE_FEATURE(kAutofillServerUploadMoreData, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, autofill suggestions for one-time passwords (OTPs) from Gmail
+// are shown.
+BASE_FEATURE(kAutofillShowGmailOtpSuggestions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, fetch sms otp from gmscore and upload votes for sms otp.
 // TODO(crbug.com/453999673): Clean up when launched.

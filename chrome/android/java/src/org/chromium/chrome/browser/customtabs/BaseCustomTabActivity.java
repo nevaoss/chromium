@@ -10,7 +10,6 @@ import static androidx.browser.customtabs.CustomTabsIntent.COLOR_SCHEME_LIGHT;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.customtabs.content.CustomTabActivityNavigationController.FinishReason.HANDLED_BY_OS;
-import static org.chromium.chrome.browser.customtabs.content.CustomTabActivityNavigationController.FinishReason.USER_NAVIGATION;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -39,7 +38,6 @@ import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.IntentUtils;
-import org.chromium.base.ResettersForTesting;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.OneshotSupplier;
@@ -56,6 +54,7 @@ import org.chromium.chrome.browser.app.tabmodel.TabModelOrchestrator;
 import org.chromium.chrome.browser.browserservices.InstalledWebappDataRegister;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider.CustomTabsUiType;
+import org.chromium.chrome.browser.browserservices.intents.CustomTabIntentDataHolder;
 import org.chromium.chrome.browser.browserservices.intents.WebappExtras;
 import org.chromium.chrome.browser.browserservices.trustedwebactivityui.TwaFinishHandler;
 import org.chromium.chrome.browser.browserservices.trustedwebactivityui.TwaIntentHandlingStrategy;
@@ -167,8 +166,6 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
     private static final boolean sPreventTouches =
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU;
 
-    private static Integer sOverrideCoreCountForTesting;
-
     private final CipherFactory mCipherFactory = new CipherFactory();
 
     private BaseCustomTabRootUiCoordinator mBaseCustomTabRootUiCoordinator;
@@ -198,7 +195,6 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
     private CloseButtonVisibilityManager mCloseButtonVisibilityManager;
     private CustomTabBrowserControlsVisibilityDelegate mCustomTabBrowserControlsVisibilityDelegate;
     private CurrentPageVerifier mCurrentPageVerifier;
-    private CustomTabActivityClientConnectionKeeper mCustomTabActivityClientConnectionKeeper;
     private CustomTabOrientationController mCustomTabOrientationController;
     private CustomTabToolbarColorController mCustomTabToolbarColorController;
     private SplashController mSplashController;
@@ -283,14 +279,30 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
     // change the package name.
     protected boolean mShouldOverridePackage;
 
-    public static void setOverrideCoreCountForTesting(int coreCount) {
-        sOverrideCoreCountForTesting = coreCount;
-        ResettersForTesting.register(() -> sOverrideCoreCountForTesting = null);
+    /** Builds {@link BrowserServicesIntentDataProvider} for this {@link CustomTabActivity}. */
+    protected BrowserServicesIntentDataProvider buildIntentDataProvider(
+            Intent intent, @CustomTabsIntent.ColorScheme int colorScheme) {
+        return buildIntentDataProvider(intent, colorScheme, /* dataHolder= */ null);
     }
 
     /** Builds {@link BrowserServicesIntentDataProvider} for this {@link CustomTabActivity}. */
     protected BrowserServicesIntentDataProvider buildIntentDataProvider(
-            Intent intent, @CustomTabsIntent.ColorScheme int colorScheme) {
+            Intent intent,
+            @CustomTabsIntent.ColorScheme int colorScheme,
+            @Nullable CustomTabIntentDataHolder dataHolder) {
+        if (dataHolder != null) {
+            if (dataHolder.mActivityType == ActivityType.AUTH_TAB) {
+                return new AuthTabIntentDataProvider(intent, this, colorScheme, dataHolder);
+            } else if (dataHolder.mCustomTabMode == CustomTabProfileType.INCOGNITO) {
+                return new IncognitoCustomTabIntentDataProvider(
+                        intent, this, colorScheme, dataHolder);
+            } else if (dataHolder.mCustomTabMode == CustomTabProfileType.EPHEMERAL) {
+                return new EphemeralCustomTabIntentDataProvider(
+                        intent, this, colorScheme, dataHolder);
+            }
+            return new CustomTabIntentDataProvider(intent, this, colorScheme, dataHolder);
+        }
+
         if (AuthTabIntentDataProvider.isAuthTabIntent(intent)) {
             return new AuthTabIntentDataProvider(intent, this, colorScheme);
         } else if (IncognitoCustomTabIntentDataProvider.isValidIncognitoIntent(
@@ -705,11 +717,8 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
                             getCustomTabActivityTabProvider());
         }
 
-        mCustomTabActivityClientConnectionKeeper =
-                new CustomTabActivityClientConnectionKeeper(
-                        getIntentDataProvider(),
-                        getCustomTabActivityTabProvider(),
-                        getLifecycleDispatcher());
+        new CustomTabActivityClientConnectionKeeper(
+                getIntentDataProvider(), getLifecycleDispatcher());
 
         new CustomTabActivityLifecycleUmaTracker(
                 this,
@@ -837,15 +846,7 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
                         this,
                         getCustomTabMinimizationManagerHolder());
 
-        getCustomTabActivityNavigationController()
-                .setFinishHandler(
-                        (reason, warmupOnFinish) -> {
-                            if (reason == USER_NAVIGATION || reason == HANDLED_BY_OS) {
-                                getCustomTabActivityClientConnectionKeeper()
-                                        .recordClientConnectionStatus();
-                            }
-                            handleFinishAndClose(reason, warmupOnFinish);
-                        });
+        getCustomTabActivityNavigationController().setFinishHandler(this::handleFinishAndClose);
 
         mBackPressManager.setFallbackOnBackPressed(this::handleBackPressed);
         mBackPressManager.addHandler(
@@ -1613,10 +1614,6 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
 
     private @Nullable AuthTabVerifier getAuthTabVerifier() {
         return mAuthTabVerifier;
-    }
-
-    private CustomTabActivityClientConnectionKeeper getCustomTabActivityClientConnectionKeeper() {
-        return mCustomTabActivityClientConnectionKeeper;
     }
 
     private CustomTabOrientationController getCustomTabOrientationController() {

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -100,7 +101,7 @@ public class SettingsPageUnitTest {
     public void testGetters() {
         assertEquals("Settings", mSettingsPage.getTitle());
         assertEquals("settings", mSettingsPage.getHost());
-        assertTrue(mSettingsPage.supportsEdgeToEdge());
+        assertTrue(mSettingsPage.supportsEdgeToEdgeOnBottom());
         assertEquals(
                 SemanticColorUtils.getSettingsBackgroundColor(mActivity),
                 mSettingsPage.getBackgroundColor());
@@ -111,7 +112,7 @@ public class SettingsPageUnitTest {
 
     @Test
     public void testEdgeToEdge() {
-        assertTrue("SettingsPage should support E2E.", mSettingsPage.supportsEdgeToEdge());
+        assertTrue("SettingsPage should support E2E.", mSettingsPage.supportsEdgeToEdgeOnBottom());
 
         verify(mFragmentDelegate)
                 .initSettings(
@@ -157,6 +158,17 @@ public class SettingsPageUnitTest {
         // destroySettings() should be called once, in destroy().
         mSettingsPage.destroy();
         verify(mFragmentDelegate).destroySettings();
+    }
+
+    @Test
+    public void testReload_ReappliesCurrentUrl() {
+        String url = UrlConstants.SETTINGS_URL + "/appearance";
+        mSettingsPage.updateForUrl(url);
+        clearInvocations(mFragmentDelegate);
+
+        mSettingsPage.reload();
+
+        verify(mFragmentDelegate).updateForUrl(url);
     }
 
     @Test

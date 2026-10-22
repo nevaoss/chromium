@@ -31,6 +31,7 @@ source_set("tabs_public") {
     "//components/split_tabs",
     "//components/tab_groups",
     "//components/tabs:public",
+    "//content/public/browser",
     "//extensions/buildflags",
     "//skia",
     "//ui/base/unowned_user_data",
@@ -158,15 +159,18 @@ source_set("tabs_impl") {
     ":persisted_tab_data",
     ":policy_auditor_bridge",
     ":tabs_public",
+    "//chrome/browser:browser_process",
     "//chrome/browser:chained_back_navigation_tracker",
     "//chrome/browser/actor",
     "//chrome/browser/actor/android",
+    "//chrome/browser/commerce",
     "//chrome/browser/complex_tasks",
     "//chrome/browser/content_settings",
     "//chrome/browser/contextual_search",
     "//chrome/browser/contextual_tasks",
     "//chrome/browser/enterprise",
     "//chrome/browser/external_protocol",
+    "//chrome/browser/facilitated_payments",
     "//chrome/browser/file_system_access",
     "//chrome/browser/finds",
     "//chrome/browser/finds/core",
@@ -181,6 +185,7 @@ source_set("tabs_impl") {
     "//chrome/browser/page_content_annotations",
     "//chrome/browser/page_info",
     "//chrome/browser/payments",
+    "//chrome/browser/picture_in_picture",
     "//chrome/browser/plugins",
     "//chrome/browser/preloading/new_tab_page_preload",
     "//chrome/browser/preloading/prefetch/no_state_prefetch",
@@ -203,11 +208,14 @@ source_set("tabs_impl") {
     "//chrome/browser/ui/tabs:page_context_eligibility_helper",
     "//chrome/browser/ui/webui:webui_util",
     "//chrome/browser/v8_compile_hints",
+    "//chrome/common",
 
     # TODO(crbug.com/489548570): Remove "side_panel/internal/android:dev"
     # from release builds. We need it in tests.
     "//chrome/browser/ui/side_panel/internal/android:dev",
+    "//components/autofill/content/browser",
     "//components/client_hints/browser",
+    "//components/commerce/content/browser",
     "//components/content_capture/common",
     "//components/download/content/factory",
     "//components/download/content/public",
@@ -217,18 +225,24 @@ source_set("tabs_impl") {
     "//components/history/core/browser",
     "//components/lens",
     "//components/metrics:content",
+    "//components/metrics_services_manager",
     "//components/page_content_annotations/core",
     "//components/payments/core",
     "//components/safe_browsing:buildflags",
     "//components/safe_browsing/core/common:features",
     "//components/search",
     "//components/tabs:public",
+    "//components/webapps/browser",
     "//content/public/browser",
     "//extensions/buildflags",
+    "//media",
     "//ui/base",
   ]
   if (enable_webui_ntp) {
-    deps += [ "//chrome/browser/ui/customize_chrome:customize_chrome_base" ]
+    deps += [
+      "//chrome/browser/ui/customize_chrome:customize_chrome_base",
+      "//chrome/browser/ui/search",
+    ]
   }
   if (enable_extensions_core) {
     deps += [

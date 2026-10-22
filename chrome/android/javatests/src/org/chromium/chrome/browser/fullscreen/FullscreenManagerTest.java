@@ -1217,10 +1217,7 @@ public class FullscreenManagerTest {
         Tab tab = page.getTab();
 
         // Click to trigger java scripts callback
-        TestTouchUtils.singleClick(
-                InstrumentationRegistry.getInstrumentation(),
-                activity.getResources().getDisplayMetrics().widthPixels * 0.5f,
-                activity.getResources().getDisplayMetrics().heightPixels * 0.5f);
+        TouchCommon.singleClickView(tab.getView());
 
         final TabWebContentsDelegateAndroid delegate = TabTestUtils.getTabWebContentsDelegate(tab);
         ThreadUtils.runOnUiThreadBlocking(
@@ -1265,6 +1262,7 @@ public class FullscreenManagerTest {
         ChromeFeatureList.FULLSCREEN_INSETS_API_MIGRATION,
         ChromeFeatureList.FULLSCREEN_INSETS_API_MIGRATION_ON_AUTOMOTIVE
     })
+    @DisabledTest(message = "https://crbug.com/568648439")
     public void testFullscreenExitWithSelectionPopPresent_BackGestureRefactor()
             throws InterruptedException {
         WebPageStation page = mActivityTestRule.startOnUrl(FULLSCREEN_WITH_SELECTION_POPUP);
@@ -1273,10 +1271,7 @@ public class FullscreenManagerTest {
         Tab tab = page.getTab();
 
         // Click to trigger java scripts callback
-        TestTouchUtils.singleClick(
-                InstrumentationRegistry.getInstrumentation(),
-                activity.getResources().getDisplayMetrics().widthPixels * 0.5f,
-                activity.getResources().getDisplayMetrics().heightPixels * 0.5f);
+        TouchCommon.singleClickView(tab.getView());
 
         final TabWebContentsDelegateAndroid delegate = TabTestUtils.getTabWebContentsDelegate(tab);
         ThreadUtils.runOnUiThreadBlocking(

@@ -306,6 +306,22 @@ AccessibilityTextStyleInfo CalculateTextRunStyleInfo(FPDF_TEXTPAGE text_page,
   return style_info;
 }
 
+// Returns the natural language specified by the innermost marked-content
+// sequence containing `page_object`, or an empty string if none is specified.
+std::string GetPageObjectLanguage(FPDF_PAGEOBJECT page_object) {
+  CHECK(::features::IsPdfAccessibilityHeuristicEnhancementsEnabled());
+  int mark_count = FPDFPageObj_CountMarks(page_object);
+  for (int i = mark_count - 1; i >= 0; --i) {
+    FPDF_PAGEOBJECTMARK mark = FPDFPageObj_GetMark(page_object, i);
+    std::optional<std::u16string> lang =
+        GetPageObjectMarkStringParam(mark, "Lang");
+    if (lang.has_value()) {
+      return base::UTF16ToUTF8(lang.value());
+    }
+  }
+  return std::string();
+}
+
 // Returns true if the text_object on the given `text_page` at the given
 // `char_index` has the same text style as the text run. `is_searchified`
 // indicates that the text and style are from searchify.
@@ -1375,6 +1391,9 @@ AccessibilityTextRunInfo PDFiumPage::CalculateTextRunInfoAt(
 
   FPDF_PAGEOBJECT text_object =
       FPDFText_GetTextObject(text_page, actual_start_char_index);
+  if (::features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
+    info.language = GetPageObjectLanguage(text_object);
+  }
 
   // Continue adding characters until heuristics indicate we should end the text
   // run.
@@ -1390,16 +1409,27 @@ AccessibilityTextRunInfo PDFiumPage::CalculateTextRunInfoAt(
         GetFloatCharRectInPixels(page, text_page, char_index);
 
     if (!base::IsUnicodeWhitespace(character)) {
-      // Heuristic: End the text run if the text style of the current character
-      // is different from the text run's style. The style can only be different
-      // if the FPDF_PAGEOBJECTs are different, so check the FPDF_PAGEOBJECTs
-      // first to make the comparison faster.
+      // Heuristic: End the text run if the text style or language of the
+      // current character is different from the text run's style. The style and
+      // language can only be different if the FPDF_PAGEOBJECTs are different,
+      // so check the FPDF_PAGEOBJECTs first to make the comparison faster.
       FPDF_PAGEOBJECT current_text_object =
           FPDFText_GetTextObject(text_page, char_index);
-      if (current_text_object != text_object &&
-          !AreTextStyleEqual(text_page, char_index, info.style,
-                             info.is_searchified)) {
-        break;
+      if (current_text_object != text_object) {
+        if (!AreTextStyleEqual(text_page, char_index, info.style,
+                               info.is_searchified)) {
+          break;
+        }
+
+        if (::features::IsPdfAccessibilityHeuristicEnhancementsEnabled()) {
+          if (GetPageObjectLanguage(current_text_object) != info.language) {
+            break;
+          }
+
+          // Update `text_object` to avoid re-checking style and language for
+          // remaining characters in `current_text_object`.
+          text_object = current_text_object;
+        }
       }
 
       // Heuristic: End text run if character isn't going in the same direction.
@@ -1584,11 +1614,6 @@ void PDFiumPage::PopulateAnnotationLinks() {
   // deletions below prevents one of them from erasing another.
   std::vector<Link> annotation_links;
   while (FPDFLink_Enumerate(page, &start_pos, &link_annot)) {
-    Link link;
-    Area area = GetLinkTarget(link_annot, &link.target);
-    if (area == NONSELECTABLE_AREA)
-      continue;
-
     PdfRect link_rect;
     if (!FPDFLink_GetAnnotRect(link_annot, &FsRectFFromPdfRect(link_rect))) {
       continue;
@@ -1598,6 +1623,7 @@ void PDFiumPage::PopulateAnnotationLinks() {
     // flipped. Swap the coordinates before further processing.
     link_rect.Normalize();
 
+    Link link;
     int quad_point_count = FPDFLink_CountQuadPoints(link_annot);
     // Calculate the bounds of link using the quad points data.
     // If quad points for link is not present then use
@@ -1616,6 +1642,15 @@ void PDFiumPage::PopulateAnnotationLinks() {
     } else {
       link.bounding_rects.push_back(PageToScreen(gfx::Point(), 1.0, link_rect,
                                                  PageOrientation::kOriginal));
+    }
+
+    // WARNING: Do not use `link_annot` after this call. It may have been
+    // invalidated.
+    Area area = GetLinkTarget(link_annot, &link.target);
+    if (area == NONSELECTABLE_AREA) {
+      // It is unfortunate that all the work above may get thrown away due to
+      // how `link_annot` access have to be arranged to be safe.
+      continue;
     }
 
     // Calculate underlying text range of link.
@@ -1763,20 +1798,23 @@ void PDFiumPage::PopulateTextRunTypeAndImageAltTextForStructElement(
 }
 
 void PDFiumPage::PopulateAnnotations() {
-  if (calculated_annotations_)
+  if (calculated_annotations_) {
     return;
+  }
 
   FPDF_PAGE page = GetPage();
-  if (!page)
+  if (!page) {
     return;
+  }
 
   int annotation_count = FPDFPage_GetAnnotCount(page);
   for (int i = 0; i < annotation_count; ++i) {
     ScopedFPDFAnnotation annot(FPDFPage_GetAnnot(page, i));
-    DCHECK(annot);
-    FPDF_ANNOTATION_SUBTYPE subtype = FPDFAnnot_GetSubtype(annot.get());
+    if (!annot) {
+      continue;
+    }
 
-    switch (subtype) {
+    switch (FPDFAnnot_GetSubtype(annot.get())) {
       case FPDF_ANNOT_HIGHLIGHT: {
         PopulateHighlight(annot.get());
         break;

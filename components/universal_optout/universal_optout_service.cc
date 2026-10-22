@@ -81,10 +81,12 @@ EligibilityCategory GetEligibilityCategory(const base::DictValue& history_dict,
     }
   }
 
+  const double threshold_ratio = features::kEligibilityThresholdRatio.Get();
+
   bool is_recent_eligible =
       recent_total_days > 0 &&
       (static_cast<double>(recent_eligible_days) / recent_total_days >=
-       UniversalOptOutService::kEligibilityThresholdRatio);
+       threshold_ratio);
   if (is_recent_eligible) {
     return EligibilityCategory::kEligible;
   }
@@ -92,7 +94,7 @@ EligibilityCategory GetEligibilityCategory(const base::DictValue& history_dict,
   bool is_trailing_eligible =
       trailing_total_days > 0 &&
       (static_cast<double>(trailing_eligible_days) / trailing_total_days >=
-       UniversalOptOutService::kEligibilityThresholdRatio);
+       threshold_ratio);
   if (is_trailing_eligible) {
     return EligibilityCategory::kTrailingEligible;
   }
@@ -250,7 +252,12 @@ void UniversalOptOutService::RecordLocation(
   if (!geo_level1.empty()) {
     std::string day_key = base::TimeToValue(current_day).GetString();
     bool is_eligible = IsEligibleLocation(geo_level1);
-    history_update->Set(day_key, is_eligible);
+    // Only record the day's eligibility if it is unset, or if it changed from
+    // ineligible to eligible. Once a user has been eligible at some point
+    // during a day, that day remains eligible.
+    std::optional<bool> existing = history_update->FindBool(day_key);
+    history_update->Set(
+        day_key, is_eligible || (existing.has_value() && existing.value()));
   }
 }
 

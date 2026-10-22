@@ -19,6 +19,15 @@ import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.
 import {assertHTMLElement} from './contextual_tasks_test_utils.js';
 import {TestContextualTasksBrowserProxy, TestToolbarBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
 
+// clang-format off
+// <if expr="not is_android">
+import {LhsChipIdentifier} from 'chrome://contextual-tasks/toolbar_ui_api_data_model.mojom-webui.js';
+
+import {createFakePermissionChip as createFakeChip} from './test_contextual_tasks_browser_proxy.js';
+import type {TestContextualTasksToolbarUiService} from './test_contextual_tasks_browser_proxy.js';
+// </if>
+// clang-format on
+
 suite('TopToolbarTest', () => {
   let topToolbar: TopToolbarElement;
   let proxy: TestContextualTasksBrowserProxy;
@@ -36,6 +45,26 @@ suite('TopToolbarTest', () => {
       contextualTasksUnboundedMenuEnabled: false,
       contextualTasksSidePanelRearchitectureEnabled: false,
     });
+  });
+
+  test('updates contextInfos when onContextUpdated fires', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    topToolbar = document.createElement('top-toolbar');
+    document.body.appendChild(topToolbar);
+    await microtasksFinished();
+
+    toolbarProxy.callbackRouterRemote.onContextUpdated([{
+      tab: {
+        url: 'https://example.com',
+        title: 'Example',
+        tabId: 1,
+        hasChromeTabData: false,
+      },
+    }]);
+    await microtasksFinished();
+
+    assertEquals(1, topToolbar.contextInfos.length);
+    assertEquals('Example', topToolbar.contextInfos[0]!.tab!.title);
   });
 
   (loadTimeData.getBoolean('isSmallDeviceFormFactor') ?
@@ -157,6 +186,43 @@ suite('TopToolbarTest', () => {
     });
 
 
+    test('handles tab sources menu interactions', async () => {
+      const tab = {
+        title: 'Sample Tab',
+        url: 'https://example/sample.html',
+        hasChromeTabData: false,
+        tabId: 1,
+      };
+      topToolbar.contextInfos = [{tab: tab}];
+      await microtasksFinished();
+
+      const sourcesButton =
+          topToolbar.shadowRoot.querySelector<HTMLElement>('#sources');
+      assertTrue(!!sourcesButton);
+      sourcesButton.click();
+      await microtasksFinished();
+
+      const sourcesMenuElement = topToolbar.$.sourcesMenu.get();
+      const crActionMenu =
+          sourcesMenuElement.shadowRoot.querySelector('cr-action-menu');
+      assertTrue(!!crActionMenu);
+      assertTrue(crActionMenu.open);
+
+      const headers = sourcesMenuElement.shadowRoot.querySelectorAll('.header');
+      assertEquals(1, headers.length);
+
+      // Click the first tab item.
+      const tabItem = sourcesMenuElement.shadowRoot.querySelector<HTMLElement>(
+          'cr-url-list-item.dropdown-item');
+      assertTrue(!!tabItem);
+      tabItem.click();
+
+      const [tabId, url] =
+          await toolbarProxy.handler.whenCalled('onTabClickedFromSourcesMenu');
+      assertEquals(1, tabId);
+      assertDeepEquals(url, tab.url);
+    });
+
     test('handles file sources menu interactions', async () => {
       const file = {
         title: 'Sample Document',
@@ -187,7 +253,7 @@ suite('TopToolbarTest', () => {
       fileItem.click();
 
       const url =
-          await proxy.handler.whenCalled('onFileClickedFromSourcesMenu');
+          await toolbarProxy.handler.whenCalled('onFileClickedFromSourcesMenu');
       assertDeepEquals(url, file.url);
     });
 
@@ -222,8 +288,8 @@ suite('TopToolbarTest', () => {
       assertTrue(!!imageItem);
       imageItem.click();
 
-      const url =
-          await proxy.handler.whenCalled('onImageClickedFromSourcesMenu');
+      const url = await toolbarProxy.handler.whenCalled(
+          'onImageClickedFromSourcesMenu');
       assertDeepEquals(url, image.url);
     });
 
@@ -960,32 +1026,18 @@ suite('TopToolbarTest', () => {
 
   // <if expr="not is_android">
   suite('Permission Dashboard Integration', () => {
+    let toolbarUiService: TestContextualTasksToolbarUiService;
+
     setup(async () => {
       loadTimeData.overrideValues({
         contextualTasksSidePanelRearchitectureEnabled: true,
       });
       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      toolbarUiService = toolbarProxy.toolbarUiService;
       topToolbar = document.createElement('top-toolbar');
       document.body.appendChild(topToolbar);
       await microtasksFinished();
     });
-
-    function createFakeChip(overrides = {}) {
-      return {
-        isVisible: false,
-        isFullyCollapsed: false,
-        theme: 0,
-        promptStyle: 0,
-        userDecision: 0,
-        shouldShowBlockedIcon: false,
-        iconName: '',
-        message: '',
-        tooltip: '',
-        accessibilityName: '',
-        stateToken: 1,
-        ...overrides,
-      };
-    }
 
     test(
         'hides and shows permission-dashboard, and hides and shows logo' +
@@ -1014,7 +1066,10 @@ suite('TopToolbarTest', () => {
           topToolbar.permissionDashboardState = fakeState;
           await microtasksFinished();
 
-          assertTrue(!!topRow.querySelector('permission-dashboard'));
+          const dashboard = topRow.querySelector<HTMLElement&{delegate: any}>(
+              'permission-dashboard');
+          assertTrue(!!dashboard);
+          assertTrue(!!dashboard.delegate);
           assertTrue(logoContainer.hidden);
 
           // Remove the visible chip, so that the permission dashboard no longer
@@ -1064,7 +1119,10 @@ suite('TopToolbarTest', () => {
           topToolbar.permissionDashboardState = fakeState;
           await microtasksFinished();
 
-          assertTrue(!!topRow.querySelector('permission-dashboard'));
+          const dashboard = topRow.querySelector<HTMLElement&{delegate: any}>(
+              'permission-dashboard');
+          assertTrue(!!dashboard);
+          assertTrue(!!dashboard.delegate);
           assertTrue(logoContainer.hidden);
 
           // Remove the visible chip, so that the permission dashboard no longer
@@ -1079,6 +1137,83 @@ suite('TopToolbarTest', () => {
           assertFalse(!!topRow.querySelector('permission-dashboard'));
           assertFalse(logoContainer.hidden);
         });
+
+    test(
+        'loads initial state and updates on onPermissionDashboardStateChanged',
+        async () => {
+          await toolbarUiService.whenCalled('getInitialState');
+
+          const topRow = topToolbar.shadowRoot.querySelector('#top-row');
+          assertTrue(!!topRow);
+          assertFalse(!!topRow.querySelector('permission-dashboard'));
+
+          // Push an update over the observer callback router.
+          const observerRemote = toolbarProxy.bindToolbarUiObserverRemote();
+          const pushedState = {
+            indicatorChip: createFakeChip(),
+            requestChip:
+                createFakeChip({isVisible: true, iconName: 'kMicIcon'}),
+            isDividerVisible: false,
+          };
+          observerRemote.onPermissionDashboardStateChanged(pushedState);
+          await observerRemote.$.flushForTesting();
+          await microtasksFinished();
+
+          assertDeepEquals(pushedState, topToolbar.permissionDashboardState);
+          assertTrue(!!topRow.querySelector('permission-dashboard'));
+        });
+
+    test('forwards permission chip delegate calls to service', async () => {
+      topToolbar.permissionDashboardState = {
+        indicatorChip: createFakeChip(),
+        requestChip: createFakeChip({isVisible: true, iconName: 'kMicIcon'}),
+        isDividerVisible: false,
+      };
+      await microtasksFinished();
+
+      const topRow = topToolbar.shadowRoot.querySelector('#top-row');
+      assertTrue(!!topRow);
+      const dashboard = topRow.querySelector<HTMLElement&{delegate: any}>(
+          'permission-dashboard');
+      assertTrue(!!dashboard);
+      assertTrue(!!dashboard.delegate);
+
+      dashboard.delegate.onChipClicked(
+          LhsChipIdentifier.kPermissionRequest, true);
+      assertDeepEquals(
+          [LhsChipIdentifier.kPermissionRequest, true],
+          await toolbarUiService.whenCalled('onChipClicked'));
+
+      dashboard.delegate.onChipPointerEntered(
+          LhsChipIdentifier.kPermissionRequest);
+      assertEquals(
+          LhsChipIdentifier.kPermissionRequest,
+          await toolbarUiService.whenCalled('onChipPointerEntered'));
+
+      dashboard.delegate.onChipPointerExited(
+          LhsChipIdentifier.kPermissionRequest);
+      assertEquals(
+          LhsChipIdentifier.kPermissionRequest,
+          await toolbarUiService.whenCalled('onChipPointerExited'));
+
+      dashboard.delegate.onChipMousePressed(
+          LhsChipIdentifier.kPermissionRequest);
+      assertEquals(
+          LhsChipIdentifier.kPermissionRequest,
+          await toolbarUiService.whenCalled('onChipMousePressed'));
+
+      dashboard.delegate.onChipExpandAnimationEnded(
+          LhsChipIdentifier.kPermissionIndicator);
+      assertEquals(
+          LhsChipIdentifier.kPermissionIndicator,
+          await toolbarUiService.whenCalled('onChipExpandAnimationEnded'));
+
+      dashboard.delegate.onChipCollapseAnimationEnded(
+          LhsChipIdentifier.kPermissionIndicator);
+      assertEquals(
+          LhsChipIdentifier.kPermissionIndicator,
+          await toolbarUiService.whenCalled('onChipCollapseAnimationEnded'));
+    });
 
     test(
         'registers super G button help bubble anchor only when logo is shown',

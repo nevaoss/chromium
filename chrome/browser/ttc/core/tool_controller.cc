@@ -12,16 +12,20 @@
 #include <vector>
 
 #include "base/functional/bind.h"
+#include "base/json/json_writer.h"
 #include "base/values.h"
 #include "build/build_config.h"
+#include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
 #include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/tab_observation_strategy.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ttc/core/session_controller_impl.h"
+#include "chrome/browser/ttc/core/session_journal.h"
 #include "chrome/browser/ttc/core/ttc_actor_ui_state_manager.h"
 #include "chrome/browser/ttc/core/ttc_keyed_service.h"
 #include "chrome/common/actor/action_result.h"
+#include "components/actor/core/journal_details_builder.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/actor/tools/find_and_highlight_tool_request.h"
@@ -33,36 +37,86 @@
 #include "chrome/browser/actor/tools/switch_tab_tool_request.h"
 #include "chrome/browser/actor/tools/tab_management_tool_request.h"
 #include "chrome/browser/actor/tools/tool_request.h"
+#include "chrome/browser/actor/tools/translate_page_tool_request.h"
+#include "chrome/browser/actor/tools/window_management_tool_request.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "components/sessions/core/session_id.h"
 #include "url/gurl.h"
 #endif
 
 namespace ttc {
 
+namespace {
+
+void OnToolCallFinished(
+    std::unique_ptr<SessionJournal::PendingAsyncEvent> journal_event,
+    ToolResponseCallback callback,
+    ToolResponse response) {
+  actor::JournalDetailsBuilder details;
+  if (response.Ok()) {
+    details.Add("result", "ok");
+  } else {
+    const ToolError& error = response.error();
+    if (error.code) {
+      details.Add("code", *error.code);
+    }
+    details.AddError(error.message.value_or("Tool call failed"));
+  }
+  journal_event->EndEntry(std::move(details).Build());
+  std::move(callback).Run(std::move(response));
+}
+
+}  // namespace
+
 ToolController::ToolController(SessionControllerImpl& session_controller)
-    : session_controller_(session_controller) {}
+    : session_controller_(session_controller) {
+  // Start the task up front so that the whole session is journaled under it.
+  // TtcKeyedServiceFactory doesn't create TTC without the actor service.
+  actor::ActorKeyedService* actor_service =
+      actor::ActorKeyedService::Get(GetProfile());
+  CHECK(actor_service);
+  EnsureTaskCreated(actor_service);
+}
 
 ToolController::~ToolController() {
   if (!task_id_.is_null()) {
     auto* actor_service = actor::ActorKeyedService::Get(GetProfile());
     CHECK(actor_service);
-    actor_service->StopTask(task_id_,
-                            actor::ActorTask::StoppedReason::kTaskComplete);
+
+    // Cancel a task that never acted so that it isn't surfaced to the user.
+    // TODO(b/544821996): Revisit once TTC has its own task client and delegate.
+    actor::ActorTask::StoppedReason stop_reason =
+        actor::ActorTask::StoppedReason::kTaskComplete;
+    if (const actor::ActorTask* task = actor_service->GetTask(task_id_);
+        task && task->GetState() == actor::ActorTask::State::kCreated) {
+      stop_reason = actor::ActorTask::StoppedReason::kStoppedByUser;
+    }
+    actor_service->StopTask(task_id_, stop_reason);
   }
 }
 
 void ToolController::ProcessToolCall(const ToolRequest& tool_request,
                                      ToolResponseCallback callback) {
-  // Every tool below is executed as an actor tool within an actor task, so no
-  // tools are supported if the actor service isn't available. This matches
-  // GetToolDefinitions().
-  if (!actor::ActorKeyedService::Get(GetProfile())) {
-    std::move(callback).Run(ToolResponse::Error(
-        actor::mojom::ActionResultCode::kToolUnknown, "Unsupported tool"));
-    return;
-  }
+  actor::ActorKeyedService* actor_service =
+      actor::ActorKeyedService::Get(GetProfile());
+  CHECK(actor_service);
+
+  // Done before journaling the call so that, if the task has to be replaced,
+  // the call is journaled under the task it runs in.
+  EnsureTaskCreated(actor_service);
+
+  callback = base::BindOnce(
+      &OnToolCallFinished,
+      journal_->BeginAsyncEvent(
+          "TtcToolCall",
+          actor::JournalDetailsBuilder()
+              .Add("name", tool_request.name)
+              .Add("arguments",
+                   base::WriteJson(tool_request.arguments).value_or(""))
+              .Build()),
+      std::move(callback));
 
 #if !BUILDFLAG(IS_ANDROID)
   if (tool_request.name == "open_url") {
@@ -116,6 +170,16 @@ void ToolController::ProcessToolCall(const ToolRequest& tool_request,
     SeekToTimestamp(tool_request.arguments, std::move(callback));
     return;
   }
+
+  if (tool_request.name == "translate_page") {
+    TranslatePage(tool_request.arguments, std::move(callback));
+    return;
+  }
+
+  if (tool_request.name == "set_fullscreen") {
+    SetFullscreen(tool_request.arguments, std::move(callback));
+    return;
+  }
 #endif
 
   std::move(callback).Run(ToolResponse::Error(
@@ -124,12 +188,6 @@ void ToolController::ProcessToolCall(const ToolRequest& tool_request,
 
 std::vector<ToolDefinition> ToolController::GetToolDefinitions() {
   std::vector<ToolDefinition> tools;
-
-  // Every tool below is executed as an actor tool within an actor task, so
-  // return an empty list if the actor service isn't available.
-  if (!actor::ActorKeyedService::Get(GetProfile())) {
-    return tools;
-  }
 
 #if !BUILDFLAG(IS_ANDROID)
   ToolDefinition open_url;
@@ -310,6 +368,46 @@ std::vector<ToolDefinition> ToolController::GetToolDefinitions() {
   seek_to_timestamp.verbalization =
       ToolDefinition::Verbalization::kSilentAction;
   tools.push_back(std::move(seek_to_timestamp));
+
+  ToolDefinition translate_page;
+  translate_page.name = "translate_page";
+  translate_page.description = "Translate the current page.";
+  translate_page.parameters_json_schema =
+      base::DictValue()
+          .Set("type", "object")
+          .Set("properties",
+               base::DictValue().Set(
+                   "target_language",
+                   base::DictValue()
+                       .Set("type", "string")
+                       .Set("description",
+                            "Target language code (e.g. \"en\", \"es\", "
+                            "\"fr\"). If empty, translates to the user's "
+                            "default language.")))
+          .Set("required", base::ListValue().Append("target_language"));
+  translate_page.behavior = ToolDefinition::Behavior::kBlocking;
+  translate_page.verbalization = ToolDefinition::Verbalization::kSilentAction;
+  tools.push_back(std::move(translate_page));
+
+  ToolDefinition set_fullscreen;
+  set_fullscreen.name = "set_fullscreen";
+  set_fullscreen.description =
+      "Set or exit full screen mode for the active browser window.";
+  set_fullscreen.parameters_json_schema =
+      base::DictValue()
+          .Set("type", "object")
+          .Set("properties",
+               base::DictValue().Set(
+                   "fullscreen",
+                   base::DictValue()
+                       .Set("type", "boolean")
+                       .Set("description",
+                            "Set to true to enter full screen, false to exit "
+                            "full screen.")))
+          .Set("required", base::ListValue().Append("fullscreen"));
+  set_fullscreen.behavior = ToolDefinition::Behavior::kBlocking;
+  set_fullscreen.verbalization = ToolDefinition::Verbalization::kSilentAction;
+  tools.push_back(std::move(set_fullscreen));
 #endif
 
   return tools;
@@ -338,6 +436,15 @@ void ToolController::EnsureTaskCreated(
       actor::TaskSourceInfo(actor::TaskSourceInfo::Client::kTtc, "ttc"),
       actor::GetNullEnterprisePolicyChecker(), /*options=*/nullptr,
       /*delegate=*/nullptr, &ttc_service->actor_ui_state_manager());
+
+  // The session keeps a single journal so that its async events stay
+  // continuous if the task is replaced.
+  if (journal_) {
+    journal_->SetTaskId(task_id_);
+  } else {
+    journal_ =
+        std::make_unique<SessionJournal>(actor_service->GetJournal(), task_id_);
+  }
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -526,17 +633,61 @@ void ToolController::SeekToTimestamp(const base::DictValue& arguments,
       std::move(callback));
 }
 
+void ToolController::TranslatePage(const base::DictValue& arguments,
+                                   ToolResponseCallback callback) {
+  // If `target_language` is empty, the page is translated to the user's
+  // preferred language.
+  const std::string* target_language = arguments.FindString("target_language");
+  if (!target_language) {
+    std::move(callback).Run(
+        ToolResponse::Error(actor::mojom::ActionResultCode::kArgumentsInvalid,
+                            "Missing target_language argument"));
+    return;
+  }
+
+  PerformActionOnActiveTab(
+      [&target_language](
+          tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
+        return std::make_unique<actor::TranslatePageToolRequest>(
+            tab_handle, *target_language);
+      },
+      std::move(callback));
+}
+
+void ToolController::SetFullscreen(const base::DictValue& arguments,
+                                   ToolResponseCallback callback) {
+  std::optional<bool> fullscreen = arguments.FindBool("fullscreen");
+  if (!fullscreen) {
+    std::move(callback).Run(
+        ToolResponse::Error(actor::mojom::ActionResultCode::kArgumentsInvalid,
+                            "Missing fullscreen argument"));
+    return;
+  }
+
+  PerformActionOnActiveWindow(
+      [&fullscreen](BrowserWindowInterface& browser)
+          -> std::unique_ptr<actor::ToolRequest> {
+        const int32_t window_id = browser.GetSessionID().id();
+        if (*fullscreen) {
+          return std::make_unique<actor::EnterFullscreenToolRequest>(window_id);
+        }
+        return std::make_unique<actor::ExitFullscreenToolRequest>(window_id);
+      },
+      std::move(callback));
+}
+
+BrowserWindowInterface* ToolController::GetActiveBrowser() {
+  // TODO(b/561651267): Get BrowserWindowInterface* from SessionControllerImpl
+  // (or a class that manages the active window for the session).
+  auto* collection = ProfileBrowserCollection::GetForProfile(GetProfile());
+  return collection ? collection->GetLastActiveBrowser() : nullptr;
+}
+
 void ToolController::PerformActionOnActiveTab(
     base::FunctionRef<std::unique_ptr<actor::ToolRequest>(tabs::TabHandle)>
         create_action,
     ToolResponseCallback callback) {
-  // TODO(b/561651267): Get BrowserWindowInterface* from SessionControllerImpl
-  // (or a class that manages the active window for the session).
-  BrowserWindowInterface* browser = nullptr;
-  if (auto* collection =
-          ProfileBrowserCollection::GetForProfile(GetProfile())) {
-    browser = collection->GetLastActiveBrowser();
-  }
+  BrowserWindowInterface* browser = GetActiveBrowser();
   if (!browser) {
     std::move(callback).Run(
         ToolResponse::Error(actor::mojom::ActionResultCode::kWindowWentAway,
@@ -554,12 +705,26 @@ void ToolController::PerformActionOnActiveTab(
   PerformAction(create_action(active_tab->GetHandle()), std::move(callback));
 }
 
+void ToolController::PerformActionOnActiveWindow(
+    base::FunctionRef<std::unique_ptr<actor::ToolRequest>(
+        BrowserWindowInterface&)> create_action,
+    ToolResponseCallback callback) {
+  BrowserWindowInterface* browser = GetActiveBrowser();
+  if (!browser) {
+    std::move(callback).Run(
+        ToolResponse::Error(actor::mojom::ActionResultCode::kWindowWentAway,
+                            "No active browser window"));
+    return;
+  }
+
+  PerformAction(create_action(*browser), std::move(callback));
+}
+
 void ToolController::PerformAction(std::unique_ptr<actor::ToolRequest> action,
                                    ToolResponseCallback callback) {
   actor::ActorKeyedService* actor_service =
       actor::ActorKeyedService::Get(GetProfile());
   CHECK(actor_service);
-  EnsureTaskCreated(actor_service);
 
   std::vector<std::unique_ptr<actor::ToolRequest>> actions;
   actions.push_back(std::move(action));

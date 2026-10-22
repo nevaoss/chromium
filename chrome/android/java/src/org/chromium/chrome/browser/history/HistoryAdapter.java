@@ -31,6 +31,7 @@ import org.chromium.chrome.browser.finds.FindsFeatures;
 import org.chromium.chrome.browser.finds.FindsUtils;
 import org.chromium.chrome.browser.history.FilterSheetCoordinator.FilterItem;
 import org.chromium.chrome.browser.history.HistoryProvider.BrowsingHistoryObserver;
+import org.chromium.chrome.browser.history.HistoryProvider.ClientInfo;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelper.DefaultFaviconHelper;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -38,7 +39,6 @@ import org.chromium.chrome.browser.ui.signin.signin_promo.SigninPromoCoordinator
 import org.chromium.components.browser_ui.widget.DateDividedAdapter;
 import org.chromium.components.browser_ui.widget.MoreProgressButton;
 import org.chromium.components.browser_ui.widget.MoreProgressButton.State;
-import org.chromium.components.browser_ui.widget.chips.ChipView;
 import org.chromium.ui.text.ChromeClickableSpan;
 import org.chromium.ui.text.SpanApplier;
 
@@ -75,8 +75,6 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
     private @Nullable HeaderItem mHistorySyncPromoHeaderItem;
     private @Nullable HeaderItem mFilterChipsHeaderItem;
     private @Nullable HeaderItem mFindsPromoHeaderItem;
-    private ChipView mAppFilterChip;
-    private ChipView mHostFilterChip;
 
     // Footers
     private MoreProgressButton mMoreProgressButton;
@@ -93,7 +91,6 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
     private boolean mClearBrowsingDataButtonVisible;
     private boolean mHistorySyncPromoVisible;
     private boolean mFindsPromoVisible;
-    private boolean mFindsPromoShowEligible;
     private String mQueryText = EMPTY_QUERY;
     // Hostname currently chosen for host filtering (either via the Page Info UI or the host
     // filter chip). If null, ignored when querying history.
@@ -101,6 +98,9 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
 
     // ID of the App currently chosen for app filtering. If null, ignored when querying history.
     private @Nullable String mAppId;
+    // Client IDs of the device currently chosen for client filtering. If empty, ignored when
+    // querying history.
+    private List<String> mClientIds = Collections.emptyList();
     private boolean mDisableScrollToLoadForTest;
 
     // Whether we show the source app for each entry. We show it in BrApp in full history UI, but
@@ -164,9 +164,7 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
     }
 
     private void executeQuery() {
-        mHistoryProvider.queryHistory(
-                mQueryText,
-                new QueryOptions(mAppId, mHostName, /* clientIds= */ Collections.emptyList()));
+        mHistoryProvider.queryHistory(mQueryText, new QueryOptions(mAppId, mHostName, mClientIds));
     }
 
     /** Starts loading the first set of browsing history items. */
@@ -191,6 +189,10 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
 
     void queryApps() {
         mHistoryProvider.queryApps();
+    }
+
+    void queryClients() {
+        mHistoryProvider.queryClients();
     }
 
     @Override
@@ -253,6 +255,7 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         mIsSearching = false;
         if (mManager.showAppFilter()) setAppId(null);
         if (mManager.showHostFilter()) setHostName(null);
+        if (mManager.showClientFilter()) setClientIds(Collections.emptyList());
         mShowSourceApp = mManager.showAppFilter();
 
         // Re-initialize the data in the adapter.
@@ -308,8 +311,7 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         }
 
         // While the selection is active, we temporarily disable the filter buttons.
-        if (mManager.showAppFilter()) mAppFilterChip.setEnabled(!active);
-        if (mManager.showHostFilter()) mHostFilterChip.setEnabled(!active);
+        mManager.setFilterChipsEnabled(!active);
 
         int visibility = mManager.getRemoveItemButtonVisibility();
         if (active) {
@@ -379,7 +381,7 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
 
         boolean hasVisibleContent = !items.isEmpty() || mHistorySyncPromoVisible;
         if ((!mAreHeadersInitialized && hasVisibleContent && !mIsSearching)
-                || (mIsSearching && mManager.showFilterChips())
+                || mIsSearching
                 || mIsLargeFormFactorDevice) {
             setHeaders();
             mAreHeadersInitialized = true;
@@ -446,6 +448,18 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
 
         // Querying apps was completed after the search mode is entered (or within search mode).
         // Set the headers again to show/hide the header item for the app filter button.
+        // On LFF devices, the filter chips are always visible.
+        if (mIsSearching || mIsLargeFormFactorDevice) {
+            setHeaders();
+        }
+    }
+
+    @Override
+    public void onQueryClientsComplete(List<ClientInfo> items) {
+        mManager.onQueryClientsComplete(items);
+
+        // Same as for apps: querying clients may complete after the search mode is entered (or
+        // within search mode). Set the headers again to show/hide the client filter chip.
         // On LFF devices, the filter chips are always visible.
         if (mIsSearching || mIsLargeFormFactorDevice) {
             setHeaders();
@@ -566,23 +580,12 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         return viewGroup;
     }
 
-    @EnsuresNonNull({"mAppFilterChip", "mHostFilterChip"})
     private ViewGroup getFilterChipsContainer(@Nullable ViewGroup parent) {
         ViewGroup historyFilterChipsContainer =
                 (ViewGroup)
                         LayoutInflater.from(mManager.getContext())
                                 .inflate(R.layout.history_filter_chips, parent, true);
-        mAppFilterChip = historyFilterChipsContainer.findViewById(R.id.app_history_filter_chip);
-        mAppFilterChip.setOnClickListener(_ -> mManager.onAppFilterClicked());
-        mAppFilterChip.getPrimaryTextView().setText(R.string.history_filter_by_app);
-        mAppFilterChip.addDropdownIcon();
-
-        mHostFilterChip = historyFilterChipsContainer.findViewById(R.id.host_history_filter_chip);
-        mHostFilterChip.setOnClickListener(_ -> mManager.onHostFilterClicked());
-        mHostFilterChip.getPrimaryTextView().setText(R.string.history_filter_by_host);
-        mHostFilterChip.addDropdownIcon();
-
-        updateFilterChipsVisibility();
+        mManager.initializeFilterChips(historyFilterChipsContainer);
         return historyFilterChipsContainer;
     }
 
@@ -596,45 +599,23 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
     void updateAppFilter(@Nullable FilterItem appInfo) {
         setAppId(appInfo == null ? null : appInfo.getId());
         mShowSourceApp = appInfo == null && mManager.showAppFilter();
-        updateFilterChip(mAppFilterChip, appInfo, R.string.history_filter_by_app);
         search(mQueryText);
-    }
-
-    void resetAppFilterChip() {
-        updateFilterChip(mAppFilterChip, null, R.string.history_filter_by_app);
     }
 
     void updateHostFilter(@Nullable FilterItem hostInfo) {
         setHostName(hostInfo == null ? null : hostInfo.getId());
-        updateFilterChip(mHostFilterChip, hostInfo, R.string.history_filter_by_host);
         search(mQueryText);
     }
 
-    void resetHostFilterChip() {
-        updateFilterChip(mHostFilterChip, null, R.string.history_filter_by_host);
-    }
-
-    private static void updateFilterChip(
-            ChipView chip, @Nullable FilterItem item, @StringRes int defaultTextId) {
-        if (item == null) {
-            chip.getPrimaryTextView().setText(defaultTextId);
-            chip.setSelected(false);
-            chip.setIcon(ChipView.INVALID_ICON_ID, false);
-        } else {
-            chip.getPrimaryTextView().setText(item.label);
-            chip.setSelected(true);
-            chip.setIcon(R.drawable.ic_check_googblue_24dp, true);
-        }
-    }
-
-    private void updateFilterChipsVisibility() {
-        boolean showAppChip =
-                mManager.showAppFilter() && (mManager.hasAppFilterList() || mAppId != null);
-        mAppFilterChip.setVisibility(showAppChip ? View.VISIBLE : View.GONE);
-
-        boolean showHostChip =
-                mManager.showHostFilter() && (mManager.hasHostFilterList() || mHostName != null);
-        mHostFilterChip.setVisibility(showHostChip ? View.VISIBLE : View.GONE);
+    /**
+     * Updates the client filter.
+     *
+     * @param clientInfo The selected client, or null if the filter was cleared. All of its {@link
+     *     FilterItem#getIds()} are used for querying history.
+     */
+    void updateClientFilter(@Nullable FilterItem clientInfo) {
+        setClientIds(clientInfo == null ? Collections.emptyList() : clientInfo.getIds());
+        search(mQueryText);
     }
 
     private View getFindsPromoContainer() {
@@ -733,8 +714,7 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         if (mIsSearching) {
             // Query for apps could be still pending. |setHeaders()| will be invoked
             // again when the query is completed in order to set the header accordingly.
-            if (mManager.showFilterChips() && mManager.hasFilterList()) {
-                updateFilterChipsVisibility();
+            if (mManager.hasFilterList()) {
                 args.add(mFilterChipsHeaderItem);
             }
         } else {
@@ -760,8 +740,7 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
     /** For LFF devices w/ physical keyboard attached, there's only search mode. */
     private void setLFFHeaders() {
         ArrayList<HeaderItem> args = new ArrayList<>();
-        if (mManager.showFilterChips() && mManager.hasFilterList()) {
-            updateFilterChipsVisibility();
+        if (mManager.hasFilterList()) {
             args.add(mFilterChipsHeaderItem);
         }
         if (isNormalContentAvailable()) {
@@ -841,6 +820,13 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         mAppId = appId;
     }
 
+    /**
+     * @param clientIds All client IDs of the device selected by the user, or empty for no filter.
+     */
+    public void setClientIds(List<String> clientIds) {
+        mClientIds = clientIds;
+    }
+
     public void setIsLargeFormFactorDevice(boolean isLargeFormFactorDevice) {
         mIsLargeFormFactorDevice = isLargeFormFactorDevice;
     }
@@ -870,8 +856,8 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
 
     /**
      * Checks whether the finds promo is eligible to show, through an async call for notification
-     * channels. Update the eligibility cached tracker and if eligible, refresh the set of headers.
-     * Setting the headers will update the visibility tracker separately.
+     * channels, and if eligible, refreshes the set of headers. Setting the headers will update the
+     * visibility tracker separately.
      *
      * @param profile The current user profile.
      */
@@ -879,7 +865,6 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         FindsUtils.checkShowCriteriaOptInPromo(
                 profile,
                 (show) -> {
-                    mFindsPromoShowEligible = show;
                     if (show || FindsFeatures.sAlwaysShowOptInPromo.getValue()) {
                         // Only update the Finds Promo visibility here since there is no need to
                         // rerun this logic if there are any dynamic changes to other promos.
@@ -951,22 +936,6 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
         return mMoreProgressButton;
     }
 
-    ChipView getAppFilterButtonForTest() {
-        return mAppFilterChip;
-    }
-
-    void setAppFilterButtonForTest(ChipView appFilterChip) {
-        mAppFilterChip = appFilterChip;
-    }
-
-    ChipView getHostFilterButtonForTest() {
-        return mHostFilterChip;
-    }
-
-    void setHostFilterButtonForTest(ChipView hostFilterChip) {
-        mHostFilterChip = hostFilterChip;
-    }
-
     boolean showSourceAppForTest() {
         return mShowSourceApp;
     }
@@ -977,6 +946,10 @@ public class HistoryAdapter extends DateDividedAdapter implements BrowsingHistor
 
     @Nullable String getHostNameForTest() {
         return mHostName;
+    }
+
+    List<String> getClientIdsForTest() {
+        return mClientIds;
     }
 
     public void toggleCluster(HistoryItem item) {

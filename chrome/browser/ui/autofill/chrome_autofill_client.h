@@ -231,6 +231,9 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void TriggerPersonalizationAndTrustSurveys(
       FillingProduct filling_product,
       const HatsSurveyStringData& field_filling_stats_data) final;
+  void TriggerAtMemoryPersonalizationAndTrustSurvey(
+      bool is_dismissed,
+      const HatsSurveyStringData& product_specific_data) final;
   bool IsTabInActorMode() const final;
   ActorAutofillManager* GetActorAutofillManager() final;
   int64_t GetNavigationId() const final;
@@ -263,9 +266,11 @@ class ChromeAutofillClient : public ContentAutofillClient {
   // from the server to fill the form.
   void DismissAutofillAiLoadingDialog() final;
 
-  bool ShowAmbientAutoFillNotice(
+  bool ShowAmbientAutofillNotice(
       base::WeakPtr<TouchToFillAutofillDelegate> delegate) override;
-  void HideAmbientAutoFillNotice() override;
+  bool ShowPrivateInferenceNoticeBottomSheet(
+      base::WeakPtr<TouchToFillAutofillDelegate> delegate) override;
+  void HideAmbientAutofillNotice() override;
 
   // The AutofillMessageController is used to show native Android messages via
   // the messages API.

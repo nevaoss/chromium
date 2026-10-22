@@ -284,9 +284,7 @@ CaptureAndUploadTabContext(
     bool delay_upload,
     base::RepeatingClosure on_context_uploaded,
     BrowserWindowInterface* browser_window_interface,
-    base::RepeatingCallback<bool(const base::UnguessableToken&)> is_token_valid,
-    TabContextSnapshotCallback on_snapshot,
-    base::OnceCallback<void(const base::UnguessableToken&)> on_token_created) {
+    TabContextSnapshotCallback on_snapshot) {
   if (!session_handle) {
     return base::unexpected(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError);
@@ -325,17 +323,12 @@ CaptureAndUploadTabContext(
   }
 
   auto context_token = session_handle->CreateContextToken();
-  if (on_token_created) {
-    std::move(on_token_created).Run(context_token);
-  }
 
   tab_contextualization_controller->GetPageContext(base::BindOnce(
       [](base::UnguessableToken context_token,
          base::WeakPtr<contextual_search::ContextualSearchSessionHandle>
              session_handle,
          bool delay_upload, base::RepeatingClosure on_context_uploaded,
-         base::RepeatingCallback<bool(const base::UnguessableToken&)>
-             is_token_valid,
          TabContextSnapshotCallback on_snapshot,
          std::unique_ptr<lens::ContextualInputData> page_content_data) {
         if (!session_handle || !page_content_data) {
@@ -347,10 +340,16 @@ CaptureAndUploadTabContext(
             uploaded_context_tokens.end()) {
           return;
         }
-        if (is_token_valid && !is_token_valid.Run(context_token)) {
-          return;
-        }
         if (delay_upload) {
+          // TODO(crbug.com/568013317): Track delayed tabs in the session
+          // handle and upload them at submit via QueryContextualizer instead
+          // of handing a snapshot to `on_snapshot`.
+          if (page_content_data->tab_session_id.has_value()) {
+            session_handle->AddDelayedTabContext(
+                context_token, page_content_data->tab_session_id->id(),
+                page_content_data->page_url.value_or(GURL()),
+                page_content_data->page_title.value_or(""));
+          }
           if (on_snapshot) {
             std::move(on_snapshot)
                 .Run(context_token, std::move(page_content_data));
@@ -365,8 +364,7 @@ CaptureAndUploadTabContext(
         }
       },
       context_token, session_handle->AsWeakPtr(), delay_upload,
-      std::move(on_context_uploaded), std::move(is_token_valid),
-      std::move(on_snapshot)));
+      std::move(on_context_uploaded), std::move(on_snapshot)));
 
   return base::ok(context_token);
 }

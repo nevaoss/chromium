@@ -307,6 +307,7 @@ source_set("impl") {
 
     deps += [
       "//chrome/browser:shell_integration",
+      "//net",
       "//third_party/libxml:xml_writer",
     ]
   }
@@ -708,6 +709,7 @@ if (is_android) {
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationIntentInterceptorTest.java",
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationSystemStatusUtilUnitTest.java",
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationTestUtil.java",
+      "android/java/src/org/chromium/chrome/browser/notifications/NotificationUmaTrackerTest.java",
       "android/java/src/org/chromium/chrome/browser/notifications/NotificationWrapperBuilderFactoryTest.java",
       "android/java/src/org/chromium/chrome/browser/notifications/PendingIntentProviderTest.java",
       "android/java/src/org/chromium/chrome/browser/notifications/StandardNotificationBuilderTest.java",

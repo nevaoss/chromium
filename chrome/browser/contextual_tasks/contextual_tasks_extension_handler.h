@@ -5,9 +5,9 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_
 
-#include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "base/callback_list.h"
@@ -22,6 +22,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
+#include "components/sessions/core/session_id.h"
 #include "content/public/browser/document_user_data.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -43,6 +44,7 @@ struct InputState;
 namespace contextual_search {
 class ContextualSearchSessionHandle;
 class InputStateModel;
+struct TabInfo;
 }  // namespace contextual_search
 
 namespace content {
@@ -113,10 +115,6 @@ class ContextualTasksExtensionHandler
   }
   std::optional<base::UnguessableToken> GetLensOverlayTokenForTesting() {
     return GetLensOverlayToken();
-  }
-  void SetSelectedTabForTesting(int32_t tab_id,
-                                const base::UnguessableToken& token) {
-    selected_tabs_[tab_id] = token;
   }
 
   void BindComposeboxFactory(
@@ -254,7 +252,14 @@ class ContextualTasksExtensionHandler
 
   BrowserWindowInterface* GetBrowserWindowInterface() const;
   bool IsEmbeddedInSidePanel() const;
-  bool IsTokenSelected(const base::UnguessableToken& token) const;
+  std::vector<contextual_search::TabInfo> GetSelectedTabs();
+
+  // Associates `tab_session_id` with the handler's task, if any, so the task
+  // knows which tabs have been attached as context.
+  void AssociateTabWithTask(SessionID tab_session_id);
+  // Asks the browser window's ActiveTaskContextProvider to recompute the
+  // active task context (e.g. tab underlines) after context was removed.
+  void RefreshActiveTaskContext();
 
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle();
@@ -267,7 +272,6 @@ class ContextualTasksExtensionHandler
       std::unique_ptr<lens::ContextualInputData> page_content_data);
 #endif
   void UploadSnapshotTabContextIfPresent();
-  void CloseLensOverlaySync(lens::LensOverlayDismissalSource dismissal_source);
 
   void InitializeInputStateModel();
   void OnInputStateChanged(const omnibox::InputState& state);
@@ -281,7 +285,10 @@ class ContextualTasksExtensionHandler
       lens::ClientToSearchMessage* response_message,
       contextual_search::ContextualSearchSessionHandle* session_handle,
       const std::optional<base::UnguessableToken>& overlay_token);
+  void HandleOpenLinkInSidePanelMode(std::string_view url);
   std::optional<lens::AddedContext> GetLensAddedContext();
+  void DoSubmitQueryCleanup();
+  void CloseLensAsync(lens::LensOverlayDismissalSource dismissal_source);
 
   enum class InjectedInputType {
     kContextLibrary,
@@ -290,8 +297,6 @@ class ContextualTasksExtensionHandler
   void SendInjectChromeInput(InjectedInputType type, bool is_active);
   void SendMountContextLibrary();
   void UpdateContextLibraryInputState();
-  void OnTabContextUploaded(int32_t tab_id,
-                            const base::UnguessableToken& token);
 
   mojo::Receiver<contextual_tasks::mojom::ExtensionPageHandlerFactory>
       contextual_tasks_factory_receiver_{this};
@@ -322,9 +327,10 @@ class ContextualTasksExtensionHandler
   bool is_lens_crop_mounted_ = false;
   std::string last_lens_crop_data_uri_;
 
-  std::map<int32_t, base::UnguessableToken> selected_tabs_;
-
 #if !BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/568013317): Remove. Delayed tabs should be owned by the
+  // session handle and uploaded at submit via QueryContextualizer, like
+  // ContextualTasksComposeboxHandler.
   std::optional<std::pair<base::UnguessableToken,
                           std::unique_ptr<lens::ContextualInputData>>>
       tab_context_snapshot_;

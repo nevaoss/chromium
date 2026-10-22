@@ -7,18 +7,15 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
-#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/color/chrome_color_id.h"
-#include "chrome/browser/ui/managed_ui.h"
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_chip_view.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_drag_and_drop_delegate.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
@@ -26,6 +23,7 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "ui/actions/actions.h"
+#include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/models/menu_separator_types.h"
@@ -33,13 +31,10 @@
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
-#include "ui/menus/simple_menu_model.h"
 #include "ui/strings/grit/ax_strings.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/border.h"
-#include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/menu_button_controller.h"
-#include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/menu_separator.h"
@@ -48,17 +43,17 @@
 #include "ui/views/style/typography.h"
 #include "ui/views/style/typography_provider.h"
 #include "ui/views/view_class_properties.h"
-#include "ui/views/view_utils.h"
 
 namespace {
 
-ui::ImageModel StandardizeMenuIconSize(const ui::ImageModel& icon) {
+ui::ImageModel StandardizeMenuIconSize(const ui::ImageModel& icon,
+                                       int icon_size) {
   if (icon.IsVectorIcon()) {
     const ui::VectorIconModel& vector_model = icon.GetVectorIcon();
-    if (vector_model.icon_size() != ui::SimpleMenuModel::kDefaultIconSize) {
-      return ui::ImageModel::FromVectorIcon(
-          *vector_model.vector_icon(), vector_model.color(),
-          ui::SimpleMenuModel::kDefaultIconSize, vector_model.badge_icon());
+    if (vector_model.icon_size() != icon_size) {
+      return ui::ImageModel::FromVectorIcon(*vector_model.vector_icon(),
+                                            vector_model.color(), icon_size,
+                                            vector_model.badge_icon());
     }
   }
   return icon;
@@ -116,6 +111,37 @@ bool ShouldRoundTopCorners(size_t index,
     return ShouldRoundBottomCorners(prev_index, items);
   }
   return true;
+}
+
+bool SupportsVerticalPadding(const actions::ActionItem* item) {
+  return item->GetProperty(AppMenuActionItem::kItemHeightKey) ==
+         AppMenuActionItem::ItemHeight::kCompact;
+}
+
+bool ShouldAddTopPadding(size_t index, const actions::ActionListVector& items) {
+  if (!SupportsVerticalPadding(items[index]->GetActionItem())) {
+    return false;
+  }
+  for (size_t i = index; i > 0; --i) {
+    actions::ActionItem* const prev_item = items[i - 1]->GetActionItem();
+    const auto display_type =
+        prev_item->GetProperty(AppMenuActionItem::kDisplayTypeKey);
+    if (!prev_item->GetVisible() ||
+        display_type == AppMenuActionItem::DisplayType::kDivider ||
+        display_type == AppMenuActionItem::DisplayType::kHeader) {
+      continue;
+    }
+    if (SupportsVerticalPadding(prev_item)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool ShouldAddBottomPadding(size_t index,
+                            const actions::ActionListVector& items) {
+  return SupportsVerticalPadding(items[index]->GetActionItem()) &&
+         ShouldRoundBottomCorners(index, items);
 }
 
 actions::ActionInvocationContext BuildActionInvocationContext(
@@ -301,9 +327,104 @@ int ActionAppMenu::GetMaxWidthForMenu(views::MenuItemView* menu) {
       DISTANCE_ACTION_APP_MENU_MAX_WIDTH);
 }
 
+bool ActionAppMenu::GetDropFormats(
+    views::MenuItemView* menu,
+    int* formats,
+    std::set<ui::ClipboardFormatType>* format_types) {
+  actions::BaseAction* action = GetActionForMenuItem(menu);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->GetDropFormats(action, formats, format_types);
+  }
+  return false;
+}
+
+bool ActionAppMenu::AreDropTypesRequired(views::MenuItemView* menu) {
+  actions::BaseAction* action = GetActionForMenuItem(menu);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->AreDropTypesRequired(action);
+  }
+  return false;
+}
+
+bool ActionAppMenu::CanDrop(views::MenuItemView* menu,
+                            const ui::OSExchangeData& data) {
+  actions::BaseAction* action = GetActionForMenuItem(menu);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->CanDrop(action, data);
+  }
+  return false;
+}
+
+ui::mojom::DragOperation ActionAppMenu::GetDropOperation(
+    views::MenuItemView* item,
+    const ui::DropTargetEvent& event,
+    DropPosition* position) {
+  actions::BaseAction* action = GetActionForMenuItem(item);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->GetDropOperation(action, event, position);
+  }
+  return ui::mojom::DragOperation::kNone;
+}
+
+views::View::DropCallback ActionAppMenu::GetDropCallback(
+    views::MenuItemView* menu,
+    DropPosition position,
+    const ui::DropTargetEvent& event) {
+  actions::BaseAction* action = GetActionForMenuItem(menu);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->GetDropCallback(action, position, event);
+  }
+  return base::DoNothing();
+}
+
+bool ActionAppMenu::CanDrag(views::MenuItemView* menu) {
+  actions::BaseAction* action = GetActionForMenuItem(menu);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->CanDrag(action);
+  }
+  return false;
+}
+
+void ActionAppMenu::WriteDragData(views::MenuItemView* sender,
+                                  ui::OSExchangeData* data) {
+  actions::BaseAction* action = GetActionForMenuItem(sender);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    delegate->WriteDragData(action, data);
+  }
+}
+
+int ActionAppMenu::GetDragOperations(views::MenuItemView* sender) {
+  actions::BaseAction* action = GetActionForMenuItem(sender);
+  if (AppMenuDragAndDropDelegate* delegate = GetDragAndDropDelegate(action)) {
+    return delegate->GetDragOperations(action);
+  }
+  return MenuDelegate::GetDragOperations(sender);
+}
+
+bool ActionAppMenu::ShouldCloseOnDragDropCompleted() {
+  return false;
+}
+
 void ActionAppMenu::SetTimerForTesting(base::ElapsedTimer timer) {
   menu_manager_->SetTimerForTesting(timer);       // IN-TEST
   metrics_.SetTimerForTesting(std::move(timer));  // IN-TEST
+}
+
+actions::BaseAction* ActionAppMenu::GetActionForMenuItem(
+    views::MenuItemView* menu) const {
+  CHECK(menu);
+  auto it = command_to_action_map_.find(menu->GetCommand());
+  return it != command_to_action_map_.end() ? it->second : nullptr;
+}
+
+AppMenuDragAndDropDelegate* ActionAppMenu::GetDragAndDropDelegate(
+    actions::BaseAction* action) const {
+  for (actions::BaseAction* curr = action; curr; curr = curr->GetParent()) {
+    if (curr->HasPopulateChildActionsCallback()) {
+      return curr->GetProperty(AppMenuActionItem::kDragAndDropDelegateKey);
+    }
+  }
+  return nullptr;
 }
 
 void ActionAppMenu::CancelAndEvaluate(actions::ActionId action_id,
@@ -353,12 +474,12 @@ void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
       PopulateMenu(view_parent, child_base);
     } else {
       auto* const menu_item = AppendMenuItem(child_base, view_parent);
-      const bool round_top_corners =
-          ShouldRoundTopCorners(i, children_action_items);
-      const bool round_bottom_corners =
-          ShouldRoundBottomCorners(i, children_action_items);
-      ConfigureMenuItem(menu_item, child_base, round_top_corners,
-                        round_bottom_corners);
+      ConfigureMenuItem(menu_item,
+                        child_base,
+                        ShouldRoundTopCorners(i, children_action_items),
+                        ShouldRoundBottomCorners(i, children_action_items),
+                        ShouldAddTopPadding(i, children_action_items),
+                        ShouldAddBottomPadding(i, children_action_items));
       if (display_type == AppMenuActionItem::DisplayType::kCustom) {
         PopulateCustomRow(menu_item, child_base);
       } else if (!child_base->HasPopulateChildActionsCallback()) {
@@ -388,7 +509,8 @@ views::MenuItemView* ActionAppMenu::AppendMenuItem(
       action_item->GetProperty(AppMenuActionItem::kDisplayTypeKey);
   const bool has_submenu =
       display_type != AppMenuActionItem::DisplayType::kCustom &&
-      !base_action_item->GetChildren().children().empty();
+      (action_item->GetProperty(AppMenuActionItem::kIsSubmenuKey) ||
+       !base_action_item->GetChildren().children().empty());
 
   command_to_action_map_[command_id] = base_action_item;
 
@@ -420,7 +542,9 @@ views::MenuItemView* ActionAppMenu::AppendMenuItem(
 void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
                                       actions::BaseAction* child_base,
                                       bool round_top_corners,
-                                      bool round_bottom_corners) {
+                                      bool round_bottom_corners,
+                                      bool add_top_padding,
+                                      bool add_bottom_padding) {
   actions::ActionItem* const action_item = child_base->GetActionItem();
   CHECK(action_item);
 
@@ -440,13 +564,23 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
     menu_item->SetProperty(views::kElementIdentifierKey, element_id);
   }
 
+  const auto* provider = ChromeLayoutProvider::Get();
+  const bool is_notification =
+      action_item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+      AppMenuActionItem::DisplayType::kNotification;
+  const int default_icon_size = provider->GetDistanceMetric(
+      is_notification ? DISTANCE_ACTION_APP_MENU_NOTIFICATION_ICON_SIZE
+                      : DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE);
+
   if (ui::ImageModel* icon_override =
           child_base->GetProperty(AppMenuActionItem::kIconOverrideKey)) {
-    menu_item->SetIcon(action_item->GetActionId() == kActionProfileSubmenu
-                           ? *icon_override
-                           : StandardizeMenuIconSize(*icon_override));
+    menu_item->SetIcon(
+        action_item->GetActionId() == kActionProfileSubmenu
+            ? *icon_override
+            : StandardizeMenuIconSize(*icon_override, default_icon_size));
   } else if (!action_item->GetImage().IsEmpty()) {
-    menu_item->SetIcon(StandardizeMenuIconSize(action_item->GetImage()));
+    menu_item->SetIcon(
+        StandardizeMenuIconSize(action_item->GetImage(), default_icon_size));
   }
 
   if (ui::ImageModel* minor_icon =
@@ -484,19 +618,24 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
     menu_item->SetAlerted();
   }
 
-  const auto* provider = ChromeLayoutProvider::Get();
-
-  const auto item_height =
-      action_item->GetProperty(AppMenuActionItem::kItemHeightKey);
-
-  const int target_item_height = provider->GetDistanceMetric(
-      item_height == AppMenuActionItem::ItemHeight::kExpanded
-          ? DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT
-          : DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT);
+  int target_item_height = 0;
+  switch (action_item->GetProperty(AppMenuActionItem::kItemHeightKey)) {
+    case AppMenuActionItem::ItemHeight::kCompact:
+      target_item_height = provider->GetDistanceMetric(
+          DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT);
+      break;
+    case AppMenuActionItem::ItemHeight::kMedium:
+      target_item_height = provider->GetDistanceMetric(
+          DISTANCE_ACTION_APP_MENU_MEDIUM_ITEM_HEIGHT);
+      break;
+    case AppMenuActionItem::ItemHeight::kExpanded:
+      target_item_height = provider->GetDistanceMetric(
+          DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT);
+      break;
+  }
 
   const int content_height =
-      std::max(provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE),
-               menu_item->GetIconPreferredSize().height());
+      std::max(default_icon_size, menu_item->GetIconPreferredSize().height());
 
   const int vertical_padding = (target_item_height - content_height) / 2;
 
@@ -516,14 +655,18 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
                                         kActionAppMenuContainerCornerRadius)
                                   : 0;
 
-    menu_item->SetMenuItemBackground(views::MenuItemView::MenuItemBackground(
+    views::MenuItemView::MenuItemBackground background(
         container_color, top_radius, bottom_radius,
         /*horizontal_margin=*/
-        provider->GetDistanceMetric(
-            DISTANCE_ACTION_APP_MENU_CONTAINER_MARGIN)));
+        provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_CONTAINER_MARGIN));
+    const int padding = provider->GetDistanceMetric(
+        DISTANCE_ACTION_APP_MENU_CONTAINER_VERTICAL_PADDING);
+    background.top_padding = add_top_padding ? padding : 0;
+    background.bottom_padding = add_bottom_padding ? padding : 0;
+    menu_item->SetMenuItemBackground(background);
 
     // Apply darker hover selection states matching section theme.
-    menu_item->SetSelectedColorId(ui::kColorSysStateHoverOnSubtle);
+    menu_item->SetSelectedColorId(ui::kColorAppMenuRowBackgroundHovered);
   }
 }
 

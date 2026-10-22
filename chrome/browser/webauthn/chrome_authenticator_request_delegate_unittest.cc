@@ -35,6 +35,7 @@
 #include "chrome/browser/webauthn/password_credential_fetcher.h"
 #include "chrome/browser/webauthn/password_credential_ui_controller.h"
 #include "chrome/browser/webauthn/webauthn_pref_names.h"
+#include "chrome/browser/webauthn/webauthn_scoped_fake_unexportable_key_provider.h"
 #include "chrome/browser/webauthn/webauthn_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
@@ -57,7 +58,7 @@
 #include "content/public/browser/authenticator_request_client_delegate.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/test/web_contents_tester.h"
-#include "crypto/scoped_fake_unexportable_key_provider.h"
+#include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "device/fido/cable/v2_constants.h"
 #include "device/fido/discoverable_credential_metadata.h"
 #include "device/fido/fido_discovery_factory.h"
@@ -147,6 +148,11 @@ class ChromeAuthenticatorRequestDelegateTest
 
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
+    // Keeps `DiceTabHelper` from creating a real Bluetooth adapter on the
+    // Chrome sign-in page.
+    bluetooth_values_ =
+        device::BluetoothAdapterFactory::Get()->InitGlobalOverrideValues();
+    bluetooth_values_->SetLESupported(false);
     PasskeyModelFactory::GetInstance()->SetTestingFactoryAndUse(
         profile(),
         base::BindRepeating(
@@ -169,6 +175,8 @@ class ChromeAuthenticatorRequestDelegateTest
 
  protected:
   Observer observer_;
+  std::unique_ptr<device::BluetoothAdapterFactory::GlobalOverrideValues>
+      bluetooth_values_;
 };
 
 class TestAuthenticatorModelObserver final
@@ -471,8 +479,14 @@ TEST_F(ChromeAuthenticatorRequestDelegateTest,
 }
 
 class EnclaveAuthenticatorRequestDelegateTest
-    : public ChromeAuthenticatorRequestDelegateTest {
+    : public ChromeAuthenticatorRequestDelegateTest,
+      public testing::WithParamInterface<bool> {
  public:
+  EnclaveAuthenticatorRequestDelegateTest() {
+    scoped_feature_list_.InitWithFeatureState(
+        device::kWebAuthnSoftwareKeysWhenTpmAbsent, GetParam());
+  }
+
   void SetUp() override {
     ChromeAuthenticatorRequestDelegateTest::SetUp();
     SyncServiceFactory::GetInstance()->SetTestingFactory(
@@ -482,9 +496,16 @@ class EnclaveAuthenticatorRequestDelegateTest
           return std::make_unique<syncer::TestSyncService>();
         }));
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-TEST_F(EnclaveAuthenticatorRequestDelegateTest,
+INSTANTIATE_TEST_SUITE_P(All,
+                         EnclaveAuthenticatorRequestDelegateTest,
+                         testing::Bool());
+
+TEST_P(EnclaveAuthenticatorRequestDelegateTest,
        BrowserProvidedPasskeysAvailable) {
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile());
@@ -498,7 +519,7 @@ TEST_F(EnclaveAuthenticatorRequestDelegateTest,
       // sync unexp result
       {true, true, true},
       {false, true, false},
-      {true, false, false},
+      {true, false, GetParam()},
   };
   for (const auto& test : kTestCases) {
     SCOPED_TRACE(testing::Message()
@@ -512,12 +533,12 @@ TEST_F(EnclaveAuthenticatorRequestDelegateTest,
     test_sync_service->GetUserSettings()->SetSelectedType(
         syncer::UserSelectableType::kPasswords, test.is_syncing_passwords);
 
-    std::variant<crypto::ScopedNullUnexportableKeyProvider,
-                 crypto::ScopedFakeUnexportableKeyProvider>
+    std::variant<WebAuthnScopedNullUnexportableKeyProvider,
+                 WebAuthnScopedFakeUnexportableKeyProvider>
         unexportable_key_provider;
     if (test.has_unexportable_keys) {
       unexportable_key_provider
-          .emplace<crypto::ScopedFakeUnexportableKeyProvider>();
+          .emplace<WebAuthnScopedFakeUnexportableKeyProvider>();
     }
 
     base::test::TestFuture<bool> future;
@@ -530,7 +551,7 @@ TEST_F(EnclaveAuthenticatorRequestDelegateTest,
 
 // This test is separated from BrowserProvidedPasskeysAvailable because ChromeOS
 // does not support clearing the primary account once Chrome is running.
-TEST_F(EnclaveAuthenticatorRequestDelegateTest,
+TEST_P(EnclaveAuthenticatorRequestDelegateTest,
        BrowserProvidedPasskeysAvailable_NoAccount) {
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile());
@@ -538,7 +559,7 @@ TEST_F(EnclaveAuthenticatorRequestDelegateTest,
       SyncServiceFactory::GetInstance()->GetForProfile(profile()));
   test_sync_service->GetUserSettings()->SetSelectedType(
       syncer::UserSelectableType::kPasswords, true);
-  crypto::ScopedFakeUnexportableKeyProvider unexportable_key_provider;
+  WebAuthnScopedFakeUnexportableKeyProvider unexportable_key_provider;
 
   {
     base::test::TestFuture<bool> future;
@@ -565,7 +586,7 @@ TEST_F(EnclaveAuthenticatorRequestDelegateTest,
 // BrowserProvidedPasskeysAvailable() return true. Sync-the-feature should not
 // be necessary as long as the user consented to using passwords and passkeys
 // from their Google account.
-TEST_F(EnclaveAuthenticatorRequestDelegateTest,
+TEST_P(EnclaveAuthenticatorRequestDelegateTest,
        BrowserProvidedPasskeysAvailableForSignedInUsers) {
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile());
@@ -578,7 +599,7 @@ TEST_F(EnclaveAuthenticatorRequestDelegateTest,
   test_sync_service->SetSignedIn(signin::ConsentLevel::kSignin);
   test_sync_service->GetUserSettings()->SetSelectedType(
       syncer::UserSelectableType::kPasswords, true);
-  crypto::ScopedFakeUnexportableKeyProvider unexportable_key_provider;
+  WebAuthnScopedFakeUnexportableKeyProvider unexportable_key_provider;
 
   base::test::TestFuture<bool> future;
   ChromeWebAuthenticationDelegate delegate;

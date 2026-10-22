@@ -1038,7 +1038,7 @@ if (_is_default_toolchain) {
       "//components/visited_url_ranking/internal:internal_java",
     ]
 
-    if (is_desktop_android) {
+    if (enable_extensions_core) {
       deps += [
         "//chrome/browser/ui/android/extensions/side_panel/internal:java",
         "//chrome/browser/ui/android/extensions/windowing/internal:java",
@@ -1196,6 +1196,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/data_sharing:junit",
       "//chrome/browser/data_sharing:recent_activity_junit_tests",
       "//chrome/browser/device:junit",
+      "//chrome/browser/device_reauth/android:junit",
       "//chrome/browser/download/android:junit_tests",
       "//chrome/browser/download/internal/android:junit",
       "//chrome/browser/educational_tip:junit",
@@ -1833,21 +1834,6 @@ if (_is_default_toolchain) {
     deps = [ ":chrome_base_module_resources" ]
   }
 
-  version_resource_dir = "$target_gen_dir/templates/chrome_version_xml/res"
-  version_resource_file = "$version_resource_dir/values/strings.xml"
-
-  process_version("version_xml") {
-    process_only = true
-    template_file = "java/version_strings.xml.template"
-    sources = [ "//chrome/VERSION" ]
-    output = version_resource_file
-  }
-
-  android_resources("product_version_resources") {
-    sources = [ version_resource_file ]
-    deps = [ ":version_xml" ]
-  }
-
   java_group("chrome_public_non_pak_assets") {
     deps = [
       "//chrome/android/webapk/libs/runtime_library:runtime_library_assets",
@@ -2419,7 +2405,6 @@ if (_is_default_toolchain) {
       "//components/embedder_support/android:unit_device_javatests",
       "//components/external_intents/android:unit_device_javatests",
       "//components/installedapp/android:unit_device_javatests",
-      "//components/messages/android:unit_device_javatests",
       "//components/messages/android/internal:unit_device_javatests",
       "//components/payments/content/android/spc:browser_binding_unit_device_javatests",
       "//components/signin/public/android:unit_device_javatests",
@@ -2482,10 +2467,14 @@ if (_is_default_toolchain) {
       "//components/embedder_support/android:virtual_structure_javatests",
     ]
 
-    if (is_desktop_android) {
+    if (enable_extensions_core) {
       deps += [
         "//chrome/browser/ui/android/extensions/windowing/internal:javatests",
+      ]
+    }
 
+    if (is_desktop_android) {
+      deps += [
         # TODO(crbug.com/473636857): Include in normal builds once all Android
         # support is finished.
         "//chrome/browser/ui/browser_window/internal:javatests",

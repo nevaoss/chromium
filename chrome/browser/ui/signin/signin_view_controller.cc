@@ -89,6 +89,7 @@
 #include "components/sync/base/user_selectable_type.h"
 #include "components/sync/service/sync_service.h"
 #include "content/public/browser/navigation_handle.h"
+#include "device/bluetooth/bluetooth_adapter.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "google_apis/google_api_keys.h"
@@ -240,16 +241,6 @@ int FindDiceSigninTab(TabStripModel* tab_strip, const GURL& signin_url) {
     }
   }
   return -1;
-}
-
-// Returns the promo action to be used when signing with a new account.
-signin_metrics::PromoAction GetPromoActionForNewAccount(
-    signin::IdentityManager* identity_manager) {
-  return !identity_manager->GetAccountsWithRefreshTokens().empty()
-             ? signin_metrics::PromoAction::
-                   PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT
-             : signin_metrics::PromoAction::
-                   PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT;
 }
 
 // Returns if account extensions should be shown in the signout confirmation
@@ -422,16 +413,6 @@ bool SigninViewController::IsNTPTab(content::WebContents* contents) {
          search::IsInstantNTP(contents) || contents_url == url::kAboutBlankURL;
 }
 
-void SigninViewController::ShowSignin(signin_metrics::AccessPoint access_point,
-                                      const GURL& redirect_url) {
-  signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(GetProfile());
-  signin_metrics::PromoAction promo_action =
-      GetPromoActionForNewAccount(identity_manager);
-  ShowDiceSigninTab(signin_metrics::Reason::kSigninPrimaryAccount, access_point,
-                    promo_action, /*email_hint=*/std::string(), redirect_url);
-}
-
 void SigninViewController::ShowModalInterceptFirstRunExperienceDialog(
     const CoreAccountId& account_id,
     bool is_forced_intercept) {
@@ -567,10 +548,12 @@ void SigninViewController::ShowModalSigninEmailConfirmationDialog(
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 void SigninViewController::ShowCrossDeviceSigninQrBubble(
     GURL qr_code_url,
-    base::OnceClosure closing_callback) {
+    base::OnceClosure closing_callback,
+    CrossDeviceSigninPromoEntryPoint entry_point) {
   CloseBubbleSignin();
   auto delegate = ::CreateCrossDeviceSigninQrBubble(
-      &*browser_, std::move(qr_code_url), std::move(closing_callback));
+      &*browser_, std::move(qr_code_url), std::move(closing_callback),
+      entry_point);
   bubble_widget_ = views::BubbleDialogDelegate::CreateBubble(
       delegate.release(),
       base::BindOnce(&SigninViewController::OnBubbleClosed, AsWeakPtr()));
@@ -763,7 +746,8 @@ void SigninViewController::ShowDiceSigninTab(
   if (switches::IsMagiChromePasskeyBannerEnabled()) {
     SigninQRCodeInfoBarLoader::CreateForWebContents(active_contents);
     signin::IsHybridTransportSupportedForQrCodeSignin(base::BindOnce(
-        [](base::WeakPtr<content::WebContents> web_contents, bool can_start) {
+        [](base::WeakPtr<content::WebContents> web_contents, bool can_start,
+           scoped_refptr<device::BluetoothAdapter>) {
           if (!web_contents) {
             return;
           }

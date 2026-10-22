@@ -631,6 +631,17 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     guest_otr_active_services.erase("HidConnectionResourceManager");
   }
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensionsSocketsAndUsb.Get()) {
+    guest_otr_active_services.erase("ResumableTCPServerSocketManager");
+    guest_otr_active_services.erase("ResumableTCPSocketManager");
+    guest_otr_active_services.erase("ResumableUDPSocketManager");
+    guest_otr_active_services.erase("SocketManager");
+    guest_otr_active_services.erase("TCPServerSocketEventDispatcher");
+    guest_otr_active_services.erase("TCPSocketEventDispatcher");
+    guest_otr_active_services.erase("UDPSocketEventDispatcher");
+    guest_otr_active_services.erase("UsbDeviceResourceManager");
+  }
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationCommerceAndUI.Get()) {
     guest_otr_active_services.erase("ReadAnythingServiceFactory");
   }
@@ -644,6 +655,20 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
       features::kLazyKeyedServiceInstantiationStorageNotification.Get()) {
     guest_otr_active_services.erase("StorageNotificationService");
   }
+#if BUILDFLAG(IS_CHROMEOS)
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensionsChromeOSResources
+          .Get()) {
+    guest_otr_active_services.erase("BluetoothApiAdvertisementManager");
+    guest_otr_active_services.erase("BluetoothApiSocketManager");
+    guest_otr_active_services.erase("BluetoothLowEnergyConnectionManager");
+    guest_otr_active_services.erase("BluetoothLowEnergyNotifySessionManager");
+    guest_otr_active_services.erase("BluetoothSocketEventDispatcher");
+    guest_otr_active_services.erase("LogSourceResource");
+    guest_otr_active_services.erase("SerialConnectionManager");
+    guest_otr_active_services.erase("SerialPortManager");
+  }
+#endif
   TestKeyedProfileServicesActives(guest_otr_profile, guest_otr_active_services);
 }
 
@@ -1076,6 +1101,19 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     guest_active_services.erase("SidePanelService");
   }
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensionsSocketsAndUsb.Get()) {
+    guest_active_services.erase("PrinterProviderInternal");
+    guest_active_services.erase("ResumableTCPServerSocketManager");
+    guest_active_services.erase("ResumableTCPSocketManager");
+    guest_active_services.erase("ResumableUDPSocketManager");
+    guest_active_services.erase("SocketManager");
+    guest_active_services.erase("TCPServerSocketEventDispatcher");
+    guest_active_services.erase("TCPSocketEventDispatcher");
+    guest_active_services.erase("UDPSocketEventDispatcher");
+    guest_active_services.erase("UsbDeviceResourceManager");
+    guest_active_services.erase("WriteQuotaChecker");
+  }
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationSafeBrowsing.Get()) {
     guest_active_services.erase("SafeBrowsingTailoredSecurityService");
   }
@@ -1083,5 +1121,20 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
       features::kLazyKeyedServiceInstantiationCommerceAndUI.Get()) {
     guest_active_services.erase("LoginUIServiceFactory");
   }
+#if BUILDFLAG(IS_CHROMEOS)
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensionsChromeOSResources
+          .Get()) {
+    guest_active_services.erase("BluetoothApiAdvertisementManager");
+    guest_active_services.erase("BluetoothApiSocketManager");
+    guest_active_services.erase("BluetoothLowEnergyConnectionManager");
+    guest_active_services.erase("BluetoothLowEnergyNotifySessionManager");
+    guest_active_services.erase("BluetoothSocketEventDispatcher");
+    guest_active_services.erase("LogSourceResource");
+    guest_active_services.erase("SerialConnectionManager");
+    guest_active_services.erase("SerialPortManager");
+    guest_active_services.erase("WebcamPrivateAPI");
+  }
+#endif
   TestKeyedProfileServicesActives(guest_parent_profile, guest_active_services);
 }

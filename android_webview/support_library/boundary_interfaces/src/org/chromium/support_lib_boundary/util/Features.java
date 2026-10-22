@@ -267,12 +267,14 @@ public class Features {
     @Deprecated
     public static final String RESTRICT_SENSITIVE_WEB_CONTENT = "RESTRICT_SENSITIVE_WEB_CONTENT";
 
-    // WebContentBuilder
-    public static final String WEB_CONTENT = "WEB_CONTENT";
-
     // WebSettingsCompat.setUserAgentMetadataFromMap
     // WebSettingsCompat.getUserAgentMetadataMap
     public static final String USER_AGENT_METADATA = "USER_AGENT_METADATA";
+
+    // UserAgentMetadata.Builder.setFormFactors
+    // UserAgentMetadata.getFormFactors
+    public static final String USER_AGENT_METADATA_FORM_FACTORS =
+            "USER_AGENT_METADATA_FORM_FACTORS";
 
     // WebSettingsCompat.setAttributionBehavior
     // WebSettingsCompat.getAttributionBehavior
@@ -531,7 +533,4 @@ public class Features {
     // WebViewCompat.createSharedArrayBuffer
     // WebMessagePayload.getAsSharedArrayBuffer
     public static final String WEB_MESSAGE_SHARED_ARRAY_BUFFER = "WEB_MESSAGE_SHARED_ARRAY_BUFFER";
-
-    // WebFeature.WEB_SURFACE
-    public static final String WEB_SURFACE = "WEB_SURFACE";
 }

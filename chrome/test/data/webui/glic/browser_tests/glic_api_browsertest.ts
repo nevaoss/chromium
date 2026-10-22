@@ -1241,6 +1241,27 @@ class ApiTests extends ApiTestFixtureBase {
     link.click();
   }
 
+  async testWindowOpenOpensTab() {
+    const button = document.createElement('button');
+    button.addEventListener('click', () => {
+      window.open('https://www.chromium.org', '_blank');
+    });
+    document.body.appendChild(button);
+    button.click();
+  }
+
+  async testCtrlClickLinkOpensTab() {
+    const link = document.createElement('a');
+    link.setAttribute('href', 'https://www.chromium.org');
+    document.body.appendChild(link);
+    link.dispatchEvent(new MouseEvent('click', {
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+      view: window,
+    }));
+  }
+
   async testOpenGlicSettingsPage() {
     assertDefined(this.host.openGlicSettingsPage);
     this.host.openGlicSettingsPage();
@@ -1511,6 +1532,22 @@ class ApiTests extends ApiTestFixtureBase {
         fallbackUrl, {pattern: '*activate_nonexistent*'});
     assertDefined(fallbackCreated);
     assertEquals(fallbackCreated.url, fallbackUrl);
+  }
+
+  async testActivateTabWithUrlAcrossWindows() {
+    assertDefined(this.host.createTab);
+    assertDefined(this.host.activateTabWithUrl);
+    const targetUrl = location.href + '#target_in_second_window';
+    const createdTab = await this.host.createTab(targetUrl, {});
+    assertEquals(createdTab.url, targetUrl);
+    assertTrue(await this.browser.navigateTab(createdTab.tabId, targetUrl));
+
+    await this.advanceToNextStep();
+
+    const activated = await this.host.activateTabWithUrl(targetUrl, {});
+    assertDefined(activated);
+    assertEquals(activated.tabId, createdTab.tabId);
+    assertEquals(activated.url, targetUrl);
   }
 
   async testCreateTabFailsWithUnsupportedScheme() {

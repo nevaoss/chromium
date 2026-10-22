@@ -22,11 +22,11 @@
 #include "chrome/browser/ui/read_anything/read_anything_lifecycle_observer.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+#include "chrome/browser/ui/webui/side_panel/read_anything/read_anything_translate_observer.h"
 #include "chrome/common/read_anything/distillation_evaluator.mojom.h"
 #include "chrome/common/read_anything/read_anything.mojom.h"
 #include "components/dom_distiller/core/task_tracker.h"
 #include "components/translate/core/browser/translate_client.h"
-#include "components/translate/core/browser/translate_driver.h"
 #include "content/public/browser/tts_controller.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -163,8 +163,7 @@ class ReadAnythingUntrustedPageHandler :
     public ui::AXActionHandlerObserver,
     public read_anything::mojom::UntrustedPageHandler,
     public ReadAnythingLifecycleObserver,
-    public PinnedToolbarActionsModel::Observer,
-    public translate::TranslateDriver::LanguageDetectionObserver {
+    public PinnedToolbarActionsModel::Observer {
 
  public:
   ReadAnythingUntrustedPageHandler(
@@ -198,8 +197,6 @@ class ReadAnythingUntrustedPageHandler :
 
   bool ack_timed_out_for_testing() const { return ack_timed_out_for_testing_; }
 
-  static const int kMaxWordsDistilled = 25000;
-  static const int kWordsDistilledBuckets = 100;
   static const int kMaxNodesForDistillationQualityEvaluation = 5000;
   static constexpr base::TimeDelta kReadingModeHiddenAckTimeout =
       base::Seconds(2);
@@ -272,11 +269,6 @@ class ReadAnythingUntrustedPageHandler :
   // Checks toolbar pin status to assess whether or not to update the pin status
   // of read anything immersive
   void MaybeUpdateImmersivePinStatus();
-
-  // TranslateDriver::LanguageDetectionObserver:
-  void OnLanguageDetermined(
-      const translate::LanguageDetectionDetails& details) override;
-  void OnTranslateDriverDestroyed(translate::TranslateDriver* driver) override;
 
   // ReadAnythingLifecycleObserver:
   void OnDestroyed() override;
@@ -480,9 +472,6 @@ class ReadAnythingUntrustedPageHandler :
   const mojo::Receiver<read_anything::mojom::UntrustedPageHandler> receiver_;
   const mojo::Remote<read_anything::mojom::UntrustedPage> page_;
 
-  ReadAnythingOpenTrigger last_open_trigger_ =
-      ReadAnythingOpenTrigger::kUnknown;
-
   // Whether the Read Anything feature is currently active. The feature is
   // active when it is currently shown in the Side Panel.
   bool active_ = true;
@@ -536,11 +525,8 @@ class ReadAnythingUntrustedPageHandler :
 
   base::ScopedClosureRunner audible_closure_;
 
-  // Observes LanguageDetectionObserver, which notifies us when the language of
-  // the contents of the current page has been determined.
-  base::ScopedObservation<translate::TranslateDriver,
-                          translate::TranslateDriver::LanguageDetectionObserver>
-      translate_observation_{this};
+  // Observes the page's language.
+  ReadAnythingTranslateObserver translate_observer_;
 
   // Timer used for checking for pdf contents after the page has loaded.
   // Otherwise, it may incorrectly return that the page is not a pdf if

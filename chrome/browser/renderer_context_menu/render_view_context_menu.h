@@ -64,10 +64,6 @@ class SpellingOptionsSubMenuObserver;
 class TemplateURL;
 class ToastController;
 
-namespace send_tab_to_self {
-class SendTabToSelfContextMenuDelegate;
-}
-
 namespace content {
 class NavigationHandle;
 class RenderFrameHost;
@@ -131,6 +127,8 @@ class RenderViewContextMenu
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kGlicShareImageMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOpenLinkInSplitMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kRegionSearchItem);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kAskGoogleAboutThisPageItem);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kContextualTasksSubmenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kSearchForImageItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kSearchForVideoFrameItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kVideoFrameSubmenuItem);
@@ -279,6 +277,7 @@ class RenderViewContextMenu
                                         gfx::BreakType break_type);
 
   void ExecGlic();
+  void ExecGlicSmartSuggestion();
 
   friend class RenderViewContextMenuTest;
   friend class TestRenderViewContextMenu;
@@ -514,6 +513,7 @@ class RenderViewContextMenu
       supervised_user::WebFilteringResult result);
 
   void MaybeAppendOpenGlicItem(bool add_separator = true);
+  void MaybeAppendGlicSmartSuggestionItem();
 
   // Opens the Lens overlay to search a region defined by the given bounds of
   // the view and the image to be searched. Tab bounds and view bounds are
@@ -572,6 +572,9 @@ class RenderViewContextMenu
 
   // Inspect sub-menu handling.
   ui::SimpleMenuModel inspect_submenu_model_;
+
+  // Contextual tasks sub-menu handling.
+  ui::SimpleMenuModel contextual_tasks_submenu_model_;
 
   // Video frame sub-menu handling.
   ui::SimpleMenuModel video_frame_submenu_model_;
@@ -644,9 +647,6 @@ class RenderViewContextMenu
   const bool is_paste_and_match_style_enabled_;
 
   std::unique_ptr<ui::SimpleMenuModel> send_tab_to_self_submenu_;
-  std::unique_ptr<send_tab_to_self::SendTabToSelfContextMenuDelegate>
-      send_tab_to_self_submenu_delegate_;
-
   std::unique_ptr<ui::SimpleMenuModel> split_layout_submenu_;
 
   //  Used for CTR metrics of menu item for opening Glic.

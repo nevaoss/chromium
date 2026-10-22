@@ -7059,7 +7059,10 @@ interface RTCIceTransport : EventTarget
     setter onselectedcandidatepairchange
     setter onstatechange
 interface RTCPeerConnection : EventTarget
+    static method cancelDiagnosticLogging
     static method generateCertificate
+    static method startDiagnosticLogging
+    static method stopDiagnosticLogging
     attribute @@toStringTag
     getter canTrickleIceCandidates
     getter connectionState
@@ -10968,6 +10971,7 @@ interface WebTransport
     getter incomingUnidirectionalStreams
     getter protocol
     getter ready
+    getter responseHeaders
     method close
     method constructor
     method createBidirectionalStream
@@ -11200,7 +11204,10 @@ interface webkitMediaStream : EventTarget
     setter oninactive
     setter onremovetrack
 interface webkitRTCPeerConnection : EventTarget
+    static method cancelDiagnosticLogging
     static method generateCertificate
+    static method startDiagnosticLogging
+    static method stopDiagnosticLogging
     attribute @@toStringTag
     getter canTrickleIceCandidates
     getter connectionState

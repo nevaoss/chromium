@@ -49,8 +49,6 @@
 #include "components/pdf/common/constants.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
-#include "components/translate/core/browser/language_state.h"
-#include "components/translate/core/browser/translate_driver.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/navigation_handle.h"
@@ -435,12 +433,14 @@ ReadAnythingUntrustedPageHandler::ReadAnythingUntrustedPageHandler(
       web_ui_(web_ui),
       receiver_(this, std::move(receiver)),
       page_(std::move(page)),
-      use_screen_ai_service_(use_screen_ai_service)
+      use_screen_ai_service_(use_screen_ai_service),
 #if BUILDFLAG(IS_CHROMEOS)
-      ,
-      extension_wrapper_(std::move(extension_wrapper))
+      extension_wrapper_(std::move(extension_wrapper)),
 #endif
-{
+      // Unretained is safe because `this` owns `translate_observer_`.
+      translate_observer_(base::BindRepeating(
+          &ReadAnythingUntrustedPageHandler::SetLanguageCode,
+          base::Unretained(this))) {
   ax_action_handler_observer_.Observe(
       ui::AXActionHandlerRegistry::GetInstance());
 
@@ -525,7 +525,7 @@ ReadAnythingUntrustedPageHandler::~ReadAnythingUntrustedPageHandler() {
       this);
   extensions::ExtensionRegistry::Get(profile_)->RemoveObserver(this);
 #endif
-  translate_observation_.Reset();
+  translate_observer_.Reset();
   main_observer_.reset();
   pdf_observer_.reset();
   LogTextStyle();
@@ -606,7 +606,7 @@ bool ReadAnythingUntrustedPageHandler::IsGoogleDocs(const GURL& url) const {
 }
 
 void ReadAnythingUntrustedPageHandler::WebContentsDestroyed() {
-  translate_observation_.Reset();
+  translate_observer_.Reset();
   audible_closure_.RunAndReset();
 }
 
@@ -1437,42 +1437,10 @@ void ReadAnythingUntrustedPageHandler::OnCollapseSelection() {
 void ReadAnythingUntrustedPageHandler::OnDistillationStatus(
     read_anything::mojom::DistillationStatus status,
     int word_count) {
-#if BUILDFLAG(ENABLE_PDF)
-  if (last_open_trigger_ == ReadAnythingOpenTrigger::kPdfTranslation &&
-      status == read_anything::mojom::DistillationStatus::kSuccess) {
-    // Target main_observer_'s WebContents because ContentTranslateDriver is
-    // attached to the outer primary tab WebContents, not the inner GuestView
-    // WebContents (pdf_observer_).
-    content::WebContents* web_contents =
-        main_observer_ ? main_observer_->web_contents() : nullptr;
-    if (web_contents) {
-      auto* driver =
-          translate::ContentTranslateDriver::FromWebContents(web_contents);
-      if (driver) {
-        driver->MaybeTriggerPendingPdfTranslation();
-      }
-    }
+  if (!read_anything_controller_) {
+    return;
   }
-#endif  // BUILDFLAG(ENABLE_PDF)
-  if (last_open_trigger_ == ReadAnythingOpenTrigger::kOmniboxChip) {
-    if (status != read_anything::mojom::DistillationStatus::kStillRunning) {
-      last_open_trigger_ = ReadAnythingOpenTrigger::kUnknown;
-      base::UmaHistogramEnumeration(
-          "Accessibility.ReadAnything.DistillationStatusAfterOmnibox", status);
-      base::UmaHistogramCustomCounts(
-          "Accessibility.ReadAnything.WordsDistilledAfterOmnibox", word_count,
-          1, kMaxWordsDistilled, kWordsDistilledBuckets);
-
-      content::WebContents* web_contents =
-          main_observer_ ? main_observer_->web_contents() : nullptr;
-      if (web_contents && web_contents->GetPrimaryMainFrame()) {
-        ukm::builders::Accessibility_ReadAnything_OmniboxEntryPointDistillation(
-            web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId())
-            .SetDistillationStatus(static_cast<int>(status))
-            .Record(ukm::UkmRecorder::Get());
-      }
-    }
-  }
+  read_anything_controller_->OnDistillationStatus(status, word_count);
 }
 
 void ReadAnythingUntrustedPageHandler::SetDefaultLanguageCode(
@@ -1491,7 +1459,6 @@ void ReadAnythingUntrustedPageHandler::Activate(
     std::optional<base::TimeDelta> completed_session_duration) {
   active_ = active;
   if (active_) {
-    last_open_trigger_ = open_trigger;
     if (features::IsReadAnythingImprovedUiEnabled() &&
         open_trigger == ReadAnythingOpenTrigger::kListenToThisPageContextMenu) {
       if (listen_to_this_page_playback_state_ !=
@@ -1714,28 +1681,7 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
 
   // Observe the new contents so we can get the page language once it's
   // determined.
-  if (ChromeTranslateClient* translate_client =
-          ChromeTranslateClient::FromWebContents(contents)) {
-    translate::TranslateDriver* driver = translate_client->GetTranslateDriver();
-    const std::string& source_language =
-        translate_client->GetLanguageState().source_language();
-    // If we're not already observing these web contents, then observe them so
-    // we can get a callback when the language is determined. Otherwise, we
-    // just set the language directly.
-    if (!translate_observation_.IsObservingSource(driver)) {
-      translate_observation_.Reset();
-      translate_observation_.Observe(driver);
-      // The language may have already been determined before (and then
-      // unobserved), so send the language if it's not empty. If the language
-      // is outdated, we'll receive a call in OnLanguageDetermined and send
-      // the updated lang there.
-      if (!source_language.empty()) {
-        SetLanguageCode(source_language);
-      }
-    } else {
-      SetLanguageCode(source_language);
-    }
-  }
+  translate_observer_.Observe(*contents);
 
 #if BUILDFLAG(ENABLE_PDF)
   CheckIfActiveAXTreeChangedToPdf();
@@ -2105,16 +2051,6 @@ void ReadAnythingUntrustedPageHandler::SetLanguageCode(
     current_language_code_ = language_code;
     page_->SetLanguageCode(current_language_code_);
   }
-}
-
-void ReadAnythingUntrustedPageHandler::OnLanguageDetermined(
-    const translate::LanguageDetectionDetails& details) {
-  SetLanguageCode(details.adopted_language);
-}
-
-void ReadAnythingUntrustedPageHandler::OnTranslateDriverDestroyed(
-    translate::TranslateDriver* driver) {
-  translate_observation_.Reset();
 }
 
 void ReadAnythingUntrustedPageHandler::LogExtensionState() {

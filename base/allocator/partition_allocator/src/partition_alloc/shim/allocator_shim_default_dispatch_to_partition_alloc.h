@@ -12,18 +12,19 @@
 
 #include "partition_alloc/partition_alloc.h"
 #include "partition_alloc/partition_alloc_base/component_export.h"
+#include "partition_alloc/partition_alloc_public_constants.h"
 #include "partition_alloc/shim/allocator_dispatch.h"
 #include "partition_alloc/shim/allocator_shim.h"
 
 namespace allocator_shim {
 
+inline constexpr size_t kDefaultPartitionIndex = 0;
 #if PA_BUILDFLAG(ENABLE_AUTO_PARTITIONING)
+inline constexpr size_t kPointerPartitionIndex = 1;
 inline constexpr size_t kNumPartitions = 2;
 #else
 inline constexpr size_t kNumPartitions = 1;
 #endif
-inline constexpr size_t kDefaultPartitionIndex = 0;
-inline constexpr size_t kPointerPartitionIndex = 1;
 
 namespace internal {
 
@@ -86,6 +87,12 @@ class PartitionAllocFunctionsInternal {
                                      size_t alignment,
                                      AllocToken alloc_token,
                                      void* context);
+
+  static void* AlignedCallocUnchecked(size_t n,
+                                      size_t size,
+                                      size_t alignment,
+                                      AllocToken alloc_token,
+                                      void* context);
 
   static void* AlignedRealloc(void* address,
                               size_t size,
@@ -176,6 +183,7 @@ class PartitionAllocFunctionsInternal {
 #endif
         &AlignedAlloc,             // aligned_malloc_function
         &AlignedAllocUnchecked,    // aligned_malloc_unchecked_function
+        &AlignedCallocUnchecked,   // aligned_calloc_unchecked_function
         &AlignedRealloc,           // aligned_realloc_function
         &AlignedReallocUnchecked,  // aligned_realloc_unchecked_function
         &AlignedFree,              // aligned_free_function

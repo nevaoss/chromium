@@ -727,6 +727,11 @@ class ExtensionsBrowserClient {
   // Returns true if lazy keyed service instantiation is enabled for extension
   // services.
   virtual bool IsLazyKeyedServiceInstantiationEnabled() const;
+  virtual bool IsLazySocketAndUsbKeyedServiceInstantiationEnabled() const;
+
+  // Returns true if lazy keyed service instantiation is enabled for ChromeOS
+  // extension API resource manager and dispatcher services.
+  virtual bool IsLazyChromeOSResourceKeyedServiceInstantiationEnabled() const;
 
  protected:
   std::unique_ptr<ExtensionAssetsManager> assets_manager_;

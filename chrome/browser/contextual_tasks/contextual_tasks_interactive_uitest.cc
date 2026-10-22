@@ -1396,8 +1396,18 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
       WaitForInputCleared(kSidePanelId));
 }
 
-IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTest,
-                       AddAndSubmitMultipleContextsWithTextFromComposebox) {
+// TODO(https://crbug.com/568329503): This is flaky/fails on at least some Linux
+// builders.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox \
+  DISABLED_AddAndSubmitMultipleContextsWithTextFromComposebox
+#else
+#define MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox \
+  AddAndSubmitMultipleContextsWithTextFromComposebox
+#endif
+IN_PROC_BROWSER_TEST_P(
+    ContextualTasksInteractiveUiTest,
+    MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox) {
   SkipIfIncognito("Tab sharing is not supported in Incognito mode.");
 
   const GURL kGenericPageUrl1 = embedded_test_server()->GetURL("/title1.html");
@@ -3614,6 +3624,30 @@ class ContextualTasksExtensionLensButtonInteractiveUiTest
   }
 };
 
+class ContextualTasksSidePanelRearchToolbarInteractiveUiTest
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  void SetUpFeatureList() override {
+    std::vector<base::test::FeatureRefAndParams> enabled;
+    for (const auto& f : GetDefaultEnabledFeatures()) {
+      if (&f.feature.get() != &kContextualTasksHideMenuOnAiPage) {
+        enabled.push_back(f);
+      }
+    }
+    enabled.push_back({kContextualTasksRearchitecture, {}});
+    enabled.push_back({kContextualTasksSidePanelRearchitecture, {}});
+    enabled.push_back({kContextualTasksEnableSpatialModelToolbarLayout, {}});
+
+    auto disabled = GetDefaultDisabledFeatures();
+    std::erase(disabled, kContextualTasksRearchitecture);
+    std::erase(disabled, kContextualTasksSidePanelRearchitecture);
+    std::erase(disabled, kContextualTasksEnableSpatialModelToolbarLayout);
+    disabled.push_back(kContextualTasksHideMenuOnAiPage);
+
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
+  }
+};
+
 // This tests the following CUJ:
 // 1. User navigates a regular browser tab to a Google page that embeds the
 //    Contextual Tasks extension's lens_button.html iframe.
@@ -3732,6 +3766,131 @@ INSTANTIATE_TEST_SUITE_P(All,
                                          UserVariation::kSignedOut,
                                          UserVariation::kIncognito),
                          &UserVariationToString);
+//  (1) User opens Lens Overlay from the 3-dot App Menu on a web page.
+//  (2) User types a query into the Lens Overlay Contextual Searchbox and
+//      presses Enter to submit.
+//  (3) The Contextual Tasks side panel opens and navigates to an AI Mode page.
+//  (4) The side panel toolbar updates its thread title to match the AI query.
+//  (5) User clicks the toolbar overflow menu button and verifies the Thread
+//      History menu item is present and visible in the menu.
+IN_PROC_BROWSER_TEST_P(ContextualTasksSidePanelRearchToolbarInteractiveUiTest,
+                       AiPageUpdatesThreadTitleAndShowsThreadHistoryInMenu) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelToolbarWebContentsId);
+
+  const DeepQuery kPathToOverlaySearchboxInput{
+      "lens-overlay-app",
+      "cr-lens-searchbox",
+      "cr-searchbox-input",
+      "input",
+  };
+  const DeepQuery kToolbarTitle{
+      "contextual-tasks-toolbar-app",
+      "#toolbar",
+      ".top-toolbar-title",
+  };
+  const DeepQuery kOverflowMenuButton{
+      "contextual-tasks-toolbar-app",
+      "#toolbar",
+      "#overflowMenuButton",
+  };
+  const DeepQuery kOverflowMenu{
+      "contextual-tasks-toolbar-app",
+      "#toolbar",
+      "contextual-tasks-overflow-menu",
+  };
+
+  RunTestSequence(
+      // Step 1: Open the Lens Overlay via the 3-dot App Menu.
+      OpenLensOverlay(),
+      InAnyContext(
+          InstrumentNonTabWebView(kOverlayId,
+                                  LensOverlayController::kOverlayId),
+          WaitForWebContentsReady(
+              kOverlayId, GURL(chrome::kChromeUILensOverlayUntrustedURL))),
+
+      // Step 2: Submit a query in the Lens Overlay Contextual Searchbox to
+      // open the Contextual Tasks side panel on an AI page.
+      InSameContext(
+          WaitForShow(LensOverlayController::kOverlayId), Do([&]() {
+            content::WebContents* web_contents =
+                browser()->tab_strip_model()->GetActiveWebContents();
+            auto* lens_controller =
+                LensSearchController::FromTabWebContents(web_contents);
+            auto* query_router = static_cast<lens::FakeLensQueryFlowRouter*>(
+                lens_controller->query_router());
+            CHECK(query_router);
+            auto* session_handle = static_cast<
+                contextual_search::MockContextualSearchSessionHandle*>(
+                query_router->GetContextualSearchSessionHandle());
+            CHECK(session_handle);
+            ON_CALL(*session_handle,
+                    CreateSearchUrl(::testing::_, ::testing::_))
+                .WillByDefault(::testing::WithArg<1>([](base::OnceCallback<void(
+                                                            GURL)> callback) {
+                  std::move(callback).Run(GURL(
+                      "https://www.google.com/search?q=hello+world&udm=50"));
+                }));
+          }),
+          WaitForElementExists(kOverlayId, kPathToOverlaySearchboxInput),
+          FocusWebContents(kOverlayId),
+          ExecuteJsAt(kOverlayId, kPathToOverlaySearchboxInput,
+                      "(el) => { el.focus(); }",
+                      ExecuteJsMode::kWaitForCompletion),
+          ExecuteJsAt(
+              kOverlayId, kPathToOverlaySearchboxInput,
+              "(el) => { el.value = 'hello world'; el.dispatchEvent(new "
+              "Event('input', { bubbles: true })); el.dispatchEvent(new "
+              "Event('change', { bubbles: true })); }",
+              ExecuteJsMode::kWaitForCompletion),
+          ExecuteJsAt(kOverlayId, kPathToOverlaySearchboxInput,
+                      "(el) => { el.dispatchEvent(new KeyboardEvent('keydown', "
+                      "{ key: 'Enter', bubbles: true, cancelable: true, "
+                      "composed: true })); }",
+                      ExecuteJsMode::kFireAndForget)),
+
+      // Step 3: Wait for the Contextual Tasks side panel to show and
+      // instrument the rearchitecture toolbar WebView.
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelToolbarWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->toolbar_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelToolbarWebContentsId,
+                              "SidePanelToolbarWebViewName"),
+
+      // Step 4: Verify the thread title in the toolbar is updated to
+      // "hello world".
+      WaitForElementExists(kSidePanelToolbarWebContentsId, kToolbarTitle),
+      WaitForJsResultAt(kSidePanelToolbarWebContentsId, kToolbarTitle,
+                        "el => el.textContent.trim()",
+                        std::string("hello world")),
+
+      // Step 5: Open the toolbar overflow menu and verify the Thread History
+      // menu item is present and visible.
+      WaitForElementVisible(kSidePanelToolbarWebContentsId,
+                            kOverflowMenuButton),
+      ClickButton(kSidePanelToolbarWebContentsId, kOverflowMenuButton),
+      WaitForElementExists(kSidePanelToolbarWebContentsId, kOverflowMenu),
+      WaitForJsResultAt(
+          kSidePanelToolbarWebContentsId, kOverflowMenu,
+          content::JsReplace(
+              "el => Boolean(el.shadowRoot.querySelector('#menu')?.open && "
+              "Array.from(el.shadowRoot.querySelectorAll("
+              "'button.dropdown-item')).some(b => !b.hidden && "
+              "b.textContent.trim() === $1))",
+              l10n_util::GetStringUTF8(
+                  IDS_CONTEXTUAL_TASKS_SIDE_PANEL_HISTORY_TOOL_TIP)),
+          true));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksSidePanelRearchToolbarInteractiveUiTest,
+                         testing::Values(UserVariation::kSignedIn,
+                                         UserVariation::kSignedOut,
+                                         UserVariation::kIncognito),
+                         &UserVariationToString);
 
 INSTANTIATE_TEST_SUITE_P(All,
                          ContextualTasksEphemeralToolbarInteractiveUiTest,
@@ -3739,5 +3898,201 @@ INSTANTIATE_TEST_SUITE_P(All,
                                          UserVariation::kSignedOut,
                                          UserVariation::kIncognito),
                          &UserVariationToString);
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestBase,
+                       SignedOut_DoesNotShowOAuthErrorDialog) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+  const DeepQuery kErrorDialog = {"contextual-tasks-app",
+                                  "contextual-tasks-error-dialog"};
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  RunTestSequence(
+      Do([this]() {
+        GetTestContextualTasksUiService(browser()->GetProfile())
+            ->SetSignedIn(false);
+      }),
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+      CheckJsResult(
+          kInnerWebContentsId,
+          "() => fetch('https://www.google.com/complete/search?q=test').then(r "
+          "=> r.ok)",
+          true),
+      Do([this]() {
+        EXPECT_EQ(GetTestContextualTasksUiService(browser()->GetProfile())
+                      ->access_token_request_count(),
+                  0);
+        EXPECT_TRUE(last_auth_header().empty());
+      }),
+      WaitForElementDoesNotExist(kSidePanelWebContentsId, kErrorDialog),
+      UninstrumentWebContents(kInnerWebContentsId,
+                              /*fail_if_not_instrumented=*/false));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksInteractiveUiTestBase,
+    SignInMidSession_ShowsOAuthErrorDialogAndReloadsOnClick) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+  const DeepQuery kErrorDialog = {"contextual-tasks-app",
+                                  "contextual-tasks-error-dialog"};
+  const DeepQuery kReloadButton = {"contextual-tasks-app",
+                                   "contextual-tasks-error-dialog",
+                                   "cr-button.action-button"};
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  RunTestSequence(
+      Do([this]() {
+        GetTestContextualTasksUiService(browser()->GetProfile())
+            ->SetSignedIn(false);
+      }),
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+      Do([this]() {
+        auto* service =
+            GetTestContextualTasksUiService(browser()->GetProfile());
+        EXPECT_EQ(service->access_token_request_count(), 0);
+        EXPECT_TRUE(last_auth_header().empty());
+        service->SetSignedIn(true);
+      }),
+      CheckJsResult(
+          kInnerWebContentsId,
+          "() => fetch('https://www.google.com/complete/search?q=test').then(r "
+          "=> r.ok)",
+          true),
+      Do([this]() {
+        EXPECT_EQ(GetTestContextualTasksUiService(browser()->GetProfile())
+                      ->access_token_request_count(),
+                  0);
+        EXPECT_TRUE(last_auth_header().empty());
+      }),
+      WaitForElementExists(kSidePanelWebContentsId, kErrorDialog),
+      WaitForElementVisible(kSidePanelWebContentsId, kReloadButton),
+      UninstrumentWebContents(kInnerWebContentsId,
+                              /*fail_if_not_instrumented=*/false),
+      ClickElement(kSidePanelWebContentsId, kReloadButton,
+                   ExecuteJsMode::kFireAndForget),
+      WaitForWebContentsNavigation(kSidePanelWebContentsId),
+      WaitForElementDoesNotExist(kSidePanelWebContentsId, kErrorDialog),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+      CheckJsResult(
+          kInnerWebContentsId,
+          "() => fetch('https://www.google.com/complete/search?q=test').then(r "
+          "=> r.ok)",
+          true),
+      Do([this]() {
+        EXPECT_GT(GetTestContextualTasksUiService(browser()->GetProfile())
+                      ->access_token_request_count(),
+                  0);
+        EXPECT_EQ(last_auth_header(), "Bearer fake_access_token");
+      }),
+      UninstrumentWebContents(kInnerWebContentsId,
+                              /*fail_if_not_instrumented=*/false));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksInteractiveUiTestBase,
+    SignOutMidSession_ShowsOAuthErrorDialogAndReloadsOnClick) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+  const DeepQuery kErrorDialog = {"contextual-tasks-app",
+                                  "contextual-tasks-error-dialog"};
+  const DeepQuery kReloadButton = {"contextual-tasks-app",
+                                   "contextual-tasks-error-dialog",
+                                   "cr-button.action-button"};
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  RunTestSequence(
+      Do([this]() {
+        GetTestContextualTasksUiService(browser()->GetProfile())
+            ->SetSignedIn(true);
+      }),
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](ContextualTasksWebView* web_view) -> views::View* {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+      Do([this]() {
+        auto* service =
+            GetTestContextualTasksUiService(browser()->GetProfile());
+        EXPECT_GT(service->access_token_request_count(), 0);
+        EXPECT_EQ(last_auth_header(), "Bearer fake_access_token");
+        service->ResetAccessTokenRequestCount();
+        ClearLastAuthHeader();
+        service->SetSignedIn(false);
+      }),
+      CheckJsResult(
+          kInnerWebContentsId,
+          "() => fetch('https://www.google.com/complete/search?q=test').then(r "
+          "=> r.ok)",
+          true),
+      Do([this]() {
+        EXPECT_EQ(GetTestContextualTasksUiService(browser()->GetProfile())
+                      ->access_token_request_count(),
+                  0);
+        EXPECT_TRUE(last_auth_header().empty());
+      }),
+      WaitForElementExists(kSidePanelWebContentsId, kErrorDialog),
+      WaitForElementVisible(kSidePanelWebContentsId, kReloadButton),
+      UninstrumentWebContents(kInnerWebContentsId,
+                              /*fail_if_not_instrumented=*/false),
+      ClickElement(kSidePanelWebContentsId, kReloadButton,
+                   ExecuteJsMode::kFireAndForget),
+      WaitForWebContentsNavigation(kSidePanelWebContentsId),
+      WaitForElementDoesNotExist(kSidePanelWebContentsId, kErrorDialog),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+      CheckJsResult(
+          kInnerWebContentsId,
+          "() => fetch('https://www.google.com/complete/search?q=test').then(r "
+          "=> r.ok)",
+          true),
+      Do([this]() {
+        EXPECT_EQ(GetTestContextualTasksUiService(browser()->GetProfile())
+                      ->access_token_request_count(),
+                  0);
+        EXPECT_TRUE(last_auth_header().empty());
+      }),
+      UninstrumentWebContents(kInnerWebContentsId,
+                              /*fail_if_not_instrumented=*/false));
+}
 
 }  // namespace contextual_tasks

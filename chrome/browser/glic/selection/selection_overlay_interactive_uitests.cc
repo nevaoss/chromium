@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/check_deref.h"
+#include "base/strings/strcat.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
@@ -13,15 +14,19 @@
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/background/glic/glic_background_mode_manager.h"
 #include "chrome/browser/background/glic/glic_launcher_configuration.h"
+#include "chrome/browser/glic/browser_ui/glic_selection_widget.h"
+#include "chrome/browser/glic/glic_selection_observer.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
-#include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
-#include "chrome/browser/glic/selection/static_selection_suggestion_tool.h"
+#include "chrome/browser/glic/selection/selection_suggestion.h"
 #include "chrome/browser/glic/test_support/interactive_glic_test.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/selection/suggestion_service.h"
+#include "chrome/browser/selection/suggestion_tool.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
@@ -37,6 +42,9 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/actor/public/mojom/actor_types.mojom.h"
+#include "components/optimization_guide/core/model_execution/feature_keys.h"
+#include "components/optimization_guide/proto/features/quick_answers.pb.h"
+#include "components/optimization_guide/proto/features/smart_selection_suggestions.pb.h"
 #include "components/page_content_annotations/content/page_context_fetcher_options.h"
 #include "components/split_tabs/split_tab_visual_data.h"
 #include "components/vector_icons/vector_icons.h"
@@ -65,12 +73,6 @@
 namespace glic {
 
 namespace {
-auto GetPointWithOffset(int x, int y) {
-  return base::BindLambdaForTesting([x, y](ui::TrackedElement* el) {
-    auto* view = views::test::InteractiveViewsTestApi::AsView<views::View>(el);
-    return view->GetBoundsInScreen().origin() + gfx::Vector2d(x, y);
-  });
-}
 
 views::View* GetOverlayView(content::WebContents* tab_contents) {
   auto* controller =
@@ -126,6 +128,13 @@ class SelectionOverlayInteractiveTest : public test::InteractiveGlicTest {
   }
   ~SelectionOverlayInteractiveTest() override = default;
 
+  auto GetPointWithOffset(int x, int y) {
+    return base::BindLambdaForTesting([this, x, y](ui::TrackedElement* el) {
+      auto* view = AsView<views::View>(el);
+      return view->GetBoundsInScreen().origin() + gfx::Vector2d(x, y);
+    });
+  }
+
   auto GetOverlayVisibilityAt(int index) {
     return base::BindLambdaForTesting([this, index]() {
       auto* overlay_view = GetOverlayView(browser(), index);
@@ -171,6 +180,19 @@ class SelectionOverlayInteractiveTest : public test::InteractiveGlicTest {
     return embedded_test_server()->GetURL("/empty.html");
   }
 
+  void ShowWithSelection(selection::InteractionOptionsPtr options) {
+    content::WebContents* web_contents =
+        browser()->tab_strip_model()->GetActiveWebContents();
+    auto* controller =
+        SelectionOverlayController::FromTabWebContents(web_contents);
+    ASSERT_TRUE(controller);
+    gfx::Rect view_bounds = web_contents->GetViewBounds();
+    controller->ShowWithSelection(
+        web_contents->GetPrimaryMainFrame(),
+        gfx::Rect(view_bounds.x() + 10, view_bounds.y() + 10, 100, 50),
+        std::move(options));
+  }
+
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
@@ -186,6 +208,31 @@ class SelectionOverlayInteractiveTestWithPolyline
   base::test::ScopedFeatureList feature_list_;
 };
 
+namespace {
+
+class FakePromptSuggestionTool : public ::selection::SuggestionTool {
+ public:
+  explicit FakePromptSuggestionTool(tabs::TabInterface* tab) : tab_(tab) {}
+  ~FakePromptSuggestionTool() override = default;
+
+  ToolId GetToolId() const override {
+    return optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME;
+  }
+
+  void RequestSuggestions(const ::selection::AreaOfInterest& processed_area,
+                          ::selection::SuggestionsCallback callback) override {
+    std::vector<std::unique_ptr<::selection::Suggestion>> suggestions;
+    suggestions.push_back(
+        std::make_unique<SelectionSuggestion>(*tab_, u"Ask Gemini"));
+    std::move(callback).Run(std::move(suggestions), /*complete=*/true);
+  }
+
+ private:
+  raw_ptr<tabs::TabInterface> tab_;
+};
+
+}  // namespace
+
 class SelectionOverlayInteractiveTestWithPrompt
     : public SelectionOverlayInteractiveTest {
  public:
@@ -199,27 +246,26 @@ class SelectionOverlayInteractiveTestWithPrompt
   void SetUpOnMainThread() override {
     SelectionOverlayInteractiveTest::SetUpOnMainThread();
     tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
-    static_tool_ =
-        std::make_unique<StaticSelectionSuggestionTool>(CHECK_DEREF(tab));
+    fake_tool_ = std::make_unique<FakePromptSuggestionTool>(tab);
     if (auto* service = ::selection::SuggestionService::From(tab)) {
-      service->RegisterTool(static_tool_.get());
+      service->RegisterTool(fake_tool_.get());
     }
   }
 
   void TearDownOnMainThread() override {
     tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
-    if (tab && static_tool_) {
+    if (tab && fake_tool_) {
       if (auto* service = ::selection::SuggestionService::From(tab)) {
-        service->UnregisterTool(static_tool_.get());
+        service->UnregisterTool(fake_tool_.get());
       }
     }
-    static_tool_.reset();
+    fake_tool_.reset();
     SelectionOverlayInteractiveTest::TearDownOnMainThread();
   }
 
  private:
   base::test::ScopedFeatureList feature_list_;
-  std::unique_ptr<StaticSelectionSuggestionTool> static_tool_;
+  std::unique_ptr<FakePromptSuggestionTool> fake_tool_;
 };
 
 class SelectionOverlayInteractiveTestWithPromptWithoutBox
@@ -251,6 +297,19 @@ class SelectionOverlayInteractiveTestWithSplitView
   }
 };
 
+class SelectionOverlayInteractiveTestWithTextSelection
+    : public SelectionOverlayInteractiveTest {
+ public:
+  SelectionOverlayInteractiveTestWithTextSelection() {
+    // The inline cue widget is not needed to pre-select the text selection.
+    feature_list_.InitWithFeatures({::features::kGlicSelectionSmallChip},
+                                   {::features::kGlicSelectionPrompt});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
 }  // namespace
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, SmokeTest) {
@@ -270,6 +329,67 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, SmokeTest) {
       WaitForElementVisible(kOverlayWebContentsId, {"selection-overlay-app",
                                                     "glic-selection-overlay"}),
       WaitForShow(kLensPreselectionBubbleElementId));
+}
+
+// Starting a capture session while text is selected sends the pre-selected
+// region to the web client without the user adjusting it.
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithTextSelection,
+                       PreSelectedRegionReachesClient) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  DEFINE_LOCAL_STATE_IDENTIFIER_VALUE(ui::test::PollingStateObserver<bool>,
+                                      kHasSelectionBounds);
+
+  const DeepQuery kRenderer = {"selection-overlay-app",
+                               "glic-selection-overlay",
+                               "post-selection-renderer"};
+
+  RunTestSequence(
+      InstrumentTab(kActiveTab),
+      NavigateWebContents(kActiveTab,
+                          embedded_test_server()->GetURL("/title2.html")),
+      // Focus the page so that the text selection is reported.
+      WaitForWebContentsPainted(kActiveTab),
+      MoveMouseTo(kActiveTab, DeepQuery{"body"}), ClickMouse(), Do([this]() {
+        browser()->tab_strip_model()->GetActiveWebContents()->SelectAll();
+      }),
+      PollState(
+          kHasSelectionBounds,
+          [this]() {
+            auto* selection_observer = GlicSelectionObserver::From(
+                browser()->tab_strip_model()->GetActiveTab());
+            return selection_observer &&
+                   selection_observer->GetCurrentSelectionBounds().has_value();
+          }),
+      WaitForState(kHasSelectionBounds, true), OpenGlic(),
+      ClickMockGlicElement({"#captureRegionBtn"}),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      InstrumentNonTabWebView(kOverlayWebContentsId,
+                              OverlayBaseController::kOverlayId),
+      WaitForJsResultAt(kOverlayWebContentsId, kRenderer,
+                        "el => el.selectedRegions.length === 1"),
+      // The region must also reach the web client, which only happens if the
+      // deferred render runs once the overlay and the page context are ready.
+      WaitForJsResultAt(kGlicContentsElementId, {"#additionalContextResult"},
+                        "el => el.innerText.includes('Region: ')"));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
+                       ShowWithSelectionSendsInteractionOptions) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kOverlay = {"selection-overlay-app",
+                              "glic-selection-overlay"};
+
+  RunTestSequence(
+      Do([this]() {
+        ShowWithSelection(selection::InteractionOptions::New(
+            /*hide_handles=*/false, /*disable_multi_select=*/true));
+      }),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      InstrumentNonTabWebView(kOverlayWebContentsId,
+                              OverlayBaseController::kOverlayId),
+      WaitForJsResultAt(kOverlayWebContentsId, kOverlay,
+                        "el => !el.hideHandles && el.disableMultiSelect"));
 }
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
@@ -1567,6 +1687,169 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithPrompt,
           "  input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', "
           "bubbles: true}));"
           "}"));
+}
+
+namespace {
+
+class SelectionOverlayInteractiveTestWithInlineFulfillment
+    : public SelectionOverlayInteractiveTest {
+ public:
+  SelectionOverlayInteractiveTestWithInlineFulfillment() {
+    feature_list_.InitFromCommandLine(
+        /*enable_features=*/
+        "GlicSelectionOverlayPrompt,GlicSelectionSmallChip,GlicSelectionPrompt,"
+        "QuickAnswersSelectionSuggestions",
+        /*disable_features=*/"");
+  }
+
+ protected:
+  const DeepQuery kSelectionOverlay = {"selection-overlay-app",
+                                       "glic-selection-overlay"};
+
+  auto OpenExplainCard(ui::ElementIdentifier tab,
+                       ui::ElementIdentifier overlay) {
+    const DeepQuery kOverlayApp = {"selection-overlay-app"};
+
+    // Text for the user to select.
+    static constexpr char kAddTextJs[] = R"js(
+      () => {
+        document.body.innerHTML = '<p>Explain this sentence please</p>';
+      }
+    )js";
+    static constexpr char kClickExplainChipJs[] = R"js(
+      el => {
+        const chip = [...el.shadowRoot.querySelectorAll('.action-chip')].find(
+            c => c.querySelector('.chip-label')?.textContent === 'Explain');
+        chip?.click();
+        return !!chip;
+      }
+    )js";
+
+    return Steps(
+        InstrumentTab(tab), NavigateWebContents(tab, GetEmptyDocURL()),
+        ExecuteJs(tab, kAddTextJs),
+        // Select the text. The small chip shows up on it. This avoids an OS
+        // mouse drag, which can hang on Windows bots.
+        WaitForWebContentsPainted(tab), Do([this] {
+          content::WebContents* contents =
+              browser()->tab_strip_model()->GetActiveWebContents();
+          contents->Focus();
+          contents->SelectAll();
+        }),
+        // The chip is its own widget, outside the browser's context.
+        InAnyContext(
+            WaitForShow(GlicSelectionWidgetDelegate::kAskGeminiButtonElementId),
+            PressButton(
+                GlicSelectionWidgetDelegate::kAskGeminiButtonElementId)),
+        // The overlay opens on the selected text.
+        WaitForShow(OverlayBaseController::kOverlayId),
+        InstrumentNonTabWebView(overlay, OverlayBaseController::kOverlayId),
+        WaitForJsResultAt(overlay, kOverlayApp,
+                          "el => el.screenshot_ !== null"),
+        WaitForElementVisible(overlay, kSelectionOverlay),
+        WaitForJsResultAt(overlay, kSelectionOverlay, kClickExplainChipJs));
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+}  // namespace
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       ClickExplainChipShowsCard) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+
+  static constexpr char kExpectedExplanation[] =
+      "An explanation of your selection.";
+  optimization_guide::proto::QuickAnswersResponse response_msg;
+  response_msg.set_answer(kExpectedExplanation);
+  optimization_guide::proto::Any any;
+  any.set_value(response_msg.SerializeAsString());
+  any.set_type_url(
+      base::StrCat({"type.googleapis.com/", response_msg.GetTypeName()}));
+  OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->GetProfile())
+      ->AddExecutionResultForTesting(
+          optimization_guide::ModelBasedCapabilityKey::kQuickAnswers,
+          optimization_guide::OptimizationGuideModelExecutionResult(
+              std::move(any), nullptr));
+
+  static constexpr char kCardTextJs[] = R"js(
+    el => el.shadowRoot.querySelector(
+        '#inlineFulfillmentHost > glic-explain-fulfillment > .explanation')
+        ?.textContent
+  )js";
+  static constexpr char kChipsHiddenJs[] = R"js(
+    el => getComputedStyle(
+        el.shadowRoot.querySelector('.action-chips-row')).display === 'none'
+  )js";
+
+  RunTestSequence(
+      OpenExplainCard(kActiveTab, kOverlayWebContentsId),
+      // The card shows the explanation in place of the chips.
+      WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay, kCardTextJs,
+                        kExpectedExplanation),
+      CheckJsResultAt(kOverlayWebContentsId, kSelectionOverlay, kChipsHiddenJs),
+      // The overlay stays up for inline fulfillment.
+      CheckResult(GetOverlayVisibilityAt(0), true));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       GrowingCardStaysInViewport) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+
+  static constexpr char kCardShownJs[] = R"js(
+    el => !!el.shadowRoot.querySelector(
+        '#inlineFulfillmentHost > glic-explain-fulfillment')
+  )js";
+  // In WebUI, updateFloatingPromptPosition() keeps a 16px margin from the
+  // viewport edges and from the selection. Grows the card until the prompt is
+  // exactly as tall as the space inside the top and bottom margins (innerHeight
+  // - 2 * 16). It can no longer go below the selection, so it must move up. If
+  // it didn't, it would run off the bottom by (selection bottom - 16px), which
+  // is > 0 here since the selected text ends ~26px down.
+  static constexpr char kGrowCardJs[] = R"js(
+    el => {
+      const container =
+          el.shadowRoot.querySelector('#floatingPromptContainer');
+      const host = el.shadowRoot.querySelector('#inlineFulfillmentHost');
+      const grow = innerHeight - 32 - container.getBoundingClientRect().height;
+      host.style.height = `${host.getBoundingClientRect().height + grow}px`;
+    }
+  )js";
+  static constexpr char kPromptInViewportJs[] = R"js(
+    el => {
+      const rect = el.shadowRoot.querySelector('#floatingPromptContainer')
+                       .getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= innerHeight;
+    }
+  )js";
+
+  RunTestSequence(
+      OpenExplainCard(kActiveTab, kOverlayWebContentsId),
+      WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay, kCardShownJs),
+      ExecuteJsAt(kOverlayWebContentsId, kSelectionOverlay, kGrowCardJs),
+      // The prompt moves so the card stays on screen.
+      WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay,
+                        kPromptInViewportJs));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       ClickCardAskGeminiOpensSidePanel) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kAskGemini = {
+      "selection-overlay-app", "glic-selection-overlay",
+      "#inlineFulfillmentHost > glic-explain-fulfillment > .ask-gemini"};
+
+  RunTestSequence(OpenExplainCard(kActiveTab, kOverlayWebContentsId),
+                  WaitForElementVisible(kOverlayWebContentsId, kAskGemini),
+                  ClickElement(kOverlayWebContentsId, kAskGemini),
+                  // Glic opens in the side panel.
+                  WaitForShow(kSidePanelElementId),
+                  InAnyContext(WaitForShow(kGlicViewElementId)));
 }
 
 namespace {

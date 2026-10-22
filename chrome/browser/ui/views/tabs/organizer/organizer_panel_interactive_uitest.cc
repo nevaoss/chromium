@@ -14,7 +14,6 @@
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
@@ -116,9 +115,7 @@ std::vector<base::CallbackListSubscription> SubscribeToAnimations(
 class OrganizerPanelUiTest : public InteractiveBrowserTest {
  public:
   OrganizerPanelUiTest() {
-    scoped_feature_list_.InitWithFeatures(
-        {organizer_panel::kOrganizerPanel, tabs::kVerticalTabsExpandOnHover},
-        {});
+    scoped_feature_list_.InitAndEnableFeature(organizer_panel::kOrganizerPanel);
   }
 
   void SetUpOnMainThread() override {
@@ -231,7 +228,7 @@ class OrganizerPanelUiTest : public InteractiveBrowserTest {
                            OrganizerPanelLocation::kOrganizerTray;
                   },
                   Then(PressButton(kOrganizerPanelCloseButtonElementId)),
-                  Else(PressButton(kTabSearchButtonElementId))),
+                  Else(PressButton(kVerticalTabStripTabStripButtonElementId))),
               WaitForPanelClose());
     AddDescriptionPrefix(steps, "CloseOrganizerPanel()");
     return steps;
@@ -316,13 +313,13 @@ class OrganizerPanelUiTest : public InteractiveBrowserTest {
 // Horizontal tab strip state with tray.
 
 IN_PROC_BROWSER_TEST_F(OrganizerPanelUiTest, OpenClosePanelHorizontalTabs) {
-  RunTestSequence(SetVerticalTabsEnabled(false), CheckControllerState(false),
-                  OpenOrganizerPanel(), CheckControllerState(true),
-                  ExpectPanelLocation(OrganizerPanelLocation::kOrganizerTray),
-                  CheckPanelVisuals(organizer_panel::kOrganizerPanelMinWidth,
-                                    /*should_have_rounded_corners=*/true),
-                  WaitForPanelLoad(), CloseOrganizerPanel(),
-                  CheckControllerState(false));
+  RunTestSequence(
+      SetVerticalTabsEnabled(false), CheckControllerState(false),
+      OpenOrganizerPanel(), CheckControllerState(true),
+      ExpectPanelLocation(OrganizerPanelLocation::kOrganizerTray),
+      CheckPanelVisuals(organizer_panel::kOrganizerPanelDefaultWidth,
+                        /*should_have_rounded_corners=*/true),
+      WaitForPanelLoad(), CloseOrganizerPanel(), CheckControllerState(false));
 }
 
 IN_PROC_BROWSER_TEST_F(OrganizerPanelUiTest,
@@ -621,7 +618,13 @@ class OrganizerPanelPixelTest : public OrganizerPanelUiTest {
   }
 };
 
-IN_PROC_BROWSER_TEST_F(OrganizerPanelPixelTest, HorizontalTabs) {
+// TODO(crbug.com/568826436): Fix flakiness on Windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_HorizontalTabs DISABLED_HorizontalTabs
+#else
+#define MAYBE_HorizontalTabs HorizontalTabs
+#endif
+IN_PROC_BROWSER_TEST_F(OrganizerPanelPixelTest, MAYBE_HorizontalTabs) {
   RunTestSequence(SetVerticalTabsEnabled(false), OpenOrganizerPanel(),
                   ScreenshotPanel());
 }

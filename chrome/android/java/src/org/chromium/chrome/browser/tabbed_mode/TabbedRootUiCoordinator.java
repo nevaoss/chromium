@@ -863,7 +863,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         maybeShowPromosOnForeground();
 
         mCrossDeviceSettingImporter =
-                DeviceInfo.isDesktop()
+                DeviceInfo.isDesktop() || !CrossDeviceSettingImporter.shouldCreateImporter()
                         ? null
                         : new CrossDeviceSettingImporter(
                                 activityLifecycleDispatcher,
@@ -2104,7 +2104,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     protected Destroyable createEdgeToEdgeBottomChin() {
         boolean defaultVisibility =
                 !DeviceFormFactor.isNonMultiDisplayContextOnTablet(mActivity)
-                        || EdgeToEdgeUtils.defaultVisibilityOfBottomChinOnTablet(mActivity);
+                        || EdgeToEdgeUtils.shouldShowBottomChinByDefaultOnTablet(mActivity);
         assert mWindowAndroid != null;
         assert mLayoutManager != null;
         SystemBarColorHelper bottomChinColorHelper =
@@ -2285,8 +2285,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     return;
                 }
 
-                int tabId = tabModel.getGroupLastShownTabId(tabGroupId);
                 if (TabSwitcherUtils.isGridTabSwitcherDisabled()) {
+                    int tabId = tabModel.getGroupLastShownTabId(tabGroupId);
                     Tab tab = tabModel.getTabById(tabId);
                     if (tab != null) {
                         tabModel.setIndex(tabModel.indexOf(tab), TabSelectionType.FROM_USER);
@@ -2305,7 +2305,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         () -> {
                             var tabSwitcher = mTabSwitcherSupplier.get();
                             assert tabSwitcher != null;
-                            tabSwitcher.requestOpenTabGroupDialog(tabId);
+                            tabSwitcher.requestOpenTabGroupDialog(assumeNonNull(tabGroupId));
                         });
             }
 
@@ -2845,7 +2845,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
     @Override
     protected boolean supportsEdgeToEdge() {
-        return EdgeToEdgeUtils.isEdgeToEdgeBottomChinEnabled(mActivity);
+        // EdgeToEdgeController is needed either for the bottom chin (gesture nav) or for top
+        // edge-to-edge on phones (migrated from TopInsetCoordinator, which supports 3-button nav).
+        return EdgeToEdgeUtils.isEdgeToEdgeBottomChinSupportedByDevice(mActivity)
+                || EdgeToEdgeUtils.isEdgelessTopInsetSupported(mActivity);
+    }
+
+    @Override
+    protected boolean supportsTopInset() {
+        return true;
     }
 
     @Override

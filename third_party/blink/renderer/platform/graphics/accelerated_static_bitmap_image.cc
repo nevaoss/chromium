@@ -20,10 +20,14 @@
 #include "gpu/command_buffer/common/sync_token.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_image_provider.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_non_2d_resource_provider.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/mailbox_ref.h"
 #include "third_party/blink/renderer/platform/graphics/mailbox_texture_backing.h"
+#include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
@@ -103,6 +107,75 @@ AcceleratedStaticBitmapImage::CreateFromExternalSharedImage(
       base::PlatformThreadRef(),
       ThreadScheduler::Current()->CleanupTaskRunner(),
       std::move(release_callback)));
+}
+
+// static
+scoped_refptr<StaticBitmapImage> AcceleratedStaticBitmapImage::CreateFromRaster(
+    const gfx::Size& size,
+    viz::SharedImageFormat format,
+    SkAlphaType alpha_type,
+    const gfx::ColorSpace& color_space,
+    const gfx::HDRMetadata& hdr_metadata,
+    base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
+    gpu::SharedImageUsageSet shared_image_usage_flags,
+    base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
+    scoped_refptr<const cc::AnimatedImageFrameIndexMap>
+        animated_image_frame_index_map) {
+  auto resource_provider = CanvasNon2DResourceProvider::Create(
+      size, format, alpha_type, color_space, hdr_metadata,
+      context_provider_wrapper, shared_image_usage_flags);
+  if (!resource_provider) {
+    return nullptr;
+  }
+
+  auto shared_image = resource_provider->resource()->GetSharedImage();
+  gpu::SyncToken sync_token =
+      resource_provider->resource()->acquire_sync_token();
+  MemoryManagedPaintRecorder recorder(size, /*client=*/nullptr);
+  draw_callback(recorder.getRecordingCanvas());
+  if (recorder.HasReleasableDrawOps()) {
+    cc::ImageDecodeCache* cache_f16 = nullptr;
+    if (resource_provider->GetSharedImageFormat() ==
+        viz::SinglePlaneFormat::kRGBA_F16) {
+      cache_f16 = context_provider_wrapper->ContextProvider().ImageDecodeCache(
+          kRGBA_F16_SkColorType);
+    }
+    cc::ImageDecodeCache* cache_rgba8 =
+        context_provider_wrapper->ContextProvider().ImageDecodeCache(
+            kN32_SkColorType);
+    CanvasImageProvider image_provider(
+        cache_rgba8, cache_f16, color_space,
+        resource_provider->GetSharedImageFormat(),
+        cc::PlaybackImageProvider::RasterMode::kGpu, context_provider_wrapper);
+    if (animated_image_frame_index_map) {
+      image_provider.SetAnimatedImageFrameIndexes(
+          std::move(animated_image_frame_index_map));
+    }
+
+    sync_token = resource_provider->RasterInterface()->RasterSharedImage(
+        shared_image, sync_token, recorder.ReleaseMainRecording(),
+        &image_provider, /*needs_clear=*/true);
+    image_provider.ReleaseLockedImages();
+    image_provider.UnbindTextureBackedImages();
+  }
+  if (!resource_provider->IsValid()) {
+    return nullptr;
+  }
+
+  auto release_callback = blink::BindOnce(
+      [](scoped_refptr<gpu::ClientSharedImage> shared_image,
+         const gpu::SyncToken& sync_token, bool is_lost) {
+        if (sync_token.HasData()) {
+          shared_image->UpdateDestructionSyncToken(sync_token);
+        }
+      },
+      shared_image);
+
+  return CreateFromCanvasSharedImage(
+      std::move(shared_image), sync_token, alpha_type, hdr_metadata,
+      std::move(context_provider_wrapper), base::PlatformThread::CurrentRef(),
+      ThreadScheduler::Current()->CleanupTaskRunner(),
+      std::move(release_callback));
 }
 
 AcceleratedStaticBitmapImage::AcceleratedStaticBitmapImage(

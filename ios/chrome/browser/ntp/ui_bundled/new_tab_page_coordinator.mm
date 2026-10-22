@@ -1652,7 +1652,6 @@ using ntp_tiles::AimButtonRefactorArm;
   RecordMagicStackClick(ContentSuggestionsModuleType::kTips,
                         [self isStartSurface]);
   RecordHomeAction(IOSHomeActionType::kTips, [self isStartSurface]);
-  [self dismissCustomizationMenu];
 }
 
 - (void)shopCardOpened {
@@ -1902,7 +1901,7 @@ using ntp_tiles::AimButtonRefactorArm;
 // coordinator is stopped.
 - (void)showSigninCommandDidFinishWithCoordinator:
     (SigninCoordinator*)coordinator {
-  CHECK_EQ(_signinCoordinator, coordinator, base::NotFatalUntil::M151);
+  CHECK_EQ(_signinCoordinator, coordinator);
   [self stopSigninCoordinator];
 }
 

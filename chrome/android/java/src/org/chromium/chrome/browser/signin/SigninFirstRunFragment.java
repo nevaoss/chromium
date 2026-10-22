@@ -24,6 +24,7 @@ import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.FrameLayout;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.MainThread;
 import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
@@ -83,6 +84,7 @@ public class SigninFirstRunFragment extends Fragment
     private @Nullable DeviceLockCoordinator mDeviceLockCoordinator;
     private @Nullable EnterpriseSignalsDisclaimerCoordinator mManagementNoticeCoordinator;
     private ConfirmManagedSyncDataDialogCoordinator.@Nullable Listener mManagementNoticeListener;
+    private @Nullable OnBackPressedCallback mManagementNoticeBackPressCallback;
     private boolean mExitFirstRunCalled;
     private boolean mDelayedExitFirstRunCalledForTesting;
     private boolean mCenteredLayoutInflated;
@@ -138,6 +140,10 @@ public class SigninFirstRunFragment extends Fragment
         if (mDeviceLockCoordinator != null) {
             mDeviceLockCoordinator.destroy();
             mDeviceLockCoordinator = null;
+        }
+        if (mManagementNoticeBackPressCallback != null) {
+            mManagementNoticeBackPressCallback.remove();
+            mManagementNoticeBackPressCallback = null;
         }
         if (mManagementNoticeCoordinator != null) {
             mManagementNoticeCoordinator.destroy();
@@ -433,25 +439,33 @@ public class SigninFirstRunFragment extends Fragment
                 ProfileProvider.getOrCreateProfile(
                         assertNonNull(getProfileSupplier().get()), false);
         mManagementNoticeListener = listener;
-        // TODO(b/553341908): Handle back press while the notice is displayed. Currently it's
-        // handled by FirstRunActivity, which aborts the FRE (closing Chrome) instead of treating it
-        // as a decline. Register an OnBackPressedCallback that calls onDecline().
-        //
-        // TODO(b/553341908): Introduce a dedicated presentation mode for FRE.
         mManagementNoticeCoordinator =
                 new EnterpriseSignalsDisclaimerCoordinator(
                         requireContext(),
                         assertNonNull(IdentityServicesProvider.get().getIdentityManager(profile)),
                         account,
-                        EnterpriseSignalsDisclaimerCoordinator.PresentationMode.BOTTOM_SHEET,
+                        EnterpriseSignalsDisclaimerCoordinator.PresentationMode
+                                .FIRST_RUN_EXPERIENCE,
                         this);
         setView(mManagementNoticeCoordinator.getView());
+
+        // Treat back press while the notice is displayed as a decline.
+        mManagementNoticeBackPressCallback =
+                new OnBackPressedCallback(/* enabled= */ true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        onDecline();
+                    }
+                };
+        requireActivity()
+                .getOnBackPressedDispatcher()
+                .addCallback(this, mManagementNoticeBackPressCallback);
     }
 
     /** Implements {@link EnterpriseSignalsDisclaimerCoordinator.Delegate}. */
     @Override
     public void showInfoPage(String url) {
-        // TODO(b/553341908): Open the learn more page.
+        assumeNonNull(getPageDelegate()).showInfoPage(url);
     }
 
     /** Implements {@link EnterpriseSignalsDisclaimerCoordinator.Delegate}. */
@@ -481,6 +495,10 @@ public class SigninFirstRunFragment extends Fragment
     private ConfirmManagedSyncDataDialogCoordinator.@Nullable Listener dismissManagementNotice() {
         var listener = mManagementNoticeListener;
         mManagementNoticeListener = null;
+        if (mManagementNoticeBackPressCallback != null) {
+            mManagementNoticeBackPressCallback.remove();
+            mManagementNoticeBackPressCallback = null;
+        }
         if (mManagementNoticeCoordinator != null) {
             if (mFragmentView != null) {
                 restoreMainView();
