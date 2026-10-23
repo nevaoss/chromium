@@ -4621,13 +4621,6 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/dawn', 'am',
               '../../neva/patches/0001-build-152.0.7950.0-1-Dawn-Disable-warning-suppressio.patch']
   },
-  # Apply 'V8: Change gn desc call for metagen tool' patch
-  {
-    'name': 'V8-Change-gn-desc-call-for-metagen-tool',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/v8', 'am',
-              '../neva/patches/0001-155.0.8041.0-1-V8-Change-gn-desc-call-for-metagen-to.patch']
-  },
   # Apply 'V8: Add webOS targets to :v8_snapshot visibility list' patch
   {
     'name': 'V8-Add-webOS-targets-to-v8_snapshot-visibility-list',
