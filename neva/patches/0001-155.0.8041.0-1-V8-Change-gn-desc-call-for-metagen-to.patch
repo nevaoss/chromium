@@ -13,33 +13,35 @@ RuntimeError: [metagen] no .gn source-root marker found above
 
 Issue: NEVA-11447
 ---
- tools/metagen/compile_flags.py | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ tools/metagen/compile_flags.py | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/tools/metagen/compile_flags.py b/tools/metagen/compile_flags.py
-index d791d9fbdb5..2515aae0f53 100644
+index d7c469d6f49..5e6a0060e6e 100644
 --- a/tools/metagen/compile_flags.py
 +++ b/tools/metagen/compile_flags.py
-@@ -189,8 +189,18 @@ def get_compile_args_from_gn_desc(
-     # Without it gn prepends any build-file warning to the document -- an
-     # arm_float_abi that no declare_args() claims on the arm64 bots, say --
-     # and the parse below fails. A gn that actually fails still reports.
+@@ -186,11 +186,18 @@ def get_compile_args_from_gn_desc(build_dir: str, target_label: str,
+       # Without it gn prepends any build-file warning to the document -- an
+       # arm_float_abi that no declare_args() claims on the arm64 bots, say --
+       # and the parse below fails. A gn that actually fails still reports.
 +
-+    # NOTE(neva): It's needed for mksnapshot build.
-+    gn_cmd = [gn]
-+    mksnapshot_dotfile = os.path.join(source_root, "neva", "mksnapshot.gn")
-+    if "mksnapshot" in build_dir and os.path.exists(mksnapshot_dotfile):
-+        gn_cmd.append(f"--root={source_root}")
++      # NOTE(neva): It's needed for mksnapshot build.
++      # Pass --root and --dotfile so that `gn desc` can resolve the
++      # mksnapshot build configuration (see neva/mksnapshot.gn).
++      gn_cmd = [gn, "desc", "-q", "--root=" + source_root]
++      mksnapshot_dotfile = os.path.join(source_root, "neva", "mksnapshot.gn")
++      if "mksnapshot" in build_dir and os.path.exists(mksnapshot_dotfile):
 +        gn_cmd.append(f"--dotfile={mksnapshot_dotfile}")
-+    gn_cmd.extend(["desc", "-q", out_rel, target_label, "--format=json"])
++      gn_cmd.extend([tmp_dir, target_label, "--format=json"])
 +
-     proc = subprocess.run(
--        [gn, "desc", "-q", out_rel, target_label, "--format=json"],
-+      # [gn, "desc", "-q", out_rel, target_label, "--format=json"],
-+        gn_cmd,
-         cwd=source_root,
-         capture_output=True,
-         text=True,
+       proc = subprocess.run(
+-          [
+-              gn, "desc", "-q", "--root=" + source_root, tmp_dir, target_label,
+-              "--format=json"
+-          ],
++          gn_cmd,
+           cwd=source_root,
+           capture_output=True,
+           text=True,
 -- 
 2.55.0
-
