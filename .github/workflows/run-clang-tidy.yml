@@ -39,10 +39,6 @@ jobs:
       )
     runs-on: self-hosted
 
-    env:
-      STATUS_CONTEXT: jenkins/clang-tidy
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
     steps:
       - name: Validate PR parameters and prepare for manual run
         if: github.event_name == 'workflow_dispatch'
@@ -104,17 +100,12 @@ jobs:
       # Commit status is attached to the PR head commit, so the result is
       # visible on the PR even though the run is triggered manually.
       - name: Report pending status
-        continue-on-error: true
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_HEAD_SHA: ${{ steps.prepare_params.outputs.head_sha }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${PR_HEAD_SHA}" \
-            -f state=pending \
-            -f context="${STATUS_CONTEXT}" \
-            -f description="Jenkins clang-tidy is running" \
-            -f target_url="${RUN_URL}"
+        uses: nevaoss/ci/.github/actions/commit-status@infra/NEVA-11525/add-commit-status-action
+        with:
+          context: jenkins/clang-tidy
+          label: Jenkins clang-tidy
+          state: pending
+          sha: ${{ steps.prepare_params.outputs.head_sha }}
 
       - name: Checkout CI repository
         uses: actions/checkout@v6
@@ -191,22 +182,12 @@ jobs:
 
       - name: Report final status
         if: always() && steps.prepare_params.outputs.head_sha != ''
-        continue-on-error: true
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          JOB_STATUS: ${{ job.status }}
-          PR_HEAD_SHA: ${{ steps.prepare_params.outputs.head_sha }}
-          JENKINS_BUILD: ${{ steps.clang_tidy.outputs.jenkins_build }}
-        run: |
-          BUILD="Jenkins clang-tidy${JENKINS_BUILD:+ #${JENKINS_BUILD}}"
-          case "${JOB_STATUS}" in
-            success)   STATE=success; DESC="${BUILD} completed, see PR comment" ;;
-            cancelled) STATE=error;   DESC="${BUILD} was cancelled" ;;
-            *)         STATE=failure; DESC="${BUILD} did not complete" ;;
-          esac
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${PR_HEAD_SHA}" \
-            -f state="${STATE}" \
-            -f context="${STATUS_CONTEXT}" \
-            -f description="${DESC}" \
-            -f target_url="${RUN_URL}"
+        uses: nevaoss/ci/.github/actions/commit-status@infra/NEVA-11525/add-commit-status-action
+        with:
+          context: jenkins/clang-tidy
+          label: Jenkins clang-tidy
+          state: ${{ job.status }}
+          build: ${{ steps.clang_tidy.outputs.jenkins_build }}
+          sha: ${{ steps.prepare_params.outputs.head_sha }}
+          success-text: completed, see PR comment
+          failure-text: did not complete

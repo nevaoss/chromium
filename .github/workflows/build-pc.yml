@@ -18,23 +18,16 @@ jobs:
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
-      STATUS_CONTEXT: jenkins/build-pc
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
     steps:
       # Commit status is attached to the dispatched commit, so it shows up on
       # every PR whose head is this commit, regardless of the trigger type.
       - name: Report pending status
-        continue-on-error: true
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state=pending \
-            -f context="${STATUS_CONTEXT}" \
-            -f description="Jenkins PC build is running" \
-            -f target_url="${RUN_URL}"
+        uses: nevaoss/ci/.github/actions/commit-status@infra/NEVA-11525/add-commit-status-action
+        with:
+          context: jenkins/build-pc
+          label: Jenkins PC build
+          state: pending
       - uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
@@ -46,21 +39,9 @@ jobs:
           ./build-pc.py
       - name: Report final status
         if: always()
-        continue-on-error: true
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          JOB_STATUS: ${{ job.status }}
-          JENKINS_BUILD: ${{ steps.jenkins.outputs.jenkins_build }}
-        run: |
-          BUILD="Jenkins PC build${JENKINS_BUILD:+ #${JENKINS_BUILD}}"
-          case "${JOB_STATUS}" in
-            success)   STATE=success; DESC="${BUILD} passed" ;;
-            cancelled) STATE=error;   DESC="${BUILD} was cancelled" ;;
-            *)         STATE=failure; DESC="${BUILD} failed" ;;
-          esac
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state="${STATE}" \
-            -f context="${STATUS_CONTEXT}" \
-            -f description="${DESC}" \
-            -f target_url="${RUN_URL}"
+        uses: nevaoss/ci/.github/actions/commit-status@infra/NEVA-11525/add-commit-status-action
+        with:
+          context: jenkins/build-pc
+          label: Jenkins PC build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
