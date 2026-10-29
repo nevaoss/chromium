@@ -29,6 +29,12 @@ const char* get_my_ip_to(const char* ip, int port) {
   if (!ip)
     return "unknown";
 
+  // clang-tidy diagnostics demo for NEVA-11526. Do not merge.
+  int* demo_ptr = 0;
+  bool demo_flag = 1;
+  (void)demo_ptr;
+  (void)demo_flag;
+
   struct sockaddr_in sa;
   sa.sin_family  = AF_INET;
   sa.sin_port = htons(port);
