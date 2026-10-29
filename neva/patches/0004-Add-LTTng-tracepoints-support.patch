@@ -65,18 +65,18 @@ Reviewed-by: Lokesh Kumar Goel <lokeshkumar.goel@lge.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index a5c7d847781..6e63bae980b 100644
+index 4f9e9103e86..054550d2308 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -13,6 +13,7 @@ import("//build/config/riscv.gni")
- import("//build/config/sanitizers/sanitizers.gni")
+@@ -17,6 +17,7 @@ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build/toolchain/kythe.gni")
  import("//build_overrides/build.gni")
  import("//third_party/icu/config.gni")
 +import("//neva/neva.gni")
  
  import("gni/cluster_build.gni")
  import("gni/snapshot_toolchain.gni")
-@@ -7936,6 +7937,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
+@@ -8421,6 +8422,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
        ":v8_tracing",
        "//build/win:default_exe_manifest",
      ]
@@ -88,5 +88,5 @@ index a5c7d847781..6e63bae980b 100644
  
    # This config disables a link time optimization "ICF", which may merge
 -- 
-2.45.2
+2.34.1
 
