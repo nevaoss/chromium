@@ -30,6 +30,7 @@
 #include "base/containers/adapters.h"
 #include "base/containers/enum_set.h"
 #include "base/feature_list.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
 #include "third_party/blink/public/common/features.h"
@@ -174,6 +175,7 @@ using AttributeChangedFunction =
 using mojom::blink::FormControlType;
 
 struct AttributeTriggers {
+<<<<<<< HEAD
   // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
   // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
   // The error is: "non-static const member '<member-name>',
@@ -199,6 +201,13 @@ struct AttributeTriggers {
 #else
   const AtomicString& event;
 #endif
+=======
+  // RAW_PTR_EXCLUSION: #global-scope
+  RAW_PTR_EXCLUSION const QualifiedName& attribute;
+  WebFeature web_feature;
+  // RAW_PTR_EXCLUSION: #global-scope
+  RAW_PTR_EXCLUSION const AtomicString& event;
+>>>>>>> 157.0.8090.0~1
   AttributeChangedFunction function;
 };
 

@@ -1033,6 +1033,7 @@
 <translation id="1790976235243700817">Հեռացնել մուտքի թույլտվությունը</translation>
 <translation id="1791662854739702043">Տեղադրվեց</translation>
 <translation id="1792619191750875668">Ընդարձակված էկրան</translation>
+<translation id="1793048658013002380"><ph name="TOOLTIP_TEXT" /> (<ph name="KEYBOARD_SHORTCUT" />)</translation>
 <translation id="1794212650797661990">Թաքցնել <ph name="DOMAIN" /> տիրույթի գաղտնաբառը</translation>
 <translation id="1794791083288629568">Հայտնել կարծիք՝ խնդիրը վերացնելու համար:</translation>
 <translation id="1795214765651529549">Օգտագործել դասական թեման</translation>
@@ -1697,7 +1698,6 @@
 <translation id="2300383962156589922">«<ph name="APP_NAME" />» հավելվածի կարգավորում և կառավարում</translation>
 <translation id="2300434721407965566">Դադարեցնում է լիցքավորումը, երբ լիցքի մակարդակը հասնում է 80%-ի, որպեսզի մարտկոցն ավելի երկար ծառայի։</translation>
 <translation id="2301382460326681002">Ընդլայնման արմատային գրացուցակը սխալ է:</translation>
-<translation id="2301402091755573488">Ստացած ներդիր</translation>
 <translation id="2304820083631266885">Մոլորակ</translation>
 <translation id="2305202347479035002">Ինչպես է այն աշխատում</translation>
 <translation id="2306794767168143227">Պահել այս սարքում՝ <ph name="BRAND" />ում</translation>
@@ -1716,6 +1716,7 @@
 <translation id="2322622365472107569">Ավարտի ժամը՝ <ph name="TIME" /></translation>
 <translation id="2323018538045954000">Պահված Wi-Fi ցանցեր</translation>
 <translation id="2323685460575935191">Թաքցնել ոլորման կոճակները</translation>
+<translation id="2325004050205455346">Վերջին պատմությունը</translation>
 <translation id="2325444234681128157">Հիշել գաղտնաբառը</translation>
 <translation id="2326188115274135041">Ավտոմատ ապակողպումը միացնելու համար հաստատեք PIN կոդը</translation>
 <translation id="2326583548923775947">Սա Google հաշիվ չէ։ Տարրերը, որոնք պահում եք Chrome-ում, հասանելի չեն լինի մյուս սարքերում։</translation>
@@ -2072,7 +2073,6 @@
 <translation id="2598710988533271874">Հասանելի է Chrome-ի նոր տարբերակը</translation>
 <translation id="2599048253926156421">Օգտանունը պատճենվեց սեղմատախտակին</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{Անջատվել է 1 չպահված ընդլայնում}one{Անջատվել է {NUM_SITES} չպահված ընդլայնում}other{Անջատվել է {NUM_SITES} չպահված ընդլայնում}}</translation>
-<translation id="2603121359676416582">Այս էջի համար</translation>
 <translation id="2603656971249947488">Ներդիրների հատված</translation>
 <translation id="2604129989323098489">Կայքը սովորաբար ուղարկում է ձեր էկրանների մասին տեղեկությունների հարցում, որպեսզի կարողանա խելացի կերպով բացել և տեղադրել պատուհաններ, օրինակ՝ կողք կողքի ցույց տալ փաստաթղթեր կամ լիաէկրան բովանդակություն</translation>
 <translation id="2604255671529671813">Ցանցի միացման սխալ</translation>
@@ -2853,7 +2853,6 @@
 <translation id="3166443275568926403">Արտադրողականությունը և մարտկոցի վիճակը</translation>
 <translation id="3167446923957429259">Բերանը շարժեք դեպի ձախ</translation>
 <translation id="3167562202484086668">Ջնջել բոլոր տվյալները «<ph name="BRAND" />» ծառայությունից</translation>
-<translation id="3169504125849131369">Բացել Windows-ի կարգավորումները</translation>
 <translation id="3175067642577044620">Հիմնական տեքստ</translation>
 <translation id="3175862692832442091">Անտառ</translation>
 <translation id="3176347586396987181">Օգտագործեք «z» ստեղնը՝ մկնիկի որևէ կոճակ սեղմելու և պահելու համար</translation>
@@ -2939,6 +2938,7 @@
 <translation id="323262942975422760">Լրացուցիչ ընտրանքներ խմբագրելու կամ ջնջելու համար <ph name="ENTITY_INSTANCE_LABEL" />, <ph name="ENTITY_INSTANCE_SUBLABEL" /></translation>
 <translation id="3232754137068452469">Վեբ ծրագիր</translation>
 <translation id="3233271424239923319">Լինուքսի հավելվածների ու ֆայլերի պահուստավորում</translation>
+<translation id="3233577317461669428">Այլ սարք չի գտնվել</translation>
 <translation id="3234251228180563751">Օգտանունը պարունակում է ավելի քան 1000 նիշ</translation>
 <translation id="3234978181857588512">Պահել սարքում</translation>
 <translation id="3237871032310650497">Ջնջե՞լ <ph name="PARTITION_SITE_NAME" /> կայքում առանձնացված <ph name="SITE_NAME" /> կայքի տվյալները</translation>
@@ -3013,7 +3013,6 @@
 <translation id="3292966601422448005">Թույլտվությունները, որոնք տրամադրում եք <ph name="APP_NAME" /> հավելվածին, նաև կգործեն այդ հավելվածի կողմից տեղադրված հավելվածների համար։</translation>
 <translation id="3293080634164207409">Ավելացրեք ներդիրներ</translation>
 <translation id="329324683265785818">Ստեղնային դյուրանցում k՝ նվագարկման/դադարեցման համար</translation>
-<translation id="3293644607209440645">Ուղարկել այս էջը</translation>
 <translation id="3294437725009624529">Հյուր</translation>
 <translation id="3294686910656423119">Օգտագործման վիճակագրություն և խափանման հաշվետվություններ</translation>
 <translation id="3295241308788901889">Ներդիր է հեռարձակվում</translation>
@@ -4746,7 +4745,6 @@
 <translation id="4610493438923139095">Ոչ վստահելի</translation>
 <translation id="4610637590575890427">Արդյո՞ք ուզում էիք այցելել <ph name="SITE" /> կայքը:</translation>
 <translation id="4611619000650855880">Երբ ընտրված է մկնիկի ձախ կոճակը, օգտագործեք «/» ստեղնը՝ երկու անգամ սեղմելու համար</translation>
-<translation id="4612841084470706111">Տրամադրել օգտագործման թույլտվություն բոլոր պահանջվող կայքերին։</translation>
 <translation id="4613271546271159013">Նոր ներդիր բացելիս ցուցադրվող էջը փոխվել է ընդլայնման կողմից:</translation>
 <translation id="461613135510474570">Նախադասություն</translation>
 <translation id="461661862154729886">Էներգիայի աղբյուր</translation>
@@ -5712,6 +5710,7 @@
 <translation id="5344128444027639014"><ph name="BATTERY_PERCENTAGE" />% (աջ)</translation>
 <translation id="534449933710420173">Անանուն պանակ</translation>
 <translation id="5345916423802287046">Գործարկել հավելվածը մուտք գործելիս</translation>
+<translation id="5346059693449184483">Կիսվեք ձեր գաղափարներով</translation>
 <translation id="5350116201946341974">Տարօրինակ</translation>
 <translation id="535123479159372765">Տեքստը պատճենվեց այլ սարքից</translation>
 <translation id="5352257124367865087">Կառավարել կայքի թույլտվությունները</translation>
@@ -6985,6 +6984,7 @@
 <translation id="6356893102071098867">Համոզվեք, որ ընտրել եք ճիշտ հաշիվը</translation>
 <translation id="6357305427698525450">Որոշ աջակցվող հղումներ նախկինի պես կբացվեն <ph name="APP_NAME" /> կամ <ph name="APP_NAME_2" /> հավելվածում։</translation>
 <translation id="6357750620525943720">Այլ մշտական նույնացուցիչներ (օր․՝ հեշեր կամ UUID-ներ)</translation>
+<translation id="6357830294871526418">Ներդիրներ այլ սարքերում</translation>
 <translation id="6358884629796491903">Վիշապ</translation>
 <translation id="6359640073754977254">Թերթել մինչև վերջին ներդիրը</translation>
 <translation id="6361850914223837199">Սխալի մանրամասներ՝</translation>
@@ -7035,7 +7035,6 @@
 <translation id="6400360390396538896">Միշտ <ph name="ORIGIN" /> կայքում</translation>
 <translation id="6400714103322134861">Չեղարկել ներդիրների խմբի ընտրությունը</translation>
 <translation id="6401118106417399952">Ձեր սարքի EID համարն է <ph name="EID_NUMBER" />, և սերիական համարն է <ph name="SERIAL_NUMBER" />։ Դրանց միջոցով կարող եք ակտիվացնել ծառայությունը։</translation>
-<translation id="6401458660421980302">Այս ներդիրը մեկ այլ սարք ուղարկելու համար մուտք գործեք Chrome այդ սարքում</translation>
 <translation id="6402042774506839496">Պատճառն իմանալու համար դիմեք հավելվածի մշակողին</translation>
 <translation id="6402921224457714577">Կայքերը կարող են հայցել MIDI սարքերի կառավարման և վերածրագրավորման թույլտվություն</translation>
 <translation id="6404511346730675251">Փոփոխել էջանիշը</translation>
@@ -7133,7 +7132,6 @@
 <translation id="6472893788822429178">Ցույց տալ Սկիզբ կոճակը</translation>
 <translation id="6473315466413288899">Ընտրեք տարբերակ</translation>
 <translation id="6474021817475285003">Տեսնել ավելին Google Օրացույցում</translation>
-<translation id="6474401088838630457">Հարցրեք Gemini-ին ավելին այս թեմայի մասին</translation>
 <translation id="6474498546677193336">Չհաջողվեց չեղարկել պանակի հասանելիությունը, քանի որ այն օգտագործվում է հավելվածի կողմից։ Պանակն անհասանելի կդառնա, երբ Լինուքսը հաջորդ անգամ անջատվի։</translation>
 <translation id="6474884162850599008">Google Drive հաշվի անջատում</translation>
 <translation id="6476482583633999078">Խոսքի արագությունը</translation>
@@ -7327,7 +7325,6 @@
 <translation id="6619801788773578757">Ավելացնել կրպակ-հավելված</translation>
 <translation id="6619990499523117484">Հաստատեք ձեր PIN կոդը</translation>
 <translation id="6621282332208609777">Հարցրեք Google-ին կամ մուտքագրեք URL</translation>
-<translation id="6621391692573306628">Այս ներդիրը մեկ այլ սարք ուղարկելու համար մուտք գործեք Chrome երկու սարքերում էլ</translation>
 <translation id="6622980291894852883">Շարունակել պատկերների արգելափակումը</translation>
 <translation id="6624036901798307345">Պլանշետի ռեժիմում սեղմեք ներդիրների հաշվիչի կոճակը գործիքագոտում՝ բացելու նոր ներդիրների հատվածը, որը ցույց է տալիս բոլոր ներդիրների մանրապատկերները։</translation>
 <translation id="6624538059730609162">Փակել աջ դիտակերպը</translation>

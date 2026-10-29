@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">Управувајте со пребарувачи</translation>
 <translation id="1435593198351412143">Отворај ги PDF-датотеките автоматски</translation>
 <translation id="1437543266176261764">Се извршува во <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Организирајте ги следените производи во „Обележувачи“</translation>
 <translation id="1452651021404174820">Изберете уред</translation>
 <translation id="1455845192930279203">Дали сепак сакате да ја преземете датотеката „<ph name="FILE_NAME" />“ (<ph name="FILE_SIZE" />) од <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Штедете време, пишувајте помалку</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, повеќекратно избрана прикачена картичка за снимање</translation>
 <translation id="4137746084635924146">Тековен јазик на уред</translation>
 <translation id="414128724510021958">Сајтовите за компјутер се бараат стандардно</translation>
+<translation id="4150837143272125910">Преземено е ажурирање</translation>
 <translation id="4162867837470729563">Список со опции за споделување отворен на целосен екран.</translation>
 <translation id="4164642020717536140">Брзо и безбедно прелистување на интернет</translation>
 <translation id="4165077084524712774">Повеќе алатки</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265">Да се отвори PDF-датотеката со <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Да се сопре споделувањето?</translation>
 <translation id="5853623416121554550">паузирано</translation>
+<translation id="5855375823365231964">За профилов</translation>
 <translation id="5855546874025048181">Рафинирајте: „<ph name="REFINE_TEXT" />“</translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, повеќекратно избрана картичка „Инкогнито“ за снимање</translation>
 <translation id="5857447844686706637">Нешто тргна наопаку. Не може да се ажурира „Следете ја цената“.</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">Скокнете на следната картичка</translation>
 <translation id="6040143037577758943">Затвори</translation>
 <translation id="604124094241169006">Автоматски</translation>
+<translation id="6041959688070413372">Управувајте со врската меѓу пребарувачките услуги и апликациите Google Workspace, како Google Drive</translation>
 <translation id="6042308850641462728">Повеќе</translation>
 <translation id="6047066316630165190">Отворете го менувачот на картички во мрежа</translation>
 <translation id="604996488070107836">Преземањето на <ph name="FILE_NAME" /> не успеа поради непозната грешка.</translation>
@@ -1400,6 +1402,7 @@
 <translation id="6565959834589222080">Се користи Wi-Fi кога е достапна</translation>
 <translation id="657177046675873214">За да ги добиете обележувачите на сите ваши уреди, вклучете „Обележувачи“ во „Поставки“</translation>
 <translation id="6573096386450695060">Секогаш дозволувај</translation>
+<translation id="657480975869429144">Достапна е нова верзија на Chrome</translation>
 <translation id="658099107946526506">Заштитете го приватното прелистување со PIN за да спречите несакан пристап</translation>
 <translation id="6583199322650523874">Ставете обележувач на тековната страница</translation>
 <translation id="6588043302623806746">Користете безбеден DNS</translation>

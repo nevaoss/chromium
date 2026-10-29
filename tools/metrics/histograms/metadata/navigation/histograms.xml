@@ -329,7 +329,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="BackForwardCache.CCNS.CookieChangeInfo.{CountType}"
-    units="count" expires_after="2026-10-25">
+    units="count" expires_after="2027-02-28">
   <owner>leimy@chromium.org</owner>
   <owner>bfcache-dev@chromium.org</owner>
   <summary>
@@ -687,7 +687,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="BackForwardCache.Pruning.NumberOfBackForwardCacheEntries"
-    units="count" expires_after="2026-11-15">
+    units="count" expires_after="2027-02-28">
   <owner>leimy@chromium.org</owner>
   <owner>bfcache-dev@chromium.org</owner>
   <summary>
@@ -699,7 +699,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="BackForwardCache.Pruning.NumberOfTabsWithBackForwardCache"
-    units="count" expires_after="2026-11-15">
+    units="count" expires_after="2027-02-28">
   <owner>leimy@chromium.org</owner>
   <owner>bfcache-dev@chromium.org</owner>
   <summary>
@@ -1144,8 +1144,8 @@ chromium-metrics-reviews@google.com.
   <token key="NavigationMode" variants="NavigationMode"/>
 </histogram>
 
-<histogram name="Navigation.Earlyhints.EarlyHintsToResponseStartTime"
-    units="ms" expires_after="2026-10-14">
+<histogram name="Navigation.EarlyHints.EarlyHintsToResponseStartTime"
+    units="ms" expires_after="2027-10-14">
   <owner>bashi@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1155,8 +1155,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Navigation.Earlyhints.WillStartRequestToEarlyHintsTime"
-    units="ms" expires_after="2026-10-14">
+<histogram name="Navigation.EarlyHints.WillStartRequestToEarlyHintsTime"
+    units="ms" expires_after="2027-10-14">
   <owner>bashi@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1499,17 +1499,6 @@ chromium-metrics-reviews@google.com.
 
     This histogram is of special interest to the chrome-analysis-team@. Do not
     change its semantics or retire it without talking to them first.
-  </summary>
-</histogram>
-
-<histogram name="Navigation.HostnameHasDeviationCharacters" units="count"
-    expires_after="2024-06-30">
-  <owner>meacer@chromium.org</owner>
-  <owner>chrome-trusty-transport@google.com</owner>
-  <summary>
-    Counts the number of typed and pasted main frame navigations to hostnames
-    that contain characters that are treated differently between IDNA 2003 and
-    IDNA 2008, aka deviation characters. Ignores reload navigations.
   </summary>
 </histogram>
 
@@ -2125,18 +2114,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Navigation.Prefetch.IsHttps" enum="Boolean"
-    expires_after="2025-04-27">
-  <owner>ricea@chromium.org</owner>
-  <owner>chikamune@chromium.org</owner>
-  <summary>
-    Records whether or not a prefetch requested a URL with an https scheme.
-    Recorded once for each prefetch performed by PrefetchManager. This is based
-    on what the PrefetchManager requested and doesn't take into account
-    subsequent internal or external redirects to https.
-  </summary>
-</histogram>
-
 <histogram
     name="Navigation.Prefetch.IsPrefetchingSRPUrl.{PreloadingEmbedderType}"
     enum="Boolean" expires_after="2026-09-27">
@@ -2153,30 +2130,6 @@ chromium-metrics-reviews@google.com.
   <token key="PreloadingEmbedderType">
     <variant name="Embedder_BookmarkBar" summary="BookmarkBar"/>
   </token>
-</histogram>
-
-<histogram name="Navigation.Prefetch.PrefetchJobQueueingTime" units="ms"
-    expires_after="2023-03-19">
-  <owner>blundell@chromium.org</owner>
-  <owner>ryansturm@chromium.org</owner>
-  <owner>sophiechang@chromium.org</owner>
-  <summary>
-    Measures the amount of time that a requested prefetch job spends queueing
-    before being executed (e.g., due to a max # of prefetches being in flight).
-    Recorded for each prefetch job.
-  </summary>
-</histogram>
-
-<histogram name="Navigation.Prefetch.PrefetchJobQueueLength" units="count"
-    expires_after="2023-03-19">
-  <owner>blundell@chromium.org</owner>
-  <owner>ryansturm@chromium.org</owner>
-  <owner>sophiechang@chromium.org</owner>
-  <summary>
-    Measures the length of the queue of prefetch jobs at the beginning of
-    PrefetchManager processing this queue to execute jobs. Recorded each time
-    that PrefetchManager processes the queue of pending jobs.
-  </summary>
 </histogram>
 
 <histogram
@@ -3606,7 +3559,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.{TracedMethod}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>rakina@chromium.org</owner>
   <owner>chrome-security-architecture@google.com</owner>
   <summary>

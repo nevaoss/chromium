@@ -189,13 +189,9 @@ crbug.com/565749273 [ iPad Device ] GeminiFirstRunEGTest/testLightweightFREConse
 crbug.com/565749273 [ iPad14 Simulator ] GeminiFirstRunEGTest/testLightweightFREConsentGrantsAndStartsFloaty [ Failure ]
 crbug.com/565749273 [ iPad Device ] GeminiFirstRunEGTest/testVisualRichFREConsentGrantsAndStartsFloaty [ Pass Failure ]
 crbug.com/565749273 [ iPad14 Simulator ] GeminiFirstRunEGTest/testVisualRichFREConsentGrantsAndStartsFloaty [ Failure ]
-crbug.com/565749273 [ iPad Device ] GeminiLiveAIHubTestCase/testStopButtonHiddenOnTabGrid [ Pass Failure ]
-crbug.com/565749273 [ iPad Device ] GeminiLiveTestCase/testSharingLabelClearedOnTabGrid [ Pass Failure ]
-crbug.com/565749273 [ iPad Device ] GeminiLiveTestCase/testTapLiveButtonShowsSharingLabel [ Pass Failure ]
-
-# Gardening suppression 2026-09-25
-crbug.com/561644215 AssistantAIMTestCase/testAssistantClosedOnStartSurfaceAfterWarmStart [ Pass Failure ]
-crbug.com/561644215 AssistantAIMTestCase/testAssistantHiddenOnNTPAfterColdStart [ Pass Failure ]
+crbug.com/565749273 [ Device ] GeminiLiveAIHubTestCase/testStopButtonHiddenOnTabGrid [ Pass Failure ]
+crbug.com/565749273 [ Device ] GeminiLiveTestCase/testSharingLabelClearedOnTabGrid [ Pass Failure ]
+crbug.com/565749273 [ Device ] GeminiLiveTestCase/testTapLiveButtonShowsSharingLabel [ Pass Failure ]
 
 # Gardening suppression 2026-09-28
 crbug.com/567129485 [ iPhone Simulator ] PasswordControllerEGTest/testLoginEventReported [ Pass Failure ]
@@ -224,3 +220,6 @@ crbug.com/568721949 [ Simulator ] FileUploadPanelTestCase/testPhotoPickerSingleS
 crbug.com/568722287 [ iPhone Simulator ] AdaptiveToolbarBottomOmniboxTestCase/testMoveAddressBarContextAction [ Pass Failure ]
 crbug.com/568721888 [ iPhone Simulator ] IncognitoLockSettingTestCase/testChangeIncognitoLockSettingSelection [ Pass Failure ]
 crbug.com/568721511 [ iPad Simulator ] SaveProfileEGTest/testUserData_LocalUpdate [ Pass Failure ]
+
+# Gardening suppression 2026-10-05
+crbug.com/570028794 [ Device ] WebDragDropTestCase [ Pass Failure ]

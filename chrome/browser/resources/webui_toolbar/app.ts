@@ -27,14 +27,14 @@ import {TrackedElementManager} from '//resources/js/tracked_element/tracked_elem
 import {CrLitElement, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {IconTable} from '/shared/icon_table.js';
-import {HighlightTracker, setHasHelpBubble} from '/shared/toolbar_button.js';
+import {getHelpBubbleAnchor, HighlightTracker, setHasHelpBubble} from '/shared/toolbar_button.js';
 import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
-import {BrowserProxyImpl, EventDispositionFlag, INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE, INVALID_SHOW_SPLIT_TABS_CONTEXT_MENU_HANDLE} from './browser_proxy.js';
-import type {BrowserProxy, FocusRequestHandle, FocusRequestListener, IconUpdate, NavigationControlsState, NavigationControlsStateListener, NavigationControlsStateListenerHandle, ShowSplitTabsContextMenuHandle, ShowSplitTabsContextMenuListener} from './browser_proxy.js';
+import {BrowserProxyImpl, EventDispositionFlag, INVALID_SHOW_SPLIT_TABS_CONTEXT_MENU_HANDLE, INVALID_TOOLBAR_STATE_LISTENER_HANDLE} from './browser_proxy.js';
+import type {BrowserProxy, FocusRequestHandle, FocusRequestListener, IconUpdate, ShowSplitTabsContextMenuHandle, ShowSplitTabsContextMenuListener, ToolbarState, ToolbarStateListener, ToolbarStateListenerHandle} from './browser_proxy.js';
 import type {OverflowButtonElement} from './overflow_button.js';
 import type {ResponsiveControl} from './responsive_control.js';
 
@@ -133,7 +133,7 @@ export {
   IconType,
   IconsetMap,
   INVALID_FOCUS_REQUEST_HANDLE,
-  INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE,
+  INVALID_TOOLBAR_STATE_LISTENER_HANDLE,
   INVALID_SHOW_SPLIT_TABS_CONTEXT_MENU_HANDLE,
   LhsChipIdentifier,
   LocationBarElement,
@@ -174,8 +174,8 @@ export type {
   InitialState,
   KeyedActionState,
   LocationBarState,
-  NavigationControlsStateListener,
-  NavigationControlsStateListenerHandle,
+  ToolbarStateListener,
+  ToolbarStateListenerHandle,
   OmniboxAction,
   OverflowableToolbarActionContainer,
   OverflowableToolbarActionElement,
@@ -217,6 +217,9 @@ const TRACKED_ELEMENTS: Array<{selector: string, id: string}> = [
     id: 'kToolbarPerformanceInterventionButtonElementId',
   },
   {selector: '#media', id: 'kToolbarMediaButtonElementId'},
+  {selector: '#glic-button', id: 'kGlicButtonElementId'},
+  {selector: '#avatar', id: 'kToolbarAvatarButtonElementId'},
+  {selector: '#app-menu', id: 'kToolbarAppMenuButtonElementId'},
 ];
 
 const AppElementBase = HelpBubbleMixinLit(CrLitElement);
@@ -326,7 +329,7 @@ export class ToolbarAppElement extends AppElementBase {
   /**
    * Returns the Lit element template. To prevent premature paint holding
    * resolution (FCP) during startup, we return `nothing` until the initial
-   * navigation controls state has been received from the browser.
+   * toolbar state has been received from the browser.
    */
   override render() {
     if (!this.isInitialized_) {
@@ -343,7 +346,7 @@ export class ToolbarAppElement extends AppElementBase {
       isHomeButtonEnabled_: {type: Boolean},
       isBatterySaverButtonEnabled_: {type: Boolean},
       isLocationBarEnabled_: {type: Boolean},
-      navigationControlsState_: {type: Object},
+      toolbarState_: {type: Object},
       isBackForwardButtonEnabled_: {type: Boolean},
       isPinnedToolbarActionsEnabled_: {type: Boolean},
       isExtensionsContainerEnabled_: {type: Boolean},
@@ -385,7 +388,7 @@ export class ToolbarAppElement extends AppElementBase {
   protected accessor isMediaButtonEnabled_: boolean =
       loadTimeData.getBoolean('enableMediaButton');
   /**
-   * Tracks whether the element has received its first navigation state
+   * Tracks whether the element has received its first toolbar state
    * update from the browser and completed its initial visual render.
    */
   protected accessor isInitialized_: boolean =
@@ -402,7 +405,7 @@ export class ToolbarAppElement extends AppElementBase {
       loadTimeData.getBoolean('omniboxResizingPrioritizationEnabled');
   protected accessor webUIToolbarFullyEnabled_: boolean =
       loadTimeData.getBoolean('webUIToolbarFullyEnabled');
-  protected accessor navigationControlsState_: NavigationControlsState = {
+  protected accessor toolbarState_: ToolbarState = {
     reloadControlState: {
       // While this will be overwritten anyways, this matches the default value
       // on some platforms.
@@ -492,13 +495,12 @@ export class ToolbarAppElement extends AppElementBase {
   };
 
   private browserProxy_: BrowserProxy;
-  private navigationStateListenerHandle_:
-      NavigationControlsStateListenerHandle =
-          INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE;
+  private toolbarStateListenerHandle_: ToolbarStateListenerHandle =
+      INVALID_TOOLBAR_STATE_LISTENER_HANDLE;
   private iconTable_: IconTable;
   private isPageInitialized_: boolean = false;
   private hasReadState_ = false;
-  private hasReceivedNavigationState_ = false;
+  private hasReceivedToolbarState_ = false;
   private initializeSessionId_: number = 0;
   private resizeObserver_?: ResizeObserver;
 
@@ -612,13 +614,13 @@ export class ToolbarAppElement extends AppElementBase {
         '--split-tabs-indicator-spacing',
         `${loadTimeData.getInteger('splitTabsIndicatorSpacing')}px`);
 
-    this.navigationStateListenerHandle_ =
-        this.browserProxy_.addNavigationStateListener(
-            (iconUpdates: IconUpdate[], state: NavigationControlsState) => {
-              // This must be called before updating navigationControlsState_
+    this.toolbarStateListenerHandle_ =
+        this.browserProxy_.addToolbarStateListener(
+            (iconUpdates: IconUpdate[], state: ToolbarState) => {
+              // This must be called before updating toolbarState_
               // so the new icons are available for rendering of child widgets.
               this.iconTable_.applyUpdates(iconUpdates);
-              this.navigationControlsState_ = state;
+              this.toolbarState_ = state;
 
               if (!this.hasReadState_) {
                 this.hasReadState_ = true;
@@ -626,15 +628,23 @@ export class ToolbarAppElement extends AppElementBase {
                     MARK_LOAD_TIME_DATA_READ);
               }
 
-              const isFirstNavigationState = !this.hasReceivedNavigationState_;
-              if (isFirstNavigationState) {
-                this.hasReceivedNavigationState_ = true;
+              const isFirstToolbarState = !this.hasReceivedToolbarState_;
+              if (isFirstToolbarState) {
+                this.hasReceivedToolbarState_ = true;
                 this.updateComplete.then(() => {
                   const avatar =
                       this.shadowRoot.querySelector<HTMLElement>('#avatar');
                   if (avatar) {
                     requestAnimationFrame(() => {
                       avatar.classList.remove('initial-load');
+                    });
+                  }
+                  const extensions =
+                      this.shadowRoot.querySelector<ExtensionsElement>(
+                          '#extensions');
+                  if (extensions) {
+                    requestAnimationFrame(() => {
+                      extensions.markInitialStateRendered();
                     });
                   }
                 });
@@ -680,7 +690,7 @@ export class ToolbarAppElement extends AppElementBase {
       const el = this.shadowRoot.querySelector<HTMLElement>(selector);
       if (el) {
         const tracker = (el as {highlightTracker?: unknown}).highlightTracker;
-        this.registerHelpBubble(id, el, {
+        this.registerHelpBubble(id, getHelpBubbleAnchor(el), {
           onHighlightChanged: (highlighted: boolean) => {
             el.classList.toggle('anchor-highlight', highlighted);
             if (tracker instanceof HighlightTracker) {
@@ -738,13 +748,13 @@ export class ToolbarAppElement extends AppElementBase {
     this.resizeObserver_?.disconnect();
     window.removeEventListener('resize', this.windowResizeListener_);
 
-    this.browserProxy_.removeNavigationStateListener(
-        this.navigationStateListenerHandle_);
+    this.browserProxy_.removeToolbarStateListener(
+        this.toolbarStateListenerHandle_);
 
     this.isInitialized_ =
         !getTypedBoolean(ToolbarStateKey.INITIAL_WEBUI_SURFACE_SYNC_ENABLED) ||
         hasInitialStateKey(ToolbarStateKey.IS_NAVIGATION_LOADING);
-    this.hasReceivedNavigationState_ = false;
+    this.hasReceivedToolbarState_ = false;
     this.initializeSessionId_++;
 
     if (this.isPageInitialized_) {

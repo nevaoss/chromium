@@ -2609,6 +2609,15 @@ RenderFrameHostImpl::RenderFrameHostImpl(
     set_nav_entry_id(parent_->nav_entry_id());
   }
 
+  if (frame_tree_->is_prerendering()) {
+    // TODO(crbug.com/40150746): Check the prerendering page is
+    // same-origin to the prerender trigger page.
+    mojo_binder_policy_applier_ =
+        MojoBinderPolicyApplier::CreateForSameOriginPrerendering(base::BindOnce(
+            &RenderFrameHostImpl::CancelPrerenderingByMojoBinderPolicy,
+            base::Unretained(this)));
+  }
+
   if (!base::FeatureList::IsEnabled(features::kLazyBrowserInterfaceBroker)) {
     CreateBrokerHolder();
   }
@@ -2874,6 +2883,8 @@ RenderFrameHostImpl::~RenderFrameHostImpl() {
     delegate_->RenderFrameDeleted(this);
   }
 
+  const base::UnguessableToken reporting_source = GetReportingSource();
+
   // Resetting `document_associated_data_` destroys live `DocumentService` and
   // `DocumentUserData` instances. It is important for them to be
   // destroyed before the body of the `RenderFrameHostImpl` destructor
@@ -2881,6 +2892,23 @@ RenderFrameHostImpl::~RenderFrameHostImpl() {
   // `DocumentService` and `RenderFrameHostUserData` subclasses are still valid
   // when their destructors run.
   document_associated_data_.reset();
+
+  if (has_committed_any_navigation_) {
+    // Reporting API: Send any queued reports and mark the reporting source as
+    // expired so that the reporting configuration in the network service can be
+    // removed.
+    // - Gated on `has_committed_any_navigation_` because document reporting
+    //   endpoints are only configured upon navigation commit, and
+    //   `RenderProcessGone()` resets `has_committed_any_navigation_` to false
+    //   after already calling `SendReportsAndRemoveSource()`.
+    // - Ordered after `RenderFrameDeleted()` and
+    //   `document_associated_data_.reset()` so that observers and
+    //   `DocumentService` / `DocumentUserData` destructors (such as
+    //   `~DeclarativePerformanceObserver`) queue any final reports before the
+    //   reporting source is marked expired.
+    GetStoragePartition()->GetNetworkContext()->SendReportsAndRemoveSource(
+        reporting_source);
+  }
 
   // If this was the last active frame in the SiteInstanceGroup, the
   // DecrementActiveFrameCount call will trigger the deletion of the
@@ -4538,15 +4566,6 @@ void RenderFrameHostImpl::RenderProcessGone(
 
   MaybeGenerateCrashReport(info.status, info.exit_code);
 
-  // Reporting API: Send any queued reports and mark the reporting source as
-  // expired so that the reporting configuration in the network service can be
-  // removed. This is done here, rather than in the destructor, as it needs the
-  // mojo pipe to the network service.
-  GetProcess()
-      ->GetStoragePartition()
-      ->GetNetworkContext()
-      ->SendReportsAndRemoveSource(GetReportingSource());
-
   // When a frame's process dies, its RenderFrame no longer exists, which means
   // that its child frames must be cleaned up as well.
   ResetChildren();
@@ -4554,6 +4573,24 @@ void RenderFrameHostImpl::RenderProcessGone(
   // Reset state for the current RenderFrameHost once the FrameTreeNode has been
   // reset.
   RenderFrameDeleted();
+
+  // Reporting API: Send any queued reports and mark the reporting source as
+  // expired so that the reporting configuration in the network service can be
+  // removed. Although `~RenderFrameHostImpl()` also calls
+  // `SendReportsAndRemoveSource()`, a crashed `RenderFrameHostImpl` remains
+  // alive in the frame tree until a subsequent navigation or tab closure, so
+  // reports (including any crash report queued above) must be flushed
+  // immediately upon process exit. It must be called after
+  // `RenderFrameDeleted()` so that observers (such as
+  // `DeclarativePerformanceObserver`) flushing final reports during frame
+  // deletion queue their reports before the reporting source is marked expired.
+  // `has_committed_any_navigation_` is reset below so `~RenderFrameHostImpl()`
+  // will not call this a second time.
+  GetProcess()
+      ->GetStoragePartition()
+      ->GetNetworkContext()
+      ->SendReportsAndRemoveSource(GetReportingSource());
+
   SetLastCommittedUrl(GURL());
   SetInheritedBaseUrl(GURL());
   renderer_url_info_ = RendererURLInfo();
@@ -5174,8 +5211,9 @@ void RenderFrameHostImpl::RendererDidActivateForPrerendering() {
     // As per `ReleaseMojoBinderPolicies` method requirement, the policy applier
     // owner should call the method when destroying the object, so we first
     // need to call this method before resetting the unique pointer.
-    CHECK(broker_holder_);
-    broker_holder_->broker().ReleaseMojoBinderPolicies();
+    if (broker_holder_) {
+      broker_holder_->broker().ReleaseMojoBinderPolicies();
+    }
     mojo_binder_policy_applier_.reset();
   }
 }
@@ -9512,7 +9550,11 @@ void RenderFrameHostImpl::EnterFullscreen(
         blink::mojom::UserActivationUpdateType::kConsumeTransientActivation,
         blink::mojom::UserActivationNotificationType::kNone);
     const bool consumed_token = fullscreen_request_token_.ConsumeIfActive();
-    if (!consumed_activation && !consumed_token) {
+    const bool missing_focus =
+        base::FeatureList::IsEnabled(
+            blink::features::kSuppressFullscreenFromUnfocusedView) &&
+        !GetView()->HasFocus();
+    if ((!consumed_activation || missing_focus) && !consumed_token) {
       DLOG(ERROR) << "Cannot enter fullscreen without a transient activation, "
                   << "orientation change, XR overlay, or delegated capability.";
       std::move(callback).Run(/*granted=*/false);
@@ -10214,12 +10256,20 @@ void RenderFrameHostImpl::SetCloseListener(
 void RenderFrameHostImpl::BindBrowserInterfaceBrokerReceiver(
     mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker> receiver) {
   // TODO(crbug.com/458719426): Move this call to SetUpMojoConnection.
-  if (base::FeatureList::IsEnabled(features::kLazyBrowserInterfaceBroker)) {
+  if (base::FeatureList::IsEnabled(features::kLazyBrowserInterfaceBroker) &&
+      !broker_holder_) {
     CreateBrokerHolder();
   }
 
   CHECK(receiver.is_valid());
   if (frame_tree()->is_prerendering()) {
+    CHECK(mojo_binder_policy_applier_)
+        << "prerendering pages should have a policy applier";
+  }
+  // Check `mojo_binder_policy_applier_` separately from `is_prerendering()`, as
+  // the policy applier remains alive during prerender activation until
+  // `RendererDidActivateForPrerendering()` is called.
+  if (mojo_binder_policy_applier_) {
     // RenderFrameHostImpl will rebind the receiver end of
     // BrowserInterfaceBroker if it receives a new one sent from renderer
     // processes. It happens when renderer processes navigate to a new document,
@@ -10227,8 +10277,6 @@ void RenderFrameHostImpl::BindBrowserInterfaceBrokerReceiver(
     // RenderFrameHostImpl::DidCommitNavigation(). So before binding a new
     // receiver end of BrowserInterfaceBroker, RenderFrameHostImpl should drop
     // all deferred binders to avoid connecting Mojo pipes with old documents.
-    CHECK(mojo_binder_policy_applier_)
-        << "prerendering pages should have a policy applier";
     mojo_binder_policy_applier_->DropDeferredBinders();
   }
 
@@ -10241,11 +10289,7 @@ bool RenderFrameHostImpl::ResetBrowserInterfaceBrokerReceiverForTesting() {
   if (!broker_holder_) {
     return true;
   }
-  bool is_valid = broker_holder_->broker_receiver().Unbind().is_valid();
-  if (base::FeatureList::IsEnabled(features::kLazyBrowserInterfaceBroker)) {
-    broker_holder_.reset();
-  }
-  return is_valid;
+  return broker_holder_->broker_receiver().Unbind().is_valid();
 }
 
 void RenderFrameHostImpl::SetKeepAliveTimeoutForTesting(
@@ -13349,8 +13393,8 @@ void RenderFrameHostImpl::HandleRendererDebugURL(const GURL& url) {
 void RenderFrameHostImpl::DiscardFrame(base::OnceClosure on_discarded_cb) {
   CHECK(is_main_frame());
   on_discarded_cb_ = std::move(on_discarded_cb);
-  document_associated_data_->MarkDiscarded();
   owner_->ResetNavigationsForDiscard();
+  document_associated_data_->MarkDiscarded();
   BackForwardCache::DisableForRenderFrameHost(
       this, BackForwardCacheDisable::DisabledReason(
                 BackForwardCacheDisable::DisabledReasonId::kDiscarded));
@@ -13950,13 +13994,7 @@ void RenderFrameHostImpl::CreateBrokerHolder() {
   CHECK(!broker_holder_);
 
   broker_holder_.emplace(this);
-  if (frame_tree_->is_prerendering()) {
-    // TODO(crbug.com/40150746): Check the prerendering page is
-    // same-origin to the prerender trigger page.
-    mojo_binder_policy_applier_ =
-        MojoBinderPolicyApplier::CreateForSameOriginPrerendering(base::BindOnce(
-            &RenderFrameHostImpl::CancelPrerenderingByMojoBinderPolicy,
-            base::Unretained(this)));
+  if (mojo_binder_policy_applier_) {
     broker_holder_->broker().ApplyMojoBinderPolicies(
         mojo_binder_policy_applier_.get());
   }
@@ -16490,12 +16528,7 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
 
     if (ShouldResetDocumentAssociatedDataAtCommit()) {
       CHECK_NE(lifecycle_state(), LifecycleStateImpl::kSpeculative);
-      // The old Reporting API configuration is no longer valid, as a new
-      // document is being loaded into the frame. Inform the network service
-      // of this, so that it can send any queued reports and mark the source
-      // as expired.
-      GetStoragePartition()->GetNetworkContext()->SendReportsAndRemoveSource(
-          GetReportingSource());
+      const base::UnguessableToken old_reporting_source = GetReportingSource();
 
       if (is_main_frame() && frame_tree()->is_primary()) {
         // Call NotifyPrimaryPageWillBeDeactivated before resetting the page
@@ -16514,6 +16547,14 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
       // URL.
       document_associated_data_.emplace(*this,
                                         navigation_request->GetDocumentToken());
+
+      // The old Reporting API configuration is no longer valid, as a new
+      // document is being loaded into the frame. Inform the network service
+      // of this after destroying the old DocumentAssociatedData so that
+      // DocumentUserData destructors (such as ~DeclarativePerformanceObserver)
+      // queue any final reports before the source is marked as expired.
+      GetStoragePartition()->GetNetworkContext()->SendReportsAndRemoveSource(
+          old_reporting_source);
     } else {
       // Cross-RenderFrameHost navigations that commit into a speculative
       // RenderFrameHost do not create a new DocumentAssociatedData. Ensure that
@@ -17636,15 +17677,8 @@ void RenderFrameHostImpl::DidCommitNavigation(
   }
 
   if (interface_params) {
-    if (base::FeatureList::IsEnabled(features::kLazyBrowserInterfaceBroker)) {
-      // Reset the broker holder so it is entirely re-created in
-      // BindBrowserInterfaceBrokerReceiver.
-      broker_holder_.reset();
-    } else {
-      CHECK(broker_holder_);
-      if (broker_holder_->broker_receiver().is_bound()) {
-        broker_holder_->broker_receiver().reset();
-      }
+    if (broker_holder_) {
+      broker_holder_->broker_receiver().reset();
     }
     BindBrowserInterfaceBrokerReceiver(
         std::move(interface_params->browser_interface_broker_receiver));
@@ -17658,8 +17692,9 @@ void RenderFrameHostImpl::DidCommitNavigation(
     // hence possibly from a different security origin, will no longer be
     // dispatched.
     if (!frame_tree_node_->is_on_initial_empty_document()) {
-      CHECK(broker_holder_);
-      broker_holder_->broker_receiver().reset();
+      if (broker_holder_) {
+        broker_holder_->broker_receiver().reset();
+      }
       bad_message::ReceivedBadMessage(
           process, bad_message::RFH_INTERFACE_PROVIDER_MISSING);
 

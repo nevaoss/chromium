@@ -1042,6 +1042,7 @@ Bet kuriuo metu patikrinkite slaptažodžius skiltyje „<ph name="GOOGLE_PASSWO
 <translation id="1790976235243700817">Pašalinti prieigą</translation>
 <translation id="1791662854739702043">Įdiegta</translation>
 <translation id="1792619191750875668">Išplėstas vaizdas</translation>
+<translation id="1793048658013002380"><ph name="TOOLTIP_TEXT" /> (<ph name="KEYBOARD_SHORTCUT" />)</translation>
 <translation id="1794212650797661990">Slėpti <ph name="DOMAIN" /> slaptažodį</translation>
 <translation id="1794791083288629568">Atsiųskite atsiliepimų, kad padėtumėte mums išspręsti šią problemą.</translation>
 <translation id="1795214765651529549">Naudoti klasikinę</translation>
@@ -1710,7 +1711,6 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="2300383962156589922">„<ph name="APP_NAME" />“ tinkinimas ir valdymas</translation>
 <translation id="2300434721407965566">Įkrovimas sustabdomas pasiekus 80 %, kad akumuliatorius veiktų ilgiau.</translation>
 <translation id="2301382460326681002">Plėtinio šakninis katalogas neteisingas.</translation>
-<translation id="2301402091755573488">Bendrinamas skirtukas</translation>
 <translation id="2304820083631266885">Planeta</translation>
 <translation id="2305202347479035002">Kaip ji veikia</translation>
 <translation id="2306794767168143227">Išsaugoti paslaugoje „<ph name="BRAND" />“ šiame įrenginyje</translation>
@@ -2088,7 +2088,6 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="2598710988533271874">Pasiekiama nauja „Chrome“</translation>
 <translation id="2599048253926156421">Naudotojo vardas nukopijuotas į iškarpinę</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{Išjungtas vienas nesaugus plėtinys}one{Išjungtas {NUM_SITES} nesaugus plėtinys}few{Išjungti {NUM_SITES} nesaugūs plėtiniai}many{Išjungta {NUM_SITES} nesaugaus plėtinio}other{Išjungta {NUM_SITES} nesaugių plėtinių}}</translation>
-<translation id="2603121359676416582">Šiam puslapiui</translation>
 <translation id="2603656971249947488">Skirtuko juostelė</translation>
 <translation id="2604129989323098489">Paprastai svetainėse prašoma pateikti informacijos apie ekranus, kad būtų galima išmaniai atidaryti ir pateikti langus, pvz., šalia rodant dokumentus ar viso ekrano turinį</translation>
 <translation id="2604255671529671813">Tinklo ryšio klaida</translation>
@@ -2869,7 +2868,6 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="3166443275568926403">Našumo ir akumuliatoriaus būsena</translation>
 <translation id="3167446923957429259">Pakreipkite lūpas kairėn</translation>
 <translation id="3167562202484086668">Ištrinti visus paslaugos <ph name="BRAND" /> duomenis</translation>
-<translation id="3169504125849131369">Atidaryti „Windows“ nustatymus</translation>
 <translation id="3175067642577044620">Turinys</translation>
 <translation id="3175862692832442091">Miškas</translation>
 <translation id="3176347586396987181">Naudokite „z“, kad paspaustumėte pelės mygtuką ir palaikytumėte</translation>
@@ -2955,6 +2953,7 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="323262942975422760">Daugiau redagavimo arba ištrynimo parinkčių, skirtų <ph name="ENTITY_INSTANCE_LABEL" />, <ph name="ENTITY_INSTANCE_SUBLABEL" /></translation>
 <translation id="3232754137068452469">Žiniatinklio programa</translation>
 <translation id="3233271424239923319">Kurti atsarginę „Linux“ programų ir failų kopiją</translation>
+<translation id="3233577317461669428">Nerasta jokių kitų įrenginių</translation>
 <translation id="3234251228180563751">Naudotojo vardą sudaro daugiau nei 1 000 simbolių</translation>
 <translation id="3234978181857588512">Išsaugoti įrenginyje</translation>
 <translation id="3237871032310650497">Ištrinti svetainės <ph name="SITE_NAME" /> duomenis, kurių skaidinys yra svetainėje <ph name="PARTITION_SITE_NAME" />?</translation>
@@ -3029,7 +3028,6 @@ Jei nenorite, dabar atsijunkite, kad šios paskyros pakeitimai būtų matomi ši
 <translation id="3292966601422448005">Leidimai, kuriuos suteikiate „<ph name="APP_NAME" />“, taip pat bus suteikti jos įdiegtoms programoms.</translation>
 <translation id="3293080634164207409">Pridėkite skirtukų</translation>
 <translation id="329324683265785818">Paleisti / pristabdyti, spartusis klavišas k</translation>
-<translation id="3293644607209440645">Siųsti šį puslapį</translation>
 <translation id="3294437725009624529">Svečias</translation>
 <translation id="3294686910656423119">Naudojimo statistika ir strigčių ataskaitos</translation>
 <translation id="3295241308788901889">Perduodamas skirtukas</translation>
@@ -4764,7 +4762,6 @@ Ar norite paleisti „<ph name="CONTROL_PANEL_APPLET_NAME" />“?</translation>
 <translation id="4610493438923139095">Nepatikimas</translation>
 <translation id="4610637590575890427">Ar norėjote eiti į <ph name="SITE" />?</translation>
 <translation id="4611619000650855880">Kai pasirinktas kairysis pelės mygtukas, naudokite „/“, kad dukart spustelėtumėte</translation>
-<translation id="4612841084470706111">Suteikti prieigą prie visų svetainių, dėl kurių pateikta užklausa.</translation>
 <translation id="4613271546271159013">Plėtinys pakeitė puslapį, kuris rodomas atidarius naują skirtuko puslapį.</translation>
 <translation id="461613135510474570">Sakinys</translation>
 <translation id="461661862154729886">Energijos šaltinis</translation>
@@ -5731,6 +5728,7 @@ Jei norite nutolinti, naudokite „Ctrl“ + „Alt“ + šviesumo mažinimo kla
 <translation id="5344128444027639014"><ph name="BATTERY_PERCENTAGE" /> % (dešinioji)</translation>
 <translation id="534449933710420173">Aplankas be pavadinimo</translation>
 <translation id="5345916423802287046">Paleisti programą, kai prisijungiate</translation>
+<translation id="5346059693449184483">Apie ką galvojate?</translation>
 <translation id="5350116201946341974">Įnoringa</translation>
 <translation id="535123479159372765">Tekstas nukopijuotas iš kito įrenginio</translation>
 <translation id="5352257124367865087">Tvarkyti svetainių leidimus</translation>
@@ -7008,6 +7006,7 @@ Jei norite nutolinti, naudokite „Ctrl“ + „Alt“ + šviesumo mažinimo kla
 <translation id="6356893102071098867">Patikrinkite, ar pasirinkote tinkamą paskyrą</translation>
 <translation id="6357305427698525450">Kai kurios palaikomos nuorodos vis tiek bus atidarytos „<ph name="APP_NAME" />“ arba „<ph name="APP_NAME_2" />“.</translation>
 <translation id="6357750620525943720">Kiti stabilūs identifikatoriai (pvz., maišos arba UUID)</translation>
+<translation id="6357830294871526418">Skirtukai kituose įrenginiuose</translation>
 <translation id="6358884629796491903">Drakonas</translation>
 <translation id="6359640073754977254">Slinkti į paskutinį skirtuką</translation>
 <translation id="6361850914223837199">Išsami klaidos informacija:</translation>
@@ -7058,7 +7057,6 @@ Jei norite nutolinti, naudokite „Ctrl“ + „Alt“ + šviesumo mažinimo kla
 <translation id="6400360390396538896">Visada įjungta <ph name="ORIGIN" /></translation>
 <translation id="6400714103322134861">Panaikinti skirtukų grupės paryškinimą</translation>
 <translation id="6401118106417399952">Jūsų įrenginio EID yra <ph name="EID_NUMBER" />, o įrenginio serijos numeris – <ph name="SERIAL_NUMBER" />. Šiuos numerius galima naudoti suaktyvinant paslaugą.</translation>
-<translation id="6401458660421980302">Jei norite siųsti šį skirtuką į kitą įrenginį, prisijunkite prie „Chrome“ čia</translation>
 <translation id="6402042774506839496">Jei norite sužinoti priežastis, susisiekite su programos kūrėju</translation>
 <translation id="6402921224457714577">Gali būti prašoma valdyti ir iš naujo suprogramuoti MIDI įrenginius</translation>
 <translation id="6404511346730675251">Redaguoti žymę</translation>
@@ -7156,7 +7154,6 @@ Jei norite nutolinti, naudokite „Ctrl“ + „Alt“ + šviesumo mažinimo kla
 <translation id="6472893788822429178">Rodyti mygtuką „Pagrindinis“</translation>
 <translation id="6473315466413288899">Pasirinkite parinktį</translation>
 <translation id="6474021817475285003">Žr. daugiau „Google“ kalendoriuje</translation>
-<translation id="6474401088838630457">Paklausk „Gemini“ daugiau apie tai</translation>
 <translation id="6474498546677193336">Nepavyko panaikinti bendrinimo, nes programa naudoja šį aplanką. Aplankas bus nebebendrinamas, kai kitą kartą išjungsite „Linux“.</translation>
 <translation id="6474884162850599008">Atjungti „Google“ disko paskyrą</translation>
 <translation id="6476482583633999078">Kalbos sparta</translation>
@@ -7354,7 +7351,6 @@ Turite dar # pažeistų slaptažodžių. „Google“ slaptažodžių tvarkyklė
 <translation id="6619801788773578757">Pridėkite viešojo terminalo programą</translation>
 <translation id="6619990499523117484">Patvirtinkite PIN kodą</translation>
 <translation id="6621282332208609777">Paklauskite „Google“ arba įveskite URL</translation>
-<translation id="6621391692573306628">Jei norite siųsti šį skirtuką į kitą įrenginį, prisijunkite prie „Chrome“ abiejuose įrenginiuose</translation>
 <translation id="6622980291894852883">Tęsti vaizdų blokavimą</translation>
 <translation id="6624036901798307345">Dirbdami planšetinio kompiuterio režimu atidarykite naują skirtuko juostelę, kurioje rodomos kiekvieno skirtuko miniatiūros, palietę įrankių juostos skirtukų skaitiklio mygtuką.</translation>
 <translation id="6624538059730609162">Uždaryti dešinįjį rodinį</translation>

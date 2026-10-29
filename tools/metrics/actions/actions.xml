@@ -13928,6 +13928,51 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Glic.Overlay.IneligibleAccountHelpClicked">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <description>
+    Recorded when the user clicked the help button on the Glic overlay
+    ineligible account error panel.
+  </description>
+</action>
+
+<action name="Glic.Overlay.LocationMismatchHelpClicked">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <description>
+    Recorded when the user clicked the help button on the Glic overlay location
+    mismatch error panel.
+  </description>
+</action>
+
+<action name="Glic.Overlay.ProfilePickerClicked">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <description>
+    Recorded when the user clicked the switch profile button on the Glic overlay
+    unavailable error panel.
+  </description>
+</action>
+
+<action name="Glic.Overlay.RetryClicked">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <description>
+    Recorded when the user clicked the retry button on a Glic overlay error
+    panel.
+  </description>
+</action>
+
+<action name="Glic.Overlay.SignInClicked">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <description>
+    Recorded when the user clicked the sign-in button on the Glic overlay
+    sign-in error panel.
+  </description>
+</action>
+
 <action name="Glic.Pinned">
   <owner>charlesmeng@chromium.org</owner>
   <owner>erikchen@chromium.org</owner>
@@ -16868,7 +16913,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOSPrivacySafeBrowsingSettingsCloseWithSwipe">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Privacy Safe Browsing Settings UI was dismissed using swipe
@@ -16909,7 +16954,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOSSafeBrowsingEnhancedProtectionSettingsCloseWithSwipe">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Safe Browsing Enhanced Protection Settings UI was dismissed
@@ -16918,7 +16963,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOSSafeBrowsingStandardProtectionSettingsCloseWithSwipe">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Safe Browsing Standard Protection Settings UI was dismissed
@@ -16940,6 +16985,35 @@ should be able to be added at any place in this file.
   <description>
     Reported when Sync Encryption Passphrase Settings UI was dismissed using
     swipe down gesture. iOS only.
+  </description>
+</action>
+
+<action name="IsolatedMode_Started_Supervised_LogSegment_Prefs_Mismatch">
+  <owner>szpotekagata@google.com</owner>
+  <owner>cec-growth@google.com</owner>
+  <description>
+    An Enterprise Isolated Mode session is started, for a user whose UMA log
+    segment is supervised but who does not have parental controls applied. This
+    is an unexpected error condition.
+  </description>
+</action>
+
+<action name="IsolatedMode_Started_Supervised_Managed">
+  <owner>szpotekagata@google.com</owner>
+  <owner>cec-growth@google.com</owner>
+  <description>
+    An Enterprise Isolated Mode session is started, for a supervised user where
+    the Isolated Mode preference is managed by an Enterprise policy.
+  </description>
+</action>
+
+<action name="IsolatedMode_Started_Supervised_Unexpected">
+  <owner>szpotekagata@google.com</owner>
+  <owner>cec-growth@google.com</owner>
+  <description>
+    An Enterprise Isolated Mode session is started, for a supervised user not
+    fitting into the definition of the two metrics above. This is an unexpected
+    error.
   </description>
 </action>
 
@@ -21297,7 +21371,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileLockdownModeSettingsBack">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when user goes back from Safe Browsing Standard Protection Settings
@@ -21306,7 +21380,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileLockdownModeSettingsClose">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Safe Browsing Standard Protection Settings UI was dismissed.
@@ -22965,7 +23039,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobilePrivacySafeBrowsingSettingsBack">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when user goes back from Privacy Safe Browsing Settings UI to root
@@ -22974,7 +23048,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobilePrivacySafeBrowsingSettingsClose">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Privacy Safe Browsing Settings UI was dismissed. iOS only.
@@ -22996,6 +23070,16 @@ should be able to be added at any place in this file.
   <description>
     Reported when Privacy Safe Browsing Settings UI was dismissed while No
     Protection is selected. iOS only.
+  </description>
+</action>
+
+<action name="MobilePrivacySafeBrowsingSettingsCloseWithProtection">
+  <owner>pabouchard@google.com</owner>
+  <owner>zijingl@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when Privacy Safe Browsing Settings UI was dismissed while Enhanced
+    or Standard Protection is enabled. iOS only.
   </description>
 </action>
 
@@ -23296,7 +23380,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileSafeBrowsingEnhancedProtectionSettingsBack">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when user goes back from Safe Browsing Enhanced Protection Settings
@@ -23305,7 +23389,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileSafeBrowsingEnhancedProtectionSettingsClose">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Safe Browsing Enhanced Protection Settings UI was dismissed.
@@ -23314,7 +23398,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileSafeBrowsingStandardProtectionSettingsBack">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when user goes back from Safe Browsing Standard Protection Settings
@@ -23323,7 +23407,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileSafeBrowsingStandardProtectionSettingsClose">
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>ajuma@chromium.org</owner>
   <description>
     Reported when Safe Browsing Standard Protection Settings UI was dismissed.
@@ -35127,7 +35211,7 @@ should be able to be added at any place in this file.
   <owner>chrome-signin-mobile-team@google.com</owner>
   <description>
     Recorded when the user taps on the AI subscription chip in the account menu.
-    iOS only.
+    This chip is non-interactable, this is a no-op. iOS only.
   </description>
 </action>
 
@@ -35169,6 +35253,15 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user clicks the &quot;Personalize Google Services&quot;
     link row in the account settings page. Only on Android and iOS.
+  </description>
+</action>
+
+<action name="Signin_AccountSettings_SubscriptionChip">
+  <owner>arthurmilchior@chromium.org</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <description>
+    Recorded when the user taps the AI subscription chip in the account settings
+    page. This chip is non-interactable, this is a no-op. iOS only.
   </description>
 </action>
 
@@ -39627,6 +39720,15 @@ should be able to be added at any place in this file.
   <description>
     User pressed &quot;Create New Tab Group&quot; from the Everything menu in
     the bookmarks bar.
+  </description>
+</action>
+
+<action
+    name="TabGroups_SavedTabGroups_CreateNewGroupTriggeredFromOrganizerPanel">
+  <owner>agale@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    User pressed &quot;Create tab group&quot; from the Organizer Panel.
   </description>
 </action>
 

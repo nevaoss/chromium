@@ -1421,14 +1421,6 @@ _CONFIG = [
         ],
     },
     {
-        'paths': [
-            'third_party/blink/renderer/core/loader/web_bundle/script_web_bundle.cc'
-        ],
-        'allowed': [
-            'web_package::ScriptWebBundleOriginType',
-        ],
-    },
-    {
         'paths': ['third_party/blink/renderer/core/paint'],
         'allowed': [
             # cc painting types.
@@ -1512,6 +1504,15 @@ _CONFIG = [
             'cppgc::SourceLocation',
             # Needed to set the stack marker from outside Blink.
             'cppgc::StackStartMarker',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/public/platform/',
+            'third_party/blink/public/web/',
+        ],
+        'allowed': [
+            'v8::.+',
         ],
     },
     {
@@ -1634,40 +1635,12 @@ _CONFIG = [
     },
     {
         'paths': [
-            'third_party/blink/public/web/web_dom_activity_logger.h',
-        ],
-        'allowed': [
-            'v8::Local',
-            'v8::Value',
-        ],
-    },
-    {
-        'paths': [
             'third_party/blink/public/web/web_node.h',
         ],
         'allowed': [
             # Explicit ::blink qualifier is needed to disambiguate from member
             # function named `To`.
             'blink::To',
-        ],
-    },
-    {
-        'paths': [
-            'third_party/blink/public/web/web_serialized_script_value.h',
-        ],
-        'allowed': [
-            'v8::Isolate',
-            'v8::Local',
-            'v8::Value',
-        ],
-    },
-    {
-        'paths': [
-            'third_party/blink/public/web/web_v8_features.h',
-        ],
-        'allowed': [
-            'v8::Context',
-            'v8::Local',
         ],
     },
     {
@@ -3128,7 +3101,7 @@ _CONFIG = [
         'allowed': [
             'GURL',
             'url::Origin',
-        ]
+        ],
     },
     {
         'paths': [

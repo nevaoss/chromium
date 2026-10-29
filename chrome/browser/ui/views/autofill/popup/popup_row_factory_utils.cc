@@ -889,16 +889,6 @@ std::unique_ptr<PopupRowContentView> CreateWalletDirectOfferRowContentView(
   main_text_label->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
   main_text_label->SetMaximumWidth(kAutofillSuggestionMaxWidth);
 
-  // Checks if the text of a label fits in one line. Assumes that non-empty
-  // text has been set on `label` before calling this lambda.
-  const auto fits_in_one_line = [](const views::Label& label) -> bool {
-    CHECK(!label.GetText().empty());
-    const int line_height = label.GetLineHeight();
-    CHECK(line_height > 0);
-    return label.GetHeightForWidth(kAutofillSuggestionMaxWidth) == line_height;
-  };
-  const bool main_label_fits_in_one_line = fits_in_one_line(*main_text_label);
-
   FormatLabel(*main_text_label, suggestion.main_text,
               FillingProduct::kMerchantPromoCode);
 
@@ -907,14 +897,6 @@ std::unique_ptr<PopupRowContentView> CreateWalletDirectOfferRowContentView(
       /*description_label=*/nullptr,
       CreateSubtextViews(*view, suggestion, FillingProduct::kMerchantPromoCode),
       popup_cell_utils::GetIconImageView(suggestion), *view);
-
-  if (!main_label_fits_in_one_line) {
-    view->SetInsideBorderInsets(
-        gfx::Insets(view->GetInsideBorderInsets())
-            .set_top_bottom(
-                kAutofillMultilineSuggestionAdditionalVerticalMargin,
-                kAutofillMultilineSuggestionAdditionalVerticalMargin));
-  }
 
   return view;
 }
@@ -1110,7 +1092,12 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
                                     FillingProduct::kAtMemory,
                                     /*filter_match=*/std::nullopt));
     }
-
+    case SuggestionType::kMerchantPromoCodeEntry: {
+      return std::make_unique<PopupRowView>(
+          a11y_selection_delegate, selection_delegate, controller, line_number,
+          CreateWalletDirectOfferRowContentView(suggestion, show_new_badge,
+                                                std::move(filter_match)));
+    }
     case SuggestionType::kAddressEntry:
     case SuggestionType::kAddressEntryOnTyping:
     case SuggestionType::kAddressFieldByFieldFilling:
@@ -1150,17 +1137,6 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kManageLoyaltyCard:
     case SuggestionType::kManageOffers:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
-    case SuggestionType::kMerchantPromoCodeEntry: {
-      if (base::FeatureList::IsEnabled(
-              features::kAutofillEnableWalletDirectOffers)) {
-        return std::make_unique<PopupRowView>(
-            a11y_selection_delegate, selection_delegate, controller,
-            line_number,
-            CreateWalletDirectOfferRowContentView(suggestion, show_new_badge,
-                                                  std::move(filter_match)));
-      }
-      [[fallthrough]];
-    }
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kOpenGmailForOtps:
     case SuggestionType::kPasswordFieldByFieldFilling:

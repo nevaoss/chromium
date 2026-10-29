@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">शोध इंजीन व्यवस्थापित करा</translation>
 <translation id="1435593198351412143">PDFs आपोआप उघडा</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> मध्ये रन होत आहे</translation>
-<translation id="1448440926884431741">तुमची माग ठेवलेली उत्पादने Bookmarks मध्ये व्यवस्थापित करा</translation>
 <translation id="1452651021404174820">डिव्हाइस निवडा</translation>
 <translation id="1455845192930279203">तुम्हाला तरीही <ph name="DOWNLOAD_DOMAIN" /> वरून "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) डाउनलोड करायची आहे का?</translation>
 <translation id="1460751212339734034">वेळ वाचवा, कमी टाइप करा</translation>
@@ -765,6 +764,7 @@
 <translation id="4092709865241032354">Google Password Manager ला तुमची साइन-इनसंबंधित माहिती सेव्ह करण्यात मदत करण्यासाठी, या साइटवर तुमचे वापरकर्ता नाव जोडा</translation>
 <translation id="4095146165863963773">ॲप डेटा हटवायचा?</translation>
 <translation id="4095483462103784441">नवीन टॅब गट तयार करा</translation>
+<translation id="4098552968111329864">Chrome वरील तुमचे काम सुरक्षित ठेवण्यासाठी, तुम्ही Chrome मध्ये साइन-इन केलेले असताना तुमची संस्था ठरावीक माहिती पाहू किंवा व्यवस्थापित करू शकेल</translation>
 <translation id="4105527135143631701">Google Password Manager अपडेट उघडले</translation>
 <translation id="4107207375883769436">तुमच्या संस्थेला तुमच्या कार्य प्रोफाइलमधील ब्राउझिंग इतिहास आणि पासवर्ड यांसारखा ब्राउझिंग डेटा पाहण्याची आणि व्यवस्थापित करण्याची आवश्यकता असू शकते</translation>
 <translation id="4113030288477039509">तुमच्या ॲडमिनिस्ट्रेटरद्वारे व्यवस्थापित</translation>
@@ -775,6 +775,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, मल्टीसिलेक्ट केलेला पिन केलेला रेकॉर्ड करत असलेला टॅब</translation>
 <translation id="4137746084635924146">डिव्हाइसची सध्याची भाषा</translation>
 <translation id="414128724510021958">बाय डीफॉल्ट डेस्कटॉप साइटची विनंती केली आहे</translation>
+<translation id="4150837143272125910">अपडेट डाउनलोड केले गेले आहे</translation>
 <translation id="4162867837470729563">पूर्ण उघडलेली शेअरिंग पर्यायांची सूची.</translation>
 <translation id="4164642020717536140">जलद आणि सुरक्षित वेब ब्राउझिंग</translation>
 <translation id="4165077084524712774">आणखी टूल</translation>
@@ -1199,6 +1200,7 @@
 <translation id="5848257610304005265"><ph name="APP_NAME" /> वापरून PDF उघडायची आहे का?</translation>
 <translation id="5849288995120328556">शेअर करणे थांबवायचे आहे का?</translation>
 <translation id="5853623416121554550">थांबवले</translation>
+<translation id="5855375823365231964">या प्रोफाइलविषयी</translation>
 <translation id="5855546874025048181">सुधारित करा: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, मल्टीसिलेक्ट केलेला रेकॉर्ड करत असलेला गुप्त टॅब</translation>
 <translation id="5857447844686706637">काहीतरी चूक झाली. माग ठेवलेली किंमत अपडेट करता आली नाही.</translation>
@@ -1401,6 +1403,7 @@
 <translation id="6565959834589222080">उपलब्ध असेल तेव्हा वाय-फाय वापरला जातो</translation>
 <translation id="657177046675873214">तुमच्या सर्व डिव्हाइसवर तुमचे बुकमार्क मिळवण्यासाठी, सेटिंग्जमध्ये "बुकमार्क" सुरू करा</translation>
 <translation id="6573096386450695060">नेहमी अनुमती द्या</translation>
+<translation id="657480975869429144">Chrome ची नवीन आवृत्ती उपलब्ध आहे</translation>
 <translation id="658099107946526506">नको असलेला अ‍ॅक्सेस रोखण्यासाठी पिन वापरून तुमच्या खाजगी ब्राउझिंगचे संरक्षण करा</translation>
 <translation id="6583199322650523874">सध्याचे पेज बुकमार्क करा</translation>
 <translation id="6588043302623806746">सुरक्षित DNS वापरा</translation>
@@ -1768,6 +1771,7 @@
 <translation id="7929587383660661825">Chrome हे नोटिफिकेशनचा गैरवापर करणाऱ्या किंवा तुम्ही अलीकडे भेट न दिलेल्या साइटवरील परवानग्या आपोआप काढून टाकते</translation>
 <translation id="7934668619883965330">फाइल डाउनलोड करू शकत नाही. फाइल फॉरमॅटला सपोर्ट नाही.</translation>
 <translation id="7951102827450076904">डाउनलोड केलेल्या PDFs नेहमी उघडा</translation>
+<translation id="7952148074468405586"><ph name="BEGIN_LINK" />तुमची संस्था पाहू किंवा व्यवस्थापित करू शकत असलेली माहिती<ph name="END_LINK" /> याबद्दल अधिक जाणून घ्या</translation>
 <translation id="7952479614398473176">नवीन विंडो उघडण्यासाठी, अ‍ॅक्टिव्ह विंडोची एकूण संख्या <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> किंवा त्याहून कमी करा.</translation>
 <translation id="7956713633345437162">Mobile बुकमार्क</translation>
 <translation id="7957413488482743710">संभाव्य फसवणुकीपासून तुमचे संरक्षण करण्यात मदत करण्यासाठी, व्हर्च्युअल कार्ड तुमचे मूळ कार्ड लपवते. <ph name="BEGIN_LINK1" />व्हर्च्युअल कार्डबद्दल अधिक जाणून घ्या<ph name="END_LINK1" /></translation>

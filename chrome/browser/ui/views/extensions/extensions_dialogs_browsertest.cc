@@ -20,8 +20,8 @@ ExtensionsDialogBrowserTest::InstallExtension(const std::string& name) {
       extensions::ExtensionBuilder(name).Build());
   extensions::ExtensionRegistrar::Get(browser()->GetProfile())
       ->AddExtension(extension);
-  if (extensions_container()) {
-    views::test::WaitForAnimatingLayoutManager(extensions_container());
+  if (auto* container = extensions_container()) {
+    views::test::WaitForAnimatingLayoutManager(container);
   }
   return extension;
 }
@@ -29,5 +29,5 @@ ExtensionsDialogBrowserTest::InstallExtension(const std::string& name) {
 ExtensionsToolbarDesktop* ExtensionsDialogBrowserTest::extensions_container() {
   return BrowserView::GetBrowserViewForBrowser(browser())
       ->toolbar()
-      ->extensions_container();
+      ->extensions_container_for_testing();
 }

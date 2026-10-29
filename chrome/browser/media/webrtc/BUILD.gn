@@ -403,6 +403,7 @@ if (!is_android) {
       "webrtc_browsertest_perf.h",
     ]
     deps = [
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/test:test_support",
     ]
@@ -411,10 +412,6 @@ if (!is_android) {
   source_set("browser_tests") {
     testonly = true
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
-
-    # Some of these tests declare file-scope objects with non-trivial
-    # destructors (e.g. webrtc_getdisplaymedia_browsertest.cc).
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 
     sources = [
       "capture_handle_browsertest.cc",
@@ -451,6 +448,7 @@ if (!is_android) {
       "//chrome/browser/sessions:test_support",
       "//chrome/browser/ui",
       "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/apps",
       "//chrome/browser/ui/tab_sharing",
@@ -641,6 +639,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/preloading:test_support",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:browser_widget",

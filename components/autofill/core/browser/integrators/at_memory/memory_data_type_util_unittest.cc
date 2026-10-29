@@ -18,6 +18,7 @@
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
+#include "components/autofill/core/browser/network/autofill_ai/personal_context_conversion_util.h"
 #include "components/autofill/core/common/dense_set.h"
 #include "components/personal_context/proto/features/at_memory.pb.h"
 #include "components/personal_context/proto/features/common_data.pb.h"
@@ -27,6 +28,7 @@
 namespace autofill {
 namespace {
 
+using ::testing::AllOf;
 using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Field;
@@ -222,8 +224,10 @@ TEST(MemoryDataTypeUtilTest, ExtractSourcesFromProto) {
   personal_context::proto::AtMemorySearchResult proto_result;
   personal_context::proto::SourceReference* source_gmail =
       proto_result.add_sources();
-  source_gmail->mutable_gmail()->set_message_url(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  source_gmail->mutable_gmail()->mutable_message_urls()->set_desktop_web_url(
+      "https://mail.google.com/mail/#inbox/123");
+  source_gmail->mutable_gmail()->mutable_message_urls()->set_mobile_web_url(
+      "https://mail.google.com/mail/mu/mp/#cv/Inbox/123");
 
   personal_context::proto::SourceReference* source_photos =
       proto_result.add_sources();
@@ -231,12 +235,13 @@ TEST(MemoryDataTypeUtilTest, ExtractSourcesFromProto) {
       "https://photos.google.com/photo/456");
 
   const std::vector<MemoryEntrySource> sources = ExtractSources(proto_result);
-  ASSERT_EQ(sources.size(), 2u);
-  EXPECT_EQ(sources[0].type, MemoryEntrySourceType::kGmail);
-  EXPECT_EQ(sources[0].deeplink_url,
-            "https://mail.google.com/mail/u/0/#inbox/123");
-  EXPECT_EQ(sources[1].type, MemoryEntrySourceType::kPhotos);
-  EXPECT_EQ(sources[1].deeplink_url, "https://photos.google.com/photo/456");
+  EXPECT_THAT(
+      sources,
+      ElementsAre(
+          MemoryEntrySource(MemoryEntrySourceType::kGmail,
+                            GetGmailSourceUrl(source_gmail->gmail()).spec()),
+          MemoryEntrySource(MemoryEntrySourceType::kPhotos,
+                            "https://photos.google.com/photo/456")));
 }
 
 // Tests conversion of AtMemorySearchResult proto with schemaful primary and
@@ -264,9 +269,10 @@ TEST(MemoryDataTypeUtilTest,
   EXPECT_EQ(result.value, u"A12345678");
   EXPECT_EQ(result.confidence_score, 0.85f);
   EXPECT_FALSE(result.is_obfuscated);
-  ASSERT_EQ(result.metadata_list.size(), 1u);
-  EXPECT_EQ(result.metadata_list[0].type, MemoryDataType::kPassportCountry);
-  EXPECT_EQ(result.metadata_list[0].value, u"US");
+  EXPECT_THAT(result.metadata_list,
+              ElementsAre(AllOf(
+                  Field(&EntryMetadata::type, MemoryDataType::kPassportCountry),
+                  Field(&EntryMetadata::value, u"US"))));
 }
 
 // Tests conversion of AtMemorySearchResult proto with schemaless key.
@@ -306,10 +312,11 @@ TEST(MemoryDataTypeUtilTest, ExtractRemoteResultsFiltersEmptyValues) {
 
   std::vector<MemorySearchResult> results =
       ExtractRemoteResults(response, "en-US");
-  ASSERT_EQ(results.size(), 1u);
-  EXPECT_EQ(results[0].type, MemoryDataType::kEmail);
-  EXPECT_EQ(results[0].value, u"test@example.com");
-  EXPECT_EQ(results[0].remote_response_index, 0);
+  EXPECT_THAT(results,
+              ElementsAre(AllOf(
+                  Field(&MemorySearchResult::type, MemoryDataType::kEmail),
+                  Field(&MemorySearchResult::value, u"test@example.com"),
+                  Field(&MemorySearchResult::remote_response_index, 0))));
 }
 
 // Tests formatting of Date attribute values into YYYY-MM-DD strings.

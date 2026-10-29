@@ -5,7 +5,6 @@
 #include "remoting/host/ipc_video_frame_capturer.h"
 
 #include "base/check.h"
-#include "base/notimplemented.h"
 #include "base/time/time.h"
 #include "remoting/host/desktop_session_proxy.h"
 #include "remoting/host/video_memory_utils.h"
@@ -53,25 +52,12 @@ void IpcVideoFrameCapturer::Start(Callback* callback) {
   }
 }
 
-bool IpcVideoFrameCapturer::GetSourceList(SourceList* sources) {
-  NOTIMPLEMENTED();
-  return false;
-}
-
-bool IpcVideoFrameCapturer::SelectSource(SourceId id) {
+void IpcVideoFrameCapturer::SelectSource(SourceId id) {
   // This should only be called in single-stream mode. DesktopSessionProxy will
   // request a new capturer be created in the Desktop process. When the new Mojo
   // endpoints are received by OnCreateVideoCapturerResult(), the old endpoints
   // will be disconnected and the Desktop process will delete the old capturer.
   desktop_session_proxy_->RebindSingleVideoCapturer(id, GetWeakPtr());
-  return true;
-}
-
-void IpcVideoFrameCapturer::SetComposeEnabled(bool enabled) {
-  compose_enabled_ = enabled;
-  if (capturer_control_ && callback_) {
-    capturer_control_->SetComposeEnabled(enabled);
-  }
 }
 
 void IpcVideoFrameCapturer::SetMaxFrameRate(uint32_t max_frame_rate) {
@@ -162,9 +148,6 @@ void IpcVideoFrameCapturer::StartRemoteCapturer() {
   capturer_control_->Start();
   // The scheduler in the Desktop process only starts capturing once it gets a
   // non-zero frame rate after Start(), so the settings must be sent after it.
-  if (compose_enabled_.has_value()) {
-    capturer_control_->SetComposeEnabled(*compose_enabled_);
-  }
   if (max_frame_rate_.has_value()) {
     capturer_control_->SetMaxFrameRate(*max_frame_rate_);
   }

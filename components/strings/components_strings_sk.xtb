@@ -289,7 +289,6 @@ Ich používanie by bolo inak blokované vašimi nastaveniami ochrany súkromia.
 <translation id="1462951478840426066">Používať písma vo vašom počítači, aby ste mohli vytvárať obsah, ktorý sa bude zobrazovať s vysokou presnosťou</translation>
 <translation id="1465457928007067810">Číslo IBAN bolo uložené do vášho účtu Google</translation>
 <translation id="1467432559032391204">Doľava</translation>
-<translation id="1471514598850585811">Laptop</translation>
 <translation id="1472675084647422956">Zobraziť viac</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Ak chcete získať pomoc s písaním, zadajte aspoň tri slová</translation>
@@ -452,7 +451,6 @@ Ich používanie by bolo inak blokované vašimi nastaveniami ochrany súkromia.
 <translation id="1734864079702812349">Amex</translation>
 <translation id="1734878702283171397">Skúste kontaktovať správcu systému.</translation>
 <translation id="1736163675982669961"><ph name="CARD_NICKNAME" />, <ph name="CARD_NETWORK_NAME" />, <ph name="CARD_LAST_FOUR_DIGITS" />, vyprší <ph name="CARD_EXPIRATION" /></translation>
-<translation id="1736420071277903564">Počítač</translation>
 <translation id="1739364174357629566">Aktualizujte číslo Known Traveler Number</translation>
 <translation id="1740404923954980840">Ak chcete ukončiť režim celej obrazovky, potiahnite zhora a klepnite na tlačidlo Späť</translation>
 <translation id="1741474054575634405">Spravovať vernostné karty…</translation>
@@ -745,7 +743,7 @@ Ich používanie by bolo inak blokované vašimi nastaveniami ochrany súkromia.
 <translation id="2233745931693710080">Kompaktný disk</translation>
 <translation id="2236949375853147973">Moja aktivita</translation>
 <translation id="2239100178324503013">Odoslať</translation>
-<translation id="223921069122391343">Uložená ponuka bude k dispozícii pri platbe pomocou automatického dopĺňania. <ph name="BEGIN_LINK" />Zobraziť zmluvné podmienky<ph name="END_LINK" /></translation>
+<translation id="223921069122391343">Uložená ponuka bude vďaka automatickému dopĺňaniu k dispozícii pri platbe. <ph name="BEGIN_LINK" />Zobraziť zmluvné podmienky<ph name="END_LINK" /></translation>
 <translation id="224130779555573777">Pridanie čísla Redress</translation>
 <translation id="2241693394036365668">Súbor je stiahnutý</translation>
 <translation id="2242389809734574253">Okno uloženie čísla IBAN bolo zavreté.</translation>
@@ -867,6 +865,7 @@ Tento návrh môžete z Chromu odstrániť. Pôvodný zdroj sa neodstráni. <ph
 <translation id="2436186046335138073">Chcete povoliť obslužnému programu <ph name="HANDLER_HOSTNAME" /> otvárať všetky odkazy protokolu <ph name="PROTOCOL" />?</translation>
 <translation id="243815215670139125">Túto kartu sa nepodarilo uložiť do vášho účtu Google. Namiesto toho bola uložená do Chromu v tomto zariadení.</translation>
 <translation id="2438874542388153331">Štyri dierky vpravo</translation>
+<translation id="2442033148418774391">Oznámenie „Inteligentnejšie automatické dopĺňanie, ktoré zostáva súkromné“, bolo zavreté</translation>
 <translation id="2442865686365739754">Chrome <ph name="BEGIN_EMPHASIS" />nebude ukladať<ph name="END_EMPHASIS" />:
         <ph name="BEGIN_LIST" />
           <ph name="LIST_ITEM" />vašu históriu prehliadania,
@@ -879,13 +878,13 @@ Tento návrh môžete z Chromu odstrániť. Pôvodný zdroj sa neodstráni. <ph
 <translation id="2451607499823206582">Sledovanie</translation>
 <translation id="2452837234288608067">S týmto nevieme pomôcť. Skúste to znova.</translation>
 <translation id="2453045048779611513">Vaša organizácia obmedzuje, čo môžete ukladať.</translation>
+<translation id="2456490423293803882">Oznámenie „Inteligentnejšie automatické dopĺňanie, ktoré zostáva súkromné“ je otvorené na celú výšku</translation>
 <translation id="2459882793359532780">Zavedené pravidlá prehliadača (pravidlá počítača a profilu).</translation>
 <translation id="2461385121573678775">Chrome Enterprise Core vám poskytuje centrálny nástroj na konfiguráciu pravidiel prehliadača z cloudu</translation>
 <translation id="2461822463642141190">Aktuálna</translation>
 <translation id="2462724976360937186">ID kľúča certifikačnej autority</translation>
 <translation id="2465688316154986572">Zošiť spinkou</translation>
 <translation id="2465914000209955735">Spravovať súbory stiahnuté v Chrome</translation>
-<translation id="2466682894498377850">Karta bola odoslaná zo zariadenia <ph name="DEVICE_NAME" /></translation>
 <translation id="2467272921457885625">Špecifikácie a štatistiky hardvéru zariadenia, napríklad história využitia procesora alebo operačnej pamäte</translation>
 <translation id="2467421459221956357">Chcete používať senzory?</translation>
 <translation id="2467694685043708798"><ph name="BEGIN_LINK" />Spustiť nástroj Diagnostika siete<ph name="END_LINK" /></translation>
@@ -927,7 +926,6 @@ Tento návrh môžete z Chromu odstrániť. Pôvodný zdroj sa neodstráni. <ph
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Obsah stránky platby sa zdieľa s Googlom, aby sa vám mohli ponúkať tieto možnosti.<ph name="END_BOLD" /> Ak chcete používať platobné tarify, musíte spĺňať podmienky. Ak chcete možnosti zaplatenia neskôr skryť, prejdite do <ph name="BEGIN_LINK" />nastavení platieb<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Ak chcete spustiť túto aplikáciu, znova povoľte režim vývojára izolovanej webovej aplikácie</translation>
 <translation id="2526280916094749336">V službách Googlu môžete používať uložené adresy. Táto adresa bude uložená do vášho účtu Google <ph name="ACCOUNT" />.</translation>
-<translation id="2526590354069164005">Pracovná plocha</translation>
 <translation id="2527451058878391043">Overovací kód karty nájdete na jej prednej strane. Ide o štvormiestny kód vpravo hore nad číslom karty.</translation>
 <translation id="2529899080962247600">Toto pole by nemalo mať viac ako tento počet vstupov: <ph name="MAX_ITEMS_LIMIT" />. Všetky ďalšie vstupy budú ignorované.</translation>
 <translation id="2530042584066815841">Uzamykanie a používanie myši</translation>
@@ -1108,6 +1106,7 @@ Tento návrh môžete z Chromu odstrániť. Pôvodný zdroj sa neodstráni. <ph
 <translation id="2878197950673342043">Plagátový záhyb</translation>
 <translation id="2878424575911748999">A1</translation>
 <translation id="2879694782644540289">používať pri vypĺňaní hesiel zámku obrazovky</translation>
+<translation id="2880119244122776372">Vytvárajte a programujte</translation>
 <translation id="2881276955470682203">Uložiť kartu?</translation>
 <translation id="2882280148032777436">Odstránenie čísla Known Traveler Number</translation>
 <translation id="2882949212241984732">Dvojitá obojstranná fazóna</translation>
@@ -1732,7 +1731,6 @@ Ak chcete skryť možnosti zaplatenia neskôr, prejdite do sekcie <ph name="BEGI
 <translation id="3905894480064208252">{0,plural, =1{Prenos súboru bol zablokovaný}few{Prenos <ph name="FILE_COUNT" /> súborov bol zablokovaný}many{<ph name="FILE_COUNT" /> files blocked from transferring}other{Prenos <ph name="FILE_COUNT" /> súborov bol zablokovaný}}</translation>
 <translation id="3906022360148923497">Ikona platobného nástroja</translation>
 <translation id="3906234161316839040">Ďalšie objednávky</translation>
-<translation id="3906954721959377182">Tablet</translation>
 <translation id="3909695131102177774"><ph name="LABEL" /> <ph name="ERROR" /></translation>
 <translation id="3910231615117880630">Ďalšie informácie o vloženom obsahu</translation>
 <translation id="3920504717067627103">Certifikačné politiky</translation>
@@ -3557,7 +3555,7 @@ Ak chcete skryť možnosti zaplatenia neskôr, prejdite do sekcie <ph name="BEGI
 <translation id="6957153644870901611">Zapnite vylepšené automatické dopĺňanie, aby sa automaticky vypĺňali ďalšie polia</translation>
 <translation id="6957887021205513506">Zdá sa, že certifikát servera je falošný.</translation>
 <translation id="6958564499836457428">Spravujte nastavenia ochrany súkromia Google vo svojom účte Google</translation>
-<translation id="6961161369573226336">Správca hesiel Google môže pre vás tieto kódy získať z vášho Gmailu <ph name="EMAIL" />. Môžete si to rozmyslieť a <ph name="IDS_AUTOFILL_GMAIL_OTP_OPT_IN_LEARN_MORE_LINK" />.</translation>
+<translation id="6961161369573226336">Správca hesiel Google môže pre vás tieto kódy získavať z vášho Gmailu (<ph name="EMAIL" />). Môžete si to rozmyslieť a <ph name="IDS_AUTOFILL_GMAIL_OTP_OPT_IN_LEARN_MORE_LINK" />.</translation>
 <translation id="6961844873822989059">Môže žiadať o povolenie používať písma nainštalované v zariadení</translation>
 <translation id="6962858948849099922">Vypršal časový limit prenosu</translation>
 <translation id="6963520811470373926">Nahradené</translation>
@@ -3909,6 +3907,7 @@ Ak chcete skryť možnosti zaplatenia neskôr, prejdite do sekcie <ph name="BEGI
 <translation id="753713322968419914">Chcete odstrániť adresu domova z automatického dopĺňania v Chrome?</translation>
 <translation id="753714465667062283">Ak chcete fotku uložiť, prihláste sa</translation>
 <translation id="7537536606612762813">Povinné</translation>
+<translation id="7540924742308928499">Nachádzajte inšpiráciu a vytvárajte súhrny</translation>
 <translation id="7543525346216957623">Opýtajte sa rodiča</translation>
 <translation id="7546409722674205727">Spúšťa sa <ph name="APP_NAME" /></translation>
 <translation id="7548892272833184391">Oprava chýb pripojenia</translation>

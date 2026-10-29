@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">શોધ એન્જિન મેનેજ કરો</translation>
 <translation id="1435593198351412143">ઑટોમૅટિક રીતે PDFs ખોલો</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" />માં ચાલી રહી છે</translation>
-<translation id="1448440926884431741">Bookmarksમાં તમારી ટ્રૅક કરેલી પ્રોડક્ટની ગોઠવણ કરો</translation>
 <translation id="1452651021404174820">કોઈ ડિવાઇસ પસંદ કરો</translation>
 <translation id="1455845192930279203">શું તેમ છતાં તમે <ph name="DOWNLOAD_DOMAIN" />માંથી "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) ડાઉનલોડ કરવા માગો છો?</translation>
 <translation id="1460751212339734034">સમય બચાવો, ઓછું ટાઇપ કરો</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, એકથી વધુ પસંદ કરેલું પિન કરેલું, રેકોર્ડ કરતું ટૅબ</translation>
 <translation id="4137746084635924146">ડિવાઇસની હાલની ભાષા</translation>
 <translation id="414128724510021958">ડિફૉલ્ટ તરીકે વિનંતી કરાયેલી ડેસ્કટૉપ સાઇટ</translation>
+<translation id="4150837143272125910">એક અપડેટ ડાઉનલોડ કરવામાં આવી છે</translation>
 <translation id="4162867837470729563">શેરિંગના વિકલ્પોની સૂચિ સંપૂર્ણ ઊંચાઈએ ખોલી છે.</translation>
 <translation id="4164642020717536140">ઝડપી અને સુરક્ષિત વેબ બ્રાઉઝિંગ</translation>
 <translation id="4165077084524712774">વધુ ટૂલ</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265"><ph name="APP_NAME" /> વડે PDF ખોલીએ?</translation>
 <translation id="5849288995120328556">શેર કરવાનું રોકીએ?</translation>
 <translation id="5853623416121554550">થોભાવેલ</translation>
+<translation id="5855375823365231964">આ પ્રોફાઇલ વિશે</translation>
 <translation id="5855546874025048181">આને સુધારો: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, એકથી વધુ પસંદ કરેલું રેકોર્ડ કરતું છૂપું ટૅબ</translation>
 <translation id="5857447844686706637">કંઈક ખોટું થયું. કિંમત અપડેટ કરી શક્યા નથી.</translation>
@@ -1401,6 +1402,7 @@
 <translation id="6565959834589222080">ઉપલબ્ધ હોય ત્યારે વાઇ-ફાઇનો ઉપયોગ કરવામાં આવે છે</translation>
 <translation id="657177046675873214">તમારા બધા ડિવાઇસ પર તમારા બુકમાર્ક મેળવવા માટે, સેટિંગમાં જઈને “બુકમાર્ક” ચાલુ કરો</translation>
 <translation id="6573096386450695060">હંમેશાં મંજૂરી આપો</translation>
+<translation id="657480975869429144">Chromeનું નવું વર્ઝન ઉપલબ્ધ છે</translation>
 <translation id="658099107946526506">વણજોઈતા ઍક્સેસને રોકવા માટે પિન વડે તમારા ખાનગી બ્રાઉઝિંગને સુરક્ષિત કરો</translation>
 <translation id="6583199322650523874">વર્તમાન પેજને બુકમાર્ક કરો</translation>
 <translation id="6588043302623806746">સુરક્ષિત DNSનો ઉપયોગ કરો</translation>

@@ -10,11 +10,11 @@
 #include "base/functional/bind.h"
 #include "base/notimplemented.h"
 #include "chrome/browser/ttc/app/audio_controller.h"
-#include "chrome/browser/ttc/app/public/error_codes.h"
 #include "chrome/browser/ttc/core/session_controller.h"
 #include "chrome/browser/ttc/core/session_journal.h"
 #include "chrome/browser/ttc/core/states.h"
 #include "components/actor/core/journal_details_builder.h"
+#include "components/ttc/app/public/error_codes.h"
 
 namespace ttc {
 
@@ -45,7 +45,7 @@ void ConversationImpl::Start() {
           &ConversationImpl::OnPlaybackCompleted, base::Unretained(this)));
   audio_capture_error_subscription_ =
       audio_controller_->AddErrorListener(base::BindRepeating(
-          &ConversationImpl::OnApplicationError, base::Unretained(this)));
+          &ConversationImpl::OnBackendError, base::Unretained(this)));
   audio_controller_->StartCapture();
 
   backend_->Connect(this);
@@ -98,25 +98,18 @@ void ConversationImpl::OnPlaybackCompleted(int64_t sequence_number) {
   backend_->ReportPlaybackStatus(sequence_number);
 }
 
-void ConversationImpl::OnApplicationInitialized() {
+void ConversationImpl::OnBackendInitialized() {
   backend_->SendToolSetUpdate(session_controller_->GetToolDefinitions());
   session_controller_->SetSessionLifecycle(SessionLifecycle::kLive);
 }
 
-void ConversationImpl::OnApplicationClosed() {
+void ConversationImpl::OnBackendClosed() {
   session_controller_->GetJournal().Log("TtcBackendClosed", {});
-  session_controller_->SetSessionLifecycle(SessionLifecycle::kFinished);
+  session_controller_->EndSessionAsync();
 }
 
-void ConversationImpl::OnApplicationError(ErrorCode error) {
-  session_controller_->GetJournal().Log(
-      "TtcError", actor::JournalDetailsBuilder().AddError(error).Build());
-  if (ending_due_to_error_) {
-    return;
-  }
-  ending_due_to_error_ = true;
+void ConversationImpl::OnBackendError(ErrorCode error) {
   session_controller_->OnError(error);
-  session_controller_->SetSessionLifecycle(SessionLifecycle::kFinished);
 }
 
 void ConversationImpl::OnTranscriptions(
@@ -148,6 +141,10 @@ void ConversationImpl::OnToolCall(const ToolRequest& tool_request,
                                   ToolResponseCallback response_callback) {
   session_controller_->ProcessToolCall(tool_request,
                                        std::move(response_callback));
+}
+
+void ConversationImpl::OnJournalEvent(const ServerJournalEvent& journal_event) {
+  session_controller_->GetJournal().HandleServerJournalEvent(journal_event);
 }
 
 }  // namespace ttc

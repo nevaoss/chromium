@@ -163,9 +163,11 @@ source_set("tabs_impl") {
     "//chrome/browser:chained_back_navigation_tracker",
     "//chrome/browser/actor",
     "//chrome/browser/actor/android",
+    "//chrome/browser/banners",
     "//chrome/browser/commerce",
     "//chrome/browser/complex_tasks",
     "//chrome/browser/content_settings",
+    "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/contextual_search",
     "//chrome/browser/contextual_tasks",
     "//chrome/browser/enterprise",
@@ -178,6 +180,7 @@ source_set("tabs_impl") {
     "//chrome/browser/history",
     "//chrome/browser/history_embeddings",
     "//chrome/browser/loader",
+    "//chrome/browser/media",
     "//chrome/browser/navigation_predictor",
     "//chrome/browser/net",
     "//chrome/browser/offline_pages",
@@ -200,20 +203,25 @@ source_set("tabs_impl") {
     "//chrome/browser/sync_tab_context",
     "//chrome/browser/tab_contents",
     "//chrome/browser/task_manager",
+    "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui/contextual_search",
+    "//chrome/browser/ui/find_bar",
     "//chrome/browser/ui/safety_hub",
     "//chrome/browser/ui/search_engines",
     "//chrome/browser/ui/side_panel",
     "//chrome/browser/ui/side_panel/android",
+    "//chrome/browser/ui/tab_contents",
     "//chrome/browser/ui/tabs:page_context_eligibility_helper",
     "//chrome/browser/ui/webui:webui_util",
     "//chrome/browser/v8_compile_hints",
+    "//chrome/browser/vr",
     "//chrome/common",
 
     # TODO(crbug.com/489548570): Remove "side_panel/internal/android:dev"
     # from release builds. We need it in tests.
     "//chrome/browser/ui/side_panel/internal/android:dev",
     "//components/autofill/content/browser",
+    "//components/blocked_content",
     "//components/client_hints/browser",
     "//components/commerce/content/browser",
     "//components/content_capture/common",
@@ -226,6 +234,7 @@ source_set("tabs_impl") {
     "//components/lens",
     "//components/metrics:content",
     "//components/metrics_services_manager",
+    "//components/page_content_annotations/content",
     "//components/page_content_annotations/core",
     "//components/payments/core",
     "//components/safe_browsing:buildflags",
@@ -236,6 +245,7 @@ source_set("tabs_impl") {
     "//content/public/browser",
     "//extensions/buildflags",
     "//media",
+    "//printing/buildflags",
     "//ui/base",
   ]
   if (enable_webui_ntp) {
@@ -249,6 +259,13 @@ source_set("tabs_impl") {
       "//chrome/browser/extensions",
       "//chrome/browser/ui/extensions",
     ]
+  }
+  if (safe_browsing_mode != 0) {
+    deps +=
+        [ "//components/safe_browsing/content/browser:client_side_detection" ]
+  }
+  if (enable_printing) {
+    deps += [ "//chrome/browser/printing" ]
   }
 }
 
@@ -388,6 +405,8 @@ if (is_android) {
       "compositor/scene_layer/contextual_search_scene_layer.h",
       "compositor/scene_layer/edge_to_edge_bottom_chin_scene_layer.cc",
       "compositor/scene_layer/edge_to_edge_bottom_chin_scene_layer.h",
+      "compositor/scene_layer/edge_to_edge_top_scalp_scene_layer.cc",
+      "compositor/scene_layer/edge_to_edge_top_scalp_scene_layer.h",
       "compositor/scene_layer/overscroll_scene_layer.cc",
       "compositor/scene_layer/overscroll_scene_layer.h",
       "compositor/scene_layer/readaloud_mini_player_scene_layer.cc",
@@ -1207,7 +1226,10 @@ source_set("unit_tests") {
     "//chrome/test/base:chrome_render_view_host_test_harness",
     "//chrome/test/base:testing_browser_process",
     "//components/actor/core",
+    "//components/autofill/content/browser",
+    "//components/autofill/content/browser:test_support",
     "//components/autofill/core/browser:test_support",
+    "//components/autofill/core/common",
     "//components/blocked_content",
     "//components/content_settings/browser",
     "//components/content_settings/browser:test_support",

@@ -25,6 +25,7 @@
 #include "chrome/renderer/accessibility/read_anything/read_aloud_traversal_utils.h"
 #include "chrome/renderer/accessibility/read_anything/read_anything_test_utils.h"
 #include "chrome/test/base/chrome_render_view_test.h"
+#include "components/translate/core/common/translate_features.h"
 #include "content/public/renderer/render_frame.h"
 #include "gin/converter.h"
 #include "gin/dictionary.h"
@@ -62,8 +63,9 @@ class MockReadAnythingUntrustedPageHandler
     : public read_anything::mojom::UntrustedPageHandler {
  public:
   MockReadAnythingUntrustedPageHandler() {
-    ON_CALL(*this, RequestReadabilityDistillation(testing::_))
-        .WillByDefault([](RequestReadabilityDistillationCallback callback) {
+    ON_CALL(*this, RequestReadabilityDistillation(testing::_, testing::_))
+        .WillByDefault([](read_anything::mojom::ReadabilityDistillationReason,
+                          RequestReadabilityDistillationCallback callback) {
           std::move(callback).Run(
               read_anything::mojom::ReadabilityDistillationResult::kEmpty, "",
               "");
@@ -159,7 +161,8 @@ class MockReadAnythingUntrustedPageHandler
   MOCK_METHOD(void, OnSpeechEngineStalled, (), (override));
   MOCK_METHOD(void,
               RequestReadabilityDistillation,
-              (RequestReadabilityDistillationCallback),
+              (read_anything::mojom::ReadabilityDistillationReason,
+               RequestReadabilityDistillationCallback),
               (override));
 
   mojo::PendingRemote<read_anything::mojom::UntrustedPageHandler>
@@ -869,4 +872,56 @@ TEST_F(
   EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
       u"setPlayOnOpenCalledCount", &set_play_on_open_called_count));
   EXPECT_EQ(2, set_play_on_open_called_count);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnTranslationStateChanged_ExecutesOnTranslationStateChanged) {
+  base::test::ScopedFeatureList feature_list(translate::kEnableTranslatePdf);
+  // Record how often the callback runs and the translation state that the
+  // WebUI reads from inside it.
+  ExecuteJavaScriptForTests(
+      "var onTranslationStateChangedCalledCount = 0;"
+      "var isContentTranslatedInCallback = -1;"
+      "chrome.readingMode.onTranslationStateChanged = () => {"
+      "  onTranslationStateChangedCalledCount++;"
+      "  isContentTranslatedInCallback ="
+      "      chrome.readingMode.isContentTranslated ? 1 : 0;"
+      "};");
+  int called_count = 0;
+  int is_content_translated = -1;
+
+  controller().OnTranslationStateChanged(/*is_translated=*/true);
+  EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
+      u"onTranslationStateChangedCalledCount", &called_count));
+  EXPECT_EQ(1, called_count);
+  EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
+      u"isContentTranslatedInCallback", &is_content_translated));
+  EXPECT_EQ(1, is_content_translated);
+
+  controller().OnTranslationStateChanged(/*is_translated=*/false);
+  EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
+      u"onTranslationStateChangedCalledCount", &called_count));
+  EXPECT_EQ(2, called_count);
+  EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
+      u"isContentTranslatedInCallback", &is_content_translated));
+  EXPECT_EQ(0, is_content_translated);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       IsTranslatePdfEnabled_ExposedToJavaScript) {
+  int enabled = -1;
+  {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndEnableFeature(translate::kEnableTranslatePdf);
+    EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
+        u"chrome.readingMode.isTranslatePdfEnabled ? 1 : 0", &enabled));
+    EXPECT_EQ(1, enabled);
+  }
+  {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndDisableFeature(translate::kEnableTranslatePdf);
+    EXPECT_TRUE(ExecuteJavaScriptAndReturnIntValue(
+        u"chrome.readingMode.isTranslatePdfEnabled ? 1 : 0", &enabled));
+    EXPECT_EQ(0, enabled);
+  }
 }

@@ -132,8 +132,32 @@ class PageContentExtractionService : public KeyedService,
     // triggered for every page once the page has sufficiently loaded. The
     // `page_content` holds either the APC for a non-PDF page; or the PDF text
     // for a PDF page.
+    //
+    // For non-PDF pages, the extracted content and its server upload
+    // eligibility are cached before this method is called, so synchronous
+    // calls to `GetExtractedPageContentAndEligibilityForPage(page)` and
+    // `GetServerUploadEligibilityForPage(page)` from within this method will
+    // return the newly extracted result.
     virtual void OnPageContentExtracted(content::Page& page,
                                         PageContent page_content) {}
+
+    // Invoked when a navigation of the primary main frame resets page content
+    // tracking for its tab (discarding any previously extracted content), i.e.
+    // whenever a new automatic extraction cycle begins. `current_page` is the
+    // new primary page if the primary page changed, or the existing primary
+    // page for a same-document navigation. This fires for every
+    // cross-document navigation, and for same-document navigations that are
+    // significant enough to trigger a new extraction (see
+    // `AnnotatedPageContentRequest`). A matching `OnPageContentExtracted()`
+    // for `current_page` follows if and when extraction succeeds, but is not
+    // guaranteed (e.g. `current_page` is not eligible, or is navigated away
+    // from first).
+    //
+    // By the time this is called, pending async requests for any discarded
+    // content have already resolved with `std::nullopt`. Observers must not
+    // synchronously call back into the service from this method.
+    virtual void OnPageContentReset(content::Page& current_page,
+                                    bool is_same_document) {}
   };
 
 #if BUILDFLAG(IS_ANDROID)

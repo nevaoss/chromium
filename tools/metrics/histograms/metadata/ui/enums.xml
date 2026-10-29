@@ -163,6 +163,15 @@ chromium-metrics-reviews@google.com.
       label="User moved or resized the Settings window (degraded to floating)"/>
   <int value="8"
       label="Settings page layout unpredictable (degraded to floating)"/>
+  <int value="9" label="Chrome window moved or resized (degraded to floating)"/>
+  <int value="10"
+      label="Chrome window activated in front of Settings (degraded to
+             floating)"/>
+  <int value="11"
+      label="Chrome window or guide tab hidden (degraded to floating)"/>
+  <int value="12"
+      label="Settings window minimized, maximized, or snapped (degraded to
+             floating)"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/webui/default_browser/visual_guided_setter_controller_win.h:DefaultBrowserVisualGuideOutcome) -->
@@ -1280,6 +1289,23 @@ chromium-metrics-reviews@google.com.
       label="(Obsolete) Show contextual tasks side panel. Removed 12/18/25"/>
   <int value="103" label="New isolated window"/>
   <int value="104" label="TTC app menu"/>
+  <int value="105" label="Create new tab group"/>
+  <int value="106" label="Saved tab group: delete"/>
+  <int value="107" label="Saved tab group: open in browser"/>
+  <int value="108" label="Saved tab group: open in new window"/>
+  <int value="109" label="Saved tab group: pin"/>
+  <int value="110" label="Bookmark bar: always hide"/>
+  <int value="111" label="Bookmark bar: always show"/>
+  <int value="112" label="Bookmark bar: only on new tab page"/>
+  <int value="113" label="Global error"/>
+  <int value="114" label="Show sync passphrase dialog"/>
+  <int value="115" label="Show management page"/>
+  <int value="116" label="Report unsafe site"/>
+  <int value="117" label="Sharing hub screenshot"/>
+  <int value="118" label="Take screenshot"/>
+  <int value="119" label="Tab search"/>
+  <int value="120" label="Toggle vertical tabs"/>
+  <int value="121" label="Name window"/>
 </enum>
 
 <!-- LINT.ThenChange(/chrome/browser/ui/toolbar/app_menu_model.h:AppMenuAction) -->

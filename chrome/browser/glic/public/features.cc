@@ -23,16 +23,6 @@ BASE_FEATURE(kGlicDragAndDropFileUploadAndroid,
 
 BASE_FEATURE(kGlicAndroidOffscreenRendering, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicChromeStatusIcon, base::FEATURE_ENABLED_BY_DEFAULT);
-const base::FeatureParam<int> kGlicChromeStatusIconSizePx{
-    &kGlicChromeStatusIcon, "glic-chrome-status-icon-size-px", 20};
-const base::FeatureParam<bool> kGlicChromeStatusIconUseAltIcon{
-    &kGlicChromeStatusIcon, "glic-chrome-status-icon-use-alt-icon", false};
-const base::FeatureParam<bool> kGlicChromeStatusIconLogOnly{
-    &kGlicChromeStatusIcon, "glic-chrome-status-icon-log-only", true};
-const base::FeatureParam<std::string> kGlicChromeStatusIconOtherAppID{
-    &kGlicChromeStatusIcon, "glic-chrome-status-icon-other-app-id", ""};
-
 BASE_FEATURE(kGlicOSIconVariant,
 #if BUILDFLAG(IS_MAC)
              base::FEATURE_ENABLED_BY_DEFAULT
@@ -53,12 +43,6 @@ const base::FeatureParam<bool> kGlicSelectionAutoSendPrompt{
     &kGlicSelectionPrompt, "auto_send_prompt", true};
 const base::FeatureParam<std::string> kGlicSelectionPromptCta{
     &kGlicSelectionPrompt, "cta", kGlicSelectionPromptCtaExplain};
-const base::FeatureParam<bool> kGlicSelectionPromptInlineFulfillment{
-    &kGlicSelectionPrompt, "inline_fulfillment", false};
-const base::FeatureParam<std::string> kGlicSelectionPromptInlinePromptTemplate{
-    &kGlicSelectionPrompt, "inline_prompt_template", ""};
-const base::FeatureParam<bool> kGlicSelectionPromptSkills{&kGlicSelectionPrompt,
-                                                          "skills", true};
 const base::FeatureParam<std::string> kGlicSelectionDefaultBlockedSites{
     &kGlicSelectionPrompt, "GlicSelectionDefaultBlockedSites", ""};
 
@@ -150,29 +134,6 @@ const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers() {
   return *eligible_tiers;
 }
 
-BASE_FEATURE(kGlicActorEligibleTiers, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
-const base::FeatureParam<std::string> kGlicActorEligibleTiersParam{
-    &kGlicActorEligibleTiers, "glic-actor-eligible-tiers", "1,2"};
-
-BASE_FEATURE(kGlicActorEnterprisePrefDefault,
-             FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
-
-constexpr base::FeatureParam<GlicActorEnterprisePrefDefault>::Option
-    kGlicActorEnterprisePrefDefaultOptions[] = {
-        {GlicActorEnterprisePrefDefault::kEnabledByDefault,
-         "enabled_by_default"},
-        {GlicActorEnterprisePrefDefault::kDisabledByDefault,
-         "disabled_by_default"},
-        {GlicActorEnterprisePrefDefault::kForcedDisabled, "forced_disabled"},
-};
-
-BASE_FEATURE_ENUM_PARAM(GlicActorEnterprisePrefDefault,
-                        kGlicActorEnterprisePrefDefaultParam,
-                        &kGlicActorEnterprisePrefDefault,
-                        "glic_actor_enterprise_pref_default",
-                        GlicActorEnterprisePrefDefault::kDisabledByDefault,
-                        &kGlicActorEnterprisePrefDefaultOptions);
-
 BASE_FEATURE(kGlicActorPolicyControlExemption,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -243,6 +204,7 @@ const base::FeatureParam<base::TimeDelta> kGlicCookieSyncOnErrorMinInterval{
 BASE_FEATURE(kGlicCookieSyncOnOpenEvenIfNoSyncNeeded,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicCookieSyncEarlyNoStartup, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicReuseCookies, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWebClientLoadTimes, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicPreLoadingTimeMs{
@@ -256,6 +218,10 @@ const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs{
 
 BASE_FEATURE(kGlicContextualCueingV2AutoSubmit,
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicContextualCuesHandleEdu,
+             FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
+BASE_FEATURE(kGlicContextualCuesHandleShopping,
+             FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 
 BASE_FEATURE(kGlicContextualCueV2ActiveUserBackoff,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -298,12 +264,6 @@ BASE_FEATURE(kGlicProcessCounterAbuseVerdict,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicNoWebUiLoader, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kGlicGeminiEnterpriseConsentEnabled,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kGeic, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kGeicEnabledParam{&kGeic, "enabled", true};
@@ -320,12 +280,10 @@ BASE_FEATURE(kGlicHotkeyLocalScope,
 );
 
 BASE_FEATURE(kGlicPasteEligibilityCheck,
-             "GlicPasteEligibilityCheck",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 
 BASE_FEATURE(kGlicWebPasteEligibilityCheck,
-             "GlicWebPasteEligibilityCheck",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 
 BASE_FEATURE(kGlicTabGroups, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicSparkSettingsAccessibleLabels,
@@ -358,9 +316,7 @@ BASE_FEATURE(kGlicSetAuthUser, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 // functionality implemented by glic's webview.ts is implemented instead by c++
 // code.
 BASE_FEATURE(kGlicDisconnectedWebview, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicShakeTrigger,
-             "GlicShakeTrigger",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicShakeTrigger, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel{
     &kGlicShakeTrigger, "only_on_side_panel", true};
 
@@ -384,9 +340,7 @@ const base::FeatureParam<std::string> kGlicMarketingUrlAllowlist{
 const base::FeatureParam<int> kGlicMarketingAutoOpenMaxCount{
     &kGlicMarketingAutoOpen, "max_impressions", 1};
 
-BASE_FEATURE(kGlicActionFirstFRE,
-             "GlicActionFirstFRE",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicActionFirstFRE, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWarmOnNudge, base::FEATURE_DISABLED_BY_DEFAULT);
 

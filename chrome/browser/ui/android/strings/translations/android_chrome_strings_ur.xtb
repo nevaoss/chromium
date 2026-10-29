@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">سرچ انجنز کا نظم کریں</translation>
 <translation id="1435593198351412143">‏خودکار طور پر PDFs کھولیں</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> میں چل رہا ہے</translation>
-<translation id="1448440926884431741">اپنے ٹریک کردہ پروڈکٹس کو بُک مارکس میں منظم کریں</translation>
 <translation id="1452651021404174820">کوئی آلہ منتخب کریں</translation>
 <translation id="1455845192930279203">کیا آپ بہر صورت <ph name="DOWNLOAD_DOMAIN" /> سے "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) کو ڈاؤن لوڈ کرنا چاہتے ہیں؟</translation>
 <translation id="1460751212339734034">وقت کی بچت کریں، کم ٹائپ کریں</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181">‫<ph name="TAB_TITLE" />، متعدد منتخب کردہ پن کردہ ریکارڈنگ ٹیب</translation>
 <translation id="4137746084635924146">آلہ کی موجودہ زبان</translation>
 <translation id="414128724510021958">بطور ڈیفالٹ درخواست کردہ ڈیسک ٹاپ سائٹس</translation>
+<translation id="4150837143272125910">ایک اپ ڈیٹ ڈاؤن لوڈ ہو گئی ہے</translation>
 <translation id="4162867837470729563">اشتراک کرنے کے اختیارات کی فہرست اونچائی پر کھلی ہوئی ہے۔</translation>
 <translation id="4164642020717536140">تیز اور محفوظ ویب براؤزنگ</translation>
 <translation id="4165077084524712774">مزید ٹولز</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265">‏<ph name="APP_NAME" /> کے ساتھ PDF کھولیں؟</translation>
 <translation id="5849288995120328556">اشتراک کرنا روکیں؟</translation>
 <translation id="5853623416121554550">موقوف ہو گیا</translation>
+<translation id="5855375823365231964">اس پروفائل کے بارے میں</translation>
 <translation id="5855546874025048181">بہتر بنائیں: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911">‫<ph name="TAB_TITLE" />، متعدد منتخب کردہ ریکارڈنگ پوشیدگی ٹیب</translation>
 <translation id="5857447844686706637">کچھ غلط ہو گیا۔ قیمت ٹریک کریں کو اپ ڈیٹ نہیں کیا جا سکا۔</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">اگلے ٹیب پر جائیں</translation>
 <translation id="6040143037577758943">بند کریں</translation>
 <translation id="604124094241169006">خود کار</translation>
+<translation id="6041959688070413372">‏تلاش کی سروسز اور Google Workspace ایپس، جیسے Google Drive کے درمیان کنکشن کا نظم کریں</translation>
 <translation id="6042308850641462728">مزید</translation>
 <translation id="6047066316630165190">گرڈ ٹیب سوئچر کھولیں</translation>
 <translation id="604996488070107836">ایک نامعلوم خرابی کی وجہ سے <ph name="FILE_NAME" /> کو ڈاؤن لوڈ کرنا ناکام ہوگیا۔</translation>
@@ -1400,6 +1402,7 @@
 <translation id="6565959834589222080">‏دستیاب ہونے پر Wi-Fi کا استعمال کیا جاتا ہے</translation>
 <translation id="657177046675873214">اپنے تمام آلات پر اپنے بُک مارکس حاصل کرنے کے لیے، ترتیبات میں "بُک مارکس" کو آن کریں</translation>
 <translation id="6573096386450695060">ہمیشہ اجازت دیں</translation>
+<translation id="657480975869429144">‏‫Chrome کا نیا ورژن دستیاب ہے</translation>
 <translation id="658099107946526506">‏غیر مطلوبہ رسائی کو روکنے کے لیے PIN کے ساتھ اپنی نجی براؤزنگ کی حفاظت کریں</translation>
 <translation id="6583199322650523874">موجودہ صفحہ کا بُک مارک بنائیں</translation>
 <translation id="6588043302623806746">‏محفوظ DNS استعمال کریں</translation>

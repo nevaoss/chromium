@@ -16,15 +16,15 @@
 #include "base/test/bind.h"
 #include "base/test/run_until.h"
 #include "chrome/browser/ttc/app/audio_controller.h"
-#include "chrome/browser/ttc/app/public/error_codes.h"
-#include "chrome/browser/ttc/app/test_utils.h"
-#include "chrome/browser/ttc/app/ttc_backend.h"
 #include "chrome/browser/ttc/core/session_controller.h"
 #include "chrome/browser/ttc/core/session_journal.h"
 #include "chrome/browser/ttc/core/states.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/actor/core/aggregated_journal.h"
 #include "components/actor/core/task_id.h"
+#include "components/ttc/app/public/error_codes.h"
+#include "components/ttc/app/test_utils.h"
+#include "components/ttc/app/ttc_backend.h"
 #include "content/public/test/browser_task_environment.h"
 #include "media/audio/audio_system_impl.h"
 #include "media/audio/mock_audio_manager.h"
@@ -75,10 +75,12 @@ class FakeSessionController : public SessionController {
     last_error_ = error;
     ++error_count_;
   }
+  void EndSessionAsync() override { ++end_session_count_; }
 
   const ToolRequest& last_request() const { return last_request_; }
   std::optional<ErrorCode> last_error() const { return last_error_; }
   int error_count() const { return error_count_; }
+  int end_session_count() const { return end_session_count_; }
 
   void AddToolDefinition(const std::string& name) {
     ToolDefinition tool;
@@ -91,6 +93,7 @@ class FakeSessionController : public SessionController {
   ToolRequest last_request_;
   std::optional<ErrorCode> last_error_;
   int error_count_ = 0;
+  int end_session_count_ = 0;
   std::vector<ToolDefinition> tools_;
   SessionLifecycle session_lifecycle_ = SessionLifecycle::kInitializing;
   actor::AggregatedJournal journal_;
@@ -197,35 +200,24 @@ TEST_F(ConversationImplTest, InterruptionClearsAudioQueue) {
   EXPECT_FALSE(audio_controller().is_playing());
 }
 
-TEST_F(ConversationImplTest, ApplicationErrorFinishesSession) {
-  ConversationImpl& conversation = CreateConversation();
-
-  EXPECT_EQ(session_controller_.GetSessionLifecycle(),
-            SessionLifecycle::kInitializing);
-
-  conversation.OnApplicationError(ErrorCode::kUnknown);
-  EXPECT_EQ(session_controller_.GetSessionLifecycle(),
-            SessionLifecycle::kFinished);
-}
-
-TEST_F(ConversationImplTest, ApplicationErrorIsReportedToSessionController) {
+TEST_F(ConversationImplTest, BackendErrorIsReportedToSessionController) {
   ConversationImpl& conversation = CreateConversation();
 
   EXPECT_EQ(session_controller_.last_error(), std::nullopt);
 
-  conversation.OnApplicationError(ErrorCode::kRateLimited);
+  conversation.OnBackendError(ErrorCode::kRateLimited);
   EXPECT_EQ(session_controller_.last_error(), ErrorCode::kRateLimited);
 }
 
-TEST_F(ConversationImplTest, ApplicationClosedFinishesSession) {
+TEST_F(ConversationImplTest, BackendClosedEndsSession) {
   ConversationImpl& conversation = CreateConversation();
 
-  conversation.OnApplicationInitialized();
+  conversation.OnBackendInitialized();
   EXPECT_EQ(session_controller_.GetSessionLifecycle(), SessionLifecycle::kLive);
 
-  conversation.OnApplicationClosed();
-  EXPECT_EQ(session_controller_.GetSessionLifecycle(),
-            SessionLifecycle::kFinished);
+  conversation.OnBackendClosed();
+  EXPECT_EQ(session_controller_.end_session_count(), 1);
+  EXPECT_EQ(session_controller_.error_count(), 0);
 }
 
 TEST_F(ConversationImplTest, ToolCallForwardedToSessionController) {
@@ -316,7 +308,7 @@ TEST_F(ConversationImplTest, SendTextInputForwardsToBackend) {
   conversation.SendTextInput("hello world");
 }
 
-TEST_F(ConversationImplTest, ApplicationInitializedSendsToolSetUpdate) {
+TEST_F(ConversationImplTest, BackendInitializedSendsToolSetUpdate) {
   session_controller_.AddToolDefinition("navigate");
 
   ConversationImpl& conversation = CreateConversation();
@@ -328,28 +320,28 @@ TEST_F(ConversationImplTest, ApplicationInitializedSendsToolSetUpdate) {
           sent_tool_names.push_back(tool.name);
         }
       });
-  conversation.OnApplicationInitialized();
+  conversation.OnBackendInitialized();
   EXPECT_THAT(sent_tool_names, testing::ElementsAre("navigate"));
 }
 
-TEST_F(ConversationImplTest, ApplicationShutdownDoesNotSendToolSetUpdate) {
+TEST_F(ConversationImplTest, BackendShutdownDoesNotSendToolSetUpdate) {
   session_controller_.AddToolDefinition("navigate");
 
   ConversationImpl& conversation = CreateConversation();
 
   EXPECT_CALL(backend(), SendToolSetUpdate(testing::_)).Times(0);
-  conversation.OnApplicationClosed();
+  conversation.OnBackendClosed();
 }
 
-TEST_F(ConversationImplTest, ApplicationErrorDoesNotSendToolSetUpdate) {
+TEST_F(ConversationImplTest, BackendErrorDoesNotSendToolSetUpdate) {
   session_controller_.AddToolDefinition("navigate");
 
   ConversationImpl& conversation = CreateConversation();
 
-  // The tool set is only sent once the application is initialized; a session
+  // The tool set is only sent once the backend is initialized; a session
   // that closes or fails has nothing to send it for.
   EXPECT_CALL(backend(), SendToolSetUpdate(testing::_)).Times(0);
-  conversation.OnApplicationError(ErrorCode::kUnknown);
+  conversation.OnBackendError(ErrorCode::kUnknown);
 }
 
 TEST_F(ConversationImplTest, AudioCaptureErrorIsReported) {
@@ -380,43 +372,18 @@ TEST_F(ConversationImplTest, AudioCaptureErrorAfterStopIsIgnored) {
   run_loop.Run();
 
   EXPECT_EQ(session_controller_.error_count(), 0);
-  EXPECT_NE(session_controller_.GetSessionLifecycle(),
-            SessionLifecycle::kFinished);
 }
 
 // The backend can report a disconnection as a clean close before the error
-// that caused it, which must still be reported.
-TEST_F(ConversationImplTest, ApplicationErrorAfterCloseIsReported) {
+// that caused it, which must still be forwarded.
+TEST_F(ConversationImplTest, BackendErrorAfterCloseIsReported) {
   ConversationImpl& conversation = CreateConversation();
 
-  conversation.OnApplicationClosed();
-  conversation.OnApplicationError(ErrorCode::kUnknown);
+  conversation.OnBackendClosed();
+  conversation.OnBackendError(ErrorCode::kUnknown);
 
   EXPECT_EQ(session_controller_.error_count(), 1);
   EXPECT_EQ(session_controller_.last_error(), ErrorCode::kUnknown);
-  EXPECT_EQ(session_controller_.GetSessionLifecycle(),
-            SessionLifecycle::kFinished);
-}
-
-TEST_F(ConversationImplTest, OnlyFirstApplicationErrorIsReported) {
-  ConversationImpl& conversation = CreateConversation();
-
-  conversation.OnApplicationError(ErrorCode::kRateLimited);
-  conversation.OnApplicationError(ErrorCode::kUnknown);
-
-  EXPECT_EQ(session_controller_.error_count(), 1);
-  EXPECT_EQ(session_controller_.last_error(), ErrorCode::kRateLimited);
-}
-
-TEST_F(ConversationImplTest, CloseAfterApplicationErrorIsIgnored) {
-  ConversationImpl& conversation = CreateConversation();
-
-  conversation.OnApplicationError(ErrorCode::kRateLimited);
-  conversation.OnApplicationClosed();
-
-  EXPECT_EQ(session_controller_.error_count(), 1);
-  EXPECT_EQ(session_controller_.GetSessionLifecycle(),
-            SessionLifecycle::kFinished);
 }
 
 }  // namespace ttc

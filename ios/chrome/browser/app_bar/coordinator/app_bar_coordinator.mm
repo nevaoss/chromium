@@ -260,8 +260,7 @@
             promoAction:signin_metrics::PromoAction::
                             PROMO_ACTION_NO_SIGNIN_PROMO
              completion:^(SigninCoordinator* coordinator,
-                          SigninCoordinatorResult result,
-                          id<SystemIdentity> completionIdentity) {
+                          SigninCoordinatorResultOrIdentity result) {
                [coordinator stop];
                __strong __typeof(weakSelf) strongSelf = weakSelf;
                if (strongSelf) {
@@ -363,15 +362,11 @@
 #pragma mark - GuidedTourCommands
 
 - (void)highlightViewInStep:(GuidedTourStep)step {
-  if (step == GuidedTourStep::kNTP) {
-    [_viewController toggleSpotlightView:YES];
-  }
+  // No op?
 }
 
 - (void)stepCompleted:(GuidedTourStep)step {
-  if (step == GuidedTourStep::kNTP) {
-    [_viewController toggleSpotlightView:NO];
-  }
+  // No op?
 }
 
 #pragma mark - AccountMenuCoordinatorDelegate

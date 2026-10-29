@@ -289,7 +289,6 @@ Jinak to vaše nastavení ochrany soukromí bude blokovat. Povolením umožníte
 <translation id="1462951478840426066">Použít písma nainstalovaná v počítači, abyste mohli vytvářet obsah ve vysoké kvalitě</translation>
 <translation id="1465457928007067810">Číslo IBAN bylo uloženo do vašeho účtu Google</translation>
 <translation id="1467432559032391204">Vlevo</translation>
-<translation id="1471514598850585811">Notebook</translation>
 <translation id="1472675084647422956">Zobrazit více</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Pokud chcete získat pomoc s psaním, zadejte alespoň tři slova</translation>
@@ -452,7 +451,6 @@ Jinak to vaše nastavení ochrany soukromí bude blokovat. Povolením umožníte
 <translation id="1734864079702812349">Amex</translation>
 <translation id="1734878702283171397">Zkuste kontaktovat administrátora systému.</translation>
 <translation id="1736163675982669961"><ph name="CARD_NICKNAME" />, <ph name="CARD_NETWORK_NAME" />, <ph name="CARD_LAST_FOUR_DIGITS" />, platnost vyprší <ph name="CARD_EXPIRATION" /></translation>
-<translation id="1736420071277903564">Počítač</translation>
 <translation id="1739364174357629566">Aktualizace čísla prověřeného cestujícího</translation>
 <translation id="1740404923954980840">Režim celé obrazovky ukončíte tak, že přejedete shora dolů a klepnete na tlačítko Zpět</translation>
 <translation id="1741474054575634405">Spravovat věrnostní karty…</translation>
@@ -867,6 +865,7 @@ Tento návrh můžete z Chromu odstranit. Původní zdroj se nesmaže. <ph name
 <translation id="2436186046335138073">Chcete obslužnému nástroji <ph name="HANDLER_HOSTNAME" /> povolit otevírat všechny odkazy s protokolem <ph name="PROTOCOL" />?</translation>
 <translation id="243815215670139125">Tuto kartu se nepodařilo uložit do vašeho účtu Google. Místo toho je uložena v Chromu na tomto zařízení.</translation>
 <translation id="2438874542388153331">Čtyři otvory vpravo</translation>
+<translation id="2442033148418774391">Oznámení o chytřejším automatickém vyplňování se zachováním soukromí bylo zavřeno</translation>
 <translation id="2442865686365739754">Chrome <ph name="BEGIN_EMPHASIS" />nebude ukládat<ph name="END_EMPHASIS" />:
           <ph name="BEGIN_LIST" />
             <ph name="LIST_ITEM" />vaši historii prohlížení,
@@ -879,13 +878,13 @@ Tento návrh můžete z Chromu odstranit. Původní zdroj se nesmaže. <ph name
 <translation id="2451607499823206582">Sledování</translation>
 <translation id="2452837234288608067">Pomoc se nepodařila. Zkuste to znovu.</translation>
 <translation id="2453045048779611513">Vaše organizace omezuje, co můžete ukládat</translation>
+<translation id="2456490423293803882">Oznámení o chytřejším automatickém vyplňování se zachováním soukromí otevřené na celou výšku</translation>
 <translation id="2459882793359532780">Použité zásady prohlížeče (zásady zařízení a profilu)</translation>
 <translation id="2461385121573678775">Chrome Enterprise Core poskytuje centralizovaný nástroj pro konfiguraci zásad prohlížeče z cloudu</translation>
 <translation id="2461822463642141190">Aktuální</translation>
 <translation id="2462724976360937186">ID klíče certifikační autority</translation>
 <translation id="2465688316154986572">Sponka</translation>
 <translation id="2465914000209955735">Spravovat soubory, které jste v Chromu stáhli</translation>
-<translation id="2466682894498377850">Z vašeho zařízení <ph name="DEVICE_NAME" /> byla odeslána karta</translation>
 <translation id="2467272921457885625">Hardwarové specifikace zařízení a statistiky, jako je historie využití CPU/RAM</translation>
 <translation id="2467421459221956357">Používat senzory?</translation>
 <translation id="2467694685043708798"><ph name="BEGIN_LINK" />Spustit Diagnostiku sítě<ph name="END_LINK" /></translation>
@@ -927,7 +926,6 @@ Tento návrh můžete z Chromu odstranit. Původní zdroj se nesmaže. <ph name
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Aby bylo možné nabízet tyto možnosti, sdílí se obsah stránky placení s Googlem.<ph name="END_BOLD" /> Platební tarify jsou závislé na způsobilosti. Pokud chcete možnosti uhrazení na splátky skrýt, přejděte na <ph name="BEGIN_LINK" />nastavení plateb<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Pokud chcete spustit tuto aplikaci, znovu zapněte režim pro vývojáře izolovaných webových aplikací</translation>
 <translation id="2526280916094749336">Uložené adresy můžete používat ve službách Google. Tato adresa bude uložena ve vašem účtu Google <ph name="ACCOUNT" />.</translation>
-<translation id="2526590354069164005">Plocha</translation>
 <translation id="2527451058878391043">Váš kód CVC je na přední straně karty. Je to 4místný kód vpravo nahoře nad číslem vaší karty.</translation>
 <translation id="2529899080962247600">Toto pole nesmí mít více než <ph name="MAX_ITEMS_LIMIT" /> položek. Všechny další položky budou ignorovány.</translation>
 <translation id="2530042584066815841">Zámek a používání myši</translation>
@@ -1108,6 +1106,7 @@ Tento návrh můžete z Chromu odstranit. Původní zdroj se nesmaže. <ph name
 <translation id="2878197950673342043">Plakátové přeložení</translation>
 <translation id="2878424575911748999">A1</translation>
 <translation id="2879694782644540289">používat k vyplňování hesel zámek obrazovky</translation>
+<translation id="2880119244122776372">Sestavování a programování</translation>
 <translation id="2881276955470682203">Uložit kartu?</translation>
 <translation id="2882280148032777436">Smazat číslo prověřeného cestujícího</translation>
 <translation id="2882949212241984732">Dvojité otevírací přeložení</translation>
@@ -1732,7 +1731,6 @@ Pokud chcete možnosti uhrazení na splátky skrýt, přejděte na <ph name="BEG
 <translation id="3905894480064208252">{0,plural, =1{Přenos souboru je blokován}few{Přenos <ph name="FILE_COUNT" /> souborů je blokován}many{Přenos <ph name="FILE_COUNT" /> souboru je blokován}other{Přenos <ph name="FILE_COUNT" /> souborů je blokován}}</translation>
 <translation id="3906022360148923497">Ikona platebního nástroje</translation>
 <translation id="3906234161316839040">Ostatní objednávky</translation>
-<translation id="3906954721959377182">Tablet</translation>
 <translation id="3909695131102177774"><ph name="LABEL" /> <ph name="ERROR" /></translation>
 <translation id="3910231615117880630">Další informace o vloženém obsahu</translation>
 <translation id="3920504717067627103">Zásady certifikátů</translation>
@@ -3908,6 +3906,7 @@ Kontaktujte administrátora systému.</translation>
 <translation id="753713322968419914">Odebrat z automatického vyplňování v Chromu adresu domů?</translation>
 <translation id="753714465667062283">Pokud chcete fotku uložit, přihlaste se</translation>
 <translation id="7537536606612762813">Povinná</translation>
+<translation id="7540924742308928499">Brainstorming a shrnutí</translation>
 <translation id="7543525346216957623">Požádej rodiče</translation>
 <translation id="7546409722674205727">Spouštění aplikace <ph name="APP_NAME" /></translation>
 <translation id="7548892272833184391">Oprava chyb připojení</translation>

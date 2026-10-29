@@ -10,7 +10,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
@@ -31,7 +30,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -39,7 +37,9 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import org.junit.After;
 import org.junit.Before;
@@ -111,10 +111,10 @@ import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.components.tab_group_sync.TabGroupUiActionHandler;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.url.GURL;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -156,6 +156,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
     @Mock private FuseboxControls mFuseboxControls;
     @Mock private AutocompleteCoordinator mAutocompleteCoordinator;
     @Mock private TabWindowManager mTabWindowManager;
+    @Mock private InsetObserver mInsetObserver;
 
     private final OneshotSupplierImpl<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier =
             new OneshotSupplierImpl<>();
@@ -187,11 +188,6 @@ public class TabSearchOverlayCoordinatorUnitTest {
         mTabGroupUiActionHandlerSupplier.set(mTabGroupUiActionHandler);
         when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
         when(mTabModelSelector.getModel(true)).thenReturn(mTabModel);
-        when(mTabModelSelector.getCurrentTabModelSupplier())
-                .thenReturn(ObservableSuppliers.createNonNull(mTabModel));
-        when(mTabModelSelector.getModels()).thenReturn(List.of(mTabModel));
-        when(mTabModel.getComprehensiveModel()).thenReturn(mTabModel);
-        when(mTabModel.iterator()).thenReturn(Collections.emptyIterator());
 
         when(mSearchUiCoordinator.getLocationBarCoordinator()).thenReturn(mLocationBarCoordinator);
         when(mLocationBarCoordinator.getUrlBarCoordinator()).thenReturn(mUrlBarCoordinator);
@@ -1065,25 +1061,18 @@ public class TabSearchOverlayCoordinatorUnitTest {
     }
 
     @Test
-    public void testPanelTopMargin_AlignsWithControlContainer() {
-        FrameLayout controlContainer = new FrameLayout(mActivity);
-        controlContainer.setId(R.id.control_container);
-        View toolbarContainer = new View(mActivity);
-        toolbarContainer.setId(R.id.toolbar_container);
-        int tabStripHeight =
-                mActivity.getResources().getDimensionPixelSize(R.dimen.tab_strip_height);
-        toolbarContainer.setTop(48 + tabStripHeight);
-        controlContainer.addView(toolbarContainer);
-        mActivity.setContentView(controlContainer);
+    public void testPanelTopMargin_ConventionalState_OffsetByStatusBarInset() {
+        setRawWindowInsets(
+                new WindowInsetsCompat.Builder()
+                        .setInsets(WindowInsetsCompat.Type.statusBars(), topInset(48))
+                        .build());
 
-        // Non-caption mode (e.g. fullscreen tablet): topMargin aligns with tab strip, header
+        // Non-caption mode (e.g. fullscreen tablet): topMargin aligns below the status bar, header
         // visible.
         showOverlay();
 
-        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
         View headerView = mPanelContainer.findViewById(R.id.tab_search_overlay_header);
-        var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
-        assertEquals(48, params.topMargin);
+        assertPanelTopMargin(48);
         assertNotNull(headerView);
         assertEquals(View.VISIBLE, headerView.getVisibility());
 
@@ -1095,8 +1084,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
         when(mAppHeaderState.getCaptionControlsTopOffset()).thenReturn(0);
         showOverlay();
 
-        params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
-        assertEquals(0, params.topMargin);
+        assertPanelTopMargin(0);
         assertEquals(View.VISIBLE, headerView.getVisibility());
 
         // In desktop windowing mode with status bar offset (e.g. split-screen mode):
@@ -1105,34 +1093,67 @@ public class TabSearchOverlayCoordinatorUnitTest {
         when(mAppHeaderState.getCaptionControlsTopOffset()).thenReturn(48);
         showOverlay();
 
-        params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
-        assertEquals(48, params.topMargin);
+        assertPanelTopMargin(48);
         assertEquals(View.VISIBLE, headerView.getVisibility());
     }
 
     @Test
-    public void testPanelTopMargin_VerticalTabs_ConventionalState() {
-        FrameLayout rootLayout = new FrameLayout(mActivity);
-        FrameLayout controlContainer = new FrameLayout(mActivity);
-        controlContainer.setId(R.id.control_container);
-        View toolbarContainer = new View(mActivity);
-        toolbarContainer.setId(R.id.toolbar_container);
-        toolbarContainer.setTop(48);
-        controlContainer.addView(toolbarContainer);
-        rootLayout.addView(controlContainer);
-
-        View verticalRailContainer = new View(mActivity);
-        verticalRailContainer.setId(R.id.vertical_tab_rail_container);
-        rootLayout.addView(verticalRailContainer);
-        mActivity.setContentView(rootLayout);
-
+    public void testPanelTopMargin_ConventionalState_NoStatusBarInset() {
+        // E.g. the bottom window in split-screen, which does not overlap the status bar.
+        setRawWindowInsets(new WindowInsetsCompat.Builder().build());
         when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
 
         showOverlay();
 
-        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
-        var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
-        assertEquals(48, params.topMargin);
+        assertPanelTopMargin(0);
+    }
+
+    @Test
+    // WindowInsetsCompat.Builder only supports captionBar() insets on API 30+.
+    @Config(sdk = Build.VERSION_CODES.R)
+    public void testPanelTopMargin_ConventionalState_OffsetByCaptionBarInset() {
+        // An OS-drawn caption bar is present but the desktop windowing heuristics declined to draw
+        // the app header (e.g. external display), so isInDesktopWindow() is false.
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+        setRawWindowInsets(
+                new WindowInsetsCompat.Builder()
+                        .setInsets(WindowInsetsCompat.Type.captionBar(), topInset(96))
+                        .build());
+        showOverlay();
+
+        assertPanelTopMargin(96);
+
+        // When the status bar also overlaps the top of the window, the panel is offset by the
+        // larger of the two insets rather than their sum.
+        mCoordinator.hide(TabSearchDismissalReason.CLOSE_BUTTON);
+        setRawWindowInsets(
+                new WindowInsetsCompat.Builder()
+                        .setInsets(WindowInsetsCompat.Type.statusBars(), topInset(48))
+                        .setInsets(WindowInsetsCompat.Type.captionBar(), topInset(96))
+                        .build());
+        showOverlay();
+
+        assertPanelTopMargin(96);
+    }
+
+    @Test
+    public void testPanelTopMargin_ConventionalState_NoInsetsObservedYet() {
+        setRawWindowInsets(null);
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+
+        showOverlay();
+
+        assertPanelTopMargin(0);
+    }
+
+    @Test
+    public void testPanelTopMargin_ConventionalState_NoInsetObserver() {
+        when(mWindowAndroid.getInsetObserver()).thenReturn(null);
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+
+        showOverlay();
+
+        assertPanelTopMargin(0);
     }
 
     @Test
@@ -1450,59 +1471,18 @@ public class TabSearchOverlayCoordinatorUnitTest {
         verify(mUrlBar, times(2)).requestFocus();
     }
 
-    @Test
-    public void testMaybeReassertFocus_whenVisibleAndUnfocused_reassertsFocusAndQuery() {
-        showOverlay();
-        clearInvocations(mSearchUiCoordinator);
-
-        // Simulate UrlBar losing focus while overlay is still visible (e.g. background tab load
-        // event).
-        when(mOmniboxStub.isUrlBarFocused()).thenReturn(false);
-        when(mUrlBarCoordinator.getTextWithoutAutocomplete()).thenReturn("");
-
-        mCoordinator.maybeReassertFocus();
-
-        verify(mSearchUiCoordinator)
-                .beginQuery(eq(IntentOrigin.HUB), eq(SearchType.TEXT), eq(""), eq(mWindowAndroid));
+    private void setRawWindowInsets(WindowInsetsCompat windowInsets) {
+        when(mInsetObserver.getLastRawWindowInsets()).thenReturn(windowInsets);
+        when(mWindowAndroid.getInsetObserver()).thenReturn(mInsetObserver);
     }
 
-    @Test
-    public void testMaybeReassertFocus_preservesUserTextWhenRefocusing() {
-        showOverlay();
-        clearInvocations(mSearchUiCoordinator);
-
-        when(mOmniboxStub.isUrlBarFocused()).thenReturn(false);
-        when(mUrlBarCoordinator.getTextWithoutAutocomplete()).thenReturn("github");
-
-        mCoordinator.maybeReassertFocus();
-
-        verify(mSearchUiCoordinator)
-                .beginQuery(
-                        eq(IntentOrigin.HUB),
-                        eq(SearchType.TEXT),
-                        eq("github"),
-                        eq(mWindowAndroid));
+    private static Insets topInset(int top) {
+        return Insets.of(/* left= */ 0, top, /* right= */ 0, /* bottom= */ 0);
     }
 
-    @Test
-    public void testMaybeReassertFocus_whenHidden_noOp() {
-        // Overlay is hidden by default.
-        when(mOmniboxStub.isUrlBarFocused()).thenReturn(false);
-
-        mCoordinator.maybeReassertFocus();
-
-        verify(mSearchUiCoordinator, never()).beginQuery(anyInt(), anyInt(), any(), any());
-    }
-
-    @Test
-    public void testMaybeReassertFocus_whenAlreadyFocused_noOp() {
-        showOverlay();
-        clearInvocations(mSearchUiCoordinator);
-
-        when(mOmniboxStub.isUrlBarFocused()).thenReturn(true);
-
-        mCoordinator.maybeReassertFocus();
-
-        verify(mSearchUiCoordinator, never()).beginQuery(anyInt(), anyInt(), any(), any());
+    private void assertPanelTopMargin(int expected) {
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
+        assertEquals(expected, params.topMargin);
     }
 }

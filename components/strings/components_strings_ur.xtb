@@ -289,7 +289,6 @@
 <translation id="1462951478840426066">اپنے کمپیوٹر پر فونٹس کا استعمال کریں تاکہ آپ اعلی معیار کا مواد تخلیق کر سکیں</translation>
 <translation id="1465457928007067810">‏‫IBAN آپ کے Google اکاؤنٹ میں محفوظ ہو گیا ہے</translation>
 <translation id="1467432559032391204">بائیں</translation>
-<translation id="1471514598850585811">لیپ ٹاپ</translation>
 <translation id="1472675084647422956">مزید دکھائیں</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">تحریری مدد حاصل کرنے کے لیے 3 یا اس سے زیادہ الفاظ درج کریں</translation>
@@ -452,7 +451,6 @@
 <translation id="1734864079702812349">Amex</translation>
 <translation id="1734878702283171397">سسٹم کے منتظم سے رابطہ کرنے کی کوشش کریں۔</translation>
 <translation id="1736163675982669961"><ph name="CARD_NICKNAME" />، <ph name="CARD_NETWORK_NAME" />، <ph name="CARD_LAST_FOUR_DIGITS" />، اختتامی تاریخ <ph name="CARD_EXPIRATION" /></translation>
-<translation id="1736420071277903564">کمپیوٹر</translation>
 <translation id="1739364174357629566">معلوم مسافر نمبر کو اپ ڈیٹ کریں</translation>
 <translation id="1740404923954980840">فُل اسکرین سے باہر نکلنے کیلئے، اوپر سے گھسیٹیں اور 'پیچھے جائیں' بٹن کو ٹچ کریں</translation>
 <translation id="1741474054575634405">لائلٹی کارڈز کا نظم کریں...</translation>
@@ -867,6 +865,7 @@
 <translation id="2436186046335138073"><ph name="HANDLER_HOSTNAME" /> کو سبھی <ph name="PROTOCOL" /> لنکس کھولنے کی اجازت دیں؟</translation>
 <translation id="243815215670139125">‏یہ کارڈ آپ کے Google اکاؤنٹ میں محفوظ نہیں ہو سکا۔ اس کی بجائے اسے اس آلہ پر Chrome میں محفوظ کر دیا گیا ہے۔</translation>
 <translation id="2438874542388153331">دائیں طرف مستطیل سوراخ</translation>
+<translation id="2442033148418774391">اسمارٹ آٹو فل، نجی رکھا گیا نوٹس بند کر دیا گیا</translation>
 <translation id="2442865686365739754">‏Chrome درج ذیل معلومات کو <ph name="BEGIN_EMPHASIS" />محفوظ نہیں کرے گا<ph name="END_EMPHASIS" />:
         <ph name="BEGIN_LIST" />
           <ph name="LIST_ITEM" />آپ کی براؤزنگ کی سرگزشت
@@ -879,13 +878,13 @@
 <translation id="2451607499823206582">ٹریکنگ</translation>
 <translation id="2452837234288608067">اس میں مدد نہیں کر سکا۔ دوبارہ کوشش کریں۔</translation>
 <translation id="2453045048779611513">آپ جو محفوظ کر سکتے ہیں آپ کی تنظیم اسے محدود کرتی ہے</translation>
+<translation id="2456490423293803882">اسمارٹ آٹو فل، نجی رکھا گیا نوٹس مکمل اونچائی پر کھلا ہوا ہے</translation>
 <translation id="2459882793359532780">براؤزر پر لاگو کردہ پالیسیاں (مشین اور پروفائل کی پالیسیاں)</translation>
 <translation id="2461385121573678775">‏‫Chrome Enterprise Core آپ کو کلاؤڈ سے براؤزر کی پالیسیاں کنفیگر کرنے کے لیے ایک مرکزی ٹول فراہم کرتا ہے</translation>
 <translation id="2461822463642141190">حالیہ</translation>
 <translation id="2462724976360937186">‏سرٹیفکیشن اتھارٹی کلید URL</translation>
 <translation id="2465688316154986572">سٹیپل</translation>
 <translation id="2465914000209955735">‏Chrome میں ڈاؤن لوڈ کردہ اپنی فائلز کا نظم کریں</translation>
-<translation id="2466682894498377850">آپ کے <ph name="DEVICE_NAME" /> سے بھیجا گیا ٹیب</translation>
 <translation id="2467272921457885625">‏آلے کے ہارڈویئر کی وضاحتیں اور اعداد وشمار جیسے CPU/RAM کے استعمال کی سرگزشت</translation>
 <translation id="2467421459221956357">سینسرز کا استعمال کریں؟</translation>
 <translation id="2467694685043708798"><ph name="BEGIN_LINK" />نیٹ ورک کی تشخیصات چلانے کی<ph name="END_LINK" /></translation>
@@ -927,7 +926,6 @@
 <translation id="2524962131655207565">‏<ph name="BEGIN_BOLD" />ان اختیارات کی پیشکش کرنے کیلئے، چیک آؤٹ صفحے سے صفحے کے مواد کا اشتراک Google کے ساتھ کیا جاتا ہے۔<ph name="END_BOLD" /> ادائیگی کے پلانز اہلیت کے ساتھ مشروط ہیں۔ بعد میں ادائیگی کے اختیارات کو چھپانے کے لیے، <ph name="BEGIN_LINK" />ادائیگی کی ترتیبات<ph name="END_LINK" /> پر جائیں</translation>
 <translation id="2526062290525841862">اس ایپ کو چلانے کے لیے علیحدہ کردہ ویب ایپ ڈویلپر وضع کو دوبارہ فعال کریں</translation>
 <translation id="2526280916094749336">‏آپ پورے Google پروڈکٹس میں محفوظ کردہ پتے استعمال کر سکتے ہیں۔ یہ پتہ آپ کے Google اکاؤنٹ <ph name="ACCOUNT" /> میں محفوظ ہو جائے گا۔</translation>
-<translation id="2526590354069164005">ڈیسک ٹاپ</translation>
 <translation id="2527451058878391043">‏آپ کا CVC آپ کے کارڈ کے سامنے کی طرف ہے۔ یہ بالائی دائیں جانب آپ کے کارڈ نمبر کے اوپر موجود 4 ہندسوں کا کوڈ ہے۔</translation>
 <translation id="2529899080962247600">اس فیلڈ میں <ph name="MAX_ITEMS_LIMIT" /> سے زیادہ اندراجات نہیں ہونے چاہیے۔ مزید تمام اندراجات کو نظر انداز کر دیا جائے گا۔</translation>
 <translation id="2530042584066815841">ماؤس لاک اور استعمال</translation>
@@ -1108,6 +1106,7 @@
 <translation id="2878197950673342043">پوسٹر جیسے فولڈ</translation>
 <translation id="2878424575911748999">A1</translation>
 <translation id="2879694782644540289">پاس ورڈز درج کرنے کے لیے اپنا اسکرین لاک استعمال کریں</translation>
+<translation id="2880119244122776372">تیار کریں اور کوڈ کریں</translation>
 <translation id="2881276955470682203">کارڈ محفوظ کریں؟</translation>
 <translation id="2882280148032777436">معلوم مسافر نمبر کو حذف کریں</translation>
 <translation id="2882949212241984732">ڈبل گیٹ فولڈ</translation>
@@ -1737,7 +1736,6 @@
 <translation id="3905894480064208252">{0,plural, =1{فائل کو منتقل ہونے سے مسدود کر دیا گیا}other{<ph name="FILE_COUNT" /> فائلز کو منتقل ہونے سے مسدود کر دیا گیا}}</translation>
 <translation id="3906022360148923497">ادائیگی کے طریقہ کا آئیکن</translation>
 <translation id="3906234161316839040">دیگر آرڈرز</translation>
-<translation id="3906954721959377182">ٹیبلیٹ</translation>
 <translation id="3909695131102177774"><ph name="LABEL" /> <ph name="ERROR" /></translation>
 <translation id="3910231615117880630">سرایت کردہ مواد کے بارے میں مزید جانیں</translation>
 <translation id="3920504717067627103">سرٹیفکیٹ کی پالیسیاں</translation>
@@ -3915,6 +3913,7 @@
 <translation id="753713322968419914">‏‫Chrome آٹو فل سے گھر کا پتہ ہٹائیں؟</translation>
 <translation id="753714465667062283">اپنی تصویر محفوظ کرنے کیلئے سائن ان کریں</translation>
 <translation id="7537536606612762813">لازمی</translation>
+<translation id="7540924742308928499">سوچ بچار اور خلاصہ کریں</translation>
 <translation id="7543525346216957623">اپنے والدین سے پوچھیں</translation>
 <translation id="7546409722674205727"><ph name="APP_NAME" /> کی شروعات</translation>
 <translation id="7548892272833184391">کنکشن کی خرابیاں ٹھیک کریں</translation>

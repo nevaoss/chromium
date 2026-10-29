@@ -599,7 +599,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.CheckUrl.TimeTaken.{CheckType}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
@@ -702,7 +702,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="SafeBrowsing.ClientSafeBrowsingReport.NetworkResult.{ReportType}"
-    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2027-01-31">
+    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2027-04-04">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -1509,11 +1509,11 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.FileTypeUpdate.DynamicUpdateResult"
-    enum="SBFileTypeUpdateResult" expires_after="2026-11-15">
+    enum="SBFileTypeUpdateResult" expires_after="2027-11-15">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
-  <owner>drubery@chromium.org</owner>
+  <owner>yawfrempong@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     The result of reading/parsing/accepting a new proto for the FileTypePolices
@@ -1684,7 +1684,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.GmsSafeBrowsingApi.CheckDelta{Protocol}"
-    units="microseconds" expires_after="2027-01-31">
+    units="microseconds" expires_after="2027-04-04">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
@@ -2244,7 +2244,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 <histogram name="SafeBrowsing.IOS.IsCheckCompletedOnShouldAllowResponse"
     enum="BooleanCompleted" expires_after="2027-05-10">
   <owner>danieltwhite@google.com</owner>
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Logs whether the Safe Browsing check is completed when a navigation response
@@ -2256,7 +2256,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 <histogram name="SafeBrowsing.IOS.RepeatedResponseCalled"
     enum="BooleanSubsequentResponse" expires_after="2027-03-08">
   <owner>danieltwhite@google.com</owner>
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Logs whether a subsequent Safe Browsing navigation response without a
@@ -2268,7 +2268,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 <histogram name="SafeBrowsing.IOS.TotalDelay" units="ms"
     expires_after="2027-05-11">
   <owner>danieltwhite@google.com</owner>
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Logs the latency between when a navigation response policy decision was
@@ -2281,7 +2281,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 <histogram name="SafeBrowsing.IOS.TotalDelay2{UserCategory}" units="ms"
     expires_after="2027-05-31">
   <owner>danieltwhite@google.com</owner>
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Logs the latency between when a navigation response policy decision was
@@ -2802,7 +2802,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.RT.CacheManager.CleanupReachedThreshold"
-    units="entries" expires_after="2027-02-02">
+    units="entries" expires_after="2027-04-04">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -2950,7 +2950,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.RT.GetToken.TimeTaken{UserCategory}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
@@ -3053,7 +3053,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.RT.LocalMatch.Result{UserCategory}"
-    enum="SafeBrowsingAllowlistAsyncMatch" expires_after="2027-01-31">
+    enum="SafeBrowsingAllowlistAsyncMatch" expires_after="2027-04-04">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
@@ -3108,7 +3108,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.RT.Network.Time{UserCategory}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
@@ -3468,7 +3468,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.SuspiciousSiteWarning.UserInteraction"
-    enum="SuspiciousSiteWarningUserInteraction" expires_after="2027-02-01">
+    enum="SuspiciousSiteWarningUserInteraction" expires_after="2027-04-04">
   <owner>awado@google.com</owner>
   <owner>richche@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
@@ -3481,7 +3481,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.SuspiciousSiteWarning.VerdictReceived"
-    enum="Boolean" expires_after="2027-02-01">
+    enum="Boolean" expires_after="2027-04-04">
   <owner>awado@google.com</owner>
   <owner>richche@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
@@ -3493,7 +3493,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.SuspiciousSiteWarning.WarningOutcome"
-    enum="SuspiciousSiteWarningOutcome" expires_after="2027-02-01">
+    enum="SuspiciousSiteWarningOutcome" expires_after="2027-04-04">
   <owner>awado@google.com</owner>
   <owner>richche@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
@@ -3831,7 +3831,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.V4Database.SizeLinear{ThreatType}" units="MB"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
 useful for Chirp alerts (go/crca-alerts). -->
 
@@ -4758,7 +4758,7 @@ failing to fetch the updates which puts users' security at risk. -->
 
 <histogram
     name="SafeBrowsing.{CloudOrLocal}DeepScan.{Connector}{Result}.Duration"
-    units="ms" expires_after="2027-01-31">
+    units="ms" expires_after="2027-04-04">
   <owner>domfc@chromium.org</owner>
   <owner>drubery@chromium.org</owner>
   <owner>nancylanxiao@google.com</owner>
@@ -4910,7 +4910,7 @@ failing to fetch the updates which puts users' security at risk. -->
     name="SafeBrowsing.{SafeBrowsingV4OrV5OrSB}LocalDatabaseManager.TimeSinceLastUpdateResponse"
     units="ms" expires_after="2027-04-05">
   <owner>danieltwhite@google.com</owner>
-  <owner>joemerramos@chromium.org</owner>
+  <owner>joemerramos@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Records the time since the last network response was received for a request

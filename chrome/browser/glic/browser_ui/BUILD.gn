@@ -24,7 +24,6 @@ source_set("browser_ui") {
     "//chrome/browser/glic/browser_ui/activity_list_bubble:delegate",
     "//chrome/browser/tab_list",
     "//components/keyed_service/core",
-    "//components/skills/public",
     "//ui/base/unowned_user_data",
   ]
   deps = [
@@ -107,7 +106,6 @@ source_set("impl") {
       "//components/omnibox/browser:vector_icons",
       "//components/prefs",
       "//content/public/browser",
-      "//third_party/re2",
       "//ui/strings",
       "//ui/strings:ui_strings__strings_grit",
     ]
@@ -261,6 +259,7 @@ if (!is_android) {
       "//chrome/browser/ui",
       "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_element_identifiers",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/tabs/alert:tab_alert",
       "//chrome/browser/ui/views/frame",
       "//chrome/browser/ui/views/frame:browser_view_header",

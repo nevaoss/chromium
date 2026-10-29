@@ -4,6 +4,9 @@
 
 #include "chrome/browser/ui/views/app_menu/action_app_menu.h"
 
+#include <vector>
+
+#include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
@@ -15,7 +18,6 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_chip_view.h"
-#include "chrome/browser/ui/views/app_menu/app_menu_drag_and_drop_delegate.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
@@ -35,6 +37,7 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/menu_button_controller.h"
+#include "ui/views/controls/menu/menu_controller.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/menu_separator.h"
@@ -73,9 +76,9 @@ bool ShouldRoundBottomCorners(size_t index,
                               const actions::ActionListVector& items) {
   // An item rounds its bottom corners if it is the last non-divider item in
   // its list, if it is a notification item, OR if it is the zoom submenu.
-  actions::ActionItem* const item = items[index]->GetActionItem();
-  if (item->GetActionId() == kActionZoomSubmenu ||
-      item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+  actions::BaseAction* const base_item = items[index].get();
+  if (base_item->GetActionItem()->GetActionId() == kActionZoomSubmenu ||
+      base_item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
           AppMenuActionItem::DisplayType::kNotification) {
     return true;
   }
@@ -83,8 +86,8 @@ bool ShouldRoundBottomCorners(size_t index,
     if (!items[i]->GetActionItem()->GetVisible()) {
       continue;
     }
-    const auto display_type = items[i]->GetActionItem()->GetProperty(
-        AppMenuActionItem::kDisplayTypeKey);
+    const auto display_type =
+        items[i]->GetProperty(AppMenuActionItem::kDisplayTypeKey);
     if (display_type != AppMenuActionItem::DisplayType::kDivider &&
         display_type != AppMenuActionItem::DisplayType::kHeader) {
       return false;
@@ -102,8 +105,8 @@ bool ShouldRoundTopCorners(size_t index,
     if (!items[prev_index]->GetActionItem()->GetVisible()) {
       continue;
     }
-    const auto display_type = items[prev_index]->GetActionItem()->GetProperty(
-        AppMenuActionItem::kDisplayTypeKey);
+    const auto display_type =
+        items[prev_index]->GetProperty(AppMenuActionItem::kDisplayTypeKey);
     if (display_type == AppMenuActionItem::DisplayType::kDivider ||
         display_type == AppMenuActionItem::DisplayType::kHeader) {
       continue;
@@ -113,25 +116,25 @@ bool ShouldRoundTopCorners(size_t index,
   return true;
 }
 
-bool SupportsVerticalPadding(const actions::ActionItem* item) {
+bool SupportsVerticalPadding(const actions::BaseAction* item) {
   return item->GetProperty(AppMenuActionItem::kItemHeightKey) ==
          AppMenuActionItem::ItemHeight::kCompact;
 }
 
 bool ShouldAddTopPadding(size_t index, const actions::ActionListVector& items) {
-  if (!SupportsVerticalPadding(items[index]->GetActionItem())) {
+  if (!SupportsVerticalPadding(items[index].get())) {
     return false;
   }
   for (size_t i = index; i > 0; --i) {
-    actions::ActionItem* const prev_item = items[i - 1]->GetActionItem();
+    actions::BaseAction* const prev_base = items[i - 1].get();
     const auto display_type =
-        prev_item->GetProperty(AppMenuActionItem::kDisplayTypeKey);
-    if (!prev_item->GetVisible() ||
+        prev_base->GetProperty(AppMenuActionItem::kDisplayTypeKey);
+    if (!prev_base->GetActionItem()->GetVisible() ||
         display_type == AppMenuActionItem::DisplayType::kDivider ||
         display_type == AppMenuActionItem::DisplayType::kHeader) {
       continue;
     }
-    if (SupportsVerticalPadding(prev_item)) {
+    if (SupportsVerticalPadding(prev_base)) {
       return false;
     }
   }
@@ -140,7 +143,7 @@ bool ShouldAddTopPadding(size_t index, const actions::ActionListVector& items) {
 
 bool ShouldAddBottomPadding(size_t index,
                             const actions::ActionListVector& items) {
-  return SupportsVerticalPadding(items[index]->GetActionItem()) &&
+  return SupportsVerticalPadding(items[index].get()) &&
          ShouldRoundBottomCorners(index, items);
 }
 
@@ -167,14 +170,15 @@ ActionAppMenu::ActionAppMenu(BrowserWindowInterface* browser_window_interface,
     : browser_window_interface_(browser_window_interface),
       on_menu_closed_callback_(std::move(on_menu_closed_callback)),
       menu_manager_(
-          std::make_unique<ActionAppMenuManager>(browser_window_interface)) {
+          std::make_unique<ActionAppMenuManager>(browser_window_interface,
+                                                 /*drag_and_drop_host=*/this)) {
   menu_manager_->CreateMenuHierarchy();
 }
 
 ActionAppMenu::~ActionAppMenu() {
   search_bar_ = nullptr;
   command_to_action_map_.clear();
-  menu_manager_->GetAppMenuRoot()->ResetActionList();
+  menu_manager_.reset();
 }
 
 void ActionAppMenu::RunMenu(views::MenuButtonController* host) {
@@ -204,6 +208,86 @@ void ActionAppMenu::RunMenu(views::MenuButtonController* host) {
                           /*native_view_for_gestures=*/gfx::NativeView(),
                           /*corners=*/std::nullopt,
                           "Chrome.AppMenu.MenuHostInitToNextFramePresented");
+}
+
+void ActionAppMenu::UpdateMenuItem(actions::BaseAction* action,
+                                   actions::BaseAction* target_parent_action,
+                                   actions::BaseAction* insert_after) {
+  CHECK(action);
+  CHECK_NE(action, insert_after);
+  actions::BaseAction* old_parent_action = action->GetParent();
+  CHECK(old_parent_action);
+
+  views::MenuItemView* moved_item = GetMenuItemForAction(action);
+  std::unique_ptr<actions::BaseAction> owned_action =
+      old_parent_action->RemoveChild(action);
+
+  size_t target_index = 0;
+  if (target_parent_action) {
+    const auto& target_children =
+        target_parent_action->GetChildren().children();
+    if (insert_after) {
+      auto it = std::ranges::find_if(
+          target_children,
+          [insert_after](const std::unique_ptr<actions::BaseAction>& child) {
+            return child.get() == insert_after;
+          });
+      CHECK(it != target_children.end());
+      target_index = std::distance(target_children.begin(), it) + 1;
+    }
+    target_parent_action->AddChildAt(std::move(owned_action), target_index);
+  }
+
+  views::MenuItemView* old_parent_menu =
+      moved_item ? moved_item->GetParentMenuItem() : nullptr;
+  if (old_parent_menu) {
+    RemoveSubmenuActionsFromMap(moved_item);
+    command_to_action_map_.erase(moved_item->GetCommand());
+    old_parent_menu->RemoveMenuItem(moved_item);
+  }
+
+  if (!target_parent_action) {
+    if (old_parent_menu) {
+      old_parent_menu->ChildrenChanged();
+    }
+    return;
+  }
+
+  views::MenuItemView* prev_item =
+      insert_after ? GetMenuItemForAction(insert_after) : nullptr;
+  views::MenuItemView* new_parent_menu =
+      prev_item ? prev_item->GetParentMenuItem()
+                : GetMenuItemForAction(target_parent_action);
+  if (!new_parent_menu || !new_parent_menu->HasSubmenu() ||
+      (target_parent_action->HasPopulateChildActionsCallback() &&
+       new_parent_menu->GetSubmenu()->GetMenuItems().empty())) {
+    if (old_parent_menu) {
+      old_parent_menu->ChildrenChanged();
+    }
+    return;
+  }
+
+  size_t view_index =
+      prev_item
+          ? new_parent_menu->GetSubmenu()->GetIndexOf(prev_item).value() + 1
+          : 0;
+
+  const auto& target_children = target_parent_action->GetChildren().children();
+  views::MenuItemView* new_item =
+      AppendMenuItem(action, new_parent_menu, view_index);
+  ConfigureMenuItem(new_item, action,
+                    ShouldRoundTopCorners(target_index, target_children),
+                    ShouldRoundBottomCorners(target_index, target_children),
+                    ShouldAddTopPadding(target_index, target_children),
+                    ShouldAddBottomPadding(target_index, target_children));
+  if (!action->HasPopulateChildActionsCallback()) {
+    PopulateMenu(new_item, action);
+  }
+
+  if (old_parent_menu && old_parent_menu != new_parent_menu) {
+    old_parent_menu->ChildrenChanged();
+  }
+  new_parent_menu->ChildrenChanged();
 }
 
 void ActionAppMenu::CloseMenu() {
@@ -291,13 +375,14 @@ const gfx::FontList* ActionAppMenu::GetLabelFontList(int id) const {
     return nullptr;
   }
 
-  actions::ActionItem* action_ptr = action_iterator->second->GetActionItem();
-  CHECK(action_ptr);
-  if (action_ptr->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+  actions::BaseAction* base_action = action_iterator->second;
+  CHECK(base_action);
+  if (base_action->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
       AppMenuActionItem::DisplayType::kHeader) {
     return &views::TypographyProvider::Get().GetFont(
         views::style::CONTEXT_LABEL, views::style::STYLE_HEADLINE_5);
-  } else if (action_ptr->GetActionId() == kActionProfileSubmenu) {
+  } else if (base_action->GetActionItem()->GetActionId() ==
+             kActionProfileSubmenu) {
     return &views::TypographyProvider::Get().GetFont(
         views::style::CONTEXT_MENU, views::style::STYLE_BODY_3_MEDIUM);
   }
@@ -311,9 +396,8 @@ std::optional<SkColor> ActionAppMenu::GetLabelColor(int id) const {
     return std::nullopt;
   }
 
-  actions::ActionItem* action_ptr = action_iterator->second->GetActionItem();
-  CHECK(action_ptr);
-  if (action_ptr->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+  actions::BaseAction* base_action = action_iterator->second;
+  if (base_action->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
           AppMenuActionItem::DisplayType::kHeader &&
       root_ && root_->GetSubmenu()->GetColorProvider()) {
     return root_->GetSubmenu()->GetColorProvider()->GetColor(
@@ -410,11 +494,28 @@ void ActionAppMenu::SetTimerForTesting(base::ElapsedTimer timer) {
   metrics_.SetTimerForTesting(std::move(timer));  // IN-TEST
 }
 
+void ActionAppMenu::ClearItemsBelowSearchBarForTesting() {
+  ClearItemsBelowSearchBar();
+}
+
 actions::BaseAction* ActionAppMenu::GetActionForMenuItem(
     views::MenuItemView* menu) const {
   CHECK(menu);
   auto it = command_to_action_map_.find(menu->GetCommand());
   return it != command_to_action_map_.end() ? it->second : nullptr;
+}
+
+views::MenuItemView* ActionAppMenu::GetMenuItemForAction(
+    actions::BaseAction* action) const {
+  if (!root_ || !action) {
+    return nullptr;
+  }
+  for (const auto& [command_id, mapped_action] : command_to_action_map_) {
+    if (mapped_action == action) {
+      return root_->GetMenuItemByID(command_id);
+    }
+  }
+  return nullptr;
 }
 
 AppMenuDragAndDropDelegate* ActionAppMenu::GetDragAndDropDelegate(
@@ -425,6 +526,18 @@ AppMenuDragAndDropDelegate* ActionAppMenu::GetDragAndDropDelegate(
     }
   }
   return nullptr;
+}
+
+void ActionAppMenu::RemoveSubmenuActionsFromMap(
+    views::MenuItemView* parent_menu_item) {
+  if (!parent_menu_item || !parent_menu_item->HasSubmenu()) {
+    return;
+  }
+  for (views::MenuItemView* child :
+       parent_menu_item->GetSubmenu()->GetMenuItems()) {
+    RemoveSubmenuActionsFromMap(child);
+    command_to_action_map_.erase(child->GetCommand());
+  }
 }
 
 void ActionAppMenu::CancelAndEvaluate(actions::ActionId action_id,
@@ -439,6 +552,29 @@ void ActionAppMenu::CancelAndEvaluate(actions::ActionId action_id,
                                        base_action, mouse_event_flags)};
     CloseMenu();
   }
+}
+
+void ActionAppMenu::ClearItemsBelowSearchBar() {
+  CHECK(search_bar_);
+  views::SubmenuView* submenu = root_->GetSubmenu();
+  CHECK(submenu);
+
+  const std::optional<size_t> search_row_index =
+      submenu->GetIndexOf(search_bar_->parent());
+  CHECK(search_row_index);
+  const std::vector<views::View*> to_remove(
+      submenu->children().begin() + *search_row_index + 1,
+      submenu->children().end());
+  for (views::View* child : to_remove) {
+    root_->RemoveMenuItem(child);
+  }
+
+  // Drop the command mappings of the removed rows. The rows above the search
+  // bar, such as notifications, keep theirs.
+  base::EraseIf(command_to_action_map_, [this](const auto& entry) {
+    return !root_->GetMenuItemByID(entry.first);
+  });
+  section_header_count_ = 0;
 }
 
 void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
@@ -456,7 +592,7 @@ void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
     }
 
     const auto display_type =
-        child_ptr->GetProperty(AppMenuActionItem::kDisplayTypeKey);
+        child_base->GetProperty(AppMenuActionItem::kDisplayTypeKey);
 
     if (display_type == AppMenuActionItem::DisplayType::kSearch) {
       PopulateSearchBar(view_parent, child_ptr);
@@ -494,7 +630,8 @@ void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
 
 views::MenuItemView* ActionAppMenu::AppendMenuItem(
     actions::BaseAction* base_action_item,
-    views::MenuItemView* parent_menu_item) {
+    views::MenuItemView* parent_menu_item,
+    std::optional<size_t> index) {
   actions::ActionItem* action_item = base_action_item->GetActionItem();
   CHECK(action_item);
   std::optional<actions::ActionId> action_id = action_item->GetActionId();
@@ -506,31 +643,37 @@ views::MenuItemView* ActionAppMenu::AppendMenuItem(
   // Items marked as kCustom lay out their child actions inline in the same row
   // rather than spawning a popup submenu.
   const AppMenuActionItem::DisplayType display_type =
-      action_item->GetProperty(AppMenuActionItem::kDisplayTypeKey);
+      base_action_item->GetProperty(AppMenuActionItem::kDisplayTypeKey);
   const bool has_submenu =
       display_type != AppMenuActionItem::DisplayType::kCustom &&
-      (action_item->GetProperty(AppMenuActionItem::kIsSubmenuKey) ||
+      (base_action_item->GetProperty(AppMenuActionItem::kIsSubmenuKey) ||
        !base_action_item->GetChildren().children().empty());
 
   command_to_action_map_[command_id] = base_action_item;
 
   const bool is_checkable =
-      action_item->GetProperty(AppMenuActionItem::kIsCheckableKey);
+      base_action_item->GetProperty(AppMenuActionItem::kIsCheckableKey);
 
   views::MenuItemView::Type menu_item_type =
-      is_checkable ? views::MenuItemView::Type::kCheckbox
-                   : views::MenuItemView::Type::kNormal;
+      has_submenu ? views::MenuItemView::Type::kSubMenu
+                  : (is_checkable ? views::MenuItemView::Type::kCheckbox
+                                  : views::MenuItemView::Type::kNormal);
 
   if (display_type == AppMenuActionItem::DisplayType::kNotification) {
     has_notification_header_ = true;
   }
 
+  const std::u16string label =
+      has_submenu ? std::u16string(action_item->GetText()) : std::u16string();
   views::MenuItemView* menu_item =
-      has_submenu ? parent_menu_item->AppendSubMenu(
-                        command_id, std::u16string(action_item->GetText()))
-                  : parent_menu_item->AppendMenuItemImpl(
-                        command_id, /*label=*/std::u16string(),
-                        /*icon=*/ui::ImageModel(), menu_item_type);
+      index.has_value()
+          ? parent_menu_item->AddMenuItemAt(
+                *index, command_id, label, /*secondary_label=*/std::u16string(),
+                /*minor_text=*/std::u16string(),
+                /*minor_icon=*/ui::ImageModel(), /*icon=*/ui::ImageModel(),
+                menu_item_type, ui::NORMAL_SEPARATOR)
+          : parent_menu_item->AppendMenuItemImpl(
+                command_id, label, /*icon=*/ui::ImageModel(), menu_item_type);
 
   action_view_controller_.CreateActionViewRelationship(
       menu_item, action_item->GetAsWeakPtr());
@@ -566,7 +709,7 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
 
   const auto* provider = ChromeLayoutProvider::Get();
   const bool is_notification =
-      action_item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+      child_base->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
       AppMenuActionItem::DisplayType::kNotification;
   const int default_icon_size = provider->GetDistanceMetric(
       is_notification ? DISTANCE_ACTION_APP_MENU_NOTIFICATION_ICON_SIZE
@@ -606,7 +749,7 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
   }
 
   if (const base::Feature* new_badge_feature =
-          action_item->GetProperty(AppMenuActionItem::kNewBadgeFeatureKey)) {
+          child_base->GetProperty(AppMenuActionItem::kNewBadgeFeatureKey)) {
     const bool show_new_badge =
         ShouldShowNewBadge(browser_window_interface_, *new_badge_feature);
     menu_item->set_new_badge_type(
@@ -619,7 +762,7 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
   }
 
   int target_item_height = 0;
-  switch (action_item->GetProperty(AppMenuActionItem::kItemHeightKey)) {
+  switch (child_base->GetProperty(AppMenuActionItem::kItemHeightKey)) {
     case AppMenuActionItem::ItemHeight::kCompact:
       target_item_height = provider->GetDistanceMetric(
           DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT);
@@ -642,7 +785,7 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
   menu_item->set_vertical_margin(vertical_padding);
 
   const ui::ColorId container_color =
-      action_item->GetProperty(AppMenuActionItem::kContainerColorKey);
+      child_base->GetProperty(AppMenuActionItem::kContainerColorKey);
 
   // Get the styling from the ActionItem and apply it to its menu item.
   if (container_color != ui::kColorMenuBackground) {
@@ -688,8 +831,7 @@ void ActionAppMenu::PopulateSearchBar(views::MenuItemView* view_parent,
 
   auto search_bar = std::make_unique<AppMenuSearchBarView>();
   search_bar->SetProperty(views::kMarginsKey, margins);
-  search_bar_ = search_bar.get();
-  search_item->AddChildView(std::move(search_bar));
+  search_bar_ = search_item->AddChildView(std::move(search_bar));
 }
 
 void ActionAppMenu::PopulateFooter(views::MenuItemView* view_parent,

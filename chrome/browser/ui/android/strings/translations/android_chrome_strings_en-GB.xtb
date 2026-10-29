@@ -123,7 +123,6 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
 <translation id="1432581352905426595">Manage search engines</translation>
 <translation id="1435593198351412143">Automatically open PDFs</translation>
 <translation id="1437543266176261764">Running in <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organise your tracked products in Bookmarks</translation>
 <translation id="1452651021404174820">Choose a device</translation>
 <translation id="1455845192930279203">Do you want to download '<ph name="FILE_NAME" />' (<ph name="FILE_SIZE" />) from <ph name="DOWNLOAD_DOMAIN" /> anyway?</translation>
 <translation id="1460751212339734034">Save time, type less</translation>
@@ -765,6 +764,7 @@ Only someone with your passphrase can read your encrypted data. The passphrase i
 <translation id="4092709865241032354">To help Google Password Manager save your sign-in info, add your username for this site</translation>
 <translation id="4095146165863963773">Delete app data?</translation>
 <translation id="4095483462103784441">Create new tab group</translation>
+<translation id="4098552968111329864">To secure your work on Chrome, your organisation will be able to view or manage certain information when you’re signed-in to Chrome</translation>
 <translation id="4105527135143631701">Google Password Manager update opened</translation>
 <translation id="4107207375883769436">Your organisation may need to see and manage browsing data in your work profile, such as your browsing history and passwords</translation>
 <translation id="4113030288477039509">Managed by your administrator</translation>
@@ -775,6 +775,7 @@ Only someone with your passphrase can read your encrypted data. The passphrase i
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, multi-selected pinned recording tab</translation>
 <translation id="4137746084635924146">Current device language</translation>
 <translation id="414128724510021958">Desktop sites requested by default</translation>
+<translation id="4150837143272125910">An update has been downloaded</translation>
 <translation id="4162867837470729563">List of sharing options at full height.</translation>
 <translation id="4164642020717536140">Fast and secure web browsing</translation>
 <translation id="4165077084524712774">More tools</translation>
@@ -1199,6 +1200,7 @@ Your Google Account may have other forms of browsing history such as searches an
 <translation id="5848257610304005265">Open PDF with <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Stop sharing?</translation>
 <translation id="5853623416121554550">paused</translation>
+<translation id="5855375823365231964">About this profile</translation>
 <translation id="5855546874025048181">Refine: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, multi-selected recording Incognito tab</translation>
 <translation id="5857447844686706637">Something went wrong. Couldn’t update track price.</translation>
@@ -1240,6 +1242,7 @@ Your Google Account may have other forms of browsing history such as searches an
 <translation id="6039379616847168523">Jump to the next tab</translation>
 <translation id="6040143037577758943">Close</translation>
 <translation id="604124094241169006">Automatic</translation>
+<translation id="6041959688070413372">Manage the connection between search services and Google Workspace apps, like Google Drive</translation>
 <translation id="6042308850641462728">More</translation>
 <translation id="6047066316630165190">Open the grid Tab Switcher</translation>
 <translation id="604996488070107836"><ph name="FILE_NAME" /> download failed due to an unknown error.</translation>
@@ -1400,6 +1403,7 @@ For example, some websites may respond to this request by showing you ads that a
 <translation id="6565959834589222080">Wi-Fi is used when available</translation>
 <translation id="657177046675873214">To get your bookmarks on all your devices, turn on 'Bookmarks' in Settings.</translation>
 <translation id="6573096386450695060">Always allow</translation>
+<translation id="657480975869429144">A new version of Chrome is available</translation>
 <translation id="658099107946526506">Protect your private browsing with a PIN to prevent unwanted access</translation>
 <translation id="6583199322650523874">Bookmark the current page</translation>
 <translation id="6588043302623806746">Use secure DNS</translation>
@@ -1767,6 +1771,7 @@ To change this setting, <ph name="BEGIN_LINK" />delete the Chrome data in your a
 <translation id="7929587383660661825">Chrome automatically removes permissions from sites that abuse notifications or that you haven't visited recently</translation>
 <translation id="7934668619883965330">Cannot download file. File format not supported.</translation>
 <translation id="7951102827450076904">Always open downloaded PDFs</translation>
+<translation id="7952148074468405586">Learn more about <ph name="BEGIN_LINK" />information that your organisation can view or manage<ph name="END_LINK" /></translation>
 <translation id="7952479614398473176">To open a new window, reduce the total number of active windows to <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> or fewer.</translation>
 <translation id="7956713633345437162">Mobile bookmarks</translation>
 <translation id="7957413488482743710">A virtual card hides your actual card to help protect you from potential fraud. <ph name="BEGIN_LINK1" />Learn more about virtual cards<ph name="END_LINK1" /></translation>

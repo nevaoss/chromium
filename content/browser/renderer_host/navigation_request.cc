@@ -2279,9 +2279,7 @@ NavigationRequest::~NavigationRequest() {
 
   // If navigation has started but not finished, mark it as aborted for
   // Navigation callbacks.
-  if (base::FeatureList::IsEnabled(
-          features::kAbortNavigationsFromTabClosures) &&
-      state_ < DID_COMMIT && net_error_ == net::OK) {
+  if (state_ < DID_COMMIT && net_error_ == net::OK) {
     net_error_ = net::ERR_ABORTED;
   }
 
@@ -2500,8 +2498,15 @@ void NavigationRequest::BeginNavigation() {
     std::move(begin_navigation_callback_for_testing_).Run();
   }
 
+  base::WeakPtr<NavigationRequest> weak_self(weak_factory_.GetWeakPtr());
   if (MaybeStartPrerenderingActivationChecks()) {
     // BeginNavigationImpl() will be called after the checks.
+    return;
+  }
+  if (!weak_self) {
+    // DO NOT ADD CODE after this. The previous call to
+    // MaybeStartPrerenderingActivationChecks() has destroyed the
+    // NavigationRequest.
     return;
   }
 
@@ -9717,7 +9722,7 @@ void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
   CHECK(!IsPageActivation());
   if (GetSocketAddress().address().IsValid() &&
       GetSocketAddress().address().IsZero()) {
-    web_features_to_log_.push_back(
+    AddWebFeatureToLog(
         blink::mojom::WebFeature::kPrivateNetworkAccessNullIpAddress);
   }
 
@@ -9760,10 +9765,26 @@ void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
   }
 }
 
+void NavigationRequest::AddWebFeatureToLog(
+    blink::mojom::WebFeature feature,
+    std::optional<url::Origin> response_origin) {
+  web_features_to_log_.push_back(
+      WebFeatureToLog{feature, std::move(response_origin)});
+}
+
 std::vector<blink::mojom::WebFeature>
 NavigationRequest::TakeWebFeaturesToLog() {
   std::vector<blink::mojom::WebFeature> result;
-  result.swap(web_features_to_log_);
+  for (const WebFeatureToLog& entry : web_features_to_log_) {
+    // Don't attribute a feature used by a redirect response that is
+    // cross-origin to the committed document to that document.
+    if (entry.response_origin &&
+        !entry.response_origin->IsSameOriginWith(GetURL())) {
+      continue;
+    }
+    result.push_back(entry.feature);
+  }
+  web_features_to_log_.clear();
   return result;
 }
 

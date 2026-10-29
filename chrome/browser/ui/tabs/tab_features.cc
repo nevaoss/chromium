@@ -11,7 +11,9 @@
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/time/default_tick_clock.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/actor_surface_tab_helper.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
 #include "chrome/browser/banners/app_banner_manager_desktop.h"
@@ -27,6 +29,8 @@
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_web_contents_observer.h"
 #include "chrome/browser/contextual_cueing/features.h"
+#include "chrome/browser/contextual_search/contextual_search_cue_tab_state.h"
+#include "chrome/browser/contextual_search/contextual_search_cue_target.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_navigation_controller.h"
 #include "chrome/browser/enterprise/net/enterprise_proxy_error_service_factory.h"
 #include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_navigation_observer.h"
@@ -44,6 +48,7 @@
 #include "chrome/browser/indigo/indigo_cue_target.h"
 #include "chrome/browser/indigo/indigo_page_action_controller.h"
 #include "chrome/browser/loader/from_gws_navigation_and_keep_alive_request_observer.h"
+#include "chrome/browser/media/media_engagement_service.h"
 #include "chrome/browser/multistep_filter/chrome_filter_navigation_observer.h"
 #include "chrome/browser/multistep_filter/ui/filter_ui_controller.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_preconnect_client.h"
@@ -52,6 +57,7 @@
 #include "chrome/browser/net/qwac_web_contents_observer.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
+#include "chrome/browser/page_content_annotations/page_content_annotations_service_factory.h"
 #include "chrome/browser/page_info/about_this_site_tab_helper.h"
 #include "chrome/browser/page_info/page_info_features.h"
 #include "chrome/browser/payments/web_payments_observer.h"
@@ -82,6 +88,7 @@
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/autofill/bubble_manager.h"
+#include "chrome/browser/ui/autofill/one_time_tokens/gmail_otp_opt_in_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_bubble_controller.h"
@@ -95,6 +102,7 @@
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_tab_feature.h"
 #include "chrome/browser/ui/extensions/extension_side_panel_manager.h"
+#include "chrome/browser/ui/find_bar/find_bar_state.h"
 #include "chrome/browser/ui/focus_tab_after_navigation_helper.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
@@ -108,6 +116,7 @@
 #include "chrome/browser/ui/performance_controls/memory_saver_chip_tab_helper.h"
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
+#include "chrome/browser/ui/recently_audible_helper.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service_factory.h"
@@ -116,6 +125,7 @@
 #include "chrome/browser/ui/search_engines/search_engine_tab_helper.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
 #include "chrome/browser/ui/sync/browser_synced_tab_delegate.h"
+#include "chrome/browser/ui/tab_contents/core_tab_helper.h"
 #include "chrome/browser/ui/tab_dialogs.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/alert/child_tab_alert_helper.h"
@@ -174,6 +184,7 @@
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
+#include "chrome/browser/contextual_tasks/copy_search_journey_tab_feature.h"
 #include "chrome/browser/record_replay/chrome_record_replay_client.h"
 #include "chrome/browser/ui/views/location_bar/record_replay_page_action_controller.h"
 #include "chrome/browser/wallet/chrome_walletable_pass_client.h"
@@ -203,6 +214,7 @@
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/tab_attachment_tracker.h"
 #include "chrome/browser/v8_compile_hints/v8_compile_hints_tab_helper.h"
+#include "chrome/browser/vr/vr_tab_helper.h"
 #include "chrome/browser/web_applications/isolated_web_apps/window_management/window_management_content_setting_observer.h"
 #include "chrome/browser/web_applications/policy/pre_redirection_url_observer.h"
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
@@ -210,6 +222,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
 #include "components/autofill/core/common/autofill_features.h"
+#include "components/blocked_content/popup_opener_tab_helper.h"
 #include "components/client_hints/browser/client_hints_web_contents_observer.h"
 #include "components/commerce/content/browser/commerce_tab_helper.h"
 #include "components/commerce/core/commerce_feature_list.h"
@@ -218,6 +231,7 @@
 #include "components/image_fetcher/core/image_fetcher_service.h"
 #include "components/metrics/content/metrics_services_web_contents_observer.h"
 #include "components/metrics_services_manager/metrics_services_manager.h"
+#include "components/page_content_annotations/content/page_content_annotations_web_contents_observer.h"
 #include "components/passage_embeddings/core/passage_embeddings_features.h"
 #include "components/permissions/permission_indicators_tab_data.h"
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
@@ -292,9 +306,16 @@
 #include "chrome/browser/offline_pages/recent_tab_helper.h"
 #endif
 
+#include "printing/buildflags/buildflags.h"
+#if BUILDFLAG(ENABLE_PRINTING)
+#include "chrome/browser/printing/printing_init.h"
+#endif
+
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+#include "chrome/browser/safe_browsing/chrome_safe_browsing_tab_observer_delegate.h"
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_service_factory.h"
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_url_observer.h"
+#include "components/safe_browsing/content/browser/safe_browsing_tab_observer.h"
 #include "components/safe_browsing/core/common/features.h"
 #endif
 
@@ -493,6 +514,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
     contextual_cueing_helper_ = glic::ContextualCueingHelper::MaybeCreate(&tab);
     glic_cue_tab_state_ = std::make_unique<glic::GlicCueTabState>(tab);
+    contextual_search_cue_tab_state_ =
+        std::make_unique<contextual_search::ContextualSearchCueTabState>(tab);
 
     if (tab_groups::TabGroupSyncService* tab_group_sync_service =
             tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile)) {
@@ -583,6 +606,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   if (base::FeatureList::IsEnabled(features::kGlicActor)) {
     actor_tab_data_ =
         GetUserDataFactory().CreateInstance<actor::ActorTabData>(tab, &tab);
+    actor_surface_tab_helper_ =
+        GetUserDataFactory().CreateInstance<actor::ActorSurfaceTabHelper>(tab,
+                                                                          tab);
   }
 
   // This block instantiates the page action controllers that depends on the
@@ -630,6 +656,10 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             .CreateInstance<autofill::WalletReminderNoticeBubbleController>(
                 tab, tab, tab.GetContents());
   }
+
+  gmail_otp_opt_in_bubble_controller_ =
+      GetUserDataFactory()
+          .CreateInstance<autofill::GmailOtpOptInBubbleController>(tab, tab);
 
   customize_chrome_side_panel_controller_ =
       std::make_unique<customize_chrome::SidePanelControllerViews>(tab);
@@ -756,6 +786,13 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             .CreateInstance<contextual_tasks::ContextualTasksTabVisitTracker>(
                 tab, tab);
   }
+
+  if (contextual_tasks::IsCopyTextJourneysEnabled()) {
+    copy_search_journey_tab_feature_ =
+        GetUserDataFactory()
+            .CreateInstance<contextual_tasks::CopySearchJourneyTabFeature>(tab,
+                                                                           tab);
+  }
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -781,6 +818,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     contextual_cueing_controller_ =
         std::make_unique<contextual_cueing::ContextualCueingController>(&tab);
     glic::GlicCueTarget::Register(tab);
+    contextual_search::ContextualSearchCueTarget::Register(tab);
   }
 
   if (auto* contextual_cueing_service =
@@ -806,6 +844,13 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   new_tab_page_preload_pipeline_manager_ =
       std::make_unique<NewTabPagePreloadPipelineManager>(tab.GetContents());
+
+  vr_tab_helper_ =
+      GetUserDataFactory().CreateInstance<vr::VrTabHelper>(tab, tab);
+
+  recently_audible_helper_ =
+      GetUserDataFactory().CreateInstance<RecentlyAudibleHelper>(
+          tab, tab, tab.GetContents());
 
   child_tab_alert_helper_ =
       GetUserDataFactory().CreateInstance<ChildTabAlertHelper>(tab, tab);
@@ -1008,6 +1053,14 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           tab.GetContents());
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+  if (autofill::ContentAutofillClient::FromWebContents(tab.GetContents())) {
+    safe_browsing_tab_observer_ =
+        GetUserDataFactory()
+            .CreateInstance<safe_browsing::SafeBrowsingTabObserver>(
+                tab, tab, tab.GetContents(),
+                std::make_unique<
+                    safe_browsing::ChromeSafeBrowsingTabObserverDelegate>());
+  }
   if (base::FeatureList::IsEnabled(
           safe_browsing::kTailoredSecurityIntegration)) {
     tailored_security_url_observer_ =
@@ -1129,6 +1182,35 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             metrics_services_manager->GetOnDidStopLoadingCb(),
             metrics_services_manager->GetOnRendererUnresponsiveCb());
   }
+
+  popup_opener_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<blocked_content::PopupOpenerTabHelper>(
+              tab, tab, tab.GetContents(),
+              base::DefaultTickClock::GetInstance(),
+              HostContentSettingsMapFactory::GetForProfile(profile));
+
+  if (auto* page_content_annotations_service =
+          PageContentAnnotationsServiceFactory::GetForProfile(profile)) {
+    page_content_annotations_web_contents_observer_ =
+        GetUserDataFactory()
+            .CreateInstance<page_content_annotations::
+                                PageContentAnnotationsWebContentsObserver>(
+                tab, tab, tab.GetContents(), *page_content_annotations_service);
+  }
+
+  core_tab_helper_ = GetUserDataFactory().CreateInstance<CoreTabHelper>(
+      tab, tab, tab.GetContents());
+
+  FindBarState::ConfigureWebContents(tab.GetContents());
+
+  if (MediaEngagementService::IsEnabled()) {
+    MediaEngagementService::CreateWebContentsObserver(tab.GetContents());
+  }
+
+#if BUILDFLAG(ENABLE_PRINTING)
+  printing::InitializePrintingForWebContents(tab.GetContents());
+#endif
 }
 
 TabUIHelper* TabFeatures::SetTabUIHelperForTesting(
@@ -1475,6 +1557,15 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
           new_contents);
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+  safe_browsing_tab_observer_.reset();
+  if (autofill::ContentAutofillClient::FromWebContents(new_contents)) {
+    safe_browsing_tab_observer_ =
+        GetUserDataFactory()
+            .CreateInstance<safe_browsing::SafeBrowsingTabObserver>(
+                *tab, *tab, new_contents,
+                std::make_unique<
+                    safe_browsing::ChromeSafeBrowsingTabObserverDelegate>());
+  }
   if (tailored_security_url_observer_) {
     tailored_security_url_observer_.reset();
     tailored_security_url_observer_ =
@@ -1605,6 +1696,42 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
             metrics_services_manager->GetOnDidStopLoadingCb(),
             metrics_services_manager->GetOnRendererUnresponsiveCb());
   }
+
+  popup_opener_tab_helper_.reset();
+  popup_opener_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<blocked_content::PopupOpenerTabHelper>(
+              *tab, *tab, new_contents, base::DefaultTickClock::GetInstance(),
+              HostContentSettingsMapFactory::GetForProfile(profile));
+
+  page_content_annotations_web_contents_observer_.reset();
+  if (auto* page_content_annotations_service =
+          PageContentAnnotationsServiceFactory::GetForProfile(profile)) {
+    page_content_annotations_web_contents_observer_ =
+        GetUserDataFactory()
+            .CreateInstance<page_content_annotations::
+                                PageContentAnnotationsWebContentsObserver>(
+                *tab, *tab, new_contents, *page_content_annotations_service);
+  }
+
+  core_tab_helper_.reset();
+  core_tab_helper_ = GetUserDataFactory().CreateInstance<CoreTabHelper>(
+      *tab, *tab, new_contents);
+
+  recently_audible_helper_.reset();
+  recently_audible_helper_ =
+      GetUserDataFactory().CreateInstance<RecentlyAudibleHelper>(*tab, *tab,
+                                                                 new_contents);
+
+  FindBarState::ConfigureWebContents(new_contents);
+
+  if (MediaEngagementService::IsEnabled()) {
+    MediaEngagementService::CreateWebContentsObserver(new_contents);
+  }
+
+#if BUILDFLAG(ENABLE_PRINTING)
+  printing::InitializePrintingForWebContents(new_contents);
+#endif
 }
 
 customize_chrome::SidePanelController*

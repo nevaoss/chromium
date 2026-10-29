@@ -53,8 +53,9 @@
 #import "components/omnibox/browser/zero_suggest_provider.h"
 #import "components/optimization_guide/core/delivery/prefs.h"
 #import "components/optimization_guide/core/feature_registry/feature_registration.h"
+#import "components/optimization_guide/core/hints/prefs.h"
 #import "components/optimization_guide/core/model_execution/model_execution_prefs.h"
-#import "components/optimization_guide/core/optimization_guide_prefs.h"
+#import "components/optimization_guide/core/model_quality/model_quality_prefs.h"
 #import "components/password_manager/core/browser/password_manager.h"
 #import "components/password_manager/core/common/password_manager_pref_names.h"
 #import "components/payments/core/payment_prefs.h"
@@ -286,6 +287,7 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
       registry);
   optimization_guide::prefs::RegisterLocalStatePrefs(registry);
   optimization_guide::model_execution::prefs::RegisterLocalStatePrefs(registry);
+  optimization_guide::RegisterModelQualityLocalStatePrefs(registry);
   PushNotificationService::RegisterLocalStatePrefs(registry);
   TipsNotificationClient::RegisterLocalStatePrefs(registry);
   auto_deletion::AutoDeletionService::RegisterLocalStatePrefs(registry);
@@ -368,6 +370,8 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
                              base::Time());
 
   registry->RegisterIntegerPref(prefs::kIosDefaultBrowserPromoLastAction, -1);
+  registry->RegisterIntegerPref(prefs::kIosDefaultBrowserPromoLastActionSurface,
+                                0);
 
   // Preferences related to the new Safety Check Manager.
   registry->RegisterStringPref(
@@ -470,6 +474,9 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterTimePref(prefs::kLensOverlayLastPresented, base::Time());
 
   registry->RegisterBooleanPref(prefs::kWidgetsForMultiProfile, false);
+
+  registry->RegisterTimePref(prefs::kIosGeolocationSystemPromptLastShownTime,
+                             base::Time());
 
   // Deprecated 01/2026.
   registry->RegisterListPref(kMagicStackSafetyCheckNotificationsShown);

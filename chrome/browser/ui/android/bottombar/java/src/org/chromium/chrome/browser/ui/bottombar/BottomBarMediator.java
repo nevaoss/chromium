@@ -323,6 +323,8 @@ public class BottomBarMediator
             mResolvedCandidateExtraAction = candidateExtraAction;
             long decisionDuration = SystemClock.uptimeMillis() - startTime;
             BottomBarMetrics.recordCandidateDecisionTime(decisionDuration);
+            BottomBarActionEligibility.recordGlicIneligibilityReasonIfNeeded(
+                    originalProfile, country);
 
             @CandidateAction
             int candidateMetric =
@@ -431,6 +433,7 @@ public class BottomBarMediator
 
     @Override
     public void onBottomBarStateChanged(boolean visibilityChanged) {
+        if (mDestroyed) return;
         mVisibilityDelegate.onModelTokenChange();
         if (visibilityChanged) {
             updateNewTabButtonBackground();

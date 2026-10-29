@@ -41,10 +41,7 @@ import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.View;
 
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.After;
@@ -131,7 +128,6 @@ import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
 import org.chromium.components.omnibox.ToolModeProtoIntDef.ToolMode;
 import org.chromium.content_public.browser.RenderWidgetHostView;
 import org.chromium.content_public.browser.WebContents;
-import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyKey;
@@ -260,7 +256,6 @@ public class FuseboxMediatorUnitTest {
     @Rule
     public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
-    @Mock private FuseboxPopup mPopup;
     @Mock private Profile mProfile;
     @Mock private FuseboxSessionState mSession;
     @Mock private WindowAndroid mWindowAndroid;
@@ -277,7 +272,6 @@ public class FuseboxMediatorUnitTest {
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private Tracker mTracker;
     @Mock private ScrimManager mScrimManager;
-    @Mock private KeyboardVisibilityDelegate mKeyboardVisibilityDelegate;
     @Mock private BackPressManager mBackPressManager;
     @Mock private Runnable mOnFirstPickerInteractionCanceledCallback;
     @Mock private KeyEvent mKeyEvent;
@@ -292,7 +286,6 @@ public class FuseboxMediatorUnitTest {
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
     @Captor private ArgumentCaptor<WindowAndroid.IntentCallback> mIntentCallbackCaptor;
 
-    private FuseboxViewHolder mViewHolder;
     private Context mContext;
     private Resources mResources;
     private PropertyModel mModel;
@@ -324,21 +317,17 @@ public class FuseboxMediatorUnitTest {
 
         ProfileResolverJni.setInstanceForTesting(mProfileResolverNatives);
         TrackerFactory.setTrackerForTests(mTracker);
-        lenient().doReturn(mKeyboardVisibilityDelegate).when(mWindowAndroid).getKeyboardDelegate();
 
         mContext =
                 new ContextThemeWrapper(
                         ApplicationProvider.getApplicationContext(),
                         R.style.Theme_BrowserUI_DayNight);
-        ConstraintLayout viewGroup = new ConstraintLayout(mContext);
-        LayoutInflater.from(mContext).inflate(R.layout.fusebox_layout, viewGroup, true);
         mResources = mContext.getResources();
         mResourceProvider = new OmniboxResourceProvider(mContext, BrandedColorScheme.APP_DEFAULT);
         mModel = new PropertyModel(FuseboxProperties.ALL_KEYS);
         mModel.set(FuseboxProperties.POPUP_STATE, PopupState.HIDDEN);
         mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.TOOLBAR);
 
-        mViewHolder = new FuseboxViewHolder(viewGroup, mPopup);
         mAttachments = new FuseboxAttachmentModelList();
         mAttachments.setComposeboxQueryControllerBridge(mComposeboxQueryControllerBridge);
         OmniboxResourceProvider.setTabFaviconFactory(mTabFaviconFactory);
@@ -416,8 +405,7 @@ public class FuseboxMediatorUnitTest {
         mInputStateSupplier.set(inputState);
     }
 
-    /* Useful for testing logic in the mediator's constructor. */
-    private void recreateMediator() {
+    private void createMediator() {
         if (mMediator != null) {
             mMediator.destroy();
         }
@@ -426,7 +414,6 @@ public class FuseboxMediatorUnitTest {
                         mContext,
                         mWindowAndroid,
                         mModel,
-                        mViewHolder,
                         mResourceProvider,
                         mTabModelSelectorSupplier,
                         mFuseboxStateSupplier,
@@ -438,6 +425,11 @@ public class FuseboxMediatorUnitTest {
                         mOnFirstPickerInteractionCanceledCallback,
                         mHasAttachmentsSupplier,
                         mUrlTextWrappingSupplier);
+    }
+
+    /* Useful for testing logic in the mediator's constructor. */
+    private void recreateMediator() {
+        createMediator();
         mMediator.beginInput(mSession);
     }
 
@@ -770,6 +762,17 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void constructor_doesNotResetFuseboxStateBeforeBeginInput() {
+        mMediator.destroy();
+        mMediator = null;
+        mFuseboxStateSupplier.set(FuseboxState.COMPACT);
+
+        createMediator();
+
+        assertEquals(FuseboxState.COMPACT, mFuseboxStateSupplier.get().intValue());
+    }
+
+    @Test
     public void updateFuseboxState_notDesktop_notSearchRequest_isExpanded() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(/* isDesktopPlatform= */ false);
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
@@ -951,54 +954,11 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void onPlusButtonClicked_bottomSheet_hidesKeyboard() {
-        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
-        recreateMediator();
-        Runnable runnable = mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED);
-        assertNotNull(runnable);
-
-        // Show popup.
-        runnable.run();
-        verify(mKeyboardVisibilityDelegate).hideKeyboard(mViewHolder.parentView);
-    }
-
-    @Test
     public void onPlusButtonClicked_updatesPopupStateSupplier() {
         OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ false);
         assertEquals(PopupState.HIDDEN, mPopupStateSupplier.get().intValue());
         mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run();
         assertEquals(PopupState.FLOATING, mPopupStateSupplier.get().intValue());
-    }
-
-    @Test
-    public void onHidePopup_bottomSheet_showsKeyboardIfFocused() {
-        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
-        recreateMediator();
-
-        mViewHolder.plusButton.setVisibility(View.VISIBLE);
-        mViewHolder.plusButton.setFocusableInTouchMode(true);
-        assertTrue(mViewHolder.plusButton.requestFocus());
-        assertEquals(mViewHolder.plusButton, mViewHolder.parentView.findFocus());
-
-        // Show popup first
-        mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run();
-
-        // Hide popup
-        mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run();
-
-        verify(mKeyboardVisibilityDelegate).showKeyboard(mViewHolder.plusButton);
-    }
-
-    @Test
-    public void onPlusButtonClicked_floatingPopup_doesNotHideKeyboard() {
-        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ false);
-        recreateMediator();
-        Runnable runnable = mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED);
-        assertNotNull(runnable);
-
-        // Show popup.
-        runnable.run();
-        verify(mKeyboardVisibilityDelegate, never()).hideKeyboard(any());
     }
 
     @Test

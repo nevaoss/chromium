@@ -113,18 +113,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="API.StorageAccess.DocumentLoadedWithStorageAccess"
-    enum="Boolean" expires_after="2026-11-15">
-  <owner>cfredric@chromium.org</owner>
-  <owner>johannhof@chromium.org</owner>
-  <summary>
-    Records whether or not a document was loaded with the `has_storage_access`
-    bit set to true.
-
-    Recorded once at document commit, for every document.
-  </summary>
-</histogram>
-
 <histogram name="API.StorageAccess.GrantIsImplicit" enum="BooleanAvailable"
     expires_after="2023-03-12">
   <owner>mkwst@chromium.org</owner>
@@ -304,6 +292,20 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram
+    name="IndexedDB.BackingStore.DatabaseError.{IndexedDBBackingStoreType}"
+    enum="IndexedDbStatusType" expires_after="2027-10-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records the status of database operations. OK is logged after a database
+    task is successfully run, and an error status is logged when a database task
+    encounters failure, or failure is reported while doing work not contained
+    within an &quot;operation&quot;.
+  </summary>
+</histogram>
+
 <histogram name="IndexedDB.BackingStore.ReadBlob.{IndexedDBBackingStoreType}"
     enum="NetErrorCodes" expires_after="2027-09-18">
   <owner>leimy@chromium.org</owner>
@@ -318,6 +320,18 @@ chromium-metrics-reviews@google.com.
     successfully or otherwise. The source of the bytes may be a file as in the
     case of LevelDB, or a blob streaming handle as in the case of SQLite. This
     histogram gates rollout of the SQLite backing store.
+  </summary>
+</histogram>
+
+<histogram
+    name="IndexedDB.BackingStore.ResetReason.{IndexedDBBackingStoreType}"
+    enum="IndexedDbBackingStoreResetReason" expires_after="2027-10-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records why an initialized IndexedDB backing store is reset. Logged once
+    immediately before the backing store is destroyed.
   </summary>
 </histogram>
 
@@ -1172,6 +1186,20 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Storage.Blob.RendererUuidAccess" enum="BlobUuidAccess"
+    expires_after="2027-09-22">
+  <owner>leimy@chromium.org</owner>
+  <owner>evanstade@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records whether BlobDataHandle::Uuid returns a UUID created synchronously,
+    an asynchronously created UUID that was already available, an asynchronously
+    created UUID requested synchronously from the blob, or that no UUID was
+    available because the blob's remote connection was not valid. Recorded each
+    time BlobDataHandle::Uuid is called.
+  </summary>
+</histogram>
+
 <histogram name="Storage.Buckets.BucketCount" units="buckets"
     expires_after="2026-07-01">
   <owner>estade@chromium.org</owner>
@@ -1250,7 +1278,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.DeclarativePerformanceObserver.DatabaseSize"
-    units="KB" expires_after="2026-12-19">
+    units="KB" expires_after="2027-04-04">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1282,7 +1310,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Storage.DeclarativePerformanceObserver.ReadReportResult"
     enum="DeclarativePerformanceObserverStoreReadResult"
-    expires_after="2026-12-19">
+    expires_after="2027-04-04">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1293,7 +1321,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.DeclarativePerformanceObserver.StoredOriginCount"
-    units="origins" expires_after="2026-12-19">
+    units="origins" expires_after="2027-04-04">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1304,7 +1332,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.DeclarativePerformanceObserver.StoredReportCount"
-    units="reports" expires_after="2026-12-19">
+    units="reports" expires_after="2027-04-04">
   <owner>sisidovski@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1646,7 +1674,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.InterestGroup.DBSize" units="KB"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>behamilton@google.com</owner>
   <owner>pauljensen@chromium.org</owner>
   <summary>

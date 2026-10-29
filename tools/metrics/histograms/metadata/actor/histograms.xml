@@ -84,17 +84,21 @@ chromium-metrics-reviews@google.com.
   <variant name="ExitFullscreen" summary="Exit Fullscreen"/>
   <variant name="FileUpload" summary="File Upload"/>
   <variant name="FindAndHighlight" summary="Find And Highlight"/>
-  <variant name="History" summary="History"/>
+  <variant name="HistoryBack" summary="History Back"/>
+  <variant name="HistoryForward" summary="History Forward"/>
   <variant name="LoadAndExtractContent" summary="Load And Extract Content"/>
-  <variant name="MediaControl" summary="Media Control"/>
   <variant name="MoveMouse" summary="MoveMouse"/>
   <variant name="Navigate" summary="Navigate"/>
   <variant name="OpenKnownPage" summary="Open Known Page"/>
+  <variant name="PauseMedia" summary="Pause Media"/>
   <variant name="PerformSearch" summary="Perform Search"/>
+  <variant name="PlayMedia" summary="Play Media"/>
+  <variant name="ReloadPage" summary="Reload Page"/>
   <variant name="RemoveBookmark" summary="Remove Bookmark"/>
   <variant name="ScriptTool" summary="ScriptTool"/>
   <variant name="Scroll" summary="Scroll"/>
   <variant name="ScrollTo" summary="Scroll To"/>
+  <variant name="SeekMedia" summary="Seek Media"/>
   <variant name="Select" summary="Select"/>
   <variant name="SwitchTab" summary="Switch Tab"/>
   <variant name="TranslatePage" summary="Translate Page"/>
@@ -420,7 +424,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Actor.NavigationGating.ConfirmedListSize2" units="origins"
-    expires_after="2027-02-02">
+    expires_after="2027-04-04">
   <owner>dylancutler@google.com</owner>
   <owner>johannhof@google.com</owner>
   <summary>
@@ -1077,6 +1081,22 @@ chromium-metrics-reviews@google.com.
   <owner>bokan@google.com</owner>
   <owner>chrome-synapse-team@google.com</owner>
   <summary>The reason the task was stopped.</summary>
+</histogram>
+
+<histogram name="Actor.Task.StoppedReason.{Mode}" enum="StoppedReasonEnum"
+    expires_after="2027-09-30">
+  <owner>bbetini@google.com</owner>
+  <owner>ritikagup@google.com</owner>
+  <owner>clank-actor@google.com</owner>
+  <summary>
+    The reason an actor task was stopped while Chrome was in {Mode} mode.
+    Recorded once when the task stops. Android only.
+  </summary>
+  <token key="Mode">
+    <variant name="BackgroundActuation" summary="background actuation"/>
+    <variant name="Foreground" summary="standard foreground"/>
+    <variant name="Pip" summary="picture-in-picture"/>
+  </token>
 </histogram>
 
 <histogram name="Actor.Task.SubsequentWaits" units="count"

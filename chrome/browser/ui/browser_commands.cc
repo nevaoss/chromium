@@ -912,9 +912,10 @@ int GetContentRestrictions(const BrowserWindowInterface* browser) {
   WebContents* const current_tab =
       browser->GetTabStripModel()->GetActiveWebContents();
   if (current_tab) {
-    CoreTabHelper* core_tab_helper =
-        CoreTabHelper::FromWebContents(current_tab);
-    content_restrictions = core_tab_helper->content_restrictions();
+    if (CoreTabHelper* core_tab_helper =
+            CoreTabHelper::FromWebContents(current_tab)) {
+      content_restrictions = core_tab_helper->content_restrictions();
+    }
     NavigationEntry* last_committed_entry =
         current_tab->GetController().GetLastCommittedEntry();
     if (!content::IsSavableURL(last_committed_entry->GetURL())) {
@@ -3104,7 +3105,10 @@ void ExecLensOverlay(BrowserWindowInterface* browser) {
   LensSearchController* const controller =
       LensSearchController::FromTabWebContents(web_contents);
   CHECK(controller);
-  controller->OpenLensOverlay(lens::LensOverlayInvocationSource::kAppMenu);
+  controller->OpenLensOverlay(
+      lens::LensOverlayInvocationSource::kAppMenu,
+      /*should_show_csb=*/!base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksUpdatedEntryPoints));
   BrowserUserEducationInterface::From(browser)->NotifyNewBadgeFeatureUsed(
       lens::features::kLensOverlay);
 }

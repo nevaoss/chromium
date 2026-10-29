@@ -3608,25 +3608,6 @@ inline constexpr char kHatsLastInteractionTimestamp[] =
     "hats_last_interaction_timestamp";
 
 // An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the most recent Media App PDF survey cycle.
-inline constexpr char kHatsMediaAppPdfCycleEndTs[] =
-    "hats_media_app_pdf_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the Media App PDF
-// survey.
-inline constexpr char kHatsMediaAppPdfIsSelected[] =
-    "hats_media_app_pdf_is_selected";
-
-// A boolean pref. Indicated if the device is selected for the Office
-// integration survey.
-inline constexpr char kHatsOfficeSurveyIsSelected[] = "hats_office_is_selected";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicated the end of the most recent Office integration survey cycle.
-inline constexpr char kHatsOfficeSurveyCycleEndTs[] =
-    "hats_office_end_timestamp";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
 // indicates the end of the most recent OS Settings Search survey cycle.
 inline constexpr char kHatsOsSettingsSearchSurveyCycleEndTs[] =
     "hats_os_settings_search_cycle_end_timestamp";
@@ -3655,46 +3636,6 @@ inline constexpr char kHatsPeripheralsCycleEndTs[] =
 // experience survey.
 inline constexpr char kHatsPeripheralsIsSelected[] =
     "hats_peripherals_is_selected";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the most recent Personalization Avatar survey cycle.
-inline constexpr char kHatsPersonalizationAvatarSurveyCycleEndTs[] =
-    "hats_personalization_avatar_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the Personalization
-// Avatar survey.
-inline constexpr char kHatsPersonalizationAvatarSurveyIsSelected[] =
-    "hats_personalization_avatar_is_selected";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the most recent Personalization Screensaver survey
-// cycle.
-inline constexpr char kHatsPersonalizationScreensaverSurveyCycleEndTs[] =
-    "hats_personalization_screensaver_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the Personalization
-// Screensaver survey.
-inline constexpr char kHatsPersonalizationScreensaverSurveyIsSelected[] =
-    "hats_personalization_screensaver_is_selected";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the most recent Personalization Wallpaper survey cycle.
-inline constexpr char kHatsPersonalizationWallpaperSurveyCycleEndTs[] =
-    "hats_personalization_wallpaper_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the Personalization
-// Wallpaper survey.
-inline constexpr char kHatsPersonalizationWallpaperSurveyIsSelected[] =
-    "hats_personalization_wallpaper_is_selected";
-
-// indicates the end of the most recent Photos Experience survey cycle.
-inline constexpr char kHatsPhotosExperienceCycleEndTs[] =
-    "hats_photos_experience_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the Photos Experience
-// survey.
-inline constexpr char kHatsPhotosExperienceIsSelected[] =
-    "hats_photos_experience_is_selected";
 
 // An int64 pref. This is a timestamp, microseconds after epoch, of the most
 // recent time the profile took or dismissed prioritized HaTS survey.

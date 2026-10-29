@@ -124,6 +124,7 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
 #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
+#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/dom/dom_token_list.h"
 #include "third_party/blink/renderer/core/dom/element_animation_trigger_data.h"
 #include "third_party/blink/renderer/core/dom/element_data_cache.h"
@@ -305,6 +306,7 @@
 #include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 #include "third_party/blink/renderer/platform/geometry/calculation_value.h"
+#include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
 #include "third_party/blink/renderer/platform/graphics/paint/float_clip_rect.h"
 #include "third_party/blink/renderer/platform/graphics/paint/tracked_element_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -3913,9 +3915,9 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
     if (parentNode()) {
       UpdateFocusgroup(params.new_value);
     }
-  } else if (RuntimeEnabledFeatures::OverscrollAreasEnabled(
-                 GetExecutionContext()) &&
-             name == html_names::kOverscrollcontainerAttr) {
+  } else if (name == html_names::kOverscrollcontainerAttr &&
+             RuntimeEnabledFeatures::OverscrollAreasEnabled(
+                 GetExecutionContext())) {
     if (params.new_value.IsNull() || params.old_value.IsNull()) {
       // TODO(crbug.com/467968812): We can optimize this in some cases since a
       // container that disappears necessarily adds its elements to the
@@ -3929,17 +3931,29 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
       SetNeedsStyleRecalc(kLocalStyleChange,
                           StyleChangeReasonForTracing::FromAttribute(name));
     }
-  } else if (RuntimeEnabledFeatures::OverscrollAreasEnabled(
-                 GetExecutionContext()) &&
-             name == html_names::kOverscrollareaAttr) {
+  } else if (name == html_names::kOverscrollareaAttr &&
+             RuntimeEnabledFeatures::OverscrollAreasEnabled(
+                 GetExecutionContext())) {
     // See OverscrollAreaTracker::UpdateOverscrollArea().
     SetNeedsStyleRecalc(kLocalStyleChange,
                         StyleChangeReasonForTracing::FromAttribute(name));
   } else if (name == html_names::kDrawableAttr) {
-    SetNeedsStyleRecalc(kLocalStyleChange,
-                        StyleChangeReasonForTracing::FromAttribute(name));
-    if (auto* layout_object = GetLayoutObject()) {
-      layout_object->SetNeedsPaintPropertyUpdate();
+    if (params.old_value.IsNull() != params.new_value.IsNull()) {
+      // TODO(crbug.com/565840014): If the element already has `isolation:
+      // isolate` in author CSS, `ComputedStyle` will not change and
+      // `LayoutObject::UpdateFromStyle()` will be skipped, leaving
+      // `CanContainFixedPositionObjects()` /
+      // `CanContainAbsolutePositionObjects()` stale. Update those container
+      // bits here or track drawable state on `ComputedStyle`.
+      SetNeedsStyleRecalc(kLocalStyleChange,
+                          StyleChangeReasonForTracing::FromAttribute(name));
+      if (auto* layout_object = GetLayoutObject()) {
+        layout_object->SetNeedsPaintPropertyUpdate();
+        layout_object->SetSubtreeShouldDoFullPaintInvalidation();
+      }
+      if (params.new_value.IsNull() && IsInCanvasSubtree()) {
+        RequestCanvasPaintOnDrawableRemoved();
+      }
     }
   } else if (IsStyledElement()) {
     if (name == html_names::kStyleAttr) {
@@ -5727,7 +5741,7 @@ StyleRecalcChange Element::RecalcOwnStyle(
   } else {
     // We are not propagating inherited changes from the parent,
     // and (if other circumstances allow it;
-    // see CanApplyInlineStyleIncrementally()), incremental style
+    // see CanApplyStyleIncrementally()), incremental style
     // may be used.
     new_style_recalc_context.can_use_incremental_style = true;
   }
@@ -9224,18 +9238,22 @@ void Element::OverscrollTargetStateChanged() {
 }
 
 bool Element::MatchesOverscrollOpen() const {
-  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
+  Element* container = GetOverscrollContainer();
+  if (!container) {
     return false;
   }
-  Element* container = GetOverscrollContainer();
-  return container && container->GetOverscrollAreaTracker()->IsOpen(*this);
+  // Registering an overscroll area requires the feature to be enabled.
+  DCHECK(RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()));
+  return container->GetOverscrollAreaTracker()->IsOpen(*this);
 }
 
 bool Element::MatchesOverscrollClosed() const {
-  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
+  if (!IsValidOverscrollArea()) {
     return false;
   }
-  return IsValidOverscrollArea() && !MatchesOverscrollOpen();
+  // Registering an overscroll area requires the feature to be enabled.
+  DCHECK(RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()));
+  return !MatchesOverscrollOpen();
 }
 
 void Element::FocusWithinStateChanged() {
@@ -9842,7 +9860,8 @@ void Element::setInnerHTML(
   auto [compliant_string, resolved_options] =
       TrustedTypesCheckForLegacyFragment(
           html, GetExecutionContext(), trusted_types_names::kElement,
-          trusted_types_names::kInnerHTML, exception_state);
+          trusted_types_names::kInnerHTML, GetDocument().IsXMLDocument(),
+          exception_state);
   if (exception_state.HadException()) {
     return;
   }
@@ -9943,7 +9962,8 @@ void Element::setOuterHTML(
   auto [compliant_string, resolved_options] =
       TrustedTypesCheckForLegacyFragment(
           html, GetExecutionContext(), trusted_types_names::kElement,
-          trusted_types_names::kOuterHTML, exception_state);
+          trusted_types_names::kOuterHTML, GetDocument().IsXMLDocument(),
+          exception_state);
   if (exception_state.HadException()) {
     return;
   }
@@ -10220,7 +10240,7 @@ void Element::insertAdjacentHTML(const String& where,
   String compliant_string = TrustedTypesCheckForFragment(
       html, resolved_options, GetExecutionContext(),
       trusted_types_names::kElement, trusted_types_names::kInsertAdjacentHTML,
-      exception_state);
+      GetDocument().IsXMLDocument(), exception_state);
   if (exception_state.HadException()) {
     return;
   }
@@ -10718,23 +10738,36 @@ HTMLCanvasElement* Element::CanvasForDrawing() const {
     return nullptr;
   }
 
-  // TODO(paint-dev): The check for `drawable` purposely skips immediate
-  // canvas children, to ease migration. Ultimately it must apply to
-  // immediate children as well.
-  Element* ancestor = LayoutTreeBuilderTraversal::LayoutParentElement(*this);
-  if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
-    return ancestor_canvas->IsContentDrawable() ? ancestor_canvas : nullptr;
-  }
   if (!FastHasAttribute(html_names::kDrawableAttr)) {
     return nullptr;
   }
-  while (ancestor) {
-    ancestor = FlatTreeTraversal::ParentElement(*ancestor);
+
+  for (Element* ancestor = FlatTreeTraversal::ParentElement(*this); ancestor;
+       ancestor = FlatTreeTraversal::ParentElement(*ancestor)) {
     if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
       return ancestor_canvas->IsContentDrawable() ? ancestor_canvas : nullptr;
     }
   }
   return nullptr;
+}
+
+void Element::RequestCanvasPaintOnDrawableRemoved() {
+  if (!GetDocument().IsActive()) {
+    return;
+  }
+  if (DOMNodeId dom_node_id = DOMNodeIds::ExistingIdForNode(this)) {
+    if (auto* view = GetDocument().View()) {
+      if (auto* pac = view->GetPaintArtifactCompositor()) {
+        if (const auto* state = pac->GetCanvasDrawablePaintState(dom_node_id)) {
+          if (auto* canvas = DynamicTo<HTMLCanvasElement>(
+                  DOMNodeIds::NodeForId(state->canvas_node_id));
+              canvas && canvas->IsContentDrawable()) {
+            canvas->requestPaint();
+          }
+        }
+      }
+    }
+  }
 }
 
 AtomicString Element::ComputeInheritedLanguage() const {
@@ -10819,9 +10852,9 @@ void Element::UpdateBackdropPseudoElement(
 
 bool Element::ShouldUpdateOverscrollBackdropPseudoElement(
     const StyleRecalcChange change) {
-  if (!RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
-    return false;
-  }
+  // This runs for many elements during style recalc, so there is no feature
+  // check here: the pseudo element can only exist, or be generated, for
+  // registered overscroll areas, which requires the feature to be enabled.
   PseudoElement* element =
       GetPseudoElement(PseudoId::kPseudoIdOverscrollBackdrop,
                        /* pseudo_argument */ g_null_atom);
@@ -11667,9 +11700,13 @@ bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const {
       return IsInTopLayer();
     }
     if (pseudo_id == kPseudoIdOverscrollBackdrop) {
-      return RuntimeEnabledFeatures::OverscrollAreasEnabled(
-                 GetExecutionContext()) &&
-             IsValidOverscrollArea();
+      if (!IsValidOverscrollArea()) {
+        return false;
+      }
+      // Registering an overscroll area requires the feature to be enabled.
+      DCHECK(RuntimeEnabledFeatures::OverscrollAreasEnabled(
+          GetExecutionContext()));
+      return true;
     }
     return style->CanGeneratePseudoElement(pseudo_id);
   }
@@ -11965,8 +12002,8 @@ void Element::SetIsInTopLayer(bool in_top_layer) {
 
     // Top layer elements can't be overscroll areas. An element leaving the top
     // layer isn't a valid area yet, but may become one.
-    if (RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()) &&
-        FastHasAttribute(html_names::kOverscrollareaAttr)) {
+    if (FastHasAttribute(html_names::kOverscrollareaAttr) &&
+        RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext())) {
       SetNeedsStyleRecalc(
           kLocalStyleChange,
           StyleChangeReasonForTracing::Create(style_change_reason::kTopLayer));
@@ -12494,7 +12531,7 @@ void Element::CloneAttributesFrom(const Element& other) {
   }
 
   for (wtf_size_t i = 0; i < element_data_->Attributes().size(); ++i) {
-    const Attribute& attr = element_data_->Attributes().at(i);
+    const Attribute attr = element_data_->Attributes().at(i);
     attribute_or_class_bloom_ |= FilterForAttribute(attr.GetName());
     AttributeChangedWithInvalidations(
         AttributeModificationParams(attr.GetName(), g_null_atom, attr.Value(),
@@ -13337,7 +13374,7 @@ void Element::InvalidateStyleAttribute(
   DCHECK(HasElementData());
   GetElementData()->SetStyleAttributeIsDirty(true);
   SetNeedsStyleRecalc(only_changed_independent_properties
-                          ? kInlineIndependentStyleChange
+                          ? kIndependentStyleChange
                           : kLocalStyleChange,
                       StyleChangeReasonForTracing::Create(
                           style_change_reason::kInlineCSSStyleMutated));

@@ -1654,4 +1654,277 @@ TEST_F(ComposeboxInputPlateMediatorTest,
   EXPECT_EQ(consumer.items.firstObject.serverToken, expected_server_token);
 }
 
+// Test that adding image items assigns sequential `uploadIndex` values, and
+// removing an earlier image does not reuse its index for subsequent images.
+TEST_F(ComposeboxInputPlateMediatorTest, ImageAttachmentUploadIndex) {
+  SetAIMEligible(true);
+  SetDSEGoogle(true);
+
+  UIImage* image = [[UIImage alloc] init];
+  NSItemProvider* provider = [[NSItemProvider alloc] initWithObject:image];
+
+  [mediator_
+      processImageItemProvider:provider
+                       assetID:@"1"
+                        source:ComposeboxInputItemSource::kGalleryPicker];
+  [mediator_
+      processImageItemProvider:provider
+                       assetID:@"2"
+                        source:ComposeboxInputItemSource::kGalleryPicker];
+
+  ASSERT_EQ(consumer_.items.count, 2U);
+  EXPECT_EQ(consumer_.items[0].uploadIndex, 0);
+  EXPECT_EQ(consumer_.items[1].uploadIndex, 1);
+
+  [mediator_ removeItem:consumer_.items[0]];
+  ASSERT_EQ(consumer_.items.count, 1U);
+  EXPECT_EQ(consumer_.items[0].uploadIndex, 1);
+
+  [mediator_
+      processImageItemProvider:provider
+                       assetID:@"3"
+                        source:ComposeboxInputItemSource::kGalleryPicker];
+
+  ASSERT_EQ(consumer_.items.count, 2U);
+  EXPECT_EQ(consumer_.items[0].uploadIndex, 1);
+  EXPECT_EQ(consumer_.items[1].uploadIndex, 2);
+}
+
+// Test that removing or invalidating an attachment item whose server upload has
+// not started (`serverToken` is empty) does not call `DeleteFile`.
+TEST_F(ComposeboxInputPlateMediatorTest,
+       RemovingOrInvalidatingItemWithEmptyServerTokenDoesNotCallDeleteFile) {
+  SetAIMEligible(true);
+  SetDSEGoogle(true);
+
+  auto mock_session =
+      std::make_unique<testing::NiceMock<TestContextualSearchSessionHandle>>();
+  TestContextualSearchSessionHandle* raw_mock_session = mock_session.get();
+  testing::NiceMock<contextual_search::MockContextualSearchContextController>
+      mock_controller;
+
+  ON_CALL(*raw_mock_session, GetController())
+      .WillByDefault(testing::Return(&mock_controller));
+  // Return a file for the empty token so that calling `DeleteFile` with an
+  // empty `serverToken` would reach `mock_controller.DeleteFile`.
+  contextual_search::FileInfo empty_token_file_info;
+  ON_CALL(mock_controller, GetFileInfo(testing::Eq(base::UnguessableToken())))
+      .WillByDefault(testing::Return(&empty_token_file_info));
+
+  EXPECT_CALL(mock_controller, DeleteFile(testing::_)).Times(0);
+
+  ComposeboxInputPlateMediator* mediator = [[ComposeboxInputPlateMediator alloc]
+      initWithContextualSearchSession:std::move(mock_session)
+                         webStateList:web_state_list_.get()
+                        faviconLoader:nullptr
+               persistTabContextAgent:nullptr
+                          isIncognito:NO
+                           modeHolder:[[ComposeboxModeHolder alloc] init]
+                   templateURLService:template_url_service()
+                aimEligibilityService:aim_eligibility_service_.get()
+                          prefService:&pref_service_
+                              profile:profile_.get()
+                 cobrowseBrowserAgent:nil
+            browserCoordinatorHandler:nil
+                         sceneHandler:nil
+                           entrypoint:ComposeboxEntrypoint::kCobrowse];
+
+  TestComposeboxInputPlateConsumer* consumer =
+      [[TestComposeboxInputPlateConsumer alloc] init];
+  mediator.consumer = consumer;
+
+  base::ScopedClosureRunner disconnect_runner(base::BindOnce(^{
+    [mediator disconnect];
+  }));
+
+  web::WebState* active_web_state = web_state_list_->GetActiveWebState();
+  ASSERT_TRUE(active_web_state);
+
+  // 1. Removing an item with an empty `serverToken` via `removeItem:` must not
+  // call `DeleteFile`.
+  [mediator createInputItemForWebState:active_web_state
+                                source:ComposeboxInputItemSource::kTabPicker];
+  ASSERT_EQ(consumer.items.count, 1U);
+  ComposeboxInputItem* item = consumer.items.firstObject;
+  ASSERT_TRUE(item.serverToken.is_empty());
+
+  [mediator removeItem:item];
+  EXPECT_EQ(consumer.items.count, 0U);
+
+  // 2. Invalidating an item with an empty `serverToken` on mode change must not
+  // call `DeleteFile`.
+  [mediator createInputItemForWebState:active_web_state
+                                source:ComposeboxInputItemSource::kTabPicker];
+  ASSERT_EQ(consumer.items.count, 1U);
+  ComposeboxInputItem* invalidated_item = consumer.items.firstObject;
+  ASSERT_TRUE(invalidated_item.serverToken.is_empty());
+
+  [mediator inputStateManager:nil
+                didChangeMode:ComposeboxMode::kImageGeneration
+       invalidatedAttachments:@[ invalidated_item ]];
+  EXPECT_EQ(consumer.items.count, 0U);
+}
+
+// Test that removing or invalidating an attachment item with a non-empty
+// `serverToken` calls `DeleteFile`.
+TEST_F(ComposeboxInputPlateMediatorTest,
+       RemovingOrInvalidatingItemWithServerTokenCallsDeleteFile) {
+  SetAIMEligible(true);
+  SetDSEGoogle(true);
+
+  auto mock_session =
+      std::make_unique<testing::NiceMock<TestContextualSearchSessionHandle>>();
+  TestContextualSearchSessionHandle* raw_mock_session = mock_session.get();
+  testing::NiceMock<contextual_search::MockContextualSearchContextController>
+      mock_controller;
+
+  ON_CALL(*raw_mock_session, GetController())
+      .WillByDefault(testing::Return(&mock_controller));
+
+  ComposeboxInputPlateMediator* mediator = [[ComposeboxInputPlateMediator alloc]
+      initWithContextualSearchSession:std::move(mock_session)
+                         webStateList:web_state_list_.get()
+                        faviconLoader:nullptr
+               persistTabContextAgent:nullptr
+                          isIncognito:NO
+                           modeHolder:[[ComposeboxModeHolder alloc] init]
+                   templateURLService:template_url_service()
+                aimEligibilityService:aim_eligibility_service_.get()
+                          prefService:&pref_service_
+                              profile:profile_.get()
+                 cobrowseBrowserAgent:nil
+            browserCoordinatorHandler:nil
+                         sceneHandler:nil
+                           entrypoint:ComposeboxEntrypoint::kCobrowse];
+
+  TestComposeboxInputPlateConsumer* consumer =
+      [[TestComposeboxInputPlateConsumer alloc] init];
+  mediator.consumer = consumer;
+
+  base::ScopedClosureRunner disconnect_runner(base::BindOnce(^{
+    [mediator disconnect];
+  }));
+
+  web::WebState* active_web_state = web_state_list_->GetActiveWebState();
+  ASSERT_TRUE(active_web_state);
+
+  // 1. Removing an item with a non-empty `serverToken` via `removeItem:` calls
+  // `DeleteFile`.
+  [mediator createInputItemForWebState:active_web_state
+                                source:ComposeboxInputItemSource::kTabPicker];
+  ASSERT_EQ(consumer.items.count, 1U);
+  ComposeboxInputItem* item = consumer.items.firstObject;
+  base::UnguessableToken server_token_1 = base::UnguessableToken::Create();
+  item.serverToken = server_token_1;
+
+  contextual_search::FileInfo file_info_1;
+  file_info_1.file_token = server_token_1;
+  ON_CALL(mock_controller, GetFileInfo(testing::Eq(server_token_1)))
+      .WillByDefault(testing::Return(&file_info_1));
+  EXPECT_CALL(mock_controller, DeleteFile(testing::Eq(server_token_1)))
+      .Times(1);
+
+  [mediator removeItem:item];
+  EXPECT_EQ(consumer.items.count, 0U);
+
+  // 2. Invalidating an item with a non-empty `serverToken` on mode change calls
+  // `DeleteFile`.
+  [mediator createInputItemForWebState:active_web_state
+                                source:ComposeboxInputItemSource::kTabPicker];
+  ASSERT_EQ(consumer.items.count, 1U);
+  ComposeboxInputItem* invalidated_item = consumer.items.firstObject;
+  base::UnguessableToken server_token_2 = base::UnguessableToken::Create();
+  invalidated_item.serverToken = server_token_2;
+
+  contextual_search::FileInfo file_info_2;
+  file_info_2.file_token = server_token_2;
+  ON_CALL(mock_controller, GetFileInfo(testing::Eq(server_token_2)))
+      .WillByDefault(testing::Return(&file_info_2));
+  EXPECT_CALL(mock_controller, DeleteFile(testing::Eq(server_token_2)))
+      .Times(1);
+
+  [mediator inputStateManager:nil
+                didChangeMode:ComposeboxMode::kImageGeneration
+       invalidatedAttachments:@[ invalidated_item ]];
+  EXPECT_EQ(consumer.items.count, 0U);
+}
+
+// Tests that confirming a tab picker selection that adds another tab preserves
+// `isAutoAdded` on the preselected auto-added tab, and that deselecting and
+// then reselecting that tab re-attaches it as a manual attachment.
+TEST_F(ComposeboxInputPlateMediatorTest,
+       TabPickerPreservesAutoAddedStateForPreselectedTab) {
+  SetAIMEligible(true);
+  SetDSEGoogle(true);
+  ComposeboxInputPlateMediator* mediator = [[ComposeboxInputPlateMediator alloc]
+      initWithContextualSearchSession:nullptr
+                         webStateList:web_state_list_.get()
+                        faviconLoader:nullptr
+               persistTabContextAgent:nullptr
+                          isIncognito:NO
+                           modeHolder:[[ComposeboxModeHolder alloc] init]
+                   templateURLService:template_url_service()
+                aimEligibilityService:aim_eligibility_service_.get()
+                          prefService:&pref_service_
+                              profile:profile_.get()
+                 cobrowseBrowserAgent:nil
+            browserCoordinatorHandler:nil
+                         sceneHandler:nil
+                           entrypoint:ComposeboxEntrypoint::kCobrowse];
+
+  TestComposeboxInputPlateConsumer* consumer =
+      [[TestComposeboxInputPlateConsumer alloc] init];
+  mediator.consumer = consumer;
+
+  base::ScopedClosureRunner disconnect_runner(base::BindOnce(^{
+    [mediator disconnect];
+  }));
+
+  web::FakeWebState* active_web_state =
+      static_cast<web::FakeWebState*>(web_state_list_->GetActiveWebState());
+  ASSERT_TRUE(active_web_state);
+  web::WebStateID active_id = active_web_state->GetUniqueIdentifier();
+
+  auto second_web_state = std::make_unique<web::FakeWebState>();
+  web::WebStateID second_id = second_web_state->GetUniqueIdentifier();
+
+  // Mark the tabs as loading so that tab picker attachments wait for the page
+  // load. Otherwise, page context extraction fails synchronously for a
+  // `FakeWebState` without an HTTP(S) URL, which removes the attached item.
+  active_web_state->SetLoading(true);
+  second_web_state->SetLoading(true);
+
+  web_state_list_->InsertWebState(std::move(second_web_state),
+                                  WebStateList::InsertionParams::AtIndex(1));
+
+  // Create an auto-added item for the active tab.
+  [mediator createInputItemForWebState:active_web_state
+                                source:ComposeboxInputItemSource::kCurrentTab];
+  ASSERT_EQ(consumer.items.count, 1U);
+  ComposeboxInputItem* auto_added_item = consumer.items.firstObject;
+  auto_added_item.isAutoAdded = YES;
+
+  // 1. Selecting a second tab in the tab picker while keeping the preselected
+  // auto-added tab checked must preserve `isAutoAdded == YES` on the first tab.
+  [mediator attachSelectedTabsWithWebStateIDs:{active_id, second_id}
+                            cachedWebStateIDs:{}];
+  ASSERT_EQ(consumer.items.count, 2U);
+  EXPECT_TRUE([consumer.items containsObject:auto_added_item]);
+  EXPECT_TRUE(auto_added_item.isAutoAdded);
+
+  // 2. Deselecting the auto-added tab in the tab picker removes its item.
+  [mediator attachSelectedTabsWithWebStateIDs:{second_id} cachedWebStateIDs:{}];
+  ASSERT_EQ(consumer.items.count, 1U);
+  EXPECT_FALSE([consumer.items containsObject:auto_added_item]);
+
+  // 3. Reselecting the tab attaches it as a manual attachment
+  // (`isAutoAdded == NO`).
+  [mediator attachSelectedTabsWithWebStateIDs:{active_id, second_id}
+                            cachedWebStateIDs:{}];
+  ASSERT_EQ(consumer.items.count, 2U);
+  for (NSUInteger i = 0; i < consumer.items.count; ++i) {
+    EXPECT_FALSE(consumer.items[i].isAutoAdded) << "Item at index " << i;
+  }
+}
+
 }  // namespace

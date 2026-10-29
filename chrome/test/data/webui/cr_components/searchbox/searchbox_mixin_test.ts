@@ -3130,10 +3130,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         });
         element.dropdownIsVisible = true;
 
-        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
-          value: 64,
-          configurable: true,
-        });
+        Object.defineProperty(
+            inputElement.shadowRoot.querySelector<HTMLElement>('#input')!,
+            'scrollHeight', {
+              value: 64,
+              configurable: true,
+            });
 
         element.updateDropdownVisibility();
         assertFalse(element.dropdownIsVisible);
@@ -3154,10 +3156,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         });
         element.dropdownIsVisible = true;
 
-        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
-          value: 64,
-          configurable: true,
-        });
+        Object.defineProperty(
+            inputElement.shadowRoot.querySelector<HTMLElement>('#input')!,
+            'scrollHeight', {
+              value: 64,
+              configurable: true,
+            });
 
         element.updateDropdownVisibility();
         assertFalse(element.dropdownIsVisible);
@@ -3189,10 +3193,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         // When single-line on inline autocomplete is active, isMultiline() is
         // suppressed and the dropdown remains visible even if the input
         // content would otherwise exceed the multiline height threshold.
-        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
-          get: () => 64,
-          configurable: true,
-        });
+        Object.defineProperty(
+            inputElement.shadowRoot.querySelector<HTMLElement>('#input')!,
+            'scrollHeight', {
+              get: () => 64,
+              configurable: true,
+            });
 
         element.updateDropdownVisibility();
         assertTrue(element.dropdownIsVisible);
@@ -3218,10 +3224,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         });
         element.dropdownIsVisible = true;
 
-        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
-          get: () => 64,
-          configurable: true,
-        });
+        Object.defineProperty(
+            inputElement.shadowRoot.querySelector<HTMLElement>('#input')!,
+            'scrollHeight', {
+              get: () => 64,
+              configurable: true,
+            });
 
         element.updateDropdownVisibility();
         assertFalse(element.dropdownIsVisible);
@@ -3273,10 +3281,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         // Even if the long preview text would exceed the multiline threshold,
         // force-single-line ensures single-line mode is preserved and the
         // dropdown stays visible.
-        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
-          get: () => 64,
-          configurable: true,
-        });
+        Object.defineProperty(
+            inputElement.shadowRoot.querySelector<HTMLElement>('#input')!,
+            'scrollHeight', {
+              get: () => 64,
+              configurable: true,
+            });
 
         assertEquals(1, element.selection.line);
         assertTrue(inputElement.hasAttribute('force-single-line'));
@@ -3294,10 +3304,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         await microtasksFinished();
         element.dropdownIsVisible = false;
 
-        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
-          value: 64,
-          configurable: true,
-        });
+        Object.defineProperty(
+            inputElement.shadowRoot.querySelector<HTMLElement>('#input')!,
+            'scrollHeight', {
+              value: 64,
+              configurable: true,
+            });
 
         const upEvent = createKeyboardEvent('ArrowUp');
         inputElement.inputElement.dispatchEvent(upEvent);
@@ -3363,6 +3375,65 @@ suite('SearchboxMixinVirtualFocusTest', () => {
                 'ArrowDown');
         await microtasksFinished();
         assertEquals('test secondary', mockInput.inputElement.value);
+      });
+
+  test(
+      'updateInputForSelection clears inline autocompletion when advancing ' +
+          'focus to AIM button',
+      async () => {
+        const mockInput = element.getInputElement();
+        await simulateUserTextInput(mockInput, 'test');
+
+        const matches = [
+          createSearchMatchForTesting({
+            fillIntoEdit: 'test default',
+            inlineAutocompletion: ' default',
+            allowedToBeDefaultMatch: true,
+          }),
+        ];
+
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: 'test',
+          matches: matches,
+        }));
+        await microtasksFinished();
+
+        // Default match has inline autocompletion.
+        element.setSelection(
+            {line: 0, state: SelectionLineState.kNormal, actionIndex: 0});
+        await element.updateComplete;
+        (element as unknown as {
+          updateInputForSelection_: (s: unknown, k: string) => void,
+        })
+            .updateInputForSelection_(
+                {line: 0, state: SelectionLineState.kNormal, actionIndex: 0},
+                'ArrowDown');
+        await microtasksFinished();
+        assertEquals('test default', mockInput.inputElement.value);
+        assertEquals(' default', mockInput.lastInput()?.inline);
+
+        // Advancing focus to AIM button clears inline autocompletion and
+        // restores the typed input text.
+        element.setSelection({
+          line: 0,
+          state: SelectionLineState.kFocusedButtonAim,
+          actionIndex: 0,
+        });
+        await element.updateComplete;
+        (element as unknown as {
+          updateInputForSelection_: (s: unknown, k: string) => void,
+        })
+            .updateInputForSelection_(
+                {
+                  line: 0,
+                  state: SelectionLineState.kFocusedButtonAim,
+                  actionIndex: 0,
+                },
+                'Tab');
+        await microtasksFinished();
+        assertEquals('test', mockInput.inputElement.value);
+        assertEquals('', mockInput.lastInput()?.inline);
       });
 
   test(

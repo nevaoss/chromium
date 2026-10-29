@@ -1204,7 +1204,7 @@ Google Chrome is unable to recover your settings.
 
       <!-- Installer Downloader infobar -->
       <message name="IDS_INSTALLER_DOWNLOADER_DISCLAIMER" desc="Installer downloader infobar message prompting users upgrading to Windows 11 to download the Chrome installer to OneDrive.">
-        Upgrading to Windows 11 soon? Download the Chrome Installer to OneDrive so you’re ready from day one.
+        Upgrading to Windows 11? Download Chrome to OneDrive so you're ready from day one.
       </message>
       <message name="IDS_INSTALLER_DOWNLOADER_BUTTON_LABEL" desc="Button label for the installer downloader infobar to download the Chrome installer.">
         Download Chrome
@@ -3468,6 +3468,9 @@ Google Chrome is unable to recover your settings.
 
         <message name="IDS_DICTATION_ONBOARDING_TITLE" desc="The title string in the onboarding dialog for the dictation feature." translateable="false">
           Let Chrome use your microphone and page content to generate polished text?
+        </message>
+        <message name="IDS_DICTATION_ONBOARDING_BULLET_DATA_SHARING" desc="The second paragraph in the onboarding dialog describing data sharing with Google servers." translateable="false">
+          When you use talk to type, the content and URL of the page you're on and your spoken audio will be sent to Google to generate text based on what you say and the page context.
         </message>
         <message name="IDS_DICTATION_ONBOARDING_BULLET_MICROPHONE" desc="The first paragraph in the onboarding dialog describing how the microphone is used." translateable="false">
           Your microphone will be used to capture your voice

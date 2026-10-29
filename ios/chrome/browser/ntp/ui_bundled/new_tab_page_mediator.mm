@@ -40,6 +40,7 @@
 #import "components/strings/grit/components_strings.h"
 #import "components/subscription_eligibility/objc/subscription_eligibility_observer_bridge.h"
 #import "components/subscription_eligibility/subscription_eligibility_service.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios.h"
 #import "ios/chrome/browser/browser_view/model/browser_view_visibility_notifier_browser_agent.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_mediator.h"
 #import "ios/chrome/browser/content_suggestions/ui/user_account_image_update_delegate.h"
@@ -64,7 +65,6 @@
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_constants.h"
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_recorder.h"
 #import "ios/chrome/browser/ntp/shared/metrics/new_tab_page_metrics_constants.h"
-#import "ios/chrome/browser/ntp/ui_bundled/ai_mode_button_service_ios.h"
 #import "ios/chrome/browser/ntp/ui_bundled/feed_control_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/feed_wrapper_view_controller.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
@@ -108,7 +108,6 @@
 #import "ios/web/public/navigation/referrer.h"
 #import "ios/web/public/web_state.h"
 #import "skia/ext/skia_utils_ios.h"
-#import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
 
@@ -131,9 +130,6 @@ enum class IOSNTPNewBadgeShownResult {
   // kNotShownButtonPressed = 2,  // Obsolete in M140
   kMaxValue = kShown,
 };
-
-// The point size of the entry point's symbol.
-const CGFloat kIconPointSize = 18.0;
 
 // The holdback period to wait after FRE completion before showing new badges
 // on the homepage.
@@ -324,9 +320,9 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   // AIM eligibility service.
   raw_ptr<AimEligibilityService> _aimEligibilityService;
   // Service vending the AI Mode button configuration.
-  AIModeButtonServiceIOS* _aiModeButtonServiceIOS;
-  // AIM eligibility subscription.
-  base::CallbackListSubscription _aimEligibilitySubscription;
+  raw_ptr<AIModeButtonServiceIOS> _aiModeButtonServiceIOS;
+  // AI Mode button state change subscription.
+  base::CallbackListSubscription _aiModeButtonStateSubscription;
   // Whether AIM is currently allowed.
   BOOL _isAIMAllowed;
   // Listen for default search engine changes.
@@ -475,10 +471,10 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
     _tracker = tracker;
     _aimEligibilityService = aimEligibilityService;
     _aiModeButtonServiceIOS = aiModeButtonServiceIOS;
-    if (_aimEligibilityService) {
+    if (_aiModeButtonServiceIOS) {
       __weak __typeof(self) weakSelf = self;
-      _aimEligibilitySubscription =
-          _aimEligibilityService->RegisterEligibilityChangedCallback(
+      _aiModeButtonStateSubscription =
+          _aiModeButtonServiceIOS->RegisterStateChangedCallback(
               base::BindRepeating(^(void) {
                 [weakSelf updateAIMAvailability];
               }));
@@ -591,8 +587,8 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
     // The DSE icon might have already been fetched. In this case, no updated
     // will be delivered. Therefore we should query the cache, as the icon store
     // might have already been updated.
-    UIImage* fetchedIcon =
-        self.placeholderService->GetDefaultSearchEngineIcon(kIconPointSize);
+    UIImage* fetchedIcon = self.placeholderService->GetDefaultSearchEngineIcon(
+        PlaceholderService::IconSize::k18pt);
     if (fetchedIcon) {
       [self.headerConsumer setDefaultSearchEngineImage:fetchedIcon];
     }
@@ -637,9 +633,9 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   _syncService = nullptr;
   _regionalCapabilitiesService = nullptr;
   _identityManager = nullptr;
-  _aimEligibilitySubscription = {};
+  _aiModeButtonStateSubscription = {};
   _aimEligibilityService = nullptr;
-  _aiModeButtonServiceIOS = nil;
+  _aiModeButtonServiceIOS = nullptr;
   _isAIMAllowed = NO;
   self.feedControlDelegate = nil;
   _backgroundCustomizationServiceObserverBridge = nullptr;
@@ -756,7 +752,8 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   __weak __typeof(self) weakSelf = self;
   if (self.placeholderService) {
     self.placeholderService->FetchDefaultSearchEngineIcon(
-        kIconPointSize, base::BindRepeating(^(UIImage* image) {
+        PlaceholderService::IconSize::k18pt,
+        base::BindRepeating(^(UIImage* image) {
           [weakSelf.headerConsumer setDefaultSearchEngineImage:image];
         }));
   }
@@ -853,19 +850,20 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
 - (void)updateAIMAvailability {
   BOOL aimAllowed = NO;
   BOOL fuseboxEligible = NO;
+  if (_aiModeButtonServiceIOS) {
+    aimAllowed = _aiModeButtonServiceIOS->IsButtonAvailable();
+  }
   if (_aimEligibilityService) {
-    const BOOL allowedOnDevice =
-        ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE ||
-        IsAIMNTPEntrypointTabletEnabled();
-    aimAllowed = _aimEligibilityService->IsAimEligible() && allowedOnDevice;
     fuseboxEligible = _aimEligibilityService->IsFuseboxEligible();
   }
 
   [self.consumer setAIMAllowed:aimAllowed];
   [self.headerConsumer setAIMAllowed:aimAllowed];
   [self.headerConsumer setFuseboxEligible:fuseboxEligible];
-  [self.consumer setAIMTitle:_aiModeButtonServiceIOS.title
-                        icon:_aiModeButtonServiceIOS.icon];
+  if (_aiModeButtonServiceIOS) {
+    [self.consumer setAIMTitle:_aiModeButtonServiceIOS->GetTitle()
+                          icon:_aiModeButtonServiceIOS->GetIcon()];
+  }
 
   if (aimAllowed == _isAIMAllowed) {
     return;

@@ -656,17 +656,25 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Glic.CountryFilteringResult2" enum="GlicFilteringResult"
-    expires_after="2026-11-29">
+<histogram name="Glic.CountryFilteringResult2.{AccountType}"
+    enum="GlicFilteringResult" expires_after="2026-11-29">
   <owner>harringtond@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <summary>
     Records the outcome of the country filtering check for Glic enablement.
-    Recorded when GetCountryEnablement is called during profile enablement
-    checks. Country enablement results use a custom caching strategy, so there
-    will be less samples recorded than calls to
-    GlicGlobalEnabling::IsCountryEnabled.
+    Recorded when GetCountryEnablement or GetCountryMinorEnablement is called
+    during profile enablement checks. The latter is evaluated for signed-in
+    accounts as part of the account capability check, to determine whether minor
+    users are eligible in the current country, and records
+    kBlockedNotInInclusionList if kGlicMinorCountryFiltering is disabled.
+    Country enablement results use a custom caching strategy, so there will be
+    less samples recorded than calls to GlicGlobalEnabling::IsCountryEnabled and
+    GlicGlobalEnabling::IsCountryMinorEnabled.
   </summary>
+  <token key="AccountType">
+    <variant name="Adult" summary="for adult accounts"/>
+    <variant name="Minor" summary="for minor accounts"/>
+  </token>
 </histogram>
 
 <histogram name="Glic.CUI.SubmitQuery.Latency{Outcome}" units="ms"
@@ -781,7 +789,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.EntryPoint.Status" enum="GlicEntryPointStatus"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>sanaakbani@google.com</owner>
   <owner>iwells@google.com</owner>
   <summary>
@@ -1136,8 +1144,17 @@ chromium-metrics-reviews@google.com.
   <token key="Suffix" variants="ProfileEnablementSuffix"/>
 </histogram>
 
+<histogram name="Glic.Host.AwakeDuration" units="ms" expires_after="2027-04-01">
+  <owner>harringtond@google.com</owner>
+  <owner>chrome-glic@google.com</owner>
+  <summary>
+    Records the time from when the Glic WebContents is created (when the Host
+    awakens) until it is destroyed (when the Host hibernates or is destroyed).
+  </summary>
+</histogram>
+
 <histogram name="Glic.Host.LoadingStageDuration.{LoadingStage}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>iwells@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <summary>
@@ -1428,28 +1445,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Glic.Instance.LifetimeDuration" units="ms"
-    expires_after="2027-02-07">
-  <owner>birnie@google.com</owner>
-  <owner>perrier@google.com</owner>
-  <summary>
-    Records the time from when a GlicInstance is created until it is destroyed.
-    Recorded when the GlicInstance is destroyed. This histogram has a max of 24
-    hours.
-  </summary>
-</histogram>
-
-<histogram name="Glic.Instance.LifetimeDuration.Max21Days" units="ms"
-    expires_after="2027-06-01">
-  <owner>birnie@google.com</owner>
-  <owner>perrier@google.com</owner>
-  <summary>
-    Records the time from when a GlicInstance is created until it is destroyed.
-    Recorded when the GlicInstance is destroyed. This histogram has a max of 21
-    days.
-  </summary>
-</histogram>
-
 <histogram name="Glic.Instance.MaxConcurrentlyBoundTabs" units="count"
     expires_after="2027-02-07">
   <owner>birnie@google.com</owner>
@@ -1505,7 +1500,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Instance.PanelPresentationTime.{EmbedderType}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
   <summary>
@@ -2334,6 +2329,42 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Glic.Overlay.DisplayDuration" units="ms"
+    expires_after="2027-04-01">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic@google.com</owner>
+  <summary>
+    Measures the duration for which the Glic loading or error overlay was
+    displayed to the user.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Overlay.DisplayDuration.{OverlayState}" units="ms"
+    expires_after="2027-04-01">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic@google.com</owner>
+  <summary>
+    Measures the duration for which the Glic {OverlayState} overlay was
+    displayed to the user.
+  </summary>
+  <token key="OverlayState">
+    <variant name="DisabledByAdmin"
+        summary="disabled by administrator error panel"/>
+    <variant name="Error" summary="generic or timeout error panel"/>
+    <variant name="IneligibleAccount" summary="ineligible account error panel"/>
+    <variant name="Loading"
+        summary="loading skeleton that did not finish (e.g. was closed,
+                 hidden, or timed out)"/>
+    <variant name="LoadingAndCompleted"
+        summary="loading skeleton that finished and swapped into the ready
+                 guest"/>
+    <variant name="LocationMismatch" summary="location mismatch error panel"/>
+    <variant name="Offline" summary="offline error panel"/>
+    <variant name="SignIn" summary="sign-in error panel"/>
+    <variant name="Unavailable" summary="unavailable error panel"/>
+  </token>
+</histogram>
+
 <histogram name="Glic.PageContextFetcher.GetAnnotatedPageContent" units="ms"
     expires_after="2027-02-07">
   <owner>carlosk@chromium.org</owner>
@@ -3035,20 +3066,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Glic.Selection.NudgeClicked.SelectionLength.{FreState}"
-    units="characters" expires_after="2026-12-31">
-  <owner>gklassen@chromium.org</owner>
-  <owner>vollick@chromium.org</owner>
-  <summary>
-    Records the length of the selected text (in characters) when the Glic
-    selection nudge is clicked.
-  </summary>
-  <token key="FreState">
-    <variant name="PostFre" summary="User has accepted the FRE"/>
-    <variant name="PreFre" summary="User has not accepted the FRE"/>
-  </token>
-</histogram>
-
 <histogram name="Glic.Selection.RemovedDefaultBlockedSitesCount" units="sites"
     expires_after="2026-12-31">
   <owner>wusirui@google.com</owner>
@@ -3276,7 +3293,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Skills.Invoke.Funnel" enum="SkillsInvokeFunnel"
-    expires_after="2027-02-01">
+    expires_after="2027-04-04">
   <owner>michelleabreo@google.com</owner>
   <owner>skills-eng@google.com</owner>
   <summary>
@@ -3288,7 +3305,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Skills.SkillBuilder.Event" enum="SkillBuilderEvent"
-    expires_after="2027-02-01">
+    expires_after="2027-04-04">
   <owner>michelleabreo@google.com</owner>
   <owner>skills-eng@google.com</owner>
   <summary>
@@ -3303,7 +3320,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.Skills.WebClient.Event" enum="SkillsWebClientEvent"
-    expires_after="2027-02-01">
+    expires_after="2027-04-04">
   <owner>michelleabreo@google.com</owner>
   <owner>skills-eng@google.com</owner>
   <summary>
@@ -3350,7 +3367,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.TabContext.PdfContentsRequested" enum="PdfRequestStates"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>carlosk@chromium.org</owner>
   <owner>harringtond@chromium.org</owner>
   <summary>
@@ -3771,7 +3788,7 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<histogram name="Glic.ZoomLevel.{Suffix}" units="%" expires_after="2027-01-31">
+<histogram name="Glic.ZoomLevel.{Suffix}" units="%" expires_after="2027-04-04">
   <owner>cuianthony@chromium.org</owner>
   <owner>glic-dev@google.com</owner>
   <summary>

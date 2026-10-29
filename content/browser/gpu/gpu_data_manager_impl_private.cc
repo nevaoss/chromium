@@ -82,13 +82,10 @@
 #include "ui/gl/gl_features.h"
 #include "ui/gl/gl_implementation.h"
 #include "ui/gl/gl_switches.h"
-#include "ui/gl/gpu_preference.h"
 #include "ui/gl/gpu_switching_manager.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/application_status_listener.h"
-#include "base/android/device_info.h"
-#include "base/system/sys_info.h"
 #endif
 #if BUILDFLAG(IS_OZONE)
 #include "ui/ozone/public/ozone_platform.h"
@@ -441,9 +438,7 @@ GpuDataManagerImplPrivate::GpuDataManagerImplPrivate(GpuDataManagerImpl* owner)
       supports_gpu_mode_hardware_gl_(false),
 #elif BUILDFLAG(IS_ANDROID)
       supports_gpu_mode_hardware_gl_(
-          !base::android::device_info::is_desktop() ||
-          base::SysInfo::GetAndroidHardwareEGL() == "swiftshader" ||
-          base::SysInfo::GetAndroidHardwareEGL() == "emulation"),
+          !base::FeatureList::IsEnabled(features::kSkipVulkanBlocklist)),
 #else
       supports_gpu_mode_hardware_gl_(true),
 #endif
@@ -745,7 +740,9 @@ void GpuDataManagerImplPrivate::RequestDawnInfo(bool delayed,
       },
       collect_metrics);
 
-  GetUIThreadTaskRunner({base::TaskPriority::BEST_EFFORT})
+  base::TaskPriority priority = delayed ? base::TaskPriority::BEST_EFFORT
+                                        : base::TaskPriority::USER_BLOCKING;
+  GetUIThreadTaskRunner({priority})
       ->PostDelayedTask(FROM_HERE, std::move(task), delta);
 }
 

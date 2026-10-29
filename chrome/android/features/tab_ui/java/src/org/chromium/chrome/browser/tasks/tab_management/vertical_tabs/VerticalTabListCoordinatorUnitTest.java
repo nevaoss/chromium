@@ -136,7 +136,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabProperties.TabActionS
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties.UiType;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherBackPressHandlerManager;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherDragHandler;
-import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabHoverController.TabHoverListener;
+import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabItemHoverController.TabHoverListener;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelperJni;
@@ -702,6 +702,34 @@ public class VerticalTabListCoordinatorUnitTest {
         createCoordinator();
         View collapseButton = mCoordinator.getView().findViewById(R.id.collapse_button);
         assertContextClickDoesNotLaunchEmptySpaceContextMenu(collapseButton);
+    }
+
+    @Test
+    public void testCollapseButtonRightClick_ExpandOnHoverFeatureDisabled_NoMenu() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", false);
+        createCoordinator();
+        View collapseButton = mCoordinator.getView().findViewById(R.id.collapse_button);
+
+        assertTrue(collapseButton.performContextClick());
+
+        assertNull(mCoordinator.getCollapseButtonContextMenuCoordinatorForTesting());
+    }
+
+    @Test
+    public void testCollapseButtonRightClick_ExpandOnHoverFeatureEnabled_ShowsMenu() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
+        createCoordinator();
+        View collapseButton = mCoordinator.getView().findViewById(R.id.collapse_button);
+
+        assertTrue(collapseButton.performContextClick());
+
+        VerticalTabCollapseButtonContextMenuCoordinator menuCoordinator =
+                mCoordinator.getCollapseButtonContextMenuCoordinatorForTesting();
+        assertNotNull(menuCoordinator);
+        assertTrue(menuCoordinator.isMenuShowing());
+        assertNull(mCoordinator.getTabStripContextMenuCoordinatorForTesting());
     }
 
     @Test

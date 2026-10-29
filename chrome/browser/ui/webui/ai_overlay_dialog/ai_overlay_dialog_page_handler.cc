@@ -24,6 +24,8 @@
 #include "base/values.h"
 #include "build/android_buildflags.h"
 #include "build/build_config.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -219,8 +221,10 @@ void AiOverlayDialogPageHandler::UpdateAudioEnergy(float energy) {
 
 void AiOverlayDialogPageHandler::Close() {
   if (auto* controller = AiOverlayDialogController::From(browser_)) {
-    // HideOverlay() turns off listening and closes the overlay WebUI dialog interface.
-    // TODO(crbug.com/540858790): Rename HideOverlay() to CloseOverlay() for clarity.
+    // HideOverlay() turns off listening and closes the overlay WebUI dialog
+    // interface.
+    // TODO(crbug.com/540858790): Rename HideOverlay() to CloseOverlay() for
+    // clarity.
     controller->HideOverlay();
   }
 }
@@ -453,7 +457,9 @@ void AiOverlayDialogPageHandler::StartStreamingSession() {
     return;
   }
   if (!ttc_mes_client_) {
-    ttc_mes_client_ = std::make_unique<TtcMesClient>(browser_->GetProfile());
+    ttc_mes_client_ = std::make_unique<TtcMesClient>(
+        OptimizationGuideKeyedServiceFactory::GetForProfile(
+            browser_->GetProfile()));
   }
   ttc_mes_client_->Connect(this);
   SendToolSetUpdate();
@@ -595,7 +601,7 @@ void AiOverlayDialogPageHandler::StopStreamingSession() {
   }
 }
 
-void AiOverlayDialogPageHandler::OnApplicationInitialized() {
+void AiOverlayDialogPageHandler::OnBackendInitialized() {
   if (page_.is_bound()) {
     page_->OnStreamingSessionStateChanged(/*connected=*/true,
                                           /*session_id=*/"",
@@ -603,7 +609,7 @@ void AiOverlayDialogPageHandler::OnApplicationInitialized() {
   }
 }
 
-void AiOverlayDialogPageHandler::OnApplicationClosed() {
+void AiOverlayDialogPageHandler::OnBackendClosed() {
   if (page_.is_bound()) {
     page_->OnStreamingSessionStateChanged(/*connected=*/false,
                                           /*session_id=*/"",
@@ -611,7 +617,7 @@ void AiOverlayDialogPageHandler::OnApplicationClosed() {
   }
 }
 
-void AiOverlayDialogPageHandler::OnApplicationError(ErrorCode error) {
+void AiOverlayDialogPageHandler::OnBackendError(ErrorCode error) {
   if (page_.is_bound()) {
     page_->OnStreamingSessionStateChanged(
         /*connected=*/false, /*session_id=*/"",
@@ -974,5 +980,8 @@ void AiOverlayDialogPageHandler::OnToolCall(
 
   send_error(base::StrCat({"Unknown tool: ", name}));
 }
+
+void AiOverlayDialogPageHandler::OnJournalEvent(
+    const ServerJournalEvent& journal_event) {}
 
 }  // namespace ttc

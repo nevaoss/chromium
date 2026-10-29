@@ -3353,7 +3353,8 @@ Visibility WebContentsImpl::GetVisibility() {
   return visibility_;
 }
 
-bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
+bool WebContentsImpl::NeedToFirePageCloseEvents(
+    base::FunctionRef<bool(RenderFrameHostImpl&)> frame_needs_events) {
   if (!notify_disconnection_) {
     return false;
   }
@@ -3365,8 +3366,6 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
     return false;
   }
 
-  // Check whether any frame in the frame tree needs to run beforeunload or
-  // unload-time event handlers.
   for (FrameTreeNode* node : primary_frame_tree_.Nodes()) {
     RenderFrameHostImpl* rfh = node->current_frame_host();
 
@@ -3375,14 +3374,24 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
     if (!rfh->IsRenderFrameLive()) {
       continue;
     }
+    if (frame_needs_events(*rfh)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
+  return NeedToFirePageCloseEvents([](RenderFrameHostImpl& rfh) {
     bool should_run_before_unload_handler =
-        rfh->GetSuddenTerminationDisablerState(
+        rfh.GetSuddenTerminationDisablerState(
             blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler);
-    bool should_run_unload_handler = rfh->GetSuddenTerminationDisablerState(
+    bool should_run_unload_handler = rfh.GetSuddenTerminationDisablerState(
         blink::mojom::SuddenTerminationDisablerType::kUnloadHandler);
-    bool should_run_page_hide_handler = rfh->GetSuddenTerminationDisablerState(
+    bool should_run_page_hide_handler = rfh.GetSuddenTerminationDisablerState(
         blink::mojom::SuddenTerminationDisablerType::kPageHideHandler);
-    auto* rvh = static_cast<RenderViewHostImpl*>(rfh->GetRenderViewHost());
+    auto* rvh = static_cast<RenderViewHostImpl*>(rfh.GetRenderViewHost());
     // If the tab is already hidden, we should not run visibilitychange
     // handlers.
     bool is_page_visible = rvh->GetPageLifecycleStateManager()
@@ -3390,16 +3399,19 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
                                ->visibility == PageVisibilityState::kVisible;
 
     bool should_run_visibility_change_handler =
-        is_page_visible && rfh->GetSuddenTerminationDisablerState(
+        is_page_visible && rfh.GetSuddenTerminationDisablerState(
                                blink::mojom::SuddenTerminationDisablerType::
                                    kVisibilityChangeHandler);
-    if (should_run_before_unload_handler || should_run_unload_handler ||
-        should_run_page_hide_handler || should_run_visibility_change_handler) {
-      return true;
-    }
-  }
+    return should_run_before_unload_handler || should_run_unload_handler ||
+           should_run_page_hide_handler || should_run_visibility_change_handler;
+  });
+}
 
-  return false;
+bool WebContentsImpl::NeedToFireBeforeUnload() {
+  return NeedToFirePageCloseEvents([](RenderFrameHostImpl& rfh) {
+    return rfh.GetSuddenTerminationDisablerState(
+        blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler);
+  });
 }
 
 void WebContentsImpl::DispatchBeforeUnload(bool auto_cancel) {
@@ -4867,6 +4879,33 @@ KeyboardEventProcessingResult WebContentsImpl::PreHandleKeyboardEvent(
                    : KeyboardEventProcessingResult::NOT_HANDLED;
 }
 
+bool WebContentsImpl::PreHandleMouseEvent(const blink::WebMouseEvent& event) {
+  OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
+                        "WebContentsImpl::PreHandleMouseEvent");
+  return delegate_ && delegate_->PreHandleMouseEvent(this, event);
+}
+
+bool WebContentsImpl::PreHandleGestureEvent(
+    const blink::WebGestureEvent& event) {
+  OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
+                        "WebContentsImpl::PreHandleGestureEvent");
+  if (ignore_zoom_gestures_) {
+    if (event.GetType() == blink::WebInputEvent::Type::kGestureDoubleTap) {
+      return true;
+    }
+
+    // Disable pinch zooming in app windows.
+    if (blink::WebInputEvent::IsPinchGestureEventType(event.GetType())) {
+      // Only suppress pinch events that cause a scale change. We still
+      // allow synthetic wheel events for touchpad pinch to go to the page.
+      return !(event.SourceDevice() == blink::WebGestureDevice::kTouchpad &&
+               event.NeedsWheelEvent());
+    }
+  }
+
+  return delegate_ && delegate_->PreHandleGestureEvent(this, event);
+}
+
 bool WebContentsImpl::HandleMouseEvent(const blink::WebMouseEvent& event) {
   OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
                         "WebContentsImpl::HandleMouseEvent");
@@ -4923,27 +4962,6 @@ bool WebContentsImpl::HandleWheelEvent(const blink::WebMouseWheelEvent& event) {
   }
 #endif
   return false;
-}
-
-bool WebContentsImpl::PreHandleGestureEvent(
-    const blink::WebGestureEvent& event) {
-  OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
-                        "WebContentsImpl::PreHandleGestureEvent");
-  if (ignore_zoom_gestures_) {
-    if (event.GetType() == blink::WebInputEvent::Type::kGestureDoubleTap) {
-      return true;
-    }
-
-    // Disable pinch zooming in app windows.
-    if (blink::WebInputEvent::IsPinchGestureEventType(event.GetType())) {
-      // Only suppress pinch events that cause a scale change. We still
-      // allow synthetic wheel events for touchpad pinch to go to the page.
-      return !(event.SourceDevice() == blink::WebGestureDevice::kTouchpad &&
-               event.NeedsWheelEvent());
-    }
-  }
-
-  return delegate_ && delegate_->PreHandleGestureEvent(this, event);
 }
 
 input::RenderWidgetHostInputEventRouter*
@@ -9134,8 +9152,8 @@ void WebContentsImpl::EnumerateDirectory(
   absl::Cleanup cancel_chooser = [&listener] {
     listener->FileSelectionCanceled();
   };
-  if (visibility_ == Visibility::HIDDEN) {
-    // Do not allow background tab to open file chooser.
+  if (visibility_ != Visibility::VISIBLE) {
+    // Do not allow background or occluded tab to open file chooser.
     return;
   }
   if (!delegate_->IsContentsActive(this)) {
@@ -9966,8 +9984,8 @@ void WebContentsImpl::RunFileChooser(
   absl::Cleanup cancel_chooser = [&listener] {
     listener->FileSelectionCanceled();
   };
-  if (visibility_ == Visibility::HIDDEN) {
-    // Do not allow background tab to open file chooser.
+  if (visibility_ != Visibility::VISIBLE) {
+    // Do not allow background or occluded tab to open file chooser.
     return;
   }
   if (delegate_ && !delegate_->IsContentsActive(this)) {

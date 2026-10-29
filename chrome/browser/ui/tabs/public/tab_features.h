@@ -52,6 +52,7 @@ class CollaborationMessagingPageActionController;
 class CommitLimitOOMRecoveryTracker;
 class ConnectionHelpTabHelper;
 class CookieControlsPageActionController;
+class CoreTabHelper;
 class ExternalProtocolObserver;
 class FileSystemAccessPageActionController;
 class FileSystemAccessTabHelper;
@@ -83,6 +84,7 @@ class PwaInstallPageActionController;
 class QwacWebContentsObserver;
 class ReadAnythingController;
 class ReadAnythingSidePanelController;
+class RecentlyAudibleHelper;
 class RecordReplayPageActionController;
 class RevokedPermissionsTabHelper;
 class SadTabHelper;
@@ -122,8 +124,13 @@ namespace back_to_opener {
 class BackToOpenerController;
 }  // namespace back_to_opener
 
+namespace blocked_content {
+class PopupOpenerTabHelper;
+}  // namespace blocked_content
+
 namespace autofill {
 class BubbleManager;
+class GmailOtpOptInBubbleController;
 class OmniboxAutofillBubbleController;
 class OmniboxAutofillPageActionController;
 class PaymentsChurnedUsersBubbleController;
@@ -133,6 +140,7 @@ class WalletReminderNoticePageActionController;
 }  // namespace autofill
 
 namespace actor {
+class ActorSurfaceTabHelper;
 class ActorTabData;
 }  // namespace actor
 
@@ -177,8 +185,13 @@ class ContextualCueingController;
 class ContextualCueingWebContentsObserver;
 }  // namespace contextual_cueing
 
+namespace contextual_search {
+class ContextualSearchCueTabState;
+}  // namespace contextual_search
+
 namespace contextual_tasks {
 class ContextualTasksTabVisitTracker;
+class CopySearchJourneyTabFeature;
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 class SearchAiModePromoTabHelper;
 #endif
@@ -240,6 +253,10 @@ namespace v8_compile_hints {
 class V8CompileHintsTabHelper;
 }  // namespace v8_compile_hints
 
+namespace vr {
+class VrTabHelper;
+}  // namespace vr
+
 namespace webapps {
 class AppBannerManagerDesktop;
 class MLInstallabilityPromoter;
@@ -267,6 +284,10 @@ class SavedTabGroupOnCloseHelper;
 namespace page_actions {
 class PageActionController;
 }  // namespace page_actions
+
+namespace page_content_annotations {
+class PageContentAnnotationsWebContentsObserver;
+}  // namespace page_content_annotations
 
 namespace payments {
 class WebPaymentsObserver;
@@ -344,6 +365,7 @@ class RecentTabHelper;
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 namespace safe_browsing {
+class SafeBrowsingTabObserver;
 class TailoredSecurityUrlObserver;
 }  // namespace safe_browsing
 #endif
@@ -696,6 +718,10 @@ class TabFeatures {
   // Per-tab eligibility state for the glic contextual cue.
   std::unique_ptr<glic::GlicCueTabState> glic_cue_tab_state_;
 
+  // Per-tab eligibility state for the contextual search contextual cue.
+  std::unique_ptr<contextual_search::ContextualSearchCueTabState>
+      contextual_search_cue_tab_state_;
+
   std::unique_ptr<memory_saver::MemorySaverChipController>
       memory_saver_chip_controller_;
 
@@ -726,6 +752,10 @@ class TabFeatures {
   std::unique_ptr<TabResourceUsageTabHelper> resource_usage_helper_;
 
   std::unique_ptr<MemorySaverChipTabHelper> memory_saver_chip_helper_;
+
+  std::unique_ptr<vr::VrTabHelper> vr_tab_helper_;
+
+  std::unique_ptr<RecentlyAudibleHelper> recently_audible_helper_;
 
   std::unique_ptr<ChildTabAlertHelper> child_tab_alert_helper_;
 
@@ -778,10 +808,16 @@ class TabFeatures {
   std::unique_ptr<autofill::WalletReminderNoticePageActionController>
       wallet_reminder_notice_page_action_controller_;
 
+  // Responsible for managing the bubble that asks the user to opt in to
+  // fetching one-time verification codes from Gmail.
+  std::unique_ptr<autofill::GmailOtpOptInBubbleController>
+      gmail_otp_opt_in_bubble_controller_;
+
   std::unique_ptr<AskBeforeHttpDialogController>
       ask_before_http_dialog_controller_;
 
   std::unique_ptr<actor::ActorTabData> actor_tab_data_;
+  std::unique_ptr<actor::ActorSurfaceTabHelper> actor_surface_tab_helper_;
 
 #if !BUILDFLAG(IS_ANDROID)
   std::unique_ptr<record_replay::RecordReplayClient> record_replay_client_;
@@ -820,6 +856,8 @@ class TabFeatures {
 
   std::unique_ptr<contextual_tasks::ContextualTasksTabVisitTracker>
       contextual_tasks_tab_visit_tracker_;
+  std::unique_ptr<contextual_tasks::CopySearchJourneyTabFeature>
+      copy_search_journey_tab_feature_;
 
 #if !BUILDFLAG(IS_ANDROID)
   std::unique_ptr<skills::SkillsUpdateObserver> skills_update_observer_;
@@ -945,6 +983,8 @@ class TabFeatures {
       site_protection_metrics_observer_;
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+  std::unique_ptr<safe_browsing::SafeBrowsingTabObserver>
+      safe_browsing_tab_observer_;
   std::unique_ptr<safe_browsing::TailoredSecurityUrlObserver>
       tailored_security_url_observer_;
 #endif
@@ -997,6 +1037,15 @@ class TabFeatures {
 
   std::unique_ptr<metrics::MetricsServicesWebContentsObserver>
       metrics_services_web_contents_observer_;
+
+  std::unique_ptr<blocked_content::PopupOpenerTabHelper>
+      popup_opener_tab_helper_;
+
+  std::unique_ptr<
+      page_content_annotations::PageContentAnnotationsWebContentsObserver>
+      page_content_annotations_web_contents_observer_;
+
+  std::unique_ptr<CoreTabHelper> core_tab_helper_;
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

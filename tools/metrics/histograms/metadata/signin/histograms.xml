@@ -304,7 +304,7 @@ to monitor/debug fetching OAuth2 Token issues. -->
 
 <histogram
     name="Signin.AccountCapabilities.GetFromSystemLibraryDuration{Caller}"
-    units="ms" expires_after="2027-01-31">
+    units="ms" expires_after="2027-04-04">
   <owner>fernandex@google.com</owner>
   <owner>msarda@chromium.org</owner>
   <owner>triploblastic@chromium.org</owner>
@@ -409,7 +409,7 @@ to monitor/debug fetching OAuth2 Token issues. -->
 </histogram>
 
 <histogram name="Signin.AccountCapabilities.{Priority}.FetchResult"
-    enum="AccountCapabilitiesFetchResult" expires_after="2027-01-31">
+    enum="AccountCapabilitiesFetchResult" expires_after="2027-04-04">
   <owner>alexilin@chromium.org</owner>
   <owner>msarda@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -429,7 +429,7 @@ to monitor/debug fetching OAuth2 Token issues. -->
 </histogram>
 
 <histogram name="Signin.AccountConsistencyPromoAction"
-    enum="AccountConsistencyPromoAction" expires_after="2027-01-31">
+    enum="AccountConsistencyPromoAction" expires_after="2027-04-04">
   <owner>bsazonov@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -439,7 +439,7 @@ to monitor/debug fetching OAuth2 Token issues. -->
 </histogram>
 
 <histogram name="Signin.AccountConsistencyPromoAction.{PromoEvent}"
-    enum="SigninAccessPoint" expires_after="2027-01-31">
+    enum="SigninAccessPoint" expires_after="2027-04-04">
   <owner>bsazonov@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -1639,7 +1639,7 @@ prefs when the profile is loaded.  -->
 
 <histogram
     name="Signin.ChromeOS.IsEstimateNewSignInUsersWithFinchAvailablePopulationEnabled"
-    enum="Boolean" expires_after="2027-02-01">
+    enum="Boolean" expires_after="2027-04-04">
   <owner>mmrashad@google.com</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>
@@ -2461,7 +2461,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.HistorySyncOptIn.{OptInFlowEvent}"
-    enum="SigninAccessPoint" expires_after="2027-01-31">
+    enum="SigninAccessPoint" expires_after="2027-04-04">
   <owner>myuu@google.com</owner>
   <owner>bsazonov@chromium.org</owner>
   <owner>jlebel@chromium.org</owner>
@@ -2505,7 +2505,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.HybridPasskey.InlineQrEngagement"
-    enum="SigninHybridPasskeyEngagement" expires_after="2027-04-01">
+    enum="WebAuthenticationHybridPasskeyEngagement" expires_after="2027-04-01">
   <owner>msalama@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -2513,7 +2513,7 @@ prefs when the profile is loaded.  -->
     hybrid passkey QR code was shown inline in the Autofill dropdown. The sample
     is emitted when the request ends or when the user restarts it. Requests in
     which the QR code was only ever shown in the WebAuthn modal dialog are not
-    recorded.
+    recorded here; see WebAuthentication.Hybrid.QrEngagement for those.
 
     &quot;Scan detected&quot; means the browser received a BLE advert from the
     user's phone during the request. &quot;No scan detected&quot; means it did
@@ -2526,14 +2526,16 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.HybridPasskey.Outcome"
-    enum="SigninHybridPasskeyOutcome" expires_after="2027-04-01">
+    enum="WebAuthenticationHybridPasskeyOutcome" expires_after="2027-04-01">
   <owner>msalama@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
     Records the final outcome and drop-off reasons for the hybrid passkey flow
     on the Chrome sign-in page once the hybrid connection has started (phone
     scanned QR code). Recorded once per hybrid attempt; a request that is
-    restarted or retried emits one sample per attempt.
+    restarted or retried emits one sample per attempt. See
+    WebAuthentication.Hybrid.Outcome for the equivalent metric across all
+    WebAuthn requests.
   </summary>
 </histogram>
 
@@ -3313,7 +3315,7 @@ the browser and content area. -->
 
 <histogram
     name="Signin.OAuth2MintToken.{BindingState}FetchAuthError{TokenBindingAssertionValue}"
-    enum="GoogleServiceAuthError" expires_after="2027-01-31">
+    enum="GoogleServiceAuthError" expires_after="2027-04-04">
   <owner>alexilin@chromium.org</owner>
   <owner>droger@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -3988,7 +3990,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.SignIn.Offered{AccountState}" enum="SigninAccessPoint"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>bsazonov@chromium.org</owner>
   <owner>dgn@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -4009,7 +4011,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.SignIn.Started{Profile}" enum="SigninAccessPoint"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>bsazonov@chromium.org</owner>
   <owner>dgn@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -4087,7 +4089,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.SigninCompletedAccessPoint{SigninAccountStatus}"
-    enum="SigninAccessPoint" expires_after="2027-01-31">
+    enum="SigninAccessPoint" expires_after="2027-04-04">
   <owner>msarda@chromium.org</owner>
   <owner>bsazonov@chromium.org</owner>
   <owner>droger@chromium.org</owner>
@@ -4291,7 +4293,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.SigninStartedAccessPoint{SigninAccountStatus}"
-    enum="SigninAccessPoint" expires_after="2027-01-31">
+    enum="SigninAccessPoint" expires_after="2027-04-04">
   <owner>msarda@chromium.org</owner>
   <owner>bsazonov@chromium.org</owner>
   <owner>droger@chromium.org</owner>
@@ -4457,7 +4459,7 @@ kept as long as profile signout is possible -->
 
 <histogram
     name="Signin.SSOIdentityListRequest.Duration{SigninSSOIdentityListRequestDurationCacheState}"
-    units="ms" expires_after="2027-01-31">
+    units="ms" expires_after="2027-04-04">
   <owner>jlebel@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -4583,18 +4585,6 @@ kept as long as profile signout is possible -->
     promo is shown (e.g. in the profile menu).
 
     Note: This is not recorded for every access point yet.
-  </summary>
-</histogram>
-
-<histogram name="Signin.SyncOptIn.OpenedSyncSettings" enum="SigninAccessPoint"
-    expires_after="2026-10-18">
-  <owner>rsult@google.com</owner>
-  <owner>dgn@chromium.org</owner>
-  <owner>chrome-signin-desktop-team@google.com</owner>
-  <summary>
-    Records that the user chose to navigate to the sync settings page from the
-    sync confirmation screen. Logs this in the context of the access point
-    associated with this event.
   </summary>
 </histogram>
 

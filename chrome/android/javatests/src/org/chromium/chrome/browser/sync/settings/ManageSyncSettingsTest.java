@@ -77,14 +77,15 @@ import org.chromium.base.DeviceInfo;
 import org.chromium.base.ServiceLoaderUtil;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.ApplicationTestUtils;
+import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DisabledTest;
-import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.RequiresRestart;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.IntentHandler;
@@ -154,7 +155,7 @@ import java.util.Set;
 /** Tests for ManageSyncSettings. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
-@DoNotBatch(reason = "TODO(crbug.com/40743432): SyncTestRule doesn't support batching.")
+@Batch(Batch.PER_CLASS)
 // Avoids UserActionableError.NEEDS_UPM_BACKEND_UPGRADE for most tests. Specific tests can still
 // trigger the error by overriding getUserActionableError()
 @Restriction(GmsCoreVersionRestriction.RESTRICTION_TYPE_VERSION_GE_24W15)
@@ -581,6 +582,7 @@ public class ManageSyncSettingsTest {
     @Test
     @LargeTest
     @Feature({"Sync"})
+    @RequiresRestart
     public void testSyncAddressesWithCustomPasspharaseShowsWarningDialog() {
         mSyncTestRule.getFakeServerHelper().setCustomPassphraseNigori("passphrase");
 
@@ -1665,30 +1667,37 @@ public class ManageSyncSettingsTest {
         ManageSyncSettings fragment = startManageSyncPreferences();
 
         Intents.init();
-        intending(IntentMatchers.anyIntent())
-                .respondWith(new ActivityResult(Activity.RESULT_OK, null));
+        try {
+            intending(IntentMatchers.anyIntent())
+                    .respondWith(new ActivityResult(Activity.RESULT_OK, null));
 
-        // Scroll to the preference row containing the summary link
-        onView(withId(R.id.recycler_view))
-                .perform(
-                        RecyclerViewActions.scrollTo(
-                                hasDescendant(
-                                        withText(R.string.account_settings_switch_to_incognito))));
+            // Scroll to the preference row containing the summary link
+            onView(withId(R.id.recycler_view))
+                    .perform(
+                            RecyclerViewActions.scrollTo(
+                                    hasDescendant(
+                                            withText(
+                                                    R.string
+                                                            .account_settings_switch_to_incognito))));
 
-        // Click the "Learn more" clickable span in the summary
-        onView(
-                        allOf(
-                                hasSibling(withText(R.string.account_settings_switch_to_incognito)),
-                                withId(android.R.id.summary)))
-                .perform(ViewUtils.clickOnClickableSpan(0));
+            // Click the "Learn more" clickable span in the summary
+            onView(
+                            allOf(
+                                    hasSibling(
+                                            withText(
+                                                    R.string.account_settings_switch_to_incognito)),
+                                    withId(android.R.id.summary)))
+                    .perform(ViewUtils.clickOnClickableSpan(0));
 
-        // Verify that it opens a normal tab with the help link
-        intended(
-                allOf(
-                        IntentMatchers.hasData(ManageSyncSettings.INCOGNITO_HELP_URL),
-                        IntentMatchers.hasExtra(
-                                IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, false)));
-        Intents.release();
+            // Verify that it opens a normal tab with the help link
+            intended(
+                    allOf(
+                            IntentMatchers.hasData(ManageSyncSettings.INCOGNITO_HELP_URL),
+                            IntentMatchers.hasExtra(
+                                    IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, false)));
+        } finally {
+            Intents.release();
+        }
     }
 
     @Test
@@ -1754,19 +1763,24 @@ public class ManageSyncSettingsTest {
         startManageSyncPreferences();
 
         Intents.init();
-        intending(IntentMatchers.anyIntent())
-                .respondWith(new ActivityResult(Activity.RESULT_OK, null));
+        try {
+            intending(IntentMatchers.anyIntent())
+                    .respondWith(new ActivityResult(Activity.RESULT_OK, null));
 
-        // Click the preference row
-        onView(withId(R.id.recycler_view))
-                .perform(
-                        RecyclerViewActions.scrollTo(
-                                hasDescendant(
-                                        withText(R.string.account_settings_switch_to_incognito))));
-        onView(withText(R.string.account_settings_switch_to_incognito)).perform(click());
+            // Click the preference row
+            onView(withId(R.id.recycler_view))
+                    .perform(
+                            RecyclerViewActions.scrollTo(
+                                    hasDescendant(
+                                            withText(
+                                                    R.string
+                                                            .account_settings_switch_to_incognito))));
+            onView(withText(R.string.account_settings_switch_to_incognito)).perform(click());
 
-        intended(expectedIntentMatcher);
-        Intents.release();
+            intended(expectedIntentMatcher);
+        } finally {
+            Intents.release();
+        }
     }
 
     /** Returns whether the extensions sync item should be shown. */

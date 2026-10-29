@@ -901,8 +901,8 @@ public final class ChromePreferenceKeys {
     /**
      * Key prefix for boolean preferences indicating whether a specific Setup List item has been
      * completed by the user. The ModuleType integer is appended to this prefix to form the unique
-     * key for each item. For example, "Chrome.SetupList.Completed.15" would be the key for the
-     * SIGN_IN_PROMO.
+     * key for each item. For example, "Chrome.SetupList.Completed.10" would be the key for the
+     * HISTORY_SYNC_PROMO.
      */
     public static final KeyPrefix SETUP_LIST_COMPLETED_KEY_PREFIX =
             new KeyPrefix("Chrome.SetupList.Completed.*");
@@ -1091,6 +1091,12 @@ public final class ChromePreferenceKeys {
     /** Stores the timestamp when vertical tabs were enabled. */
     public static final String VERTICAL_TABS_ENABLED_TIMESTAMP =
             "Chrome.VerticalTabs.EnabledTimestamp";
+
+    /**
+     * Stores the user preference for expanding the collapsed vertical tabs rail when the pointer
+     * hovers over it.
+     */
+    public static final String VERTICAL_TABS_EXPAND_ON_HOVER = "Chrome.VerticalTabs.ExpandOnHover";
 
     /**
      * Stores the expanded vertical tabs rail width, in dp, that the user last chose by dragging the
@@ -1360,6 +1366,7 @@ public final class ChromePreferenceKeys {
                 VERTICAL_TABS_COLLAPSED,
                 VERTICAL_TABS_ENABLED,
                 VERTICAL_TABS_ENABLED_TIMESTAMP,
+                VERTICAL_TABS_EXPAND_ON_HOVER,
                 VERTICAL_TABS_USER_RESIZED_WIDTH_DP,
                 WEB_SIGNIN_ACCOUNT_PICKER_ACTIVE_DISMISSAL_COUNT,
                 WINDOW_CONTROLS_OVERLAY_ENABLED_PACKAGES);

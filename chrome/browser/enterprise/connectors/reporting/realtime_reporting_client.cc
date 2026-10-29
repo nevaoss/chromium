@@ -118,11 +118,14 @@ RealtimeReportingClient::InitProfileReportingClient(
     return {GetProfilePolicyClientDescription(), nullptr};
   }
 
-  profile_private_client_ = std::make_unique<policy::CloudPolicyClient>(
-      policy_manager->core()->client()->service(),
-      g_browser_process->shared_url_loader_factory(),
-      policy::CloudPolicyClient::DeviceDMTokenCallback());
-  policy::CloudPolicyClient* client = profile_private_client_.get();
+  SetOwnedReportingClient(
+      /*per_profile=*/true,
+      std::make_unique<policy::CloudPolicyClient>(
+          policy_manager->core()->client()->service(),
+          g_browser_process->shared_url_loader_factory(),
+          policy::CloudPolicyClient::DeviceDMTokenCallback()));
+  policy::CloudPolicyClient* client =
+      GetOwnedReportingClient(/*per_profile=*/true);
 
 #if BUILDFLAG(IS_CHROMEOS)
   // On ChromeOS, the browser client id is already the user (or managed guest
@@ -298,7 +301,7 @@ std::string RealtimeReportingClient::GetBrowserClientId() {
     LOG(ERROR) << "Could not determine who the user is.";
     profile = Profile::FromBrowserContext(context_);
   }
-  DCHECK(profile);
+  CHECK(profile, base::NotFatalUntil::M161);
 
   if (chromeos::IsManagedGuestSession()) {
     client_id = reporting::GetMGSUserClientId().value_or("");

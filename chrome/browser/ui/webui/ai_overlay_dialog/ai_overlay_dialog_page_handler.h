@@ -12,9 +12,9 @@
 #include "base/containers/span.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/ttc/app/ttc_mes_client.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
 #include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog.mojom.h"
+#include "components/ttc/app/ttc_mes_client.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -67,9 +67,9 @@ class AiOverlayDialogPageHandler : public ai_overlay_dialog::mojom::PageHandler,
   void StopStreamingSession() override;
 
   // TtcMesClient::Observer
-  void OnApplicationInitialized() override;
-  void OnApplicationClosed() override;
-  void OnApplicationError(ErrorCode error) override;
+  void OnBackendInitialized() override;
+  void OnBackendClosed() override;
+  void OnBackendError(ErrorCode error) override;
   void OnTranscriptions(const std::string& input_transcription,
                         const std::string& output_transcription) override;
   void OnAudioOutput(base::span<const int16_t> audio_data,
@@ -79,6 +79,7 @@ class AiOverlayDialogPageHandler : public ai_overlay_dialog::mojom::PageHandler,
                                 bool interrupted) override;
   void OnToolCall(const ToolRequest& tool_request,
                   ToolResponseCallback response_callback) override;
+  void OnJournalEvent(const ServerJournalEvent& journal_event) override;
 
   void DidChangePage(const GURL& url,
                      const std::optional<std::u16string>& title,

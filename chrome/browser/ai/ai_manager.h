@@ -31,6 +31,7 @@
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-shared.h"
 #include "services/on_device_model/public/mojom/download_observer.mojom-forward.h"
 #include "third_party/blink/public/mojom/ai/ai_common.mojom-forward.h"
+#include "third_party/blink/public/mojom/ai/ai_decision_model.mojom-forward.h"
 #include "third_party/blink/public/mojom/ai/ai_language_model.mojom-forward.h"
 #include "third_party/blink/public/mojom/ai/ai_manager.mojom.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-forward.h"
@@ -123,6 +124,15 @@ class AIManager : public base::SupportsUserData::Data,
   void CreateSemanticEmbedder(
       mojo::PendingRemote<blink::mojom::AIManagerCreateSemanticEmbedderClient>
           client,
+      mojo::PendingRemote<on_device_model::mojom::DownloadObserver> monitor)
+      override;
+  void CanCreateDecisionModel(
+      blink::mojom::AIDecisionModelCreateOptionsPtr options,
+      CanCreateDecisionModelCallback callback) override;
+  void CreateDecisionModel(
+      mojo::PendingRemote<blink::mojom::AIManagerCreateDecisionModelClient>
+          client,
+      blink::mojom::AIDecisionModelCreateOptionsPtr options,
       mojo::PendingRemote<on_device_model::mojom::DownloadObserver> monitor)
       override;
 
@@ -261,6 +271,7 @@ class AIManager : public base::SupportsUserData::Data,
       const std::string_view api_name,
       const base::flat_set<std::string>& default_supported_languages);
   void MaybeLogSpeedPreferenceMarkdownWarning();
+  void MaybeLogOnDeviceAiSettingsDisabledWarning();
 
   // |model_broker_client_| is keeping |CanCreateLanguageModel| callbacks alive
   // until it is destroyed, so we need to ensure those callbacks are safely
@@ -283,6 +294,7 @@ class AIManager : public base::SupportsUserData::Data,
   bool did_log_unsupported_language_error_ = false;
   bool did_log_experimental_language_warning_ = false;
   bool did_log_speed_preference_markdown_warning_ = false;
+  bool did_log_on_device_ai_settings_disabled_warning_ = false;
 
   // Features that have attempted initialization in this session.
   base::flat_set<optimization_guide::mojom::OnDeviceFeature> tried_init_;

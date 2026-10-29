@@ -23,20 +23,27 @@
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_interactive_test_base.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/lens/test_lens_search_controller.h"
+#include "chrome/browser/ui/location_bar/location_bar.h"
+#include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
@@ -69,10 +76,11 @@ class ContextualTasksLensOverlayControllerInteractiveUiTest
 
   void SetUpFeatureList() override {
     feature_list_.InitWithFeaturesAndParameters(
-        /*enabled_features=*/{{contextual_tasks::kContextualTasks, {}},
-                              {contextual_tasks::
-                                   kContextualTasksForceEntryPointEligibility,
-                               {}}},
+        /*enabled_features=*/
+        {{contextual_tasks::kContextualTasks, {}},
+         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
+         {lens::features::kLensOverlayTextSelectionContextMenuEntrypoint,
+          {{"contextualize", "true"}}}},
         /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
   }
 
@@ -683,6 +691,69 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // This tests the following CUJ:
+//  (1) User navigates to a webpage containing an image.
+//  (2) User right-clicks the image to open the context menu.
+//  (3) User selects the "Search image with Google Lens" item from the context
+//      menu.
+//  (4) Lens overlay opens with the image preselected as the search region.
+//  (5) The image region query opens the Contextual Tasks side panel.
+// Disabled on Mac because the Mac interaction test util implementation does
+// not support selecting an item in the native context menu.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_ImageContextMenuClick DISABLED_ImageContextMenuClick
+#else
+#define MAYBE_ImageContextMenuClick ImageContextMenuClick
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
+                       MAYBE_ImageContextMenuClick) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabId);
+
+  SidePanelUI::From(browser())->DisableAnimationsForTesting();
+
+  const GURL page_url = embedded_test_server()->GetURL(kDocumentWithImage);
+  const DeepQuery kPathToImg{"img"};
+
+  RunTestSequence(
+      // Step 1: Navigate the active tab to a webpage containing an image and
+      // wait for the image to finish loading so the context menu offers the
+      // image search item.
+      InstrumentTab(kTabId, 0), NavigateWebContents(kTabId, page_url),
+      EnsurePresent(kTabId, kPathToImg), WaitForWebContentsPainted(kTabId),
+      WaitForWebContentsReady(kTabId, page_url),
+      WaitForJsResultAt(kTabId, kPathToImg,
+                        "(el) => el.complete && el.naturalWidth > 0"),
+
+      // Steps 2-3: Right-click the image and select the Lens image search item
+      // from the context menu.
+      MoveMouseTo(kTabId, kPathToImg), ClickMouse(ui_controls::RIGHT),
+      WaitForShow(RenderViewContextMenu::kSearchForImageItem),
+      SelectMenuItem(RenderViewContextMenu::kSearchForImageItem,
+                     InputType::kMouse),
+
+      // Step 4: The Lens overlay opens from the image context menu with the
+      // image preselected as the search region.
+      InAnyContext(WaitForShow(LensOverlayController::kOverlayId)),
+      CheckResult(
+          [this]() {
+            return LensSearchController::FromTabWebContents(
+                       browser()->GetTabStripModel()->GetWebContentsAt(0))
+                ->invocation_source();
+          },
+          std::make_optional(
+              lens::LensOverlayInvocationSource::kContentAreaContextMenuImage),
+          "Lens overlay was opened from the image context menu"),
+
+      // Step 5: The preselected image region query opens the Contextual Tasks
+      // side panel.
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      CheckResult(
+          [this]() {
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
+          },
+          true));
+}
+
+// This tests the following CUJ:
 //  (1) User navigates to a webpage.
 //  (2) User right-clicks a blank area of the webpage.
 //  (3) User selects the Google Lens page search item from the context menu.
@@ -747,6 +818,79 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
 
       // Step 6: The region query opens the Contextual Tasks side panel.
       WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      CheckResult(
+          [this]() {
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
+          },
+          true));
+}
+
+// This tests the following CUJ:
+//  (1) User navigates to a webpage and selects text on the page.
+//  (2) User right-clicks the selected text to open the context menu.
+//  (3) User selects the "Search Google for <text>" item from the context menu.
+//  (4) A contextual text search request is issued from the text selection
+//      context menu and the Contextual Tasks side panel opens.
+// Disabled on Mac because the Mac interaction test util implementation does
+// not support selecting an item in the native context menu.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_TextSelectionContextMenuClick \
+  DISABLED_TextSelectionContextMenuClick
+#else
+#define MAYBE_TextSelectionContextMenuClick TextSelectionContextMenuClick
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
+                       MAYBE_TextSelectionContextMenuClick) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabId);
+
+  SidePanelUI::From(browser())->DisableAnimationsForTesting();
+  // Disable asynchronous link-to-text selector generation so
+  // LinkToTextMenuObserver does not rebuild all MenuItemViews mid-step while
+  // the context menu is open.
+  browser()->GetProfile()->GetPrefs()->SetBoolean(
+      prefs::kScrollToTextFragmentEnabled, false);
+
+  const GURL page_url =
+      embedded_test_server()->GetURL(kDocumentWithNamedElement);
+  const DeepQuery kPathToParagraph{"p"};
+
+  RunTestSequence(
+      // Step 1: Navigate the active tab to a webpage and select text.
+      InstrumentTab(kTabId, 0), NavigateWebContents(kTabId, page_url),
+      EnsurePresent(kTabId, kPathToParagraph),
+      WaitForWebContentsPainted(kTabId),
+      WaitForWebContentsReady(kTabId, page_url),
+      CheckJsResultAt(kTabId, kPathToParagraph,
+                      "(el) => {"
+                      "  el.style.display = 'inline';"
+                      "  const range = document.createRange();"
+                      "  range.selectNodeContents(el);"
+                      "  const selection = window.getSelection();"
+                      "  selection.removeAllRanges();"
+                      "  selection.addRange(range);"
+                      "  return selection.toString().trim().length > 0;"
+                      "}",
+                      true),
+
+      // Steps 2-3: Right-click the selected text and select the search item
+      // from the context menu.
+      MoveMouseTo(kTabId, kPathToParagraph), ClickMouse(ui_controls::RIGHT),
+      WaitForShow(RenderViewContextMenu::kSearchForTextItem),
+      SelectMenuItem(RenderViewContextMenu::kSearchForTextItem,
+                     InputType::kMouse),
+
+      // Step 4: The text selection search opens the Contextual Tasks side
+      // panel via the Lens text selection context menu entrypoint.
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      CheckResult(
+          [this]() {
+            return LensSearchController::FromTabWebContents(
+                       browser()->GetTabStripModel()->GetWebContentsAt(0))
+                ->invocation_source();
+          },
+          std::make_optional(
+              lens::LensOverlayInvocationSource::kContentAreaContextMenuText),
+          "Text query was issued from the text selection context menu"),
       CheckResult(
           [this]() {
             return SidePanelUI::From(browser())->IsSidePanelShowing();
@@ -972,6 +1116,401 @@ IN_PROC_BROWSER_TEST_F(
                        ->HasPermissionForSession();
           },
           true));
+}
+
+class ContextualTasksContextMenuAskGoogleInteractiveUiTest
+    : public LensOverlayInteractiveTestBase {
+ public:
+  ContextualTasksContextMenuAskGoogleInteractiveUiTest() = default;
+  ~ContextualTasksContextMenuAskGoogleInteractiveUiTest() override = default;
+
+  void SetUpFeatureList() override {
+    feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/
+        {{contextual_tasks::kContextualTasks, {}},
+         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
+         {lens::features::kLensSidePanelUnification, {}},
+         {contextual_tasks::kContextualTasksUpdatedEntryPoints,
+          {{"ContextualTasksContextMenuShowAskGoogle", "true"},
+           {"ContextualTasksContextMenuSubmenu", "false"},
+           {"ContextualTasksContextMenuRouteAskGoogleToOmnibox", "false"}}}},
+        /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
+  }
+
+  void SetUpInProcessBrowserTestFixture() override {
+    LensOverlayInteractiveTestBase::SetUpInProcessBrowserTestFixture();
+    create_services_subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &ContextualTasksContextMenuAskGoogleInteractiveUiTest::
+                    OnWillCreateBrowserContextServices,
+                base::Unretained(this)));
+  }
+
+  void OnWillCreateBrowserContextServices(content::BrowserContext* context) {
+    IdentityTestEnvironmentProfileAdaptor::
+        SetIdentityTestEnvironmentFactoriesOnBrowserContext(context);
+    AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          Profile* profile = Profile::FromBrowserContext(context);
+          return std::make_unique<TestingAimEligibilityService>(
+              /*is_aim_eligible=*/true,
+              /*is_cobrowse_eligible=*/true, *profile->GetPrefs(),
+              TemplateURLServiceFactory::GetForProfile(profile));
+        }));
+    contextual_tasks::ContextualTasksUiServiceFactory::GetInstance()
+        ->SetTestingFactory(
+            context,
+            base::BindLambdaForTesting([](content::BrowserContext* context) {
+              Profile* profile = Profile::FromBrowserContext(context);
+              return static_cast<std::unique_ptr<KeyedService>>(
+                  std::make_unique<TestingContextualTasksUiService>(
+                      profile,
+                      contextual_tasks::ContextualTasksServiceFactory::
+                          GetForProfile(profile),
+                      IdentityManagerFactory::GetForProfile(profile),
+                      AimEligibilityServiceFactory::GetForProfile(profile),
+                      /*cookie_synchronizer=*/nullptr));
+            }));
+  }
+
+  void SetUpOnMainThread() override {
+    host_resolver()->AddRule("www.google.com", "127.0.0.1");
+    host_resolver()->AddRule("www.g.ai", "127.0.0.1");
+    LensOverlayInteractiveTestBase::SetUpOnMainThread();
+    WaitForTemplateURLServiceToLoad();
+  }
+
+ private:
+  base::CallbackListSubscription create_services_subscription_;
+};
+
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_AskGoogleContextMenuClickOpensSidePanel \
+  DISABLED_AskGoogleContextMenuClickOpensSidePanel
+#else
+#define MAYBE_AskGoogleContextMenuClickOpensSidePanel \
+  AskGoogleContextMenuClickOpensSidePanel
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksContextMenuAskGoogleInteractiveUiTest,
+                       MAYBE_AskGoogleContextMenuClickOpensSidePanel) {
+  WaitForTemplateURLServiceToLoad();
+  SidePanelUI::From(browser())->DisableAnimationsForTesting();
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride(
+      contextual_tasks::HostOverride{"www.google.com"});
+  base::ScopedClosureRunner clear_host_override(base::BindOnce([]() {
+    contextual_tasks::SetForcedEmbeddedPageHostOverride(std::nullopt);
+  }));
+
+  content::URLLoaderInterceptor url_loader_interceptor(base::BindRepeating(
+      [](content::URLLoaderInterceptor::RequestParams* params) {
+        if (params->url_request.url.host() == "www.google.com" ||
+            params->url_request.url.host() == "www.g.ai") {
+          content::URLLoaderInterceptor::WriteResponse(
+              "HTTP/1.1 200 OK\nContent-Type: text/html\n\n",
+              "<html><body>Mock Page</body></html>", params->client.get());
+          return true;
+        }
+        return false;
+      }));
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const GURL page_url =
+      embedded_test_server()->GetURL(kDocumentWithNamedElement);
+  const DeepQuery kPathToBody{"body"};
+
+  RunTestSequence(
+      InstrumentTab(kTabId, 0), NavigateWebContents(kTabId, page_url),
+      EnsurePresent(kTabId, kPathToBody), WaitForWebContentsPainted(kTabId),
+      WaitForWebContentsReady(kTabId, page_url),
+
+      MoveMouseTo(kTabId), ClickMouse(ui_controls::RIGHT),
+      WaitForShow(RenderViewContextMenu::kAskGoogleAboutThisPageItem),
+      SelectMenuItem(RenderViewContextMenu::kAskGoogleAboutThisPageItem,
+                     InputType::kMouse),
+
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](contextual_tasks::ContextualTasksWebView* web_view) {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      WaitForWebContentsReady(kSidePanelWebContentsId),
+      WaitForJsResultAt(kSidePanelWebContentsId,
+                        DeepQuery{"contextual-tasks-app"},
+                        "el => el.isZeroState_", true),
+      CheckResult(
+          [this]() -> bool {
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
+          },
+          true),
+      CheckResult(
+          [this]() -> std::optional<lens::LensOverlayInvocationSource> {
+            auto* panel_controller =
+                contextual_tasks::ContextualTasksPanelController::From(
+                    browser());
+            if (!panel_controller) {
+              return std::nullopt;
+            }
+            auto* session_handle =
+                panel_controller->GetContextualSearchSessionHandleForPanel();
+            if (!session_handle) {
+              return std::nullopt;
+            }
+            return session_handle->invocation_source();
+          },
+          std::make_optional(
+              lens::LensOverlayInvocationSource::kContentAreaContextMenuPage),
+          "Side panel session has kContentAreaContextMenuPage invocation "
+          "source"));
+}
+
+class ContextualTasksContextMenuSubmenuInteractiveUiTest
+    : public LensOverlayInteractiveTestBase {
+ public:
+  ContextualTasksContextMenuSubmenuInteractiveUiTest() = default;
+  ~ContextualTasksContextMenuSubmenuInteractiveUiTest() override = default;
+
+  void SetUpFeatureList() override {
+    feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/
+        {{contextual_tasks::kContextualTasks, {}},
+         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
+         {lens::features::kLensSidePanelUnification, {}},
+         {contextual_tasks::kContextualTasksUpdatedEntryPoints,
+          {{"ContextualTasksContextMenuShowAskGoogle", "true"},
+           {"ContextualTasksContextMenuSubmenu", "true"},
+           {"ContextualTasksContextMenuRouteAskGoogleToOmnibox", "false"}}}},
+        /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
+  }
+
+  void SetUpInProcessBrowserTestFixture() override {
+    LensOverlayInteractiveTestBase::SetUpInProcessBrowserTestFixture();
+    create_services_subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &ContextualTasksContextMenuSubmenuInteractiveUiTest::
+                    OnWillCreateBrowserContextServices,
+                base::Unretained(this)));
+  }
+
+  void OnWillCreateBrowserContextServices(content::BrowserContext* context) {
+    IdentityTestEnvironmentProfileAdaptor::
+        SetIdentityTestEnvironmentFactoriesOnBrowserContext(context);
+    AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          Profile* profile = Profile::FromBrowserContext(context);
+          return std::make_unique<TestingAimEligibilityService>(
+              /*is_aim_eligible=*/true,
+              /*is_cobrowse_eligible=*/true, *profile->GetPrefs(),
+              TemplateURLServiceFactory::GetForProfile(profile));
+        }));
+    contextual_tasks::ContextualTasksUiServiceFactory::GetInstance()
+        ->SetTestingFactory(
+            context,
+            base::BindLambdaForTesting([](content::BrowserContext* context) {
+              Profile* profile = Profile::FromBrowserContext(context);
+              return static_cast<std::unique_ptr<KeyedService>>(
+                  std::make_unique<TestingContextualTasksUiService>(
+                      profile,
+                      contextual_tasks::ContextualTasksServiceFactory::
+                          GetForProfile(profile),
+                      IdentityManagerFactory::GetForProfile(profile),
+                      AimEligibilityServiceFactory::GetForProfile(profile),
+                      /*cookie_synchronizer=*/nullptr));
+            }));
+  }
+
+  void SetUpOnMainThread() override {
+    host_resolver()->AddRule("www.google.com", "127.0.0.1");
+    host_resolver()->AddRule("www.g.ai", "127.0.0.1");
+    LensOverlayInteractiveTestBase::SetUpOnMainThread();
+    WaitForTemplateURLServiceToLoad();
+  }
+
+ private:
+  base::CallbackListSubscription create_services_subscription_;
+};
+
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_AskGoogleSubmenuItemClickOpensSidePanel \
+  DISABLED_AskGoogleSubmenuItemClickOpensSidePanel
+#else
+#define MAYBE_AskGoogleSubmenuItemClickOpensSidePanel \
+  AskGoogleSubmenuItemClickOpensSidePanel
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksContextMenuSubmenuInteractiveUiTest,
+                       MAYBE_AskGoogleSubmenuItemClickOpensSidePanel) {
+  WaitForTemplateURLServiceToLoad();
+  SidePanelUI::From(browser())->DisableAnimationsForTesting();
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride(
+      contextual_tasks::HostOverride{"www.google.com"});
+  base::ScopedClosureRunner clear_host_override(base::BindOnce([]() {
+    contextual_tasks::SetForcedEmbeddedPageHostOverride(std::nullopt);
+  }));
+
+  content::URLLoaderInterceptor url_loader_interceptor(base::BindRepeating(
+      [](content::URLLoaderInterceptor::RequestParams* params) {
+        if (params->url_request.url.host() == "www.google.com" ||
+            params->url_request.url.host() == "www.g.ai") {
+          content::URLLoaderInterceptor::WriteResponse(
+              "HTTP/1.1 200 OK\nContent-Type: text/html\n\n",
+              "<html><body>Mock Page</body></html>", params->client.get());
+          return true;
+        }
+        return false;
+      }));
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const GURL page_url =
+      embedded_test_server()->GetURL(kDocumentWithNamedElement);
+  const DeepQuery kPathToBody{"body"};
+
+  RunTestSequence(
+      InstrumentTab(kTabId, 0), NavigateWebContents(kTabId, page_url),
+      EnsurePresent(kTabId, kPathToBody), WaitForWebContentsPainted(kTabId),
+      WaitForWebContentsReady(kTabId, page_url),
+
+      MoveMouseTo(kTabId), ClickMouse(ui_controls::RIGHT),
+      WaitForShow(RenderViewContextMenu::kContextualTasksSubmenuItem),
+      SelectMenuItem(RenderViewContextMenu::kContextualTasksSubmenuItem),
+      WaitForShow(RenderViewContextMenu::kAskGoogleAboutThisPageItem),
+      SelectMenuItem(RenderViewContextMenu::kAskGoogleAboutThisPageItem),
+
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      NameViewRelative(kContextualTasksSidePanelWebViewElementId,
+                       "SidePanelContentWebViewName",
+                       [](contextual_tasks::ContextualTasksWebView* web_view) {
+                         return web_view->content_web_view();
+                       }),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              "SidePanelContentWebViewName"),
+      WaitForWebContentsReady(kSidePanelWebContentsId),
+      WaitForJsResultAt(kSidePanelWebContentsId,
+                        DeepQuery{"contextual-tasks-app"},
+                        "el => el.isZeroState_", true),
+      CheckResult(
+          [this]() -> bool {
+            return SidePanelUI::From(browser())->IsSidePanelShowing();
+          },
+          true),
+      CheckResult(
+          [this]() -> std::optional<lens::LensOverlayInvocationSource> {
+            auto* panel_controller =
+                contextual_tasks::ContextualTasksPanelController::From(
+                    browser());
+            if (!panel_controller) {
+              return std::nullopt;
+            }
+            auto* session_handle =
+                panel_controller->GetContextualSearchSessionHandleForPanel();
+            if (!session_handle) {
+              return std::nullopt;
+            }
+            return session_handle->invocation_source();
+          },
+          std::make_optional(
+              lens::LensOverlayInvocationSource::kContentAreaContextMenuPage),
+          "Side panel session has kContentAreaContextMenuPage invocation "
+          "source"));
+}
+
+class ContextualTasksContextMenuRouteOmniboxInteractiveUiTest
+    : public LensOverlayInteractiveTestBase {
+ public:
+  ContextualTasksContextMenuRouteOmniboxInteractiveUiTest() = default;
+  ~ContextualTasksContextMenuRouteOmniboxInteractiveUiTest() override = default;
+
+  void SetUpFeatureList() override {
+    feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/
+        {{contextual_tasks::kContextualTasks, {}},
+         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
+         {lens::features::kLensSidePanelUnification, {}},
+         {contextual_tasks::kContextualTasksUpdatedEntryPoints,
+          {{"ContextualTasksContextMenuShowAskGoogle", "true"},
+           {"ContextualTasksContextMenuSubmenu", "false"},
+           {"ContextualTasksContextMenuRouteAskGoogleToOmnibox", "true"}}},
+         {omnibox::internal::kWebUIOmniboxAimPopup, {}}},
+        /*disabled_features=*/{features::kNonBlockingOsClipboardReads});
+  }
+
+  void SetUpInProcessBrowserTestFixture() override {
+    LensOverlayInteractiveTestBase::SetUpInProcessBrowserTestFixture();
+    create_services_subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &ContextualTasksContextMenuRouteOmniboxInteractiveUiTest::
+                    OnWillCreateBrowserContextServices,
+                base::Unretained(this)));
+  }
+
+  void OnWillCreateBrowserContextServices(content::BrowserContext* context) {
+    IdentityTestEnvironmentProfileAdaptor::
+        SetIdentityTestEnvironmentFactoriesOnBrowserContext(context);
+    AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          Profile* profile = Profile::FromBrowserContext(context);
+          return std::make_unique<TestingAimEligibilityService>(
+              /*is_aim_eligible=*/true,
+              /*is_cobrowse_eligible=*/true, *profile->GetPrefs(),
+              /*template_url_service=*/nullptr);
+        }));
+  }
+
+ private:
+  base::CallbackListSubscription create_services_subscription_;
+};
+
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_AskGoogleContextMenuClickOpensOmnibox \
+  DISABLED_AskGoogleContextMenuClickOpensOmnibox
+#else
+#define MAYBE_AskGoogleContextMenuClickOpensOmnibox \
+  AskGoogleContextMenuClickOpensOmnibox
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksContextMenuRouteOmniboxInteractiveUiTest,
+                       MAYBE_AskGoogleContextMenuClickOpensOmnibox) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kTabId);
+
+  const GURL page_url =
+      embedded_test_server()->GetURL(kDocumentWithNamedElement);
+  const DeepQuery kPathToBody{"body"};
+
+  RunTestSequence(
+      InstrumentTab(kTabId, 0), NavigateWebContents(kTabId, page_url),
+      EnsurePresent(kTabId, kPathToBody), WaitForWebContentsPainted(kTabId),
+      WaitForWebContentsReady(kTabId, page_url),
+
+      MoveMouseTo(kTabId), ClickMouse(ui_controls::RIGHT),
+      WaitForShow(RenderViewContextMenu::kAskGoogleAboutThisPageItem),
+      SelectMenuItem(RenderViewContextMenu::kAskGoogleAboutThisPageItem,
+                     InputType::kMouse),
+
+      PollUntil(
+          [this]() -> bool {
+            LocationBar* location_bar =
+                BrowserWindow::FromBrowser(browser())->GetLocationBar();
+            if (!location_bar) {
+              return false;
+            }
+            OmniboxController* controller =
+                location_bar->GetOmniboxController();
+            return controller &&
+                   controller->popup_state_manager()->popup_state() ==
+                       OmniboxPopupState::kAim;
+          },
+          "Omnibox popup state is kAim"));
 }
 
 }  // namespace

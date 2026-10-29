@@ -1042,6 +1042,7 @@ Verifique suas senhas a qualquer momento no <ph name="GOOGLE_PASSWORD_MANAGER" /
 <translation id="1790976235243700817">Remover acesso</translation>
 <translation id="1791662854739702043">Instalado</translation>
 <translation id="1792619191750875668">Exibição estendida</translation>
+<translation id="1793048658013002380"><ph name="TOOLTIP_TEXT" /> (<ph name="KEYBOARD_SHORTCUT" />)</translation>
 <translation id="1794212650797661990">Ocultar senha de <ph name="DOMAIN" /></translation>
 <translation id="1794791083288629568">Envie um feedback para nos ajudar a corrigir esse problema.</translation>
 <translation id="1795214765651529549">Usar "Clássico"</translation>
@@ -1710,7 +1711,6 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="2300383962156589922">Personalizar e controlar o app <ph name="APP_NAME" /></translation>
 <translation id="2300434721407965566">Para de carregar em 80% para aumentar a vida útil da bateria.</translation>
 <translation id="2301382460326681002">O diretório raiz da extensão é inválido.</translation>
-<translation id="2301402091755573488">Guia compartilhada</translation>
 <translation id="2304820083631266885">Planeta</translation>
 <translation id="2305202347479035002">Como funciona</translation>
 <translation id="2306794767168143227">Salvar no <ph name="BRAND" /> deste dispositivo</translation>
@@ -1729,6 +1729,7 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="2322622365472107569">Horário de término: <ph name="TIME" /></translation>
 <translation id="2323018538045954000">Redes Wi-Fi salvas</translation>
 <translation id="2323685460575935191">Ocultar botões de rolagem</translation>
+<translation id="2325004050205455346">Histórico recente</translation>
 <translation id="2325444234681128157">Lembrar senha</translation>
 <translation id="2326188115274135041">Confirme o PIN para ativar o desbloqueio automático</translation>
 <translation id="2326583548923775947">Esta não é uma Conta do Google. Os itens salvos no Chrome não ficarão disponíveis em outros dispositivos.</translation>
@@ -2087,7 +2088,6 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="2598710988533271874">Novo Chrome disponível</translation>
 <translation id="2599048253926156421">Nome de usuário copiado para a área de transferência</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{1 extensão não segura foi desativada}one{{NUM_SITES} extensão não segura foi desativada}other{{NUM_SITES} extensões não seguras foram desativadas}}</translation>
-<translation id="2603121359676416582">Para esta página</translation>
 <translation id="2603656971249947488">Barra de guias</translation>
 <translation id="2604129989323098489">Os sites geralmente pedem informações sobre as telas para poderem abrir e posicionar as janelas de maneira inteligente, por exemplo, mostrando documentos ou conteúdo em tela cheia lado a lado</translation>
 <translation id="2604255671529671813">Erro de conexão da rede</translation>
@@ -2867,7 +2867,6 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="3166443275568926403">Desempenho e estado da bateria</translation>
 <translation id="3167446923957429259">Mova a boca para a esquerda</translation>
 <translation id="3167562202484086668">Excluir todos os dados do <ph name="BRAND" /></translation>
-<translation id="3169504125849131369">Abrir configurações do Windows</translation>
 <translation id="3175067642577044620">Corpo</translation>
 <translation id="3175862692832442091">Floresta</translation>
 <translation id="3176347586396987181">Use a tecla “z” para tocar em um botão do mouse e pressionar</translation>
@@ -2953,6 +2952,7 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="323262942975422760">Mais opções para editar ou excluir <ph name="ENTITY_INSTANCE_LABEL" />, <ph name="ENTITY_INSTANCE_SUBLABEL" /></translation>
 <translation id="3232754137068452469">App da Web</translation>
 <translation id="3233271424239923319">Fazer backup de apps e arquivos do Linux</translation>
+<translation id="3233577317461669428">Nenhum outro dispositivo encontrado</translation>
 <translation id="3234251228180563751">O nome de usuário tem mais de 1.000 caracteres</translation>
 <translation id="3234978181857588512">Salvar no dispositivo</translation>
 <translation id="3237871032310650497">Excluir dados particionados do site <ph name="SITE_NAME" /> em <ph name="PARTITION_SITE_NAME" />?</translation>
@@ -3027,7 +3027,6 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="3292966601422448005">As permissões concedidas para <ph name="APP_NAME" /> também serão dadas aos apps instalados por ele.</translation>
 <translation id="3293080634164207409">Adicionar guias</translation>
 <translation id="329324683265785818">Iniciar/pausar, atalho do teclado k</translation>
-<translation id="3293644607209440645">Enviar esta página</translation>
 <translation id="3294437725009624529">Visitante</translation>
 <translation id="3294686910656423119">Estatísticas de uso e relatórios de erros</translation>
 <translation id="3295241308788901889">Transmitindo uma guia</translation>
@@ -4763,14 +4762,13 @@ Para gerenciar as configurações dessa conta, instale o app Family Link no seu 
 <translation id="4610493438923139095">Não confiável</translation>
 <translation id="4610637590575890427">Você quis ir a <ph name="SITE" />?</translation>
 <translation id="4611619000650855880">Quando o botão esquerdo do mouse estiver selecionado, use a tecla “/” para clicar duas vezes</translation>
-<translation id="4612841084470706111">Dar acesso a todos os sites solicitados.</translation>
 <translation id="4613271546271159013">Uma extensão alterou a página exibida quando uma nova guia é aberta.</translation>
 <translation id="461613135510474570">Sentença</translation>
 <translation id="461661862154729886">Fonte de energia</translation>
 <translation id="4617001782309103936">Muito curto</translation>
 <translation id="4617270414136722281">Opções de extensão</translation>
 <translation id="4617880081511131945">Não é possível estabelecer uma conexão</translation>
-<translation id="4619564267100705184">Confirmar sua identidade</translation>
+<translation id="4619564267100705184">Confirme sua identidade</translation>
 <translation id="4619615317237390068">Guias de outros dispositivos</translation>
 <translation id="4619910360235236556">&amp;Imprimir seleção de texto…</translation>
 <translation id="4620757807254334872">mouse</translation>
@@ -5730,6 +5728,7 @@ Use Ctrl + Alt + Diminuir brilho para diminuir o zoom.</translation>
 <translation id="5344128444027639014"><ph name="BATTERY_PERCENTAGE" />% (direito)</translation>
 <translation id="534449933710420173">Pasta sem nome</translation>
 <translation id="5345916423802287046">Iniciar app ao fazer login</translation>
+<translation id="5346059693449184483">No que você está pensando agora?</translation>
 <translation id="5350116201946341974">Extravagante</translation>
 <translation id="535123479159372765">Texto copiado de outro dispositivo</translation>
 <translation id="5352257124367865087">Gerenciar permissões de sites</translation>
@@ -5862,7 +5861,7 @@ Você pode atribuir vários interruptores a essa ação.</translation>
 <translation id="5452716108542782563">A extensão "<ph name="NAME" />" está controlando esta configuração. Para mudar o mecanismo de pesquisa padrão, <ph name="BEGIN_LINK_DISABLE" />desative a extensão<ph name="END_LINK_DISABLE" /> ou <ph name="BEGIN_LINK_MANAGE" />gerencie as configurações<ph name="END_LINK_MANAGE" />.</translation>
 <translation id="5452976525201205853"><ph name="LANGUAGE" /> (funciona off-line)</translation>
 <translation id="5454166040603940656">com <ph name="PROVIDER" /></translation>
-<translation id="5457082343331641453">Adicione à pesquisa</translation>
+<translation id="5457082343331641453">Adicionar à pesquisa</translation>
 <translation id="5457459357461771897">Ler e excluir fotos, músicas e outras mídias do seu computador</translation>
 <translation id="5457795687441958389">Continuar sem fazer login</translation>
 <translation id="5458214261780477893">Dvorak</translation>
@@ -7007,6 +7006,7 @@ Não exponha nenhuma informação confidencial.</translation>
 <translation id="6356893102071098867">Confirme se você escolheu a conta certa</translation>
 <translation id="6357305427698525450">Alguns links com suporte ainda serão abertos no app <ph name="APP_NAME" /> ou <ph name="APP_NAME_2" />.</translation>
 <translation id="6357750620525943720">Outros identificadores estáveis (por exemplo, Hashes ou UUIDs)</translation>
+<translation id="6357830294871526418">Guias em outros dispositivos</translation>
 <translation id="6358884629796491903">Dragão</translation>
 <translation id="6359640073754977254">Rolar até a última guia</translation>
 <translation id="6361850914223837199">Detalhes do erro:</translation>
@@ -7057,7 +7057,6 @@ Não exponha nenhuma informação confidencial.</translation>
 <translation id="6400360390396538896">Sempre no site <ph name="ORIGIN" /></translation>
 <translation id="6400714103322134861">Desfocar do grupo de guias</translation>
 <translation id="6401118106417399952">O EID do seu dispositivo é <ph name="EID_NUMBER" />, e o número de série é <ph name="SERIAL_NUMBER" />. Esses números podem ser usados para ativar o serviço.</translation>
-<translation id="6401458660421980302">Para enviar esta guia a outro dispositivo, faça login no Chrome no outro aparelho</translation>
 <translation id="6402042774506839496">Para saber o motivo, entre em contato com o desenvolvedor do app.</translation>
 <translation id="6402921224457714577">Sites podem pedir para controlar e reprogramar seus dispositivos MIDI</translation>
 <translation id="6404511346730675251">Editar favorito</translation>
@@ -7155,7 +7154,6 @@ Não exponha nenhuma informação confidencial.</translation>
 <translation id="6472893788822429178">Mostrar botão "Página inicial"</translation>
 <translation id="6473315466413288899">Selecione uma opção</translation>
 <translation id="6474021817475285003">Ver mais no Google Agenda</translation>
-<translation id="6474401088838630457">Pergunte ao Gemini sobre isso</translation>
 <translation id="6474498546677193336">Não foi possível cancelar o compartilhamento porque um aplicativo está usando a pasta. O compartilhamento da pasta será cancelado assim que o Linux for desligado.</translation>
 <translation id="6474884162850599008">Desconectar a conta do Google Drive</translation>
 <translation id="6476482583633999078">Velocidade da fala</translation>
@@ -7349,7 +7347,6 @@ Há # outras senhas comprometidas. O Gerenciador de senhas do Google recomenda q
 <translation id="6619801788773578757">Adicionar aplicativo em quiosque</translation>
 <translation id="6619990499523117484">Confirme seu PIN</translation>
 <translation id="6621282332208609777">Pergunte ao Google ou digite um URL</translation>
-<translation id="6621391692573306628">Para enviar esta guia a outro dispositivo, faça login no Chrome nos dois aparelhos</translation>
 <translation id="6622980291894852883">Continuar bloqueando imagens</translation>
 <translation id="6624036901798307345">No modo tablet, toque no botão da barra de ferramentas do contador de guias para abrir a nova barra de guias com miniaturas de cada uma.</translation>
 <translation id="6624538059730609162">Fechar visualização à direita</translation>
@@ -8303,7 +8300,7 @@ Há # outras senhas comprometidas. O Gerenciador de senhas do Google recomenda q
 <translation id="7352651011704765696">Algo deu errado</translation>
 <translation id="735288298862560236">{COUNT,plural, =0{Nenhuma senha}=1{Verificando {COUNT} senha…}one{Verificando {COUNT} senha…}other{Verificando {COUNT} senhas…}}</translation>
 <translation id="7353261921908507769">Seus contatos podem compartilhar itens com você quando estão por perto. As transferências só são iniciadas depois que você as aceita.</translation>
-<translation id="7353432112255316844">Confirmar sua identidade</translation>
+<translation id="7353432112255316844">Confirme sua identidade</translation>
 <translation id="7356506068433555887">Palmeira</translation>
 <translation id="7356696499551368971">As permissões escolhidas serão removidas</translation>
 <translation id="7356908624372060336">Registros da rede</translation>
@@ -10461,7 +10458,7 @@ Isso pode incluir informações sobre softwares instalados, arquivos, seu navega
 <translation id="8986362086234534611">Esquecer</translation>
 <translation id="8986494364107987395">Envia estatísticas de uso e relatórios de erros ao Google automaticamente</translation>
 <translation id="8987321822984361516">Navegador gerenciado por uma organização, perfil gerenciado por <ph name="PROFILE_DOMAIN" /></translation>
-<translation id="8987736167266086032">Recomece de onde você parou</translation>
+<translation id="8987736167266086032">Continue de onde você parou</translation>
 <translation id="8987927404178983737">Mês</translation>
 <translation id="8989359959810288806">Atualizar status do tethering</translation>
 <translation id="8989779557457435460">Compartilhar a guia atual por padrão</translation>

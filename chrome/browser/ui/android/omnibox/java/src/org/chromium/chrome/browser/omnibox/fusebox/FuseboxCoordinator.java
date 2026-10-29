@@ -320,14 +320,13 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         mActivity,
                         mWindowAndroid,
                         assumeNonNull(mModel),
-                        assumeNonNull(mViewHolder),
                         mResourceProvider,
                         mTabModelSelectorSupplier,
                         mFuseboxStateSupplier,
                         mPopupStateSupplier,
                         mSnackbarManager,
                         mScrimManager,
-                        mScrimAnchorViewSupplier,
+                        this::getScrimAnchorView,
                         mBackPressManager,
                         mOnFirstPickerInteractionCanceledCallback,
                         mHasAttachmentsSupplier,
@@ -335,6 +334,11 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         if (mLastBrandedColorScheme != null) {
             mMediator.updateVisualsForState(mLastBrandedColorScheme);
         }
+    }
+
+    private View getScrimAnchorView() {
+        View anchor = mScrimAnchorViewSupplier.get();
+        return anchor != null ? anchor : mParent;
     }
 
     public void destroy() {
@@ -487,6 +491,9 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     void onContextPopupDismissed() {
         if (mViewHolder == null || mViewHolder.plusButton == null) return;
         boolean popupItemSelected = mMediator != null && mMediator.wasPopupItemSelected();
+        if (mMediator != null) {
+            mMediator.handleHidePopup();
+        }
         if (!popupItemSelected) {
             mViewHolder.plusButton.requestFocus();
             mViewHolder.plusButton.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);

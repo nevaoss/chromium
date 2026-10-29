@@ -182,7 +182,11 @@ bool RemoteActorCredentialSharingEnabled() {
 // Controls the enablement of structured metrics on Windows, Linux, and Mac.
 BASE_FEATURE(kChromeStructuredMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_MAC)
+// Defers Cocoa spellchecker initialization to a post-startup idle task on
+// macOS.
 BASE_FEATURE(kDeferSpellcheckInitialization, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_MAC)
 
 // Moves the Extensions "puzzle piece" icon from the title bar into the app menu
 // for web app windows.
@@ -439,6 +443,25 @@ const base::FeatureParam<bool> kGlicActorIncrementalTypingClearAutoSelection{
     &kGlicActorIncrementalTyping,
     "glic-actor-incremental-typing-clear-auto-selection", false};
 
+constexpr base::FeatureParam<std::string> kGlicActorEligibleTiers{
+    &kGlicActor, "glic-actor-eligible-tiers", "1,2"};
+
+constexpr base::FeatureParam<GlicActorEnterprisePrefDefault>::Option
+    kGlicActorEnterprisePrefDefaultOptions[] = {
+        {GlicActorEnterprisePrefDefault::kEnabledByDefault,
+         "enabled_by_default"},
+        {GlicActorEnterprisePrefDefault::kDisabledByDefault,
+         "disabled_by_default"},
+        {GlicActorEnterprisePrefDefault::kForcedDisabled, "forced_disabled"},
+};
+
+BASE_FEATURE_ENUM_PARAM(GlicActorEnterprisePrefDefault,
+                        kGlicActorEnterprisePrefDefault,
+                        &kGlicActor,
+                        "glic_actor_enterprise_pref_default",
+                        GlicActorEnterprisePrefDefault::kDisabledByDefault,
+                        &kGlicActorEnterprisePrefDefaultOptions);
+
 BASE_FEATURE(kGlicActorWorkspaceExemptFromTierCheckRegressionFixKillswitch,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -489,6 +512,10 @@ BASE_FEATURE(kGlicCountryFiltering, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicUseSessionCountryForFiltering,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicLocaleFiltering, base::FEATURE_ENABLED_BY_DEFAULT);
+// Controls country filtering for Glic for users who cannot use adult features
+// (e.g. minors). When disabled, such users are blocked in all countries.
+// See chrome/browser/glic/public/glic_enabling.h for more details.
+BASE_FEATURE(kGlicMinorCountryFiltering, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls the bugfix where the unified FRE synchronizes cookies to the wrong
 // storage partition.
@@ -944,8 +971,6 @@ BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
-BASE_FEATURE(kGlicLiveModeOnlyGlow, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kGlicGeminiContinueURLRedirect, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicWebContinuity, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kGlicWebContinuityUrl{
@@ -960,15 +985,6 @@ const base::FeatureParam<int> kGlicWebContinuityMaxTurnIdLength{
     &kGlicWebContinuity, "glic-web-continuity-max-turn-id-length", 32};
 
 BASE_FEATURE(kGlicUseToolbarHeightSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kGlicButtonPressedState, base::FEATURE_ENABLED_BY_DEFAULT);
-
-const base::FeatureParam<bool> kGlicButtonContainerBackground{
-    &kGlicButtonPressedState, "glic-button-container-background", false};
-const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon{
-    &kGlicButtonPressedState, "glic-button-pressed-force-solid-icon", true};
-const base::FeatureParam<bool> kGlicButtonCustomThemeFallback{
-    &kGlicButtonPressedState, "custom-theme-fallback", true};
 
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1031,9 +1047,6 @@ BASE_FEATURE(kGlicActorAutofillSectionLabel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicGuestUrlPresets, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicGuestUrlPresetType{
     &kGlicGuestUrlPresets, "glic-guest-url-preset-type", 0};
-
-BASE_FEATURE(kGlicContextualCueBubble, base::FEATURE_DISABLED_BY_DEFAULT);
-
 
 // Enables the `google-chrome://` URI scheme.
 BASE_FEATURE(kGoogleChromeScheme, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1399,6 +1412,19 @@ BASE_FEATURE_PARAM(bool,
                    kLazyKeyedServiceInstantiationOptimizationGuide,
                    &kLazyKeyedServiceInstantiation,
                    true);
+
+// When enabled, Optimization Guide model keyed services are instantiated
+// after startup or on demand rather than eagerly during BrowserContext
+// creation.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationOptimizationGuideModels,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+bool IsLazyOptimizationGuideModelsEnabled() {
+  return base::FeatureList::IsEnabled(kLazyKeyedServiceInstantiation) &&
+         kLazyKeyedServiceInstantiationOptimizationGuideModels.Get();
+}
 
 // When enabled, Safe Browsing keyed services are instantiated lazily.
 BASE_FEATURE_PARAM(bool,

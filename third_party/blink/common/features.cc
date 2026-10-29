@@ -1703,6 +1703,7 @@ BASE_FEATURE_PARAM(int,
                    5
 #endif
 );
+BASE_FEATURE_PARAM(int, kRandomAnchorSamplingPeriod, &kNavigationPredictor, 0);
 
 // Used to control the collection of new viewport related anchor element
 // metrics. Metrics will not be recorded if either this or kNavigationPredictor
@@ -1817,12 +1818,11 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "hover_dwell_time",
                    base::Milliseconds(10));
 BASE_FEATURE(kPreloadingEagerViewportHeuristics,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(bool,
+                   kPreloadingEagerViewportHeuristicsForDevToolsEmulation,
+                   &kPreloadingEagerViewportHeuristics,
+                   true);
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kPreloadingEagerViewportHeuristicsPresentTime,
                    &kPreloadingEagerViewportHeuristics,
@@ -1864,17 +1864,15 @@ BASE_FEATURE_PARAM(int,
                    50);
 
 BASE_FEATURE(kPreloadingModerateViewportHeuristics,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kPreloadingModerateViewportHeuristicsEnactCandidates,
                    &kPreloadingModerateViewportHeuristics,
-                   "enact_candidates",
-                   BUILDFLAG(IS_ANDROID));
+                   true);
+BASE_FEATURE_PARAM(bool,
+                   kPreloadingModerateViewportHeuristicsForDevToolsEmulation,
+                   &kPreloadingModerateViewportHeuristics,
+                   true);
 
 BASE_FEATURE(kPreloadingEligibilityCheckOnRenderer,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2061,7 +2059,6 @@ BASE_FEATURE(kSendCnameAliasesToSubresourceFilterFromRenderer,
 BASE_FEATURE(kSetIntervalWithoutClamp, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSetSelectionForAccessibilityHandlingInputEvent,
-             "SetSelectionForAccessibilityHandlingInputEvent",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSharedStorageWorkletSharedBackingThreadImplementation,
@@ -2122,7 +2119,6 @@ BASE_FEATURE(kServiceWorkerRaceNetworkRequestFallbackOnDisconnect,
 // ServiceWorker. For navigation requests, the pre-learned static response
 // header is returned in parallel with dispatching the network request.
 BASE_FEATURE(kServiceWorkerSyntheticResponse,
-             "ServiceWorkerSyntheticResponse",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // (crbug.com/539155958): When enabled, ServiceWorkerDatabase treats missing

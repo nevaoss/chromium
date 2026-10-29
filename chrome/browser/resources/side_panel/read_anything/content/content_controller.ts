@@ -522,7 +522,9 @@ export class ContentController {
     const url = this.contentBrowserProxy_.getUrl(nodeId);
     if (!this.shouldShowLinks_() && htmlTag === LINKS_ON_TAG) {
       htmlTag = LINKS_OFF_TAG;
-      dataAttributes.set(LINK_DATA_ATTR, url ?? '');
+      if (url) {
+        dataAttributes.set(LINK_DATA_ATTR, url);
+      }
     }
 
     const element = document.createElement(htmlTag);
@@ -772,11 +774,15 @@ export class ContentController {
 
     // Set the url information on the new element.
     if (showLinks) {
-      const url = elemToReplace.dataset[LINK_DATA_ATTR] ?? '';
-      this.setLinkAttributes_(newElem, url, nodeId);
+      const url = elemToReplace.dataset[LINK_DATA_ATTR];
+      if (url) {
+        this.setLinkAttributes_(newElem, url, nodeId);
+      }
     } else {
-      const url = elemToReplace.getAttribute('href') ?? '';
-      newElem.dataset[LINK_DATA_ATTR] = url;
+      const url = elemToReplace.getAttribute('href');
+      if (url) {
+        newElem.dataset[LINK_DATA_ATTR] = url;
+      }
     }
 
     // Remove the highlighting formatting when showing links, and add it back
@@ -850,6 +856,13 @@ export class ContentController {
   }
 
   onRenderedTextBlocksAvailable(container: HTMLElement) {
+    const renderedTextNodes = getReadingModeTextNodes(container);
+
+    // Final check to ensure there are actually visible text nodes.
+    // Otherwise, a blank screen may be shown instead of the empty state
+    // page.
+    this.setEmptyIfNoTextNodesAvailable(renderedTextNodes);
+
     if (!isDistilledByReadability() ||
         !this.contentBrowserProxy_.isReadabilitySelectTextEnabled()) {
       return;
@@ -858,13 +871,31 @@ export class ContentController {
     // Capture the specific node instances currently rendered in the UI.
     // We store them in an array so that the index becomes the identifier that
     // links this node to its AXTree mapping in the renderer.
-    this.renderedTextNodes_ = getReadingModeTextNodes(container);
+    this.renderedTextNodes_ = renderedTextNodes;
 
     // Extract the raw text content from each node to send to the mapping
     // algorithm in the renderer.
     const blocks = this.renderedTextNodes_.map(n => n.textContent || '');
 
     this.contentBrowserProxy_.onRenderedTextBlocksAvailable(blocks);
+  }
+
+  setEmptyIfNoTextNodesAvailable(nodes: Node[]) {
+    if (!nodes || nodes.length === 0) {
+      this.setEmpty();
+    }
+  }
+
+  onImagesVisibilityChanged(container: HTMLElement, shadowRoot?: ShadowRoot) {
+    this.updateImages(shadowRoot);
+
+    // Toggling the images toggle may mean that reading mode is going from
+    // no content to content or from content to no content (e.g. on pages
+    // with no text outside of image captions), so recompute if there's
+    // distillable content each time Images are toggled. This is called in
+    // a wrapper for updateImages instead of in updateImages directly to
+    // avoid creating new tree walkers each time updateImages is called.
+    this.setEmptyIfNoTextNodesAvailable(getReadingModeTextNodes(container));
   }
 
   updateImages(shadowRoot?: ShadowRoot) {
@@ -902,7 +933,8 @@ export class ContentController {
       return;
     }
 
-    const anchors = Array.from(root.querySelectorAll<HTMLAnchorElement>('a'));
+    const anchors = Array.from(root.querySelectorAll<HTMLElement>(
+        `${LINKS_ON_TAG}, ${LINKS_OFF_SELECTOR}`));
     const originalAnchors: Record<string, AxTreeAnchorMetadata[]> =
         this.contentBrowserProxy_.getAxTreeAnchors();
     let successCount = 0;
@@ -911,7 +943,8 @@ export class ContentController {
     let tooManyMatchesCount = 0;
     for (const anchor of anchors) {
       // Use raw href attribute to match axTreeAnchors keys correctly
-      const url = anchor.getAttribute('href') || '';
+      const url =
+          anchor.getAttribute('href') || anchor.dataset[LINK_DATA_ATTR] || '';
       if (!url) {
         noHrefCount++;
         this.transformLinkContainer_(anchor, false);
@@ -921,6 +954,7 @@ export class ContentController {
       const options = originalAnchors[url];
       if (!options) {
         noMatchCount++;
+        anchor.removeAttribute('href');
         this.transformLinkContainer_(anchor, false);
         continue;
       }
@@ -938,6 +972,7 @@ export class ContentController {
       if (matchIndex === null || matchIndex >= options.length) {
         tooManyMatchesCount++;
         // Convert the anchor to text if no match is found.
+        anchor.removeAttribute('href');
         this.transformLinkContainer_(anchor, false);
         continue;
       }
@@ -958,7 +993,9 @@ export class ContentController {
 
       const nodeID = match.axId;
       this.nodeStore_.setDomNode(anchor, nodeID);
-      this.setLinkAttributes_(anchor, url, nodeID);
+      if (anchor.nodeName === 'A') {
+        this.setLinkAttributes_(anchor, url, nodeID);
+      }
       successCount++;
     }
 
@@ -973,8 +1010,7 @@ export class ContentController {
   }
 
   private findStrictMatch_(
-      domNode: HTMLAnchorElement, candidates: AxTreeAnchorMetadata[]): number
-      |null {
+      domNode: HTMLElement, candidates: AxTreeAnchorMetadata[]): number|null {
     let bestCandidateIndex: number|null = null;
     let highestScore = -1;
     let tieDetected = false;
@@ -1016,7 +1052,7 @@ export class ContentController {
   //    links (e.g., "Read More").
   // 4. Attributes (Title/Target): Micro tie-breakers for edge cases.
   private calculateMatchScore_(
-      domNode: HTMLAnchorElement, axLink: AxTreeAnchorMetadata): number {
+      domNode: HTMLElement, axLink: AxTreeAnchorMetadata): number {
     if (!domNode || !axLink) {
       return 0;
     }
@@ -1065,8 +1101,9 @@ export class ContentController {
     if (axLink.title && domNode.title && axLink.title === domNode.title) {
       score += 7;
     }
-    if (axLink.target && domNode.target &&
-        axLink.target.toLowerCase() === domNode.target.toLowerCase()) {
+    const target = domNode.getAttribute('target');
+    if (axLink.target && target &&
+        axLink.target.toLowerCase() === target.toLowerCase()) {
       score += 3;
     }
 

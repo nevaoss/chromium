@@ -16,6 +16,7 @@
 #include "base/barrier_closure.h"
 #include "base/compiler_specific.h"
 #include "base/containers/flat_map.h"
+#include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -30,6 +31,7 @@
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/traced_value.h"
+#include "components/services/storage/public/cpp/big_io_buffer.h"
 #include "content/browser/cache_storage/cache_storage.h"
 #include "content/browser/cache_storage/cache_storage.pb.h"
 #include "content/browser/cache_storage/cache_storage_blob_to_disk_cache.h"
@@ -42,7 +44,10 @@
 #include "content/browser/cache_storage/cache_storage_scheduler.h"
 #include "content/browser/cache_storage/cache_storage_trace_utils.h"
 #include "content/common/background_fetch/background_fetch_types.h"
+#include "content/common/features.h"
 #include "crypto/hmac.h"
+#include "mojo/public/cpp/bindings/pending_receiver.h"
+#include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/base/completion_repeating_callback.h"
 #include "net/base/io_buffer.h"
@@ -483,10 +488,24 @@ blink::mojom::FetchAPIResponsePtr CreateResponse(
     padding = storage::ComputeRandomResponsePadding();
   }
 
+  network::mojom::FetchResponseType response_type =
+      ProtoResponseTypeToFetchResponseType(metadata.response().response_type());
+
+  // The stored `request_include_credentials` bit is supplied by the renderer
+  // via cache.put(), so it cannot be trusted for opaque responses, whose
+  // original credential mode is not otherwise observable. When the feature is
+  // enabled we treat them as credentialed, which disables the
+  // COEP:credentialless CORP exemption. This is the only place the stored bit
+  // is consumed, so sanitizing here covers every entry, including ones written
+  // before the feature was enabled.
+  bool stored_include_credentials =
+      !metadata.response().has_request_include_credentials() ||
+      metadata.response().request_include_credentials();
   bool request_include_credentials =
-      metadata.response().has_request_include_credentials()
-          ? metadata.response().request_include_credentials()
-          : true;
+      stored_include_credentials ||
+      (response_type == network::mojom::FetchResponseType::kOpaque &&
+       base::FeatureList::IsEnabled(
+           features::kCacheStorageOpaqueResponseCredentialedForCorp));
 
   // Default to true for existing cache entries stored before this field was
   // introduced. Downstream loaders will still check Timing-Allow-Origin headers
@@ -501,16 +520,16 @@ blink::mojom::FetchAPIResponsePtr CreateResponse(
 
   return blink::mojom::FetchAPIResponse::New(
       url_list, metadata.response().status_code(),
-      metadata.response().status_text(),
-      ProtoResponseTypeToFetchResponseType(metadata.response().response_type()),
-      padding, network::mojom::FetchResponseSource::kCacheStorage, headers,
-      mime_type, request_method, /*blob=*/nullptr,
+      metadata.response().status_text(), response_type, padding,
+      network::mojom::FetchResponseSource::kCacheStorage, headers, mime_type,
+      request_method, /*blob=*/nullptr,
       blink::mojom::ServiceWorkerResponseError::kUnknown, response_time,
       base::UTF16ToUTF8(cache_name),
+      /*cache_storage_side_data_writer=*/mojo::NullRemote(),
       std::vector<std::string>(
           metadata.response().cors_exposed_header_names().begin(),
           metadata.response().cors_exposed_header_names().end()),
-      /*side_data_blob=*/nullptr, /*side_data_blob_for_cache_put=*/nullptr,
+      /*side_data_blob=*/nullptr, /*side_data_for_cache_put=*/std::nullopt,
       network::mojom::ParsedHeaders::New(),
       // Default proto value of 0 maps to HttpConnectionInfo::kUNKNOWN.
       static_cast<net::HttpConnectionInfo>(
@@ -605,6 +624,52 @@ struct CacheStorageCache::BatchInfo {
   const int64_t trace_id = 0;
 };
 
+class CacheStorageCache::SideDataWriter
+    : public network::mojom::CacheStorageSideDataWriter {
+ public:
+  SideDataWriter(
+      CacheStorageCache* cache,
+      const GURL& url,
+      base::Time expected_response_time,
+      mojo::PendingReceiver<network::mojom::CacheStorageSideDataWriter>
+          receiver)
+      : handle_(cache->CreateHandle()),
+        url_(url),
+        expected_response_time_(expected_response_time),
+        receiver_(this, std::move(receiver)) {
+    receiver_.set_disconnect_handler(
+        base::BindOnce(&SideDataWriter::OnDisconnect, base::Unretained(this)));
+  }
+
+  SideDataWriter(const SideDataWriter&) = delete;
+  SideDataWriter& operator=(const SideDataWriter&) = delete;
+
+  ~SideDataWriter() override = default;
+
+  const GURL& url() const { return url_; }
+
+  // network::mojom::CacheStorageSideDataWriter:
+  void WriteSideData(mojo_base::BigBuffer data) override {
+    int64_t trace_id = blink::cache_storage::CreateTraceId();
+    TRACE_EVENT("CacheStorage",
+                "CacheStorageCache::SideDataWriter::WriteSideData",
+                perfetto::Flow::Global(trace_id), "url", url_.spec());
+    CacheStorageCache* cache = CacheStorageCache::From(handle_);
+    cache->WriteSideData(std::move(handle_), url_, expected_response_time_,
+                         trace_id, std::move(data));
+  }
+
+ private:
+  void OnDisconnect() {
+    CacheStorageCache::From(handle_)->SideDataWriterDisconnected(this);
+  }
+
+  CacheStorageCacheHandle handle_;
+  const GURL url_;
+  const base::Time expected_response_time_;
+  mojo::Receiver<network::mojom::CacheStorageSideDataWriter> receiver_;
+};
+
 // static
 std::unique_ptr<CacheStorageCache> CacheStorageCache::CreateMemoryCache(
     const storage::BucketLocator& bucket_locator,
@@ -643,6 +708,50 @@ std::unique_ptr<CacheStorageCache> CacheStorageCache::CreatePersistentCache(
   cache->SetObserver(cache_storage);
   cache->InitBackend();
   return base::WrapUnique(cache);
+}
+
+mojo::PendingRemote<network::mojom::CacheStorageSideDataWriter>
+CacheStorageCache::CreateSideDataWriter(const GURL& url,
+                                        base::Time expected_response_time) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (backend_state_ == BACKEND_CLOSED) {
+    return mojo::NullRemote();
+  }
+  mojo::PendingRemote<network::mojom::CacheStorageSideDataWriter> remote;
+  side_data_writers_.insert(std::make_unique<SideDataWriter>(
+      this, NormalizeCacheUrl(url), expected_response_time,
+      remote.InitWithNewPipeAndPassReceiver()));
+  return remote;
+}
+
+void CacheStorageCache::SideDataWriterDisconnected(SideDataWriter* writer) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto it = side_data_writers_.find(writer);
+  if (it != side_data_writers_.end()) {
+    // Extract the node before destroying `SideDataWriter`, as dropping its
+    // `CacheStorageCacheHandle` may synchronously delete `this`.
+    std::ignore = side_data_writers_.extract(it);
+  }
+}
+
+void CacheStorageCache::InvalidateSideDataWriters(std::optional<GURL> url) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // Extract nodes before destroying `SideDataWriter` instances, as dropping
+  // their `CacheStorageCacheHandle`s may synchronously delete `this`.
+  if (!url.has_value()) {
+    auto writers = std::move(side_data_writers_);
+    return;
+  }
+  GURL normalized_url = NormalizeCacheUrl(*url);
+  std::vector<std::unique_ptr<SideDataWriter>> writers_to_delete;
+  for (auto it = side_data_writers_.begin(); it != side_data_writers_.end();) {
+    if ((*it)->url() == normalized_url) {
+      writers_to_delete.push_back(
+          std::move(side_data_writers_.extract(it++).value()));
+    } else {
+      ++it;
+    }
+  }
 }
 
 base::WeakPtr<CacheStorageCache> CacheStorageCache::AsWeakPtr() {
@@ -726,20 +835,19 @@ void CacheStorageCache::MatchAll(
           scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
 }
 
-void CacheStorageCache::WriteSideData(ErrorCallback callback,
-                                      const GURL& url,
+void CacheStorageCache::WriteSideData(CacheStorageCacheHandle cache_handle,
+                                      GURL url,
                                       base::Time expected_response_time,
                                       int64_t trace_id,
-                                      scoped_refptr<net::IOBuffer> buffer,
-                                      int buf_len) {
+                                      mojo_base::BigBuffer data) {
+  InvalidateSideDataWriters(url);
+
   if (IsClosingOrClosed()) {
-    scheduler_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            std::move(callback),
-            MakeErrorStorage(ErrorStorageType::kWriteSideDataBackendClosed)));
     return;
   }
+
+  // Copy shared memory to a private heap buffer to avoid TOCTOU issues.
+  data.MakePrivateBytes();
 
   // GetBucketSpaceRemaining is called before entering a scheduled operation
   // since it can call Size, another scheduled operation.
@@ -747,8 +855,8 @@ void CacheStorageCache::WriteSideData(ErrorCallback callback,
       bucket_locator_, scheduler_task_runner_,
       base::BindOnce(
           &CacheStorageCache::WriteSideDataDidGetBucketSpaceRemaining,
-          weak_ptr_factory_.GetWeakPtr(), std::move(callback), url,
-          expected_response_time, trace_id, buffer, buf_len));
+          weak_ptr_factory_.GetWeakPtr(), std::move(cache_handle),
+          std::move(url), expected_response_time, trace_id, std::move(data)));
 }
 
 void CacheStorageCache::BatchOperation(
@@ -807,10 +915,17 @@ void CacheStorageCache::BatchOperation(
   for (const auto& operation : operations) {
     if (operation->operation_type == blink::mojom::OperationType::kPut) {
       safe_space_required += CalculateRequiredSafeSpaceForPut(operation);
-      safe_side_data_size +=
-          (operation->response->side_data_blob_for_cache_put
-               ? operation->response->side_data_blob_for_cache_put->size
-               : 0);
+      std::optional<mojo_base::BigBuffer>& side_data =
+          operation->response->side_data_for_cache_put;
+      if (side_data) {
+        if (side_data->size() == 0) {
+          // Empty side data is invalid (should have been nullopt).
+          safe_side_data_size = base::CheckedNumeric<uint64_t>(-1);
+        } else {
+          side_data->MakePrivateBytes();
+          safe_side_data_size += side_data->size();
+        }
+      }
     }
   }
   if (!safe_space_required.IsValid() || !safe_side_data_size.IsValid()) {
@@ -913,7 +1028,7 @@ void CacheStorageCache::BatchDidGetBucketSpaceRemaining(
     switch (operation->operation_type) {
       case blink::mojom::OperationType::kPut:
         if (skip_side_data) {
-          operation->response->side_data_blob_for_cache_put = nullptr;
+          operation->response->side_data_for_cache_put.reset();
           Put(std::move(operation), trace_id, completion_callback);
         } else {
           Put(std::move(operation), trace_id, completion_callback);
@@ -1355,6 +1470,9 @@ void CacheStorageCache::QueryCacheDidReadMetadata(
           .Run(CacheStorageError::kErrorQueryTooLarge, nullptr);
       return;
     }
+    match->response->cache_storage_side_data_writer =
+        CreateSideDataWriter(GURL(blob_entry->disk_cache_entry()->GetKey()),
+                             match->response->response_time);
     if (blob_entry->disk_cache_entry()->GetDataSize(INDEX_RESPONSE_BODY) == 0) {
       QueryCacheOpenNextEntry(std::move(query_cache_context));
       return;
@@ -1562,30 +1680,23 @@ void CacheStorageCache::WriteMetadata(disk_cache::Entry* entry,
 }
 
 void CacheStorageCache::WriteSideDataDidGetBucketSpaceRemaining(
-    ErrorCallback callback,
+    CacheStorageCacheHandle cache_handle,
     const GURL& url,
     base::Time expected_response_time,
     int64_t trace_id,
-    scoped_refptr<net::IOBuffer> buffer,
-    int buf_len,
+    mojo_base::BigBuffer data,
     storage::QuotaErrorOr<int64_t> space_remaining) {
   TRACE_EVENT("CacheStorage",
               "CacheStorageCache::WriteSideDataDidGetBucketSpaceRemaining",
               perfetto::Flow::Global(trace_id));
 
   if (IsClosingOrClosed()) {
-    scheduler_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            std::move(callback),
-            MakeErrorStorage(ErrorStorageType::kWriteSideDataBackendClosed)));
     return;
   }
 
-  if (!space_remaining.has_value() || space_remaining.value() < buf_len) {
-    scheduler_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  CacheStorageError::kErrorQuotaExceeded));
+  if (!space_remaining.has_value() ||
+      !base::IsValueInRangeForNumericType<int64_t>(data.size()) ||
+      space_remaining.value() < static_cast<int64_t>(data.size())) {
     return;
   }
 
@@ -1594,35 +1705,32 @@ void CacheStorageCache::WriteSideDataDidGetBucketSpaceRemaining(
       id, CacheStorageSchedulerMode::kExclusive,
       CacheStorageSchedulerOp::kWriteSideData,
       CacheStorageSchedulerPriority::kNormal,
-      base::BindOnce(&CacheStorageCache::WriteSideDataImpl,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     scheduler_->WrapCallbackToRunNext(id, std::move(callback)),
-                     url, expected_response_time, trace_id, buffer, buf_len));
+      base::BindOnce(
+          &CacheStorageCache::WriteSideDataImpl, weak_ptr_factory_.GetWeakPtr(),
+          scheduler_->WrapCallbackToRunNext(
+              id, base::OnceClosure(
+                      base::DoNothingWithBoundArgs(std::move(cache_handle)))),
+          url, expected_response_time, trace_id, std::move(data)));
 }
 
-void CacheStorageCache::WriteSideDataImpl(ErrorCallback callback,
+void CacheStorageCache::WriteSideDataImpl(base::OnceClosure callback,
                                           const GURL& url,
                                           base::Time expected_response_time,
                                           int64_t trace_id,
-                                          scoped_refptr<net::IOBuffer> buffer,
-                                          int buf_len) {
+                                          mojo_base::BigBuffer data) {
   CHECK_NE(BACKEND_UNINITIALIZED, backend_state_, base::NotFatalUntil::M158);
   TRACE_EVENT("CacheStorage", "CacheStorageCache::WriteSideDataImpl",
               perfetto::Flow::Global(trace_id), "url", url.spec());
   if (backend_state_ != BACKEND_OPEN) {
-    std::move(callback).Run(
-        MakeErrorStorage(ErrorStorageType::kWriteSideDataImplBackendClosed));
+    MakeErrorStorage(ErrorStorageType::kWriteSideDataImplBackendClosed);
+    std::move(callback).Run();
     return;
   }
-
-  // Hold the cache alive while performing any operation touching the
-  // disk_cache backend.
-  callback = WrapCallbackWithHandle(std::move(callback));
 
   auto split_callback = base::SplitOnceCallback(
       base::BindOnce(&CacheStorageCache::WriteSideDataDidOpenEntry,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     expected_response_time, trace_id, buffer, buf_len));
+                     expected_response_time, trace_id, std::move(data)));
 
   // Note, the simple disk_cache priority is not important here because we
   // only allow one write operation at a time.  Therefore there will be no
@@ -1635,17 +1743,16 @@ void CacheStorageCache::WriteSideDataImpl(ErrorCallback callback,
 }
 
 void CacheStorageCache::WriteSideDataDidOpenEntry(
-    ErrorCallback callback,
+    base::OnceClosure callback,
     base::Time expected_response_time,
     int64_t trace_id,
-    scoped_refptr<net::IOBuffer> buffer,
-    int buf_len,
+    mojo_base::BigBuffer data,
     disk_cache::EntryResult result) {
   TRACE_EVENT("CacheStorage", "CacheStorageCache::WriteSideDataDidOpenEntry",
               perfetto::Flow::Global(trace_id));
 
   if (result.net_error() != net::OK) {
-    std::move(callback).Run(CacheStorageError::kErrorNotFound);
+    std::move(callback).Run();
     return;
   }
 
@@ -1659,15 +1766,14 @@ void CacheStorageCache::WriteSideDataDidOpenEntry(
                base::BindOnce(&CacheStorageCache::WriteSideDataDidReadMetaData,
                               weak_ptr_factory_.GetWeakPtr(),
                               std::move(callback), expected_response_time,
-                              trace_id, buffer, buf_len, std::move(entry)));
+                              trace_id, std::move(data), std::move(entry)));
 }
 
 void CacheStorageCache::WriteSideDataDidReadMetaData(
-    ErrorCallback callback,
+    base::OnceClosure callback,
     base::Time expected_response_time,
     int64_t trace_id,
-    scoped_refptr<net::IOBuffer> buffer,
-    int buf_len,
+    mojo_base::BigBuffer data,
     ScopedWritableEntry entry,
     std::unique_ptr<proto::CacheMetadata> headers) {
   TRACE_EVENT("CacheStorage", "CacheStorageCache::WriteSideDataDidReadMetaData",
@@ -1681,6 +1787,9 @@ void CacheStorageCache::WriteSideDataDidReadMetaData(
   }
   // Get a temporary copy of the entry pointer before passing it in base::Bind.
   disk_cache::Entry* temp_entry_ptr = entry.get();
+
+  auto buffer = base::MakeRefCounted<storage::BigIOBuffer>(std::move(data));
+  int buf_len = buffer->size();
 
   // Create a callback that is copyable, even though it can only be called once.
   // BindRepeating() cannot be used directly because |callback|, |entry| and
@@ -1700,7 +1809,7 @@ void CacheStorageCache::WriteSideDataDidReadMetaData(
 }
 
 void CacheStorageCache::WriteSideDataDidWrite(
-    ErrorCallback callback,
+    base::OnceClosure callback,
     ScopedWritableEntry entry,
     int expected_bytes,
     std::unique_ptr<::content::proto::CacheMetadata> metadata,
@@ -1742,12 +1851,13 @@ void CacheStorageCache::WriteSideDataDidWrite(
                         CacheStorageError::kSuccess);
 }
 
-void CacheStorageCache::WriteSideDataDidWriteMetadata(ErrorCallback callback,
-                                                      ScopedWritableEntry entry,
-                                                      int64_t padding,
-                                                      int64_t side_data_padding,
-                                                      int expected_bytes,
-                                                      int rv) {
+void CacheStorageCache::WriteSideDataDidWriteMetadata(
+    base::OnceClosure callback,
+    ScopedWritableEntry entry,
+    int64_t padding,
+    int64_t side_data_padding,
+    int expected_bytes,
+    int rv) {
   auto result = blink::mojom::CacheStorageError::kSuccess;
   if (rv != expected_bytes) {
     result = MakeErrorStorage(
@@ -1758,7 +1868,7 @@ void CacheStorageCache::WriteSideDataDidWriteMetadata(ErrorCallback callback,
 }
 
 void CacheStorageCache::WriteSideDataComplete(
-    ErrorCallback callback,
+    base::OnceClosure callback,
     ScopedWritableEntry entry,
     int64_t padding,
     int64_t side_data_padding,
@@ -1770,18 +1880,18 @@ void CacheStorageCache::WriteSideDataComplete(
     if (error != CacheStorageError::kErrorNotFound) {
       entry.reset();
       cache_padding_ -= (padding + side_data_padding);
-      UpdateCacheSize(base::BindOnce(std::move(callback), error));
+      UpdateCacheSize(std::move(callback));
       return;
     }
 
     entry.get_deleter()
         .WritingCompleted();  // Since we didn't change the entry.
-    std::move(callback).Run(error);
+    std::move(callback).Run();
     return;
   }
 
   entry.get_deleter().WritingCompleted();  // Since we didn't change the entry.
-  UpdateCacheSize(base::BindOnce(std::move(callback), error));
+  UpdateCacheSize(std::move(callback));
 }
 
 void CacheStorageCache::Put(blink::mojom::BatchOperationPtr operation,
@@ -1905,6 +2015,8 @@ void CacheStorageCache::PutDidCreateEntry(
   // via WritingCompleted.
   put_context->cache_entry.reset(result.ReleaseEntry());
 
+  InvalidateSideDataWriters(put_context->request->url);
+
   if (rv != net::OK) {
     quota_manager_proxy_->OnClientWriteFailed(bucket_locator_.storage_key);
     PutComplete(std::move(put_context), CacheStorageError::kErrorExists);
@@ -1978,11 +2090,19 @@ void CacheStorageCache::PutDidCreateEntry(
 
   int64_t side_data_padding = 0;
   if (ShouldPadResourceSize(*put_context->response) &&
-      put_context->side_data_blob) {
+      (put_context->side_data_blob || put_context->side_data_buffer)) {
+    const uint64_t side_data_size = put_context->side_data_blob
+                                        ? put_context->side_data_blob_size
+                                        : put_context->side_data_buffer->size();
     side_data_padding = CalculateSideDataPadding(
-        bucket_locator_, response_metadata, put_context->side_data_blob_size);
+        bucket_locator_, response_metadata, side_data_size);
   }
   response_metadata->set_side_data_padding(side_data_padding);
+  // Stored verbatim: this value is renderer-supplied via cache.put() and is
+  // not trusted. It is sanitized on read in CreateResponse(), which is the
+  // only consumer, so that disabling
+  // kCacheStorageOpaqueResponseCredentialedForCorp fully restores the previous
+  // behaviour for already-stored entries.
   response_metadata->set_request_include_credentials(
       put_context->response->request_include_credentials);
   response_metadata->set_timing_allow_passed(
@@ -2032,6 +2152,8 @@ void CacheStorageCache::PutWriteBlobToCache(
               perfetto::Flow::Global(put_context->trace_id));
 
   mojo::PendingRemote<blink::mojom::Blob> blob;
+  mojo::PendingRemote<blink::mojom::Blob> side_data_blob;
+  std::optional<mojo_base::BigBuffer> side_data_buffer;
   int64_t blob_size = 0;
 
   switch (disk_cache_body_index) {
@@ -2042,9 +2164,15 @@ void CacheStorageCache::PutWriteBlobToCache(
       break;
     }
     case INDEX_SIDE_DATA: {
-      blob = std::move(put_context->side_data_blob);
-      put_context->side_data_blob.reset();
-      blob_size = put_context->side_data_blob_size;
+      if (put_context->side_data_blob) {
+        CHECK(!put_context->side_data_buffer);
+        side_data_blob = std::move(put_context->side_data_blob);
+        blob_size = put_context->side_data_blob_size;
+        put_context->side_data_blob.reset();
+      } else {
+        side_data_buffer = std::move(put_context->side_data_buffer);
+        put_context->side_data_buffer.reset();
+      }
       break;
     }
     case INDEX_HEADERS:
@@ -2056,7 +2184,7 @@ void CacheStorageCache::PutWriteBlobToCache(
   // If there isn't blob data for this index, then we may need to clear any
   // pre-existing data.  This can happen under rare circumstances if a stale
   // file is present and accepted by OpenOrCreateEntry().
-  if (!blob) {
+  if (!blob && !side_data_blob && !side_data_buffer) {
     disk_cache::Entry* temp_entry_ptr = entry.get();
 
     auto clear_callback =
@@ -2085,6 +2213,31 @@ void CacheStorageCache::PutWriteBlobToCache(
     return;
   }
 
+  if (side_data_buffer) {
+    base::ByteSize buffer_size(side_data_buffer->size());
+    scoped_refptr<storage::BigIOBuffer> side_data_io_buffer =
+        base::MakeRefCounted<storage::BigIOBuffer>(
+            std::move(*side_data_buffer));
+    disk_cache::Entry* temp_entry_ptr = entry.get();
+    auto split_callback = base::SplitOnceCallback(
+        base::BindOnce(&CacheStorageCache::PutDidWriteSideDataToCache,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(put_context),
+                       disk_cache_body_index, std::move(entry), buffer_size));
+    int rv = temp_entry_ptr->WriteData(
+        disk_cache_body_index, /*offset=*/0, side_data_io_buffer.get(),
+        base::checked_cast<int>(buffer_size.InBytes()),
+        std::move(split_callback.first),
+        /*truncate=*/true);
+    if (rv != net::ERR_IO_PENDING) {
+      std::move(split_callback.second).Run(rv);
+    }
+    return;
+  }
+
+  if (side_data_blob) {
+    blob = std::move(side_data_blob);
+  }
+
   // We have real data, so stream it into the entry.  This will overwrite
   // any existing data.
   auto blob_to_cache = std::make_unique<CacheStorageBlobToDiskCache>(
@@ -2098,6 +2251,19 @@ void CacheStorageCache::PutWriteBlobToCache(
       base::BindOnce(&CacheStorageCache::PutDidWriteBlobToCache,
                      weak_ptr_factory_.GetWeakPtr(), std::move(put_context),
                      blob_to_cache_key, disk_cache_body_index));
+}
+
+void CacheStorageCache::PutDidWriteSideDataToCache(
+    std::unique_ptr<PutContext> put_context,
+    int disk_cache_body_index,
+    ScopedWritableEntry entry,
+    base::ByteSize expected_bytes,
+    int rv) {
+  PutWriteBlobToCacheComplete(
+      std::move(put_context), disk_cache_body_index, std::move(entry),
+      rv >= 0 && (base::ByteSize(static_cast<uint32_t>(rv)) == expected_bytes)
+          ? net::OK
+          : net::ERR_FAILED);
 }
 
 void CacheStorageCache::PutDidWriteBlobToCache(
@@ -2148,6 +2314,7 @@ void CacheStorageCache::PutComplete(std::unique_ptr<PutContext> put_context,
     CHECK(put_context->cache_entry, base::NotFatalUntil::M158);
     CHECK(!put_context->blob, base::NotFatalUntil::M158);
     CHECK(!put_context->side_data_blob, base::NotFatalUntil::M158);
+    CHECK(!put_context->side_data_buffer, base::NotFatalUntil::M158);
 
     // Tell the WritableScopedEntry not to doom the entry since it was a
     // successful operation.
@@ -2404,6 +2571,7 @@ void CacheStorageCache::DeleteDidQueryCache(
 
   for (auto& result : *query_cache_results) {
     disk_cache::ScopedEntryPtr entry = std::move(result.entry);
+    InvalidateSideDataWriters(GURL(entry->GetKey()));
     if (ShouldPadResourceSize(*result.response)) {
       cache_padding_ -= (result.padding + result.side_data_padding);
     }
@@ -2463,12 +2631,12 @@ void CacheStorageCache::KeysDidQueryCache(
 
 void CacheStorageCache::CloseImpl(base::OnceClosure callback) {
   CHECK(scheduler_->IsRunningExclusiveOperation(), base::NotFatalUntil::M158);
+  InvalidateSideDataWriters();
 
   if (backend_state_ != BACKEND_OPEN) {
     std::move(callback).Run();
     return;
   }
-
   backend_.reset();
   post_backend_closed_callback_ = std::move(callback);
 }

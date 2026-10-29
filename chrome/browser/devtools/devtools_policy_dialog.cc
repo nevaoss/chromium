@@ -6,8 +6,11 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
 #include "build/build_config.h"
+#include "chrome/browser/policy/developer_tools_policy_handler.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
@@ -38,7 +41,7 @@ constexpr int kIconPadding = 4;
 #else
 constexpr int kIconPadding = 2;
 #endif
-}
+}  // namespace
 
 DevToolsPolicyDialog::DevToolsPolicyDialog(content::WebContents* web_contents) {
 }
@@ -67,10 +70,17 @@ DevToolsPolicyDialog::GetCurrentDialogs() {
 
 // static
 void DevToolsPolicyDialog::Show(content::WebContents* web_contents) {
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
   if (GetCurrentDialogs().count(web_contents)) {
     return;
   }
+
+  // Recorded once per dialog shown, i.e. once per time a user actively tried
+  // to open DevTools (or view source) and was blocked by enterprise policy.
+  base::UmaHistogramEnumeration(
+      "DevTools.BlockedByPolicy",
+      policy::DeveloperToolsPolicyHandler::GetEffectiveAvailability(
+          Profile::FromBrowserContext(web_contents->GetBrowserContext())));
 
   auto dialog_manager = base::WrapUnique<DevToolsPolicyDialog>(
       new DevToolsPolicyDialog(web_contents));
@@ -137,7 +147,7 @@ void DevToolsPolicyDialog::Show(content::WebContents* web_contents) {
 void DevToolsPolicyDialog::TestOnlyCloseDialog(
     content::WebContents* web_contents) {
 #if !BUILDFLAG(IS_MAC)
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
 
   if (!GetCurrentDialogs().count(web_contents)) {
     return;  // Dialog not recorded as open

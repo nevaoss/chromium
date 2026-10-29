@@ -125,15 +125,8 @@ BASE_FEATURE(kBackForwardCacheTimeToLiveControl,
 
 // When enabled, the browser will schedule before unload tasks that continue
 // navigation network responses in a kHigh priority queue.
-// TODO(b/281094330): Run experiment on ChromeOS. Experiment was not run on
-// ChromeOS due to try bot issue.
 BASE_FEATURE(kBeforeUnloadBrowserResponseQueue,
-#if BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // Whether to hide paste popup on GestureScrollBegin or GestureScrollUpdate.
@@ -150,6 +143,13 @@ BASE_FEATURE(kCachedFirstRectAllowRangeOutsideSelection,
 BASE_FEATURE(kCancelCompositionWhenWindowLosesFocus,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_MAC)
+
+// When enabled, forces opaque CacheStorage responses to be treated as
+// credentialed for the Cross-Origin-Resource-Policy (CORP) check.
+// TODO(crbug.com/568759904): Update the Fetch and Service Worker specs and
+// corresponding WPTs.
+BASE_FEATURE(kCacheStorageOpaqueResponseCredentialedForCorp,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, CDP method Page.captureScreenshot will increment
 // the LocalSurfaceId instead of waiting for ForceRedraw to complete.
@@ -754,6 +754,10 @@ const base::FeatureParam<std::string>
     kServiceWorkerBypassFetchHandlerBypassedHashStrings{
         &kServiceWorkerBypassFetchHandlerHashStrings,
         "script_checksum_to_bypass", ""};
+
+// Killswitch for crbug.com/563194341
+BASE_FEATURE(kServiceWorkerDropHandleForCSPSandboxedWorker,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // (crbug.com/41411856): When enabled, the srcdoc iframes are controlled by the
 // same service worker that controls their parent.

@@ -700,7 +700,7 @@ TEST_P(CompositingReasonFinderTest, UnboundedElementCompositingReason) {
                 *GetLayoutObjectByElementId("target")));
 }
 
-TEST_P(CompositingReasonFinderTest, CanvasChild) {
+TEST_P(CompositingReasonFinderTest, CanvasDrawableElement) {
   ScopedCanvasDrawElementForTest forced_canvas_draw_element_feature(true);
   GetDocument().GetSettings()->SetScriptEnabled(true);
   SetBodyInnerHTML(R"HTML(
@@ -723,7 +723,7 @@ TEST_P(CompositingReasonFinderTest, CanvasChild) {
   Element* child = GetElementById("child");
   ASSERT_TRUE(child);
   LayoutObject* child_layout_object = child->GetLayoutObject();
-  EXPECT_EQ(CompositingReasons{CompositingReason::kCanvasChild},
+  EXPECT_EQ(CompositingReasons{CompositingReason::kCanvasDrawableElement},
             CompositingReasonFinder::DirectReasonsForPaintProperties(
                 *child_layout_object));
 
@@ -735,7 +735,7 @@ TEST_P(CompositingReasonFinderTest, CanvasChild) {
                 *grandchild_layout_object));
 }
 
-TEST_P(CompositingReasonFinderTest, CanvasChildWithWillChange) {
+TEST_P(CompositingReasonFinderTest, CanvasDrawableElementWithWillChange) {
   ScopedCanvasDrawElementForTest forced_canvas_draw_element_feature(true);
   GetDocument().GetSettings()->SetScriptEnabled(true);
   SetBodyInnerHTML(R"HTML(
@@ -749,7 +749,7 @@ TEST_P(CompositingReasonFinderTest, CanvasChildWithWillChange) {
 
   Element* child = GetElementById("child");
   LayoutObject* child_layout_object = child->GetLayoutObject();
-  EXPECT_EQ(CompositingReasons{CompositingReason::kCanvasChild},
+  EXPECT_EQ(CompositingReasons{CompositingReason::kCanvasDrawableElement},
             CompositingReasonFinder::DirectReasonsForPaintProperties(
                 *child_layout_object));
 
@@ -760,7 +760,7 @@ TEST_P(CompositingReasonFinderTest, CanvasChildWithWillChange) {
                 *grandchild_layout_object));
 }
 
-TEST_P(CompositingReasonFinderTest, CanvasChildSlotted) {
+TEST_P(CompositingReasonFinderTest, CanvasDrawableElementSlotted) {
   ScopedCanvasDrawElementForTest forced_canvas_draw_element_feature(true);
   GetDocument().GetSettings()->SetScriptEnabled(true);
   GetDocument().body()->SetHTMLUnsafeWithoutTrustedTypes(R"(
@@ -784,7 +784,7 @@ TEST_P(CompositingReasonFinderTest, CanvasChildSlotted) {
   LayoutObject* layout_object = slotted->GetLayoutObject();
   ASSERT_TRUE(layout_object);
   EXPECT_EQ(
-      CompositingReasons{CompositingReason::kCanvasChild},
+      CompositingReasons{CompositingReason::kCanvasDrawableElement},
       CompositingReasonFinder::DirectReasonsForPaintProperties(*layout_object));
 
   Element* slot_child = GetElementById("slotchild");

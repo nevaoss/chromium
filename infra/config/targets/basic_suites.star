@@ -1466,6 +1466,20 @@ targets.legacy_basic_suite(
     },
 )
 
+targets.legacy_basic_suite(
+    name = "openscreen_chromium_gtests",
+    tests = {
+        "cast_unittests": targets.legacy_test_config(),
+        "components_unittests": targets.legacy_test_config(
+            swarming = targets.swarming(
+                shards = 2,
+            ),
+        ),
+        "media_unittests": targets.legacy_test_config(),
+        "openscreen_unittests": targets.legacy_test_config(),
+    },
+)
+
 _CHROME_AI_WPT_TEST_CONFIG = targets.legacy_test_config(
     mixins = [
         "has_native_resultdb_integration",
@@ -1479,9 +1493,6 @@ _CHROME_AI_WPT_TEST_CONFIG = targets.legacy_test_config(
         "--release",
         "--timeout-multiplier=5",
         "--child-processes=1",
-    ],
-    linux_args = [
-        "--additional-driver-flag=--no-sandbox",
     ],
     mac_args = [
         "--driver-name",
@@ -1505,9 +1516,6 @@ _CHROME_AI_WPT_GPU_HIGH_TIER_TEST_CONFIG = targets.legacy_test_config(
         "--release",
         "--timeout-multiplier=5",
         "--child-processes=1",
-    ],
-    linux_args = [
-        "--additional-driver-flag=--no-sandbox",
     ],
     # Lower minimum VRAM requirement to 5000 MB for Windows AI WPT runner bots
     # equipped with NVIDIA GeForce GTX 1660 GPUs (which report 5981 MB VRAM,

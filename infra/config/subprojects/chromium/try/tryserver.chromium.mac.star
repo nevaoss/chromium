@@ -204,6 +204,7 @@ try_.orchestrator_builder(
     coverage_test_types = ["overall", "unit"],
     cq_settings = try_.cq_settings(
         on_default_cq = True,
+        reuse_max_commit_distance = 800 if settings.is_main else None,
     ),
     experiments = {
         # go/nplus1shardsproposal
@@ -649,6 +650,7 @@ try_.builder(
 
 try_.builder(
     name = "mac_upload_clang",
+    description_html = "Builds and uploads Clang toolchain packages for Mac x64.",
     executable = "recipe:chromium_toolchain/package_clang",
     builderless = False,
     # Mac 15 is the last mac version widely supported on x64.
@@ -658,6 +660,7 @@ try_.builder(
 
 try_.builder(
     name = "mac_upload_clang_arm",
+    description_html = "Builds and uploads Clang toolchain packages for Mac ARM64.",
     executable = "recipe:chromium_toolchain/package_clang",
     builderless = False,
     cpu = cpu.ARM64,
@@ -666,6 +669,7 @@ try_.builder(
 
 try_.builder(
     name = "mac_upload_rust",
+    description_html = "Builds and uploads Rust toolchain packages for Mac x64.",
     executable = "recipe:chromium_toolchain/package_rust",
     builderless = False,
     # Mac 15 is the last mac version widely supported on x64.
@@ -675,6 +679,7 @@ try_.builder(
 
 try_.builder(
     name = "mac_upload_rust_arm",
+    description_html = "Builds and uploads Rust toolchain packages for Mac ARM64.",
     executable = "recipe:chromium_toolchain/package_rust",
     builderless = False,
     cpu = cpu.ARM64,
@@ -780,6 +785,7 @@ try_.orchestrator_builder(
     coverage_test_types = ["overall", "unit"],
     cq_settings = try_.cq_settings(
         on_default_cq = True,
+        reuse_max_commit_distance = 800 if settings.is_main else None,
     ),
     experiments = {
         # go/nplus1shardsproposal
@@ -1021,8 +1027,9 @@ try_.builder(
             "dcheck_always_on",
         ],
     ),
-    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
-    os = os.MAC_15,
+    cores = None,
+    os = os.MAC_DEFAULT,
+    cpu = cpu.ARM64,
     contact_team_email = "toyoshim@chromium.org",
     cq_settings = try_.cq_settings(
         includable_only = True,

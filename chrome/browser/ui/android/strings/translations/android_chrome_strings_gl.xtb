@@ -123,7 +123,6 @@ Se queres ver máis opcións de configuración que usen datos para mellorar a t�
 <translation id="1432581352905426595">Xestionar motores de busca</translation>
 <translation id="1435593198351412143">Abrir PDF automaticamente</translation>
 <translation id="1437543266176261764">Executándose en <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organiza os produtos dos que fagas un seguimento en Marcadores</translation>
 <translation id="1452651021404174820">Escolle un dispositivo</translation>
 <translation id="1455845192930279203">Queres descargar o ficheiro "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) de <ph name="DOWNLOAD_DOMAIN" /> de todos os modos?</translation>
 <translation id="1460751212339734034">Aforra tempo, escribe menos</translation>
@@ -1200,6 +1199,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="5848257610304005265">Queres abrir o PDF con <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Queres deixar de compartir o grupo?</translation>
 <translation id="5853623416121554550">en pausa</translation>
+<translation id="5855375823365231964">Acerca deste perfil</translation>
 <translation id="5855546874025048181">Refinar: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, pestana do modo de incógnito con gravación en curso multiseleccionada</translation>
 <translation id="5857447844686706637">Produciuse un erro. Non se puido actualizar Facer seguimento do prezo.</translation>

@@ -22,6 +22,7 @@
 #import "components/feed/core/v2/public/ios/pref_names.h"
 #import "components/image_fetcher/core/image_data_fetcher.h"
 #import "components/keyed_service/core/service_access_type.h"
+#import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/most_visited_sites.h"
 #import "components/ntp_tiles/pref_names.h"
 #import "components/password_manager/core/browser/ui/credential_ui_entry.h"
@@ -39,6 +40,7 @@
 #import "ios/chrome/app/application_delegate/app_state.h"
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/app/tests_hook.h"
+#import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
 #import "ios/chrome/browser/app_store_bundle/model/app_store_bundle_service_factory.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_constants.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_coordinator.h"
@@ -105,8 +107,8 @@
 #import "ios/chrome/browser/home_customization/utils/home_customization_constants.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
 #import "ios/chrome/browser/level_up/model/level_up_service_factory.h"
+#import "ios/chrome/browser/menu/public/menu_histograms.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
-#import "ios/chrome/browser/menu/ui_bundled/menu_histograms.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/ntp/model/set_up_list_item_type.h"
 #import "ios/chrome/browser/ntp/model/set_up_list_prefs.h"
@@ -151,6 +153,7 @@
 #import "ios/chrome/browser/shared/public/commands/credential_provider_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
+#import "ios/chrome/browser/shared/public/commands/level_up_commands.h"
 #import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
@@ -329,6 +332,12 @@ using segmentation_platform::TipIdentifier;
   NSMutableArray* moduleMediators = [NSMutableArray array];
 
   if (!IsNTPRedesignEnabled()) {
+    AimEligibilityService* aimEligibilityService =
+        ntp_tiles::GetAimButtonRefactorArm() ==
+                ntp_tiles::AimButtonRefactorArm::kAimAsMvt
+            ? IOSChromeAimEligibilityServiceFactory::GetForProfile(profile)
+            : nullptr;
+
     _mostVisitedTilesMediator = [[MostVisitedTilesMediator alloc]
         initWithMostVisitedSite:std::move(mostVisitedFactory)
                  historyService:historyService
@@ -339,7 +348,8 @@ using segmentation_platform::TipIdentifier;
                                     self.browser)
           accountManagerService:accountManagerService
               engagementTracker:engagementTracker
-              layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)];
+              layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)
+          aimEligibilityService:aimEligibilityService];
     _mostVisitedTilesMediator.contentSuggestionsDelegate = self.delegate;
     _mostVisitedTilesMediator.actionFactory = [[BrowserActionFactory alloc]
         initWithBrowser:self.browser
@@ -521,6 +531,10 @@ using segmentation_platform::TipIdentifier;
       _magicStackRankingModel;
   _magicStackRankingModel.delegate = self.contentSuggestionsMediator;
   _magicStackRankingModel.homeStartDataSource = self.homeStartDataSource;
+  if (IsLevelUpEnabled()) {
+    _magicStackRankingModel.levelUpHandler = HandlerForProtocol(
+        self.browser->GetCommandDispatcher(), LevelUpCommands);
+  }
 
   MagicStackLayoutType layoutType = IsNTPRedesignEnabled()
                                         ? MagicStackLayoutType::kSmartStack
@@ -695,6 +709,10 @@ using segmentation_platform::TipIdentifier;
 - (void)viewWillDisappear {
   DiscoverFeedServiceFactory::GetForProfile(self.profile)
       ->SetIsShownOnStartSurface(false);
+}
+
+- (void)contentSuggestionsWasUpdated {
+  [self.delegate contentSuggestionsWasUpdated];
 }
 
 - (void)didSelectTip:(segmentation_platform::TipIdentifier)tip {

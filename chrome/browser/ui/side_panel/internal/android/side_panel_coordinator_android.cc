@@ -188,18 +188,16 @@ void SidePanelCoordinatorAndroid::Close(SidePanelEntryHideReason hide_reason,
         << ToString(hide_reason) << ", suppress_animations: "
         << suppress_animations << ", state: " << ToString(state_));
 
-  // Stop any pending load.
+  // We are about to change `state_`, so stop any pending load and complete any
+  // pending UI changes to reach a stable `state_` first. This includes
+  // notifying SidePanelEntries of the stable state.
   waiter()->ResetLoadingEntryIfNecessary();
+  CompletePendingUiChanges();
 
-  // Nothing to do if the side panel is not showing or is already closing.
-  if (!IsSidePanelShowing() || state_ == SidePanelState::kClosing) {
+  // Now we are in a stable state:
+  if (state_ == SidePanelState::kClosed) {
     return;
   }
-
-  // We are about to change `state_`, so complete any pending UI changes to
-  // reach a stable `state_` first. This includes notifying SidePanelEntries of
-  // the stable state.
-  CompletePendingUiChanges();
 
   StartClosingPanel(hide_reason, suppress_animations);
 }
@@ -248,22 +246,26 @@ void SidePanelCoordinatorAndroid::OnTabClosed(TabAndroid* tab) {
   SPLOG("OnTabClosed - tab: " << tab);
   CHECK(tab);
 
-  // During a tab switch (tab_1 -> tab_2), if tab_2's side panel View
+  // Complete pending UI changes involving `tab`'s entries now, while `tab` is
+  // still alive. `tab` and its tab-scoped SidePanelRegistry (which owns its
+  // entries) will be destroyed if the closure isn't undone.
+  //
+  // (1) If the current entry belongs to `tab` and the side panel is animating:
+  // if the animation ends after `tab` is destroyed, the state updates at the
+  // end of the animation (e.g. `FinishClosingPanel()`) won't be able to find
+  // the current entry.
+  //
+  // (2) During a tab switch (tab_1 -> tab_2), if tab_2's side panel View
   // contains a ThinWebView, the Java side will delay removing tab_1's side
   // panel View until tab_2's ThinWebView has rendered the first frame. This is
-  // to prevent UI flickers.
+  // to prevent UI flickers. This also means `OnPanelContentReplaced()` is
+  // called when tab_1 has become inactive.
   //
-  // This also means `OnPanelContentReplaced()` is called when tab_1 has become
-  // inactive.
-  //
-  // The following logic targets the case where a tab switch is triggered by
-  // _closing_ tab_1.
-  //
-  // In this case, we must _not_ delay removing tab_1's side panel View.
-  // Otherwise, when `OnPanelContentReplaced()` is called, the
-  // `pending_replaced_entry_->entry` will be an invalid pointer since tab_1 is
-  // already destroyed.
-  CompletePendingContentReplacementForTab(tab);
+  // If the tab switch is triggered by _closing_ tab_1, we must _not_ delay
+  // removing tab_1's side panel View. Otherwise, when
+  // `OnPanelContentReplaced()` is called, the `pending_replaced_entry_->entry`
+  // will be an invalid pointer since tab_1 is already destroyed.
+  CompletePendingUiChangesForTab(tab);
 }
 
 void SidePanelCoordinatorAndroid::OnTabReparented(TabAndroid* tab) {
@@ -308,7 +310,10 @@ void SidePanelCoordinatorAndroid::OnTabReparented(TabAndroid* tab) {
   // side panel, only for the async delay in the source window to finish
   // later and unexpectedly call OnEntryHidden(), permanently freezing tab_1's
   // UI in the destination window.
-  CompletePendingContentReplacementForTab(tab);
+  //
+  // For the same reason, also settle any in-flight animation of `tab`'s
+  // entry before its cached Views are cleared below.
+  CompletePendingUiChangesForTab(tab);
 
   if (auto* registry = SidePanelRegistry::From(tab)) {
     for (auto const& entry : registry->entries()) {
@@ -850,8 +855,8 @@ void SidePanelCoordinatorAndroid::StartReplacingPanelContent(
 }
 
 void SidePanelCoordinatorAndroid::CompletePendingUiChanges() {
-  Java_SidePanelCoordinatorAndroidBridge_endAnimations(
-      AttachCurrentThread(), java_coordinator(), browser()->GetProfile());
+  Java_SidePanelCoordinatorAndroidBridge_endAnimations(AttachCurrentThread(),
+                                                       java_coordinator());
   CHECK(state_ == SidePanelState::kClosed || state_ == SidePanelState::kShown)
       << "Side panel should be in a stable state after ending all animations.";
 
@@ -868,11 +873,18 @@ void SidePanelCoordinatorAndroid::CompletePendingContentReplacement() {
   }
 }
 
-void SidePanelCoordinatorAndroid::CompletePendingContentReplacementForTab(
+void SidePanelCoordinatorAndroid::CompletePendingUiChangesForTab(
     TabAndroid* tab) {
-  if (pending_replaced_entry_ &&
-      pending_replaced_entry_->key.tab_handle == tab->GetHandle()) {
-    CompletePendingContentReplacement();
+  std::optional<UniqueKey> key = current_key();
+  bool is_animating_entry_for_tab = key &&
+                                    key->tab_handle == tab->GetHandle() &&
+                                    (state_ == SidePanelState::kOpening ||
+                                     state_ == SidePanelState::kClosing);
+  bool is_pending_replaced_entry_for_tab =
+      pending_replaced_entry_ &&
+      pending_replaced_entry_->key.tab_handle == tab->GetHandle();
+  if (is_animating_entry_for_tab || is_pending_replaced_entry_for_tab) {
+    CompletePendingUiChanges();
   }
 }
 

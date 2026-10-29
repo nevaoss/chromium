@@ -5,7 +5,6 @@
 #include "components/performance_manager/execution_context_priority/loading_page_voter.h"
 
 #include "components/performance_manager/public/decorators/page_live_state_decorator.h"
-#include "components/performance_manager/public/execution_context/execution_context.h"
 #include "components/performance_manager/public/graph/graph.h"
 #include "components/performance_manager/test_support/graph_test_harness.h"
 #include "components/performance_manager/test_support/mock_graphs.h"
@@ -16,11 +15,6 @@ namespace performance_manager::execution_context_priority {
 using DummyVoteObserver = voting::test::DummyVoteObserver<Vote>;
 
 namespace {
-
-const execution_context::ExecutionContext* GetExecutionContext(
-    const FrameNode* frame_node) {
-  return execution_context::ExecutionContext::From(frame_node);
-}
 
 class LoadingPageVoterTest : public GraphTestHarness {
  public:
@@ -51,7 +45,8 @@ class LoadingPageVoterTest : public GraphTestHarness {
 
  private:
   DummyVoteObserver observer_;
-  LoadingPageVoter loading_page_voter_;
+  LoadingPageVoter loading_page_voter_{
+      /*boost_only_requested_background_loads=*/true};
 };
 
 }  // namespace
@@ -64,33 +59,40 @@ TEST_F(LoadingPageVoterTest, VoteIfLoading) {
   auto& child_frame_node = mock_graph.child_frame;
 
   EXPECT_EQ(observer().GetVoteCount(), 0u);
-  EXPECT_FALSE(
-      observer().HasVote(voter_id(), GetExecutionContext(frame_node.get())));
-  EXPECT_FALSE(observer().HasVote(voter_id(),
-                                  GetExecutionContext(child_frame_node.get())));
+  EXPECT_FALSE(observer().HasVote(voter_id(), frame_node.get()));
+  EXPECT_FALSE(observer().HasVote(voter_id(), child_frame_node.get()));
 
   mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoading);
 
   EXPECT_EQ(observer().GetVoteCount(), 2u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(child_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
+
+  // Still voting when the navigation hasn't committed after the timeout.
+  mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoadingTimedOut);
+
+  EXPECT_EQ(observer().GetVoteCount(), 2u);
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
+                                 base::Process::Priority::kUserVisible,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
+                                 base::Process::Priority::kUserVisible,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+
+  mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoading);
 
   // Still voting when the page is in the state kLoadedBusy.
   mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoadedBusy);
 
   EXPECT_EQ(observer().GetVoteCount(), 2u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(child_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -99,29 +101,24 @@ TEST_F(LoadingPageVoterTest, VoteIfLoading) {
       mock_graph.process.get(), mock_graph.page.get(), frame_node.get());
 
   EXPECT_EQ(observer().GetVoteCount(), 3u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(child_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(
-      voter_id(), GetExecutionContext(other_child_frame_node.get()),
-      base::Process::Priority::kUserVisible,
-      LoadingPageVoter::kPageIsLoadingReason));
+  EXPECT_TRUE(observer().HasVote(voter_id(), other_child_frame_node.get(),
+                                 base::Process::Priority::kUserVisible,
+                                 LoadingPageVoter::kPageIsLoadingReason));
 
   // Remove a frame while the page is loading.
   other_child_frame_node.reset();
 
   EXPECT_EQ(observer().GetVoteCount(), 2u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(child_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -129,10 +126,8 @@ TEST_F(LoadingPageVoterTest, VoteIfLoading) {
   mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoadedIdle);
 
   EXPECT_EQ(observer().GetVoteCount(), 0u);
-  EXPECT_FALSE(
-      observer().HasVote(voter_id(), GetExecutionContext(frame_node.get())));
-  EXPECT_FALSE(observer().HasVote(voter_id(),
-                                  GetExecutionContext(child_frame_node.get())));
+  EXPECT_FALSE(observer().HasVote(voter_id(), frame_node.get()));
+  EXPECT_FALSE(observer().HasVote(voter_id(), child_frame_node.get()));
 }
 
 TEST_F(LoadingPageVoterTest, IdenticalPriorityNoCrash) {
@@ -152,8 +147,7 @@ TEST_F(LoadingPageVoterTest, IdenticalPriorityNoCrash) {
 
   embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoading);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -161,8 +155,7 @@ TEST_F(LoadingPageVoterTest, IdenticalPriorityNoCrash) {
   // should not crash due to identical ChangeVote calls.
   embedded_page_node->SetEmbedderFrameNode(embedder_child_frame.get());
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 }
@@ -177,8 +170,7 @@ TEST_F(LoadingPageVoterTest, VoteWhenActiveTabAndLoading) {
   // Start loading while not the active tab -> votes kUserVisible.
   mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoading);
   EXPECT_EQ(observer().GetVoteCount(), 2u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -186,12 +178,10 @@ TEST_F(LoadingPageVoterTest, VoteWhenActiveTabAndLoading) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(true);
   EXPECT_EQ(observer().GetVoteCount(), 2u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(child_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -199,8 +189,7 @@ TEST_F(LoadingPageVoterTest, VoteWhenActiveTabAndLoading) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(false);
   EXPECT_EQ(observer().GetVoteCount(), 2u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -233,8 +222,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageBoosted) {
   // embedder root page, so it receives kUserBlocking vote.
   embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoading);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -243,8 +231,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageBoosted) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(false);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -253,8 +240,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageBoosted) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(true);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -286,8 +272,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageInSubframeBoosted) {
   // embedder root page, so it receives kUserBlocking vote.
   embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoading);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -296,8 +281,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageInSubframeBoosted) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(false);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -306,8 +290,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageInSubframeBoosted) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(true);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -334,8 +317,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageAttachedWhileLoading) {
   // it is not yet an active tab, it receives kUserVisible.
   embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoading);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -343,8 +325,7 @@ TEST_F(LoadingPageVoterTest, EmbeddedPageAttachedWhileLoading) {
   // votes and assigning kUserBlocking from the active tab embedder root page.
   embedded_page_node->SetEmbedderFrameNode(embedder_frame_node.get());
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -371,8 +352,7 @@ TEST_F(LoadingPageVoterTest, EmbedderFrameChangedWhenOuterPageNotLoading) {
 
   embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoading);
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -390,8 +370,7 @@ TEST_F(LoadingPageVoterTest, EmbedderFrameChangedWhenOuterPageNotLoading) {
   // page is no longer the active tab).
   embedded_page_node->SetEmbedderFrameNode(inactive_frame_node.get());
   EXPECT_EQ(observer().GetVoteCount(), 1u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -419,12 +398,10 @@ TEST_F(LoadingPageVoterTest, SimultaneousOuterAndEmbeddedPageLoading) {
   // Both outer page main frames (frame, child_frame) and embedded frame get
   // kUserBlocking.
   EXPECT_EQ(observer().GetVoteCount(), 3u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(outer_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), outer_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserBlocking,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -433,12 +410,10 @@ TEST_F(LoadingPageVoterTest, SimultaneousOuterAndEmbeddedPageLoading) {
   PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
       ->SetIsActiveTabForTesting(false);
   EXPECT_EQ(observer().GetVoteCount(), 3u);
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(outer_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), outer_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
-  EXPECT_TRUE(observer().HasVote(voter_id(),
-                                 GetExecutionContext(embedded_frame_node.get()),
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
                                  base::Process::Priority::kUserVisible,
                                  LoadingPageVoter::kPageIsLoadingReason));
 
@@ -472,6 +447,120 @@ TEST_F(LoadingPageVoterTest, PageNodeRemovedWhileLoading) {
   mock_graph.child_frame.reset();
   mock_graph.frame.reset();
   mock_graph.page.reset();
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+}
+
+TEST_F(LoadingPageVoterTest,
+       NonUserOrBrowserInitiatedBackgroundLoadNotBoosted) {
+  MockSinglePageWithMultipleProcessesGraph mock_graph(graph());
+  auto& frame_node = mock_graph.frame;
+  auto& child_frame_node = mock_graph.child_frame;
+
+  // A background load that was not user- or browser-initiated should not
+  // receive a kUserVisible boost.
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(false);
+  mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoading);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+
+  // Adding a frame while loading in the background should also not vote.
+  auto other_child_frame_node = graph()->CreateFrameNodeAutoId(
+      mock_graph.process.get(), mock_graph.page.get(), frame_node.get());
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+  other_child_frame_node.reset();
+
+  // Switching to the tab while it is still loading boosts it to kUserBlocking.
+  PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
+      ->SetIsActiveTabForTesting(true);
+  EXPECT_EQ(observer().GetVoteCount(), 2u);
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
+                                 base::Process::Priority::kUserBlocking,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
+                                 base::Process::Priority::kUserBlocking,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+
+  // Switching away again removes the votes.
+  PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
+      ->SetIsActiveTabForTesting(false);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+}
+
+// Tests that votes are updated when the initiator of an in-flight load changes
+// (e.g. a new navigation supersedes the current one).
+TEST_F(LoadingPageVoterTest, InitiatorChangesWhileLoading) {
+  MockSinglePageWithMultipleProcessesGraph mock_graph(graph());
+  auto& frame_node = mock_graph.frame;
+  auto& child_frame_node = mock_graph.child_frame;
+
+  // Background user/browser-initiated load -> kUserVisible.
+  mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoading);
+  EXPECT_EQ(observer().GetVoteCount(), 2u);
+
+  // Superseded by an unsolicited renderer-initiated navigation -> no vote.
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(false);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+
+  // Superseded again by a user/browser-initiated navigation -> kUserVisible.
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(true);
+  EXPECT_EQ(observer().GetVoteCount(), 2u);
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
+                                 base::Process::Priority::kUserVisible,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+  EXPECT_TRUE(observer().HasVote(voter_id(), child_frame_node.get(),
+                                 base::Process::Priority::kUserVisible,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+
+  // In the active tab, the initiator doesn't matter.
+  PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
+      ->SetIsActiveTabForTesting(true);
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(false);
+  EXPECT_EQ(observer().GetVoteCount(), 2u);
+  EXPECT_TRUE(observer().HasVote(voter_id(), frame_node.get(),
+                                 base::Process::Priority::kUserBlocking,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+
+  mock_graph.page->SetLoadingState(PageNode::LoadingState::kLoadedIdle);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+
+  // Changing the initiator while not loading has no effect.
+  PageLiveStateDecorator::Data::GetOrCreateForPageNode(mock_graph.page.get())
+      ->SetIsActiveTabForTesting(false);
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(true);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+}
+
+// Tests that a background embedded page uses its own load initiator, not its
+// root page's.
+TEST_F(LoadingPageVoterTest, EmbeddedPageUsesOwnInitiator) {
+  MockSinglePageWithMultipleProcessesGraph mock_graph(graph());
+  auto& embedder_frame_node = mock_graph.frame;
+
+  // The root page's most recent load was not user/browser-initiated.
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(false);
+
+  auto embedded_page_node = CreateNode<PageNodeImpl>();
+  PageLiveStateDecorator::Data::GetOrCreateForPageNode(
+      embedded_page_node.get());
+  embedded_page_node->SetEmbedderFrameNode(embedder_frame_node.get());
+  auto embedded_frame_node =
+      CreateFrameNodeAutoId(mock_graph.process.get(), embedded_page_node.get());
+
+  // The embedded page's own load is user/browser-initiated -> kUserVisible.
+  embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoading);
+  EXPECT_EQ(observer().GetVoteCount(), 1u);
+  EXPECT_TRUE(observer().HasVote(voter_id(), embedded_frame_node.get(),
+                                 base::Process::Priority::kUserVisible,
+                                 LoadingPageVoter::kPageIsLoadingReason));
+
+  // The embedded page's load becomes unsolicited -> no vote.
+  embedded_page_node->SetIsUserOrBrowserInitiatedLoad(false);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+
+  // The root page's initiator changing doesn't affect the embedded page.
+  mock_graph.page->SetIsUserOrBrowserInitiatedLoad(true);
+  EXPECT_EQ(observer().GetVoteCount(), 0u);
+
+  embedded_page_node->SetLoadingState(PageNode::LoadingState::kLoadedIdle);
   EXPECT_EQ(observer().GetVoteCount(), 0u);
 }
 

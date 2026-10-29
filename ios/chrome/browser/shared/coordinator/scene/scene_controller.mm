@@ -85,6 +85,8 @@
 #import "ios/chrome/browser/main/ui_bundled/incognito_blocker_scene_agent.h"
 #import "ios/chrome/browser/main/ui_bundled/ui_blocker_scene_agent.h"
 #import "ios/chrome/browser/main/ui_bundled/wrangled_browser.h"
+#import "ios/chrome/browser/menu/public/menu_action_type.h"
+#import "ios/chrome/browser/menu/public/menu_histograms.h"
 #import "ios/chrome/browser/metrics/model/tab_usage_recorder_browser_agent.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/picture_in_picture/model/picture_in_picture_scene_agent.h"
@@ -1246,6 +1248,16 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
     return;
   }
 
+  for (NSUserActivity* activity in sceneState.connectionOptions
+           .userActivities) {
+    std::optional<MenuScenarioHistogram> scenario =
+        GetMenuScenarioFromActivity(activity);
+    if (scenario.has_value()) {
+      RecordMenuAction(scenario.value(), MenuActionType::OpenInNewWindow);
+      break;
+    }
+  }
+
   base::UmaHistogramEnumeration(kMultiWindowOpenInNewWindowHistogram,
                                 sceneState.currentOrigin);
 }
@@ -1290,7 +1302,12 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   AuthenticationService* authenticationService =
       AuthenticationServiceFactory::GetForProfile(
           self.sceneState.profileState.profile);
-  if (authenticationService->SigninEnabled()) {
+  if (authenticationService->GetServiceStatus() !=
+      AuthenticationService::ServiceStatus::SigninDisabledByUser) {
+    // If sign-in becomes disabled because of a policy change, the
+    // PolicyWatcherBrowserAgent does the sign-out. Sign-in can’t become
+    // disabled due to Internal, so this method only needs to consider
+    // SigninDisabledByUser
     return;
   }
   // If sign-in is disabled, switch to personal profile and sign-out.
@@ -1306,7 +1323,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
                                     std::move(continuation));
     return;
   }
-  if (![self isSignedIn]) {
+  if ([self isSignedIn]) {
     authenticationService->SignOut(
         signin_metrics::ProfileSignout::kPrefChanged);
   }

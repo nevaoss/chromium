@@ -36,7 +36,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabActionListener;
 import org.chromium.chrome.browser.tasks.tab_management.TabListViewBinderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
-import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabHoverController.TabHoverListener;
+import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabItemHoverController.TabHoverListener;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.tab_ui.R;
@@ -941,7 +941,7 @@ class TabVerticalViewBinder {
         int tabId = model.get(TabProperties.TAB_ID);
         TabHoverListener listener = model.get(TabProperties.TAB_HOVER_LISTENER);
 
-        VerticalTabHoverController.setupTabHover(
+        VerticalTabItemHoverController.setupTabHover(
                 listener,
                 tabId,
                 view,
@@ -961,16 +961,11 @@ class TabVerticalViewBinder {
      */
     private static void setupTabGroupHeaderHoverListener(PropertyModel model, ViewGroup view) {
         @Nullable View menuButton = view.findViewById(R.id.menu_button);
-        int tabId = model.get(TabProperties.TAB_ID);
         @Nullable Token tabGroupId = model.get(TabProperties.TAB_GROUP_HEADER_ID);
-        if (tabGroupId == null) {
-            tabGroupId = model.get(TabProperties.TAB_GROUP_ID);
-        }
         @Nullable TabHoverListener listener = model.get(TabProperties.TAB_HOVER_LISTENER);
 
-        VerticalTabHoverController.setupTabGroupHeaderHover(
+        VerticalTabItemHoverController.setupTabGroupHeaderHover(
                 listener,
-                tabId,
                 tabGroupId,
                 view,
                 menuButton,

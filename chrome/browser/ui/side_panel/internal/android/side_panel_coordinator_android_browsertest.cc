@@ -863,6 +863,120 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(
     SidePanelCoordinatorAndroidBrowserTest,
+    Close_AnimatedThenSuppressed_FinishesClosingSynchronously) {
+  // Arrange: Show a window-scoped entry.
+  auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
+  std::unique_ptr<SidePanelEntry> entry =
+      CreateSidePanelEntry(entry_key, browser_);
+  TestSidePanelEntryObserver entry_observer(entry.get());
+  SidePanelRegistry::From(browser_)->Register(std::move(entry));
+
+  coordinator_->SidePanelUIBase::Show(entry_key,
+                                      SidePanelOpenTrigger::kToolbarButton,
+                                      /*suppress_animations=*/true);
+  WaitUntilOpened(coordinator_);
+
+  // Arrange: Start an animated close and leave it in progress.
+  coordinator_->Close(SidePanelEntryHideReason::kSidePanelClosed,
+                      /*suppress_animations=*/false);
+  ASSERT_EQ(SidePanelState::kClosing, coordinator_->GetStateForTesting());
+  ASSERT_EQ(0, entry_observer.num_on_entry_hidden_received_);
+
+  // Act: Request a suppressed close while the animated close is in progress.
+  coordinator_->Close(SidePanelEntryHideReason::kBackgrounded,
+                      /*suppress_animations=*/true);
+
+  // Assert: The in-progress close is finished synchronously, and the entry is
+  // notified once with the hide reason from the original close request.
+  EXPECT_EQ(SidePanelState::kClosed, coordinator_->GetStateForTesting());
+  EXPECT_FALSE(coordinator_->IsSidePanelShowing());
+  EXPECT_EQ(1, entry_observer.num_on_entry_hidden_received_);
+  EXPECT_EQ(1, entry_observer.num_on_entry_hidden_with_reason_received_);
+  EXPECT_EQ(SidePanelEntryHideReason::kSidePanelClosed,
+            entry_observer.reason_for_last_entry_hidden_with_reason_.value());
+  WaitUntilClosed(coordinator_);
+}
+
+IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
+                       Deregister_ShowingEntry_ClosesSidePanelSynchronously) {
+  // Arrange: Show a window-scoped entry.
+  auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
+  auto* registry = SidePanelRegistry::From(browser_);
+  registry->Register(CreateSidePanelEntry(entry_key, browser_));
+
+  coordinator_->SidePanelUIBase::Show(entry_key,
+                                      SidePanelOpenTrigger::kToolbarButton,
+                                      /*suppress_animations=*/true);
+  WaitUntilOpened(coordinator_);
+
+  // Act: Deregister the showing entry.
+  ASSERT_TRUE(registry->Deregister(entry_key));
+
+  // Assert: The side panel is closed synchronously.
+  EXPECT_EQ(SidePanelState::kClosed, coordinator_->GetStateForTesting());
+  EXPECT_FALSE(coordinator_->IsSidePanelShowing());
+  WaitUntilClosed(coordinator_);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SidePanelCoordinatorAndroidBrowserTest,
+    Deregister_WhileClosingWithAnimation_FinishesClosingSynchronously) {
+  // Arrange: Show a window-scoped entry.
+  auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
+  auto* registry = SidePanelRegistry::From(browser_);
+  registry->Register(CreateSidePanelEntry(entry_key, browser_));
+
+  coordinator_->SidePanelUIBase::Show(entry_key,
+                                      SidePanelOpenTrigger::kToolbarButton,
+                                      /*suppress_animations=*/true);
+  WaitUntilOpened(coordinator_);
+
+  // Arrange: Start an animated close and leave it in progress.
+  coordinator_->Close(SidePanelEntryHideReason::kSidePanelClosed,
+                      /*suppress_animations=*/false);
+  ASSERT_EQ(SidePanelState::kClosing, coordinator_->GetStateForTesting());
+
+  // Act: Deregister (and destroy) the entry while it's closing.
+  ASSERT_TRUE(registry->Deregister(entry_key));
+
+  // Assert: The close is finished synchronously while the entry still existed.
+  EXPECT_EQ(SidePanelState::kClosed, coordinator_->GetStateForTesting());
+  EXPECT_FALSE(coordinator_->IsSidePanelShowing());
+  WaitUntilClosed(coordinator_);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SidePanelCoordinatorAndroidBrowserTest,
+    CloseTab_WhileClosingWithAnimation_TabScopedEntry_FinishesClosing) {
+  // Arrange: Open 2 tabs and show a tab-scoped entry on the 2nd tab.
+  tabs::TabInterface* second_tab =
+      tab_list_->OpenTab(GURL("about:blank"), /*index=*/1);
+  ASSERT_TRUE(second_tab->IsActivated());
+
+  auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
+  SidePanelRegistry::From(second_tab)
+      ->Register(CreateSidePanelEntry(entry_key, browser_));
+  coordinator_->SidePanelUIBase::Show(entry_key,
+                                      SidePanelOpenTrigger::kToolbarButton,
+                                      /*suppress_animations=*/true);
+  WaitUntilOpened(coordinator_);
+
+  // Arrange: Start an animated close and leave it in progress.
+  coordinator_->Close(SidePanelEntryHideReason::kSidePanelClosed,
+                      /*suppress_animations=*/false);
+  ASSERT_EQ(SidePanelState::kClosing, coordinator_->GetStateForTesting());
+
+  // Act: Close the 2nd tab, which destroys its SidePanelRegistry and the
+  // entry being closed.
+  tab_list_->CloseTab(second_tab->GetHandle());
+
+  // Assert: The side panel finishes closing.
+  WaitUntilClosed(coordinator_);
+  EXPECT_FALSE(coordinator_->IsSidePanelShowing());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SidePanelCoordinatorAndroidBrowserTest,
     Close_ClearsCachedEntryViewForInactiveEntriesInContextualRegistries) {
   // Arrange: Register two tab-scoped entries.
   tabs::TabInterface* first_tab = tab_list_->GetActiveTab();

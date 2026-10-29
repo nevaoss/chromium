@@ -8,7 +8,6 @@
 
 #include "base/check.h"
 #include "base/feature_list.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/rand_util.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
@@ -221,10 +220,6 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
   const bool use_shared_image =
       use_gpu_raster || (host->HasPlaceholderCanvas() &&
                          SharedGpuContext::IsGpuCompositingEnabled());
-  const SkAlphaType alpha_type = color_params_.GetAlphaType();
-  const viz::SharedImageFormat format = color_params_.GetSharedImageFormat();
-  const gfx::ColorSpace color_space = color_params_.GetGfxColorSpace();
-  const gfx::HDRMetadata hdr_metadata = color_params_.GetGfxHdrMetadata();
   if (use_shared_image) {
     gpu::SharedImageUsageSet shared_image_usage_flags =
         gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
@@ -242,21 +237,16 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
     }
 #endif
 
-    shared_image_provider_ = Canvas2DResourceProvider::CreateWithClear(
-        host->Size(), format, alpha_type, color_space, hdr_metadata,
-        SharedGpuContext::ContextProviderWrapper(),
+    CreateSharedImageProvider(
         use_gpu_raster ? RasterMode::kGPU : RasterMode::kCPU,
-        shared_image_usage_flags, host);
+        shared_image_usage_flags);
   } else if (host->HasPlaceholderCanvas()) {
     // using the software compositor
     host->GetOrCreateResourceDispatcher();
-    shared_image_provider_ =
-        Canvas2DResourceProvider::CreateWithClearForSoftwareCompositor(
-            host->Size(), format, alpha_type, color_space, hdr_metadata,
-            SharedGpuContext::SharedImageInterfaceProvider(), host);
+    CreateSharedImageProviderForSoftwareCompositor();
   }
 
-  if (!shared_image_provider_) {
+  if (!GetSharedImageProvider()) {
     // Last resort fallback is to use the bitmap provider. Using this
     // path is normal for software-rendered OffscreenCanvases that have no
     // placeholder canvas. If there is a placeholder, its content will not be
@@ -267,32 +257,21 @@ bool OffscreenCanvasRenderingContext2D::InitializeResourceProvider() {
   }
 
   if (HasResourceProvider()) {
-    ConfigureRecorder(host->Size(), shared_image_provider_ &&
-                                        shared_image_provider_->IsGraphite());
+    ConfigureRecorder(host->Size(), GetSharedImageProvider() &&
+                                        GetSharedImageProvider()->IsGraphite());
   } else {
     ResetRecorder();
   }
 
   Host()->UpdateMemoryUsage();
 
-  if (shared_image_provider_) {
-    base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
-                              shared_image_provider_->IsAccelerated());
-    base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
-                                  CanvasResourceProviderType::kSharedImage);
-    host->DidDraw();
-    return true;
+  if (!HasResourceProvider()) {
+    return false;
   }
-  if (HasResourceProvider()) {
-    base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
-                              false);
-    base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
-                                  CanvasResourceProviderType::kBitmap);
 
-    host->DidDraw();
-    return true;
-  }
-  return false;
+  RecordResourceProviderHistograms();
+  host->DidDraw();
+  return true;
 }
 
 void OffscreenCanvasRenderingContext2D::Reset() {
@@ -304,13 +283,13 @@ void OffscreenCanvasRenderingContext2D::Reset() {
 
 scoped_refptr<CanvasResource>
 OffscreenCanvasRenderingContext2D::ProduceCanvasResource(FlushReason reason) {
-  if (!InitializeResourceProvider() || !shared_image_provider_) {
+  if (!InitializeResourceProvider() || !GetSharedImageProvider()) {
     return nullptr;
   }
 
   FlushCanvas(reason);
   scoped_refptr<CanvasResource> frame =
-      shared_image_provider_->ProduceCanvasResource();
+      GetSharedImageProvider()->ProduceCanvasResource();
   if (!frame)
     return nullptr;
 

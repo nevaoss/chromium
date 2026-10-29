@@ -123,7 +123,6 @@ Lai skatītu citus iestatījumus, kuros dati tiek izmantoti Chrome lietošanas i
 <translation id="1432581352905426595">Pārvaldīt meklējumprogrammas</translation>
 <translation id="1435593198351412143">Automātiska PDF failu atvēršana</translation>
 <translation id="1437543266176261764">Darbojas pārlūkā <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Kārtojiet savus izsekotos produktus grāmatzīmēs</translation>
 <translation id="1452651021404174820">Ierīces izvēle</translation>
 <translation id="1455845192930279203">Vai tomēr vēlaties lejupielādēt failu “<ph name="FILE_NAME" />” (<ph name="FILE_SIZE" />) no vietnes <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Ietaupiet laiku — rakstiet mazāk</translation>
@@ -775,6 +774,7 @@ Jūsu šifrētos datus var lasīt tikai personas, kurām ir jūsu ieejas frāze.
 <translation id="4136632885151622181">Piespraustā cilne <ph name="TAB_TITLE" /> ir viena no vairākām atlasītām cilnēm; tajā notiek ierakstīšana</translation>
 <translation id="4137746084635924146">Pašreizējā ierīces valoda</translation>
 <translation id="414128724510021958">Pēc noklusējuma pieprasītās vietnes datoriem</translation>
+<translation id="4150837143272125910">Atjauninājums ir lejupielādēts.</translation>
 <translation id="4162867837470729563">Kopīgošanas opciju saraksts ir atvērts pilna ekrāna augstumā.</translation>
 <translation id="4164642020717536140">Ātri un droši pārlūkojiet tīmekli</translation>
 <translation id="4165077084524712774">Vairāk rīku</translation>
@@ -1199,6 +1199,7 @@ Jūsu Google kontam vietnē <ph name="BEGIN_LINK" />myactivity.google.com<ph nam
 <translation id="5848257610304005265">Vai atvērt PDF failu lietotnē <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Vai pārtraukt kopīgošanu?</translation>
 <translation id="5853623416121554550">apturēta</translation>
+<translation id="5855375823365231964">Par šo profilu</translation>
 <translation id="5855546874025048181">Precizēt: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911">Inkognito cilne <ph name="TAB_TITLE" /> ir viena no vairākām atlasītām cilnēm; tajā notiek ierakstīšana</translation>
 <translation id="5857447844686706637">Radās kļūda. Nevarēja atjaunināt cenas izsekošanu.</translation>
@@ -1240,6 +1241,7 @@ Jūsu Google kontam vietnē <ph name="BEGIN_LINK" />myactivity.google.com<ph nam
 <translation id="6039379616847168523">Pāriet uz nākamo cilni</translation>
 <translation id="6040143037577758943">Aizvērt</translation>
 <translation id="604124094241169006">Automātiski</translation>
+<translation id="6041959688070413372">Pārvaldiet saistījumu starp meklēšanas pakalpojumiem un Google Workspace lietotnēm, piemēram, Google disku.</translation>
 <translation id="6042308850641462728">Vairāk</translation>
 <translation id="6047066316630165190">Atveriet režģa ciļņu pārslēdzēju</translation>
 <translation id="604996488070107836">Neizdevās lejupielādēt failu <ph name="FILE_NAME" />, jo radās nezināma kļūda.</translation>
@@ -1400,6 +1402,7 @@ Piemēram, dažas vietnes, reaģējot uz šo pieprasījumu, var rādīt jums rek
 <translation id="6565959834589222080">Wi-Fi tiek izmantots, ja tas ir pieejams</translation>
 <translation id="657177046675873214">Lai grāmatzīmes būtu pieejamas visās jūsu ierīcēs, iestatījumos ieslēdziet slēdzi “Grāmatzīmes”.</translation>
 <translation id="6573096386450695060">Vienmēr atļaut</translation>
+<translation id="657480975869429144">Ir pieejama jauna pārlūka Google Chrome versija.</translation>
 <translation id="658099107946526506">Aizsargājiet privāto pārlūkošanu ar PIN, lai novērstu nevēlamu piekļuvi</translation>
 <translation id="6583199322650523874">Pievienot pašreizējo lapu grāmatzīmēm</translation>
 <translation id="6588043302623806746">Lietot drošu DNS serveri</translation>

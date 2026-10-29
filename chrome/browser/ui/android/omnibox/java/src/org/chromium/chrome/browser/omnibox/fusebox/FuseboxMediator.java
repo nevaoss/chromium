@@ -110,7 +110,6 @@ import java.util.function.Supplier;
     private final WindowAndroid mWindowAndroid;
     private final AndroidPermissionDelegate mPermissionDelegate;
     private final PropertyModel mModel;
-    private final FuseboxViewHolder mViewHolder;
     private final MonotonicObservableSupplier<TabModelSelector> mTabModelSelectorSupplier;
     private final SettableNonNullObservableSupplier<@FuseboxState Integer> mFuseboxStateSupplier;
     private final Callback<@AutocompleteRequestType Integer> mOnAutocompleteRequestTypeChanged =
@@ -166,7 +165,6 @@ import java.util.function.Supplier;
             Context context,
             WindowAndroid windowAndroid,
             PropertyModel model,
-            FuseboxViewHolder viewHolder,
             OmniboxResourceProvider resourceProvider,
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             SettableNonNullObservableSupplier<@FuseboxState Integer> fuseboxStateSupplier,
@@ -182,9 +180,7 @@ import java.util.function.Supplier;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
         mModel = model;
-        mViewHolder = viewHolder;
         mResourceProvider = resourceProvider;
-        mViewHolder.popup.addOnDismissListener(this::hidePopup);
         mTabModelSelectorSupplier = tabModelSelectorSupplier;
         mFuseboxStateSupplier = fuseboxStateSupplier;
         mPopupStateSupplier = popupStateSupplier;
@@ -196,7 +192,7 @@ import java.util.function.Supplier;
         mIsDesktopPlatform = OmniboxCapabilities.isDesktopPlatform();
         mHasAttachmentsSupplier = hasAttachmentsSupplier;
         mUrlTextWrappingSupplier = urlTextWrappingSupplier;
-        mUrlTextWrappingSupplier.addSyncObserverAndCallIfNonNull(mOnTextWrappingChanged);
+        mUrlTextWrappingSupplier.addSyncObserver(mOnTextWrappingChanged);
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -333,7 +329,6 @@ import java.util.function.Supplier;
 
         if (mModelList != null) {
             var adapter = mModelList.createAdapter(mResourceProvider);
-            mViewHolder.attachmentsView.setAdapter(adapter);
             mModel.set(FuseboxProperties.ADAPTER, adapter);
             mModelList.setAttachmentUploadFailedListener(this::onAttachmentUploadFailed);
             mModelList.updateVisualsForState(mBrandedColorScheme);
@@ -343,7 +338,6 @@ import java.util.function.Supplier;
             onAttachmentsChanged();
         } else {
             // Need a safe fallback.
-            mViewHolder.attachmentsView.setAdapter(null);
             mModel.set(FuseboxProperties.ADAPTER, null);
             mModel.set(FuseboxProperties.ATTACHMENTS_VISIBLE, false);
             mHasAttachmentsSupplier.set(false);
@@ -610,9 +604,6 @@ import java.util.function.Supplier;
         if (mModel.get(FuseboxProperties.POPUP_STATE) != PopupState.HIDDEN) return;
 
         boolean shouldShowBottomSheetPopup = OmniboxFeatures.shouldShowBottomSheetPopup();
-        if (shouldShowBottomSheetPopup) {
-            mWindowAndroid.getKeyboardDelegate().hideKeyboard(mViewHolder.parentView);
-        }
         updateModelForCurrentTab();
         updateModelForRecentTabs();
         if (mComposeboxQueryControllerBridge != null) {
@@ -628,16 +619,12 @@ import java.util.function.Supplier;
         mPopupStateSupplier.set(targetState);
         if (mScrimManager != null
                 && mModel.get(FuseboxProperties.POPUP_STATE) == PopupState.BOTTOM) {
-            View scrimAnchor = mScrimAnchorViewSupplier.get();
-            if (scrimAnchor == null) {
-                scrimAnchor = mViewHolder.parentView;
-            }
             if (mScrimModel != null) {
                 mScrimManager.hideScrim(mScrimModel, /* animate= */ false);
             }
             mScrimModel =
                     new PropertyModel.Builder(ScrimProperties.ALL_KEYS)
-                            .with(ScrimProperties.ANCHOR_VIEW, scrimAnchor)
+                            .with(ScrimProperties.ANCHOR_VIEW, mScrimAnchorViewSupplier.get())
                             .with(ScrimProperties.SHOW_IN_FRONT_OF_ANCHOR_VIEW, true)
                             .with(ScrimProperties.CLICK_DELEGATE, this::hidePopup)
                             .with(ScrimProperties.AFFECTS_STATUS_BAR, true)
@@ -661,18 +648,11 @@ import java.util.function.Supplier;
         if (OmniboxFeatures.hasAccordion()) {
             mModel.set(FuseboxProperties.POPUP_ACCORDION_EXPANDED, false);
         }
-        boolean wasBottomSheet = mModel.get(FuseboxProperties.POPUP_STATE) == PopupState.BOTTOM;
         mModel.set(FuseboxProperties.POPUP_STATE, PopupState.HIDDEN);
         mPopupStateSupplier.set(PopupState.HIDDEN);
         if (mScrimModel != null) {
             mScrimManager.hideScrim(mScrimModel, /* animate= */ true);
             mScrimModel = null;
-        }
-        if (wasBottomSheet) {
-            View focusedView = mViewHolder.parentView.findFocus();
-            if (focusedView != null) {
-                mWindowAndroid.getKeyboardDelegate().showKeyboard(focusedView);
-            }
         }
         mBackPressStateSupplier.set(false);
     }

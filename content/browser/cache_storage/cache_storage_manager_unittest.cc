@@ -68,6 +68,7 @@
 #include "storage/browser/blob/blob_storage_context.h"
 #include "storage/browser/quota/quota_client_type.h"
 #include "storage/browser/quota/quota_manager_proxy.h"
+#include "storage/browser/test/blob_test_utils.h"
 #include "storage/browser/test/fake_blob.h"
 #include "storage/browser/test/mock_quota_manager_proxy.h"
 #include "storage/browser/test/mock_special_storage_policy.h"
@@ -656,7 +657,8 @@ class CacheStorageManagerTest : public testing::Test {
     blob->uuid = blob_uuid;
     blob->size = request->url.spec().size();
     auto& str = request->url.spec();
-    blob_storage_context_->context()->RegisterFromMemory(
+    storage::RegisterBlobWithContents(
+        *blob_storage_context_->context(),
         blob->blob.InitWithNewPipeAndPassReceiver(), blob_uuid,
         base::as_byte_span(str));
 
@@ -688,9 +690,10 @@ class CacheStorageManagerTest : public testing::Test {
         net::HttpRequestHeaders::kGetMethod, std::move(blob),
         blink::mojom::ServiceWorkerResponseError::kUnknown, base::Time(),
         /*cache_storage_cache_name=*/std::string(),
+        /*cache_storage_side_data_writer=*/mojo::NullRemote(),
         /*cors_exposed_header_names=*/std::vector<std::string>(),
         /*side_data_blob=*/nullptr,
-        /*side_data_blob_for_cache_put=*/nullptr,
+        /*side_data_for_cache_put=*/std::nullopt,
         network::mojom::ParsedHeaders::New(), net::HttpConnectionInfo::kUNKNOWN,
         /*alpn_negotiated_protocol=*/"unknown",
         /*was_fetched_via_spdy=*/false, /*has_range_requested=*/false,
@@ -1150,6 +1153,30 @@ TEST_P(CacheStorageManagerTestP, StorageMatchEntryExists) {
       CachePut(callback_cache_handle_.value(), GURL("http://example.com/foo")));
   EXPECT_TRUE(
       StorageMatch(bucket_locator1_, u"foo", GURL("http://example.com/foo")));
+}
+
+TEST_P(CacheStorageManagerTestP, StorageMatchPopulatesSideDataWriterRemote) {
+  EXPECT_TRUE(Open(bucket_locator1_, u"foo"));
+  EXPECT_TRUE(
+      CachePut(callback_cache_handle_.value(), GURL("http://example.com/foo")));
+  EXPECT_TRUE(
+      StorageMatch(bucket_locator1_, u"foo", GURL("http://example.com/foo")));
+  ASSERT_TRUE(callback_cache_handle_response_);
+  EXPECT_TRUE(callback_cache_handle_response_->cache_storage_side_data_writer
+                  .is_valid());
+}
+
+TEST_P(CacheStorageManagerTestP, StorageMatchAllPopulatesSideDataWriterRemote) {
+  const std::string kBucketName = "custom-bucket";
+  ASSERT_OK_AND_ASSIGN(auto bucket_locator,
+                       GetOrCreateBucket(storage_key1_, kBucketName));
+  EXPECT_TRUE(Open(bucket_locator, u"foo"));
+  EXPECT_TRUE(
+      CachePut(callback_cache_handle_.value(), GURL("http://example.com/foo")));
+  EXPECT_TRUE(StorageMatchAll(bucket_locator, GURL("http://example.com/foo")));
+  ASSERT_TRUE(callback_cache_handle_response_);
+  EXPECT_TRUE(callback_cache_handle_response_->cache_storage_side_data_writer
+                  .is_valid());
 }
 
 TEST_P(CacheStorageManagerTestP, StorageMatchNoEntry) {

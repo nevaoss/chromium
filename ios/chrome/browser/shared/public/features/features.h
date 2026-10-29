@@ -668,6 +668,12 @@ BASE_DECLARE_FEATURE(kComposeboxPlusButtonBottomSheet);
 // Returns true if the ComposeboxPlusButtonBottomSheet feature is enabled.
 bool IsComposeboxPlusButtonBottomSheet();
 
+// Enables the ComposeboxPlusButtonLargeCarousel feature.
+BASE_DECLARE_FEATURE(kComposeboxPlusButtonLargeCarousel);
+
+// Returns true if the ComposeboxPlusButtonLargeCarousel feature is enabled.
+bool IsComposeboxPlusButtonLargeCarousel();
+
 // Enables the ChromeNextIa feature.
 BASE_DECLARE_FEATURE(kChromeNextIa);
 
@@ -961,7 +967,7 @@ BASE_DECLARE_FEATURE(kAimHistoryThreadsManagement);
 // Returns true if the AimHistoryThreadsManagement feature is enabled.
 bool IsAimHistoryThreadsManagementEnabled();
 
-// Enables TalkToChrome prototype.
+// Enables the TTC prototype.
 BASE_DECLARE_FEATURE(kTTCEnabled);
 
 // Returns true if the TTCEnabled feature is enabled.
@@ -982,5 +988,11 @@ BASE_DECLARE_FEATURE(kAppBarAssistantCustomization);
 
 // Returns true if the AppBarAssistantCustomization feature is enabled.
 bool IsAppBarAssistantCustomizationEnabled();
+
+// Enables the LightAppBar feature.
+BASE_DECLARE_FEATURE(kLightAppBar);
+
+// Returns true if the LightAppBar feature is enabled.
+bool IsLightAppBarEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

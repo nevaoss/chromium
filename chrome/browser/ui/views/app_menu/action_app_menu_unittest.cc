@@ -1539,10 +1539,18 @@ TEST_F(ActionAppMenuTest, SearchBarDisabledByDefault) {
   menu.CloseMenu();
 }
 
-TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kChroMenuSearch);
+class ActionAppMenuWithSearchTest : public ActionAppMenuTest {
+ public:
+  ActionAppMenuWithSearchTest() {
+    feature_list_.InitAndEnableFeature(features::kChroMenuSearch);
+  }
+  ~ActionAppMenuWithSearchTest() override = default;
 
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+TEST_F(ActionAppMenuWithSearchTest, SearchBarEnabledWithFeatureFlag) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
@@ -1652,6 +1660,84 @@ TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
   search_bar->HandleKeyEvent(&backspace_event);
   EXPECT_EQ(search_bar->GetText(), u"");
   EXPECT_TRUE(icon->GetVisible());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuWithSearchTest,
+       ClearItemsBelowSearchBarPreservesSearchBar) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_TRUE(submenu);
+
+  AppMenuSearchBarView* search_bar = menu.search_bar_for_testing();
+  ASSERT_NE(search_bar, nullptr);
+  views::MenuItemView* search_item = submenu->GetMenuItemAt(0);
+  ASSERT_NE(search_item, nullptr);
+  ASSERT_GT(submenu->GetMenuItems().size(), 1u);
+  ASSERT_NE(menu.GetLabelFontList(kActionPrint), nullptr);
+
+  menu.ClearItemsBelowSearchBarForTesting();
+  root->ChildrenChanged();
+
+  // The search bar row is the same view object, not a rebuilt copy, and it is
+  // the only one left.
+  ASSERT_EQ(submenu->GetMenuItems().size(), 1u);
+  EXPECT_EQ(submenu->GetMenuItemAt(0), search_item);
+  EXPECT_EQ(menu.search_bar_for_testing(), search_bar);
+  ASSERT_EQ(search_item->children().size(), 1u);
+  EXPECT_EQ(search_item->children()[0], search_bar);
+  // The removed rows' command mappings are gone too.
+  EXPECT_EQ(menu.GetLabelFontList(kActionPrint), nullptr);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuWithSearchTest, ClearItemsBelowSearchBarKeepsNotification) {
+  if (!browser_defaults::kShowUpgradeMenuItem) {
+    GTEST_SKIP() << "Upgrade menu item is not supported on this platform.";
+  }
+
+  actions::ActionItem* upgrade_action =
+      actions::ActionManager::Get().FindAction(
+          kActionUpgradeDialog, browser_actions_->root_action_item());
+  ASSERT_NE(upgrade_action, nullptr);
+  upgrade_action->SetVisible(true);
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_TRUE(submenu);
+
+  views::MenuItemView* upgrade_item =
+      root->GetMenuItemByID(kActionUpgradeDialog);
+  ASSERT_NE(upgrade_item, nullptr);
+  ASSERT_NE(menu.GetLabelFontList(kActionUpgradeDialog), nullptr);
+
+  menu.ClearItemsBelowSearchBarForTesting();
+  root->ChildrenChanged();
+
+  // The notification row above the search bar stays, along with its command
+  // mapping. Nothing is left below the search bar row.
+  EXPECT_EQ(root->GetMenuItemByID(kActionUpgradeDialog), upgrade_item);
+  EXPECT_NE(menu.GetLabelFontList(kActionUpgradeDialog), nullptr);
+  EXPECT_EQ(submenu->children().back(),
+            menu.search_bar_for_testing()->parent());
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -2228,8 +2314,12 @@ TEST_F(ActionAppMenuTest, MenuItemNewBadgeProperty) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  actions::ActionItem* print_action = actions::ActionManager::Get().FindAction(
-      kActionPrint, browser_actions_->root_action_item());
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot, browser_actions_->root_action_item());
+  ASSERT_NE(app_menu_root, nullptr);
+
+  actions::BaseAction* print_action =
+      FindBaseAction(app_menu_root, kActionPrint);
   ASSERT_NE(print_action, nullptr);
   print_action->SetProperty(AppMenuActionItem::kNewBadgeFeatureKey,
                             &tabs::kVerticalTabsNewBadge);
@@ -2746,6 +2836,7 @@ TEST_F(ActionAppMenuTest, RecentTabsDynamicMenuMetrics) {
 
 TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
   base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
@@ -2768,6 +2859,11 @@ TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
                 "TabGroups_SavedTabGroups_"
                 "CreateNewGroupTriggeredFromTabGroupsAppMenu"),
             1);
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_CREATE_NEW_TAB_GROUP, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.CreateNewTabGroup",
+                                    1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
 
   actions::ActionInvocationContext captured_context;
   EXPECT_CALL(mock_action_invoked_,
@@ -2791,7 +2887,8 @@ TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
 TEST_F(ActionAppMenuTest, SendTabToSelfMetrics) {
   base::HistogramTester histogram_tester;
 
-  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  ActionAppMenuManager menu_manager(&mock_window_interface_,
+                                    &mock_drag_and_drop_host_);
   menu_manager.CreateMenuHierarchy();
 
   // TargetDeviceCount should not be logged when the menu hierarchy is
@@ -2930,6 +3027,308 @@ TEST_F(ActionAppMenuTest, DragAndDropDelegateForwarding) {
   EXPECT_CALL(mock_delegate, GetDragOperations(item_a_action))
       .WillOnce(testing::Return(ui::DragDropTypes::DRAG_MOVE));
   EXPECT_EQ(menu.GetDragOperations(item_a_view), ui::DragDropTypes::DRAG_MOVE);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, UpdateMenuItem) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot,
+      BrowserActions::From(&mock_window_interface_)->root_action_item());
+  ASSERT_TRUE(app_menu_root);
+
+  bool item_a_invoked = false;
+  bool item_b_invoked = false;
+  actions::BaseAction* item_a_action = nullptr;
+  auto submenu_action = actions::ActionItem::Builder()
+                            .SetText(u"Test Update Submenu")
+                            .SetProperty(AppMenuActionItem::kIsSubmenuKey, true)
+                            .Build();
+  item_a_action = submenu_action->AddChild(
+      actions::ActionItem::Builder()
+          .SetText(u"Item A")
+          .SetInvokeActionCallback(base::BindLambdaForTesting(
+              [&](actions::ActionItem*, actions::ActionInvocationContext) {
+                item_a_invoked = true;
+              }))
+          .Build());
+  actions::BaseAction* submenu_action_ptr =
+      app_menu_root->AddChild(std::move(submenu_action));
+
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* submenu_item = nullptr;
+  for (views::MenuItemView* item : root->GetSubmenu()->GetMenuItems()) {
+    if (item->title() == u"Test Update Submenu") {
+      submenu_item = item;
+      break;
+    }
+  }
+  ASSERT_TRUE(submenu_item);
+  ASSERT_TRUE(submenu_item->HasSubmenu());
+  menu.WillShowMenu(submenu_item);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 1u);
+
+  // Add Item B after Item A.
+  actions::BaseAction* item_b_action = submenu_action_ptr->AddChild(
+      actions::ActionItem::Builder()
+          .SetText(u"Item B")
+          .SetInvokeActionCallback(base::BindLambdaForTesting(
+              [&](actions::ActionItem*, actions::ActionInvocationContext) {
+                item_b_invoked = true;
+              }))
+          .Build());
+  menu.UpdateMenuItem(item_b_action, submenu_action_ptr, item_a_action);
+
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 2u);
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(0)->title(), u"Item A");
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(1)->title(), u"Item B");
+
+  // Move Item B before Item A.
+  menu.UpdateMenuItem(item_b_action, submenu_action_ptr,
+                      /*insert_after=*/nullptr);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 2u);
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(0)->title(), u"Item B");
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(1)->title(), u"Item A");
+
+  menu.ExecuteCommand(
+      submenu_item->GetSubmenu()->GetMenuItemAt(0)->GetCommand(), ui::EF_NONE);
+  EXPECT_TRUE(item_b_invoked);
+  menu.ExecuteCommand(
+      submenu_item->GetSubmenu()->GetMenuItemAt(1)->GetCommand(), ui::EF_NONE);
+  EXPECT_TRUE(item_a_invoked);
+
+  // Remove Item B.
+  menu.UpdateMenuItem(item_b_action, /*target_parent_action=*/nullptr);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 1u);
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(0)->title(), u"Item A");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, BookmarksDynamicMenuUpdatesOnModelChange) {
+  BookmarkModelFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkModelFactory::GetDefaultFactory());
+  BookmarkMergedSurfaceServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkMergedSurfaceServiceFactory::GetDefaultFactory());
+
+  bookmarks::BookmarkModel* model =
+      BookmarkModelFactory::GetForBrowserContext(profile_.get());
+  ASSERT_TRUE(model);
+  model->LoadEmptyForTest();
+
+  BookmarkMergedSurfaceService* bookmark_service =
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(bookmark_service);
+  bookmark_service->LoadForTesting({});
+
+  const bookmarks::BookmarkNode* first_node =
+      model->AddURL(model->bookmark_bar_node(), 0, u"First Bookmark",
+                    GURL("https://first.com"));
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* bookmarks_submenu_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_submenu_item);
+  menu.WillShowMenu(bookmarks_submenu_item);
+
+  auto find_item_by_title =
+      [](views::MenuItemView* parent,
+         const std::u16string& title) -> views::MenuItemView* {
+    for (views::MenuItemView* item : parent->GetSubmenu()->GetMenuItems()) {
+      if (item->title() == title) {
+        return item;
+      }
+    }
+    return nullptr;
+  };
+
+  EXPECT_TRUE(find_item_by_title(bookmarks_submenu_item, u"First Bookmark"));
+  EXPECT_FALSE(find_item_by_title(bookmarks_submenu_item, u"Second Bookmark"));
+
+  // Add a second bookmark while the menu is open.
+  const bookmarks::BookmarkNode* second_node =
+      model->AddURL(model->bookmark_bar_node(), 1, u"Second Bookmark",
+                    GURL("https://second.com"));
+
+  views::MenuItemView* first_item =
+      find_item_by_title(bookmarks_submenu_item, u"First Bookmark");
+  views::MenuItemView* second_item =
+      find_item_by_title(bookmarks_submenu_item, u"Second Bookmark");
+  ASSERT_TRUE(first_item);
+  ASSERT_TRUE(second_item);
+  EXPECT_LT(bookmarks_submenu_item->GetSubmenu()->GetIndexOf(first_item),
+            bookmarks_submenu_item->GetSubmenu()->GetIndexOf(second_item));
+
+  // Move Second Bookmark before First Bookmark.
+  model->Move(second_node, model->bookmark_bar_node(), 0);
+  first_item = find_item_by_title(bookmarks_submenu_item, u"First Bookmark");
+  second_item = find_item_by_title(bookmarks_submenu_item, u"Second Bookmark");
+  ASSERT_TRUE(first_item);
+  ASSERT_TRUE(second_item);
+  EXPECT_LT(bookmarks_submenu_item->GetSubmenu()->GetIndexOf(second_item),
+            bookmarks_submenu_item->GetSubmenu()->GetIndexOf(first_item));
+
+  // Rename First Bookmark.
+  model->SetTitle(first_node, u"Renamed First Bookmark",
+                  bookmarks::metrics::BookmarkEditSource::kOther);
+  EXPECT_FALSE(find_item_by_title(bookmarks_submenu_item, u"First Bookmark"));
+  EXPECT_TRUE(
+      find_item_by_title(bookmarks_submenu_item, u"Renamed First Bookmark"));
+
+  // Remove Second Bookmark.
+  model->Remove(second_node, bookmarks::metrics::BookmarkEditSource::kOther,
+                FROM_HERE);
+  EXPECT_FALSE(find_item_by_title(bookmarks_submenu_item, u"Second Bookmark"));
+  EXPECT_TRUE(
+      find_item_by_title(bookmarks_submenu_item, u"Renamed First Bookmark"));
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, BookmarksDynamicMenuDragAndDrop) {
+  BookmarkModelFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkModelFactory::GetDefaultFactory());
+  BookmarkMergedSurfaceServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkMergedSurfaceServiceFactory::GetDefaultFactory());
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile_.get());
+  ASSERT_TRUE(bookmark_model);
+  bookmark_model->LoadEmptyForTest();
+
+  BookmarkMergedSurfaceService* bookmark_service =
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(bookmark_service);
+  bookmark_service->LoadForTesting({});
+
+  const bookmarks::BookmarkNode* bar_node = bookmark_model->bookmark_bar_node();
+  const bookmarks::BookmarkNode* node_a = bookmark_model->AddURL(
+      bar_node, 0, u"Bookmark A", GURL("https://a.example.com"));
+  const bookmarks::BookmarkNode* node_b = bookmark_model->AddURL(
+      bar_node, 1, u"Bookmark B", GURL("https://b.example.com"));
+  const bookmarks::BookmarkNode* folder_c =
+      bookmark_model->AddFolder(bar_node, 2, u"Folder C");
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuItemView* bookmarks_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_item);
+  menu.WillShowMenu(bookmarks_item);
+
+  // Static items inside the Bookmarks submenu cannot be dragged or dropped on.
+  views::MenuItemView* bookmark_this_tab =
+      root->GetMenuItemByID(kActionBookmarkThisTab);
+  ASSERT_TRUE(bookmark_this_tab);
+  EXPECT_FALSE(menu.CanDrag(bookmark_this_tab));
+
+  auto find_item = [](views::MenuItemView* parent,
+                      const std::u16string& title) -> views::MenuItemView* {
+    if (!parent || !parent->HasSubmenu()) {
+      return nullptr;
+    }
+    for (views::MenuItemView* item : parent->GetSubmenu()->GetMenuItems()) {
+      if (item->title() == title) {
+        return item;
+      }
+    }
+    return nullptr;
+  };
+
+  views::MenuItemView* item_a = find_item(bookmarks_item, u"Bookmark A");
+  views::MenuItemView* item_b = find_item(bookmarks_item, u"Bookmark B");
+  ASSERT_TRUE(item_a);
+  ASSERT_TRUE(item_b);
+
+  // Drag Bookmark B before Bookmark A.
+  ASSERT_TRUE(menu.CanDrag(item_b));
+  EXPECT_NE(menu.GetDragOperations(item_b), ui::DragDropTypes::DRAG_NONE);
+
+  ui::OSExchangeData drag_data;
+  menu.WriteDragData(item_b, &drag_data);
+
+  int formats = 0;
+  std::set<ui::ClipboardFormatType> format_types;
+  EXPECT_TRUE(menu.GetDropFormats(bookmarks_item, &formats, &format_types));
+  EXPECT_TRUE(menu.AreDropTypesRequired(bookmarks_item));
+  ASSERT_TRUE(menu.CanDrop(bookmarks_item, drag_data));
+
+  ui::DropTargetEvent target_event(drag_data, gfx::PointF(), gfx::PointF(),
+                                   ui::DragDropTypes::DRAG_MOVE);
+  views::MenuDelegate::DropPosition drop_position =
+      views::MenuDelegate::DropPosition::kBefore;
+  EXPECT_EQ(menu.GetDropOperation(item_a, target_event, &drop_position),
+            ui::mojom::DragOperation::kMove);
+
+  views::View::DropCallback drop_cb =
+      menu.GetDropCallback(item_a, drop_position, target_event);
+  ui::mojom::DragOperation output_drag_op = ui::mojom::DragOperation::kNone;
+  std::move(drop_cb).Run(target_event, output_drag_op,
+                         /*drag_image_layer_owner=*/nullptr);
+  EXPECT_EQ(output_drag_op, ui::mojom::DragOperation::kMove);
+
+  EXPECT_EQ(bar_node->children()[0].get(), node_b);
+  EXPECT_EQ(bar_node->children()[1].get(), node_a);
+
+  // Verify the Bookmarks submenu repopulated in place with Bookmark B before
+  // Bookmark A, while preserving static items.
+  EXPECT_NE(root->GetMenuItemByID(kActionBookmarkThisTab), nullptr);
+  views::MenuItemView* updated_b = find_item(bookmarks_item, u"Bookmark B");
+  views::MenuItemView* updated_a = find_item(bookmarks_item, u"Bookmark A");
+  views::MenuItemView* updated_c = find_item(bookmarks_item, u"Folder C");
+  ASSERT_TRUE(updated_b);
+  ASSERT_TRUE(updated_a);
+  ASSERT_TRUE(updated_c);
+  EXPECT_LT(bookmarks_item->GetSubmenu()->GetIndexOf(updated_b),
+            bookmarks_item->GetSubmenu()->GetIndexOf(updated_a));
+
+  // Drop Bookmark A onto Folder C.
+  ui::OSExchangeData drag_data_a;
+  menu.WriteDragData(updated_a, &drag_data_a);
+  ASSERT_TRUE(menu.CanDrop(bookmarks_item, drag_data_a));
+
+  ui::DropTargetEvent target_event_c(drag_data_a, gfx::PointF(), gfx::PointF(),
+                                     ui::DragDropTypes::DRAG_MOVE);
+  views::MenuDelegate::DropPosition drop_on =
+      views::MenuDelegate::DropPosition::kOn;
+  EXPECT_EQ(menu.GetDropOperation(updated_c, target_event_c, &drop_on),
+            ui::mojom::DragOperation::kMove);
+  views::View::DropCallback drop_cb_c =
+      menu.GetDropCallback(updated_c, drop_on, target_event_c);
+  output_drag_op = ui::mojom::DragOperation::kNone;
+  std::move(drop_cb_c).Run(target_event_c, output_drag_op,
+                           /*drag_image_layer_owner=*/nullptr);
+  EXPECT_EQ(output_drag_op, ui::mojom::DragOperation::kMove);
+  ASSERT_EQ(folder_c->children().size(), 1u);
+  EXPECT_EQ(folder_c->children()[0].get(), node_a);
+
+  views::MenuItemView* repopulated_c = find_item(bookmarks_item, u"Folder C");
+  ASSERT_TRUE(repopulated_c);
+  views::MenuItemView* a_in_c = find_item(repopulated_c, u"Bookmark A");
+  ASSERT_TRUE(a_in_c);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();

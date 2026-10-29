@@ -71,6 +71,7 @@ source_set("misc") {
     "//base",
     "//chrome/app:branded_strings",
     "//chrome/app:generated_resources",
+    "//chrome/browser:after_startup_task_utils",
     "//chrome/browser:browser_process",
     "//chrome/browser:buildflags",
     "//chrome/browser:flags",
@@ -78,6 +79,7 @@ source_set("misc") {
     "//chrome/browser:startup_data",
     "//chrome/browser/accessibility",
     "//chrome/browser/app_mode",
+    "//chrome/browser/autocomplete",
     "//chrome/browser/background",
     "//chrome/browser/background_fetch",
     "//chrome/browser/background_sync",
@@ -430,7 +432,7 @@ source_set("profile") {
     "//content/public/browser",
     "//extensions/buildflags",
   ]
-  if (enable_extensions) {
+  if (enable_extensions_core) {
     deps += [ "//extensions/browser" ]
   }
   if (is_chromeos) {
@@ -1248,6 +1250,7 @@ if (!is_android) {
       "//base",
       "//chrome/browser/devtools",
       "//chrome/browser/devtools:test_support",
+      "//chrome/browser/enterprise",
       "//chrome/browser/policy:test_support",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/search_engines",
@@ -1266,6 +1269,8 @@ if (!is_android) {
       "//chrome/test/base:profile_lifecycle_test_utils",
       "//chrome/test/base:testing_browser_process",
       "//components/commerce/core:feature_list",
+      "//components/enterprise/isolated_mode",
+      "//components/policy/core/common:test_support",
       "//components/spellcheck/common",
       "//components/universal_optout:features",
       "//components/user_manager",

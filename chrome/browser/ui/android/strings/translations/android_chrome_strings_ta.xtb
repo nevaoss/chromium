@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">தேடல் இன்ஜின்களை நிர்வகி</translation>
 <translation id="1435593198351412143">PDF ஃபைல்களைத் தானாகத் திறத்தல்</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> ஆப்ஸில் இயங்குகிறது</translation>
-<translation id="1448440926884431741">நீங்கள் கண்காணிக்கும் தயாரிப்புகளை Bookmarksஸில் ஒழுங்கமைக்கலாம்</translation>
 <translation id="1452651021404174820">சாதனத்தைத் தேர்வுசெய்யுங்கள்</translation>
 <translation id="1455845192930279203">இருப்பினும், <ph name="DOWNLOAD_DOMAIN" /> இல் இருந்து "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) ஃபைலைப் பதிவிறக்க விரும்புகிறீர்களா?</translation>
 <translation id="1460751212339734034">டைப் செய்யும் நேரத்தைச் சேமியுங்கள்</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, தேர்ந்தெடுத்தவற்றில் பின் செய்யப்பட்ட ரெக்கார்டு செய்யப்படுகின்ற பக்கம்</translation>
 <translation id="4137746084635924146">சாதனத்தின் தற்போதைய மொழி</translation>
 <translation id="414128724510021958">இயல்பாகக் கோரப்பட்ட டெஸ்க்டாப் தளங்கள்</translation>
+<translation id="4150837143272125910">புதுப்பிப்பு பதிவிறக்கப்பட்டது</translation>
 <translation id="4162867837470729563">பகிர்தல் விருப்பங்களுக்கான பட்டியல் முழுத் திரையில் காட்டப்படுகிறது.</translation>
 <translation id="4164642020717536140">வேகமான மற்றும் பாதுகாப்பான வெப் பிரவுசிங்</translation>
 <translation id="4165077084524712774">கூடுதல் கருவிகள்</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265"><ph name="APP_NAME" /> ஆப்ஸில் PDF ஃபைலைத் திறக்கவா?</translation>
 <translation id="5849288995120328556">பகிர்வதை நிறுத்தவா?</translation>
 <translation id="5853623416121554550">இடைநிறுத்தப்பட்டது</translation>
+<translation id="5855375823365231964">இந்தச் சுயவிவரம் குறித்த அறிமுகம்</translation>
 <translation id="5855546874025048181">துல்லியமாக: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, தேர்ந்தெடுத்தவற்றில் ரெக்கார்டு செய்யப்படுகின்ற மறைநிலைப் பக்கம்</translation>
 <translation id="5857447844686706637">ஏதோ தவறாகிவிட்டது. 'விலையைக் கண்காணி' அம்சத்தைப் புதுப்பிக்க முடியவில்லை.</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">அடுத்த தாவலுக்குச் செல்லும்</translation>
 <translation id="6040143037577758943">மூடு</translation>
 <translation id="604124094241169006">தானியங்கு</translation>
+<translation id="6041959688070413372">தேடல் சேவைகளுக்கும் Google Drive போன்ற Google Workspace ஆப்ஸிற்கும் இடையிலான இணைப்பை நிர்வகிக்கலாம்</translation>
 <translation id="6042308850641462728">மேலும்</translation>
 <translation id="6047066316630165190">கட்ட வடிவ பக்கம் மாற்றும் அம்சத்தைத் திறக்கவும்</translation>
 <translation id="604996488070107836">அறியப்படாதப் பிழை காரணமாக <ph name="FILE_NAME" />ஐப் பதிவிறக்க முடியவில்லை.</translation>
@@ -1400,6 +1402,7 @@
 <translation id="6565959834589222080">வைஃபை இணைப்பு கிடைக்கும்போது பயன்படுத்தப்படும்</translation>
 <translation id="657177046675873214">உங்களின் எல்லாச் சாதனங்களிலும் உங்கள் புக்மார்க்குகளைப் பெற அமைப்புகளில் “புக்மார்க்குகள்” என்பதை இயக்கவும்</translation>
 <translation id="6573096386450695060">எப்போதும் அனுமதி</translation>
+<translation id="657480975869429144">Chrome புதிய பதிப்பு கிடைக்கிறது</translation>
 <translation id="658099107946526506">தேவையற்ற அணுகலைத் தடுக்க பின் மூலம் உங்கள் மறைநிலை பிரவுசிங்கைப் பாதுகாக்கலாம்</translation>
 <translation id="6583199322650523874">தற்போதைய பக்கத்தைப் புத்தகக்குறியிடும்</translation>
 <translation id="6588043302623806746">பாதுகாப்பான DNSஸைப் பயன்படுத்து</translation>

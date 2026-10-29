@@ -54,7 +54,6 @@
 #include "components/personal_context/core/personal_context_prefs.h"
 #include "components/personal_context/core/personal_context_types.h"
 #include "components/personal_context/core/url_constants.h"
-#include "components/wallet/core/browser/network/wallet_http_client.h"
 #include "components/wallet/core/common/wallet_features.h"
 #include "third_party/jni_zero/jni_zero.h"
 
@@ -270,17 +269,31 @@ void EntityDataManagerAndroid::AddOrUpdateEntityInstance(
                             std::move(on_local_save_fallback));
 }
 
-void EntityDataManagerAndroid::GetDetailsForUpsertPass(
-    int entity_type,
-    WalletPassAccessManager::GetDetailsForUpsertPassCallback callback) {
+void EntityDataManagerAndroid::PreloadDetailsForUpsertPass(JNIEnv* env,
+                                                           int entity_type) {
   std::optional<EntityTypeName> type_name = ToSafeEntityTypeName(entity_type);
   if (!type_name || !wallet_pass_access_manager_) {
-    std::move(callback).Run(base::unexpected(
-        wallet::WalletHttpClient::WalletRequestError::kGenericError));
     return;
   }
-  wallet_pass_access_manager_->GetDetailsForUpsertPass(EntityType(*type_name),
-                                                       std::move(callback));
+  wallet_pass_access_manager_->PreloadDetailsForUpsertPass(
+      EntityType(*type_name));
+}
+
+std::optional<WalletPassAccessManager::GetDetailsForUpsertPassResponse>
+EntityDataManagerAndroid::ExtractPreloadedDetailsForUpsertPass(
+    JNIEnv* env,
+    int entity_type) {
+  std::optional<EntityTypeName> type_name = ToSafeEntityTypeName(entity_type);
+  if (!type_name || !wallet_pass_access_manager_) {
+    return std::nullopt;
+  }
+  std::optional<WalletPassAccessManager::GetDetailsForUpsertPassResponse>
+      response =
+          wallet_pass_access_manager_->ExtractPreloadedDetailsForUpsertPass(
+              EntityType(*type_name));
+  return response.has_value() && IsValidUpsertPassDetailsResponse(*response)
+             ? response
+             : std::nullopt;
 }
 
 void EntityDataManagerAndroid::AddOrUpdateEntityInstance(

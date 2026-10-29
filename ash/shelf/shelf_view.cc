@@ -520,7 +520,8 @@ aura::Window* ShelfView::GetSingleOpenWindowForShelfView(
     return nullptr;
   }
 
-  return delegate->GetAppMenuItemWindow(menu_items[0].command_id);
+  return delegate->GetAppMenuItemWindow(menu_items[0].command_id)
+      .value_or(nullptr);
 }
 
 std::u16string ShelfView::GetTitleForView(const views::View* view) const {
@@ -2465,10 +2466,10 @@ void ShelfView::OnShelfAlignmentChanged(aura::Window* root_window,
 }
 
 void ShelfView::OnPinnedStateChanged(aura::Window* pinned_window) {
-  // Close context menus in locked fullscreen mode to prevent users from exiting
+  // Close context menus in trusted pinned mode to prevent users from exiting
   // this mode.
   if ((GetWindowPinType(pinned_window) ==
-       chromeos::WindowPinType::kLockedFullscreen) &&
+       chromeos::WindowPinType::kTrustedPinned) &&
       IsShowingMenu()) {
     shelf_menu_model_adapter_->Cancel();
   }

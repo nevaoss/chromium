@@ -38,6 +38,7 @@
 #include "chrome/browser/extensions/api/proxy_override_rules/proxy_override_rules_transformer.h"
 #include "chrome/browser/extensions/api/runtime/chrome_runtime_api_delegate.h"
 #include "chrome/browser/extensions/blocklist_factory.h"
+#include "chrome/browser/extensions/chrome_browser_context_lifetime_tracker.h"
 #include "chrome/browser/extensions/chrome_component_extension_resource_manager.h"
 #include "chrome/browser/extensions/chrome_content_browser_client_extensions_part.h"
 #include "chrome/browser/extensions/chrome_extension_function_details.h"
@@ -215,7 +216,7 @@ bool ShouldLogExtensionAction(content::BrowserContext* browser_context,
   // We only send these IPCs if activity logging is enabled, but due to race
   // conditions (e.g. logging gets disabled but the renderer sends the message
   // before it gets updated), we still need this check here.
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   return browser_context &&
          g_browser_process->profile_manager()->IsValidProfile(
              browser_context) &&
@@ -227,7 +228,7 @@ bool ShouldLogExtensionAction(content::BrowserContext* browser_context,
 // Logs an action to the extension activity log for the specified profile.
 void AddActionToExtensionActivityLog(content::BrowserContext* browser_context,
                                      scoped_refptr<Action> action) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   // If the action included a URL, check whether it is for an incognito profile.
   // The check is performed here so that it can safely be done from the UI
   // thread.
@@ -302,7 +303,7 @@ bool ChromeExtensionsBrowserClient::AreExtensionsDisabled(
 }
 
 bool ChromeExtensionsBrowserClient::IsValidContext(void* context) {
-  DCHECK(context);
+  CHECK(context, base::NotFatalUntil::M161);
   if (!g_browser_process) {
     LOG(ERROR) << "Unexpected null g_browser_process";
     NOTREACHED() << "Unexpected null g_browser_process";
@@ -332,7 +333,7 @@ content::BrowserContext* ChromeExtensionsBrowserClient::GetOffTheRecordContext(
 
 content::BrowserContext* ChromeExtensionsBrowserClient::GetOriginalContext(
     content::BrowserContext* context) {
-  DCHECK(context);
+  CHECK(context, base::NotFatalUntil::M161);
   return static_cast<Profile*>(context)->GetOriginalProfile();
 }
 
@@ -423,6 +424,11 @@ bool ChromeExtensionsBrowserClient::CanExtensionCrossIncognito(
     const Extension* extension,
     content::BrowserContext* context) const {
   return IsGuestSession(context) || util::CanCrossIncognito(extension, context);
+}
+
+BrowserContextLifetimeTracker*
+ChromeExtensionsBrowserClient::GetBrowserContextLifetimeTracker() {
+  return ChromeBrowserContextLifetimeTracker::GetInstance();
 }
 
 base::FilePath ChromeExtensionsBrowserClient::GetBundleResourcePath(
@@ -764,7 +770,7 @@ bool ChromeExtensionsBrowserClient::IsWebUIAllowedToMakeNetworkRequests(
 
 network::mojom::NetworkContext*
 ChromeExtensionsBrowserClient::GetSystemNetworkContext() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   return g_browser_process->system_network_context_manager()->GetContext();
 }
 
@@ -880,7 +886,7 @@ bool ChromeExtensionsBrowserClient::IsUsbDeviceAllowedByPolicy(
   UsbChooserContext* usb_chooser_context =
       UsbChooserContextFactory::GetForProfile(static_cast<Profile*>(context));
   // This will never be null as even incognito mode has its own instance.
-  DCHECK(usb_chooser_context);
+  CHECK(usb_chooser_context, base::NotFatalUntil::M161);
 
   // Check against WebUsbAllowDevicesForUrls.
   return usb_chooser_context->usb_policy_allowed_devices().IsDeviceAllowed(

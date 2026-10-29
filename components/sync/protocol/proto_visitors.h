@@ -63,6 +63,7 @@
 #include "components/sync/protocol/sync.pb.h"
 #include "components/sync/protocol/sync_entity.pb.h"
 #include "components/sync/protocol/sync_invalidations_payload.pb.h"
+#include "components/sync/protocol/tab_context_container_access_token.pb.h"
 #include "components/sync/protocol/tab_group_attribution_metadata.pb.h"
 #include "components/sync/protocol/theme_android_specifics.pb.h"
 #include "components/sync/protocol/theme_ios_specifics.pb.h"
@@ -702,10 +703,15 @@ VISIT_PROTO_FIELDS(const sync_pb::EncryptedData& proto) {
   VISIT(key_id_v2);
 }
 
+VISIT_PROTO_FIELDS(const sync_pb::TabContextItemContent& proto) {
+  VISIT_BYTES(raw_data);
+  VISIT_BYTES(gzip_compressed_data);
+}
+
 VISIT_PROTO_FIELDS(const sync_pb::EncryptedTabContextItemSpecifics& proto) {
   VISIT(container_id);
   VISIT(item_id);
-  VISIT(encrypted_data);
+  VISIT(encrypted_content);
 }
 
 VISIT_PROTO_FIELDS(
@@ -1644,6 +1650,17 @@ VISIT_PROTO_FIELDS(
 
 VISIT_PROTO_FIELDS(const sync_pb::UserEventSpecifics::FlocIdComputed& proto) {
   VISIT(floc_id);
+}
+
+VISIT_PROTO_FIELDS(const google::protobuf::Timestamp& proto) {
+  visitor.Visit(proto, "seconds", proto.seconds());
+  visitor.Visit(proto, "nanos", proto.nanos());
+}
+
+VISIT_PROTO_FIELDS(const sync_pb::TabContextContainerAccessToken& proto) {
+  VISIT(name);
+  VISIT_BYTES(encrypted_container_key);
+  VISIT(expire_time);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::TabNavigation& proto) {

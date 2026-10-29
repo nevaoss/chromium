@@ -701,14 +701,6 @@ id<SystemIdentity> GetDisplayedIdentity(
 // The avatar of `displayedIdentity`.
 @property(nonatomic, strong) UIImage* displayedIdentityAvatar;
 
-// YES if the sign-in promo is currently visible by the user.
-@property(nonatomic, assign, getter=isSigninPromoViewVisible)
-    BOOL signinPromoViewVisible;
-
-// YES if the sign-in promo is either invalid or closed.
-@property(nonatomic, assign, readonly, getter=isInvalidOrClosed)
-    BOOL invalidOrClosed;
-
 // Redeclared to be assign.
 @property(nonatomic, assign) SigninPromoViewState signinPromoViewState;
 
@@ -732,6 +724,9 @@ id<SystemIdentity> GetDisplayedIdentity(
   ChangeProfileContinuationProvider _changeProfileContinuationProvider;
   // Presenter which can show signin UI.
   __weak id<SigninPromoViewMediatorDelegate> _delegate;
+  // YES if the sign-in promo is currently visible enough that we can log it as
+  // being displayed to the user.
+  BOOL _signinPromoViewVisibleOnScreen;
 }
 
 + (void)registerProfilePrefs:(user_prefs::PrefRegistrySyncable*)registry {
@@ -842,7 +837,7 @@ id<SystemIdentity> GetDisplayedIdentity(
     _accountPreviewDataService = accountPreviewDataService;
     _syncService = syncService;
     _accessPoint = accessPoint;
-    _signinPromoViewState = SigninPromoViewState::kNotYetDisplayed;
+    _signinPromoViewState = SigninPromoViewState::kNotOrPartiallyDisplayed;
     _signinPromoAction = SigninPromoAction::kInstantSignin;
     _dataTypeToWaitForInitialSync = syncer::DataType::UNSPECIFIED;
     _delegate = delegate;
@@ -938,17 +933,19 @@ id<SystemIdentity> GetDisplayedIdentity(
   return configurator;
 }
 
-- (void)signingPromoDidBecomeVisible {
+- (void)signinPromoDidBecomeVisible {
   // Increments the "shown" counter used for histograms. Called when the signin
   // promo view is visible. If the sign-in promo is already visible, this method
   // does nothing.
-  CHECK(![self isClosedOrDisconnected], base::NotFatalUntil::M156)
+  CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
-  if (self.signinPromoViewVisible) {
+  if (_signinPromoViewVisibleOnScreen) {
     return;
   }
-  if (self.signinPromoViewState == SigninPromoViewState::kNotYetDisplayed) {
-    self.signinPromoViewState = SigninPromoViewState::kHadNoInteraction;
+  if (self.signinPromoViewState ==
+      SigninPromoViewState::kNotOrPartiallyDisplayed) {
+    self.signinPromoViewState =
+        SigninPromoViewState::kDisplayedWithNoInteraction;
   }
   signin_metrics::LogSignInOffered(
       self.accessPoint,
@@ -956,7 +953,7 @@ id<SystemIdentity> GetDisplayedIdentity(
           ? signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT
           : signin_metrics::PromoAction::
                 PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT);
-  self.signinPromoViewVisible = YES;
+  _signinPromoViewVisibleOnScreen = YES;
   switch (self.signinPromoAction) {
     case SigninPromoAction::kReviewAccountSettings:
       if (self.accessPoint == signin_metrics::AccessPoint::kBookmarkManager) {
@@ -1009,12 +1006,12 @@ id<SystemIdentity> GetDisplayedIdentity(
 }
 
 - (void)signinPromoViewIsHidden {
-  if (![self isUsable]) {
+  if (!_signinPromoViewVisibleOnScreen) {
     return;
   }
-  CHECK(![self isClosedOrDisconnected], base::NotFatalUntil::M156)
+  CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
-  self.signinPromoViewVisible = NO;
+  _signinPromoViewVisibleOnScreen = NO;
 }
 
 - (void)disconnect {
@@ -1059,30 +1056,18 @@ id<SystemIdentity> GetDisplayedIdentity(
          self.initialSyncInProgress;
 }
 
+#pragma mark - Private properties
+
 // Returns YES if the sign-in promo view is in a state where its buttons may be
 // used.
 - (BOOL)isUsable {
   switch (self.signinPromoViewState) {
-    case SigninPromoViewState::kClosed:
-    case SigninPromoViewState::kDisconnected:
-    case SigninPromoViewState::kNotYetDisplayed:
-      return NO;
-    case SigninPromoViewState::kHadNoInteraction:
+    case SigninPromoViewState::kNotOrPartiallyDisplayed:
+    case SigninPromoViewState::kDisplayedWithNoInteraction:
     case SigninPromoViewState::kUserInteracted:
       return YES;
-  }
-}
-
-#pragma mark - Private properties
-
-- (BOOL)isClosedOrDisconnected {
-  switch (self.signinPromoViewState) {
     case SigninPromoViewState::kClosed:
     case SigninPromoViewState::kDisconnected:
-      return YES;
-    case SigninPromoViewState::kNotYetDisplayed:
-    case SigninPromoViewState::kHadNoInteraction:
-    case SigninPromoViewState::kUserInteracted:
       return NO;
   }
 }
@@ -1152,6 +1137,8 @@ id<SystemIdentity> GetDisplayedIdentity(
 // Records in histogram, the number of time the sign-in promo is displayed
 // before the sign-in button is pressed, if the current access point supports
 // it.
+// Note that this number may be zero if the user tap on a promo’s button before
+// the promo is entirely displayed.
 - (void)sendImpressionsTillSigninButtonsHistogram {
   CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
@@ -1210,7 +1197,7 @@ id<SystemIdentity> GetDisplayedIdentity(
            base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
   self.signinPromoViewState = SigninPromoViewState::kDisconnected;
-  self.signinPromoViewVisible = NO;
+  _signinPromoViewVisibleOnScreen = NO;
 }
 
 // Whether the sign-in needs to wait for the end of the initial sync to
@@ -1244,12 +1231,6 @@ id<SystemIdentity> GetDisplayedIdentity(
     (SigninPromoView*)signinPromoView {
   CHECK(!self.displayedIdentity, base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
-  // The promo on top of the feed is only logged as visible when most of it can
-  // be seen, so it can be used without `self.signinPromoViewVisible`.
-  CHECK(self.signinPromoViewVisible ||
-            self.accessPoint == signin_metrics::AccessPoint::kNtpFeedTopPromo,
-        base::NotFatalUntil::M156)
-      << base::SysNSStringToUTF8([self description]);
   CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
   [self sendImpressionsTillSigninButtonsHistogram];
@@ -1279,8 +1260,6 @@ id<SystemIdentity> GetDisplayedIdentity(
 - (void)signinPromoViewDidTapPrimaryButtonWithDefaultAccount:
     (SigninPromoView*)signinPromoView {
   CHECK(self.displayedIdentity, base::NotFatalUntil::M156)
-      << base::SysNSStringToUTF8([self description]);
-  CHECK(self.signinPromoViewVisible, base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
   CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
@@ -1318,8 +1297,6 @@ id<SystemIdentity> GetDisplayedIdentity(
     (SigninPromoView*)signinPromoView {
   CHECK(self.displayedIdentity, base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
-  CHECK(self.signinPromoViewVisible, base::NotFatalUntil::M156)
-      << base::SysNSStringToUTF8([self description]);
   CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
   [self sendImpressionsTillSigninButtonsHistogram];
@@ -1349,12 +1326,7 @@ id<SystemIdentity> GetDisplayedIdentity(
 - (void)signinPromoViewCloseButtonWasTapped:(SigninPromoView*)view {
   CHECK([self isUsable], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
-  // The promo on top of the feed is only logged as visible when most of it can
-  // be seen, so it can be dismissed without `self.signinPromoViewVisible`.
-  CHECK(self.signinPromoViewVisible ||
-            self.accessPoint == signin_metrics::AccessPoint::kNtpFeedTopPromo,
-        base::NotFatalUntil::M156)
-      << base::SysNSStringToUTF8([self description]);
+  _signinPromoViewVisibleOnScreen = NO;
   base::RecordAction(base::UserMetricsAction("Signin_Promo_Close"));
   self.signinPromoViewState = SigninPromoViewState::kClosed;
   const char* alreadySeenSigninViewPreferenceKey =
@@ -1405,11 +1377,11 @@ id<SystemIdentity> GetDisplayedIdentity(
       stringWithFormat:
           @"<%@: %p, identity: %p, signinPromoViewState: %d, "
           @"signinInProgress: %d, initialSyncInProgress %d, accessPoint: %d, "
-          @"signinPromoViewVisible: %d>",
+          @"_signinPromoViewVisibleOnScreen: %d>",
           self.class.description, self, self.displayedIdentity,
           static_cast<int>(self.signinPromoViewState), self.signinInProgress,
           self.initialSyncInProgress, static_cast<int>(self.accessPoint),
-          self.signinPromoViewVisible];
+          _signinPromoViewVisibleOnScreen];
 }
 
 @end

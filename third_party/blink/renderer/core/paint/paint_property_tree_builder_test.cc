@@ -8335,6 +8335,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ScrollAxisLockPropagatesToCc) {
 }
 
 TEST_P(PaintPropertyTreeBuilderTest, ElementCanvasTransformPropertyTree) {
+  GetDocument().GetSettings()->SetScriptEnabled(true);
   SetBodyInnerHTML(R"HTML(
     <canvas content=drawable id="canvas">
       <div id="target" drawable style="translate: 10px 20px"></div>
@@ -8375,7 +8376,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ElementCanvasClipPropertyTree) {
   ASSERT_TRUE(canvas_clip);
   EXPECT_TRUE(canvas_clip->LayoutClipRect().IsInfinite());
   ASSERT_TRUE(properties->Effect());
-  EXPECT_EQ(canvas_clip, &properties->Effect()->CanvasChildContentClip());
+  EXPECT_EQ(canvas_clip, &properties->Effect()->CanvasDrawableContentClip());
 
   target_element->SetCanvasClip(FloatClipRect(gfx::RectF(10, 20, 30, 40)));
   UpdateAllLifecyclePhasesExceptPaint();

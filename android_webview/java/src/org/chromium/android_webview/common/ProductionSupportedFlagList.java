@@ -64,8 +64,6 @@ public final class ProductionSupportedFlagList {
      * updating the "LoginCustomFlags" field in tools/metrics/histograms/enums.xml.
      */
     public static final Flag[] sFlagList = {
-        Flag.baseFeature("useicu4xnormalizer", "Auto-generated flag for useicu4xnormalizer."),
-        Flag.baseFeature("AwMetricsLogTrimming", "Auto-generated flag for AwMetricsLogTrimming."),
         Flag.commandLine(
                 AwSwitches.HIGHLIGHT_ALL_WEBVIEWS,
                 "Highlight the contents (including web contents) of all WebViews with a yellow "
@@ -1216,10 +1214,6 @@ public final class ProductionSupportedFlagList {
                 "When enabled, misspelling suggestion span will be blocked from showing in"
                         + " composition mode."),
         Flag.baseFeature(
-                ContentFeatures.ACCESSIBILITY_ATOMIC_LIVE_REGIONS,
-                "When enabled, supports atomic announcements, meaning that when aria-atomic=true,"
-                    + " the entire live region will be announced not just the node that changed."),
-        Flag.baseFeature(
                 "LevelDBCacheSize",
                 "Reduces the size of the LevelDB cache to reduce memory usage at no expected speed"
                         + " cost"),
@@ -1547,6 +1541,12 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.SCROLL_PREDICTOR_REFINED_HAS_PREDICTION,
                 "Refines ScrollPredictor::HasPrediction() to check prediction availability before"
                         + " generating synthetic scroll updates."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_RELAX_DATA_DIR_LOCKING,
+                "Allow WebView initialization to continue in the case where an old instance of"
+                        + " the same app process is stuck holding the lock."),
+        Flag.baseFeature("useicu4xnormalizer", "Auto-generated flag for useicu4xnormalizer."),
+        Flag.baseFeature("AwMetricsLogTrimming", "Auto-generated flag for AwMetricsLogTrimming."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

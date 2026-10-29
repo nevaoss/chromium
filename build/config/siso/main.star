@@ -92,8 +92,9 @@ def init(ctx):
             },
         },
         "rules": [],
-        # Allowlist for fail-on-bad-deps feature.
-        "bad_deps": {
+        # Outputs with known missing deps. They don't fail the build with
+        # -missing_deps=error/fatal.
+        "missing_deps": {
             "./gen/third_party/devtools-frontend/src/front_end/panels/application/application.js": "crbug.com/556413211",
             "./gen/third_party/devtools-frontend/src/front_end/panels/sources/sources.js": "crbug.com/556926446",
             "./gen/third_party/devtools-frontend/src/front_end/panels/timeline/timeline.js": "crbug.com/556600964",
@@ -101,6 +102,7 @@ def init(ctx):
             "./obj/ash/quick_pair/repository/repository/device_address_map.o": "crbug.com/546524333",
             "./obj/ash/quick_pair/repository/repository/device_image_store.o": "crbug.com/546524333",
             "./obj/chrome/browser/ash/guest_os/public/public/guest_os_mount_provider.o": "crbug.com/565544340",
+            "./obj/chrome/browser/ash/policy/tools/device_policy_remover_generated/device_policy_remover.o": "crbug.com/570313021",
             "./obj/chrome/browser/ui/views/upgrade_notification_controller/upgrade_notification_controller.o": "crbug.com/555387059",
         },
         # Executables sent from Windows host to Linux workers need to set executable bit explicitly.

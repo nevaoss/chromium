@@ -123,7 +123,6 @@ Chromeni yaxshilashda ishlatiladigan maʼlumotlar qoʻshimcha sozlamalarini <ph 
 <translation id="1432581352905426595">Qidiruv tizimlarini boshqarish</translation>
 <translation id="1435593198351412143">PDF fayllar avtomatik ochilsin</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> ilovasida ochilgan</translation>
-<translation id="1448440926884431741">Kuzatiladigan mahsulotlarni bukmarklarda tartiblang</translation>
 <translation id="1452651021404174820">Qurilmani tanlang</translation>
 <translation id="1455845192930279203"><ph name="FILE_NAME" /> fayli (<ph name="FILE_SIZE" />) <ph name="DOWNLOAD_DOMAIN" /> domenidan baribir yuklab olinsinmi?</translation>
 <translation id="1460751212339734034">Vaqtni tejang, kamroq yozing</translation>
@@ -765,6 +764,7 @@ Shifrlangan maʼlumotlarni faqatgina kodli ibora yordamida oʻqish mumkin. Kodli
 <translation id="4092709865241032354">Google Parollar menejeriga kirish maʼlumotlaringizni saqlashga yordam berish uchun ushbu sayt uchun foydalanuvchi nomini kiriting</translation>
 <translation id="4095146165863963773">Bu ilova maʼlumotlari oʻchirilsinmi?</translation>
 <translation id="4095483462103784441">Yangi varaqlar guruhini yaratish</translation>
+<translation id="4098552968111329864">Chromeda ishingiz xavfsizligini taʼminlash uchun Chromega kirganingizda tashkilotingiz ayrim maʼlumotlarni koʻrishi yoki boshqarishi mumkin.</translation>
 <translation id="4105527135143631701">Google Parollar menejeri yangilanishi ochildi</translation>
 <translation id="4107207375883769436">Tashkilotingiz ish profilingizdagi brauzer maʼlumotlarini (masalan, ochilgan veb-sahifalar tarixi va parollarni) koʻrishi hamda boshqarishi mumkin.</translation>
 <translation id="4113030288477039509">Administratoringiz tomonidan boshqariladi</translation>
@@ -775,6 +775,7 @@ Shifrlangan maʼlumotlarni faqatgina kodli ibora yordamida oʻqish mumkin. Kodli
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, kontenti yozib olinayotgan mahkamlangan varaq bir necha marta tanlandi</translation>
 <translation id="4137746084635924146">Qurilmadagi joriy til</translation>
 <translation id="414128724510021958">Standart holatda saytlarning kompyuter versiyasi talab etiladi</translation>
+<translation id="4150837143272125910">Yangilanish yuklab olindi</translation>
 <translation id="4162867837470729563">Ruxsat parametrlari roʻyxatini toʻliq hajmda ochilgan.</translation>
 <translation id="4164642020717536140">Internetni tez va xavfsiz kezing</translation>
 <translation id="4165077084524712774">Yana</translation>
@@ -1199,6 +1200,7 @@ Google hisobingiz orqali amalga oshirgan qidiruvlaringiz, brauzer tarixi va bosh
 <translation id="5848257610304005265">PDF fayl <ph name="APP_NAME" /> ilovasida ochilsinmi?</translation>
 <translation id="5849288995120328556">Ulashuv tugatilsinmi?</translation>
 <translation id="5853623416121554550">pauza qilindi</translation>
+<translation id="5855375823365231964">Bu profil haqida</translation>
 <translation id="5855546874025048181">Aniqlashtirish: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, kontenti yozib olinayotgan inkognito varaq bir necha marta tanlandi</translation>
 <translation id="5857447844686706637">Xatolik yuz berdi. Kuzatiladigan narx yangilanmadi.</translation>
@@ -1240,6 +1242,7 @@ Google hisobingiz orqali amalga oshirgan qidiruvlaringiz, brauzer tarixi va bosh
 <translation id="6039379616847168523">Keyingi varaqqa o‘tish</translation>
 <translation id="6040143037577758943">Yopish</translation>
 <translation id="604124094241169006">Avtomatik</translation>
+<translation id="6041959688070413372">Qidiruv xizmatlari va Google Drive kabi Google Workspace ilovalari orasidagi aloqani boshqaring</translation>
 <translation id="6042308850641462728">Yana</translation>
 <translation id="6047066316630165190">Jadval varaq almashtirgichini ochish</translation>
 <translation id="604996488070107836">Noma’lum xatolik tufayli <ph name="FILE_NAME" /> fayli yuklab olinmadi.</translation>
@@ -1400,6 +1403,7 @@ Masalan, qaysi sahifalarga kirganligingizdan qat’i nazar, ba’zi saytlarda re
 <translation id="6565959834589222080">Mavjud boʻlganda Wi-Fi ishlatiladi</translation>
 <translation id="657177046675873214">Bukmarklardan barcha qurilmalarda foydalanish uchun sozlamalardan “Bukmarklar” bandini yoqing</translation>
 <translation id="6573096386450695060">Har doim ruxsat berilsin</translation>
+<translation id="657480975869429144">Chromening yangi versiyasi chiqdi</translation>
 <translation id="658099107946526506">Ruxsatsiz kirishning oldini olish uchun maxfiy brauzeringizni PIN kod bilan himoyalang</translation>
 <translation id="6583199322650523874">Joriy sahifani xatcho‘plarga qo‘shish</translation>
 <translation id="6588043302623806746">Xavfsiz DNS ishlatish</translation>
@@ -1767,6 +1771,7 @@ Bu sozlamani oʻzgartirish uchun <ph name="BEGIN_LINK" />hisobingizda Chrome ma�
 <translation id="7929587383660661825">Chrome bezovta qiluvchi bildirishnoma chiqargan yoki yaqinda ochilmagan saytlardan ruxsatlarni avtomatik olib tashlaydi</translation>
 <translation id="7934668619883965330">Fayl yuklab olinmadi. Fayl formati dastaklanmaydi.</translation>
 <translation id="7951102827450076904">Yuklab olingan PDF fayllar doim ochilsin</translation>
+<translation id="7952148074468405586"><ph name="BEGIN_LINK" />Tashkilotingiz qanday maʼlumotlarni koʻrishi yoki boshqarishi mumkinligi<ph name="END_LINK" /> haqida batafsil</translation>
 <translation id="7952479614398473176">Yangi oyna ochish uchun jami faol oynalar sonini <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> taga yoki undan ham kamaytiring.</translation>
 <translation id="7956713633345437162">Mobil xatcho‘plar</translation>
 <translation id="7957413488482743710">Virtual karta haqiqiy kartani ehtimoliy firibgarlikdan himoya qilish maqsadida berkitadi. <ph name="BEGIN_LINK1" />Virtual kartalar haqida batafsil<ph name="END_LINK1" /></translation>

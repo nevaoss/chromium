@@ -392,6 +392,86 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
                         "el => !el.hideHandles && el.disableMultiSelect"));
 }
 
+// With `disable_multi_select`, the overlay shows the normal cursor and a
+// background click dismisses it instead of drawing a new region.
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
+                       DisableMultiSelectClickDismissesOverlay) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kOverlay = {"selection-overlay-app",
+                              "glic-selection-overlay"};
+  const DeepQuery kRenderer = {"selection-overlay-app",
+                               "glic-selection-overlay",
+                               "post-selection-renderer"};
+
+  RunTestSequence(
+      Do([this]() {
+        ShowWithSelection(selection::InteractionOptions::New(
+            /*hide_handles=*/false, /*disable_multi_select=*/true));
+      }),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      InstrumentNonTabWebView(kOverlayWebContentsId,
+                              OverlayBaseController::kOverlayId),
+      WaitForJsResultAt(kOverlayWebContentsId, {"selection-overlay-app"},
+                        "el => el.screenshot_ !== null"),
+      WaitForJsResultAt(kOverlayWebContentsId, kRenderer,
+                        "el => el.hasSelection()"),
+      WaitForJsResultAt(
+          kOverlayWebContentsId, kOverlay,
+          "el => getComputedStyle(el.shadowRoot.querySelector("
+          "'#selectionOverlay')).cursor === 'default' && "
+          "getComputedStyle(el.shadowRoot.querySelector('#cursor'))"
+          ".visibility === 'hidden'"),
+      MoveMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(300, 300)),
+      ClickMouse(), WaitForHide(OverlayBaseController::kOverlayId));
+}
+
+// With `disable_multi_select`, a background drag dismisses the overlay instead
+// of drawing a new region.
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
+                       DisableMultiSelectDragDismissesOverlay) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kRenderer = {"selection-overlay-app",
+                               "glic-selection-overlay",
+                               "post-selection-renderer"};
+
+  RunTestSequence(
+      Do([this]() {
+        ShowWithSelection(selection::InteractionOptions::New(
+            /*hide_handles=*/false, /*disable_multi_select=*/true));
+      }),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      InstrumentNonTabWebView(kOverlayWebContentsId,
+                              OverlayBaseController::kOverlayId),
+      WaitForJsResultAt(kOverlayWebContentsId, {"selection-overlay-app"},
+                        "el => el.screenshot_ !== null"),
+      WaitForJsResultAt(kOverlayWebContentsId, kRenderer,
+                        "el => el.hasSelection()"),
+      MoveMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(300, 300)),
+      DragMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(400, 400)),
+      WaitForHide(OverlayBaseController::kOverlayId));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
+                       ShowWithSelectionHidesHandles) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kRenderer = {"selection-overlay-app",
+                               "glic-selection-overlay",
+                               "post-selection-renderer"};
+
+  RunTestSequence(Do([this]() {
+                    ShowWithSelection(selection::InteractionOptions::New(
+                        /*hide_handles=*/true, /*disable_multi_select=*/false));
+                  }),
+                  WaitForShow(OverlayBaseController::kOverlayId),
+                  InstrumentNonTabWebView(kOverlayWebContentsId,
+                                          OverlayBaseController::kOverlayId),
+                  WaitForJsResultAt(kOverlayWebContentsId, kRenderer,
+                                    "el => el.hasAttribute('hide-handles')"));
+}
+
 IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
                        OverlayHiddenOnBackgroundedTab) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
@@ -1850,6 +1930,38 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
                   // Glic opens in the side panel.
                   WaitForShow(kSidePanelElementId),
                   InAnyContext(WaitForShow(kGlicViewElementId)));
+}
+
+// The small chip opens the overlay with the handles hidden, and they stay
+// hidden while the Explain card shows.
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       HandlesHiddenWithExplainCard) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kRenderer = {"selection-overlay-app",
+                               "glic-selection-overlay",
+                               "post-selection-renderer"};
+
+  static constexpr char kCardShownJs[] = R"js(
+    el => !!el.shadowRoot.querySelector(
+        '#inlineFulfillmentHost > glic-explain-fulfillment')
+  )js";
+  // The corners aren't drawn, and their hit boxes are gone, so the region
+  // can't be resized.
+  static constexpr char kHandlesHiddenJs[] = R"js(
+    el => {
+      const corners = el.shadowRoot.querySelector('#selectionCorners');
+      const boxes = [...corners.querySelectorAll('.corner-hit-box')];
+      return getComputedStyle(corners).backgroundImage === 'none' &&
+          boxes.length === 4 &&
+          boxes.every(box => getComputedStyle(box).display === 'none');
+    }
+  )js";
+
+  RunTestSequence(
+      OpenExplainCard(kActiveTab, kOverlayWebContentsId),
+      WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay, kCardShownJs),
+      CheckJsResultAt(kOverlayWebContentsId, kRenderer, kHandlesHiddenJs));
 }
 
 namespace {

@@ -126,7 +126,9 @@ constexpr char kKeyPageSetup[] = "page-setup";
 constexpr char kKeySettings[] = "settings";
 constexpr char kKeyToken[] = "token";
 
-constexpr int kXdgPortalRequiredVersion = 3;
+// PreparePrint and Print are available since version 1. "has_selected_pages"
+// requires version 4, but older versions ignore unknown options.
+constexpr uint32_t kXdgPortalRequiredVersion = 1;
 
 // TODO(neva): Wrap in BUILDFLAG to fix build error when building chrome target.
 // Try to contribute it into upstream.
@@ -727,8 +729,9 @@ void PrintDialogLinuxPortal::ShowDialog(
   callback_ = std::move(callback);
 
   dbus_xdg::RequestXdgDesktopPortal(
-      bus_.get(), base::BindOnce(&PrintDialogLinuxPortal::OnPortalAvailable,
-                                 weak_factory_.GetWeakPtr(), has_selection));
+      bus_.get(), kPrintInterfaceName,
+      base::BindOnce(&PrintDialogLinuxPortal::OnPortalAvailable,
+                     weak_factory_.GetWeakPtr(), has_selection));
 }
 
 void PrintDialogLinuxPortal::OnPortalAvailable(bool has_selection,

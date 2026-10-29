@@ -98,6 +98,11 @@ GlicInvokeOptions CreateInvokeOptions(
     if (!trigger_req.initial_prompt.empty()) {
       options.prompts.push_back(trigger_req.initial_prompt);
     }
+    auto et_payload = mojom::ExperimentalTriggeringPayload::New();
+    et_payload->payment_metadata = trigger_req.payment_metadata;
+    options.source_or_payload =
+        mojom::InvocationPayload::NewExperimentalTriggering(
+            std::move(et_payload));
   } else if (std::holds_alternative<ContinueActuationRequest>(
                  request.payload)) {
     options.feature_mode = mojom::FeatureMode::kActuation;
@@ -1616,7 +1621,7 @@ GlicExperimentalTriggeringCoordinator::GetCapabilities(
       syncer::DeviceInfo::GlicExperimentalTriggeringState::kUnavailable) {
     return {};
   }
-  base::flat_set<std::string> capabilities;
+  base::flat_set<std::string> capabilities = {kGlicCapabilityStructuredYields};
   if (base::FeatureList::IsEnabled(
           features::kGlicExperimentalTriggeringScreenshot)) {
     capabilities.insert(kGlicCapabilityScreenshot);

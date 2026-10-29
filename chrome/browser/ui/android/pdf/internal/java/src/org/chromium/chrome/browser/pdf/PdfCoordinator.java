@@ -32,7 +32,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AlertDialog;
@@ -1343,8 +1342,7 @@ public class PdfCoordinator
                         PdfUtils.recordEditFabAction();
                         openPdfInExternalEditor();
                     });
-            if (view instanceof ViewGroup) {
-                ViewGroup group = (ViewGroup) view;
+            if (view instanceof ViewGroup group) {
                 for (int i = 0; i < group.getChildCount(); i++) {
                     overrideClickListeners(group.getChildAt(i));
                 }
@@ -1929,7 +1927,7 @@ public class PdfCoordinator
     }
 
     @Override
-    public void onUrlChanged(@NonNull String url) {
+    public void onUrlChanged(String url) {
         mUrl = url;
     }
 

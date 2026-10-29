@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">ସର୍ଚ୍ଚ ଇଞ୍ଜିନଗୁଡ଼ିକ ପରିଚାଳନା କରନ୍ତୁ</translation>
 <translation id="1435593198351412143">ସ୍ୱତଃ PDFଗୁଡ଼ିକୁ ଖୋଲନ୍ତୁ</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" />ରେ ଚାଲୁଛି</translation>
-<translation id="1448440926884431741">ଆପଣଙ୍କ ଟ୍ରାକ କରାଯାଇଥିବା ପ୍ରଡକ୍ଟଗୁଡ଼ିକୁ ବୁକମାର୍କରେ ବ୍ୟବସ୍ଥିତ କରନ୍ତୁ</translation>
 <translation id="1452651021404174820">ଏକ ଡିଭାଇସ ବାଛନ୍ତୁ</translation>
 <translation id="1455845192930279203">ଆପଣ ଯେ କୌଣସି ପ୍ରକାରେ <ph name="DOWNLOAD_DOMAIN" />ରୁ "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />)କୁ ଡାଉନଲୋଡ କରିବାକୁ ଚାହୁଁଛନ୍ତି?</translation>
 <translation id="1460751212339734034">ସମୟ ବଞ୍ଚାନ୍ତୁ, କମ ଟାଇପ କରନ୍ତୁ</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, ମଲ୍ଟିସିଲେକ୍ଟେଡ ପିନ ହୋଇଥିବା ରେକର୍ଡ କରୁଥିବା ଟାବ</translation>
 <translation id="4137746084635924146">ଡିଭାଇସର ବର୍ତ୍ତମାନର ଭାଷା</translation>
 <translation id="414128724510021958">ଡେସ୍କଟପ ସାଇଟଗୁଡ଼ିକ ଡିଫଲ୍ଟ ଭାବରେ ଅନୁରୋଧ କରାଯାଇଛି</translation>
+<translation id="4150837143272125910">ଏକ ଅପଡେଟ ଡାଉନଲୋଡ କରାଯାଇଛି</translation>
 <translation id="4162867837470729563">ସେୟାରିଂ ବିକଳ୍ପଗୁଡ଼ିକର ତାଲିକା ପୂର୍ଣ୍ଣ ସ୍କ୍ରିନରେ ଖୋଲିଛି।</translation>
 <translation id="4164642020717536140">ଦ୍ରୁତ ଏବଂ ସୁରକ୍ଷିତ ୱେବ ବ୍ରାଉଜିଂ</translation>
 <translation id="4165077084524712774">ଅଧିକ ଟୁଲ</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265"><ph name="APP_NAME" /> ମାଧ୍ୟମରେ PDF ଖୋଲିବେ?</translation>
 <translation id="5849288995120328556">ସେୟାର କରିବା ବନ୍ଦ କରିବେ?</translation>
 <translation id="5853623416121554550">ବିରତ ହୋଇଛି</translation>
+<translation id="5855375823365231964">ଏହି ପ୍ରୋଫାଇଲ ବିଷୟରେ</translation>
 <translation id="5855546874025048181">ରିଫାଇନ୍ କରନ୍ତୁ: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, ମଲ୍ଟିସିଲେକ୍ଟେଡ ରେକର୍ଡ କରୁଥିବା ଇନକଗ୍ନିଟୋ ଟାବ</translation>
 <translation id="5857447844686706637">କିଛି ତ୍ରୁଟି ହୋଇଛି। ମୂଲ୍ୟ ଟ୍ରାକ ଅପଡେଟ କରାଯାଇପାରିଲା ନାହିଁ।</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">ପରବର୍ତ୍ତୀ ଟାବ୍‌କୁ ଯାଆନ୍ତୁ</translation>
 <translation id="6040143037577758943">ବନ୍ଦ</translation>
 <translation id="604124094241169006">ସ୍ୱଚାଳିତ</translation>
+<translation id="6041959688070413372">Google Drive ପରି Search ସର୍ଭିସେସ ଏବଂ Google Workspace ଆପ୍ସ ମଧ୍ୟରେ କନେକ୍ସନକୁ ପରିଚାଳନା କରନ୍ତୁ</translation>
 <translation id="6042308850641462728">ଅଧିକ</translation>
 <translation id="6047066316630165190">ଗ୍ରିଡ ଟାବ ସ୍ୱିଚର ଖୋଲନ୍ତୁ</translation>
 <translation id="604996488070107836">ଏକ ଅଜଣା ତ୍ରୁଟି ଯୋଗୁଁ <ph name="FILE_NAME" /> ଡାଉନ୍‌ଲୋଡ୍ ହୋଇପାରିଲା ନାହିଁ।</translation>
@@ -1400,6 +1402,7 @@
 <translation id="6565959834589222080">ୱାଇ-ଫାଇ ଉପଲବ୍ଧ ହେଲେ ଏହାକୁ ବ୍ୟବହାର କରାଯାଏ</translation>
 <translation id="657177046675873214">ଆପଣଙ୍କର ସମସ୍ତ ଡିଭାଇସରେ ଆପଣଙ୍କ ବୁକମାର୍କଗୁଡ଼ିକ ପାଇବାକୁ ସେଟିଂସରେ "ବୁକମାର୍କଗୁଡ଼ିକ" ଚାଲୁ କରନ୍ତୁ</translation>
 <translation id="6573096386450695060">ସର୍ବଦା ଅନୁମତି ଦିଅନ୍ତୁ</translation>
+<translation id="657480975869429144">Chromeର ଏକ ନୂଆ ଭର୍ସନ ଉପଲବ୍ଧ ଅଛି</translation>
 <translation id="658099107946526506">ଅବାଞ୍ଛିତ ଆକ୍ସେସକୁ ପ୍ରତିରୋଧ କରିବା ପାଇଁ ଏକ PIN ସହ ଆପଣଙ୍କ ପ୍ରାଇଭେଟ ବ୍ରାଉଜିଂକୁ ସୁରକ୍ଷିତ ରଖନ୍ତୁ</translation>
 <translation id="6583199322650523874">ସାମ୍ପ୍ରତିକ ପୃଷ୍ଠାକୁ ବୁକ୍‍ମାର୍କ କରନ୍ତୁ</translation>
 <translation id="6588043302623806746">ସୁରକ୍ଷିତ DNS ବ୍ୟବହାର କରନ୍ତୁ</translation>

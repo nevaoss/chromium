@@ -104,7 +104,7 @@
 #include "chrome/browser/glic/host/glic_url_loader_throttle.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/public/features.h"
-#include "chrome/browser/glic/public/glic_cors_exempt_headers.h"
+#include "chrome/browser/glic/public/glic_request_headers.h"
 #include "chrome/browser/headless/headless_mode_util.h"
 #include "chrome/browser/hid/chrome_hid_delegate.h"
 #include "chrome/browser/history/history_service_factory.h"
@@ -3725,8 +3725,8 @@ bool ChromeContentBrowserClient::AllowWorkerWriteToClipboard(
   if (origin.scheme() != extensions::kExtensionScheme) {
     return false;
   }
-  return extensions::ChromeContentBrowserClientExtensionsPart::
-      ExtensionHasClipboardWritePermission(browser_context, origin.host());
+  return extensions::util::HasClipboardWritePermission(origin.host(),
+                                                       browser_context);
 #else
   return false;
 #endif
@@ -6256,7 +6256,7 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
   }
 
   if (auto glic_throttle = glic::GlicURLLoaderThrottle::MaybeCreate(
-          browser_context, wc_getter, frame_tree_node_id, request)) {
+          profile, wc_getter, frame_tree_node_id, request)) {
     result.push_back(std::move(glic_throttle));
   }
 
@@ -9976,3 +9976,14 @@ bool ChromeContentBrowserClient::ShouldAllowSystemUiPopups(
   return !(tab_interface && actor_service->IsActiveOnTab(*tab_interface));
 }
 #endif
+
+bool ChromeContentBrowserClient::IsExemptFromWindowSizeCheck(const GURL& url) {
+  if (ContentBrowserClient::IsExemptFromWindowSizeCheck(url)) {
+    return true;
+  }
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  return url.SchemeIs(extensions::kExtensionScheme);
+#else
+  return false;
+#endif
+}

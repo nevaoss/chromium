@@ -126,6 +126,7 @@ Color ForcedColor(const ComputedStyle& originating_style,
 // Returns the UA default ‘color’ for the given |pseudo|.
 std::optional<Color> DefaultForegroundColor(
     const Document& document,
+    const ComputedStyle& originating_style,
     PseudoId pseudo,
     mojom::blink::ColorScheme color_scheme,
     bool preserve_privacy,
@@ -138,6 +139,14 @@ std::optional<Color> DefaultForegroundColor(
             document.GetColorProviderForPainting(color_scheme), false);
       }
       if (!LayoutTheme::GetTheme().SupportsSelectionForegroundColors()) {
+        if (originating_style.VisitedDependentColor(GetCSSPropertyColor())
+                .Alpha() == 0) {
+          return document.GetFrame()->Selection().FrameIsFocusedAndActive()
+                     ? LayoutTheme::GetTheme().ActiveSelectionForegroundColor(
+                           color_scheme)
+                     : LayoutTheme::GetTheme().InactiveSelectionForegroundColor(
+                           color_scheme);
+        }
         return std::nullopt;
       }
       if (document.GetFrame()->Selection().FrameIsFocusedAndActive()) {
@@ -175,16 +184,22 @@ Color DefaultBackgroundColor(
     SearchTextIsActiveMatch search_text_is_active_match) {
   switch (pseudo) {
     case kPseudoIdSelection:
-      if (preserve_privacy) {
+      if (preserve_privacy ||
+          document.GetFrame()->Selection().FrameIsFocusedAndActive()) {
+        // CSS Color 4 defines `Highlight` as the background of selected items,
+        // so active selection and the `Highlight` system color should match,
+        // even when not preserving privacy.
+        // https://www.w3.org/TR/css-color-4/#valdef-color-highlight
+        //
+        // `Highlight` does not use the accent color, so we do not need to check
+        // if it can be exposed.
         return LayoutTheme::GetTheme().SystemColor(
             CSSValueID::kHighlight, color_scheme,
-            document.GetColorProviderForPainting(color_scheme), false);
+            document.GetColorProviderForPainting(color_scheme),
+            /*can_expose_accent_color=*/false);
       }
-      return document.GetFrame()->Selection().FrameIsFocusedAndActive()
-                 ? LayoutTheme::GetTheme().ActiveSelectionBackgroundColor(
-                       color_scheme)
-                 : LayoutTheme::GetTheme().InactiveSelectionBackgroundColor(
-                       color_scheme);
+      return LayoutTheme::GetTheme().InactiveSelectionBackgroundColor(
+          color_scheme);
     case kPseudoIdSearchText:
       return LayoutTheme::GetTheme().PlatformTextSearchHighlightColor(
           search_text_is_active_match == SearchTextIsActiveMatch::kYes,
@@ -222,8 +237,9 @@ std::optional<Color> DefaultHighlightColor(
                                   search_text_is_active_match);
   }
   DCHECK(property.IDEquals(CSSPropertyID::kColor));
-  return DefaultForegroundColor(document, pseudo, color_scheme,
-                                preserve_privacy, search_text_is_active_match);
+  return DefaultForegroundColor(document, originating_style, pseudo,
+                                color_scheme, preserve_privacy,
+                                search_text_is_active_match);
 }
 
 bool UseForcedColors(const Document& document,

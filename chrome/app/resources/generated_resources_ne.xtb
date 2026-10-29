@@ -1034,6 +1034,7 @@
 <translation id="1790976235243700817">पहुँच हटाउनुहोस्</translation>
 <translation id="1791662854739702043">स्थापना गरियो</translation>
 <translation id="1792619191750875668">विस्तारित प्रदर्शन</translation>
+<translation id="1793048658013002380"><ph name="TOOLTIP_TEXT" /> (<ph name="KEYBOARD_SHORTCUT" />)</translation>
 <translation id="1794212650797661990"><ph name="DOMAIN" /> को पासवर्ड लुकाउनुहोस्</translation>
 <translation id="1794791083288629568">हामीलाई यस समस्याको समाधान गर्नमा मद्दत गर्न प्रतिक्रिया पठाउनुहोस्।</translation>
 <translation id="1795214765651529549">क्लासिक प्रयोग गर्नुहोस्</translation>
@@ -1697,7 +1698,6 @@
 <translation id="2300383962156589922"><ph name="APP_NAME" /> लाई  कस्टम पार्नुका साथै यसमाथि नियन्त्रण गर्नुहोस्</translation>
 <translation id="2300434721407965566">ब्याट्री लामो समयसम्म टिकाउन ८०% चार्ज भएपछि चार्जिङ रोक्नुहोस्।</translation>
 <translation id="2301382460326681002">विस्तार रुट डाइरेक्टरी अवेध छ।</translation>
-<translation id="2301402091755573488">सेयर गरिएको ट्याब</translation>
 <translation id="2304820083631266885">ग्रह</translation>
 <translation id="2305202347479035002">यसले कसरी काम गर्छ</translation>
 <translation id="2306794767168143227">यो डिभाइसमार्फत <ph name="BRAND" /> मा सेभ गर्नुहोस्</translation>
@@ -1716,6 +1716,7 @@
 <translation id="2322622365472107569">अन्त्य हुने समय: <ph name="TIME" /></translation>
 <translation id="2323018538045954000">सुरक्षित गरिएका Wi-Fi नेटवर्कहरू</translation>
 <translation id="2323685460575935191">स्क्रोल बटनहरू लुकाउनुहोस्</translation>
+<translation id="2325004050205455346">हालसालैको हिस्ट्री</translation>
 <translation id="2325444234681128157">पासवर्ड सम्झनुहोस्</translation>
 <translation id="2326188115274135041">स्वतः अनलक हुने सुविधा सक्षम पार्न PIN पुष्टि गर्नुहोस्</translation>
 <translation id="2326583548923775947">यो Google खाता होइन। तपाईंले Chrome मा सेभ गर्ने सामग्रीहरू अन्य डिभाइसमा उपलब्ध हुने छैनन्।</translation>
@@ -2074,7 +2075,6 @@
 <translation id="2598710988533271874">Chrome को नयाँ अपडेट उपलब्ध छ</translation>
 <translation id="2599048253926156421">युजरनेम क्लिपबोर्डमा कपी गरियो</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{एउटा असुरक्षित एक्स्टेन्सन अफ गरिएको छ}other{{NUM_SITES} वटा असुरक्षित एक्स्टेन्सन अफ गरिएका छन्}}</translation>
-<translation id="2603121359676416582">यो पेजका लागि</translation>
 <translation id="2603656971249947488">ट्याब स्ट्रिप</translation>
 <translation id="2604129989323098489">साइटहरूले स्मार्ट तरिकाले विन्डो खोल्ने र तिनलाई मिलाएर राख्ने (डकुमेन्ट देखाउने वा फुल स्क्रिनका सामग्री सँगसँगै देखाउने जस्ता) कार्य गर्ने प्रयोजनका लागि सामान्यतया तपाईंको डिस्प्लेसम्बन्धी जानकारी माग्ने गर्छन्</translation>
 <translation id="2604255671529671813">नेटवर्कको जडानसम्बन्धी त्रुटि</translation>
@@ -2856,7 +2856,6 @@
 <translation id="3166443275568926403">पर्फर्मेन्स र ब्याट्रीको स्थिति</translation>
 <translation id="3167446923957429259">आफ्नो मुख बायाँतिर लैजानुहोस्</translation>
 <translation id="3167562202484086668"><ph name="BRAND" /> मा भएका सबै डेटा मेटाउनुहोस्</translation>
-<translation id="3169504125849131369">Windows का सेटिङ खोल्नुहोस्</translation>
 <translation id="3175067642577044620">मुख्य भाग</translation>
 <translation id="3175862692832442091">जङ्गल</translation>
 <translation id="3176347586396987181">माउसको बटन थिचिराख्न “z” प्रयोग गर्नुहोस्</translation>
@@ -2940,6 +2939,7 @@
 <translation id="323262942975422760"><ph name="ENTITY_INSTANCE_LABEL" />, <ph name="ENTITY_INSTANCE_SUBLABEL" /> सम्पादन गर्ने वा मेटाउने थप विकल्पहरू</translation>
 <translation id="3232754137068452469">वेब एप</translation>
 <translation id="3233271424239923319">Linux एप र फाइलहरू ब्याकअप गर्नुहोस्</translation>
+<translation id="3233577317461669428">अन्य कुनै पनि डिभाइस भेटिएन</translation>
 <translation id="3234251228180563751">युजरनेम १००० वर्णभन्दा लामो छ</translation>
 <translation id="3234978181857588512">डिभाइसमा सेभ गर्नुहोस्</translation>
 <translation id="3237871032310650497"><ph name="PARTITION_SITE_NAME" /> मा पार्टिसन गरिएको <ph name="SITE_NAME" /> को साइट डेटा मेटाउने हो?</translation>
@@ -3014,7 +3014,6 @@
 <translation id="3292966601422448005">तपाईंले <ph name="APP_NAME" /> लाई दिने अनुमतिहरू यसले इन्स्टल गरेका एपहरूलाई पनि दिइने छ।</translation>
 <translation id="3293080634164207409">ट्याबहरू हाल्नुहोस्</translation>
 <translation id="329324683265785818">प्ले गर्नुहोस् / पज गर्नुहोस्, किबोर्डको सर्टकट k</translation>
-<translation id="3293644607209440645">यो पृष्ठ पठाउनुहोस्</translation>
 <translation id="3294437725009624529">पाहुना</translation>
 <translation id="3294686910656423119">प्रयोगसम्बन्धी तथ्याङ्क र क्र्याससम्बन्धी रिपोर्टहरू</translation>
 <translation id="3295241308788901889">एउटा ट्याब कास्ट गरिँदै छ</translation>
@@ -3097,7 +3096,7 @@
 <translation id="3355936511340229503">जडान त्रुटि</translation>
 <translation id="335678817537689040">स्थिर</translation>
 <translation id="3359256513598016054">प्रमाणपत्र नीति अवरोधहरू</translation>
-<translation id="3359465538772230055">कुनै पनि कार्य छैन</translation>
+<translation id="3359465538772230055">कुनै पनि काम छैन</translation>
 <translation id="3360297538363969800">प्रिन्टिङ असफल भयो। कृपया तपाइँको मुद्रक जाँच्नुहोस् र पुन: प्रयास गर्नुहोस्।</translation>
 <translation id="3360306038446926262">Windows</translation>
 <translation id="3361421571228286637">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> ले तपाईंसँग <ph name="ATTACHMENTS" /> सेयर गर्ने प्रयास गर्दै छ।}other{<ph name="DEVICE_NAME" /> ले तपाईंसँग <ph name="ATTACHMENTS" /> सेयर गर्ने प्रयास गर्दै छ।}}</translation>
@@ -4748,7 +4747,6 @@
 <translation id="4610493438923139095">अविश्वसनीय</translation>
 <translation id="4610637590575890427">के तपाईं <ph name="SITE" /> मा जान चाहनुहुन्छ?</translation>
 <translation id="4611619000650855880">माउसको बायाँ बटन चयन गरिएका बेला डबल क्लिक गर्न “/” प्रयोग गर्नुहोस्</translation>
-<translation id="4612841084470706111">जुन जुन साइटका हकमा अनुरोध गरिएको छ ती सबै साइटहरूलाई अनुमति दिनुहोस्।</translation>
 <translation id="4613271546271159013">तपाइँले एक सञ्झ्याल खोल्दा कुन पृष्ठ देखाउँछ भनेर इक विस्तारले परिवर्तन गरेको छ।</translation>
 <translation id="461613135510474570">वाक्य</translation>
 <translation id="461661862154729886">चार्जिङको स्रोत</translation>
@@ -5715,6 +5713,7 @@
 <translation id="5344128444027639014"><ph name="BATTERY_PERCENTAGE" />% (दायाँ)</translation>
 <translation id="534449933710420173">नाम नभएको फोल्डर</translation>
 <translation id="5345916423802287046">मैले साइन इन गर्दा यो एप खोलियोस्</translation>
+<translation id="5346059693449184483">तपाईं के सोच्दै हुनुहुन्छ?</translation>
 <translation id="5350116201946341974">मनमौजी</translation>
 <translation id="535123479159372765">अर्को यन्त्रबाट पाठ कपी गरियो</translation>
 <translation id="5352257124367865087">साइटलाई दिइएका अनुमतिहरू व्यवस्थापन गर्नुहोस्</translation>
@@ -6989,6 +6988,7 @@
 <translation id="6356893102071098867">तपाईंले सही खाता छनौट गर्नुभएको छ भन्ने कुरा पुष्टि गर्नुहोस्</translation>
 <translation id="6357305427698525450">खोल्न मिल्ने केही लिंकहरू अझै पनि <ph name="APP_NAME" /> मा वा  <ph name="APP_NAME_2" /> मा खुल्ने छन्।</translation>
 <translation id="6357750620525943720">अन्य स्थिर आइडेन्टिफायरहरू (जस्तै, ह्यास वा UUID हरू)</translation>
+<translation id="6357830294871526418">अन्य डिभाइसहरूमा खोलिएका ट्याबहरू</translation>
 <translation id="6358884629796491903">ड्रागन</translation>
 <translation id="6359640073754977254">स्क्रोल गरेर अन्तिम ट्याबमा जानुहोस्</translation>
 <translation id="6361850914223837199">त्रुटि विवरणहरू:</translation>
@@ -7039,7 +7039,6 @@
 <translation id="6400360390396538896"><ph name="ORIGIN" /> मा सधैँ</translation>
 <translation id="6400714103322134861">ट्याब समूह अनफोकस गर्नुहोस्</translation>
 <translation id="6401118106417399952">तपाईंको डिभाइसको EID नम्बर <ph name="EID_NUMBER" /> र डिभाइसको सिरियल नम्बर <ph name="SERIAL_NUMBER" /> हो। यी नम्बरहरू सेवा एक्टिभेट गर्ने प्रयोजनका लागि प्रयोग गर्न सकिन्छ।</translation>
-<translation id="6401458660421980302">तपाईं यो ट्याब अर्को डिभाइसमा पठाउन चाहनुहुन्छ भने उक्त डिभाइसमा Chrome मा साइन इन गर्नुहोस्</translation>
 <translation id="6402042774506839496">यसो गर्नुको कारण थाहा पाउन एपका विकासकर्तालाई सम्पर्क गर्नुहोस्</translation>
 <translation id="6402921224457714577">साइटहरूले तपाईंका MIDI डिभाइसहरू नियन्त्रण तथा रिप्रोग्राम गर्ने अनुमति माग्न सक्छन्</translation>
 <translation id="6404511346730675251">बुकमार्क सम्पादन गर्नुहोस्</translation>
@@ -7137,7 +7136,6 @@
 <translation id="6472893788822429178">गृह बटन देखाउनुहोस्</translation>
 <translation id="6473315466413288899">एउटा विकल्प छान्नुहोस्</translation>
 <translation id="6474021817475285003">Google पात्रोमा गई थप कुरा हेर्नुहोस्</translation>
-<translation id="6474401088838630457">Gemini लाई यसका बारेमा थप सोध्नुहोस्</translation>
 <translation id="6474498546677193336">एउटा एपले यो फोल्डर प्रयोग गरिरहेका कारण आदान प्रदान गर्ने कार्य रद्द गर्न सकिएन। अर्को पटक Linux बन्द हुँदा उक्त फोल्डरको आदान प्रदान रद्द गरिने छ।</translation>
 <translation id="6474884162850599008">Google ड्राइभ खाता बिच्छेद गर्नुहोस्</translation>
 <translation id="6476482583633999078">स्पिचको गति</translation>
@@ -7329,7 +7327,6 @@
 <translation id="6619801788773578757">kiosk एप थप्नुहोस्</translation>
 <translation id="6619990499523117484">आफ्नो PIN को पुष्टि गर्नुहोस्</translation>
 <translation id="6621282332208609777">Google लाई सोध्नुहोस् वा URL टाइप गर्नुहोस्</translation>
-<translation id="6621391692573306628">तपाईं यो ट्याब अर्को डिभाइसमा पठाउन चाहनुहुन्छ भने दुवै डिभाइसमा Chrome मा साइन इन गर्नुहोस्</translation>
 <translation id="6622980291894852883">तस्वीरहरूलाई ब्लक गर्न जारी राख्नुहोस्</translation>
 <translation id="6624036901798307345">ट्याब्लेट मोडमा भएका बेला प्रत्येक ट्याबको थम्बनेल देखाउने नयाँ ट्याब स्ट्रिप खोल्न ट्याबको सङ्ख्या गन्ने टुलबारको बटनमा ट्याप गर्नुहोस्।</translation>
 <translation id="6624538059730609162">दायाँ भ्यू बन्द गर्नुहोस्</translation>

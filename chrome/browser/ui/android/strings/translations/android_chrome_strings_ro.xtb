@@ -123,7 +123,6 @@ Pentru mai multe setări care folosesc date pentru a-ți îmbunătăți experien
 <translation id="1432581352905426595">Gestionați motoarele de căutare</translation>
 <translation id="1435593198351412143">Deschide automat fișierele PDF</translation>
 <translation id="1437543266176261764">Rulează în <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organizează-ți produsele urmărite în Marcaje Google</translation>
 <translation id="1452651021404174820">Alege un dispozitiv</translation>
 <translation id="1455845192930279203">Vrei să descarci oricum <ph name="FILE_NAME" /> (<ph name="FILE_SIZE" />) de pe <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Economisește timp, tastează mai puțin</translation>
@@ -775,6 +774,7 @@ Numai un utilizator care deține expresia ta de acces îți poate citi datele cr
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, filă de înregistrare fixată cu selectare multiplă</translation>
 <translation id="4137746084635924146">Limba actuală a dispozitivului</translation>
 <translation id="414128724510021958">Versiuni ale site-ului pentru computer solicitate în mod prestabilit</translation>
+<translation id="4150837143272125910">S-a descărcat o actualizare</translation>
 <translation id="4162867837470729563">Lista cu opțiuni de permitere a accesului la înălțimea completă.</translation>
 <translation id="4164642020717536140">Navigare rapidă și securizată pe web</translation>
 <translation id="4165077084524712774">Mai multe instrumente</translation>
@@ -1199,6 +1199,7 @@ Contul Google poate să ofere alte forme ale istoricului de navigare, cum ar fi 
 <translation id="5848257610304005265">Deschizi fișierul PDF cu <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Nu mai permiți accesul?</translation>
 <translation id="5853623416121554550">întreruptă</translation>
+<translation id="5855375823365231964">Despre acest profil</translation>
 <translation id="5855546874025048181">Rafinează: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, filă incognito de înregistrare cu selectare multiplă</translation>
 <translation id="5857447844686706637">A apărut o eroare. Nu s-a putut actualiza Urmărește prețul.</translation>
@@ -1240,6 +1241,7 @@ Contul Google poate să ofere alte forme ale istoricului de navigare, cum ar fi 
 <translation id="6039379616847168523">Accesează fila următoare</translation>
 <translation id="6040143037577758943">Închide</translation>
 <translation id="604124094241169006">Automat</translation>
+<translation id="6041959688070413372">Gestionează conexiunea dintre serviciile de căutare și aplicațiile Google Workspace, cum ar fi Google Drive</translation>
 <translation id="6042308850641462728">Mai multe</translation>
 <translation id="6047066316630165190">Deschide comutatorul de file tip grilă</translation>
 <translation id="604996488070107836">Fișierul <ph name="FILE_NAME" /> nu a fost descărcat din cauza unei erori necunoscute.</translation>
@@ -1400,6 +1402,7 @@ De exemplu, unele site-uri pot răspunde la această solicitare afișând anunț
 <translation id="6565959834589222080">Conexiunea Wi-Fi este folosită când este disponibilă</translation>
 <translation id="657177046675873214">Pentru a accesa marcajele de pe toate dispozitivele, activează Marcaje în setări</translation>
 <translation id="6573096386450695060">Permite întotdeauna</translation>
+<translation id="657480975869429144">Este disponibilă o versiune nouă de Chrome</translation>
 <translation id="658099107946526506">Protejează-ți navigarea privată cu un PIN pentru a preveni accesul nedorit</translation>
 <translation id="6583199322650523874">Marchează pagina curentă</translation>
 <translation id="6588043302623806746">Folosește DNS securizat</translation>

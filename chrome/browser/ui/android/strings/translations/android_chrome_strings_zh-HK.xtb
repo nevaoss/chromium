@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">管理搜尋引擎</translation>
 <translation id="1435593198351412143">自動開啟 PDF</translation>
 <translation id="1437543266176261764">正在 <ph name="APP_NAME" /> 中執行</translation>
-<translation id="1448440926884431741">在「書籤」中整理追蹤的產品</translation>
 <translation id="1452651021404174820">選擇裝置</translation>
 <translation id="1455845192930279203">確定要從 <ph name="DOWNLOAD_DOMAIN" /> 下載「<ph name="FILE_NAME" />」(<ph name="FILE_SIZE" />) 嗎？</translation>
 <translation id="1460751212339734034">節省時間，減少輸入操作</translation>
@@ -765,6 +764,7 @@
 <translation id="4092709865241032354">請新增你在此網站的使用者名稱，「Google 密碼管理工具」才能儲存登入資料</translation>
 <translation id="4095146165863963773">要刪除應用程式資料嗎？</translation>
 <translation id="4095483462103784441">建立新分頁群組</translation>
+<translation id="4098552968111329864">為確保你在 Chrome 上的工作成果安全，你的機構將可在你登入 Chrome 時查看或管理特定資料</translation>
 <translation id="4105527135143631701">打開咗「Google 密碼管理工具」更新</translation>
 <translation id="4107207375883769436">機構可能需要查看和管理工作設定檔中的瀏覽資料 (例如瀏覽記錄和密碼)</translation>
 <translation id="4113030288477039509">由管理員管理</translation>
@@ -775,6 +775,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />，複選咗錄緊媒體嘅固定分頁</translation>
 <translation id="4137746084635924146">目前的裝置語言</translation>
 <translation id="414128724510021958">已根據預設要求顯示桌面版網站</translation>
+<translation id="4150837143272125910">已下載更新</translation>
 <translation id="4162867837470729563">分享選項清單宜家顯示喺成個畫面。</translation>
 <translation id="4164642020717536140">網絡瀏覽快速又安全</translation>
 <translation id="4165077084524712774">更多工具</translation>
@@ -1199,6 +1200,7 @@
 <translation id="5848257610304005265">要使用「<ph name="APP_NAME" />」開啟 PDF 嗎？</translation>
 <translation id="5849288995120328556">要停止分享嗎？</translation>
 <translation id="5853623416121554550">已暫停</translation>
+<translation id="5855375823365231964">關於此設定檔</translation>
 <translation id="5855546874025048181">修正搜尋：<ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />，複選咗錄緊媒體嘅無痕式分頁</translation>
 <translation id="5857447844686706637">發生錯誤，無法更新追蹤價格。</translation>
@@ -1240,6 +1242,7 @@
 <translation id="6039379616847168523">跳至下一個分頁</translation>
 <translation id="6040143037577758943">關閉</translation>
 <translation id="604124094241169006">自動</translation>
+<translation id="6041959688070413372">管理搜尋服務與 Google Workspace 應用程式 (例如「Google 雲端硬碟」) 之間的連結</translation>
 <translation id="6042308850641462728">更多選項</translation>
 <translation id="6047066316630165190">開啟網格分頁切換工具</translation>
 <translation id="604996488070107836">發生不明錯誤，因此無法下載 <ph name="FILE_NAME" />。</translation>
@@ -1400,6 +1403,7 @@
 <translation id="6565959834589222080">有可用的 Wi-Fi 時使用 Wi-Fi</translation>
 <translation id="657177046675873214">如要將書籤同步到所有裝置，請在設定中開啟「書籤」</translation>
 <translation id="6573096386450695060">一律允許</translation>
+<translation id="657480975869429144">有新版 Chrome 可用</translation>
 <translation id="658099107946526506">使用 PIN 加強私密瀏覽保護，防止未經授權存取</translation>
 <translation id="6583199322650523874">將目前的網頁加入書籤</translation>
 <translation id="6588043302623806746">使用安全 DNS</translation>
@@ -1767,6 +1771,7 @@
 <translation id="7929587383660661825">如果網站濫用通知或你最近未瀏覽，Chrome 都會自動移除權限</translation>
 <translation id="7934668619883965330">無法下載檔案，因為系統不支援檔案格式。</translation>
 <translation id="7951102827450076904">一律開啟已下載的 PDF</translation>
+<translation id="7952148074468405586">進一步瞭解<ph name="BEGIN_LINK" />你機構可查看或管理的資料<ph name="END_LINK" /></translation>
 <translation id="7952479614398473176">如要開啟新視窗，請將使用中視窗的總數減至 <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> 個或以下。</translation>
 <translation id="7956713633345437162">流動版書籤</translation>
 <translation id="7957413488482743710">虛擬卡會隱藏您的實體卡，保護您免受潛在欺詐行為的威脅。<ph name="BEGIN_LINK1" />進一步瞭解虛擬卡<ph name="END_LINK1" /></translation>

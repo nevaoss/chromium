@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.ntp_customization.theme_sync;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -594,13 +595,14 @@ public class NtpThemeSyncHistoryCoordinatorUnitTest {
                         TEST_COLLECTION_LABEL,
                         GURL.emptyGURL(),
                         TEST_COLLECTION_ORDER);
+        GURL attributionUrl1 = new GURL("https://attribution1.com/");
         CollectionImage image1 =
                 new CollectionImage(
                         TEST_COLLECTION_ID,
                         new GURL(TEST_IMAGE_URL_1),
                         new GURL(TEST_PREVIEW_URL_1),
                         Arrays.asList(TEST_ATTRIBUTE_1),
-                        GURL.emptyGURL());
+                        attributionUrl1);
         CollectionImage image2 =
                 new CollectionImage(
                         TEST_COLLECTION_ID,
@@ -654,11 +656,13 @@ public class NtpThemeSyncHistoryCoordinatorUnitTest {
                 (NtpBackgroundDataThemeCollection) dataList.get(3);
         assertEquals(TEST_COLLECTION_ID, theme1.getCustomBackgroundInfo().collectionId);
         assertEquals(TEST_IMAGE_URL_1, theme1.getCustomBackgroundInfo().backgroundUrl.getSpec());
+        assertEquals(attributionUrl1, theme1.getCustomBackgroundInfo().attributionActionUrl);
 
         NtpBackgroundDataThemeCollection theme2 =
                 (NtpBackgroundDataThemeCollection) dataList.get(4);
         assertEquals(TEST_COLLECTION_ID, theme2.getCustomBackgroundInfo().collectionId);
         assertEquals(TEST_IMAGE_URL_2, theme2.getCustomBackgroundInfo().backgroundUrl.getSpec());
+        assertTrue(theme2.getCustomBackgroundInfo().attributionActionUrl.isEmpty());
     }
 
     @Test
@@ -725,10 +729,13 @@ public class NtpThemeSyncHistoryCoordinatorUnitTest {
                 (NtpBackgroundDataThemeCollection)
                         coordinator.getDataShowingListForTesting().get(position);
         assertNull(themeData.getBitmap());
+        assertNotNull(themeData.getPreviewBitmap());
+        themeData.getPreviewBitmap().eraseColor(Color.RED);
 
-        // Setup image fetcher for the full image click.
+        // Setup image fetcher for the full image click with a distinct color from previewBitmap.
         Bitmap fullBitmap =
                 Bitmap.createBitmap(FULL_BITMAP_SIZE, FULL_BITMAP_SIZE, Bitmap.Config.ARGB_8888);
+        fullBitmap.eraseColor(Color.GREEN);
         doAnswer(
                         invocation -> {
                             Callback<Bitmap> callback = invocation.getArgument(1);
@@ -748,8 +755,14 @@ public class NtpThemeSyncHistoryCoordinatorUnitTest {
 
         // Verify the bitmap is set.
         assertEquals(fullBitmap, themeData.getBitmap());
-        // Verify primary color and other fields are set.
+        // Verify primary color is extracted from the full bitmap rather than the preview bitmap.
         assertNotNull(themeData.getPrimaryColor());
+        assertNotEquals(
+                NtpCustomizationUtils.getContentBasedSeedColor(themeData.getPreviewBitmap()),
+                themeData.getPrimaryColor());
+        assertEquals(
+                NtpCustomizationUtils.getContentBasedSeedColor(fullBitmap),
+                themeData.getPrimaryColor());
         assertNotNull(themeData.getFileIdHash());
         assertNotNull(themeData.getBackgroundImageInfo());
 
@@ -1184,7 +1197,7 @@ public class NtpThemeSyncHistoryCoordinatorUnitTest {
                         info,
                         /* backgroundImageInfo= */ null,
                         /* bitmap= */ null,
-                        /* primaryColor= */ null,
+                        /* primaryColor= */ isBitmapSaved ? Color.BLUE : null,
                         "remote_theme_hash");
         remoteTheme.setIsBitmapSaved(isBitmapSaved);
         return remoteTheme;

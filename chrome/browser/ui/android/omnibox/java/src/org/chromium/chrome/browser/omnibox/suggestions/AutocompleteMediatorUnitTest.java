@@ -586,15 +586,15 @@ public class AutocompleteMediatorUnitTest {
         // With fully concealed elements, scroll should trigger keyboard hide.
         clearInvocations(mAutocompleteDelegate);
         mMediator.onSuggestionDropdownScroll();
-        verify(mAutocompleteDelegate).setKeyboardVisibility(eq(false), anyBoolean());
-        verify(mAutocompleteDelegate, never()).setKeyboardVisibility(eq(true), anyBoolean());
+        verify(mAutocompleteDelegate).setKeyboardVisibility(false);
+        verify(mAutocompleteDelegate, never()).setKeyboardVisibility(true);
 
         // Pretend that the user scrolled back to top with an overscroll.
         // This should bring back the soft keyboard.
         clearInvocations(mAutocompleteDelegate);
         mMediator.onSuggestionDropdownOverscrolledToTop();
-        verify(mAutocompleteDelegate).setKeyboardVisibility(eq(true), anyBoolean());
-        verify(mAutocompleteDelegate, never()).setKeyboardVisibility(eq(false), anyBoolean());
+        verify(mAutocompleteDelegate).setKeyboardVisibility(true);
+        verify(mAutocompleteDelegate, never()).setKeyboardVisibility(false);
     }
 
     @Test
@@ -1898,6 +1898,7 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.SERVE_JAVA_CACHED_ZERO_SUGGEST)
     public void onTextChanged_cachedZpsEligibleOnSelectPageClasses() {
         Set<@PageClassification Integer> eligibleClasses =
                 Set.of(
@@ -1924,6 +1925,7 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.SERVE_JAVA_CACHED_ZERO_SUGGEST)
     public void onTextChanged_cachedZpsNotInvokedInTypedContext() {
         var session = createSession(PAGE_URL, PAGE_TITLE, 0);
         mMediator.beginInput(session);
@@ -1944,6 +1946,7 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.SERVE_JAVA_CACHED_ZERO_SUGGEST)
     public void onTextChanged_cacheZpsFromEligiblePageClasses() {
         Set<@PageClassification Integer> eligibleClasses =
                 Set.of(
@@ -1970,6 +1973,7 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.SERVE_JAVA_CACHED_ZERO_SUGGEST)
     public void onTextChanged_dontCacheTypedSuggestions() {
         for (@PageClassification int pageClass = PageClassification.MIN_VALUE;
                 pageClass <= PageClassification.MAX_VALUE;
@@ -1983,6 +1987,7 @@ public class AutocompleteMediatorUnitTest {
     }
 
     @Test
+    @EnableFeatures(OmniboxFeatureList.SERVE_JAVA_CACHED_ZERO_SUGGEST)
     public void onTextChanged_dontCacheCachedSuggestions() {
         for (@PageClassification int pageClass = PageClassification.MIN_VALUE;
                 pageClass <= PageClassification.MAX_VALUE;
@@ -2603,7 +2608,7 @@ public class AutocompleteMediatorUnitTest {
         animator.start();
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
-        verify(mAutocompleteDelegate, never()).setKeyboardVisibility(eq(true), anyBoolean());
+        verify(mAutocompleteDelegate, never()).setKeyboardVisibility(true);
     }
 
     @Test
@@ -2618,7 +2623,7 @@ public class AutocompleteMediatorUnitTest {
         animator.start();
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
-        verify(mAutocompleteDelegate).setKeyboardVisibility(eq(true), anyBoolean());
+        verify(mAutocompleteDelegate).setKeyboardVisibility(true);
     }
 
     @Test

@@ -10,6 +10,7 @@
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/chrome/browser/shared/ui/elements/extended_touch_target_button.h"
+#import "ios/chrome/browser/shared/ui/image/g_with_point_size.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
@@ -28,15 +29,15 @@ const UIEdgeInsets kHorizontalPadding = {.left = 22.0, .right = 16.0};
 const CGFloat kTitleLeadingPadding = 18.0;
 const CGFloat kTitleLeadingTrailingPadding = 10.0;
 const CGFloat kButtonSize = 40.0;
-const CGFloat kStackViewMargin = 5.0;
+// The margin between the ends of the header actions pill and its buttons.
+// There is no vertical margin: the buttons fill the pill's height, so that
+// their touch targets are as tall as the pill.
+const CGFloat kStackViewHorizontalMargin = 5.0;
 // The size of the logo view.
 const CGFloat kLogoSize = 32.0;
 
 // The padding between the close button and the header actions.
 const CGFloat kHeaderInnerPadding = 10;
-
-// The logo point size.
-const CGFloat kSymbolsPointSize = 24.0;
 
 // Shadow opacity for the glass effect container.
 const CGFloat kGlassShadowOpacity = 0.07;
@@ -260,17 +261,19 @@ void ApplyHeaderElementShadow(UIView* targetView) {
 }
 
 - (void)setUpBackButton {
-  UIImage* image =
-      SymbolWithPointSize(SymbolChevronBackward, kCloseButtonSymbolPointSize);
+  UIImage* image = SymbolTemplateWithPointSize(SymbolChevronBackward,
+                                               kCloseButtonSymbolPointSize);
   UIButtonConfiguration* buttonConfiguration =
       CreateHeaderButtonConfiguration(image);
 
-  _backButton = [UIButton buttonWithConfiguration:buttonConfiguration
-                                    primaryAction:nil];
+  _backButton =
+      [ExtendedTouchTargetButton buttonWithConfiguration:buttonConfiguration
+                                           primaryAction:nil];
   [_backButton addTarget:self
                   action:@selector(didTapBackButton)
         forControlEvents:UIControlEventTouchUpInside];
   _backButton.translatesAutoresizingMaskIntoConstraints = NO;
+  _backButton.tintColor = [UIColor clearColor];
   _backButton.hidden = YES;
   _backButton.accessibilityIdentifier =
       kAssistantAIMBackButtonAccessibilityIdentifier;
@@ -369,8 +372,8 @@ void ApplyHeaderElementShadow(UIView* targetView) {
   __weak __typeof(self) weakSelf = self;
 
 #if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
-  UIImage* myActivityIcon = MakeSymbolMonochrome(
-      SymbolWithPointSize(SymbolGoogleIcon, kHeaderActionSymbolPointSize));
+  UIImage* myActivityIcon = SymbolWithPointSize(SymbolGoogleIconMonochrome,
+                                                kHeaderActionSymbolPointSize);
 #else
   UIImage* myActivityIcon =
       SymbolWithPointSize(SymbolInfoCircle, kHeaderActionSymbolPointSize);
@@ -434,8 +437,8 @@ void ApplyHeaderElementShadow(UIView* targetView) {
 
   stackView.translatesAutoresizingMaskIntoConstraints = NO;
   stackView.axis = UILayoutConstraintAxisHorizontal;
-  stackView.layoutMargins = UIEdgeInsetsMake(
-      kStackViewMargin, kStackViewMargin, kStackViewMargin, kStackViewMargin);
+  stackView.layoutMargins = UIEdgeInsetsMake(0, kStackViewHorizontalMargin, 0,
+                                             kStackViewHorizontalMargin);
   stackView.layoutMarginsRelativeArrangement = YES;
   stackView.backgroundColor = [UIColor colorNamed:kPrimaryBackgroundColor];
 
@@ -480,11 +483,9 @@ void ApplyHeaderElementShadow(UIView* targetView) {
 
 - (UIImage*)iconImage {
 #if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
-  return MakeSymbolMulticolor(
-      SymbolWithPointSize(SymbolGoogleIcon, kSymbolsPointSize));
+  return GWithPointSize(SuperGSize::k24pt);
 #else
-  return MakeSymbolMulticolor(
-      SymbolWithPointSize(SymbolGearshape2, kSymbolsPointSize));
+  return MakeSymbolMulticolor(SymbolWithPointSize(SymbolGearshape2, 24));
 #endif
 }
 

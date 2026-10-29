@@ -159,7 +159,7 @@ void IdentityManagerObserver::OnRefreshTokensLoaded() {
 
 void IdentityManagerObserver::OnIdentityManagerShutdown(
     signin::IdentityManager* identity_manager) {
-  CHECK_EQ(identity_manager, identity_manager_, base::NotFatalUntil::M142);
+  CHECK_EQ(identity_manager, identity_manager_);
   identity_manager_observation_.Reset();
 }
 
@@ -375,7 +375,7 @@ void StandaloneTrustedVaultFrontend::AddTrustedRecoveryMethod(
     SecurityDomainId security_domain,
     const std::vector<uint8_t>& public_key,
     int method_type_hint,
-    base::OnceClosure cb) {
+    base::OnceCallback<void(bool)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(backend_);
   backend_task_runner_->PostTask(

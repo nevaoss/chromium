@@ -929,7 +929,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.AnnotatedPageContent.TotalSize2.{AIPageContentMode}"
-    units="KB" expires_after="2027-01-31">
+    units="KB" expires_after="2027-04-04">
   <owner>khushalsagar@chromium.org</owner>
   <owner>abigailbklein@google.com</owner>
   <owner>gklassen@chromium.org</owner>
@@ -986,32 +986,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records each status change within the HintCacheLevelDBStore.
   </summary>
-</histogram>
-
-<histogram
-    name="OptimizationGuide.HintsFetcher.GetHintsRequest.DroppedHosts.{RequestContext}"
-    units="counts" expires_after="M145">
-  <owner>rajendrant@chromium.org</owner>
-  <owner>catliu@chromium.org</owner>
-  <summary>
-    Records the number of hosts that were dropped for a request made with
-    {RequestContext}, if the number of hosts dropped is non-zero. Will record at
-    most once per fetch.
-  </summary>
-  <token key="RequestContext" variants="RequestContext"/>
-</histogram>
-
-<histogram
-    name="OptimizationGuide.HintsFetcher.GetHintsRequest.DroppedUrls.{RequestContext}"
-    units="counts" expires_after="M145">
-  <owner>rajendrant@chromium.org</owner>
-  <owner>catliu@chromium.org</owner>
-  <summary>
-    Records the number of URLs that were dropped for a request made with
-    {RequestContext}, if the number of URLs dropped is non-zero. Will record at
-    most once per fetch.
-  </summary>
-  <token key="RequestContext" variants="RequestContext"/>
 </histogram>
 
 <histogram

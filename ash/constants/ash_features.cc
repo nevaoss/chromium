@@ -380,7 +380,7 @@ BASE_FEATURE(kCellularBypassESimInstallationConnectivityCheck,
 BASE_FEATURE(kCellularUseSecondEuicc, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables Enterprise Policy controls for Clipboard History.
-BASE_FEATURE(kClipboardHistoryPolicy, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kClipboardHistoryPolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled alongside the keyboard auto-repeat setting, holding down Ctrl+V
 // will cause the clipboard history menu to show. From there, the user can
@@ -1711,13 +1711,6 @@ BASE_FEATURE(kTerminalDev, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables experimental feature for resizing tiling windows.
 BASE_FEATURE(kTilingWindowResize, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the TrafficCountersHandler class to auto-reset traffic counters
-// and shows Data Usage in the Celluar Settings UI.
-BASE_FEATURE(kTrafficCountersEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables traffic counters for WiFi networks.
-BASE_FEATURE(kTrafficCountersForWiFiTesting, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables trilinear filtering.
 BASE_FEATURE(kTrilinearFiltering, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1818,10 +1811,6 @@ BASE_FEATURE(kVcSegmentationModel,
 // Enables or disables alternative inference backends for running ChromeOS video
 // conferencing face retouch models.
 BASE_FEATURE(kVcRetouchInferenceBackend, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables or disables Studio Look and VC settings for ChromeOS video
-// conferencing.
-BASE_FEATURE(kVcStudioLook, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables mic indicator inside VC tray title header
 BASE_FEATURE(kVcTrayMicIndicator,
@@ -1986,28 +1975,9 @@ BASE_FEATURE(kHappinessTrackingSystemBluetoothAudio,
              "HappinessTrackingBluetoothAudio",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the Happiness Tracking System for Personalization Avatar survey.
-BASE_FEATURE(kHappinessTrackingPersonalizationAvatar,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for Personalization Screensaver survey.
-BASE_FEATURE(kHappinessTrackingPersonalizationScreensaver,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for Personalization Wallpaper survey.
-BASE_FEATURE(kHappinessTrackingPersonalizationWallpaper,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for Media App PDF survey.
-BASE_FEATURE(kHappinessTrackingMediaAppPdf, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables or disables the Happiness Tracking System for Camera App survey.
 BASE_FEATURE(kHappinessTrackingSystemCameraApp,
              "HappinessTrackingCameraApp",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for Photos Experience survey.
-BASE_FEATURE(kHappinessTrackingPhotosExperience,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Happiness Tracking System for General Camera survey.
@@ -2021,9 +1991,6 @@ BASE_FEATURE(kHappinessTrackingGeneralCameraPrioritized,
 // Enables the Happiness Tracking System for OS Settings Search survey.
 BASE_FEATURE(kHappinessTrackingOsSettingsSearch,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for the Office integration.
-BASE_FEATURE(kHappinessTrackingOffice, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Happiness Tracking System for the slow and laggy survery.
 BASE_FEATURE(kHappinessTrackingSystemSlowAndLaggyDeepDive,
@@ -3000,15 +2967,6 @@ bool IsTouchscreenCalibrationEnabled() {
   return base::FeatureList::IsEnabled(kEnableTouchscreenCalibration);
 }
 
-bool IsTrafficCountersEnabled() {
-  return base::FeatureList::IsEnabled(kTrafficCountersEnabled);
-}
-
-bool IsTrafficCountersForWiFiTestingEnabled() {
-  return IsTrafficCountersEnabled() &&
-         base::FeatureList::IsEnabled(kTrafficCountersForWiFiTesting);
-}
-
 bool IsTrilinearFilteringEnabled() {
   static bool use_trilinear_filtering =
       base::FeatureList::IsEnabled(kTrilinearFiltering);
@@ -3055,10 +3013,6 @@ bool IsVcPortraitRelightEnabled() {
 
 bool IsVcControlsUiFakeEffectsEnabled() {
   return base::FeatureList::IsEnabled(kVcControlsUiFakeEffects);
-}
-
-bool IsVcStudioLookEnabled() {
-  return base::FeatureList::IsEnabled(kVcStudioLook);
 }
 
 bool IsVcTrayMicIndicatorEnabled() {

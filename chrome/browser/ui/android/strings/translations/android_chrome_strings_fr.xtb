@@ -123,7 +123,6 @@ Pour voir d'autres paramètres qui utilisent les données pour améliorer votre 
 <translation id="1432581352905426595">Gérer les moteurs de recherche</translation>
 <translation id="1435593198351412143">Ouvrir automatiquement les PDF</translation>
 <translation id="1437543266176261764">Exécution dans <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organisez vos produits suivis dans les favoris</translation>
 <translation id="1452651021404174820">Sélectionnez un appareil</translation>
 <translation id="1455845192930279203">Voulez-vous quand même télécharger "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) depuis <ph name="DOWNLOAD_DOMAIN" /> ?</translation>
 <translation id="1460751212339734034">Tapez moins et gagnez du temps</translation>
@@ -775,6 +774,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, onglet épinglé multisélectionné avec enregistrement en cours</translation>
 <translation id="4137746084635924146">Langue actuelle de l'appareil</translation>
 <translation id="414128724510021958">Versions pour ordinateur demandées par défaut</translation>
+<translation id="4150837143272125910">Une mise à jour a été téléchargée</translation>
 <translation id="4162867837470729563">Liste des options de partage ouverte à pleine hauteur.</translation>
 <translation id="4164642020717536140">Naviguez sur le Web de manière rapide et sécurisée</translation>
 <translation id="4165077084524712774">Autres outils</translation>
@@ -1199,6 +1199,7 @@ Votre compte Google conserve peut-être d'autres contenus d'historique de naviga
 <translation id="5848257610304005265">Ouvrir le PDF dans <ph name="APP_NAME" /> ?</translation>
 <translation id="5849288995120328556">Arrêter le partage ?</translation>
 <translation id="5853623416121554550">suspendu</translation>
+<translation id="5855375823365231964">À propos de ce profil</translation>
 <translation id="5855546874025048181">Affiner : <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, onglet de navigation privée multisélectionné avec enregistrement en cours</translation>
 <translation id="5857447844686706637">Un problème est survenu. Impossible de mettre à jour le suivi du prix.</translation>
@@ -1240,6 +1241,7 @@ Votre compte Google conserve peut-être d'autres contenus d'historique de naviga
 <translation id="6039379616847168523">Accéder à l'onglet suivant</translation>
 <translation id="6040143037577758943">Fermer</translation>
 <translation id="604124094241169006">Automatique</translation>
+<translation id="6041959688070413372">Gérez la connexion entre les services de recherche et les applis Google Workspace, comme Google Drive</translation>
 <translation id="6042308850641462728">Plus</translation>
 <translation id="6047066316630165190">Ouvrez le sélecteur d'onglets en grille</translation>
 <translation id="604996488070107836">Échec du téléchargement du fichier "<ph name="FILE_NAME" />" en raison d'une erreur inconnue.</translation>
@@ -1400,6 +1402,7 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="6565959834589222080">Le réseau Wi-Fi est utilisé s'il est disponible</translation>
 <translation id="657177046675873214">Pour accéder à vos favoris sur tous vos appareils, activez "Favoris" dans les paramètres</translation>
 <translation id="6573096386450695060">Toujours autoriser</translation>
+<translation id="657480975869429144">Une nouvelle version de Chrome est disponible</translation>
 <translation id="658099107946526506">Protégez votre navigation privée avec un code pour empêcher tout accès non autorisé</translation>
 <translation id="6583199322650523874">Marquer la page actuelle en tant que favori</translation>
 <translation id="6588043302623806746">Utiliser un DNS sécurisé</translation>

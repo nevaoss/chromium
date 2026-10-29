@@ -15,6 +15,7 @@
 #include "base/notreached.h"
 #include "base/time/time.h"
 #include "cc/paint/paint_record.h"
+#include "gpu/command_buffer/common/shared_image_usage.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_fill_rule.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_image_smoothing_quality.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
@@ -33,16 +34,20 @@
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/forward.h"  // IWYU pragma: keep (blink::Visitor)
 #include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
 #include "third_party/blink/renderer/platform/text/layout_locale.h"
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+#include "third_party/skia/include/core/SkRefCnt.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 
 // IWYU pragma: no_include "third_party/blink/renderer/platform/heap/visitor.h"
 
+class SkCanvas;
 class SkPixmap;
+class SkSurface;
 
 namespace base {
 class SingleThreadTaskRunner;
@@ -56,7 +61,6 @@ class Vector2d;
 namespace blink {
 
 class Canvas2DResourceProvider;
-class Canvas2DBitmapProvider;
 class CanvasContextCreationAttributesCore;
 class CanvasImageProvider;
 class CanvasRenderingContext2DSettings;
@@ -76,12 +80,14 @@ class V8CanvasFontKerning;
 class V8CanvasFontVariantCaps;
 class V8UnionElementOrElementImage;
 enum class PredefinedColorSpace;
+enum class RasterMode;
 
 class MODULES_EXPORT BaseRenderingContext2D
     : public CanvasRenderingContext,
       public Canvas2DRecorderContext,
       public MemoryManagedPaintRecorder::Client,
       public FlushForImageObserver,
+      public CanvasMemoryDumpClient,
       public WebGraphicsContext3DProviderWrapper::DestructionObserver {
  public:
   // MemoryManagedPaintRecorder::Client implementation.
@@ -292,9 +298,7 @@ class MODULES_EXPORT BaseRenderingContext2D
   void SetRestoreFailedCallbackForTesting(base::RepeatingClosure callback) {
     on_restore_failed_callback_for_testing_ = std::move(callback);
   }
-  Canvas2DBitmapProvider* GetBitmapProviderForTesting() const {
-    return bitmap_provider_.get();
-  }
+  SkSurface* GetSoftwareSurfaceForTesting() const { return surface_.get(); }
 
   HeapTaskRunnerTimer<BaseRenderingContext2D>
       dispatch_context_lost_event_timer_;
@@ -359,12 +363,18 @@ class MODULES_EXPORT BaseRenderingContext2D
                                  bool clear_frame,
                                  FlushReason reason) {}
 
+  Canvas2DResourceProvider* GetSharedImageProvider() const;
+  void CreateSharedImageProvider(
+      RasterMode raster_mode,
+      gpu::SharedImageUsageSet shared_image_usage_flags);
+  void CreateSharedImageProviderForSoftwareCompositor();
+  void SetSharedImageProviderForTesting(
+      std::unique_ptr<Canvas2DResourceProvider> provider);
   void CreateBitmapProvider();
+  void RecordResourceProviderHistograms();
   scoped_refptr<StaticBitmapImage> Snapshot();
 
   bool context_restorable_{true};
-  Canvas2DColorParams color_params_;
-  std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
 
  private:
   void UpdateRecordingLimits(bool is_graphite);
@@ -389,14 +399,22 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   scoped_refptr<StaticBitmapImage> UnacceleratedSnapshot();
 
+  // CanvasMemoryDumpClient implementation.
+  void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
+  size_t GetSize() const override;
+
   // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
   void OnContextDestroyed() override;
 
+  void RasterRecordToSoftwareSurface(cc::PaintRecord last_recording);
+  void ApplyAnimatedImageFrameIndexesForId(SkCanvas* canvas, uint32_t id);
   CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
 
-  std::unique_ptr<Canvas2DBitmapProvider> bitmap_provider_;
+  Canvas2DColorParams color_params_;
+  std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
+  sk_sp<SkSurface> surface_;
   std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
-  // Even when using a software bitmap provider, it may be called upon to
+  // Even when using a software surface, it may be called upon to
   // rasterize a texture-backed resource, and that resource must be bound to a
   // gpu context for the current thread.
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;

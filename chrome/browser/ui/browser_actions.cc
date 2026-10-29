@@ -258,6 +258,12 @@
 #include "components/prefs/pref_service.h"
 #endif
 
+#include "components/signin/public/base/signin_buildflags.h"
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/signin/account_preview_data_service_factory.h"
+#include "chrome/browser/ui/signin/signin_view_controller.h"
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 namespace {
 
 ui::Accelerator GetAcceleratorForCommandId(int command_id) {
@@ -1086,9 +1092,12 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi),
           kActionTabSearch, IDS_TAB_SEARCH_MENU, IDS_TAB_SEARCH_MENU,
-          features::IsRoundedIconsEnabled()
-              ? vector_icons::kKeyboardArrowDownIcon
-              : vector_icons::kExpandMoreOldIcon)
+          organizer_panel::IsOrganizerPanelFeatureEnabled()
+              ? (features::IsRoundedIconsEnabled() ? kManageSearchIcon
+                                                   : kTabSearchTabStripOldIcon)
+              : (features::IsRoundedIconsEnabled()
+                     ? vector_icons::kKeyboardArrowDownIcon
+                     : vector_icons::kExpandMoreOldIcon))
           .SetProperty(
               actions::kActionItemPinnableKey,
               static_cast<std::underlying_type_t<actions::ActionPinnableState>>(
@@ -3716,7 +3725,10 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   if (controller) {
                     controller->OpenLensOverlay(
                         lens::LensOverlayInvocationSource::
-                            kContentAreaContextMenuPage);
+                            kContentAreaContextMenuPage,
+                        /*should_show_csb=*/!base::FeatureList::IsEnabled(
+                            contextual_tasks::
+                                kContextualTasksUpdatedEntryPoints));
                     return;
                   }
                 }
@@ -4159,6 +4171,22 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                     IdentityManagerFactory::GetForProfileIfExists(profile);
                 CoreAccountInfo account;
                 if (identity_manager) {
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+                  if (!identity_manager->HasPrimaryAccount(
+                          signin::ConsentLevel::kSignin)) {
+                    AccountInfo account_for_promos =
+                        signin_ui_util::GetSingleAccountForPromos(
+                            identity_manager,
+                            AccountPreviewDataServiceFactory::GetForProfile(
+                                profile));
+                    if (!account_for_promos.IsEmpty()) {
+                      SigninViewController::From(bwi)->ShowChromeSigninBubble(
+                          account_for_promos,
+                          signin_metrics::AccessPoint::kMenu);
+                      return;
+                    }
+                  }
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
                   account = identity_manager->GetPrimaryAccountInfo(
                       signin::ConsentLevel::kSignin);
                 }

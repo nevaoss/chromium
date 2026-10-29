@@ -15,6 +15,7 @@
 #import "components/content_settings/core/common/content_settings.h"
 #import "components/enterprise/client_certificates/ios/certificate_provisioning_service_ios.h"
 #import "components/enterprise/client_certificates/ios/client_identity_ios.h"
+#import "components/prefs/pref_service.h"
 #import "ios/chrome/browser/app_launcher/model/app_launcher_tab_helper.h"
 #import "ios/chrome/browser/content_settings/model/host_content_settings_map_factory.h"
 #import "ios/chrome/browser/context_menu/ui_bundled/context_menu_configuration_provider.h"
@@ -24,6 +25,7 @@
 #import "ios/chrome/browser/enterprise/data_controls/model/data_controls_tab_helper.h"
 #import "ios/chrome/browser/enterprise/proxy/model/proxy_service_controller.h"
 #import "ios/chrome/browser/enterprise/proxy/model/proxy_service_controller_factory.h"
+#import "ios/chrome/browser/geolocation/model/geolocation_manager.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/overlays/model/public/overlay_callback_manager.h"
@@ -31,10 +33,13 @@
 #import "ios/chrome/browser/overlays/model/public/overlay_request.h"
 #import "ios/chrome/browser/overlays/model/public/overlay_request_queue.h"
 #import "ios/chrome/browser/overlays/model/public/overlay_response.h"
+#import "ios/chrome/browser/overlays/model/public/web_content_area/geolocation_prompt_dialog_overlay.h"
 #import "ios/chrome/browser/overlays/model/public/web_content_area/http_auth_overlay.h"
 #import "ios/chrome/browser/overlays/model/public/web_content_area/insecure_form_overlay.h"
 #import "ios/chrome/browser/permissions/model/permissions_metrics.h"
 #import "ios/chrome/browser/permissions/model/permissions_tab_helper.h"
+#import "ios/chrome/browser/shared/model/application_context/application_context.h"
+#import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
@@ -117,7 +122,7 @@ bool IsMicOrCameraAccessSubjectToParentalControls(
     return false;
   }
 
-  HostContentSettingsMap* host_content_settings_map =
+  scoped_refptr<HostContentSettingsMap> host_content_settings_map =
       ios::HostContentSettingsMapFactory::GetForProfile(profile);
   CHECK(host_content_settings_map);
 
@@ -182,6 +187,23 @@ void PostPermissionDecision(web::WebStatePermissionDecisionHandler handler,
                             web::PermissionDecision decision) {
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(handler, decision));
+}
+
+void OnRequestGeolocationPermissionResponse(
+    web::WebStatePermissionDecisionHandler handler,
+    OverlayResponse* response) {
+  if (response) {
+    auto* info = response->GetInfo<GeolocationPromptDialogResponse>();
+    if (info && info->tapped_settings()) {
+      [[UIApplication sharedApplication]
+                    openURL:
+                        [NSURL URLWithString:UIApplicationOpenSettingsURLString]
+                    options:@{}
+          completionHandler:nil];
+    }
+
+    handler(web::PermissionDecisionDeny);
+  }
 }
 
 }  // namespace
@@ -398,12 +420,12 @@ void WebStateDelegateBrowserAgent::HandlePermissionsDecisionRequest(
   }
 
   if (IsDomainLevelSitePermissionsEnabled()) {
-    HostContentSettingsMap* settings_map =
+    scoped_refptr<HostContentSettingsMap> settings_map =
         ios::HostContentSettingsMapFactory::GetForProfile(profile);
     GURL url = source->GetLastCommittedURL();
 
     std::optional<web::PermissionDecision> decision =
-        DetermineDomainLevelDecision(settings_map, url, permissions);
+        DetermineDomainLevelDecision(settings_map.get(), url, permissions);
     if (decision) {
       RecordPermissionRequestResolution(
           permissions,
@@ -427,6 +449,43 @@ void WebStateDelegateBrowserAgent::HandlePermissionsDecisionRequest(
   }
 
   handler(web::PermissionDecisionDeny);
+}
+
+void WebStateDelegateBrowserAgent::RequestGeolocationPermission(
+    web::WebState* source,
+    const GURL& origin,
+    web::WebStatePermissionDecisionHandler handler) {
+  CLAuthorizationStatus status =
+      [GeolocationManager sharedInstance].authorizationStatus;
+
+  if (status == kCLAuthorizationStatusRestricted) {
+    handler(web::PermissionDecisionDeny);
+    return;
+  }
+
+  if (status != kCLAuthorizationStatusDenied) {
+    handler(web::PermissionDecisionShowDefaultPrompt);
+    return;
+  }
+  PrefService* local_state = GetApplicationContext()->GetLocalState();
+  const base::Time shown =
+      local_state->GetTime(prefs::kIosGeolocationSystemPromptLastShownTime);
+
+  if (!shown.is_null()) {
+    handler(web::PermissionDecisionDeny);
+    return;
+  }
+  local_state->SetTime(prefs::kIosGeolocationSystemPromptLastShownTime,
+                       base::Time::Now());
+
+  std::unique_ptr<OverlayRequest> request =
+      OverlayRequest::CreateWithConfig<GeolocationPromptDialogRequest>();
+
+  request->GetCallbackManager()->AddCompletionCallback(base::BindOnce(
+      &OnRequestGeolocationPermissionResponse, std::move(handler)));
+
+  OverlayRequestQueue::FromWebState(source, OverlayModality::kWebContentArea)
+      ->AddRequest(std::move(request));
 }
 
 void WebStateDelegateBrowserAgent::OnProxyAuthChallenge(

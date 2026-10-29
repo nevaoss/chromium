@@ -68,6 +68,7 @@
 #include "content/public/browser/webid/native_idp_fetcher.h"
 #include "content/public/common/alternative_error_page_override_info.mojom.h"
 #include "content/public/common/content_features.h"
+#include "content/public/common/url_constants.h"
 #include "content/public/common/url_utils.h"
 #include "media/audio/audio_manager.h"
 #include "media/capture/content/screen_enumerator.h"
@@ -2109,5 +2110,9 @@ bool ContentBrowserClient::ShouldAllowSystemUiPopups(
   return true;
 }
 #endif
+
+bool ContentBrowserClient::IsExemptFromWindowSizeCheck(const GURL& url) {
+  return url.SchemeIs(kChromeUIScheme) || url.SchemeIs(kChromeDevToolsScheme);
+}
 
 }  // namespace content

@@ -1511,6 +1511,8 @@ void NavigateToDataURLAndCheckForTerminationDisabler(
   EXPECT_EQ(expect_unload || expect_beforeunload || expect_pagehide ||
                 expect_visibilitychange,
             shell->web_contents()->NeedToFireBeforeUnloadOrUnloadEvents());
+  EXPECT_EQ(expect_beforeunload,
+            shell->web_contents()->NeedToFireBeforeUnload());
   EXPECT_EQ(expect_unload,
             rfh->GetSuddenTerminationDisablerState(
                 blink::mojom::SuddenTerminationDisablerType::kUnloadHandler));
@@ -9868,6 +9870,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
@@ -9950,6 +9953,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
@@ -10006,6 +10010,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
@@ -10082,6 +10087,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),

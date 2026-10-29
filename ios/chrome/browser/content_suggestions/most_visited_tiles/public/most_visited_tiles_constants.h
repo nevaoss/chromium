@@ -17,10 +17,18 @@ CGFloat MostVisitedIconContainerSize();
 // The corner radius of the container for a Most Visited Tile's icon.
 CGFloat MostVisitedIconContainerCornerRadius();
 
+// Maximum number of Most Visited Tiles visible on screen, based on whether an
+// AIM button is available next to the most visited tiles container.
+NSUInteger MostVisitedMaximumVisibleItemsOnScreen(BOOL aim_available = NO);
+
 // Insets for the Most Visited collection in a container.
 extern const NSDirectionalEdgeInsets kMostVisitedContainerInsets;
 
 // Size of the favicon or icon in a most visited tile.
 extern const CGFloat kMostVisitedTileIconSize;
+
+// Returns the vertical height reduction of the Most Visited Tiles row when
+// `AimButtonRefactorArm::kAimAsModule` is enabled.
+CGFloat MostVisitedHeightReductionForAimModule();
 
 #endif  // IOS_CHROME_BROWSER_CONTENT_SUGGESTIONS_MOST_VISITED_TILES_PUBLIC_MOST_VISITED_TILES_CONSTANTS_H_

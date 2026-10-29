@@ -123,7 +123,6 @@ Další nastavení využití dat ke zlepšení prostředí v prohlížeči Chro
 <translation id="1432581352905426595">Spravovat vyhledávače</translation>
 <translation id="1435593198351412143">Soubory PDF automaticky otevřít</translation>
 <translation id="1437543266176261764">Spuštěno v aplikaci <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Sledované produkty můžete třídit v záložkách</translation>
 <translation id="1452651021404174820">Vyberte zařízení</translation>
 <translation id="1455845192930279203">Chcete soubor „<ph name="FILE_NAME" />“ (<ph name="FILE_SIZE" />) z domény <ph name="DOWNLOAD_DOMAIN" /> i přesto stáhnout?</translation>
 <translation id="1460751212339734034">Ušetřete čas, pište méně</translation>
@@ -775,6 +774,7 @@ Vaše šifrovaná data mohou číst pouze uživatelé, kteří mají vaši heslo
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, jedna z několika vybraných připnutých nahrávajících karet</translation>
 <translation id="4137746084635924146">Aktuální jazyk zařízení</translation>
 <translation id="414128724510021958">Ve výchozím nastavení jsou požadovány weby pro počítače</translation>
+<translation id="4150837143272125910">Aktualizace byla stažena</translation>
 <translation id="4162867837470729563">Seznam možností sdílení je otevřený na celou výšku.</translation>
 <translation id="4164642020717536140">Rychlé a bezpečné prohlížení webu</translation>
 <translation id="4165077084524712774">Další nástroje</translation>
@@ -1199,6 +1199,7 @@ Na stránce <ph name="BEGIN_LINK" />history.google.com<ph name="END_LINK" /> moh
 <translation id="5848257610304005265">Otevřít PDF pomocí aplikace <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Ukončit sdílení?</translation>
 <translation id="5853623416121554550">pozastaveno</translation>
+<translation id="5855375823365231964">O tomto profilu</translation>
 <translation id="5855546874025048181">Zpřesnit: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, jedna z několika vybraných nahrávajících anonymních karet</translation>
 <translation id="5857447844686706637">Došlo k chybě. Sledování ceny se nepodařilo aktualizovat.</translation>
@@ -1240,6 +1241,7 @@ Na stránce <ph name="BEGIN_LINK" />history.google.com<ph name="END_LINK" /> moh
 <translation id="6039379616847168523">Přejít na další kartu</translation>
 <translation id="6040143037577758943">Zavřít</translation>
 <translation id="604124094241169006">Automaticky</translation>
+<translation id="6041959688070413372">Správa propojení mezi vyhledávacími službami a aplikacemi Google Workspace, jako je Disk Google</translation>
 <translation id="6042308850641462728">Více</translation>
 <translation id="6047066316630165190">Otevřete přepínač karet v mřížce</translation>
 <translation id="604996488070107836">Stažení souboru <ph name="FILE_NAME" /> se nezdařilo z důvodu neznámé chyby.</translation>
@@ -1400,6 +1402,7 @@ Některé weby mohou například na tento požadavek reagovat tak, že vám zobr
 <translation id="6565959834589222080">Síť Wi-Fi se použije, když bude k dispozici</translation>
 <translation id="657177046675873214">Pokud své záložky chcete mít na všech svých zařízeních, zapněte v nastavení možnost Záložky</translation>
 <translation id="6573096386450695060">Vždy povolit</translation>
+<translation id="657480975869429144">K dispozici je nová verze prohlížeče Chrome</translation>
 <translation id="658099107946526506">Chraňte své anonymní prohlížení pomocí PINu, který zabrání nechtěnému přístupu</translation>
 <translation id="6583199322650523874">Přidat aktuální stránku do záložek</translation>
 <translation id="6588043302623806746">Používat zabezpečené DNS</translation>

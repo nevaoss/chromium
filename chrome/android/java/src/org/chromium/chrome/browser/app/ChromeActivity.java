@@ -87,6 +87,7 @@ import org.chromium.chrome.browser.ChromeWindow;
 import org.chromium.chrome.browser.ConfirmQuitHelper;
 import org.chromium.chrome.browser.DeferredStartupHandler;
 import org.chromium.chrome.browser.GracefulShutdownService;
+import org.chromium.chrome.browser.GracefulShutdownServiceImpl;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.KeyboardShortcuts;
 import org.chromium.chrome.browser.PlayServicesVersionInfo;
@@ -236,6 +237,8 @@ import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskTrackerFac
 import org.chromium.chrome.browser.ui.device_lock.MissingDeviceLockLauncher;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
+import org.chromium.chrome.browser.ui.extensions.browser_window_helper.ExtensionBrowserWindowHelperBridge;
+import org.chromium.chrome.browser.ui.extensions.browser_window_helper.ExtensionBrowserWindowHelperBridgeFactory;
 import org.chromium.chrome.browser.ui.extensions.windowing.ExtensionWindowControllerBridge;
 import org.chromium.chrome.browser.ui.extensions.windowing.ExtensionWindowControllerBridgeFactory;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
@@ -1197,6 +1200,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             ActivityWindowAndroid activityWindowAndroid) {
         chromeAndroidTask.addFeature(
                 new ChromeAndroidTaskFeatureKey(
+                        ExtensionBrowserWindowHelperBridge.class, profile, activityWindowAndroid),
+                ExtensionBrowserWindowHelperBridgeFactory::create);
+        chromeAndroidTask.addFeature(
+                new ChromeAndroidTaskFeatureKey(
                         ExtensionWindowControllerBridge.class, profile, activityWindowAndroid),
                 ExtensionWindowControllerBridgeFactory::create);
     }
@@ -2068,7 +2075,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (ChromeFeatureList.sTabAndroidGracefulShutdown.isEnabled()
                 && status == TabDestroyStatus.SLOW_SHUTDOWN
                 && GracefulShutdownService.isLastActivityDying()) {
-            GracefulShutdownService.maybeStartGracefulShutdown(
+            GracefulShutdownServiceImpl.maybeStartGracefulShutdown(
                     ContextUtils.getApplicationContext());
         }
 
@@ -3556,11 +3563,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     // NightModeStateProvider.Observer implementation.
     @Override
     public void onNightModeStateChanged() {
-        // Note: order matters here because the call to super will recreate the activity.
-        // Note: it's possible for this method to be called before mNightModeReparentingController
+        // Note: it's possible for this method to be called before TabReparentingController
         // is constructed.
         if (mTabReparentingControllerSupplier.get() != null) {
-            mTabReparentingControllerSupplier.get().prepareTabsForReparenting();
+            doRecreateActivity();
+            return;
         }
         super.onNightModeStateChanged();
     }
@@ -3602,11 +3609,13 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                     getResources().getConfiguration().densityDpi);
         }
         if (mTabReparentingControllerSupplier.get() != null && !mIsTabReparentingPrepared) {
+            // Must happen before tabs are detached, since detaching destroys tab-scoped views
+            // (e.g. the side panel's ThinWebView), losing their focus.
+            mRootUiCoordinator.prepareUiState();
             mTabReparentingControllerSupplier.get().prepareTabsForReparenting();
             mIsTabReparentingPrepared = true;
             if (!isFinishing()) {
                 mIsRecreatingForTabletModeChange = tabletMode.changed;
-                mRootUiCoordinator.prepareUiState();
                 // Store the OnPause timestamp before recreation to capture unfold latency metric
                 // only if the activity is currently not in stopped state, to not capture the time
                 // when system was suspended. Hence, unfolding instances where Chrome wasn't in

@@ -123,7 +123,6 @@ Gaan na <ph name="BEGIN_LINK2" />Google-dienste<ph name="END_LINK2" /> vir meer 
 <translation id="1432581352905426595">Bestuur soekenjins</translation>
 <translation id="1435593198351412143">Maak PDF’s outomaties oop</translation>
 <translation id="1437543266176261764">Loop tans in <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organiseer jou nagespoorde produkte in Boekmerke</translation>
 <translation id="1452651021404174820">Kies ’n toestel</translation>
 <translation id="1455845192930279203">Wil jy in elk geval “<ph name="FILE_NAME" />” (<ph name="FILE_SIZE" />) van <ph name="DOWNLOAD_DOMAIN" /> aflaai?</translation>
 <translation id="1460751212339734034">Spaar tyd, tik minder</translation>
@@ -775,6 +774,7 @@ Net iemand met jou wagfrase kan jou geënkripteerde data lees. Die wagfrase word
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, multigekose vasgespelde oortjie wat opgeneem word</translation>
 <translation id="4137746084635924146">Huidige toesteltaal</translation>
 <translation id="414128724510021958">Rekenaarwerwe wat by verstek versoek is</translation>
+<translation id="4150837143272125910">’n Opdatering is afgelaai</translation>
 <translation id="4162867837470729563">Lys deelopsies teen volle hoogte.</translation>
 <translation id="4164642020717536140">Vinnige en veilige webblaai</translation>
 <translation id="4165077084524712774">Meer nutsgoed</translation>
@@ -1199,6 +1199,7 @@ Jou Google-rekening het dalk ander vorme van blaaigeskiedenis, soos soektogte en
 <translation id="5848257610304005265">Maak PDF oop met <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Hou op deel?</translation>
 <translation id="5853623416121554550">laat wag</translation>
+<translation id="5855375823365231964">Meer oor hierdie profiel</translation>
 <translation id="5855546874025048181">Verfyn: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, multigekose Incognito-oortjie wat opgeneem word</translation>
 <translation id="5857447844686706637">Iets was fout. Kon nie prysnasporing opdateer nie.</translation>
@@ -1240,6 +1241,7 @@ Jou Google-rekening het dalk ander vorme van blaaigeskiedenis, soos soektogte en
 <translation id="6039379616847168523">Spring na die volgende oortjie</translation>
 <translation id="6040143037577758943">Maak toe</translation>
 <translation id="604124094241169006">Outomaties</translation>
+<translation id="6041959688070413372">Bestuur die verbinding tussen soekdienste en Google Workspace-apps, soos Google Drive</translation>
 <translation id="6042308850641462728">Meer</translation>
 <translation id="6047066316630165190">Maak die roosteroortjiewisselaar oop</translation>
 <translation id="604996488070107836">Kon <ph name="FILE_NAME" /> weens 'n onbekende fout nie aflaai nie.</translation>
@@ -1400,6 +1402,7 @@ Byvoorbeeld, sommige webwerwe kan op hierdie versoek reageer deur vir jou advert
 <translation id="6565959834589222080">Wi-fi word gebruik wanneer dit beskikbaar is</translation>
 <translation id="657177046675873214">Skakel “Boekmerke” in instellings aan om jou boekmerke op al jou toestelle te kry</translation>
 <translation id="6573096386450695060">Laat altyd toe</translation>
+<translation id="657480975869429144">’n Nuwe weergawe van Chrome is beskikbaar</translation>
 <translation id="658099107946526506">Beskerm jou privaat blaai met ’n PIN om ongewenste toegang te verhoed</translation>
 <translation id="6583199322650523874">Boekmerk die huidige bladsy</translation>
 <translation id="6588043302623806746">Gebruik beveiligde DNS</translation>

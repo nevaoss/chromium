@@ -36,11 +36,6 @@ BASE_DECLARE_FEATURE(kGlicDragAndDropFileUploadAndroid);
 BASE_DECLARE_FEATURE(kGlicAndroidOffscreenRendering);
 
 BASE_DECLARE_FEATURE(kGlicClearTurnIdOnPanelWillOpen);
-BASE_DECLARE_FEATURE(kGlicChromeStatusIcon);
-extern const base::FeatureParam<int> kGlicChromeStatusIconSizePx;
-extern const base::FeatureParam<bool> kGlicChromeStatusIconUseAltIcon;
-extern const base::FeatureParam<bool> kGlicChromeStatusIconLogOnly;
-extern const base::FeatureParam<std::string> kGlicChromeStatusIconOtherAppID;
 
 BASE_DECLARE_FEATURE(kGlicOSIconVariant);
 extern const base::FeatureParam<int> kGlicOSIconVariantParam;
@@ -61,10 +56,6 @@ extern const base::FeatureParam<bool> kGlicSelectionAutoSendPrompt;
 extern const base::FeatureParam<std::string> kGlicSelectionPromptCta;
 inline constexpr char kGlicSelectionPromptCtaTellMe[] = "tell_me_about_this";
 inline constexpr char kGlicSelectionPromptCtaExplain[] = "explain";
-extern const base::FeatureParam<bool> kGlicSelectionPromptInlineFulfillment;
-extern const base::FeatureParam<std::string>
-    kGlicSelectionPromptInlinePromptTemplate;
-extern const base::FeatureParam<bool> kGlicSelectionPromptSkills;
 extern const base::FeatureParam<std::string> kGlicSelectionDefaultBlockedSites;
 base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites();
 
@@ -103,24 +94,6 @@ extern const base::FeatureParam<bool> kGlicTextSelectionContextMenuAutoSubmit;
 BASE_DECLARE_FEATURE(kGlicTieredRolloutV2);
 extern const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers;
 const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers();
-
-// Configures which tiers of users are eligible for Actor. It should be a
-// comma-separated list of tier ints ("1,2,3").
-BASE_DECLARE_FEATURE(kGlicActorEligibleTiers);
-extern const base::FeatureParam<std::string> kGlicActorEligibleTiersParam;
-
-// Specifies the default pref value for `glic:prefs::kGlicActuationOnWeb` for
-// enterprise users. Does not affect non-enterprise users.
-enum class GlicActorEnterprisePrefDefault {
-  kEnabledByDefault = 0,
-  kDisabledByDefault,
-  // When this is set, the browser does not have the capability, regardless of
-  // the policy value (the pref value is ignored).
-  kForcedDisabled,
-};
-BASE_DECLARE_FEATURE(kGlicActorEnterprisePrefDefault);
-BASE_DECLARE_FEATURE_PARAM(GlicActorEnterprisePrefDefault,
-                           kGlicActorEnterprisePrefDefaultParam);
 
 // Exempts the user from ActorPolicyChecker.
 BASE_DECLARE_FEATURE(kGlicActorPolicyControlExemption);
@@ -180,6 +153,7 @@ extern const base::FeatureParam<base::TimeDelta>
     kGlicCookieSyncOnErrorMinInterval;
 BASE_DECLARE_FEATURE(kGlicCookieSyncOnOpenEvenIfNoSyncNeeded);
 BASE_DECLARE_FEATURE(kGlicCookieSyncEarlyNoStartup);
+BASE_DECLARE_FEATURE(kGlicReuseCookies);
 
 BASE_DECLARE_FEATURE(kGlicWebClientLoadTimes);
 extern const base::FeatureParam<int> kGlicPreLoadingTimeMs;
@@ -188,6 +162,8 @@ extern const base::FeatureParam<int> kGlicMaxLoadingTimeMs;
 extern const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs;
 
 BASE_DECLARE_FEATURE(kGlicContextualCueingV2AutoSubmit);
+BASE_DECLARE_FEATURE(kGlicContextualCuesHandleEdu);
+BASE_DECLARE_FEATURE(kGlicContextualCuesHandleShopping);
 BASE_DECLARE_FEATURE(kGlicContextualCueV2ActiveUserBackoff);
 extern const base::FeatureParam<int> kMinDaysSinceLastInvocation;
 
@@ -203,12 +179,9 @@ BASE_DECLARE_FEATURE(kGlicShowForSignedOut);
 BASE_DECLARE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers);
 BASE_DECLARE_FEATURE(kGlicProcessCounterAbuseVerdict);
 BASE_DECLARE_FEATURE(kGlicNoWebUiLoader);
-BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled);
-BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseConsentEnabled);
 
 // Enables Gemini Enterprise in Chrome (GEiC), the standalone enterprise
-// surface. This is distinct from Gemini Enterprise as a Tool (GEaaT), which is
-// governed by kGlicGeminiEnterpriseSettingsEnabled above.
+// surface.
 BASE_DECLARE_FEATURE(kGeic);
 // Allows the GEiC surface to be turned off from within the kGeic study without
 // having to disable the study itself.

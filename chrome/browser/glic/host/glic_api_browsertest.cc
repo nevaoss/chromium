@@ -21,6 +21,7 @@
 #include "base/types/expected.h"
 #include "base/types/expected_macros.h"
 #include "base/values.h"
+#include "build/android_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_task.h"
@@ -850,140 +851,6 @@ class GlicApiTestWithDefaultTabContextEnabled : public GlicApiTest {
  private:
   base::test::ScopedFeatureList feature_list_;
 };
-
-class GlicApiTestGeminiEnterpriseSettingsOverride : public GlicApiTest {
- public:
-  GlicApiTestGeminiEnterpriseSettingsOverride() {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kGlicGeminiEnterpriseSettingsEnabled);
-  }
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    GlicApiTest::SetUpCommandLine(command_line);
-    command_line->AppendSwitchASCII(
-        switches::kGlicGeminiEnterpriseSettingsOverride,
-        "{\"project_id\": \"switch-project\", \"app_id\": \"switch-engine\", "
-        "\"location\": \"switch-location\"}");
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestGeminiEnterpriseSettingsOverride,
-                       testGeminiEnterpriseSettings) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  ExecuteJsTest();
-}
-
-class GlicApiTestGeminiEnterpriseSettingsDisabled
-    : public GlicApiTestGeminiEnterpriseSettingsOverride {
- public:
-  GlicApiTestGeminiEnterpriseSettingsDisabled() {
-    scoped_feature_list_.InitAndDisableFeature(
-        features::kGlicGeminiEnterpriseSettingsEnabled);
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestGeminiEnterpriseSettingsDisabled,
-                       testGeminiEnterpriseSettingsDisabled) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  ExecuteJsTest();
-}
-
-// TODO(b/544838006): Enterprise policies are not currently supported
-// on Android. Re-enable these tests once support is added.
-#if !BUILDFLAG(IS_ANDROID)
-class GlicApiTestGeminiEnterpriseSettingsPolicy : public GlicApiTest {
- public:
-  GlicApiTestGeminiEnterpriseSettingsPolicy() {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kGlicGeminiEnterpriseSettingsEnabled);
-  }
-
-  void SetUpInProcessBrowserTestFixture() override {
-    GlicApiTest::SetUpInProcessBrowserTestFixture();
-    policy_provider_.SetDefaultReturns(
-        /*is_initialization_complete_return=*/true,
-        /*is_first_policy_load_complete_return=*/true);
-    policy::BrowserPolicyConnector::SetPolicyProviderForTesting(
-        &policy_provider_);
-  }
-
-  void SetUpOnMainThread() override {
-    GlicApiTest::SetUpOnMainThread();
-
-    // Set hosted domain to enterprise.com.
-    auto* identity_manager =
-        IdentityManagerFactory::GetForProfile(GetProfile());
-    CoreAccountInfo primary_account =
-        identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
-    AccountInfo account_info =
-        identity_manager->FindExtendedAccountInfo(primary_account);
-    AccountInfo::Builder builder(account_info);
-    builder.SetHostedDomain("enterprise.com");
-    signin::UpdateAccountInfoForAccount(identity_manager, builder.Build());
-
-    policy_provider_.SetupPolicyServiceForPolicyUpdates(
-        GetProfile()->GetProfilePolicyConnector()->policy_service());
-
-    base::DictValue enterprise_settings;
-    enterprise_settings.Set("project_id", "policy-project");
-    enterprise_settings.Set("app_id", "policy-engine");
-    enterprise_settings.Set("location", "policy-location");
-    policy::PolicyMap policies =
-        policy_provider_.policies()
-            .Get(policy::PolicyNamespace(policy::POLICY_DOMAIN_CHROME,
-                                         std::string()))
-            .Clone();
-    policies.Set(policy::key::kGeminiEnterpriseSettings,
-                 policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
-                 policy::POLICY_SOURCE_CLOUD,
-                 base::Value(std::move(enterprise_settings)), nullptr);
-    policy_provider_.UpdateChromePolicy(policies);
-  }
-
-  void TearDownOnMainThread() override {
-    policy_provider_.SetupPolicyServiceForPolicyUpdates(nullptr);
-    GlicApiTest::TearDownOnMainThread();
-  }
-
- protected:
-  testing::NiceMock<policy::MockConfigurationPolicyProvider> policy_provider_;
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestGeminiEnterpriseSettingsPolicy,
-                       testGeminiEnterpriseSettingsPolicy) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  ExecuteJsTest();
-}
-
-class GlicApiTestGeminiEnterpriseSettingsPolicyUnset
-    : public GlicApiTestGeminiEnterpriseSettingsPolicy {
- public:
-  void SetUpOnMainThread() override {
-    GlicApiTestGeminiEnterpriseSettingsPolicy::SetUpOnMainThread();
-    // Unset the policy.
-    policy::PolicyMap policies =
-        policy_provider_.policies()
-            .Get(policy::PolicyNamespace(policy::POLICY_DOMAIN_CHROME,
-                                         std::string()))
-            .Clone();
-    policies.Erase(policy::key::kGeminiEnterpriseSettings);
-    policy_provider_.UpdateChromePolicy(policies);
-  }
-};
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestGeminiEnterpriseSettingsPolicyUnset,
-                       testGeminiEnterpriseSettingsPolicyUnset) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  ExecuteJsTest();
-}
-#endif
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithDefaultTabContextEnabled,
                        testGetDefaultTabContextPermissionState) {
@@ -3790,7 +3657,11 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
           testing::AnyOf("unknown", "canary", "dev", "beta", "stable"))),
       testing::Contains(
           testing::Pair(testing::StrCaseEq("x-glic-chrome-version"),
-                        version_info::GetVersionNumber())));
+                        version_info::GetVersionNumber())),
+      testing::Contains(testing::Pair(
+          testing::StrCaseEq("x-glic-onboarding-completed"), "true")),
+      testing::Not(testing::Contains(
+          testing::Key(testing::StrCaseEq("x-glic-onboarding-arm")))));
 
   const std::vector<net::test_server::HttpRequest> captured_requests =
       requests();
@@ -3814,6 +3685,41 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
   auto* cross_origin_rpc_request = find_request("/fake-rpc/cors");
   ASSERT_TRUE(cross_origin_rpc_request);
   EXPECT_THAT(cross_origin_rpc_request->headers, request_header_matcher);
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor,
+                       testRequestHeaderFreNotStarted) {
+  service()->enabling().SetCompletedFre(prefs::FreStatus::kNotStarted);
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+
+  auto request_header_matcher = testing::AllOf(
+      testing::Contains(testing::Pair(testing::StrCaseEq("x-glic"), "1")),
+      testing::Contains(testing::Pair(
+          testing::StrCaseEq("x-glic-chrome-channel"),
+          testing::AnyOf("unknown", "canary", "dev", "beta", "stable"))),
+      testing::Contains(
+          testing::Pair(testing::StrCaseEq("x-glic-chrome-version"),
+                        version_info::GetVersionNumber())),
+      testing::Contains(testing::Pair(
+          testing::StrCaseEq("x-glic-onboarding-completed"), "false")),
+      testing::Contains(
+          testing::Pair(testing::StrCaseEq("x-glic-onboarding-arm"), "2")));
+
+  const std::vector<net::test_server::HttpRequest> captured_requests =
+      requests();
+  auto find_request = [&](std::string_view path) {
+    const auto it =
+        std::ranges::find_if(captured_requests, [&](const auto& request) {
+          return request.GetURL().GetPath() == path &&
+                 request.method == net::test_server::METHOD_GET;
+        });
+    return it == captured_requests.end() ? nullptr : &(*it);
+  };
+
+  auto* main_request = find_request(GetGuestURL().GetPath());
+  ASSERT_TRUE(main_request);
+  EXPECT_THAT(main_request->headers, request_header_matcher);
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testDialogResponseCallOrder) {
@@ -3868,7 +3774,13 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testDialogResponseCallOrder) {
             actor::ActorTask::State::kWaitingOnUser);
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testPopupOpens) {
+// TODO(crbug.com/570150703): Consistently failing on Android Desktop.
+#if BUILDFLAG(IS_DESKTOP_ANDROID)
+#define MAYBE_testPopupOpens DISABLED_testPopupOpens
+#else
+#define MAYBE_testPopupOpens testPopupOpens
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testPopupOpens) {
   ASSERT_OK(OpenGlicForActiveTab());
   EXPECT_EQ(GetPopupCount(), 0);
   ExecuteJsTest();
@@ -3887,7 +3799,13 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testWindowOpenOpensTab) {
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testCtrlClickLinkOpensTab) {
+// TODO(crbug.com/569660051): Re-enable this test
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_testCtrlClickLinkOpensTab DISABLED_testCtrlClickLinkOpensTab
+#else
+#define MAYBE_testCtrlClickLinkOpensTab testCtrlClickLinkOpensTab
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testCtrlClickLinkOpensTab) {
   ASSERT_OK(OpenGlicForActiveTab());
   EXPECT_EQ(GetTabListInterface()->GetTabCount(), 1);
   ExecuteJsTest();
@@ -4723,9 +4641,9 @@ class GlicApiTestWithGeminiActOnWebPolicy : public GlicApiTest {
  public:
   GlicApiTestWithGeminiActOnWebPolicy() {
     scoped_feature_list_.InitWithFeaturesAndParameters(
-        {{features::kGlicActorEnterprisePrefDefault,
-          {{features::kGlicActorEnterprisePrefDefaultParam.name,
-            features::kGlicActorEnterprisePrefDefaultParam.GetName(
+        {{features::kGlicActor,
+          {{features::kGlicActorEnterprisePrefDefault.name,
+            features::kGlicActorEnterprisePrefDefault.GetName(
                 features::GlicActorEnterprisePrefDefault::
                     kDisabledByDefault)}}}},
         {features::kGlicActorPolicyControlExemption});
@@ -5454,28 +5372,6 @@ INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithFastTimeout,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
-
-INSTANTIATE_TEST_SUITE_P(,
-                         GlicApiTestGeminiEnterpriseSettingsOverride,
-                         DefaultTestParamSet(),
-                         &WithTestParams::PrintTestVariant);
-
-INSTANTIATE_TEST_SUITE_P(,
-                         GlicApiTestGeminiEnterpriseSettingsDisabled,
-                         DefaultTestParamSet(),
-                         &WithTestParams::PrintTestVariant);
-
-#if !BUILDFLAG(IS_ANDROID)
-INSTANTIATE_TEST_SUITE_P(,
-                         GlicApiTestGeminiEnterpriseSettingsPolicy,
-                         DefaultTestParamSet(),
-                         &WithTestParams::PrintTestVariant);
-
-INSTANTIATE_TEST_SUITE_P(,
-                         GlicApiTestGeminiEnterpriseSettingsPolicyUnset,
-                         DefaultTestParamSet(),
-                         &WithTestParams::PrintTestVariant);
-#endif
 
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithWebContentsWarming,

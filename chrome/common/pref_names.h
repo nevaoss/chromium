@@ -1211,6 +1211,10 @@ inline constexpr char kUserAgentReduction[] = "user_agent_reduction";
 // the tab strip.
 inline constexpr char kOrganizerPanelEntrypointEnabled[] =
     "organizer_panel.entrypoint_enabled";
+// Dictionary mapping organizer panel section IDs to a boolean indicating
+// whether the section is expanded.
+inline constexpr char kOrganizerPanelSectionsExpanded[] =
+    "organizer_panel.sections_expanded";
 inline constexpr char kProjectsPanelEntrypointEnabled[] =
     "projects_panel.entrypoint_enabled";
 
@@ -1274,6 +1278,11 @@ inline constexpr char kVerticalTabsCollapsedState[] =
 // width. Only used during startup when session restore is not used.
 inline constexpr char kVerticalTabsUncollapsedWidth[] =
     "vertical_tabs.uncollapsed_width";
+
+// Time representing the last time the everything menu button in the vertical
+// tab strip top container was pressed.
+inline constexpr char kVerticalTabsEverythingMenuLastPressed[] =
+    "vertical_tabs.everything_menu_last_pressed";
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_COMPOSE)

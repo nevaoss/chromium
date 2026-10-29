@@ -40,8 +40,6 @@ external/wpt/css/css-color/composited-filters-under-opacity.html
 external/wpt/css/css-color/deprecated-sameas-010.html
 external/wpt/css/css-color/filters-under-will-change-opacity.html
 external/wpt/css/css-color/system-color-consistency.html
-external/wpt/css/css-color/system-color-hightlights-vs-getSelection-001.html
-external/wpt/css/css-color/system-color-hightlights-vs-getSelection-002.html
 external/wpt/css/css-color/system-color-support.html
 external/wpt/css/css-contain/content-visibility/content-visibility-vs-scrollIntoView-001.html
 external/wpt/css/css-contain/content-visibility/content-visibility-with-top-layer-008.html
@@ -59,10 +57,6 @@ external/wpt/css/css-pseudo/first-letter-001.html
 external/wpt/css/css-pseudo/highlight-cascade/highlight-cascade-008.html
 external/wpt/css/css-pseudo/highlight-cascade/highlight-currentcolor-painting-properties-001.html
 external/wpt/css/css-pseudo/highlight-cascade/highlight-currentcolor-painting-properties-002.html
-external/wpt/css/css-ruby/block-ruby-003.html
-external/wpt/css/css-ruby/ruby-inlinize-recursive-simple.html
-external/wpt/css/css-ruby/ruby-text-combine-upright-001a.html
-external/wpt/css/css-ruby/ruby-text-combine-upright-001b.html
 external/wpt/css/css-scroll-anchoring/fullscreen-crash.html
 # Known to be very flaky: https://crbug.com/375047154
 external/wpt/css/css-scrollbars/*
@@ -631,6 +625,7 @@ external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html
 virtual/direct-sockets/external/wpt/direct-sockets/disabled-by-permissions-policy.https.sub.html
 virtual/direct-sockets/external/wpt/direct-sockets/tcp_socket.https.html
 virtual/direct-sockets/external/wpt/direct-sockets/udp_socket.https.html
+virtual/direct-sockets/external/wpt/direct-sockets/udp_socket_multicast.https.html
 virtual/isolated-context/wpt_internal/*
 virtual/isolated-context-stable/wpt_internal/*
 external/wpt/subapps/*

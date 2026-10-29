@@ -453,7 +453,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Lens.Overlay.ByInvocationSource.{InvocationSource}.InvocationResultedInSearch"
-    enum="Boolean" expires_after="2027-01-31">
+    enum="Boolean" expires_after="2027-04-04">
   <owner>jdonnelly@chromium.org</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -1033,7 +1033,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.Performance.AverageFPS" units="fps"
-    expires_after="2026-03-01">
+    expires_after="2027-10-05">
   <owner>mercerd@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -1094,7 +1094,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.SelectionState.CloseButtonEvent"
-    enum="LensOverlaySelectionCloseButtonEvent" expires_after="2026-12-22">
+    enum="LensOverlaySelectionCloseButtonEvent" expires_after="2027-04-04">
   <owner>juanmojica@google.com</owner>
   <owner>lens-chrome-eng@google.com</owner>
   <summary>
@@ -1136,7 +1136,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.SidePanel.SelectedMoreInfoMenuOption"
-    enum="LensOverlaySidePanelMenuOption" expires_after="2025-07-29">
+    enum="LensOverlaySidePanelMenuOption" expires_after="2027-10-05">
   <owner>nguyenbryan@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -1178,7 +1178,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.TimeToCloseOpenedSidePanel" units="ms"
-    expires_after="2026-03-01">
+    expires_after="2027-10-05">
   <owner>dianaou@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>

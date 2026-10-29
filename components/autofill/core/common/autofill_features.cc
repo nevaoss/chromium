@@ -404,6 +404,12 @@ BASE_FEATURE(kAutofillAiWalletPrivatePassesCapability,
 BASE_FEATURE(kAutofillAiWalletPrivatePassesDeepLink,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, Wallet management URLs (`pass_view_url`) received via sync are
+// stored on `EntityInstance::WalletRecordTypePayload` and used for deep
+// linking to Google Wallet.
+BASE_FEATURE(kAutofillAiWalletServerProvidedDeepLink,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, orders and shipments from Google Wallet become available in
 // Autofill for filling as read-only AutofillAi entities.
 // TODO(crbug.com/542022094): Clean up when launched.
@@ -550,11 +556,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 // encouraged to use the AtMemory feature.
 BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Kill switch: If enabled, AtMemory fills by simulating a paste. If disabled,
-// AtMemory uses ExtendSelectionAndReplace().
-// TODO(crbug.com/553143213): Clean up when PasteText() has proved robust.
-BASE_FEATURE(kAutofillAtMemoryPasteText, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the previously filled suggestions from AtMemory are shown.
 // Takes no effect when `kAutofillAtMemorySearchStatefulness` is disabled.
@@ -722,7 +723,6 @@ BASE_FEATURE(kAutofillEnableEntryLimitInPopup,
 // When enabled, IBAN regex pattern matching is expanded to support more
 // formats.
 BASE_FEATURE(kAutofillEnableExpandIbanRegexPattern,
-             "AutofillEnableExpandIbanRegexPattern",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables a couple of improvements to credit card expiration date handling:

@@ -558,6 +558,13 @@ inline constexpr char kOnTheFlyMhtmlHashComputation[] =
 // Directly launches the Omnibox Everywhere desktop UI widget.
 inline constexpr char kOmniboxEverywhere[] = "omnibox-everywhere";
 
+// Opens the URLs given on the command line as background tabs, without
+// activating or raising the browser window they are added to, so that handing a
+// URL to an already-running browser does not take the user's focus. A window
+// created to host the URLs is still shown and activated, and so is the first
+// tab added to an empty window.
+inline constexpr char kOpenInBackground[] = "open-in-background";
+
 // Launches URL in new browser window.
 inline constexpr char kOpenInNewWindow[] = "new-window";
 
@@ -1049,10 +1056,6 @@ inline constexpr char kGlicGuestURL[] = "glic-guest-url";
 
 inline constexpr char kSkillsV2Origin[] = "skills-v2-origin";
 
-// Overrides the Gemini Enterprise settings JSON dictionary for local
-// development.
-inline constexpr char kGlicGeminiEnterpriseSettingsOverride[] =
-    "glic-gemini-enterprise-settings-override";
 
 inline constexpr char kGlicAlwaysOpenFre[] = "glic-always-open-fre";
 

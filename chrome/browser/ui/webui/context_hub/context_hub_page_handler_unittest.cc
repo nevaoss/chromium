@@ -2488,7 +2488,8 @@ TEST_F(ContextHubPageHandlerTest, GetTopics_MapsResolvedJourneys) {
       "Test Topic Short Description",
       {history::journeys::JourneyVisit(GURL("https://example.com/visit"),
                                        u"Test Visit Title",
-                                       base::Time::FromTimeT(500))},
+                                       base::Time::FromTimeT(500),
+                                       /*is_foreign=*/false)},
       {history::journeys::JourneyContinuationQuery(
           "Test Continuation Query Title", "Test Continuation Query Prompt")});
 
@@ -2547,7 +2548,8 @@ TEST_F(ContextHubPageHandlerTest, GetTopic_MapsResolvedJourney) {
       "Test Topic Short Description",
       {history::journeys::JourneyVisit(GURL("https://example.com/visit"),
                                        u"Test Visit Title",
-                                       base::Time::FromTimeT(500))},
+                                       base::Time::FromTimeT(500),
+                                       /*is_foreign=*/false)},
       {history::journeys::JourneyContinuationQuery(
           "Test Continuation Query Title", "Test Continuation Query Prompt")});
 
@@ -2902,7 +2904,9 @@ TEST_F(ContextHubPageHandlerGlicTest, ForwardsPromptsAsSuggestionChips) {
                            "Summarize what I've read"));
   EXPECT_EQ(captured_options_->GetInvocationSource(),
             glic::mojom::InvocationSource::kContextHubTopics);
-  // The page's own suggestions replace the generic Zero State Suggestions.
+  // Asks the web client to show the page's own prompts instead of the generic
+  // Zero State Suggestions. This only checks the request; the web client
+  // doesn't honor it yet (crbug.com/567878517).
   EXPECT_TRUE(captured_options_->disable_zss);
 }
 
@@ -2940,6 +2944,7 @@ TEST_F(ContextHubPageHandlerGlicTest, FocusesPanelWhenNotAlreadyShowing) {
   ASSERT_TRUE(captured_options_.has_value());
   EXPECT_TRUE(captured_options_->focus_on_show);
   EXPECT_FALSE(captured_options_->supersede_if_in_progress);
+  EXPECT_TRUE(captured_options_->wait_for_panel_open);
 }
 
 TEST_F(ContextHubPageHandlerGlicTest,
@@ -2951,12 +2956,13 @@ TEST_F(ContextHubPageHandlerGlicTest,
   handler_->OpenGlicPanel({"Catch me up on Topic"});
 
   ASSERT_TRUE(captured_options_.has_value());
-  // The chips are still delivered, but the user is already looking at the
-  // panel, so the topic page keeps focus.
+  // The prompts are still sent, but the user is already looking at the panel,
+  // so the topic page keeps focus.
   EXPECT_THAT(captured_options_->prompts,
               testing::ElementsAre("Catch me up on Topic"));
   EXPECT_FALSE(captured_options_->focus_on_show);
   EXPECT_TRUE(captured_options_->supersede_if_in_progress);
+  EXPECT_FALSE(captured_options_->wait_for_panel_open);
 }
 
 TEST_F(ContextHubPageHandlerGlicTest, ExtendsTimeoutWhenFreNotCompleted) {

@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">Управление поисковыми системами</translation>
 <translation id="1435593198351412143">Открывать PDF-файлы автоматически</translation>
 <translation id="1437543266176261764">Выполняется в <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Упорядочивайте отслеживаемые товары в закладках</translation>
 <translation id="1452651021404174820">Выберите устройство</translation>
 <translation id="1455845192930279203">Все равно скачать файл <ph name="FILE_NAME" /> (<ph name="FILE_SIZE" />) на странице <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Экономьте время</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181">Выбранная вместе с несколькими другими и закрепленная вкладка "<ph name="TAB_TITLE" />", на которой ведется запись</translation>
 <translation id="4137746084635924146">Текущий язык устройства</translation>
 <translation id="414128724510021958">Полная версия сайта запрашивается по умолчанию</translation>
+<translation id="4150837143272125910">Обновление скачано.</translation>
 <translation id="4162867837470729563">Список способов отправки развернут на весь экран.</translation>
 <translation id="4164642020717536140">Пользуйтесь быстрым и безопасным браузером.</translation>
 <translation id="4165077084524712774">Ещё инструменты</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265">Открыть PDF-файл в приложении "<ph name="APP_NAME" />"?</translation>
 <translation id="5849288995120328556">Закрыть доступ?</translation>
 <translation id="5853623416121554550">пауза</translation>
+<translation id="5855375823365231964">Об этом профиле</translation>
 <translation id="5855546874025048181">Уточнить: "<ph name="REFINE_TEXT" />"</translation>
 <translation id="585617462962753911">Выбранная вместе с несколькими другими вкладка инкогнито "<ph name="TAB_TITLE" />", на которой ведется запись</translation>
 <translation id="5857447844686706637">Произошла ошибка. Не удалось обновить данные для функции отслеживания цен.</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">Перейти к следующей вкладке</translation>
 <translation id="6040143037577758943">Закрыть</translation>
 <translation id="604124094241169006">Автоматически</translation>
+<translation id="6041959688070413372">Управляйте связью между сервисами Поиска и приложениями Google Workspace, например Google Диском</translation>
 <translation id="6042308850641462728">Ещё</translation>
 <translation id="6047066316630165190">Откройте переключатель вкладок.</translation>
 <translation id="604996488070107836">Не удалось скачать файл <ph name="FILE_NAME" /> из-за неизвестной ошибки.</translation>
@@ -1400,6 +1402,7 @@
 <translation id="6565959834589222080">Использовать сеть Wi-Fi, когда она доступна</translation>
 <translation id="657177046675873214">Чтобы закладки были доступны на всех устройствах, которые у вас есть, включите параметр "Закладки" в настройках.</translation>
 <translation id="6573096386450695060">Разрешать всегда</translation>
+<translation id="657480975869429144">Доступна новая версия Chrome.</translation>
 <translation id="658099107946526506">Защитите режим инкогнито с помощью PIN-кода, чтобы предотвратить несанкционированный доступ.</translation>
 <translation id="6583199322650523874">Добавить страницу в закладки</translation>
 <translation id="6588043302623806746">Использовать безопасный DNS-сервер</translation>

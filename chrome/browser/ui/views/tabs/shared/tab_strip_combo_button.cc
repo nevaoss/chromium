@@ -7,6 +7,7 @@
 #include "base/i18n/rtl.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "base/time/time.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
@@ -16,14 +17,12 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/layout_constants.h"
-#include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_host.h"
 #include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search_prefs.h"
@@ -74,51 +73,8 @@ TabStripComboButton::TabStripComboButton(BrowserWindowInterface* browser,
 
   std::unique_ptr<TabStripFlatEdgeButton> start_button;
   if (context_ == Context::kVerticalTabStrip) {
-    if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
-      // When OrganizerPanel is enabled and Vertical Tab Strip is used, replace
-      // the tab groups button with a segmentation control toggle between the
-      // Tab Strip and Organizer Panel.
-      is_segmentation_control_ = true;
-      start_button =
-          CreateFlatEdgeButtonFor(kVerticalTabStripTabStripButtonElementId);
-      start_button->SetTooltipText(
-          l10n_util::GetStringUTF16(IDS_TAB_STRIP_BUTTON_TOOLTIP));
-      start_button->UpdateIcon(ui::ImageModel::FromVectorIcon(
-          features::IsRoundedIconsEnabled() ? kTabIcon : kTabOldIcon,
-          ui::kColorIcon,
-          GetLayoutConstant(
-              LayoutConstant::kVerticalTabStripComboButtonIconSize)));
-      start_button->SetCallback(base::BindRepeating(
-          [](BrowserWindowInterface* browser) {
-            if (auto* controller = OrganizerPanelController::From(browser)) {
-              controller->SetOrganizerVisible(false);
-            }
-          },
-          browser_));
-
-      if (browser_) {
-        if (auto* const state_controller =
-                tabs::VerticalTabStripStateController::From(browser_)) {
-          mode_changed_subscription_ = state_controller->RegisterOnModeChanged(
-              base::IgnoreArgs<tabs::VerticalTabStripStateController*>(
-                  base::BindRepeating(
-                      &TabStripComboButton::UpdateButtonsVisibility,
-                      base::Unretained(this))));
-          collapse_changed_subscription_ =
-              state_controller->RegisterOnCollapseChanged(
-                  base::IgnoreArgs<tabs::VerticalTabStripCollapseState>(
-                      base::BindRepeating(
-                          &TabStripComboButton::UpdateButtonsVisibility,
-                          base::Unretained(this))));
-          expand_on_hover_changed_subscription_ =
-              state_controller->RegisterOnExpandOnHoverEnabledChanged(
-                  base::IgnoreArgs<bool>(base::BindRepeating(
-                      &TabStripComboButton::UpdateButtonsVisibility,
-                      base::Unretained(this))));
-        }
-      }
-    } else if (tab_groups::SavedTabGroupUtils::IsEnabledForProfile(
-                   browser_->GetProfile())) {
+    if (tab_groups::SavedTabGroupUtils::IsEnabledForProfile(
+            browser_->GetProfile())) {
       start_button = CreateFlatEdgeButtonFor(kActionTabGroupsMenu,
                                              kSavedTabGroupButtonElementId);
 
@@ -181,20 +137,9 @@ void TabStripComboButton::UpdateButtonsVisibility() {
 
   PrefService* prefs = browser_->GetProfile()->GetPrefs();
   if (start_button_) {
-    if (is_segmentation_control_) {
-      const auto* state_controller =
-          tabs::VerticalTabStripStateController::From(browser_);
-      const bool vertical_tabs_enabled =
-          state_controller && state_controller->ShouldDisplayVerticalTabs();
-      const bool should_show =
-          vertical_tabs_enabled &&
-          DoesVerticalTabStripSupportEmbeddedOrganizerPanel(*browser_);
-      start_button_->SetVisible(should_show);
-    } else {
-      update_button_visibility(
-          GetStartButtonActionItem(), start_button_animation_,
-          prefs->GetBoolean(prefs::kEverythingMenuPinnedToTabstrip));
-    }
+    update_button_visibility(
+        GetStartButtonActionItem(), start_button_animation_,
+        prefs->GetBoolean(prefs::kEverythingMenuPinnedToTabstrip));
   }
 
   update_button_visibility(GetEndButtonActionItem(), end_button_animation_,
@@ -246,6 +191,8 @@ void TabStripComboButton::ShowEverythingMenu() {
               ->ShouldDrawVerticalTabStrip()
           ? "TabGroups_SavedTabGroups_EverythingButtonPressed_Vertical"
           : "TabGroups_SavedTabGroups_EverythingButtonPressed_Horizontal"));
+  browser_->GetProfile()->GetPrefs()->SetTime(
+      prefs::kVerticalTabsEverythingMenuLastPressed, base::Time::Now());
   if (everything_menu_ && everything_menu_->IsShowing()) {
     return;
   }
@@ -331,7 +278,7 @@ void TabStripComboButton::ShowContextMenuForViewImpl(
 
   PrefService* prefs = browser_->GetProfile()->GetPrefs();
 
-  if (source == start_button_ && !is_segmentation_control_) {
+  if (source == start_button_) {
     command_id = IDC_EVERYTHING_MENU_TOGGLE_PIN;
     pref_name = prefs::kEverythingMenuPinnedToTabstrip;
     string_id = prefs->GetBoolean(pref_name)
@@ -444,13 +391,16 @@ void TabStripComboButton::SetTabSearchBubbleHost(TabSearchBubbleHost* host) {
   tab_search_bubble_host_observation_.Reset();
   if (host) {
     tab_search_bubble_host_observation_.Observe(host);
+    const bool use_vertical_strip_icon =
+        context_ == Context::kVerticalTabStrip ||
+        organizer_panel::IsOrganizerPanelFeatureEnabled();
     GetEndButtonActionItem()->SetImage(ui::ImageModel::FromVectorIcon(
-        context_ == Context::kVerticalTabStrip
-            ? features::IsRoundedIconsEnabled() ? kManageSearchIcon
-                                                : kTabSearchTabStripOldIcon
-        : features::IsRoundedIconsEnabled()
-            ? vector_icons::kKeyboardArrowDownIcon
-            : vector_icons::kExpandMoreOldIcon));
+        use_vertical_strip_icon
+            ? (features::IsRoundedIconsEnabled() ? kManageSearchIcon
+                                                 : kTabSearchTabStripOldIcon)
+            : (features::IsRoundedIconsEnabled()
+                   ? vector_icons::kKeyboardArrowDownIcon
+                   : vector_icons::kExpandMoreOldIcon)));
   }
 }
 

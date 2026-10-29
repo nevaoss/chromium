@@ -118,8 +118,10 @@ BASE_DECLARE_FEATURE(kPreinstalledWebAppAlwaysMigrateForTesting);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kChromeStructuredMetrics);
 
+#if BUILDFLAG(IS_MAC)
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kDeferSpellcheckInitialization);
+#endif  // BUILDFLAG(IS_MAC)
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kDesktopPWAsElidedExtensionsMenu);
@@ -286,6 +288,19 @@ extern const base::FeatureParam<int>(
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicActorObservationDelayExcludeAdFrameLoading);
 
+// Specifies the default pref value for `glic:prefs::kGlicActuationOnWeb` for
+// enterprise users. Does not affect non-enterprise users.
+enum class GlicActorEnterprisePrefDefault {
+  kEnabledByDefault = 0,
+  kDisabledByDefault,
+  // When this is set, the browser does not have the capability, regardless of
+  // the policy value (the pref value is ignored).
+  kForcedDisabled,
+};
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<GlicActorEnterprisePrefDefault>(
+    kGlicActorEnterprisePrefDefault);
+
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(
     kGlicActorWorkspaceExemptFromTierCheckRegressionFixKillswitch);
@@ -302,6 +317,10 @@ extern const base::FeatureParam<double>
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<size_t>
     kGlicActorIncrementalTypingLongTextThreshold;
+// Configures which tiers of users are eligible for Actor. It should be a
+// comma-separated list of tier ints ("1,2,3").
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string> kGlicActorEligibleTiers;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<size_t>
     kGlicActorIncrementalTypingLongTextPasteThreshold;
@@ -345,6 +364,8 @@ extern const base::FeatureParam<base::TimeDelta> kGlicActorMoveBeforeClickDelay;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicCountryFiltering);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicMinorCountryFiltering);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicUseSessionCountryForFiltering);
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -409,9 +430,6 @@ extern const base::FeatureParam<std::string> kGlicDefaultHotkey;
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicURLConfig);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kGlicGuestURL;
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicContextualCueBubble);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicUserStatusCheck);
@@ -649,20 +667,6 @@ extern const base::FeatureParam<int> kGlicWebContinuityMaxTurnIdLength;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicUseToolbarHeightSidePanel);
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicButtonPressedState);
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<bool> kGlicButtonContainerBackground;
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon;
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<bool> kGlicButtonCustomThemeFallback;
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicLiveModeOnlyGlow);
-
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicPrintMenuItem);
 
@@ -974,6 +978,12 @@ BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationCommerceAndUI);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE_PARAM(bool,
                            kLazyKeyedServiceInstantiationOptimizationGuide);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(
+    bool,
+    kLazyKeyedServiceInstantiationOptimizationGuideModels);
+COMPONENT_EXPORT(CHROME_FEATURES)
+bool IsLazyOptimizationGuideModelsEnabled();
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationExtensions);
 COMPONENT_EXPORT(CHROME_FEATURES)

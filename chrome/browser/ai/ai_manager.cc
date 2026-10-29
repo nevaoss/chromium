@@ -66,6 +66,7 @@
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 #include "third_party/blink/public/common/features_generated.h"
 #include "third_party/blink/public/mojom/ai/ai_common.mojom.h"
+#include "third_party/blink/public/mojom/ai/ai_decision_model.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_language_model.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_manager.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_proofreader.mojom.h"
@@ -118,6 +119,9 @@ const char kExperimentalLanguageWarning[] =
 const char kSpeedPreferenceMarkdownWarning[] =
     "The 'speed' performance preference utilizes a model with limited support "
     "for 'markdown' format.";
+const char kOnDeviceAiSettingsDisabledWarning[] =
+    "On-device AI is disabled in Chrome settings. To use Built-In AI APIs, "
+    "enable \"On-device AI\" in chrome://settings/ai.";
 
 const char kModelVersionParam[] = "model_version";
 
@@ -1799,10 +1803,11 @@ AIManager::GetPrefBlockedResult() {
         kUnavailableEnterprisePolicyDisabled;
   }
 
-  // chrome://settings/system "On-device AI" user toggle.
+  // chrome://settings/ai "On-device AI" user toggle.
   if (!local_state->GetBoolean(
           optimization_guide::model_execution::prefs::localstate::
               kOnDeviceAiUserSettingsEnabled)) {
+    MaybeLogOnDeviceAiSettingsDisabledWarning();
     return blink::mojom::ModelAvailabilityCheckResult::
         kUnavailableFeatureNotEnabled;
   }
@@ -1923,6 +1928,25 @@ void AIManager::OnSemanticEmbedderModelReady(
   client_remote->OnResult(std::move(pending_remote));
 }
 
+void AIManager::CanCreateDecisionModel(
+    blink::mojom::AIDecisionModelCreateOptionsPtr options,
+    CanCreateDecisionModelCallback callback) {
+  std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
+                              kUnavailableFeatureNotEnabled);
+}
+
+void AIManager::CreateDecisionModel(
+    mojo::PendingRemote<blink::mojom::AIManagerCreateDecisionModelClient>
+        client,
+    blink::mojom::AIDecisionModelCreateOptionsPtr options,
+    mojo::PendingRemote<on_device_model::mojom::DownloadObserver> monitor) {
+  mojo::Remote<blink::mojom::AIManagerCreateDecisionModelClient> client_remote(
+      std::move(client));
+  on_device_ai::SendClientRemoteError(
+      client_remote,
+      blink::mojom::AIManagerCreateClientError::kUnableToCreateSession);
+}
+
 void AIManager::RenderWidgetHostVisibilityChanged(
     content::RenderWidgetHost* widget_host,
     bool became_visible) {
@@ -1989,4 +2013,14 @@ void AIManager::MaybeLogSpeedPreferenceMarkdownWarning() {
   did_log_speed_preference_markdown_warning_ = true;
   rfh->AddMessageToConsole(blink::mojom::ConsoleMessageLevel::kWarning,
                            kSpeedPreferenceMarkdownWarning);
+}
+
+void AIManager::MaybeLogOnDeviceAiSettingsDisabledWarning() {
+  auto* rfh = rfh_.AsRenderFrameHostIfValid();
+  if (!rfh || did_log_on_device_ai_settings_disabled_warning_) {
+    return;
+  }
+  did_log_on_device_ai_settings_disabled_warning_ = true;
+  rfh->AddMessageToConsole(blink::mojom::ConsoleMessageLevel::kWarning,
+                           kOnDeviceAiSettingsDisabledWarning);
 }

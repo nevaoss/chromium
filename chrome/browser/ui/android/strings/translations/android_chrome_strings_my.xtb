@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">ရှာဖွေမှုအင်ဂျင်များကို စီမံခန့်ခွဲရန်</translation>
 <translation id="1435593198351412143">PDF များကို အလိုအလျောက်ဖွင့်ခြင်း</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> တွင် ဖွင့်ထားသည်</translation>
-<translation id="1448440926884431741">သင်စောင့်ကြည့်ထားသော ထုတ်ကုန်များကို ‘လိပ်စာများ’ တွင် စုစည်းနိုင်သည်</translation>
 <translation id="1452651021404174820">စက်ပစ္စည်း ရွေးပါ</translation>
 <translation id="1455845192930279203">မည်သို့ပင်ဖြစ်စေ “<ph name="FILE_NAME" />” (<ph name="FILE_SIZE" />) ကို <ph name="DOWNLOAD_DOMAIN" /> မှ ဒေါင်းလုဒ်လုပ်လိုသလား။</translation>
 <translation id="1460751212339734034">အချိန်ကုန်သက်သာခြင်း၊ စာရိုက်ရသက်သာခြင်း</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />၊ တစ်ခုထက်ပိုရွေးထားပြီး ပင်ထိုးထားသည့် ရိုက်ကူးနေသောတဘ်</translation>
 <translation id="4137746084635924146">စက်၏ လက်ရှိဘာသာစကား</translation>
 <translation id="414128724510021958">မူရင်းသတ်မှတ်ချက်အရ ဒက်စ်တော့ဝဘ်ဆိုက်များ တောင်းဆိုထားသည်</translation>
+<translation id="4150837143272125910">အပ်ဒိတ် ဒေါင်းလုဒ်လုပ်ပြီးပြီ</translation>
 <translation id="4162867837470729563">မျှဝေရန် ရွေးချယ်စရာစာရင်းကို မြင်ကွင်းအပြည့် ဖွင့်ထားသည်။</translation>
 <translation id="4164642020717536140">မြန်ဆန်လုံခြုံသော ဝဘ်ဘရောက်စ်လုပ်ခြင်း</translation>
 <translation id="4165077084524712774">နောက်ထပ် တူးလ်များ</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265">PDF ကို <ph name="APP_NAME" /> ဖြင့် ဖွင့်မလား။</translation>
 <translation id="5849288995120328556">မျှဝေခြင်းကို ရပ်မလား။</translation>
 <translation id="5853623416121554550">ခဏရပ်ထားသည်</translation>
+<translation id="5855375823365231964">ဤပရိုဖိုင်အကြောင်း</translation>
 <translation id="5855546874025048181">ပိုမိုတိကျအောင် ပြုလုပ်မှု - <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />၊ တစ်ခုထက်ပိုရွေးထားသည့် ရိုက်ကူးနေသော ရုပ်ဖျက်တဘ်</translation>
 <translation id="5857447844686706637">တစ်ခုခုမှားသွားသည်။ ‘ဈေးနှုန်းစောင့်ကြည့်ခြင်း’ ကို အပ်ဒိတ်လုပ်၍မရပါ။</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">နောက်တဘ်သို့ သွားရန်</translation>
 <translation id="6040143037577758943">ပိတ်ရန်</translation>
 <translation id="604124094241169006">အလိုအလျောက်</translation>
+<translation id="6041959688070413372">Google Drive ကဲ့သို့သော Google Workspace အက်ပ်များနှင့် ရှာဖွေရေးဝန်ဆောင်မှုများကြား ချိတ်ဆက်မှုကို စီမံနိုင်သည်</translation>
 <translation id="6042308850641462728">နောက်ထပ်</translation>
 <translation id="6047066316630165190">ဇယားကွက်တဘ်ပြောင်းခလုတ် ဖွင့်ပါ</translation>
 <translation id="604996488070107836"><ph name="FILE_NAME" /> ဒေါင်းလုဒ်မှာ မသိရသည့် အမှားတစ်ခုကြောင့် မအောင်မြင်ခဲ့ပါ။</translation>
@@ -1399,6 +1401,7 @@
 <translation id="6565959834589222080">Wi-Fi ကို ရနိုင်သည့်အခါ အသုံးပြုသည်</translation>
 <translation id="657177046675873214">သင်၏လိပ်စာများကို စက်အားလုံးတွင် ရယူနိုင်ရန် ဆက်တင်များတွင် “လိပ်စာများ” ကိုဖွင့်ပါ</translation>
 <translation id="6573096386450695060">အမြဲခွင့်ပြုရန်</translation>
+<translation id="657480975869429144">Chrome ဗားရှင်းအသစ် ရနိုင်ပါပြီ</translation>
 <translation id="658099107946526506">မလိုလားအပ်သော ဝင်ရောက်မှုများကို တားဆီးရန် သင်၏ ကိုယ်ဖျောက်မုဒ်ဖြင့် ဝင်ရောက်ကြည့်ရှုမှုကို ပင်နံပါတ်ဖြင့် ကာကွယ်ပါ</translation>
 <translation id="6583199322650523874">လက်ရှိစာမျက်နှာကို စာညှပ်အဖြစ်သိမ်းရန်</translation>
 <translation id="6588043302623806746">လုံခြုံသော DNS ကို အသုံးပြုပါ</translation>

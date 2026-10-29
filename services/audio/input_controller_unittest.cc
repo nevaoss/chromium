@@ -46,8 +46,8 @@
 
 #if BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 #include "media/webrtc/ml_model_handle.h"  // nogncheck
-#include "services/audio/ml_model_manager.h"
 #include "services/audio/test/fake_ml_model_handles.h"
+#include "services/audio/test/mock_ml_model_manager.h"
 #endif
 
 using ::testing::_;
@@ -98,34 +98,6 @@ std::unique_ptr<LoopbackMixin> DoNotCreateLoopbackMixin(
   return nullptr;
 }
 
-#if BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
-
-class FakeMlModelManager : public MlModelManager {
- public:
-  FakeMlModelManager() = default;
-  ~FakeMlModelManager() override = default;
-
-  scoped_refptr<media::MlModelHandle> GetModel(
-      mojom::MlModelType model_type) override {
-    if (model_type == mojom::MlModelType::kVoiceIsolationDenoiser &&
-        !return_null_model_) {
-      return model_to_return_ ? model_to_return_
-                              : base::MakeRefCounted<FakeMlModelHandle>();
-    }
-    return nullptr;
-  }
-
-  void set_return_null_model(bool val) { return_null_model_ = val; }
-  void set_model_to_return(scoped_refptr<media::MlModelHandle> model) {
-    model_to_return_ = std::move(model);
-  }
-
- private:
-  bool return_null_model_ = false;
-  scoped_refptr<media::MlModelHandle> model_to_return_;
-};
-
-#endif  // BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 }  // namespace
 
 class MockInputControllerEventHandler : public InputController::EventHandler {
@@ -630,6 +602,25 @@ template <base::test::TaskEnvironment::TimeSource TimeSource =
               base::test::TaskEnvironment::TimeSource::MOCK_TIME>
 class TimeSourceInputControllerTestWithReferenceSignalProvider
     : public TimeSourceInputControllerTest<TimeSource> {
+ public:
+  TimeSourceInputControllerTestWithReferenceSignalProvider() {
+#if BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
+    ON_CALL(ml_model_manager_,
+            GetModel(mojom::MlModelType::kVoiceIsolationDenoiser))
+        .WillByDefault(
+            []() { return base::MakeRefCounted<FakeMlModelHandle>(); });
+#endif
+  }
+
+  ~TimeSourceInputControllerTestWithReferenceSignalProvider() override {
+    // `helper_` holds a raw_ptr to `controller_`; destroy it before
+    // `controller_`.
+    helper_.reset();
+    // `controller_` owns a VoiceIsolationHandler that holds
+    // base::Unretained(&ml_model_manager_); destroy it first.
+    this->controller_.reset();
+  }
+
  protected:
   void CreateAudioController() final {
     // Must use |this| to access template base class members:
@@ -702,7 +693,7 @@ class TimeSourceInputControllerTestWithReferenceSignalProvider
   media::mojom::AudioProcessingConfigPtr processing_config_;
   mojo::Remote<media::mojom::AudioProcessorControls> remote_controls_;
 #if BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
-  FakeMlModelManager ml_model_manager_;
+  NiceMock<MockMlModelManager> ml_model_manager_;
 #endif
   std::unique_ptr<InputControllerTestHelper> helper_;
 };
@@ -1221,7 +1212,9 @@ TEST_F(SystemTimeInputControllerTestWithReferenceSignalProvider,
                 kVoiceIsolationSampleRateHz, kVoiceIsolationFramesPerBuffer);
   SetupProcessingConfig(AudioProcessingType::kWithPlayoutReference);
   processing_config_->settings.voice_isolation = true;
-  ml_model_manager_.set_return_null_model(true);
+  ON_CALL(ml_model_manager_,
+          GetModel(mojom::MlModelType::kVoiceIsolationDenoiser))
+      .WillByDefault(Return(nullptr));
   EXPECT_CALL(event_handler_, OnError(InputController::STREAM_CREATE_ERROR));
 
   CreateAudioController();
@@ -1231,18 +1224,26 @@ TEST_F(SystemTimeInputControllerTestWithReferenceSignalProvider,
 
 // Verifies that when an audio stream is created with voice isolation enabled
 // but component initialization fails asynchronously on the background
-// ThreadPool, InputController dispatches STREAM_ERROR to EventHandler::OnError
-// to terminate the stream.
-TEST_F(SystemTimeInputControllerTestWithReferenceSignalProvider,
-       VoiceIsolationAsyncStartupFailure_ReportsStreamError) {
-  // Configure audio processing with voice isolation enabled.
+// ThreadPool:
+// 1. InputController dispatches STREAM_ERROR to EventHandler::OnError to
+//    terminate the stream.
+// 2. The failing model is invalidated in MlModelManager so that subsequent
+//    stream creation calls do not repeatedly reload the broken model.
+TEST_F(
+    SystemTimeInputControllerTestWithReferenceSignalProvider,
+    VoiceIsolationAsyncStartupFailureReportsStreamErrorAndInvalidatesModel) {
   SetupProcessingConfig(AudioProcessingType::kWithPlayoutReference);
   processing_config_->settings.voice_isolation = true;
 
   // Configure manager to return a handle whose component creation will fail.
   scoped_refptr<media::MlModelHandle> failing_model =
       base::MakeRefCounted<FakeInvalidMlModelHandle>();
-  ml_model_manager_.set_model_to_return(failing_model);
+  ON_CALL(ml_model_manager_,
+          GetModel(mojom::MlModelType::kVoiceIsolationDenoiser))
+      .WillByDefault(Return(failing_model));
+  EXPECT_CALL(ml_model_manager_,
+              InvalidateModel(mojom::MlModelType::kVoiceIsolationDenoiser,
+                              failing_model));
 
   EXPECT_CALL(event_handler_, OnCreated(_));
 
@@ -1264,17 +1265,24 @@ TEST_F(SystemTimeInputControllerTestWithReferenceSignalProvider,
 }
 
 // Verifies that if an audio input stream is closed via Close() before
-// asynchronous voice isolation initialization finishes on the ThreadPool,
-// the subsequent creation failure is safely dropped and does not dispatch
-// OnError to the EventHandler.
+// asynchronous voice isolation initialization finishes on the ThreadPool:
+// 1. The subsequent creation failure does not dispatch OnError to the
+//    EventHandler.
+// 2. The failing model is still invalidated: a broken model is broken
+//    regardless of whether the stream that discovered it is still open.
 TEST_F(SystemTimeInputControllerTestWithReferenceSignalProvider,
-       VoiceIsolationStartupFailureAfterClose_DoesNotDeliverError) {
+       VoiceIsolationStartupFailureAfterCloseInvalidatesModelWithoutError) {
   SetupProcessingConfig(AudioProcessingType::kWithPlayoutReference);
   processing_config_->settings.voice_isolation = true;
 
   scoped_refptr<media::MlModelHandle> failing_model =
       base::MakeRefCounted<FakeInvalidMlModelHandle>();
-  ml_model_manager_.set_model_to_return(failing_model);
+  ON_CALL(ml_model_manager_,
+          GetModel(mojom::MlModelType::kVoiceIsolationDenoiser))
+      .WillByDefault(Return(failing_model));
+  EXPECT_CALL(ml_model_manager_,
+              InvalidateModel(mojom::MlModelType::kVoiceIsolationDenoiser,
+                              failing_model));
 
   EXPECT_CALL(event_handler_, OnCreated(_));
   EXPECT_CALL(event_handler_, OnError(_)).Times(0);

@@ -390,15 +390,6 @@ void ContextualTasksPageHandler::IsEmbeddedPageErrorDocument(
   std::move(callback).Run(is_error);
 }
 
-void ContextualTasksPageHandler::CloseSidePanel() {
-  if (panel_controller_) {
-    panel_controller_->Close();
-  } else {
-    web_ui_controller_->CloseSidePanel();
-  }
-}
-
-
 void ContextualTasksPageHandler::IsShownInTab(IsShownInTabCallback callback) {
   std::move(callback).Run(web_ui_controller_->IsShownInTab());
 }
@@ -566,7 +557,7 @@ void ContextualTasksPageHandler::ReopenTabs() {
 
 void ContextualTasksPageHandler::PostAimMessage(
     const lens::ClientToAimMessage& message) {
-  DCHECK(web_ui_controller_->GetPageRemote());
+  CHECK(web_ui_controller_->GetPageRemote(), base::NotFatalUntil::M161);
   if (!web_ui_controller_->GetPageRemote()) {
     return;
   }
@@ -927,74 +918,6 @@ void ContextualTasksPageHandler::MaybeTriggerPinningPromo() {
       ->MaybeShowFeaturePromo(
               feature_engagement::kIPHSidePanelContextualTasksPinnableFeature);
 #endif
-}
-
-void ContextualTasksPageHandler::ShowPageInfoBubble(
-    bool is_pointer_interaction) {
-  if (!contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
-    return;
-  }
-  if (panel_controller_) {
-    panel_controller_->ShowPageInfoBubble(is_pointer_interaction);
-  }
-}
-
-void ContextualTasksPageHandler::OnLogoPointerDown() {
-  if (!contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
-    return;
-  }
-  if (panel_controller_) {
-    panel_controller_->OnLogoPointerDown();
-  }
-}
-
-void ContextualTasksPageHandler::CreateNewThread() {
-  if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
-    if (!panel_controller_) {
-      return;
-    }
-    content::WebContents* target_contents =
-        panel_controller_->GetActiveWebContents();
-    if (!target_contents) {
-      return;
-    }
-
-    std::optional<base::Uuid> task_id;
-    if (auto current_task = panel_controller_->GetCurrentTask()) {
-      task_id = current_task->GetTaskId();
-    } else if (auto* helper =
-                   ContextualSearchWebContentsHelper::FromWebContents(
-                       target_contents)) {
-      task_id = helper->task_id();
-    }
-
-    GURL url = task_id.has_value()
-                   ? ui_service_->GetDefaultAiPageUrlForTask(task_id.value())
-                   : ui_service_->GetDefaultAiPageUrl();
-    url = ui_service_->AddRequiredSidePanelUrlChanges(url, target_contents);
-
-    content::NavigationController::LoadURLParams params(url);
-    params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
-    target_contents->GetController().LoadURLWithParams(params);
-
-    if (web_ui_controller_) {
-      web_ui_controller_->SetThreadTitle(std::nullopt);
-    }
-    return;
-  }
-
-  std::optional<base::Uuid> task_id = web_ui_controller_->GetTaskId();
-  GURL url;
-  if (task_id.has_value()) {
-    url = ui_service_->GetDefaultAiPageUrlForTask(task_id.value());
-  } else {
-    url = ui_service_->GetDefaultAiPageUrl();
-  }
-  if (auto* inner_contents = web_ui_controller_->GetInnerWebContents()) {
-    content::NavigationController::LoadURLParams params(url);
-    params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
-    inner_contents->GetController().LoadURLWithParams(params);
-  }
 }
 
 void ContextualTasksPageHandler::OnReceivedExecuteActions(

@@ -4,17 +4,24 @@
 
 #include "chrome/browser/actor/tools/registry/tool_registry.h"
 
+#include <algorithm>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
+#include "base/check.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/tools/navigate_tool_request.h"
+#include "chrome/browser/actor/tools/registry/tool_definition.h"
+#include "chrome/browser/actor/tools/registry/tool_definition_test_util.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/test/browser_task_environment.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace actor {
@@ -26,14 +33,34 @@ TEST(ToolRegistryTest, BaseToolRequestGetToolDefinitionReturnsNullopt) {
   EXPECT_EQ(ToolRequest::GetToolDefinition(), std::nullopt);
 }
 
-TEST(ToolRegistryTest, GetAllToolsEmptyInitially) {
+TEST(ToolRegistryTest, NavigateToolDefinition) {
+  const std::optional<ToolDefinition> definition =
+      NavigateToolRequest::GetToolDefinition();
+  ASSERT_TRUE(definition.has_value());
+  EXPECT_EQ(definition->id, ToolId::kNavigate);
+  EXPECT_EQ(definition->name, NavigateToolRequest::kModelFacingName);
+  EXPECT_THAT(*definition,
+              HasParamOfType(NavigateToolRequest::kUrlParam, "string"));
+  EXPECT_THAT(*definition, RequiresParam(NavigateToolRequest::kUrlParam));
+}
+
+TEST(ToolRegistryTest, GetAllToolsContainsNavigateTool) {
   base::test::ScopedFeatureList scoped_feature_list(features::kGlicActor);
   content::BrowserTaskEnvironment task_environment;
   TestingProfile profile;
   ActorKeyedService* service = ActorKeyedService::Get(&profile);
-  ASSERT_TRUE(service);
+  CHECK(service);
 
-  EXPECT_TRUE(service->tool_registry().GetAllTools().empty());
+  EXPECT_TRUE(std::ranges::contains(service->tool_registry().GetAllTools(),
+                                    ToolId::kNavigate, &ToolDefinition::id));
+}
+
+TEST(ToolRegistryTest, ToolIdToNameReturnsEmptyForUnrecognizedId) {
+  EXPECT_TRUE(ToolRegistry::ToolIdToName(kUnrecognizedToolId).empty());
+}
+
+TEST(ToolRegistryTest, NameToToolIdReturnsNulloptForUnknownName) {
+  EXPECT_EQ(ToolRegistry::NameToToolId("unknown_tool"), std::nullopt);
 }
 
 TEST(ToolRegistryTest, GetToolsByIdsReturnsEmptyForUnknownId) {
@@ -44,8 +71,26 @@ TEST(ToolRegistryTest, GetToolsByIdsReturnsEmptyForUnknownId) {
 TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveKnownToolIds) {
   ToolRegistry registry;
   for (const ToolDefinition& tool : registry.GetAllTools()) {
-    SCOPED_TRACE(tool.name());
-    EXPECT_EQ(NameToToolId(tool.name()), tool.id);
+    SCOPED_TRACE(tool.name);
+    EXPECT_EQ(ToolRegistry::NameToToolId(tool.name), tool.id);
+  }
+}
+
+TEST(ToolRegistryCompletenessTest, AllRegisteredToolsRoundTripByName) {
+  ToolRegistry registry;
+  for (const ToolDefinition& tool : registry.GetAllTools()) {
+    SCOPED_TRACE(tool.name);
+    EXPECT_EQ(ToolRegistry::NameToToolId(tool.name), tool.id);
+    EXPECT_EQ(ToolRegistry::ToolIdToName(tool.id), tool.name);
+  }
+}
+
+TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveUniqueNames) {
+  ToolRegistry registry;
+  std::set<std::string_view> seen_names;
+  for (const ToolDefinition& tool : registry.GetAllTools()) {
+    SCOPED_TRACE(tool.name);
+    EXPECT_TRUE(seen_names.insert(tool.name).second);
   }
 }
 
@@ -53,7 +98,7 @@ TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveUniqueIds) {
   ToolRegistry registry;
   std::set<ToolId> seen_ids;
   for (const ToolDefinition& tool : registry.GetAllTools()) {
-    SCOPED_TRACE(tool.name());
+    SCOPED_TRACE(tool.name);
     EXPECT_TRUE(seen_ids.insert(tool.id).second);
   }
 }
@@ -61,7 +106,7 @@ TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveUniqueIds) {
 TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveNonEmptyDescriptions) {
   ToolRegistry registry;
   for (const ToolDefinition& tool : registry.GetAllTools()) {
-    SCOPED_TRACE(tool.name());
+    SCOPED_TRACE(tool.name);
     EXPECT_FALSE(tool.description.empty());
   }
 }
@@ -69,7 +114,7 @@ TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveNonEmptyDescriptions) {
 TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveObjectSchemas) {
   ToolRegistry registry;
   for (const ToolDefinition& tool : registry.GetAllTools()) {
-    SCOPED_TRACE(tool.name());
+    SCOPED_TRACE(tool.name);
     const std::string* type = tool.parameters_json_schema.FindString("type");
     ASSERT_TRUE(type);
     EXPECT_EQ(*type, "object");
@@ -79,7 +124,7 @@ TEST(ToolRegistryCompletenessTest, AllRegisteredToolsHaveObjectSchemas) {
 TEST(ToolRegistryCompletenessTest, AllRegisteredToolsRoundTripById) {
   ToolRegistry registry;
   for (const ToolDefinition& tool : registry.GetAllTools()) {
-    SCOPED_TRACE(tool.name());
+    SCOPED_TRACE(tool.name);
     EXPECT_EQ(registry.GetToolsByIds({tool.id}),
               std::vector<const ToolDefinition*>{&tool});
   }

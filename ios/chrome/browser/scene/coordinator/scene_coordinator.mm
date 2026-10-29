@@ -1052,10 +1052,10 @@ inline LayoutStateScenePassKey PassKey() {
   }
   // Copy the URL so it can be safely captured in the block.
   GURL copiedURL = URL;
-  [self startSigninCoordinatorWithCompletion:^(SigninCoordinator* coordinator,
-                                               SigninCoordinatorResult result,
-                                               id<SystemIdentity> identity) {
-    if (result == SigninCoordinatorResultSuccess && regularBrowser) {
+  [self startSigninCoordinatorWithCompletion:^(
+            SigninCoordinator* coordinator,
+            SigninCoordinatorResultOrIdentity result) {
+    if (result.has_value() && regularBrowser) {
       UrlLoadingBrowserAgent::FromBrowser(regularBrowser.get())
           ->Load(UrlLoadParams::InCurrentTab(copiedURL));
     }
@@ -1110,27 +1110,13 @@ inline LayoutStateScenePassKey PassKey() {
     return;
   }
 
-  UIWindowSceneActivationRequestOptions* options =
-      [[UIWindowSceneActivationRequestOptions alloc] init];
-  options.requestingScene = self.sceneState.scene;
-  if (@available(iOS 26.0, *)) {
-    // For iOS26 windowing, ensure the new window doesn't fully overlap the
-    // prior window.
-    options.placement = [UIWindowSceneProminentPlacement prominentPlacement];
-  }
-
-  AttachProfileNameToActivity(userActivity, profile->GetProfileName());
-  PrefService* prefs = profile->GetPrefs();
-  if (IsIncognitoModeForced(prefs)) {
-    userActivity = AdaptUserActivityToIncognito(userActivity, true);
-  } else if (IsIncognitoModeDisabled(prefs)) {
-    userActivity = AdaptUserActivityToIncognito(userActivity, false);
-  }
-
+  UIWindowSceneActivationConfiguration* config =
+      CreateWindowSceneActivationConfiguration(userActivity, profile,
+                                               self.sceneState.scene);
   [UIApplication.sharedApplication
       requestSceneSessionActivation:nil /* make a new scene */
-                       userActivity:userActivity
-                            options:options
+                       userActivity:config.userActivity
+                            options:config.options
                        errorHandler:nil];
 }
 
@@ -2064,7 +2050,7 @@ inline LayoutStateScenePassKey PassKey() {
         // because the part that check the coordinator value is in the
         // `signinCompletedWithCoordinator:...` below, and so not integrated in
         // the completion function yet.
-        completion(nil, SigninCoordinatorResultDisabled, nil);
+        completion(nil, base::unexpected(SigninCoordinatorResultDisabled));
       }
       [self stopSigninCoordinatorAnimated:NO];
       id<PolicyChangeCommands> handler =
@@ -2099,7 +2085,7 @@ inline LayoutStateScenePassKey PassKey() {
       // because the part that check the coordinator value is in the
       // `signinCompletedWithCoordinator:...` below, and so not integrated in
       // the completion function yet.
-      completion(nil, SigninCoordinatorResultInterrupted, nil);
+      completion(nil, base::unexpected(SigninCoordinatorResultInterrupted));
     }
     _signinCoordinator = nil;
     RecordIfNeededSigninFullscreenPromoEvent(
@@ -2110,11 +2096,10 @@ inline LayoutStateScenePassKey PassKey() {
 
   __weak __typeof(self) weakSelf = self;
   _signinCoordinator.signinCompletion =
-      ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
-        id<SystemIdentity> identity) {
+      ^(SigninCoordinator* coordinator,
+        SigninCoordinatorResultOrIdentity result) {
         [weakSelf signinCompletedWithCoordinator:coordinator
                                           result:result
-                                        identity:identity
                                       completion:completion];
       };
 
@@ -2137,14 +2122,13 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Called when the sign-in coordinator finishes.
 - (void)signinCompletedWithCoordinator:(SigninCoordinator*)coordinator
-                                result:(SigninCoordinatorResult)result
-                              identity:(id<SystemIdentity>)identity
+                                result:(SigninCoordinatorResultOrIdentity)result
                             completion:(SigninCoordinatorCompletionCallback)
                                            completion {
   CHECK_EQ(coordinator, _signinCoordinator);
 
   if (completion) {
-    completion(coordinator, result, identity);
+    completion(coordinator, result);
   }
   [self stopSigninCoordinatorAnimated:YES];
 }
@@ -2498,7 +2482,7 @@ inline LayoutStateScenePassKey PassKey() {
   CHECK(signinCompletion);
   // The `signinCoordinator` must be nil here, because `_signinCoordinator`
   // was set to `nil` above.
-  signinCompletion(nil, SigninCoordinatorResultInterrupted, nil);
+  signinCompletion(nil, base::unexpected(SigninCoordinatorResultInterrupted));
 }
 
 // Shows the settings navigation controller.

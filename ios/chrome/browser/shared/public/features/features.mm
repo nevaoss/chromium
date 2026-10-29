@@ -830,6 +830,13 @@ bool IsComposeboxPlusButtonBottomSheet() {
   return base::FeatureList::IsEnabled(kComposeboxPlusButtonBottomSheet);
 }
 
+BASE_FEATURE(kComposeboxPlusButtonLargeCarousel,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsComposeboxPlusButtonLargeCarousel() {
+  return base::FeatureList::IsEnabled(kComposeboxPlusButtonLargeCarousel);
+}
+
 BASE_FEATURE(kChromeNextIa, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsChromeNextIaEnabled() {
@@ -1015,7 +1022,7 @@ BackgroundRefreshRegressionTestArm GetBackgroundRefreshRegressionTestArm() {
 }
 
 BASE_FEATURE(kOpenEditGroupViewByTappingTitle,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsOpenEditGroupViewByTappingTitleEnabled() {
   return base::FeatureList::IsEnabled(kOpenEditGroupViewByTappingTitle);
@@ -1033,6 +1040,10 @@ BASE_FEATURE(kPlusButtonMenuInFakebox, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Returns true if the plus button in NTP fakebox is enabled.
 bool IsPlusButtonInFakeboxEnabled() {
+  // Launched by default on phones.
+  if (ui::GetDeviceFormFactor() != ui::DEVICE_FORM_FACTOR_TABLET) {
+    return true;
+  }
   return base::FeatureList::IsEnabled(kPlusButtonInFakebox);
 }
 
@@ -1196,4 +1207,10 @@ BASE_FEATURE(kAppBarAssistantCustomization, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAppBarAssistantCustomizationEnabled() {
   return base::FeatureList::IsEnabled(kAppBarAssistantCustomization);
+}
+
+BASE_FEATURE(kLightAppBar, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsLightAppBarEnabled() {
+  return base::FeatureList::IsEnabled(kLightAppBar);
 }

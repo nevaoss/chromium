@@ -517,8 +517,7 @@ void ToolController::CloseCurrentTab(ToolResponseCallback callback) {
 void ToolController::GoBack(ToolResponseCallback callback) {
   PerformActionOnActiveTab(
       [](tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
-        return std::make_unique<actor::HistoryToolRequest>(
-            tab_handle, actor::HistoryToolRequest::Direction::kBack);
+        return std::make_unique<actor::HistoryBackToolRequest>(tab_handle);
       },
       std::move(callback));
 }
@@ -526,8 +525,7 @@ void ToolController::GoBack(ToolResponseCallback callback) {
 void ToolController::GoForward(ToolResponseCallback callback) {
   PerformActionOnActiveTab(
       [](tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
-        return std::make_unique<actor::HistoryToolRequest>(
-            tab_handle, actor::HistoryToolRequest::Direction::kForward);
+        return std::make_unique<actor::HistoryForwardToolRequest>(tab_handle);
       },
       std::move(callback));
 }
@@ -535,8 +533,7 @@ void ToolController::GoForward(ToolResponseCallback callback) {
 void ToolController::ReloadPage(ToolResponseCallback callback) {
   PerformActionOnActiveTab(
       [](tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
-        return std::make_unique<actor::HistoryToolRequest>(
-            tab_handle, actor::HistoryToolRequest::Direction::kReload);
+        return std::make_unique<actor::ReloadPageToolRequest>(tab_handle);
       },
       std::move(callback));
 }
@@ -591,8 +588,7 @@ void ToolController::FindAndHighlight(const base::DictValue& arguments,
 void ToolController::PlayVideo(ToolResponseCallback callback) {
   PerformActionOnActiveTab(
       [](tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
-        return std::make_unique<actor::MediaControlToolRequest>(
-            tab_handle, actor::PlayMedia());
+        return std::make_unique<actor::PlayMediaToolRequest>(tab_handle);
       },
       std::move(callback));
 }
@@ -600,8 +596,7 @@ void ToolController::PlayVideo(ToolResponseCallback callback) {
 void ToolController::PauseVideo(ToolResponseCallback callback) {
   PerformActionOnActiveTab(
       [](tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
-        return std::make_unique<actor::MediaControlToolRequest>(
-            tab_handle, actor::PauseMedia());
+        return std::make_unique<actor::PauseMediaToolRequest>(tab_handle);
       },
       std::move(callback));
 }
@@ -616,19 +611,19 @@ void ToolController::SeekToTimestamp(const base::DictValue& arguments,
     return;
   }
 
-  std::optional<actor::SeekMedia> seek =
-      actor::SeekMedia::FromTimecode(*timecode);
-  if (!seek) {
+  std::optional<base::TimeDelta> seek_time =
+      actor::SeekMediaToolRequest::FromTimecode(*timecode);
+  if (!seek_time) {
     std::move(callback).Run(ToolResponse::Error(
         actor::mojom::ActionResultCode::kArgumentsInvalid, "Invalid timecode"));
     return;
   }
 
   PerformActionOnActiveTab(
-      [&seek](
+      [&seek_time](
           tabs::TabHandle tab_handle) -> std::unique_ptr<actor::ToolRequest> {
-        return std::make_unique<actor::MediaControlToolRequest>(tab_handle,
-                                                                *seek);
+        return std::make_unique<actor::SeekMediaToolRequest>(tab_handle,
+                                                             *seek_time);
       },
       std::move(callback));
 }

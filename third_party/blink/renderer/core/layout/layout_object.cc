@@ -101,6 +101,7 @@
 #include "third_party/blink/renderer/core/layout/layout_counter.h"
 #include "third_party/blink/renderer/core/layout/layout_custom_scrollbar_part.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+#include "third_party/blink/renderer/core/layout/layout_html_canvas.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/layout_image_resource_style_image.h"
 #include "third_party/blink/renderer/core/layout/layout_inline.h"
@@ -1721,8 +1722,7 @@ void LayoutObject::MarkContainerChainForLayout(bool schedule_relayout) {
     object->MarkSelfPaintingLayerForVisualOverflowRecalc();
 
     last = object;
-    if (allow_subtree_layout_root && ObjectIsRelayoutBoundary(last) &&
-        last->IsRooted()) {
+    if (allow_subtree_layout_root && ObjectIsRelayoutBoundary(last)) {
       GetFrameView()->ScheduleRelayoutOfSubtree(*last);
       return;
     }
@@ -2022,10 +2022,14 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle& style) const {
     return true;
   }
   // https://github.com/WICG/html-in-canvas
-  if (const auto* element = DynamicTo<Element>(GetNode())) {
-    if (element->CanvasForDrawing()) {
-      return true;
-    }
+  const auto* element = DynamicTo<Element>(GetNode());
+  if (element && element->CanvasForDrawing()) {
+    return true;
+  }
+  // Direct children of `<canvas content=drawable>` also contain fixed/absolute
+  // positioned descendants so they cannot escape the canvas subtree.
+  if (style.IsContentDrawableCanvasChild()) {
+    return true;
   }
   // The LayoutView is always a container of fixed positioned descendants. In
   // addition, SVG foreignObjects become such containers, so that descendants
@@ -3735,14 +3739,15 @@ gfx::QuadF LayoutObject::AncestorToLocalQuad(
   return transform_state.LastPlanarQuad();
 }
 
-LayoutObject* LayoutObject::CanvasForDrawingLayoutObject() const {
+LayoutHTMLCanvas* LayoutObject::CanvasForDrawingLayoutObject() const {
   NOT_DESTROYED();
-  if (!IsBoxModelObject()) {
+  // TODO(crbug.com/532229486): Support element canvas transform for SVG.
+  if (!IsBoxModelObject() || IsSVGChild()) {
     return nullptr;
   }
   if (const auto* element = DynamicTo<Element>(GetNode())) {
     if (HTMLCanvasElement* canvas = element->CanvasForDrawing()) {
-      return canvas->GetLayoutObject();
+      return DynamicTo<LayoutHTMLCanvas>(canvas->GetLayoutObject());
     }
   }
   return nullptr;
@@ -4223,16 +4228,6 @@ PhysicalRect LayoutObject::LocalCaretRect(int, CaretShape) const {
   return PhysicalRect();
 }
 
-bool LayoutObject::IsRooted() const {
-  NOT_DESTROYED();
-  const LayoutObject* object = this;
-  while (object->Parent() && !object->HasLayer())
-    object = object->Parent();
-  if (object->HasLayer())
-    return To<LayoutBoxModelObject>(object)->Layer()->Root()->IsRootLayer();
-  return false;
-}
-
 Node* LayoutObject::GeneratingNode() const {
   NOT_DESTROYED();
   Node* node = GetNode();
@@ -4309,6 +4304,10 @@ void LayoutObject::WillBeDestroyed(const ComputedStyle* style) {
     view->ClearLayoutSubtreeRoot(*this);
     view->RemovePendingTransformUpdate(*this);
     view->RemovePendingOpacityUpdate(*this);
+    if (auto* element = DynamicTo<Element>(GetNode());
+        element && element->FastHasAttribute(html_names::kDrawableAttr)) {
+      element->RequestCanvasPaintOnDrawableRemoved();
+    }
   }
 }
 
@@ -5771,7 +5770,7 @@ bool LayoutObject::IsInCanvasSubtree() const {
     }
     if (auto* document = DynamicTo<Document>(node)) {
       auto* owner = document->LocalOwner();
-      return owner && owner->IsCanvasOrInCanvasSubtree();
+      return owner && owner->IsInCanvasSubtree();
     }
   }
   return Parent() && Parent()->IsCanvasOrInCanvasSubtree();

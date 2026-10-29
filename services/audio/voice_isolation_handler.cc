@@ -5,6 +5,7 @@
 #include "services/audio/voice_isolation_handler.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -93,10 +94,22 @@ class VoiceIsolationHandler::StartupMetricsLogger {
   StartupMetricsLogger& operator=(const StartupMetricsLogger&) = delete;
   ~StartupMetricsLogger() {
     TRACE_EVENT_END("audio", trace_track_);
+    if (creation_result_) {
+      base::UmaHistogramEnumeration(
+          "Media.Audio.Capture.VoiceIsolation.CreationResult",
+          *creation_result_);
+    }
+    const StartupResult result =
+        !creation_result_
+            ? StartupResult::kAborted
+            : (*creation_result_ ==
+                       media::VoiceIsolationCreationResult::kSuccess
+                   ? StartupResult::kSuccess
+                   : StartupResult::kFailed);
     base::UmaHistogramEnumeration(
-        "Media.Audio.Capture.VoiceIsolation.StartupResult", result_);
+        "Media.Audio.Capture.VoiceIsolation.StartupResult", result);
     const base::TimeDelta duration = base::TimeTicks::Now() - start_time_;
-    switch (result_) {
+    switch (result) {
       case StartupResult::kSuccess:
         base::UmaHistogramTimes(
             "Media.Audio.Capture.VoiceIsolation.StartupDuration.Success",
@@ -112,12 +125,14 @@ class VoiceIsolationHandler::StartupMetricsLogger {
     }
   }
 
-  void SetResult(StartupResult result) { result_ = result; }
+  void SetCreationResult(media::VoiceIsolationCreationResult result) {
+    creation_result_ = result;
+  }
 
  private:
   const perfetto::NamedTrack trace_track_;
   const base::TimeTicks start_time_;
-  StartupResult result_{StartupResult::kAborted};
+  std::optional<media::VoiceIsolationCreationResult> creation_result_;
 };
 
 VoiceIsolationHandler::VoiceIsolationHandler(
@@ -125,12 +140,14 @@ VoiceIsolationHandler::VoiceIsolationHandler(
     std::unique_ptr<media::AudioDebugRecorder> debug_recorder,
     const media::AudioParameters& output_params,
     DeliverProcessedAudioCallback deliver_processed_audio_callback,
+    InvalidateModelCallback invalidate_model_callback,
     ErrorCallback error_callback,
     LogCallback log_callback)
     : model_handle_(std::move(model_handle)),
       output_params_(output_params),
       deliver_processed_audio_callback_(
           std::move(deliver_processed_audio_callback)),
+      invalidate_model_callback_(std::move(invalidate_model_callback)),
       error_callback_(std::move(error_callback)),
       log_callback_(std::move(log_callback)),
       output_bus_(media::AudioBus::Create(output_params)),
@@ -139,6 +156,7 @@ VoiceIsolationHandler::VoiceIsolationHandler(
       bypass_voice_isolation_(true),
       startup_metrics_logger_(std::make_unique<StartupMetricsLogger>(this)) {
   CHECK(!deliver_processed_audio_callback_.is_null());
+  CHECK(!invalidate_model_callback_.is_null());
   CHECK(!error_callback_.is_null());
   CHECK(!log_callback_.is_null());
   CHECK(output_bus_);
@@ -221,18 +239,27 @@ void VoiceIsolationHandler::OnComponentCreated(
   TRACE_EVENT("audio", "VoiceIsolationHandler::OnComponentCreated");
   CHECK(startup_metrics_logger_);
 
-  const bool success = component_or_error.has_value();
-  startup_metrics_logger_->SetResult(success ? StartupResult::kSuccess
-                                             : StartupResult::kFailed);
+  startup_metrics_logger_->SetCreationResult(component_or_error.error_or(
+      media::VoiceIsolationCreationResult::kSuccess));
   startup_metrics_logger_.reset();
 
-  if (!success) {
+  if (!component_or_error.has_value()) {
     const auto error = component_or_error.error();
     const char* error_name = VoiceIsolationCreationResultToString(error);
     SendLogMessage(base::StringPrintf("%s({success=false, error=%s})", __func__,
                                       error_name));
     LOG(ERROR) << "Failed to create VoiceIsolationComponent, error="
                << error_name;
+
+    // Any creation failure invalidates the model, including ones that may be
+    // transient (e.g. tensor allocation): a model that failed once is not
+    // retried in this process, so later streams fail fast instead of paying
+    // for component creation again. Voice isolation stays unavailable until
+    // the browser sends a new model.
+    //
+    // Must run before `error_callback_`: that callback is the stream-teardown
+    // signal and this handler must not rely on surviving it.
+    std::move(invalidate_model_callback_).Run(model_handle_);
 
     // Voice isolation was requested when this stream was created. Even if voice
     // isolation is currently disabled/bypassed, a subsequent
@@ -405,9 +432,18 @@ std::unique_ptr<VoiceIsolationHandler> VoiceIsolationHandler::MaybeCreate(
         media::AudioDebugRecordingStreamType::kVoiceIsolation, output_params);
   }
 
+  // `base::Unretained(&ml_model_manager)` is safe because `MlModelManager`
+  // outlives `VoiceIsolationHandler`. If `VoiceIsolationHandler` is destroyed
+  // before background initialization completes, `weak_factory_` prevents
+  // `OnComponentCreated()` from executing.
+  auto invalidate_model_callback = base::BindOnce(
+      &MlModelManager::InvalidateModel, base::Unretained(&ml_model_manager),
+      mojom::MlModelType::kVoiceIsolationDenoiser);
+
   return base::WrapUnique(new VoiceIsolationHandler(
       std::move(model_handle), std::move(debug_recorder), output_params,
-      std::move(deliver_processed_audio_callback), std::move(error_callback),
+      std::move(deliver_processed_audio_callback),
+      std::move(invalidate_model_callback), std::move(error_callback),
       std::move(log_callback)));
 }
 

@@ -1160,6 +1160,31 @@ suite('ContentController', () => {
       assertEquals(linkUrl, link.href);
     });
 
+    test(
+        'does not set href on link with empty url when toggling links', () => {
+          const textId = 53;
+          contentBrowserProxy.rootId = linkId;
+          contentBrowserProxy.htmlTagMap = {[linkId]: 'a', [textId]: ''};
+          contentBrowserProxy.urlMap = {[linkId]: ''};
+          contentBrowserProxy.textContentMap = {[textId]: 'Internal Ref'};
+          contentBrowserProxy.childrenMap = {[linkId]: [textId]};
+          visualBrowserProxy.linksEnabled = true;
+
+          const root = contentController.updateContent();
+          assertTrue(!!root);
+          shadowRoot.appendChild(root);
+          assertFalse(!!shadowRoot.querySelector('a')?.hasAttribute('href'));
+
+          // Hide links, then show links again.
+          visualBrowserProxy.linksEnabled = false;
+          contentController.updateLinks(shadowRoot);
+          assertFalse(!!shadowRoot.querySelector('span[data-link]'));
+
+          visualBrowserProxy.linksEnabled = true;
+          contentController.updateLinks(shadowRoot);
+          assertFalse(!!shadowRoot.querySelector('a'));
+        });
+
     test('restores previous highlighting when hiding links', () => {
       const innerSpan = document.createElement('span');
       innerSpan.classList.add(HIGHLIGHTED_LINK_CLASS);
@@ -1690,6 +1715,17 @@ suite('ContentController', () => {
 
         assertEquals(expectedHtml, shadowRoot.innerHTML);
       });
+
+      test('onImagesVisibilityChanged sets empty when caption hidden', () => {
+        const container = document.createElement('div');
+        container.appendChild(shadowRoot.firstElementChild!);
+        shadowRoot.appendChild(container);
+
+        visualBrowserProxy.imagesEnabled = false;
+        contentController.onImagesVisibilityChanged(container, shadowRoot);
+
+        assertTrue(contentController.isEmpty());
+      });
     });
 
     suite('with readability', () => {
@@ -1741,6 +1777,22 @@ suite('ContentController', () => {
         contentController.updateImages(shadowRoot);
         await microtasksFinished();
         assertEquals('none', figure.style.display);
+      });
+
+      test('onImagesVisibilityChanged sets empty when caption hidden', () => {
+        contentBrowserProxy.htmlContent =
+            '<figure><img src="foo.png"><figcaption>Caption</figcaption>' +
+            '</figure>';
+        const root = contentController.updateContent();
+        assertTrue(!!root);
+        const container = document.createElement('div');
+        container.appendChild(root);
+        shadowRoot.appendChild(container);
+
+        visualBrowserProxy.imagesEnabled = false;
+        contentController.onImagesVisibilityChanged(container, shadowRoot);
+
+        assertTrue(contentController.isEmpty());
       });
     });
   });
@@ -1809,6 +1861,20 @@ suite('ContentController', () => {
                        'onRenderedTextBlocksAvailable')[1] as string[];
       assertEquals(1, sentBlocks.length);
       assertEquals('Second call', sentBlocks[0]);
+    });
+
+    test('sets empty when container has no visible text nodes', () => {
+      const container = document.createElement('div');
+      const hidden = document.createElement('figure');
+      hidden.style.display = 'none';
+      hidden.textContent = 'Hidden caption';
+      container.appendChild(hidden);
+      document.body.appendChild(container);
+      contentController.setState(ContentType.HAS_CONTENT);
+
+      contentController.onRenderedTextBlocksAvailable(container);
+
+      assertTrue(contentController.isEmpty());
     });
   });
 
@@ -1931,6 +1997,7 @@ suite('ContentController', () => {
 
       assertFalse(!!nodeStore.getDomNode(axId));
       assertTrue(!!spans[0]);
+      assertFalse('link' in spans[0].dataset);
       assertEquals(1, spans.length);
       assertEquals(0, anchors.length);
       assertEquals('Text with no URL', spans[0].textContent);
@@ -1945,6 +2012,7 @@ suite('ContentController', () => {
       assertFalse(!!nodeStore.getDomNode(axId));
       assertEquals(0, anchors.length);
       assertEquals(1, spans.length);
+      assertFalse('link' in spans[0]!.dataset);
     });
 
     test(
@@ -1960,6 +2028,28 @@ suite('ContentController', () => {
           assertFalse(!!nodeStore.getDomNode(axId));
           assertEquals(0, anchors.length);
           assertEquals(1, spans.length);
+          assertFalse('link' in spans[0]!.dataset);
+        });
+
+    test(
+        'unmatched anchor does not turn back into link when toggling links',
+        () => {
+          const host = document.createElement('div');
+          document.body.appendChild(host);
+          const shadowRoot = host.attachShadow({mode: 'open'});
+          shadowRoot.appendChild(container);
+          contentBrowserProxy.axTreeAnchorsVal = {};
+
+          contentController.updateAnchorsForReadability(shadowRoot);
+          assertEquals(0, shadowRoot.querySelectorAll('a').length);
+
+          visualBrowserProxy.linksEnabled = false;
+          contentController.updateLinks(shadowRoot);
+          visualBrowserProxy.linksEnabled = true;
+          contentController.updateLinks(shadowRoot);
+
+          assertEquals(0, shadowRoot.querySelectorAll('a').length);
+          assertEquals(1, shadowRoot.querySelectorAll('span').length);
         });
 
     test('does nothing if not in Readability mode', () => {

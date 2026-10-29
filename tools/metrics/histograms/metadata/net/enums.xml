@@ -1128,6 +1128,19 @@ historical analysis. -->
   <int value="5" label="CryptoConnectFailedAsync"/>
 </enum>
 
+<!-- LINT.IfChange(LinuxProxyResolutionStatus) -->
+
+<enum name="LinuxProxyResolutionStatus">
+  <int value="0" label="Ok"/>
+  <int value="1" label="PortalUnavailable"/>
+  <int value="2" label="DBusError"/>
+  <int value="3" label="EmptyProxyList"/>
+  <int value="4" label="InvalidResponse"/>
+  <int value="5" label="Aborted"/>
+</enum>
+
+<!-- LINT.ThenChange(//net/proxy_resolution/linux/linux_proxy_resolution_status.h:LinuxProxyResolutionStatus) -->
+
 <!-- LINT.IfChange(LogicalInvalidationStoreLoadResult) -->
 
 <enum name="LogicalInvalidationStoreLoadResult">
@@ -1216,6 +1229,17 @@ historical analysis. -->
   <int value="2" label="Normalized Names"/>
   <int value="3" label="Chain contained only one certificate"/>
 </enum>
+
+<!-- LINT.IfChange(NetCertificateSerialNumberType) -->
+
+<enum name="NetCertificateSerialNumberType">
+  <int value="0" label="Positive"/>
+  <int value="1" label="Zero"/>
+  <int value="2" label="Negative"/>
+  <int value="3" label="Invalid"/>
+</enum>
+
+<!-- LINT.ThenChange(//net/cert/x509_util.h:SerialNumberType) -->
 
 <!-- LINT.IfChange(NetCertVerifier1QwacResult) -->
 
@@ -3380,6 +3404,18 @@ Called by update_net_trust_anchors.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//net/quic/quic_session_pool_async_dns_job.h:QuicSessionPoolAsyncDnsJobSuccessSource) -->
+
+<!-- LINT.IfChange(QuicSocketConfigStep) -->
+
+<enum name="QuicSocketConfigStep">
+  <int value="0" label="Connect"/>
+  <int value="1" label="Set receive buffer size"/>
+  <int value="2" label="Set do not fragment"/>
+  <int value="3" label="Set receive ECN"/>
+  <int value="4" label="Set send buffer size"/>
+</enum>
+
+<!-- LINT.ThenChange(//net/quic/quic_socket_config_step.h:QuicSocketConfigStep) -->
 
 <enum name="QuicTransportErrorCodes">
   <int value="0" label="NO_ERROR"/>

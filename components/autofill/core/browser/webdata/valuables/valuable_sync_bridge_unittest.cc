@@ -286,6 +286,97 @@ TEST_F(ValuableSyncBridgeTest, IsEntityDataValid_ImportConstraints) {
   }
 }
 
+// Tests that specifics w/o a management URL are counted but considered valid.
+TEST_F(ValuableSyncBridgeTest, IsEntityDataValid_MissingManagementUrl) {
+  base::test::ScopedFeatureList feature_list(
+      {features::kAutofillAiImportConstraintsForSync,
+       features::kAutofillAiWalletServerProvidedDeepLink});
+  sync_pb::AutofillValuableSpecifics specifics =
+      CreateSpecificsFromEntityInstance(GetServerVehicleEntityInstance(),
+                                        /*base_specifics=*/{});
+
+  base::HistogramTester histogram_tester;
+  EXPECT_TRUE(
+      bridge().IsEntityDataValid(*CreateEntityDataFromSpecifics(specifics)));
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::
+          kMissingOrEmpty,
+      1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus.Vehicle",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::
+          kMissingOrEmpty,
+      1);
+}
+
+// Tests a successful check of specifics with a management URL.
+TEST_F(ValuableSyncBridgeTest, IsEntityDataValid_ValidManagementUrl) {
+  base::test::ScopedFeatureList feature_list(
+      {features::kAutofillAiImportConstraintsForSync,
+       features::kAutofillAiWalletServerProvidedDeepLink});
+  sync_pb::AutofillValuableSpecifics specifics =
+      CreateSpecificsFromEntityInstance(GetServerVehicleEntityInstance(),
+                                        /*base_specifics=*/{});
+  specifics.set_pass_view_url("https://wallet.google.com/wallet/passes/123");
+
+  base::HistogramTester histogram_tester;
+  EXPECT_TRUE(
+      bridge().IsEntityDataValid(*CreateEntityDataFromSpecifics(specifics)));
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::kValid, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus.Vehicle",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::kValid, 1);
+}
+
+// Tests that specifics with an invalid management URL are counted and flagged
+// as illegal.
+TEST_F(ValuableSyncBridgeTest, IsEntityDataValid_InvalidManagementUrl) {
+  base::test::ScopedFeatureList feature_list(
+      {features::kAutofillAiImportConstraintsForSync,
+       features::kAutofillAiWalletServerProvidedDeepLink});
+  sync_pb::AutofillValuableSpecifics specifics =
+      CreateSpecificsFromEntityInstance(GetServerVehicleEntityInstance(),
+                                        /*base_specifics=*/{});
+  specifics.set_pass_view_url("https://illegal.site.com/");
+
+  base::HistogramTester histogram_tester;
+  EXPECT_FALSE(
+      bridge().IsEntityDataValid(*CreateEntityDataFromSpecifics(specifics)));
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::kInvalid, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus.Vehicle",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::kInvalid, 1);
+}
+
+// Tests that specifics with an invalid management URL are counted but not
+// flagged as illegal if the feature flag for Wallet deeplinks is not enabled.
+TEST_F(ValuableSyncBridgeTest,
+       IsEntityDataValid_InvalidManagementUrl_FeatureDisabled) {
+  base::test::ScopedFeatureList feature_list(
+      {features::kAutofillAiImportConstraintsForSync});
+  sync_pb::AutofillValuableSpecifics specifics =
+      CreateSpecificsFromEntityInstance(GetServerVehicleEntityInstance(),
+                                        /*base_specifics=*/{});
+  specifics.set_pass_view_url("https://illegal.site.com/");
+
+  base::HistogramTester histogram_tester;
+  // The illegal URL is tolerated if the deeplink feature is not enabled.
+  EXPECT_TRUE(
+      bridge().IsEntityDataValid(*CreateEntityDataFromSpecifics(specifics)));
+  // The illegal URL is still counted, though.
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::kInvalid, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.ValuableSync.ManagementUrlStatus.Vehicle",
+      ValuableSyncBridge::AutofillAiWalletManagementUrlSyncStatus::kInvalid, 1);
+}
+
 #if !BUILDFLAG(IS_IOS)
 TEST_F(ValuableSyncBridgeTest, IsEntityDataValid_NonEmptyId) {
   // Valid case.
@@ -354,6 +445,16 @@ TEST_F(ValuableSyncBridgeTest, IsOfferEntityDataValid) {
                          /*description=*/"50% off your next purchase",
                          /*pass_view_url=*/"https://safeway.com/offer-details",
                          /*offer_title_image_url=*/"invalid_url"))));
+
+  // Description is optional and does not affect validity.
+  specifics.mutable_offer()->clear_description();
+  EXPECT_TRUE(
+      bridge().IsEntityDataValid(*CreateEntityDataFromSpecifics(specifics)));
+  EXPECT_TRUE(bridge().IsEntityDataValid(
+      *CreateEntityDataFromSpecifics(TestOfferSpecifics(
+          kId1, /*offer_code=*/"SAFEWAY50",
+          /*description=*/"",
+          /*pass_view_url=*/"https://safeway.com/offer-details"))));
 }
 
 // The server is not required to send numeric offer ids, so ids that cannot be
@@ -382,20 +483,6 @@ TEST_F(ValuableSyncBridgeTest, IsOfferEntityDataInvalid) {
           kId1, /*offer_code=*/"",
           /*description=*/"50% off your next purchase",
           /*pass_view_url=*/"https://safeway.com/offer-details"))));
-
-  // Invalid description.
-  EXPECT_FALSE(bridge().IsEntityDataValid(
-      *CreateEntityDataFromSpecifics(TestOfferSpecifics(
-          kId1, /*offer_code=*/"SAFEWAY50",
-          /*description=*/"",
-          /*pass_view_url=*/"https://safeway.com/offer-details"))));
-
-  // Missing description.
-  sync_pb::AutofillValuableSpecifics empty_description_specifics =
-      TestOfferSpecifics(kId1);
-  empty_description_specifics.mutable_offer()->clear_description();
-  EXPECT_FALSE(bridge().IsEntityDataValid(
-      *CreateEntityDataFromSpecifics(empty_description_specifics)));
 
   // Invalid offer details url.
   EXPECT_FALSE(bridge().IsEntityDataValid(*CreateEntityDataFromSpecifics(

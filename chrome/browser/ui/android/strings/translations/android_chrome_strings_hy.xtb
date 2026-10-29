@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">Կառավարել որոնման համակարգերը</translation>
 <translation id="1435593198351412143">Ավտոմատ բացել PDF ֆայլերը</translation>
 <translation id="1437543266176261764">Կատարվում է <ph name="APP_NAME" />-ում</translation>
-<translation id="1448440926884431741">Էջանիշներում դասավորեք ապրանքները, որոնց հետևում եք</translation>
 <translation id="1452651021404174820">Ընտրեք սարք</translation>
 <translation id="1455845192930279203">Ներբեռնե՞լ «<ph name="FILE_NAME" />» ֆայլը (<ph name="FILE_SIZE" />) <ph name="DOWNLOAD_DOMAIN" /> կայքից</translation>
 <translation id="1460751212339734034">Տնտեսեք ժամանակը, մուտքագրեք ավելի քիչ</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, ընտրված մի քանի ներդիրներից մեկը, որն ամրացված է, և որում տեսագրում է արվում</translation>
 <translation id="4137746084635924146">Սարքի ընթացիկ լեզուն</translation>
 <translation id="414128724510021958">Կայքերի համակարգչային տարբերակները պահանջվում են ըստ կանխադրման</translation>
+<translation id="4150837143272125910">Թարմացում ներբեռնվեց</translation>
 <translation id="4162867837470729563">Կիսվելու տարբերակների ցանկը բացված է ամբողջությամբ։</translation>
 <translation id="4164642020717536140">Արագ և ապահով վեբ դիտարկում</translation>
 <translation id="4165077084524712774">Այլ գործիքներ</translation>
@@ -1199,6 +1199,7 @@
 <translation id="5848257610304005265">Բացե՞լ PDF ֆայլը <ph name="APP_NAME" /> հավելվածի միջոցով</translation>
 <translation id="5849288995120328556">Չեղարկե՞լ հասանելիությունը</translation>
 <translation id="5853623416121554550">դադարեցված է</translation>
+<translation id="5855375823365231964">Այս պրոֆիլի մասին</translation>
 <translation id="5855546874025048181">Ճշտել՝ <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, ընտրված մի քանի ինկոգնիտո ներդիրներից մեկը, որում տեսագրում է արվում</translation>
 <translation id="5857447844686706637">Սխալ առաջացավ։ Չհաջողվեց թարմացնել գների հետագծումը։</translation>
@@ -1240,6 +1241,7 @@
 <translation id="6039379616847168523">Անցնել հաջորդ ներդիր</translation>
 <translation id="6040143037577758943">Փակել</translation>
 <translation id="604124094241169006">Ավտոմատ</translation>
+<translation id="6041959688070413372">Կառավարել որոնման ծառայությունների և Google Workspace հավելվածների, օրինակ՝ Google Drive-ի միջև կապը</translation>
 <translation id="6042308850641462728">Ավելին</translation>
 <translation id="6047066316630165190">Բացեք ներդիրների ցանցի փոխանջատիչը</translation>
 <translation id="604996488070107836"><ph name="FILE_NAME" /> ֆայլի ներբեռնումը ձախողվեց՝ անհայտ սխալի պատճառով:</translation>
@@ -1400,6 +1402,7 @@
 <translation id="6565959834589222080">Wi-Fi ցանցը օգտագործվում է հասանելի լինելու դեպքում</translation>
 <translation id="657177046675873214">Ներդիրները ձեր բոլոր սարքերում օգտագործելու համար կարգավորումներում միացրեք «Էջանիշներ» ներդիրը</translation>
 <translation id="6573096386450695060">Միշտ թույլատրել</translation>
+<translation id="657480975869429144">Chrome-ի նոր տարբերակ է հասանելի</translation>
 <translation id="658099107946526506">Պաշտպանեք ձեր ինկոգնիտո ռեժիմը PIN կոդով՝ անցանկալի մուտքը կանխելու համար</translation>
 <translation id="6583199322650523874">Էջանշել ընթացիկ էջը</translation>
 <translation id="6588043302623806746">Օգտագործել ապահով DNS</translation>

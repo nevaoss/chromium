@@ -166,9 +166,20 @@ bool IsAllowSignedOutUserInDesktopAndroidEnabled();
 
 BASE_DECLARE_FEATURE(kCopyTextJourneys);
 
+extern const base::FeatureParam<base::TimeDelta> kCopyTextJourneysTtl;
+extern const base::FeatureParam<size_t> kCopyTextJourneysMaxRingBufferSize;
+extern const base::FeatureParam<size_t> kCopyTextJourneysMinQueryMatchLength;
+
 bool IsCopyTextJourneysEnabled();
 
+base::TimeDelta GetCopyTextJourneysTtl();
+size_t GetCopyTextJourneysMaxRingBufferSize();
+size_t GetCopyTextJourneysMinQueryMatchLength();
+
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
+
+BASE_DECLARE_FEATURE(kContextualSearchContextualCuesHandleEdu);
+BASE_DECLARE_FEATURE(kContextualSearchContextualCuesHandleShopping);
 
 enum class OverflowMenuItems {
   kAllItems,
@@ -588,6 +599,8 @@ extern const char kContextualTasksEphemeralButtonContextMenuName[];
 extern const char kContextualTasksEphemeralButtonContextMenuDescription[];
 extern const char kCopyTextJourneysName[];
 extern const char kCopyTextJourneysDescription[];
+extern const char kAllowSignedOutUserInDesktopAndroidName[];
+extern const char kAllowSignedOutUserInDesktopAndroidDescription[];
 
 }  // namespace flag_descriptions
 

@@ -1,0 +1,20 @@
+# Copyright 2026 The Chromium Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("transport") {
+  sources = [
+    "actuation_delegate.cc",
+    "actuation_delegate.h",
+    "actuation_transport_handler.cc",
+    "actuation_transport_handler.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//components/actor/core:task_id",
+    "//components/actor/transport/proto:actuation_transport_proto",
+    "//components/browser_actuator/public",
+    "//components/optimization_guide/proto:optimization_guide_proto",
+  ]
+}

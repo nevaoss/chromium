@@ -1774,7 +1774,7 @@ targets.mixin(
             targets.cipd_package(
                 package = "infra/tools/mac_toolchain/${platform}",
                 location = ".",
-                revision = "git_revision:ed58ac9443fe1754e84d596bdaf9961cbaa6e85b",
+                revision = "git_revision:bc2eb815d4eb1d66007cc1f19dcbe57f59a76b2d",
             ),
         ],
     ),
@@ -1898,7 +1898,9 @@ targets.mixin(
         # Uncommenting this argument will bypass all interactions with Skia
         # Gold in any tests that use it. This is meant as a temporary
         # emergency stop in case of a Gold outage that's affecting the bots.
-        # "--bypass-skia-gold-functionality",
+        # TODO(crbug.com/568399534): Can comment this out again if/when
+        # it's safe to do so.
+        "--bypass-skia-gold-functionality",
     ],
     precommit_args = [
         "--gerrit-issue=${patch_issue}",
@@ -2354,12 +2356,12 @@ targets.mixin(
     name = "xcode_27_1",
     args = [
         "--xcode-build-version",
-        "27a9269",
+        "27a9275",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27a9269",
+                name = "xcode_ios_27a9275",
                 path = "Xcode.app",
             ),
         ],

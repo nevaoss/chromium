@@ -67,7 +67,6 @@
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
-#include "third_party/blink/renderer/core/dom/layout_tree_builder_traversal.h"
 #include "third_party/blink/renderer/core/event_type_names.h"
 #include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -920,7 +919,7 @@ void HTMLCanvasElement::OnWidthOrHeightAssigned() {
             GetExecutionContext()) &&
         IsContentDrawable()) {
       // Invalidate the child's paint properties so that its cached
-      // CanvasChildPaintState is updated with the new canvas size.
+      // CanvasDrawablePaintState is updated with the new canvas size.
       for (LayoutObject* child = layout_object->SlowFirstChild(); child;
            child = child->NextInPreOrder(layout_object)) {
         child->SetNeedsPaintPropertyUpdate();
@@ -963,7 +962,7 @@ DOMMatrix* HTMLCanvasElement::getElementTransform(
     return nullptr;
   }
 
-  const auto* paint_state = GetCanvasChildPaintState(element_or_image);
+  const auto* paint_state = GetCanvasDrawablePaintState(element_or_image);
   if (!paint_state) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "No cached paint record for element.");
@@ -1003,25 +1002,18 @@ bool HTMLCanvasElement::VerifyDrawElementImageEligibility(
     return false;
   }
 
-  const Element* parent =
-      LayoutTreeBuilderTraversal::LayoutParentElement(*element);
-  bool is_direct_child = parent == this;
-  if (!is_direct_child && element->CanvasForDrawing() != this) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kInvalidStateError,
-        "The element can only be drawn into its nearest ancestor <canvas>.");
-    return false;
-  }
-
-  // TODO(paint-dev): The check for `drawable` purposely skips immediate
-  // canvas children, to ease migration. Ultimately it must apply to
-  // immediate children as well.
-  if (!is_direct_child &&
-      !element->FastHasAttribute(html_names::kDrawableAttr)) {
+  if (!element->FastHasAttribute(html_names::kDrawableAttr)) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "Descendants passed to " + func_name +
             " must have the 'drawable' attribute.");
+    return false;
+  }
+
+  if (element->CanvasForDrawing() != this) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "The element can only be drawn into its nearest ancestor <canvas>.");
     return false;
   }
 
@@ -1063,15 +1055,16 @@ ElementImage* HTMLCanvasElement::captureElementImage(
     return nullptr;
   }
 
-  std::optional<CanvasChildPaintRecord> child_paint_record =
-      GetCanvasChildPaintRecord(element->GetDomNodeId());
-  if (!child_paint_record) {
+  std::optional<CanvasDrawablePaintRecord> drawable_paint_record =
+      GetCanvasDrawablePaintRecord(element->GetDomNodeId());
+  if (!drawable_paint_record) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "No cached paint record for element.");
     return nullptr;
   }
   return MakeGarbageCollected<ElementImage>(
-      std::make_unique<CanvasChildPaintRecord>(std::move(*child_paint_record)));
+      std::make_unique<CanvasDrawablePaintRecord>(
+          std::move(*drawable_paint_record)));
 }
 
 void HTMLCanvasElement::updateElementGeometry(
@@ -1786,27 +1779,27 @@ void HTMLCanvasElement::DiscardResources() {
   dirty_rect_ = gfx::Rect();
 }
 
-std::optional<CanvasChildPaintRecord>
-HTMLCanvasElement::GetCanvasChildPaintRecord(DOMNodeId child_id) const {
+std::optional<CanvasDrawablePaintRecord>
+HTMLCanvasElement::GetCanvasDrawablePaintRecord(DOMNodeId drawable_id) const {
   if (auto* view = GetDocument().View()) {
     if (auto* pac = view->GetPaintArtifactCompositor()) {
-      return pac->GetCanvasChildPaintRecord(child_id);
+      return pac->GetCanvasDrawablePaintRecord(drawable_id);
     }
   }
   return std::nullopt;
 }
 
-const CanvasChildPaintState* HTMLCanvasElement::GetCanvasChildPaintState(
-    DOMNodeId child_id) const {
+const CanvasDrawablePaintState* HTMLCanvasElement::GetCanvasDrawablePaintState(
+    DOMNodeId drawable_id) const {
   if (auto* view = GetDocument().View()) {
     if (auto* pac = view->GetPaintArtifactCompositor()) {
-      return pac->GetCanvasChildPaintState(child_id);
+      return pac->GetCanvasDrawablePaintState(drawable_id);
     }
   }
   return nullptr;
 }
 
-const CanvasChildPaintState* HTMLCanvasElement::GetCanvasChildPaintState(
+const CanvasDrawablePaintState* HTMLCanvasElement::GetCanvasDrawablePaintState(
     const V8UnionElementOrElementImage* element_or_image) const {
   if (!element_or_image) {
     return nullptr;
@@ -1818,7 +1811,7 @@ const CanvasChildPaintState* HTMLCanvasElement::GetCanvasChildPaintState(
     return paint_record ? &paint_record->paint_state : nullptr;
   }
 
-  return GetCanvasChildPaintState(
+  return GetCanvasDrawablePaintState(
       element_or_image->GetAsElement()->GetDomNodeId());
 }
 
@@ -1939,11 +1932,6 @@ void HTMLCanvasElement::RemovedFrom(ContainerNode& insertion_point) {
   ColorSchemeMayHaveChanged();
 }
 
-bool HTMLCanvasElement::ChildrenChangedAllChildrenRemovedNeedsList() const {
-  return RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-      GetExecutionContext());
-}
-
 void HTMLCanvasElement::ChildrenChanged(const ChildrenChange& change) {
   HTMLElement::ChildrenChanged(change);
   if (hasChildren()) {
@@ -1954,30 +1942,6 @@ void HTMLCanvasElement::ChildrenChanged(const ChildrenChange& change) {
     }
     if (accessibility_manager_) {
       accessibility_manager_->UpdateHasFallbackElementContent();
-    }
-  }
-
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext())) {
-    if (change.type == ChildrenChangeType::kElementRemoved) {
-      if (auto* element = DynamicTo<Element>(change.sibling_changed)) {
-        ChildElementRemoved(*element);
-      }
-    } else if (change.type == ChildrenChangeType::kAllChildrenRemoved) {
-      for (Node* node : change.removed_nodes) {
-        if (auto* element = DynamicTo<Element>(node)) {
-          ChildElementRemoved(*element);
-        }
-      }
-    }
-  }
-}
-
-void HTMLCanvasElement::ChildElementRemoved(Element& child) {
-  if (auto* view = GetDocument().View()) {
-    if (auto* pac = view->GetPaintArtifactCompositor()) {
-      if (pac->HasCanvasChildPaintRecord(child.GetDomNodeId())) {
-        requestPaint();
-      }
     }
   }
 }

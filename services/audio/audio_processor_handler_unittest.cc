@@ -32,11 +32,12 @@
 #include "media/webrtc/ml_model_handle.h"
 #include "media/webrtc/voice_isolation/mock_voice_isolation.h"
 #include "media/webrtc/voice_isolation/voice_isolation.h"
+#include "media/webrtc/voice_isolation/voice_isolation_component.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/functions.h"
-#include "services/audio/ml_model_manager.h"
 #include "services/audio/test/fake_ml_model_handles.h"
+#include "services/audio/test/mock_ml_model_manager.h"
 #include "services/audio/voice_isolation_handler.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -153,19 +154,7 @@ enum class VoiceIsolationStartupResult {
   kAborted = 2,
 };
 
-class MockMlModelManager : public MlModelManager {
- public:
-  MockMlModelManager() {
-    ON_CALL(*this, GetModel(testing::_)).WillByDefault([](mojom::MlModelType) {
-      return base::MakeRefCounted<FakeMlModelHandle>();
-    });
-  }
-  MOCK_METHOD(scoped_refptr<media::MlModelHandle>,
-              GetModel,
-              (mojom::MlModelType model_type),
-              (override));
-};
-#endif
+#endif  // BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 
 TEST_F(AudioProcessorHandlerTest, ProcessingWithoutVoiceIsolationHandler) {
   media::AudioProcessingSettings settings;
@@ -707,6 +696,7 @@ TEST_F(AudioProcessorHandlerTest,
   EXPECT_CALL(model_manager,
               GetModel(mojom::MlModelType::kVoiceIsolationDenoiser))
       .WillOnce([&]() { return base::MakeRefCounted<FakeMlModelHandle>(); });
+  EXPECT_CALL(model_manager, InvalidateModel(_, _)).Times(0);
   auto handler = VoiceIsolationHandler::MaybeCreate(
       model_manager, output_params_, deliver_callback_.Get(),
       /*error_callback=*/base::DoNothing());
@@ -847,6 +837,9 @@ TEST_F(AudioProcessorHandlerTest,
   // Metrics are logged when startup_metrics_logger_ is destroyed in
   // OnComponentCreated().
   histogram_tester.ExpectUniqueSample(
+      "Media.Audio.Capture.VoiceIsolation.CreationResult",
+      media::VoiceIsolationCreationResult::kSuccess, 1);
+  histogram_tester.ExpectUniqueSample(
       "Media.Audio.Capture.VoiceIsolation.StartupResult",
       VoiceIsolationStartupResult::kSuccess, 1);
   histogram_tester.ExpectTotalCount(
@@ -882,6 +875,8 @@ TEST_F(AudioProcessorHandlerTest,
   handler.reset();
   run_loop.Run();
 
+  histogram_tester.ExpectTotalCount(
+      "Media.Audio.Capture.VoiceIsolation.CreationResult", 0);
   histogram_tester.ExpectUniqueSample(
       "Media.Audio.Capture.VoiceIsolation.StartupResult",
       VoiceIsolationStartupResult::kAborted, 1);
@@ -893,14 +888,16 @@ TEST_F(AudioProcessorHandlerTest,
 
 // Verifies that when asynchronous voice isolation component creation fails on
 // the background ThreadPool (simulated with FakeInvalidMlModelHandle):
-// 1. The registered ErrorCallback is invoked exactly once on the owning
-// sequence.
-// 2. A diagnostic log message containing the failure error code is emitted.
-// 3. The handler remains in an uninitialized state.
-// 4. UMA histograms record a failed startup and failure duration without
-// success.
+// 1. The failing model handle is reported to MlModelManager::InvalidateModel
+//    before the ErrorCallback runs.
+// 2. The registered ErrorCallback is invoked exactly once on the owning
+//    sequence.
+// 3. A diagnostic log message containing the failure error code is emitted.
+// 4. The handler remains in an uninitialized state.
+// 5. UMA histograms record the creation failure reason, a failed startup and
+//    the failure duration, and no success samples.
 TEST_F(AudioProcessorHandlerTest,
-       VoiceIsolationAsyncStartupFailureReportsErrorAndLogsMetrics) {
+       VoiceIsolationAsyncStartupFailureInvalidatesModelThenReportsError) {
   base::HistogramTester histogram_tester;
   MockMlModelManager model_manager;
   // Serve an invalid model handle that will fail interpreter creation on
@@ -912,21 +909,26 @@ TEST_F(AudioProcessorHandlerTest,
               GetModel(mojom::MlModelType::kVoiceIsolationDenoiser))
       .WillOnce([&]() { return failing_handle; });
 
-  // ErrorCallback should be invoked on the owning sequence when startup fails.
-  base::RunLoop run_loop;
-  base::MockCallback<base::OnceClosure> error_cb;
-  EXPECT_CALL(error_cb, Run()).Times(1).WillOnce([&]() {
-    EXPECT_TRUE(task_environment_.GetMainThreadTaskRunner()
-                    ->RunsTasksInCurrentSequence());
-    run_loop.Quit();
-  });
-
   EXPECT_CALL(log_callback_, Run(_)).Times(testing::AnyNumber());
   // Expect structured diagnostic log containing the exact failure enum code.
   EXPECT_CALL(log_callback_,
               Run(testing::HasSubstr("OnComponentCreated({success=false, "
                                      "error=kInterpreterCreationFailed})")))
       .Times(1);
+
+  base::RunLoop run_loop;
+  base::MockCallback<base::OnceClosure> error_cb;
+  testing::InSequence s;
+  EXPECT_CALL(model_manager,
+              InvalidateModel(mojom::MlModelType::kVoiceIsolationDenoiser,
+                              failing_handle));
+
+  // ErrorCallback runs after invalidation, on the owning sequence.
+  EXPECT_CALL(error_cb, Run()).Times(1).WillOnce([&]() {
+    EXPECT_TRUE(task_environment_.GetMainThreadTaskRunner()
+                    ->RunsTasksInCurrentSequence());
+    run_loop.Quit();
+  });
 
   // Instantiating handler starts capture in pass-through warmup and posts
   // component creation to ThreadPool.
@@ -943,7 +945,10 @@ TEST_F(AudioProcessorHandlerTest,
   // uninitialized.
   EXPECT_FALSE(handler->IsInitializedForTesting());
 
-  // Verify UMA startup result and failure duration metrics.
+  // Verify UMA creation result, startup result and failure duration metrics.
+  histogram_tester.ExpectUniqueSample(
+      "Media.Audio.Capture.VoiceIsolation.CreationResult",
+      media::VoiceIsolationCreationResult::kInterpreterCreationFailed, 1);
   histogram_tester.ExpectUniqueSample(
       "Media.Audio.Capture.VoiceIsolation.StartupResult",
       VoiceIsolationStartupResult::kFailed, 1);
@@ -970,6 +975,7 @@ TEST_F(
 
   base::MockCallback<base::OnceClosure> error_cb;
   EXPECT_CALL(error_cb, Run()).Times(0);
+  EXPECT_CALL(model_manager, InvalidateModel(_, _)).Times(0);
 
   auto handler = VoiceIsolationHandler::MaybeCreate(
       model_manager, output_params_, deliver_callback_.Get(), error_cb.Get(),

@@ -123,7 +123,6 @@ Siirry <ph name="BEGIN_LINK2" />Googlen palveluihin<ph name="END_LINK2" />, jos 
 <translation id="1432581352905426595">Hallinnoi hakukoneita</translation>
 <translation id="1435593198351412143">Avaa PDF-tiedostot automaattisesti</translation>
 <translation id="1437543266176261764">Käynnissä: <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Järjestele seurattuja tuotteita kirjanmerkeissä</translation>
 <translation id="1452651021404174820">Valitse laite</translation>
 <translation id="1455845192930279203">Ladataanko "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) osoitteesta <ph name="DOWNLOAD_DOMAIN" /> silti?</translation>
 <translation id="1460751212339734034">Säästä aikaa ja kirjoita vähemmän</translation>
@@ -765,6 +764,7 @@ Salattua dataa voi lukea vain tunnuslauseen avulla. Tunnuslausetta ei lähetetä
 <translation id="4092709865241032354">Lisää käyttäjätunnuksesi tälle sivustolle, jotta Google Salasanat voi tallentaa sisäänkirjautumistiedot</translation>
 <translation id="4095146165863963773">Poistetaanko sovellustiedot?</translation>
 <translation id="4095483462103784441">Luo uusi välilehtiryhmä</translation>
+<translation id="4098552968111329864">Organisaatiosi voi nähdä tai ylläpitää tiettyjä tietoja, jotta voit käyttää Chromea turvallisesti, kun olet kirjautuneena Chromeen</translation>
 <translation id="4105527135143631701">Google Salasanojen päivitys avattu</translation>
 <translation id="4107207375883769436">Voi olla, että organisaatiosi täytyy nähdä ja hallinnoida työprofiilisi selausdataa, kuten selaushistoriaa ja salasanoja</translation>
 <translation id="4113030288477039509">Järjestelmänvalvojasi hallinnoima</translation>
@@ -775,6 +775,7 @@ Salattua dataa voi lukea vain tunnuslauseen avulla. Tunnuslausetta ei lähetetä
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, monivalittu kiinnitetty välilehti, jolla tallennetaan mediaa</translation>
 <translation id="4137746084635924146">Laitteen kieli</translation>
 <translation id="414128724510021958">Oletusarvoiset tietokonesivustot</translation>
+<translation id="4150837143272125910">Päivitys on ladattu</translation>
 <translation id="4162867837470729563">Jakamisvaihtoehtojen lista koko näytön kokoisena.</translation>
 <translation id="4164642020717536140">Nopeaa ja turvallista selaamista</translation>
 <translation id="4165077084524712774">Lisää työkaluja</translation>
@@ -1199,6 +1200,7 @@ Google-tililläsi voi olla muita selaushistoriatietoja, kuten hakuja ja toiminta
 <translation id="5848257610304005265">Avataanko PDF sovelluksella <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Lopetetaanko jakaminen?</translation>
 <translation id="5853623416121554550">keskeytetty</translation>
+<translation id="5855375823365231964">Tietoa tästä profiilista</translation>
 <translation id="5855546874025048181">Tarkenna: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, monivalittu incognito-välilehti, jolla tallennetaan mediaa</translation>
 <translation id="5857447844686706637">Jotain meni pieleen. Hinnan seurantaa ei voitu päivittää.</translation>
@@ -1240,6 +1242,7 @@ Google-tililläsi voi olla muita selaushistoriatietoja, kuten hakuja ja toiminta
 <translation id="6039379616847168523">Siirry seuraavalle välilehdelle</translation>
 <translation id="6040143037577758943">Sulje</translation>
 <translation id="604124094241169006">Automaattinen</translation>
+<translation id="6041959688070413372">Ylläpidä hakupalveluiden ja Google Workspace ‐sovellusten (esim. Google Driven) välistä yhteyttä</translation>
 <translation id="6042308850641462728">Lisää</translation>
 <translation id="6047066316630165190">Avaa ruudukkovälilehtien vaihtaja</translation>
 <translation id="604996488070107836">Tiedoston <ph name="FILE_NAME" /> lataus epäonnistui tuntemattoman virheen vuoksi.</translation>
@@ -1400,6 +1403,7 @@ Jotkin verkkosivustot voivat vastata tähän pyyntöön esimerkiksi näyttämäl
 <translation id="6565959834589222080">Wi-Fi-yhteyttä käytetään, kun se on saatavilla</translation>
 <translation id="657177046675873214">Jos haluat käyttää kirjanmerkkejäsi kaikilla laitteilla, laita "Kirjanmerkit" päälle asetuksista</translation>
 <translation id="6573096386450695060">Salli aina</translation>
+<translation id="657480975869429144">Uusi Chrome-versio on saatavilla.</translation>
 <translation id="658099107946526506">Suojaa yksityistä selaamista PIN-koodilla, jotta muut eivät pääse siihen</translation>
 <translation id="6583199322650523874">Lisää nykyinen sivu kirjanmerkkeihin</translation>
 <translation id="6588043302623806746">Käytä suojattua DNS:ää</translation>
@@ -1767,6 +1771,7 @@ Jos haluat muuttaa tätä asetusta, <ph name="BEGIN_LINK" />poista tilin Chrome-
 <translation id="7929587383660661825">Chrome poistaa luvat automaattisesti sivustoilta, joilla on harhaanjohtavia ilmoituksia tai joilla et ole käynyt viime aikoina</translation>
 <translation id="7934668619883965330">Tiedostoa ei voida ladata. Tiedostomuotoa ei tueta.</translation>
 <translation id="7951102827450076904">Avaa ladatut PDF-tiedostot aina</translation>
+<translation id="7952148074468405586">Lue lisää <ph name="BEGIN_LINK" />tiedoista, joita organisaatiosi voi nähdä tai hallinnoida<ph name="END_LINK" /></translation>
 <translation id="7952479614398473176">Jos haluat avata uuden ikkunan, vähennä aktiivisten ikkunoiden kokonaismäärää niin, että niitä on enintään <ph name="MAX_WINDOW_COUNT_MINUS_ONE" />.</translation>
 <translation id="7956713633345437162">Mobiilikirjanmerkit</translation>
 <translation id="7957413488482743710">Virtuaalinen kortti piilottaa käyttämäsi kortin ja saat paremman suojauksen mahdollisia petoksia vastaan. <ph name="BEGIN_LINK1" />Lue lisää virtuaalisista korteista<ph name="END_LINK1" /></translation>

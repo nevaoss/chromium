@@ -79,7 +79,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/services/app_service/public/cpp/intent_util.h"
 #include "components/session_manager/core/session_manager.h"
-#include "components/user_manager/user_manager.h"
+#include "components/user_manager/user.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -635,7 +635,9 @@ void ArcSessionManager::OnProvisioningFinished(
   if (provisioning_reported_) {
     // We don't expect success ArcProvisioningResult to be reported twice
     // or reported after an error.
-    CHECK(!provisioning_successful, base::NotFatalUntil::M160);
+    // TODO(crbug.com/569778608): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(!provisioning_successful);
     // TODO(khmel): Consider changing LOG to NOTREACHED once we guaranty that
     // no double message can happen in production.
     LOG(WARNING) << "Provisioning result was already reported. Ignoring "
@@ -1448,8 +1450,10 @@ void ArcSessionManager::RequestArcDataRemoval() {
   }
 
   CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M160);
-  CHECK(profile_, base::NotFatalUntil::M160);
-  CHECK(data_remover_, base::NotFatalUntil::M160);
+  // TODO(crbug.com/569688161): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(profile_);
+  DCHECK(data_remover_);
   VLOG(1) << "Scheduling ARC data removal.";
 
   // TODO(hidehiko): DCHECK the previous state. This is called for four cases;
@@ -1700,11 +1704,10 @@ void ArcSessionManager::StartArc() {
   params.preferred_languages = base::SplitString(
       preferred_languages, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  user_manager::UserManager* user_manager = user_manager::UserManager::Get();
-  CHECK(user_manager->GetPrimaryUser(), base::NotFatalUntil::M160);
-  params.account_id =
-      cryptohome::Identification(user_manager->GetPrimaryUser()->GetAccountId())
-          .id();
+  const user_manager::User* user =
+      ash::BrowserContextHelper::Get()->GetUserByBrowserContext(profile_);
+  CHECK(user);
+  params.account_id = cryptohome::Identification(user->GetAccountId()).id();
 
   params.is_account_managed =
       profile_->GetProfilePolicyConnector()->IsManaged();

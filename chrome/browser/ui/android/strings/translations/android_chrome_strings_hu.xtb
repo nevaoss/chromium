@@ -123,7 +123,6 @@ Az adatokat a Chrome-élmény javítására használó további beállításoké
 <translation id="1432581352905426595">Keresőmotorok beállítása</translation>
 <translation id="1435593198351412143">PDF-fájlok automatikus megnyitása</translation>
 <translation id="1437543266176261764">Itt fut: <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">A nyomon követett termékeket a Könyvjelzők között rendszerezheti</translation>
 <translation id="1452651021404174820">Eszköz kiválasztása</translation>
 <translation id="1455845192930279203">Mindenképpen le szeretné tölteni a(z) <ph name="FILE_NAME" /> (<ph name="FILE_SIZE" />) fájlt innen: <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Takarítson meg időt, gépeljen kevesebbet</translation>
@@ -775,6 +774,7 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, több kiválasztott rögzített, felvételt készítő lap</translation>
 <translation id="4137746084635924146">Eszköz jelenlegi nyelve</translation>
 <translation id="414128724510021958">Asztali webhelyek kérve alapértelmezés szerint</translation>
+<translation id="4150837143272125910">A rendszer letöltött egy frissítést</translation>
 <translation id="4162867837470729563">A megosztási lehetőségek listája teljes magasságban van megnyitva.</translation>
 <translation id="4164642020717536140">Gyorsan és biztonságosan böngészhet az interneten</translation>
 <translation id="4165077084524712774">További eszközök</translation>
@@ -1199,6 +1199,7 @@ Előfordulhat, hogy Google-fiókjában (a <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="5848257610304005265">Megnyitja a PDF-et a következővel: <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Leállítja a megosztást?</translation>
 <translation id="5853623416121554550">szüneteltetve</translation>
+<translation id="5855375823365231964">Erről a profilról</translation>
 <translation id="5855546874025048181">Pontosítás: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, több kiválasztott, felvételt készítő inkognitó lap</translation>
 <translation id="5857447844686706637">Hiba történt. Nem sikerült frissíteni a nyomon követett árat.</translation>
@@ -1240,6 +1241,7 @@ Előfordulhat, hogy Google-fiókjában (a <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="6039379616847168523">Ugrás a következő lapra</translation>
 <translation id="6040143037577758943">Bezárás</translation>
 <translation id="604124094241169006">Automatikus</translation>
+<translation id="6041959688070413372">A keresési szolgáltatások és a Google Workspace-alkalmazások (például a Google Drive) közötti kapcsolat kezelése</translation>
 <translation id="6042308850641462728">Továbbiak</translation>
 <translation id="6047066316630165190">Nyissa meg a rácsos lapváltót</translation>
 <translation id="604996488070107836">A következő fájl letöltése ismeretlen hiba miatt nem sikerült: <ph name="FILE_NAME" />.</translation>
@@ -1400,6 +1402,7 @@ Egyes webhelyek például válaszolhatnak rá úgy, hogy olyan hirdetéseket jel
 <translation id="6565959834589222080">Wi-Fi használata, ha rendelkezésre áll</translation>
 <translation id="657177046675873214">Ha az összes eszközén hozzá szeretné férni könyvjelzőihez, kapcsolja be a „Könyvjelzők” lehetőséget a beállításokban</translation>
 <translation id="6573096386450695060">Engedélyezés mindig</translation>
+<translation id="657480975869429144">Rendelkezésre áll a Chrome új verziója</translation>
 <translation id="658099107946526506">PIN-kóddal védheti az inkognitómódban való böngészést a nem kívánt hozzáféréssel szemben</translation>
 <translation id="6583199322650523874">Az aktuális oldal felvétele a könyvjelzők közé</translation>
 <translation id="6588043302623806746">Biztonságos DNS használata</translation>

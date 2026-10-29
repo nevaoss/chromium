@@ -4,9 +4,10 @@
 
 import 'chrome://organizer-panel.top-chrome/organizer_panel.js';
 
-import {organizerPanelBrowserProxyFactory, OrganizerPanelPageHandlerRemote, SearchApiProxyImpl} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
-import type {OrganizerListSectionElement, OrganizerListSectionItem, OrganizerListSectionItemElement} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
+import {INITIAL_ITEM_COUNT, organizerPanelBrowserProxyFactory, OrganizerPanelPageHandlerRemote, SearchApiProxyImpl} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
+import type {OrganizerListSectionElement, OrganizerListSectionItem, OrganizerListSectionItemElement, OrganizerPanelPageRemote} from 'chrome://organizer-panel.top-chrome/organizer_panel.js';
 import type {CrCollapseElement} from 'chrome://resources/cr_elements/cr_collapse/cr_collapse.js';
+import {html} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -18,12 +19,17 @@ suite('OrganizerListSectionTest', () => {
   let listSection: OrganizerListSectionElement;
   let mockHandler: TestMock<OrganizerPanelPageHandlerRemote>&
       OrganizerPanelPageHandlerRemote;
+  let remotePage: OrganizerPanelPageRemote;
   let testSearchProxy: TestSearchApiProxy;
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     mockHandler = TestMock.fromClass(OrganizerPanelPageHandlerRemote);
-    organizerPanelBrowserProxyFactory.setInstance({handler: mockHandler});
+    mockHandler.setPromiseResolveFor('isSectionExpanded', {expanded: true});
+    const {instance, remote} =
+        organizerPanelBrowserProxyFactory.createForTest(mockHandler);
+    organizerPanelBrowserProxyFactory.setInstance(instance);
+    remotePage = remote;
     testSearchProxy = new TestSearchApiProxy();
     SearchApiProxyImpl.setInstance(testSearchProxy);
     listSection = document.createElement('organizer-list-section');
@@ -89,39 +95,144 @@ suite('OrganizerListSectionTest', () => {
       {title: ['Tab 3'], description: [{text: 'tab3.com'}]},
       {title: ['Tab 4'], description: [{text: 'tab4.com'}]},
     ];
-    listSection.delegate = new TestSectionDelegate('Open Tabs', items);
+    listSection.delegate =
+        new TestSectionDelegate('Open Tabs', items, undefined, 'open-tabs');
     await microtasksFinished();
 
     const header = listSection.$.header;
-    const headerIcon = header.$.icon;
     const itemsContainer =
         listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
 
     const renderedItems =
         itemsContainer.querySelectorAll<OrganizerListSectionItemElement>(
             'organizer-list-section-item');
-    assertEquals(4, renderedItems.length);
+    assertEquals(INITIAL_ITEM_COUNT, renderedItems.length);
     assertTrue(header.expanded);
     assertTrue(itemsContainer.opened);
-    assertEquals('cr:keyboard-arrow-up', headerIcon.ironIcon);
-    assertEquals('true', headerIcon.getAttribute('aria-expanded'));
+    assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
 
-    header.click();
+    header.$.expandButton.click();
     await microtasksFinished();
 
     assertFalse(header.expanded);
     assertFalse(itemsContainer.opened);
-    assertEquals('cr:keyboard-arrow-down', headerIcon.ironIcon);
-    assertEquals('false', headerIcon.getAttribute('aria-expanded'));
+    assertEquals(1, mockHandler.getCallCount('setSectionExpanded'));
+    assertDeepEquals(
+        ['open-tabs', false], mockHandler.getArgs('setSectionExpanded')[0]);
 
-    header.click();
+    header.$.expandButton.click();
     await microtasksFinished();
 
     assertTrue(header.expanded);
     assertTrue(itemsContainer.opened);
-    assertEquals('cr:keyboard-arrow-up', headerIcon.ironIcon);
-    assertEquals('true', headerIcon.getAttribute('aria-expanded'));
+    assertEquals(2, mockHandler.getCallCount('setSectionExpanded'));
+    assertDeepEquals(
+        ['open-tabs', true], mockHandler.getArgs('setSectionExpanded')[1]);
   });
+
+  test(
+      'initializes collapsed when isSectionExpanded returns false',
+      async () => {
+        mockHandler.setPromiseResolveFor(
+            'isSectionExpanded', {expanded: false});
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab 1'], description: [{text: 'tab1.com'}]},
+        ];
+        listSection.delegate =
+            new TestSectionDelegate('Open Tabs', items, undefined, 'open-tabs');
+        await microtasksFinished();
+
+        const header = listSection.$.header;
+        const itemsContainer =
+            listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
+        assertEquals('open-tabs', mockHandler.getArgs('isSectionExpanded')[0]);
+        assertFalse(header.expanded);
+        assertFalse(itemsContainer.opened);
+        assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
+      });
+
+  test(
+      'updates expanded state when onSectionsExpandedChanged is called',
+      async () => {
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab 1'], description: [{text: 'tab1.com'}]},
+        ];
+        listSection.delegate =
+            new TestSectionDelegate('Open Tabs', items, undefined, 'open-tabs');
+        await microtasksFinished();
+
+        const header = listSection.$.header;
+        const itemsContainer =
+            listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
+        assertTrue(header.expanded);
+        assertTrue(itemsContainer.opened);
+
+        remotePage.onSectionsExpandedChanged({'open-tabs': false});
+        await microtasksFinished();
+
+        assertFalse(header.expanded);
+        assertFalse(itemsContainer.opened);
+        assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
+
+        remotePage.onSectionsExpandedChanged({'open-tabs': true});
+        await microtasksFinished();
+
+        assertTrue(header.expanded);
+        assertTrue(itemsContainer.opened);
+        assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
+      });
+
+  test(
+      'shows some or all items when header menu options are clicked',
+      async () => {
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab 1'], description: [{text: 'tab1.com'}]},
+          {title: ['Tab 2'], description: [{text: 'tab2.com'}]},
+          {title: ['Tab 3'], description: [{text: 'tab3.com'}]},
+          {title: ['Tab 4'], description: [{text: 'tab4.com'}]},
+          {title: ['Tab 5'], description: [{text: 'tab5.com'}]},
+        ];
+        listSection.delegate = new TestSectionDelegate('Open Tabs', items);
+        await microtasksFinished();
+
+        const header = listSection.$.header;
+        let renderedItems = listSection.shadowRoot.querySelectorAll(
+            'organizer-list-section-item');
+        assertEquals(INITIAL_ITEM_COUNT, renderedItems.length);
+        assertDeepEquals(['Tab 1'], renderedItems[0]!.item.title);
+        assertDeepEquals(['Tab 2'], renderedItems[1]!.item.title);
+        assertDeepEquals(['Tab 3'], renderedItems[2]!.item.title);
+
+        header.$.menuButton.click();
+        await microtasksFinished();
+        header.$.showAllButton.click();
+        await microtasksFinished();
+
+        renderedItems = listSection.shadowRoot.querySelectorAll(
+            'organizer-list-section-item');
+        assertEquals(5, renderedItems.length);
+
+        header.$.menuButton.click();
+        await microtasksFinished();
+        header.$.showSomeButton.click();
+        await microtasksFinished();
+
+        renderedItems = listSection.shadowRoot.querySelectorAll(
+            'organizer-list-section-item');
+        assertEquals(INITIAL_ITEM_COUNT, renderedItems.length);
+
+        listSection.searchQuery = 'Tab';
+        await microtasksFinished();
+        renderedItems = listSection.shadowRoot.querySelectorAll(
+            'organizer-list-section-item');
+        assertEquals(5, renderedItems.length);
+
+        listSection.searchQuery = '';
+        await microtasksFinished();
+        renderedItems = listSection.shadowRoot.querySelectorAll(
+            'organizer-list-section-item');
+        assertEquals(INITIAL_ITEM_COUNT, renderedItems.length);
+      });
 
   test(
       'notifies delegate and closes panel when an item is clicked',
@@ -171,7 +282,8 @@ suite('OrganizerListSectionTest', () => {
         listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
     assertEquals(2, listItems.length);
 
-    const actionButton = listItems[1]!.$.actionButton;
+    const actionButton =
+        listItems[1]!.shadowRoot.querySelector<HTMLElement>('#actionButton')!;
     assertTrue(!!actionButton);
 
     actionButton.click();
@@ -287,17 +399,15 @@ suite('OrganizerListSectionTest', () => {
         await microtasksFinished();
 
         const header = listSection.$.header;
-        const headerIcon = header.$.icon;
         const itemsContainer =
             listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
 
-        header.click();
+        header.$.expandButton.click();
         await microtasksFinished();
 
         assertFalse(header.expanded);
         assertFalse(header.disabled);
         assertFalse(itemsContainer.opened);
-        assertEquals('flex', getComputedStyle(headerIcon).display);
 
         listSection.searchQuery = 'Tab';
         await microtasksFinished();
@@ -305,7 +415,6 @@ suite('OrganizerListSectionTest', () => {
         assertTrue(header.expanded);
         assertTrue(header.disabled);
         assertTrue(itemsContainer.opened);
-        assertEquals('none', getComputedStyle(headerIcon).display);
         const listItems = listSection.shadowRoot.querySelectorAll(
             'organizer-list-section-item');
         assertEquals(4, listItems.length);
@@ -316,7 +425,6 @@ suite('OrganizerListSectionTest', () => {
         assertFalse(header.expanded);
         assertFalse(header.disabled);
         assertFalse(itemsContainer.opened);
-        assertEquals('flex', getComputedStyle(headerIcon).display);
       });
 
   test('highlights matching text when searching', async () => {
@@ -356,4 +464,124 @@ suite('OrganizerListSectionTest', () => {
     assertDeepEquals([[]], clearedItems[0]!.$.description.highlightRanges);
     assertDeepEquals([[]], clearedItems[1]!.$.description.highlightRanges);
   });
+
+  test('renders zero state from delegate when there are no items', async () => {
+    const zeroState = html`<div id="zeroState">Create tab group</div>`;
+    listSection.delegate = new TestSectionDelegate('Tab Groups', [], zeroState);
+    await microtasksFinished();
+
+    const itemsContainer =
+        listSection.shadowRoot.querySelector<CrCollapseElement>('#items');
+    assertTrue(!!itemsContainer);
+    assertTrue(itemsContainer.opened);
+    const zeroStateElement = itemsContainer.querySelector('#zeroState');
+    assertTrue(!!zeroStateElement);
+    assertEquals('Create tab group', zeroStateElement.textContent.trim());
+    assertEquals(
+        0,
+        itemsContainer.querySelectorAll('organizer-list-section-item').length);
+    assertEquals(null, listSection.shadowRoot.querySelector('#noResults'));
+  });
+
+  test(
+      'does not render zero state when items exist or when searching',
+      async () => {
+        const zeroState = html`<div id="zeroState">Create tab group</div>`;
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab Group 1']},
+        ];
+        listSection.delegate =
+            new TestSectionDelegate('Tab Groups', items, zeroState);
+        await microtasksFinished();
+
+        assertEquals(null, listSection.shadowRoot.querySelector('#zeroState'));
+        assertEquals(
+            1,
+            listSection.shadowRoot
+                .querySelectorAll('organizer-list-section-item')
+                .length);
+
+        // Searching with no matches should show #noResults, not zero state.
+        listSection.searchQuery = 'nomatch';
+        await microtasksFinished();
+
+        assertEquals(null, listSection.shadowRoot.querySelector('#zeroState'));
+        const noResults = listSection.shadowRoot.querySelector('#noResults');
+        assertTrue(!!noResults);
+        assertEquals('No results', noResults.textContent.trim());
+      });
+
+  test(
+      'renders zero state when items are cleared on a delegate with zero state',
+      async () => {
+        const zeroState = html`<div id="zeroState">Create tab group</div>`;
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab Group 1']},
+        ];
+        listSection.delegate =
+            new TestSectionDelegate('Tab Groups', items, zeroState);
+        await microtasksFinished();
+
+        assertEquals(null, listSection.shadowRoot.querySelector('#zeroState'));
+
+        listSection.onItemsChanged([]);
+        await microtasksFinished();
+
+        const zeroStateElement =
+            listSection.shadowRoot.querySelector('#zeroState');
+        assertTrue(!!zeroStateElement);
+        assertEquals('Create tab group', zeroStateElement.textContent.trim());
+      });
+
+  test(
+      'always renders zero state when shouldAlwaysShowZeroState is true',
+      async () => {
+        const zeroState = html`<div id="zeroState">Create tab group</div>`;
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab Group 1']},
+          {title: ['Tab Group 2']},
+          {title: ['Tab Group 3']},
+          {title: ['Tab Group 4']},
+        ];
+        listSection.delegate = new TestSectionDelegate(
+            'Tab Groups', items, zeroState, 'tab-groups', true);
+        await microtasksFinished();
+
+        const itemsContainer =
+            listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
+        assertTrue(!!itemsContainer);
+        assertTrue(itemsContainer.opened);
+
+        const zeroStateElement = itemsContainer.querySelector('#zeroState');
+        assertTrue(!!zeroStateElement);
+        assertEquals('Create tab group', zeroStateElement.textContent.trim());
+        assertEquals(zeroStateElement, itemsContainer.firstElementChild);
+
+        const renderedItems =
+            itemsContainer.querySelectorAll('organizer-list-section-item');
+        assertEquals(INITIAL_ITEM_COUNT, renderedItems.length);
+
+        // Searching hides zero state even when shouldAlwaysShowZeroState is
+        // true.
+        listSection.searchQuery = 'Tab Group 1';
+        await microtasksFinished();
+
+        assertEquals(null, listSection.shadowRoot.querySelector('#zeroState'));
+        assertEquals(
+            1,
+            listSection.shadowRoot
+                .querySelectorAll('organizer-list-section-item')
+                .length);
+
+        // Clearing search restores zero state at the top.
+        listSection.searchQuery = '';
+        await microtasksFinished();
+
+        assertTrue(!!listSection.shadowRoot.querySelector('#zeroState'));
+        assertEquals(
+            INITIAL_ITEM_COUNT,
+            listSection.shadowRoot
+                .querySelectorAll('organizer-list-section-item')
+                .length);
+      });
 });

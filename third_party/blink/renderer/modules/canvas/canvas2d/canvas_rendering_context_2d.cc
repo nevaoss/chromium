@@ -48,7 +48,6 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/values_equivalent.h"
 #include "base/memory/weak_ptr.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/trace_event/trace_event.h"
 #include "cc/layers/texture_layer.h"  // IWYU pragma: keep (https://github.com/clangd/clangd/issues/2044)
@@ -858,16 +857,16 @@ void CanvasRenderingContext2D::PageVisibilityChanged() {
 
   // If the canvas is backed by a SharedImage resource provider, toggle
   // whether resource recycling is enabled based on page visibility.
-  if (shared_image_provider_) {
-    shared_image_provider_->SetResourceRecyclingEnabled(page_is_visible);
+  if (GetSharedImageProvider()) {
+    GetSharedImageProvider()->SetResourceRecyclingEnabled(page_is_visible);
   }
 
   // Conserve memory.
   SetAggressivelyFreeSharedGpuContextResourcesIfPossible(!page_is_visible);
 
   if (features::IsCanvas2DHibernationEnabled() && !page_is_visible &&
-      !IsHibernating() && shared_image_provider_ &&
-      shared_image_provider_->IsAccelerated()) {
+      !IsHibernating() && GetSharedImageProvider() &&
+      GetSharedImageProvider()->IsAccelerated()) {
     // Assuming 8-bit RGBA or similar, this means that we don't bother
     // hibernating canvas elements smaller than 64kiB. Hibernation has a cost,
     // and a lot of pages have very small canvas elements, according to metrics.
@@ -1080,11 +1079,6 @@ void CanvasRenderingContext2D::CreateProvider() {
 
   canvas()->GetOrCreateResourceDispatcher();
 
-  const SkAlphaType alpha_type = color_params_.GetAlphaType();
-  const viz::SharedImageFormat format = color_params_.GetSharedImageFormat();
-  const gfx::ColorSpace color_space = color_params_.GetGfxColorSpace();
-  const gfx::HDRMetadata hdr_metadata = color_params_.GetGfxHdrMetadata();
-
   const bool is_gpu_compositing_enabled =
       SharedGpuContext::IsGpuCompositingEnabled();
   const bool use_gpu_raster = canvas()->ShouldTryToUseGpuRaster() &&
@@ -1118,20 +1112,14 @@ void CanvasRenderingContext2D::CreateProvider() {
       }
     }
 
-    shared_image_provider_ = Canvas2DResourceProvider::CreateWithClear(
-        canvas()->Size(), format, alpha_type, color_space, hdr_metadata,
-        SharedGpuContext::ContextProviderWrapper(), raster_mode,
-        shared_image_usage_flags, canvas());
+    CreateSharedImageProvider(raster_mode, shared_image_usage_flags);
   } else if (!is_gpu_compositing_enabled) {
     // Create a CanvasResourceProvider that uses a SharedImage backed by a
     // shared-memory buffer that can be written by canvas SW raster and read by
     // the SW compositor.
-    shared_image_provider_ =
-        Canvas2DResourceProvider::CreateWithClearForSoftwareCompositor(
-            canvas()->Size(), format, alpha_type, color_space, hdr_metadata,
-            SharedGpuContext::SharedImageInterfaceProvider(), canvas());
+    CreateSharedImageProviderForSoftwareCompositor();
   }
-  if (!shared_image_provider_) {
+  if (!GetSharedImageProvider()) {
     // The final fallback is to raster into a bitmap that will then either be
     // uploaded into GPU memory (for GPU compositing) or copied into the Viz
     // process (for software compositing).
@@ -1140,7 +1128,7 @@ void CanvasRenderingContext2D::CreateProvider() {
   if (HasResourceProvider()) {
     ConfigureRecorder(
         canvas()->Size(),
-        shared_image_provider_ && shared_image_provider_->IsGraphite());
+        GetSharedImageProvider() && GetSharedImageProvider()->IsGraphite());
   }
 }
 
@@ -1160,7 +1148,7 @@ bool CanvasRenderingContext2D::IsResourceProviderValid() const {
 
 Canvas2DResourceProvider* CanvasRenderingContext2D::GetSharedImageProvider()
     const {
-  return shared_image_provider_.get();
+  return BaseRenderingContext2D::GetSharedImageProvider();
 }
 
 bool CanvasRenderingContext2D::HasResourceProvider() const {
@@ -1222,14 +1210,10 @@ bool CanvasRenderingContext2D::InitializeResourceProvider() {
 }
 
 void CanvasRenderingContext2D::ResetResourceProvider() {
-  auto old_shared = std::move(shared_image_provider_);
   BaseRenderingContext2D::ResetResourceProvider();
   last_recording_ = std::nullopt;
   if (canvas()) {
     canvas()->UpdateMemoryUsage();
-  }
-  if (old_shared) {
-    old_shared->SetDelegate(nullptr);
   }
 }
 
@@ -1279,21 +1263,13 @@ void CanvasRenderingContext2D::RecreateResourceProvider() {
     canvas()->UpdateMemoryUsage();
   }
 
-  if (shared_image_provider_) {
-    base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
-                              shared_image_provider_->IsAccelerated());
-    base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
-                                  CanvasResourceProviderType::kSharedImage);
-  } else if (HasResourceProvider()) {
-    base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
-                              false);
-    base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
-                                  CanvasResourceProviderType::kBitmap);
-  } else {
+  if (!HasResourceProvider()) {
     did_fail_to_create_resource_provider_ = true;
     ResetRecorder();
     return;
   }
+
+  RecordResourceProviderHistograms();
 
   if (GetHibernationHandler()->IsHibernating()) {
     WakeUpFromHibernation();
@@ -1321,7 +1297,7 @@ void CanvasRenderingContext2D::WakeUpFromHibernation() {
             kHibernationEndedWithSwitchToBackgroundRendering);
   } else {
     bool is_accelerated =
-        shared_image_provider_ && shared_image_provider_->IsAccelerated();
+        GetSharedImageProvider() && GetSharedImageProvider()->IsAccelerated();
     if (is_accelerated) {
       CanvasHibernationHandler::ReportHibernationEvent(
           CanvasHibernationHandler::HibernationEvent::
@@ -1355,9 +1331,9 @@ void CanvasRenderingContext2D::SetCanvas2DResourceProviderForTesting(
   hibernation_handler_ = std::make_unique<CanvasHibernationHandler>(*this);
   ResetResourceProvider();
   ResetRecorder();
-  shared_image_provider_ = std::move(provider);
-  if (shared_image_provider_) {
-    ConfigureRecorder(size, shared_image_provider_->IsGraphite());
+  SetSharedImageProviderForTesting(std::move(provider));
+  if (GetSharedImageProvider()) {
+    ConfigureRecorder(size, GetSharedImageProvider()->IsGraphite());
   }
 }
 

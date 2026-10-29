@@ -119,6 +119,7 @@
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
 #include "mojo/public/cpp/system/functions.h"
+#include "mojo/public/cpp/test_support/fake_message_dispatch_context.h"
 #include "net/base/url_util.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/http/http_request_headers.h"
@@ -7750,6 +7751,137 @@ IN_PROC_BROWSER_TEST_F(PrerenderBrowserTest, MojoCapabilityControl_LoosenMode) {
   }
 }
 
+class PrerenderLazyBrowserInterfaceBrokerBrowserTest
+    : public PrerenderBrowserTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  PrerenderLazyBrowserInterfaceBrokerBrowserTest() {
+    if (GetParam()) {
+      feature_list_.InitAndEnableFeature(features::kLazyBrowserInterfaceBroker);
+    } else {
+      feature_list_.InitAndDisableFeature(
+          features::kLazyBrowserInterfaceBroker);
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         PrerenderLazyBrowserInterfaceBrokerBrowserTest,
+                         testing::Bool());
+
+// Tests that tearing down the Mojo connection on a prerendering frame (which
+// destroys `broker_holder_` when `kLazyBrowserInterfaceBroker` is enabled)
+// drops pending deferred binders and does not cause a use-after-free or CHECK
+// failure when the prerendered page is subsequently activated.
+IN_PROC_BROWSER_TEST_P(
+    PrerenderLazyBrowserInterfaceBrokerBrowserTest,
+    MojoCapabilityControl_TearDownMojoConnectionBeforeActivation) {
+  MojoCapabilityControlTestContentBrowserClient test_browser_client;
+
+  const GURL initial_url = GetUrl("/empty.html");
+  const GURL prerendering_url = GetUrl("/page_with_iframe.html");
+
+  ASSERT_TRUE(NavigateToURL(shell(), initial_url));
+  PrerenderHostId host_id = AddPrerender(prerendering_url);
+  RenderFrameHostImpl* main_rfh = GetPrerenderedMainFrameHost(host_id);
+  ASSERT_GE(main_rfh->child_count(), 1U);
+  RenderFrameHostImpl* child_rfh = main_rfh->child_at(0U)->current_frame_host();
+
+  base::RunLoop run_loop;
+
+  // Queue a kDefer interface request on the main frame.
+  mojo::Remote<mojom::TestInterfaceForDefer> main_defer_remote;
+  main_rfh->browser_interface_broker_receiver_for_testing()
+      .internal_state()
+      ->impl()
+      ->GetInterface(main_defer_remote.BindNewPipeAndPassReceiver());
+  main_defer_remote->Ping(run_loop.QuitClosure());
+
+  // Queue a kDefer interface request and a sync kDefer interface request on the
+  // child frame.
+  mojo::Remote<mojom::TestInterfaceForDefer> child_defer_remote;
+  child_rfh->browser_interface_broker_receiver_for_testing()
+      .internal_state()
+      ->impl()
+      ->GetInterface(child_defer_remote.BindNewPipeAndPassReceiver());
+  mojo::MessagePipe sync_defer_pipe;
+  child_rfh->browser_interface_broker_receiver_for_testing()
+      .internal_state()
+      ->impl()
+      ->GetInterface(
+          mojo::GenericPendingReceiver("blink.mojom.NotificationService",
+                                       std::move(sync_defer_pipe.handle0)));
+
+  EXPECT_EQ(test_browser_client.GetDeferReceiverSetSize(), 0U);
+
+  // Tear down the child frame's Mojo connection before activation. When
+  // `kLazyBrowserInterfaceBroker` is enabled, this resets `broker_holder_` and
+  // destroys `BrowserInterfaceBrokerImpl`, which must drop all deferred binders
+  // (including `deferred_sync_binders_`) rather than leaving dangling
+  // `base::Unretained` callbacks.
+  child_rfh->TearDownMojoConnection();
+  EXPECT_EQ(child_rfh->has_broker_holder_for_testing(), !GetParam());
+
+  // Simulate prerender activation on both frames.
+  mojo::FakeMessageDispatchContext fake_dispatch_context;
+  main_rfh->RendererWillActivateForPrerendering();
+  child_rfh->RendererWillActivateForPrerendering();
+  main_rfh->RendererDidActivateForPrerendering();
+  child_rfh->RendererDidActivateForPrerendering();
+
+  run_loop.Run();
+  EXPECT_EQ(test_browser_client.GetDeferReceiverSetSize(),
+            GetParam() ? 1U : 2U);
+}
+
+// Tests that rebinding the BrowserInterfaceBroker receiver during prerendering
+// preserves the existing `BrokerHolder` and `MojoBinderPolicyApplier` state
+// (such as `Mode::kPrepareToGrantAll`).
+IN_PROC_BROWSER_TEST_P(
+    PrerenderLazyBrowserInterfaceBrokerBrowserTest,
+    MojoCapabilityControl_RebindPreservesBrokerAndPolicyApplier) {
+  const GURL initial_url = GetUrl("/empty.html");
+  const GURL prerendering_url = GetUrl("/empty.html?prerender1");
+
+  ASSERT_TRUE(NavigateToURL(shell(), initial_url));
+  PrerenderHostId host_id = AddPrerender(prerendering_url);
+  RenderFrameHostImpl* main_rfh = GetPrerenderedMainFrameHost(host_id);
+
+  blink::mojom::BrowserInterfaceBroker* initial_broker =
+      main_rfh->browser_interface_broker_receiver_for_testing()
+          .internal_state()
+          ->impl();
+  ASSERT_NE(initial_broker, nullptr);
+
+  // Switch the policy applier to `Mode::kPrepareToGrantAll`.
+  main_rfh->RendererWillActivateForPrerendering();
+
+  // Rebind the BrowserInterfaceBroker receiver.
+  ASSERT_TRUE(main_rfh->ResetBrowserInterfaceBrokerReceiverForTesting());
+  EXPECT_TRUE(main_rfh->has_broker_holder_for_testing());
+  mojo::Remote<blink::mojom::BrowserInterfaceBroker> remote_broker;
+  main_rfh->BindBrowserInterfaceBrokerReceiver(
+      remote_broker.BindNewPipeAndPassReceiver());
+
+  // The broker instance and policy applier mode (`kPrepareToGrantAll`) should
+  // be preserved across the rebind, so a `kCancel` interface request should be
+  // granted rather than canceling prerendering.
+  EXPECT_EQ(main_rfh->browser_interface_broker_receiver_for_testing()
+                .internal_state()
+                ->impl(),
+            initial_broker);
+  mojo::Remote<mojom::TestInterfaceForCancel> cancel_remote;
+  remote_broker->GetInterface(cancel_remote.BindNewPipeAndPassReceiver());
+  remote_broker.FlushForTesting();
+  EXPECT_TRUE(HasHostForUrl(prerendering_url));
+
+  mojo::FakeMessageDispatchContext fake_dispatch_context;
+  main_rfh->RendererDidActivateForPrerendering();
+}
+
 // Test that prerenders triggered by speculation rules are canceled when a
 // background timeout timer is fired.
 void PrerenderBrowserTest::TestCancelPrerendersWhenTimeout(
@@ -11949,6 +12081,73 @@ IN_PROC_BROWSER_TEST_F(PrerenderBackForwardCacheBrowserTest,
   EXPECT_EQ(
       "activated, initial",
       EvalJs(current_frame_host(), "getSessionStorageKeys()").ExtractString());
+}
+
+// Regression test for crbug.com/568719351:
+// Verifies that if a BackForwardCache restore navigation triggers prerender
+// activation checks in NavigationRequest::BeginNavigation(), and cancelling a
+// matching prerender synchronously starts a queued pending prerender whose
+// navigation evicts the BFCached page being restored (synchronously destroying
+// the primary main frame's NavigationRequest), BeginNavigation() does not
+// access `this` after it is destroyed.
+IN_PROC_BROWSER_TEST_F(PrerenderBackForwardCacheBrowserTest,
+                       EvictBackForwardCacheDuringPrerenderActivationCheck) {
+  net::test_server::ControllableHttpResponse response1(
+      embedded_test_server(), "/empty.html?prerender=1");
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  const GURL initial_url = embedded_test_server()->GetURL("/empty.html");
+  const GURL next_url = embedded_test_server()->GetURL("/empty.html?next");
+  const GURL prerender1_url =
+      embedded_test_server()->GetURL("/empty.html?prerender=1");
+  const GURL prerender2_url =
+      embedded_test_server()->GetURL("/empty.html?prerender2");
+
+  // 1. Navigate to `initial_url` and then `next_url` so `initial_rfh` is
+  // stored in the BackForwardCache.
+  ASSERT_TRUE(NavigateToURL(shell(), initial_url));
+  RenderFrameHostImplWrapper initial_rfh(current_frame_host());
+  ASSERT_TRUE(NavigateToURL(shell(), next_url));
+  ASSERT_TRUE(initial_rfh->IsInBackForwardCache());
+
+  // 2. Trigger `prerender1_url` with a No-Vary-Search hint matching
+  // `initial_url`, and hold its initial navigation in-flight so it remains the
+  // running prerender (`running_prerender_host_id_`). Queue `prerender2_url`
+  // behind it in `pending_prerenders_`.
+  test::PrerenderHostRegistryObserver registry_observer(*web_contents_impl());
+  AddPrerenderAsync(prerender1_url, R"(params=(\\\"prerender\\\"))");
+  response1.WaitForRequest();
+  AddPrerenderAsync(prerender2_url);
+  registry_observer.WaitForTrigger(prerender2_url);
+
+  // 3. When `prerender2_url` starts its initial navigation (triggered
+  // synchronously when `prerender1_url` is cancelled during
+  // `FindPotentialHostToActivate()`), evict `initial_rfh` from BFCache (e.g.
+  // simulating ServiceWorker activation evicting BFCached controllees). This
+  // synchronously calls `RestartBackForwardCachedNavigationAsync()` and
+  // destroys the in-flight BFCache restore `NavigationRequest`.
+  bool evicted_during_prerender2_start = false;
+  base::RunLoop primary_page_changed_loop;
+  testing::NiceMock<MockWebContentsObserver> observer(web_contents());
+  ON_CALL(observer, DidStartNavigation(testing::_))
+      .WillByDefault([&](NavigationHandle* navigation_handle) {
+        if (navigation_handle->GetURL() == prerender2_url &&
+            initial_rfh->IsInBackForwardCache()) {
+          evicted_during_prerender2_start = true;
+          initial_rfh->EvictFromBackForwardCacheWithReason(
+              BackForwardCacheMetrics::NotRestoredReason::
+                  kServiceWorkerVersionActivation);
+        }
+      });
+  ON_CALL(observer, PrimaryPageChanged(testing::_))
+      .WillByDefault([&](Page&) { primary_page_changed_loop.Quit(); });
+
+  // 4. Navigate back to `initial_url`. The BFCache restore navigation is
+  // restarted as a normal navigation and should complete without crashing.
+  shell()->GoBackOrForward(-1);
+  EXPECT_TRUE(evicted_during_prerender2_start);
+  primary_page_changed_loop.Run();
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), initial_url);
 }
 
 #if !BUILDFLAG(IS_ANDROID)

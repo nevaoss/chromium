@@ -24,6 +24,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_SVG_LAYOUT_SVG_ROOT_H_
 
 #include "base/check_op.h"
+#include "base/memory/raw_ptr.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
@@ -34,7 +35,6 @@
 
 namespace blink {
 
-class LayoutSVGText;
 class SVGElement;
 class SVGRect;
 enum class SVGTransformChange;
@@ -122,12 +122,7 @@ class CORE_EXPORT LayoutSVGRoot final : public LayoutReplaced {
   gfx::RectF ViewBoxRect() const;
   gfx::SizeF ViewportSize() const;
 
-  void RecalcVisualOverflow() override;
-
   bool HasNonIsolatedBlendingDescendants() const final;
-
-  void AddSvgTextDescendant(LayoutSVGText& svg_text);
-  void RemoveSvgTextDescendant(LayoutSVGText& svg_text);
 
   void IntersectChildren(HitTestResult&, const HitTestLocation&) const;
 
@@ -138,7 +133,7 @@ class CORE_EXPORT LayoutSVGRoot final : public LayoutReplaced {
 
  private:
   OverflowClipAxes ComputeOverflowClipAxes() const override;
-  PhysicalRect ComputeContentsVisualOverflow() const;
+  PhysicalRect ComputeContentsVisualOverflow() const override;
 
   LayoutObjectChildList* VirtualChildren() override {
     NOT_DESTROYED();
@@ -229,12 +224,12 @@ class CORE_EXPORT LayoutSVGRoot final : public LayoutReplaced {
   // The scale factors applied by the container (e.g. when
   // preserveAspectRatio="none" is used in an SVG image container).
   gfx::Vector2dF container_scale_{1.f, 1.f};
-  HeapHashSet<Member<LayoutSVGText>> text_set_;
 
   // The new content size for SVG roots. This is set during layout, and cleared
   // afterwards. Always nullptr when this object isn't in the process of being
   // laid out.
-  const PhysicalSize* new_content_size_ = nullptr;
+  raw_ptr<const PhysicalSize, UnprotectedInRelease | DanglingUntriaged>
+      new_content_size_ = nullptr;
 
   // True if the local transform of this object is not up-to-date.
   bool needs_transform_update_ : 1 = true;

@@ -102,7 +102,6 @@ import org.chromium.chrome.browser.findinpage.FindToolbarObserver;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
-import org.chromium.chrome.browser.fullscreen.FullscreenBackPressHandler;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
@@ -838,25 +837,16 @@ public class RootUiCoordinator
                         mPageZoomManager,
                         getBottomSheetControllerSupplier());
 
-        if (ChromeFeatureList.sEnableExclusiveAccessManager.isEnabled()) {
-            mExclusiveAccessManager =
-                    new ExclusiveAccessManager(
-                            mFullscreenManager,
-                            mDesktopWindowStateManager);
-            mBackPressManager.addHandler(
-                    new ExclusiveAccessManagerBackPressHandler(mExclusiveAccessManager),
-                    BackPressHandler.Type.FULLSCREEN);
-            // Fullscreen manager state, not actual window state, has to be recreated as soon after
-            // RootUiCoordinator creations as possible. It is needed to keep renderer in the
-            // fullscreen state if recreation was caused by the window move to another display
-            // during full screen to another screen call
-            mExclusiveAccessManager.setFullscreenPendingState(savedInstanceState);
-        } else {
-            mExclusiveAccessManager = null;
-            mBackPressManager.addHandler(
-                    new FullscreenBackPressHandler(mBrowserControlsManager.getFullscreenManager()),
-                    BackPressHandler.Type.FULLSCREEN);
-        }
+        mExclusiveAccessManager =
+                new ExclusiveAccessManager(mFullscreenManager, mDesktopWindowStateManager);
+        mBackPressManager.addHandler(
+                new ExclusiveAccessManagerBackPressHandler(mExclusiveAccessManager),
+                BackPressHandler.Type.FULLSCREEN);
+        // Fullscreen manager state, not actual window state, has to be recreated as soon after
+        // RootUiCoordinator creations as possible. It is needed to keep renderer in the
+        // fullscreen state if recreation was caused by the window move to another display
+        // during full screen to another screen call
+        mExclusiveAccessManager.setFullscreenPendingState(savedInstanceState);
 
         mActivityRecreationController =
                 new ActivityRecreationController(
@@ -864,7 +854,8 @@ public class RootUiCoordinator
                         mLayoutManagerSupplier,
                         mActivityTabProvider,
                         new Handler(),
-                        mExclusiveAccessManager);
+                        mExclusiveAccessManager,
+                        this::getSidePanelContentView);
 
         mExpandedBottomSheetHelper =
                 new ExpandedSheetHelperImpl(
@@ -1362,11 +1353,8 @@ public class RootUiCoordinator
                     mCallbackController.makeCancelable(this::initProfileDependentFeatures));
         }
 
-        if (ChromeFeatureList.sEnableExclusiveAccessManager.isEnabled()) {
-            assumeNonNull(mExclusiveAccessManager);
-            mExclusiveAccessManager.initialize(
-                    tabModelSelector, mWindowAndroid, mActivityTabProvider);
-        }
+        assumeNonNull(mExclusiveAccessManager);
+        mExclusiveAccessManager.initialize(tabModelSelector, mWindowAndroid, mActivityTabProvider);
 
         initMessagesInfra();
         initScrollCapture();
@@ -2925,9 +2913,19 @@ public class RootUiCoordinator
         return null;
     }
 
-    /** Saves the relevant UI state when the activity is recreated on a device fold transition. */
+    /**
+     * Saves the relevant UI state when the activity is recreated (e.g. due to device fold or dark
+     * mode).
+     *
+     * @see ActivityRecreationController#prepareUiState().
+     */
     public void prepareUiState() {
         mActivityRecreationController.prepareUiState();
+    }
+
+    /** Returns the content {@link View} currently shown in the side panel, if any. */
+    protected @Nullable View getSidePanelContentView() {
+        return null;
     }
 
     /**

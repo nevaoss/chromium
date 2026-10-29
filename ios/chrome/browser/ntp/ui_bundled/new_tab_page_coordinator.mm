@@ -40,6 +40,8 @@
 #import "ios/chrome/app/profile/profile_init_stage.h"
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/app/profile/profile_state_observer.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios_factory.h"
 #import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator_delegate.h"
@@ -80,8 +82,8 @@
 #import "ios/chrome/browser/home_customization/model/home_background_customization_service_factory.h"
 #import "ios/chrome/browser/home_customization/utils/home_customization_constants.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
+#import "ios/chrome/browser/menu/public/menu_histograms.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
-#import "ios/chrome/browser/menu/ui_bundled/menu_histograms.h"
 #import "ios/chrome/browser/metrics/model/activity_reporter.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
@@ -866,8 +868,8 @@ using ntp_tiles::AimButtonRefactorArm;
         _searchEngineLogoMediator.view;
     _searchEngineLogoMediator.consumer = self.NTPRedesignViewController;
   } else {
-    headerView.searchEngineLogoView = _searchEngineLogoMediator.view;
     _searchEngineLogoMediator.consumer = headerView;
+    headerView.searchEngineLogoView = _searchEngineLogoMediator.view;
   }
 
   if (!IsComposeboxPlusButtonBottomSheet() &&
@@ -900,6 +902,12 @@ using ntp_tiles::AimButtonRefactorArm;
     ChromeAccountManagerService* accountManagerService =
         ChromeAccountManagerServiceFactory::GetForProfile(profile);
 
+    AimEligibilityService* aimEligibilityService =
+        ntp_tiles::GetAimButtonRefactorArm() ==
+                ntp_tiles::AimButtonRefactorArm::kAimAsMvt
+            ? _aimEligibilityService
+            : nil;
+
     _mostVisitedTilesMediator = [[MostVisitedTilesMediator alloc]
         initWithMostVisitedSite:std::move(mostVisitedFactory)
                  historyService:historyService
@@ -910,7 +918,8 @@ using ntp_tiles::AimButtonRefactorArm;
                                     self.browser)
           accountManagerService:accountManagerService
               engagementTracker:engagementTracker
-              layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)];
+              layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)
+          aimEligibilityService:aimEligibilityService];
     _mostVisitedTilesMediator.contentSuggestionsDelegate =
         self.contentSuggestionsCoordinator.delegate;
     _mostVisitedTilesMediator.actionFactory = [[BrowserActionFactory alloc]
@@ -1157,8 +1166,8 @@ using ntp_tiles::AimButtonRefactorArm;
                                          continuationProvider:
                                              DoNothingContinuationProvider()];
     _signinCoordinator.signinCompletion =
-        ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
-          id<SystemIdentity> completionIdentity) {
+        ^(SigninCoordinator* coordinator,
+          SigninCoordinatorResultOrIdentity result) {
           [weakSelf showSigninCommandDidFinishWithCoordinator:coordinator];
         };
     [_signinCoordinator start];
@@ -1229,21 +1238,21 @@ using ntp_tiles::AimButtonRefactorArm;
       // because the part that check the coordinator value is in the
       // `addSigninCompletion:` below, and so not integrated in the completion
       // function yet.
-      completion(nil, SigninCoordinatorResultInterrupted, nil);
+      completion(nil, base::unexpected(SigninCoordinatorResultInterrupted));
     }
     return;
   } else if (_signinCoordinator) {
     // There may be a signin-coordinator being presented. Due to uncertainty,
     // let’s close the current sign-in coordinator and start the new one.
     _signinCoordinator.signinCompletion(
-        _signinCoordinator, SigninCoordinatorResultInterrupted, nil);
+        _signinCoordinator,
+        base::unexpected(SigninCoordinatorResultInterrupted));
     // The signin-completion should have unset the sign-in coordinator.
     CHECK(!_signinCoordinator);
   }
   __weak __typeof(self) weakSelf = self;
   [command addSigninCompletion:^(SigninCoordinator* coordinator,
-                                 SigninCoordinatorResult result,
-                                 id<SystemIdentity>) {
+                                 SigninCoordinatorResultOrIdentity result) {
     [weakSelf showSigninCommandDidFinishWithCoordinator:coordinator];
   }];
   _signinCoordinator =
@@ -1313,15 +1322,22 @@ using ntp_tiles::AimButtonRefactorArm;
 #pragma mark - ContentSuggestionsDelegate
 
 - (void)contentSuggestionsWasUpdated {
-  if (!IsNTPRedesignEnabled()) {
-    // Force a layout to make sure the frame height is successfully updated,
-    // before updating height above the feed.
-    UIView* contentSuggestionsView =
-        self.NTPViewController.contentSuggestionsViewController.view;
-    [contentSuggestionsView setNeedsLayout];
-    [contentSuggestionsView layoutIfNeeded];
-    [self.NTPViewController updateHeightAboveFeed];
+  if (IsNTPRedesignEnabled()) {
+    return;
   }
+  UIView* contentSuggestionsView =
+      self.NTPViewController.contentSuggestionsViewController.view;
+  if (!contentSuggestionsView.superview ||
+      self.NTPViewController.view.bounds.size.width <= 0) {
+    return;
+  }
+  // Force a layout on the superview so `contentSuggestionsView` and its
+  // subviews are laid out and `contentSuggestionsView.frame` reflects the
+  // updated height before updating the height above the feed.
+  [contentSuggestionsView setNeedsLayout];
+  [contentSuggestionsView.superview setNeedsLayout];
+  [contentSuggestionsView.superview layoutIfNeeded];
+  [self.NTPViewController updateHeightAboveFeed];
 }
 
 - (void)shareURL:(const GURL&)URL
@@ -1446,8 +1462,8 @@ using ntp_tiles::AimButtonRefactorArm;
                                       DoNothingContinuationProvider()];
   }
   _signinCoordinator.signinCompletion =
-      ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
-        id<SystemIdentity> completionIdentity) {
+      ^(SigninCoordinator* coordinator,
+        SigninCoordinatorResultOrIdentity result) {
         [weakSelf showSigninCommandDidFinishWithCoordinator:coordinator];
       };
   [_signinCoordinator start];
@@ -1855,8 +1871,12 @@ using ntp_tiles::AimButtonRefactorArm;
 
 // Opens the AIM web page.
 - (void)openAIMWeb {
-  GURL URL = GetUrlForAim(self.templateURLService,
-                          /*query_start_time=*/base::Time::Now());
+  AIModeButtonServiceIOS* service =
+      AIModeButtonServiceIOSFactory::GetForProfile(self.profile);
+  if (!service) {
+    return;
+  }
+  GURL URL = service->GetUrl();
   OpenNewTabCommand* command = [OpenNewTabCommand commandWithURLFromChrome:URL];
   command.extraHeaders =
       web_navigation_util::VariationHeadersForURL(URL, /*is_incognito=*/false);

@@ -257,6 +257,12 @@ template <typename Trigger>
       browser, "Window did not become active");
 }
 
+[[nodiscard]] inline TestResult<> ActivateWindow(
+    BrowserWindowInterface* browser) {
+  browser->GetWindow()->Activate();
+  return WaitForWindowActive(browser);
+}
+
 [[nodiscard]] inline TestResult<> WaitForSidePanelState(
     tabs::TabInterface* tab,
     GlicSidePanelCoordinator::State expected_state) {
@@ -308,6 +314,11 @@ class GlicBrowserTestMixin : public T {
   // PlatformBrowserTest:
   void SetUpCommandLine(base::CommandLine* command_line) override {
     T::SetUpCommandLine(command_line);
+    // Binds `embedded_https_test_server()` so the guest URL is known here.
+    // Fixtures that configure its certificate (e.g. `SetCertHostnames()`)
+    // must do so before this, e.g. in their constructor or `SetUp()`.
+    CHECK(glic_test_environment_.InitializeEmbeddedTestServers(
+        &T::embedded_https_test_server()));
     // TODO(crbug.com/516793173): Remove this switch once C++ browser tests
     // automatically inherit --force-desktop-android just like Java.
 #if BUILDFLAG(IS_DESKTOP_ANDROID)
@@ -1135,7 +1146,7 @@ class GlicBrowserTestMixin : public T {
   }
 
   // Adds a query param to the URL that will be used to load the mock glic.
-  // Must be called before `SetUpOnMainThread()`. Both `key` and `value` (if
+  // Must be called before `SetUpCommandLine()`. Both `key` and `value` (if
   // specified) will be URL-encoded for safety.
   void AddMockGlicQueryParam(const std::string_view& key,
                              const std::string_view& value = "") {

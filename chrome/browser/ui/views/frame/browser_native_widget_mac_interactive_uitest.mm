@@ -14,16 +14,18 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
-#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/interactive_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/test/browser_test.h"
+#include "third_party/blink/public/mojom/frame/fullscreen.mojom.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
@@ -420,6 +422,37 @@ IN_PROC_BROWSER_TEST_F(BrowserNativeWidgetMacGlassTest,
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserNativeWidgetMacGlassTest,
+                       TabFullscreenWindowIsOpaque) {
+  if (!features::IsGlassFrameEnabled()) {
+    GTEST_SKIP() << "Glass frame feature is disabled.";
+  }
+
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+  views::Widget* widget = browser_view->GetWidget();
+  NSWindow* ns_window = widget->GetNativeWindow().GetNativeNSWindow();
+  NSView* content_view = [ns_window contentView];
+
+  ASSERT_TRUE(ui_test_utils::BringBrowserWindowToFront(browser()));
+
+  EXPECT_FALSE([ns_window isOpaque]);
+  auto [glass_view, tint_view, opaque_view] = GetGlassViews(content_view);
+  EXPECT_NE(glass_view, nil);
+  EXPECT_NE(opaque_view, nil);
+
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  web_contents->GetDelegate()->EnterFullscreenModeForTab(
+      web_contents->GetPrimaryMainFrame(), {});
+
+  // Wait for Cocoa window to become opaque in tab fullscreen
+  ASSERT_TRUE(base::test::RunUntil([&]() { return [ns_window isOpaque]; }));
+  auto [fs_glass_view, fs_tint_view, fs_opaque_view] =
+      GetGlassViews(content_view);
+  EXPECT_EQ(fs_glass_view, nil);
+  EXPECT_EQ(fs_opaque_view, nil);
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNativeWidgetMacGlassTest,
                        IneligibleBrowserWindowIsOpaque) {
   if (!features::IsGlassFrameEnabled()) {
     GTEST_SKIP() << "Glass frame feature is disabled.";
@@ -559,7 +592,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNativeWidgetMacVerticalTabsGlassTest,
   // During drag resizing, glass view expands up to the maximum possible
   // vertical tab strip width.
   const int expected_resizing_width =
-      VerticalTabStripRegionView::kUncollapsedMaxWidth + corner_padding;
+      tabs::kVerticalTabStripUncollapsedMaxWidth + corner_padding;
   controller->SetIsResizing(true);
   EXPECT_EQ(NSWidth(glass_view.frame), expected_resizing_width);
   EXPECT_EQ(NSMinX(opaque_view.frame), expected_resizing_width);
@@ -597,7 +630,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNativeWidgetMacVerticalTabsGlassTest,
 
   const int corner_padding = GetGlassCornerPadding();
   const int expected_collapsed_width =
-      VerticalTabStripRegionView::kCollapsedWidth + corner_padding;
+      tabs::kVerticalTabStripCollapsedWidth + corner_padding;
   const int expected_uncollapsed_width =
       controller->GetUncollapsedWidth() + corner_padding;
 

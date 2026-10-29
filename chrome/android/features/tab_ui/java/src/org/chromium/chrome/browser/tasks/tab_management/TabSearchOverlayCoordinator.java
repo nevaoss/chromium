@@ -34,6 +34,7 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
+import androidx.core.view.WindowInsetsCompat;
 
 import org.chromium.base.Callback;
 import org.chromium.base.CallbackUtils;
@@ -59,9 +60,7 @@ import org.chromium.chrome.browser.lifecycle.ConfigurationChangedObserver;
 import org.chromium.chrome.browser.omnibox.BackKeyBehaviorDelegate;
 import org.chromium.chrome.browser.omnibox.LocationBarCoordinator;
 import org.chromium.chrome.browser.omnibox.LocationBarEmbedder;
-import org.chromium.chrome.browser.omnibox.OmniboxStub;
 import org.chromium.chrome.browser.omnibox.UrlBar;
-import org.chromium.chrome.browser.omnibox.UrlBarCoordinator;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxControls;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
@@ -77,7 +76,6 @@ import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabwindow.TabWindowInfo;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -94,6 +92,7 @@ import org.chromium.ui.AsyncViewStub;
 import org.chromium.ui.base.KeyNavigationUtil;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeSystemBarColorHelper;
+import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -175,7 +174,6 @@ public class TabSearchOverlayCoordinator
     private final SearchBoxDataProvider mSearchBoxDataProvider;
     private final Callback<Profile> mProfileObserver;
     private final Callback<Boolean> mSuggestionsObserver = this::onSuggestionsChanged;
-    private final Callback<TabModelSelector> mTabModelSelectorObserver;
 
     // Recursion guard to prevent event dispatch loops when forwarding scrim scroll/drag events
     // to the underlying compositor view hierarchy.
@@ -196,7 +194,6 @@ public class TabSearchOverlayCoordinator
     private ViewTreeObserver.@Nullable OnWindowFocusChangeListener mWindowFocusListener;
     private TabObscuringHandler.@Nullable Token mTabObscuringToken;
     private boolean mEncounteredEmptyStateThisSession;
-    private @Nullable TabModelSelectorTabObserver mTabModelSelectorTabObserver;
 
     /**
      * Constructs a new TabSearchOverlayCoordinator.
@@ -268,9 +265,6 @@ public class TabSearchOverlayCoordinator
 
         mProfileObserver = this::onProfileChanged;
         mProfileSupplier.addSyncObserverAndCallIfNonNull(mProfileObserver);
-
-        mTabModelSelectorObserver = this::onTabModelSelectorAvailable;
-        mTabModelSelectorSupplier.addSyncObserverAndCallIfNonNull(mTabModelSelectorObserver);
     }
 
     /** Destroys the coordinator, cleaning up resources and child coordinators. */
@@ -284,11 +278,6 @@ public class TabSearchOverlayCoordinator
         }
         mLifecycleDispatcher.unregister(this);
         mProfileSupplier.removeObserver(mProfileObserver);
-        mTabModelSelectorSupplier.removeObserver(mTabModelSelectorObserver);
-        if (mTabModelSelectorTabObserver != null) {
-            mTabModelSelectorTabObserver.destroy();
-            mTabModelSelectorTabObserver = null;
-        }
         mBackPressManager.removeHandler(this);
         if (mChangeProcessor != null) {
             mChangeProcessor.destroy();
@@ -825,40 +814,31 @@ public class TabSearchOverlayCoordinator
     }
 
     /**
-     * Calculates the top margin for the panel when in a conventional app state (outside desktop
-     * windowing, such as fullscreen or multi-window).
+     * Returns the panel's top margin outside desktop windowing (e.g. fullscreen or multi-window).
      *
-     * <p>With horizontal tabs, the tab strip sits above the toolbar, so we subtract {@code
-     * tabStripHeight} from {@code toolbarTop} to align the panel below the status bar. When
-     * vertical tabs is active, there is no horizontal tab strip above the toolbar; the toolbar is
-     * already at the top of the browser UI, so {@code tabStripHeight} is 0.
+     * <p>The overlay {@link PopupWindow} covers the full window, including any area under the
+     * status bar or an OS-drawn caption bar, so the panel is offset by their top inset to keep the
+     * header and close button visible (0 if the window overlaps neither, e.g. the bottom window in
+     * split-screen). A caption bar can be present even when {@link
+     * AppHeaderState#isInDesktopWindow()} is false, e.g. when the desktop windowing heuristics
+     * decline to draw the app header on an external display.
+     *
+     * <p>Window insets are used rather than toolbar / tab strip view positions because the latter
+     * depend on toolbar-internal layout details (e.g. which view the tab strip height is applied to
+     * as a top margin), which previously yielded a margin of 0 with the horizontal tab strip and
+     * placed the close button under the status bar.
      */
     private int getTopMarginForConventionalState() {
-        View controlContainer = mActivity.findViewById(R.id.control_container);
-        View toolbarContainer =
-                controlContainer != null
-                        ? controlContainer.findViewById(R.id.toolbar_container)
-                        : null;
-        if (toolbarContainer == null) {
+        InsetObserver insetObserver = mWindowAndroid.getInsetObserver();
+        WindowInsetsCompat windowInsets =
+                insetObserver != null ? insetObserver.getLastRawWindowInsets() : null;
+        if (windowInsets == null) {
             return 0;
         }
-
-        int[] location = new int[2];
-        toolbarContainer.getLocationInWindow(location);
-        int toolbarTop = location[1] > 0 ? location[1] : toolbarContainer.getTop();
-
-        // When vertical tabs is active, there is no horizontal tab strip above the toolbar.
-        // The toolbar itself is already positioned directly below the system status bar, so the
-        // effective horizontal strip height is 0. Subtracting the static tab_strip_height dimension
-        // here would underflow toolbarTop and clamp to 0, pushing the panel into the OS status bar.
-        View verticalRail = mActivity.findViewById(R.id.vertical_tab_rail_container);
-        boolean hasVerticalTabs = verticalRail != null && verticalRail.isShown();
-        int tabStripHeight =
-                hasVerticalTabs
-                        ? 0
-                        : mActivity.getResources().getDimensionPixelSize(R.dimen.tab_strip_height);
-
-        return Math.max(0, toolbarTop - tabStripHeight);
+        // Insets of multiple types are combined per side by taking the max, not the sum.
+        return windowInsets.getInsets(
+                        WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.captionBar())
+                .top;
     }
 
     /**
@@ -919,56 +899,6 @@ public class TabSearchOverlayCoordinator
         mSearchBoxDataProvider.initialize(mActivity, isIncognito);
         if (mSearchUiCoordinator != null) {
             mSearchUiCoordinator.setColorScheme(isIncognito);
-        }
-    }
-
-    private void onTabModelSelectorAvailable(TabModelSelector selector) {
-        if (mTabModelSelectorTabObserver != null) {
-            mTabModelSelectorTabObserver.destroy();
-        }
-
-        mTabModelSelectorTabObserver =
-                new TabModelSelectorTabObserver(selector) {
-                    @Override
-                    public void onContentChanged(Tab tab) {
-                        // Reassert focus if CompositorViewHolder.mView.requestFocus() stole focus
-                        // when a tab's content view was swapped or attached into the hierarchy
-                        // (e.g. launching a new tab and opening tab search while it loads).
-                        maybeReassertFocus();
-                    }
-
-                    @Override
-                    public void onPageLoadFinished(Tab tab, GURL url) {
-                        // Reassert focus if late-stage page load events attempted to steal focus
-                        // (e.g. clicking a link/history item that finishes loading in the
-                        // background and then attempting to use tab search).
-                        maybeReassertFocus();
-                    }
-                };
-    }
-
-    /**
-     * Checks if the URL bar has lost focus while the Tab Search overlay is visible (e.g. due to
-     * background tab loading or view attachment) and re-asserts focus and query suggestions.
-     * Preserves any existing user input query.
-     */
-    @VisibleForTesting
-    void maybeReassertFocus() {
-        if (!isVisible() || mSearchUiCoordinator == null) return;
-
-        LocationBarCoordinator locationBarCoordinator =
-                mSearchUiCoordinator.getLocationBarCoordinator();
-        if (locationBarCoordinator == null) return;
-
-        OmniboxStub omniboxStub = locationBarCoordinator.getOmniboxStub();
-        if (omniboxStub == null) return;
-
-        if (!omniboxStub.isUrlBarFocused()) {
-            UrlBarCoordinator urlBarCoordinator = locationBarCoordinator.getUrlBarCoordinator();
-            String currentQuery =
-                    urlBarCoordinator != null ? urlBarCoordinator.getTextWithoutAutocomplete() : "";
-            mSearchUiCoordinator.beginQuery(
-                    IntentOrigin.HUB, SearchType.TEXT, currentQuery, mWindowAndroid);
         }
     }
 

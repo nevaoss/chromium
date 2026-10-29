@@ -71,6 +71,7 @@ rust_static_library("child_process_security_policy_impl") {
   sources = [
     "security/cpsp/child_process_security_policy_impl.rs",
     "security/cpsp/lib.rs",
+    "security/cpsp/process_lock.rs",
     "security/cpsp/process_state.rs",
   ]
   cxx_bindings = [
@@ -193,6 +194,7 @@ source_set("browser") {
     "//components/ukm/debug:util",
     "//components/url_formatter",
     "//components/url_matcher",
+    "//components/url_pattern",
     "//components/variations",
     "//components/variations/net",
     "//components/version_info",
@@ -1208,7 +1210,6 @@ source_set("browser") {
     "renderer_preferences_util.cc",
     "renderer_preferences_util.h",
     "web_contents_based_canceller.cc",
-    "web_contents_based_canceller.h",
 
     # TODO(crbug.com/202736352): This is built even if enable_screen_capture is
     # false. Consider better separation of the screen capture and the other
@@ -1592,6 +1593,8 @@ source_set("browser") {
     "process_internals/process_internals_ui.h",
     "process_lock.cc",
     "process_lock.h",
+    "process_lock_shim.cc",
+    "process_lock_shim.h",
     "process_reuse_policy.h",
     "process_visibility_util.cc",
     "push_messaging/push_messaging_context.cc",
@@ -3366,6 +3369,8 @@ source_set("browser") {
       # The WebAuthn devtools protocol API is not supported in Android yet.
       "$target_gen_dir/devtools/protocol/web_authn.cc",
       "$target_gen_dir/devtools/protocol/web_authn.h",
+      "ai/echo_ai_decision_model.cc",
+      "ai/echo_ai_decision_model.h",
       "devtools/protocol/webauthn_handler.cc",
       "devtools/protocol/webauthn_handler.h",
       "media/session/audio_focus_delegate_default.cc",

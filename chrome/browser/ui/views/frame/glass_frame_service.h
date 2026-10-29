@@ -5,13 +5,13 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_GLASS_FRAME_SERVICE_H_
 #define CHROME_BROWSER_UI_VIEWS_FRAME_GLASS_FRAME_SERVICE_H_
 
-#include <deque>
 #include <map>
 #include <memory>
 
 #include "base/callback_list.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
 #include "base/scoped_multi_source_observation.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/performance_manager/public/user_tuning/battery_saver_mode_manager.h"
@@ -79,14 +79,18 @@ class GlassFrameService : public BrowserCollectionObserver,
   void ResetMetricsReporterForTesting();
 
  private:
-  // Returns the set of BrowserWindowInterfaces for the most recently activated
-  // browser window interfaces. The returned set has at most `kMaxGlassWindows`
-  // elements.
-  base::flat_set<BrowserWindowInterface*> ActivationOrderedEligibleBrowsers();
+  // Returns true if `browser` meets the conditions to display the glass frame
+  // (ignoring the `kMaxGlassWindows` limit).
+  bool IsBrowserEligibleForGlass(BrowserWindowInterface* browser);
+
+  // Returns true if the entire browser process is allowed to show the glass
+  // frame. Returns false otherwise.
+  bool IsGlassFrameAllowed();
 
   // Returns the set of BrowserWindowInterfaces that are eligible to display
-  // the glass frame.
-  base::flat_set<BrowserWindowInterface*> GetEligibleBrowserWindowInterfaces();
+  // the glass frame. The returned set has at most `kMaxGlassWindows` elements.
+  base::flat_set<raw_ptr<BrowserWindowInterface>>
+  GetEligibleBrowserWindowInterfaces();
 
   void OnGlassFrameEnabledPrefChanged();
 
@@ -105,7 +109,9 @@ class GlassFrameService : public BrowserCollectionObserver,
   std::map<BrowserWindowInterface*, base::CallbackListSubscription>
       fullscreen_subscriptions_;
   // Set of tracked normal browsers.
-  base::flat_set<BrowserWindowInterface*> tracked_browsers_;
+  base::flat_set<raw_ptr<BrowserWindowInterface>> tracked_browsers_;
+  // Set of browsers currently eligible to display the glass frame.
+  base::flat_set<raw_ptr<BrowserWindowInterface>> eligible_browsers_;
 
   base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
       browser_collection_observation_{this};

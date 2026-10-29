@@ -123,7 +123,6 @@ Per veure més opcions de configuració que utilitzin dades per millorar la teva
 <translation id="1432581352905426595">Gestiona els motors de cerca</translation>
 <translation id="1435593198351412143">Obre els PDF automàticament</translation>
 <translation id="1437543266176261764">S'està executant a <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organitza els productes que segueixes a Adreces d'interès</translation>
 <translation id="1452651021404174820">Tria un dispositiu</translation>
 <translation id="1455845192930279203">Vols baixar "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) de <ph name="DOWNLOAD_DOMAIN" /> igualment?</translation>
 <translation id="1460751212339734034">Estalvia temps, escriu menys</translation>
@@ -775,6 +774,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, pestanya de gravació fixada multiseleccionada</translation>
 <translation id="4137746084635924146">Idioma actual del dispositiu</translation>
 <translation id="414128724510021958">Llocs web per a ordinadors sol·licitats de manera predeterminada</translation>
+<translation id="4150837143272125910">S'ha baixat una actualització</translation>
 <translation id="4162867837470729563">Llista d'opcions de compartició a alçada completa.</translation>
 <translation id="4164642020717536140">Navegació web ràpida i segura</translation>
 <translation id="4165077084524712774">Més eines</translation>
@@ -1199,6 +1199,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="5848257610304005265">Vols obrir el PDF amb <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Vols deixar de compartir?</translation>
 <translation id="5853623416121554550">en pausa</translation>
+<translation id="5855375823365231964">Sobre aquest perfil</translation>
 <translation id="5855546874025048181">Refina: "<ph name="REFINE_TEXT" />"</translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, pestanya d'incògnit de gravació multiseleccionada</translation>
 <translation id="5857447844686706637">S'ha produït un error. No s'ha pogut actualitzar el seguiment del preu.</translation>
@@ -1240,6 +1241,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="6039379616847168523">Ves a la pestanya següent</translation>
 <translation id="6040143037577758943">Tanca</translation>
 <translation id="604124094241169006">Automàtic</translation>
+<translation id="6041959688070413372">Gestiona la connexió entre els serveis de la Cerca i les aplicacions de Google Workspace, com ara Google Drive</translation>
 <translation id="6042308850641462728">Més</translation>
 <translation id="6047066316630165190">Obre el selector de pestanyes de la quadrícula</translation>
 <translation id="604996488070107836">No s'ha pogut baixar <ph name="FILE_NAME" /> a causa d'un error desconegut.</translation>
@@ -1400,6 +1402,7 @@ Per exemple, és possible que alguns llocs web responguin a aquesta sol·licitud
 <translation id="6565959834589222080">S'utilitza la Wi‑Fi quan està disponible</translation>
 <translation id="657177046675873214">Per accedir a les teves adreces d'interès des de tots els dispositius, activa Adreces d'interès a la configuració</translation>
 <translation id="6573096386450695060">Permet sempre</translation>
+<translation id="657480975869429144">Hi ha una versió nova de Chrome disponible</translation>
 <translation id="658099107946526506">Protegeix la navegació privada amb un PIN per evitar l'accés no desitjat</translation>
 <translation id="6583199322650523874">Afegeix la pàgina actual a les adreces d'interès</translation>
 <translation id="6588043302623806746">Fes servir DNS segur</translation>

@@ -14,6 +14,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "components/optimization_guide/content/browser/page_content_proto_util.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 #include "third_party/re2/src/re2/re2.h"
@@ -168,6 +169,18 @@ void ConvertContentNodesToMojo(
         const auto& ii = attrs.interaction_info();
         if (ii.clickability_reasons_size() > 0 || ii.is_clickable()) {
           mojo_node->is_interactive = true;
+          if (mojo_node->role == ai_overlay_dialog::mojom::NodeRole::kNone) {
+            mojo_node->role = ai_overlay_dialog::mojom::NodeRole::kButton;
+          }
+          if (mojo_node->text.empty()) {
+            std::string label = attrs.has_text_data()
+                                    ? attrs.text_data().text_content()
+                                    : attrs.label();
+            if (label.empty()) {
+              label = FindFirstTextInSubtree(proto_node);
+            }
+            mojo_node->text = label;
+          }
         }
       }
     }
@@ -252,6 +265,22 @@ void PageContextMonitor::PrimaryPageChanged(content::Page& page) {
   page_handler_->DidChangePage(web_contents()->GetLastCommittedURL(),
                                web_contents()->GetTitle(), std::nullopt);
   did_retry_first_fetch_ = false;
+  StartNewFetch();
+}
+
+void PageContextMonitor::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (!navigation_handle->IsInPrimaryMainFrame() ||
+      !navigation_handle->HasCommitted() ||
+      !navigation_handle->IsSameDocument()) {
+    return;
+  }
+
+  // Same-document navigation occurred (e.g. client-side routing in SPAs like
+  // Google Chat). Notify page handler and fetch updated page context.
+  last_page_content_.reset();
+  page_handler_->DidChangePage(navigation_handle->GetURL(),
+                               web_contents()->GetTitle(), std::nullopt);
   StartNewFetch();
 }
 

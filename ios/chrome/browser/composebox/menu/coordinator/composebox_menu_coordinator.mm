@@ -183,14 +183,15 @@ CGFloat const kSheetTopPadding = 40.0f;
              metricsRecorder:_metricsRecorder];
   _mediator.delegate = self;
 
-  if (IsPlusButtonMenuInFakeboxEnabled()) {
+  if (!IsComposeboxPlusButtonBottomSheet()) {
     [self createPickerPresenter];
     [self createMenuBuilder];
   }
 }
 
 - (void)presentBottomSheetMenu {
-  CHECK(IsComposeboxPlusButtonBottomSheet());
+  CHECK(_entrypoint == ComposeboxEntrypoint::kCobrowse ||
+        IsComposeboxPlusButtonBottomSheet());
   [self setUpBottomSheetMenuViewController];
   [self createPickerPresenter];
   [self recordAttachmentsMenuOpen];
@@ -204,7 +205,6 @@ CGFloat const kSheetTopPadding = 40.0f;
 }
 
 - (UIMenu*)createMenu {
-  CHECK(IsPlusButtonMenuInFakeboxEnabled());
   return [_menuBuilder createMenu];
 }
 
@@ -402,10 +402,10 @@ CGFloat const kSheetTopPadding = 40.0f;
 
 - (void)composeboxMenuSharedTabsViewController:
             (ComposeboxMenuSharedTabsViewController*)viewController
-                   didRemoveTabWithServerToken:
-                       (const base::UnguessableToken&)serverToken {
+           didRemoveTabWithInputItemIdentifier:
+               (const base::UnguessableToken&)inputItemIdentifier {
   [self.inputPlateDelegate composeboxMenuCoordinator:self
-                         didRemoveTabWithServerToken:serverToken];
+                 didRemoveTabWithInputItemIdentifier:inputItemIdentifier];
 
   ComposeboxUIInputState* newState =
       [self.inputPlateDelegate currentUIInputStateForMenuCoordinator:self];

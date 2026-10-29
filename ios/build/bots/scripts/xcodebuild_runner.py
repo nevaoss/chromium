@@ -183,6 +183,11 @@ class LaunchCommand(object):
         # ideally this should be the last step before running tests, because
         # it boots the simulator.
         iossim_util.disable_simulator_keyboard_tutorial(self.udid)
+      elif attempt > 0 and isinstance(self.test_runner, DeviceXcodeTestRunner):
+        # Uninstall apps on physical devices before retrying to terminate any
+        # orphaned runner or host app processes left behind by a previous hung
+        # xcodebuild attempt.
+        self.test_runner.uninstall_apps()
 
       outdir_attempt = os.path.join(self.out_dir, 'attempt_%d' % attempt)
       cmd_list = self.egtests_app.command(
@@ -272,7 +277,6 @@ class SimulatorParallelTestRunner(test_runner.SimulatorTestRunner):
     self,
     app_path,
     host_app_path,
-    iossim_path,
     version,
     platform,
     out_dir,
@@ -283,8 +287,6 @@ class SimulatorParallelTestRunner(test_runner.SimulatorTestRunner):
     Args:
       app_path: (str) A path to egtests_app.
       host_app_path: (str) A path to the host app for EG2.
-      iossim_path: Path to the compiled iossim binary to use.
-                   Not used, but is required by the base class.
       version: (str) iOS version to run simulator on.
       platform: (str) Name of device.
       out_dir: (str) A directory to emit test data into.
@@ -310,7 +312,7 @@ class SimulatorParallelTestRunner(test_runner.SimulatorTestRunner):
     """
     kwargs['retries'] = kwargs.get('retries') or 0
     super(SimulatorParallelTestRunner, self).__init__(
-      app_path, iossim_path, platform, version, out_dir, **kwargs
+      app_path, platform, version, out_dir, **kwargs
     )
     if self.platform and 'duo' in self.platform.lower() and self.clones > 1:
       LOGGER.info(

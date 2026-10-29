@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_UI_FUZZY_SEARCH_FUZZY_FINDER_H_
 #define CHROME_BROWSER_UI_FUZZY_SEARCH_FUZZY_FINDER_H_
 
-#include <stdint.h>
-
 #include <string>
 #include <string_view>
 #include <vector>
@@ -68,6 +66,38 @@ class FuzzyFinder {
                                            size_t max_results);
 
  private:
+  // Represents the character alignment decision made at each position when
+  // matching a query against a candidate string. Used when backtracking from
+  // the best match end position to extract exact matching character spans for
+  // UI bolding.
+  enum class MatchStep {
+    kNone,
+    // Candidate character was skipped (gap between query characters).
+    kSkipCandidate,
+    // Exact character match (e.g. query 'a' == candidate 'a'). Highlighted in
+    // UI.
+    kExactMatch,
+    // Adjacent characters were transposed (e.g. "teh" vs "the"). Highlighted
+    // in UI.
+    kTransposition,
+    // Character substitution / typo (e.g. 'g' -> 'f'). Valid alignment for
+    // fuzzy scoring, but NOT an exact match so it is omitted from UI
+    // highlighting.
+    kSubstitution,
+  };
+
+  // One cell of the alignment matrix. The cell at row j, column i describes
+  // the best alignment of query prefix 0..j with candidate prefix 0..i.
+  struct AlignmentCell {
+    // Optimal alignment score.
+    int score = 0;
+    // Length of the contiguous matching run ending at (j, i).
+    int consecutive = 0;
+    // Alignment step taken to reach (j, i), used for backtracking match
+    // ranges.
+    MatchStep step = MatchStep::kNone;
+  };
+
   // Scores an item across its title, secondary text, and synonyms using the
   // fuzzy sequence alignment algorithm. If the item's title is the best
   // match, populates `match_ranges` with the character spans of the match.
@@ -75,27 +105,21 @@ class FuzzyFinder {
   // best match.
   double ScoreItem(const FuzzySearchItem* item,
                    std::u16string_view norm_query,
-                   std::vector<gfx::Range>* match_ranges = nullptr);
+                   std::vector<gfx::Range>& match_ranges);
 
   // Evaluates a candidate string against a query with typo, transposition, and
-  // boundary tolerance using reusable scratch buffers. Returns a normalized
-  // confidence score in [0.0, 1.0]. If `match_ranges` is provided, populates
-  // it with exact match character spans via backtracking.
+  // boundary tolerance. Returns a normalized confidence score in [0.0, 1.0].
+  // If `match_ranges` is provided, populates it with exact match character
+  // spans via backtracking.
   double MatchCandidate(std::u16string_view query,
                         std::u16string_view candidate,
                         std::vector<gfx::Range>* match_ranges = nullptr);
 
   std::vector<raw_ptr<FuzzySearchItem>> searchable_items_;
 
-  // Scratch buffers instantiated once upon FuzzyFinder construction and reused
-  // across candidate alignments to eliminate dynamic heap allocations during
-  // searches.
-  std::vector<bool> word_boundaries_;
-  std::vector<int> score_matrix_;
-  std::vector<int> consecutive_matrix_;
-  // Match steps (e.g. exact match, transposition, substitution, skip)
-  // recorded at each character position to backtrack exact match spans.
-  std::vector<uint8_t> match_steps_;
+  // Alignment matrix scratch buffer, reused across MatchCandidate() calls so
+  // that it is only reallocated when a larger matrix is needed.
+  std::vector<AlignmentCell> alignment_matrix_;
 };
 
 #endif  // CHROME_BROWSER_UI_FUZZY_SEARCH_FUZZY_FINDER_H_

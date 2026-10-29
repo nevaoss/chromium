@@ -60,21 +60,25 @@ class ToolRequestVisitorFunctor {
   virtual void Apply(const DragAndReleaseToolRequest&) = 0;
   virtual void Apply(const FileUploadToolRequest&) = 0;
   virtual void Apply(const FindAndHighlightToolRequest&) = 0;
-  virtual void Apply(const HistoryToolRequest&) = 0;
+  virtual void Apply(const HistoryBackToolRequest&) = 0;
+  virtual void Apply(const HistoryForwardToolRequest&) = 0;
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   virtual void Apply(const LoadAndExtractContentToolRequest&) = 0;
 #endif
-  virtual void Apply(const MediaControlToolRequest&) = 0;
   virtual void Apply(const MoveMouseToolRequest&) = 0;
   virtual void Apply(const NavigateToolRequest&) = 0;
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   virtual void Apply(const OpenKnownPageToolRequest&) = 0;
 #endif
+  virtual void Apply(const PauseMediaToolRequest&) = 0;
   virtual void Apply(const PerformSearchToolRequest&) = 0;
+  virtual void Apply(const PlayMediaToolRequest&) = 0;
+  virtual void Apply(const ReloadPageToolRequest&) = 0;
   virtual void Apply(const RemoveBookmarkToolRequest&) = 0;
   virtual void Apply(const ScriptToolRequest&) = 0;
   virtual void Apply(const ScrollToolRequest&) = 0;
   virtual void Apply(const ScrollToToolRequest&) = 0;
+  virtual void Apply(const SeekMediaToolRequest&) = 0;
   virtual void Apply(const SelectToolRequest&) = 0;
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   virtual void Apply(const SwitchTabToolRequest&) = 0;

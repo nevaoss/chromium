@@ -123,7 +123,6 @@ Chrome təcrübənizi təkmilləşdirmək məqsədilə datadan istifadə edən d
 <translation id="1432581352905426595">Axtarış sistemlərini idarə edin</translation>
 <translation id="1435593198351412143">PDF-ləri avtomatik açın</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> tətbiqində işləyir</translation>
-<translation id="1448440926884431741">Əlfəcinlərdə izlədiyiniz məhsulları təşkil edin</translation>
 <translation id="1452651021404174820">Cihaz seçin</translation>
 <translation id="1455845192930279203">Yenə də <ph name="DOWNLOAD_DOMAIN" /> domenindən "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) faylını endirmək istəyirsiniz?</translation>
 <translation id="1460751212339734034">Vaxta qənaət edin, az yazın</translation>
@@ -765,6 +764,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="4092709865241032354">Google Parol Menecerinin giriş məlumatlarını yadda saxlaması üçün bu sayt üzrə istifadəçi adı əlavə edin</translation>
 <translation id="4095146165863963773">Tətbiq datası silinsin?</translation>
 <translation id="4095483462103784441">Yeni tab qrupu yaradın</translation>
+<translation id="4098552968111329864">Chrome-dakı işinizi qorumaq məqsədilə təşkilatınız Chrome-a daxil olduqda müəyyən məlumatlara baxa və ya onları idarə edə biləcək</translation>
 <translation id="4105527135143631701">Google Parol Meneceri güncəllənməsi açıldı</translation>
 <translation id="4107207375883769436">Təşkilatınız iş profilinizdəki baxış məlumatlarını, məsələn, brauzer tarixçənizi, habelə parollarınızı görə və idarə edə bilər</translation>
 <translation id="4113030288477039509">Administrator tərəfindən idarə olunur</translation>
@@ -775,6 +775,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, Çoxseçimli, bərkidilmiş qeydəalma tabı</translation>
 <translation id="4137746084635924146">Cari cihaz dili</translation>
 <translation id="414128724510021958">Defolt olaraq tələb olunan masaüstü saytlar</translation>
+<translation id="4150837143272125910">Güncəllənmə endirilib</translation>
 <translation id="4162867837470729563">Paylaşım seçimlərinin siyahısı tam yüksəklikdədir.</translation>
 <translation id="4164642020717536140">Sürətli və təhlükəsiz veb axtarışı</translation>
 <translation id="4165077084524712774">Daha çox alət</translation>
@@ -1199,6 +1200,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="5848257610304005265">PDF <ph name="APP_NAME" /> ilə açılsın?</translation>
 <translation id="5849288995120328556">Paylaşım dayandırılsın?</translation>
 <translation id="5853623416121554550">dayandırıldı</translation>
+<translation id="5855375823365231964">Bu profil haqqında</translation>
 <translation id="5855546874025048181">Yaxşılaşdırın: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, Çoxseçimli, qeydəalma anonim tabı</translation>
 <translation id="5857447844686706637">Xəta oldu. Qiymətin izlənməsini güncəlləmək mümkün olmadı.</translation>
@@ -1240,6 +1242,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="6039379616847168523">Növbəti panelə keşin</translation>
 <translation id="6040143037577758943">Qapat</translation>
 <translation id="604124094241169006">Avtomatik</translation>
+<translation id="6041959688070413372">Axtarış xidmətləri və Google Disk kimi Google Workspace tətbiqləri arasındakı əlaqəni idarə edin</translation>
 <translation id="6042308850641462728">Daha çox</translation>
 <translation id="6047066316630165190">Tor tab keçiricisini açın</translation>
 <translation id="604996488070107836">Naməlum xəta səbəbindən <ph name="FILE_NAME" /> faylı endirilmədi.</translation>
@@ -1398,6 +1401,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="6565959834589222080">Wi-Fi əlçatan olduqda istifadə edilir</translation>
 <translation id="657177046675873214">Əlfəcinlərinizi bütün cihazlarda əldə etmək üçün ayarlarda "Əlfəcinləri" aktiv edin</translation>
 <translation id="6573096386450695060">Həmişə icazə verin</translation>
+<translation id="657480975869429144">Chrome-un yeni versiyası əlçatandır</translation>
 <translation id="658099107946526506">Arzuolunmaz girişin qarşısını almaq üçün şəxsi brauzinqi pin ilə qoruyun</translation>
 <translation id="6583199322650523874">Cari səhifəni əlfəcin olaraq qeyd edin</translation>
 <translation id="6588043302623806746">Güvənli DNS yoxdur</translation>
@@ -1765,6 +1769,7 @@ Bu ayarı dəyişmək üçün <ph name="BEGIN_LINK" />hesabda Chrome datasını 
 <translation id="7929587383660661825">Chrome bildirişlərdən sui-istifadə edən və ya son günlərdə daxil olmadığınız saytların icazələrini avtomatik silir</translation>
 <translation id="7934668619883965330">Faylı endirmək olmur. Fayl formatı dəstəklənmir.</translation>
 <translation id="7951102827450076904">Endirilmiş PDF-ləri açın</translation>
+<translation id="7952148074468405586"><ph name="BEGIN_LINK" />Təşkilatınızın baxa və ya idarə edə biləcəyi məlumatlar<ph name="END_LINK" /> haqqında ətraflı məlumat əldə edin</translation>
 <translation id="7952479614398473176">Yeni pəncərə açmaq üçün aktiv pəncərələrin ümumi sayını <ph name="MAX_WINDOW_COUNT_MINUS_ONE" /> və ya daha az olacaq şəkildə azaldın.</translation>
 <translation id="7956713633345437162">Mobil əlfəcinlər</translation>
 <translation id="7957413488482743710">Virtual kart sizi potensial dələduzluqdan qorumaq üçün faktiki kartınızı gizlədir. <ph name="BEGIN_LINK1" />Virtual kartlar haqqında ətraflı məlumat<ph name="END_LINK1" /></translation>

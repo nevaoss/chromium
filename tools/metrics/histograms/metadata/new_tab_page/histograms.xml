@@ -22,6 +22,15 @@ chromium-metrics-reviews@google.com.
 
 <histograms>
 
+<variants name="ActionChipsRequestStatus">
+  <variant name="" summary="all requests"/>
+  <variant name=".HttpError" summary="requests failing with an HTTP error"/>
+  <variant name=".NetworkError"
+      summary="requests failing with a network error"/>
+  <variant name=".ParseError" summary="requests failing with a parse error"/>
+  <variant name=".Success" summary="successful requests"/>
+</variants>
+
 <variants name="ContentSuggestionCategory">
   <variant name=".Articles" summary="Articles for you"/>
   <variant name=".Bookmarks" summary="Bookmarks"/>
@@ -146,6 +155,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="NewTabPage.ActionChips.RequestLatency{ActionChipsRequestStatus}"
+    units="ms" expires_after="2027-01-17">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <summary>
+    The latency in milliseconds of a request to the action chips suggestions
+    service for {ActionChipsRequestStatus}, recorded when a response (or error)
+    is received.
+  </summary>
+  <token key="ActionChipsRequestStatus" variants="ActionChipsRequestStatus"/>
+</histogram>
+
 <histogram name="NewTabPage.ActionChips.RequestStatus"
     enum="ActionChipsRequestStatus" expires_after="2027-03-21">
   <owner>shomizoe@google.com</owner>
@@ -228,7 +250,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.ActioniOS" enum="NewTabPageActioniOS"
-    expires_after="2027-02-01">
+    expires_after="2027-04-04">
   <owner>justincohen@chromium.org</owner>
   <owner>gambard@chromium.org</owner>
   <summary>
@@ -262,7 +284,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.BackgroundImageSource"
-    enum="NTPBackgroundImageSource" expires_after="2027-01-31">
+    enum="NTPBackgroundImageSource" expires_after="2027-04-04">
   <owner>pauladedeji@google.com</owner>
   <owner>danpeng@google.com</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -851,6 +873,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="NewTabPage.Drive.UserAction" enum="NTPFileAction"
+    expires_after="2027-03-28">
+  <owner>jennserrano@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <summary>
+    Logs count of each type of user action within the NTP Drive module. Only
+    logged on the 1P NTP.
+  </summary>
+</histogram>
+
 <histogram name="NewTabPage.FailToShowHomeSurfaceUI"
     enum="FailToShowHomeSurfaceReason" expires_after="2027-03-28">
   <owner>hanxi@chromium.org</owner>
@@ -1118,7 +1150,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="NewTabPage.LoadTime{NewTabPageTimings}" units="ms"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>chrome-desktop-ntp@google.com</owner>
@@ -1385,6 +1417,16 @@ chromium-metrics-reviews@google.com.
     is receieved. Only logged on the 1P NTP. Note that even if the user has
     Google as their default search engine, Incognito and Guest mode NTPs are not
     considered 1P and don't log this histogram.
+  </summary>
+</histogram>
+
+<histogram name="NewTabPage.MicrosoftFiles.UserAction" enum="NTPFileAction"
+    expires_after="2027-03-28">
+  <owner>jennserrano@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <summary>
+    Logs count of each type of user action within the NTP Microsoft Files
+    module. Only logged on the 1P NTP.
   </summary>
 </histogram>
 
@@ -2744,7 +2786,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="{MostVisitedSurface}.TileTitleClicked{NewTabPageProviders}"
-    enum="NTPTileTitleSource" expires_after="2027-01-31">
+    enum="NTPTileTitleSource" expires_after="2027-04-04">
   <owner>romanarora@chromium.org</owner>
   <owner>tiborg@chromium.org</owner>
   <owner>ginnyhuang@chromium.org</owner>

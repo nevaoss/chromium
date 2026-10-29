@@ -42,6 +42,7 @@
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/base/platform_browser_test.h"
+#include "components/enterprise/browser/enterprise_switches.h"
 #include "components/enterprise/browser/reporting/common_pref_names.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/policy/core/browser/webui/policy_status_provider.h"
@@ -232,6 +233,10 @@ class PolicyUITestBase : public PlatformBrowserTest {
  protected:
   // PlatformBrowserTest implementation.
   void SetUpInProcessBrowserTestFixture() override {
+#if !BUILDFLAG(IS_CHROMEOS)
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+        switches::kEnableChromeBrowserCloudManagement);
+#endif
     provider_.SetDefaultReturns(/*is_initialization_complete_return=*/true,
                                 /*is_first_policy_load_complete_return=*/true);
     policy::BrowserPolicyConnector::SetPolicyProviderForTesting(&provider_);
@@ -781,6 +786,44 @@ IN_PROC_BROWSER_TEST_P(PolicyUITest, ReportButtonWithProfileReporting) {
                  policy::POLICY_SOURCE_CLOUD, base::Value(false), nullptr);
   provider_.UpdateChromePolicy(policy_map);
   VerifyReportButton(/*visible=*/false);
+}
+
+IN_PROC_BROWSER_TEST_P(PolicyUITest, ReportButtonWithSaasUsageReporting) {
+  ASSERT_TRUE(
+      content::NavigateToURL(web_contents(), GURL(chrome::kChromeUIPolicyURL)));
+
+  // Hide by default.
+  VerifyReportButton(/*visible=*/false);
+
+  base::ListValue domains;
+  domains.Append("example.com");
+  policy::PolicyMap policy_map;
+
+#if !BUILDFLAG(IS_CHROMEOS)
+  // Turn on with browser SaaS usage policy.
+  policy_map.Set(policy::key::kSaasUsageReportingDomainUrlsForBrowsers,
+                 policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_MACHINE,
+                 policy::POLICY_SOURCE_CLOUD, base::Value(domains.Clone()),
+                 nullptr);
+  provider_.UpdateChromePolicy(policy_map);
+  VerifyReportButton(/*visible=*/true);
+
+  // Hide while policy list is empty.
+  policy_map.Set(policy::key::kSaasUsageReportingDomainUrlsForBrowsers,
+                 policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_MACHINE,
+                 policy::POLICY_SOURCE_CLOUD, base::Value(base::ListValue()),
+                 nullptr);
+  provider_.UpdateChromePolicy(policy_map);
+  VerifyReportButton(/*visible=*/false);
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+
+  // Turn on with profile SaaS usage policy.
+  policy_map.Set(policy::key::kSaasUsageReportingDomainUrlsForProfiles,
+                 policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                 policy::POLICY_SOURCE_CLOUD, base::Value(domains.Clone()),
+                 nullptr);
+  provider_.UpdateChromePolicy(policy_map);
+  VerifyReportButton(/*visible=*/true);
 }
 
 #if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)

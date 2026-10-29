@@ -22,6 +22,7 @@
 #include "base/time/time.h"
 #include "base/timer/elapsed_timer.h"
 #include "chrome/common/read_anything/read_anything_util.h"
+#include "ui/accessibility/ax_tree_data.h"
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/common/url_constants.h"
@@ -70,6 +71,28 @@ bool IsNodeInFigure(const ui::AXNode* ax_node) {
        node = node->GetUnignoredParentCrossingTreeBoundary()) {
     if (node->GetStringAttribute(ax::mojom::StringAttribute::kHtmlTag) ==
         "figure") {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Returns true if any of `updates` changes the selection endpoints in
+// `old_tree_data`.
+bool HasSelectionChange(const ReadAnythingAppModel::Updates& updates,
+                        const ui::AXTreeData& old_tree_data) {
+  for (const ui::AXTreeUpdate& update : updates) {
+    if (!update.has_tree_data) {
+      continue;
+    }
+
+    const ui::AXTreeData& new_tree_data = update.tree_data;
+    if (new_tree_data.sel_anchor_object_id !=
+            old_tree_data.sel_anchor_object_id ||
+        new_tree_data.sel_anchor_offset != old_tree_data.sel_anchor_offset ||
+        new_tree_data.sel_focus_object_id !=
+            old_tree_data.sel_focus_object_id ||
+        new_tree_data.sel_focus_offset != old_tree_data.sel_focus_offset) {
       return true;
     }
   }
@@ -454,6 +477,13 @@ void ReadAnythingAppModel::ComputeDisplayNodeIdsForDistilledTree() {
       continue;
     }
 
+    // Artifacts are only shown via select-to-distill, so leave them out of the
+    // main content. Skipping the content node here also keeps its artifact
+    // ancestors out of the ancestor walk below.
+    if (IsPdf() && a11y::IsPdfArtifact(content_node)) {
+      continue;
+    }
+
     // Ignore aria-expanded for editables.
     if (content_node->data().SupportsExpandCollapse() &&
         !content_node->HasState(ax::mojom::State::kRichlyEditable)) {
@@ -496,6 +526,9 @@ void ReadAnythingAppModel::ComputeDisplayNodeIdsForDistilledTree() {
     }
     while (next_node != deepest_last_descendant) {
       next_node = next_node->GetNextUnignoredInTreeOrder();
+      if (IsPdf() && a11y::IsPdfArtifact(next_node)) {
+        continue;
+      }
       InsertIdIfNotIgnored(next_node->id(), display_node_ids_);
     }
   }
@@ -678,6 +711,12 @@ void ReadAnythingAppModel::ResetDistillationCompleteIfNeeded() {
 
 void ReadAnythingAppModel::AddPendingUpdates(const ui::AXTreeID& tree_id,
                                              Updates& updates) {
+  const ui::AXSerializableTree* tree = GetTreeFromId(tree_id);
+  if (IsPdf() && tree && HasSelectionChange(updates, tree->data())) {
+    // PDF selection updates are sent via tree_data without a separate
+    // selection AXEvent.
+    has_pending_selection_ = true;
+  }
   pending_updates_[tree_id].emplace_back(std::move(updates));
 }
 
@@ -688,6 +727,11 @@ void ReadAnythingAppModel::ClearPendingUpdates() {
 
 void ReadAnythingAppModel::UnserializePendingUpdates(
     const ui::AXTreeID& tree_id) {
+  // PDF updates use EventFrom::kNone, so ProcessGeneratedEvents() won't reset a
+  // stale reading mode selection count that would hide the pending selection.
+  if (has_pending_selection_ && IsPdf()) {
+    selections_from_reading_mode_ = 0;
+  }
   // has_pending_selection_ is used to process updates that would not have
   // otherwise been processed if Immersive is opening and already had a good
   // distillation. Therefore, it should be reset once UnserializePendingUpdates
@@ -859,15 +903,17 @@ void ReadAnythingAppModel::ApplyAccessibilityUpdates(
     UnserializePendingUpdates(tree_id);
     UnserializeUpdates(updates, tree_id);
     ProcessNonGeneratedEvents(events);
+
+    // has_pending_selection_ is used to process updates that would not have
+    // otherwise been processed if Immersive is opening and already had a good
+    // distillation. Therefore, it should be reset once updates are applied.
+    has_pending_selection_ = false;
   } else {
+    // Updates for other trees (e.g. the PDF extension host frame) don't drain
+    // the active tree's queue, so a pending selection stays pending.
     VLOG(1) << "ApplyAccessibilityUpdates- tree ID is not the active tree";
     UnserializeUpdates(updates, tree_id);
   }
-
-  // has_pending_selection_ is used to process updates that would not have
-  // otherwise been processed if Immersive is opening and already had a good
-  // distillation. Therefore, it should be reset once updates are applied.
-  has_pending_selection_ = false;
 }
 
 void ReadAnythingAppModel::QueueAccessibilityUpdates(

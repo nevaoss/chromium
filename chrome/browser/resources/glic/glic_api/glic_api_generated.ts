@@ -785,7 +785,8 @@ export declare interface CloseAuthTabResponse {
   result: CloseAuthTabResult;
 }
 
-// Settings for Gemini Enterprise.
+// TODO(b/570016708): Remove once web client usages are eliminated.
+// Deprecated: Formerly settings for Gemini Enterprise as a Tool.
 export declare interface GeminiEnterpriseSettings {
   projectId: string;
   appId: string;
@@ -1187,6 +1188,14 @@ export declare interface UniversalCartPayload {
   // This metadata is received from the same Google endpoint we receive the
   // actual invocation prompt from. Opaque to the browser.
   serializedMetadata: ArrayBuffer;
+}
+
+// Payload for Experimental Triggering invocation.
+export declare interface ExperimentalTriggeringPayload {
+  // Opaque payment metadata received from the server as part of the request
+  // that triggered this invocation. Passed through verbatim; opaque to the
+  // browser. May be empty.
+  paymentMetadata: ArrayBuffer;
 }
 
 // Options for invoking Glic.

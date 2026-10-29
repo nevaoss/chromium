@@ -162,9 +162,9 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 
 BASE_FEATURE(kCacheControlImmutable, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kHttpCacheZstdDecompression, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHttpCacheZstdDecompression, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kHttpCacheZstdCompression, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHttpCacheZstdCompression, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRendererAccessibleHttpCache, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
@@ -967,7 +967,7 @@ BASE_FEATURE(kPermitTcpSocketPoolConnectBackupJobs,
 BASE_FEATURE(kLocalNetworkPermissionCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressure,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressureForDoh,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1075,11 +1075,6 @@ BASE_FEATURE_PARAM(int,
                    kQuicSocketSendBufferSizeParam,
                    &kQuicSocketSendBufferSize,
                    -1);
-
-#if BUILDFLAG(IS_LINUX)
-BASE_FEATURE(kNetworkChangeNotifierPortalOnlineState,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 }  // namespace net::features
 

@@ -32,6 +32,7 @@ import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
 
 import org.jni_zero.CalledByNative;
+import org.jni_zero.CalledByNativeForTesting;
 import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
@@ -68,6 +69,7 @@ import org.chromium.chrome.browser.content.WebContentsFactory;
 import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.native_page.NativePageAssassin;
+import org.chromium.chrome.browser.native_page.NativePageFactory;
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
 import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
 import org.chromium.chrome.browser.paint_preview.StartupPaintPreviewHelper;
@@ -531,10 +533,14 @@ class TabImpl implements Tab, TabInternal {
 
             // Reload the NativePage (if any), since the old NativePage has a reference to the old
             // activity. If hidden, detach its view and freeze the native page to avoid eager
-            // instantiation of background native pages. If visible, reload it so that it binds to
-            // the new Activity and destroys the old native page to fix the Activity leak.
+            // instantiation of background native pages. Unfrozen PDF pages are exempted from
+            // freezing because freezing destroys the PdfPage and removes the
+            // ChromePdfViewerFragment from FragmentManager, losing unsaved annotations. Instead,
+            // reloading via maybeShowNativePage() allows the new PdfCoordinator to reclaim the
+            // restored fragment by tag and relocate misplaced fragment views before destroying
+            // the old page. Already-frozen PDF pages remain frozen.
             if (isNativePage()) {
-                if (isHidden()) {
+                if (isHidden() && (!mNativePage.isPdf() || mNativePage.isFrozen())) {
                     detachAndFreezeNativePage();
                 } else {
                     maybeShowNativePage(
@@ -551,10 +557,16 @@ class TabImpl implements Tab, TabInternal {
                 // observers (e.g. NtpFeedSurfaceLifecycleManager) can save UI state while the
                 // view hierarchy is still attached to the window, then notify observers so
                 // CompositorViewHolder detaches the NativePage view and reclaims focus via
-                // updateContentOverlayVisibility(false) before freezing and destroying the page.
+                // updateContentOverlayVisibility(false) before detaching the view and freezing.
+                // PDF pages are exempted from freezing because freezing destroys the PdfPage and
+                // loses unsaved annotations, but their view is still detached from the Activity.
                 updateInteractableState();
                 notifyContentChanged();
-                detachAndFreezeNativePage();
+                if (mNativePage.isPdf()) {
+                    detachNativePageView();
+                } else {
+                    detachAndFreezeNativePage();
+                }
             }
 
             // Clear the current tab supplier during detachment/reparenting to indicate that the
@@ -690,6 +702,102 @@ class TabImpl implements Tab, TabInternal {
         return mNativePage != null;
     }
 
+    /**
+     * @returns Whether the tab is displaying a PDF native page, either a local file (file://,
+     *     content://) or a transiently downloaded one (http://, https://, blob:, data:).
+     */
+    @CalledByNative
+    public boolean isPdf() {
+        return mNativePage != null && mNativePage.isPdf();
+    }
+
+    /**
+     * @returns The local file path or `content://` URI of the displayed PDF (for web PDFs,
+     *     the transiently downloaded file), or null if unavailable or unsafe to share.
+     */
+    @CalledByNative
+    public @Nullable @JniType("std::string") String getCanonicalFilepath() {
+        if (mNativePage == null || !mNativePage.isPdf()) {
+            return null;
+        }
+        String filepath = mNativePage.getCanonicalFilepath();
+        if (filepath == null) {
+            return null;
+        }
+        // The file is read in Chrome's process with Chrome's permissions, so do not expose
+        // `content://` URIs from Chrome's own content providers that are not safe to share.
+        if (!PdfUtils.isUriSafeForSharing(
+                Uri.parse(filepath), ContextUtils.getApplicationContext())) {
+            return null;
+        }
+        return filepath;
+    }
+
+    /**
+     * Makes {@link NativePageFactory} create a fake PDF native page instead of a real `PdfPage` for
+     * testing. Passing an empty `url` clears the override.
+     *
+     * @param url The URL of the fake PDF page.
+     * @param filepath The file path returned by the fake PDF page's `getCanonicalFilepath()`.
+     */
+    @CalledByNativeForTesting
+    private void setPdfNativePageForTesting(
+            @JniType("std::string") String url, @JniType("std::string") String filepath) {
+        if (url.isEmpty()) {
+            NativePageFactory.setPdfPageForTesting(null); // IN-TEST
+            return;
+        }
+        View view = new View(ContextUtils.getApplicationContext());
+        NativePageFactory.setPdfPageForTesting( // IN-TEST
+                new NativePage() {
+                    @Override
+                    public View getView() {
+                        return view;
+                    }
+
+                    @Override
+                    public String getTitle() {
+                        return "test.pdf";
+                    }
+
+                    @Override
+                    public String getUrl() {
+                        return url;
+                    }
+
+                    @Override
+                    public String getHost() {
+                        return UrlConstants.PDF_HOST;
+                    }
+
+                    @Override
+                    public int getBackgroundColor() {
+                        return 0;
+                    }
+
+                    @Override
+                    public boolean needsToolbarShadow() {
+                        return false;
+                    }
+
+                    @Override
+                    public void updateForUrl(String url) {}
+
+                    @Override
+                    public boolean isPdf() {
+                        return true;
+                    }
+
+                    @Override
+                    public String getCanonicalFilepath() {
+                        return filepath;
+                    }
+
+                    @Override
+                    public void destroy() {}
+                });
+    }
+
     private boolean isOrWillBeNativePage() {
         return isNativePage()
                 || NativePage.isNativePageUrl(
@@ -722,7 +830,7 @@ class TabImpl implements Tab, TabInternal {
         updateInteractableState();
     }
 
-    private void detachAndFreezeNativePage() {
+    private void detachNativePageView() {
         if (mNativePage == null || mNativePage.isFrozen()) {
             return;
         }
@@ -730,6 +838,10 @@ class TabImpl implements Tab, TabInternal {
         if (view != null) {
             UiUtils.removeViewFromParent(view);
         }
+    }
+
+    private void detachAndFreezeNativePage() {
+        detachNativePageView();
         freezeNativePage();
     }
 
@@ -1520,21 +1632,12 @@ class TabImpl implements Tab, TabInternal {
         onAlertStateChanged(TabAlert.NONE);
 
         for (TabObserver observer : mObservers) observer.onDestroyed(this);
-        boolean abortNavigationsFromTabClosures =
-                ChromeFeatureList.isEnabled(ChromeFeatureList.ABORT_NAVIGATIONS_FROM_TAB_CLOSURES);
-        @TabDestroyStatus int status = TabDestroyStatus.NO_SHUTDOWN;
-        if (abortNavigationsFromTabClosures) {
-            mUserDataHost.destroy();
-            status = destroyWebContents(deleteNativeWebContents);
-        }
+        mUserDataHost.destroy();
+        @TabDestroyStatus int status = destroyWebContents(deleteNativeWebContents);
 
         mObservers.clear();
-        if (!abortNavigationsFromTabClosures) mUserDataHost.destroy();
         mTabViewManager.destroy();
         hideNativePage(false, null);
-        if (!abortNavigationsFromTabClosures) {
-            status = destroyWebContents(deleteNativeWebContents);
-        }
         if (mWebContentsState != null) {
             mWebContentsState.destroy();
             mWebContentsState = null;
@@ -2190,9 +2293,15 @@ class TabImpl implements Tab, TabInternal {
         mPendingNativePageHost = nativePageHost;
         mIsAlreadyCreatingNativePage = true;
 
-        // Prefer reusing the NativePage when loading pdf.
+        // Prefer reusing the NativePage when loading pdf. Never offer a frozen page as the reuse
+        // candidate: it has no view, and NativePageFactory.createNativePageForCustomTab() would
+        // hand it straight back on URL match, leaving the tab frozen with a null view. See
+        // crbug.com/568278676.
         boolean loadPdf = PdfUtils.isReuseFragmentEnabled() && pdfInfo != null;
-        NativePage candidateForReuse = forceReload && !loadPdf ? null : getNativePage();
+        NativePage currentPage = getNativePage();
+        boolean canReuseCurrent =
+                currentPage != null && !currentPage.isFrozen() && (!forceReload || loadPdf);
+        NativePage candidateForReuse = canReuseCurrent ? currentPage : null;
 
         assumeNonNull(mDelegateFactory);
         NativePage nativePage =

@@ -62,7 +62,6 @@ LayoutSVGRoot::~LayoutSVGRoot() = default;
 
 void LayoutSVGRoot::Trace(Visitor* visitor) const {
   visitor->Trace(content_);
-  visitor->Trace(text_set_);
   LayoutReplaced::Trace(visitor);
 }
 
@@ -148,8 +147,9 @@ void LayoutSVGRoot::LayoutRoot(const PhysicalRect& content_rect) {
   NOT_DESTROYED();
   DCHECK(NeedsLayout());
 
-  base::AutoReset<const PhysicalSize*> reset(&new_content_size_,
-                                             &content_rect.size, nullptr);
+  base::AutoReset<
+      raw_ptr<const PhysicalSize, UnprotectedInRelease | DanglingUntriaged>>
+      reset(&new_content_size_, &content_rect.size, nullptr);
 
   const PhysicalSize old_content_size = PhysicalContentBoxRect().size;
 
@@ -213,15 +213,11 @@ void LayoutSVGRoot::LayoutRoot(const PhysicalRect& content_rect) {
   }
 }
 
-void LayoutSVGRoot::RecalcVisualOverflow() {
-  NOT_DESTROYED();
-  LayoutReplaced::RecalcVisualOverflow();
-  if (!ClipsToContentBox())
-    AddContentsVisualOverflow(ComputeContentsVisualOverflow());
-}
-
 PhysicalRect LayoutSVGRoot::ComputeContentsVisualOverflow() const {
   NOT_DESTROYED();
+  if (ClipsToContentBox()) {
+    return PhysicalRect();
+  }
   gfx::RectF content_visual_rect = VisualRectInLocalSVGCoordinates();
   content_visual_rect =
       local_to_border_box_transform_.MapRect(content_visual_rect);
@@ -312,15 +308,6 @@ void LayoutSVGRoot::StyleDidChange(
     IntrinsicSizingInfoChanged();
 
   SVGResources::UpdateEffects(*this, diff, old_style);
-
-  if (!RuntimeEnabledFeatures::SvgIgnoreOuterTransformsEnabled() &&
-      diff.transform_changed) {
-    for (auto& svg_text : text_set_) {
-      svg_text->SetNeedsLayout(layout_invalidation_reason::kStyleChange,
-                               kMarkContainerChain);
-      svg_text->SetNeedsTextMetricsUpdate();
-    }
-  }
 
   if (!Parent())
     return;
@@ -545,20 +532,6 @@ bool LayoutSVGRoot::IsInSelfHitTestingPhase(HitTestPhase phase) const {
 void LayoutSVGRoot::IntersectChildren(HitTestResult& result,
                                       const HitTestLocation& location) const {
   content_.HitTest(result, location, HitTestPhase::kForeground);
-}
-
-void LayoutSVGRoot::AddSvgTextDescendant(LayoutSVGText& svg_text) {
-  NOT_DESTROYED();
-  DCHECK(!RuntimeEnabledFeatures::SvgIgnoreOuterTransformsEnabled());
-  DCHECK(!text_set_.Contains(&svg_text));
-  text_set_.insert(&svg_text);
-}
-
-void LayoutSVGRoot::RemoveSvgTextDescendant(LayoutSVGText& svg_text) {
-  NOT_DESTROYED();
-  DCHECK(!RuntimeEnabledFeatures::SvgIgnoreOuterTransformsEnabled());
-  DCHECK(text_set_.Contains(&svg_text));
-  text_set_.erase(&svg_text);
 }
 
 PaintLayerType LayoutSVGRoot::LayerTypeRequired() const {

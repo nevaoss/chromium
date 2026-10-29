@@ -474,30 +474,26 @@ source_set("google_accounts_private_api") {
   deps = [ "//google_apis" ]
 }
 
-# SigninBrowserTestBase derives from InProcessBrowserTest, which is not
-# built on Android.
-if (!is_android) {
-  source_set("signin_browser_test_base") {
-    testonly = true
+source_set("signin_browser_test_base") {
+  testonly = true
 
-    sources = [ "signin_browser_test_base.h" ]
+  sources = [ "signin_browser_test_base.h" ]
 
-    public_deps = [
-      ":identity_test_support",
-      ":signin",
-      ":test_support",
-      "//base",
-      "//chrome/browser:browser_process",
-      "//chrome/browser/profiles:profile_manager",
-      "//chrome/browser/profiles:profile_test_util",
-      "//chrome/browser/ui",
-      "//chrome/test:test_support_ui",
-      "//components/signin/public/identity_manager",
-      "//components/signin/public/identity_manager:test_support",
-      "//components/trusted_vault",
-      "//services/network:test_support",
-    ]
-  }
+  public_deps = [
+    ":identity_test_support",
+    ":signin",
+    ":test_support",
+    "//base",
+    "//chrome/browser:browser_process",
+    "//chrome/browser/profiles",
+    "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/profiles:profile_test_util",
+    "//chrome/test/base:platform_browser_test",
+    "//components/signin/public/identity_manager",
+    "//components/signin/public/identity_manager:test_support",
+    "//components/trusted_vault",
+    "//services/network:test_support",
+  ]
 }
 
 source_set("test_support") {
@@ -619,6 +615,7 @@ source_set("unit_tests") {
     "//chrome/test:test_support_unit",
     "//chrome/test/base:chrome_render_view_host_test_harness",
     "//chrome/test/base:testing_browser_process",
+    "//components/enterprise/isolated_mode",
     "//components/signin/public/base",
     "//components/signin/public/identity_manager",
     "//components/signin/public/identity_manager:test_support",
@@ -779,16 +776,21 @@ if (!is_android) {
     testonly = true
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
 
-    sources = [ "remove_local_account_browsertest.cc" ]
+    sources = [
+      "identity_manager_factory_browsertest.cc",
+      "remove_local_account_browsertest.cc",
+    ]
     deps = [
       ":signin",
       ":test_support",
       "//chrome/browser/signin:signin_browser_test_base",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
       "//chrome/test/base:profile_lifecycle_test_utils",
       "//chrome/test/base:testing_browser_process",
+      "//components/enterprise/isolated_mode",
       "//components/signin/public/identity_manager",
       "//components/signin/public/identity_manager:test_support",
       "//content/test:test_support",

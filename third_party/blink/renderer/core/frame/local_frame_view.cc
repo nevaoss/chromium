@@ -5413,8 +5413,8 @@ bool LocalFrameView::HasDominantVideoElement() const {
   return !fullscreen_video_elements_.empty();
 }
 
-void LocalFrameView::DidPaintCanvasChild(HTMLCanvasElement& canvas,
-                                         Element& child) {
+void LocalFrameView::DidPaintCanvasDrawable(HTMLCanvasElement& canvas,
+                                            Element& drawable) {
   DCHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled(
       GetFrame().GetDocument()->GetExecutionContext()));
   if (IsUpdatingLifecycle()) {
@@ -5423,7 +5423,7 @@ void LocalFrameView::DidPaintCanvasChild(HTMLCanvasElement& canvas,
       add_result.stored_value->value =
           MakeGarbageCollected<GCedHeapLinkedHashSet<Member<Element>>>();
     }
-    add_result.stored_value->value->insert(&child);
+    add_result.stored_value->value->insert(&drawable);
   }
 }
 

@@ -82,7 +82,7 @@ void CheckValidResource(const GURL& resource_url,
 #else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
             resource_url_is_chrome_or_chrome_untrusted ||
-            blink::CommonSchemeRegistry::IsExtensionScheme(
+            blink::CommonSchemeRegistry::IsCodeCacheAllowedScheme(
                 resource_url.GetScheme()),
         base::NotFatalUntil::M159);
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -146,7 +146,7 @@ void CheckValidContext(const GURL& origin_lock,
   CHECK(origin_lock.is_empty() ||
             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
               origin_lock_is_chrome_or_chrome_untrusted ||
-              blink::CommonSchemeRegistry::IsExtensionScheme(
+              blink::CommonSchemeRegistry::IsCodeCacheAllowedScheme(
                   origin_lock.GetScheme())) &&
              !url::Origin::Create(origin_lock).opaque()),
         base::NotFatalUntil::M159);

@@ -3,7 +3,7 @@ Short Name: Vulkan Tools
 Version: N/A
 URL: https://github.com/KhronosGroup/Vulkan-Tools
 SOURCE CODE: git clone https://github.com/KhronosGroup/Vulkan-Tools.git
-Revision: f13d435dd50dc616db0c10e7bac87cd3aa7c82e3
+Revision: c213647e7c363f7447d0fea9b53316da9b52ac6a
 Update Mechanism: Autoroll
 Security Critical: no
 Shipped: no

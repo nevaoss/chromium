@@ -10,7 +10,6 @@ import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow.OnDismissListener;
 import android.widget.TextView;
 
 import androidx.annotation.DrawableRes;
@@ -84,6 +83,7 @@ class FuseboxPopup {
     /* package */ final Set<View> mDynamicThemedButtons = new HashSet<>();
     /* package */ final List<View> mDividers;
     /* package */ final List<TextView> mHeaders;
+    /* package */ final WindowAndroid mWindowAndroid;
 
     private final Activity mActivity;
     private final DynamicRectProvider mDynamicRectProvider;
@@ -129,6 +129,7 @@ class FuseboxPopup {
             boolean useScrollableCarousel,
             @CurrentTabPlacement int currentTabPlacement) {
         mActivity = activity;
+        mWindowAndroid = windowAndroid;
         mPopupWindow = popupWindow;
         mPopupWindow.setClippingEnabled(false);
         mPopupWindow.addOnDismissListener(this::restoreBackgroundAccessibility);
@@ -154,6 +155,15 @@ class FuseboxPopup {
 
         if (isBottomSheet) {
             mScrollView.setOnSwipeDownListener(this::dismiss);
+            int topPadding =
+                    mActivity
+                            .getResources()
+                            .getDimensionPixelSize(R.dimen.fusebox_bottom_sheet_top_padding);
+            mViewGroup.setPaddingRelative(
+                    mViewGroup.getPaddingStart(),
+                    topPadding,
+                    mViewGroup.getPaddingEnd(),
+                    mViewGroup.getPaddingBottom());
         } else {
             // Row highlights span the full width, so keep them inside the rounded corners.
             ListMenuUtils.clipContentViewOutline(mScrollView, R.attr.popupBgCornerRadius);
@@ -288,10 +298,6 @@ class FuseboxPopup {
                                 mToolsDivider,
                                 mModelsDivider);
         mHeaders = List.of(mRecentTabsHeader, mToolsHeader, mModelsHeader);
-
-        if (useScrollableCarousel) {
-            applyScrollableCarouselTileSize();
-        }
     }
 
     void destroy() {
@@ -406,20 +412,6 @@ class FuseboxPopup {
         updateDesiredWidth();
     }
 
-    /**
-     * Sizes the attachment icon tiles for the scrollable carousel. The item layout is shared with
-     * the weighted carousel, which keeps its default tile height.
-     */
-    private void applyScrollableCarouselTileSize() {
-        int tileSize =
-                mActivity
-                        .getResources()
-                        .getDimensionPixelSize(R.dimen.fusebox_scrollable_carousel_tile_size);
-        for (View tile : mCarouselTiles) {
-            tile.findViewById(R.id.start_icon_background).getLayoutParams().height = tileSize;
-        }
-    }
-
     private void initializeItem(View item, int textRes, int iconRes, int a11yRes) {
         TextView actionText = item.findViewById(R.id.action_text);
         actionText.setText(textRes);
@@ -444,9 +436,10 @@ class FuseboxPopup {
         return mPopupWindow.isShowing();
     }
 
-    /** Add a listener for when the popup is dismissed. */
-    void addOnDismissListener(OnDismissListener listener) {
-        mPopupWindow.addOnDismissListener(listener);
+    /** Returns the current {@link PopupState} of the popup. */
+    @PopupState
+    int getPopupState() {
+        return mCurrentState;
     }
 
     private boolean shouldApplyBottomInsets(WindowInsetsCompat insets) {

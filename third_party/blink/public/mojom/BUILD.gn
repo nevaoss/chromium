@@ -59,6 +59,7 @@ mojom("mojom_platform") {
   sources = [
     "ad_tagging/ad_evidence.mojom",
     "ai/ai_common.mojom",
+    "ai/ai_decision_model.mojom",
     "ai/ai_language_model.mojom",
     "ai/ai_manager.mojom",
     "ai/ai_proofreader.mojom",
@@ -98,6 +99,7 @@ mojom("mojom_platform") {
     "cookie_store/cookie_store.mojom",
     "cpu_performance.mojom",
     "crash/crash_memory_metrics_reporter.mojom",
+    "cross_origin_storage/cross_origin_storage.mojom",
     "css/preferred_color_scheme.mojom",
     "css/preferred_contrast.mojom",
     "data_transfer/data_transfer.mojom",
@@ -345,6 +347,7 @@ mojom("mojom_platform") {
     "//services/device/public/mojom",
     "//services/device/public/mojom:generic_sensor",
     "//services/network/public/mojom",
+    "//services/network/public/mojom:mojom_cache_storage_side_data_writer",
     "//services/network/public/mojom:mojom_connection_allowlist",
     "//services/network/public/mojom:mojom_http_request_headers",
     "//services/network/public/mojom:mojom_integrity_policy",
@@ -391,6 +394,7 @@ mojom("mojom_platform") {
       "//cc/mojom:mojom_browser_controls",
       "//services/media_session/public/mojom",
       "//services/network/public/mojom:cookies_mojom",
+      "//services/network/public/mojom:mojom_cache_storage_side_data_writer",
       "//services/network/public/mojom:mojom_connection_allowlist",
       "//services/network/public/mojom:mojom_content_security_policy",
       "//services/network/public/mojom:mojom_cors_origin_pattern",
@@ -1108,6 +1112,7 @@ mojom("android_mojo_bindings") {
 
     # Direct deps (instead of transitive deps) are necessary for java targets.
     public_deps += [
+      "//services/network/public/mojom:mojom_cache_storage_side_data_writer",
       "//services/network/public/mojom:mojom_connection_allowlist",
       "//services/network/public/mojom:mojom_content_security_policy",
       "//services/network/public/mojom:mojom_cors_origin_pattern",
@@ -1276,6 +1281,7 @@ mojom("mojom_core") {
     public_deps += [
       "//cc/mojom:mojom_browser_controls",
       "//services/network/public/mojom:cookies_mojom",
+      "//services/network/public/mojom:mojom_cache_storage_side_data_writer",
       "//services/network/public/mojom:mojom_connection_allowlist",
       "//services/network/public/mojom:mojom_content_security_policy",
       "//services/network/public/mojom:mojom_cors_origin_pattern",

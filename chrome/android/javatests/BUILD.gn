@@ -1001,7 +1001,10 @@ android_library("chrome_test_java_org.chromium.chrome.browser.notifications") {
     "src/org/chromium/chrome/browser/notifications/channels/SiteChannelsManagerTest.java",
   ]
 
-  deps = [ ":chrome_test_java_helper" ]
+  deps = [
+    ":chrome_test_java_helper",
+    "//chrome/browser/tips/android:java",
+  ]
 }
 
 android_library("chrome_test_java_org.chromium.chrome.browser.ntp") {
@@ -1327,7 +1330,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
 }
 
 # Requires non-obfuscated class names.
-if (is_java_debug && !incremental_install) {
+if (is_java_debug) {
   # A test that runs during compile that ensures all SettingsFragment subclasses
   # are listed in //tools/metrics/histograms/metadata/settings/enums.xml.
   action("check_settings_enums") {
@@ -1784,6 +1787,7 @@ android_library("chrome_test_java_various") {
     "src/org/chromium/chrome/browser/history/HistoryPaneTest.java",
     "src/org/chromium/chrome/browser/history/HistoryTabHelperTest.java",
     "src/org/chromium/chrome/browser/history/HistoryTest.java",
+    "src/org/chromium/chrome/browser/history/HistoryWebUiRenderTest.java",
     "src/org/chromium/chrome/browser/homepage/HomepagePolicyIntegrationTest.java",
     "src/org/chromium/chrome/browser/homepage/settings/HomepageSettingsRenderTest.java",
     "src/org/chromium/chrome/browser/host_zoom/HostZoomListenerTest.java",

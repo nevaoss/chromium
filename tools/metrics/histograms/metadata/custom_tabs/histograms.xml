@@ -193,7 +193,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.ClientAppId" enum="ClientAppId"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>yusufo@chromium.org</owner>
   <summary>
     Android: AppId declared by the launching application in EXTRA_APPLICATION_ID
@@ -403,18 +403,6 @@ chromium-metrics-reviews@google.com.
     forward and false if there have not been web contents interactions or the
     tab cannot go back / forward at the time of closing the CCT. If the tab is
     restored the previous form interactions will be reset.
-  </summary>
-</histogram>
-
-<histogram name="CustomTabs.HasNonSpoofablePackageName" enum="Boolean"
-    expires_after="2025-01-05">
-  <owner>katzz@google.com</owner>
-  <owner>chrome-connective-tissue@google.com</owner>
-  <summary>
-    Android only. Boolean histogram denoting whether the package name can be
-    retrieved in a non-spoofable way for Custom Tabs. When the histogram returns
-    true, it means we can confirm the package name was passed by the defined
-    host app. Emitted when the Custom Tab is launched.
   </summary>
 </histogram>
 
@@ -912,7 +900,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.WarmupStateOnLaunch" enum="WarmupStateOnLaunch"
-    expires_after="2027-01-31">
+    expires_after="2027-04-04">
   <owner>lizeb@chromium.org</owner>
   <summary>
     Recorded only on Android. Reports whether warmup() has been called when a

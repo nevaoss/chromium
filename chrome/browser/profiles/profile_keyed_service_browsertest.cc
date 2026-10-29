@@ -10,7 +10,9 @@
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_util.h"
 #include "base/test/scoped_feature_list.h"
+#include "build/branding_buildflags.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/navigation_predictor/search_engine_preconnector.h"
 #include "chrome/browser/preloading/scoped_prewarm_feature_list.h"
@@ -25,10 +27,13 @@
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/enterprise/buildflags/buildflags.h"
+#include "components/enterprise/isolated_mode/isolated_mode_features.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/dependency_graph.h"
 #include "components/keyed_service/core/keyed_service_base_factory.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "components/policy/core/common/management/management_service.h"
+#include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "components/spellcheck/common/spellcheck_features.h"
 #include "components/supervised_user/core/common/features.h"
@@ -56,6 +61,10 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "components/policy/core/common/features.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/test/base/scoped_channel_override.h"
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 
 namespace {
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -622,6 +631,13 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
   ASSERT_FALSE(guest_otr_profile->IsRegularProfile());
   ASSERT_TRUE(guest_otr_profile->IsOffTheRecord());
   ASSERT_TRUE(guest_otr_profile->IsGuestSession());
+  if (features::IsLazyOptimizationGuideModelsEnabled()) {
+    // OptimizationGuideGlobalStateHolderKeyedService remains active here
+    // because CreateGuestBrowser() creates a WebContents whose
+    // ChromeTranslateClient instantiates LanguageDetectionModelService.
+    guest_otr_active_services.erase("OnDeviceTailModelService");
+    guest_otr_active_services.erase("PredictionModelHandlerProvider");
+  }
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationExtensions.Get()) {
     guest_otr_active_services.erase("SafeBrowsingPrivateEventRouter");
@@ -1089,6 +1105,13 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     guest_active_services.erase("PageContentAnnotationsService");
     guest_active_services.erase("ZeroSuggestCacheServiceFactory");
   }
+  if (features::IsLazyOptimizationGuideModelsEnabled()) {
+    guest_active_services.erase("AutocompleteScoringModelService");
+    guest_active_services.erase("OnDeviceTailModelService");
+    guest_active_services.erase(
+        "OptimizationGuideGlobalStateHolderKeyedService");
+    guest_active_services.erase("PredictionModelHandlerProvider");
+  }
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationExtensions.Get()) {
     guest_active_services.erase("SafeBrowsingPrivateEventRouter");
@@ -1138,3 +1161,61 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
 #endif
   TestKeyedProfileServicesActives(guest_parent_profile, guest_active_services);
 }
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+class ProfileKeyedServiceIsolatedModeBrowserTest
+    : public ProfileKeyedServiceBrowserTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    ProfileKeyedServiceBrowserTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitch(
+        enterprise_isolated_mode::switches::
+            kForceEnterpriseIsolatedModeReplacesIncognito);
+  }
+
+ private:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+  // `kForceEnterpriseIsolatedModeReplacesIncognito` is ignored on Stable and
+  // Beta channels, and Chrome-branded builds default to Stable unless
+  // overridden.
+  chrome::ScopedChannelOverride channel_override_{
+      chrome::ScopedChannelOverride::Channel::kDev};
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+};
+
+// This test forces the creation of all registered KeyedServices on an
+// Enterprise Isolated Mode profile under an enterprise-managed environment to
+// verify that no service crashes or triggers DCHECK failures during
+// instantiation.
+//
+// Services that should not be created in Isolated Mode should be appropriately
+// configured in their factory's `ProfileSelections` (usually using
+// `ProfileSelection::kOriginalOnly` so they are not created in Incognito or
+// Isolated Mode, or `.WithIsolatedMode(ProfileSelection::kNone)`).
+IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceIsolatedModeBrowserTest,
+                       IsolatedModeProfile_ForceCreateAllServices) {
+  Profile* regular_profile = browser()->GetProfile();
+  BrowserWindowInterface* isolated_browser = CreateIncognitoBrowser();
+  Profile* isolated_profile = isolated_browser->GetProfile();
+  ASSERT_TRUE(isolated_profile->IsEnterpriseIsolatedModeProfile());
+
+  // Simulate an enterprise-managed environment on both the regular and
+  // Isolated Mode profiles (since ManagementServiceFactory uses kOwnInstance)
+  // so enterprise-only services do not early-return nullptr on IsManaged()
+  // checks.
+  policy::ScopedManagementServiceOverrideForTesting regular_management_override(
+      policy::ManagementServiceFactory::GetForProfile(regular_profile),
+      policy::EnterpriseManagementAuthority::CLOUD_DOMAIN);
+  policy::ScopedManagementServiceOverrideForTesting
+      isolated_management_override(
+          policy::ManagementServiceFactory::GetForProfile(isolated_profile),
+          policy::EnterpriseManagementAuthority::CLOUD_DOMAIN);
+
+  const std::vector<KeyedServiceBaseFactory*> keyed_service_factories =
+      GetKeyedServiceBaseFactories();
+
+  for (KeyedServiceBaseFactory* service_factory : keyed_service_factories) {
+    service_factory->CreateServiceNowForTesting(isolated_profile);
+  }
+}
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

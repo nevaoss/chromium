@@ -69,29 +69,43 @@ namespace test_default {
 #include "net/http/transport_security_state_static_pins_unittest_default.h"
 #include "net/http/transport_security_state_static_unittest_default.h"
 }
-namespace test1 {
-#include "net/http/transport_security_state_static_unittest1_pins.h"
-#include "net/http/transport_security_state_static_unittest1.h"
-}
-namespace test2 {
-#include "net/http/transport_security_state_static_unittest2_pins.h"
-#include "net/http/transport_security_state_static_unittest2.h"
-}
-namespace test3 {
-#include "net/http/transport_security_state_static_unittest3_pins.h"
-#include "net/http/transport_security_state_static_unittest3.h"
-}
 
 const char kHost[] = "example.test";
 
-// kGoodPath and kBadPath are each a list of the steps in a single path.
+// GoodPin1 is in the `static_spki_hashes` of both withoutRejectedPins and
+// withRejectedPins pinsets of the static_unittest_default pin data.
+constexpr char kGoodPin1[] =
+    "sha256/Nn8jk5By4Vkq6BeOVZ7R7AC6XUUBZsWmUbJR1f1Y5FY=";
+
+// TestSPKI1 is in the `static_spki_hashes` of withoutRejectedPins, but is in
+// the `bad_static_spki_hashes` of withRejectedPins pinset of the
+// static_unittest_default pin data.
+constexpr char kTestSPKI1[] =
+    "sha256/w3y7Yg3RzkAyhCeBoLHm71YRnuuUW87AAR/DVpLMTw4=";
+
+// kGoodPath is a list of hashes that will be allowed by CheckPublicKeyPins for
+// both withRejectedPins and withoutRejectedPins pinsets. It contains kGoodPin1
+// plus some other unknown hashes.
 constexpr auto kGoodPath = std::to_array<const char*>({
     "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "sha256/fzP+pVAbH0hRoUphJKenIP8+2tD/d2QH9J+kQNieM6Q=",
     "sha256/9vRUVdjloCa4wXUKfDWotV5eUXYD7vu0v0z9SRzQdzg=",
-    "sha256/Nn8jk5By4Vkq6BeOVZ7R7AC6XUUBZsWmUbJR1f1Y5FY=",
+    kGoodPin1,
 });
 
+// kMaybeRejectedPath is a list of hashes that will be allowed by
+// CheckPublicKeyPins for withoutRejectedPins but will fail for the
+// withRejectedPins pinset which has TestSPKI1 in `bad_static_spki_hashes`.
+constexpr auto kMaybeRejectedPath = std::to_array<const char*>({
+    "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "sha256/fzP+pVAbH0hRoUphJKenIP8+2tD/d2QH9J+kQNieM6Q=",
+    kTestSPKI1,
+    kGoodPin1,
+});
+
+// kBadPath is a list of hashes that will be rejected by CheckPublicKeyPins for
+// both withRejectedPins and withoutRejectedPins pinsets. It contains only
+// unknown hashes.
 constexpr auto kBadPath = std::to_array<const char*>({
     "sha256/1111111111111111111111111111111111111111111=",
     "sha256/2222222222222222222222222222222222222222222=",
@@ -109,21 +123,6 @@ class MockRequireCTDelegate : public RequireCTDelegate {
  protected:
   ~MockRequireCTDelegate() override = default;
 };
-
-bool operator==(const TransportSecurityState::STSState& lhs,
-                const TransportSecurityState::STSState& rhs) {
-  return lhs.last_observed == rhs.last_observed && lhs.expiry == rhs.expiry &&
-         lhs.upgrade_mode == rhs.upgrade_mode &&
-         lhs.include_subdomains == rhs.include_subdomains &&
-         lhs.domain == rhs.domain;
-}
-
-bool operator==(const TransportSecurityState::PKPState& lhs,
-                const TransportSecurityState::PKPState& rhs) {
-  return lhs.expiry == rhs.expiry && lhs.spki_hashes == rhs.spki_hashes &&
-         lhs.bad_spki_hashes == rhs.bad_spki_hashes &&
-         lhs.include_subdomains == rhs.include_subdomains;
-}
 
 std::vector<SHA256HashValue> DeserializeHashes(
     base::span<const char* const> serialized_hashes) {
@@ -573,46 +572,50 @@ TEST_F(TransportSecurityStateTest, DynamicDomainState) {
 // kHstsTopLevelNavigationsOnly.
 TEST_F(TransportSecurityStateTest, StaticOrDynamicSource) {
   TransportSecurityState state;
-  SetTransportSecurityStateSourceForTesting(&test1::kHSTSSource);
 
   // Check preconditions of preloaded states.
   TransportSecurityState::STSState sts_state;
-  ASSERT_TRUE(state.GetStaticSTSState("hsts.example.com", &sts_state));
+  ASSERT_TRUE(state.GetStaticSTSState("include-subdomains-hsts-preloaded.test",
+                                      &sts_state));
   ASSERT_EQ(sts_state.upgrade_mode,
             TransportSecurityState::STSState::MODE_FORCE_HTTPS);
   ASSERT_TRUE(sts_state.include_subdomains);
-  ASSERT_FALSE(state.GetStaticSTSState("dynamic.example.com", &sts_state));
+  ASSERT_FALSE(state.GetStaticSTSState("dynamic.test", &sts_state));
 
   const base::Time current_time(base::Time::Now());
   const base::Time expiry = current_time + base::Seconds(1000);
 
-  EXPECT_EQ(state.GetSSLUpgradeDecision("dynamic.example.com",
+  EXPECT_EQ(state.GetSSLUpgradeDecision("dynamic.test",
                                         /*is_top_level_nav=*/true),
             SSLUpgradeDecision::kNoUpgrade);
-  EXPECT_FALSE(state.ShouldUpgradeToSSL("dynamic.example.com",
+  EXPECT_FALSE(state.ShouldUpgradeToSSL("dynamic.test",
                                         /*is_top_level_nav=*/true));
 
-  EXPECT_EQ(state.GetSSLUpgradeDecision("hsts.example.com",
-                                        /*is_top_level_nav=*/true),
-            SSLUpgradeDecision::kStaticUpgrade);
-  EXPECT_TRUE(
-      state.ShouldUpgradeToSSL("hsts.example.com", /*is_top_level_nav=*/true));
+  EXPECT_EQ(
+      state.GetSSLUpgradeDecision("include-subdomains-hsts-preloaded.test",
+                                  /*is_top_level_nav=*/true),
+      SSLUpgradeDecision::kStaticUpgrade);
+  EXPECT_TRUE(state.ShouldUpgradeToSSL("include-subdomains-hsts-preloaded.test",
+                                       /*is_top_level_nav=*/true));
 
-  state.AddHSTS("dynamic.example.com", expiry, false);
-  EXPECT_EQ(state.GetSSLUpgradeDecision("dynamic.example.com",
+  state.AddHSTS("dynamic.test", expiry, false);
+  EXPECT_EQ(state.GetSSLUpgradeDecision("dynamic.test",
                                         /*is_top_level_nav=*/true),
             SSLUpgradeDecision::kDynamicUpgrade);
-  EXPECT_TRUE(state.ShouldUpgradeToSSL("dynamic.example.com",
+  EXPECT_TRUE(state.ShouldUpgradeToSSL("dynamic.test",
                                        /*is_top_level_nav=*/true));
 
   // Dynamic state for a host that already has static state doesn't change the
   // decision.
-  state.AddHSTS("subdomain.hsts.example.com", expiry, false);
-  EXPECT_EQ(state.GetSSLUpgradeDecision("subdomain.hsts.example.com",
-                                        /*is_top_level_nav=*/true),
+  state.AddHSTS("subdomain.include-subdomains-hsts-preloaded.test", expiry,
+                false);
+  EXPECT_EQ(state.GetSSLUpgradeDecision(
+                "subdomain.include-subdomains-hsts-preloaded.test",
+                /*is_top_level_nav=*/true),
             SSLUpgradeDecision::kStaticUpgrade);
-  EXPECT_TRUE(state.ShouldUpgradeToSSL("subdomain.hsts.example.com",
-                                       /*is_top_level_nav=*/true));
+  EXPECT_TRUE(state.ShouldUpgradeToSSL(
+      "subdomain.include-subdomains-hsts-preloaded.test",
+      /*is_top_level_nav=*/true));
 }
 
 // Tests that new pins always override previous pins. This should be true for
@@ -723,190 +726,157 @@ TEST_F(TransportSecurityStateTest, LongNames) {
   EXPECT_FALSE(state.GetDynamicPKPState(kLongName, &pkp_state));
 }
 
-TEST_F(TransportSecurityStateTest, PinValidationWithoutRejectedCerts) {
+TEST_F(TransportSecurityStateTest, PinValidationWithCompiledInPins) {
   AddScopedFeatureList().InitAndEnableFeature(
       features::kStaticKeyPinningEnforcement);
 
   std::vector<SHA256HashValue> good_hashes = DeserializeHashes(kGoodPath);
+  std::vector<SHA256HashValue> maybe_rejected_hashes =
+      DeserializeHashes(kMaybeRejectedPath);
   std::vector<SHA256HashValue> bad_hashes = DeserializeHashes(kBadPath);
 
   TransportSecurityState state;
   state.SetPinningListAlwaysTimelyForTesting(true);
   EnableStaticPins(&state);
 
-  TransportSecurityState::PKPState pkp_state;
-  EXPECT_TRUE(state.GetStaticPKPState("no-rejected-pins-pkp.preloaded.test",
-                                      &pkp_state));
-  EXPECT_TRUE(pkp_state.HasPublicKeyPins());
+  struct TestCase {
+    std::string_view hostname;
+    bool has_pins;
+    std::vector<std::vector<SHA256HashValue>> good_hash_lists;
+    std::vector<std::vector<SHA256HashValue>> fail_hash_lists;
+  };
+  const TestCase kTestcases[] = {
+      {.hostname = "no-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes, maybe_rejected_hashes},
+       .fail_hash_lists = {bad_hashes}},
+      {.hostname = "subdomain.no-rejected-pins.test", .has_pins = false},
+      {.hostname = "subdomain2.subdomain.no-rejected-pins.test",
+       .has_pins = false},
 
-  EXPECT_TRUE(pkp_state.CheckPublicKeyPins(good_hashes));
-  EXPECT_FALSE(pkp_state.CheckPublicKeyPins(bad_hashes));
+      {.hostname = "with-subdomains-no-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes, maybe_rejected_hashes},
+       .fail_hash_lists = {bad_hashes}},
+      {.hostname = "subdomain.with-subdomains-no-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes, maybe_rejected_hashes},
+       .fail_hash_lists = {bad_hashes}},
+      {.hostname = "subdomain2.subdomain.with-subdomains-no-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes, maybe_rejected_hashes},
+       .fail_hash_lists = {bad_hashes}},
+
+      {.hostname = "rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes},
+       .fail_hash_lists = {maybe_rejected_hashes, bad_hashes}},
+      {.hostname = "subdomain.rejected-pins.test", .has_pins = false},
+      {.hostname = "subdomain2.subdomain.rejected-pins.test",
+       .has_pins = false},
+
+      {.hostname = "with-subdomains-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes},
+       .fail_hash_lists = {maybe_rejected_hashes, bad_hashes}},
+      {.hostname = "subdomain.with-subdomains-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes},
+       .fail_hash_lists = {maybe_rejected_hashes, bad_hashes}},
+      {.hostname = "subdomain2.subdomain.with-subdomains-rejected-pins.test",
+       .has_pins = true,
+       .good_hash_lists = {good_hashes},
+       .fail_hash_lists = {maybe_rejected_hashes, bad_hashes}},
+
+      {.hostname = "test", .has_pins = false},
+      {.hostname = "not-present.test", .has_pins = false},
+  };
+
+  for (const auto& testcase : kTestcases) {
+    SCOPED_TRACE(testcase.hostname);
+
+    TransportSecurityState::PKPState pkp_state;
+    EXPECT_EQ(testcase.has_pins,
+              state.GetStaticPKPState(testcase.hostname, &pkp_state));
+    EXPECT_EQ(testcase.has_pins, pkp_state.HasPublicKeyPins());
+
+    EXPECT_EQ(testcase.has_pins, state.HasPublicKeyPins(testcase.hostname));
+    EXPECT_EQ(testcase.has_pins,
+              state.ShouldSSLErrorsBeFatal(testcase.hostname));
+
+    for (const auto& hash_list : testcase.good_hash_lists) {
+      EXPECT_EQ(TransportSecurityState::PKPStatus::OK,
+                state.CheckPublicKeyPins(testcase.hostname, true, hash_list));
+      EXPECT_TRUE(pkp_state.CheckPublicKeyPins(hash_list));
+    }
+
+    for (const auto& hash_list : testcase.fail_hash_lists) {
+      EXPECT_EQ(TransportSecurityState::PKPStatus::VIOLATED,
+                state.CheckPublicKeyPins(testcase.hostname, true, hash_list));
+      EXPECT_FALSE(pkp_state.CheckPublicKeyPins(hash_list));
+    }
+
+    // For hostnames that don't match any pins, any hashes should be allowed.
+    if (!testcase.has_pins) {
+      EXPECT_EQ(TransportSecurityState::PKPStatus::OK,
+                state.CheckPublicKeyPins(testcase.hostname, true, good_hashes));
+      EXPECT_EQ(TransportSecurityState::PKPStatus::OK,
+                state.CheckPublicKeyPins(testcase.hostname, true,
+                                         maybe_rejected_hashes));
+      EXPECT_EQ(TransportSecurityState::PKPStatus::OK,
+                state.CheckPublicKeyPins(testcase.hostname, true, bad_hashes));
+    }
+  }
 }
 
-// Simple test for the HSTS preload process. The trie (generated from
-// transport_security_state_static_unittest1.json) contains 1 entry. Test that
-// the lookup methods can find the entry and correctly decode the different
-// preloaded states (HSTS and HPKP).
-TEST_F(TransportSecurityStateTest, DecodePreloadedSingle) {
-  AddScopedFeatureList().InitAndEnableFeature(
-      features::kStaticKeyPinningEnforcement);
-  SetTransportSecurityStateSourceForTesting(&test1::kHSTSSource);
-  SetTransportSecurityStatePinsSourceForTesting(&test1::kPinsSource);
-
+TEST_F(TransportSecurityStateTest, PreloadedHsts) {
   TransportSecurityState state;
-  TransportSecurityStateTest::EnableStaticPins(&state);
 
-  TransportSecurityState::STSState sts_state;
-  TransportSecurityState::PKPState pkp_state;
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "hsts.example.com", &sts_state, &pkp_state));
-  EXPECT_TRUE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state.include_subdomains);
-  EXPECT_THAT(pkp_state.spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x1)));
-  EXPECT_THAT(pkp_state.bad_spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x2)));
-}
+  struct TestCase {
+    std::string_view hostname;
+    bool hsts;
+    bool include_subdomains;
+  };
+  const TestCase kTestcases[] = {
+      {"hsts-preloaded.test", true, false},
+      {"subdomain.hsts-preloaded.test", false, false},
+      {"subdomain2.subdomain.hsts-preloaded.test", false, false},
+      {"foo-hsts-preloaded.test", false, false},
 
-// More advanced test for the HSTS preload process where the trie (generated
-// from transport_security_state_static_unittest2.json) contains multiple
-// entries with a common prefix. Test that the lookup methods can find all
-// entries and correctly decode the different preloaded states (HSTS and HPKP)
-// for each entry.
-TEST_F(TransportSecurityStateTest, DecodePreloadedMultiplePrefix) {
-  AddScopedFeatureList().InitAndEnableFeature(
-      features::kStaticKeyPinningEnforcement);
-  SetTransportSecurityStateSourceForTesting(&test2::kHSTSSource);
-  SetTransportSecurityStatePinsSourceForTesting(&test2::kPinsSource);
+      {"include-subdomains-hsts-preloaded.test", true, true},
+      {"subdomain.include-subdomains-hsts-preloaded.test", true, true},
+      {"subdomain2.subdomain.include-subdomains-hsts-preloaded.test", true,
+       true},
+      {"foo-include-subdomains-hsts-preloaded.test", false, false},
 
-  TransportSecurityState state;
-  TransportSecurityStateTest::EnableStaticPins(&state);
+      {"example", true, true},
+      {"subdomain.example", true, true},
+      {"subdomain2.subdomain.example", true, true},
+      {"foo-example", false, false},
 
-  TransportSecurityState::STSState sts_state;
-  TransportSecurityState::PKPState pkp_state;
+      {"foo", false, false},
+      {"subdomain.foo", false, false},
+  };
 
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "hsts.example.com", &sts_state, &pkp_state));
-  EXPECT_FALSE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state == TransportSecurityState::PKPState());
+  for (const auto& testcase : kTestcases) {
+    SCOPED_TRACE(testcase.hostname);
 
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "hpkp.example.com", &sts_state, &pkp_state));
-  EXPECT_TRUE(sts_state == TransportSecurityState::STSState());
-  EXPECT_TRUE(pkp_state.include_subdomains);
-  EXPECT_THAT(pkp_state.spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x1)));
-  EXPECT_EQ(0U, pkp_state.bad_spki_hashes.size());
+    EXPECT_EQ(testcase.hsts, state.ShouldUpgradeToSSL(
+                                 testcase.hostname, /*is_top_level_nav=*/true));
+    EXPECT_EQ(testcase.hsts ? SSLUpgradeDecision::kStaticUpgrade
+                            : SSLUpgradeDecision::kNoUpgrade,
+              state.GetSSLUpgradeDecision(testcase.hostname,
+                                          /*is_top_level_nav=*/true));
+    EXPECT_EQ(testcase.hsts, state.ShouldSSLErrorsBeFatal(testcase.hostname));
 
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "mix.example.com", &sts_state, &pkp_state));
-  EXPECT_FALSE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state.include_subdomains);
-  EXPECT_THAT(pkp_state.spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x2)));
-  EXPECT_THAT(pkp_state.bad_spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x1)));
-}
-
-// More advanced test for the HSTS preload process where the trie (generated
-// from transport_security_state_static_unittest3.json) contains a mix of
-// entries. Some entries share a prefix with the prefix also having its own
-// preloaded state while others share no prefix. This results in a trie with
-// several different internal structures. Test that the lookup methods can find
-// all entries and correctly decode the different preloaded states (HSTS and
-// HPKP) for each entry.
-TEST_F(TransportSecurityStateTest, DecodePreloadedMultipleMix) {
-  AddScopedFeatureList().InitAndEnableFeature(
-      features::kStaticKeyPinningEnforcement);
-  SetTransportSecurityStateSourceForTesting(&test3::kHSTSSource);
-  SetTransportSecurityStatePinsSourceForTesting(&test3::kPinsSource);
-
-  TransportSecurityState state;
-  TransportSecurityStateTest::EnableStaticPins(&state);
-
-  TransportSecurityState::STSState sts_state;
-  TransportSecurityState::PKPState pkp_state;
-
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "example.com", &sts_state, &pkp_state));
-  EXPECT_TRUE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state == TransportSecurityState::PKPState());
-
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-  // example.com is in the HSTS json with include_subdirs=true, while
-  // hpkp.example.com (a subdomain of example.com) only occurs in the
-  // pins.json.
-  // In the old implementation where HSTS and PKP were mixed in a single data
-  // structure, this would have the unintuitive side effect that HSTS would be
-  // disabled for hpkp.example.com. Now that they are separated, a PKP entry
-  // has no effect on HSTS enforcement for conflicting domain names, or
-  // vice-versa.
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "hpkp.example.com", &sts_state, &pkp_state));
-  EXPECT_TRUE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state.include_subdomains);
-  EXPECT_THAT(pkp_state.spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x1)));
-  EXPECT_EQ(0U, pkp_state.bad_spki_hashes.size());
-
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "example.org", &sts_state, &pkp_state));
-  EXPECT_FALSE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state == TransportSecurityState::PKPState());
-
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "badssl.com", &sts_state, &pkp_state));
-  EXPECT_TRUE(sts_state == TransportSecurityState::STSState());
-  EXPECT_TRUE(pkp_state.include_subdomains);
-  EXPECT_THAT(pkp_state.spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x1)));
-  EXPECT_EQ(0U, pkp_state.bad_spki_hashes.size());
-
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-  EXPECT_TRUE(
-      GetStaticDomainState(&state, "mix.badssl.com", &sts_state, &pkp_state));
-  EXPECT_FALSE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state.include_subdomains);
-  EXPECT_THAT(pkp_state.spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x2)));
-  EXPECT_THAT(pkp_state.bad_spki_hashes,
-              testing::UnorderedElementsAre(GetSampleSPKIHash(0x1)));
-
-  sts_state = TransportSecurityState::STSState();
-  pkp_state = TransportSecurityState::PKPState();
-
-  // This should be a simple entry in the context of
-  // TrieWriter::IsSimpleEntry().
-  EXPECT_TRUE(GetStaticDomainState(&state, "simple-entry.example.com",
-                                   &sts_state, &pkp_state));
-  EXPECT_TRUE(sts_state.include_subdomains);
-  EXPECT_EQ(TransportSecurityState::STSState::MODE_FORCE_HTTPS,
-            sts_state.upgrade_mode);
-  EXPECT_TRUE(pkp_state == TransportSecurityState::PKPState());
+    TransportSecurityState::STSState sts_state;
+    EXPECT_EQ(testcase.hsts,
+              state.GetStaticSTSState(testcase.hostname, &sts_state));
+    EXPECT_EQ(testcase.include_subdomains, sts_state.include_subdomains);
+    EXPECT_EQ(testcase.hsts ? TransportSecurityState::STSState::MODE_FORCE_HTTPS
+                            : TransportSecurityState::STSState::MODE_DEFAULT,
+              sts_state.upgrade_mode);
+  }
 }
 
 // Setting `is_top_level_nav` true prevents the upgrade from being blocked by

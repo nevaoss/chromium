@@ -1042,6 +1042,7 @@
 <translation id="1790976235243700817">הסרת הגישה</translation>
 <translation id="1791662854739702043">מותקן</translation>
 <translation id="1792619191750875668">תצוגה מורחבת</translation>
+<translation id="1793048658013002380"><ph name="TOOLTIP_TEXT" /> (<ph name="KEYBOARD_SHORTCUT" />)</translation>
 <translation id="1794212650797661990">הסתרת הסיסמה של <ph name="DOMAIN" /></translation>
 <translation id="1794791083288629568">שליחת משוב שיעזור לנו לפתור את הבעיה.</translation>
 <translation id="1795214765651529549">שימוש בעיצוב קלאסי</translation>
@@ -1709,7 +1710,6 @@
 <translation id="2300383962156589922">התאמה אישית ושליטה ב-<ph name="APP_NAME" /></translation>
 <translation id="2300434721407965566">כדי להאריך את משך חיי הסוללה, הטעינה תיפסק כשהסוללה תגיע ל-80%.</translation>
 <translation id="2301382460326681002">ספריית הבסיס של ההרחבה אינה חוקית.</translation>
-<translation id="2301402091755573488">כרטיסייה משותפת</translation>
 <translation id="2304820083631266885">כוכב לכת</translation>
 <translation id="2305202347479035002">איך זה עובד</translation>
 <translation id="2306794767168143227">שמירה ב<ph name="BRAND" /> במכשיר זה</translation>
@@ -1728,6 +1728,7 @@
 <translation id="2322622365472107569">שעת הסיום: <ph name="TIME" /></translation>
 <translation id="2323018538045954000">‏רשתות Wi-Fi שמורות</translation>
 <translation id="2323685460575935191">הסתרת כפתורי הגלילה</translation>
+<translation id="2325004050205455346">היסטוריה מהזמן האחרון</translation>
 <translation id="2325444234681128157">שמירת סיסמה</translation>
 <translation id="2326188115274135041">יש לאשר את קוד האימות כדי להפעיל את ביטול הנעילה האוטומטי</translation>
 <translation id="2326583548923775947">‏כתובת האימייל הזו לא שייכת לחשבון Google. פריטים ששמרת ב-Chrome לא יהיו זמינים במכשירים אחרים.</translation>
@@ -2086,7 +2087,6 @@
 <translation id="2598710988533271874">‏יש גרסה חדשה זמינה של Chrome</translation>
 <translation id="2599048253926156421">שם המשתמש הועתק ללוח</translation>
 <translation id="2600631204638174747">{NUM_SITES,plural, =1{הושבת תוסף לא בטוח אחד}one{הושבתו {NUM_SITES} תוספים לא בטוחים}two{הושבתו {NUM_SITES} תוספים לא בטוחים}other{הושבתו {NUM_SITES} תוספים לא בטוחים}}</translation>
-<translation id="2603121359676416582">לגבי הדף הזה</translation>
 <translation id="2603656971249947488">שורת כרטיסיות</translation>
 <translation id="2604129989323098489">לרוב, אתרים מבקשים מידע על המסכים שלך כדי לפתוח ולמקם חלונות בצורה חכמה, למשל להציג מסמכים או תוכן במסך מלא אחד לצד השני</translation>
 <translation id="2604255671529671813">שגיאת חיבור רשת</translation>
@@ -2867,7 +2867,6 @@
 <translation id="3166443275568926403">ביצועים ומצב הסוללה</translation>
 <translation id="3167446923957429259">מזיזים את הפה שמאלה</translation>
 <translation id="3167562202484086668">מחיקת כל הנתונים מ<ph name="BRAND" /></translation>
-<translation id="3169504125849131369">‏לפתיחת ההגדרות של Windows</translation>
 <translation id="3175067642577044620">גוף ההודעה</translation>
 <translation id="3175862692832442091">יער</translation>
 <translation id="3176347586396987181">‏משתמשים במקש Z כדי ללחוץ לחיצה ארוכה על כפתור העכבר</translation>
@@ -2953,6 +2952,7 @@
 <translation id="323262942975422760">אפשרויות נוספות לעריכה או למחיקה של <ph name="ENTITY_INSTANCE_LABEL" />, <ph name="ENTITY_INSTANCE_SUBLABEL" /></translation>
 <translation id="3232754137068452469">אפליקציית אינטרנט</translation>
 <translation id="3233271424239923319">‏גיבוי קבצים ואפליקציות של Linux</translation>
+<translation id="3233577317461669428">לא נמצא מכשיר אחר</translation>
 <translation id="3234251228180563751">שם המשתמש מכיל יותר מ-1,000 תווים</translation>
 <translation id="3234978181857588512">שמירה במכשיר</translation>
 <translation id="3237871032310650497">למחוק את נתוני האתר של <ph name="SITE_NAME" /> שחולקו למחיצות ב-<ph name="PARTITION_SITE_NAME" />?</translation>
@@ -3027,7 +3027,6 @@
 <translation id="3292966601422448005">ההרשאות שיינתנו לאפליקציה <ph name="APP_NAME" /> יינתנו גם לאפליקציות להתקנה שלה.</translation>
 <translation id="3293080634164207409">הוספת כרטיסיות</translation>
 <translation id="329324683265785818">‏הפעלה או השהיה, מקש הקיצור k</translation>
-<translation id="3293644607209440645">שליחת הדף הזה</translation>
 <translation id="3294437725009624529">אורח</translation>
 <translation id="3294686910656423119">נתוני שימוש ודוחות קריסה</translation>
 <translation id="3295241308788901889">מתבצעת העברה של כרטיסייה</translation>
@@ -4763,7 +4762,6 @@
 <translation id="4610493438923139095">לא מהימן</translation>
 <translation id="4610637590575890427">האם התכוונת לעבור אל <ph name="SITE" />?</translation>
 <translation id="4611619000650855880">כשבוחרים בכפתור השמאלי של העכבר, משתמשים במקש ”/” כדי ללחוץ לחיצה כפולה</translation>
-<translation id="4612841084470706111">הענקת גישה לכל האתרים המבוקשים.</translation>
 <translation id="4613271546271159013">תוסף מסוים שינה את הדף המוצג בעת פתיחת כרטיסייה חדשה.</translation>
 <translation id="461613135510474570">משפט</translation>
 <translation id="461661862154729886">מקור חשמל</translation>
@@ -5730,6 +5728,7 @@
 <translation id="5344128444027639014">%<ph name="BATTERY_PERCENTAGE" /> (ימין)</translation>
 <translation id="534449933710420173">תיקייה ללא שם</translation>
 <translation id="5345916423802287046">הפעלת האפליקציה בזמן הכניסה</translation>
+<translation id="5346059693449184483">מה חשבת לעשות?</translation>
 <translation id="5350116201946341974">משעשע</translation>
 <translation id="535123479159372765">הטקסט הועתק ממכשיר אחר</translation>
 <translation id="5352257124367865087">ניהול של הרשאות האתר</translation>
@@ -7006,6 +7005,7 @@
 <translation id="6356893102071098867">עליך לוודא שבחרת בחשבון הנכון</translation>
 <translation id="6357305427698525450">חלק מהקישורים הנתמכים ימשיכו להיפתח ב-<ph name="APP_NAME" /> או ב-<ph name="APP_NAME_2" />.</translation>
 <translation id="6357750620525943720">‏מזהים יציבים אחרים (למשל, גיבוב (hash) או מזהי UUID (מזהה ייחודי אוניברסלי)</translation>
+<translation id="6357830294871526418">כרטיסיות במכשירים אחרים</translation>
 <translation id="6358884629796491903">דרקון</translation>
 <translation id="6359640073754977254">גלילה אל הכרטיסייה האחרונה</translation>
 <translation id="6361850914223837199">פרטי השגיאה:</translation>
@@ -7056,7 +7056,6 @@
 <translation id="6400360390396538896">תמיד ב-<ph name="ORIGIN" /></translation>
 <translation id="6400714103322134861">ביטול ההתמקדות בקבוצת הכרטיסיות</translation>
 <translation id="6401118106417399952">‏ה-EID של המכשיר הוא <ph name="EID_NUMBER" /> והמספר הסידורי של המכשיר הוא <ph name="SERIAL_NUMBER" />. המספרים האלה יכולים לשמש להפעלת השירות.</translation>
-<translation id="6401458660421980302">‏כדי לשלוח את הכרטיסייה הזו למכשיר אחר, צריך להיכנס ל-Chrome במכשיר האחר</translation>
 <translation id="6402042774506839496">כדי לברר למה, צריך לפנות למפתח האפליקציה</translation>
 <translation id="6402921224457714577">‏אתרים יכולים לבקש הרשאה לשלוט במכשירי ה-MIDI ולתכנת אותם מחדש</translation>
 <translation id="6404511346730675251">עריכת סימנייה</translation>
@@ -7154,7 +7153,6 @@
 <translation id="6472893788822429178">הצגת כפתור 'דף הבית'</translation>
 <translation id="6473315466413288899">יש לבחור אפשרות</translation>
 <translation id="6474021817475285003">‏הצגת פרטים נוספים ביומן Google</translation>
-<translation id="6474401088838630457">‏אני רוצה לקבל מ-Gemini מידע נוסף על הנושא הזה</translation>
 <translation id="6474498546677193336">‏לא ניתן לבטל את השיתוף כי אפליקציה משתמשת בתיקייה הזו. השיתוף של התיקייה הזו יבוטל בכיבוי הבא של Linux.</translation>
 <translation id="6474884162850599008">‏ניתוק חשבון Google Drive</translation>
 <translation id="6476482583633999078">מהירות הדיבור</translation>
@@ -7350,7 +7348,6 @@
 <translation id="6619801788773578757">הוספת אפליקציית "קיוסק"</translation>
 <translation id="6619990499523117484">אישור קוד האימות</translation>
 <translation id="6621282332208609777">‏אפשר לשאול את Google או להקליד כתובת URL</translation>
-<translation id="6621391692573306628">‏כדי לשלוח את הכרטיסייה הזו למכשיר אחר, צריך להיכנס ל-Chrome בשני המכשירים</translation>
 <translation id="6622980291894852883">המשך לחסום תמונות</translation>
 <translation id="6624036901798307345">במצב טאבלט, לוחצים על הכפתור בסרגל הכלים של מונה הכרטיסיות כדי לפתוח שורת כרטיסיות חדשה עם תצוגה המכילה תמונות ממוזערות של כל כרטיסייה.</translation>
 <translation id="6624538059730609162">סגירת התצוגה הימנית</translation>
@@ -9283,6 +9280,7 @@
 <translation id="8081989000209387414">‏להשבית ניפוי באגים באמצעות ADB?</translation>
 <translation id="8082132721957920509">הכרטיס נשמר</translation>
 <translation id="8082390128630131497">‏השבתה של ניפוי באגים באמצעות ADB יאפס את ה<ph name="DEVICE_TYPE" /> הזה להגדרות היצרן. כל חשבונות המשתמש והנתונים המקומיים יימחקו.</translation>
+<translation id="8082737802704584539">‏הארגון שלך השבית את האפשרות לשמור את ההיסטוריה בחשבון Google</translation>
 <translation id="8084114998886531721">סיסמה שמורה</translation>
 <translation id="8084417885464859041">‏שימוש בטוח ב-Gemini</translation>
 <translation id="8084429490152575036">‏הגדרות APN סלולרי</translation>

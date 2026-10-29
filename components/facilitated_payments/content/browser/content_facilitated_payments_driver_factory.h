@@ -47,10 +47,19 @@ class ContentFacilitatedPaymentsDriverFactory
       content::RenderFrameHost* render_frame_host);
 
   // Decides from the renderer's page `signals` whether to extract images from
-  // `render_frame_host` for QR code decoding.
+  // `render_frame_host` for QR code decoding. Images are extracted only for the
+  // active primary main frame, at most one evaluation at a time, and if there
+  // is no QR code detected on the current page.
   virtual void OnHeuristicSignalsReported(
       content::RenderFrameHost* render_frame_host,
       const mojom::HeuristicSignals& signals);
+
+  bool is_evaluating_qr_code_for_testing() const {
+    return is_evaluating_qr_code_;
+  }
+  void set_has_detected_qr_code_for_testing(bool has_detected_qr_code) {
+    has_detected_qr_code_ = has_detected_qr_code;
+  }
 
  private:
   FRIEND_TEST_ALL_PREFIXES(
@@ -101,11 +110,21 @@ class ContentFacilitatedPaymentsDriverFactory
   // merchant on the Optimization Guide allowlist.
   bool IsEligibleForQrCodeDetection(const GURL& url) const;
 
-  // Owns the drivers, one for each render frame host. Should be empty at
-  // destruction time because its elements are erased in RenderFrameDeleted().
+  // Owns the drivers, one for each render frame host. Elements are erased in
+  // RenderFrameDeleted(), or destroyed with `this` when the owning
+  // `TabFeatures` is torn down before `WebContents`.
   base::flat_map<content::RenderFrameHost*,
                  std::unique_ptr<ContentFacilitatedPaymentsDriver>>
       driver_map_;
+
+  // Per-page QR code state. Both are reset when the primary main frame commits
+  // a new document.
+  // True while images are being extracted and decoded. Prevents a page that
+  // fires many layout or scroll events from starting overlapping extractions.
+  bool is_evaluating_qr_code_ = false;
+  // True once a QR code has been found. Stops detection for the rest of the
+  // page.
+  bool has_detected_qr_code_ = false;
 
   // Owner.
   const raw_ref<FacilitatedPaymentsClient> client_;

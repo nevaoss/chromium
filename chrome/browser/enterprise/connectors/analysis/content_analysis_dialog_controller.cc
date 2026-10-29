@@ -71,7 +71,7 @@ ContentAnalysisDialogController::ContentAnalysisDialogController(
       delegate_base_(std::move(delegate)),
       download_item_(download_item) {
   DVLOG(1) << __func__;
-  DCHECK(delegate_base_);
+  CHECK(delegate_base_, base::NotFatalUntil::M161);
 
   dialog_delegate_ = std::make_unique<ContentAnalysisDialogDelegate>(
       delegate_base_.get(), CreateWebContentsGetter(), is_cloud, access_point,
@@ -175,20 +175,6 @@ void ContentAnalysisDialogController::CancelButtonClicked() {
   }
 }
 
-void ContentAnalysisDialogController::SuccessCallback() {
-#if defined(USE_AURA)
-  if (web_contents()) {
-    // It's possible focus has been lost and gained back incorrectly if the user
-    // clicked on the page between the time the scan started and the time the
-    // dialog closes. This results in the behaviour detailed in
-    // crbug.com/40153261. The fix is to preemptively take back focus when this
-    // dialog closes on its own.
-    scoped_ignore_input_events_.reset();
-    web_contents()->Focus();
-  }
-#endif
-}
-
 void ContentAnalysisDialogController::WebContentsDestroyed() {
   // If WebContents are destroyed, then the scan results don't matter so the
   // delegate can be destroyed as well.
@@ -203,7 +189,7 @@ void ContentAnalysisDialogController::PrimaryPageChanged(content::Page& page) {
 
 void ContentAnalysisDialogController::ShowResult(
     FinalContentAnalysisResult result) {
-  DCHECK(dialog_delegate_->is_pending());
+  CHECK(dialog_delegate_->is_pending(), base::NotFatalUntil::M161);
 
   dialog_delegate_->UpdateStateFromFinalResult(result);
 
@@ -226,7 +212,7 @@ ContentAnalysisDialogController::~ContentAnalysisDialogController() {
 }
 
 bool ContentAnalysisDialogController::ShouldShowDialogNow() {
-  DCHECK(!dialog_delegate_->is_pending());
+  CHECK(!dialog_delegate_->is_pending(), base::NotFatalUntil::M161);
   // If the final result is fail closed, display ui regardless of cloud or local
   // analysis.
   if (dialog_delegate_->final_result() ==

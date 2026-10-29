@@ -320,6 +320,32 @@ TEST_F(ResourceMultiBufferDataProviderTest, DidFailOtherErrorNotCrossOrigin) {
   EXPECT_FALSE(url_data->is_cors_cross_origin());
 }
 
+// An ORB block is deterministic, so it must fail immediately rather than being
+// retried, even at a non-zero position where transient failures are retried.
+TEST_F(ResourceMultiBufferDataProviderTest, DidFailBlockedByOrbDoesNotRetry) {
+  Initialize(kHttpUrl, 100);
+  // Exactly one loader must be created: the initial one. A retry would create
+  // a second one. The default action from the fixture's ON_CALL applies.
+  EXPECT_CALL(fetch_context_, CreateUrlLoader(_)).Times(1);
+  Start();
+  scoped_refptr<UrlData> url_data = url_data_;
+  EXPECT_CALL(*this, RedirectCallback(testing::IsNull()));
+  loader_->DidFail(WebURLError(net::ERR_BLOCKED_BY_ORB, url_));
+  EXPECT_TRUE(url_data->is_cors_cross_origin());
+  task_environment_.FastForwardUntilNoTasksRemain();
+}
+
+// Transient errors at a non-zero position are still retried.
+TEST_F(ResourceMultiBufferDataProviderTest, DidFailOtherErrorRetries) {
+  Initialize(kHttpUrl, 100);
+  // The initial loader plus one retry.
+  EXPECT_CALL(fetch_context_, CreateUrlLoader(_)).Times(2);
+  Start();
+  EXPECT_CALL(*this, RedirectCallback(_)).Times(0);
+  loader_->DidFail(WebURLError(net::ERR_FAILED, url_));
+  task_environment_.FastForwardUntilNoTasksRemain();
+}
+
 TEST_F(ResourceMultiBufferDataProviderTest, DestructedUrlIndexDidFinish) {
   Initialize(kHttpUrl, 100);
   Start();
@@ -450,7 +476,7 @@ TEST_F(ResourceMultiBufferDataProviderTest, NoCrossOriginMediaLeaks) {
   ASSERT_TRUE(loader_->WillFollowRedirect(url_b, response_b));
   task_environment_.FastForwardUntilNoTasksRemain();
 
-  auto SetUrlDataAndCreateReader =
+  auto set_url_data_and_create_reader =
       [&](const scoped_refptr<UrlData>& new_url_data) {
         reader.reset();
         url_data_ = new_url_data;
@@ -458,7 +484,7 @@ TEST_F(ResourceMultiBufferDataProviderTest, NoCrossOriginMediaLeaks) {
       };
 
   EXPECT_CALL(*this, RedirectCallback(_))
-      .WillRepeatedly(SetUrlDataAndCreateReader);
+      .WillRepeatedly(set_url_data_and_create_reader);
   loader_->DidReceiveResponse(response_b);
   ASSERT_TRUE(loader_);
   task_environment_.FastForwardUntilNoTasksRemain();
@@ -527,6 +553,43 @@ TEST_F(ResourceMultiBufferDataProviderTest,
 
   std::string data_str(1, 'a');
   loader->DidReceiveData(data_str);
+}
+
+TEST_F(ResourceMultiBufferDataProviderTest, DestructedUrlIndexStartViaReader) {
+  url_index_ = std::make_unique<UrlIndex>(
+      &fetch_context_, task_environment_.GetMainThreadTaskRunner());
+  url_ = KURL(kHttpUrl);
+  url_data_ =
+      url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED, UrlData::kNormal);
+
+  std::unique_ptr<MultiBufferReader> reader;
+  url_data_->OnRedirect(blink::BindOnce(
+      [](std::unique_ptr<MultiBufferReader>* reader_ptr,
+         const scoped_refptr<UrlData>& destination) {
+        EXPECT_FALSE(destination);
+        reader_ptr->reset();
+      },
+      Unretained(&reader)));
+
+  url_index_.reset();
+
+  // Creating a reader and calling SetPreload() invokes
+  // MultiBufferReader::UpdateInternalState() -> MultiBuffer::AddReader() ->
+  // ResourceMultiBuffer::CreateWriter() ->
+  // ResourceMultiBufferDataProvider::Start(). When `url_index_` is already
+  // destroyed, `Start()` must not synchronously run `url_data_->Fail()` and
+  // destroy `reader` while `AddReader()` and `UpdateInternalState()` are still
+  // on the stack.
+  reader = std::make_unique<MultiBufferReader>(
+      url_data_->multibuffer(), 0, 1024 * 1024,
+      /*is_client_audio_element=*/false, base::DoNothing(),
+      task_environment_.GetMainThreadTaskRunner());
+  reader->SetPinRange(0, 1024 * 1024);
+  reader->SetPreload(kDataSize, kDataSize);
+  ASSERT_TRUE(reader);
+
+  task_environment_.FastForwardUntilNoTasksRemain();
+  EXPECT_FALSE(reader);
 }
 
 }  // namespace blink

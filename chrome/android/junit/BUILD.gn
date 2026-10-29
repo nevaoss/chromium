@@ -405,7 +405,6 @@ if (is_android) {
       "//third_party/blink/public/mojom:android_mojo_bindings_java",
       "//third_party/blink/public/mojom:mojom_core_java",
       "//third_party/blink/public/mojom:mojom_platform_java",
-      "//third_party/gif_player:gif_player_java",
       "//third_party/google-truth:google_truth_java",
       "//third_party/hamcrest:hamcrest_core_java",
       "//third_party/hamcrest:hamcrest_java",
@@ -928,6 +927,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/history/HistoryContentManagerUnitTest.java",
       "src/org/chromium/chrome/browser/history/HistoryDeletionBridgeTest.java",
       "src/org/chromium/chrome/browser/history/HistoryDesktopNavigationMediatorUnitTest.java",
+      "src/org/chromium/chrome/browser/history/HistoryFilterChipUnitTest.java",
       "src/org/chromium/chrome/browser/history/HistoryPaneUnitTest.java",
       "src/org/chromium/chrome/browser/history/HistoryUiTest.java",
     ]
@@ -1009,10 +1009,6 @@ if (is_android) {
       "src/org/chromium/chrome/browser/notifications/NotificationTriggerBackgroundTaskTest.java",
       "src/org/chromium/chrome/browser/notifications/NotificationTriggerSchedulerTest.java",
       "src/org/chromium/chrome/browser/notifications/scheduler/DisplayAgentUnitTest.java",
-      "src/org/chromium/chrome/browser/notifications/tips/TipsOptInCoordinatorUnitTest.java",
-      "src/org/chromium/chrome/browser/notifications/tips/TipsPromoCoordinatorUnitTest.java",
-      "src/org/chromium/chrome/browser/notifications/tips/TipsPromoViewBinderUnitTest.java",
-      "src/org/chromium/chrome/browser/notifications/tips/TipsUtilsUnitTest.java",
     ]
 
     deps = [
@@ -1081,14 +1077,16 @@ if (is_android) {
       "src/org/chromium/chrome/browser/omaha/ResponseParserTest.java",
       "src/org/chromium/chrome/browser/omaha/StringSanitizerTest.java",
       "src/org/chromium/chrome/browser/omaha/VersionNumberTest.java",
+      "src/org/chromium/chrome/browser/omaha/inline/InAppUpdateControllerTest.java",
       "src/org/chromium/chrome/browser/omaha/inline/InAppUpdatePolicyTest.java",
-      "src/org/chromium/chrome/browser/omaha/inline/InAppUpdateSnackbarControllerTest.java",
       "src/org/chromium/chrome/browser/omaha/metrics/UpdateSuccessMetricsTest.java",
     ]
 
     deps = [
       ":chrome_junit_tests_helper",
+      "$google_play_services_package:google_play_services_tasks_java",
       "//third_party/android_deps:chromium_play_services_availability_java",
+      "//third_party/android_deps:playcore_app_update_java",
     ]
   }
 
@@ -1270,6 +1268,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/suggestions/UrlSimilarityScorerUnitTest.java",
       "src/org/chromium/chrome/browser/suggestions/tile/MostVisitedMediatorUnitTest.java",
       "src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesCoordinatorUnitTest.java",
+      "src/org/chromium/chrome/browser/suggestions/tile/TileDragDelegateImplUnitTest.java",
       "src/org/chromium/chrome/browser/suggestions/tile/TileGroupDelegateImplUnitTest.java",
       "src/org/chromium/chrome/browser/suggestions/tile/TileGroupUnitTest.java",
       "src/org/chromium/chrome/browser/suggestions/tile/TileInteractionDelegateTest.java",
@@ -1505,9 +1504,10 @@ if (is_android) {
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/TabVerticalViewBinderUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalExternalViewDragDropReorderStrategyUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalPinnedTabListRecyclerViewUnitTest.java",
+      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabCollapseButtonContextMenuCoordinatorUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabDropIndicatorDecorationUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabGroupSpineDecorationUnitTest.java",
-      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabHoverControllerUnitTest.java",
+      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabItemHoverControllerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabKeyboardHandlerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabListCoordinatorUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabListItemTouchHelperCallbackUnitTest.java",
@@ -1818,11 +1818,13 @@ if (is_android) {
       "//chrome/browser/actor/android:java",
       "//chrome/browser/android/metrics:base_java",
       "//chrome/browser/automotivetoolbar:java",
+      "//chrome/browser/base:java",
       "//chrome/browser/notifications:java",
       "//chrome/browser/privacy:privacy_preference_manager_java",
       "//chrome/browser/settings:search_java",
       "//chrome/browser/ui/android/multiwindow:multi_instance_data_proto_java",
       "//chrome/browser/ui/android/native_page:junit",
+      "//chrome/browser/ui/android/night_mode:jni_headers_java",
       "//chrome/browser/ui/android/pdf:pdf_info_java",
       "//chrome/browser/ui/android/pdf:pdf_page_java",
       "//chrome/browser/ui/android/pdf:pdf_utils_java",

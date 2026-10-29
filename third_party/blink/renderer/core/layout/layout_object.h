@@ -89,6 +89,7 @@ class HitTestRequest;
 class HitTestResult;
 class LayoutBlock;
 class LayoutBlockFlow;
+class LayoutHTMLCanvas;
 class LayoutView;
 class LocalFrameView;
 class PaintLayer;
@@ -1751,8 +1752,6 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
     return GetDocument().View();
   }
 
-  bool IsRooted() const;
-
   Node* GetNode() const {
     NOT_DESTROYED();
     return IsAnonymous() ? nullptr : node_.Get();
@@ -1977,9 +1976,13 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   // which is already marked for subtree recalc.
   void InvalidateSubtreePositionTry(bool mark_style_dirty);
 
-  // Equivalent to Element's corresponding functions if GetNode() is an
-  // Element, or returns the result of the nearest ancestor (across frame
-  // boundaries) whose GetNode() is an Element.
+  // Delegates to `Element::IsCanvasOrInCanvasSubtree()` / `IsInCanvasSubtree()`
+  // for the nearest `Element` (walking up the layout tree and across local
+  // frames if needed).
+  // Warning: This delegates to the DOM tree and can be true for objects that
+  // do not draw into a canvas (e.g., objects in a <canvas> without
+  // `content=drawable`, objects outside a `[drawable]` subtree, or top-layer
+  // elements). See also `EffectPaintPropertyNode::IsInDrawableCanvasSubtree()`.
   bool IsCanvasOrInCanvasSubtree() const;
   bool IsInCanvasSubtree() const;
 
@@ -2759,7 +2762,13 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
                                   MapCoordinatesFlags) const;
 
   bool ShouldUseTransformFromContainer(const LayoutObject* container) const;
-  LayoutObject* CanvasForDrawingLayoutObject() const;
+  // If this object is a non-SVG box model object, returns the
+  // `LayoutHTMLCanvas` for its element's `CanvasForDrawing()`.
+  // Warning: This delegates to `Element::CanvasForDrawing()` and can be
+  // non-null for elements that escape their canvas into the top layer. See
+  // also `EffectPaintPropertyNode::HasCanvasDrawableState()` and
+  // `EffectPaintPropertyNode::IsInDrawableCanvasSubtree()`.
+  LayoutHTMLCanvas* CanvasForDrawingLayoutObject() const;
 
   // The optional |size| parameter is used if the size of the object isn't
   // correct yet. If |fragment_transform| is provided, we'll use that instead of
@@ -3488,15 +3497,6 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
     may_be_non_contiguous_ifc_ = b;
   }
 
-  bool HasSVGTextDescendants() const {
-    NOT_DESTROYED();
-    return has_svg_text_descendants_;
-  }
-  void SetHasSVGTextDescendants(bool b) {
-    NOT_DESTROYED();
-    has_svg_text_descendants_ = b;
-  }
-
   bool IsMulticolContainer() const {
     NOT_DESTROYED();
     return is_multicol_container_;
@@ -4107,10 +4107,6 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   // preceded by a tall float that's pushed after (due to size/breaking
   // restrictions) the contents of the culled inline.
   unsigned may_be_non_contiguous_ifc_ : 1 = false;
-
-  // For LayoutBlock - true if this block has *any* SVG text descendants.
-  // Used for invalidation on transform changes.
-  unsigned has_svg_text_descendants_ : 1 = false;
 
   // True if this is a LayoutBlockFlow that establishes a multicol container.
   unsigned is_multicol_container_ : 1 = false;

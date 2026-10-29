@@ -59,6 +59,10 @@ inline constexpr char kAiSubscriptionAvatarRingIosDescription[] =
     "Display a ring around the avatar in the NTP and Account Menu if the "
     "primary account has a AI Tier";
 
+inline constexpr char kAim3pEntrypointName[] = "AIM 3P entrypoint";
+inline constexpr char kAim3pEntrypointDescription[] =
+    "Enables AIM entrypoint for third-party search engines that support it.";
+
 inline constexpr char kAimButtonRefactorName[] = "AIM Button Refactor";
 inline constexpr char kAimButtonRefactorDescription[] =
     "When enabled, the location and presentation of the AI Mode button on the "
@@ -223,12 +227,6 @@ inline constexpr char kAutofillBottomSheetNewBlurName[] =
 inline constexpr char kAutofillBottomSheetNewBlurDescription[] =
     "Enables a new method for blurring the autofill bottom sheet to prevent "
     "the keyboard from showing up. This uses `mousedown` instead of `focus`.";
-
-inline constexpr char kAutofillCreditCardScannerIosName[] =
-    "Enable the credit card scanner for Autofill";
-inline constexpr char kAutofillCreditCardScannerIosDescription[] =
-    "When enabled, users are offered the ability to use their phone camera to "
-    "scan their credit card when adding it to Chrome Autofill";
 
 inline constexpr char kAutofillCreditCardUploadName[] =
     "Offers uploading Autofilled credit cards";
@@ -487,8 +485,15 @@ inline constexpr char
         "Enables showing suggestions for multiple attachments";
 
 inline constexpr char kComposeboxPlusButtonBottomSheetName[] =
-    "Enable the bottom sheet for plus button in Composebox";
+    "Enable the large carousel in the bottom sheet for plus button in the plus "
+    "button";
 inline constexpr char kComposeboxPlusButtonBottomSheetDescription[] =
+    "Uses the larger size of the carousel in the bottom sheet for the plus "
+    "button multimodal menu.";
+
+inline constexpr char kComposeboxPlusButtonLargeCarouselName[] =
+    "Enable the bottom sheet for plus button in Composebox";
+inline constexpr char kComposeboxPlusButtonLargeCarouselDescription[] =
     "Uses the updated bottom sheet for the plus button multimodal menu.";
 
 inline constexpr char kComposeboxServerSideStateName[] =
@@ -1314,6 +1319,11 @@ inline constexpr char kLensTripleCameraEnabledName[] =
 inline constexpr char kLensTripleCameraEnabledDescription[] =
     "When enabled, Lens LVF uses virtual triple camera.";
 
+inline constexpr char kLightAppBarName[] = "Light App Bar";
+inline constexpr char kLightAppBarDescription[] =
+    "When enabled, the App Bar adapts its appearance to follow the user's "
+    "preferred light or dark interface style.";
+
 inline constexpr char kLocationBarBadgeMigrationName[] =
     "LocationBarBadgeMigration";
 inline constexpr char kLocationBarBadgeMigrationDescription[] =
@@ -1562,6 +1572,12 @@ inline constexpr char kOmniboxPastePromoExperimentName[] =
 inline constexpr char kOmniboxPastePromoExperimentDescription[] =
     "Enables non-modal default browser promo experiment arms for Omnibox "
     "navigation.";
+
+inline constexpr char kOmniboxPrerenderOnTouchDownName[] =
+    "Omnibox Prerender on Touch Down";
+inline constexpr char kOmniboxPrerenderOnTouchDownDescription[] =
+    "Prerenders compatible omnibox suggestions when touching down on the "
+    "suggestion row.";
 
 inline constexpr char kOmniboxUIMaxAutocompleteMatchesName[] =
     "Omnibox UI Max Autocomplete Matches";
@@ -1865,8 +1881,7 @@ inline constexpr char kSyncWalletVehicleRegistrationsDescription[] =
     "Enables syncing vehicle registrations in the wallet to the server.";
 
 inline constexpr char kTTCEnabledName[] = "TTCEnabled";
-inline constexpr char kTTCEnabledDescription[] =
-    "Enables TalkToChrome prototype.";
+inline constexpr char kTTCEnabledDescription[] = "Enables the TTC prototype.";
 
 inline constexpr char kTabGroupInOverflowMenuName[] =
     "Enable the Tab Group button in the overflow menu";

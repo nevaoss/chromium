@@ -261,6 +261,7 @@ class ReadAnythingUntrustedPageHandler :
       read_anything::mojom::ReadAnythingDistillationState new_state) override;
   void OnSpeechEngineStalled() override;
   void RequestReadabilityDistillation(
+      read_anything::mojom::ReadabilityDistillationReason reason,
       RequestReadabilityDistillationCallback callback) override;
 
   // PinnedToolbarModel::Observer
@@ -375,6 +376,9 @@ class ReadAnythingUntrustedPageHandler :
   // be determined.
   void SetLanguageCode(const std::string& code);
 
+  // Sends whether the tab is currently translated to the page.
+  void SendTranslationState(bool is_translated);
+
   void SetUpPdfObserver();
   void CheckIfActiveAXTreeChangedToPdf();
 
@@ -480,6 +484,9 @@ class ReadAnythingUntrustedPageHandler :
 
   // The current language being used in the app.
   std::string current_language_code_ = "en-US";
+  // The translation state last sent to the page, or nullopt if none has been
+  // sent yet.
+  std::optional<bool> last_sent_is_translated_;
   const bool use_screen_ai_service_;
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -525,7 +532,7 @@ class ReadAnythingUntrustedPageHandler :
 
   base::ScopedClosureRunner audible_closure_;
 
-  // Observes the page's language.
+  // Observes the page's language and translation state.
   ReadAnythingTranslateObserver translate_observer_;
 
   // Timer used for checking for pdf contents after the page has loaded.
@@ -548,8 +555,9 @@ class ReadAnythingUntrustedPageHandler :
 
   // Tracks the start time of a readability distillation triggered by an active
   // accessibility tree ID change. This is used to measure readability
-  // distilation latency from a tree change event and is null for SPA or manual
-  // redistillations.
+  // distillation latency from a tree change event. It is preserved across a
+  // renderer request with reason kTreeChanged and cleared for kRedistill
+  // (e.g. SPA) requests.
   base::TimeTicks readability_distillation_tree_change_start_time_;
 
   mojo::Remote<reading_mode::mojom::DistillationEvaluator>

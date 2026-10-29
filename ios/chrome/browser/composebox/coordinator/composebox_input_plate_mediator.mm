@@ -643,10 +643,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                         cachedWebStateIDs:attachments.cachedWebStateIDs];
 }
 
-- (void)removeSharedTabWithServerToken:
-    (const base::UnguessableToken&)serverToken {
+- (void)removeSharedTabWithInputItemIdentifier:
+    (const base::UnguessableToken&)inputItemIdentifier {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
-  ComposeboxInputItem* item = [_items itemForServerToken:serverToken];
+  ComposeboxInputItem* item = [_items itemForIdentifier:inputItemIdentifier];
   if (item) {
     [self removeItem:item];
   }
@@ -771,7 +771,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [_items removeItem:item];
 
   if (_contextualSearchSession) {
-    _contextualSearchSession->DeleteFile(item.serverToken);
+    // Attachments removed before their server upload starts have no server
+    // token, and so no server-side file to delete.
+    if (!item.serverToken.is_empty()) {
+      _contextualSearchSession->DeleteFile(item.serverToken);
+    }
     [self reloadSuggestions];
   }
 
@@ -1008,6 +1012,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                                           kComposeboxInputItemTypeImage
                               assetID:assetID
                                source:source];
+  item.uploadIndex = _imageUploadCount++;
   [self addItem:item];
   item.imageProvider = itemProvider;
   __block base::UnguessableToken identifier = item.identifier;
@@ -1502,6 +1507,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       [self removeItem:item];
     }
   }
+  _imageUploadCount = 0;
 }
 
 // Sends a Cobrowse text followup.
@@ -1672,18 +1678,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   composebox::TabDiff allDiff =
       composebox::ComputeTabDiff(alreadyProcessedIDs, selectedWebStateIDs);
 
-  // If the user explicitly selects or attaches a tab that was originally
-  // auto-attached, promote it to a user attachment (`isAutoAdded = NO`). This
-  // ensures the tab is preserved when subsequent active tab navigations occur.
   if (!autoAdded) {
     for (const web::WebStateID& webStateID : selectedWebStateIDs) {
       _removedWebStateIDs.erase(webStateID);
-    }
-    for (ComposeboxInputItem* item in _items.containedItems) {
-      web::WebStateID webStateID = _latestTabSelectionMapping[item.identifier];
-      if (webStateID.valid() && selectedWebStateIDs.contains(webStateID)) {
-        item.isAutoAdded = NO;
-      }
     }
   }
 
@@ -2453,11 +2450,14 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
 
   for (ComposeboxInputItem* item in invalidatedItems) {
-    if (_contextualSearchSession) {
+    if (_contextualSearchSession && !item.serverToken.is_empty()) {
       _contextualSearchSession->DeleteFile(item.serverToken);
     }
   }
   [_items removeItems:invalidatedItems];
+  if (mode == ComposeboxMode::kRegularSearch) {
+    _imageUploadCount = 0;
+  }
 
   if (invalidatedItems.count > 0) {
     [self notifyContextChanged];

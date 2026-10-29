@@ -6066,12 +6066,55 @@ def make_property_entries_and_callback_defs(
         "Global"
     ) + class_like.extended_attributes.values_of("TargetOfExposed")
 
+    # For a non-[Global] interface, the global scopes on which the interface
+    # itself is exposed may be statically known, e.g. Navigator is
+    # [Exposed=Window].  A member whose [Exposed] covers all of those scopes,
+    # e.g. [Exposed=Window] in a mixin that Navigator includes, is then exposed
+    # wherever the interface is, so it can be installed unconditionally
+    # instead of as a context-dependent property with a runtime check such as
+    # `execution_context->IsWindow()`.  This matters because wrappers created
+    # in a detached context get only unconditional properties (see
+    # V8DOMWrapper::CreateWrapper).
+    class_like_global_scopes = None
+    if not global_names and hasattr(class_like, "exposure"):
+        class_like_global_scopes = (
+            class_like.exposure.unconditional_global_scopes()
+        )
+
+    def is_exposed_wherever_class_like_is(exposure):
+        scopes = exposure.unconditional_global_scopes()
+        return scopes is not None and class_like_global_scopes <= scopes
+
+    def global_names_for_member(member):
+        if class_like_global_scopes is None:
+            return global_names
+        if isinstance(member, web_idl.OverloadGroup):
+            # The group's exposure is the union of its overloads', so check
+            # each overload on its own.
+            if not all(
+                is_exposed_wherever_class_like_is(overload.exposure)
+                for overload in member
+            ):
+                return global_names
+        elif not is_exposed_wherever_class_like_is(member.exposure):
+            return global_names
+        # Pretend that the global object implements all of the global names
+        # that the member is exposed on, which makes the [Exposed] condition
+        # trivially true.
+        return sorted(
+            set(
+                entry.global_name
+                for entry in member.exposure.global_names_and_features
+            )
+        )
+
     callback_def_nodes = ListNode()
 
     def iterate(members, callback):
         for member in members:
+            member_global_names = global_names_for_member(member)
             is_context_dependent = member.exposure.is_context_dependent(
-                global_names
+                member_global_names
             )
             runtime_enabled_features = False
             if isinstance(member, web_idl.OverloadGroup):
@@ -6083,7 +6126,7 @@ def make_property_entries_and_callback_defs(
                     [
                         expr_from_exposure(
                             overload.exposure,
-                            global_names=global_names,
+                            global_names=member_global_names,
                             may_use_feature_selector=True,
                         )
                         for overload in member
@@ -6095,7 +6138,7 @@ def make_property_entries_and_callback_defs(
                 )
                 exposure_conditional = expr_from_exposure(
                     member.exposure,
-                    global_names=global_names,
+                    global_names=member_global_names,
                     may_use_feature_selector=True,
                 )
 

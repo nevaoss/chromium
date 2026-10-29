@@ -123,7 +123,6 @@ Afin d'accéder à plus de paramètres utilisant des données pour améliorer vo
 <translation id="1432581352905426595">Gérer les moteurs de recherche</translation>
 <translation id="1435593198351412143">Ouvrir automatiquement les fichiers PDF</translation>
 <translation id="1437543266176261764">En cours d'exécution dans <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organisez vos produits suivis dans vos favoris</translation>
 <translation id="1452651021404174820">Choisir un appareil</translation>
 <translation id="1455845192930279203">Voulez-vous quand même télécharger « <ph name="FILE_NAME" /> » (<ph name="FILE_SIZE" />) à partir de <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Gagnez du temps, tapez moins</translation>
@@ -775,6 +774,7 @@ Seule une personne connaissant votre phrase de passe peut lire vos données chif
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, onglet épinglé et multisélectionné avec enregistrement en cours</translation>
 <translation id="4137746084635924146">Langue actuelle de l'appareil</translation>
 <translation id="414128724510021958">Sites pour ordinateurs demandés par défaut</translation>
+<translation id="4150837143272125910">Une mise à jour a été téléchargée</translation>
 <translation id="4162867837470729563">Liste d'options de partage à pleine hauteur.</translation>
 <translation id="4164642020717536140">Navigation Web rapide et sécurisée</translation>
 <translation id="4165077084524712774">Plus d'outils</translation>
@@ -1199,6 +1199,7 @@ D'autres formes d'historique de navigation, telles que les recherches et l'activ
 <translation id="5848257610304005265">Ouvrir un fichier PDF avec <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Arrêter le partage?</translation>
 <translation id="5853623416121554550">interrompu</translation>
+<translation id="5855375823365231964">À propos de ce profil</translation>
 <translation id="5855546874025048181">Affiner : <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, onglet de navigation privée multiséléctionné avec enregistrement en cours</translation>
 <translation id="5857447844686706637">Un problème est survenu. Impossible de mettre à jour le prix suivi.</translation>
@@ -1240,6 +1241,7 @@ D'autres formes d'historique de navigation, telles que les recherches et l'activ
 <translation id="6039379616847168523">Accéder à l'onglet suivant</translation>
 <translation id="6040143037577758943">Fermer</translation>
 <translation id="604124094241169006">Automatique</translation>
+<translation id="6041959688070413372">Gérer la connexion entre les services de recherche et les applis Google Workspace, comme Google Disque</translation>
 <translation id="6042308850641462728">Plus</translation>
 <translation id="6047066316630165190">Ouvrez la grille Gestionnaire d'onglets</translation>
 <translation id="604996488070107836">Le téléchargement de <ph name="FILE_NAME" /> a échoué en raison d'une erreur inconnue.</translation>
@@ -1400,6 +1402,7 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="6565959834589222080">Le Wi-Fi est utilisé lorsque c'est possible</translation>
 <translation id="657177046675873214">Pour accéder à vos favoris sur tous vos appareils, activez « Favoris » dans les paramètres.</translation>
 <translation id="6573096386450695060">Toujours autoriser</translation>
+<translation id="657480975869429144">Une nouvelle version de Chrome est offerte</translation>
 <translation id="658099107946526506">Protégez votre navigation privée avec un NIP pour empêcher les accès indésirables</translation>
 <translation id="6583199322650523874">Ajouter la page actuelle aux favoris</translation>
 <translation id="6588043302623806746">Utiliser un DNS sécurisé</translation>

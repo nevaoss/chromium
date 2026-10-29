@@ -326,13 +326,22 @@ public class TabListCoordinator implements PriceWelcomeMessageProvider, DestroyO
 
         @UiType int tabUiType = mMode == TabListMode.BOTTOM_STRIP ? UiType.STRIP : UiType.TAB;
         boolean isGridMode = mMode == TabListMode.GRID;
+        @TabClosingSource int tabClosingSource = TabClosingSource.UNKNOWN;
+        if (componentId == TabComponentId.GRID_TAB_SWITCHER
+                || componentId == TabComponentId.TAB_GRID_DIALOG_IN_SWITCHER
+                || componentId == TabComponentId.TAB_LIST_EDITOR) {
+            tabClosingSource = TabClosingSource.GRID_TAB_SWITCHER;
+        } else if (componentId == TabComponentId.TAB_GRID_DIALOG_FROM_STRIP
+                || componentId == TabComponentId.TAB_STRIP) {
+            tabClosingSource = TabClosingSource.BOTTOM_TAB_GROUP_STRIP;
+        }
         TabListConfig tabListConfig =
                 new TabListConfig.Builder(layoutType)
                         .setTabUiType(tabUiType)
                         .setSupportsMessageCards(isGridMode)
                         .setSupportsShrinkCloseAnimation(isGridMode)
                         .setSupportsTabContextClick(true)
-                        .setTabClosingSource(TabClosingSource.UNKNOWN)
+                        .setTabClosingSource(tabClosingSource)
                         .build();
 
         mMediator =
@@ -923,9 +932,9 @@ public class TabListCoordinator implements PriceWelcomeMessageProvider, DestroyO
         return indexes;
     }
 
-    /** Returns the filter index of a tab from its view index or TabList.INVALID_TAB_INDEX. */
-    int indexOfTabCardsOrInvalid(int index) {
-        return mModelList.indexOfTabCardsOrInvalid(index);
+    /** Returns the tab group ID of the tab group card at the given view index, or null. */
+    @Nullable Token getTabGroupIdForIndex(int index) {
+        return mModelList.getTabGroupIdForIndex(index);
     }
 
     int getTabListModelSize() {

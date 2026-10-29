@@ -11,6 +11,7 @@
 #include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
+#include "chrome/browser/ui/webui/organizer_panel/foreign_tabs_page_handler.h"
 #include "chrome/browser/ui/webui/organizer_panel/organizer_panel_page_handler.h"
 #include "chrome/browser/ui/webui/organizer_panel/tab_groups_organizer_page_handler.h"
 #include "chrome/browser/ui/webui/tab_search/search_handler.h"
@@ -49,11 +50,15 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
   static constexpr webui::LocalizedString kStrings[] = {
       {"clearSearch", IDS_CLEAR_SEARCH},
       {"closeTab", IDS_TAB_SEARCH_CLOSE_TAB},
+      {"createTabGroup", IDS_ORGANIZER_PANEL_CREATE_TAB_GROUP},
+      {"noRecentlyClosedTabs", IDS_ORGANIZER_PANEL_NO_RECENTLY_CLOSED_TABS},
       {"noResults", IDS_ORGANIZER_PANEL_NO_RESULTS},
       {"openTabs", IDS_TAB_SEARCH_OPEN_TABS},
       {"oneTab", IDS_TAB_SEARCH_ONE_TAB},
       {"recentlyClosed", IDS_TAB_SEARCH_RECENTLY_CLOSED},
       {"searchTabs", IDS_TAB_SEARCH_SEARCH_TABS},
+      {"showAll", IDS_ORGANIZER_PANEL_SHOW_ALL},
+      {"showSome", IDS_ORGANIZER_PANEL_SHOW_SOME},
       {"tabCount", IDS_TAB_SEARCH_TAB_COUNT},
       {"tabGroupMoreOptions", IDS_TAB_GROUP_MORE_OPTIONS},
       {"tabGroups", IDS_ORGANIZER_PANEL_TAB_GROUPS},
@@ -64,8 +69,8 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
   source->AddBoolean(
       "cjkWordBoundaryEnabled",
       base::FeatureList::IsEnabled(tabs::kTabSearchCjkWordBoundary));
-  source->AddBoolean("crossDeviceTabsEnabled",
-                     organizer_panel::IsOrganizerPanelCrossDeviceTabsEnabled());
+  source->AddBoolean("foreignTabsEnabled",
+                     organizer_panel::IsOrganizerPanelForeignTabsEnabled());
   source->AddBoolean("isIncognitoMode", profile->IsIncognitoProfile());
 
   ui::Accelerator accelerator(ui::VKEY_A,
@@ -89,6 +94,13 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
 OrganizerPanelUI::~OrganizerPanelUI() = default;
 
 WEB_UI_CONTROLLER_TYPE_IMPL(OrganizerPanelUI)
+
+void OrganizerPanelUI::BindInterface(
+    mojo::PendingReceiver<organizer_panel::mojom::ForeignTabsPageHandlerFactory>
+        receiver) {
+  foreign_tabs_page_factory_receiver_.reset();
+  foreign_tabs_page_factory_receiver_.Bind(std::move(receiver));
+}
 
 void OrganizerPanelUI::BindInterface(
     mojo::PendingReceiver<organizer_panel::mojom::PageHandlerFactory>
@@ -117,9 +129,22 @@ void OrganizerPanelUI::BindInterface(
 }
 
 void OrganizerPanelUI::CreatePageHandler(
-    mojo::PendingReceiver<organizer_panel::mojom::PageHandler> receiver) {
-  organizer_panel_page_handler_ = std::make_unique<OrganizerPanelPageHandler>(
+    mojo::PendingReceiver<organizer_panel::mojom::ForeignTabsPageHandler>
+        receiver) {
+  foreign_tabs_page_handler_ = std::make_unique<ForeignTabsPageHandler>(
       std::move(receiver), web_ui()->GetWebContents());
+}
+
+void OrganizerPanelUI::CreatePageHandler(
+    mojo::PendingRemote<organizer_panel::mojom::Page> page,
+    mojo::PendingReceiver<organizer_panel::mojom::PageHandler> receiver) {
+  if (!page.is_valid() || !receiver.is_valid()) {
+    organizer_panel_page_factory_receiver_.ReportBadMessage(
+        "Invalid page pending remote or receiver in CreatePageHandler");
+    return;
+  }
+  organizer_panel_page_handler_ = std::make_unique<OrganizerPanelPageHandler>(
+      std::move(receiver), std::move(page), web_ui()->GetWebContents());
 }
 
 void OrganizerPanelUI::CreatePageHandler(

@@ -299,7 +299,6 @@ sql::InitStatus BtmDatabase::Init() {
 
 void BtmDatabase::LogDatabaseMetrics() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  base::TimeTicks start_time = base::TimeTicks::Now();
 
   std::optional<int64_t> db_size = base::GetFileSize(db_path_);
   if (db_size.has_value()) {
@@ -309,9 +308,6 @@ void BtmDatabase::LogDatabaseMetrics() {
 
   base::UmaHistogramCounts10000("Privacy.DIPS.DatabaseEntryCount",
                                 GetEntryCount(BtmDatabaseTable::kBounces));
-
-  base::UmaHistogramTimes("Privacy.DIPS.DatabaseHealthMetricsTime",
-                          base::TimeTicks::Now() - start_time);
 }
 
 bool BtmDatabase::CheckDBInit() {
@@ -885,7 +881,9 @@ bool BtmDatabase::ClearTimestamps(const base::Time& delete_begin,
             "WHERE first_web_authn_assertion_time>=? AND "
                   "last_web_authn_assertion_time<=?";
     // clang-format on
-    CHECK(db_->IsSQLValid(kClearWaaSql), base::NotFatalUntil::M158);
+    // TODO(crbug.com/568606044): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(db_->IsSQLValid(kClearWaaSql));
 
     sql::Statement s_clear_waa(
         db_->GetCachedStatement(SQL_FROM_HERE, kClearWaaSql));

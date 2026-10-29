@@ -35,6 +35,7 @@ public class NtpBackgroundDataThemeCollection extends NtpBackgroundDataImageBase
     @VisibleForTesting static final String IS_DAILY_REFRESH_ENABLED_KEY = "isDailyRefreshEnabled";
     @VisibleForTesting static final String ATTRIBUTION_LINE_1_KEY = "attributionLine1";
     @VisibleForTesting static final String ATTRIBUTION_LINE_2_KEY = "attributionLine2";
+    @VisibleForTesting static final String ATTRIBUTION_ACTION_URL_KEY = "attributionActionUrl";
 
     private final CustomBackgroundInfo mCustomBackgroundInfo;
 
@@ -59,11 +60,15 @@ public class NtpBackgroundDataThemeCollection extends NtpBackgroundDataImageBase
             @Nullable String fileIdHash) {
         super(platformType, backgroundImageInfo, bitmap, primaryColor, fileIdHash);
         mCustomBackgroundInfo = customBackgroundInfo;
+        // TODO(crbug.com/570015549): Remove the null check once the CustomBackgroundInfo of a
+        // theme collection can't be null.
         // Set even when empty, which clears a stale description from a recycled view.
         setContentDescription(
-                joinAttributionLines(
-                        customBackgroundInfo.attributionLine1,
-                        customBackgroundInfo.attributionLine2));
+                customBackgroundInfo != null
+                        ? joinAttributionLines(
+                                customBackgroundInfo.attributionLine1,
+                                customBackgroundInfo.attributionLine2)
+                        : "");
     }
 
     /**
@@ -176,20 +181,24 @@ public class NtpBackgroundDataThemeCollection extends NtpBackgroundDataImageBase
 
     private static CustomBackgroundInfo jsonObjectToCustomBackgroundInfo(JSONObject json)
             throws JSONException {
-        String urlSpec = json.optString(BACKGROUND_URL_KEY, null);
-        GURL backgroundUrl =
-                (urlSpec == null || urlSpec.isEmpty()) ? GURL.emptyGURL() : new GURL(urlSpec);
         String attributionLine1 =
                 json.has(ATTRIBUTION_LINE_1_KEY) ? json.getString(ATTRIBUTION_LINE_1_KEY) : null;
         String attributionLine2 =
                 json.has(ATTRIBUTION_LINE_2_KEY) ? json.getString(ATTRIBUTION_LINE_2_KEY) : null;
         return new CustomBackgroundInfo(
-                backgroundUrl,
+                getGurlFromJson(json, BACKGROUND_URL_KEY),
                 json.getString(COLLECTION_ID_KEY),
                 json.getBoolean(IS_UPLOADED_IMAGE_KEY),
                 json.getBoolean(IS_DAILY_REFRESH_ENABLED_KEY),
                 attributionLine1,
-                attributionLine2);
+                attributionLine2,
+                getGurlFromJson(json, ATTRIBUTION_ACTION_URL_KEY));
+    }
+
+    /** Returns the GURL stored under the key, or {@link GURL#emptyGURL()} if missing or empty. */
+    private static GURL getGurlFromJson(JSONObject json, String key) {
+        String spec = json.optString(key);
+        return spec.isEmpty() ? GURL.emptyGURL() : new GURL(spec);
     }
 
     private JSONObject customBackgroundInfoToJson() throws JSONException {
@@ -207,6 +216,11 @@ public class NtpBackgroundDataThemeCollection extends NtpBackgroundDataImageBase
         }
         if (mCustomBackgroundInfo.attributionLine2 != null) {
             json.put(ATTRIBUTION_LINE_2_KEY, mCustomBackgroundInfo.attributionLine2);
+        }
+        if (!mCustomBackgroundInfo.attributionActionUrl.isEmpty()) {
+            json.put(
+                    ATTRIBUTION_ACTION_URL_KEY,
+                    mCustomBackgroundInfo.attributionActionUrl.getPossiblyInvalidSpec());
         }
         return json;
     }

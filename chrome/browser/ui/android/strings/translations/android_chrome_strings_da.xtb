@@ -123,7 +123,6 @@ Du kan finde flere indstillinger, der bruger data til at forbedre din Chrome-opl
 <translation id="1432581352905426595">Administrer søgemaskiner</translation>
 <translation id="1435593198351412143">Åbn PDF-filer automatisk</translation>
 <translation id="1437543266176261764">Kører i <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organiser de produkter, du holder øje med, i Bogmærker</translation>
 <translation id="1452651021404174820">Vælg en enhed</translation>
 <translation id="1455845192930279203">Vil du downloade "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) fra <ph name="DOWNLOAD_DOMAIN" /> alligevel?</translation>
 <translation id="1460751212339734034">Spar tid ved at indtaste mindre</translation>
@@ -775,6 +774,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, fastgjort inkognitofane med multivalg, der optager</translation>
 <translation id="4137746084635924146">Aktuelt enhedssprog</translation>
 <translation id="414128724510021958">Der anmodes som standard om computerwebsites</translation>
+<translation id="4150837143272125910">En opdatering er blevet downloadet</translation>
 <translation id="4162867837470729563">Listen over delingsindstillinger er åbnet i fuld højde.</translation>
 <translation id="4164642020717536140">Hurtig og sikker webbrowsing</translation>
 <translation id="4165077084524712774">Flere værktøjer</translation>
@@ -1199,6 +1199,7 @@ Din Google-konto kan have andre former for browserhistorik, f.eks. søgninger og
 <translation id="5848257610304005265">Vil du åbne PDF-filen med <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Vil du stoppe delingen?</translation>
 <translation id="5853623416121554550">sat på pause</translation>
+<translation id="5855375823365231964">Om denne profil</translation>
 <translation id="5855546874025048181">Juster: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, inkognitofane med multivalg, der optager</translation>
 <translation id="5857447844686706637">Noget gik galt. Overvåg pris kunne ikke opdateres.</translation>
@@ -1240,6 +1241,7 @@ Din Google-konto kan have andre former for browserhistorik, f.eks. søgninger og
 <translation id="6039379616847168523">Gå til den næste fane</translation>
 <translation id="6040143037577758943">Luk</translation>
 <translation id="604124094241169006">Automatisk</translation>
+<translation id="6041959688070413372">Administrer tilknytningen mellem søgetjenester og Google Workspace-apps, f.eks. Google Drev</translation>
 <translation id="6042308850641462728">Mere</translation>
 <translation id="6047066316630165190">Åbn Faneskift i gittervisning</translation>
 <translation id="604996488070107836"><ph name="FILE_NAME" /> kunne ikke downloades, da der opstod en ukendt fejl.</translation>
@@ -1400,6 +1402,7 @@ Nogle websites kan f.eks. reagere på denne anmodning ved at vise dig annoncer, 
 <translation id="6565959834589222080">Wi-Fi anvendes, når det er tilgængeligt</translation>
 <translation id="657177046675873214">Aktivér "Bogmærker" i indstillingerne for at få adgang til dine bogmærker på alle dine enheder</translation>
 <translation id="6573096386450695060">Tillad altid</translation>
+<translation id="657480975869429144">En ny version af Chrome er tilgængelig</translation>
 <translation id="658099107946526506">Beskyt din private browsing med en pinkode for at forhindre uønsket adgang</translation>
 <translation id="6583199322650523874">Føj et bogmærke til den aktuelle side</translation>
 <translation id="6588043302623806746">Brug et sikkert DNS</translation>

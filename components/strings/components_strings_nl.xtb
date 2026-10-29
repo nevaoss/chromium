@@ -289,7 +289,6 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="1462951478840426066">Gebruik de lettertypen op je computer voor de fraaiste weergave van je content</translation>
 <translation id="1465457928007067810">IBAN opgeslagen in je Google-account</translation>
 <translation id="1467432559032391204">Links</translation>
-<translation id="1471514598850585811">Laptop</translation>
 <translation id="1472675084647422956">Meer bekijken</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Voer 3 of meer woorden in om schrijfhulp te krijgen</translation>
@@ -452,7 +451,6 @@ Anders wordt dit geblokkeerd door je privacyinstellingen. Hierdoor werkt de cont
 <translation id="1734864079702812349">Amex</translation>
 <translation id="1734878702283171397">Probeer contact op te nemen met de systeembeheerder.</translation>
 <translation id="1736163675982669961"><ph name="CARD_NICKNAME" />, <ph name="CARD_NETWORK_NAME" />, <ph name="CARD_LAST_FOUR_DIGITS" />, verloopt op <ph name="CARD_EXPIRATION" /></translation>
-<translation id="1736420071277903564">Computer</translation>
 <translation id="1739364174357629566">Known Traveler Number updaten</translation>
 <translation id="1740404923954980840">Als je het volledige scherm wilt sluiten, sleep je vanaf de bovenkant en tik je op de terugknop</translation>
 <translation id="1741474054575634405">Klantenkaarten beheren...</translation>
@@ -867,6 +865,7 @@ Je kunt deze suggestie verwijderen uit Chrome. Je oorspronkelijke bron wordt nie
 <translation id="2436186046335138073"><ph name="HANDLER_HOSTNAME" /> toestaan alle links voor <ph name="PROTOCOL" /> te openen?</translation>
 <translation id="243815215670139125">Deze kaart kan niet worden opgeslagen in je Google-account. De informatie is opgeslagen in Chrome op dit apparaat.</translation>
 <translation id="2438874542388153331">Vier perforaties rechts</translation>
+<translation id="2442033148418774391">Melding over slimmer automatisch invullen, privé gehouden gesloten</translation>
 <translation id="2442865686365739754">De volgende gegevens worden <ph name="BEGIN_EMPHASIS" />niet opgeslagen<ph name="END_EMPHASIS" /> in Chrome:
 <ph name="BEGIN_LIST" />
 <ph name="LIST_ITEM" />Je browsegeschiedenis
@@ -879,13 +878,13 @@ Je kunt deze suggestie verwijderen uit Chrome. Je oorspronkelijke bron wordt nie
 <translation id="2451607499823206582">Volgen</translation>
 <translation id="2452837234288608067">Daarbij kunnen we niet helpen. Probeer het opnieuw.</translation>
 <translation id="2453045048779611513">Je organisatie beperkt wat je kunt opslaan</translation>
+<translation id="2456490423293803882">Melding over slimmer automatisch invullen, privé gehouden is op volledige hoogte geopend</translation>
 <translation id="2459882793359532780">Toegepast browserbeleid (apparaat- en profielbeleid)</translation>
 <translation id="2461385121573678775">Chrome Enterprise Core biedt een centrale tool om browserbeleid vanuit de cloud in te stellen</translation>
 <translation id="2461822463642141190">Huidig</translation>
 <translation id="2462724976360937186">Sleutel-ID van certificeringsinstantie</translation>
 <translation id="2465688316154986572">Nieten</translation>
 <translation id="2465914000209955735">Bestanden beheren die je in Chrome hebt gedownload</translation>
-<translation id="2466682894498377850">Tabblad gestuurd vanaf je <ph name="DEVICE_NAME" /></translation>
 <translation id="2467272921457885625">Apparaathardwarespecificaties en -statistieken zoals CPU-/RAM-gebruiksgeschiedenis</translation>
 <translation id="2467421459221956357">Sensoren gebruiken?</translation>
 <translation id="2467694685043708798"><ph name="BEGIN_LINK" />Netwerkcontrole uitvoeren<ph name="END_LINK" /></translation>
@@ -927,7 +926,6 @@ Je kunt deze suggestie verwijderen uit Chrome. Je oorspronkelijke bron wordt nie
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Content van de betaalpagina wordt gedeeld met Google om deze opties aan te bieden.<ph name="END_BOLD" /> Betalingsplannen zijn afhankelijk van deelnamevereisten. Ga naar de <ph name="BEGIN_LINK" />betaalinstellingen<ph name="END_LINK" /> om opties voor later betalen te verbergen.</translation>
 <translation id="2526062290525841862">Zet de ontwikkelaarsmodus voor geïsoleerde web-apps weer aan om deze app uit te voeren</translation>
 <translation id="2526280916094749336">Je kunt opgeslagen adressen gebruiken in meerdere Google-producten. Dit adres wordt opgeslagen in je Google-account (<ph name="ACCOUNT" />).</translation>
-<translation id="2526590354069164005">Bureaublad</translation>
 <translation id="2527451058878391043">De CVC-code staat voor op je kaart. Het is de 4-cijferige code rechtsboven het kaartnummer.</translation>
 <translation id="2529899080962247600">Dit veld mag niet meer dan <ph name="MAX_ITEMS_LIMIT" /> items bevatten. Alle andere items worden genegeerd.</translation>
 <translation id="2530042584066815841">Muisvergrendeling en -gebruik</translation>
@@ -1108,6 +1106,7 @@ Je kunt deze suggestie verwijderen uit Chrome. Je oorspronkelijke bron wordt nie
 <translation id="2878197950673342043">Kruisvouw</translation>
 <translation id="2878424575911748999">A1</translation>
 <translation id="2879694782644540289">je schermvergrendeling te gebruiken om wachtwoorden in te vullen</translation>
+<translation id="2880119244122776372">Bouwen en programmeren</translation>
 <translation id="2881276955470682203">Kaart opslaan?</translation>
 <translation id="2882280148032777436">Known Traveler Number verwijderen</translation>
 <translation id="2882949212241984732">4-luik gesloten luikvouw</translation>
@@ -1731,7 +1730,6 @@ Het kan langer dan normaal duren voordat je app wordt gestart.</translation>
 <translation id="3905894480064208252">{0,plural, =1{Bestand kan niet worden overgezet}other{<ph name="FILE_COUNT" /> bestanden kunnen niet worden overgezet}}</translation>
 <translation id="3906022360148923497">Icoon van betaalmethode</translation>
 <translation id="3906234161316839040">Andere bestellingen</translation>
-<translation id="3906954721959377182">Tablet</translation>
 <translation id="3909695131102177774"><ph name="LABEL" /> <ph name="ERROR" /></translation>
 <translation id="3910231615117880630">Meer informatie over ingesloten content</translation>
 <translation id="3920504717067627103">Certificaatbeleid</translation>
@@ -3907,6 +3905,7 @@ Aanvullende informatie:
 <translation id="753713322968419914">Woonadres verwijderen uit automatisch invullen in Chrome?</translation>
 <translation id="753714465667062283">Log in om je foto op te slaan</translation>
 <translation id="7537536606612762813">Verplicht</translation>
+<translation id="7540924742308928499">Brainstormen en samenvatten</translation>
 <translation id="7543525346216957623">Vraag het aan je ouder of voogd</translation>
 <translation id="7546409722674205727"><ph name="APP_NAME" /> starten</translation>
 <translation id="7548892272833184391">Verbindingsfouten oplossen</translation>

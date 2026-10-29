@@ -29,10 +29,8 @@ from devil.android.tools import system_app
 from devil.android.tools import webview_app
 from devil.android import device_utils
 from devil.utils import reraiser_thread
-from incremental_install import installer
 from lib.proto import exception_recorder
 from lib.proto import measures
-from pylib import constants
 from pylib.base import base_test_result
 from pylib.base import output_manager
 from pylib.base import test_exception
@@ -123,6 +121,9 @@ _EXTRA_PACKAGE_UNDER_TEST = (
 )
 
 _EXTRA_WEBVIEW_PROCESS_MODE = 'AwJUnit4ClassRunner.ProcessMode'
+
+# IME id prefix of the CTS MockIme (CtsMockInputMethod.apk).
+_CTS_MOCK_IME_ID_PREFIX = 'com.android.cts.mockime/'
 
 # LINT.IfChange
 _EXTRA_WEBVIEW_REBASELINE_MODE = (
@@ -473,33 +474,6 @@ class LocalDeviceInstrumentationTestRun(
 
                 return install_helper_internal
 
-            def incremental_install_helper(apk, json_path, permissions):
-
-                @measures.timed_func('device_setup', 'install_incremental')
-                @trace_event.traced
-                def incremental_install_helper_internal(d, apk_path=None):
-                    try:
-                        installer.Install(
-                            d, json_path, apk=apk, permissions=permissions
-                        )
-                    except device_errors.CommandFailedError as e:
-                        exception_recorder.register(
-                            test_exception.InstallationFailedError(e)
-                        )
-                        raise
-                    except device_errors.CommandTimeoutError as e:
-                        exception_recorder.register(
-                            test_exception.InstallationTimeoutError(e)
-                        )
-                        raise
-                    except base_error.BaseError as e:
-                        exception_recorder.register(
-                            test_exception.InstallationError(e)
-                        )
-                        raise
-
-                return incremental_install_helper_internal
-
             install_steps.extend(
                 install_apex_helper(apex)
                 for apex in self._test_instance.additional_apexs
@@ -513,28 +487,13 @@ class LocalDeviceInstrumentationTestRun(
             )
 
             permissions = self._test_instance.test_apk.GetPermissions()
-            if self._test_instance.test_apk_incremental_install_json:
-                if self._test_instance.test_apk_as_instant:
-                    raise Exception(
-                        'Test APK cannot be installed as an instant '
-                        'app if it is incremental'
-                    )
-
-                install_steps.append(
-                    incremental_install_helper(
-                        self._test_instance.test_apk,
-                        self._test_instance.test_apk_incremental_install_json,
-                        permissions,
-                    )
+            install_steps.append(
+                install_helper(
+                    self._test_instance.test_apk,
+                    permissions=permissions,
+                    instant_app=self._test_instance.test_apk_as_instant,
                 )
-            else:
-                install_steps.append(
-                    install_helper(
-                        self._test_instance.test_apk,
-                        permissions=permissions,
-                        instant_app=self._test_instance.test_apk_as_instant,
-                    )
-                )
+            )
 
             # We'll potentially need the package names later for setting app
             # compatibility workarounds.
@@ -599,24 +558,15 @@ class LocalDeviceInstrumentationTestRun(
                 permissions = (
                     self._test_instance.apk_under_test.GetPermissions()
                 )
-                if self._test_instance.apk_under_test_incremental_install_json:
-                    install_steps.append(
-                        incremental_install_helper(
-                            self._test_instance.apk_under_test,
-                            self._test_instance.apk_under_test_incremental_install_json,
-                            permissions,
-                        )
+                install_steps.append(
+                    install_helper(
+                        self._test_instance.apk_under_test,
+                        self._test_instance.modules,
+                        self._test_instance.fake_modules,
+                        permissions,
+                        self._test_instance.additional_locales,
                     )
-                else:
-                    install_steps.append(
-                        install_helper(
-                            self._test_instance.apk_under_test,
-                            self._test_instance.modules,
-                            self._test_instance.fake_modules,
-                            permissions,
-                            self._test_instance.additional_locales,
-                        )
-                    )
+                )
 
             # Execute any custom setup shell commands
             if self._test_instance.run_setup_commands:
@@ -762,6 +712,7 @@ class LocalDeviceInstrumentationTestRun(
             @measures.timed_func('device_setup', 'setup_soft_keyboard')
             @trace_event.traced
             def setup_soft_keyboard(dev):
+                self._ResetLeftoverCtsMockIme(dev)
                 flags = self._test_instance.flags
                 # Treat as desktop if the flag is present.
                 is_desktop = dev.is_desktop or any(
@@ -918,6 +869,9 @@ class LocalDeviceInstrumentationTestRun(
 
             self._ClearDefaultBrowserApp(dev)
 
+            # Don't leave CTS MockIme as the default IME for the next task.
+            self._ResetLeftoverCtsMockIme(dev)
+
             # Remove package-specific configuration
             dev.RunShellCommand(['am', 'clear-debug-app'], check_return=True)
 
@@ -935,6 +889,34 @@ class LocalDeviceInstrumentationTestRun(
                 context.__exit__(*sys.exc_info())
 
         self._env.parallel_devices.pMap(individual_device_tear_down)
+
+    def _ResetLeftoverCtsMockIme(self, dev):
+        """Resets the default IME if it was left as the CTS MockIme.
+
+        Prior tasks on shared Swarming devices can leave
+        com.android.cts.mockime/.MockIme as Settings.Secure.DEFAULT_INPUT_METHOD
+        without an active MockImeSession. MockIme then crashes in onCreate()
+        whenever an input field is focused, so the soft keyboard never shows
+        (https://crbug.com/567650995).
+
+        This only resets the IME settings; it does not uninstall MockIme, since
+        CTS suites install it as an additional APK and set it up themselves via
+        MockImeSession (https://crrev.com/c/8494669).
+        """
+        try:
+            default_ime = dev.RunShellCommand(
+                ['settings', 'get', 'secure', 'default_input_method'],
+                single_line=True,
+                check_return=True,
+            )
+            if not default_ime.startswith(_CTS_MOCK_IME_ID_PREFIX):
+                return
+            logging.warning(
+                'Resetting leftover CTS MockIme default IME: %s', default_ime
+            )
+            dev.RunShellCommand(['ime', 'reset'], check_return=True)
+        except device_errors.CommandFailedError as e:
+            logging.warning('Failed to reset CTS MockIme default IME: %s', e)
 
     def _SetDefaultBrowserApp(self, dev):
         # Safely granting the browser role requires the
@@ -1065,20 +1047,7 @@ class LocalDeviceInstrumentationTestRun(
     def _GetTestsFromPickle(self, pickle_extras):
         test_apk_path = self._test_instance.test_apk.path
         pickle_path = '%s-testlist.pickle' % test_apk_path
-        # For incremental APKs, the code doesn't live in the apk, so instead check
-        # the timestamp of the target's .dex files.
-        if self._test_instance.test_apk_incremental_install_json:
-            with open(
-                self._test_instance.test_apk_incremental_install_json
-            ) as f:
-                data = json.load(f)
-            out_dir = constants.GetOutDirectory()
-            test_mtime = max(
-                os.path.getmtime(os.path.join(out_dir, p))
-                for p in data['dex_files']
-            )
-        else:
-            test_mtime = os.path.getmtime(test_apk_path)
+        test_mtime = os.path.getmtime(test_apk_path)
 
         try:
             raw_tests = _LoadTestsFromPickle(

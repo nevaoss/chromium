@@ -22,6 +22,7 @@ class QwacWebContentsObserver;
 class NewTabPagePreloadPipelineManager;
 
 namespace actor {
+class ActorSurfaceTabHelper;
 class ActorTabData;
 }  // namespace actor
 
@@ -32,6 +33,10 @@ class ContextualTasksTabVisitTracker;
 namespace actor::ui {
 class ActorUiTabControllerInterface;
 }  // namespace actor::ui
+
+namespace blocked_content {
+class PopupOpenerTabHelper;
+}  // namespace blocked_content
 
 namespace chrome_browser_net {
 class NetErrorTabHelper;
@@ -105,6 +110,10 @@ namespace metrics {
 class MetricsServicesWebContentsObserver;
 }  // namespace metrics
 
+namespace page_content_annotations {
+class PageContentAnnotationsWebContentsObserver;
+}  // namespace page_content_annotations
+
 namespace payments {
 class WebPaymentsObserver;
 }  // namespace payments
@@ -115,6 +124,7 @@ class NoStatePrefetchTabHelper;
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 namespace safe_browsing {
+class SafeBrowsingTabObserver;
 class TailoredSecurityUrlObserver;
 }  // namespace safe_browsing
 #endif
@@ -131,7 +141,12 @@ namespace v8_compile_hints {
 class V8CompileHintsTabHelper;
 }  // namespace v8_compile_hints
 
+namespace vr {
+class VrTabHelper;
+}  // namespace vr
+
 namespace webapps {
+class AppBannerManagerAndroid;
 class MLInstallabilityPromoter;
 }  // namespace webapps
 
@@ -140,6 +155,7 @@ class AutoPictureInPictureTabHelper;
 class ChainedBackNavigationTracker;
 class ChromeFacilitatedPaymentsClient;
 class ConnectionHelpTabHelper;
+class CoreTabHelper;
 class ExternalProtocolObserver;
 class FileSystemAccessTabHelper;
 class FromGWSNavigationAndKeepAliveRequestObserver;
@@ -151,6 +167,7 @@ class NavigationPredictorPreconnectClient;
 class OomInterventionTabHelper;
 class PluginObserverAndroid;
 class PolicyAuditorBridge;
+class RecentlyAudibleHelper;
 class RevokedPermissionsTabHelper;
 class SearchEngineTabHelper;
 class SecurityStateEventObserver;
@@ -218,6 +235,7 @@ class TabFeatures {
       ask_before_http_dialog_controller_;
 
   std::unique_ptr<actor::ActorTabData> actor_tab_data_;
+  std::unique_ptr<actor::ActorSurfaceTabHelper> actor_surface_tab_helper_;
 
   std::unique_ptr<sync_sessions::SyncSessionsRouterTabHelper>
       sync_sessions_router_;
@@ -271,6 +289,8 @@ class TabFeatures {
   std::unique_ptr<site_protection::SiteProtectionMetricsObserver>
       site_protection_metrics_observer_;
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+  std::unique_ptr<safe_browsing::SafeBrowsingTabObserver>
+      safe_browsing_tab_observer_;
   std::unique_ptr<safe_browsing::TailoredSecurityUrlObserver>
       tailored_security_url_observer_;
 #endif
@@ -283,6 +303,7 @@ class TabFeatures {
       auto_fetch_navigation_observer_;
   std::unique_ptr<PluginObserverAndroid> plugin_observer_android_;
   std::unique_ptr<AboutThisSiteTabHelper> about_this_site_tab_helper_;
+  std::unique_ptr<RecentlyAudibleHelper> recently_audible_helper_;
   std::unique_ptr<SoundContentSettingObserver> sound_content_setting_observer_;
   std::unique_ptr<tasks::TaskTabHelper> task_tab_helper_;
   std::unique_ptr<HistoryEmbeddingsTabHelper> history_embeddings_tab_helper_;
@@ -304,6 +325,7 @@ class TabFeatures {
   std::unique_ptr<offline_pages::RecentTabHelper> recent_tab_helper_;
   std::unique_ptr<AutoPictureInPictureTabHelper>
       auto_picture_in_picture_tab_helper_;
+  std::unique_ptr<webapps::AppBannerManagerAndroid> app_banner_manager_;
   std::unique_ptr<webapps::MLInstallabilityPromoter>
       ml_installability_promoter_;
   std::unique_ptr<ChromeFacilitatedPaymentsClient>
@@ -311,6 +333,13 @@ class TabFeatures {
   std::unique_ptr<commerce::CommerceTabHelper> commerce_tab_helper_;
   std::unique_ptr<metrics::MetricsServicesWebContentsObserver>
       metrics_services_web_contents_observer_;
+  std::unique_ptr<blocked_content::PopupOpenerTabHelper>
+      popup_opener_tab_helper_;
+  std::unique_ptr<
+      page_content_annotations::PageContentAnnotationsWebContentsObserver>
+      page_content_annotations_web_contents_observer_;
+  std::unique_ptr<CoreTabHelper> core_tab_helper_;
+  std::unique_ptr<vr::VrTabHelper> vr_tab_helper_;
 
   // Holds the WebUI embedding context subscription.
   base::CallbackListSubscription tab_subscription_;

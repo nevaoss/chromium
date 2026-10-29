@@ -159,8 +159,9 @@
 #include "components/on_device_translation/buildflags/buildflags.h"
 #include "components/optimization_guide/core/delivery/prefs.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
+#include "components/optimization_guide/core/hints/prefs.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
-#include "components/optimization_guide/core/optimization_guide_prefs.h"
+#include "components/optimization_guide/core/model_quality/model_quality_prefs.h"
 #include "components/page_info/core/merchant_trust_service.h"
 #include "components/password_manager/core/browser/password_manager.h"
 #include "components/payments/core/payment_prefs.h"
@@ -1029,6 +1030,21 @@ inline constexpr char kHatsArcGamesSurveyCycleEndTs[] =
     "hats_arc_games_cycle_end_timestamp";
 inline constexpr char kHatsArcGamesDeviceIsSelected[] =
     "hats_arc_games_device_is_selected";
+inline constexpr char kHatsOfficeSurveyIsSelected[] = "hats_office_is_selected";
+inline constexpr char kHatsOfficeSurveyCycleEndTs[] =
+    "hats_office_end_timestamp";
+inline constexpr char kHatsPersonalizationAvatarSurveyCycleEndTs[] =
+    "hats_personalization_avatar_cycle_end_timestamp";
+inline constexpr char kHatsPersonalizationAvatarSurveyIsSelected[] =
+    "hats_personalization_avatar_is_selected";
+inline constexpr char kHatsPersonalizationScreensaverSurveyCycleEndTs[] =
+    "hats_personalization_screensaver_cycle_end_timestamp";
+inline constexpr char kHatsPersonalizationScreensaverSurveyIsSelected[] =
+    "hats_personalization_screensaver_is_selected";
+inline constexpr char kHatsPersonalizationWallpaperSurveyCycleEndTs[] =
+    "hats_personalization_wallpaper_cycle_end_timestamp";
+inline constexpr char kHatsPersonalizationWallpaperSurveyIsSelected[] =
+    "hats_personalization_wallpaper_is_selected";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Deprecated 09/2026.
@@ -1107,6 +1123,18 @@ constexpr char kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment[] =
     "signin.BookmarkSignInPromoDismissCountForLimitsExperiment";
 constexpr char kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment[] =
     "signin.PasswordSignInPromoDismissCountForLimitsExperiment";
+
+#if BUILDFLAG(IS_CHROMEOS)
+// Deprecated 10/2026.
+inline constexpr char kHatsMediaAppPdfCycleEndTs[] =
+    "hats_media_app_pdf_cycle_end_timestamp";
+inline constexpr char kHatsMediaAppPdfIsSelected[] =
+    "hats_media_app_pdf_is_selected";
+inline constexpr char kHatsPhotosExperienceCycleEndTs[] =
+    "hats_photos_experience_cycle_end_timestamp";
+inline constexpr char kHatsPhotosExperienceIsSelected[] =
+    "hats_photos_experience_is_selected";
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1496,6 +1524,18 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(kHatsAudioOutputProcDeviceIsSelected, false);
   registry->RegisterInt64Pref(kHatsArcGamesSurveyCycleEndTs, 0);
   registry->RegisterBooleanPref(kHatsArcGamesDeviceIsSelected, false);
+  registry->RegisterBooleanPref(kHatsOfficeSurveyIsSelected, false);
+  registry->RegisterInt64Pref(kHatsOfficeSurveyCycleEndTs, 0);
+  registry->RegisterInt64Pref(kHatsPersonalizationAvatarSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsPersonalizationAvatarSurveyIsSelected,
+                                false);
+  registry->RegisterInt64Pref(kHatsPersonalizationScreensaverSurveyCycleEndTs,
+                              0);
+  registry->RegisterBooleanPref(kHatsPersonalizationScreensaverSurveyIsSelected,
+                                false);
+  registry->RegisterInt64Pref(kHatsPersonalizationWallpaperSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsPersonalizationWallpaperSurveyIsSelected,
+                                false);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Deprecated 09/2026.
@@ -1559,6 +1599,14 @@ void RegisterProfilePrefsForMigration(
       kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
   registry->RegisterIntegerPref(
       kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment, 0);
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Deprecated 10/2026.
+  registry->RegisterInt64Pref(kHatsMediaAppPdfCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsMediaAppPdfIsSelected, false);
+  registry->RegisterInt64Pref(kHatsPhotosExperienceCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsPhotosExperienceIsSelected, false);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 }
 
 }  // namespace
@@ -1619,6 +1667,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
 #endif
   optimization_guide::prefs::RegisterLocalStatePrefs(registry);
   optimization_guide::model_execution::prefs::RegisterLocalStatePrefs(registry);
+  optimization_guide::RegisterModelQualityLocalStatePrefs(registry);
   password_manager::PasswordManager::RegisterLocalPrefs(registry);
   policy::BrowserPolicyConnector::RegisterPrefs(registry);
   policy::LocalTestPolicyProvider::RegisterLocalStatePrefs(registry);
@@ -2901,6 +2950,14 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kHatsAudioOutputProcDeviceIsSelected);
   profile_prefs->ClearPref(kHatsArcGamesSurveyCycleEndTs);
   profile_prefs->ClearPref(kHatsArcGamesDeviceIsSelected);
+  profile_prefs->ClearPref(kHatsOfficeSurveyIsSelected);
+  profile_prefs->ClearPref(kHatsOfficeSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsPersonalizationAvatarSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsPersonalizationAvatarSurveyIsSelected);
+  profile_prefs->ClearPref(kHatsPersonalizationScreensaverSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsPersonalizationScreensaverSurveyIsSelected);
+  profile_prefs->ClearPref(kHatsPersonalizationWallpaperSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsPersonalizationWallpaperSurveyIsSelected);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Added 09/2026.
@@ -2963,6 +3020,14 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
       kBookmarkSignInPromoDismissCountPerProfileForLimitsExperiment);
   profile_prefs->ClearPref(
       kPasswordSignInPromoDismissCountPerProfileForLimitsExperiment);
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Added 10/2026.
+  profile_prefs->ClearPref(kHatsMediaAppPdfCycleEndTs);
+  profile_prefs->ClearPref(kHatsMediaAppPdfIsSelected);
+  profile_prefs->ClearPref(kHatsPhotosExperienceCycleEndTs);
+  profile_prefs->ClearPref(kHatsPhotosExperienceIsSelected);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

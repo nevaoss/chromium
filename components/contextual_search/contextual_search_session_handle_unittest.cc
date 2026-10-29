@@ -11,6 +11,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/task_environment.h"
 #include "base/unguessable_token.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
@@ -21,6 +22,7 @@
 #include "components/lens/lens_features.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/prefs/testing_pref_service.h"
+#include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -50,7 +52,8 @@ class ContextualSearchSessionHandleTest : public testing::Test {
         ContextualSearchSource::kUnknown);
 
     service_ = std::make_unique<ContextualSearchService>(
-        nullptr, nullptr, nullptr, nullptr, version_info::Channel::UNKNOWN, "",
+        identity_test_env_.identity_manager(), nullptr, nullptr, nullptr,
+        version_info::Channel::UNKNOWN, "",
         /*tab_validator=*/nullptr, base::DoNothing());
 
     handle_ = service_->CreateSessionForTesting(std::move(mock_controller),
@@ -60,6 +63,8 @@ class ContextualSearchSessionHandleTest : public testing::Test {
     handle_->CheckSearchContentSharingSettings(&prefs_);
   }
 
+  base::test::TaskEnvironment task_environment_;
+  signin::IdentityTestEnvironment identity_test_env_;
   TestingPrefServiceSimple prefs_;
   std::unique_ptr<ContextualSearchService> service_;
   std::unique_ptr<ContextualSearchSessionHandle> handle_;
@@ -235,6 +240,109 @@ TEST_F(ContextualSearchSessionHandleTest,
       unknown_token, std::move(contextual_input_data), std::nullopt);
   EXPECT_TRUE(std::ranges::contains(handle_->GetUploadedContextTokens(),
                                     existing_token));
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       StartTabContextUploadFlow_RecordsAccountMatchesHistogram_Match) {
+  base::HistogramTester histogram_tester;
+
+  AccountInfo primary = identity_test_env_.MakePrimaryAccountAvailable(
+      "primary@example.com", signin::ConsentLevel::kSignin);
+  identity_test_env_.SetCookieAccounts(
+      {{std::string(primary.GetEmail()), primary.GetGaiaId()},
+       {"secondary@example.com",
+        signin::GetTestGaiaIdForEmail("secondary@example.com")}});
+
+  handle_->set_current_url(GURL("https://www.google.com/search?authuser=0"));
+
+  base::UnguessableToken token = handle_->CreateContextToken();
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(token, _, _)).Times(1);
+
+  auto contextual_input_data = std::make_unique<lens::ContextualInputData>();
+  contextual_input_data->primary_content_type =
+      lens::MimeType::kAnnotatedPageContent;
+  handle_->StartTabContextUploadFlow(token, std::move(contextual_input_data),
+                                     std::nullopt);
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualSearch.TabContextAdded.AccountMatches", true, 1);
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       StartTabContextUploadFlow_RecordsAccountMatchesHistogram_Mismatch) {
+  base::HistogramTester histogram_tester;
+
+  AccountInfo primary = identity_test_env_.MakePrimaryAccountAvailable(
+      "primary@example.com", signin::ConsentLevel::kSignin);
+  identity_test_env_.SetCookieAccounts(
+      {{std::string(primary.GetEmail()), primary.GetGaiaId()},
+       {"secondary@example.com",
+        signin::GetTestGaiaIdForEmail("secondary@example.com")}});
+
+  handle_->set_current_url(GURL("https://www.google.com/search?authuser=1"));
+
+  base::UnguessableToken token = handle_->CreateContextToken();
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(token, _, _)).Times(1);
+
+  auto contextual_input_data = std::make_unique<lens::ContextualInputData>();
+  contextual_input_data->primary_content_type =
+      lens::MimeType::kAnnotatedPageContent;
+  handle_->StartTabContextUploadFlow(token, std::move(contextual_input_data),
+                                     std::nullopt);
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualSearch.TabContextAdded.AccountMatches", false, 1);
+}
+
+TEST_F(
+    ContextualSearchSessionHandleTest,
+    StartTabContextUploadFlow_RecordsAccountMatchesHistogram_NoUrlUsesAuthUserIndex) {
+  AccountInfo primary = identity_test_env_.MakePrimaryAccountAvailable(
+      "primary@example.com", signin::ConsentLevel::kSignin);
+  identity_test_env_.SetCookieAccounts(
+      {{std::string(primary.GetEmail()), primary.GetGaiaId()},
+       {"secondary@example.com",
+        signin::GetTestGaiaIdForEmail("secondary@example.com")}});
+
+  // With a URL without a user index (e.g. `chrome://new-tab-page` on the NTP or
+  // `https://www.google.com/search` without `authuser`) and default
+  // `auth_user_index_ = 0`, checks the first account in the cookie jar (matches
+  // primary).
+  handle_->set_current_url(GURL("chrome://new-tab-page"));
+  {
+    base::HistogramTester histogram_tester;
+    base::UnguessableToken token = handle_->CreateContextToken();
+    EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(token, _, _))
+        .Times(1);
+
+    auto contextual_input_data = std::make_unique<lens::ContextualInputData>();
+    contextual_input_data->primary_content_type =
+        lens::MimeType::kAnnotatedPageContent;
+    handle_->StartTabContextUploadFlow(token, std::move(contextual_input_data),
+                                       std::nullopt);
+
+    histogram_tester.ExpectUniqueSample(
+        "ContextualSearch.TabContextAdded.AccountMatches", true, 1);
+  }
+
+  // When auth_user_index_ is set to 1 via handshake and URL has no user index,
+  // checks the account at auth_user_index_ (mismatch).
+  handle_->set_auth_user_index(1);
+  {
+    base::HistogramTester histogram_tester;
+    base::UnguessableToken token = handle_->CreateContextToken();
+    EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(token, _, _))
+        .Times(1);
+
+    auto contextual_input_data = std::make_unique<lens::ContextualInputData>();
+    contextual_input_data->primary_content_type =
+        lens::MimeType::kAnnotatedPageContent;
+    handle_->StartTabContextUploadFlow(token, std::move(contextual_input_data),
+                                       std::nullopt);
+
+    histogram_tester.ExpectUniqueSample(
+        "ContextualSearch.TabContextAdded.AccountMatches", false, 1);
+  }
 }
 
 TEST_F(ContextualSearchSessionHandleTest,
@@ -2149,7 +2257,7 @@ TEST_F(ContextualSearchSessionHandleTest,
 }
 
 TEST_F(ContextualSearchSessionHandleTest,
-       MaybeAddTabToPersistedTabs_IgnoresSupercededTokens) {
+       MarkTabAckByServer_IgnoresSupercededTokens) {
   auto mock_controller =
       std::make_unique<MockContextualSearchContextController>();
   MockContextualSearchContextController* mock_controller_ptr =
@@ -2169,7 +2277,7 @@ TEST_F(ContextualSearchSessionHandleTest,
   EXPECT_CALL(*mock_controller_ptr, GetFileInfo(tab_token))
       .WillRepeatedly(testing::Return(&tab_info));
 
-  // Submit Query 1. Because token is superceded, `MaybeAddTabToPersistedTabs`
+  // Submit Query 1. Because token is superceded, `MarkTabAckByServer`
   // should skip it.
   auto request_info = std::make_unique<
       ContextualSearchContextController::CreateClientToAimRequestInfo>();
@@ -2718,6 +2826,104 @@ TEST_F(ContextualSearchSessionHandleTest,
 
   EXPECT_TRUE(handle_->RemoveUploadedContextToken(delayed_token));
   EXPECT_TRUE(handle_->GetTabContextState().attached.empty());
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       SubmittedTabIsTrackedInAttachedAndNotifies) {
+  auto mock_controller =
+      std::make_unique<MockContextualSearchContextController>();
+  MockContextualSearchContextController* mock_controller_ptr =
+      mock_controller.get();
+  auto local_handle =
+      service_->CreateSessionForTesting(std::move(mock_controller), nullptr);
+  local_handle->CheckSearchContentSharingSettings(&prefs_);
+
+  base::UnguessableToken tab_token = local_handle->CreateContextToken();
+  FileInfo tab_info;
+  tab_info.file_token = tab_token;
+  tab_info.tab_session_id = SessionID::FromSerializedValue(5);
+  lens::LensOverlayRequestId req_id;
+  req_id.set_uuid(42);
+  tab_info.request_id = req_id;
+  tab_info.tab_url = GURL("https://example.com/5");
+  tab_info.tab_title = "Tab 5";
+  EXPECT_CALL(*mock_controller_ptr, GetFileInfo(tab_token))
+      .WillRepeatedly(testing::Return(&tab_info));
+  EXPECT_CALL(*mock_controller_ptr, CreateClientToAimRequest(_))
+      .WillOnce(testing::Return(lens::ClientToAimMessage()));
+
+  base::MockCallback<ContextualSearchSessionHandle::TabContextSubscriber>
+      callback;
+  auto subscription = local_handle->SubscribeTabContext(callback.Get());
+  EXPECT_CALL(callback, Run(testing::_)).Times(1);
+
+  local_handle->CreateClientToAimRequest(
+      std::make_unique<
+          ContextualSearchContextController::CreateClientToAimRequestInfo>());
+
+  const TabContextState& state = local_handle->GetTabContextState();
+  EXPECT_TRUE(state.restored.empty());
+  ASSERT_EQ(1u, state.attached.size());
+  const TabInfo& tab = state.attached[0];
+  EXPECT_EQ(tab_token, tab.context_token);
+  EXPECT_EQ(5, tab.tab_id);
+  ASSERT_TRUE(tab.request_id.has_value());
+  EXPECT_EQ(42u, tab.request_id->uuid());
+  EXPECT_TRUE(tab.uploaded);
+  EXPECT_TRUE(tab.submitted);
+  EXPECT_FALSE(tab.restored_from_aim);
+
+  auto persisted = local_handle->persisted_tabs();
+  ASSERT_EQ(1u, persisted.size());
+  EXPECT_EQ(tab_token, persisted.at(SessionID::FromSerializedValue(5)).first);
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       SetRestoredTabsDoesNotTouchSubmittedTabs) {
+  auto local_handle = service_->CreateSessionForTesting(
+      std::make_unique<MockContextualSearchContextController>(), nullptr);
+
+  base::UnguessableToken token = base::UnguessableToken::Create();
+  SessionID session_id = SessionID::FromSerializedValue(5);
+  local_handle->set_persisted_tabs(
+      {{session_id, {token, lens::LensOverlayRequestId()}}});
+
+  local_handle->SetRestoredTabs(
+      {MakeRestoredTab("https://example.com/10", "Tab 10", 10),
+       MakeRestoredTab("https://example.com/5", "AIM Tab 5", 5)});
+
+  const TabContextState& state = local_handle->GetTabContextState();
+  ASSERT_EQ(2u, state.restored.size());
+  EXPECT_EQ(10, state.restored[0].tab_id);
+  EXPECT_TRUE(state.restored[0].restored_from_aim);
+  EXPECT_EQ(5, state.restored[1].tab_id);
+  EXPECT_TRUE(state.restored[1].restored_from_aim);
+  ASSERT_EQ(1u, state.attached.size());
+  EXPECT_EQ(token, state.attached[0].context_token);
+  EXPECT_EQ(1u, local_handle->persisted_tabs().size());
+  EXPECT_EQ(token, local_handle->GetTokenForTab(session_id));
+
+  // Clearing restored tabs keeps the submitted tab.
+  local_handle->SetRestoredTabs({});
+  EXPECT_TRUE(state.restored.empty());
+  EXPECT_EQ(1u, state.attached.size());
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       AimRestoredTabsAreNotTreatedAsPersisted) {
+  auto local_handle = service_->CreateSessionForTesting(
+      std::make_unique<MockContextualSearchContextController>(), nullptr);
+
+  local_handle->SetRestoredTabs(
+      {MakeRestoredTab("https://example.com/3", "Tab 3", 3)});
+
+  EXPECT_TRUE(local_handle->persisted_tabs().empty());
+  EXPECT_TRUE(local_handle->GetTokenForTab(SessionID::FromSerializedValue(3))
+                  .is_empty());
+
+  // Replacing persisted tabs does not touch AIM restored tabs.
+  local_handle->set_persisted_tabs({});
+  EXPECT_EQ(1u, local_handle->GetTabContextState().restored.size());
 }
 
 }  // namespace contextual_search

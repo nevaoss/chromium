@@ -4,6 +4,7 @@
 
 #include "chrome/browser/glic/host/glic_no_webview_contents_manager.h"
 
+#include <algorithm>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -37,6 +38,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/no_renderer_crashes_assertion.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/http_request.h"
@@ -103,22 +105,26 @@ void ClickOverlayElement(content::WebContents* overlay_contents,
                          std::string_view query_selector) {
   ASSERT_TRUE(overlay_contents);
   ASSERT_TRUE(content::WaitForLoadStop(overlay_contents));
-  content::ExecuteScriptAsync(overlay_contents,
-                              base::StringPrintf(
-                                  R"js(
+  ASSERT_EQ(true, content::EvalJs(overlay_contents,
+                                  base::StringPrintf(
+                                      R"js(
         (async () => {
           const start = Date.now();
           while (Date.now() - start <= 10000) {
             const el = document.querySelector('%s');
             if (el && !el.hidden && !el.closest('.panel')?.hidden) {
-              el.click();
-              return;
+              return true;
             }
             await new Promise(r => setTimeout(r, 50));
           }
+          return false;
         })()
       )js",
-                                  std::string(query_selector).c_str()));
+                                      std::string(query_selector).c_str())));
+  content::ExecuteScriptAsync(
+      overlay_contents,
+      base::StringPrintf("document.querySelector('%s').click();",
+                         std::string(query_selector).c_str()));
 }
 
 class TestHostObserver : public Host::Observer {
@@ -126,21 +132,23 @@ class TestHostObserver : public Host::Observer {
   explicit TestHostObserver(Host& host) { observation_.Observe(&host); }
 
   void ClientLoadErrorOccurred(ClientLoadErrorReason reason) override {
-    last_error_reason_ = reason;
+    reasons_.push_back(reason);
     ++error_count_;
   }
 
   std::optional<ClientLoadErrorReason> last_error_reason() const {
-    return last_error_reason_;
+    return reasons_.empty() ? std::nullopt
+                            : std::make_optional(reasons_.back());
   }
   int error_count() const { return error_count_; }
 
+  const std::vector<ClientLoadErrorReason>& reasons() const { return reasons_; }
+
  private:
   base::ScopedObservation<Host, Host::Observer> observation_{this};
-  std::optional<ClientLoadErrorReason> last_error_reason_;
+  std::vector<ClientLoadErrorReason> reasons_;
   int error_count_ = 0;
 };
-
 }  // namespace
 
 class GlicNoWebviewContentsManagerBrowserTest : public GlicBrowserTest {
@@ -149,13 +157,15 @@ class GlicNoWebviewContentsManagerBrowserTest : public GlicBrowserTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{features::kGlicNoWebview},
         /*disabled_features=*/{});
+    // Must be configured before `GlicBrowserTest::SetUpCommandLine()` binds the
+    // HTTPS test server.
+    embedded_https_test_server().SetCertHostnames(
+        {"login.corp.google.com", "127.0.0.1"});
     embedded_https_test_server().RegisterRequestHandler(
         base::BindRepeating(&SorryPageRequestHandler));
   }
 
   void SetUpOnMainThread() override {
-    embedded_https_test_server().SetCertHostnames(
-        {"login.corp.google.com", "127.0.0.1"});
     embedded_https_test_server().RegisterRequestHandler(base::BindRepeating(
         [](const net::test_server::HttpRequest& request)
             -> std::unique_ptr<net::test_server::HttpResponse> {
@@ -659,13 +669,14 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   auto* manager = GetNoWebviewContentsManager(instance);
   ASSERT_TRUE(manager);
   ASSERT_TRUE(manager->overlay_contents());
+  ASSERT_TRUE(content::WaitForLoadStop(manager->guest_contents()));
 
   manager->SetErrorState(mojom::ErrorPanelType::kOffline,
                          ClientLoadErrorReason::kOffline);
   ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kOffline));
-  ASSERT_TRUE(content::WaitForLoadStop(manager->overlay_contents()));
 
   ClickOverlayElement(manager->overlay_contents(), "#retry");
+  ASSERT_OK(WaitForErrorPanelType(std::nullopt));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
@@ -754,8 +765,15 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
   // Manager must display the kSignIn error panel.
   EXPECT_EQ(manager->error_type(), mojom::ErrorPanelType::kSignIn);
 
-  // Clicking the "Verify it's you" button triggers the sign-in flow.
+  // Clicking the "Verify it's you" button triggers the sign-in flow. Flush the
+  // overlay page handler pipe so `OnSignInClicked` runs before the test exits
+  // (otherwise an in-flight `OnSignInClicked` IPC arriving during browser
+  // teardown can open a new browser window after `chrome::AttemptExit()`).
   ClickOverlayElement(manager->overlay_contents(), "#signInButton");
+  ASSERT_TRUE(content::ExecJs(
+      manager->overlay_contents(),
+      "document.querySelector('glic-overlay').browserProxy.handler.$."
+      "flushForTesting()"));
 
   // User re-authenticates.
   ReauthAccount(GetProfile());
@@ -1149,4 +1167,135 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
       "Glic.WarmingPool.WarmedContainerFate",
       GlicWebContentsWarmingPool::WarmedContainerFate::kCrashed, 1);
 }
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       RecordsOverlayDisplayDuration) {
+  base::HistogramTester histogram_tester;
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForGlicClient(instance));
+
+  // On cold start, the guest finished loading successfully.
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration", 1);
+  histogram_tester.ExpectTotalCount(
+      "Glic.Overlay.DisplayDuration.LoadingAndCompleted", 1);
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration.Loading", 0);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       RecordsOverlayDisplayDurationForIncompleteLoading) {
+  base::HistogramTester histogram_tester;
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+
+  // Close the panel before the guest finishes loading.
+  manager->SetVisibility(content::Visibility::HIDDEN);
+
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration", 1);
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration.Loading", 1);
+  histogram_tester.ExpectTotalCount(
+      "Glic.Overlay.DisplayDuration.LoadingAndCompleted", 0);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       RecordsOverlayDisplayDurationForErrorPanels) {
+  base::HistogramTester histogram_tester;
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForGlicClient(instance));
+
+  // Invalidate account credentials to show the sign-in error panel while
+  // visible.
+  InvalidateAccount(GetProfile());
+  ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kSignIn));
+
+  // Reauth clears the sign-in error panel and starts loading the guest again.
+  ReauthAccount(GetProfile());
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return manager->state() ==
+           GlicNoWebviewContentsManager::DisplayState::kShowingGuest;
+  }));
+
+  histogram_tester.ExpectTotalCount("Glic.Overlay.DisplayDuration.SignIn", 1);
+  histogram_tester.ExpectTotalCount(
+      "Glic.Overlay.DisplayDuration.LoadingAndCompleted", 2);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       RecordsOverlayUserActions) {
+  GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
+                                       /*initially_hidden=*/false);
+  base::UserActionTester user_action_tester;
+  auto* page_handler = manager.GetOverlayPageHandlerForTesting();
+
+  page_handler->OnRetryClicked();
+  EXPECT_EQ(user_action_tester.GetActionCount("Glic.Overlay.RetryClicked"), 1);
+
+  page_handler->OnSignInClicked();
+  EXPECT_EQ(user_action_tester.GetActionCount("Glic.Overlay.SignInClicked"), 1);
+
+  page_handler->OnProfilePickerClicked();
+  EXPECT_EQ(
+      user_action_tester.GetActionCount("Glic.Overlay.ProfilePickerClicked"),
+      1);
+
+  page_handler->OnIneligibleAccountHelpClicked();
+  EXPECT_EQ(user_action_tester.GetActionCount(
+                "Glic.Overlay.IneligibleAccountHelpClicked"),
+            1);
+
+  page_handler->OnLocationMismatchHelpClicked();
+  EXPECT_EQ(user_action_tester.GetActionCount(
+                "Glic.Overlay.LocationMismatchHelpClicked"),
+            1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       NotifiesClientLoadErrorOccurredOnHost) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+
+  TestHostObserver observer(instance->host());
+  InvalidateAccount(GetProfile());
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return std::ranges::contains(observer.reasons(),
+                                 ClientLoadErrorReason::kSignIn);
+  }));
+
+  ReauthAccount(GetProfile());
+  ASSERT_OK(WaitForErrorPanelType(std::nullopt));
+  ASSERT_OK(WaitForGlicClient(instance));
+
+  content::ScopedAllowRendererCrashes scoped_allow_renderer_crashes;
+  content::CrashTab(instance->host().web_client_contents());
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return std::ranges::contains(observer.reasons(),
+                                 ClientLoadErrorReason::kGuestProcessGone);
+  }));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       RecordsNavigationCommitAndLoadCompleteMetricsOnce) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForGlicClient(instance));
+
+  histogram_tester.ExpectTotalCount("Glic.Contents.NavigationCommitTime", 1);
+  histogram_tester.ExpectTotalCount("Glic.Contents.LoadCompleteTime", 1);
+
+  // Trigger a second navigation on the guest WebContents.
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+  content::WebContents* guest_contents = manager->guest_contents();
+  ASSERT_TRUE(guest_contents);
+  guest_contents->GetController().Reload(content::ReloadType::NORMAL,
+                                         /*check_for_repost=*/false);
+  EXPECT_TRUE(content::WaitForLoadStop(guest_contents));
+
+  // The metrics must not be recorded again for subsequent navigations.
+  histogram_tester.ExpectTotalCount("Glic.Contents.NavigationCommitTime", 1);
+  histogram_tester.ExpectTotalCount("Glic.Contents.LoadCompleteTime", 1);
+}
+
 }  // namespace glic

@@ -21,6 +21,7 @@
 #include "chrome/services/readaloud/decoder/read_aloud_decoder_sequencer.h"
 #include "chrome/services/readaloud/prefetch/prefetch_manager.h"
 #include "chrome/services/readaloud/timeline/playback_timeline.h"
+#include "chrome/services/readaloud/timeline/timeline_position.h"
 #include "media/mojo/mojom/audio_data_pipe.mojom.h"
 #include "media/mojo/mojom/audio_output_stream.mojom.h"
 #include "mojo/public/cpp/base/big_buffer.h"
@@ -97,6 +98,11 @@ class ReadAloudPlaybackController
   // Resets active session state, clears timeline, and resets playback rate.
   void ResetSession();
 
+  // Cancels in-flight network requests, flushes decoded PCM buffers and
+  // AudioRenderer, and repositions the decoder sequencer to `target` while
+  // preserving cached Opus segments in PrefetchManager.
+  void ExecuteSeek(const TimelinePosition& target);
+
   // Invoked by `prefetch_manager_` when an in-flight synthesis request is
   // dispatched.
   void OnPrefetchSynthesisRequest(uint32_t chunk_index,
@@ -112,6 +118,8 @@ class ReadAloudPlaybackController
   // Maximum duration a Play request will remain deferred before timing out.
   static constexpr base::TimeDelta kClassicPlayOnReadyTimeout =
       base::Seconds(10);
+  // TODO(b/565040027): Consolidate to kClassicPlayOnReadyTimeout once the
+  // browser handles deferred play during overview generation.
   static constexpr base::TimeDelta kOverviewPlayOnReadyTimeout =
       kOverviewGenerationTimeout;
 
@@ -127,9 +135,9 @@ class ReadAloudPlaybackController
   // pipeline, clears play_on_ready_, and returns true.
   bool PlayIfReady();
 
-  // If a Play request is pending (play_on_ready_) and all prerequisites are satisfied
-  // (IsReadyToPlay()), fulfills the pending Play intent and starts playback.
-  // Returns true if playback was started.
+  // If a Play request is pending (play_on_ready_) and all prerequisites are
+  // satisfied (IsReadyToPlay()), fulfills the pending Play intent and starts
+  // playback. Returns true if playback was started.
   bool MaybePlayOnReady();
 
   // Single funnel for every playback state transition. Caches `state` and

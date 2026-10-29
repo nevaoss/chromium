@@ -18,6 +18,7 @@
 #include "ui/compositor/layer_nine_patch.h"
 #include "ui/compositor/layer_not_drawn.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
+#include "ui/decoration/shadow.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
@@ -56,6 +57,20 @@ std::unique_ptr<Decoration> Decoration::Create(
     std::unique_ptr<decoration::DecorationSource> source,
     std::string_view debug_name) {
   return std::make_unique<Decoration>(std::move(source), debug_name);
+}
+
+// static
+std::unique_ptr<Decoration> Decoration::CreateShadow(
+    int elevation,
+    ui::decoration::Shadow::Style style,
+    ui::decoration::Shadow::ElevationToColorsMap color_map) {
+  auto decoration = Create(std::make_unique<ui::decoration::Shadow>(
+                               elevation, style, std::move(color_map)),
+                           /*debug_name=*/"Shadow");
+  // Historically, shadows frame content with slightly rounded corners unless
+  // told otherwise.
+  decoration->SetRoundedCorners(gfx::RoundedCornersF(2.f));
+  return decoration;
 }
 
 Decoration::Decoration(std::unique_ptr<decoration::DecorationSource> source,
@@ -129,7 +144,6 @@ std::unique_ptr<ui::Layer> Decoration::DecorationLayerOwner::RecreateLayer() {
 void Decoration::RecreateDecorationLayer() {
   decoration_layer_owner_.Reset(std::make_unique<ui::LayerNinePatch>());
   decoration_layer()->SetName(name_);
-  decoration_layer()->SetVisible(true);
   decoration_layer()->SetFillsBoundsOpaquely(false);
   layer()->Add(decoration_layer());
 
@@ -189,24 +203,24 @@ void Decoration::UpdateAppearanceImmediately() {
       details.has_value() ? std::make_optional(details->appearance)
                           : std::nullopt;
 
-  if (active_appearance_ != appearance) {
-    if (appearance.has_value()) {
-      decoration_layer()->UpdateNinePatchLayerImage(
-          appearance->nine_patch_image);
-      // The ninebox grid is defined in terms of the image size.
-      gfx::Rect aperture(appearance->nine_patch_image.size());
-      aperture.Inset(appearance->aperture_insets);
-      decoration_layer()->UpdateNinePatchLayerAperture(aperture);
+  // With no appearance there is nothing to draw, yet the nine-patch layer still
+  // holds the image it was last given and would keep drawing it. Hiding the
+  // layer keeps that image and ninebox geometry in place, so an appearance that
+  // comes back unchanged only needs the layer shown again.
+  decoration_layer()->SetVisible(appearance.has_value());
 
-      // The border is the same inset as the aperture.
-      decoration_layer()->UpdateNinePatchLayerBorder(gfx::Rect(
-          appearance->aperture_insets.left(), appearance->aperture_insets.top(),
-          appearance->aperture_insets.width(),
-          appearance->aperture_insets.height()));
-    } else {
-      decoration_layer()->UpdateNinePatchLayerAperture(gfx::Rect());
-      decoration_layer()->UpdateNinePatchLayerBorder(gfx::Rect());
-    }
+  if (appearance.has_value() && active_appearance_ != appearance) {
+    decoration_layer()->UpdateNinePatchLayerImage(appearance->nine_patch_image);
+    // The ninebox grid is defined in terms of the image size.
+    gfx::Rect aperture(appearance->nine_patch_image.size());
+    aperture.Inset(appearance->aperture_insets);
+    decoration_layer()->UpdateNinePatchLayerAperture(aperture);
+
+    // The border is the same inset as the aperture.
+    decoration_layer()->UpdateNinePatchLayerBorder(gfx::Rect(
+        appearance->aperture_insets.left(), appearance->aperture_insets.top(),
+        appearance->aperture_insets.width(),
+        appearance->aperture_insets.height()));
 
     active_appearance_ = appearance;
   }

@@ -171,6 +171,10 @@ class ChildProcessSecurityPolicyTest
     return result;
   }
 
+  bool IsRustProcessStateEnabled() const {
+    return std::get<1>(GetParam()) == CpspRustFeature::kProcessState;
+  }
+
   void SetUp() override {
     old_browser_client_ = SetBrowserClientForTesting(&test_browser_client_);
 
@@ -510,6 +514,28 @@ TEST_P(ChildProcessSecurityPolicyTest, BlobSchemeTest) {
                                GURL("blob:filesystem:http://localhost/path")));
   EXPECT_FALSE(p->CanCommitURL(kRendererID,
                                GURL("filesystem:blob:http://localhost/guid")));
+
+  p->Remove(kRendererProcess);
+}
+
+TEST_P(ChildProcessSecurityPolicyTest, OpaqueBlobAndFileSystemSchemeTest) {
+  const GURL opaque_blob_url("blob:null/some-guid");
+  const GURL opaque_file_system_url(
+      "filesystem:chrome-error://chromewebdata/temporary/a.gif");
+  ASSERT_TRUE(opaque_blob_url.is_valid());
+  ASSERT_TRUE(opaque_file_system_url.is_valid());
+  ASSERT_TRUE(opaque_file_system_url.inner_url());
+  ASSERT_TRUE(url::Origin::Create(opaque_blob_url).opaque());
+  ASSERT_TRUE(url::Origin::Create(opaque_file_system_url).opaque());
+
+  ChildProcessSecurityPolicyImpl* p =
+      ChildProcessSecurityPolicyImpl::GetInstance();
+  p->AddForTesting(kRendererProcess, browser_context());
+
+  EXPECT_TRUE(p->CanRequestURL(kRendererID, opaque_blob_url));
+  EXPECT_TRUE(p->CanCommitURL(kRendererID, opaque_blob_url));
+  EXPECT_FALSE(p->CanRequestURL(kRendererID, opaque_file_system_url));
+  EXPECT_FALSE(p->CanCommitURL(kRendererID, opaque_file_system_url));
 
   p->Remove(kRendererProcess);
 }
@@ -3340,12 +3366,19 @@ TEST_P(ChildProcessSecurityPolicyTest, CannotLockUsedProcessToSite) {
   // If the process is then considered used (e.g., by loading content), it
   // should not be possible to lock it to another site.
   p->SetProcessIsUsed(kRendererProcess);
+  EXPECT_FALSE(p->GetProcessLock(kRendererProcess).is_unused());
+
   EXPECT_CHECK_DEATH_WITH(
       {
         p->LockProcess(bar_instance->GetIsolationContext(), kRendererProcess,
                        ProcessLock::FromSiteInfo(bar_instance->GetSiteInfo()));
       },
-      "Cannot lock an already used process to .*bar\\.com");
+      // Ensure that the Rust implementation caused the CHECK failure when
+      // Rust is enabled.
+      IsRustProcessStateEnabled()
+          ? "process_lock\\.rs[\\s\\S]*Cannot lock an already used process to "
+            ".*bar\\.com"
+          : "Cannot lock an already used process to .*bar\\.com");
 
   // We need to remove it otherwise other tests may fail.
   p->Remove(kRendererProcess);

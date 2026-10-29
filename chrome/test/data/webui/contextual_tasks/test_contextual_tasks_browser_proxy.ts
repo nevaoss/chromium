@@ -44,7 +44,6 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'setShowReopenTabs',
       'onSidePanelPinStateChanged',
       'setInNlm',
-      'setExpandButtonEnabled',
       'turnOnSmartTabSharing',
       'showSmartTabSharingTryItIph',
       'showSmartTabSharingDefaultOnIph',
@@ -159,10 +158,6 @@ class MockPage extends TestBrowserProxy implements PageInterface {
     this.methodCalled('onSidePanelPinStateChanged', isPinned);
   }
 
-  setExpandButtonEnabled(enabled: boolean) {
-    this.methodCalled('setExpandButtonEnabled', enabled);
-  }
-
   turnOnSmartTabSharing() {
     this.methodCalled('turnOnSmartTabSharing');
   }
@@ -205,7 +200,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
   constructor(url: string, page: MockPage) {
     super([
       'setThreadUrl',
-      'closeSidePanel',
       'getCommonSearchParams',
       'getRecentTabs',
       'getSearchUrl',
@@ -233,9 +227,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'onWindowClosed',
       'closeWindow',
       'maybeTriggerPinningPromo',
-      'showPageInfoBubble',
-      'onLogoPointerDown',
-      'createNewThread',
     ]);
 
     this.url_ = url;
@@ -263,11 +254,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
   setThreadTitle(title: string) {
     this.methodCalled('setThreadTitle', title);
   }
-
-  closeSidePanel() {
-    this.methodCalled('closeSidePanel');
-  }
-
 
   setIsShownInTab(isInTab: boolean) {
     this.isInTab_ = isInTab;
@@ -425,18 +411,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
   maybeTriggerPinningPromo() {
     this.methodCalled('maybeTriggerPinningPromo');
   }
-
-  showPageInfoBubble(isPointerInteraction: boolean) {
-    this.methodCalled('showPageInfoBubble', isPointerInteraction);
-  }
-
-  onLogoPointerDown() {
-    this.methodCalled('onLogoPointerDown');
-  }
-
-  createNewThread() {
-    this.methodCalled('createNewThread');
-  }
 }
 
 /**
@@ -559,6 +533,10 @@ export class TestToolbarPageHandler extends TestBrowserProxy implements
       'onFileClickedFromSourcesMenu',
       'onImageClickedFromSourcesMenu',
       'onTabClickedFromSourcesMenu',
+      'closeSidePanel',
+      'showPageInfoBubble',
+      'onLogoPointerDown',
+      'createNewThread',
     ]);
   }
 
@@ -600,6 +578,22 @@ export class TestToolbarPageHandler extends TestBrowserProxy implements
 
   onImageClickedFromSourcesMenu(url: Url) {
     this.methodCalled('onImageClickedFromSourcesMenu', url);
+  }
+
+  closeSidePanel() {
+    this.methodCalled('closeSidePanel');
+  }
+
+  showPageInfoBubble(isPointerInteraction: boolean) {
+    this.methodCalled('showPageInfoBubble', isPointerInteraction);
+  }
+
+  onLogoPointerDown() {
+    this.methodCalled('onLogoPointerDown');
+  }
+
+  createNewThread() {
+    this.methodCalled('createNewThread');
   }
 }
 

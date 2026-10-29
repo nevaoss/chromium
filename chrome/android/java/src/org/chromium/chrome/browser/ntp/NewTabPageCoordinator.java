@@ -75,7 +75,6 @@ import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineNameO
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.setup_list.SetupListManager;
-import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.suggestions.tile.MostVisitedTilesCoordinator;
 import org.chromium.chrome.browser.suggestions.tile.TileGroup;
@@ -598,7 +597,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         ViewStub composeplateViewStub = mNewTabPageLayout.findViewById(R.id.composeplate_view_stub);
         ViewGroup composeplateView = (ViewGroup) composeplateViewStub.inflate();
-        mComposeplateCoordinator = new ComposeplateCoordinator(composeplateView);
+        mComposeplateCoordinator = new ComposeplateCoordinator(composeplateView, mIsLff);
         mComposeplateCoordinator.setIncognitoClickListener(this::onIncognitoButtonClicked);
         // Don't log click metrics in this listener, since the mComposeplateCoordinator will
         // log.
@@ -743,8 +742,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
                         mModalDialogManager,
                         mSnackbarManager,
                         DeviceLockActivityLauncherImpl.get(),
-                        signinPromoViewContainerStub,
-                        SetupListModuleUtils::isSetupListActive);
+                        signinPromoViewContainerStub);
     }
 
     /** Updates the search box when the parent view's scroll position is changed. */
@@ -1620,12 +1618,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             mComposeplateCoordinator.setLayoutWidth(searchBoxWidth);
         }
 
-        // Most Visited Tiles: Match Search Box on Desktop, and Feeds width on Mobile.
+        // Most Visited Tiles: Match Feeds width on Tablet, and Search Box on Phone.
         if (mMostVisitedTilesCoordinator != null) {
-            int mvtWidth =
-                    OmniboxCapabilities.isDesktopPlatform()
-                            ? searchBoxWidth
-                            : (width - getLateralMarginToMatchFeeds() * 2);
+            int mvtWidth = mIsLff ? (width - getLateralMarginToMatchFeeds() * 2) : searchBoxWidth;
             mMostVisitedTilesCoordinator.updateMvtWidth(width, mvtWidth);
         }
 
@@ -1659,6 +1654,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             // Logo and Doodle have different top margin on landscape and portrait modes on phones,
             // update when the screen rotates.
             setLogoTopMargin();
+            setComposeplateButtonSpacing();
             return;
         }
 
@@ -1667,6 +1663,16 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         // Request a layout pass to trigger onMeasure(), which acts as the single source of
         // truth to calculate and uniformly apply the bounded widths to all NTP elements.
         ViewUtils.requestLayout(mNewTabPageLayout, "NewTabPageCoordinator.onDisplayStyleChanged");
+    }
+
+    /**
+     * Updates the spacing of the composeplate buttons, which differs between landscape and portrait
+     * modes on phones.
+     */
+    private void setComposeplateButtonSpacing() {
+        if (mComposeplateCoordinator == null) return;
+
+        mComposeplateCoordinator.onDisplayStyleChanged();
     }
 
     private int getSideUiWidthDp() {

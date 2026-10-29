@@ -123,7 +123,6 @@ Kwa mipangilio zaidi inayotumia data ili kuboresha hali yako ya utumiaji wa Chro
 <translation id="1432581352905426595">Dhibiti mitambo ya kutafuta</translation>
 <translation id="1435593198351412143">Kufungua PDF kitomatiki</translation>
 <translation id="1437543266176261764">Inatumika kwenye programu ya <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Panga bidhaa unazofuatilia kwenye Alamisho</translation>
 <translation id="1452651021404174820">Chagua kifaa</translation>
 <translation id="1455845192930279203">Je, ungependa kupakua "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) kutoka kwenye <ph name="DOWNLOAD_DOMAIN" /> licha ya hayo?</translation>
 <translation id="1460751212339734034">Okoa muda, andika kidogo</translation>
@@ -775,6 +774,7 @@ Mtu aliye na kauli yako ya siri pekee ndiye anaweza kusoma data yako iliyosimbwa
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, Umechagua Mara Nyingi Kichupo Ulichobandika ambacho Kinarekodi</translation>
 <translation id="4137746084635924146">Lugha inayotumika sasa kwenye kifaa</translation>
 <translation id="414128724510021958">Tovuti za kompyuta ya mezani zinaombwa kwa chaguomsingi</translation>
+<translation id="4150837143272125910">Sasisho limepakuliwa</translation>
 <translation id="4162867837470729563">Orodha ya chaguo za kushiriki imefunguliwa kwenye skrini nzima.</translation>
 <translation id="4164642020717536140">Kuvinjari kwa haraka na kwa usalama</translation>
 <translation id="4165077084524712774">Zana zaidi</translation>
@@ -1199,6 +1199,7 @@ Huenda akaunti yako ya Google ina aina nyingine za historia ya kuvinjari kama vi
 <translation id="5848257610304005265">Ungependa kufungua PDF ukitumia <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Ungependa kuacha kuruhusu ufikiaji?</translation>
 <translation id="5853623416121554550">imesitishwa</translation>
+<translation id="5855375823365231964">Kuhusu wasifu huu</translation>
 <translation id="5855546874025048181">Chuja: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, Umechagua Mara Nyingi Kichupo cha Faragha Kinachorekodi</translation>
 <translation id="5857447844686706637">Hitilafu fulani imetokea. Imeshindwa kusasisha bei Unayofuatilia.</translation>
@@ -1240,6 +1241,7 @@ Huenda akaunti yako ya Google ina aina nyingine za historia ya kuvinjari kama vi
 <translation id="6039379616847168523">Nenda kwenye kichupo kinachofuata</translation>
 <translation id="6040143037577758943">Funga</translation>
 <translation id="604124094241169006">Otomatiki</translation>
+<translation id="6041959688070413372">Dhibiti muunganisho kati ya huduma za utafutaji na programu za Google Workspace, kama vile Hifadhi ya Google</translation>
 <translation id="6042308850641462728">Zaidi</translation>
 <translation id="6047066316630165190">Fungua kibadilishaji cha vichupo cha gridi</translation>
 <translation id="604996488070107836">Kipakuliwa cha <ph name="FILE_NAME" /> hakijafaulu kwa sababu ya hitilafu isiyojulikana.</translation>
@@ -1400,6 +1402,7 @@ Kwa mfano, baadhi ya tovuti zinaweza kujibu ombi hili kwa kukuonyesha matangazo 
 <translation id="6565959834589222080">Wi-Fi hutumika inapopatikana</translation>
 <translation id="657177046675873214">Ili upate alamisho zako kwenye vifaa vyako vyote, washa “Alamisho” kwenye mipangilio</translation>
 <translation id="6573096386450695060">Ruhusu kila wakati</translation>
+<translation id="657480975869429144">Toleo jipya la Chrome linapatikana</translation>
 <translation id="658099107946526506">Linda hali yako ya kuvinjari kwa faragha ukitumia PIN ili kuzuia ufikiaji bila idhini</translation>
 <translation id="6583199322650523874">Wekea alamisho kwenye ukurasa uliofungua</translation>
 <translation id="6588043302623806746">Tumia DNS salama</translation>

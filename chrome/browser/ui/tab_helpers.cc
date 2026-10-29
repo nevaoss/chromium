@@ -12,8 +12,6 @@
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
-#include "base/time/default_tick_clock.h"
-#include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/breadcrumbs/breadcrumb_manager_tab_helper.h"
@@ -31,7 +29,6 @@
 #include "chrome/browser/history_clusters/history_clusters_tab_helper.h"
 #include "chrome/browser/login_detection/login_detection_tab_helper.h"
 #include "chrome/browser/lookalikes/safety_tip_web_contents_observer.h"
-#include "chrome/browser/media/media_engagement_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_web_contents_observer.h"
 #include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/page_content_annotations/page_content_annotations_service_factory.h"
@@ -56,16 +53,11 @@
 #include "chrome/browser/trusted_vault/trusted_vault_encryption_keys_tab_helper.h"
 #include "chrome/browser/ui/autofill/autofill_client_provider.h"
 #include "chrome/browser/ui/autofill/autofill_client_provider_factory.h"
-#include "chrome/browser/ui/find_bar/find_bar_state.h"
 #include "chrome/browser/ui/prefs/prefs_tab_helper.h"
-#include "chrome/browser/ui/recently_audible_helper.h"
-#include "chrome/browser/ui/tab_contents/core_tab_helper.h"
-#include "chrome/browser/vr/vr_tab_helper.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "components/blocked_content/popup_blocker_tab_helper.h"
-#include "components/blocked_content/popup_opener_tab_helper.h"
 #include "components/breadcrumbs/core/breadcrumbs_status.h"
 #include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
@@ -75,7 +67,6 @@
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/page_content_annotations/content/annotate_page_content_request.h"
-#include "components/page_content_annotations/content/page_content_annotations_web_contents_observer.h"
 #include "components/page_content_annotations/core/page_content_extraction_types.h"
 #include "components/page_info/core/features.h"
 #include "components/password_manager/core/browser/password_manager.h"
@@ -105,7 +96,6 @@
 #include "extensions/buildflags/buildflags.h"
 #include "media/base/media_switches.h"
 #include "pdf/buildflags.h"
-#include "printing/buildflags/buildflags.h"
 #include "rlz/buildflags/buildflags.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/webui/buildflags.h"
@@ -115,14 +105,12 @@
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "chrome/browser/android/tab_android.h"
-#include "chrome/browser/banners/android/chrome_app_banner_manager_android.h"
 #include "chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/ui/android/context_menu_helper.h"
 #include "chrome/browser/ui/javascript_dialogs/javascript_tab_modal_dialog_manager_delegate_android.h"
 #include "components/sensitive_content/android/android_sensitive_content_client.h"
 #include "components/sensitive_content/features.h"
-#include "components/webapps/browser/android/app_banner_manager_android.h"
 #include "content/public/common/content_features.h"
 #else
 #include "chrome/browser/ui/javascript_dialogs/javascript_tab_modal_dialog_manager_delegate_desktop.h"
@@ -136,16 +124,10 @@
 #include "extensions/common/mojom/view_type.mojom.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
-#if BUILDFLAG(ENABLE_PRINTING)
-#include "chrome/browser/printing/printing_init.h"
-#endif
-
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 #include "chrome/browser/safe_browsing/chrome_password_reuse_detection_manager_client.h"
-#include "chrome/browser/safe_browsing/chrome_safe_browsing_tab_observer_delegate.h"
 #include "chrome/browser/safe_browsing/safe_browsing_service.h"
 #include "chrome/browser/safe_browsing/trigger_creator.h"
-#include "components/safe_browsing/content/browser/safe_browsing_tab_observer.h"
 #endif
 
 using content::WebContents;
@@ -250,10 +232,8 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   content_settings::PageSpecificContentSettings::CreateForWebContents(
       web_contents,
       std::make_unique<PageSpecificContentSettingsDelegate>(web_contents));
-  CoreTabHelper::CreateForWebContents(web_contents);
   favicon::CreateContentFaviconDriverForWebContents(web_contents);
   FileSystemAccessPermissionRequestManager::CreateForWebContents(web_contents);
-  FindBarState::ConfigureWebContents(web_contents);
   if (!profile->IsOffTheRecord()) {
     auto* history_tab_helper =
         HistoryTabHelper::GetOrCreateForWebContents(web_contents);
@@ -264,9 +244,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   webapps::InstallableManager::CreateForWebContents(web_contents);
   login_detection::LoginDetectionTabHelper::MaybeCreateForWebContents(
       web_contents);
-  if (MediaEngagementService::IsEnabled()) {
-    MediaEngagementService::CreateWebContentsObserver(web_contents);
-  }
   MixedContentSettingsTabHelper::CreateForWebContents(web_contents);
   if (optimization_guide::features::IsOptimizationHintsEnabled()) {
     OptimizationGuideWebContentsObserver::CreateForWebContents(web_contents);
@@ -275,9 +252,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
       page_content_annotations_service =
           PageContentAnnotationsServiceFactory::GetForProfile(profile);
   if (page_content_annotations_service) {
-    page_content_annotations::PageContentAnnotationsWebContentsObserver::
-        CreateForWebContents(web_contents, *page_content_annotations_service);
-
     // TODO(b/478883979): Consider decoupling this from
     // PageContentAnnotationsService.
     auto* page_content_extraction_service = page_content_annotations::
@@ -301,14 +275,10 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   // The PopupBlockerTabHelper has an implicit dependency on
   // ChromeSubresourceFilterClient being available in its constructor.
   blocked_content::PopupBlockerTabHelper::CreateForWebContents(web_contents);
-  blocked_content::PopupOpenerTabHelper::CreateForWebContents(
-      web_contents, base::DefaultTickClock::GetInstance(),
-      HostContentSettingsMapFactory::GetForProfile(profile));
   if (predictors::LoadingPredictorFactory::GetForProfile(profile)) {
     predictors::LoadingPredictorTabHelper::CreateForWebContents(web_contents);
   }
   PrefsTabHelper::CreateForWebContents(web_contents);
-  RecentlyAudibleHelper::CreateForWebContents(web_contents);
 #if BUILDFLAG(IS_ANDROID)
   RequestDesktopSiteWebContentsObserverAndroid::CreateForWebContents(
       web_contents);
@@ -333,19 +303,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
         safe_browsing::AsyncCheckTracker::
             IsPlatformEligibleForSyncCheckerCheckAllowlist());
   }
-  // SafeBrowsingTabObserver creates a ClientSideDetectionHost, which observes
-  // events from PermissionRequestManager and AsyncCheckTracker in its
-  // constructor. Therefore, PermissionRequestManager and AsyncCheckTracker need
-  // to be created before SafeBrowsingTabObserver is created.
-  // ClientSideDetectionHost uses ScopedAutofillManagersObservation which
-  // expects ContentAutofillClient (gated by enable_browser_autofill) to be
-  // created.
-  if (enable_browser_autofill) {
-    safe_browsing::SafeBrowsingTabObserver::CreateForWebContents(
-        web_contents,
-        std::make_unique<
-            safe_browsing::ChromeSafeBrowsingTabObserverDelegate>());
-  }
   safe_browsing::TriggerCreator::MaybeCreateTriggersForWebContents(
       profile, web_contents);
 #endif  // BUILDFLAG(SAFE_BROWSING_AVAILABLE)
@@ -358,7 +315,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   }
   TrustedVaultEncryptionKeysTabHelper::CreateForWebContents(web_contents);
   ukm::InitializeSourceUrlRecorderForWebContents(web_contents);
-  vr::VrTabHelper::CreateForWebContents(web_contents);
   OneTimePermissionsTrackerHelper::CreateForWebContents(web_contents);
 
   // NO! Do not just add your tab helper here. This is a large alphabetized
@@ -367,13 +323,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   // --- Section 2: Platform-specific tab helpers ---
 
 #if BUILDFLAG(IS_ANDROID)
-  {
-    // Remove after fixing https://crbug.com/41426655
-    TRACE_EVENT0("browser", "AppBannerManagerAndroid::CreateForWebContents");
-    webapps::AppBannerManagerAndroid::CreateForWebContents(
-        web_contents, std::make_unique<webapps::ChromeAppBannerManagerAndroid>(
-                          *web_contents));
-  }
   ContextMenuHelper::CreateForWebContents(web_contents);
 
   javascript_dialogs::TabModalDialogManager::CreateForWebContents(
@@ -409,10 +358,6 @@ void TabHelpers::AttachTabHelpers(WebContents* web_contents,
   extensions::WebNavigationTabObserver::CreateForWebContents(web_contents);
   extensions::TabHelper::CreateForWebContents(web_contents);
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-
-#if BUILDFLAG(ENABLE_PRINTING)
-  printing::InitializePrintingForWebContents(web_contents);
-#endif
 
   // --- Section 4: The warning ---
 

@@ -290,7 +290,6 @@ struct SigninSectionInfo {
 
 SigninSectionInfo ComputeSigninSectionInfo(Profile* profile) {
   SigninSectionInfo info;
-  // TODO(crbug.com/440342282): Support personalized signin button.
   if (!CanOfferSignin(profile, GaiaId(), /*email=*/std::string(),
                       /*allow_account_from_other_profile=*/true)
            .IsOk()) {
@@ -1299,6 +1298,10 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
 
   switch (command_id) {
     case IDC_UPGRADE_DIALOG:
+      if (!uma_action_recorded_) {
+        base::UmaHistogramMediumTimes("WrenchMenu.TimeToAction.UpgradeDialog",
+                                      delta);
+      }
       LogMenuAction(MENU_ACTION_UPGRADE_DIALOG);
       break;
     case IDC_NEW_TAB:
@@ -1322,6 +1325,10 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
       LogMenuAction(MENU_ACTION_NEW_INCOGNITO_WINDOW);
       break;
     case IDC_NEW_ISOLATED_WINDOW:
+      if (!uma_action_recorded_) {
+        base::UmaHistogramMediumTimes(
+            "WrenchMenu.TimeToAction.NewIsolatedWindow", delta);
+      }
       LogMenuAction(MENU_ACTION_NEW_ISOLATED_WINDOW);
       break;
 

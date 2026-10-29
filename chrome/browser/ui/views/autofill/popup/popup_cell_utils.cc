@@ -92,11 +92,7 @@ constexpr int kAutofillPopupAdditionalDoubleRowHeight = 16;
 constexpr int kAutofillPopupAdditionalTripleRowHeight = 24;
 
 // The additional padding of the row in case it has three lines of text.
-constexpr int kAutofillPopupAdditionalVerticalPadding = 16;
-
-// The additional padding of the row in case it is an Autofill AI suggestion
-// and has three lines of text.
-constexpr int kAutofillAiPopupAdditionalVerticalPadding = 8;
+constexpr int kAutofillPopupAdditionalVerticalPadding = 8;
 
 // The additional right padding of the row in case it is an Autofill AI
 // suggestion and has three lines of text.
@@ -695,10 +691,7 @@ std::optional<ui::ImageModel> GetIconImageModelFromIcon(Suggestion::Icon icon) {
       return std::nullopt;
 #endif
     case Suggestion::Icon::kOfferTag:
-      return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()
-                                          ? vector_icons::kShoppingmodeIcon
-                                          : vector_icons::kShoppingmodeOldIcon,
-                                      kIconSize);
+      return ImageModelFromVectorIcon(vector_icons::kSellIcon, kIconSize);
     case Suggestion::Icon::kIban:
     case Suggestion::Icon::kScanCreditCard:
     case Suggestion::Icon::kCardGeneric:
@@ -911,12 +904,7 @@ void AddSuggestionContentToView(
     if (should_show_new_fop_format) {
       row_height += kAutofillPopupAdditionalTripleRowHeight;
     } else {
-      // TODO(crbug.com/535568421): Investigate if these spacing adjustments
-      // should be applied to all 3-row suggestions rather than special-casing
-      // Autofill AI.
-      vertical_padding = (suggestion.type == SuggestionType::kFillAutofillAi)
-                             ? kAutofillAiPopupAdditionalVerticalPadding
-                             : kAutofillPopupAdditionalVerticalPadding;
+      vertical_padding = kAutofillPopupAdditionalVerticalPadding;
     }
     if (suggestion.type == SuggestionType::kFillAutofillAi) {
       right_padding += kAutofillAiPopupAdditionalRightPadding;

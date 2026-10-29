@@ -73,7 +73,10 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
   void Apply(const FindAndHighlightToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
-  void Apply(const HistoryToolRequest& tr) override {
+  void Apply(const HistoryBackToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
+  void Apply(const HistoryForwardToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
@@ -81,9 +84,6 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
     var_ = ToolRequestVariant(tr);
   }
 #endif
-  void Apply(const MediaControlToolRequest& tr) override {
-    var_ = ToolRequestVariant(tr);
-  }
   void Apply(const MoveMouseToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
@@ -95,7 +95,16 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
     var_ = ToolRequestVariant(tr);
   }
 #endif
+  void Apply(const PauseMediaToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
   void Apply(const PerformSearchToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
+  void Apply(const PlayMediaToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
+  void Apply(const ReloadPageToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
   void Apply(const RemoveBookmarkToolRequest& tr) override {
@@ -108,6 +117,9 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
     var_ = ToolRequestVariant(tr);
   }
   void Apply(const ScrollToToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
+  void Apply(const SeekMediaToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
   void Apply(const SelectToolRequest& tr) override {

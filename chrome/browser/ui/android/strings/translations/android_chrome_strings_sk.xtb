@@ -123,7 +123,6 @@
 <translation id="1432581352905426595">Spravovať vyhľadávače</translation>
 <translation id="1435593198351412143">Automaticky otvárať súbory PDF</translation>
 <translation id="1437543266176261764">Spustené v aplikácii <ph name="APP_NAME" /></translation>
-<translation id="1448440926884431741">Organizujte svoje sledované produkty v Záložkách</translation>
 <translation id="1452651021404174820">Vyberte zariadenie</translation>
 <translation id="1455845192930279203">Chcete napriek tomu súbor <ph name="FILE_NAME" /> (<ph name="FILE_SIZE" />) z webu <ph name="DOWNLOAD_DOMAIN" /> stiahnuť?</translation>
 <translation id="1460751212339734034">Šetrite čas, píšte menej</translation>
@@ -775,6 +774,7 @@
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, viackrát vybraná pripnutá karta s nahrávaním</translation>
 <translation id="4137746084635924146">Aktuálny jazyk zariadenia</translation>
 <translation id="414128724510021958">V predvolenom nastavení sú požadované weby pre počítače</translation>
+<translation id="4150837143272125910">Aktualizácia bola stiahnutá</translation>
 <translation id="4162867837470729563">Zoznam možností zdieľania je otvorený na celú výšku.</translation>
 <translation id="4164642020717536140">Rýchle a bezpečné prehliadanie internetu</translation>
 <translation id="4165077084524712774">Ďalšie nástroje</translation>
@@ -1199,6 +1199,7 @@ Váš účet Google môže mať na adrese <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="5848257610304005265">Chcete PDF otvoriť pomocou aplikácie <ph name="APP_NAME" />?</translation>
 <translation id="5849288995120328556">Chcete zastaviť zdieľanie?</translation>
 <translation id="5853623416121554550">pozastavené</translation>
+<translation id="5855375823365231964">Tento profil</translation>
 <translation id="5855546874025048181">Spresniť: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, viackrát vybraná karta inkognito s nahrávaním</translation>
 <translation id="5857447844686706637">Vyskytol sa problém. Nepodarilo sa aktualizovať o nastavenie Sledovať cenu.</translation>
@@ -1240,6 +1241,7 @@ Váš účet Google môže mať na adrese <ph name="BEGIN_LINK" />myactivity.goo
 <translation id="6039379616847168523">Prechod na ďalšiu kartu</translation>
 <translation id="6040143037577758943">Zavrieť</translation>
 <translation id="604124094241169006">Automatické</translation>
+<translation id="6041959688070413372">Spravujte pripojenie medzi vyhľadávacími službami a aplikáciami Google Workspace, ako je Disk Google</translation>
 <translation id="6042308850641462728">Viac</translation>
 <translation id="6047066316630165190">Otvorte mriežkový prepínač kariet.</translation>
 <translation id="604996488070107836">Súbor <ph name="FILE_NAME" /> sa nepodarilo stiahnuť z dôvodu neznámej chyby.</translation>
@@ -1400,6 +1402,7 @@ Niektoré weby môžu napríklad na túto žiadosť reagovať tak, že vám zobr
 <translation id="6565959834589222080">Wi-Fi sa použije, keď bude k dispozícii</translation>
 <translation id="657177046675873214">Ak chcete mať záložky vo všetkých zariadeniach, zapnite v nastaveniach Záložky</translation>
 <translation id="6573096386450695060">Vždy povoliť</translation>
+<translation id="657480975869429144">K dispozícii je nová verzia prehliadača Chrome</translation>
 <translation id="658099107946526506">Chráňte svoje anonymné prehliadanie kódom PIN, aby ste zabránili nežiaducemu prístupu</translation>
 <translation id="6583199322650523874">Pridanie aktuálnej stránky medzi záložky</translation>
 <translation id="6588043302623806746">Používať zabezpečené DNS</translation>

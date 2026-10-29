@@ -1225,6 +1225,23 @@ void WebTestControlHost::HandleNewRenderFrameHost(RenderFrameHost* frame) {
   RenderProcessHost* process_host = frame->GetProcess();
   RenderViewHost* view_host = frame->GetRenderViewHost();
 
+  // Is this a previously unknown renderer process_host (for this test)?
+  const bool new_process_host =
+      !render_process_host_observations_.IsObservingSource(process_host);
+
+  // A renderer process that is seen for the first time during this test may
+  // still be a process that was reused from a previous test, e.g. a process
+  // that hosted an out-of-process iframe and was kept alive to be reused for
+  // same-site navigations. Only the process hosting the main window's main
+  // frame receives ResetRendererAfterWebTest() between tests, so any other
+  // reused process still carries the TestRunner state of the previous test
+  // (such as |did_notify_done_|), which could end the new test prematurely.
+  // Reset that state now, before configuring the renderer for this test below.
+  // The main frame's process is reset again here, which is harmless.
+  if (new_process_host) {
+    GetWebTestRenderFrameRemote(frame)->ResetTestRunnerForNewWebTest();
+  }
+
   // If this the first time this renderer contains parts of the main test
   // window, we need to make sure that it gets configured correctly (including
   // letting it know that it's part of the main test window).
@@ -1266,7 +1283,7 @@ void WebTestControlHost::HandleNewRenderFrameHost(RenderFrameHost* frame) {
   }
 
   // Is this a previously unknown renderer process_host?
-  if (!render_process_host_observations_.IsObservingSource(process_host)) {
+  if (new_process_host) {
     render_process_host_observations_.AddObservation(process_host);
     all_observed_render_process_hosts_.insert(process_host);
 
@@ -1704,25 +1721,26 @@ void WebTestControlHost::WebTestRuntimeFlagsChanged(
   web_test_runtime_flags_.tracked_dictionary().ApplyUntrackedChanges(
       accumulated_web_test_runtime_flags_changes_);
 
-  base::flat_map<int, mojom::WebTestRenderFrame*> process_to_frame_map;
-
-  // Propagate the changes to all the renderer processes, we only
-  // need to send it once per process so we build a list of the first
-  // frame we find per process.
-  for (auto& item : web_test_render_frame_map_) {
-    // TODO(crbug.com/379869738) Remove GetUnsafeValue.
-    if (item.first.child_id.GetUnsafeValue() == render_process_id) {
-      continue;
-    }
-    // TODO(crbug.com/379869738) Remove GetUnsafeValue.
-    process_to_frame_map.emplace(item.first.child_id.GetUnsafeValue(),
-                                 item.second.get());
-  }
-
-  // Then we send the new flags to those frames.
-  for (auto [id, frame] : process_to_frame_map) {
-    frame->ReplicateWebTestRuntimeFlagsChanges(
-        changed_web_test_runtime_flags.Clone());
+  // Propagate the changes to all the other renderer processes. With
+  // RenderDocument, a process can have multiple frames where the previous
+  // frame is already swapped out in the renderer while a speculative frame is
+  // about to commit, so send the new flags to every live frame (including
+  // speculative ones) across all windows.
+  for (Shell* window : Shell::windows()) {
+    static_cast<WebContentsImpl*>(window->web_contents())
+        ->ForEachRenderFrameHostImplIncludingSpeculative(
+            [&](RenderFrameHostImpl* render_frame_host) {
+              if (!render_frame_host->IsRenderFrameLive()) {
+                return;
+              }
+              if (render_frame_host->GetProcess()->GetDeprecatedID() ==
+                  render_process_id) {
+                return;
+              }
+              GetWebTestRenderFrameRemote(render_frame_host)
+                  ->ReplicateWebTestRuntimeFlagsChanges(
+                      changed_web_test_runtime_flags.Clone());
+            });
   }
 }
 

@@ -176,11 +176,6 @@ void ShowFramebustBlockMessageInternal(
       base::NullCallback());
 }
 
-// The amount of time to disallow repeated pointer lock calls after the user
-// successfully escapes from one lock request.
-constexpr base::TimeDelta kEffectiveUserEscapeDuration =
-    base::Milliseconds(1250);
-
 constexpr char kPdfPageUrlPrefix[] = "chrome-native://pdf/link?url=";
 
 // Returns the MIME type of the file selected in the file picker, which may be
@@ -213,7 +208,7 @@ class OpenFileSelectListener : public content::FileSelectListener {
                     blink::mojom::FileChooserParams::Mode mode) override {
     // The Ctrl+O shortcut requests Mode::kOpen, which never enables
     // multi-selection in the Android file picker, so only one file is expected.
-    DCHECK_LE(files.size(), 1u);
+    CHECK_LE(files.size(), 1u, base::NotFatalUntil::M161);
 
     if (!web_contents_ || files.empty() || !files[0]->is_native_file()) {
       return;
@@ -653,9 +648,11 @@ WebContents* TabWebContentsDelegateAndroid::AddNewContents(
     bool user_gesture,
     bool* was_blocked) {
   // No code for this yet.
-  DCHECK_NE(disposition, WindowOpenDisposition::SAVE_TO_DISK);
+  CHECK_NE(disposition, WindowOpenDisposition::SAVE_TO_DISK,
+           base::NotFatalUntil::M161);
   // Can't create a new contents for the current tab - invalid case.
-  DCHECK_NE(disposition, WindowOpenDisposition::CURRENT_TAB);
+  CHECK_NE(disposition, WindowOpenDisposition::CURRENT_TAB,
+           base::NotFatalUntil::M161);
 
   if (disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE) {
     const GURL& opener_url = source ? source->GetLastCommittedURL() : GURL();
@@ -958,17 +955,6 @@ TabWebContentsDelegateAndroid::PreHandleKeyboardEvent(
             env, obj, reinterpret_cast<intptr_t>(&event))) {
       return content::KeyboardEventProcessingResult::HANDLED;
     }
-
-    // ExclusiveAccessManager handles the pointer lock escape.
-    if (!base::FeatureList::IsEnabled(
-            features::kEnableExclusiveAccessManager)) {
-      auto* rwhva = source->GetTopLevelRenderWidgetHostView();
-      if (rwhva && rwhva->IsPointerLocked()) {
-        rwhva->UnlockPointer();
-        pointer_lock_last_user_escape_time_ = base::TimeTicks::Now();
-        return content::KeyboardEventProcessingResult::HANDLED;
-      }
-    }
   }
 
   return WebContentsDelegateAndroid::PreHandleKeyboardEvent(source, event);
@@ -984,45 +970,18 @@ void TabWebContentsDelegateAndroid::RequestPointerLock(
     return;
   }
 
-  if (base::FeatureList::IsEnabled(features::kEnableExclusiveAccessManager)) {
-    JNIEnv* env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
 
-    ScopedJavaLocalRef<jobject> obj = GetJavaDelegate(env);
-    if (obj.is_null()) {
-      return;
-    }
-
-    Java_TabWebContentsDelegateAndroidImpl_requestPointerLock(
-        env, obj, web_contents, user_gesture, last_unlocked_by_target);
+  ScopedJavaLocalRef<jobject> obj = GetJavaDelegate(env);
+  if (obj.is_null()) {
     return;
   }
 
-  // TODO(https://crbug.com/415732870): remove this part once
-  // ExclusiveAccessManager is released.
-  if (!last_unlocked_by_target && !web_contents->IsFullscreen()) {
-    if (!user_gesture) {
-      web_contents->GotResponseToPointerLockRequest(
-          blink::mojom::PointerLockResult::kRequiresUserGesture);
-      return;
-    }
-    if (base::TimeTicks::Now() <
-        pointer_lock_last_user_escape_time_ + kEffectiveUserEscapeDuration) {
-      web_contents->GotResponseToPointerLockRequest(
-          blink::mojom::PointerLockResult::kUserRejected);
-      return;
-    }
-  }
-
-  web_contents->GotResponseToPointerLockRequest(
-      blink::mojom::PointerLockResult::kSuccess);
+  Java_TabWebContentsDelegateAndroidImpl_requestPointerLock(
+      env, obj, web_contents, user_gesture, last_unlocked_by_target);
 }
 
 void TabWebContentsDelegateAndroid::LostPointerLock() {
-  if (!base::FeatureList::IsEnabled(features::kEnableExclusiveAccessManager)) {
-    WebContentsDelegateAndroid::LostPointerLock();
-    return;
-  }
-
   JNIEnv* env = AttachCurrentThread();
 
   ScopedJavaLocalRef<jobject> obj = GetJavaDelegate(env);

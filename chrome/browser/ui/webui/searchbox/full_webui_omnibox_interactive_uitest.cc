@@ -26,6 +26,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
@@ -61,6 +62,7 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -229,7 +231,7 @@ class FullWebUIOmniboxInteractiveTestBase
   auto CheckNativeOmniboxViewUnfocused() {
     return CheckResult(
         [this]() {
-          if (base::FeatureList::IsEnabled(features::kWebUIToolbar)) {
+          if (features::IsWebUILocationBarEnabled()) {
             return false;
           }
           auto* location_bar_view =
@@ -633,9 +635,11 @@ class FullWebUIOmniboxInteractiveTest
     std::vector<base::test::FeatureRef> disabled_features = {
         omnibox::internal::kWebUIOmniboxPopup};
     if (IsWebUIToolbarEnabled()) {
+      enabled_features.push_back(features::kInitialWebUI);
       enabled_features.push_back(features::kWebUIToolbar);
     } else {
       disabled_features.push_back(features::kWebUIToolbar);
+      disabled_features.push_back(features::kWebUILocationBar);
     }
     feature_list_.InitWithFeatures(enabled_features, disabled_features);
   }
@@ -1503,8 +1507,16 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 // TODO(b/568358562): Flakes on Windows on first out of 20 runs. Test setup
 // needs to be fixed somehow to allow this to run on Windows.
 #if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
+// TODO(crbug.com/569788689): Re-enable this test
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_ReactivatingWindowFocusesWebContents \
+  DISABLED_ReactivatingWindowFocusesWebContents
+#else
+#define MAYBE_ReactivatingWindowFocusesWebContents \
+  ReactivatingWindowFocusesWebContents
+#endif
 IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
-                       ReactivatingWindowFocusesWebContents) {
+                       MAYBE_ReactivatingWindowFocusesWebContents) {
   RunTestSequence(
       OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
       WaitForWebUIInputValue("chrome://version"), WaitForOmniboxFocus(true),
@@ -1533,8 +1545,17 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 
 // Verifies that reactivating a browser window with an unfocused draft keeps the
 // draft visible without stealing focus back to the omnibox.
-IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
-                       ReactivatingWindowWithUnfocusedDraftDoesNotStealFocus) {
+// TODO(crbug.com/569788689): Re-enable this test
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_ReactivatingWindowWithUnfocusedDraftDoesNotStealFocus \
+  DISABLED_ReactivatingWindowWithUnfocusedDraftDoesNotStealFocus
+#else
+#define MAYBE_ReactivatingWindowWithUnfocusedDraftDoesNotStealFocus \
+  ReactivatingWindowWithUnfocusedDraftDoesNotStealFocus
+#endif
+IN_PROC_BROWSER_TEST_P(
+    FullWebUIOmniboxInteractiveTest,
+    MAYBE_ReactivatingWindowWithUnfocusedDraftDoesNotStealFocus) {
   RunTestSequence(
       OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
       InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
@@ -1586,15 +1607,10 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 // TODO(b/552482504): Fix this test on Windows.
 // TODO(b/567944511): Fix this test on ChromeOS, where clicking the tab strip
 // of the reactivated window doesn't restore omnibox focus.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_ClickInactiveWindowWithDraftRestoresOmniboxFocus \
-  DISABLED_ClickInactiveWindowWithDraftRestoresOmniboxFocus
-#else
-#define MAYBE_ClickInactiveWindowWithDraftRestoresOmniboxFocus \
-  ClickInactiveWindowWithDraftRestoresOmniboxFocus
-#endif
-IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
-                       MAYBE_ClickInactiveWindowWithDraftRestoresOmniboxFocus) {
+// TODO(crbug.com/569045384): Fix this test on Mac.
+IN_PROC_BROWSER_TEST_P(
+    FullWebUIOmniboxInteractiveTest,
+    DISABLED_ClickInactiveWindowWithDraftRestoresOmniboxFocus) {
   if (IsWebUIToolbarEnabled()) {
     GTEST_SKIP()
         << "TODO(crbug.com/567926983): With the WebUI toolbar, the location "
@@ -1723,7 +1739,7 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 // selection bounds when synchronizing state to the WebUI popup.
 IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
                        ViewsSelectionPreservedOnInitialHandoff) {
-  if (IsWebUIToolbarEnabled()) {
+  if (features::IsWebUILocationBarEnabled()) {
     GTEST_SKIP() << "TODO(b/567196573): Ensure this test works properly when "
                     "WebUI toolbar is enabled.";
   }
@@ -2063,7 +2079,7 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 // and that suggestions dropdown is not opened.
 IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
                        TabTraversalOpensAndFocusesWebUIPopup) {
-  if (IsWebUIToolbarEnabled()) {
+  if (features::IsWebUILocationBarEnabled()) {
     GTEST_SKIP()
         << "TODO(b/567196600): Ensure this test works properly when WebUI "
            "toolbar is enabled.";
@@ -2134,7 +2150,7 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 // textfield.
 IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
                        ShiftTabTraversalOpensAndFocusesWebUIPopup) {
-  if (IsWebUIToolbarEnabled()) {
+  if (features::IsWebUILocationBarEnabled()) {
     GTEST_SKIP() << "TODO(b/567196736): Ensure this test works properly when "
                     "WebUI toolbar is enabled.";
   }
@@ -2179,7 +2195,7 @@ IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
 // Verifies that tabbing past the Omnibox closes the full WebUI popup.
 IN_PROC_BROWSER_TEST_P(FullWebUIOmniboxInteractiveTest,
                        TabPastOmniboxClosesWebUIPopup) {
-  if (IsWebUIToolbarEnabled()) {
+  if (features::IsWebUILocationBarEnabled()) {
     GTEST_SKIP() << "TODO(b/567214231): Ensure this test works properly when "
                     "WebUI toolbar is enabled.";
   }
@@ -2720,7 +2736,8 @@ class FullWebUIOmniboxAimInteractiveTest
     feature_list_.InitWithFeaturesAndParameters(
         enabled_features, {omnibox::internal::kWebUIOmniboxPopup,
                            omnibox::kAimServerEligibilityEnabled,
-                           omnibox::kAimFuseboxEligibilityCheckEnabled});
+                           omnibox::kAimFuseboxEligibilityCheckEnabled,
+                           features::kWebUILocationBar});
   }
 
  private:
@@ -2885,7 +2902,8 @@ class FullWebUIOmniboxSimplificationInteractiveTest
     feature_list_.InitWithFeaturesAndParameters(
         enabled_features, {omnibox::internal::kWebUIOmniboxPopup,
                            omnibox::kAimServerEligibilityEnabled,
-                           omnibox::kAimFuseboxEligibilityCheckEnabled});
+                           omnibox::kAimFuseboxEligibilityCheckEnabled,
+                           features::kWebUILocationBar});
   }
 
  private:

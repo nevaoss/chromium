@@ -149,7 +149,8 @@ void ResourceMultiBufferDataProvider::Start() {
     active_loader_ = url_index->fetch_context()->CreateUrlLoader(options);
     active_loader_->LoadAsynchronously(request, this);
   } else {
-    url_data_->Fail();
+    task_runner_->PostTask(FROM_HERE,
+                           blink::BindOnce(&UrlData::Fail, url_data_));
   }
 }
 
@@ -462,7 +463,7 @@ void ResourceMultiBufferDataProvider::DidReceiveData(
   // Beware, this object might be deleted here.
 }
 
-void ResourceMultiBufferDataProvider::DidDownloadData(uint64_t dataLength) {
+void ResourceMultiBufferDataProvider::DidDownloadData(uint64_t data_length) {
   NOTIMPLEMENTED();
 }
 
@@ -518,9 +519,12 @@ void ResourceMultiBufferDataProvider::DidFail(const WebURLError& error) {
 
   // ORB only blocks cross-origin no-cors responses, which are opaque. Record
   // this so that the failure is not distinguishable from other opaque
-  // failures (e.g. via error messages exposed by the media element).
+  // failures (e.g. via error messages exposed by the media element). An ORB
+  // block is also deterministic, so fail immediately rather than retrying.
   if (error.reason() == net::ERR_BLOCKED_BY_ORB) {
     url_data_->set_is_cors_cross_origin(true);
+    url_data_->Fail();
+    return;  // "this" may be deleted now.
   }
 
   if (url_data_->url_index() && retries_ < kMaxRetries && pos_ != 0) {

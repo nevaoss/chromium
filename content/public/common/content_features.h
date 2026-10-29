@@ -26,8 +26,6 @@ namespace features {
 
 // All features in alphabetical order. The features should be documented
 // alongside the definition of their values in the .cc file.
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kAbortNavigationsFromTabClosures);
-
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidCaptureKeyEvents);
 #if BUILDFLAG(IS_MAC)
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAperitifHelpers);
@@ -147,6 +145,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kEmailVerificationProtocol);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceDedicatedWorkerSameOriginCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceSharedWorkerSameOriginCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmAutofill);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmAmbientBubble);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmAmbientUI);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmDelegation);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmIdentityHandler);
@@ -161,6 +160,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmWithoutWellKnownEnforcement);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFencedFramesEnforceFocus);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmNavigationInterception);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmNativeIdPs);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kFileChooserMinWindowSize);
 #if BUILDFLAG(IS_ANDROID)
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFluidResize);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
@@ -418,7 +418,6 @@ CONTENT_EXPORT extern const base::FeatureParam<int>
     kMaxContentChangedEventsToFireParam;
 CONTENT_EXPORT extern const base::FeatureParam<bool>
     kPreventWindowContentChangesForNodesNotLikelyInAndroid;
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityAtomicLiveRegions);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityPageZoomV2);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAccessibilityPopulateSupplementalDescriptionApi);
@@ -451,10 +450,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kSonomaAccessibilityActivationRefinements);
 #if BUILDFLAG(IS_ANDROID)
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebauthnDisabledOnAuto);
 #endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_ANDROID)
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnableExclusiveAccessManager);
-#endif
 
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kIOThreadInteractiveThreadType);
 

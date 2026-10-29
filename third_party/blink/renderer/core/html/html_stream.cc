@@ -90,6 +90,7 @@ class HTMLSink : public UnderlyingSinkBase {
                                     ScriptValue reason,
                                     ExceptionState& exception_state) override {
     parser_->StopParsing();
+    parser_->Detach();
     return ToResolvedUndefinedPromise(script_state);
   }
 
@@ -135,10 +136,10 @@ WritableStream* HTMLStream::Create(ScriptState* script_state,
     return nullptr;
   }
 
-  if (!SanitizerAPI::AllowMutatingRootElement(sanitizer_mode, target)) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kNoModificationAllowedError,
-        "Cannot stream safely into a script element");
+  if (auto* element = DynamicTo<Element>(target);
+      element && element->IsScriptElement()) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
+                                      "Cannot stream into a script element");
     return nullptr;
   }
 

@@ -1408,30 +1408,14 @@ AutofillPrivateGetDetailsForUpsertPassFunction::Run() {
 
   // TODO(crbug.com/557059912): Pass the entity type from the caller instead of
   // hardcoding vehicle.
-  pass_manager->GetDetailsForUpsertPass(
-      autofill::EntityType(autofill::EntityTypeName::kVehicle),
-      base::BindOnce(&AutofillPrivateGetDetailsForUpsertPassFunction::
-                         OnGetDetailsForUpsertPassResponse,
-                     base::RetainedRef(this)));
-  return did_respond() ? AlreadyResponded() : RespondLater();
-}
+  std::optional<
+      autofill::WalletPassAccessManager::GetDetailsForUpsertPassResponse>
+      response = pass_manager->ExtractPreloadedDetailsForUpsertPass(
+          autofill::EntityType(autofill::EntityTypeName::kVehicle));
 
-void AutofillPrivateGetDetailsForUpsertPassFunction::
-    OnGetDetailsForUpsertPassResponse(
-        base::expected<
-            autofill::WalletPassAccessManager::GetDetailsForUpsertPassResponse,
-            wallet::WalletHttpClient::WalletRequestError> response) {
-  const bool should_see_legal_message_notice =
-      response.has_value() &&
-      response->user_eligibility ==
-          autofill::WalletPassAccessManager::UserEligibility::kEligible;
-  const bool fallback_to_local =
-      !response.has_value() || (should_see_legal_message_notice &&
-                                (response->legal_message_lines.empty() ||
-                                 response->context_token.empty()));
-  if (fallback_to_local) {
-    Respond(NoArguments());
-    return;
+  if (!response.has_value() ||
+      !autofill::IsValidUpsertPassDetailsResponse(*response)) {
+    return RespondNow(NoArguments());
   }
 
   api::autofill_private::UpsertPassDetails details;
@@ -1454,7 +1438,7 @@ void AutofillPrivateGetDetailsForUpsertPassFunction::
     }
     details.legal_message_lines.push_back(std::move(idl_line));
   }
-  Respond(ArgumentList(
+  return RespondNow(ArgumentList(
       api::autofill_private::GetDetailsForUpsertPass::Results::Create(
           details)));
 }

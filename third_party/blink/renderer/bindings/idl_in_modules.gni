@@ -220,6 +220,10 @@ static_idl_files_in_modules = [
   "//third_party/blink/renderer/modules/credentialmanagement/public_key_credential_user_entity.idl",
   "//third_party/blink/renderer/modules/credentialmanagement/registration_response_json.idl",
   "//third_party/blink/renderer/modules/credentialmanagement/remote_desktop_client_override.idl",
+  "//third_party/blink/renderer/modules/cross_origin_storage/cross_origin_storage_manager.idl",
+  "//third_party/blink/renderer/modules/cross_origin_storage/cross_origin_storage_request_file_handle_hash.idl",
+  "//third_party/blink/renderer/modules/cross_origin_storage/cross_origin_storage_request_file_handle_options.idl",
+  "//third_party/blink/renderer/modules/cross_origin_storage/navigator_cross_origin_storage.idl",
   "//third_party/blink/renderer/modules/crypto/crypto.idl",
   "//third_party/blink/renderer/modules/crypto/crypto_key.idl",
   "//third_party/blink/renderer/modules/crypto/encapsulation.idl",
@@ -1374,6 +1378,17 @@ if (!target_os_is_android) {
 # we need to compile in the same way as would happen when current_os="android".
 if (!target_os_is_android && !is_ios) {
   static_idl_files_in_modules += [ "//third_party/blink/renderer/modules/awc/additional_windowing_controls.idl" ]
+}
+
+# DecisionModel
+# This uses target_os rather than current_os (which is what is_android is set
+# from) for the case of generating the v8 context snapshot for android. When
+# generating the snapshot for android, blink is compiled with
+# current_os="linux" and target_os="android". Using target_os is necessary as
+# we need to compile in the same way as would happen when current_os="android".
+if (!target_os_is_android) {
+  static_idl_files_in_modules +=
+      [ "//third_party/blink/renderer/modules/ai/decision_model.idl" ]
 }
 
 # Window setShape API for allowlisted Isolated Web Apps (ChromeOS only).

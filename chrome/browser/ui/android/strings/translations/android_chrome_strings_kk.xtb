@@ -123,7 +123,6 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="1432581352905426595">Іздеу жүйелерін басқару</translation>
 <translation id="1435593198351412143">PDF файлдарын автоматты түрде ашу</translation>
 <translation id="1437543266176261764"><ph name="APP_NAME" /> қолданбасында орындалуда</translation>
-<translation id="1448440926884431741">Бақыланатын өнімдерді "Бетбелгілер" бөлімінен реттеңіз.</translation>
 <translation id="1452651021404174820">Құрылғы таңдаңыз</translation>
 <translation id="1455845192930279203">"<ph name="FILE_NAME" />" файлын (<ph name="FILE_SIZE" />) <ph name="DOWNLOAD_DOMAIN" /> сайтынан сонда да жүктеп алу қажет пе?</translation>
 <translation id="1460751212339734034">Уақыт үнемдеп, аз теру</translation>
@@ -775,6 +774,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, жазудың көп рет таңдалған, бекітілген қойындысы</translation>
 <translation id="4137746084635924146">Ағымдағы құрылғы тілі</translation>
 <translation id="414128724510021958">Компьютерге арналған әдепкісінше сұралған сайттар</translation>
+<translation id="4150837143272125910">Жаңа нұсқа жүктеп алынды.</translation>
 <translation id="4162867837470729563">Бөлісу опцияларының тізімі бүкіл экранға жайылды.</translation>
 <translation id="4164642020717536140">Интернетті жылдам әрі қауіпсіз шолып шығу</translation>
 <translation id="4165077084524712774">Басқа құралдар</translation>
@@ -1199,6 +1199,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="5848257610304005265">PDF файлын <ph name="APP_NAME" /> қолданбасымен ашу қажет пе?</translation>
 <translation id="5849288995120328556">Бөлісуді тоқтату қажет пе?</translation>
 <translation id="5853623416121554550">кідіртілді</translation>
+<translation id="5855375823365231964">Осы профиль туралы ақпарат</translation>
 <translation id="5855546874025048181">Нақтылау: <ph name="REFINE_TEXT" /></translation>
 <translation id="585617462962753911"><ph name="TAB_TITLE" />, жазудың көп рет таңдалған инкогнито қойындысы</translation>
 <translation id="5857447844686706637">Бірдеңе дұрыс болмады. Бақыланатын баға жаңартылмады.</translation>
@@ -1240,6 +1241,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="6039379616847168523">Келесі қойындыға өту</translation>
 <translation id="6040143037577758943">Жабу</translation>
 <translation id="604124094241169006">Автоматты</translation>
+<translation id="6041959688070413372">Search қызметтері мен Google Drive сияқты Google Workspace қолданбалары арасындағы байланысты басқару</translation>
 <translation id="6042308850641462728">Жаю</translation>
 <translation id="6047066316630165190">Тор қойынды ауыстырғышын ашу</translation>
 <translation id="604996488070107836">Белгісіз қате себебінен <ph name="FILE_NAME" /> жүктелмеді.</translation>
@@ -1400,6 +1402,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="6565959834589222080">Бар болса, Wi-Fi желісі пайдаланылады.</translation>
 <translation id="657177046675873214">Бетбелгілерді барлық құрылғыда пайдалану үшін параметрлерде "Бетбелгілер" опциясын қосыңыз.</translation>
 <translation id="6573096386450695060">Әрқашан рұқсат беру</translation>
+<translation id="657480975869429144">Chrome-ның жаңа нұсқасы қолжетімді.</translation>
 <translation id="658099107946526506">Құпия шарлауды PIN кодымен қорғап, рұқсатсыз кірудің алдын алыңыз.</translation>
 <translation id="6583199322650523874">Ағымдағы бетке бетбелгі жасау</translation>
 <translation id="6588043302623806746">Қауіпсіз DNS пайдалану</translation>

@@ -840,11 +840,28 @@ const FeatureEntry::FeatureParam kGeminiActorBackgroundingDisabled[] = {
 const FeatureEntry::FeatureVariation kGeminiActorVariations[] = {
     {"Backgrounding Disabled", kGeminiActorBackgroundingDisabled, nullptr}};
 
+const FeatureEntry::FeatureParam kGeminiQuizzesOpenInNewTab[] = {
+    {kGeminiQuizzesOpenInNewTabParam, "true"}};
+const FeatureEntry::FeatureVariation kGeminiQuizzesVariations[] = {
+    {"Open in new tab", kGeminiQuizzesOpenInNewTab, nullptr}};
+
 const FeatureEntry::FeatureParam kGeminiAureusForegroundQuotaRefreshEnabled[] =
     {{kGeminiAureusForegroundQuotaRefreshParam, "true"}};
 const FeatureEntry::FeatureVariation kGeminiAureusVariations[] = {
     {"Foreground Quota Refresh Enabled",
      kGeminiAureusForegroundQuotaRefreshEnabled, nullptr}};
+
+const FeatureEntry::FeatureParam kGeminiLiveSkipIntro[] = {
+    {kGeminiLiveSkipIntroParam, "true"}};
+const FeatureEntry::FeatureParam kGeminiLiveDisableIPH[] = {
+    {kGeminiLiveDisableIPHParam, "true"}};
+const FeatureEntry::FeatureParam kGeminiLiveSkipIntroAndDisableIPH[] = {
+    {kGeminiLiveSkipIntroParam, "true"},
+    {kGeminiLiveDisableIPHParam, "true"}};
+const FeatureEntry::FeatureVariation kGeminiLiveVariations[] = {
+    {"Skip Intro", kGeminiLiveSkipIntro, nullptr},
+    {"Disable IPH", kGeminiLiveDisableIPH, nullptr},
+    {"Skip Intro and Disable IPH", kGeminiLiveSkipIntroAndDisableIPH, nullptr}};
 
 const FeatureEntry::FeatureParam kGeminiFREExperimentVisualRich[] = {
     {kGeminiFREExperimentParam, kGeminiFREExperimentParamVisualRich}};
@@ -1161,6 +1178,12 @@ const FeatureEntry::FeatureVariation kNewTabPageUICleanupVariations[] = {
     {" - Fakebox Background and Shadow Update",
      kNewTabPageUICleanupFakeboxBackgroundAndShadow, nullptr},
 };
+
+constexpr FeatureEntry::FeatureParam kAim3pEntrypointDebugEnabled[] = {
+    {"Aim3pEntrypointDebug", "true"}};
+
+constexpr FeatureEntry::FeatureVariation kAim3pEntrypointVariations[] = {
+    {"with debug config", kAim3pEntrypointDebugEnabled, nullptr}};
 
 constexpr FeatureEntry::FeatureParam
     kAimButtonRefactorFocusComposeboxAimQuickAction[] = {
@@ -1624,6 +1647,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kOmniboxOnDeviceTailSuggestionsName,
      flag_descriptions::kOmniboxOnDeviceTailSuggestionsDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(omnibox::kOnDeviceTailModel)},
+    {"omnibox-prerender-on-touch-down",
+     flag_descriptions::kOmniboxPrerenderOnTouchDownName,
+     flag_descriptions::kOmniboxPrerenderOnTouchDownDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kOmniboxPrerenderOnTouchDown)},
     {"omnibox-most-visited-tiles-horizontal-render-group",
      flag_descriptions::kMostVisitedTilesHorizontalRenderGroupName,
      flag_descriptions::kMostVisitedTilesHorizontalRenderGroupDescription,
@@ -2067,11 +2094,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kCredentialProviderPasskeyLargeBlobName,
      flag_descriptions::kCredentialProviderPasskeyLargeBlobDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kCredentialProviderPasskeyLargeBlob)},
-    {"autofill-credit-card-scanner-ios",
-     flag_descriptions::kAutofillCreditCardScannerIosName,
-     flag_descriptions::kAutofillCreditCardScannerIosDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(autofill::features::kAutofillCreditCardScannerIos)},
     {"autofill-save-card-bottom-sheet-strike-limit-ios",
      flag_descriptions::kAutofillSaveCardBottomSheetStrikeLimitIosName,
      flag_descriptions::kAutofillSaveCardBottomSheetStrikeLimitIosDescription,
@@ -2219,7 +2241,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_VALUE_TYPE(kGeminiNavigationPromo)},
     {"gemini-live", flag_descriptions::kGeminiLiveName,
      flag_descriptions::kGeminiLiveDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kGeminiLive)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kGeminiLive,
+                                    kGeminiLiveVariations,
+                                    "GeminiLive")},
     {"gemini-live-dormant-reasons",
      flag_descriptions::kGeminiLiveDormantReasonsName,
      flag_descriptions::kGeminiLiveDormantReasonsDescription, flags_ui::kOsIos,
@@ -2281,6 +2305,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kComposeboxPlusButtonBottomSheetName,
      flag_descriptions::kComposeboxPlusButtonBottomSheetDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxPlusButtonBottomSheet)},
+    {"composebox-plus-button-bottom-sheet-large-carousel",
+     flag_descriptions::kComposeboxPlusButtonLargeCarouselName,
+     flag_descriptions::kComposeboxPlusButtonLargeCarouselDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxPlusButtonLargeCarousel)},
     {"chrome-next-ia", flag_descriptions::kChromeNextIaName,
      flag_descriptions::kChromeNextIaDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kChromeNextIa)},
@@ -2715,7 +2743,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
          switches::kDontIncludeSIDUnsecureCookiesInGaiaAuthFetcher)},
     {"gemini-quizzes", flag_descriptions::kGeminiQuizzesName,
      flag_descriptions::kGeminiQuizzesDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kGeminiQuizzes)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kGeminiQuizzes,
+                                    kGeminiQuizzesVariations,
+                                    "GeminiQuizzes")},
     {"ios-passkey-conditional-login-with-shim",
      flag_descriptions::kIOSPasskeyConditionalLoginWithShimName,
      flag_descriptions::kIOSPasskeyConditionalLoginWithShimDescription,
@@ -2783,6 +2813,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"saas-usage-reporting", flag_descriptions::kSaasUsageReportingName,
      flag_descriptions::kSaasUsageReportingDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(enterprise_reporting::kSaasUsageReporting)},
+    {"aim-3p-entrypoint", flag_descriptions::kAim3pEntrypointName,
+     flag_descriptions::kAim3pEntrypointDescription, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(omnibox::kAim3pEntrypoint,
+                                    kAim3pEntrypointVariations,
+                                    "Aim3pEntrypoint")},
     {"aim-button-refactor", flag_descriptions::kAimButtonRefactorName,
      flag_descriptions::kAimButtonRefactorDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(ntp_tiles::kAimButtonRefactor,
@@ -2913,6 +2948,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAppBarAssistantCustomizationName,
      flag_descriptions::kAppBarAssistantCustomizationDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kAppBarAssistantCustomization)},
+    {"light-app-bar", flag_descriptions::kLightAppBarName,
+     flag_descriptions::kLightAppBarDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kLightAppBar)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

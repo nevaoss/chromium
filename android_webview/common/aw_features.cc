@@ -308,7 +308,7 @@ BASE_FEATURE(kWebViewNavigateDrainPrefetch, base::FEATURE_ENABLED_BY_DEFAULT);
 // cookie loss and CHECK failures when cookies are set before WebView is fully
 // initialized.
 BASE_FEATURE(kWebViewNonBlockingCookieStoreHandoff,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, opts in WebView to GMSCore's bindService optimizations.
 BASE_FEATURE(kWebViewOptInToGmsBindServiceOptimization,
@@ -352,6 +352,24 @@ BASE_FEATURE(kWebViewPrefetchPruneStaleWrappers,
 // Kill switch for reporting `PreloadServingMetrics` for WebView.
 BASE_FEATURE(kWebViewPreloadServingMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, preconnect requests trigger compression dictionary prewarming.
+BASE_FEATURE(kWebViewPrewarmDictionaryOnPreconnect,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+constexpr base::FeatureParam<AwPrewarmDictionaryCleanupMode>::Option
+    kAwPrewarmDictionaryCleanupModeOptions[] = {
+        {AwPrewarmDictionaryCleanupMode::kEventsOnly, "events_only"},
+        {AwPrewarmDictionaryCleanupMode::kTimerOnly, "timer_only"},
+        {AwPrewarmDictionaryCleanupMode::kHybrid, "hybrid"},
+};
+const base::FeatureParam<AwPrewarmDictionaryCleanupMode>
+    kWebViewPrewarmDictionaryCleanupMode{
+        &kWebViewPrewarmDictionaryOnPreconnect, "CleanupMode",
+        AwPrewarmDictionaryCleanupMode::kHybrid,
+        &kAwPrewarmDictionaryCleanupModeOptions};
+// Maximum number of prewarmed dictionaries retained concurrently.
+const base::FeatureParam<int> kWebViewPrewarmDictionaryOnPreconnectMaxEntries{
+    &kWebViewPrewarmDictionaryOnPreconnect, "MaxEntries", 4};
+
 // Enables lazy profile creation in WebView.
 BASE_FEATURE(kWebViewProfileStoreNotTriggerStartup,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -384,6 +402,10 @@ BASE_FEATURE(kWebViewReducedSeedRequestPeriod,
 // This enables reducing webview user-agent android version and device model.
 BASE_FEATURE(kWebViewReduceUAAndroidVersionDeviceModel,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Allow WebView initialization to continue in the case where an old instance of
+// the same app process is stuck holding the lock.
+BASE_FEATURE(kWebViewRelaxDataDirLocking, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, WebView support for Instant Apps is removed.
 BASE_FEATURE(kWebViewRemoveInstantAppSupport,

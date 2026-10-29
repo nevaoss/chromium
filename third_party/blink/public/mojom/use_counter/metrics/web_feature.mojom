@@ -2124,7 +2124,7 @@ enum WebFeature {
   kRefreshHeader = 2832,
   kSearchEventFired = 2833,
   kIdleDetectionStart = 2834,
-  kTargetCurrent = 2835,
+  kOBSOLETE_TargetCurrent = 2835,
   kSandboxBackForwardStaysWithinSubtree = 2836,
   kSandboxBackForwardAffectsFramesOutsideSubtree = 2837,
   kDownloadPrePolicyCheck = 2838,
@@ -5347,6 +5347,11 @@ enum WebFeature {
   kEditContextUpdateSelectionRangeExceedsTextRange = 6030,
   kEditContextUpdateCharacterBoundsExceedsTextRange = 6031,
   kCSPModuleMapMismatch = 6032,
+  kTextDetectorCreate = 6033,
+  kDecisionModel_Availability = 6034,
+  kDecisionModel_Create = 6035,
+  kDecisionModel_Decide = 6036,
+  kDecisionModel_Destroy = 6037,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

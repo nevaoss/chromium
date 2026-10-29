@@ -58,10 +58,19 @@ class CORE_EXPORT Focusable final : public ScriptWrappable {
 
   // Set if the focusable item is inside a shadow tree whose inner nodes are not
   // exposed to the caller's TreeScope (i.e. the DocumentOrShadowRoot whose
-  // `activeFocusable` created this Focusable). It is the outermost shadow host
-  // that is exposed, i.e. what `DocumentOrShadowRoot.activeElement` returns in
-  // that case. `target` and `pseudoElement` are null whenever this is set, so
-  // that nothing inside the shadow tree is exposed.
+  // `activeFocusable` created this Focusable), or slotted into one. It is the
+  // outermost shadow host that is exposed, i.e. what
+  // `DocumentOrShadowRoot.activeElement` returns for focus inside its shadow
+  // tree. `target` and `pseudoElement` are null whenever this is set, so that
+  // nothing inside the shadow tree (or slotted into it) is exposed.
+  //
+  // Note that `activeElement` does return a focused light DOM element that is
+  // slotted into such a shadow tree, since it's in the caller's TreeScope. It's
+  // still not exposed here, though, since the shadow tree determines where it
+  // is in the sequential focus order.
+  //
+  // Such a shadow host is a single entry in the sequential focus order:
+  // `nextFocusable()` and `previousFocusable()` skip everything else inside it.
   //
   // `element_` or `pseudo_element_` is still set in that case, since `focus()`
   // focuses the focusable item itself, not the shadow host. Focusing the shadow
@@ -83,7 +92,8 @@ class CORE_EXPORT Focusable final : public ScriptWrappable {
   //   CSSPseudoElement interface doesn't support (e.g.
   //   `::column::scroll-marker`).
   //   Just like `Event.pseudoTarget`, such a pseudo-element is only exposed
-  //   through its ultimate originating element as `target`.
+  //   through its ultimate originating element as `target` (see
+  //   `originating_element_`).
   // - `pseudo_element_`, for pseudo-elements that the CSSPseudoElement
   //   interface supports. It is exposed as `pseudoElement`, and its ultimate
   //   originating element as `target`.
@@ -95,13 +105,20 @@ class CORE_EXPORT Focusable final : public ScriptWrappable {
   // to a pseudo-element that doesn't exist yet. `pseudo_element_` handles all
   // of these, since CSSPseudoElement looks up the current PseudoElement
   // whenever it's needed. A PseudoElement in `element_`, on the other hand, can
-  // only be focused while it exists, and its `target` becomes null once it's
-  // destroyed, since a destroyed PseudoElement no longer knows its originating
-  // element.
+  // only be focused while it exists.
   // TODO(crbug.com/565786176): Track all pseudo-elements through
   // CSSPseudoElement, once it supports them.
   Member<Element> element_;
   Member<CSSPseudoElement> pseudo_element_;
+
+  // Set if `element_` is a PseudoElement. It's the ultimate originating element
+  // of the pseudo-element (e.g. the multicol container for
+  // `::column::scroll-marker`, not the `::column`), which is exposed as
+  // `target`. It's stored when the Focusable is created, since a destroyed
+  // PseudoElement no longer knows its originating element (see
+  // `PseudoElement::Dispose()`), and `target` should still be the ultimate
+  // originating element then (just like `CSSPseudoElement.element`).
+  Member<Element> originating_element_;
 };
 
 }  // namespace blink

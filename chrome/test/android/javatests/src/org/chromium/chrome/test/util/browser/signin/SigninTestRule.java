@@ -92,10 +92,32 @@ public class SigninTestRule implements TestRule {
             @Override
             public void evaluate() throws Throwable {
                 setUpRule();
+                Throwable testError = null;
                 try {
                     statement.evaluate();
-                } finally {
+                } catch (Throwable t) {
+                    testError = t;
+                }
+
+                Throwable teardownError = null;
+                try {
                     tearDownRule();
+                } catch (Throwable t) {
+                    teardownError = t;
+                }
+
+                // If both the test and teardown fail (e.g. sign-out timeout), attach the
+                // teardown error as suppressed so it does not mask the test's original failure.
+                if (teardownError != null) {
+                    if (testError != null) {
+                        testError.addSuppressed(teardownError);
+                    } else {
+                        throw teardownError;
+                    }
+                }
+
+                if (testError != null) {
+                    throw testError;
                 }
             }
         };
@@ -107,7 +129,6 @@ public class SigninTestRule implements TestRule {
     }
 
     public void tearDownRule() {
-        DeviceLockActivityLauncherImpl.setInstanceForTesting(null);
         if (mAutomaticCleanupsEnabled) {
             cleanUpAccountsAndSignOut();
         }
@@ -115,8 +136,6 @@ public class SigninTestRule implements TestRule {
 
     /** Resets the fake account management and sign-in state to pristine condition. */
     private void cleanUpAccountsAndSignOut() {
-        // TODO(crbug.com/40743432): Handle teardown failures. See comment:
-        // crrev.com/c/8493752/comment/d0bb43e9_c67bcd9c/
         if (mIsSignedIn || (ProfileManager.isInitialized() && getPrimaryAccount() != null)) {
             forceSignOut();
         }
@@ -214,18 +233,21 @@ public class SigninTestRule implements TestRule {
      */
     @Deprecated
     public CoreAccountInfo addTestAccountThenSignin() {
-        assert !mIsSignedIn : "An account is already signed in!";
         AccountInfo accountInfo = TestAccounts.ACCOUNT1;
         addAccount(accountInfo);
-        SigninTestUtil.signin(accountInfo);
-        mIsSignedIn = true;
+        signin(accountInfo);
         return accountInfo;
     }
 
     /** Adds and signs in with the provided account. */
     public void addAccountThenSignin(AccountInfo accountInfo) {
-        assert !mIsSignedIn : "An account is already signed in!";
         addAccount(accountInfo);
+        signin(accountInfo);
+    }
+
+    /** Signs in with the provided account. */
+    public void signin(AccountInfo accountInfo) {
+        assert !mIsSignedIn : "An account is already signed in!";
         SigninTestUtil.signin(accountInfo);
         mIsSignedIn = true;
     }

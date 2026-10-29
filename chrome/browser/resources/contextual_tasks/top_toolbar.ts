@@ -101,7 +101,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
         reflect: true,
       },
       isCobrowseEligible: {type: Boolean},
-      isHandshakeComplete: {type: Boolean},
       isUserSignedIn: {type: Boolean},
       onboardingTooltipShowing: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayout_: {type: Boolean},
@@ -126,7 +125,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
   accessor isAimEligible: boolean = loadTimeData.getBoolean('isAimEligible');
   accessor isCobrowseEligible: boolean =
       loadTimeData.getBoolean('isCobrowseEligible');
-  accessor isHandshakeComplete: boolean = false;
   accessor permissionDashboardState: PermissionDashboardState|null = null;
   protected accessor isSidePanelRearchitectureEnabled_: boolean =
       loadTimeData.getBoolean('contextualTasksSidePanelRearchitectureEnabled');
@@ -173,12 +171,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
       callbackRouter.setShowReopenTabs.addListener(show => {
         this.showReopenTabs_ = show;
       }),
-      callbackRouter.setExpandButtonEnabled.addListener((enabled: boolean) => {
-        this.isExpandButtonEnabled = enabled;
-      }),
-      callbackRouter.onHandshakeComplete.addListener(() => {
-        this.isHandshakeComplete = true;
-      }),
     ];
     this.toolbarListenerIds_ = [
       this.toolbarBrowserProxy_.callbackRouter.onSidePanelPinStateChanged
@@ -188,6 +180,10 @@ export class TopToolbarElement extends TopToolbarElementBase {
       this.toolbarBrowserProxy_.callbackRouter.onContextUpdated.addListener(
           (contextInfos: ContextInfo[]) => {
             this.contextInfos = contextInfos;
+          }),
+      this.toolbarBrowserProxy_.callbackRouter.setExpandButtonEnabled
+          .addListener((enabled: boolean) => {
+            this.isExpandButtonEnabled = enabled;
           }),
     ];
     window.addEventListener('blur', this.boundOnWindowBlur_);
@@ -294,9 +290,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
         changedProperties.has('onboardingTooltipShowing')) {
       this.hideOverflowMenuButton_ =
           this.isAiPage && this.hideOverflowMenuOnAiPageEnabled_;
-      if (changedProperties.has('isAiPage') && !this.isAiPage) {
-        this.isHandshakeComplete = false;
-      }
       // <if expr="not is_android">
       if (this.isAiPage) {
         if (!this.onboardingTooltipShowing) {
@@ -325,7 +318,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
 
   protected onCloseButtonClick_() {
     recordAction('ContextualTasks.WebUI.UserAction.CloseSidePanel');
-    this.browserProxy_.handler.closeSidePanel();
+    this.toolbarBrowserProxy_.handler.closeSidePanel();
   }
 
   protected onNewThreadClick_() {
@@ -368,7 +361,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
     if (!this.isSidePanelRearchitectureEnabled_) {
       return;
     }
-    this.browserProxy_.handler.onLogoPointerDown();
+    this.toolbarBrowserProxy_.handler.onLogoPointerDown();
   }
 
   protected onLogoClick_(e: Event) {
@@ -378,7 +371,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
     // Keyboard synthetic clicks generate PointerEvents with an empty
     // pointerType in WebUI, whereas natural pointer clicks have a valid
     // pointerType (e.g., 'mouse', 'touch', 'pen').
-    this.browserProxy_.handler.showPageInfoBubble(
+    this.toolbarBrowserProxy_.handler.showPageInfoBubble(
         e instanceof PointerEvent && e.pointerType !== '');
   }
 }
