@@ -8,6 +8,10 @@ on:
   # pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   build:
     name: build-webos
@@ -16,10 +20,28 @@ jobs:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
+      # Commit status is attached to the dispatched commit, so it shows up on
+      # every PR whose head is this commit, regardless of the trigger type.
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins webOS build
+          state: pending
       - uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
           ref: main
       - name: Run webOS/OSE builder
+        id: jenkins
+        shell: bash
         run: |
           ./build-webos.py
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins webOS build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
