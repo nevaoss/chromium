@@ -127,6 +127,8 @@ class NevaExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
       const extensions::Extension* extension) const override;
   std::unique_ptr<extensions::RuntimeAPIDelegate> CreateRuntimeAPIDelegate(
       content::BrowserContext* context) const override;
+  extensions::BrowserContextLifetimeTracker*
+  GetBrowserContextLifetimeTracker() override;
   const extensions::ComponentExtensionResourceManager*
   GetComponentExtensionResourceManager() override;
   void BroadcastEventToRenderers(
