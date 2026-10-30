@@ -8,6 +8,10 @@ on:
   # pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   build:
     name: rolling/build-pc
@@ -16,10 +20,28 @@ jobs:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
+      # Reported as jenkins/build-pc, the same status as build-pc, so the PR
+      # shows one PC build status whichever workflow was run.
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-pc
+          label: Jenkins rolling PC build
+          state: pending
       - uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
           ref: main
       - name: Run PC builder (rolling settings & environment)
+        id: jenkins
+        shell: bash
         run: |
           ./rolling/build-pc.py
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-pc
+          label: Jenkins rolling PC build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
