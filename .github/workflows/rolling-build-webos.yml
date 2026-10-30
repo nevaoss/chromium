@@ -8,6 +8,10 @@ on:
   # pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   build:
     name: rolling/build-webos
@@ -16,10 +20,28 @@ jobs:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
+      # Reported as jenkins/build-webos, the same status as build-webos, so the
+      # PR shows one webOS build status whichever workflow was run.
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins rolling webOS build
+          state: pending
       - uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
           ref: main
       - name: Run webOS/OSE builder (rolling settings & environment)
+        id: jenkins
+        shell: bash
         run: |
           ./rolling/build-webos.py
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins rolling webOS build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
