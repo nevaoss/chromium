@@ -264,6 +264,11 @@ NevaExtensionsBrowserClient::CreateRuntimeAPIDelegate(
   return std::make_unique<NevaRuntimeAPIDelegate>(context);
 }
 
+extensions::BrowserContextLifetimeTracker*
+NevaExtensionsBrowserClient::GetBrowserContextLifetimeTracker() {
+  return nullptr;
+}
+
 const extensions::ComponentExtensionResourceManager*
 NevaExtensionsBrowserClient::GetComponentExtensionResourceManager() {
   return NULL;

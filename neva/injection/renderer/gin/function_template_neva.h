@@ -33,8 +33,8 @@ v8::Local<v8::FunctionTemplate> CreateConstructorTemplate(
       std::move(invoker_options));
 
   v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
-      isolate, &internal::Dispatcher<Sig>::DispatchToCallback,
-      ConvertToV8(isolate, holder).ToLocalChecked());
+      isolate, nullptr, v8::Local<v8::Value>());
+  tmpl->SetCallHandler(&internal::Dispatcher<Sig>::DispatchToCallback, holder->GetHandle(isolate));
   return tmpl;
 }
 
