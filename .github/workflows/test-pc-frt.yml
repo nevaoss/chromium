@@ -8,6 +8,12 @@ on:
   # pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
+# Both jobs report as jenkins/test-pc-frt, so the PR shows one status
+# whether the regular or the rolling tests ran.
 jobs:
   test-pc-frt:
     name: FRT tests for PC build
@@ -21,6 +27,13 @@ jobs:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/test-pc-frt
+          label: Jenkins PC FRT
+          state: pending
+
       - name: Check out CI repository
         uses: actions/checkout@v6
         with:
@@ -28,7 +41,18 @@ jobs:
           ref: main
 
       - name: Run FRT tests for PC target
+        id: jenkins
+        shell: bash
         run: ./test-pc-frt.py
+
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/test-pc-frt
+          label: Jenkins PC FRT
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
 
   rolling-test-pc-frt:
     name: FRT tests for rolling PC build
@@ -42,6 +66,13 @@ jobs:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/test-pc-frt
+          label: Jenkins rolling PC FRT
+          state: pending
+
       - name: Check out CI repository
         uses: actions/checkout@v6
         with:
@@ -49,4 +80,15 @@ jobs:
           ref: main
 
       - name: Run FRT tests for rolling PC target
+        id: jenkins
+        shell: bash
         run: ./rolling/test-pc-frt.py
+
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/test-pc-frt
+          label: Jenkins rolling PC FRT
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
