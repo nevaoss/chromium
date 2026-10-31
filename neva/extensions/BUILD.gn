@@ -18,10 +18,10 @@ import("//mojo/public/tools/bindings/mojom.gni")
 
 source_set("extensions") {
   sources = [
-    "browser/api/cookies/cookies_api.cc",
-    "browser/api/cookies/cookies_api.h",
-    "browser/api/cookies/cookies_helpers.cc",
-    "browser/api/cookies/cookies_helpers.h",
+#    "browser/api/cookies/cookies_api.cc",
+#    "browser/api/cookies/cookies_api.h",
+#    "browser/api/cookies/cookies_helpers.cc",
+#    "browser/api/cookies/cookies_helpers.h",
     "browser/api/extension_action/extension_action_api.cc",
     "browser/api/extension_action/extension_action_api.h",
     "browser/api/management/neva_management_api_delegate.cc",
