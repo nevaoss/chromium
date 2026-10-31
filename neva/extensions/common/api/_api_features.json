@@ -34,10 +34,6 @@
     "dependencies": ["manifest:browser_action"],
     "contexts": ["privileged_extension"]
   },
-  "cookies": {
-    "dependencies": ["permission:cookies"],
-    "contexts": ["privileged_extension"]
-  },
   "extension": {
     "channel": "stable",
     "extension_types": ["extension", "legacy_packaged_app"],
