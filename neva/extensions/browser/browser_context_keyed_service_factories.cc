@@ -16,7 +16,7 @@
 
 #include "neva/extensions/browser/browser_context_keyed_service_factories.h"
 
-#include "neva/extensions/browser/api/cookies/cookies_api.h"
+#include "extensions/browser/api/cookies/cookies_api.h"
 #include "neva/extensions/browser/api/extension_action/extension_action_api.h"
 #include "neva/extensions/browser/api/web_navigation/web_navigation_api.h"
 #include "neva/extensions/browser/neva_extensions_service_factory.h"
@@ -24,7 +24,7 @@
 namespace neva {
 
 void EnsureBrowserContextKeyedServiceFactoriesBuilt() {
-  CookiesAPI::GetFactoryInstance();
+  extensions::CookiesAPI::GetFactoryInstance();
   ExtensionActionAPI::GetFactoryInstance();
   NevaExtensionsServiceFactory::GetFactoryInstance();
   WebNavigationAPI::GetFactoryInstance();
