@@ -18,7 +18,6 @@ import("//build/config/features.gni")
 
 schema_sources_ = [
   "app.json",
-  "cookies.json",
   "notifications.idl",
   "tabs.json",
   "web_navigation.json",

@@ -46,8 +46,6 @@ constexpr extensions::APIPermissionInfo::InitInfo permissions_to_register[] = {
     // Register permissions for all extension types.
 
     // Register extension permissions.
-    {APIPermissionID::kCookie, "cookies",
-     extensions::APIPermissionInfo::kFlagRequiresManagementUIWarning},
     {APIPermissionID::kNotifications, "notifications",
      extensions::APIPermissionInfo::kFlagRequiresManagementUIWarning},
     {APIPermissionID::kScripting, "scripting",
