@@ -32,9 +32,9 @@ v8::Local<v8::FunctionTemplate> CreateConstructorTemplate(
       isolate->GetCppHeap()->GetAllocationHandle(), std::move(callback),
       std::move(invoker_options));
 
-  v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
-      isolate, &internal::Dispatcher<Sig>::DispatchToCallback,
-      ConvertToV8(isolate, holder).ToLocalChecked());
+  v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(isolate);
+  tmpl->SetCallHandler(&internal::Dispatcher<Sig>::DispatchToCallback,
+                       holder->GetHandle(isolate));
   return tmpl;
 }
 
