@@ -132,6 +132,13 @@ bool NevaExtensionsBrowserClient::AreExtensionsDisabledForContext(
   return false;
 }
 
+extensions::BrowserContextLifetimeTracker*
+NevaExtensionsBrowserClient::GetBrowserContextLifetimeTracker() {
+  // Neva does not support watching a BrowserContext's off-the-record sibling's
+  // lifecycle.
+  return nullptr;
+}
+
 bool NevaExtensionsBrowserClient::IsGuestSession(
     BrowserContext* context) const {
   return false;

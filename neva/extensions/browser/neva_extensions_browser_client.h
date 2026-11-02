@@ -67,6 +67,8 @@ class NevaExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
       content::BrowserContext* context) override;
   bool AreExtensionsDisabledForContext(
       content::BrowserContext* context) override;
+  extensions::BrowserContextLifetimeTracker*
+  GetBrowserContextLifetimeTracker() override;
   bool IsGuestSession(content::BrowserContext* context) const override;
   bool IsExtensionIncognitoEnabled(
       const std::string& extension_id,
