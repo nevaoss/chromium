@@ -520,18 +520,7 @@ void CdmAdapter::Decrypt(StreamType stream_type,
 
   scoped_refptr<DecoderBuffer> decrypted_buffer(
       DecoderBuffer::CopyFrom(AsSpan(decrypted_block->DecryptedBuffer())));
-<<<<<<< HEAD
-  decrypted_buffer->set_timestamp(
-      base::Microseconds(decrypted_block->Timestamp()));
-
-#if defined(USE_NEVA_CDM)
-  // TODO(neva): Upstreamable
-  decrypted_buffer->set_duration(encrypted->duration());
-#endif  // defined(USE_NEVA_CDM)
-
-=======
   decrypted_buffer->CopyMetadataClearBufferFrom(*encrypted);
->>>>>>> 157.0.8090.0~1
   std::move(decrypt_cb).Run(Decryptor::kSuccess, std::move(decrypted_buffer));
 }
 
