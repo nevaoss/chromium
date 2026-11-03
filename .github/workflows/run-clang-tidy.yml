@@ -138,14 +138,29 @@ jobs:
           fi
 
           REVIEW=$(jq -r '.review // empty' <<< "${REVIEW_JSON}")
+          # Empty when the Jenkins job does not report the number.
+          DIAGNOSTICS=$(jq -r '.diagnostics // empty' <<< "${REVIEW_JSON}")
+
+          case "${DIAGNOSTICS}" in
+            "") SUMMARY="see PR comment"
+                HEADER="clang-tidy found issues:" ;;
+            0)  SUMMARY="no issues"
+                HEADER="clang-tidy found no issues." ;;
+            1)  SUMMARY="1 issue"
+                HEADER="clang-tidy found 1 issue:" ;;
+            *)  SUMMARY="${DIAGNOSTICS} issues"
+                HEADER="clang-tidy found ${DIAGNOSTICS} issues:" ;;
+          esac
 
           if [[ -z "${REVIEW}" ]]; then
             COMMENT="clang-tidy check completed successfully. No issues found."
           else
             COMMENT=$(
-              printf 'clang-tidy found issues:\n\n```text\n%s\n```\n' "${REVIEW}"
+              printf '%s\n\n```text\n%s\n```\n' "${HEADER}" "${REVIEW}"
             )
           fi
+
+          echo "summary=${SUMMARY}" >> "${GITHUB_OUTPUT}"
 
           {
             echo "review<<CLANG_TIDY_REVIEW_EOF"
@@ -189,5 +204,5 @@ jobs:
           state: ${{ job.status }}
           build: ${{ steps.clang_tidy.outputs.jenkins_build }}
           sha: ${{ steps.prepare_params.outputs.head_sha }}
-          success-text: completed, see PR comment
+          success-text: completed, ${{ steps.clang_tidy.outputs.summary || 'see PR comment' }}
           failure-text: did not complete
