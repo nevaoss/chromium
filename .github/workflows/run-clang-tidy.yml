@@ -155,9 +155,9 @@ jobs:
           if [[ -z "${REVIEW}" ]]; then
             COMMENT="clang-tidy check completed successfully. No issues found."
           else
-            COMMENT=$(
-              printf '%s\n\n```text\n%s\n```\n' "${HEADER}" "${REVIEW}"
-            )
+            # The review is Markdown with its own code block; wrapping it in
+            # another one would break the rendering.
+            COMMENT=$(printf '%s\n\n%s\n' "${HEADER}" "${REVIEW}")
           fi
 
           echo "summary=${SUMMARY}" >> "${GITHUB_OUTPUT}"
