@@ -83,8 +83,7 @@ public class BottomBarCoordinator implements BottomBar, Destroyable {
             mView.setLayoutParams(params);
         }
 
-        boolean shouldIncludeHomeButton = BottomBarConfigUtils.shouldIncludeHomeButtonIfEnabled();
-        List<ActionConfig> configs = createActionConfigs(mView, shouldIncludeHomeButton);
+        List<ActionConfig> configs = createActionConfigs(mView);
 
         mModel = new PropertyModel.Builder(BottomBarProperties.ALL_KEYS).build();
 
@@ -101,10 +100,8 @@ public class BottomBarCoordinator implements BottomBar, Destroyable {
                         mModel,
                         mButtonManager,
                         themeColorProvider,
-                        tabSupplier,
                         homepageEnabledSupplier,
                         visibilityDelegate,
-                        shouldIncludeHomeButton,
                         profileSupplier,
                         countrySupplier,
                         omniboxFocusStateSupplier,
@@ -117,23 +114,19 @@ public class BottomBarCoordinator implements BottomBar, Destroyable {
         mMcp = PropertyModelChangeProcessor.create(mModel, mView, BottomBarViewBinder::bind);
     }
 
-    private List<ActionConfig> createActionConfigs(
-            BottomBarView view, boolean shouldIncludeHomeButton) {
+    private List<ActionConfig> createActionConfigs(BottomBarView view) {
         List<ActionConfig> configs = new ArrayList<>();
 
-        if (shouldIncludeHomeButton) {
-            BottomBarButtonContainer homeContainer =
-                    view.getContainerForAction(ActionId.HOME_BUTTON);
-            assert homeContainer != null : "Home button container not found";
-            homeContainer.inflateStub();
-            configs.add(
-                    new ActionConfig(
-                            ActionId.HOME_BUTTON,
-                            homeContainer,
-                            HomeActionButtonBinder::bind,
-                            BottomBarProperties.IS_HOME_BUTTON_VISIBLE,
-                            /* initiallyVisible= */ true));
-        }
+        BottomBarButtonContainer homeContainer = view.getContainerForAction(ActionId.HOME_BUTTON);
+        assert homeContainer != null : "Home button container not found";
+        homeContainer.inflateStub();
+        configs.add(
+                new ActionConfig(
+                        ActionId.HOME_BUTTON,
+                        homeContainer,
+                        HomeActionButtonBinder::bind,
+                        BottomBarProperties.IS_HOME_BUTTON_VISIBLE,
+                        /* initiallyVisible= */ true));
 
         BottomBarButtonContainer extraContainer = view.getContainerForAction(ActionId.GLIC);
         assert extraContainer != null : "Extra button container not found";
@@ -209,9 +202,6 @@ public class BottomBarCoordinator implements BottomBar, Destroyable {
         }
         Tab tab = mTabSupplier.get();
         if (tab == null || tab.isOffTheRecord()) {
-            return false;
-        }
-        if (BottomBarConfigUtils.isRegularNtp(tab) && BottomBarConfigUtils.shouldDisableOnNtp()) {
             return false;
         }
         return mPromoDialogCoordinator.maybeShowPromoDialog(profile);

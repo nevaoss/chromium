@@ -822,9 +822,22 @@ using segmentation_platform::TipIdentifier;
     case TipIdentifier::kNTPTheme: {
       CHECK(!segmentation_platform::features::
                 IsMagicStackTipsV2IosActionableEnabled());
-      [self.delegate openMainCustomizationMenu];
+      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:YES];
       break;
     }
+    case TipIdentifier::kTipsNotifications: {
+      CHECK(!segmentation_platform::features::
+                IsMagicStackTipsV2IosActionableEnabled());
+      [HandlerForProtocol(self.browser->GetCommandDispatcher(),
+                          BrowserCoordinatorCommands)
+          showNotificationsOptInFromAccessPoint:NotificationOptInAccessPoint::
+                                                    kTips
+                             baseViewController:self.magicStackCollectionView];
+      break;
+    }
+    case TipIdentifier::kNTPCustomization:
+      // TODO(crbug.com/566958720): Open the NTP Customization destination.
+      NOTREACHED();
   }
 
   [self.NTPActionsDelegate tipsOpened];
@@ -1277,7 +1290,7 @@ using segmentation_platform::TipIdentifier;
       [self.delegate openSafariDataImport];
       break;
     case SetUpListItemType::kBackgroundCustomization:
-      [self.delegate openMainCustomizationMenu];
+      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:NO];
       [HandlerForProtocol(self.browser->GetCommandDispatcher(), HelpCommands)
           presentInProductHelpWithType:InProductHelpType::
                                            kHomeBackgroundCustomization];

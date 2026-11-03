@@ -109,17 +109,7 @@ class StatefulTestModelReference {
 
 }  // namespace
 
-// TODO(crbug.com/568298417): Enable on UBSan once the tests are fixed.
-#if defined(UNDEFINED_SANITIZER)
-#define MAYBE_CreateWorks DISABLED_CreateWorks
-#define MAYBE_ProcessAudioWorks DISABLED_ProcessAudioWorks
-#define MAYBE_FailsOnIncompatibleModel DISABLED_FailsOnIncompatibleModel
-#else
-#define MAYBE_CreateWorks CreateWorks
-#define MAYBE_ProcessAudioWorks ProcessAudioWorks
-#define MAYBE_FailsOnIncompatibleModel FailsOnIncompatibleModel
-#endif
-TEST(TfLiteVoiceIsolation, MAYBE_CreateWorks) {
+TEST(TfLiteVoiceIsolation, CreateWorks) {
   auto model = LoadVoiceIsolationTestModel();
   ASSERT_NE(model, nullptr);
 
@@ -129,7 +119,7 @@ TEST(TfLiteVoiceIsolation, MAYBE_CreateWorks) {
   EXPECT_EQ(voice_isolation->AlgorithmicDelay(), base::TimeDelta());
 }
 
-TEST(TfLiteVoiceIsolation, MAYBE_ProcessAudioWorks) {
+TEST(TfLiteVoiceIsolation, ProcessAudioWorks) {
   auto model = LoadVoiceIsolationTestModel();
   ASSERT_NE(model, nullptr);
 
@@ -218,13 +208,19 @@ TEST(TfLiteVoiceIsolation, FailsOnEmptyModel) {
 // Verifies that a FlatBuffer model with incompatible tensor configuration (such
 // as an unexpected frame size or identical input and output tensors) is safely
 // rejected with kIncompatibleModel.
-TEST(TfLiteVoiceIsolation, MAYBE_FailsOnIncompatibleModel) {
+TEST(TfLiteVoiceIsolation, FailsOnIncompatibleModel) {
   FakeModel fake_model =
       BuildModelWithSameInputOutputTensor(/*tensor_size=*/320);
   ASSERT_NE(fake_model.model, nullptr);
 
+  // TODO(crbug.com/568298417): Remove the UBSan skip once TFLite no longer
+  // calls memcpy() with a null pointer for models without operators.
+#if defined(UNDEFINED_SANITIZER)
+  GTEST_SKIP() << "TFLite has undefined behavior for models without operators.";
+#else
   auto result = TfLiteVoiceIsolation::MaybeCreate(fake_model.model.get());
   EXPECT_THAT(result, base::test::ErrorIs(
                           VoiceIsolationCreationResult::kIncompatibleModel));
+#endif
 }
 }  // namespace media

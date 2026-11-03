@@ -240,6 +240,10 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     this.registerHelpBubble(
         'kReadAnythingViewModeElementId', '#toolbarContainer');
     this.registerHelpBubble('kReadAnythingSettingsButtonElementId', '#more');
+    if (this.isAiPlaybackUiEnabled_) {
+      this.registerHelpBubble(
+          'kReadAnythingAiPlaybackToggleElementId', '#ai-playback-toggle');
+    }
   }
 
   override updated(changedProperties: PropertyValues<this>) {
@@ -367,6 +371,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
 
   protected onAiPlaybackClick_() {
     this.isAiPlaybackActive = !this.isAiPlaybackActive;
+    this.audioBrowserProxy_.onAiPlaybackStateChanged(this.isAiPlaybackActive);
   }
 
   protected onMoreOptionsClick_(event: MouseEvent) {

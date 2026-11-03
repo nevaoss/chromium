@@ -123,6 +123,7 @@
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/tabs/public/tab_dialog_manager.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/collaboration_messaging_tab_data.h"
 #include "chrome/browser/ui/tabs/tab_change_type.h"
@@ -1997,17 +1998,21 @@ void BrowserView::OnActiveTabChanged(content::WebContents* old_contents,
       active_contents_view->web_contents() != new_contents &&
       !tab_change_in_split_view;
 
-#if BUILDFLAG(IS_MAC)
-  // Widget::IsActive is inconsistent between Mac and Aura, so don't check for
-  // it on Mac. The check is also unnecessary for Mac, since restoring focus
-  // won't activate the widget on that platform.
   bool will_restore_focus = !browser_->GetTabStripModel()->closing_all() &&
                             GetWidget()->IsVisible() &&
                             !tab_change_in_split_view;
+#if BUILDFLAG(IS_MAC)
+  // Restoring focus activates the widget, so only restore focus if the widget
+  // is already active. When focusing a View doesn't activate the widget, the
+  // check is unnecessary.
+  // TODO(crbug.com/40486728): Remove once kMacActivateWidgetOnFocusRequest is
+  // removed.
+  if (base::FeatureList::IsEnabled(
+          views::features::kMacActivateWidgetOnFocusRequest)) {
+    will_restore_focus &= GetWidget()->IsActive();
+  }
 #else
-  bool will_restore_focus =
-      !browser_->GetTabStripModel()->closing_all() && GetWidget()->IsActive() &&
-      GetWidget()->IsVisible() && !tab_change_in_split_view;
+  will_restore_focus &= GetWidget()->IsActive();
 #endif
   // Update various elements that are interested in knowing the current
   // WebContents.
@@ -4286,7 +4291,7 @@ BookmarkBar::State BrowserView::bookmark_bar_state() const {
 }
 
 void BrowserView::UpdateTabSearchBubbleHost() {
-  if (!GetIsNormalType()) {
+  if (!GetIsNormalType() || organizer_panel::IsOrganizerPanelFeatureEnabled()) {
     return;
   }
 

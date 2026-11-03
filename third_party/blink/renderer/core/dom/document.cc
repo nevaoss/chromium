@@ -32,10 +32,10 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <utility>
 
 #include "base/auto_reset.h"
-#include "base/containers/adapters.h"
 #include "base/dcheck_is_on.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/i18n/time_formatting.h"
@@ -2012,6 +2012,9 @@ void Document::SetContent(const String& content,
   parser_->Append(content);
   close();
 
+  if (sanitizer) {
+    sanitizer->DidParseDocument(this);
+  }
   sanitizer_ = nullptr;
 }
 
@@ -8775,7 +8778,7 @@ std::optional<Document::TopLayerReason> Document::IsScheduledForTopLayerRemoval(
 }
 
 HTMLDialogElement* Document::ActiveModalDialog() const {
-  for (const auto& element : base::Reversed(top_layer_elements_)) {
+  for (const auto& element : std::views::reverse(top_layer_elements_)) {
     if (auto* dialog = DynamicTo<HTMLDialogElement>(*element)) {
       if (dialog->IsModal()) {
         // Modal dialogs transitioning out after being closed are not considered
@@ -10277,9 +10280,6 @@ Document* Document::parseHTMLInternal(ExecutionContext* context,
   doc->setAllowDeclarativeShadowRoots(true);
   doc->SetContent(html, sanitizer);
   doc->SetMimeType(keywords::kTextHtml);
-  if (sanitizer) {
-    sanitizer->DidParseDocument(doc);
-  }
   return doc;
 }
 

@@ -6,6 +6,7 @@
 #define PARTITION_ALLOC_INTERNAL_PARTITION_ROOT_INTERNAL_H_
 
 #include <bit>
+#include <concepts>
 #include <cstring>
 #include <limits>
 
@@ -541,24 +542,10 @@ PartitionRoot::GetRootFromAddressInFirstSuperpage(void* object) {
   return FromAddrInFirstSuperpage(object_addr);
 }
 
-template <FreeFlags flags>
-PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInUnknownRoot(void* object) {
-  bool early_return = FreeProlog<flags>(object, nullptr);
-  if (early_return) {
-    return;
-  }
-  // FreeProlog ensures the object is not nullptr.
-  PA_DCHECK(object);
-
-  auto* root = GetRootFromAddressInFirstSuperpage(object);
-  root->FreeInlineInternal<flags | FreeFlags::kNoHooks>(object);
-}
-
 // static
-template <FreeFlags flags>
-PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInUnknownRoot(
-    void* object,
-    FreeHintType<FreeHintFlags(flags)> hint) {
+template <FreeFlags flags, FreeHint... Hint>
+PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInUnknownRoot(void* object,
+                                                             Hint... hint) {
   bool early_return = FreeProlog<flags>(object, nullptr);
   if (early_return) {
     return;
@@ -567,7 +554,7 @@ PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInUnknownRoot(
   PA_DCHECK(object);
 
   auto* root = GetRootFromAddressInFirstSuperpage(object);
-  root->FreeInline<flags | FreeFlags::kNoHooks>(object, hint);
+  root->FreeAfterProlog<flags>(object, hint...);
 }
 
 PA_ALWAYS_INLINE std::pair<SlotStart, internal::SlotSpanMetadata*>
@@ -601,8 +588,9 @@ PartitionRoot::GetSlotStartAndSlotSpanFromAddress(void* object) {
   return {slot_start, slot_span};
 }
 
-template <FreeFlags flags>
-PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInternal(void* object) {
+template <FreeFlags flags, FreeHint... Hint>
+PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInternal(void* object,
+                                                        Hint... hint) {
   // The correct PartitionRoot might not be deducible if the |object| originates
   // from an override hook.
   bool early_return = FreeProlog<flags>(object, this);
@@ -612,29 +600,14 @@ PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInternal(void* object) {
   // FreeProlog ensures the object is not nullptr.
   PA_DCHECK(object);
 
-  // Almost all calls to FreeNoNooks() will end up writing to |*object|.
-  PA_PREFETCH_FOR_WRITE(object);
-  auto [slot_start, slot_span] = GetSlotStartAndSlotSpanFromAddress(object);
-  // We are going to read from |*slot_span| in all branches, but haven't
-  // done it yet.
-  PA_PREFETCH(slot_span);
-  FreeNoHooksImmediate<flags>(slot_start, slot_span);
+  FreeAfterProlog<flags>(object, hint...);
 }
 
-template <FreeFlags flags>
-PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInternal(
-    void* object,
-    FreeHintType<FreeHintFlags(flags)> hint) {
-  // The correct PartitionRoot might not be deducible if the |object| originates
-  // from an override hook.
-  bool early_return = FreeProlog<flags>(object, this);
-  if (early_return) {
-    return;
-  }
-  // FreeProlog ensures the object is not nullptr.
-  PA_DCHECK(object);
-
-  // Almost all calls to FreeWithSizeNoHooks() will end up writing to |*object|.
+template <FreeFlags flags, FreeHint... Hint>
+PA_ALWAYS_INLINE void PartitionRoot::FreeAfterProlog(void* object,
+                                                     Hint... hint) {
+  static_assert(internal::kAreValidFreeHints<Hint...>);
+  // Almost all calls to FreeAfterProlog() will end up writing to |*object|.
   PA_PREFETCH_FOR_WRITE(object);
   auto [slot_start, slot_span] = GetSlotStartAndSlotSpanFromAddress(object);
 
@@ -642,28 +615,15 @@ PA_ALWAYS_INLINE void PartitionRoot::FreeInlineInternal(
   // done it yet.
   PA_PREFETCH(slot_span);
 
-  if constexpr (ContainsFlags(flags, FreeFlags::kWithAlignmentHint) &&
-                ContainsFlags(flags, FreeFlags::kWithSizeHint)) {
-    auto adjusted_size = GetAdjustedSizeForAlignment(hint.alignment, hint.size);
-    // Overflow check. adjusted_size must be larger or equal to the original
-    // size.
-    PA_CHECK(adjusted_size >= hint.size);
-
-    FreeHintType<FreeHintFlags(flags)> new_hint = hint;
-    new_hint.size = adjusted_size;
-    FreeNoHooksImmediate<flags>(slot_start, slot_span, new_hint);
-    return;
-  }
-
-  FreeNoHooksImmediate<flags>(slot_start, slot_span, hint);
+  FreeNoHooksImmediate<flags>(slot_start, slot_span, hint...);
 }
 
-template <FreeFlags flags>
+template <FreeFlags flags, FreeHint... Hint>
 PA_ALWAYS_INLINE void PartitionRoot::FreeNoHooksImmediateInternal(
     SlotStart slot_start,
     SlotSpanMetadata* slot_span,
-    FreeHintType<FreeHintFlags(flags)> hint,
-    internal::BucketSizeDetails size_details) {
+    internal::BucketSizeDetails size_details,
+    Hint... hint) {
   // The thread cache is added "in the middle" of the main allocator, that is:
   // - After all the cookie/in-slot metadata management
   // - Before the "raw" allocator.
@@ -748,8 +708,8 @@ PA_ALWAYS_INLINE void PartitionRoot::FreeNoHooksImmediateInternal(
     PA_CHECK(!brp_enabled());
 #endif
     uint32_t type_id = internal::kIntendedLeakUnknownTypeId;
-    if constexpr (ContainsFlags(flags, FreeFlags::kWithTypeIdHint)) {
-      type_id = hint.type_id;
+    if constexpr (internal::kHasFreeHint<FreeTypeIdHint, Hint...>) {
+      type_id = internal::GetFreeHint<FreeTypeIdHint>(hint...).value();
     }
     Zap(slot_start, slot_span, type_id);
     RecordLeakSizePerTypeId(type_id, size_details.slot_size());
@@ -784,28 +744,31 @@ PA_ALWAYS_INLINE void PartitionRoot::FreeNoHooksImmediateInternal(
   RawFreeWithThreadCache(slot_start, size_details, slot_span);
 }
 
-template <FreeFlags flags>
-PA_ALWAYS_INLINE void PartitionRoot::FreeNoHooksImmediate(
-    SlotStart slot_start,
-    SlotSpanMetadata* slot_span) {
-  auto size_details = SlotSpanToBucketSizeDetails(slot_span);
-  FreeNoHooksImmediateInternal<flags>(slot_start, slot_span, {}, size_details);
-}
-
-template <FreeFlags flags>
+template <FreeFlags flags, FreeHint... Hint>
 PA_ALWAYS_INLINE void PartitionRoot::FreeNoHooksImmediate(
     SlotStart slot_start,
     SlotSpanMetadata* slot_span,
-    FreeHintType<FreeHintFlags(flags)> hint) {
+    Hint... hint) {
+  static_assert(internal::kAreValidFreeHints<Hint...>);
   internal::BucketSizeDetails size_details;
-  if constexpr (ContainsFlags(flags, FreeFlags::kWithSizeHint)) {
-    size_details = SizeToBucketSizeDetails(hint.size, slot_span);
+  if constexpr (internal::kHasFreeHint<FreeSizeHint, Hint...>) {
+    size_t size = internal::GetFreeHint<FreeSizeHint>(hint...).value();
+    if constexpr (internal::kHasFreeHint<FreeAlignmentHint, Hint...>) {
+      size_t alignment =
+          internal::GetFreeHint<FreeAlignmentHint>(hint...).value();
+      auto adjusted_size = GetAdjustedSizeForAlignment(alignment, size);
+      // Overflow check. adjusted_size must be larger or equal to the original
+      // size.
+      PA_CHECK(adjusted_size >= size);
+      size = adjusted_size;
+    }
+    size_details = SizeToBucketSizeDetails(size, slot_span);
   } else {
     size_details = SlotSpanToBucketSizeDetails(slot_span);
   }
 
-  FreeNoHooksImmediateInternal<flags>(slot_start, slot_span, hint,
-                                      size_details);
+  FreeNoHooksImmediateInternal<flags>(slot_start, slot_span, size_details,
+                                      hint...);
 }
 
 #if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
@@ -970,9 +933,9 @@ PA_ALWAYS_INLINE void PartitionRoot::RawFreeWithThreadCache(
   // direct-mapped allocations are uncommon.
   internal::ThreadCache* thread_cache = GetThreadCache();
   // TODO(crbug.com/467243745): Once
-  // `internal::ThreadCache::largest_active_bucket_index_` becomes a per-class
+  // `internal::ThreadCache::active_bucket_count_` becomes a per-class
   // variable, remove the initialization check in `IsValid` and reuse the
-  // `bucket_index > largest_active_bucket_index_` within `MaybePutInCache`.
+  // `bucket_index >= active_bucket_count_` within `MaybePutInCache`.
   if (internal::ThreadCache::IsValid(thread_cache) &&
       (size_details.slot_size() <= BucketIndexLookup::kMaxBucketSize))
       [[likely]] {
@@ -1009,7 +972,7 @@ PA_ALWAYS_INLINE void PartitionRoot::RawFreeWithThreadCache(
     // zapping.
     //
     // When a caller explicitly provides a type ID hint (e.g. via
-    // Free<kIntendedLeak | kWithTypeIdHint>()), it is handled earlier in
+    // Free<kIntendedLeak>(ptr, FreeTypeIdHint{...})), it is handled earlier in
     // FreeNoHooksImmediateInternal(). This path is only reached for normal
     // deallocations (e.g. standard free() / delete) on an intended-leak root
     // where no type ID hint was supplied by the caller, so we record
@@ -1260,13 +1223,7 @@ PartitionRoot::InSlotMetadataPointerFromObjectForTesting(void* object) const {
 PA_ALWAYS_INLINE uint16_t
 PartitionRoot::SizeToBucketIndex(size_t size,
                                  BucketDistribution bucket_distribution) {
-  switch (bucket_distribution) {
-    case BucketDistribution::kNeutral:
-      return BucketIndexLookup::GetIndexForNeutralBuckets(size);
-    case BucketDistribution::kDenser:
-      return BucketIndexLookup::GetIndexForDenserBuckets(size);
-  }
-  PA_NOTREACHED();
+  return BucketIndexLookup::GetIndex(size, bucket_distribution);
 }
 
 PA_ALWAYS_INLINE internal::BucketSizeDetails
@@ -1836,6 +1793,16 @@ void* PartitionRoot::ReallocInline(void* ptr,
     internal::PartitionExcessiveAllocationSize(new_size);
   }
 
+  return ReallocInPlaceOrMove<alloc_flags, free_flags>(ptr, new_size,
+                                                       type_name);
+#endif  // PA_BUILDFLAG(MEMORY_TOOL_REPLACES_ALLOCATOR)
+}
+
+template <AllocFlags alloc_flags, FreeFlags free_flags>
+PA_ALWAYS_INLINE void* PartitionRoot::ReallocInPlaceOrMove(
+    void* ptr,
+    size_t new_size,
+    const char* type_name) {
   constexpr bool no_hooks = ContainsFlags(alloc_flags, AllocFlags::kNoHooks);
   bool overridden = false;
   size_t old_usable_size = 0;
@@ -1899,21 +1866,32 @@ void* PartitionRoot::ReallocInline(void* ptr,
 #endif
 
   // This realloc cannot be resized in-place. Sadness.
-  void* ret = AllocInternal<alloc_flags>(
-                  new_size, internal::PartitionPageSize(), type_name)
-                  .object;
+  void* ret = AllocForRealloc<alloc_flags>(this, new_size, type_name);
   if (!ret) {
-    if constexpr (ContainsFlags(alloc_flags, AllocFlags::kReturnNull)) {
-      return nullptr;
-    }
-    internal::PartitionExcessiveAllocationSize(new_size);
+    return nullptr;
   }
 
   PA_UNSAFE_TODO(memcpy(ret, ptr, std::min(old_usable_size, new_size)));
   FreeInUnknownRoot<free_flags>(
       ptr);  // Implicitly protects the old ptr on MTE systems.
   return ret;
-#endif
+}
+
+// static
+template <AllocFlags alloc_flags>
+PA_ALWAYS_INLINE void* PartitionRoot::AllocForRealloc(PartitionRoot* root,
+                                                      size_t size,
+                                                      const char* type_name) {
+  void* object = root->AllocInternal<alloc_flags>(
+                         size, internal::PartitionPageSize(), type_name)
+                     .object;
+  if (!object) {
+    if constexpr (ContainsFlags(alloc_flags, AllocFlags::kReturnNull)) {
+      return nullptr;
+    }
+    internal::PartitionExcessiveAllocationSize(size);
+  }
+  return object;
 }
 
 internal::ThreadCache* PartitionRoot::GetOrCreateThreadCache()

@@ -83,6 +83,7 @@
 #include "chrome/browser/shell_integration.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_ui_util.h"
+#include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/spellchecker/spellcheck_service.h"
 #include "chrome/browser/sync/sync_ui_util.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
@@ -147,6 +148,7 @@
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/singleton_tabs.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
@@ -175,7 +177,6 @@
 #include "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_utils.h"
 #include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/views/toolbar/ai_overlay_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
@@ -184,7 +185,6 @@
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_dialog_utils.h"
-#include "chrome/browser/ui/webauthn/ambient/ambient_signin_controller.h"
 #include "chrome/browser/ui/webid/account_selection_view.h"
 #include "chrome/browser/ui/webui/inspect/inspect_ui.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_section.h"
@@ -223,6 +223,7 @@
 #include "components/search_engines/template_url_service.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/skills/features.h"
 #include "components/spellcheck/browser/pref_names.h"
 #include "components/spellcheck/spellcheck_buildflags.h"
 #include "components/split_tabs/split_tab_visual_data.h"
@@ -238,9 +239,11 @@
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "components/user_prefs/user_prefs.h"
 #include "components/vector_icons/vector_icons.h"
+#include "components/webapps/browser/installable/installable_metrics.h"
 #include "printing/buildflags/buildflags.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/actions/actions.h"
+#include "ui/base/accelerators/menu_label_accelerator_util.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/text_utils.h"
@@ -772,25 +775,6 @@ void BrowserActions::InitializePageActionIconActions() {
               },
               bwi))
           .SetActionId(kActionFederation)
-          .SetEnabled(true)
-          .Build());
-
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
-                 actions::ActionInvocationContext context) {
-                auto* web_contents =
-                    bwi->GetActiveTabInterface()->GetContents();
-                auto* controller = ambient_signin::AmbientSigninController::
-                    GetForCurrentDocument(web_contents->GetPrimaryMainFrame());
-                if (!controller) {
-                  return;
-                }
-                controller->TriggerPageActionSignIn();
-              },
-              bwi))
-          .SetActionId(kActionWebAuthnAmbientSignin)
           .SetEnabled(true)
           .Build());
 
@@ -1752,6 +1736,14 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi))
           .SetActionId(kActionWebAppMenuAppInfo)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_APP_CONTEXT_MENU_SHOW_INFO)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_APP_CONTEXT_MENU_SHOW_INFO)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled()
+                  ? omnibox::kPageInfoCustomIcon
+                  : omnibox::kSecurePageInfoChromeRefreshOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -1808,6 +1800,9 @@ void BrowserActions::InitializeChromeMenuActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
+                BrowserUserEducationInterface::From(bwi)
+                    ->NotifyNewBadgeFeatureUsed(
+                        features::kSkillsAndExtensionsAppMenu);
                 chrome::ShowSkillsYourSkills(
                     webui::GetBrowserForOpeningWebUi(bwi));
               },
@@ -1816,9 +1811,7 @@ void BrowserActions::InitializeChromeMenuActions() {
           .SetText(l10n_util::GetStringUTF16(IDS_SKILLS_MENU_MANAGE_SKILLS))
           .SetTooltipText(
               l10n_util::GetStringUTF16(IDS_SKILLS_MENU_MANAGE_SKILLS))
-          .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kSettingsIcon
-                                                : kSettingsMenuOldIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(kContractIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -1826,6 +1819,9 @@ void BrowserActions::InitializeChromeMenuActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
+                BrowserUserEducationInterface::From(bwi)
+                    ->NotifyNewBadgeFeatureUsed(
+                        features::kSkillsAndExtensionsAppMenu);
                 chrome::ShowSkillsBrowse(webui::GetBrowserForOpeningWebUi(bwi));
               },
               bwi))
@@ -1833,9 +1829,7 @@ void BrowserActions::InitializeChromeMenuActions() {
           .SetText(l10n_util::GetStringUTF16(IDS_SKILLS_MENU_BROWSE_SKILLS))
           .SetTooltipText(
               l10n_util::GetStringUTF16(IDS_SKILLS_MENU_BROWSE_SKILLS))
-          .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kExploreIcon
-                                                : kTravelExploreOldIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(kExploreIcon))
           .Build());
 
   if (ttc::TtcKeyedService* service =
@@ -4289,6 +4283,30 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .SetImage(ui::ImageModel::FromVectorIcon(lens_icon, ui::kColorIcon))
           .Build());
 
+  const gfx::VectorIcon& ask_google_icon = features::IsRoundedIconsEnabled()
+                                               ? omnibox::kSearchSparkIcon
+                                               : omnibox::kSearchSparkOldIcon;
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                if (!bwi) {
+                  return;
+                }
+                chrome::ExecAskGoogleAboutThisPage(
+                    bwi, lens::LensOverlayInvocationSource::kAppMenu);
+              },
+              bwi))
+          .SetActionId(kActionAskGoogleAboutThisPageFromAppMenu)
+          .SetText(l10n_util::GetStringUTF16(
+              IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_PAGE))
+          .SetTooltipText(l10n_util::GetStringUTF16(
+              IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_PAGE))
+          .SetImage(
+              ui::ImageModel::FromVectorIcon(ask_google_icon, ui::kColorIcon))
+          .Build());
+
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
           base::BindRepeating(
@@ -4443,14 +4461,46 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .Build());
 
   root_action_item_->AddChild(
-      actions::ActionItem::Builder(
+      ChromeMenuAction(
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
                 chrome::OpenInChrome(bwi);
               },
+              bwi),
+          kActionOpenInChrome, IDS_OPEN_IN_CHROME, IDS_OPEN_IN_CHROME,
+          features::IsRoundedIconsEnabled() ? kChromeProductIcon
+                                            : kBrowserLogoOldIcon,
+          /*is_pinnable=*/false)
+          .Build());
+
+  auto* app_controller = web_app::AppBrowserController::From(bwi);
+  const std::u16string uninstall_text =
+      app_controller ? BrowserActions::GetCleanTitleAndTooltipText(
+                           l10n_util::GetStringFUTF16(
+                               IDS_UNINSTALL_FROM_OS_LAUNCH_SURFACE,
+                               ui::EscapeMenuLabelAmpersands(
+                                   app_controller->GetAppShortName())))
+                     : std::u16string();
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                auto* controller = web_app::AppBrowserController::From(bwi);
+                if (controller) {
+                  controller->Uninstall(
+                      webapps::WebappUninstallSource::kAppMenu);
+                }
+              },
               bwi))
-          .SetActionId(kActionOpenInChrome)
+          .SetActionId(kActionUninstallWebApp)
+          .SetText(uninstall_text)
+          .SetTooltipText(uninstall_text)
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kDeleteIcon
+                                                : kTrashCanRefreshOldIcon,
+              ui::kColorIcon))
           .Build());
 
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -4721,6 +4771,11 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                                                 : kSecurityOldIcon,
               ui::kColorMenuIconOnEmphasizedBackground))
           .Build());
+  const bool show_skills_and_extensions =
+      profile_->IsRegularProfile() &&
+      skills::SkillsServiceFactory::IsSkillsEnabledForProfile(
+          base::to_address(profile_)) &&
+      base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu);
   root_action_item_->AddChild(
       ChromeMenuAction(
           base::BindRepeating(
@@ -4734,6 +4789,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               ? vector_icons::kChromeExtensionIcon
               : vector_icons::kExtensionChromeRefreshOldIcon,
           /*is_pinnable=*/false)
+          .SetVisible(!show_skills_and_extensions)
           .Build());
   root_action_item_->AddChild(
       ChromeMenuAction(
@@ -5356,6 +5412,12 @@ void BrowserActions::InitializeSubmenuActions() {
           /*is_pinnable=*/false)
           .Build());
 
+  const bool show_skills_and_extensions =
+      profile_->IsRegularProfile() &&
+      skills::SkillsServiceFactory::IsSkillsEnabledForProfile(
+          base::to_address(profile_)) &&
+      base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu);
+
   root_action_item_->AddChild(
       ChromeMenuAction(
           base::BindRepeating(
@@ -5368,6 +5430,7 @@ void BrowserActions::InitializeSubmenuActions() {
               ? vector_icons::kChromeExtensionIcon
               : vector_icons::kExtensionChromeRefreshOldIcon,
           /*is_pinnable=*/false)
+          .SetVisible(!show_skills_and_extensions)
           .Build());
 
   root_action_item_->AddChild(
@@ -5376,9 +5439,28 @@ void BrowserActions::InitializeSubmenuActions() {
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {},
               bwi),
-          kActionSkillsSubmenu, IDS_SKILLS_MENU, IDS_SKILLS_MENU,
-          features::IsRoundedIconsEnabled() ? kContractIcon
-                                            : vector_icons::kDescriptionOldIcon,
+          kActionSkillsAndExtensionsSubmenu, IDS_EXTENSIONS_AND_SKILLS_MENU,
+          IDS_EXTENSIONS_AND_SKILLS_MENU,
+          features::IsRoundedIconsEnabled()
+              ? vector_icons::kChromeExtensionIcon
+              : vector_icons::kExtensionChromeRefreshOldIcon,
+          /*is_pinnable=*/false)
+          .SetVisible(show_skills_and_extensions)
+          .Build());
+
+  const gfx::VectorIcon& contextual_tasks_submenu_icon =
+      features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
+                                        : omnibox::kSearchSparkOldIcon;
+  root_action_item_->AddChild(
+      ChromeMenuAction(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {},
+              bwi),
+          kActionContextualTasksSubmenu,
+          IDS_CONTEXTUAL_SEARCH_SEARCH_WITH_GOOGLE,
+          IDS_CONTEXTUAL_SEARCH_SEARCH_WITH_GOOGLE,
+          contextual_tasks_submenu_icon,
           /*is_pinnable=*/false)
           .Build());
 }

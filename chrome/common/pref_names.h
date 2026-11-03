@@ -1215,6 +1215,10 @@ inline constexpr char kOrganizerPanelEntrypointEnabled[] =
 // whether the section is expanded.
 inline constexpr char kOrganizerPanelSectionsExpanded[] =
     "organizer_panel.sections_expanded";
+// Dictionary mapping organizer panel section IDs to a boolean indicating
+// whether the section shows all items.
+inline constexpr char kOrganizerPanelSectionsShowAll[] =
+    "organizer_panel.sections_show_all";
 inline constexpr char kProjectsPanelEntrypointEnabled[] =
     "projects_panel.entrypoint_enabled";
 
@@ -2534,6 +2538,9 @@ inline constexpr char kWatchdogExtensionActive[] =
 // given by the PartnerBookmarksProvider and either the user-visible renamed
 // title or an empty string if the bookmark node was removed.
 inline constexpr char kPartnerBookmarkMappings[] = "partnerbookmarks.mappings";
+
+// Boolean that is true when the AppStoreRatingEnabled policy is enabled.
+inline constexpr char kAppRatingPolicyEnabled[] = "app_rating_policy_enabled";
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Whether DNS Quick Check is disabled in proxy resolution.

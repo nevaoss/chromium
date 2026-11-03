@@ -38,7 +38,11 @@ enum class TipIdentifier {
   kEnhancedSafeBrowsing = 7,
   // Tip promoting NTP theme customization.
   kNTPTheme = 8,
-  kMaxValue = kNTPTheme,
+  // Tip promoting tips notifications.
+  kTipsNotifications = 9,
+  // Tip promoting NTP customization.
+  kNTPCustomization = 10,
+  kMaxValue = kNTPCustomization,
 };
 // LINT.ThenChange(/components/segmentation_platform/embedder/home_modules/tips_manager/constants.cc:NameForTipIdentifier)
 

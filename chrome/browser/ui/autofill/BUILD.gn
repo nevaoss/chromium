@@ -336,7 +336,6 @@ source_set("impl") {
 source_set("unit_tests") {
   testonly = true
   sources = [
-    "autofill_ai/autofill_ai_import_string_utils_unittest.cc",
     "autofill_ai/entity_attribute_update_details_unittest.cc",
     "autofill_client_provider_unittest.cc",
     "autofill_suggestion_controller_unittest.cc",
@@ -519,7 +518,6 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/profiles:profile",
       "//chrome/browser/sync",
       "//chrome/browser/sync:factories",
-      "//chrome/browser/ui",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_web_contents_delegate",
@@ -641,7 +639,6 @@ if (!is_android) {
       "//chrome/browser/signin",
       "//chrome/browser/signin:signin_browser_test_base",
       "//chrome/browser/sync",
-      "//chrome/browser/ui",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui/autofill/autofill_ai",
       "//chrome/browser/ui/autofill/autofill_ai:impl",

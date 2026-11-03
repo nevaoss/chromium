@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -15,7 +16,6 @@
 #include "base/barrier_callback.h"
 #include "base/check.h"
 #include "base/check_deref.h"
-#include "base/containers/adapters.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/bind.h"
@@ -25,15 +25,18 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/context_hub/auto_todos/auto_todo_entry.h"
 #include "chrome/browser/context_hub/auto_todos/auto_todos_store.h"
 #include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank.h"
+#include "chrome/browser/context_hub/prefs.h"
 #include "chrome/browser/context_hub/storage/context_hub_backend.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_entry.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_entry_conversions.h"
 #include "chrome/browser/context_hub/tab_group_store/tab_group_store.h"
+#include "chrome/browser/context_hub/topics/topic_feedback_conversions.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
@@ -52,6 +55,8 @@
 #include "components/personal_context/core/personal_context_service.h"
 #include "components/personal_context/proto/features/auto_todos.pb.h"
 #include "components/personal_context/proto/features/smart_search.pb.h"
+#include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
 #include "components/saved_tab_groups/public/saved_tab_group.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
 #include "components/saved_tab_groups/public/types.h"
@@ -257,6 +262,11 @@ ContextHubService::ContextHubService(
   CHECK(memory_bank_);
   memory_bank_observation_.Observe(memory_bank_.get());
   identity_manager_observation_.Observe(&identity_manager_.get());
+  // Ratings are only collected during the fishfood experiment. Once the param
+  // is turned off (e.g. via Finch at teardown), wipe anything left behind.
+  if (!features::kTopicsFishfoodFeedback.Get()) {
+    profile_->GetPrefs()->ClearPref(prefs::kContextHubTopicsFishfoodFeedback);
+  }
   if (auto_todos_store_) {
     auto_todos_store_->AddObserver(this);
     // Observe system suspend and resume events so that sleep duration can be
@@ -942,6 +952,55 @@ ContextHubService::GetTodoFeedbacks() const {
   return feedbacks;
 }
 
+void ContextHubService::SetTopicFeedback(
+    browser::context_hub::mojom::TopicFeedbackPtr feedback) {
+  if (!feedback || !feedback->snapshot || feedback->id.empty()) {
+    return;
+  }
+  // The rating time is a browser-side fact; never trust the WebUI's value.
+  feedback->snapshot->time_rated = base::Time::Now();
+  // TODO(crbug.com/568422896): Cap the number of stored entries (e.g. via a
+  // FeatureParam), evicting the oldest by `time_rated`, and record UMA for
+  // the stored count and eviction frequency.
+  ScopedDictPrefUpdate update(profile_->GetPrefs(),
+                              prefs::kContextHubTopicsFishfoodFeedback);
+  update->Set(feedback->id, TopicFeedbackToDict(*feedback));
+}
+
+void ContextHubService::DeleteTopicFeedback(const std::string& topic_id) {
+  PrefService* pref_service = profile_->GetPrefs();
+  // Avoid scheduling a pref write when there is nothing to remove.
+  if (!pref_service->GetDict(prefs::kContextHubTopicsFishfoodFeedback)
+           .contains(topic_id)) {
+    return;
+  }
+  ScopedDictPrefUpdate update(pref_service,
+                              prefs::kContextHubTopicsFishfoodFeedback);
+  update->Remove(topic_id);
+}
+
+void ContextHubService::ClearTopicFeedbacks() {
+  profile_->GetPrefs()->ClearPref(prefs::kContextHubTopicsFishfoodFeedback);
+}
+
+std::vector<browser::context_hub::mojom::TopicFeedbackPtr>
+ContextHubService::GetTopicFeedbacks() const {
+  std::vector<browser::context_hub::mojom::TopicFeedbackPtr> feedbacks;
+  const base::DictValue& dict =
+      profile_->GetPrefs()->GetDict(prefs::kContextHubTopicsFishfoodFeedback);
+  feedbacks.reserve(dict.size());
+  for (const auto [topic_id, value] : dict) {
+    const base::DictValue* feedback_dict = value.GetIfDict();
+    if (!feedback_dict) {
+      continue;
+    }
+    if (auto feedback = TopicFeedbackFromDict(topic_id, *feedback_dict)) {
+      feedbacks.push_back(std::move(feedback));
+    }
+  }
+  return feedbacks;
+}
+
 void ContextHubService::AddTabGroupChatHistoryTurn(
     optimization_guide::proto::ChatHistoryTurn::Role role,
     std::string_view message_content) {
@@ -958,7 +1017,8 @@ std::vector<optimization_guide::proto::ChatHistoryTurn>
 ContextHubService::GetTabGroupChatHistory() const {
   std::vector<optimization_guide::proto::ChatHistoryTurn> history;
   history.reserve(tab_group_chat_history_cache_.size());
-  for (const auto& [id, turn] : base::Reversed(tab_group_chat_history_cache_)) {
+  for (const auto& [id, turn] :
+       std::views::reverse(tab_group_chat_history_cache_)) {
     history.push_back(turn);
   }
   return history;
@@ -985,7 +1045,7 @@ ContextHubService::GetMemoryBankChatHistory() const {
   std::vector<optimization_guide::proto::ChatHistoryTurn> history;
   history.reserve(memory_bank_chat_history_cache_.size());
   for (const auto& [id, turn] :
-       base::Reversed(memory_bank_chat_history_cache_)) {
+       std::views::reverse(memory_bank_chat_history_cache_)) {
     history.push_back(turn);
   }
   return history;
@@ -1354,7 +1414,7 @@ void ContextHubService::ExecuteMemoryBankChat(
   std::string_view trimmed_command =
       base::TrimWhitespaceASCII(user_command, base::TRIM_ALL);
   if (trimmed_command.empty()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(std::nullopt, {});
     return;
   }
 
@@ -1392,11 +1452,12 @@ void ContextHubService::OnMemoryBankEntriesFetched(
       optimization_guide::ModelExecutionOptions(),
       base::BindOnce(
           &ContextHubService::HandleMemoryBankChatModelExecutionResult,
-          weak_factory_.GetWeakPtr(), user_command, save_to_history,
-          std::move(callback)));
+          weak_factory_.GetWeakPtr(), std::move(entries), user_command,
+          save_to_history, std::move(callback)));
 }
 
 void ContextHubService::HandleMemoryBankChatModelExecutionResult(
+    std::vector<MemoryBankEntry> entries,
     const std::string& user_command,
     bool save_to_history,
     MemoryBankChatCallback callback,
@@ -1414,15 +1475,17 @@ void ContextHubService::HandleMemoryBankChatModelExecutionResult(
                 ModelExecutionError::kRequestThrottled) {
       std::move(callback).Run(
           "Unable to generate response due to high server load. Please try "
-          "again later.");
+          "again later.",
+          {});
       return;
     }
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(std::nullopt, {});
     return;
   }
 
-  std::string text_response =
-      response->memory_bank_chat_response().text_response();
+  const optimization_guide::proto::MemoryBankChatResponse& chat_response =
+      response->memory_bank_chat_response();
+  std::string text_response = chat_response.text_response();
   if (save_to_history && !text_response.empty()) {
     AddMemoryBankChatHistoryTurn(
         optimization_guide::proto::ChatHistoryTurn::ROLE_USER, user_command);
@@ -1431,7 +1494,23 @@ void ContextHubService::HandleMemoryBankChatModelExecutionResult(
         text_response);
   }
 
-  std::move(callback).Run(std::move(text_response));
+  std::vector<MemoryBankChatCitation> citations;
+  base::flat_set<GURL> seen_urls;
+  for (int32_t index : chat_response.cited_entry_indices()) {
+    if (index < 0 || static_cast<size_t>(index) >= entries.size()) {
+      continue;
+    }
+    const MemoryBankEntry& entry = entries[index];
+    if (!entry.url.is_valid() || !seen_urls.insert(entry.url).second) {
+      continue;
+    }
+    citations.push_back(MemoryBankChatCitation{
+        .title = entry.tab_title.empty() ? entry.url.spec() : entry.tab_title,
+        .url = entry.url,
+    });
+  }
+
+  std::move(callback).Run(std::move(text_response), std::move(citations));
 }
 
 void ContextHubService::HandleTabGroupModelExecutionResult(

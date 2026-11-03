@@ -198,18 +198,18 @@ Canvas2DResourceProvider* BaseRenderingContext2D::GetSharedImageProvider()
   return shared_image_provider_.get();
 }
 
-bool BaseRenderingContext2D::HasResourceProvider() const {
+bool BaseRenderingContext2D::HasBacking() const {
   return shared_image_provider_ != nullptr || surface_ != nullptr;
 }
 
-bool BaseRenderingContext2D::IsResourceProviderValid() const {
+bool BaseRenderingContext2D::IsBackingValid() const {
   if (shared_image_provider_) {
     return shared_image_provider_->IsValid();
   }
   return surface_ != nullptr;
 }
 
-void BaseRenderingContext2D::ResetResourceProvider() {
+void BaseRenderingContext2D::ResetBacking() {
   shared_image_provider_.reset();
   if (surface_) {
     CanvasMemoryDumpProvider::Instance()->UnregisterClient(this);
@@ -220,10 +220,13 @@ void BaseRenderingContext2D::ResetResourceProvider() {
     context_provider_wrapper_->RemoveObserver(this);
     context_provider_wrapper_.reset();
   }
+  if (Host()) {
+    Host()->UpdateMemoryUsage();
+  }
 }
 
 bool BaseRenderingContext2D::IsPaintable() const {
-  return HasResourceProvider();
+  return HasBacking();
 }
 
 bool BaseRenderingContext2D::Is2DCanvasAccelerated() const {
@@ -276,7 +279,7 @@ void BaseRenderingContext2D::SetSharedImageProviderForTesting(
   shared_image_provider_ = std::move(provider);
 }
 
-void BaseRenderingContext2D::CreateBitmapProvider() {
+void BaseRenderingContext2D::CreateSoftwareSurface() {
   const gfx::Size size = Host()->Size();
   const viz::SharedImageFormat format = color_params_.GetSharedImageFormat();
   const SkAlphaType alpha_type = color_params_.GetAlphaType();
@@ -300,8 +303,10 @@ void BaseRenderingContext2D::CreateBitmapProvider() {
   sw_snapshot_sk_image_id_ = 0u;
 }
 
-void BaseRenderingContext2D::RecordResourceProviderHistograms() {
-  CHECK(HasResourceProvider());
+void BaseRenderingContext2D::RecordBackingHistograms() {
+  CHECK(HasBacking());
+  // Note: The histogram names date back to historical usage of
+  // CanvasResourceProvider for both SharedImage and bitmap backings.
   if (shared_image_provider_) {
     base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
                               shared_image_provider_->IsAccelerated());
@@ -436,11 +441,11 @@ scoped_refptr<StaticBitmapImage> BaseRenderingContext2D::Snapshot() {
   return UnacceleratedSnapshot();
 }
 
-bool BaseRenderingContext2D::WritePixelsToProvider(const SkImageInfo& orig_info,
-                                                   const void* pixels,
-                                                   size_t row_bytes,
-                                                   int x,
-                                                   int y) {
+bool BaseRenderingContext2D::WritePixelsToBacking(const SkImageInfo& orig_info,
+                                                  const void* pixels,
+                                                  size_t row_bytes,
+                                                  int x,
+                                                  int y) {
   if (shared_image_provider_) {
     return shared_image_provider_->WritePixels(orig_info, pixels, row_bytes, x,
                                                y);
@@ -455,7 +460,7 @@ bool BaseRenderingContext2D::WritePixelsToProvider(const SkImageInfo& orig_info,
 scoped_refptr<StaticBitmapImage>
 BaseRenderingContext2D::PaintRenderingResultsToSnapshot(
     SourceDrawingBuffer source_buffer) {
-  if (!IsResourceProviderValid()) {
+  if (!IsBackingValid()) {
     return nullptr;
   }
   FlushCanvas(FlushReason::kOther);
@@ -601,7 +606,7 @@ void BaseRenderingContext2D::TryRestoreContextEvent(TimerBase* timer) {
       (!SharedGpuContext::IsGpuCompositingEnabled() &&
        SharedGpuContext::SharedImageInterfaceProvider())) {
     RestoreGuard context_is_being_restored(*this);
-    if (InitializeResourceProvider()) {
+    if (InitializeBacking()) {
       try_restore_context_event_timer_.Stop();
       DispatchContextRestoredEvent(nullptr);
       return;
@@ -897,7 +902,7 @@ void BaseRenderingContext2D::putImageData(ImageData* data,
     return;
   }
 
-  if (isContextLost() || !CanCreateResourceProvider()) [[unlikely]] {
+  if (isContextLost() || !CanCreateBacking()) [[unlikely]] {
     return;
   }
 
@@ -1114,8 +1119,8 @@ std::optional<cc::PaintRecord> BaseRenderingContext2D::FlushCanvasInternal(
     ScopedRasterTimer timer(nullptr, nullptr);
     RasterRecordToSoftwareSurface(recording);
   }
-  if (Host()) {
-    Host()->DidFlush();
+  if (Host() && Host()->RenderingContext()) {
+    animated_image_frame_index_maps_.clear();
   }
   return recording;
 }
@@ -1821,6 +1826,10 @@ void BaseRenderingContext2D::DrawElementInternal(
   float dpr = drawable_paint_record->paint_state.effective_zoom;
   gfx::RectF src_rect(drawable_paint_record->paint_state.box_size);
   if (sx && sy && swidth && sheight) {
+    if (!CanvasRenderingContext::ValidateRectForCanvas(*sx, *sy, *swidth,
+                                                       *sheight)) {
+      return;
+    }
     AdjustRectForCanvas(*sx, *sy, *swidth, *sheight);
     src_rect = gfx::RectF(*sx * dpr, *sy * dpr, *swidth * dpr, *sheight * dpr);
   }
@@ -1848,6 +1857,9 @@ void BaseRenderingContext2D::DrawElementInternal(
     dw = *dwidth;
     dh = *dheight;
     AdjustRectForCanvas(x, y, dw, dh);
+  }
+  if (!CanvasRenderingContext::ValidateRectForCanvas(x, y, dw, dh)) {
+    return;
   }
   gfx::RectF dst_rect(x, y, dw, dh);
 
@@ -1989,10 +2001,6 @@ BaseRenderingContext2D::GetAnimatedImageFrameIndexMap(uint32_t id) const {
     return animated_image_frame_index_maps_[id];
   }
   return nullptr;
-}
-
-void BaseRenderingContext2D::DidFlush() {
-  animated_image_frame_index_maps_.clear();
 }
 
 }  // namespace blink

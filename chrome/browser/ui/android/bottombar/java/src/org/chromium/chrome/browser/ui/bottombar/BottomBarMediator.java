@@ -28,8 +28,6 @@ import org.chromium.chrome.browser.layouts.LayoutStateProvider.LayoutStateObserv
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.ui.actions.ActionId;
 import org.chromium.chrome.browser.ui.actions.ActionProperties;
@@ -76,18 +74,14 @@ public class BottomBarMediator
     private final ThemeColorProvider mThemeColorProvider;
     private final VisibilityDelegate mVisibilityDelegate;
     private final BottomBarPromoDialogCoordinator mPromoDialogCoordinator;
-    private final NullableObservableSupplier<Tab> mTabSupplier;
     private final NonNullObservableSupplier<Boolean> mHomepageEnabledSupplier;
     private final NonNullObservableSupplier<Boolean> mOmniboxFocusStateSupplier;
     private final NullableObservableSupplier<Profile> mProfileSupplier;
     private final OneshotSupplier<String> mCountrySupplier;
     private final NullableObservableSupplier<PropertyModel> mGlicActionSupplier;
     private final NullableObservableSupplier<PropertyModel> mNewTabActionSupplier;
-    private final boolean mShouldIncludeHomeButton;
 
     // Observers and Callbacks
-    private final TabObserver mTabObserver;
-    private final Callback<@Nullable Tab> mTabSupplierObserver = this::onTabChanged;
     private final Callback<Boolean> mHomepageEnabledObserver = this::onHomepageEnabledChanged;
     private final Callback<Boolean> mOmniboxFocusObserver = this::onOmniboxFocusChanged;
     private final Callback<@Nullable Profile> mProfileObserver = this::onProfileChanged;
@@ -97,13 +91,13 @@ public class BottomBarMediator
     // Mutable State (Nullable)
     private @Nullable GlicKeyedService mGlicKeyedService;
     private @Nullable Profile mOriginalProfile;
-    private @Nullable Tab mCurrentTab;
     private @TriState int mIsVisible;
     private @Nullable IphIntent mNewTabIphIntent;
     private @Nullable LayoutStateProvider mLayoutStateProvider;
     private @Nullable @ActionId Integer mResolvedCandidateExtraAction;
 
     // Mutable State (Primitive / Non-null)
+    private boolean mCandidateMetricsRecorded;
     private boolean mGlicWasVisible;
     private boolean mGlicTimeToAppearRecorded;
     private boolean mShouldHideForHub;
@@ -119,10 +113,8 @@ public class BottomBarMediator
      * @param model The property model to update.
      * @param buttonManager The {@link BottomBarButtonManager} for the bottom bar buttons.
      * @param themeColorProvider The provider to observe theme changes from.
-     * @param tabSupplier Supplier of the current tab.
      * @param homepageEnabledSupplier Supplier of whether the homepage is enabled.
      * @param visibilityDelegate Delegate to handle compositor-level visibility changes.
-     * @param shouldIncludeHomeButton Whether the home button should be included in the bottom bar.
      * @param profileSupplier Supplier of the current profile.
      * @param countrySupplier Supplier of the latest variations country code.
      * @param omniboxFocusStateSupplier Supplier of the omnibox focus state.
@@ -135,10 +127,8 @@ public class BottomBarMediator
             PropertyModel model,
             BottomBarButtonManager buttonManager,
             ThemeColorProvider themeColorProvider,
-            NullableObservableSupplier<Tab> tabSupplier,
             NonNullObservableSupplier<Boolean> homepageEnabledSupplier,
             VisibilityDelegate visibilityDelegate,
-            boolean shouldIncludeHomeButton,
             NullableObservableSupplier<Profile> profileSupplier,
             OneshotSupplier<String> countrySupplier,
             NonNullObservableSupplier<Boolean> omniboxFocusStateSupplier,
@@ -149,10 +139,8 @@ public class BottomBarMediator
         mModel = model;
         mButtonManager = buttonManager;
         mThemeColorProvider = themeColorProvider;
-        mTabSupplier = tabSupplier;
         mHomepageEnabledSupplier = homepageEnabledSupplier;
         mVisibilityDelegate = visibilityDelegate;
-        mShouldIncludeHomeButton = shouldIncludeHomeButton;
         mProfileSupplier = profileSupplier;
         mCountrySupplier = countrySupplier;
         mOmniboxFocusStateSupplier = omniboxFocusStateSupplier;
@@ -167,43 +155,17 @@ public class BottomBarMediator
             mLayoutStateProvider = layoutStateProvider;
         }
 
-        mTabObserver =
-                new TabObserver() {
-                    @Override
-                    public void onUrlUpdated(Tab tab) {
-                        updateVisibility();
-                    }
-
-                    @Override
-                    public void onContentChanged(Tab tab) {
-                        updateVisibility();
-                    }
-                };
-
         mThemeColorProvider.addTintObserver(this);
         mModel.set(BottomBarProperties.COLOR_SCHEME, mThemeColorProvider.getBrandedColorScheme());
         mProfileSupplier.addSyncObserverAndCallIfNonNull(mProfileObserver);
         mCountrySupplier.onAvailable((country) -> updateExtraActionVisibility());
         mOmniboxFocusStateSupplier.addSyncObserver(mOmniboxFocusObserver);
-        onTabChanged(mTabSupplier.addSyncObserver(mTabSupplierObserver));
-        if (mShouldIncludeHomeButton) {
-            mHomepageEnabledSupplier.addSyncObserverAndCallIfNonNull(mHomepageEnabledObserver);
-        }
+        updateVisibility();
+        mHomepageEnabledSupplier.addSyncObserverAndCallIfNonNull(mHomepageEnabledObserver);
 
         // Safe to set the listener after all observers are initialized to trigger the immediate
         // callback with the correct state.
         mButtonManager.setListener(this);
-    }
-
-    private void onTabChanged(@Nullable Tab tab) {
-        if (mCurrentTab != null) {
-            mCurrentTab.removeObserver(mTabObserver);
-        }
-        mCurrentTab = tab;
-        if (mCurrentTab != null) {
-            mCurrentTab.addObserver(mTabObserver);
-        }
-        updateVisibility();
     }
 
     private void onOmniboxFocusChanged(boolean focused) {
@@ -227,11 +189,8 @@ public class BottomBarMediator
     }
 
     private void updateVisibility() {
-        boolean currentTabIsRegularNtp = BottomBarConfigUtils.isRegularNtp(mCurrentTab);
         boolean isOmniboxFocused = mOmniboxFocusStateSupplier.get();
-        boolean shouldDisableOnNtp =
-                BottomBarConfigUtils.shouldDisableOnNtp() && currentTabIsRegularNtp;
-        boolean isVisible = !shouldDisableOnNtp && !isOmniboxFocused && !mShouldHideForHub;
+        boolean isVisible = !isOmniboxFocused && !mShouldHideForHub;
 
         if (mIsVisible == TriStateUtils.from(isVisible)) return;
 
@@ -301,12 +260,20 @@ public class BottomBarMediator
         if (mDestroyed) return;
         Profile profile = mProfileSupplier.get();
         if (profile == null) {
+            mResolvedCandidateExtraAction = null;
+            updateObservers(/* originalProfile= */ null);
             setButtonVisibility(ActionId.GLIC, false);
             return;
         }
 
         Profile originalProfile = profile.getOriginalProfile();
         String country = mCountrySupplier.get();
+
+        if (mOriginalProfile != originalProfile) {
+            mResolvedCandidateExtraAction = null;
+            mCandidateMetricsRecorded = false;
+            updateObservers(originalProfile);
+        }
 
         if (mResolvedCandidateExtraAction == null) {
             // Check if prerequisites for resolution are satisfied.
@@ -322,16 +289,19 @@ public class BottomBarMediator
                     BottomBarActionEligibility.getCachedCandidateExtraAction();
             mResolvedCandidateExtraAction = candidateExtraAction;
             long decisionDuration = SystemClock.uptimeMillis() - startTime;
-            BottomBarMetrics.recordCandidateDecisionTime(decisionDuration);
-            BottomBarActionEligibility.recordGlicIneligibilityReasonIfNeeded(
-                    originalProfile, country);
+            if (!mCandidateMetricsRecorded) {
+                BottomBarMetrics.recordCandidateDecisionTime(decisionDuration);
+                BottomBarActionEligibility.recordGlicIneligibilityReasonIfNeeded(
+                        originalProfile, country);
 
-            @CandidateAction
-            int candidateMetric =
-                    candidateExtraAction != null && candidateExtraAction == ActionId.GLIC
-                            ? CandidateAction.GLIC
-                            : CandidateAction.NONE;
-            BottomBarMetrics.recordCandidateExtraAction(candidateMetric);
+                @CandidateAction
+                int candidateMetric =
+                        candidateExtraAction != null && candidateExtraAction == ActionId.GLIC
+                                ? CandidateAction.GLIC
+                                : CandidateAction.NONE;
+                BottomBarMetrics.recordCandidateExtraAction(candidateMetric);
+                mCandidateMetricsRecorded = true;
+            }
         }
 
         updateObservers(originalProfile);
@@ -355,7 +325,8 @@ public class BottomBarMediator
 
         String country = mCountrySupplier.get();
         boolean visible =
-                (GlicEnabling.isPolicyEnforced(originalProfile)
+                GlicEnabling.isEnabledForProfile(originalProfile)
+                        && (GlicEnabling.isPolicyEnforced(originalProfile)
                                 || BottomBarConfigUtils.isGlicButtonEnabled())
                         && BottomBarActionEligibility.isGlicAllowedInCountry(country);
 
@@ -373,45 +344,82 @@ public class BottomBarMediator
     }
 
     private void updateObservers(@Nullable Profile originalProfile) {
-        if (mOriginalProfile == originalProfile) {
-            return;
+        if (mOriginalProfile != originalProfile) {
+            if (mGlicKeyedService != null) {
+                mGlicKeyedService.removeAllowedChangedObserver(mAllowedChangedObserver);
+                mGlicKeyedService = null;
+            }
+            if (mObservingSharedPrefs) {
+                ContextUtils.getAppSharedPreferences()
+                        .unregisterOnSharedPreferenceChangeListener(this);
+                mObservingSharedPrefs = false;
+            }
+            mOriginalProfile = originalProfile;
         }
-        mOriginalProfile = originalProfile;
 
-        if (mGlicKeyedService != null) {
-            mGlicKeyedService.removeAllowedChangedObserver(mAllowedChangedObserver);
-            mGlicKeyedService = null;
-        }
-        if (mObservingSharedPrefs) {
-            ContextUtils.getAppSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
-            mObservingSharedPrefs = false;
+        if (originalProfile == null) {
+            return;
         }
 
         Integer candidateExtraAction = mResolvedCandidateExtraAction;
-        if (originalProfile == null || candidateExtraAction == null) {
-            return;
+        boolean isGlicCandidate =
+                candidateExtraAction != null && candidateExtraAction == ActionId.GLIC;
+        boolean shouldObserveGlicAllowed = isGlicCandidate;
+        if (!shouldObserveGlicAllowed && candidateExtraAction != null) {
+            String country = mCountrySupplier.get();
+            boolean isCountryKnownDisallowed =
+                    country != null
+                            && !country.isBlank()
+                            && !BottomBarActionEligibility.isGlicAllowedInCountry(country);
+            shouldObserveGlicAllowed =
+                    !GlicEnabling.isEnabledForProfile(originalProfile) && !isCountryKnownDisallowed;
+        }
+        if (shouldObserveGlicAllowed) {
+            if (mGlicKeyedService == null) {
+                mGlicKeyedService = GlicKeyedServiceFactory.getForProfile(originalProfile);
+                if (mGlicKeyedService != null) {
+                    mGlicKeyedService.addAllowedChangedObserver(mAllowedChangedObserver);
+                }
+            }
+        } else if (mGlicKeyedService != null) {
+            mGlicKeyedService.removeAllowedChangedObserver(mAllowedChangedObserver);
+            mGlicKeyedService = null;
         }
 
-        if (candidateExtraAction == ActionId.GLIC) {
-            GlicKeyedService glicKeyedService =
-                    GlicKeyedServiceFactory.getForProfile(originalProfile);
-            mGlicKeyedService = glicKeyedService;
-            if (mGlicKeyedService != null) {
-                mGlicKeyedService.addAllowedChangedObserver(mAllowedChangedObserver);
+        if (isGlicCandidate) {
+            if (!mObservingSharedPrefs) {
+                ContextUtils.getAppSharedPreferences()
+                        .registerOnSharedPreferenceChangeListener(this);
+                mObservingSharedPrefs = true;
             }
-            ContextUtils.getAppSharedPreferences().registerOnSharedPreferenceChangeListener(this);
-            mObservingSharedPrefs = true;
+        } else if (mObservingSharedPrefs) {
+            ContextUtils.getAppSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+            mObservingSharedPrefs = false;
         }
     }
 
     private void onGlicAllowedChanged() {
+        if (mOriginalProfile == null) {
+            return;
+        }
+        if (mResolvedCandidateExtraAction == null
+                || mResolvedCandidateExtraAction != ActionId.GLIC) {
+            if (GlicEnabling.isEnabledForProfile(mOriginalProfile)) {
+                // Reset the candidate to null to force a re-evaluation to see if GLIC should now
+                // be promoted as the extra action, now that it is enabled for the profile.
+                mResolvedCandidateExtraAction = null;
+                updateExtraActionVisibility();
+            }
+            return;
+        }
         updateGlicVisibility(mOriginalProfile);
     }
 
     @Override
     public void onSharedPreferenceChanged(
             SharedPreferences sharedPreferences, @Nullable String key) {
-        if (ChromePreferenceKeys.BOTTOM_BAR_GLIC_BUTTON_ENABLED.equals(key)) {
+        if (ChromePreferenceKeys.BOTTOM_BAR_GLIC_BUTTON_ENABLED.equals(key)
+                && mOriginalProfile != null) {
             updateGlicVisibility(mOriginalProfile);
         }
     }
@@ -562,14 +570,7 @@ public class BottomBarMediator
     public void destroy() {
         mDestroyed = true;
         mThemeColorProvider.removeTintObserver(this);
-        if (mCurrentTab != null) {
-            mCurrentTab.removeObserver(mTabObserver);
-            mCurrentTab = null;
-        }
-        mTabSupplier.removeObserver(mTabSupplierObserver);
-        if (mShouldIncludeHomeButton) {
-            mHomepageEnabledSupplier.removeObserver(mHomepageEnabledObserver);
-        }
+        mHomepageEnabledSupplier.removeObserver(mHomepageEnabledObserver);
         if (mObservingSharedPrefs) {
             ContextUtils.getAppSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
             mObservingSharedPrefs = false;
@@ -579,6 +580,7 @@ public class BottomBarMediator
             mGlicKeyedService.removeAllowedChangedObserver(mAllowedChangedObserver);
             mGlicKeyedService = null;
         }
+        mOriginalProfile = null;
 
         mOmniboxFocusStateSupplier.removeObserver(mOmniboxFocusObserver);
 

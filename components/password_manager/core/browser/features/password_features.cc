@@ -45,10 +45,10 @@ BASE_FEATURE(kApplyClientsideModelPredictionsForPasswordTypes,
 BASE_FEATURE(kAutoApproveSharedPasswordUpdatesFromSameSender,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
-BASE_FEATURE(kAutofillPasswordUserPerceptionSurvey,
+BASE_FEATURE(kAutofillPersonalizationAndTrustPasswordSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
 BASE_FEATURE(kAwaitPageStabilityForPasswordChange,
              base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta> kAwaitPageStabilityTimeout = {
@@ -84,7 +84,8 @@ BASE_FEATURE(kClearUndecryptablePasswordsOnSync,
 );
 
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)  // Desktop
-BASE_FEATURE(kCredentialManagementUnifiedUi, base::FEATURE_DISABLED_BY_DEFAULT);
+// Enabled by default in M157. Remove in or after M163.
+BASE_FEATURE(kCredentialManagementUnifiedUi, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
 
 
@@ -151,6 +152,9 @@ const base::FeatureParam<int> kPassDeletionOriginMinGmsVersion = {
 BASE_FEATURE(kPasswordCompromiseWarningInDetailsCard,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+// Enables the actor PasswordChangeTool.
+BASE_FEATURE(kChangePasswordTool, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Temporarily disabled as mitigation for crbug.com/485895402.
 BASE_FEATURE(kPasswordDateLastFilled, base::FEATURE_DISABLED_BY_DEFAULT);

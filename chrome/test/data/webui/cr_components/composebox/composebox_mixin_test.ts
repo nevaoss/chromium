@@ -18,7 +18,7 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {InputSource, QueryActionOverride, SearchboxOverride, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import {DriveDisclaimerStatus, DriveUploadError, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {InputState} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
@@ -89,6 +89,8 @@ suite('ComposeboxMixinTest', () => {
     // <if expr="not is_android">
     searchboxHandler.setResultMapperFor(
         'getSmartTabSharingActive', () => Promise.resolve({active: false}));
+    searchboxHandler.setResultMapperFor(
+        'resetSmartTabSharing', () => Promise.resolve({active: false}));
     // </if>
     searchboxHandler.setPromiseResolveFor('getInputState', {
       state: new MockInputState(),
@@ -931,8 +933,8 @@ suite('ComposeboxMixinTest', () => {
       element.result = {
         input: 'Draft text',
         matches: [
-          {fillIntoEdit: 'Draft text', supportsDeletion: false} as
-              AutocompleteMatch,
+          createAutocompleteMatch(
+              {fillIntoEdit: 'Draft text', supportsDeletion: false}),
         ],
       } as AutocompleteResult;
       await microtasksFinished();
@@ -956,8 +958,8 @@ suite('ComposeboxMixinTest', () => {
       element.result = {
         input: 'Draft text',
         matches: [
-          {fillIntoEdit: 'Draft text suggestion', supportsDeletion: false} as
-              AutocompleteMatch,
+          createAutocompleteMatch(
+              {fillIntoEdit: 'Draft text suggestion', supportsDeletion: false}),
         ],
       } as AutocompleteResult;
       await microtasksFinished();
@@ -986,8 +988,8 @@ suite('ComposeboxMixinTest', () => {
       element.result = {
         input: '',
         matches: [
-          {fillIntoEdit: 'Preview suggestion', supportsDeletion: false} as
-              AutocompleteMatch,
+          createAutocompleteMatch(
+              {fillIntoEdit: 'Preview suggestion', supportsDeletion: false}),
         ],
       } as AutocompleteResult;
       await microtasksFinished();
@@ -1356,9 +1358,9 @@ suite('ComposeboxMixinTest', () => {
       };
 
       const matches = [
-        {fillIntoEdit: 'test'} as AutocompleteMatch,
-        {fillIntoEdit: 'test2'} as AutocompleteMatch,
-        {fillIntoEdit: 'test3'} as AutocompleteMatch,
+        createAutocompleteMatch({fillIntoEdit: 'test'}),
+        createAutocompleteMatch({fillIntoEdit: 'test2'}),
+        createAutocompleteMatch({fillIntoEdit: 'test3'}),
       ];
       element.result = {input: 'test', matches} as AutocompleteResult;
       await microtasksFinished();
@@ -2518,6 +2520,99 @@ suite('ComposeboxMixinTest', () => {
             searchboxHandler.getArgs('setActiveModelMode')[0]);
       });
 
+  // <if expr="not is_android">
+  test(
+      'resetSession resets smart tab sharing and adopts the browser value',
+      async () => {
+        element.smartTabSharingVisible = true;
+        element.smartTabSharingActive = true;
+        await microtasksFinished();
+        searchboxHandler.setResultMapperFor(
+            'resetSmartTabSharing', () => Promise.resolve({active: false}));
+
+        element.resetSession();
+        await searchboxHandler.whenCalled('resetSmartTabSharing');
+        await microtasksFinished();
+
+        assertEquals(1, searchboxHandler.getCallCount('resetSmartTabSharing'));
+        assertFalse(element.smartTabSharingActive);
+        // Not a user toggle.
+        assertEquals(
+            0, searchboxHandler.getCallCount('setSmartTabSharingActive'));
+      });
+
+  test(
+      'resetSession adopts the default-on value from the browser', async () => {
+        element.smartTabSharingVisible = true;
+        element.smartTabSharingActive = false;
+        await microtasksFinished();
+        searchboxHandler.setResultMapperFor(
+            'resetSmartTabSharing', () => Promise.resolve({active: true}));
+
+        element.resetSession();
+        await searchboxHandler.whenCalled('resetSmartTabSharing');
+        await microtasksFinished();
+
+        assertTrue(element.smartTabSharingActive);
+      });
+
+  test(
+      'resetSession does not reset smart tab sharing when not visible',
+      async () => {
+        element.smartTabSharingVisible = false;
+        await microtasksFinished();
+
+        element.resetSession();
+        await microtasksFinished();
+
+        assertEquals(0, searchboxHandler.getCallCount('resetSmartTabSharing'));
+      });
+
+  test('resetSession skips resetSmartTabSharing when submitting', async () => {
+    element.smartTabSharingVisible = true;
+    element.smartTabSharingActive = true;
+    element.submitting = true;
+    await microtasksFinished();
+
+    element.resetSession();
+    await microtasksFinished();
+
+    assertEquals(0, searchboxHandler.getCallCount('resetSmartTabSharing'));
+    assertFalse(element.submitting);
+  });
+
+  test(
+      'resetSession does not overwrite smart tab sharing updated before ' +
+          'reset resolves',
+      async () => {
+        element.smartTabSharingVisible = true;
+        element.smartTabSharingActive = true;
+        await microtasksFinished();
+
+        let resolveReset: (value: {active: boolean}) => void;
+        const resetPromise = new Promise<{active: boolean}>(resolve => {
+          resolveReset = resolve;
+        });
+        searchboxHandler.setResultMapperFor(
+            'resetSmartTabSharing', () => resetPromise);
+
+        element.resetSession();
+        await searchboxHandler.whenCalled('resetSmartTabSharing');
+
+        // An intervening update arrives before the reset resolves.
+        searchboxCallbackRouterRemote.updateSmartTabSharingActive(true);
+        await microtasksFinished();
+        assertTrue(element.smartTabSharingActive);
+
+        // Reset resolves with default-off.
+        resolveReset!({active: false});
+        await microtasksFinished();
+
+        // The stale reset reply is ignored.
+        assertTrue(element.smartTabSharingActive);
+      });
+  // </if>
+
   test(
       'hasTabs returns true when tab files are present and tabFaviconChipsToCoinsEnabled is true',
       () => {
@@ -2570,6 +2665,7 @@ suite('ComposeboxMixinTest', () => {
         assertFalse(emptyModel.hasTabs());
         assertFalse(emptyModel.hasNonTabFiles());
         assertFalse(emptyModel.hasFiles());
+        assertFalse(emptyModel.hasMultipleFiles());
         assertEquals(0, emptyModel.getNonTabFileNum());
         assertEquals(0, emptyModel.getSharedTabs().length);
         assertFalse(emptyModel.hasValidQuery());
@@ -2583,6 +2679,7 @@ suite('ComposeboxMixinTest', () => {
         assertTrue(tabModel.hasTabs());
         assertFalse(tabModel.hasNonTabFiles());
         assertTrue(tabModel.hasFiles());
+        assertFalse(tabModel.hasMultipleFiles());
         assertEquals(0, tabModel.getNonTabFileNum());
         assertEquals(1, tabModel.getSharedTabs().length);
         assertEquals('Tab 1', tabModel.getSharedTabs()[0]!.title);
@@ -2596,12 +2693,14 @@ suite('ComposeboxMixinTest', () => {
         assertTrue(mixedModel.hasTabs());
         assertTrue(mixedModel.hasNonTabFiles());
         assertTrue(mixedModel.hasFiles());
+        assertTrue(mixedModel.hasMultipleFiles());
         assertEquals(1, mixedModel.getNonTabFileNum());
 
         const stsModel = new ComposeboxInputModel({
           smartTabSharingActive: true,
         });
         assertTrue(stsModel.hasTabs());
+        assertTrue(stsModel.hasMultipleFiles());
 
         const unimodalModel = new ComposeboxInputModel({
           attachedContext: new Map([[unimodalFile.uuid, unimodalFile]]),
@@ -2622,6 +2721,24 @@ suite('ComposeboxMixinTest', () => {
       });
 
   test(
+      'getSharedTabs marks a delayed tab loading until its snapshot is ready',
+      () => {
+        const pendingFile = ComposeboxFile.createFromTab(
+            'tab-uuid', 1, 'Tab 1', 'https://example.com',
+            {delayUpload: true, status: ContextUploadStatus.kUploadStarted});
+        element.attachedContext = new Map([[pendingFile.uuid, pendingFile]]);
+        assertFalse(element.getSharedTabs()[0]!.isLoading);
+
+        element.faviconSkeletonLoaderEnabled = true;
+        assertTrue(element.getSharedTabs()[0]!.isLoading);
+
+        const readyFile = ComposeboxFile.createFromTab(
+            'tab-uuid', 1, 'Tab 1', 'https://example.com', {delayUpload: true});
+        element.attachedContext = new Map([[readyFile.uuid, readyFile]]);
+        assertFalse(element.getSharedTabs()[0]!.isLoading);
+      });
+
+  test(
       'element inputModel reflects element state and delegates getters', () => {
         element.tabFaviconChipsToCoinsEnabled = true;
         element.smartTabSharingActive = false;
@@ -2631,10 +2748,13 @@ suite('ComposeboxMixinTest', () => {
         assertFalse(element.hasTabs());
         assertFalse(element.hasNonTabFiles());
         assertFalse(element.hasFiles());
+        assertFalse(element.hasMultipleFiles());
         assertEquals(element.inputModel.hasTabs(), element.hasTabs());
         assertEquals(
             element.inputModel.hasNonTabFiles(), element.hasNonTabFiles());
         assertEquals(element.inputModel.hasFiles(), element.hasFiles());
+        assertEquals(
+            element.inputModel.hasMultipleFiles(), element.hasMultipleFiles());
         assertEquals(
             element.inputModel.canSubmit(), element.computeSubmitEnabled());
 
@@ -2648,11 +2768,14 @@ suite('ComposeboxMixinTest', () => {
         assertTrue(element.hasTabs());
         assertTrue(element.hasNonTabFiles());
         assertTrue(element.hasFiles());
+        assertTrue(element.hasMultipleFiles());
         assertTrue(element.computeSubmitEnabled());
         assertEquals(element.inputModel.hasTabs(), element.hasTabs());
         assertEquals(
             element.inputModel.hasNonTabFiles(), element.hasNonTabFiles());
         assertEquals(element.inputModel.hasFiles(), element.hasFiles());
+        assertEquals(
+            element.inputModel.hasMultipleFiles(), element.hasMultipleFiles());
         assertEquals(
             element.inputModel.canSubmit(), element.computeSubmitEnabled());
       });

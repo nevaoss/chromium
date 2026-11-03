@@ -15,7 +15,7 @@ import {getHtml} from './organizer_list_section.html.js';
 import type {OrganizerListSectionClient, OrganizerListSectionDelegate} from './organizer_list_section_delegate.js';
 import type {OrganizerListSectionHeaderElement} from './organizer_list_section_header.js';
 import type {HighlightableOrganizerListSectionItem, OrganizerListSectionItem, OrganizerListSectionItemElement} from './organizer_list_section_item.js';
-import type {BrowserProxy} from './organizer_panel.mojom-webui.js';
+import type {BrowserProxy, SectionState} from './organizer_panel.mojom-webui.js';
 import {browserProxyFactory} from './organizer_panel.mojom-webui.js';
 import type {SearchOptions} from './search_utils.js';
 import {search} from './search_utils.js';
@@ -52,11 +52,16 @@ export class OrganizerListSectionElement extends CrLitElement implements
       searchQuery: {type: String},
       filteredItems_: {type: Array},
       filteredSearchQuery_: {type: String},
+      hidden: {
+        type: Boolean,
+        reflect: true,
+        notify: true,
+      },
     };
   }
 
   private browserProxy_: BrowserProxy = browserProxyFactory.getInstance();
-  private expandedChangedListenerId_: number|null = null;
+  private sectionStateChangedListenerId_: number|null = null;
   accessor delegate: OrganizerListSectionDelegate<unknown>|null = null;
   accessor items: Array<OrganizerListSectionItem<unknown>> = [];
   protected accessor expanded_: boolean = true;
@@ -69,6 +74,7 @@ export class OrganizerListSectionElement extends CrLitElement implements
   // ensures that we don't show the full list of elements until after the search
   // has been applied and the list of items has been filtered.
   protected accessor filteredSearchQuery_: string = '';
+  override accessor hidden: boolean = false;
 
   private searchOptions_:
       SearchOptions<HighlightableOrganizerListSectionItem<unknown>> = {
@@ -98,27 +104,27 @@ export class OrganizerListSectionElement extends CrLitElement implements
   private onVisibilityChange_: () => void = () => {
     if (document.visibilityState === 'visible') {
       this.updateItems_();
-      this.updateExpanded_();
+      this.updateSectionState_();
     }
   };
 
   override connectedCallback() {
     super.connectedCallback();
     document.addEventListener('visibilitychange', this.onVisibilityChange_);
-    this.expandedChangedListenerId_ =
-        this.browserProxy_.callbackRouter.onSectionsExpandedChanged.addListener(
-            (sectionsExpanded: Record<string, boolean>) => {
-              this.onSectionsExpandedChanged_(sectionsExpanded);
+    this.sectionStateChangedListenerId_ =
+        this.browserProxy_.callbackRouter.onSectionsStateChanged.addListener(
+            (sectionsState: Record<string, SectionState>) => {
+              this.onSectionsStateChanged_(sectionsState);
             });
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('visibilitychange', this.onVisibilityChange_);
-    assert(this.expandedChangedListenerId_ !== null);
+    assert(this.sectionStateChangedListenerId_ !== null);
     this.browserProxy_.callbackRouter.removeListener(
-        this.expandedChangedListenerId_);
-    this.expandedChangedListenerId_ = null;
+        this.sectionStateChangedListenerId_);
+    this.sectionStateChangedListenerId_ = null;
   }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
@@ -127,13 +133,15 @@ export class OrganizerListSectionElement extends CrLitElement implements
     if (changedProperties.has('delegate')) {
       this.delegate?.init(this);
       this.updateItems_();
-      this.updateExpanded_();
+      this.updateSectionState_();
     }
 
     if (changedProperties.has('items') ||
         changedProperties.has('searchQuery')) {
       this.updateFilteredItems_();
     }
+
+    this.hidden = this.hasNoSearchResults_();
   }
 
   onItemsChanged(items: Array<OrganizerListSectionItem<unknown>>) {
@@ -148,28 +156,30 @@ export class OrganizerListSectionElement extends CrLitElement implements
     this.items = await this.delegate.getItems();
   }
 
-  private async updateExpanded_() {
+  private async updateSectionState_() {
     if (!this.delegate) {
-      this.expanded_ = true;
       return;
     }
     const delegate = this.delegate;
-    const {expanded} =
-        await this.browserProxy_.handler.isSectionExpanded(delegate.getId());
+    const {state} =
+        await this.browserProxy_.handler.getSectionState(delegate.getId());
     if (this.delegate !== delegate) {
       return;
     }
     // Disable the transition when the expanded state is loaded from prefs.
     this.noAnimation_ = true;
-    this.expanded_ = expanded;
+    this.expanded_ = state.expanded;
+    this.showAll_ = state.showAll;
     await this.updateComplete;
     this.noAnimation_ = false;
   }
 
-  private onSectionsExpandedChanged_(
-      sectionsExpanded: Record<string, boolean>) {
+  private onSectionsStateChanged_(sectionsState: Record<string, SectionState>) {
     assert(this.delegate);
-    this.expanded_ = sectionsExpanded[this.delegate.getId()] ?? true;
+    const state = sectionsState[this.delegate.getId()];
+    assert(state);
+    this.expanded_ = state.expanded;
+    this.showAll_ = state.showAll;
   }
 
   private async updateFilteredItems_() {
@@ -196,7 +206,7 @@ export class OrganizerListSectionElement extends CrLitElement implements
     return this.expanded_ || this.isSearching_();
   }
 
-  protected hasNoSearchResults_(): boolean {
+  private hasNoSearchResults_(): boolean {
     return this.isSearching_() && this.getFilteredItems_().length === 0;
   }
 
@@ -222,7 +232,13 @@ export class OrganizerListSectionElement extends CrLitElement implements
   }
 
   protected onShowAllChanged_(e: CustomEvent<{value: boolean}>) {
+    if (this.showAll_ === e.detail.value) {
+      return;
+    }
     this.showAll_ = e.detail.value;
+    assert(this.delegate);
+    this.browserProxy_.handler.setSectionShowAll(
+        this.delegate.getId(), this.showAll_);
   }
 
   protected onItemClick_(e: Event) {

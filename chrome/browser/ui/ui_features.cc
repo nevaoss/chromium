@@ -83,6 +83,11 @@ BASE_FEATURE(kAppMenuGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsRefresh2026, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables search in the app Chrome menu.
 BASE_FEATURE(kChroMenuSearch, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kChroMenuSearchQuery,
+                   &kChroMenuSearch,
+                   "query",
+                   "");
 
 bool IsTabStripDeclutterEnabled() {
   return base::FeatureList::IsEnabled(kDesktopGlowUp) ||
@@ -218,7 +223,6 @@ BASE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen,
 BASE_FEATURE(kProcessIsolationSettings, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN)
 
-BASE_FEATURE(kRealboxVirtualFocusNavigation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLensOverlayVirtualFocusNavigation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kOmniboxEverywhereVirtualFocusNavigation,
@@ -542,6 +546,11 @@ BASE_FEATURE_PARAM(bool,
                    kAiOverlayDialogUseMes,
                    &kAiOverlayDialog,
                    "use_mes",
+                   false);
+BASE_FEATURE_PARAM(bool,
+                   kAiOverlayDialogPageTools,
+                   &kAiOverlayDialog,
+                   "enable_page_tools",
                    false);
 BASE_FEATURE(kAiOverlayDisableNavigationContext,
              base::FEATURE_DISABLED_BY_DEFAULT);

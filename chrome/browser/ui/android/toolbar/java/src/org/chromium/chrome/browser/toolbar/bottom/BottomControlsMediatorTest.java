@@ -235,7 +235,7 @@ public class BottomControlsMediatorTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.ANDROID_BOTTOM_BAR + ":disable_on_ntp/false"})
+    @EnableFeatures({ChromeFeatureList.ANDROID_BOTTOM_BAR})
     public void testEdgeToEdge_NtpYTranslation() {
         Tab tab = Mockito.mock(Tab.class);
         Activity activity = Robolectric.buildActivity(TestActivity.class).setup().get();
@@ -359,7 +359,7 @@ public class BottomControlsMediatorTest {
                 mTabObservableSupplier,
                 mReadAloudRestoringSupplier);
         assertNotNull(liveEdgeToEdgeController.getAnyChangeObserverForTesting());
-        liveEdgeToEdgeController.setIsOptedIntoEdgeToEdgeForTesting(false);
+        liveEdgeToEdgeController.setIsOptedIntoBottomEdgeToEdgeForTesting(false);
         int toNormalHeight = mModel.get(ANDROID_VIEW_HEIGHT_NO_PADDING);
         // Go to a native page which will go ToEdge due to our enabled Feature for this test case.
         mTabObservableSupplier.set(null);
@@ -519,7 +519,7 @@ public class BottomControlsMediatorTest {
     }
 
     @Test
-    @EnableFeatures({ChromeFeatureList.ANDROID_BOTTOM_BAR + ":disable_on_ntp/false"})
+    @EnableFeatures({ChromeFeatureList.ANDROID_BOTTOM_BAR})
     public void testEdgeToEdge_BottomPadding() {
         BottomControlsMediator bottomAppBarMediator =
                 new BottomControlsMediator(

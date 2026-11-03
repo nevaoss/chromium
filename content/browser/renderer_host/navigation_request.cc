@@ -6071,7 +6071,7 @@ void NavigationRequest::OnStartChecksComplete(
     return;
   }
 
-  StoragePartition* partition = GetStoragePartitionWithCurrentSiteInfo();
+  StoragePartition* partition = GetTargetStoragePartition();
   CHECK(partition);
 
   // A WebContents that disallows service worker control (see
@@ -6575,8 +6575,7 @@ void NavigationRequest::OnRedirectChecksComplete(
 std::optional<net::NetworkIsolationKey>
 NavigationRequest::GetNetworkIsolationKeyForRendererAccessibleHttpCache() {
 #if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
-  if (!static_cast<StoragePartitionImpl*>(
-           GetStoragePartitionWithCurrentSiteInfo())
+  if (!static_cast<StoragePartitionImpl*>(GetTargetStoragePartition())
            ->SupportsRendererAccessibleHttpCache()) {
     return std::nullopt;
   }
@@ -6913,7 +6912,7 @@ void NavigationRequest::InheritServiceWorkerControllerFromParentIfNeeded() {
     return;
   }
 
-  StoragePartition* partition = GetStoragePartitionWithCurrentSiteInfo();
+  StoragePartition* partition = GetTargetStoragePartition();
   auto* service_worker_context = static_cast<ServiceWorkerContextWrapper*>(
       partition->GetServiceWorkerContext());
   // As ServiceWorkerMainResourceHandle is not used for intercepting the srcdoc

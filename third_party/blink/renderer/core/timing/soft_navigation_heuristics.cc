@@ -468,6 +468,10 @@ void SoftNavigationHeuristics::EmitSoftNavigation(
   UpdateSoftLcpMetricsForContext(context);
 }
 
+PaintTimingClient::Type SoftNavigationHeuristics::GetType() const {
+  return Type::kSoftNavigationHeuristics;
+}
+
 void SoftNavigationHeuristics::OnPaintFinished(
     const HeapVector<Member<ImageRecord>>& image_records,
     const HeapVector<Member<TextRecord>>& text_records) {
@@ -503,9 +507,7 @@ void SoftNavigationHeuristics::OnPaintFinished(
 template <IsDerivedFromPaintTimingRecord T>
 void SoftNavigationHeuristics::OnContentfulPaintImpl(T* record) const {
   Node* node = record->GetNode();
-  // TODO(crbug.com/441914208, crbug.com/557111456): `node` can be null here,
-  // which is unexpected. Change this back to a CHECK when the root cause is
-  // understood and fixed.
+  CHECK(node, base::NotFatalUntil::M163);
   if (!node) {
     return;
   }

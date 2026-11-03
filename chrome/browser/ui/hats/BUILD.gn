@@ -93,6 +93,7 @@ source_set("impl") {
     "//components/content_settings/core/common",
     "//components/lens:features",
     "//components/metrics_services_manager",
+    "//components/password_manager/core/browser/features:password_features",
     "//components/password_manager/core/common",
     "//components/permissions",
     "//components/permissions:permissions_common",
@@ -114,7 +115,6 @@ source_set("impl") {
     # performance_controls_hats_service.h,
     # performance_controls_hats_service_factory.h, and site_settings_helper.h
     # ... but without a circular dependency.
-    "//chrome/browser/ui",
   ]
   if (is_android) {
     deps += [

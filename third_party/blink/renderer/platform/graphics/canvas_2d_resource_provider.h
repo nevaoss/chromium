@@ -110,7 +110,6 @@ class PLATFORM_EXPORT CanvasResourceProviderDelegate
   virtual ~CanvasResourceProviderDelegate() = default;
 
   virtual void NotifyGpuContextLost() = 0;
-  virtual bool IsPrinting() const { return false; }
   // This is used to apply a map of frame indexes to be used by
   // PlaybackImageProvider::GetRasterContent. When the delegate is a
   // CanvasRenderingContextHost, it is treated as an index into an array
@@ -122,7 +121,6 @@ class PLATFORM_EXPORT CanvasResourceProviderDelegate
   GetAnimatedImageFrameIndexes(uint32_t id) const {
     return nullptr;
   }
-  virtual void DidFlush() {}
 };
 
 // * Subclass of CanvasResourceProvider that is specialized for usage

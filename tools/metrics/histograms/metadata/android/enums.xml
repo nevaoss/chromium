@@ -460,6 +460,16 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabListItemTouchHelperCallback.java:AndroidVerticalTabsDragDropResult) -->
 
+<!-- LINT.IfChange(AndroidVerticalTabsDropRegion) -->
+
+<enum name="AndroidVerticalTabsDropRegion">
+  <int value="0" label="Main tab list"/>
+  <int value="1" label="Pinned tab grid"/>
+  <int value="2" label="Outside both lists"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabListCoordinator.java:AndroidVerticalTabsDropRegion) -->
+
 <!-- LINT.IfChange(AndroidVerticalTabsExpandOnHoverToggleEntryPoint) -->
 
 <enum name="AndroidVerticalTabsExpandOnHoverToggleEntryPoint">
@@ -2899,6 +2909,7 @@ chromium-metrics-reviews@google.com.
   <int value="37" label="WebChromeClient.getDefaultVideoPoster"/>
   <int value="38" label="WebViewClient.onRenderProcessGone"/>
   <int value="39" label="WebViewClient.onScaleChanged"/>
+  <int value="40" label="WebChromeClient.onReceivedThemeColor"/>
 </enum>
 
 <!-- LINT.IfChange(WebViewChromiumStartupMode) -->

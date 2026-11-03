@@ -152,6 +152,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private final SearchEngineService mSearchEngineService;
     private final BackPressManager mBackPressManager;
     private final SearchProviderInfoDelegate mSearchProviderInfoDelegate;
+    private final boolean mIsIncognitoModeEnabled;
 
     /**
      * The predefined baseline vertical scroll distance before the fake search box reaches the top
@@ -169,6 +170,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private final boolean mEnableLogs;
     private final int mSearchBoxMaxWidth;
     private final boolean mIsAim3pEntrypointEnabled;
+    private final boolean mIsAiModeButtonRedirectEnabled;
 
     private @Nullable LogoCoordinator mLogoCoordinator;
     private @Nullable NtpSearchBox mNtpSearchBox;
@@ -313,6 +315,8 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mSearchProviderInfoDelegate = new SearchProviderInfoDelegate(templateUrlService);
 
         mIsAim3pEntrypointEnabled = OmniboxFeatures.isAim3pEntrypointEnabled();
+        mIsAiModeButtonRedirectEnabled = NewTabPageUtils.isAiModeButtonRedirectEnabled();
+        mIsIncognitoModeEnabled = IncognitoUtils.isIncognitoModeEnabled(mProfile);
 
         Resources resources = mActivity.getResources();
         mNtpSearchBoxTopMarginWithoutLogo =
@@ -572,7 +576,10 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void initializeComposeplateFlags(Profile profile) {
-        mCanShowComposeplateButton = TriStateUtils.from(canShowAiModeButtonOnNtp());
+        // The composeplate hosts the incognito button, so it's only shown when incognito mode is
+        // enabled.
+        mCanShowComposeplateButton =
+                TriStateUtils.from(mIsIncognitoModeEnabled && canShowAiModeButtonOnNtp());
         mIsComposeplatePolicyEnabled =
                 mCanShowComposeplateButton == TriState.TRUE
                         && ComposeplateUtils.isEnabledByPolicy(profile);
@@ -603,6 +610,17 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         // log.
         mComposeplateCoordinator.setComposeplateButtonClickListener(
                 this::onComposeplateButtonClicked);
+        @NewTabPageUtils.ActionChips int chipType = NewTabPageUtils.getMerchandisingChipsType();
+        if (chipType == NewTabPageUtils.ActionChips.CREATE_IMAGE) {
+            mComposeplateCoordinator.setOptionalButtonClickListener(
+                    this::onCreateButtonClicked, chipType);
+            mComposeplateCoordinator.setOptionalButtonIcon(R.drawable.image_create_24dp);
+            mComposeplateCoordinator.setOptionalButtonText(
+                    mActivity.getString(R.string.ntp_action_chip_create_image));
+        } else if (chipType == NewTabPageUtils.ActionChips.CANVAS) {
+            mComposeplateCoordinator.setOptionalButtonClickListener(
+                    this::onCanvasButtonClicked, chipType);
+        }
 
         updateComposeplateBackground();
 
@@ -612,12 +630,16 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         if (mAiModeButtonIconSupplier != null) {
             onAiModeButtonIconChanged(mAiModeButtonIconSupplier.get());
         }
+
+        updateComposeplateOptionalButtonVisibility();
     }
 
     private void onComposeplateButtonClicked(View view) {
-        if (OmniboxFeatures.isMultimodalInputEnabled(mActivity)
-                && OmniboxFeatures.sRedirectComposeplateButton.getValue()
-                && !mIsLff
+        if (((mIsAiModeButtonRedirectEnabled
+                                && mSearchProviderInfoDelegate.getSearchProviderIsGoogle())
+                        || (OmniboxFeatures.isMultimodalInputEnabled(mActivity)
+                                && OmniboxFeatures.sRedirectComposeplateButton.getValue()
+                                && !mIsLff))
                 && mIsComposeplatePolicyEnabled) {
             mManager.focusSearchBox(false, AutocompleteRequestType.AI_MODE, false, null);
             return;
@@ -629,8 +651,16 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mManager.loadUrl(new LoadUrlParams(composeplateUrl), /* incognito= */ false);
     }
 
+    private void onCreateButtonClicked(View view) {
+        // TODO(https://crbug.com/568005713): Handles the create button.
+    }
+
+    private void onCanvasButtonClicked(View view) {
+        // TODO(https://crbug.com/568005713): Handles the canvas button.
+    }
+
     private void onIncognitoButtonClicked(View view) {
-        if (!IncognitoUtils.isIncognitoModeEnabled(mProfile)) return;
+        if (!mIsIncognitoModeEnabled) return;
 
         UrlConstantResolver resolver = UrlConstantResolverFactory.getForProfile(mProfile);
         mManager.loadUrl(new LoadUrlParams(resolver.getNtpUrl()), /* incognito= */ true);
@@ -843,6 +873,12 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         if (!mIsAim3pEntrypointEnabled) {
             updateComposeplate(isSearchProviderIsGoogleChanged);
+        }
+
+        if (isSearchProviderIsGoogleChanged) {
+            // The optional button is only shown for Google, so update it even if the
+            // composeplate's visibility doesn't change.
+            updateComposeplateOptionalButtonVisibility();
         }
 
         onUrlFocusAnimationChanged();
@@ -1207,14 +1243,29 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         // As long as mComposeplateCoordinator has been initialized, we should update its
         // visibility.
         if (mComposeplateCoordinator != null) {
-            shouldShowComposeplateButton =
-                    mCanShowComposeplateButton == TriState.TRUE
-                            && IncognitoUtils.isIncognitoModeEnabled(mProfile);
+            shouldShowComposeplateButton = mCanShowComposeplateButton == TriState.TRUE;
             mComposeplateCoordinator.setVisibility(
                     shouldShowComposeplateButton, mManager.isCurrentPage());
         }
         updatePreviousButtonVisibilityAndRecordMetrics(
                 shouldShowVoiceSearchButton, shouldShowLensButton, shouldShowComposeplateButton);
+    }
+
+    /**
+     * Updates the visibility of the composeplate's optional button. It is visible only when the
+     * default search engine is Google and the action chip type is either create image or canvas.
+     * The composeplate's own visibility doesn't need to be checked, since hiding the composeplate
+     * also hides the optional button.
+     */
+    private void updateComposeplateOptionalButtonVisibility() {
+        if (mComposeplateCoordinator == null) return;
+
+        @NewTabPageUtils.ActionChips int chipType = NewTabPageUtils.getMerchandisingChipsType();
+        boolean isOptionalButtonVisible =
+                mSearchProviderInfoDelegate.getSearchProviderIsGoogle()
+                        && (chipType == NewTabPageUtils.ActionChips.CREATE_IMAGE
+                                || chipType == NewTabPageUtils.ActionChips.CANVAS);
+        mComposeplateCoordinator.setOptionalButtonVisibility(isOptionalButtonVisible);
     }
 
     /**

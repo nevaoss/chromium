@@ -411,7 +411,7 @@ BASE_FEATURE_PARAM(bool,
 
 BASE_FEATURE(kDataUrlWorkerOpaqueOrigin, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kDecodeScriptsInBlink, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDecodeScriptsInBlink, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, HTMLTreeBuilder::Flush() will be throttled in kTextMode
 // to reduce O(n^2) string copies.
@@ -727,6 +727,9 @@ BASE_FEATURE_PARAM(std::string,
                    &kFilteringScrollPrediction,
                    "filter",
                    "one_euro_filter");
+
+BASE_FEATURE(kFlushGpuChannelOnLayerTreeViewRelease,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kFontAccessCheckFrameIsActive, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1828,40 +1831,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    &kPreloadingEagerViewportHeuristics,
                    "viewport_present_time",
                    base::Milliseconds(50));
-
-BASE_FEATURE(kPreloadingHeuristicsMLModel, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(int,
-                   kPreloadingModelTimerStartDelay,
-                   &kPreloadingHeuristicsMLModel,
-                   "timer_start_delay",
-                   0);
-BASE_FEATURE_PARAM(int,
-                   kPreloadingModelTimerInterval,
-                   &kPreloadingHeuristicsMLModel,
-                   "timer_interval",
-                   100);
-// The default max hover time of 10s covers the 98th percentile of hovering
-// cases that are relevant to the model.
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kPreloadingModelMaxHoverTime,
-                   &kPreloadingHeuristicsMLModel,
-                   "max_hover_time",
-                   base::Seconds(10));
-BASE_FEATURE_PARAM(bool,
-                   kPreloadingModelEnactCandidates,
-                   &kPreloadingHeuristicsMLModel,
-                   "enact_candidates",
-                   false);
-BASE_FEATURE_PARAM(int,
-                   kPreloadingModelPrefetchModerateThreshold,
-                   &kPreloadingHeuristicsMLModel,
-                   "prefetch_moderate_threshold",
-                   50);
-BASE_FEATURE_PARAM(int,
-                   kPreloadingModelPrerenderModerateThreshold,
-                   &kPreloadingHeuristicsMLModel,
-                   "prerender_moderate_threshold",
-                   50);
 
 BASE_FEATURE(kPreloadingModerateViewportHeuristics,
              base::FEATURE_ENABLED_BY_DEFAULT);

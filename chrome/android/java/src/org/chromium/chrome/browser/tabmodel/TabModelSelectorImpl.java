@@ -283,7 +283,7 @@ public class TabModelSelectorImpl extends TabModelSelectorBase {
 
                     @Override
                     public void onCloseContents(Tab tab) {
-                        tryCloseTab(
+                        closeTab(
                                 TabClosureParams.closeTab(tab)
                                         .allowUndo(/* allowUndo= */ false)
                                         .build());
@@ -371,7 +371,7 @@ public class TabModelSelectorImpl extends TabModelSelectorBase {
     public boolean moveTabGroupToWindow(
             Token tabGroupId, Activity activity, int newIndex, boolean isIncognito) {
         TabModel tabModel = getModel(isIncognito);
-        if (!tabModel.tabGroupExists(tabGroupId)) return false;
+        if (!tabModel.containsTabGroup(tabGroupId)) return false;
 
         Tab currentTab = tabModel.getCurrentTabSupplier().get();
         assert currentTab != null;
@@ -441,11 +441,6 @@ public class TabModelSelectorImpl extends TabModelSelectorBase {
         if (tabToCache == null) return;
         assumeNonNull(mTabContentManager);
         mTabContentManager.cacheTabThumbnail(tabToCache);
-    }
-
-    @Override
-    public boolean isTabModelRestored() {
-        return isTabStateInitialized();
     }
 
     @Override

@@ -144,6 +144,10 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
     case kActionShowLensOverlayFromAppMenu:
       RecordAction(MENU_ACTION_SHOW_LENS_OVERLAY, "ShowLensOverlay");
       break;
+    case kActionAskGoogleAboutThisPageFromAppMenu:
+      RecordAction(MENU_ACTION_ASK_GOOGLE_ABOUT_THIS_PAGE,
+                   "AskGoogleAboutThisPage");
+      break;
 
     // Extensions menu.
     case kActionExtensionsSubmenuManageExtensions:
@@ -253,6 +257,7 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
     case kActionShowChromeLabs:
       RecordAction(MENU_ACTION_SHOW_CHROME_LABS, "ShowChromeLabs");
       break;
+    case kActionSidePanelShowHistory:
     case kActionSidePanelShowHistoryCluster:
       RecordAction(MENU_ACTION_SHOW_HISTORY_CLUSTER_SIDE_PANEL,
                    "ShowHistoryClustersSidePanel");
@@ -330,6 +335,9 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
       break;
     case kActionWebAppMenuAppInfo:
       RecordAction(MENU_ACTION_APP_INFO, "AppInfo");
+      break;
+    case kActionUninstallWebApp:
+      LogMenuActionHistogram(MENU_ACTION_UNINSTALL_APP);
       break;
     case kActionViewPasswords:
       RecordAction(MENU_ACTION_PASSWORD_MANAGER, "PasswordManager");
@@ -498,6 +506,11 @@ void ActionAppMenuMetrics::LogMenuActionWithId(actions::ActionId action_id) {
 
     case kActionNameWindow:
       RecordAction(MENU_ACTION_NAME_WINDOW, "NameWindow");
+      break;
+
+    case kActionBrowseSkills:
+    case kActionManageSkills:
+      RecordTimeToAction();
       break;
 
     default:

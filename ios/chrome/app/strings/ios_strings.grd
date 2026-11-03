@@ -4003,18 +4003,6 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_HOME_CUSTOMIZATION_DISCOVER_TITLE" desc="The title of the Shortcuts toggle in the Home Customization menu's main page.">
         Discover feed
       </message>
-      <message name="IDS_IOS_HOME_CUSTOMIZATION_EPHEMERAL_THEME_PROMO_PRIMARY_BUTTON_TEXT" desc="Primary button text for the ephemeral theme promo on the New Tab Page [iOS only].">
-        Try it now
-      </message>
-      <message name="IDS_IOS_HOME_CUSTOMIZATION_EPHEMERAL_THEME_PROMO_SECONDARY_BUTTON_TEXT" desc="Secondary button text for the ephemeral theme promo on the New Tab Page [iOS only].">
-        No thanks
-      </message>
-      <message name="IDS_IOS_HOME_CUSTOMIZATION_EPHEMERAL_THEME_PROMO_SUBTITLE" desc="Subtitle for the ephemeral theme promo on the New Tab Page [iOS only].">
-        Try a limited-time festive theme, complete with custom illustrations and animations
-      </message>
-      <message name="IDS_IOS_HOME_CUSTOMIZATION_EPHEMERAL_THEME_PROMO_TITLE" desc="Title for the ephemeral theme promo on the New Tab Page [iOS only].">
-        Set a seasonal look for your New Tab Page
-      </message>
       <message name="IDS_IOS_HOME_CUSTOMIZATION_IPH" desc="In-product help that points at the entrypoint for the Home Customization menu in the new tab page.">
         Customize your cards, feed, and more here
       </message>
@@ -4695,7 +4683,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LENS_PRODUCT_NAME" desc="The brand name of Google Lens that will appear in menu titles as a single string.">
         Google Lens
       </message>
-      <message name="IDS_IOS_LENS_PRODUCT_NAME_TRUNCATED" desc="The brand name of Google Lens that will appear in menu titles as a single string, truncated.">
+      <message name="IDS_IOS_LENS_PRODUCT_NAME_TRUNCATED" desc="The brand name of Google Lens that will appear in menu titles as a single string, truncated." meaning="Refers to the Google Lens product and should follow the translation rules for it.">
         Lens
       </message>
       <message name="IDS_IOS_LENS_PROMO_INSTRUCTIONS_STEP1" desc="The text for step 1 in the Lens Promo instructions view.">
@@ -4994,6 +4982,12 @@ You can restart anytime.
       <message name="IDS_IOS_LEVEL_UP_WALKTHROUGH_OPEN_SETTINGS" desc="Text of the bubble for the Level Up walkthrough prompting the user to open Settings. [iOS only]">
         Open Settings
       </message>
+      <message name="IDS_IOS_LEVEL_UP_WALKTHROUGH_PAYMENT_METHODS_IPH_TEXT" desc="Text of the bubble for the Level Up walkthrough prompting the user to edit or add a payment method. [iOS only]">
+        Choose a saved payment method to edit, or add a new payment method
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_WALKTHROUGH_PAYMENT_METHODS_IPH_TITLE" desc="Title of the bubble for the Level Up walkthrough prompting the user to edit or add a payment method. [iOS only]">
+        Edit or add a new payment method
+      </message>
       <message name="IDS_IOS_LEVEL_UP_WELCOME" desc="The welcome text displayed in the user profile header of the Level Up feature screen. [iOS only]">
         Welcome
       </message>
@@ -5090,8 +5084,14 @@ You can restart anytime.
       <message name="IDS_IOS_MAGIC_STACK_TIP_LENS_TRANSLATE_DESCRIPTION" desc="The description of the use Lens for translation tip for the Magic Stack.">
         Translate text in your photos or your surroundings with your camera.
       </message>
+      <message name="IDS_IOS_MAGIC_STACK_TIP_NTP_CUSTOMIZATION_DESCRIPTION" desc="The description of the NTP customization tip for the Magic Stack.">
+        Hide or show your top sites, Discover feed, and more.
+      </message>
       <message name="IDS_IOS_MAGIC_STACK_TIP_NTP_THEME_DESCRIPTION" desc="The description of the NTP theme tip for the Magic Stack.">
         Choose from themes, colors or upload your own photo.
+      </message>
+      <message name="IDS_IOS_MAGIC_STACK_TIP_NTP_THEME_IPH" desc="Title for the in-product help bubble suggesting the way to use customize the NTP theme. [Length: unlimited] [iOS only]">
+        Customize your new tab page anytime from here
       </message>
       <message name="IDS_IOS_MAGIC_STACK_TIP_NTP_THEME_TITLE" desc="The title of the NTP theme tip for the Magic Stack.">
         Customize Your New Tab Page
@@ -5680,6 +5680,15 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_DETAILS" desc="Subtitle of a setting. It appears below the title: ‘Send an opt-out request to sites regarding use of your data’. Users choose whether they want to send a request to sites about how to treat their user data. This string explains that sites may not respond to the user’s request even when this toggle is on; and, even when they do respond, sites may handle opt-out requests differently based on regional laws. On desktop computers, this string appears in the ‘Site requests’ section of the ‘Third-party cookies and site data’ page. On mobile devices, this string appears on its own subpage. The tone should be informative." meaning="Subtitle of a setting. Uses iOS specific link placeholder.">
         The sites you visit, including Google, are responsible for determining how they respond to this request. Depending on the laws in your region, sites may respond by limiting the sale and sharing of your data or its use for personalized ads. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more<ph name="END_LINK">END_LINK</ph>
+      </message>
+      <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_IPAD" desc="Error message displayed in the Universal Opt-Out settings screen when the web extension fails to load on iPad. [iOS only]">
+        Something went wrong with this setting. Update and restart Chrome and iPadOS, and try again. If this error keeps happening, your iPad might not support this setting.
+      </message>
+      <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_IPHONE" desc="Error message displayed in the Universal Opt-Out settings screen when the web extension fails to load on iPhone. [iOS only]">
+        Something went wrong with this setting. Update and restart Chrome and iOS, and try again. If this error keeps happening, your iPhone might not support this setting.
+      </message>
+      <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_LEARN_MORE" desc="Button label allowing the user to learn more about the Universal Opt-Out error. [iOS only]">
+        Learn more
       </message>
       <message name="IDS_IOS_OPTIONS_GENERAL_TAB_LABEL" desc="The title of the Basics section of the Settings page. [iOS only]" meaning="The title of the Basics section of the Settings page.">
         Basics
@@ -8408,6 +8417,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SITE_SETTINGS_ALLOWED" desc="Text indicating that a site or permission category is allowed. Used as a section header, menu option, and setting state in Site Settings. [iOS only]">
         Allowed
       </message>
+      <message name="IDS_IOS_SITE_SETTINGS_ALLOWED_SUBTITLE" desc="Subtitle for the Allowed section header in Site Settings indicating that listed sites follow a custom setting instead of the default. [iOS only]">
+        Sites listed below follow a custom setting instead of the default
+      </message>
       <message name="IDS_IOS_SITE_SETTINGS_ASK_FIRST" desc="Subtitle shown in Site Settings for a permission category when sites must ask for permission before using it. [iOS only]">
         Ask first
       </message>
@@ -8419,6 +8431,12 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SITE_SETTINGS_CAMERA_BLOCK_TITLE" desc="Title for the option in Camera settings that blocks sites from using the camera. [iOS only]">
         Don't allow sites to use your camera
+      </message>
+      <message name="IDS_IOS_SITE_SETTINGS_DEFAULT_BEHAVIOR_HEADER" desc="Header text for the default behavior section in Site Settings category detail screen. [iOS only]">
+        Default behavior
+      </message>
+      <message name="IDS_IOS_SITE_SETTINGS_DEFAULT_BEHAVIOR_SUBTITLE" desc="Subtitle for the default behavior section header in Site Settings category detail screen. [iOS only]">
+        Sites automatically follow this setting when you visit them
       </message>
       <message name="IDS_IOS_SITE_SETTINGS_DONT_ALLOW" desc="Subtitle shown in Site Settings for a permission category when the user has chosen not to allow any site to use it. [iOS only]">
         Don't allow

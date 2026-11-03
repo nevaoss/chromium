@@ -251,6 +251,10 @@ inline constexpr char kAndroidOpenIncognitoAsWindowRestrictionsDescription[] =
     "Enables physical memory and display size restrictions when opening "
     "incognito tabs in a new window.";
 
+inline constexpr char kAndroidMultiprofileName[] = "Android Multi-Profile";
+inline constexpr char kAndroidMultiprofileDescription[] =
+    "Enable multi-profile support on Android.";
+
 inline constexpr char kEnforceIncognitoIsolationName[] =
     "Enforce Incognito Isolation";
 inline constexpr char kEnforceIncognitoIsolationDescription[] =
@@ -361,6 +365,12 @@ inline constexpr char
         "Improves hostname suffix matching for browsing history, so that "
         "example.com matches example.com as well as subdomains like "
         "www.example.com.";
+
+inline constexpr char kBrowsingHistoryFilterByActorName[] =
+    "Filter Browsing History By Actor";
+inline constexpr char kBrowsingHistoryFilterByActorDescription[] =
+    "Enables browser history filtering by actor on Android. On desktop this "
+    "changes the existing actor filter UI to dropdown menu.";
 
 inline constexpr char kBrowsingHistoryFilterByDeviceName[] =
     "Filter Browsing History By Device";
@@ -1135,11 +1145,6 @@ inline constexpr char kAutofillShowGmailOtpSuggestionsDescription[] =
     "When enabled, shows autofill suggestions for one-time passwords (OTPs) "
     "received in Gmail.";
 
-inline constexpr char kAutofillEnableNewAmexNetworkArtName[] =
-    "Enable new American Express network art";
-inline constexpr char kAutofillEnableNewAmexNetworkArtDescription[] =
-    "When enabled, updates the American Express network art in Autofill.";
-
 inline constexpr char kAutofillEnableOffersInClankKeyboardAccessoryName[] =
     "Enable Autofill offers in keyboard accessory";
 inline constexpr char
@@ -1823,6 +1828,9 @@ inline constexpr char kActorNotificationIntentRoutingDescription[] =
     "Enables routing Actor task notifications to Glic and restoring "
     "conversations on Android.";
 
+inline constexpr char kTtcName[] = "TTC";
+inline constexpr char kTtcDescription[] = "Enables the TTC feature.";
+
 inline constexpr char kActorObserveScreenshotDefaultName[] =
     "Actor observe screenshot default";
 inline constexpr char kActorObserveScreenshotDefaultDescription[] =
@@ -1962,9 +1970,11 @@ inline constexpr char kSkillsEnabledName[] = "Skills";
 inline constexpr char kSkillsEnabledDescription[] =
     "Enables Skills in Gemini in Chrome";
 
-inline constexpr char kSkillsAppMenuName[] = "Skills App Menu";
-inline constexpr char kSkillsAppMenuDescription[] =
-    "Shows the Skills sub-menu item in the Chrome app menu.";
+inline constexpr char kSkillsAndExtensionsAppMenuName[] =
+    "Skills and Extensions App Menu";
+inline constexpr char kSkillsAndExtensionsAppMenuDescription[] =
+    "Shows the combined Extensions and Skills sub-menu item in the Chrome app "
+    "menu.";
 
 inline constexpr char kContextualSearchWithCredentialsForDebugName[] =
     "Contextual Search within credentials for debug";
@@ -2046,7 +2056,7 @@ inline constexpr char kEnableAccountPreviewEntityPreviewsDescription[] =
 inline constexpr char kEnableAccountPreviewPreferredAccountName[] =
     "Enable Account Preview Preferred Account";
 inline constexpr char kEnableAccountPreviewPreferredAccountDescription[] =
-    "Controls whether computing and storing the preferred account is enabled.";
+    "Controls whether storing and exposing the preferred account is enabled.";
 
 inline constexpr char kEnableAccountPreviewPreferredAccountFollowupName[] =
     "Enable Account Preview Preferred Account Followup";
@@ -2054,6 +2064,12 @@ inline constexpr char
     kEnableAccountPreviewPreferredAccountFollowupDescription[] =
         "Controls whether followup features for preferred account preview "
         "(promos, and updated strings) are enabled.";
+
+inline constexpr char kEnableAccountPreviewSwitchingAccountName[] =
+    "Enable Account Preview Switching Account";
+inline constexpr char kEnableAccountPreviewSwitchingAccountDescription[] =
+    "Controls whether storing and exposing the preferred account for "
+    "switching is enabled.";
 
 inline constexpr char kEnableAccountPreviewUseAppAccountName[] =
     "Use 1P App Account for Preferred Account Computing";
@@ -5208,6 +5224,14 @@ inline constexpr char kPromptAPIDescription[] =
 inline constexpr const char* kAIAPIsLinks[1] = {
     "https://developer.chrome.com/docs/ai/built-in"};
 
+inline constexpr char kDecisionsAPIName[] = "Decisions API";
+inline constexpr char kDecisionsAPIDescription[] =
+    "Enables the Built-in AI Decisions API (DecisionModel) for on-device "
+    "verification, classification, and decisions regarding unstructured data, "
+    "over a developer-defined schema. See the explainer [1] for details.";
+inline constexpr const char* kDecisionsAPILinks[1] = {
+    "https://github.com/explainers-by-googlers/decisions-api"};
+
 inline constexpr char kGemma4ForBuiltInAIName[] = "Gemma 4 for Built-in AI";
 inline constexpr char kGemma4ForBuiltInAIDescription[] =
     "Enables all built-in AI APIs (Prompt, Summarizer, Writer, etc.) to use "
@@ -5694,6 +5718,11 @@ inline constexpr char kEdgeToEdgeAutomotiveDescription[] =
     "When this is enabled, edge to edge logic will be enabled on automotive "
     "devices.";
 
+inline constexpr char kForceWebGpuAdapterName[] = "Use WebGPU adapter";
+inline constexpr char kForceWebGpuAdapterDescription[] =
+    "Force WebGPU to use a specific graphics adapter backend.";
+inline constexpr char kForceWebGpuAdapterOpenGLES[] = "OpenGL ES";
+
 inline constexpr char kHomeButtonRemovalName[] = "Home Button Removal";
 inline constexpr char kHomeButtonRemovalDescription[] =
     "Enables the Home Button Removal feature.";
@@ -6004,7 +6033,7 @@ inline constexpr char kClankOmniboxSameOriginMinimizationName[] =
     "Clank Omnibox Same-Origin Minimization";
 inline constexpr char kClankOmniboxSameOriginMinimizationDescription[] =
     "Suppresses Omnibox expansion during same-origin navigations when the user "
-    "has scrolled down (Variants A1/A2/A3).";
+    "has scrolled down.";
 
 inline constexpr char kClankStartupTabOptimizationsName[] =
     "Clank startup and tab creation optimizations";
@@ -6332,6 +6361,10 @@ inline constexpr char kNotificationPermissionRationaleDescription[] =
 inline constexpr char kNtpMvcRefactorName[] = "New Tab Page Refactor";
 inline constexpr char kNtpMvcRefactorDescription[] =
     "Enables the refactor of the new tab page for MVC compliance.";
+
+inline constexpr char kOctoberTestUXRName[] = "OctoberTestUXR";
+inline constexpr char kOctoberTestUXRDescription[] =
+    "Marks this device as a UXR study participant. No behavior change.";
 
 inline constexpr char kOfflineAutoFetchName[] = "Offline Auto Fetch";
 inline constexpr char kOfflineAutoFetchDescription[] =
@@ -7412,11 +7445,6 @@ inline constexpr char kAutoFramingOverrideDescription[] =
     "Overrides the default to forcibly enable or disable the auto-framing "
     "feature";
 
-inline constexpr char kAutocorrectByDefaultName[] =
-    "CrOS autocorrect by default";
-inline constexpr char kAutocorrectByDefaultDescription[] =
-    "Enables autocorrect by default experiment on ChromeOS";
-
 inline constexpr char kAutocorrectParamsTuningName[] =
     "CrOS autocorrect params tuning";
 inline constexpr char kAutocorrectParamsTuningDescription[] =
@@ -7766,23 +7794,11 @@ inline constexpr char kEcheSWAMeasureLatencyDescription[] =
     "Measure Eche E2E Latency and print all E2E latency logs of Eche in "
     "Console";
 
-inline constexpr char kEcheSWASendStartSignalingName[] =
-    "Enable Eche Send Start Signaling";
-inline constexpr char kEcheSWASendStartSignalingDescription[] =
-    "Allows sending start signaling action to establish Eche's WebRTC "
-    "connection";
-
 inline constexpr char kEcheSWADisableStunServerName[] =
     "Disable Eche STUN server";
 inline constexpr char kEcheSWADisableStunServerDescription[] =
     "Allows disabling the stun servers when establishing a WebRTC connection "
     "to Eche";
-
-inline constexpr char kEcheSWACheckAndroidNetworkInfoName[] =
-    "Check Android network info";
-inline constexpr char kEcheSWACheckAndroidNetworkInfoDescription[] =
-    "Allows CrOS to analyze Android network information to provide more "
-    "context on connection errors";
 
 inline constexpr char kEnableOAuthIppName[] =
     "Enable OAuth when printing via the IPP protocol";
@@ -7898,10 +7914,6 @@ inline constexpr char kGlanceablesTimeManagementTasksViewDescription[] =
     "Enables Google Tasks integration on the Time Management Glanceables "
     "surface (via Calendar entry point).";
 
-inline constexpr char kHelpAppAppDetailPageName[] = "Help App app detail page";
-inline constexpr char kHelpAppAppDetailPageDescription[] =
-    "If enabled, the Help app will render the App Detail Page and entry point.";
-
 inline constexpr char kHelpAppAppsListName[] = "Help App apps list";
 inline constexpr char kHelpAppAppsListDescription[] =
     "If enabled, the Help app will render the Apps List page and entry point.";
@@ -7941,22 +7953,11 @@ inline constexpr char kImeAssistMultiWordName[] =
 inline constexpr char kImeAssistMultiWordDescription[] =
     "Enable assistive multi word suggestions for native IME";
 
-inline constexpr char kImeSwitchCheckConnectionStatusName[] =
-    "Enable IME switching using global boolean";
-inline constexpr char kImeSwitchCheckConnectionStatusDescription[] =
-    "When enabled and swapping between input methods, this prevents a race "
-    "condition.";
-
 inline constexpr char kIppFirstSetupForUsbPrintersName[] =
     "Try to setup USB printers with IPP first";
 inline constexpr char kIppFirstSetupForUsbPrintersDescription[] =
     "When enabled, ChromeOS attempts to setup USB printers via IPP Everywhere "
     "first, then falls back to PPD-based setup.";
-
-inline constexpr char kImeSystemEmojiPickerJellySupportName[] =
-    "Enable jelly colors for the System Emoji Picker";
-inline constexpr char kImeSystemEmojiPickerJellySupportDescription[] =
-    "Enable jelly colors for the System Emoji Picker.";
 
 inline constexpr char kImeSystemEmojiPickerMojoSearchName[] =
     "Enable mojo search for the System Emoji Picker";
@@ -7968,10 +7969,6 @@ inline constexpr char kImeSystemEmojiPickerVariantGroupingName[] =
 inline constexpr char kImeSystemEmojiPickerVariantGroupingDescription[] =
     "Emoji picker global variant grouping syncs skin tone and gender "
     "preferences across emojis in each group.";
-
-inline constexpr char kJupiterScreensaverName[] = "Jupiter screensaver";
-inline constexpr char kJupiterScreensaverDescription[] =
-    "Enable Jupiter screensaver on more device types.";
 
 inline constexpr char kCrosComponentsName[] = "Cros Components";
 inline constexpr char kCrosComponentsDescription[] =
@@ -8052,12 +8049,6 @@ inline constexpr char kReleaseNotesNotificationAlwaysEligibleDescription[] =
     "Makes the release notes notification always appear regardless of channel, "
     "profile type, and whether or not the notification had already been shown "
     "this milestone. For testing.";
-
-inline constexpr char kRenderArcNotificationsByChromeName[] =
-    "Render ARC notifications by ChromeOS";
-inline constexpr char kRenderArcNotificationsByChromeDescription[] =
-    "Enables rendering ARC notifications using ChromeOS notification framework "
-    "if supported";
 
 inline constexpr char kArcWindowPredictorName[] = "Enable ARC window predictor";
 inline constexpr char kArcWindowPredictorDescription[] =
@@ -8355,12 +8346,6 @@ inline constexpr char kShowSpatialAudioToggleName[] =
     "Enable a setting toggle for spatial audio";
 inline constexpr char kShowSpatialAudioToggleDescription[] =
     "Enable a setting toggle for spatial audio.";
-
-inline constexpr char kSingleCaCertVerificationPhase1Name[] =
-    "Use single CA cert for EAP networks if provided phase 1";
-inline constexpr char kSingleCaCertVerificationPhase1Description[] =
-    "Use a single CA cert for server's cert verification with fallback to"
-    "the old config.";
 
 inline constexpr char kSingleCaCertVerificationPhase2Name[] =
     "Use single CA cert for EAP networks if provided phase 2";

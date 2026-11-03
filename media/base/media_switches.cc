@@ -690,7 +690,7 @@ BASE_FEATURE(kHardwareSecureDecryption, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables hardware secure AV1 decoding if supported by the hardware
 // and the OS Content Decryption Module (CDM).
-BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Allows automatically disabling hardware secure Content Decryption Module
 // (CDM) after failures or crashes to fallback to software secure CDMs. If this
@@ -888,12 +888,6 @@ BASE_FEATURE(kOverlayFullscreenVideo,
 // Causes the AVC parser to additionally parse and indicate when an SEI
 // recovery point with `recovery_frame_cnt=0` has been found.
 BASE_FEATURE(kParseSEIRecoveryPoints, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// We plan to remove the background pause timer feature from WebMediaPlayerImpl.
-// We received reports that suggest that this feature's codepath hasn't been
-// exercised for a long time. This is a finch killswitch to rollback to the
-// previous behavior if we find any problems while disabling this feature.
-BASE_FEATURE(kPauseBackgroundTimer, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPauseMutedBackgroundAudio,
 #if BUILDFLAG(IS_ANDROID)
@@ -1541,6 +1535,13 @@ BASE_FEATURE(kCastMacForceBaselineProfile, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether hardware H264 is default enabled on macOS.
 BASE_FEATURE(kCastStreamingMacHardwareH264, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Use AVFoundation instead of AUHAL for PCM playback output on macOS 27+.
+// AudioManagerMac selects this backend only when the feature is enabled, the
+// format is linear or low-latency PCM, and the latency tag is playback. Stereo
+// and multichannel layouts both qualify. macOS can then spatialize playback for
+// compatible AirPods (Off, Fixed, Head Tracking).
+BASE_FEATURE(kMacAVFoundationPlayback, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables system audio loopback capture using the macOS CoreAudio tap API for
 // Cast.

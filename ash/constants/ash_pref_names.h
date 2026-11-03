@@ -1853,11 +1853,6 @@ inline constexpr char kUsbPeripheralCableSpeedNotificationShown[] =
 inline constexpr char kAppListReorderNudge[] =
     "ash.launcher.app_list_reorder_nudge";
 
-// An integer pref that stores the experimental arm that the user belongs to in
-// the AppsCollections experiment. Used for metrics.
-inline constexpr char kLauncherAppsCollectionsExperimentArm[] =
-    "ash.launcher.apps_collections_experimental_arm";
-
 // A dictionary pref that stores information related to the privacy notice in
 // the continue files section for the launcher.
 inline constexpr char kLauncherFilesPrivacyNotice[] =
@@ -3606,16 +3601,6 @@ inline constexpr char kHatsGeneralCameraPrioritizedLastInteractionTimestamp[] =
 // recent time the profile took or dismissed HaTS (happiness-tracking) survey.
 inline constexpr char kHatsLastInteractionTimestamp[] =
     "hats_last_interaction_timestamp";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the most recent OS Settings Search survey cycle.
-inline constexpr char kHatsOsSettingsSearchSurveyCycleEndTs[] =
-    "hats_os_settings_search_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the OS Settings
-// Search survey.
-inline constexpr char kHatsOsSettingsSearchSurveyIsSelected[] =
-    "hats_os_settings_search_is_selected";
 
 // An int64 pref. This is the timestamp, microseconds after epoch, that
 // indicates the end of the HaTS Performance survey

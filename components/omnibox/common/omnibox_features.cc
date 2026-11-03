@@ -326,6 +326,11 @@ BASE_FEATURE(kOmniboxFullWebUISizeWebViewToPreferredHeight, DISABLED);
 // parent window visibility and locking compositor frames.
 BASE_FEATURE(kOmniboxWebUIPopupHideOnCreation, DISABLED);
 
+// When enabled, a WebUI omnibox popup presenter creates its native widget on
+// the first `Show()` instead of when the popup is created with the browser
+// window. The WebContents is still created and loaded up front. Kill switch.
+BASE_FEATURE(kOmniboxWebUIPopupCreateWidgetOnShow, ENABLED);
+
 // When enabled, a WebUI omnibox popup destroys its widget when it is hidden
 // and builds a fresh one on the next show, so the new native window has no
 // previous compositor content to present. This is applied to every WebUI popup
@@ -438,8 +443,12 @@ BASE_FEATURE(kReportApplicationLanguageInSearchRequest, ENABLED);
 BASE_FEATURE(kOmniboxAppendInvocationSource, DISABLED);
 
 // When enabled, truncates the length of the value attached to the "oq" URL
-// parameter of search suggest URLs.
-BASE_FEATURE(kTruncateSearchSuggestOq, DISABLED);
+// parameter of search URLs.
+BASE_FEATURE(kTruncateSearchUrlOq, DISABLED);
+
+// When enabled, truncates the length of the value attached to the "q" URL
+// parameter of search URLs.
+BASE_FEATURE(kTruncateSearchUrlQ, DISABLED);
 
 // Enable asynchronous Omnibox/Suggest view inflation.
 BASE_FEATURE(kOmniboxAsyncViewInflation, ENABLED);

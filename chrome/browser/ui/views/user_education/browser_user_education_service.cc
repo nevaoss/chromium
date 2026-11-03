@@ -1375,6 +1375,38 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered to educate users about switching from "
                        "immersive mode to side panel mode in Reading Mode.")));
 
+  if (features::IsReadAnythingReadAloudExperimentalPlaybackUiEnabled()) {
+    // kIPHReadingModeAiPlaybackFeature:
+    registry.RegisterFeature(std::move(
+        user_education::FeaturePromoSpecification::CreateForToastPromo(
+            feature_engagement::kIPHReadingModeAiPlaybackFeature,
+            kReadAnythingAiPlaybackToggleElementId,
+            IDS_READING_MODE_AI_PLAYBACK_IPH_BODY,
+            IDS_READING_MODE_AI_PLAYBACK_IPH_SCREENREADER,
+            user_education::FeaturePromoSpecification::AcceleratorInfo())
+            .SetBubbleArrow(user_education::HelpBubbleArrow::kTopRight)
+            .SetInAnyContext(true)
+            .SetMetadata(
+                157, "alfredohiguera@google.com",
+                "Triggered to encourage users to use the AI playback feature "
+                "in Reading Mode.")));
+
+    // kIPHReadingModeAiPlaybackSettingsFeature:
+    registry.RegisterFeature(std::move(
+        user_education::FeaturePromoSpecification::CreateForToastPromo(
+            feature_engagement::kIPHReadingModeAiPlaybackSettingsFeature,
+            kReadAnythingSettingsButtonElementId,
+            IDS_READING_MODE_AI_PLAYBACK_SETTINGS_IPH_BODY,
+            IDS_READING_MODE_AI_PLAYBACK_SETTINGS_IPH_SCREENREADER,
+            user_education::FeaturePromoSpecification::AcceleratorInfo())
+            .SetBubbleArrow(user_education::HelpBubbleArrow::kTopRight)
+            .SetInAnyContext(true)
+            .SetMetadata(
+                157, "alfredohiguera@google.com",
+                "Triggered after trying AI playback to inform users they can "
+                "customize settings in Reading Mode.")));
+  }
+
   // kIPHReadingModeSidePanelFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForSnoozePromo(
@@ -2249,6 +2281,32 @@ void MaybeRegisterChromeFeaturePromos(
               156, "stluong@chromium.org",
               "Triggered on startup when glass frame is available and the user "
               "has not enabled it in settings.")));
+
+  // kIPHGlassFrameOptOutFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForCustomAction(
+          feature_engagement::kIPHGlassFrameOptOutFeature, kTabStripElementId,
+          IDS_GLASS_FRAME_OPT_OUT_IPH_BODY, IDS_GLASS_FRAME_IPH_SETTINGS_BUTTON,
+          base::BindRepeating(
+              [](ContextPtr ctx,
+                 user_education::FeaturePromoHandle promo_handle) {
+                if (BrowserWindowInterface* const browser = GetBrowser(ctx)) {
+                  ShowPromoInPage::Params params;
+                  params.target_url =
+                      chrome::GetSettingsUrl(chrome::kAppearanceSubPage);
+                  params.bubble_anchor_id = kTabStylingSettingElementId;
+                  params.bubble_arrow = HelpBubbleArrow::kBottomRight;
+                  params.bubble_text = l10n_util::GetStringUTF16(
+                      IDS_GLASS_FRAME_OPT_OUT_IPH_SETTINGS_PAGE);
+                  params.close_button_alt_text_id = IDS_CLOSE_PROMO;
+                  ShowPromoInPage::Start(browser, std::move(params));
+                }
+              }))
+          .SetBubbleTitleText(IDS_GLASS_FRAME_OPT_OUT_IPH_TITLE)
+          .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+          .SetMetadata(156, "stluong@chromium.org",
+                       "Triggered when the browser window is shown with the "
+                       "glass frame enabled by default.")));
 }
 
 void MaybeRegisterChromeFeaturePromos(
@@ -2826,9 +2884,10 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
                                "Shown on the Dictation context menu item.")));
 
   registry.RegisterFeature(user_education::NewBadgeSpecification(
-      features::kSkillsAppMenu,
-      user_education::Metadata(158, "xinlongyi@google.com",
-                               "Shown on the Skills item in the app menu.")));
+      features::kSkillsAndExtensionsAppMenu,
+      user_education::Metadata(
+          158, "xinlongyi@google.com",
+          "Shown on the Extensions and Skills item in the app menu.")));
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   registry.RegisterFeature(user_education::NewBadgeSpecification(

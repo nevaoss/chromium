@@ -103,7 +103,7 @@ class TestRenderingContext2D final
   int Width() const override { return 300; }
   int Height() const override { return 300; }
 
-  bool CanCreateResourceProvider() override { return false; }
+  bool CanCreateBacking() override { return false; }
 
   RespectImageOrientationEnum RespectImageOrientation() const override {
     return kRespectImageOrientation;
@@ -115,7 +115,7 @@ class TestRenderingContext2D final
     return GetPaintCanvas();
   }
   using BaseRenderingContext2D::ConfigureRecorder;
-  using BaseRenderingContext2D::CreateBitmapProvider;
+  using BaseRenderingContext2D::CreateSoftwareSurface;
   using BaseRenderingContext2D::FlushIfRecordingLimitExceeded;
   using BaseRenderingContext2D::Snapshot;
   void WillDraw(const gfx::Rect& dirty_rect,
@@ -179,7 +179,7 @@ class TestRenderingContext2D final
     return base::ByteSize();
   }
 
-  bool InitializeResourceProvider() override { return false; }
+  bool InitializeBacking() override { return false; }
 
   bool Is2DCanvasAccelerated() const override { return false; }
 
@@ -348,15 +348,15 @@ TEST(BaseRenderingContext2DTest, HdrMetadata) {
   V8TestingScope scope;
   const gfx::Size kSize(10, 10);
   gfx::HDRMetadata hdr_metadata;
-  hdr_metadata.extended_range = gfx::HdrMetadataExtendedRange(4.0f, 4.0f);
+  hdr_metadata.SetExtendedRangeWithHeadroom(2.f);
 
   CanvasContextCreationAttributesCore attrs;
   attrs.hdr_metadata = hdr_metadata;
   auto* context = MakeGarbageCollected<TestRenderingContext2D>(scope, attrs);
   context->HostAsHTMLCanvasElement()->SetSize(kSize);
-  context->CreateBitmapProvider();
+  context->CreateSoftwareSurface();
 
-  ASSERT_TRUE(context->HasResourceProvider());
+  ASSERT_TRUE(context->HasBacking());
   scoped_refptr<StaticBitmapImage> snapshot = context->Snapshot();
   ASSERT_TRUE(snapshot);
   EXPECT_EQ(snapshot->GetHdrMetadata(), hdr_metadata);

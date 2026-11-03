@@ -25,6 +25,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/actor/actor_navigation_throttle.h"
 #include "chrome/browser/actor/actor_task_delegate.h"
+#include "chrome/browser/actor/execution_engine.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/glic/host/glic.mojom-forward.h"
 #include "chrome/common/actor_webui.mojom-forward.h"
@@ -47,7 +48,6 @@ namespace actor {
 class ActionTrackerForMetrics;
 class ActorKeyedService;
 class EnterprisePolicyChecker;
-class ExecutionEngine;
 class TabObservationStrategy;
 
 namespace ui {
@@ -74,18 +74,22 @@ class ActorTask : public base::SupportsUserData {
       base::OnceCallback<void(std::vector<ActionResultWithLatencyInfo>,
                               TabObservationStrategy)>;
 
+  using AllowedSchemes = ExecutionEngine::AllowedSchemes;
+
   // Created only via ActorKeyedService::CreateTask or the CreateForTesting
   // method in this class.
-  ActorTask(base::PassKey<ActorKeyedService, ActorTask>,
-            ActorKeyedService& service,
-            TaskId id,
-            std::unique_ptr<ui::UiEventDispatcher> ui_event_dispatcher,
-            webui::mojom::TaskOptionsPtr options,
-            const TaskSourceInfo& source_info,
-            const EnterprisePolicyChecker* policy_checker,
-            base::WeakPtr<ActorTaskDelegate> delegate = nullptr,
-            std::optional<glic::mojom::InvocationSource>
-                initial_invocation_source = std::nullopt);
+  ActorTask(
+      base::PassKey<ActorKeyedService, ActorTask>,
+      ActorKeyedService& service,
+      TaskId id,
+      std::unique_ptr<ui::UiEventDispatcher> ui_event_dispatcher,
+      webui::mojom::TaskOptionsPtr options,
+      const TaskSourceInfo& source_info,
+      const EnterprisePolicyChecker* policy_checker,
+      base::WeakPtr<ActorTaskDelegate> delegate = nullptr,
+      std::optional<glic::mojom::InvocationSource> initial_invocation_source =
+          std::nullopt,
+      AllowedSchemes allowed_schemes = AllowedSchemes::kRequireHttpsOrHttp);
   ~ActorTask() override;
 
   ActorTask() = delete;
@@ -101,7 +105,8 @@ class ActorTask : public base::SupportsUserData {
       const EnterprisePolicyChecker* policy_checker,
       base::WeakPtr<ActorTaskDelegate> delegate,
       std::optional<glic::mojom::InvocationSource> initial_invocation_source =
-          std::nullopt);
+          std::nullopt,
+      AllowedSchemes allowed_schemes = AllowedSchemes::kRequireHttpsOrHttp);
 
   TaskId id() const { return id_; }
 
@@ -110,8 +115,9 @@ class ActorTask : public base::SupportsUserData {
   // Used for late registration/backfilling of the source-defined ID (e.g. Glic
   // conversation ID) when it is not yet known at task creation time.
   void SetSourceId(std::string id) {
-    DCHECK(!id.empty());
-    DCHECK(!source_info_.id.has_value() || source_info_.id == id);
+    CHECK(!id.empty(), base::NotFatalUntil::M161);
+    CHECK(!source_info_.id.has_value() || source_info_.id == id,
+          base::NotFatalUntil::M161);
     source_info_.id = std::move(id);
   }
 
@@ -223,11 +229,9 @@ class ActorTask : public base::SupportsUserData {
   void Stop(StoppedReason stop_reason);
 
   // Pause() is called to indicate that either the actor or user is pausing
-  // actor actions, determined by the `from_actor` flag. If the
-  // `cancel_existing_action` flag is true, any in-progress action will be
-  // cancelled. If there is an existing action and it's not canceled, its
-  // completion will resume the task.
-  void Pause(bool from_actor, bool cancel_existing_action = true);
+  // actor actions, determined by the `from_actor` flag. This will cancel any
+  // in-progress action.
+  void Pause(bool from_actor);
 
   // Resume() puts the task back into an actor-controlled state. The caller is
   // responsible for updating the actor with the latest state of the browser.

@@ -686,7 +686,7 @@ public class TabListMediator implements TabListNotificationHandler {
                         assert mTrackingTabs;
 
                         TabModel tabModel = mCurrentTabModelSupplier.get();
-                        if (tabModel == null || !tabModel.isTabModelRestored()) {
+                        if (tabModel == null || !tabModel.isTabStateInitialized()) {
                             return;
                         }
 
@@ -756,7 +756,7 @@ public class TabListMediator implements TabListNotificationHandler {
                             onGroupClosedFrom(tabId);
                             TabUiUtils.closeTabGroup(
                                     tabModel,
-                                    tabId,
+                                    closingTab.getTabGroupId(),
                                     tabClosingSource,
                                     allowUndo,
                                     /* hideTabGroups= */ true,
@@ -1319,7 +1319,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
     boolean isTabInTabGroup(Tab tab) {
         TabModel tabModel = getCurrentTabModelChecked();
-        assert tabModel.isTabModelRestored();
+        assert tabModel.isTabStateInitialized();
 
         return tabModel.isTabInTabGroup(tab);
     }
@@ -2684,6 +2684,23 @@ public class TabListMediator implements TabListNotificationHandler {
         forAllTabListItems(labelData.keySet(), updateTabCardLabel);
     }
 
+    @Override
+    public void updateTabGroupCardLabels(Map<Token, TabCardLabelData> labelData) {
+        assert mTabListConfig.tabUiType == UiType.TAB
+                : "Tab card labels are only supported for tab card UI type.";
+
+        for (int i = 0; i < mModelList.size(); i++) {
+            PropertyModel model = mModelList.get(i).model;
+            if (!TabProperties.isTabGroupHeader(model)) continue;
+
+            Token tabGroupId = assumeNonNull(model.get(TabProperties.TAB_GROUP_HEADER_ID));
+            if (labelData.containsKey(tabGroupId)) {
+                model.set(TabProperties.TAB_CARD_LABEL_DATA, labelData.get(tabGroupId));
+                updateDescriptionString(model);
+            }
+        }
+    }
+
     private void forAllTabListItems(
             Set<Integer> tabIdsToBeUpdated, Callback<PropertyModel> updateCallback) {
         for (int i = 0; i < mModelList.size(); i++) {
@@ -2795,7 +2812,7 @@ public class TabListMediator implements TabListNotificationHandler {
             @Nullable String collaborationId,
             @Nullable ListViewTouchTracker listViewTouchTracker) {
         TabModel tabModel = getCurrentTabModelChecked();
-        if (!tabModel.tabGroupExists(tabGroupId)) return;
+        if (!tabModel.containsTabGroup(tabGroupId)) return;
 
         EitherGroupId eitherId = EitherGroupId.createLocalId(new LocalTabGroupId(tabGroupId));
 
@@ -2821,7 +2838,7 @@ public class TabListMediator implements TabListNotificationHandler {
             onGroupClosedFrom(tabId);
             TabUiUtils.closeTabGroup(
                     tabModel,
-                    tabId,
+                    tabGroupId,
                     tabClosingSource,
                     allowUndo,
                     hideTabGroups,
@@ -2889,7 +2906,7 @@ public class TabListMediator implements TabListNotificationHandler {
                     @Override
                     public void onDismiss(PropertyModel model, int dismissalCause) {
                         if (dismissalCause == DialogDismissalCause.POSITIVE_BUTTON_CLICKED) {
-                            boolean stillExists = tabModel.tabGroupExists(tabGroupId);
+                            boolean stillExists = tabModel.containsTabGroup(tabGroupId);
                             @TabGroupColorId
                             int oldColorId = tabModel.getTabGroupColorWithFallback(tabGroupId);
                             @TabGroupColorId
@@ -3065,7 +3082,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
             MultiThumbnailMetadata metadata;
             Token tabGroupId = model.get(TabProperties.TAB_GROUP_HEADER_ID);
-            if (tabGroupId != null && tabModel.tabGroupExists(tabGroupId)) {
+            if (tabGroupId != null && tabModel.containsTabGroup(tabGroupId)) {
                 @TabGroupColorId
                 int tabGroupColor = tabModel.getTabGroupColorWithFallback(tabGroupId);
                 List<Integer> actingTabIds = new ArrayList<>();

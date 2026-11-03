@@ -5,11 +5,14 @@
 #ifndef CHROME_BROWSER_UI_WEBAUTHN_AMBIENT_AMBIENT_LOGIN_PERMISSION_REQUEST_H_
 #define CHROME_BROWSER_UI_WEBAUTHN_AMBIENT_AMBIENT_LOGIN_PERMISSION_REQUEST_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "components/permissions/permission_request.h"
+#include "ui/base/models/image_model.h"
 #include "url/gurl.h"
 
 namespace ambient_signin {
@@ -33,6 +36,15 @@ struct FederatedCredential {
   std::u16string account_name;
   std::u16string email;
   GURL idp_origin;
+  // Optional account picture. If empty, the prompt uses a default icon.
+  //
+  // The picture must come from the identity provider and be fetched by the
+  // browser (as FedCM does with the picture URL from the IdP's accounts
+  // endpoint), never from the requesting site.
+  //
+  // The caller crops the picture so that it is square, e.g. FedCM crops it
+  // into a circle like in its own UI. The prompt scales it to its icon size.
+  ui::ImageModel icon;
 };
 
 // A permission request for displaying ambient login options (e.g. WebAuthn
@@ -53,7 +65,8 @@ class AmbientLoginPermissionRequest : public permissions::PermissionRequest {
       PasskeyOrPasswordSelectedCallback credential_selected_callback,
       std::vector<FederatedCredential> federated_credentials,
       FederatedCredentialSelectedCallback federated_selected_callback,
-      PermissionDecidedCallback permission_decided_callback);
+      PermissionDecidedCallback permission_decided_callback =
+          base::DoNothing());
 
   // Convenience constructor for passkey/password-only requests.
   AmbientLoginPermissionRequest(
@@ -61,7 +74,8 @@ class AmbientLoginPermissionRequest : public permissions::PermissionRequest {
       const GURL& embedding_origin,
       std::vector<PasskeyOrPasswordCredential> credentials,
       PasskeyOrPasswordSelectedCallback credential_selected_callback,
-      PermissionDecidedCallback permission_decided_callback);
+      PermissionDecidedCallback permission_decided_callback =
+          base::DoNothing());
 
   ~AmbientLoginPermissionRequest() override;
 
@@ -72,20 +86,29 @@ class AmbientLoginPermissionRequest : public permissions::PermissionRequest {
     return federated_credentials_;
   }
 
-  // Invokes the credential selection callback with the chosen index.
+  // Records the chosen credential index to be passed to
+  // `credential_selected_callback_` when the permission request is accepted.
   void SelectCredential(size_t index);
 
-  // Invokes the federated credential selection callback with the chosen index.
+  // Records the chosen federated credential index to be passed to
+  // `federated_selected_callback_` when the permission request is accepted.
   void SelectFederatedCredential(size_t index);
 
   // permissions::PermissionRequest:
   std::u16string GetMessageTextFragment() const override;
 
  private:
+  void OnPermissionDecided(
+      const permissions::PermissionPromptDecision& decision,
+      const permissions::PermissionRequestData& request_data);
+
   std::vector<PasskeyOrPasswordCredential> credentials_;
   PasskeyOrPasswordSelectedCallback credential_selected_callback_;
   std::vector<FederatedCredential> federated_credentials_;
   FederatedCredentialSelectedCallback federated_selected_callback_;
+  PermissionDecidedCallback caller_permission_decided_callback_;
+  std::optional<size_t> selected_credential_index_;
+  std::optional<size_t> selected_federated_index_;
 };
 
 }  // namespace ambient_signin

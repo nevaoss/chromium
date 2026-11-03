@@ -72,24 +72,24 @@ void ActionAppMenuTestBase::SetUp() {
 
   // Create test ActionItems as children of a root ActionItem.
   auto root = actions::ActionItem::Builder().Build();
-  auto add_action = [&root, this](
-                        actions::ActionId action_id, std::u16string text,
-                        std::optional<std::u16string> short_title =
-                            std::nullopt) {
-    auto item =
-        actions::ActionItem::Builder(
-            base::BindRepeating(&MockActionCallback::Call,
-                                base::Unretained(&mock_action_invoked_),
-                                action_id))
-            .SetActionId(action_id)
-            .SetText(text)
-            .SetTooltipText(text)
-            .SetAccessibleName(text)
-            .SetEnabled(true)
-            .SetVisible(action_id != kActionUpgradeDialog &&
-                        action_id != kActionGlobalError &&
-                        action_id != kActionSetBrowserAsDefault)
-            .Build();
+  auto add_action = [&root, this](actions::ActionId action_id,
+                                  std::u16string text,
+                                  std::optional<std::u16string> short_title =
+                                      std::nullopt) {
+    auto item = actions::ActionItem::Builder(
+                    base::BindRepeating(&MockActionCallback::Call,
+                                        base::Unretained(&mock_action_invoked_),
+                                        action_id))
+                    .SetActionId(action_id)
+                    .SetText(text)
+                    .SetTooltipText(text)
+                    .SetAccessibleName(text)
+                    .SetEnabled(true)
+                    .SetVisible(action_id != kActionUpgradeDialog &&
+                                action_id != kActionGlobalError &&
+                                action_id != kActionSetBrowserAsDefault &&
+                                action_id != kActionSkillsAndExtensionsSubmenu)
+                    .Build();
     if (short_title.has_value()) {
       item->SetProperty(actions::kShortTitleTextKey, *short_title);
     }
@@ -149,6 +149,9 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionExtensionsSubmenuVisitChromeWebStore,
              u"Visit Chrome Web Store");
   add_action(kActionFindExtensions, u"Find Extensions");
+  add_action(kActionSkillsAndExtensionsSubmenu, u"Extensions and Skills");
+  add_action(kActionManageSkills, u"Your skills");
+  add_action(kActionBrowseSkills, u"Browse skills");
   add_action(kActionClearBrowsingData, u"Clear Browsing Data");
   add_action(kActionSavedTabGroupsSubmenu, u"Tab Groups");
   add_action(kActionCreateNewTabGroup, u"New Tab Group");
@@ -159,6 +162,9 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionPrint, u"Print");
   add_action(kActionOpenGlic, u"Open Glic");
   add_action(kActionShowLensOverlayFromAppMenu, u"Lens Overlay");
+  add_action(kActionAskGoogleAboutThisPageFromAppMenu,
+             u"Ask Google about this page");
+  add_action(kActionContextualTasksSubmenu, u"Search with Google");
   add_action(kActionShowTranslate, u"Translate");
   add_action(kActionFindAndEditSubmenu, u"Find and edit");
   add_action(kActionFind, u"Find");
@@ -191,6 +197,7 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionRecentTabsSeeDeviceTabs, u"See Device Tabs");
   add_action(kActionRecentTabsLoginForDeviceTabs, u"Login for Device Tabs");
   add_action(kActionSidePanelShowHistoryCluster, u"History Clusters");
+  add_action(kActionSidePanelShowHistory, u"History");
   add_action(kActionOptions, u"Settings");
   add_action(kActionHelpSubmenu, u"Help");
   add_action(kActionAbout, u"About");
@@ -205,6 +212,9 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionZoomNormal, u"100%");
   add_action(kActionZoomPlus, u"Zoom In");
   add_action(kActionFullscreen, u"Fullscreen");
+  add_action(kActionOpenInChrome, u"Open in Chrome");
+  add_action(kActionWebAppMenuAppInfo, u"App Info");
+  add_action(kActionUninstallWebApp, u"Uninstall");
 
   actions::ActionManager::Get().AddAction(std::move(root));
 

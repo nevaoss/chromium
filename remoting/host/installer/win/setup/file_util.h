@@ -13,13 +13,19 @@
 
 namespace remoting::installer {
 
-// Function signature matching Win32 ::MoveFileExW.
+// Function signatures for file operations intercepted during tests.
+using CopyFileCallback =
+    base::RepeatingCallback<bool(const base::FilePath&, const base::FilePath&)>;
+using DeleteFileCallback = base::RepeatingCallback<bool(const base::FilePath&)>;
 using MoveFileExCallback =
     base::RepeatingCallback<BOOL(const wchar_t*, const wchar_t*, DWORD)>;
 
-// Sets a callback invoked instead of ::MoveFileExW during unit tests to avoid
-// mutating HKLM\...\PendingFileRenameOperations on elevated bots. Passing a
-// null callback restores the default ::MoveFileExW.
+// Sets callbacks invoked instead of base::CopyFile, base::DeleteFile, and
+// ::MoveFileExW during unit tests to simulate file locks and failure modes
+// deterministically without relying on OS-dependent kernel file mapping
+// behavior. Passing null callbacks restores the default system functions.
+void SetCopyFileCallbackForTesting(CopyFileCallback callback);
+void SetDeleteFileCallbackForTesting(DeleteFileCallback callback);
 void SetMoveFileExCallbackForTesting(MoveFileExCallback callback);
 
 // Deletes any stale "*.old" files in `install_dir` that are no longer locked

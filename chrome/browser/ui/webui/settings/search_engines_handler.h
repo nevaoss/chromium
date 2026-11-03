@@ -59,6 +59,11 @@ class SearchEnginesHandler : public SettingsPageUIHandler,
 
   base::DictValue GetCategorizedTemplateUrls();
 
+  // Retrieves the default search engine picker data and returns it to WebUI.
+  void HandleGetDefaultSearchEnginePickerData(const base::ListValue& args);
+
+  base::DictValue GetDefaultSearchEnginePickerData();
+
   // Retrieves all search engines and returns them to WebUI.
   // TODO (crbug.com/494551138): Remove once `SearchSettingsUpdate` is launched.
   void HandleGetSearchEnginesList(const base::ListValue& args);
@@ -72,12 +77,12 @@ class SearchEnginesHandler : public SettingsPageUIHandler,
 
   // Removes a search engine. Called from WebUI.
   // `args` contains:
-  //   [0]: TemplateURLID (int): The ID of the search engine to remove.
+  //   [0]: string: The opaque ID of the search engine to remove.
   void HandleRemoveSearchEngine(const base::ListValue& args);
 
   // Sets a search engine to be default. Called from WebUI.
   // `args` contains:
-  //   [0]: TemplateURLID (int): The ID of the search engine to make default.
+  //   [0]: string: The opaque ID of the search engine to make default.
   //   [1]: search_engines::ChoiceMadeLocation (int): Location where the choice
   //        was made.
   //   [2]: bool (optional): Whether to save the choice in guest mode.
@@ -85,16 +90,15 @@ class SearchEnginesHandler : public SettingsPageUIHandler,
 
   // Activates or deactivates a search engine. Called from WebUI.
   // `args` contains:
-  //   [0]: TemplateURLID (int): The ID of the search engine.
+  //   [0]: string: The opaque ID of the search engine.
   //   [1]: bool: True to activate, false to deactivate.
   void HandleSetIsActiveSearchEngine(const base::ListValue& args);
 
-  // Starts an edit session for a search engine. If the ID is
-  // `kInvalidTemplateURLID`, starts editing a new search engine instead of
-  // an existing one. Called from WebUI.
+  // Starts an edit session for a search engine. If the ID is empty, starts
+  // editing a new search engine instead of an existing one. Called from WebUI.
   // `args` contains:
-  //   [0]: TemplateURLID (int): The ID of the search engine to edit, or
-  //        `kInvalidTemplateURLID` to start editing a new search engine.
+  //   [0]: string: The opaque ID of the search engine to edit, or empty to
+  //        start editing a new search engine.
   void HandleSearchEngineEditStarted(const base::ListValue& args);
 
   // Validates the given search engine values, and reports the results back
@@ -128,6 +132,8 @@ class SearchEnginesHandler : public SettingsPageUIHandler,
 #endif
 
   // Returns a dictionary to pass to WebUI representing the given search engine.
+  // The engine is identified by an opaque string ID (e.g. "db:42") that the
+  // WebUI sends back to reference it in subsequent messages.
   base::DictValue CreateDictionaryForEngine(TemplateURL* template_url);
 
   // Records the search hijacking heuristic metric if not already recorded.

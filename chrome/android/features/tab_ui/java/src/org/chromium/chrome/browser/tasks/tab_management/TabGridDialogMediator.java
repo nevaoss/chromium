@@ -349,7 +349,7 @@ public class TabGridDialogMediator
                         if (!isVisible()) return;
 
                         TabModel tabModel = mCurrentTabModelSupplier.get();
-                        if (tabModel == null || !tabModel.isTabModelRestored()) {
+                        if (tabModel == null || !tabModel.isTabStateInitialized()) {
                             return;
                         }
 
@@ -777,7 +777,7 @@ public class TabGridDialogMediator
         if (mCurrentTabGroupId != null) {
             TabModel tabModel = mCurrentTabModelSupplier.get();
             assumeNonNull(tabModel);
-            if (tabModel.tabGroupExists(mCurrentTabGroupId)) {
+            if (tabModel.containsTabGroup(mCurrentTabGroupId)) {
                 tabModel.setTabGroupColor(mCurrentTabGroupId, selectedColor);
             }
         }
@@ -995,8 +995,9 @@ public class TabGridDialogMediator
 
     private View.OnClickListener getAddButtonClickListener() {
         return _ -> {
-            // Get the current Tab first since hideDialog causes mCurrentTabGroupId to be null;
-            List<Tab> tabsInGroup = getTabsInGroup(mCurrentTabGroupId);
+            // Cache the group ID before hideDialog clears mCurrentTabGroupId.
+            Token tabGroupId = mCurrentTabGroupId;
+            List<Tab> tabsInGroup = getTabsInGroup(tabGroupId);
             hideDialog(false);
 
             TabModel tabModel = mCurrentTabModelSupplier.get();
@@ -1012,9 +1013,9 @@ public class TabGridDialogMediator
                     UrlConstantResolverFactory.getForProfile(profile);
 
             TabGroupUtils.openUrlInGroup(
-                    assumeNonNull(mCurrentTabModelSupplier.get()),
+                    tabModel,
                     urlConstantResolver.getNtpUrl(),
-                    tabsInGroup.get(tabsInGroup.size() - 1).getId(),
+                    tabGroupId,
                     TabLaunchType.FROM_TAB_GROUP_UI);
             RecordUserAction.record(
                     "MobileNewTabOpened."
@@ -1078,7 +1079,7 @@ public class TabGridDialogMediator
             assumeNonNull(tabModel);
             TabUiUtils.closeTabGroup(
                     tabModel,
-                    tabModel.getGroupLastShownTabId(mCurrentTabGroupId),
+                    tabGroupId,
                     TabClosingSource.BOTTOM_TAB_GROUP_STRIP,
                     allowUndo,
                     hideTabGroups,
@@ -1133,16 +1134,13 @@ public class TabGridDialogMediator
         assert mCollaborationService.getServiceStatus().isAllowedToJoin();
 
         saveCurrentGroupModifiedTitle();
-        String tabGroupDisplayName = mModel.get(TabGridDialogProperties.HEADER_TITLE);
         TabModel tabModel = mCurrentTabModelSupplier.get();
         assumeNonNull(tabModel);
 
         TabUiUtils.startShareTabGroupFlow(
-                mActivity,
                 tabModel,
                 mDataSharingTabManager,
-                tabModel.getGroupLastShownTabId(mCurrentTabGroupId),
-                tabGroupDisplayName,
+                mCurrentTabGroupId,
                 CollaborationServiceShareOrManageEntryPoint.DIALOG_TOOLBAR_BUTTON);
     }
 
@@ -1221,7 +1219,7 @@ public class TabGridDialogMediator
 
         TabModel tabModel = mCurrentTabModelSupplier.get();
         assumeNonNull(tabModel);
-        if (!tabModel.tabGroupExists(mCurrentTabGroupId)) return;
+        if (!tabModel.containsTabGroup(mCurrentTabGroupId)) return;
         assumeNonNull(mCurrentTabGroupId);
 
         int tabsCount = getTabsInGroup(mCurrentTabGroupId).size();

@@ -864,7 +864,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.BrowserStartupCompleteReason"
-    enum="StartupIsCompleteReason" expires_after="2026-11-16">
+    enum="StartupIsCompleteReason" expires_after="2027-10-06">
   <owner>joenotcharles@google.com</owner>
   <owner>gab@chromium.org</owner>
   <summary>
@@ -1585,16 +1585,6 @@ chromium-metrics-reviews@google.com.
     experiment, and reaches PostEarlyInitialization(). It is therefore recorded
     at most once per browser process launch. See crbug.com/380088804 for
     details.
-  </summary>
-</histogram>
-
-<histogram name="Startup.PreMainMessageLoopRunImplLongTime" units="ms"
-    expires_after="2025-09-14">
-  <owner>rkaplow@chromium.org</owner>
-  <improvement direction="LOWER_IS_BETTER"/>
-  <summary>
-    The amount of time that elapsed during
-    ChromeBrowserMainParts::PreMainMessageLoopRunImpl.
   </summary>
 </histogram>
 

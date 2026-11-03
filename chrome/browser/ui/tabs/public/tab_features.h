@@ -75,6 +75,7 @@ class LensSearchController;
 class ManagePasswordsPageActionController;
 class ManagePasswordsUIController;
 class MemorySaverChipTabHelper;
+class MixedContentSettingsTabHelper;
 class NavigationMetricsRecorder;
 class NavigationPredictorPreconnectClient;
 class NewTabPagePreloadPipelineManager;
@@ -367,6 +368,7 @@ class RecentTabHelper;
 namespace safe_browsing {
 class SafeBrowsingTabObserver;
 class TailoredSecurityUrlObserver;
+class TriggerCreator;
 }  // namespace safe_browsing
 #endif
 
@@ -987,6 +989,7 @@ class TabFeatures {
       safe_browsing_tab_observer_;
   std::unique_ptr<safe_browsing::TailoredSecurityUrlObserver>
       tailored_security_url_observer_;
+  std::unique_ptr<safe_browsing::TriggerCreator> trigger_creator_;
 #endif
 
   std::unique_ptr<AboutThisSiteTabHelper> about_this_site_tab_helper_;
@@ -1046,6 +1049,9 @@ class TabFeatures {
       page_content_annotations_web_contents_observer_;
 
   std::unique_ptr<CoreTabHelper> core_tab_helper_;
+
+  std::unique_ptr<MixedContentSettingsTabHelper>
+      mixed_content_settings_tab_helper_;
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

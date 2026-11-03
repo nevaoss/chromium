@@ -6,9 +6,9 @@
 
 #include <algorithm>
 #include <numeric>
+#include <ranges>
 #include <vector>
 
-#include "base/containers/adapters.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/editing/drag_caret.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
@@ -52,6 +52,7 @@
 #include "third_party/blink/renderer/core/paint/paint_auto_dark_mode.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
+#include "third_party/blink/renderer/core/paint/paint_layer_paint_order_iterator.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_painter.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/paint/paint_phase.h"
@@ -482,6 +483,29 @@ bool ShouldDelegatePaintingToViewTransition(const PhysicalBoxFragment& fragment,
     case PaintPhase::kMask:
       return false;
   }
+}
+
+// Normally, a line box hits its container in the foreground phase when the
+// point is not on any of its children. Defer that to the self block background
+// phase if the container has negative z-index children. They are hit tested
+// between the two phases, and should win since the line box paints nothing
+// over them.
+bool ShouldDeferLineBoxHitToBackground(const PhysicalBoxFragment& container,
+                                       const PhysicalFragment& line_box,
+                                       const HitTestRequest& request) {
+  if (!RuntimeEnabledFeatures::DeferLineBoxHitTestToBackgroundEnabled()) {
+    return false;
+  }
+  const PaintLayer* layer = container.Layer();
+  if (!layer || !layer->GetLayoutObject().IsStackingContext() ||
+      request.IsHitTestVisualOverflow() ||
+      // A line box that paints is above negative z-index children.
+      LineBoxFragmentPainter::NeedsPaint(line_box) ||
+      !container.IsInSelfHitTestingPhase(HitTestPhase::kSelfBlockBackground)) {
+    return false;
+  }
+  return PaintLayerPaintOrderIterator(layer, kNegativeZOrderChildren).Next() !=
+         nullptr;
 }
 
 }  // anonymous namespace
@@ -2144,11 +2168,12 @@ void BoxFragmentPainter::PaintTextClipMask(const PaintInfo& paint_info,
                                            const gfx::Rect& mask_rect,
                                            const PhysicalOffset& paint_offset,
                                            bool object_has_multiple_boxes) {
-  PaintInfo mask_paint_info(
-      paint_info.context, CullRect(mask_rect), PaintPhase::kTextClip,
-      paint_info.DescendantPaintingBlocked(),
-      paint_info.IsPrivacyPreserving() ? PaintFlag::kPrivacyPreserving
-                                       : PaintFlag::kNoFlag);
+  PaintInfo mask_paint_info(paint_info.context, CullRect(mask_rect),
+                            PaintPhase::kTextClip,
+                            paint_info.DescendantPaintingBlocked(),
+                            paint_info.IsReadBackAllowedRendering()
+                                ? PaintFlag::kReadBackAllowedRendering
+                                : PaintFlag::kNoFlag);
   if (!object_has_multiple_boxes) {
     PaintObject(mask_paint_info, paint_offset);
     return;
@@ -2534,8 +2559,32 @@ bool BoxFragmentPainter::HitTestLineBoxFragment(
     return true;
   }
 
-  if (hit_test.phase != HitTestPhase::kForeground)
+  if (hit_test.phase != HitTestPhase::kForeground &&
+      hit_test.phase != HitTestPhase::kSelfBlockBackground) {
     return false;
+  }
+
+  const bool defer_to_background = ShouldDeferLineBoxHitToBackground(
+      box_fragment_, fragment, hit_test.result->GetHitTestRequest());
+  if (defer_to_background) {
+    if (hit_test.phase == HitTestPhase::kForeground) {
+      return false;
+    }
+    if (box_fragment_.ShouldClipOverflowAlongEitherAxis()) {
+      // PaintLayer doesn't apply our own overflow clip in the background phase.
+      // Undo the scroll, since `inline_root_offset` is scrolled.
+      PhysicalRect clip_rect = box_fragment_.OverflowClipRect(
+          kExcludeOverlayScrollbarSizeForHitTesting);
+      clip_rect.Move(hit_test.inline_root_offset +
+                     PhysicalOffset(PixelSnappedScrollOffset()) +
+                     PhysicalOffset(PixelSnappedOverscrollOffset()));
+      if (!hit_test.location.Intersects(clip_rect)) {
+        return false;
+      }
+    }
+  } else if (hit_test.phase == HitTestPhase::kSelfBlockBackground) {
+    return false;
+  }
 
   if (!IsVisibleToHitTest(box_fragment_, hit_test.result->GetHitTestRequest()))
     return false;
@@ -2721,7 +2770,7 @@ bool BoxFragmentPainter::HitTestBlockChildren(
   if (phase == HitTestPhase::kDescendantBlockBackgrounds)
     phase = HitTestPhase::kSelfBlockBackground;
   auto children = box_fragment_.Children();
-  for (const PhysicalFragmentLink& child : base::Reversed(children)) {
+  for (const PhysicalFragmentLink& child : std::views::reverse(children)) {
     const auto& block_child = To<PhysicalBoxFragment>(*child);
     if (block_child.IsLayoutObjectDestroyedOrMoved()) [[unlikely]] {
       continue;
@@ -2893,7 +2942,7 @@ bool BoxFragmentPainter::HitTestFloatingChildren(
   }
 
   auto children = container.Children();
-  for (const PhysicalFragmentLink& child : base::Reversed(children)) {
+  for (const PhysicalFragmentLink& child : std::views::reverse(children)) {
     const PhysicalFragment& child_fragment = *child.fragment;
     if (child_fragment.IsLayoutObjectDestroyedOrMoved()) [[unlikely]] {
       continue;

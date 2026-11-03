@@ -123,7 +123,6 @@ import java.util.function.Supplier;
     SensitiveContentFeatures.SENSITIVE_CONTENT,
     SensitiveContentFeatures.SENSITIVE_CONTENT_WHILE_SWITCHING_TABS
 })
-@SuppressWarnings("DoNotMock") // TODO(567604165): Remove mocking of Views / Activities
 public class TabSwitcherPaneUnitTest {
     private static final int TAB_ID = 723849;
 
@@ -166,14 +165,11 @@ public class TabSwitcherPaneUnitTest {
     @Mock private TabSwitcherPaneCoordinator mTabSwitcherPaneCoordinator;
     @Mock private TabSwitcherPaneDrawableCoordinator mTabSwitcherPaneDrawableCoordinator;
     @Mock private TabSwitcherDrawable mTabSwitcherDrawable;
-    @Mock private HubContainerView mHubContainerView;
     @Mock private View.OnClickListener mNewTabButtonClickListener;
     @Mock private PaneHubController mPaneHubController;
     @Mock private TabSwitcherCustomViewManager.Delegate mCustomViewManagerDelegate;
-    @Mock private View mCustomView;
     @Mock private DoubleConsumer mOnAlphaChange;
     @Mock private UserEducationHelper mUserEducationHelper;
-    @Mock private View mAnchorView;
     @Mock private TabGroupSyncService mTabGroupSyncService;
     @Mock private SavedTabGroup mSavedTabGroup;
     @Mock private TabGroupCreationUiDelegate mUiFlow;
@@ -194,6 +190,9 @@ public class TabSwitcherPaneUnitTest {
     private final Token mToken = new Token(1L, 2L);
 
     private Context mContext;
+    private HubContainerView mHubContainerView;
+    private View mCustomView;
+    private View mAnchorView;
     private final SettableNonNullObservableSupplier<Boolean> mHandleBackPressChangeSupplier =
             ObservableSuppliers.createNonNull(false);
     private final SettableNonNullObservableSupplier<Boolean> mIsScrollingSupplier =
@@ -222,7 +221,9 @@ public class TabSwitcherPaneUnitTest {
                         ApplicationProvider.getApplicationContext(),
                         R.style.Theme_Chromium_TabbedMode);
 
-        when(mHubContainerView.getContext()).thenReturn(mContext);
+        mHubContainerView = new HubContainerView(mContext);
+        mCustomView = new View(mContext);
+        mAnchorView = new View(mContext);
         TabGroupSyncServiceFactory.setForTesting(mTabGroupSyncService);
         TrackerFactory.setTrackerForTests(mTracker);
 
@@ -235,7 +236,7 @@ public class TabSwitcherPaneUnitTest {
         mProfileProviderSupplier.set(mProfileProvider);
 
         mTabModel = spy(new MockTabModel(mProfile, null));
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
         mTabList = new ArrayList<>();
         mTabList.add(mock(Tab.class));
         when(mTabModel.getRepresentativeTabList()).thenReturn(mTabList);
@@ -400,7 +401,7 @@ public class TabSwitcherPaneUnitTest {
     @Test
     public void testLoadHintColdHot_TabStateNotInitialized() {
         mTabModel.setActive(true);
-        when(mTabModel.isTabModelRestored()).thenReturn(false);
+        when(mTabModel.isTabStateInitialized()).thenReturn(false);
 
         mTabSwitcherPane.notifyLoadHint(LoadHint.COLD);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
@@ -414,7 +415,7 @@ public class TabSwitcherPaneUnitTest {
         verify(coordinator).setInitialScrollIndexOffset();
         verify(coordinator).requestAccessibilityFocusOnCurrentTab();
 
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
         var watcher =
                 HistogramWatcher.newSingleRecordWatcher(
                         "Android.GridTabSwitcher.TimeToTabStateInitializedFromShown");
@@ -473,10 +474,10 @@ public class TabSwitcherPaneUnitTest {
                 R.drawable.new_tab_icon,
                 shadowOf(buttonData.resolveIcon(mContext)).getCreatedFromResId());
 
-        View mockView = mock(View.class);
-        buttonData.onPress(mockView);
+        View view = new View(mContext);
+        buttonData.onPress(view);
         verify(mTabSwitcherPaneCoordinator).prepareHiding();
-        verify(mNewTabButtonClickListener).onClick(mockView);
+        verify(mNewTabButtonClickListener).onClick(view);
     }
 
     @Test
@@ -491,9 +492,9 @@ public class TabSwitcherPaneUnitTest {
     public void testNewTabButton_NoCoordinator() {
         FullButtonData buttonData = mTabSwitcherPane.getActionButtonDataSupplier().get();
 
-        View mockView = mock(View.class);
-        buttonData.onPress(mockView);
-        verify(mNewTabButtonClickListener).onClick(mockView);
+        View view = new View(mContext);
+        buttonData.onPress(view);
+        verify(mNewTabButtonClickListener).onClick(view);
     }
 
     @Test
@@ -619,7 +620,7 @@ public class TabSwitcherPaneUnitTest {
         assertNotNull(mTabSwitcherPane.getTabSwitcherPaneCoordinator());
         mTabSwitcherPane.destroyTabSwitcherPaneCoordinator();
         mTabModel.setActive(true);
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
 
         OnSharedPreferenceChangeListener listener = mPriceAnnotationsPrefListenerCaptor.getValue();
         // Check this doesn't crash if there is no coordinator.
@@ -634,17 +635,17 @@ public class TabSwitcherPaneUnitTest {
                 mSharedPreferences, PriceTrackingUtilities.TRACK_PRICES_ON_TABS);
         verify(coordinator).resetWithListOfTabs(mTabList);
 
-        when(mTabModel.isTabModelRestored()).thenReturn(false);
+        when(mTabModel.isTabStateInitialized()).thenReturn(false);
         listener.onSharedPreferenceChanged(
                 mSharedPreferences, PriceTrackingUtilities.TRACK_PRICES_ON_TABS);
         verify(coordinator).resetWithListOfTabs(mTabList);
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
 
         mTabModel.setActive(false);
         listener.onSharedPreferenceChanged(
                 mSharedPreferences, PriceTrackingUtilities.TRACK_PRICES_ON_TABS);
         verify(coordinator).resetWithListOfTabs(mTabList);
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
 
         listener.onSharedPreferenceChanged(mSharedPreferences, "foo");
         verify(coordinator).resetWithListOfTabs(mTabList);
@@ -1036,7 +1037,7 @@ public class TabSwitcherPaneUnitTest {
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         reset(mUserEducationHelper);
 
-        mTabGroupObserverCaptor.getValue().didCreateNewGroup(mToken);
+        mTabGroupObserverCaptor.getValue().onTabGroupCreated(mToken);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
 
         verify(mUserEducationHelper).requestShowIph(argThat(remoteGroupIph()));
@@ -1109,7 +1110,7 @@ public class TabSwitcherPaneUnitTest {
 
         // Case 1: no token (not a group card or out of bounds).
         when(mTabSwitcherPaneCoordinator.getTabGroupIdForIndex(1)).thenReturn(null);
-        observer.didCreateNewGroup(mToken);
+        observer.onTabGroupCreated(mToken);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         verify(mUserEducationHelper).requestShowIph(argThat(remoteGroupIph()));
 
@@ -1118,7 +1119,7 @@ public class TabSwitcherPaneUnitTest {
         LocalTabGroupId localTabGroupId = new LocalTabGroupId(tabGroupId);
         when(mTabSwitcherPaneCoordinator.getTabGroupIdForIndex(1)).thenReturn(tabGroupId);
         when(mTabGroupSyncService.getGroup(localTabGroupId)).thenReturn(null);
-        observer.didCreateNewGroup(mToken);
+        observer.onTabGroupCreated(mToken);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         verify(mUserEducationHelper, times(2)).requestShowIph(argThat(remoteGroupIph()));
 
@@ -1126,7 +1127,7 @@ public class TabSwitcherPaneUnitTest {
         SavedTabGroup savedTabGroup = new SavedTabGroup();
         savedTabGroup.collaborationId = "My collab";
         when(mTabGroupSyncService.getGroup(localTabGroupId)).thenReturn(savedTabGroup);
-        observer.didCreateNewGroup(mToken);
+        observer.onTabGroupCreated(mToken);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         verify(mUserEducationHelper, times(3)).requestShowIph(argThat(remoteGroupIph()));
 
@@ -1134,13 +1135,13 @@ public class TabSwitcherPaneUnitTest {
         savedTabGroup.collaborationId = null;
         savedTabGroup.creatorCacheGuid = "test guid";
         when(mTabGroupSyncService.isRemoteDevice("test guid")).thenReturn(false);
-        observer.didCreateNewGroup(mToken);
+        observer.onTabGroupCreated(mToken);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         verify(mUserEducationHelper, times(4)).requestShowIph(argThat(remoteGroupIph()));
 
         // Case 5: no anchor view.
         savedTabGroup.creatorCacheGuid = null;
-        observer.didCreateNewGroup(mToken);
+        observer.onTabGroupCreated(mToken);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         verify(mUserEducationHelper, times(5)).requestShowIph(argThat(remoteGroupIph()));
     }

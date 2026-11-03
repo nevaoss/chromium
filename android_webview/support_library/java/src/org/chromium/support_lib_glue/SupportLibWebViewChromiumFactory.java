@@ -19,13 +19,13 @@ import com.android.webview.chromium.CallbackConverter;
 import com.android.webview.chromium.ProfileStore;
 import com.android.webview.chromium.SharedStatics;
 import com.android.webview.chromium.SharedTracingControllerAdapter;
-import com.android.webview.chromium.WebContent;
 import com.android.webview.chromium.WebSurface;
 import com.android.webview.chromium.WebViewChromiumAwInit;
 import com.android.webview.chromium.WebkitToSharedGlueConverter;
 
 import org.chromium.android_webview.AwServiceWorkerController;
 import org.chromium.android_webview.AwTracingController;
+import org.chromium.android_webview.AwWebContent;
 import org.chromium.android_webview.StartupCallSite;
 import org.chromium.android_webview.StartupDiagnostics;
 import org.chromium.android_webview.StartupTasksRunner;
@@ -164,7 +164,8 @@ public class SupportLibWebViewChromiumFactory
                 Features.NAVIGATION_GET_NAVIGATION_START_UPTIME_MILLIS + Features.DEV_SUFFIX,
                 Features.WEB_MESSAGE_SHARED_ARRAY_BUFFER + Features.DEV_SUFFIX,
                 WebFeatures.WEB_SURFACE + WebFeatures.DEV_SUFFIX,
-                Features.ADD_QUIC_HINTS_WILDCARDS + Features.DEV_SUFFIX,
+                Features.ADD_QUIC_HINTS_WILDCARDS,
+                Features.THEME_COLOR_CALLBACK + Features.DEV_SUFFIX,
                 // Add new features above. New features must include `+ Features.DEV_SUFFIX`
                 // when they're initially added (this can be removed in a future CL). The one
                 // exception is when adding a new method to an interface that extends from
@@ -679,7 +680,7 @@ public class SupportLibWebViewChromiumFactory
             recordApiCall(ApiCall.BUILD_WEB_CONTENT);
             WebContentBuilder builder = new WebContentBuilder();
             buildConfig.accept(builder);
-            WebContent webContent = builder.build();
+            AwWebContent webContent = builder.build();
             SupportLibWebContentAdapter adapter = new SupportLibWebContentAdapter(webContent);
             return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(adapter);
         }

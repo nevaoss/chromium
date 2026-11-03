@@ -207,6 +207,9 @@ chromium-metrics-reviews@google.com.
   <variant name="UniversalCart"/>
   <variant name="Unsupported"/>
   <variant name="WebContentsContextMenu"/>
+  <variant name="WebContentsContextMenuLink"/>
+  <variant name="WebContentsContextMenuPage"/>
+  <variant name="WebContentsContextMenuTextSelection"/>
   <variant name="WebContinuity"/>
   <variant name="WebDragDrop"/>
   <variant name="WhatsNew"/>
@@ -597,6 +600,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Measures the time it takes from the Glic contents creation until the
     navigation commits.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Contents.TimeToWarmed" units="ms"
+    expires_after="2027-03-07">
+  <owner>harringtond@chromium.org</owner>
+  <owner>glic-dev@google.com</owner>
+  <summary>
+    Measures the time it takes from Glic contents creation until the web client
+    connects and enters the kWarmed state. Recorded for clean regular guest
+    navigations without auth or load errors.
   </summary>
 </histogram>
 

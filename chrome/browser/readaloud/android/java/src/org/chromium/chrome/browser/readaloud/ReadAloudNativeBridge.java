@@ -123,11 +123,12 @@ class ReadAloudNativeBridge {
         }
     }
 
-    /** Seeks to the start of the word at the specified index in the text. */
-    public void seekToWordIndex(int wordIndex) {
+    /** Seeks to the word at the specified segment index and character offset. */
+    public void seekToWord(int segmentIndex, int characterOffset) {
         ThreadUtils.assertOnUiThread();
         if (mNativeReadAloudBridge != 0) {
-            ReadAloudNativeBridgeJni.get().seekToWordIndex(mNativeReadAloudBridge, wordIndex);
+            ReadAloudNativeBridgeJni.get()
+                    .seekToWord(mNativeReadAloudBridge, segmentIndex, characterOffset);
         }
     }
 
@@ -160,6 +161,14 @@ class ReadAloudNativeBridge {
         ThreadUtils.assertOnUiThread();
         if (mNativeReadAloudBridge != 0) {
             ReadAloudNativeBridgeJni.get().setVoice(mNativeReadAloudBridge, voiceId);
+        }
+    }
+
+    /** Sets the target language code for text-to-speech synthesis. */
+    public void setLanguageCode(String languageCode) {
+        ThreadUtils.assertOnUiThread();
+        if (mNativeReadAloudBridge != 0) {
+            ReadAloudNativeBridgeJni.get().setLanguageCode(mNativeReadAloudBridge, languageCode);
         }
     }
 
@@ -348,8 +357,8 @@ class ReadAloudNativeBridge {
         // Stops audio playback and releases playback resources.
         void stop(long nativeReadAloudBridge);
 
-        // Seeks to the start of the word at the specified index in the text.
-        void seekToWordIndex(long nativeReadAloudBridge, int wordIndex);
+        // Seeks to the word at the specified segment index and character offset.
+        void seekToWord(long nativeReadAloudBridge, int segmentIndex, int characterOffset);
 
         // Seeks to a specific absolute time offset from the beginning of the audio.
         void seek(long nativeReadAloudBridge, long absoluteTimeNanos);
@@ -362,6 +371,10 @@ class ReadAloudNativeBridge {
 
         // Sets the voice to be used for text-to-speech synthesis.
         void setVoice(long nativeReadAloudBridge, @JniType("std::string") String voiceId);
+
+        // Sets the target language code for text-to-speech synthesis.
+        void setLanguageCode(
+                long nativeReadAloudBridge, @JniType("std::string") String languageCode);
 
         // Plays a short audio sample of the specified voice.
         void previewVoice(long nativeReadAloudBridge, @JniType("std::string") String voiceId);

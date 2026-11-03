@@ -54,6 +54,7 @@ BASE_DECLARE_FEATURE(kAppMenuGlowUp);
 BASE_DECLARE_FEATURE(kSettingsRefresh2026);
 // Enables search in the app Chrome menu.
 BASE_DECLARE_FEATURE(kChroMenuSearch);
+BASE_DECLARE_FEATURE_PARAM(std::string, kChroMenuSearchQuery);
 
 bool IsTabStripDeclutterEnabled();
 bool IsToolbarGlowUpEnabled();
@@ -184,7 +185,6 @@ BASE_DECLARE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen);
 BASE_DECLARE_FEATURE(kProcessIsolationSettings);
 #endif  // BUILDFLAG(IS_WIN)
 
-BASE_DECLARE_FEATURE(kRealboxVirtualFocusNavigation);
 BASE_DECLARE_FEATURE(kLensOverlayVirtualFocusNavigation);
 BASE_DECLARE_FEATURE(kOmniboxEverywhereVirtualFocusNavigation);
 BASE_DECLARE_FEATURE(kWebuiBrowserVirtualFocusNavigation);
@@ -376,6 +376,7 @@ BASE_DECLARE_FEATURE(kAiOverlayDialogDev);
 BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogApiKey);
 BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogMockJsonPath);
 BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogUseMes);
+BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogPageTools);
 BASE_DECLARE_FEATURE(kAiOverlayDisableNavigationContext);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);

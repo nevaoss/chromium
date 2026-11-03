@@ -42,7 +42,9 @@
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/profile_util.h"
+#include "chrome/browser/extensions/test_standalone_window_controller.h"
 #include "chrome/browser/extensions/window_controller.h"
+#include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
@@ -60,6 +62,7 @@
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
+#include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "components/split_tabs/split_tab_id.h"
 #include "components/tab_groups/tab_group_id.h"
@@ -308,7 +311,36 @@ class ExtensionTabsTest : public ExtensionApiTest {
 
 #if BUILDFLAG(ENABLE_PLATFORM_APPS)
 
-using ExtensionTabsTestWithApps = PlatformAppBrowserTest;
+class ExtensionTabsTestWithApps : public PlatformAppBrowserTest {
+ protected:
+  // Creates a test Chrome App window, verifies its WindowController is
+  // reachable by ID with no BrowserWindowInterface, substitutes its window ID
+  // for "$1" in `args_template`, runs `function`, and closes the app window.
+  std::string RunFunctionTargetingAppWindow(
+      scoped_refptr<ExtensionFunction> function,
+      std::string_view args_template) {
+    AppWindow* app_window = CreateTestAppWindow("{}");
+    const int app_window_id = app_window->session_id().id();
+
+    WindowController* app_window_controller =
+        ExtensionTabUtil::GetControllerInProfileWithId(
+            profile(), app_window_id, /*also_match_incognito_profile=*/false,
+            /*error_message=*/nullptr);
+    EXPECT_TRUE(app_window_controller);
+    EXPECT_FALSE(app_window_controller->GetBrowserWindowInterface());
+
+    scoped_refptr<const Extension> extension =
+        ExtensionBuilder("AppWindowTargetTest").Build();
+    function->set_extension(extension.get());
+    std::string args = base::ReplaceStringPlaceholders(
+        args_template, {base::ToString(app_window_id)}, /*offsets=*/nullptr);
+    std::string error =
+        utils::RunFunctionAndReturnError(function.get(), args, profile());
+
+    CloseAppWindow(app_window);
+    return error;
+  }
+};
 
 #endif
 
@@ -1990,35 +2022,37 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps, NoTabsAppWindow) {
 // Verifies that tabs.move() into a Chrome App window, whose WindowController
 // has no BrowserWindowInterface, fails gracefully instead of crashing.
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps, CannotMoveTabToAppWindow) {
-  AppWindow* app_window = CreateTestAppWindow("{}");
-  int app_window_id = app_window->session_id().id();
-
-  // The app window is reachable by ID but has no BrowserWindowInterface.
-  WindowController* app_window_controller =
-      ExtensionTabUtil::GetControllerInProfileWithId(
-          profile(), app_window_id, /*also_match_incognito_profile=*/false,
-          /*error_message=*/nullptr);
-  ASSERT_TRUE(app_window_controller);
-  ASSERT_FALSE(app_window_controller->GetBrowserWindowInterface());
-
   content::WebContents* web_contents =
       GetTabListInterface()->GetTab(0)->GetContents();
   int tab_id = ExtensionTabUtil::GetTabId(web_contents);
 
-  scoped_refptr<const Extension> extension =
-      ExtensionBuilder("MoveToAppWindowTest").Build();
-  auto function = base::MakeRefCounted<TabsMoveFunction>();
-  function->set_extension(extension.get());
-  std::string args = base::StringPrintf(
-      R"([%d, {"windowId": %d, "index": 0}])", tab_id, app_window_id);
-  std::string error =
-      utils::RunFunctionAndReturnError(function.get(), args, profile());
+  std::string error = RunFunctionTargetingAppWindow(
+      base::MakeRefCounted<TabsMoveFunction>(),
+      base::StringPrintf(R"([%d, {"windowId": $1, "index": 0}])", tab_id));
   EXPECT_EQ(ExtensionTabUtil::kCanOnlyMoveTabsWithinNormalWindowsError, error);
 
   // The tab should not have moved.
   EXPECT_EQ(web_contents, GetTabListInterface()->GetTab(0)->GetContents());
+}
 
-  CloseAppWindow(app_window);
+// Verifies that tabs.create() targeting a Chrome App window, whose
+// WindowController has no BrowserWindowInterface, returns
+// kTabStripNotEditableError instead of an empty error string.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps, CannotCreateTabInAppWindow) {
+  std::string error = RunFunctionTargetingAppWindow(
+      base::MakeRefCounted<TabsCreateFunction>(), R"([{"windowId": $1}])");
+  EXPECT_EQ(ExtensionTabUtil::kTabStripNotEditableError, error);
+}
+
+// Verifies that tabs.highlight() targeting a Chrome App window, whose
+// WindowController has no BrowserWindowInterface, returns
+// kTabStripNotEditableError instead of crashing on a null dereference.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTestWithApps,
+                       CannotHighlightTabsInAppWindow) {
+  std::string error = RunFunctionTargetingAppWindow(
+      base::MakeRefCounted<TabsHighlightFunction>(),
+      R"([{"windowId": $1, "tabs": 0}])");
+  EXPECT_EQ(ExtensionTabUtil::kTabStripNotEditableError, error);
 }
 
 // Crashes on Mac/Win only.  http://crbug.com/40514319
@@ -6052,5 +6086,69 @@ IN_PROC_BROWSER_TEST_P(ExtensionTabsDiscardTest, DiscardEvent) {
 }
 
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+// Verifies that TabsMoveFunction::MoveTab returns kTabStripNotEditableError
+// rather than crashing on a null source_tab_list when moving a tab within a
+// standalone WindowController that has no BrowserWindowInterface.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
+                       TabsMove_IntraStandaloneWindowRejected) {
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContents::Create(content::WebContents::CreateParams(profile()));
+  sessions::SessionTabHelper::CreateForWebContents(web_contents.get(),
+                                                   base::NullCallback());
+  const int tab_id = ExtensionTabUtil::GetTabId(web_contents.get());
+  ASSERT_NE(tab_id, api::tabs::TAB_ID_NONE);
+
+  const SessionID standalone_window_id = SessionID::NewUnique();
+  TestStandaloneWindowController standalone_controller(
+      /*base_window=*/nullptr, profile(), standalone_window_id,
+      web_contents.get());
+  // Allow GetTabById (2 calls) to resolve the standalone tab, then return
+  // nullptr when MoveTab queries source_window->GetBrowserWindowInterface().
+  standalone_controller.SetBrowserWindowInterfaceForLookup(
+      browser_window_interface(), 2);
+
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("MoveStandaloneTabTest").Build();
+  auto function = base::MakeRefCounted<TabsMoveFunction>();
+  function->set_extension(extension.get());
+  std::string args = base::StringPrintf(R"([%d, {"index": 0}])", tab_id);
+  std::string error =
+      utils::RunFunctionAndReturnError(function.get(), args, profile());
+  EXPECT_EQ(ExtensionTabUtil::kTabStripNotEditableError, error);
+}
+
+// Verifies that TabsReloadFunction returns kNotAllowedForPictureInPictureError
+// when targeting a Document Picture-in-Picture child WebContents.
+IN_PROC_BROWSER_TEST_F(ExtensionTabsTest,
+                       TabsReload_PictureInPictureWindowRejected) {
+  std::unique_ptr<content::WebContents> web_contents =
+      content::WebContents::Create(content::WebContents::CreateParams(profile()));
+  sessions::SessionTabHelper::CreateForWebContents(web_contents.get(),
+                                                   base::NullCallback());
+  const int tab_id = ExtensionTabUtil::GetTabId(web_contents.get());
+  ASSERT_NE(tab_id, api::tabs::TAB_ID_NONE);
+
+  PictureInPictureWindowManager::GetInstance()->EnterDocumentPictureInPicture(
+      GetActiveWebContents(), web_contents.get());
+  ASSERT_TRUE(
+      PictureInPictureWindowManager::IsChildWebContents(web_contents.get()));
+
+  const SessionID standalone_window_id = SessionID::NewUnique();
+  TestStandaloneWindowController standalone_controller(
+      /*base_window=*/nullptr, profile(), standalone_window_id,
+      web_contents.get());
+  standalone_controller.SetBrowserWindowInterfaceForLookup(
+      browser_window_interface());
+
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder("ReloadPipTabTest").Build();
+  auto function = base::MakeRefCounted<TabsReloadFunction>();
+  function->set_extension(extension.get());
+  std::string args = base::StringPrintf("[%d]", tab_id);
+  std::string error =
+      utils::RunFunctionAndReturnError(function.get(), args, profile());
+  EXPECT_EQ(tabs_constants::kNotAllowedForPictureInPictureError, error);
+}
 
 }  // namespace extensions

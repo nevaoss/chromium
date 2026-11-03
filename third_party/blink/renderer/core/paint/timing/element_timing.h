@@ -67,6 +67,7 @@ class CORE_EXPORT ElementTiming final : public GarbageCollected<ElementTiming>,
   ElementTiming& operator=(const ElementTiming&) = delete;
 
   // PaintTimingClient overrides:
+  Type GetType() const override;
   void OnPaintFinished(const HeapVector<Member<ImageRecord>>&,
                        const HeapVector<Member<TextRecord>>&) override;
   void OnFramePresented(const HeapVector<Member<ImageRecord>>&,
@@ -76,16 +77,24 @@ class CORE_EXPORT ElementTiming final : public GarbageCollected<ElementTiming>,
   void OnImageRemoved(const LayoutObject&, const MediaTiming*) override;
   void Trace(Visitor*) const override;
 
-  // Image paint hooks called by PaintTimingDetector during paint:
+  // Called by `PaintTimingDetector` when an image is painted.
+  // `image_layout_object` represents either the node's image (<img> or SVG
+  // image) or a pseudo-element's content image.
   //
-  // TODO(crbug.com/535432431): Use ImagePaintTimingDetector and remove these.
+  // TODO(crbug.com/535432431): Use ImagePaintTimingDetector and remove this.
   void NotifyImagePaint(
-      const LayoutObject&,
+      const LayoutObject& image_layout_object,
       const MediaTiming& cached_image,
       const PropertyTreeStateOrAlias& current_paint_chunk_properties,
       const gfx::Rect& image_border);
+
+  // Called by `PaintTimingDetector` when a background image is painted.
+  // `image_layout_object` represents either the node's background-image or a
+  // pseudo-element's background-image.
+  //
+  // TODO(crbug.com/535432431): Use ImagePaintTimingDetector and remove this.
   void NotifyBackgroundImagePaint(
-      Node& generating_node,
+      const LayoutObject& image_layout_object,
       const StyleImage& background_image,
       const PropertyTreeStateOrAlias& current_paint_chunk_properties,
       const gfx::Rect& image_border);
@@ -98,13 +107,11 @@ class CORE_EXPORT ElementTiming final : public GarbageCollected<ElementTiming>,
 
   bool CanReportToElementTiming() const;
 
-  void OnTextElementPresented(const TextRecord&);
-  void OnImageElementPresented(const ElementTimingInfo&,
-                               const DOMPaintTimingInfo&);
+  void OnElementPresented(const ElementTimingInfo&, const DOMPaintTimingInfo&);
 
   void NotifyImagePaintedInternal(
       Node& generating_node,
-      const LayoutObject&,
+      const LayoutObject& image_layout_object,
       const MediaTiming&,
       const PropertyTreeStateOrAlias& current_paint_chunk_properties,
       const gfx::Rect& image_border,
@@ -112,11 +119,12 @@ class CORE_EXPORT ElementTiming final : public GarbageCollected<ElementTiming>,
 
   void QueueElementTimingInfoForReportingIfNeeded(
       Node& generating_node,
-      const LayoutObject&,
+      const LayoutObject& image_layout_object,
       const ImageResourceContent&,
       const PropertyTreeStateOrAlias& current_paint_chunk_properties,
       const gfx::Rect& image_border,
       base::TimeTicks load_time);
+  void QueueElementTimingInfoForReportingIfNeeded(const TextRecord&);
 
   bool EnsureContainerTiming();
 

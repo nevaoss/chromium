@@ -113,6 +113,7 @@
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/new_tab_grouping_user_data.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
@@ -125,7 +126,6 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
@@ -216,6 +216,7 @@
 #include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/views/focus/focus_manager.h"
+#include "ui/views/views_features.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -2596,6 +2597,13 @@ void ToggleContextualTasksSidePanelZeroState(BrowserWindowInterface* browser) {
   CHECK(controller);
   if (controller->IsPanelOpenForContextualTask()) {
     controller->Close();
+  } else if (base::FeatureList::IsEnabled(
+                 contextual_tasks::kContextualTasksUpdatedEntryPoints)) {
+    ExecAskGoogleAboutThisPage(
+        browser,
+        lens::LensOverlayInvocationSource::kCobrowsePinnedToolbarButton,
+        omnibox::ChromeAimEntryPoint::
+            DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON);
   } else {
     controller->OpenInZeroState();
   }
@@ -2667,6 +2675,15 @@ namespace {
 // Delegate's -windowDidBecomeKey).
 void ActivateWindowAfterFocusCommand(BrowserWindowInterface* browser) {
 #if BUILDFLAG(IS_MAC)
+  // With kMacActivateWidgetOnFocusRequest, focusing a View in an inactive
+  // widget already activates it (see
+  // views::FocusManager::SetFocusedViewWithReason()).
+  // TODO(crbug.com/40486728): Remove this function once
+  // kMacActivateWidgetOnFocusRequest is removed.
+  if (base::FeatureList::IsEnabled(
+          views::features::kMacActivateWidgetOnFocusRequest)) {
+    return;
+  }
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
   if (!browser_view || browser_view->IsActive()) {
     return;
@@ -3136,6 +3153,22 @@ void ExecLensRegionSearch(BrowserWindowInterface* browser) {
 }
 
 void ExecAskGoogleAboutThisPage(BrowserWindowInterface* browser) {
+  ExecAskGoogleAboutThisPage(
+      browser, lens::LensOverlayInvocationSource::kContentAreaContextMenuPage);
+}
+
+void ExecAskGoogleAboutThisPage(
+    BrowserWindowInterface* browser,
+    lens::LensOverlayInvocationSource invocation_source) {
+  ExecAskGoogleAboutThisPage(
+      browser, invocation_source,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION);
+}
+
+void ExecAskGoogleAboutThisPage(
+    BrowserWindowInterface* browser,
+    lens::LensOverlayInvocationSource invocation_source,
+    omnibox::ChromeAimEntryPoint entry_point) {
 #if !BUILDFLAG(IS_ANDROID)
   if (!browser) {
     return;
@@ -3159,10 +3192,8 @@ void ExecAskGoogleAboutThisPage(BrowserWindowInterface* browser) {
   LensSearchController* const controller =
       LensSearchController::From(active_tab);
   if (controller) {
-    controller->StartZeroStateSessionInSidePanel(
-        omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION,
-        lens::LensOverlayInvocationSource::kContentAreaContextMenuPage,
-        /*open_lens_overlay=*/false);
+    controller->StartZeroStateSessionInSidePanel(entry_point, invocation_source,
+                                                 /*open_lens_overlay=*/false);
   }
 #endif
 }

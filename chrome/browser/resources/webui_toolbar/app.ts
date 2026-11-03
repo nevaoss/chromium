@@ -27,7 +27,7 @@ import {TrackedElementManager} from '//resources/js/tracked_element/tracked_elem
 import {CrLitElement, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {IconTable} from '/shared/icon_table.js';
-import {getHelpBubbleAnchor, HighlightTracker, setHasHelpBubble} from '/shared/toolbar_button.js';
+import {HighlightTracker, setHasHelpBubble} from '/shared/toolbar_button.js';
 import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 
@@ -444,7 +444,6 @@ export class ToolbarAppElement extends AppElementBase {
     },
     performanceInterventionControlState: {
       shouldBeShown: false,
-      isActive: true,
     },
     appMenuControlState: {
       iconType: AppMenuIconType.kNone,
@@ -690,7 +689,7 @@ export class ToolbarAppElement extends AppElementBase {
       const el = this.shadowRoot.querySelector<HTMLElement>(selector);
       if (el) {
         const tracker = (el as {highlightTracker?: unknown}).highlightTracker;
-        this.registerHelpBubble(id, getHelpBubbleAnchor(el), {
+        this.registerHelpBubble(id, el, {
           onHighlightChanged: (highlighted: boolean) => {
             el.classList.toggle('anchor-highlight', highlighted);
             if (tracker instanceof HighlightTracker) {
@@ -819,8 +818,7 @@ export class ToolbarAppElement extends AppElementBase {
 
   private onKeyDown_(event: KeyboardEvent) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' &&
-        // TODO(crbug.com/510825650): When app menu button enabled:
-        // (event.key !== 'End' || !this.isAppMenuButtonEnabled_) &&
+        (event.key !== 'End' || !this.isAppMenuButtonEnabled_) &&
         (event.key !== 'Home' || !this.isBackForwardButtonEnabled_)) {
       return;
     }
@@ -851,24 +849,29 @@ export class ToolbarAppElement extends AppElementBase {
 
     if (event.key === 'Home') {
       nextIndex = 0;
-      // TODO(crbug.com/510825650): When app menu button enabled:
-      // } else if (event.key === 'End') {
-      //   nextIndex = focusableElements.length - 1;
+    } else if (event.key === 'End') {
+      nextIndex = focusableElements.length - 1;
     } else if (shouldAdvance) {
       nextIndex = currentIndex + 1;
-      // Let parent handle this for now.
-      // TODO(crbug.com/510825650): Handle wrap around when app menu button is
-      // WebUI.
       if (nextIndex >= focusableElements.length) {
-        return;
+        // If full WebUI toolbar, handle wrap around.
+        if (this.isBackForwardButtonEnabled_ && this.isAppMenuButtonEnabled_) {
+          nextIndex = 0;
+        } else {
+          // Let parent handle this for now.
+          return;
+        }
       }
     } else if (shouldReverse) {
       nextIndex = currentIndex - 1;
-      // Let parent handle this for now.
-      // TODO(crbug.com/510825650): Handle wrap around when app menu button is
-      // WebUI.
       if (nextIndex < 0) {
-        return;
+        // If full WebUI toolbar, handle wrap around.
+        if (this.isBackForwardButtonEnabled_ && this.isAppMenuButtonEnabled_) {
+          nextIndex = focusableElements.length - 1;
+        } else {
+          // Let parent handle this for now.
+          return;
+        }
       }
     }
 

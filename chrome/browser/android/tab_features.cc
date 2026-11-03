@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/android/android_info.h"
 #include "base/check_is_test.h"
 #include "base/time/default_tick_clock.h"
 #include "base/trace_event/trace_event.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/commerce/shopping_service_factory.h"
 #include "chrome/browser/complex_tasks/task_tab_helper.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+#include "chrome/browser/content_settings/mixed_content_settings_tab_helper.h"
 #include "chrome/browser/content_settings/sound_content_setting_observer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_features.h"
@@ -35,6 +37,7 @@
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_observer.h"
 #include "chrome/browser/facilitated_payments/ui/chrome_facilitated_payments_client.h"
+#include "chrome/browser/file_system_access/file_system_access_permission_request_manager.h"
 #include "chrome/browser/file_system_access/file_system_access_tab_helper.h"
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/finds/core/finds_tab_helper.h"
@@ -86,8 +89,11 @@
 #include "chrome/browser/tab_contents/navigation_metrics_recorder.h"
 #include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
+#include "chrome/browser/trusted_vault/trusted_vault_encryption_keys_tab_helper.h"
+#include "chrome/browser/ui/android/context_menu_helper.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/find_bar/find_bar_state.h"
+#include "chrome/browser/ui/javascript_dialogs/javascript_tab_modal_dialog_manager_delegate_android.h"
 #include "chrome/browser/ui/recently_audible_helper.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service_factory.h"
@@ -119,13 +125,17 @@
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/history/content/browser/web_contents_top_sites_observer.h"
 #include "components/history/core/browser/top_sites.h"
+#include "components/javascript_dialogs/tab_modal_dialog_manager.h"
 #include "components/metrics/content/metrics_services_web_contents_observer.h"
 #include "components/metrics_services_manager/metrics_services_manager.h"
 #include "components/page_content_annotations/content/page_content_annotations_web_contents_observer.h"
 #include "components/payments/core/features.h"
+#include "components/permissions/permission_recovery_success_rate_tracker.h"
 #include "components/search/ntp_features.h"
 #include "components/search/search.h"
 #include "components/security_interstitials/core/features.h"
+#include "components/sensitive_content/android/android_sensitive_content_client.h"
+#include "components/sensitive_content/features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/webapps/browser/android/app_banner_manager_android.h"
 #include "components/webapps/browser/installable/installable_manager.h"
@@ -140,8 +150,12 @@
 #include "ui/webui/buildflags.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/extensions/api/web_navigation/web_navigation_tab_observer.h"
 #include "chrome/browser/extensions/navigation_extension_enabler.h"
+#include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/browser/ui/extensions/extension_side_panel_manager.h"
+#include "extensions/browser/view_type_utils.h"
+#include "extensions/common/mojom/view_type.mojom.h"
 #endif
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
@@ -155,9 +169,11 @@
 #endif
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+#include "chrome/browser/safe_browsing/chrome_password_reuse_detection_manager_client.h"
 #include "chrome/browser/safe_browsing/chrome_safe_browsing_tab_observer_delegate.h"
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_service_factory.h"
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_url_observer.h"
+#include "chrome/browser/safe_browsing/trigger_creator.h"
 #include "components/safe_browsing/content/browser/safe_browsing_tab_observer.h"
 #include "components/safe_browsing/core/common/features.h"
 #endif
@@ -226,6 +242,13 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
           : nullptr;
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  if (extensions::GetViewType(web_contents) ==
+      extensions::mojom::ViewType::kInvalid) {
+    extensions::SetViewType(web_contents,
+                            extensions::mojom::ViewType::kTabContents);
+  }
+  extensions::WebNavigationTabObserver::CreateForWebContents(web_contents);
+  extensions::TabHelper::CreateForWebContents(web_contents);
   if (tab_scoped_side_panel_registry_) {
     extension_side_panel_manager_ =
         std::make_unique<extensions::ExtensionSidePanelManager>(
@@ -378,6 +401,9 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   if (autofill::ContentAutofillClient::FromWebContents(web_contents)) {
+    // Attach password reuse detection client when Autofill is present.
+    ChromePasswordReuseDetectionManagerClient::CreateForWebContents(
+        web_contents);
     safe_browsing_tab_observer_ =
         GetUserDataFactory()
             .CreateInstance<safe_browsing::SafeBrowsingTabObserver>(
@@ -393,6 +419,9 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
             safe_browsing::TailoredSecurityServiceFactory::GetForProfile(
                 profile));
   }
+  // Create Safe Browsing triggers for the tab.
+  trigger_creator_ = std::make_unique<safe_browsing::TriggerCreator>(
+      *tab, profile, web_contents);
 #endif
 
   if (OomInterventionTabHelper::IsEnabled()) {
@@ -471,6 +500,9 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
   task_manager::WebContentsTags::CreateForTabContents(web_contents);
 
   media_state_observer_ = std::make_unique<MediaStateObserver>(web_contents);
+
+  // Attach FileSystemAccessPermissionRequestManager to the tab.
+  FileSystemAccessPermissionRequestManager::CreateForWebContents(web_contents);
 
   file_system_access_tab_helper_ =
       std::make_unique<FileSystemAccessTabHelper>(web_contents);
@@ -583,6 +615,35 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
   // Initialize printing helpers for the tab.
   printing::InitializePrintingForWebContents(web_contents);
 #endif
+
+  if (autofill::ContentAutofillClient::FromWebContents(web_contents) &&
+      base::android::android_info::sdk_int() >=
+          base::android::android_info::SdkVersion::SDK_VERSION_V &&
+      base::FeatureList::IsEnabled(
+          sensitive_content::features::kSensitiveContent)) {
+    // Attach AndroidSensitiveContentClient on Android V+.
+    sensitive_content::AndroidSensitiveContentClient::CreateForWebContents(
+        web_contents, "SensitiveContent.Chrome.");
+  }
+
+  // Attach MixedContentSettingsTabHelper to the tab.
+  mixed_content_settings_tab_helper_ =
+      GetUserDataFactory().CreateInstance<MixedContentSettingsTabHelper>(
+          *tab, *tab, web_contents);
+
+  // Track permission recovery success rate for the tab.
+  permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents(
+      web_contents);
+
+  ContextMenuHelper::CreateForWebContents(web_contents);
+
+  javascript_dialogs::TabModalDialogManager::CreateForWebContents(
+      web_contents,
+      std::make_unique<JavaScriptTabModalDialogManagerDelegateAndroid>(
+          web_contents));
+
+  // Attach TrustedVaultEncryptionKeysTabHelper to the tab.
+  TrustedVaultEncryptionKeysTabHelper::CreateForWebContents(web_contents);
 
   // Register LanguagePersistedTabDataAndroid for non-incognito Android tabs to
   // persist language details.

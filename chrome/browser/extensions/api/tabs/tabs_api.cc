@@ -2216,6 +2216,9 @@ ExtensionFunction::ResponseAction TabsCreateFunction::Run() {
   // TODO(https://crbug.com/468223125): This isn't consistent, since sometimes
   // we *will* create a new browser below.
   if (!browser) {
+    if (error.empty()) {
+      error = ExtensionTabUtil::kTabStripNotEditableError;
+    }
     return RespondNow(Error(std::move(error)));
   }
 
@@ -2559,8 +2562,12 @@ ExtensionFunction::ResponseAction TabsHighlightFunction::Run() {
   }
 
   // Don't let the extension update the tab if the user is dragging tabs.
-  TabListInterface* tab_list = ExtensionTabUtil::GetEditableTabList(
-      *window_controller->GetBrowserWindowInterface());
+  BrowserWindowInterface* browser =
+      window_controller->GetBrowserWindowInterface();
+  if (!browser) {
+    return RespondNow(Error(ExtensionTabUtil::kTabStripNotEditableError));
+  }
+  TabListInterface* tab_list = ExtensionTabUtil::GetEditableTabList(*browser);
   if (!tab_list) {
     return RespondNow(Error(ExtensionTabUtil::kTabStripNotEditableError));
   }
@@ -2618,8 +2625,6 @@ ExtensionFunction::ResponseAction TabsHighlightFunction::Run() {
 #if BUILDFLAG(IS_ANDROID)
   // TODO(crbug.com/496733610): Supporting CCT/PWA/TWA is currently not possible
   // in C++ browser tests on Android. Add tests once that's supported.
-  BrowserWindowInterface* browser =
-      window_controller->GetBrowserWindowInterface();
   auto browser_type = browser->GetType();
   if ((browser_type == BrowserWindowInterface::TYPE_CUSTOM_TAB ||
        browser_type == BrowserWindowInterface::TYPE_APP) &&
@@ -3122,8 +3127,9 @@ bool TabsMoveFunction::MoveTab(int tab_id,
 
 #if BUILDFLAG(IS_ANDROID)
     if (is_source_window_cct_or_app_on_android &&
-        target_controller->GetBrowserWindowInterface()->GetType() !=
-            BrowserWindowInterface::TYPE_NORMAL) {
+        (!target_controller->GetBrowserWindowInterface() ||
+         target_controller->GetBrowserWindowInterface()->GetType() !=
+             BrowserWindowInterface::TYPE_NORMAL)) {
       *error =
           tabs_constants::kAndroidCanOnlyMoveCctOrWebAppTabsToNormalWindowError;
       return false;
@@ -3171,6 +3177,10 @@ bool TabsMoveFunction::MoveTab(int tab_id,
 
   TabListInterface* source_tab_list =
       TabListInterface::From(source_window->GetBrowserWindowInterface());
+  if (!source_tab_list) {
+    *error = ExtensionTabUtil::kTabStripNotEditableError;
+    return false;
+  }
   if (*new_index >= source_tab_list->GetTabCount() || *new_index < 0) {
     *new_index = source_tab_list->GetTabCount() - 1;
   }
@@ -3232,6 +3242,11 @@ ExtensionFunction::ResponseAction TabsReloadFunction::Run() {
                                    &web_contents, nullptr, &error)) {
       return RespondNow(Error(std::move(error)));
     }
+  }
+
+  if (PictureInPictureWindowManager::IsChildWebContents(web_contents)) {
+    return RespondNow(
+        Error(tabs_constants::kNotAllowedForPictureInPictureError));
   }
 
   web_contents->GetController().Reload(

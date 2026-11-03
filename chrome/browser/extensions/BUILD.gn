@@ -936,7 +936,6 @@ source_set("extensions") {
       "//build:chromeos_buildflags",
       "//build/config/chromebox_for_meetings:buildflags",
       "//build/config/linux/dbus:buildflags",
-      "//chrome:extra_resources",
       "//chrome:resources",
       "//chrome:strings",
       "//chrome/app/resources:platform_locale_settings",
@@ -1640,6 +1639,8 @@ static_library("test_support") {
     "test_extension_service.h",
     "test_extension_system.cc",
     "test_extension_system.h",
+    "test_standalone_window_controller.cc",
+    "test_standalone_window_controller.h",
     "user_scripts_test_util.cc",
     "user_scripts_test_util.h",
     "webstore_installer_test.cc",
@@ -2034,8 +2035,6 @@ source_set("unit_tests") {
     "sync/extension_sync_data_unittest.cc",
     "sync/extension_sync_service_unittest.cc",
     "tab_helper_unittest.cc",
-    "test_standalone_window_controller.cc",
-    "test_standalone_window_controller.h",
     "unpacked_installer_unittest.cc",
     "updater/authenticated_network_fetcher_unittest.cc",
     "updater/extension_update_client_command_line_config_policy_unittest.cc",
@@ -2533,6 +2532,7 @@ source_set("browser_tests") {
     "//chrome/browser/lifetime:termination_notification",
     "//chrome/browser/new_tab_page",
     "//chrome/browser/permissions",
+    "//chrome/browser/picture_in_picture",
     "//chrome/browser/policy:test_support",
     "//chrome/browser/prefetch",
     "//chrome/browser/prefs",
@@ -2575,6 +2575,8 @@ source_set("browser_tests") {
   ]
   if (!is_android) {
     deps += [ "//chrome/test/base:test_browser_window" ]
+  } else {
+    deps += [ "//chrome/test/base:android_ui_test_utils" ]
   }
   deps += [
     "//chrome/test/base:tracing",
@@ -2650,6 +2652,10 @@ source_set("browser_tests") {
       "//components/onc",
       "//components/wifi:test_support",
     ]
+  }
+
+  if (is_mac) {
+    deps += [ "//chrome/test/base:test_utils_mac" ]
   }
 
   if (is_win || is_mac || is_linux) {

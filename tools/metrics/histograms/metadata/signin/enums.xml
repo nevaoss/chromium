@@ -244,8 +244,17 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="EntityPreviewEmptyResult"/>
   <int value="3" label="StatisticsHasResult"/>
   <int value="4" label="StatisticsEmptyResult"/>
-  <int value="5" label="CompletedWithResults"/>
-  <int value="6" label="CompletedWithoutResults"/>
+  <int value="5" label="CompletedWithResults">
+    At least one requested endpoint succeeded (including when only partial
+    results were obtained).
+  </int>
+  <int value="6" label="CompletedWithoutResults">
+    All requested endpoints failed.
+  </int>
+  <int value="7" label="CompletedWithPartialResults">
+    Recorded in addition to CompletedWithResults when at least one requested
+    endpoint succeeded and at least one failed.
+  </int>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/core/browser/account_preview_data_fetcher.h:AccountPreviewDataFetchState) -->
@@ -1009,6 +1018,7 @@ chromium-metrics-reviews@google.com.
   <int value="107" label="Tab Context Containers Service"/>
   <int value="108" label="Site Token Provider"/>
   <int value="109" label="Device Authorization Request"/>
+  <int value="110" label="CMTG Device Key Provider"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/public/base/oauth_consumer_id.h:OAuthConsumerId) -->
@@ -1101,6 +1111,17 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/public/base/signin_metrics.h:ReauthAccessPoint) -->
+
+<!-- LINT.IfChange(ReauthProceedToChallengeResult) -->
+
+<enum name="ReauthProceedToChallengeResult">
+  <int value="0" label="Proceed to challenge (account in cookies)"/>
+  <int value="1"
+      label="Proceed to challenge without cookies (shows identifier page)"/>
+  <int value="2" label="Fallback to AddSession"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/signin/signin_promo.h:ReauthProceedToChallengeResult) -->
 
 <enum name="ResumeBlockedRequestsTrigger">
   <int value="0" label="Cookie fresh notification"/>

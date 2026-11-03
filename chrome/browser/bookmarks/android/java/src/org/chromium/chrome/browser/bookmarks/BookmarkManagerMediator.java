@@ -257,6 +257,7 @@ class BookmarkManagerMediator
                     onBackPressStateChanged();
 
                     BookmarkId currentId = assumeNonNull(getCurrentFolderId());
+                    mBookmarkModel.notifyBookmarkFolderViewed(currentId);
                     setBookmarks(
                             mBookmarkQueryHandler.buildBookmarkListForParent(
                                     currentId, mCurrentPowerFilter));
@@ -390,6 +391,7 @@ class BookmarkManagerMediator
     private final ImprovedBookmarkRowCoordinator mImprovedBookmarkRowCoordinator;
     private final Set<PowerBookmarkType> mCurrentPowerFilter = new HashSet<>();
     private final CallbackController mCallbackController = new CallbackController();
+    private final Callback<Boolean> mBackPressSupplierObserver = (x) -> onBackPressStateChanged();
     private final PendingRunnable mPendingRefresh =
             new PendingRunnable(
                     TaskTraits.UI_DEFAULT, mCallbackController.makeCancelable(this::refresh));
@@ -449,7 +451,7 @@ class BookmarkManagerMediator
         mSelectableListLayout = selectableListLayout;
         mSelectableListLayout
                 .getHandleBackPressChangedSupplier()
-                .addSyncObserverAndPostIfNonNull((x) -> onBackPressStateChanged());
+                .addSyncObserverAndPostIfNonNull(mBackPressSupplierObserver);
         mSelectionDelegate = selectionDelegate;
         mRecyclerView = recyclerView;
         mDragReorderableRecyclerViewAdapter = dragReorderableRecyclerViewAdapter;
@@ -530,6 +532,7 @@ class BookmarkManagerMediator
         mDragStateDelegate.onBookmarkDelegateInitialized(this);
 
         updateShoppingFilterVisible();
+        mBookmarkModel.notifyBookmarkManagerOpened();
 
         // TODO(https://crbug.com/40255666): This logic is here to keep the same execution order
         // from when it was in the original adapter. It doesn't conceptually make sense to be here,
@@ -561,10 +564,13 @@ class BookmarkManagerMediator
 
         mBookmarkUiPrefs.removeObserver(mBookmarkUiPrefsObserver);
 
-        if (mShoppingService != null
-                && CommerceFeatureUtils.isShoppingListEligible(mShoppingService)) {
+        if (mShoppingService != null) {
             mShoppingService.removeSubscriptionsObserver(mSubscriptionsObserver);
         }
+        mDragTouchHandler.removeDragListener(mDragListener);
+        mSelectableListLayout
+                .getHandleBackPressChangedSupplier()
+                .removeObserver(mBackPressSupplierObserver);
 
         for (BookmarkUiObserver observer : mUiObservers) {
             observer.onDestroy();

@@ -98,6 +98,12 @@ class ContextHubService : public KeyedService,
 #endif
 {
  public:
+  // Represents a cited memory bank entry in a chat response.
+  struct MemoryBankChatCitation {
+    std::string title;
+    GURL url;
+  };
+
   class Observer : public base::CheckedObserver {
    public:
     virtual void OnAutoTodosChanged(base::span<const AutoTodoEntry> entries) {}
@@ -224,6 +230,24 @@ class ContextHubService : public KeyedService,
   std::vector<browser::context_hub::mojom::AutoTodoItemFeedbackPtr>
   GetTodoFeedbacks() const;
 
+  // Fishfood Topic feedback, persisted in the
+  // prefs::kContextHubTopicsFishfoodFeedback profile pref so ratings survive
+  // tab closure and browser restarts. The pref is cleared on service creation
+  // when features::kTopicsFishfoodFeedback is disabled.
+  //
+  // Stores or replaces the feedback for the Topic identified by `feedback->id`.
+  // Overwrites `feedback->snapshot->time_rated` with the current time.
+  void SetTopicFeedback(browser::context_hub::mojom::TopicFeedbackPtr feedback);
+  // Deletes the feedback for `topic_id`, if any.
+  void DeleteTopicFeedback(const std::string& topic_id);
+  // Deletes all Topic feedback.
+  void ClearTopicFeedbacks();
+  // Returns all stored Topic feedback, ordered by topic id. Entries whose
+  // required fields fail to deserialize are omitted; see
+  // topics/topic_feedback_conversions.h.
+  std::vector<browser::context_hub::mojom::TopicFeedbackPtr> GetTopicFeedbacks()
+      const;
+
   using GroupTabsCallback =
       base::OnceCallback<void(std::vector<TabGroupEntry> groups,
                               std::vector<TabData> ungrouped_tabs,
@@ -304,7 +328,8 @@ class ContextHubService : public KeyedService,
   void DeleteAllTabGroups(base::OnceClosure callback);
 
   using MemoryBankChatCallback =
-      base::OnceCallback<void(std::optional<std::string> response)>;
+      base::OnceCallback<void(std::optional<std::string> response,
+                              std::vector<MemoryBankChatCitation> citations)>;
   // Executes a memory bank chat request for the specified memory bank entry
   // IDs. If `save_to_history` is true, the request and response are saved to
   // memory bank chat history.
@@ -462,6 +487,7 @@ class ContextHubService : public KeyedService,
 
   // Handles the result of the model execution from `ExecuteMemoryBankChat`.
   void HandleMemoryBankChatModelExecutionResult(
+      std::vector<MemoryBankEntry> entries,
       const std::string& user_command,
       bool save_to_history,
       MemoryBankChatCallback callback,

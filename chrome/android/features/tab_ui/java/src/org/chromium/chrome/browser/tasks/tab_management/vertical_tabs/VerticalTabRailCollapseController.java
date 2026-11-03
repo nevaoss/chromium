@@ -14,6 +14,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.WindowWidthBoundary;
+import org.chromium.ui.base.WindowAndroid;
 
 /**
  * Controller for managing the vertical tab rail's expanded/collapsed state.
@@ -23,8 +24,7 @@ import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.WindowWidth
  *
  * <ul>
  *   <li>The user preference, {@link RailCollapseState#EXPANDED} or {@link
- *       RailCollapseState#COLLAPSED}, changed by {@link #toggleCollapseState()} and persisted in
- *       shared prefs.
+ *       RailCollapseState#COLLAPSED}, changed by {@link #toggleCollapseState()}.
  *   <li>Whether the pointer is hovering the rail, fed by {@link VerticalTabRailHoverController}
  *       through {@link #setHovering(boolean)}.
  *   <li>The window width constraint, from {@link #setWindowWidthBoundary(int)}, supplied by {@link
@@ -34,17 +34,24 @@ import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.WindowWidth
  * <p>Everything else (the effective {@link #getEffectiveRailCollapseState()} and whether the
  * collapse button is enabled) is derived from those inputs and pushed to the view layer by {@link
  * #applyEffectiveState()}.
+ *
+ * <p>The user preference belongs to this window. It is loaded from shared prefs once, at
+ * construction, and is written back when the user changes it and whenever this window becomes the
+ * top resumed activity. Shared prefs therefore hold the preference of the last active window, which
+ * a new window (e.g. one created by dragging a tab out of this window) starts with.
  */
 @NullMarked
-class VerticalTabRailCollapseController {
+class VerticalTabRailCollapseController implements WindowAndroid.ActivityStateObserver {
     /**
      * Delegate that carries out a user-requested rail state change. At most one may be registered;
      * when none is, the controller applies the change itself.
      */
     interface RailStateChangeDelegate {
         /**
-         * Called when the user requested a change that moves the effective rail state. The delegate
-         * is responsible for driving the resulting Side UI update, which ends up calling {@link
+         * Called when the user requested a change that moves the effective rail state, or that
+         * otherwise needs Side UI to be updated (e.g. turning expand-on-hover on or off, which
+         * affects whether the rail can be manually resized). The delegate is responsible for
+         * driving the resulting Side UI update, which ends up calling {@link
          * #applyEffectiveState()}.
          */
         void handleUserRequestedStateChange();
@@ -74,6 +81,7 @@ class VerticalTabRailCollapseController {
 
     private final Callback<@RailCollapseState Integer> mSetRailCollapseStateCallback;
     private final Callback<Boolean> mSetCollapseButtonEnabledCallback;
+    private final WindowAndroid mWindowAndroid;
     private final SettableNonNullObservableSupplier<@RailCollapseState Integer>
             mRailCollapseStateSupplier;
     private @Nullable RailStateChangeDelegate mRailStateChangeDelegate;
@@ -95,25 +103,42 @@ class VerticalTabRailCollapseController {
      *     view layer.
      * @param setCollapseButtonEnabledCallback Applies the derived collapse button enabled state to
      *     the view layer.
+     * @param windowAndroid The window hosting the rail, used to observe whether its activity is the
+     *     top resumed activity.
      */
     VerticalTabRailCollapseController(
             Callback<@RailCollapseState Integer> setRailCollapseStateCallback,
-            Callback<Boolean> setCollapseButtonEnabledCallback) {
+            Callback<Boolean> setCollapseButtonEnabledCallback,
+            WindowAndroid windowAndroid) {
         mSetRailCollapseStateCallback = setRailCollapseStateCallback;
         mSetCollapseButtonEnabledCallback = setCollapseButtonEnabledCallback;
+        mWindowAndroid = windowAndroid;
         mIsCollapsedByUser = VerticalTabUtils.isRailCollapsedFromSharedPref();
         mRailCollapseStateSupplier =
                 ObservableSuppliers.createNonNull(getEffectiveRailCollapseState());
+        mWindowAndroid.addActivityStateObserver(this);
     }
 
-    /** Cleans up the registered delegate. */
+    /** Cleans up the registered delegate and stops observing the window. */
     void destroy() {
         mRailStateChangeDelegate = null;
+        mWindowAndroid.removeActivityStateObserver(this);
     }
 
     /** Sets the delegate that carries out user-requested rail state changes. */
     void setRailStateChangeDelegate(@Nullable RailStateChangeDelegate delegate) {
         mRailStateChangeDelegate = delegate;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // WindowAndroid.ActivityStateObserver implementation.
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public void onActivityTopResumedChanged(boolean isTopResumedActivity) {
+        if (!isTopResumedActivity) return;
+        // Make this window's preference the one a new window starts with.
+        VerticalTabUtils.setRailCollapsedInSharedPref(mIsCollapsedByUser);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,8 +149,6 @@ class VerticalTabRailCollapseController {
     void toggleCollapseState() {
         if (isForcedCollapsed()) return;
 
-        @RailCollapseState int previousState = getEffectiveRailCollapseState();
-
         mIsCollapsedByUser = !mIsCollapsedByUser;
         VerticalTabUtils.setRailCollapsedInSharedPref(mIsCollapsedByUser);
         RecordHistogram.recordBooleanHistogram(
@@ -134,20 +157,34 @@ class VerticalTabRailCollapseController {
         // An explicit toggle overrides the current hover; the rail expands on hover again only
         // after the pointer leaves and re-enters.
         mIsHoverExpanded = false;
-        requestEffectiveStateChangeByUser(previousState);
+        // When not forced collapsed, a toggle always moves the effective state.
+        requestEffectiveStateChangeByUser();
     }
 
     /**
      * Feeds whether the pointer is hovering the rail, as tracked by {@link
      * VerticalTabRailHoverController}. Hover is recorded even while the rail cannot expand (narrow
-     * window), so that a hover exit is never missed.
+     * window), so that a hover exit is never missed. Side UI is only updated if the effective state
+     * changed.
      *
      * @param isHovering Whether the pointer is hovering the rail.
      */
     void setHovering(boolean isHovering) {
         @RailCollapseState int previousState = getEffectiveRailCollapseState();
         mIsHoverExpanded = isHovering;
-        requestEffectiveStateChangeByUser(previousState);
+        if (previousState == getEffectiveRailCollapseState()) return;
+        requestEffectiveStateChangeByUser();
+    }
+
+    /**
+     * Called when the user turns expand-on-hover on or off. Clears the hover, as the pointer is no
+     * longer tracked when turned off, and the next hover event re-expands the rail when turned on.
+     * Always requests a Side UI update, even if the effective state is unchanged, since the setting
+     * changes whether the rail can be manually resized.
+     */
+    void onExpandOnHoverSettingChanged() {
+        mIsHoverExpanded = false;
+        requestEffectiveStateChangeByUser();
     }
 
     /**
@@ -207,10 +244,14 @@ class VerticalTabRailCollapseController {
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Pushes the effective rail collapse state and the derived collapse button enabled state to the
-     * view layer, then publishes the applied state to {@link #getRailCollapseStateSupplier()}.
-     * Callers should invoke this whenever an input may have been applied out-of-band (e.g. after
-     * Side UI specs changed).
+     * Pushes the effective rail collapse state and whether the collapse button is enabled to the
+     * view layer, then publishes the state to {@link #getRailCollapseStateSupplier()}.
+     *
+     * <p>Only updates the rail itself, not its Side UI container. Called when Side UI sizes the
+     * container for the current inputs (from {@link
+     * VerticalTabsSideUiCoordinator#onSideUiSpecsChanged} or {@link #setWindowWidthBoundary}), or
+     * by {@link #requestEffectiveStateChangeByUser()} when no {@link RailStateChangeDelegate} is
+     * registered.
      */
     void applyEffectiveState() {
         @RailCollapseState int effectiveState = getEffectiveRailCollapseState();
@@ -226,17 +267,11 @@ class VerticalTabRailCollapseController {
     }
 
     /**
-     * Propagates a user-driven input change, if it moved the effective state.
-     *
-     * @param previousState The effective {@link RailCollapseState} before the input changed.
+     * Propagates a user-driven input change. Callers decide whether one is needed. If a delegate is
+     * registered, hands it over so it can trigger the Side UI transition, which ends up applying
+     * the effective state. Otherwise, falls back to applying the effective state directly.
      */
-    private void requestEffectiveStateChangeByUser(@RailCollapseState int previousState) {
-        @RailCollapseState int targetState = getEffectiveRailCollapseState();
-        if (previousState == targetState) return;
-
-        // If a delegate is registered, hand the change over so it can trigger the Side UI
-        // transition, which ends up applying the effective state. Otherwise, fall back to applying
-        // the effective state directly.
+    private void requestEffectiveStateChangeByUser() {
         if (mRailStateChangeDelegate != null) {
             mRailStateChangeDelegate.handleUserRequestedStateChange();
         } else {

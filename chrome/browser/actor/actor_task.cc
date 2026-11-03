@@ -149,7 +149,8 @@ ActorTask::ActorTask(
     const TaskSourceInfo& source_info,
     const EnterprisePolicyChecker* policy_checker,
     base::WeakPtr<ActorTaskDelegate> delegate,
-    std::optional<glic::mojom::InvocationSource> initial_invocation_source)
+    std::optional<glic::mojom::InvocationSource> initial_invocation_source,
+    AllowedSchemes allowed_schemes)
     : service_(service),
       id_(id),
       source_info_(source_info),
@@ -173,13 +174,14 @@ ActorTask::ActorTask(
       ui_weak_ptr_factory_(ui_event_dispatcher_.get()) {
   CHECK(policy_checker);
   CHECK(!id_.is_null());
-  execution_engine_ = ExecutionEngine::Create(*this);
+  execution_engine_ = ExecutionEngine::Create(*this, allowed_schemes);
 }
 
 ActorTask::~ActorTask() {
   // The owner of the ActorTasks (ActorKeyedService) should have stopped all
   // tasks already.
   CHECK(IsCompleted());
+  ClearAllUserData();
 }
 
 // static
@@ -191,11 +193,12 @@ std::unique_ptr<ActorTask> ActorTask::CreateForTesting(
     const TaskSourceInfo& source_info,
     const EnterprisePolicyChecker* policy_checker,
     base::WeakPtr<ActorTaskDelegate> delegate,
-    std::optional<glic::mojom::InvocationSource> initial_invocation_source) {
+    std::optional<glic::mojom::InvocationSource> initial_invocation_source,
+    AllowedSchemes allowed_schemes) {
   return std::make_unique<ActorTask>(
       base::PassKey<ActorTask>(), service, id, std::move(ui_event_dispatcher),
       std::move(options), source_info, policy_checker, std::move(delegate),
-      initial_invocation_source);
+      initial_invocation_source, allowed_schemes);
 }
 
 ExecutionEngine& ActorTask::GetExecutionEngine() const {
@@ -217,13 +220,13 @@ Profile* ActorTask::GetProfile() const {
 
 #if BUILDFLAG(IS_ANDROID)
 void ActorTask::SetIsInPip(bool is_in_pip) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   is_in_pip_ = is_in_pip;
 }
 #endif
 
 ActorUiMode ActorTask::GetUiMode() const {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   if (is_in_pip_) {
     return ActorUiMode::kPip;
   }
@@ -314,8 +317,7 @@ void ActorTask::SetState(State new_state) {
     ActorTask::State ui_task_state = new_state;
     // TODO(crbug.com/484367299): Implement a proper actor task state for
     // interrupt-with-user-control.
-    if (base::FeatureList::IsEnabled(kActorFormScriptToolInterrupt) &&
-        new_state == kWaitingOnUser && interrupted_task_needs_user_control_) {
+    if (new_state == kWaitingOnUser && interrupted_task_needs_user_control_) {
       ui_task_state = kPausedByActor;
     }
     ui_event_dispatcher_->OnActorTaskSyncChange(
@@ -423,7 +425,7 @@ void ActorTask::OnFinishedAct(
     // purposes.
     journal_->Log(GURL(), id(), "ActorTask::OnFinishedAct",
                   JournalDetailsBuilder()
-                      .Add("result", result ? ToDebugString(*result) : "null")
+                      .Add("result", ToDebugString(*result))
                       .Add("Not in kActing state", base::ToString(state_))
                       .Build());
   }
@@ -440,22 +442,19 @@ void ActorTask::OnFinishedAct(
 
   // The callback may already have been called, if the task was stopped or
   // paused.
-  const bool is_paused_result =
-      result && result->code == mojom::ActionResultCode::kTaskPaused;
   if (callback_for_act_) {
-    // Interruption (WaitingOnUser) can happen while acting, but in that case
-    // the tool is the source and must not finish before uninterrupting.
-    DCHECK(state_ == State::kCreated || state_ == State::kActing ||
-           IsUnderUserControl());
-    if (result) {
-      action_tracker_for_metrics_->OnFinishedAct(*result);
-    }
+    // A task can finish while still in `kCreated` if early tab addition fails
+    // before transitioning to `kActing`. Interruption (`kWaitingOnUser`) can
+    // happen while acting, but completion is deferred until the task is
+    // uninterrupted back to `kActing`.
+    CHECK(state_ == State::kCreated || state_ == State::kActing,
+          base::NotFatalUntil::M161);
+    action_tracker_for_metrics_->OnFinishedAct(*result);
     std::move(callback_for_act_)
         .Run(std::move(action_results), std::move(observation_strategy));
   }
 
-  if (state_ == State::kActing ||
-      (state_ == State::kPausedByActor && !is_paused_result)) {
+  if (state_ == State::kActing) {
     SetState(State::kReflecting);
   }
 }
@@ -472,8 +471,9 @@ void ActorTask::Stop(StoppedReason stop_reason) {
     // A task can be stopped while still in `kCreated` if an Act request is
     // waiting on asynchronous tab addition (e.g. via `kGlicEarlyAddTaskTabs`)
     // before transitioning to `kActing`.
-    DCHECK(state_ == State::kActing || state_ == State::kWaitingOnUser ||
-           state_ == State::kCreated);
+    CHECK(state_ == State::kActing || state_ == State::kWaitingOnUser ||
+              state_ == State::kCreated,
+          base::NotFatalUntil::M161);
     mojom::ActionResultPtr result = MakeResult(result_code);
     action_tracker_for_metrics_->OnFinishedAct(*result);
     std::move(callback_for_act_)
@@ -503,19 +503,20 @@ void ActorTask::Stop(StoppedReason stop_reason) {
       .feature_mode = feature_mode_});
 }
 
-void ActorTask::Pause(bool from_actor, bool cancel_existing_action) {
+void ActorTask::Pause(bool from_actor) {
   if (IsCompleted()) {
     return;
   }
 
   // Invoke the callback before changing states so that the client sees the Act
   // result before seeing the state transition.
-  if (callback_for_act_ && cancel_existing_action) {
+  if (callback_for_act_) {
     // A task can be paused while still in `kCreated` if an Act request is
     // waiting on asynchronous tab addition (e.g. via `kGlicEarlyAddTaskTabs`)
     // before transitioning to `kActing`.
-    DCHECK(state_ == State::kActing || state_ == State::kWaitingOnUser ||
-           state_ == State::kCreated);
+    CHECK(state_ == State::kActing || state_ == State::kWaitingOnUser ||
+              state_ == State::kCreated,
+          base::NotFatalUntil::M161);
     mojom::ActionResultPtr result =
         MakeResult(mojom::ActionResultCode::kTaskPaused);
     action_tracker_for_metrics_->OnFinishedAct(*result);
@@ -523,11 +524,7 @@ void ActorTask::Pause(bool from_actor, bool cancel_existing_action) {
         .Run(MakeResultVector(std::move(result)), TabObservationStrategy());
   }
 
-  if (cancel_existing_action) {
-    CancelOngoingActions(mojom::ActionResultCode::kTaskPaused);
-  } else {
-    execution_engine_->PauseOngoingActions();
-  }
+  CancelOngoingActions(mojom::ActionResultCode::kTaskPaused);
   if (from_actor) {
     SetState(State::kPausedByActor);
   } else {
@@ -549,6 +546,8 @@ void ActorTask::Interrupt(bool retain_user_control,
   if (GetState() != State::kReflecting && GetState() != State::kActing) {
     return;
   }
+  // TODO(crbug.com/484367299): Implement a proper actor task state for
+  // interrupt-with-user-control.
   interrupted_task_needs_user_control_ = retain_user_control;
   execution_engine_->PauseOngoingActions();
   interrupt_reason_ = interrupt_reason;
@@ -883,7 +882,7 @@ absl::flat_hash_set<tabs::TabHandle> ActorTask::GetTabs() const {
 }
 
 void ActorTask::DidTabEnterActorControl(tabs::TabHandle handle) {
-  DCHECK(IsActingOnTab(handle));
+  CHECK(IsActingOnTab(handle), base::NotFatalUntil::M161);
   tabs::TabInterface* tab = handle.Get();
   if (!tab) {
     // This happens in unittests.
@@ -933,7 +932,7 @@ void ActorTask::DidContentsEnterActorControl(
 void ActorTask::DidTabExitActorControl(tabs::TabHandle handle) {
   // Note that the state_ may still be in an actor controlled state if we are
   // just removing this tab (e.g. close the tab).
-  DCHECK(controlled_tabs_.contains(handle));
+  CHECK(controlled_tabs_.contains(handle), base::NotFatalUntil::M161);
   tabs::TabInterface* tab = handle.Get();
   if (!tab) {
     // This happens in unittests.

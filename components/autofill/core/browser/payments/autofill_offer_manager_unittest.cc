@@ -205,6 +205,16 @@ TEST_F(AutofillOfferManagerTest,
   EXPECT_EQ(offer2, *result);
 }
 
+// Verify that shown notifications are remembered per offer.
+TEST_F(AutofillOfferManagerTest, MarkNotificationShown) {
+  EXPECT_FALSE(autofill_offer_manager_->HasShownNotification("1"));
+
+  autofill_offer_manager_->MarkNotificationShown("1");
+
+  EXPECT_TRUE(autofill_offer_manager_->HasShownNotification("1"));
+  EXPECT_FALSE(autofill_offer_manager_->HasShownNotification("2"));
+}
+
 // Hidden tabs must not set up an offer notification the user cannot see.
 TEST_F(AutofillOfferManagerTest, HiddenTab_DoesNotUpdateNotification) {
   payments_autofill_client().set_is_tab_visible_for_offer_notification(false);
@@ -233,6 +243,65 @@ TEST_F(AutofillOfferManagerTest, HiddenTab_DoesNotConsumeAutomaticShow) {
 
   payments_autofill_client().set_is_tab_visible_for_offer_notification(true);
   NavigateTo(GURL(kTestUrl));
+}
+
+// Verify that if several offers apply to a URL, the first matching one in the
+// order returned by `PaymentsDataManager::GetAutofillOffers()` is returned.
+TEST_F(AutofillOfferManagerTest, GetOfferForUrl_ReturnsFirstMatchingOffer) {
+  payments_data_manager().AddAutofillOfferData(test::GetPromoCodeOfferData(
+      GURL("https://www.other.com/"), /*is_expired=*/false, "other_site"));
+  payments_data_manager().AddAutofillOfferData(test::GetPromoCodeOfferData(
+      GURL(kTestUrl), /*is_expired=*/false, "first_match"));
+  payments_data_manager().AddAutofillOfferData(test::GetPromoCodeOfferData(
+      GURL(kTestUrl), /*is_expired=*/false, "second_match"));
+
+  const AutofillOfferData* result =
+      autofill_offer_manager_->GetOfferForUrl(GURL(kTestUrl));
+  ASSERT_TRUE(result);
+  EXPECT_EQ(result->GetOfferId(), "first_match");
+}
+
+// Verify that a Wallet direct offer applies to any URL with the same eTLD+1 as
+// its merchant origin, but not to look-alike hosts.
+TEST_F(AutofillOfferManagerTest, WalletDirectOffer_MatchesSameDomain) {
+  payments_data_manager().AddAutofillOfferData(test::GetPromoCodeOfferData(
+      GURL("https://example.com/"), /*is_expired=*/false, "offer"));
+
+  for (const char* url :
+       {"https://example.com/", "https://example.com/shop?item=1#top",
+        "https://www.example.com/", "https://store.example.com/shop",
+        "https://a.b.example.com/"}) {
+    SCOPED_TRACE(url);
+    EXPECT_TRUE(autofill_offer_manager_->IsUrlEligible(GURL(url)));
+    const AutofillOfferData* offer =
+        autofill_offer_manager_->GetOfferForUrl(GURL(url));
+    ASSERT_TRUE(offer);
+    EXPECT_EQ(offer->GetOfferId(), "offer");
+  }
+
+  for (const char* url :
+       {"https://notexample.com/", "https://example.com.evil.com/",
+        "https://example.org/"}) {
+    SCOPED_TRACE(url);
+    EXPECT_FALSE(autofill_offer_manager_->IsUrlEligible(GURL(url)));
+    EXPECT_FALSE(autofill_offer_manager_->GetOfferForUrl(GURL(url)));
+  }
+}
+
+// Verify that a Wallet direct offer for a subdomain also applies to its parent
+// domain and to sibling subdomains.
+TEST_F(AutofillOfferManagerTest,
+       WalletDirectOffer_SubdomainMatchesParentAndSiblings) {
+  payments_data_manager().AddAutofillOfferData(test::GetPromoCodeOfferData(
+      GURL("https://store.example.com/"), /*is_expired=*/false, "offer"));
+
+  for (const char* url : {"https://store.example.com/shop",
+                          "https://example.com/", "https://www.example.com/"}) {
+    SCOPED_TRACE(url);
+    EXPECT_TRUE(autofill_offer_manager_->IsUrlEligible(GURL(url)));
+  }
+  EXPECT_FALSE(
+      autofill_offer_manager_->IsUrlEligible(GURL("https://notexample.com/")));
 }
 
 }  // namespace autofill

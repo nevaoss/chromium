@@ -202,6 +202,8 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   NSString* _aimTitle;
   // The icon for the AI Mode button.
   UIImage* _aimIcon;
+  // The accessibility label for the AI Mode button.
+  NSString* _aimAccessibilityLabel;
   // Tracks whether the NTP was scrolled to the top before a size transition.
   BOOL _scrolledToTop;
   // Constraints for the feed top section promo.
@@ -251,7 +253,9 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
       [[NewTabPageQuickActionsViewController alloc] init];
   _quickActionsViewController.layoutGuideCenter = self.layoutGuideCenter;
   _quickActionsViewController.NTPShortcutsHandler = self.NTPShortcutsHandler;
-  [_quickActionsViewController setAIMTitle:_aimTitle icon:_aimIcon];
+  [_quickActionsViewController setAIMTitle:_aimTitle
+                                      icon:_aimIcon
+                        accessibilityLabel:_aimAccessibilityLabel];
 
   // TODO(crbug.com/40799579): Remove this when bug is fixed.
   [self.feedWrapperViewController loadViewIfNeeded];
@@ -620,11 +624,20 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
     CGFloat oldOffset = self.collectionView.contentOffset.y;
     [self updateFeedInsetsForContentAbove];
     CGFloat newHeightAboveFeed = self.collectionView.contentInset.top;
-    CGFloat change = newHeightAboveFeed - oldHeightAboveFeed;
-    // Offset the change by subtracting it from the content offset, in order to
-    // visually keep the same scroll position, but don't allow an offset that
-    // is lower than the top.
-    [self setContentOffset:MAX(oldOffset - change, -newHeightAboveFeed)];
+    if (self.hasSavedOffsetFromPreviousScrollState) {
+      // A scroll position was restored (e.g. navigating back to the NTP) and
+      // the user has not scrolled since. Async updates to the content above
+      // the feed (e.g. Most Visited Tiles resizing) must not override it, so
+      // re-apply the saved offset instead of shifting the current one, which
+      // may have been clamped by transient layout passes.
+      [self setContentOffset:self.savedScrollOffset];
+    } else {
+      CGFloat change = newHeightAboveFeed - oldHeightAboveFeed;
+      // Offset the change by subtracting it from the content offset, in order
+      // to visually keep the same scroll position, but don't allow an offset
+      // that is lower than the top.
+      [self setContentOffset:MAX(oldOffset - change, -newHeightAboveFeed)];
+    }
     if (!self.feedVisible) {
       [self setMinimumHeight];
     }
@@ -885,10 +898,15 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   }
 }
 
-- (void)setAIMTitle:(NSString*)title icon:(UIImage*)icon {
+- (void)setAIMTitle:(NSString*)title
+                  icon:(UIImage*)icon
+    accessibilityLabel:(NSString*)accessibilityLabel {
   _aimTitle = [title copy];
   _aimIcon = icon;
-  [_quickActionsViewController setAIMTitle:title icon:icon];
+  _aimAccessibilityLabel = [accessibilityLabel copy];
+  [_quickActionsViewController setAIMTitle:_aimTitle
+                                      icon:_aimIcon
+                        accessibilityLabel:_aimAccessibilityLabel];
 }
 - (void)setOmniboxInBottomPosition:(BOOL)isBottomOmnibox {
   if (_isBottomOmnibox == isBottomOmnibox) {

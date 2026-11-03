@@ -720,7 +720,9 @@ void DownloadTargetDeterminer::RequestConfirmationDone(
         download::DOWNLOAD_INTERRUPT_REASON_USER_CANCELED);
     return;
   }
-  CHECK(!virtual_path.empty(), base::NotFatalUntil::M161);
+  // TODO(crbug.com/571289487): CHECK-exclusion: Convert to a CHECK once we
+  // are confident it won't be triggered.
+  DCHECK(!virtual_path.empty());
   CHECK_EQ(STATE_DETERMINE_LOCAL_PATH, next_state_, base::NotFatalUntil::M161);
 
   // If the user wasn't prompted, then we need to clear the
@@ -1028,8 +1030,9 @@ DownloadTargetDeterminer::Result
   CHECK(!virtual_path_.empty(), base::NotFatalUntil::M161);
   CHECK(!local_path_.empty(), base::NotFatalUntil::M161);
   CHECK(intermediate_path_.empty(), base::NotFatalUntil::M161);
-  CHECK(!virtual_path_.MatchesExtension(kCrdownloadSuffix),
-        base::NotFatalUntil::M161);
+  // TODO(crbug.com/570767468): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!virtual_path_.MatchesExtension(kCrdownloadSuffix));
   CHECK(!local_path_.MatchesExtension(kCrdownloadSuffix),
         base::NotFatalUntil::M161);
 
@@ -1088,8 +1091,10 @@ DownloadTargetDeterminer::Result
   // intermediate file should already be in the correct form.
   if (is_resumption_ && !download_->GetFullPath().empty() &&
       local_path_.DirName() == download_->GetFullPath().DirName()) {
-    CHECK_NE(download::DOWNLOAD_DANGER_TYPE_NOT_DANGEROUS,
-             download_->GetDangerType(), base::NotFatalUntil::M161);
+    // TODO(crbug.com/570767468): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK_NE(download::DOWNLOAD_DANGER_TYPE_NOT_DANGEROUS,
+              download_->GetDangerType());
     CHECK_EQ(kCrdownloadSuffix, download_->GetFullPath().Extension(),
              base::NotFatalUntil::M161);
     intermediate_path_ = download_->GetFullPath();

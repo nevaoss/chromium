@@ -248,6 +248,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ShortcutsAutoRemovalToast) {
           "runMochaSuite('ShortcutsAutoRemovalToast');");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ShortcutsReorder) {
+  RunTest("cr_components/most_visited_test.js",
+          "runMochaSuite('ShortcutsReorder');");
+}
+
 IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, NonEditable) {
   RunTest("cr_components/most_visited_test.js",
           "runMochaSuite('NonEditable');");
@@ -447,6 +452,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxMatch) {
 
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxMixin) {
   RunTest("cr_components/composebox/composebox_mixin_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxAimButton) {
+  RunTest("cr_components/composebox/composebox_aim_button_test.js",
+          "runMochaSuite('ComposeboxAimButtonTest')");
 }
 
 #if !BUILDFLAG(IS_ANDROID)

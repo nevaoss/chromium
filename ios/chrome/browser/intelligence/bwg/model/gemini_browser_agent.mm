@@ -908,9 +908,11 @@ void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
     SetSessionCommandHandlers();
 
     CHECK(gemini_container_mediator_, base::NotFatalUntil::M155);
+    [gemini_container_mediator_.gatewayManager.pageStateChangeHandler
+        setBaseViewController:base_view_controller];
     GeminiConfiguration* config = [gemini_container_mediator_
-        createGeminiConfigurationForActiveWebState:startup_state
-                                baseViewController:base_view_controller];
+        createGeminiConfigurationForActiveWebState:startup_state];
+    config.baseViewController = base_view_controller;
     config.initialBottomOffset = GetFloatyOffset();
     config.hostWindowScene = browser_->GetSceneState().scene;
 
@@ -1111,6 +1113,16 @@ void GeminiBrowserAgent::InvokeFloaty(GeminiConfiguration* config) {
   UpdateGeminiLiveIconVisibility();
 }
 
+void GeminiBrowserAgent::SetContainerInvoked(bool is_invoked) {
+  if (is_gemini_invoked_ == is_invoked) {
+    return;
+  }
+  is_gemini_invoked_ = is_invoked;
+  for (auto& observer : observers_) {
+    observer.OnFloatyInvokedChanged(is_gemini_invoked_);
+  }
+}
+
 void GeminiBrowserAgent::ForceShowFloatyIfInvoked() {
   if (!is_floaty_invoked_ || !IsFullscreenInitialized()) {
     return;
@@ -1202,8 +1214,7 @@ void GeminiBrowserAgent::HandleDormantStatus(
 void GeminiBrowserAgent::LogLiveStatusTransition(
     ios::provider::GeminiClientMode old_status,
     ios::provider::GeminiClientMode new_status) {
-  if (new_status == ios::provider::GeminiClientMode::kThinking &&
-      old_status != ios::provider::GeminiClientMode::kThinking) {
+  if (gemini::IsGeminiLivePromptSubmitted(old_status, new_status)) {
     bool has_attached_context =
         ios::provider::GetCurrentPageContextAttachmentState() ==
         ios::provider::GeminiPageContextAttachmentState::kAttached;

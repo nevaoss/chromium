@@ -11,14 +11,14 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {MetricsReporterImpl} from '//resources/js/metrics_reporter/metrics_reporter.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import {KeywordType} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {KeywordType, UrlDeemphasisMode} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter, UrlEmphasis} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
 import type {SearchboxIconElement} from './searchbox_icon.js';
 import {getCss} from './searchbox_input.css.js';
 import {getHtml} from './searchbox_input.html.js';
-import {afterNextPaint, markOnce} from './utils.js';
+import {afterNextPaint, announce, markOnce} from './utils.js';
 
 // Register --placeholder-opacity as type <number> so that we can animate it.
 CSS.registerProperty({
@@ -89,6 +89,8 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
       inputKeywordModel: {type: Object},
       inputHasMatches: {type: Boolean},
       allowFilePaste: {type: Boolean},
+      urlEmphasisEnabled: {type: Boolean, reflect: true},
+      urlEmphasis: {type: Object},
     };
   }
 
@@ -107,6 +109,8 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   accessor inputKeywordModel: InputKeywordModel|null = null;
   accessor inputHasMatches: boolean = false;
   accessor allowFilePaste: boolean = false;
+  accessor urlEmphasisEnabled: boolean = false;
+  accessor urlEmphasis: UrlEmphasis|null = null;
 
   private callbackRouter_: PageCallbackRouter;
   private inputTextChangedListenerId_: number|null = null;
@@ -116,6 +120,11 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   private pastedInInput_: boolean = false;
   private resizeObserver_: ResizeObserver|null = null;
   private onDocumentSelectionChangeBound_ = () => this.updateEllipsisState_();
+  // Bumped by each `setSelectionA11yLabel()` call, so that a deferred
+  // notification can tell whether it has been superseded.
+  private selectionA11yLabelGeneration_: number = 0;
+  // Whether a selection label's notification is deferred and still pending.
+  private selectionA11yLabelPending_: boolean = false;
 
   constructor() {
     super();
@@ -155,6 +164,16 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   override firstUpdated(changedProperties: PropertyValues<this>) {
     super.firstUpdated(changedProperties);
     this.setupResizeObserver_();
+  }
+
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+
+    if (changedProperties.has('selectedMatch') ||
+        changedProperties.has('urlEmphasisEnabled') ||
+        changedProperties.has('urlEmphasis')) {
+      this.updateMirror_();
+    }
   }
 
   private setupResizeObserver_() {
@@ -242,17 +261,43 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   /**
-   * While a suggestion is selected, the input's value previews it. Screen
-   * readers narrate that value change, interrupting the suggestion's own
-   * announcement. Pointing aria-activedescendant at an element holding the
-   * suggestion's label makes screen readers narrate the label instead. Pass an
-   * empty string to narrate the input itself again, e.g. when the user edits.
+   * While a selection is active, the input's value previews it. Screen readers
+   * narrate that value change, drowning out the selection's own announcement.
+   * Like the WebUI toolbar's readonly omnibox, this distracts them from the
+   * input by pointing aria-activedescendant at an offscreen element, then
+   * notifies the label, so that is all they narrate. The distraction has no
+   * role of its own, so screen reader focus stays on the input. This is the
+   * only narration of selection changes, so callers must not announce the
+   * label by other means too. Pass an empty string to narrate the input itself
+   * again, e.g. when the user edits.
    */
   setSelectionA11yLabel(label: string) {
-    this.$.selectionAnnouncement.textContent = label;
-    this.shadowRoot.querySelector<HTMLElement>(
-                       '#input')!.ariaActiveDescendantElement =
-        label ? this.$.selectionAnnouncement : null;
+    const input = this.inputElement;
+    const distraction = this.$.selectionAnnouncement;
+    const wasDistracted = input.ariaActiveDescendantElement === distraction;
+    distraction.textContent = label;
+    input.ariaActiveDescendantElement = label ? distraction : null;
+    const generation = ++this.selectionA11yLabelGeneration_;
+    if (!label) {
+      this.selectionA11yLabelPending_ = false;
+      return;
+    }
+    if (wasDistracted && !this.selectionA11yLabelPending_) {
+      announce(this, label);
+      return;
+    }
+    // Pointing aria-activedescendant at the distraction is reported to screen
+    // readers as a focus change. Notify once that has gone out with the next
+    // accessibility tree update, so that whatever they make of the focus
+    // change, the label is what they narrate last.
+    this.selectionA11yLabelPending_ = true;
+    afterNextPaint(() => {
+      if (generation !== this.selectionA11yLabelGeneration_) {
+        return;  // Superseded by a newer label, or cancelled by an edit.
+      }
+      this.selectionA11yLabelPending_ = false;
+      announce(this, label);
+    });
   }
 
   isMultiline(): boolean {
@@ -538,8 +583,146 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     this.isDeletingInput_ = update.isDeletingInput ??
         (lastInputValue.length > newInputValue.length &&
          lastInputValue.startsWith(newInputValue));
+    if (newInputValue !== lastInputValue) {
+      this.urlEmphasis = null;
+    }
     this.lastInput_ = newInput;
     this.updateEllipsisState_();
+    this.updateMirror_();
+  }
+
+  /**
+   * Updates the #mirror DOM overlay with styled spans to mirror the text in
+   * <input> while applying URL component emphasis matching
+   * OmniboxViewViews::EmphasizeURLComponents().
+   */
+  private updateMirror_() {
+    if (!this.urlEmphasisEnabled) {
+      return;
+    }
+
+    const mirror = this.shadowRoot?.getElementById('mirror');
+    if (!mirror) {
+      return;
+    }
+
+    mirror.textContent = '';
+    // Combine user-entered text with inline autocomplete.
+    const fullText = this.lastInput_.text + this.lastInput_.inline;
+    if (!fullText) {
+      mirror.dir = '';
+      this.inputElement.dir = '';
+      return;
+    }
+
+    const emphasis = this.urlEmphasis;
+    const textIsUrl = emphasis?.textIsUrl ?? false;
+    const deemphasisMode =
+        emphasis?.deemphasisMode ?? UrlDeemphasisMode.kNothing;
+    const schemeRange = emphasis?.schemeRange;
+    const hostRange = emphasis?.hostRange;
+    const hasScheme = !!schemeRange && schemeRange.end > schemeRange.start;
+    const hasHost = !!hostRange && hostRange.end > hostRange.start;
+    const schemeStrikeThrough = emphasis?.schemeStrikeThrough ?? false;
+    const schemeDangerous = emphasis?.schemeDangerous ?? false;
+
+    // Set directionality matching C++
+    // `OmniboxViewViews::EmphasizeURLComponents()`
+    // (`DIRECTIONALITY_AS_URL` for URLs, `DIRECTIONALITY_FROM_TEXT` for
+    // queries).
+    const dir = textIsUrl ? 'ltr' : 'auto';
+    mirror.dir = dir;
+    this.inputElement.dir = dir;
+
+    // Helper to create and append text spans to the #mirror container.
+    // Returns the created span, or null if `content` is empty.
+    const createSpan =
+        (content: string, emphasize: boolean): HTMLSpanElement|null => {
+          if (!content) {
+            return null;
+          }
+          const span = document.createElement('span');
+          span.textContent = content;
+          if (!emphasize) {
+            span.classList.add('dimmed');
+          }
+          mirror.appendChild(span);
+          return span;
+        };
+
+    if (textIsUrl) {
+      // The scheme does not necessarily start at 0: for view-source: and blob:
+      // URLs, `AutocompleteInput::ParseForEmphasizeComponents()` returns the
+      // range of the inner URL's scheme (e.g. "https" in
+      // "view-source:https://example.com"), leaving a prefix before it.
+      const schemeStart = hasScheme ? schemeRange.start : 0;
+      const schemeEnd = hasScheme ? schemeRange.end : 0;
+      const hostStart = hasHost ? hostRange.start : schemeEnd;
+      const hostEnd = hasHost ? hostRange.end : hostStart;
+
+      // Decompose URL into components: prefix, scheme, separator, host, and
+      // path.
+      const prefix = fullText.substring(0, schemeStart);
+      const scheme = fullText.substring(schemeStart, schemeEnd);
+      const separator = fullText.substring(schemeEnd, hostStart);
+      const host = fullText.substring(hostStart, hostEnd);
+      const path = fullText.substring(hostEnd);
+
+      // Partition text into spans based on the computed `UrlDeemphasisMode`,
+      // matching C++ `OmniboxView::UpdateTextStyle()`: all text gets the base
+      // emphasis, then the scheme or host is re-emphasized depending on mode.
+      const emphasizeBase = deemphasisMode === UrlDeemphasisMode.kNothing;
+      const emphasizeScheme =
+          emphasizeBase || deemphasisMode === UrlDeemphasisMode.kAllButScheme;
+      const emphasizeHost =
+          emphasizeBase || deemphasisMode === UrlDeemphasisMode.kAllButHost;
+
+      createSpan(prefix, emphasizeBase);
+      const schemeSpan = createSpan(scheme, emphasizeScheme);
+      createSpan(separator, emphasizeBase);
+      createSpan(host, emphasizeHost);
+      createSpan(path, emphasizeBase);
+
+      // Emphasize the scheme for security UI display purposes (if necessary),
+      // matching `OmniboxView::UpdateTextStyle()` and
+      // `OmniboxViewViews::UpdateSchemeStyle()`.
+      if (schemeSpan && (schemeStrikeThrough || schemeDangerous)) {
+        this.updateSchemeStyle_(
+            schemeSpan, schemeStrikeThrough, schemeDangerous);
+      }
+    } else {
+      // Normal search queries (non-URL text) render as a single undimmed span.
+      createSpan(fullText, /*emphasize=*/ true);
+    }
+
+    // Synchronize horizontal scroll position between <input> and #mirror for
+    // long text.
+    mirror.scrollLeft = this.inputElement.scrollLeft;
+  }
+
+  /**
+   * Emphasizes the scheme component for security UI display purposes
+   * (e.g. cert errors), matching OmniboxViewViews::UpdateSchemeStyle().
+   */
+  private updateSchemeStyle_(
+      schemeSpan: HTMLElement, isStrikeThrough: boolean, isDangerous: boolean) {
+    schemeSpan.classList.remove('dimmed');
+    if (isStrikeThrough) {
+      schemeSpan.classList.add('strikethrough');
+    }
+    if (isDangerous) {
+      schemeSpan.classList.add('dangerous');
+    }
+  }
+
+  protected onInputScroll_() {
+    if (!this.urlEmphasisEnabled) {
+      return;
+    }
+    const mirror = this.shadowRoot?.getElementById('mirror');
+    if (mirror) {
+      mirror.scrollLeft = this.inputElement.scrollLeft;
+    }
   }
 
   private updateEllipsisState_() {

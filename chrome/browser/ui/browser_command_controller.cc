@@ -43,6 +43,7 @@
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
@@ -457,11 +458,17 @@ BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
     }
   }
 
+  if (g_browser_process && g_browser_process->profile_manager()) {
+    profile_attributes_observation_.Observe(
+        &g_browser_process->profile_manager()->GetProfileAttributesStorage());
+  }
+
   extension_state_observer_ =
       std::make_unique<ExtensionStateObserver>(this, profile());
 }
 
 BrowserCommandController::~BrowserCommandController() {
+  profile_attributes_observation_.Reset();
   extension_state_observer_.reset();
   // TabRestoreService may have been shutdown by the time we get here. Don't
   // trigger creating it.
@@ -1269,12 +1276,12 @@ void BrowserCommandController::HandleCommandWithDisposition(
     case IDC_MANAGE_SKILLS:
       ShowSkillsYourSkills(webui::GetBrowserForOpeningWebUi(browser_));
       BrowserUserEducationInterface::From(browser_)->NotifyNewBadgeFeatureUsed(
-          features::kSkillsAppMenu);
+          features::kSkillsAndExtensionsAppMenu);
       break;
     case IDC_BROWSE_SKILLS:
       ShowSkillsBrowse(webui::GetBrowserForOpeningWebUi(browser_));
       BrowserUserEducationInterface::From(browser_)->NotifyNewBadgeFeatureUsed(
-          features::kSkillsAppMenu);
+          features::kSkillsAndExtensionsAppMenu);
       break;
     case IDC_SHOW_BOOKMARK_SIDE_PANEL:
       SidePanelUI::From(browser_)->Show(SidePanelEntryId::kBookmarks,
@@ -1502,6 +1509,13 @@ void BrowserCommandController::HandleCommandWithDisposition(
       }
       break;
     }
+    case IDC_UNINSTALL_WEB_APP:
+#if !BUILDFLAG(IS_CHROMEOS)
+      CHECK(web_app::AppBrowserController::From(browser_));
+      web_app::AppBrowserController::From(browser_)->Uninstall(
+          webapps::WebappUninstallSource::kAppMenu);
+#endif
+      break;
 
     // UI debug commands
     case IDC_DEBUG_TOGGLE_TABLET_MODE:
@@ -1514,6 +1528,11 @@ void BrowserCommandController::HandleCommandWithDisposition(
 
     case IDC_CONTENT_CONTEXT_LENS_OVERLAY:
       ExecLensOverlay(browser_);
+      break;
+
+    case IDC_ASK_GOOGLE_ABOUT_THIS_PAGE:
+      ExecAskGoogleAboutThisPage(browser_,
+                                 lens::LensOverlayInvocationSource::kAppMenu);
       break;
 
 #if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
@@ -1724,6 +1743,32 @@ void BrowserCommandController::TabRestoreServiceLoaded(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// BrowserCommandController, ProfileAttributesStorageObserver implementation:
+
+void BrowserCommandController::OnProfileAdded(
+    const base::FilePath& profile_path) {
+  if (profile()->GetPath() == profile_path) {
+    UpdateCommandsForProfile();
+  }
+}
+
+void BrowserCommandController::OnProfileNameChanged(
+    const base::FilePath& profile_path,
+    const std::u16string& old_profile_name) {
+  if (profile()->GetPath() == profile_path) {
+    UpdateCommandsForProfile();
+  }
+}
+
+void BrowserCommandController::OnProfileAiSubscriptionTierUpdated(
+    const base::FilePath& profile_path,
+    int tier) {
+  if (profile()->GetPath() == profile_path) {
+    UpdateCommandsForProfile();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // BrowserCommandController, private:
 
 bool BrowserCommandController::IsShowingMainUI() {
@@ -1769,9 +1814,10 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON, true);
 
   // Skills menu commands
-  command_updater_->UpdateCommandEnabled(IDC_SKILLS_MENU, true);
+  command_updater_->UpdateCommandEnabled(IDC_SKILLS_AND_EXTENSIONS_MENU, true);
   command_updater_->UpdateCommandEnabled(IDC_MANAGE_SKILLS, true);
   command_updater_->UpdateCommandEnabled(IDC_BROWSE_SKILLS, true);
+  command_updater_->UpdateCommandEnabled(IDC_CONTEXTUAL_TASKS_MENU, true);
 
   // Window management commands
   command_updater_->UpdateCommandEnabled(IDC_CLOSE_WINDOW, true);
@@ -1972,6 +2018,10 @@ void BrowserCommandController::InitCommandState() {
                                          is_web_app_or_custom_tab);
   command_updater_->UpdateCommandEnabled(IDC_WEB_APP_MENU_APP_INFO,
                                          is_web_app_or_custom_tab);
+  command_updater_->UpdateCommandEnabled(
+      IDC_UNINSTALL_WEB_APP,
+      is_web_app_or_custom_tab &&
+          web_app::AppBrowserController::From(browser_)->CanUserUninstall());
 
   // Tab management commands
   const bool supports_tabs =
@@ -2064,6 +2114,7 @@ void BrowserCommandController::InitCommandState() {
   UpdateCommandsForTabKeyboardFocus(GetKeyboardFocusedTabIndex(browser_));
   UpdateCommandsForWebContentsFocus();
   UpdateCommandsForTabGroupFocusChanged();
+  UpdateCommandsForProfile();
 }
 
 // static
@@ -2836,6 +2887,35 @@ void BrowserCommandController::UpdateCommandsForProfiling() {
                                            IsShowingMainUI());
     UpdateCheckedState(kActionProfilingEnabled,
                        content::Profiling::BeingProfiled());
+  }
+}
+
+void BrowserCommandController::UpdateCommandsForProfile() {
+  if (IsInLockedFullscreenMode(/*allow_ontask=*/false)) {
+    return;
+  }
+
+  if (profile()->IsIncognitoProfile() || profile()->IsGuestSession()) {
+    return;
+  }
+
+  ProfileAttributesEntry* profile_attributes =
+      (g_browser_process && g_browser_process->profile_manager())
+          ? GetProfileAttributesFromProfile(profile())
+          : nullptr;
+  if (!profile_attributes) {
+    return;
+  }
+
+  std::u16string accessible_name =
+      GetProfileMenuDisplayName(profile_attributes);
+  if (ShouldShowAvatarGradientRing(profile()) && !accessible_name.empty()) {
+    accessible_name = l10n_util::GetStringFUTF16(
+        IDS_PROFILE_AVATAR_NAME_WITH_AI_MEMBERSHIP, accessible_name);
+  }
+  if (auto* const profile_action =
+          FindAction(kActionProfileSubmenu, browser_)) {
+    profile_action->SetAccessibleName(accessible_name);
   }
 }
 

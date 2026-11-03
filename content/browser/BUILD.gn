@@ -47,8 +47,8 @@ if (is_android) {
     deps = [
       "//components/vrp_flags:buildflags",
       "//third_party/rust/font_types/v0_12:lib",
-      "//third_party/rust/read_fonts/v0_43:lib",
-      "//third_party/rust/skrifa/v0_46:lib",
+      "//third_party/rust/read_fonts/v0_45:lib",
+      "//third_party/rust/skrifa/v0_48:lib",
     ]
   }
 }
@@ -1310,6 +1310,8 @@ source_set("browser") {
     "memory_coordinator/browser_memory_coordinator_impl.h",
     "memory_coordinator/child_memory_consumer_registry_host.cc",
     "memory_coordinator/child_memory_consumer_registry_host.h",
+    "memory_coordinator/zero_limit_policy.cc",
+    "memory_coordinator/zero_limit_policy.h",
     "message_port_provider.cc",
     "metrics/histogram_shared_memory_config.cc",
     "metrics/histogram_shared_memory_config.h",
@@ -2937,6 +2939,8 @@ source_set("browser") {
         "media/capture/desktop_capture_device_mac.h",
         "media/capture/desktop_capture_util_mac.h",
         "media/capture/desktop_capture_util_mac.mm",
+        "media/capture/fake_screen_capture_picker_mac.h",
+        "media/capture/fake_screen_capture_picker_mac.mm",
         "media/capture/io_surface_capture_device_base_mac.cc",
         "media/capture/io_surface_capture_device_base_mac.h",
         "media/capture/mouse_cursor_overlay_controller_mac.mm",

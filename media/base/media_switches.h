@@ -277,7 +277,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kOverlayFullscreenVideo);
 // Causes the AVC parser to output Treats H.264 SEI recovery points with a
 // `recovery_frame_cnt=0` as keyframes.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kParseSEIRecoveryPoints);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kPauseBackgroundTimer);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPauseMutedBackgroundAudio);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPictureInPictureMuteControl);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformAudioEncoder);
@@ -480,6 +479,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kVaapiIgnoreDriverChecks);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kApplicationAudioCaptureMac);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastMacForceBaselineProfile);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingMacHardwareH264);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kMacAVFoundationPlayback);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMacCatapLoopbackAudioForCast);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSCContentSharingPicker);
 #endif  // BUILDFLAG(IS_MAC)

@@ -32,7 +32,7 @@ PaymentsChurnedUsersUiDelegateAndroid::
 
 void PaymentsChurnedUsersUiDelegateAndroid::ShowPaymentsChurnedUsersUI(
     base::OnceCallback<void(PaymentsUiClosedReason)> closed_callback) {
-  if (is_showing_ui_) {
+  if (is_showing_opt_in_ui_) {
     if (closed_callback) {
       std::move(closed_callback).Run(PaymentsUiClosedReason::kUnknown);
     }
@@ -46,10 +46,14 @@ void PaymentsChurnedUsersUiDelegateAndroid::ShowPaymentsChurnedUsersUI(
     case AutofillEnableResurrectingPaymentsUsersTreatmentArm::kConvenience:
       if (auto* bridge = GetOrCreatePaymentsChurnedUsersBottomSheetBridge()) {
         closed_callback_ = std::move(closed_callback);
-        is_showing_ui_ = true;
+        is_showing_opt_in_ui_ = true;
         bridge->RequestShowContent(
             treatment_arm,
-            base::BindOnce(&PaymentsChurnedUsersUiDelegateAndroid::OnUiClosed,
+            base::BindOnce(
+                &PaymentsChurnedUsersUiDelegateAndroid::OnOptInUiClosed,
+                weak_ptr_factory_.GetWeakPtr()),
+            base::BindOnce(&PaymentsChurnedUsersUiDelegateAndroid::
+                               ShowConfirmationSnackbar,
                            weak_ptr_factory_.GetWeakPtr()));
       } else if (closed_callback) {
         std::move(closed_callback).Run(PaymentsUiClosedReason::kUnknown);
@@ -57,7 +61,7 @@ void PaymentsChurnedUsersUiDelegateAndroid::ShowPaymentsChurnedUsersUI(
       break;
     case AutofillEnableResurrectingPaymentsUsersTreatmentArm::kMessage:
       closed_callback_ = std::move(closed_callback);
-      is_showing_ui_ = true;
+      is_showing_opt_in_ui_ = true;
       GetOrCreateAutofillMessageController().Show(
           AutofillMessageModel::CreateForResurrectChurnedUsers(
               base::BindOnce(
@@ -124,9 +128,9 @@ PaymentsChurnedUsersUiDelegateAndroid::GetOrCreateAutofillMessageController() {
   return *autofill_message_controller_;
 }
 
-void PaymentsChurnedUsersUiDelegateAndroid::OnUiClosed(
+void PaymentsChurnedUsersUiDelegateAndroid::OnOptInUiClosed(
     PaymentsUiClosedReason closed_reason) {
-  is_showing_ui_ = false;
+  is_showing_opt_in_ui_ = false;
   if (!closed_callback_) {
     return;
   }
@@ -141,24 +145,13 @@ void PaymentsChurnedUsersUiDelegateAndroid::OnMessageAccepted() {
   if (!closed_callback_) {
     return;
   }
-  OnUiClosed(PaymentsUiClosedReason::kAccepted);
-  if (auto* snackbar_controller = client_->GetAutofillSnackbarController()) {
-    snackbar_controller->Show(
-        AutofillSnackbarType::kResurrectChurnedUsers,
-        base::BindOnce(
-            [](base::WeakPtr<content::WebContents> web_contents) {
-              if (!web_contents) {
-                return;
-              }
-              ShowAutofillCreditCardSettings(web_contents.get());
-            },
-            client_->GetWebContents().GetWeakPtr()));
-  }
+  OnOptInUiClosed(PaymentsUiClosedReason::kAccepted);
+  ShowConfirmationSnackbar();
 }
 
 void PaymentsChurnedUsersUiDelegateAndroid::OnMessageDismissed(
     messages::DismissReason dismiss_reason) {
-  is_showing_ui_ = false;
+  is_showing_opt_in_ui_ = false;
   if (!closed_callback_) {
     return;
   }
@@ -170,11 +163,26 @@ void PaymentsChurnedUsersUiDelegateAndroid::OnMessageDismissed(
     case messages::DismissReason::GESTURE:
       // Since the message banner only has a primary action button, swiping the
       // message away is treated as an explicit rejection (`kCancelled`).
-      OnUiClosed(PaymentsUiClosedReason::kCancelled);
+      OnOptInUiClosed(PaymentsUiClosedReason::kCancelled);
       break;
     default:
-      OnUiClosed(PaymentsUiClosedReason::kNotInteracted);
+      OnOptInUiClosed(PaymentsUiClosedReason::kNotInteracted);
       break;
+  }
+}
+
+void PaymentsChurnedUsersUiDelegateAndroid::ShowConfirmationSnackbar() {
+  if (auto* snackbar_controller = client_->GetAutofillSnackbarController()) {
+    snackbar_controller->Show(
+        AutofillSnackbarType::kResurrectChurnedUsers,
+        base::BindOnce(
+            [](base::WeakPtr<content::WebContents> web_contents) {
+              if (!web_contents) {
+                return;
+              }
+              ShowAutofillCreditCardSettings(web_contents.get());
+            },
+            client_->GetWebContents().GetWeakPtr()));
   }
 }
 

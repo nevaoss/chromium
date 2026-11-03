@@ -60,9 +60,7 @@ import org.chromium.chrome.browser.ui.actions.ActionRegistry;
 import org.chromium.chrome.browser.ui.actions.glic.GlicActionProperties;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager.Host;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarMetrics.GlicIneligibilityReason;
-import org.chromium.chrome.browser.ui.native_page.NativePage;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
-import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.ui.base.TestActivity;
@@ -89,7 +87,6 @@ public class BottomBarCoordinatorUnitTest {
     @Mock private ModalDialogManager mModalDialogManager;
     @Mock private Tracker mTracker;
     @Mock private Tab mTab;
-    @Mock private NativePage mNativePage;
     @Mock private LayoutStateProvider mLayoutStateProvider;
     @Mock private GlicKeyedService mGlicKeyedService;
 
@@ -268,24 +265,12 @@ public class BottomBarCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR + ":keep_home_button_in_toolbar/false")
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
     public void testInitialization_withHomeButton_bindsHomeButton() {
         verify(mActionRegistry, times(1)).get(ActionId.HOME_BUTTON);
 
         View homeButton = mCoordinator.getView().findViewById(R.id.home_button);
         assertNotNull(homeButton);
-    }
-
-    @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR + ":keep_home_button_in_toolbar/true")
-    public void testInitialization_withoutHomeButton_doesNotBindHomeButton() {
-        verify(mActionRegistry, never()).get(ActionId.HOME_BUTTON);
-
-        View homeButton = mCoordinator.getView().findViewById(R.id.home_button);
-        assertNull(homeButton);
-
-        View homeStub = mCoordinator.getView().findViewById(R.id.home_stub);
-        assertNotNull(homeStub);
     }
 
     @Test
@@ -368,25 +353,6 @@ public class BottomBarCoordinatorUnitTest {
 
         assertTrue(mCoordinator.maybeShowPromoDialog(mProfile));
         verify(mModalDialogManager).showDialog(any(), anyInt(), anyBoolean());
-    }
-
-    @Test
-    public void testMaybeShowPromoDialog_NtpDisabled() {
-        when(mTab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
-        when(mNativePage.getHost()).thenReturn(UrlConstants.NTP_HOST);
-        when(mTab.getNativePage()).thenReturn(mNativePage);
-        when(mTab.isOffTheRecord()).thenReturn(false);
-        mTabSupplier.set(mTab);
-
-        when(mTracker.shouldTriggerHelpUi(FeatureConstants.ANDROID_BOTTOM_BAR_PROMO_DIALOG))
-                .thenReturn(true);
-        GlicEnabling.Natives glicEnablingMock = mock(GlicEnabling.Natives.class);
-        GlicEnablingJni.setInstanceForTesting(glicEnablingMock);
-        when(glicEnablingMock.isEnabledForProfile(any())).thenReturn(true);
-        when(mProfile.getOriginalProfile()).thenReturn(mProfile);
-
-        assertFalse(mCoordinator.maybeShowPromoDialog(mProfile));
-        verify(mModalDialogManager, never()).showDialog(any(), anyInt(), anyBoolean());
     }
 
     @Test

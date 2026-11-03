@@ -42,7 +42,6 @@
 #if BUILDFLAG(IS_CHROMEOS)
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
-#include "content/public/browser/web_contents.h"
 #include "ui/display/screen.h"
 #endif
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -73,6 +72,8 @@
 #include "chrome/browser/ui/views/app_menu/tab_group_dynamic_menu.h"
 #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_button_menu_highlighter.h"
+#include "chrome/browser/ui/web_applications/app_browser_controller.h"
+#include "chrome/browser/ui/web_applications/web_app_menu_model.h"
 #include "chrome/browser/ui/web_applications/web_app_ui_utils.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_page_handler.h"
 #include "chrome/browser/user_education/user_education_service.h"
@@ -84,16 +85,19 @@
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/lens/lens_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
 #include "components/send_tab_to_self/entry_point_display_reason.h"
 #include "components/send_tab_to_self/features.h"
 #include "components/signin/public/base/signin_pref_names.h"
+#include "components/skills/features.h"
 #include "components/user_education/common/tutorial/tutorial_description.h"
 #include "components/user_education/common/tutorial/tutorial_registry.h"
 #include "components/user_education/common/tutorial/tutorial_service.h"
 #include "components/vector_icons/vector_icons.h"
+#include "content/public/browser/web_contents.h"
 #include "extensions/buildflags/buildflags.h"
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/extensions/extension_ui_util.h"
@@ -151,6 +155,17 @@ std::u16string GetProfileName(Profile* profile) {
   return std::u16string();
 }
 #endif
+
+bool ShouldAllowOpenInChrome(BrowserWindowInterface* browser) {
+  // Isolated Web Apps shouldn't be opened in Chrome.
+  const bool is_isolated_web_app =
+      web_app::AppBrowserController::IsIsolatedWebApp(browser);
+  // Web Apps with enabled prevent close shouldn't be opened in Chrome.
+  auto* const app_controller = web_app::AppBrowserController::From(browser);
+  const bool prevent_close_enabled =
+      app_controller && app_controller->IsPreventCloseEnabled();
+  return !is_isolated_web_app && !prevent_close_enabled;
+}
 
 // Builder helper to simplify declaring the action item structure for the app
 // menu.
@@ -442,12 +457,11 @@ void ActionAppMenuManager::CreateMenuHierarchy() {
     promo_handle_ = std::move(highlight_info->promo_handle);
   }
 
-  AddNotificationActions(root);
-  AddSearchBarAction(root);
-  AddBlockHeaderActions(root);
-  AddYourChromeActions(root);
-  AddToolsAndActionsActions(root);
-  AddFooterActions(root);
+  if (web_app::AppBrowserController::IsWebApp(browser_window_interface_)) {
+    AddWebAppActions(root);
+  } else {
+    AddBrowserActions(root);
+  }
 }
 
 void ActionAppMenuManager::OnMenuClosed() {
@@ -463,6 +477,15 @@ void ActionAppMenuManager::OnMenuClosed() {
 
 void ActionAppMenuManager::SetTimerForTesting(base::ElapsedTimer timer) {
   app_menu_timer_ = std::move(timer);
+}
+
+void ActionAppMenuManager::AddBrowserActions(actions::ActionItem* root) {
+  AddNotificationActions(root);
+  AddSearchBarAction(root);
+  AddBlockHeaderActions(root);
+  AddYourChromeActions(root);
+  AddToolsAndActionsActions(root);
+  AddFooterActions(root);
 }
 
 void ActionAppMenuManager::AddNotificationActions(actions::ActionItem* root) {
@@ -773,6 +796,26 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
               {.element_id = AppMenuModel::kTabGroupsMenuItem});
         }
 
+        section.AddSubmenu(
+            kActionSkillsAndExtensionsSubmenu,
+            [](AppMenuBuilder& sub) {
+              sub.AddAction(
+                     kActionExtensionsSubmenuManageExtensions,
+                     {.element_id =
+                          ExtensionsMenuModel::kManageExtensionsMenuItem})
+                  .AddAction(
+                      kActionManageSkills,
+                      {.element_id =
+                           SkillsAndExtensionsMenuModel::kManageSkillsMenuItem})
+                  .AddDivider()
+                  .AddAction(
+                      kActionExtensionsSubmenuVisitChromeWebStore,
+                      {.element_id =
+                           ExtensionsMenuModel::kVisitChromeWebStoreMenuItem});
+            },
+            {.new_badge_feature = &features::kSkillsAndExtensionsAppMenu,
+             .element_id = AppMenuModel::kSkillsAndExtensionsMenuItem});
+
 #if BUILDFLAG(ENABLE_EXTENSIONS)
         if (ArePromotionsEnabled() &&
             base::FeatureList::IsEnabled(
@@ -839,9 +882,29 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
         if (auto* controller = lens::LensOverlayEntryPointController::From(
                 browser_window_interface_);
             controller && controller->IsEnabled()) {
-          section.AddAction(kActionShowLensOverlayFromAppMenu,
-                            {.new_badge_feature = &lens::features::kLensOverlay,
-                             .element_id = AppMenuModel::kShowLensOverlay});
+          const bool show_ask_google =
+              contextual_tasks::kContextualTasksContextMenuShowAskGoogle.Get();
+          const bool use_submenu =
+              contextual_tasks::kContextualTasksContextMenuSubmenu.Get() &&
+              show_ask_google;
+          auto add_items = [show_ask_google](AppMenuBuilder& target) {
+            if (show_ask_google) {
+              target.AddAction(
+                  kActionAskGoogleAboutThisPageFromAppMenu,
+                  {.element_id = AppMenuModel::kAskGoogleAboutThisPageItem});
+            }
+            target.AddAction(
+                kActionShowLensOverlayFromAppMenu,
+                {.new_badge_feature = &lens::features::kLensOverlay,
+                 .element_id = AppMenuModel::kShowLensOverlay});
+          };
+          if (use_submenu) {
+            section.AddSubmenu(
+                kActionContextualTasksSubmenu, add_items,
+                {.element_id = AppMenuModel::kContextualTasksSubmenuItem});
+          } else {
+            add_items(section);
+          }
         }
 
         section.AddAction(kActionShowTranslate);
@@ -905,24 +968,7 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                 if (!sharing_hub::SharingIsDisabledByPolicy(profile)) {
                   sub.AddAction(kActionCopyUrl);
 
-                  content::WebContents* web_contents =
-                      browser_window_interface_->GetTabStripModel()
-                          ? browser_window_interface_->GetTabStripModel()
-                                ->GetActiveWebContents()
-                          : nullptr;
-                  std::optional<send_tab_to_self::EntryPointDisplayReason>
-                      reason =
-                          web_contents
-                              ? send_tab_to_self::GetEntryPointDisplayReason(
-                                    web_contents)
-                              : std::nullopt;
-
-                  if (web_contents &&
-                      base::FeatureList::IsEnabled(
-                          send_tab_to_self::
-                              kSendTabToSelfEnhancedDesktopUIv2) &&
-                      reason == send_tab_to_self::EntryPointDisplayReason::
-                                    kOfferFeature) {
+                  if (send_tab_to_self_menu_->ShouldShowSubmenu()) {
                     sub.AddDynamicSubmenu(
                         kActionSendTabToSelf,
                         base::BindRepeating(
@@ -1118,4 +1164,84 @@ void ActionAppMenuManager::AddFooterActions(actions::ActionItem* root) {
         }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
       });
+}
+
+void ActionAppMenuManager::AddWebAppActions(actions::ActionItem* root) {
+  auto* const app_browser_controller =
+      web_app::AppBrowserController::From(browser_window_interface_);
+  CHECK(app_browser_controller);
+
+  AppMenuBuilder builder(root, browser_window_interface_,
+                         highlighted_menu_identifier_);
+
+  content::WebContents* web_contents =
+      browser_window_interface_->GetTabStripModel()
+          ? browser_window_interface_->GetTabStripModel()
+                ->GetActiveWebContents()
+          : nullptr;
+  const bool is_isolated_web_app =
+      web_app::AppBrowserController::IsIsolatedWebApp(
+          browser_window_interface_);
+
+  std::optional<std::u16string> app_info_minor_text;
+  if (web_contents) {
+    app_info_minor_text = is_isolated_web_app
+                              ? app_browser_controller->GetAppShortName()
+                              : web_app::AppBrowserController::FormatUrlOrigin(
+                                    web_contents->GetVisibleURL());
+  }
+
+  builder.AddSection(
+      DisplayType::kSection, [&app_info_minor_text](AppMenuBuilder& section) {
+        section
+            .AddAction(kActionWebAppMenuAppInfo,
+                       {.item_height = AppMenuActionItem::ItemHeight::kLarge,
+                        .minor_text = std::move(app_info_minor_text),
+                        .element_id = WebAppMenuModel::kAppInfoMenuItem})
+            .AddDivider(ui::MenuSeparatorType::SPACING_SEPARATOR);
+      });
+
+  AppMenuBuilder(root, browser_window_interface_, highlighted_menu_identifier_,
+                 kColorAppMenuToolsAndActionsBackground)
+      .AddSection(DisplayType::kSection, [this](AppMenuBuilder& section) {
+        section.AddAction(kActionCopyUrl);
+
+        if (ShouldAllowOpenInChrome(browser_window_interface_)) {
+          section.AddAction(kActionOpenInChrome);
+        }
+
+        section.AddDivider(ui::MenuSeparatorType::SPACING_SEPARATOR)
+            .AddSubmenu(
+                kActionZoomSubmenu,
+                [](AppMenuBuilder& sub) {
+                  sub.AddAction(kActionZoomMinus)
+                      .AddAction(kActionZoomNormal)
+                      .AddAction(kActionZoomPlus)
+                      .AddAction(kActionFullscreen);
+                },
+                {.display_type = DisplayType::kCustom,
+                 .item_height = AppMenuActionItem::ItemHeight::kExpanded})
+            .AddDivider(ui::MenuSeparatorType::SPACING_SEPARATOR)
+            .AddAction(kActionPrint)
+            .AddSubmenu(kActionFindAndEditSubmenu, [](AppMenuBuilder& sub) {
+              sub.AddAction(kActionFind)
+                  .AddDivider()
+                  .AddAction(actions::kActionCut)
+                  .AddAction(actions::kActionCopy)
+                  .AddAction(actions::kActionPaste);
+            });
+
+        if (media_router::MediaRouterEnabled(
+                browser_window_interface_->GetProfile())) {
+          section.AddAction(kActionRouteMedia);
+        }
+      });
+
+#if !BUILDFLAG(IS_CHROMEOS)
+  if (app_browser_controller->IsInstalled()) {
+    builder.AddSection(DisplayType::kFooter, [](AppMenuBuilder& section) {
+      section.AddAction(kActionUninstallWebApp);
+    });
+  }
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 }

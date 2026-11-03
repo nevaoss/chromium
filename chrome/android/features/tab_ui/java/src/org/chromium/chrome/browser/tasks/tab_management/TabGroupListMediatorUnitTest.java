@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -55,6 +56,7 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.collaboration.messaging.MessagingBackendServiceFactory;
 import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -66,6 +68,7 @@ import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
+import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupRowView.TabGroupRowViewTitleData;
 import org.chromium.components.browser_ui.widget.ActionConfirmationResult;
 import org.chromium.components.collaboration.CollaborationService;
@@ -226,6 +229,58 @@ public class TabGroupListMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(ChromeFeatureList.CROSS_WINDOW_TAB_GROUP_OPERATIONS)
+    public void testInAnotherWindow_FlagDisabled() {
+        when(mComprehensiveModel.iterator())
+                .thenAnswer(invocation -> Collections.emptyList().iterator());
+        TabWindowManager tabWindowManager = mock(TabWindowManager.class);
+        TabWindowManagerSingleton.setTabWindowManagerForTesting(tabWindowManager);
+        Token token = new Token(2, 3);
+        when(tabWindowManager.findWindowIdForTabGroup(eq(token), eq(true))).thenReturn(1);
+        SavedTabGroup group = mSyncedGroupTestHelper.newTabGroup(SYNC_GROUP_ID1, token);
+        group.title = "Another Window Group";
+        group.savedTabs = SyncedGroupTestHelper.tabsFromCount(1);
+
+        createMediator();
+        assertEquals(0, mModelList.size());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.CROSS_WINDOW_TAB_GROUP_OPERATIONS)
+    public void testInAnotherWindow_RemoteGroupOperationsDisabled() {
+        when(mComprehensiveModel.iterator())
+                .thenAnswer(invocation -> Collections.emptyList().iterator());
+        TabWindowManager tabWindowManager = mock(TabWindowManager.class);
+        TabWindowManagerSingleton.setTabWindowManagerForTesting(tabWindowManager);
+        Token token = new Token(2, 3);
+        when(tabWindowManager.findWindowIdForTabGroup(eq(token), eq(true))).thenReturn(1);
+        SavedTabGroup group = mSyncedGroupTestHelper.newTabGroup(SYNC_GROUP_ID1, token);
+        group.title = "Another Window Group";
+        group.savedTabs = SyncedGroupTestHelper.tabsFromCount(1);
+
+        createMediator();
+        assertEquals(0, mModelList.size());
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.CROSS_WINDOW_TAB_GROUP_OPERATIONS + ":remote_group_operations/true")
+    public void testInAnotherWindow_FlagEnabled() {
+        when(mComprehensiveModel.iterator())
+                .thenAnswer(invocation -> Collections.emptyList().iterator());
+        TabWindowManager tabWindowManager = mock(TabWindowManager.class);
+        TabWindowManagerSingleton.setTabWindowManagerForTesting(tabWindowManager);
+        Token token = new Token(2, 3);
+        when(tabWindowManager.findWindowIdForTabGroup(eq(token), eq(true))).thenReturn(1);
+        SavedTabGroup group = mSyncedGroupTestHelper.newTabGroup(SYNC_GROUP_ID1, token);
+        group.title = "Another Window Group";
+        group.savedTabs = SyncedGroupTestHelper.tabsFromCount(1);
+
+        createMediator();
+        assertEquals(1, mModelList.size());
+    }
+
+    @Test
     public void testOneGroup() {
         SavedTabGroup group = mSyncedGroupTestHelper.newTabGroup(SYNC_GROUP_ID1);
         group.title = "Title";
@@ -335,8 +390,8 @@ public class TabGroupListMediatorUnitTest {
         group3.savedTabs = SyncedGroupTestHelper.tabsFromCount(1);
         group3.localId = null;
 
-        when(mTabModel.tabGroupExists(LOCAL_GROUP_ID1)).thenReturn(true);
-        when(mTabModel.tabGroupExists(LOCAL_GROUP_ID2)).thenReturn(false);
+        when(mTabModel.containsTabGroup(LOCAL_GROUP_ID1)).thenReturn(true);
+        when(mTabModel.containsTabGroup(LOCAL_GROUP_ID2)).thenReturn(false);
         List<Tab> tabList = List.of(mTab1);
         when(mComprehensiveModel.iterator()).thenAnswer(invocation -> tabList.iterator());
         when(mComprehensiveModel.getCount()).thenReturn(1);
@@ -370,8 +425,8 @@ public class TabGroupListMediatorUnitTest {
         group2.savedTabs = SyncedGroupTestHelper.tabsFromCount(1);
         group2.localId = null;
 
-        when(mTabModel.tabGroupExists(LOCAL_GROUP_ID1)).thenReturn(true);
-        when(mTabModel.tabGroupExists(LOCAL_GROUP_ID2)).thenReturn(false);
+        when(mTabModel.containsTabGroup(LOCAL_GROUP_ID1)).thenReturn(true);
+        when(mTabModel.containsTabGroup(LOCAL_GROUP_ID2)).thenReturn(false);
         List<Tab> tabList = List.of(mTab1);
         when(mComprehensiveModel.iterator()).thenAnswer(invocation -> tabList.iterator());
         when(mComprehensiveModel.getCount()).thenReturn(1);
@@ -396,7 +451,7 @@ public class TabGroupListMediatorUnitTest {
                             updatedGroup2.savedTabs = SyncedGroupTestHelper.tabsFromCount(1);
                             updatedGroup2.localId = new LocalTabGroupId(LOCAL_GROUP_ID2);
 
-                            when(mTabModel.tabGroupExists(LOCAL_GROUP_ID2)).thenReturn(true);
+                            when(mTabModel.containsTabGroup(LOCAL_GROUP_ID2)).thenReturn(true);
                         })
                 .when(mTabGroupUiActionHandler)
                 .openTabGroup(SYNC_GROUP_ID2);

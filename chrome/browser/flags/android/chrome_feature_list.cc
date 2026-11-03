@@ -22,6 +22,7 @@
 #include "chrome/browser/notifications/chime/android/features.h"
 #include "chrome/browser/predictors/predictors_features.h"
 #include "chrome/browser/task_manager/common/task_manager_features.h"
+#include "chrome/browser/ttc/core/features.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome_feature_list.h"
@@ -188,6 +189,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &download::features::kShowDownloadScanningState,
     &download::features::kSmartSuggestionForLargeDownloads,
     &enterprise_data_protection::kEnableAndroidEnterpriseScreenshotProtection,
+    &feature_engagement::kIPHBookmarkBarVisibilityFeature,
     &feature_engagement::kIPHTabSwitcherButtonFeature,
     &features::kAAPMBlocksWebGPU,
     &features::kAiOverlayDialog,
@@ -227,6 +229,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &feed::kFeedImageMemoryCacheSizePercentage,
     &feed::kFeedLoadingPlaceholder,
     &feed::kFeedNoViewCache,
+    &feed::kFeedNullItemAnimatorOnScrollRestore,
     &feed::kFeedPerformanceStudy,
     &feed::kFeedRecyclerBinderUnmountOnDetach,
     &feed::kFeedSignedOutViewDemotion,
@@ -234,6 +237,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &feed::kWideScreenFeedForFoldables,
     &feed::kXsurfaceMetricsReporting,
     &finds::features::kChromeFinds,
+    &history::kBrowsingHistoryActorIntegrationM3,
     &history::kBrowsingHistoryFilterByDevice,
     &history::kBrowsingHistoryFilterByDomain,
     &history::kOrganicRepeatableQueries,
@@ -268,6 +272,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidHistoryClustering,
     &kAndroidKeyboardShortcutHints,
     &kAndroidKeyboardShortcutOpenFile,
+    &kAndroidMultiprofile,
     &kAndroidNewManagementNotice,
     &kAndroidNewTabButtonTabstripWebUI,
     &kAndroidOmniboxFocusedNewTabPage,
@@ -443,6 +448,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kLongScreenshotsNoMemoryCheck,
     &kLongScreenshotsNumViewports,
     &kMayLaunchUrlUsesSeparateStoragePartition,
+    &kMediaCaptureNotificationRefreshMediaTypes,
     &kMostVisitedTilesCustomization,
     &kMostVisitedTilesReselect,
     &kMoveToFrontInLaunchIntentDispatcher,
@@ -625,6 +631,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &tab_groups::kUpdateTabGroupColors,
     &tab_groups::kUseAlternateHistorySyncIllustration,
     &themes::kCrossDeviceThemeTracker,
+    &ttc::kTtc,
     &universal_optout::features::kUniversalOptOut,
     &universal_optout::features::kUniversalOptOutSettings,
     &visited_url_ranking::features::kGroupSuggestionService,
@@ -691,6 +698,7 @@ BASE_FEATURE(kAndroidFreLayoutUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidHistoryClustering, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidKeyboardShortcutHints, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidKeyboardShortcutOpenFile, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidMultiprofile, base::FEATURE_DISABLED_BY_DEFAULT);
 // When enabled, the existing enterprise management notice shown during the
 // sign-in flow on Android is replaced with the new management notice.
 BASE_FEATURE(kAndroidNewManagementNotice, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -874,6 +882,7 @@ BASE_FEATURE(kLongScreenshotsNumViewports, base::FEATURE_DISABLED_BY_DEFAULT);
 // storage partition. This may reduce performance. This should not be enabled by
 // default.
 BASE_FEATURE(kMayLaunchUrlUsesSeparateStoragePartition, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kMediaCaptureNotificationRefreshMediaTypes, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kMostVisitedTilesCustomization, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kMostVisitedTilesReselect, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kMoveToFrontInLaunchIntentDispatcher, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -885,6 +894,7 @@ BASE_FEATURE(kNtpAurora, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNtpAuroraV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNtpMvcRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNtpVision, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kOctoberTestUXR, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kOmahaMinSdkVersionAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kOnDemandBackgroundTabContextCapture, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kOnDemandBackgroundTabContextCaptureOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -935,7 +945,7 @@ BASE_FEATURE(kSubmenusInAppMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSubmenusInAppMenuLff, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSuppressAccessibilityOnDeferredContentView, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSyncRestoreOnStartupPref, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kTabAndroidGracefulShutdown, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTabAndroidGracefulShutdown, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheet, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheetFullHeight, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheetHalfHeight, base::FEATURE_DISABLED_BY_DEFAULT);

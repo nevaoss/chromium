@@ -195,15 +195,42 @@ class VerticalTabRailHoverController
         }
     }
 
-    @Override
-    public void onDragEventDispatched(DragEvent event) {
+    /**
+     * Called for every drag event delivered to the rail container's drag listener, before the drag
+     * handler sees it.
+     *
+     * <p>Fed from the listener rather than from {@code dispatchDragEvent()}: ACTION_DRAG_EXITED is
+     * delivered straight to the listener by {@code ViewRootImpl#setDragFocus} and never dispatched,
+     * so only the listener observes every action. The container is the rail's only drag listener,
+     * so crossing between the rail's margin and one of its lists is not an exit.
+     */
+    void onDragEvent(DragEvent event) {
         if (!isTrackingPointer()) return;
         // Hover events are not sent during a system drag and drop, so the rail cannot tell when the
-        // pointer leaves it. The position is unconfirmed for the duration of the drag.
+        // pointer leaves it from hover alone. The position is unconfirmed for the duration of the
+        // drag, unless the rail receives coordinate-bearing drag events (see below).
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
                 if (mPointerState == PointerState.INSIDE) {
                     recordPointerState(PointerState.INSIDE_UNCONFIRMED);
+                }
+                break;
+            case DragEvent.ACTION_DRAG_LOCATION:
+            case DragEvent.ACTION_DROP:
+                // These are only delivered to the rail when the pointer is over it and the rail
+                // accepts the drag, so they confirm the pointer position. A drag that then ends
+                // over the rail (a drop, or ESC) leaves it expanded under the pointer.
+                if (mPointerState == PointerState.INSIDE_UNCONFIRMED) {
+                    recordPointerState(PointerState.INSIDE);
+                }
+                break;
+            case DragEvent.ACTION_DRAG_EXITED:
+                // The pointer left the rail. Collapses a hover-expanded rail; a rail the user
+                // expanded is left alone by VerticalTabRailCollapseController. ACTION_DRAG_ENDED
+                // does not collapse a confirmed rail: a drag that ends outside the rail has
+                // already exited it.
+                if (mPointerState != PointerState.OUTSIDE) {
+                    applyPointerState(PointerState.OUTSIDE);
                 }
                 break;
             case DragEvent.ACTION_DRAG_ENDED:
@@ -270,12 +297,12 @@ class VerticalTabRailHoverController
      * Called when the user turns expand-on-hover on or off. When turned off, pointer events are no
      * longer tracked, so the rail is collapsed right away if it is expanded for hovering. This does
      * not wait for a context menu to be dismissed, as the setting is usually changed from one that
-     * is being dismissed. When turned on, the next hover event over the rail expands it.
+     * is being dismissed. When turned on, the next hover event over the rail expands it. Either
+     * way, Side UI is updated, as the setting changes whether the rail can be manually resized.
      */
     private void onExpandOnHoverSettingChanged() {
-        if (isTrackingPointer()) return;
         recordPointerState(PointerState.OUTSIDE);
-        mCollapseController.setHovering(false);
+        mCollapseController.onExpandOnHoverSettingChanged();
     }
 
     @PointerState

@@ -4,13 +4,6 @@
 
 # This file contains common system config stuff for the Android build.
 
-# Some arguments that are needed across all builds that import this file, for
-# example by is_robolectric.
-declare_args() {
-  # Deprecated. Kept temporarily for compatibility with downstream repositories.
-  incremental_install = false
-}
-
 declare_args() {
   # Java debug on Android. Having this on enables multidexing, and turning it
   # off will enable proguard.
@@ -510,6 +503,7 @@ if (is_android) {
   kotlinc_paths_for_inputs = [
     "//third_party/kotlinc",
     "//third_party/kotlinc/current/bin/kotlinc",
+    "//third_party/kotlinc/current/bin/kotlinc-graalvm",
     "//third_party/kotlinc/current/lib/jvm-abi-gen.jar",
     "//third_party/kotlinc/current/lib/annotations-13.0.jar",
     "//third_party/kotlinc/current/lib/kotlin-compiler.jar",

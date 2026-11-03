@@ -489,6 +489,12 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     std::string,
     kFilteringScrollPredictionFilterParam);
 
+// Flushes the GPU channel right after a LayerTreeView is released, so that the
+// destruction of its SharedImages isn't left for the next flush, which is often
+// in the middle of the next navigation. Kill switch for crbug.com/569098933.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kFlushGpuChannelOnLayerTreeViewRelease);
+
 // When enabled, FontAccessManager ensures the requesting frame is active
 // before consuming transient user activation.
 // Kill switch for crbug.com/556250086.
@@ -1387,24 +1393,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     base::TimeDelta,
     kPreloadingEagerViewportHeuristicsPresentTime);
-
-// If enabled, the machine learning model will be employed to predict the next
-// click for speculation-rule based pre-loadings.
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kPreloadingHeuristicsMLModel);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
-                                               kPreloadingModelTimerStartDelay);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
-                                               kPreloadingModelTimerInterval);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                                               kPreloadingModelMaxHoverTime);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
-                                               kPreloadingModelEnactCandidates);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kPreloadingModelPrefetchModerateThreshold);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    int,
-    kPreloadingModelPrerenderModerateThreshold);
 
 // If enabled, a viewport based heuristic will be used to predict the next click
 // for speculation-rule based preloading.

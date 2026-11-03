@@ -2391,6 +2391,10 @@
       status: "experimental",
     },
     {
+      name: "DeferLineBoxHitTestToBackground",
+      status: "stable",
+    },
+    {
       // Killswitch for https://crbug.com/400317114 fix.
       // This lands in M142, and the flag can be removed in M144.
       name: "DelegatesFocusTextControlInputFix",
@@ -3469,7 +3473,8 @@
       name: "FragmentedOofInCb",
     },
     {
-      name: "FrameSerializerNoWebEntities",
+      // crbug.com/570740320
+      name: "FrameCaretSkipHiddenCheck",
       status: "stable",
     },
     {
@@ -3864,9 +3869,9 @@
       status: "stable",
     },
     {
-      // See crbug.com/40910996
+      // See crbug.com/40910996 crbug.com/569803503
       name: "InlineContainingBlockSkipOpaque",
-      status: "stable",
+      status: "test",
     },
     {
       name: "InlineCursorSkipNonIfc",
@@ -4110,8 +4115,8 @@
       status: "stable",
     },
     {
+      // crbug.com/542686223 crbug.com/568304685
       name: "LineBreakerHanKerningEnd",
-      status: "stable",
     },
     {
       // Reverse origin trial allowing sites to opt out of Local Network Access
@@ -4598,21 +4603,6 @@
       // See https://crbug.com/41289410
       name: "NormalizeLineEndingsInInsertText",
       status: "stable",
-    },
-    {
-      // Converts mid-word U+00A0 (NBSP) to a regular space on paste and drop.
-      // This will be shipped in M148, and it can be removed in M150.
-      // See https://issues.chromium.org/issues/444065314.
-      name: "NormalizeNbspForPasteAndDrop",
-      status: "stable",
-    },
-    {
-      // Preserve NBSP in plain-text editing contexts. Only normalize NBSP for
-      // paste/drop in rich-text editing contexts.
-      // See https://issues.chromium.org/issues/513279004.
-      name: "NormalizeNbspRichTextOnly",
-      status: "stable",
-      depends_on: ["NormalizeNbspForPasteAndDrop"],
     },
     {
       // Dispatch an error event for the cross-origin violation for the worker
@@ -6101,6 +6091,16 @@
       status: "experimental",
     },
     {
+      // Kill switch for https://crbug.com/569098933. Doesn't composite a
+      // backdrop-filter animation whose value can't change (e.g. the view
+      // transition group animation from `none` to the underlying `none`),
+      // which would require render surfaces for the animating element and for
+      // its backdrop root. The animation still makes the element a stacking
+      // context.
+      name: "SkipCompositingStaticBackdropFilterAnimation",
+      status: "stable",
+    },
+    {
       // Improves performance of event dispatching by skipping the capture
       // phase if there are no capture listeners registered on the page.
       name: "SkipEventCapture",
@@ -6405,7 +6405,7 @@
     },
     {
       name: "SvgIncrementalStyle",
-      status: "test",
+      status: "stable",
     },
     {
       name: "SvgInlineRootPixelSnappingScaleAdjustment",
@@ -6905,10 +6905,6 @@
       },
     },
     {
-      name: "UseLargestPaintedImageForLCPCandidate",
-      status: "stable",
-    },
-    {
       // Android currently uses low-quality interpolation, while other platforms
       // default to medium-quality. This flag is for experimenting with changing
       // the value on Android. See: https://crbug.com/374315986.
@@ -7027,6 +7023,14 @@
       status: "test",
     },
     {
+      // Kill switch for https://crbug.com/569098933. Doesn't snap the browser
+      // controls to fully shown when capturing the outgoing document of a
+      // cross-document view transition if the browser controls have zero
+      // height, since that would force a new LocalSurfaceId for the capture.
+      name: "ViewTransitionSkipZeroHeightControlsSnap",
+      status: "stable",
+    },
+    {
       name: "VisibilityCollapseColumn",
     },
     {
@@ -7050,6 +7054,13 @@
       // rendering is forced withing content-visibility subtrees (both
       // content-visibility: auto and content-visibility: hidden).
       name: "WarnOnContentVisibilityRenderAccess",
+    },
+    {
+      // Anchors the wavy text decoration pattern at the decorating box so the
+      // wave phase continues across inline fragment boundaries. Enabled by
+      // default; acts as a kill switch. https://crbug.com/41287729
+      name: "WavyDecorationContinuousPhase",
+      status: "stable",
     },
     {
       // https://chromestatus.com/feature/5183481574850560

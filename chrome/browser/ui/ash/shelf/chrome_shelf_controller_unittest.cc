@@ -98,6 +98,7 @@
 #include "chrome/browser/ash/wallpaper_handlers/wallpaper_fetcher_delegate.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/test_extension_system.h"
+#include "chrome/browser/global_features.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/prefs/browser_prefs.h"
 #include "chrome/browser/profiles/profile.h"
@@ -139,7 +140,6 @@
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
-#include "chrome/test/base/test_browser_window_aura.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -201,6 +201,7 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/grit/extensions_browser_resources.h"
+#include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_network_connection_tracker.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/aura/client/window_parenting_client.h"
@@ -497,6 +498,9 @@ class ChromeShelfControllerTestBase : public BrowserWithTestWindowTest,
 
     app_list::AppListSyncableServiceFactory::SetUseInTesting(true);
 
+    TestingBrowserProcess::GetGlobal()->SetSharedURLLoaderFactory(
+        test_url_loader_factory()->GetSafeWeakWrapper());
+
     if (auto_start_arc_app_test_) {
       arc_app_test_.PreProfileSetUp();
     }
@@ -521,10 +525,15 @@ class ChromeShelfControllerTestBase : public BrowserWithTestWindowTest,
     // fortunately, does not seem to impact to the real testing behavior
     // we workaround it by instantiating WallpaperControllerClientImpl
     // after profile creation.
-    wallpaper_controller_client_ = std::make_unique<
-        WallpaperControllerClientImpl>(
-        CHECK_DEREF(TestingBrowserProcess::GetGlobal()->local_state()),
-        std::make_unique<wallpaper_handlers::WallpaperFetcherDelegateImpl>());
+    wallpaper_controller_client_ =
+        std::make_unique<WallpaperControllerClientImpl>(
+            CHECK_DEREF(TestingBrowserProcess::GetGlobal()->local_state()),
+            std::make_unique<wallpaper_handlers::WallpaperFetcherDelegateImpl>(
+                TestingBrowserProcess::GetGlobal()
+                    ->GetFeatures()
+                    ->application_locale_storage(),
+                TestingBrowserProcess::GetGlobal()
+                    ->shared_url_loader_factory()));
     wallpaper_controller_client_->Init();
 
     model_ = std::make_unique<ash::ShelfModel>();
@@ -735,12 +744,9 @@ class ChromeShelfControllerTestBase : public BrowserWithTestWindowTest,
     if (auto_start_arc_app_test_) {
       arc_app_test_.PostProfileTearDown();
     }
+    TestingBrowserProcess::GetGlobal()->SetSharedURLLoaderFactory(nullptr);
     ash::ConciergeClient::Shutdown();
     app_list::AppListSyncableServiceFactory::SetUseInTesting(false);
-  }
-
-  std::unique_ptr<BrowserWindow> CreateBrowserWindow() override {
-    return CreateTestBrowserWindowAura();
   }
 
   // Create an uninitialized controller instance.
@@ -1394,18 +1400,6 @@ class ChromeShelfControllerTestBase : public BrowserWithTestWindowTest,
       app_registry_cache_observer_{this};
 
  private:
-  std::unique_ptr<TestBrowserWindow> CreateTestBrowserWindowAura() {
-    auto window = std::make_unique<aura::Window>(
-        nullptr, aura::client::WINDOW_TYPE_NORMAL);
-    window->SetId(0);
-    window->Init(ui::LAYER_TEXTURED);
-    aura::client::ParentWindowWithContext(window.get(), GetContext(),
-                                          gfx::Rect(200, 200),
-                                          display::kInvalidDisplayId);
-
-    return std::make_unique<TestBrowserWindowAura>(std::move(window));
-  }
-
   ash::SessionTerminationManager session_termination_manager_;
   std::unique_ptr<ash::MultiUserWindowManagerBrowserAdaptor>
       multi_user_window_manager_browser_adaptor_;
@@ -4007,6 +4001,54 @@ TEST_F(ChromeShelfControllerWithArcTest, ShelfItemWithMultipleWindows) {
                                 display::kInvalidDisplayId);
   EXPECT_FALSE(window1->IsActive());
   EXPECT_TRUE(window2->IsActive());
+}
+
+// Test that the application menu items keep referring to the windows shown in
+// the menu when windows are added or removed while the menu is open.
+TEST_F(ChromeShelfControllerWithArcTest, AppMenuItemsAfterWindowListChange) {
+  InitShelfController();
+
+  arc::mojom::AppInfoPtr appinfo =
+      CreateAppInfo("Test1", "test", "com.example.app");
+  AddArcAppAndShortcut(*appinfo);
+
+  // Widgets will be deleted by the system.
+  NotifyOnTaskCreated(*appinfo, 1 /* task_id */);
+  views::Widget* window1 = CreateArcWindow("org.chromium.arc.1");
+  ASSERT_TRUE(window1);
+  NotifyOnTaskCreated(*appinfo, 2 /* task_id */);
+  views::Widget* window2 = CreateArcWindow("org.chromium.arc.2");
+  ASSERT_TRUE(window2);
+
+  ash::ShelfItemDelegate* item_delegate = model_->GetShelfItemDelegate(
+      ash::ShelfID(ArcAppTest::GetAppId(*appinfo)));
+  ASSERT_TRUE(item_delegate);
+  // The menu shows [window2, window1].
+  ASSERT_EQ(2U, item_delegate->GetAppMenuItems(0, base::NullCallback()).size());
+
+  // Adding a window does not shift the menu items.
+  NotifyOnTaskCreated(*appinfo, 3 /* task_id */);
+  ASSERT_TRUE(CreateArcWindow("org.chromium.arc.3"));
+  EXPECT_THAT(item_delegate->GetAppMenuItemWindow(0),
+              base::test::ValueIs(window2->GetNativeWindow()));
+  EXPECT_THAT(item_delegate->GetAppMenuItemWindow(1),
+              base::test::ValueIs(window1->GetNativeWindow()));
+  EXPECT_THAT(item_delegate->GetAppMenuItemWindow(2),
+              base::test::ErrorIs(std::u16string()));
+
+  // Removing a window clears only its menu item.
+  window2->CloseNow();
+  NotifyOnTaskDestroyed(2);
+  EXPECT_THAT(item_delegate->GetAppMenuItemWindow(0),
+              base::test::ErrorIs(std::u16string()));
+  EXPECT_THAT(item_delegate->GetAppMenuItemWindow(1),
+              base::test::ValueIs(window1->GetNativeWindow()));
+
+  // Executing a command clears the cached menu windows.
+  item_delegate->ExecuteCommand(false, 1, ui::EF_NONE,
+                                display::kInvalidDisplayId);
+  EXPECT_THAT(item_delegate->GetAppMenuItemWindow(1),
+              base::test::ErrorIs(std::u16string()));
 }
 
 namespace {

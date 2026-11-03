@@ -111,7 +111,7 @@ class CORE_EXPORT CanvasRenderingContextHost
   bool IsPaintable() const;
 
   virtual bool LowLatencyEnabled() const { return false; }
-
+  virtual bool IsPrinting() const { return false; }
 
   // Required by template functions in WebGLRenderingContextBase
   int width() const { return Size().width(); }
@@ -120,7 +120,6 @@ class CORE_EXPORT CanvasRenderingContextHost
   // Partial CanvasResourceProvider::Delegate implementation
   scoped_refptr<const cc::AnimatedImageFrameIndexMap>
   GetAnimatedImageFrameIndexes(uint32_t id) const override;
-  void DidFlush() override;
 
   virtual void PageVisibilityChanged();
 

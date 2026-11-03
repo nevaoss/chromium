@@ -81,7 +81,6 @@ class ContextualTasksPageHandler
                              GetCommonSearchParamsCallback callback) override;
   void OnboardingTooltipDismissed() override;
   void AskGTooltipDismissed() override;
-  void ReopenTabs() override;
   void OnContextMenuOpened() override;
   void NotifySmartTabSharingTryItIphResult(bool accepted) override;
   void NotifySmartTabSharingDefaultOnIphResult(bool accepted) override;
@@ -91,7 +90,6 @@ class ContextualTasksPageHandler
       const contextual_tasks::ContextualWindowId& window_id) override;
   void CloseWindow(
       const contextual_tasks::ContextualWindowId& window_id) override;
-  void MaybeTriggerPinningPromo() override;
   void PostAimMessage(const lens::ClientToAimMessage& message);
 
   // contextual_tasks::ContextualTasksService::Observer:

@@ -7797,6 +7797,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_CUSTOM_LINKS_REORDER" desc="The text label of the shortcut reorder button on the action menu. (On the New Tab Page)">
         Reorder
       </message>
+      <message name="IDS_NTP_SHORTCUT_REORDER_A11Y" is_accessibility_with_no_ui="true" desc="The accessible label of a most visited tile when reordering shortcuts. (On the New Tab Page)">
+        <ph name="SHORTCUT_TITLE">$1<ex>YouTube</ex></ph>, use the Left and Right arrow keys to move the shortcut. Press Enter or Escape to finish.
+      </message>
       <message name="IDS_NTP_MOST_VISITED_SITES_REMOVE" desc="The accessible label of the most visited tile remove button. (On the New Tab Page)">
         Remove <ph name="SHORTCUT_TITLE">$1<ex>YouTube</ex></ph>
       </message>
@@ -10018,6 +10021,18 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_AI_PLAYBACK_TURN_OFF" desc="Tooltip label for button that turns off AI Playback in Read Aloud.">
         Turn off AI Playback
       </message>
+      <message name="IDS_READING_MODE_AI_PLAYBACK_IPH_BODY" desc="Text for the help bubble introducing AI playback in Reading Mode.">
+        Listen to this page like it's a podcast with AI playback
+      </message>
+      <message name="IDS_READING_MODE_AI_PLAYBACK_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Accessible text for the help bubble introducing AI playback in Reading Mode.">
+        Listen to this page like it's a podcast with AI playback using the Turn on AI Playback button in the Reading mode toolbar
+      </message>
+      <message name="IDS_READING_MODE_AI_PLAYBACK_SETTINGS_IPH_BODY" desc="Text for the help bubble introducing reading mode settings after enabling AI playback.">
+        You can turn off text highlighting, modify the voice, and change the appearance of the page in settings.
+      </message>
+      <message name="IDS_READING_MODE_AI_PLAYBACK_SETTINGS_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Text for the help bubble introducing reading mode settings after enabling AI playback.">
+        You can turn off text highlighting, modify the voice, and change the appearance of the page in settings.
+      </message>
       <message name="IDS_READING_MODE_PLAY_DESCRIPTION" desc="Accessibility description for button that plays speech in Read Aloud.">
         Listen to the text with natural voice
       </message>
@@ -11374,6 +11389,15 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_GLASS_FRAME_IPH_SETTINGS_PAGE" desc="The text on chrome://settings/appearance page that is anchored to the tab styling drop down for users to enable glass frame.">
         Set this setting to Modern to try the new transparent look for your tabs.
+      </message>
+      <message name="IDS_GLASS_FRAME_OPT_OUT_IPH_TITLE" desc="The title of the in-product help promo educating users about the new transparent look for tabs and how to opt out.">
+        Tabs have a new transparent look
+      </message>
+      <message name="IDS_GLASS_FRAME_OPT_OUT_IPH_BODY" desc="The body text of the in-product help promo educating users about the new transparent look for tabs and how to opt out.">
+        You can always switch back to the classic style in settings
+      </message>
+      <message name="IDS_GLASS_FRAME_OPT_OUT_IPH_SETTINGS_PAGE" desc="The text on chrome://settings/appearance page that is anchored to the tab styling drop down for users to disable glass frame.">
+        Choose your preferred tab styling here
       </message>
 
       <!-- User Education Tutorial Strings -->
@@ -18651,9 +18675,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_WEBAUTHN_SIGN_IN_TO_WEBSITE_DIALOG_TITLE" desc="The title of a bubble that displays passkeys or passwords for signing in to a given site.">
         Sign in to <ph name="RP_ID">$1<ex>webauthn.io</ex></ph>
-      </message>
-      <message name="IDS_WEBAUTHN_SIGN_IN_AS_PROMPT" desc="The text of a prompt that allows the user to sign in to a website using an account with the provided username." translateable="false">
-        Sign in as <ph name="USERNAME">$1<ex>elisa@example.com</ex></ph>
       </message>
 
       <!-- WebAuthn Automatic Passkey Upgrades -->

@@ -521,6 +521,15 @@ if (!is_android) {
         sources += [ "webui_media_toolbar_button_browsertest.cc" ]
       }
 
+      if (is_win) {
+        # Accessibility event tests rely on Aura APIs (EventGenerator,
+        # TooltipControllerTestHelper).
+        sources += [
+          "browser_app_menu_button_dump_accessibility_events_browsertest.cc",
+        ]
+        deps += [ "//chrome/browser/ui/views/accessibility:dump_accessibility_events_views_browsertest_base" ]
+      }
+
       deps += [
         "//chrome/browser/ui:toolbar_controller_util",
         "//chrome/browser/ui/global_media_controls",
@@ -600,6 +609,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/bookmarks",
       "//chrome/browser/devtools",
       "//chrome/browser/extensions",
+      "//chrome/browser/glic",
       "//chrome/browser/preloading",
       "//chrome/browser/profiles:misc",
       "//chrome/browser/profiles:profile",
@@ -649,7 +659,10 @@ if (!is_android && !is_chromeos_device) {
       "//ui/views",
     ]
     if (is_chromeos) {
-      deps += [ "//components/user_manager" ]
+      deps += [
+        "//chromeos/constants",
+        "//components/user_manager",
+      ]
     }
     if (toolkit_views) {
       deps += [

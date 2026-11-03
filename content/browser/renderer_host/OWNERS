@@ -12,6 +12,7 @@ jonross@chromium.org
 alexmos@chromium.org
 arthursonzogni@chromium.org
 creis@chromium.org
+lbrady@google.com
 nasko@chromium.org
 rakina@chromium.org
 
@@ -29,7 +30,7 @@ per-file *android*=boliu@chromium.org
 per-file embedded_frame_sink*.*=kylechar@chromium.org
 
 # DirectWrite font code.
-per-file dwrite_*=drott@chromium.org
+per-file dwrite_*=andresrperez@chromium.org
 
 
 # Clipboard

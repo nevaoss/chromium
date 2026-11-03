@@ -291,13 +291,19 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 const base::FeatureParam<bool> kAccountPreviewDataPersistAccounts{
     &kEnableAccountPreviewData, "persist_accounts", true};
 
+// Controls whether only the reduced set of data types (required for heuristics
+// and string personalization) is requested and recorded for account preview
+// data. This flag has no effect if `kEnableAccountPreviewData` is not enabled.
+BASE_FEATURE(kEnableAccountPreviewDataReducedTypes,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Controls whether fetching entity preview data is enabled (via a specific api
 // method). This flag has no effect if `kEnableAccountPreviewData` is not
 // enabled.
 BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls whether computing and storing the preferred account is enabled.
+// Controls whether storing and exposing the preferred account is enabled.
 // This flag has no effect if `kEnableAccountPreviewData` is not enabled.
 BASE_FEATURE(kEnableAccountPreviewPreferredAccount,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -385,6 +391,12 @@ BASE_FEATURE_PARAM(
 // updated strings). This flag has no effect if
 // `kEnableAccountPreviewPreferredAccount` is not enabled.
 BASE_FEATURE(kEnableAccountPreviewPreferredAccountFollowup,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether storing and exposing the preferred account for switching is
+// enabled. This flag has no effect if `kEnableAccountPreviewData` is not
+// enabled.
+BASE_FEATURE(kEnableAccountPreviewSwitchingAccount,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
@@ -851,11 +863,11 @@ bool IsSigninWindows10DepreciationState() {
 }
 
 #if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kSignOutDeletesBrowsingData, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSignOutDeletesBrowsingData, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kSignOutOfChrome, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSignOutOfChrome, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -902,7 +914,7 @@ BASE_FEATURE(kSupportWebSigninAddSession, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // Enables an option in settings to open an Incognito window on Desktop Android.
-BASE_FEATURE(kSwitchToIncognitoInSettings, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSwitchToIncognitoInSettings, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kSyncEnableBookmarksInTransportMode,

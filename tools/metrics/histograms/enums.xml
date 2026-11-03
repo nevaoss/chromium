@@ -1279,11 +1279,6 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="1" label="Received"/>
 </enum>
 
-<enum name="BooleanRegistered">
-  <int value="0" label="Not Registered"/>
-  <int value="1" label="Registered"/>
-</enum>
-
 <enum name="BooleanRegistrationIsDuplicate">
   <int value="0" label="Registration is not a duplicate"/>
   <int value="1" label="Registration is a duplicate"/>
@@ -12664,6 +12659,7 @@ from previous Chrome versions.
   <int value="-703038214" label="ActorLiveNotification:enabled"/>
   <int value="-702477233" label="ContentFullscreen:enabled"/>
   <int value="-701652734" label="UnoPhase2FollowUp:enabled"/>
+  <int value="-701427021" label="AndroidMultiprofile:disabled"/>
   <int value="-700762821" label="RequestDesktopSiteForTablets:disabled"/>
   <int value="-700490514" label="DeviceBoundSessionsRefreshQuota:enabled"/>
   <int value="-700388124" label="OmniboxPedalsAndroidBatch1:enabled"/>
@@ -13622,6 +13618,7 @@ from previous Chrome versions.
   <int value="-405380243" label="enable-encryption-migration"/>
   <int value="-405321262" label="cast-streaming-force-disable-hardware-vp8"/>
   <int value="-404980975" label="InputCursorAnchorInfoMigration:enabled"/>
+  <int value="-404885503" label="BrowsingHistoryFilterByActor:enabled"/>
   <int value="-404496301" label="DownloadRange:disabled"/>
   <int value="-403952505" label="ReadAnythingWebUIToolbar:enabled"/>
   <int value="-403701720" label="DirectActions:enabled"/>
@@ -14155,6 +14152,7 @@ from previous Chrome versions.
   <int value="-250631040" label="ReadAnythingReadabilitySelectText:disabled"/>
   <int value="-250543540" label="DeferAllScript:enabled"/>
   <int value="-250357169" label="MediaAppImageMantisReimagine:enabled"/>
+  <int value="-250058704" label="EnableAccountPreviewSwitchingAccount:enabled"/>
   <int value="-249636068" label="ChromeRootStoreUsed:enabled"/>
   <int value="-249443346" label="PhoneHubCallNotification:disabled"/>
   <int value="-249415830" label="FilteringScrollPrediction:disabled"/>
@@ -14664,6 +14662,7 @@ from previous Chrome versions.
   <int value="-91767554" label="enable-de-jelly"/>
   <int value="-91575163" label="PaymentLinkDetection:disabled"/>
   <int value="-91370149" label="UseSerialBusEnumerator:enabled"/>
+  <int value="-91007557" label="SkillsAndExtensionsAppMenu:enabled"/>
   <int value="-90521375" label="PDFTwoUpView:enabled"/>
   <int value="-90410008" label="WebUiNtpAndroidTheming:enabled"/>
   <int value="-90032223" label="BuiltInModuleInfra:disabled"/>
@@ -14990,6 +14989,7 @@ from previous Chrome versions.
   <int value="6523501" label="lacros-availability-ignore"/>
   <int value="6655570" label="FedCmAmbientBubble:disabled"/>
   <int value="6735757" label="EnableExtensionInstallPolicyFetching:disabled"/>
+  <int value="7082335" label="BrowsingHistoryFilterByActor:disabled"/>
   <int value="7310536" label="WebFeedSort:enabled"/>
   <int value="7444737" label="NTPSuggestionsStandaloneUI:disabled"/>
   <int value="7533886" label="disable-offer-store-unmasked-wallet-cards"/>
@@ -16349,6 +16349,7 @@ from previous Chrome versions.
   <int value="417931522" label="MenuSimplification:enabled"/>
   <int value="418769094" label="MixedContentSiteSetting:enabled"/>
   <int value="419984818" label="ExtensionManifestV2DeprecationWarning:enabled"/>
+  <int value="419990945" label="AndroidMultiprofile:enabled"/>
   <int value="420160748" label="CornerShortcuts:enabled"/>
   <int value="420200188" label="JapaneseOSSettings:disabled"/>
   <int value="420356964" label="OobeJelly:enabled"/>
@@ -16558,6 +16559,7 @@ from previous Chrome versions.
   <int value="489533404" label="GetDisplayMediaConfersActivation:enabled"/>
   <int value="491126080"
       label="ProfileCreationFrictionReductionExperimentPrefillNameRequirement:enabled"/>
+  <int value="491251936" label="OctoberTestUXR:disabled"/>
   <int value="491258649" label="UseFirstPartySet"/>
   <int value="492113129" label="ExperimentalAppBanners:enabled"/>
   <int value="492184007" label="PdfSearchify:enabled"/>
@@ -16930,6 +16932,7 @@ from previous Chrome versions.
   <int value="616660621" label="ImeInputLogicFst:disabled"/>
   <int value="616717743" label="UIEnableSharedImageCacheForGpu:disabled"/>
   <int value="616919957" label="CameraAppCrosEvents:disabled"/>
+  <int value="617405833" label="use-webgpu-adapter"/>
   <int value="617706826" label="ProfilesReordering:disabled"/>
   <int value="617762656" label="FirstScrollLatencyMeasurement:enabled"/>
   <int value="618407424" label="OmniboxRetainSuggestionsWithHeaders:enabled"/>
@@ -17787,6 +17790,7 @@ from previous Chrome versions.
   <int value="857445869" label="enable-captive-portal-bypass-proxy"/>
   <int value="857716462" label="FeedInteractiveRefresh:enabled"/>
   <int value="857922806" label="CCTAuthTab:enabled"/>
+  <int value="857943721" label="OctoberTestUXR:enabled"/>
   <int value="858458360" label="CrOSLateBootBluetoothAudioLEAudioOnly:enabled"/>
   <int value="859031214"
       label="ExperimentalAccessibilityGoogleTtsLanguagePacks:enabled"/>
@@ -18406,7 +18410,6 @@ from previous Chrome versions.
   <int value="1058089810"
       label="AccessibilityRequestScopedContentChangedEvents:disabled"/>
   <int value="1059007599" label="enable-gpu-appcontainer"/>
-  <int value="1059223749" label="SkillsAppMenu:enabled"/>
   <int value="1059595064" label="GlicPanelResetOnStart:enabled"/>
   <int value="1059698271" label="EnableZeroStateSuggestions:disabled"/>
   <int value="1060059366" label="EnableDynamicRouteFetching:enabled"/>
@@ -19183,6 +19186,7 @@ from previous Chrome versions.
   <int value="1285905715" label="WebXRHitTest:enabled"/>
   <int value="1286195560" label="enable-download-warning-improvements"/>
   <int value="1286692760" label="NtpMiddleSlotPromoDismissal:enabled"/>
+  <int value="1287416217" label="Ttc:disabled"/>
   <int value="1287511314"
       label="UseMlServiceForNonLongformHandwritingOnAllBoards:enabled"/>
   <int value="1287625114" label="EnableIncognitoShortcutOnDesktop:disabled"/>
@@ -19845,6 +19849,8 @@ from previous Chrome versions.
   <int value="1479951837" label="FastPairKeyboards:enabled"/>
   <int value="1480073052" label="WallpaperSearchSettingsVisibility:enabled"/>
   <int value="1480507924" label="EnableNetworkingInDiagnosticsApp:enabled"/>
+  <int value="1480874242"
+      label="EnableAccountPreviewSwitchingAccount:disabled"/>
   <int value="1481562816" label="disable-password-link"/>
   <int value="1482039233" label="SearchSuggestionsOnLocalNtp:disabled"/>
   <int value="1482245628" label="OmniboxNativeVoiceSuggestProvider:enabled"/>
@@ -20393,7 +20399,6 @@ from previous Chrome versions.
   <int value="1654501133" label="UseRunningCompact:disabled"/>
   <int value="1654543587" label="AutofillParseAsync:disabled"/>
   <int value="1654949170" label="ArcSwitchToKeyMintOnT:enabled"/>
-  <int value="1655518158" label="SkillsAppMenu:disabled"/>
   <int value="1656276044" label="DialogsOnLargeFormFactors:enabled"/>
   <int value="1656675966" label="CrossWindowTabGroupOperations:enabled"/>
   <int value="1656768789" label="EnableGetDebugdLogsInParallel:enabled"/>
@@ -20488,6 +20493,7 @@ from previous Chrome versions.
   <int value="1680381128" label="SmartZoom:enabled"/>
   <int value="1680524929" label="AutofillEnableSupportForLandmark:disabled"/>
   <int value="1680963577" label="IgnoreDeviceFlexArcEnabledPolicy:disabled"/>
+  <int value="1681207816" label="Ttc:enabled"/>
   <int value="1681219077" label="VoiceButtonInTopToolbar:enabled"/>
   <int value="1681510941" label="AndroidElegantTextHeight:disabled"/>
   <int value="1681612611" label="CodeBasedRBD:disabled"/>
@@ -20633,6 +20639,7 @@ from previous Chrome versions.
   <int value="1722521465" label="CrosBatterySaverAlwaysOn:disabled"/>
   <int value="1722739418" label="CCTNestedSecurityIcon:disabled"/>
   <int value="1722748383" label="EnableAppReinstallZeroState:disabled"/>
+  <int value="1723297545" label="SkillsAndExtensionsAppMenu:disabled"/>
   <int value="1723601083" label="enable-app-window-controls"/>
   <int value="1723629395" label="AutofillSharedStorageServerCardData:enabled"/>
   <int value="1724247189" label="StylusHandwriting:enabled"/>
@@ -22598,6 +22605,8 @@ from previous Chrome versions.
   <int value="11" label="Composeplate view incognito button"/>
   <int value="12" label="Composeplate view voice search button"/>
   <int value="13" label="Composeplate view lens button"/>
+  <int value="14" label="Merchandising chips - gallery button"/>
+  <int value="15" label="Merchandising chips - create image button"/>
 </enum>
 
 <!-- LINT.IfChange(MojoResult) -->
@@ -23373,65 +23382,6 @@ Called by update_net_error_codes.py.-->
   <int value="0" label="False"/>
   <int value="1" label="True"/>
   <int value="2" label="Null"/>
-</enum>
-
-<enum name="NuxGoogleAppsInteractions">
-  <summary>
-    The button that a user pressed when interacting with the Google Apps NUX.
-  </summary>
-  <int value="0" label="Page Shown"/>
-  <int value="1" label="No Thanks (deprecated)"/>
-  <int value="2" label="Get Started (deprecated)"/>
-  <int value="3" label="Did nothing and navigated away"/>
-  <int value="4" label="Did nothing and clicked skip"/>
-  <int value="5" label="Chose an option then navigated away"/>
-  <int value="6" label="Chose an option then chose skip"/>
-  <int value="7" label="Chose an option then chose next"/>
-  <int value="8" label="Clicked disabled next button then navigated away"/>
-  <int value="9" label="Clicked disabled next button then chose skip"/>
-  <int value="10" label="Clicked disabled next button then chose next"/>
-  <int value="11" label="Did nothing and clicked next"/>
-  <int value="12" label="Navigated away through browser history"/>
-</enum>
-
-<enum name="NuxLandingPageInteractions">
-  <summary>
-    Interactions a user can take on the initial onboarding step.
-  </summary>
-  <int value="0" label="Page Shown"/>
-  <int value="1" label="Navigated Away"/>
-  <int value="2" label="New User"/>
-  <int value="3" label="Existing User"/>
-</enum>
-
-<enum name="NuxNtpBackgroundInteractions">
-  <summary>
-    All possible user journeys when interacting with the NUX NTP background
-    page.
-  </summary>
-  <int value="0" label="Page Shown"/>
-  <int value="1" label="Did nothing and navigated away"/>
-  <int value="2" label="Did nothing and clicked skip"/>
-  <int value="3" label="Did nothing and clicked next"/>
-  <int value="4" label="Chose an option then navigated away"/>
-  <int value="5" label="Chose an option then chose skip"/>
-  <int value="6" label="Chose an option then chose next"/>
-  <int value="7" label="Navigated away through browser history"/>
-  <int value="8" label="Background failed to load"/>
-  <int value="9" label="Background never finished loading"/>
-</enum>
-
-<enum name="NuxSetAsDefaultInteractions">
-  <summary>
-    Interactions a user can take on the &quot;Set as default&quot; onboarding
-    step.
-  </summary>
-  <int value="0" label="Page Shown"/>
-  <int value="1" label="Navigated Away"/>
-  <int value="2" label="Skip"/>
-  <int value="3" label="Clicked Set Default"/>
-  <int value="4" label="Successfully Set Default"/>
-  <int value="5" label="Navigated Away Through Browser History"/>
 </enum>
 
 <!-- LINT.IfChange(OAuth2Response) -->
@@ -27856,6 +27806,7 @@ Called by update_net_error_codes.py.-->
   <int value="12" label="SUCCESS_TRACKING_ONLY"/>
   <int value="13" label="FAILURE_DISPLAY_LOCK"/>
   <int value="14" label="FAILURE_GROUPS_PRECONDITION_UNMET"/>
+  <int value="15" label="FAILURE_BLOCKED_BY_ENTERPRISE_POLICY"/>
 </enum>
 
 <!--LINT.ThenChange(//components/feature_engagement/internal/stats.h:TriggerHelpUIResult) -->

@@ -97,9 +97,6 @@ BASE_FEATURE(kAutoSignOut, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables params tuning experiment for autocorrect on ChromeOS.
 BASE_FEATURE(kAutocorrectParamsTuning, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables using a toggle for enabling autocorrect on ChromeOS.
-BASE_FEATURE(kAutocorrectByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, the autozoom nudge shown prefs will be reset at the start of
 // each new user session.
 BASE_FEATURE(kAutozoomNudgeSessionReset, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -558,16 +555,9 @@ BASE_FEATURE(kEcheSWADebugMode, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables the E2E latecny measurement of Eche.
 BASE_FEATURE(kEcheSWAMeasureLatency, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables sending start signaling to establish Eche's WebRTC connection.
-BASE_FEATURE(kEcheSWASendStartSignaling, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Allows disabling the stun servers when establishing a WebRTC connection to
 // Eche.
 BASE_FEATURE(kEcheSWADisableStunServer, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Allows CrOS to analyze Android
-// network information to provide more context on connection errors.
-BASE_FEATURE(kEcheSWACheckAndroidNetworkInfo, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables external keyboard testers in the diagnostics app.
 BASE_FEATURE(kEnableExternalKeyboardsInDiagnostics,
@@ -951,9 +941,6 @@ BASE_FEATURE(kHeliumArcvmKiosk, base::FEATURE_DISABLED_BY_DEFAULT);
 // Should stay disabled by default.
 BASE_FEATURE(kHeliumArcvmKioskDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, the Help app will render the App Detail Page and entry point.
-BASE_FEATURE(kHelpAppAppDetailPage, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, the Help app will render the Apps List page and entry point.
 BASE_FEATURE(kHelpAppAppsList, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1024,11 +1011,6 @@ BASE_FEATURE(kImeDownloaderExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enable or disable proto-based communication for IME Service.
 BASE_FEATURE(kImeServiceProto, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enable or disable system emoji picker jelly support
-BASE_FEATURE(kImeSystemEmojiPickerJellySupport,
-             "SystemEmojiPickerJellySupport",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enable or disable system emoji picker mojo based emoji search
 BASE_FEATURE(kImeSystemEmojiPickerMojoSearch,
              "SystemEmojiPickerMojoSearch",
@@ -1038,10 +1020,6 @@ BASE_FEATURE(kImeSystemEmojiPickerMojoSearch,
 BASE_FEATURE(kImeSystemEmojiPickerVariantGrouping,
              "SystemEmojiPickerVariantGrouping",
              base::FEATURE_DISABLED_BY_DEFAULT);
-// Enables a change in the IME switching logic such that the mojo connection
-// status is tracked via a global boolean instead of checking if the runner is
-// idle.
-BASE_FEATURE(kImeSwitchCheckConnectionStatus, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether to show new management disclosure UI page instead of the
 // management warning bubble.
@@ -1075,8 +1053,6 @@ BASE_FEATURE(kIppFirstSetupForUsbPrinters, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables Romaji/Kana mode switch for Japanese VK.
 BASE_FEATURE(kJapaneseInputModeSwitchInVK, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kJupiterScreensaver, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables automatic downloading and installing fonts via language packs, based
 // on the user's preferences.
@@ -1524,10 +1500,6 @@ BASE_FEATURE(kReleaseNotesNotificationAllChannels,
 BASE_FEATURE(kReleaseNotesNotificationAlwaysEligible,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables rendering ARC notifications using ChromeOS notification framework
-BASE_FEATURE(kRenderArcNotificationsByChrome,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, will reset all shortcut customizations on startup.
 BASE_FEATURE(kResetShortcutCustomizations, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1634,10 +1606,6 @@ BASE_FEATURE(kShowSharingUserInLauncherContinueSection,
 
 // Shows the spatial audio toggle in audio settings page.
 BASE_FEATURE(kShowSpatialAudioToggle, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Try to use only a single CA cert for the EAP network if CA cert was selected,
-// fallback to the previous config.
-BASE_FEATURE(kSingleCaCertVerificationPhase1, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Use a single CA cert for the EAP network if CA cert was selected, no
 // fallback.
@@ -1986,10 +1954,6 @@ BASE_FEATURE(kHappinessTrackingGeneralCamera,
 
 // Enables the Happiness Tracking System for Prioritized General Camera survey.
 BASE_FEATURE(kHappinessTrackingGeneralCameraPrioritized,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for OS Settings Search survey.
-BASE_FEATURE(kHappinessTrackingOsSettingsSearch,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Happiness Tracking System for the slow and laggy survery.
@@ -2592,11 +2556,6 @@ bool IsInternalServerSideSpeechRecognitionEnabledByFinch() {
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
 
-bool IsJupiterScreensaverEnabled() {
-  return base::FeatureList::IsEnabled(kJupiterScreensaver) &&
-         IsTimeOfDayScreenSaverEnabled();
-}
-
 bool IsLobsterEnabled() {
   return base::FeatureList::IsEnabled(kLobsterDogfood) ||
          (base::FeatureList::IsEnabled(kLobster) &&
@@ -2838,10 +2797,6 @@ bool IsQuickDimEnabled() {
 
 bool IsRecoveryFlowReorderEnabled() {
   return base::FeatureList::IsEnabled(kRecoveryFlowReorder);
-}
-
-bool IsRenderArcNotificationsByChromeEnabled() {
-  return base::FeatureList::IsEnabled(kRenderArcNotificationsByChrome);
 }
 
 bool IsResetShortcutCustomizationsEnabled() {

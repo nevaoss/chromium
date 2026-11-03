@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // clang-format off
-import type {SearchEngine, SearchEnginesBrowserProxy, SearchEnginesInfo, CategorizedTemplateUrls, SearchEnginesInteractions, ChoiceMadeLocation} from 'chrome://settings/settings.js';
+import type {SearchEngine, SearchEnginesBrowserProxy, SearchEnginesInfo, DefaultSearchEnginePickerData, CategorizedTemplateUrls, SearchEnginesInteractions, ChoiceMadeLocation} from 'chrome://settings/settings.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 // clang-format on
@@ -22,6 +22,10 @@ export class TestSearchEnginesBrowserProxy extends TestBrowserProxy implements
     inactiveFeatureShortcuts: [],
   };
 
+  private defaultSearchEnginePickerData_: DefaultSearchEnginePickerData = {
+    primary: [],
+  };
+
   private searchEnginesInfo_: SearchEnginesInfo =
       {defaults: [], actives: [], others: [], extensions: []};
 
@@ -30,6 +34,7 @@ export class TestSearchEnginesBrowserProxy extends TestBrowserProxy implements
   constructor() {
     super([
       'getCategorizedTemplateUrls',
+      'getDefaultSearchEnginePickerData',
       'getSearchEnginesList',
       'getSaveGuestChoice',
       'removeSearchEngine',
@@ -44,21 +49,21 @@ export class TestSearchEnginesBrowserProxy extends TestBrowserProxy implements
   }
 
   setDefaultSearchEngine(
-      id: number, choiceMadeLocation: ChoiceMadeLocation,
+      id: string, choiceMadeLocation: ChoiceMadeLocation,
       saveGuestChoice?: boolean|null) {
     this.methodCalled(
         'setDefaultSearchEngine', id, choiceMadeLocation, saveGuestChoice);
   }
 
-  setIsActiveSearchEngine(id: number, isActive: boolean) {
+  setIsActiveSearchEngine(id: string, isActive: boolean) {
     this.methodCalled('setIsActiveSearchEngine', [id, isActive]);
   }
 
-  removeSearchEngine(id: number) {
+  removeSearchEngine(id: string) {
     this.methodCalled('removeSearchEngine', id);
   }
 
-  searchEngineEditStarted(id: number) {
+  searchEngineEditStarted(id: string) {
     this.methodCalled('searchEngineEditStarted', id);
   }
 
@@ -75,6 +80,11 @@ export class TestSearchEnginesBrowserProxy extends TestBrowserProxy implements
   getCategorizedTemplateUrls() {
     this.methodCalled('getCategorizedTemplateUrls');
     return Promise.resolve(this.categorizedTemplateUrls_);
+  }
+
+  getDefaultSearchEnginePickerData() {
+    this.methodCalled('getDefaultSearchEnginePickerData');
+    return Promise.resolve(this.defaultSearchEnginePickerData_);
   }
 
   getSearchEnginesList() {
@@ -101,6 +111,14 @@ export class TestSearchEnginesBrowserProxy extends TestBrowserProxy implements
    */
   setCategorizedTemplateUrls(categorizedTemplateUrls: CategorizedTemplateUrls) {
     this.categorizedTemplateUrls_ = categorizedTemplateUrls;
+  }
+
+  /**
+   * Sets the response to be returned by `getDefaultSearchEnginePickerData`.
+   */
+  setDefaultSearchEnginePickerData(
+      defaultSearchEnginePickerData: DefaultSearchEnginePickerData) {
+    this.defaultSearchEnginePickerData_ = defaultSearchEnginePickerData;
   }
 
   /**
@@ -134,7 +152,7 @@ export function createSampleSearchEngine(override?: Partial<SearchEngine>):
         //                    are unified.
         iconURL: 'http://www.google.com/favicon.ico',
         iconPath: 'images/foo.png',
-        id: 0,
+        id: 'db:0',
         isManaged: false,
         isRecommendedFromPolicy: false,
         isOmniboxExtension: false,
@@ -167,7 +185,7 @@ export function createSampleOmniboxExtension(override?: Partial<SearchEngine>):
           name: 'Omnibox extension',
           canBeDisabled: true,
         },
-        id: 0,
+        id: 'db:0',
         isManaged: false,
         isRecommendedFromPolicy: false,
         isOmniboxExtension: true,

@@ -63,6 +63,14 @@ NSString* const kEnhancedSafeBrowsingAccessibilityID =
 // Accessibility ID for the NTP theme tip.
 NSString* const kNTPThemeAccessibilityID = @"kNTPThemeAccessibilityID";
 
+// Accessibility ID for the tips notifications tip.
+NSString* const kTipsNotificationsAccessibilityID =
+    @"kTipsNotificationsAccessibilityID";
+
+// Accessibility ID for the NTP customization tip.
+NSString* const kNTPCustomizationAccessibilityID =
+    @"kNTPCustomizationAccessibilityID";
+
 // Constants for the default badge shape configuration (circle).
 const CGFloat kDefaultBadgeSize = 20;
 
@@ -97,6 +105,10 @@ Symbol SymbolForTip(TipIdentifier tip) {
     case TipIdentifier::kNTPTheme:
       // TODO(crbug.com/566958827): Add the correct `NTPTheme` symbol.
       return SymbolListBulletClipboard;
+    case TipIdentifier::kTipsNotifications:
+      return SymbolBellBadge;
+    case TipIdentifier::kNTPCustomization:
+      return SymbolHideAction;
   }
 }
 
@@ -191,7 +203,11 @@ std::optional<Symbol> GetBadgeSymbolConfigForTip(TipIdentifier tip,
     case TipIdentifier::kEnhancedSafeBrowsing:
       return GetNSString(IDS_IOS_MAGIC_STACK_TIP_SAFE_BROWSING_TITLE);
     case TipIdentifier::kNTPTheme:
+    case TipIdentifier::kNTPCustomization:
       return GetNSString(IDS_IOS_MAGIC_STACK_TIP_NTP_THEME_TITLE);
+    case TipIdentifier::kTipsNotifications:
+      // TODO(crbug.com/566958827): Add the correct strings once finalized.
+      return @"Get Chrome Tips";
   }
 }
 
@@ -217,6 +233,11 @@ std::optional<Symbol> GetBadgeSymbolConfigForTip(TipIdentifier tip,
       return GetNSString(IDS_IOS_MAGIC_STACK_TIP_SAFE_BROWSING_DESCRIPTION);
     case TipIdentifier::kNTPTheme:
       return GetNSString(IDS_IOS_MAGIC_STACK_TIP_NTP_THEME_DESCRIPTION);
+    case TipIdentifier::kTipsNotifications:
+      // TODO(crbug.com/566958827): Add the correct strings once finalized.
+      return @"Get notified about security updates, custom themes, and more.";
+    case TipIdentifier::kNTPCustomization:
+      return GetNSString(IDS_IOS_MAGIC_STACK_TIP_NTP_CUSTOMIZATION_DESCRIPTION);
   }
 }
 
@@ -244,6 +265,10 @@ std::optional<Symbol> GetBadgeSymbolConfigForTip(TipIdentifier tip,
       return kEnhancedSafeBrowsingAccessibilityID;
     case TipIdentifier::kNTPTheme:
       return kNTPThemeAccessibilityID;
+    case TipIdentifier::kTipsNotifications:
+      return kTipsNotificationsAccessibilityID;
+    case TipIdentifier::kNTPCustomization:
+      return kNTPCustomizationAccessibilityID;
   }
 }
 
@@ -263,6 +288,8 @@ std::optional<Symbol> GetBadgeSymbolConfigForTip(TipIdentifier tip,
   switch (self.identifier) {
     case TipIdentifier::kAddressBarPosition:
     case TipIdentifier::kEnhancedSafeBrowsing:
+    case TipIdentifier::kTipsNotifications:
+    case TipIdentifier::kNTPCustomization:
       return @[ [UIColor whiteColor] ];
     case TipIdentifier::kSavePasswords:
     case TipIdentifier::kAutofillPasswords:
@@ -290,6 +317,10 @@ std::optional<Symbol> GetBadgeSymbolConfigForTip(TipIdentifier tip,
 #endif  // BUILDFLAG(IS_IOS_MACCATALYST)
     case TipIdentifier::kEnhancedSafeBrowsing:
       return [UIColor colorNamed:kBlue500Color];
+    case TipIdentifier::kTipsNotifications:
+      return [UIColor colorNamed:kPink500Color];
+    case TipIdentifier::kNTPCustomization:
+      return [UIColor colorNamed:kPurple500Color];
     default:
       return [UIColor colorNamed:kBackgroundColor];
   }

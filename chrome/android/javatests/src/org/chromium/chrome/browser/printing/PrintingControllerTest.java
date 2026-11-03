@@ -28,10 +28,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.Feature;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
 import org.chromium.base.test.util.TestFileUtil;
@@ -83,6 +85,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
+@Batch(Batch.PER_CLASS)
 public class PrintingControllerTest {
     @Rule
     public final FreshCtaTransitTestRule mActivityTestRule =
@@ -218,8 +221,7 @@ public class PrintingControllerTest {
         WebPageStation incognitoPage = mActivityTestRule.startOnIncognitoBlankPage();
         EmbeddedTestServer testServer = mActivityTestRule.getTestServer();
         final String url = testServer.getURL("/pdf/test/data/hello_world2.pdf");
-        PdfCtaPageStation pdfPage =
-                incognitoPage.openFakeLink(url, PdfCtaPageStation.newBuilder());
+        PdfCtaPageStation pdfPage = incognitoPage.openFakeLink(url, PdfCtaPageStation.newBuilder());
         Tab currentTab = pdfPage.getTab();
         testNormalPrintingFlowHelper(currentTab);
     }
@@ -488,6 +490,7 @@ public class PrintingControllerTest {
     @Test
     @SmallTest
     @Feature({"Printing"})
+    @DisableFeatures(ChromeFeatureList.ANDROID_DESKTOP_WEB_UI_HISTORY)
     public void testDisallowPrintOnNativePage() {
         mActivityTestRule.startOnBlankPage();
         mActivityTestRule.loadUrl(UrlConstants.HISTORY_URL);

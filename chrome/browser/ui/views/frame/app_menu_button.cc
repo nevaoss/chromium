@@ -67,13 +67,10 @@ bool AppMenuButton::IsDrawn() const {
 }
 
 bool AppMenuButton::IsMenuShowing() const {
-  // Check both `action_menu_` and `menu_`, as `WebAppMenuButton`
-  // unconditionally uses the original `AppMenu` even when `kAppMenuGlowUp` is
-  // enabled.
-  // TODO(crbug.com/532143665): Check the proper menu depending on the feature
-  // flag once PWAs use the action menu.
-  return (action_menu_ && action_menu_->IsShowing()) ||
-         (menu_ && menu_->IsShowing());
+  if (base::FeatureList::IsEnabled(features::kAppMenuGlowUp)) {
+    return action_menu_ && action_menu_->IsShowing();
+  }
+  return menu_ && menu_->IsShowing();
 }
 
 views::DialogDelegate* AppMenuButton::GetDialogDelegate() {
@@ -81,19 +78,17 @@ views::DialogDelegate* AppMenuButton::GetDialogDelegate() {
 }
 
 void AppMenuButton::CloseMenu() {
-  // Check both `action_menu_` and `menu_`, as `WebAppMenuButton`
-  // unconditionally uses the original `AppMenu` even when `kAppMenuGlowUp` is
-  // enabled.
-  // TODO(crbug.com/532143665): Check the proper menu depending on the feature
-  // flag once PWAs use the action menu.
-  if (action_menu_) {
-    action_menu_->CloseMenu();
+  if (base::FeatureList::IsEnabled(features::kAppMenuGlowUp)) {
+    if (action_menu_) {
+      action_menu_->CloseMenu();
+    }
+    action_menu_.reset();
+  } else {
+    if (menu_) {
+      menu_->CloseMenu();
+    }
+    menu_.reset();
   }
-  action_menu_.reset();
-  if (menu_) {
-    menu_->CloseMenu();
-  }
-  menu_.reset();
 }
 
 void AppMenuButton::ShowMenu() {
@@ -162,7 +157,7 @@ void AppMenuButton::RunActionMenu(
       browser_window_interface,
       base::BindRepeating(&AppMenuButton::OnMenuClosed,
                           weak_ptr_factory_.GetWeakPtr()));
-  action_menu_->RunMenu(menu_button_controller_);
+  action_menu_->RunMenu(menu_button_controller_, run_flags);
 
   observer_list_.Notify(&AppMenuButtonObserver::AppMenuShown);
 }

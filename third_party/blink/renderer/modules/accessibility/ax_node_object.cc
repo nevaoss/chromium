@@ -3547,6 +3547,17 @@ AccessibilityExpanded AXNodeObject::IsExpanded() const {
     }
   }
 
+  // An interest invoker is expanded while its rich hint is open. As with
+  // popovertarget, this is not exposed when the invoker is inside the popover.
+  // See
+  // https://open-ui.org/components/interest-invokers.explainer/#rich-hints-aka-hovercards-or-other
+  if (AXObject* rich_hint = GetRichHintTargetPopover()) {
+    auto* popover = To<HTMLElement>(rich_hint->GetElement());
+    if (!element->IsDescendantOrShadowDescendantOf(popover)) {
+      return popover->popoverOpen() ? kExpandedExpanded : kExpandedCollapsed;
+    }
+  }
+
   if (IsA<HTMLSummaryElement>(*element)) {
     if (element->parentNode() &&
         IsA<HTMLDetailsElement>(element->parentNode())) {
@@ -4431,11 +4442,34 @@ RGBA32 AXNodeObject::BackgroundColor() const {
   }
 
   const ComputedStyle& style = layout_object->StyleRef();
-  if (!style.HasBackground()) {
-    return Color::kTransparent.Rgb();
+  if (style.HasBackground()) {
+    return style.VisitedDependentColor(GetCSSPropertyBackgroundColor()).Rgb();
   }
 
-  return style.VisitedDependentColor(GetCSSPropertyBackgroundColor()).Rgb();
+  // Spans that only set a background-color are not in the accessibility tree,
+  // so the browser can't blend their color into descendants. Walk the layout
+  // tree instead to find the nearest inline ancestor's background.
+  // See crbug.com/421462039.
+  if (layout_object->IsText() || layout_object->IsLayoutInline()) {
+    for (const LayoutObject* ancestor = layout_object->Parent();
+         ancestor && ancestor->IsLayoutInline();
+         ancestor = ancestor->Parent()) {
+      // The browser already blends the colors of ancestors in the tree; using
+      // them here too would double-blend translucent backgrounds.
+      if (AXObject* ax_ancestor = AXObjectCache().Get(ancestor);
+          ax_ancestor && ax_ancestor->CachedIsIncludedInTree()) {
+        break;
+      }
+      const ComputedStyle& ancestor_style = ancestor->StyleRef();
+      if (ancestor_style.HasBackground()) {
+        return ancestor_style
+            .VisitedDependentColor(GetCSSPropertyBackgroundColor())
+            .Rgb();
+      }
+    }
+  }
+
+  return Color::kTransparent.Rgb();
 }
 
 RGBA32 AXNodeObject::GetColor() const {
@@ -7109,10 +7143,11 @@ String AXNodeObject::TextAlternativeFromTooltip(
     return title_text;
   }
 
-  // First try for interestfor, then for hint popover.
+  // First try for {explicit} interestfor relationships, then for hint popover.
   // TODO(accessibility) Consider only using interest for.
   AXObject* popover_ax_object =
-      AXObjectCache().Get(GetElement()->InterestForElement());
+      AXObjectCache().Get(GetElement()->InterestForElement(
+          Element::InterestForType::kExplicitOnly));
   if (popover_ax_object) {
     name_from = ax::mojom::blink::NameFrom::kInterestFor;
   } else {

@@ -71,6 +71,7 @@ import org.chromium.android_webview.AwLayoutSizer;
 import org.chromium.android_webview.AwPrintDocumentAdapter;
 import org.chromium.android_webview.AwSettings;
 import org.chromium.android_webview.AwThreadUtils;
+import org.chromium.android_webview.AwWebContent;
 import org.chromium.android_webview.DarkModeHelper;
 import org.chromium.android_webview.DualTraceEvent;
 import org.chromium.android_webview.ManifestMetadataUtil;
@@ -133,6 +134,21 @@ class WebViewChromium
     private ContentSettingsAdapter mWebSettings;
     // The WebView wrapper for WebContents and required browser components.
     AwContents mAwContents;
+    // The state associated with this WebView. This exists before `initForReal()` is called.
+    private AwWebContent mAwWebContent;
+    // Receives callbacks from the AwWebContent that this WebViewChromium adopts.
+    private final AwWebContent.ViewHost mWebContentHost =
+            new AwWebContent.ViewHost() {
+                @Override
+                public void initSettings(AwSettings settings) {
+                    WebViewChromium.this.initSettings(settings);
+                }
+
+                @Override
+                public void onDetached() {
+                    WebViewChromium.this.detachForTransfer();
+                }
+            };
 
     private final WebView.HitTestResult mHitTestResult;
 
@@ -144,6 +160,8 @@ class WebViewChromium
     protected final SharedWebViewChromium mSharedWebViewChromium;
 
     private static boolean sRecordWholeDocumentEnabledByApi;
+
+    private static AwWebContent sSharedDestroyedAwWebContent;
 
     private boolean mEvaluateJavaScriptCalled;
     private boolean mGetAccessibilityNodeProviderCalledWhenAwContentsNull;
@@ -172,7 +190,23 @@ class WebViewChromium
             mStartupController = StartupController.getInstance();
             factory.addWebViewAssetPath(mWebView.getContext());
             mSharedWebViewChromium = new SharedWebViewChromium(mFactory.getRunQueue());
-            mStartupController.maybeSetChromiumUiThread(Looper.myLooper());
+            Looper myLooper = Looper.myLooper();
+            // The thread looper check on the framework throws a RuntimeException when called on
+            // a thread that has not yet had a Looper initialized.
+            //
+            // We throw the same exception here since it is possible to reach Chromium's
+            // `checkThread()` before the framework check when `WebViewInitInConstructor`
+            // is enabled.
+            // Chromium `checkThread()` not only throws a synchronous `RuntimeException`, but also
+            // posts an exception on the UI thread. So, even if the app handled a synchronous
+            // exception, the app would still crash due to the asynchronous exception in the
+            // experiment arm.
+            // See b/557196960 for more details.
+            if (myLooper == null) {
+                throw new RuntimeException(
+                        "WebView cannot be initialized on a thread that has no Looper.");
+            }
+            mStartupController.maybeSetChromiumUiThread(myLooper);
             if (shouldEnableInitInConstructor()) {
                 init(null, false);
             }
@@ -234,9 +268,11 @@ class WebViewChromium
             // Check that the current thread is the UI thread, which will throw if it was
             // already started using a different thread as the UI thread.
             checkThread();
-            // Mark synchronously here (rather than where it is consumed) since initForReal can be
-            // deferred.
-            WebContentContextWrapper.markUsed(mContext);
+
+            mAwWebContent = WebContentContextWrapper.getWebContent(mContext);
+            if (mAwWebContent == null) {
+                mAwWebContent = new AwWebContent();
+            }
 
             // This will run initForReal synchronously except when the experiment to defer running
             // Chromium startup is enabled.
@@ -269,15 +305,11 @@ class WebViewChromium
                                 AwBrowserContext.getDefaultContextName(), true);
             }
 
-            WebContent webContent = WebContentContextWrapper.getWebContent(mContext);
-            if (webContent == null) {
-                webContent = new WebContent();
-            }
-            boolean isTransfer = webContent.isInitialized();
+            boolean isTransfer = mAwWebContent.isInitialized();
 
             mAwContents =
-                    webContent.adopt(
-                            this,
+                    mAwWebContent.adopt(
+                            mWebContentHost,
                             browserContext,
                             mWebView,
                             mContext,
@@ -564,10 +596,21 @@ class WebViewChromium
 
         mIsDestroyed = true;
 
-        // TODO(bewise): Replace this stubbed AwContents approach with better state management
-        // so that long term we can clean up the default profile when it isn't in use.
-        mAwContents = mFactory.getSharedDestroyedAwContents();
+        mAwWebContent = getSharedDestroyedAwWebContent();
+        mAwContents = mAwWebContent.getAwContents();
         mSharedWebViewChromium.setAwContentsForTransfer(mAwContents);
+    }
+
+    /** Returns the process-wide destroyed {@link AwWebContent} that detached instances point at. */
+    private AwWebContent getSharedDestroyedAwWebContent() {
+        if (sSharedDestroyedAwWebContent == null) {
+            sSharedDestroyedAwWebContent =
+                    AwWebContent.createDestroyedAwWebContent(
+                            awContents ->
+                                    new WebViewContentsClientAdapter(
+                                            awContents, mFactory.getWebViewDelegate()));
+        }
+        return sSharedDestroyedAwWebContent;
     }
 
     @Override
@@ -884,8 +927,6 @@ class WebViewChromium
     public void evaluateJavaScript(
             final String script, final ValueCallback<String> resultCallback) {
         forbidBuilderConfiguration();
-        mStartupController.triggerAndWaitForChromiumStarted(
-                StartupCallSite.WEBVIEW_INSTANCE_EVALUATE_JAVASCRIPT);
         checkThread();
         try (TraceEvent event =
                 TraceEvent.scoped("WebView.APICall.Framework.EVALUATE_JAVASCRIPT")) {
@@ -899,7 +940,7 @@ class WebViewChromium
             } else {
                 ApiCallLogger.recordWebViewApiCallWithoutUserAction(ApiCall.EVALUATE_JAVASCRIPT);
             }
-            mAwContents.evaluateJavaScript(
+            mAwWebContent.evaluateJavaScript(
                     script, CallbackConverter.fromValueCallback(resultCallback));
         }
     }

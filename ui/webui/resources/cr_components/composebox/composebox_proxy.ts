@@ -4,6 +4,7 @@
 
 import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SuggestStyle} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteMatch} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SecondaryTextPlacement} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 
 import {PageHandlerFactory, PageHandlerRemote} from './composebox.mojom-webui.js';
 
@@ -28,16 +29,18 @@ export function createAutocompleteMatch(
     fillIntoEdit: '',
     iconPath: '',
     iconUrl: '',
-    imageDominantColor: '',
-    imageUrl: '',
     removeButtonA11yLabel: '',
     type: '',
     isContextualSuggestion: false,
-    isTwoRowSuggestion: false,
     tailSuggestCommonPrefix: null,
     keywordModel: null,
     fuseboxAction: null,
     suggestStyle: SuggestStyle.kUnspecified,
+    suggestTemplate: {
+      secondaryTextPlacement: SecondaryTextPlacement.kUnspecified,
+      image: null,
+    },
+    urlEmphasis: null,
     ...config,
   };
 }
@@ -50,6 +53,7 @@ export interface ComposeboxProxy {
   // <if expr="not is_android">
   getSmartTabSharingActive(): Promise<{active: boolean}>;
   setSmartTabSharingActive(active: boolean): void;
+  resetSmartTabSharing(): Promise<{active: boolean}>;
   observeSmartTabSharingActive(callback: (active: boolean) => void): number;
   // </if>
 }
@@ -73,6 +77,10 @@ export class ComposeboxProxyImpl implements ComposeboxProxy {
 
   setSmartTabSharingActive(active: boolean): void {
     this.searchboxHandler.setSmartTabSharingActive(active);
+  }
+
+  resetSmartTabSharing(): Promise<{active: boolean}> {
+    return this.searchboxHandler.resetSmartTabSharing();
   }
 
   observeSmartTabSharingActive(callback: (active: boolean) => void): number {

@@ -22,6 +22,8 @@
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "components/fcm/engine/checkin_info.h"
+#include "components/fcm/engine/chrome_build_info.h"
+#include "components/fcm/engine/fcm_internals_builder.h"
 #include "components/fcm/engine/fcm_stats_recorder_impl.h"
 #include "components/gcm_driver/gcm_client.h"
 #include "google_apis/gcm/base/mcs_message.h"
@@ -58,32 +60,6 @@ class CheckinRequest;
 class ConnectionFactory;
 class GCMClientImplTest;
 
-// Helper class for building GCM internals. Allows tests to inject fake versions
-// as necessary.
-class GCMInternalsBuilder {
- public:
-  GCMInternalsBuilder();
-  virtual ~GCMInternalsBuilder();
-
-  virtual base::Clock* GetClock();
-  virtual std::unique_ptr<MCSClient> BuildMCSClient(
-      const std::string& version,
-      base::Clock* clock,
-      ConnectionFactory* connection_factory,
-      GCMStore* gcm_store,
-      scoped_refptr<base::SequencedTaskRunner> io_task_runner,
-      GCMStatsRecorder* recorder);
-  virtual std::unique_ptr<ConnectionFactory> BuildConnectionFactory(
-      const std::vector<GURL>& endpoints,
-      const net::BackoffEntry::Policy& backoff_policy,
-      base::RepeatingCallback<void(
-          mojo::PendingReceiver<network::mojom::ProxyResolvingSocketFactory>)>
-          get_socket_factory_callback,
-      scoped_refptr<base::SequencedTaskRunner> io_task_runner,
-      GCMStatsRecorder* recorder,
-      network::NetworkConnectionTracker* network_connection_tracker);
-};
-
 // Implements the GCM Client. It is used to coordinate MCS Client (communication
 // with MCS) and other pieces of GCM infrastructure like Registration and
 // Checkins. It also allows for registering user delegates that host
@@ -111,7 +87,7 @@ class GCMClientImpl
   };
 
   explicit GCMClientImpl(
-      std::unique_ptr<GCMInternalsBuilder> internals_builder);
+      std::unique_ptr<fcm::FcmInternalsBuilder> internals_builder);
 
   GCMClientImpl(const GCMClientImpl&) = delete;
   GCMClientImpl& operator=(const GCMClientImpl&) = delete;
@@ -120,7 +96,7 @@ class GCMClientImpl
 
   // GCMClient implementation.
   void Initialize(
-      const ChromeBuildInfo& chrome_build_info,
+      const fcm::ChromeBuildInfo& chrome_build_info,
       const base::FilePath& store_path,
       const scoped_refptr<base::SequencedTaskRunner>& blocking_task_runner,
       scoped_refptr<base::SequencedTaskRunner> io_task_runner,
@@ -319,7 +295,7 @@ class GCMClientImpl
   void ResetCache();
 
   // Builder for the GCM internals (mcs client, etc.).
-  std::unique_ptr<GCMInternalsBuilder> internals_builder_;
+  std::unique_ptr<fcm::FcmInternalsBuilder> internals_builder_;
 
   // Recorder that logs GCM activities.
   fcm::FcmStatsRecorderImpl recorder_;
@@ -343,7 +319,7 @@ class GCMClientImpl
 
   // Information about the chrome build.
   // TODO(fgorski): Check if it can be passed in constructor and made const.
-  ChromeBuildInfo chrome_build_info_;
+  fcm::ChromeBuildInfo chrome_build_info_;
 
   // Persistent data store for keeping device credentials, messages and user to
   // serial number mappings.

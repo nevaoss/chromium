@@ -6,6 +6,7 @@ module searchbox.mojom;
 
 import "components/omnibox/browser/fusebox_action.mojom";
 import "components/omnibox/browser/omnibox.mojom";
+import "components/omnibox/browser/suggest_template_info.mojom";
 import "components/omnibox/composebox/composebox_query.mojom";
 import "mojo/public/mojom/base/big_buffer.mojom";
 import "mojo/public/mojom/base/string16.mojom";
@@ -13,7 +14,46 @@ import "mojo/public/mojom/base/time.mojom";
 import "mojo/public/mojom/base/unguessable_token.mojom";
 import "ui/base/mojom/window_open_disposition.mojom";
 import "ui/gfx/geometry/mojom/geometry.mojom";
+import "ui/gfx/range/mojom/range.mojom";
 import "url/mojom/url.mojom";
+
+// LINT.IfChange(UrlDeemphasisMode)
+// The mode of URL component deemphasis to apply, matching
+// `OmniboxView::UpdateTextStyle()`.
+enum UrlDeemphasisMode {
+  kEverything,
+  kAllButScheme,
+  kAllButHost,
+  kNothing,
+};
+// LINT.ThenChange(//chrome/browser/ui/omnibox/omnibox_view.cc:DemphasizeComponents)
+
+// URL component emphasis for a specific string (e.g. the omnibox input text,
+// or the text an `AutocompleteMatch` displays in the input), matching
+// `OmniboxView::UpdateTextStyle()`.
+struct UrlEmphasis {
+  // Whether the string should be styled as a URL. If false, nothing is
+  // deemphasized and the ranges below are unset.
+  bool text_is_url;
+  UrlDeemphasisMode deemphasis_mode;
+  // Half-open [start, end) ranges of the scheme and host components within
+  // the string this emphasis was computed for. Offsets are in UTF-16 code
+  // units, not UTF-8 bytes: the browser computes them on a
+  // `std::u16string`, which matches JS string indexing (e.g.
+  // `String.prototype.substring()`), so non-ASCII text (including surrogate
+  // pairs) lines up on both sides. The ranges are only meaningful for that
+  // exact string.
+  //
+  // A range is unset if the component isn't present in the string (e.g.
+  // "example.com" has no scheme). For view-source: and blob: URLs, the
+  // ranges refer to the inner URL's components, so `scheme_range` does not
+  // necessarily start at 0.
+  gfx.mojom.Range? scheme_range;
+  gfx.mojom.Range? host_range;
+  // Security styling for the scheme component (e.g. for cert errors).
+  bool scheme_strike_through = false;
+  bool scheme_dangerous = false;
+};
 
 // See components/omnibox/browser/autocomplete_match.h.
 struct ACMatchClassification {
@@ -88,18 +128,11 @@ struct AutocompleteMatch {
   // The url for the suggestion icon. |icon_url| is an external url or
   // a data URI.
   url.mojom.Url icon_url;
-  // Used to paint a placeholder while fetching |image_url|. These two fields
-  // are valid for entity suggestions only. Entity suggestions have a |type| of
-  // 'search-suggest-entity'.
-  string image_dominant_color;
-  // The image url for entity suggestions. |image_url| is an external url or
-  // a data URI.
-  string image_url;
   // Used to determine if the match is a contextual suggestion.
   bool is_contextual_suggestion;
-  // Used to determine if the match should be rendered in a two-row layout
-  // (e.g. calculator, entity images, people search).
-  bool is_two_row_suggestion;
+  // Presentation template for this match. Populated for every match, including
+  // matches without a server-provided SuggestTemplateInfo.
+  suggest_template_info.mojom.SuggestTemplateInfo suggest_template;
   // Result of AutocompleteMatch::IsSearchType().
   bool is_search_type;
   // Used to determine if the match is an enterprise search aggregator people
@@ -124,6 +157,10 @@ struct AutocompleteMatch {
   fusebox_action.mojom.FuseboxAction? fusebox_action;
   // Style of this suggestion match as reported in SuggestTemplateInfo.
   SuggestStyle suggest_style = SuggestStyle.kUnspecified;
+  // Precomputed URL emphasis for the text this match shows in the input:
+  // `fill_into_edit`, or, for an inline-autocompleted default match, the
+  // user's input text followed by `inline_autocompletion`.
+  UrlEmphasis? url_emphasis;
 };
 
 // Information about a suggested tab in the WebUI.
@@ -629,6 +666,15 @@ interface PageHandler {
   // Called to retrieve the current Smart Tab Sharing state.
   [EnableIfNot=is_android]
   GetSmartTabSharingActive() => (bool active);
+
+  // Called when the page resets its session without submitting. Forgets any
+  // Smart Tab Sharing choice made in the current session so the next session
+  // starts from the default state (e.g. the default-on pref). Unlike
+  // SetSmartTabSharingActive(), this is not a user action: it records no
+  // toggle metrics and does not clear attached context. Replies with the
+  // resulting effective state.
+  [EnableIfNot=is_android]
+  ResetSmartTabSharing() => (bool active);
 
   // Dispatched when an FRE stage is dismissed.
   DismissFre(FreStage stage);

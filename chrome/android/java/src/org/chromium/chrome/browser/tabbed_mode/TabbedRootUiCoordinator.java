@@ -154,7 +154,7 @@ import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.CloseWindowA
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
-import org.chromium.chrome.browser.multiwindow.TabbedCrashRecoveryDelegate;
+import org.chromium.chrome.browser.multiwindow.TabbedStartupCoordinator;
 import org.chromium.chrome.browser.night_mode.WebContentsDarkModeMessageController;
 import org.chromium.chrome.browser.notifications.permissions.NotificationPermissionController;
 import org.chromium.chrome.browser.notifications.permissions.NotificationPermissionController.RationaleDelegate;
@@ -216,6 +216,7 @@ import org.chromium.chrome.browser.tab_ui.TabSwitcher;
 import org.chromium.chrome.browser.tab_ui.TabSwitcherUtils;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
+import org.chromium.chrome.browser.tabmodel.TabGroupUtils;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
@@ -1920,7 +1921,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mAppMenuCoordinator.getAppMenuHandler(),
                             menuButtonView,
                             bookmarkModel,
-                            mXrSpaceModeObservableSupplier);
+                            mXrSpaceModeObservableSupplier,
+                            getBottomSheetController(),
+                            mModalDialogManagerSupplier.get(),
+                            mActivityLifecycleDispatcher);
         }
     }
 
@@ -2278,7 +2282,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             @Override
             public void openTabGroup(@Nullable Token tabGroupId) {
                 TabModel tabModel = mTabModelSelectorSupplier.asNonNull().get().getModel(false);
-                if (!tabModel.tabGroupExists(tabGroupId)) {
+                if (!tabModel.containsTabGroup(tabGroupId)) {
                     // This method is only supposed to be called when the tab group is in the local
                     // model. However it's possible that something has recently changed. In which
                     // case just be defensive and give up.
@@ -2286,8 +2290,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 }
 
                 if (TabSwitcherUtils.isGridTabSwitcherDisabled()) {
-                    int tabId = tabModel.getGroupLastShownTabId(tabGroupId);
-                    Tab tab = tabModel.getTabById(tabId);
+                    Tab tab = TabGroupUtils.getSelectedOrFirstTabInGroup(tabModel, tabGroupId);
                     if (tab != null) {
                         tabModel.setIndex(tabModel.indexOf(tab), TabSelectionType.FROM_USER);
                     }
@@ -2476,6 +2479,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mVerticalTabsSideUiCoordinator =
                     new VerticalTabsSideUiCoordinator(
                             mActivity,
+                            mWindowAndroid,
                             mSideUiCoordinator,
                             new VerticalTabListCoordinator(
                                     mActivity,
@@ -2931,8 +2935,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @return whether a prompt or promo is actually displayed.
      */
     private boolean maybeShowRequiredPromptsAndPromos(Profile profile, boolean intentWithEffect) {
-        if (TabbedCrashRecoveryDelegate.getInstance()
-                .maybeShowCrashRecoveryDialog(mModalDialogManagerSupplier, mActivity)) {
+        if (TabbedStartupCoordinator.maybeShowCrashRecoveryPrompt(
+                mModalDialogManagerSupplier, mActivity)) {
             return true;
         }
 

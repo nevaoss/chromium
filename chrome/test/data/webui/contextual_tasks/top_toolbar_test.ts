@@ -808,16 +808,17 @@ suite('TopToolbarTest', () => {
     test('calls maybeTriggerPinningPromo when AI page is shown', async () => {
       topToolbar.isAiPage = false;
       await microtasksFinished();
-      proxy.handler.reset();
+      toolbarProxy.handler.reset();
 
       topToolbar.isAiPage = true;
       await microtasksFinished();
 
       // <if expr="is_android">
-      assertEquals(0, proxy.handler.getCallCount('maybeTriggerPinningPromo'));
+      assertEquals(
+          0, toolbarProxy.handler.getCallCount('maybeTriggerPinningPromo'));
       // </if>
       // <if expr="not is_android">
-      await proxy.handler.whenCalled('maybeTriggerPinningPromo');
+      await toolbarProxy.handler.whenCalled('maybeTriggerPinningPromo');
       // </if>
     });
 
@@ -827,13 +828,13 @@ suite('TopToolbarTest', () => {
           topToolbar.isAiPage = false;
           topToolbar.onboardingTooltipShowing = true;
           await microtasksFinished();
-          proxy.handler.reset();
+          toolbarProxy.handler.reset();
 
           topToolbar.isAiPage = true;
           await microtasksFinished();
 
           assertEquals(
-              0, proxy.handler.getCallCount('maybeTriggerPinningPromo'));
+              0, toolbarProxy.handler.getCallCount('maybeTriggerPinningPromo'));
         });
   });
 
@@ -964,62 +965,6 @@ suite('TopToolbarTest', () => {
     assertEquals(moreItems.innerText, '+1');
   });
 
-  suite('Reopen Tabs', () => {
-    setup(() => {
-      document.body.innerHTML = window.trustedTypes!.emptyHTML;
-      topToolbar = document.createElement('top-toolbar');
-      document.body.appendChild(topToolbar);
-    });
-
-    test('shows reopen tabs section', async () => {
-      // Initially not in the DOM.
-      let reopenTabs =
-          topToolbar.shadowRoot.querySelector<HTMLElement>('reopen-tabs');
-      assertFalse(!!reopenTabs);
-
-      // Show via mojo.
-      proxy.callbackRouterRemote.setShowReopenTabs(true);
-      await microtasksFinished();
-      reopenTabs =
-          topToolbar.shadowRoot.querySelector<HTMLElement>('reopen-tabs');
-      assertHTMLElement(reopenTabs);
-    });
-
-    test('handles reopen tabs click', async () => {
-      proxy.callbackRouterRemote.setShowReopenTabs(true);
-      await microtasksFinished();
-
-      const reopenTabs =
-          topToolbar.shadowRoot.querySelector<HTMLElement>('reopen-tabs');
-      assertHTMLElement(reopenTabs);
-
-      const reopenButton =
-          reopenTabs.shadowRoot!.querySelector<HTMLElement>('cr-button');
-      assertHTMLElement(reopenButton);
-      reopenButton.click();
-
-      await proxy.handler.whenCalled('reopenTabs');
-    });
-
-    test('handles reopen tabs dismiss click', async () => {
-      proxy.callbackRouterRemote.setShowReopenTabs(true);
-      await microtasksFinished();
-
-      let reopenTabs =
-          topToolbar.shadowRoot.querySelector<HTMLElement>('reopen-tabs');
-      assertHTMLElement(reopenTabs);
-
-      const dismissButton =
-          reopenTabs.shadowRoot!.querySelector<HTMLElement>('#reopenDismiss');
-      assertHTMLElement(dismissButton);
-      dismissButton.click();
-
-      await microtasksFinished();
-      reopenTabs =
-          topToolbar.shadowRoot.querySelector<HTMLElement>('reopen-tabs');
-      assertFalse(!!reopenTabs);
-    });
-  });
 
   test('hides new thread button when isAimEligible is false', async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;

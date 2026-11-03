@@ -11,11 +11,11 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <utility>
 
 #include "base/auto_reset.h"
-#include "base/containers/adapters.h"
 #include "base/i18n/case_conversion.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
@@ -916,7 +916,7 @@ ProposedLayout MenuItemView::CalculateProposedLayout(
     int child_end =
         layout.host_size.width() -
         (children_use_full_width_ ? 0 : submenu->trailing_padding());
-    for (View* child : base::Reversed(children())) {
+    for (View* child : std::views::reverse(children())) {
       if (icon_view_ == child) {
         continue;
       }
@@ -982,6 +982,12 @@ ProposedLayout MenuItemView::CalculateProposedLayout(
   }
 
   return layout;
+}
+
+bool MenuItemView::ShouldShowMnemonics() const {
+  const MenuItemView* root = GetRootMenuItem();
+  return root->has_mnemonics_ &&
+         (MenuConfig::instance().show_mnemonics || root->show_mnemonics_);
 }
 
 void MenuItemView::SetForcedVisualSelection(bool selected) {
@@ -1103,10 +1109,8 @@ int MenuItemView::GetDrawStringFlags() const {
                                   : gfx::Canvas::TEXT_ALIGN_LEFT;
 
   if (GetRootMenuItem()->has_mnemonics_ && may_have_mnemonics()) {
-    flags |= (MenuConfig::instance().show_mnemonics ||
-              GetRootMenuItem()->show_mnemonics_)
-                 ? gfx::Canvas::SHOW_PREFIX
-                 : gfx::Canvas::HIDE_PREFIX;
+    flags |= ShouldShowMnemonics() ? gfx::Canvas::SHOW_PREFIX
+                                   : gfx::Canvas::HIDE_PREFIX;
   }
   return flags;
 }

@@ -1624,8 +1624,6 @@ component("platform") {
     "text/unicode_bidi.h",
     "text/unicode_utilities.cc",
     "text/unicode_utilities.h",
-    "text/web_entities.cc",
-    "text/web_entities.h",
     "text/writing_direction_mode.cc",
     "text/writing_direction_mode.h",
     "text/writing_mode.cc",
@@ -2522,6 +2520,7 @@ source_set("blink_platform_unittests_sources") {
     "widget/input/scroll_predictor_unittest.cc",
     "widget/input/widget_base_input_handler_unittest.cc",
     "widget/input/widget_input_handler_manager_unittest.cc",
+    "widget/widget_base_unittest.cc",
   ]
 
   if (use_dawn) {

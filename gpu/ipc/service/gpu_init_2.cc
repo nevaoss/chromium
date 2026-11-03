@@ -60,6 +60,7 @@
 #if BUILDFLAG(ENABLE_VULKAN)
 #include "gpu/command_buffer/service/drm_modifiers_filter_vulkan.h"
 #endif
+#include "gpu/ipc/service/gpu_init_ozone.h"
 #include "ui/ozone/public/drm_modifiers_filter.h"
 #include "ui/ozone/public/ozone_platform.h"
 #include "ui/ozone/public/ozone_switches.h"
@@ -411,10 +412,12 @@ struct GpuInit2::InitState {
  public:
   InitState(std::unique_ptr<GpuWatchdogThread>& watchdog_thread,
             bool enable_watchdog,
-            bool watchdog_starts_backgrounded)
+            bool watchdog_starts_backgrounded,
+            base::CommandLine* command_line)
       : watchdog(watchdog_thread,
                  enable_watchdog,
-                 watchdog_starts_backgrounded) {}
+                 watchdog_starts_backgrounded),
+        command_line(command_line) {}
   InitState(const InitState&) = delete;
   InitState& operator=(const InitState&) = delete;
 
@@ -431,6 +434,8 @@ struct GpuInit2::InitState {
   bool gl_disabled = false;
 
   GpuWatchdogInitScope watchdog;
+
+  base::CommandLine* command_line = nullptr;
 };
 
 GpuInit2::GpuInit2() = default;
@@ -439,8 +444,68 @@ GpuInit2::~GpuInit2() {
   StopForceDiscreteGPU();
 }
 
-bool GpuInit2::InitializeAndStartSandbox(base::CommandLine* command_line,
-                                        const GpuPreferences& gpu_preferences) {
+void GpuInit2::set_sandbox_helper(GpuSandboxHelper* helper) {
+  sandbox_helper_ = helper;
+}
+
+const GPUInfo& GpuInit2::gpu_info() const {
+  return gpu_info_;
+}
+
+const GpuFeatureInfo& GpuInit2::gpu_feature_info() const {
+  return gpu_feature_info_;
+}
+
+const gfx::GpuExtraInfo& GpuInit2::gpu_extra_info() const {
+  return gpu_extra_info_;
+}
+
+const std::optional<GPUInfo>& GpuInit2::gpu_info_for_hardware_gpu() const {
+  return gpu_info_for_hardware_gpu_;
+}
+
+const std::optional<GpuFeatureInfo>&
+GpuInit2::gpu_feature_info_for_hardware_gpu() const {
+  return gpu_feature_info_for_hardware_gpu_;
+}
+
+const std::optional<DevicePerfInfo>& GpuInit2::device_perf_info() const {
+  return device_perf_info_;
+}
+
+const GpuPreferences& GpuInit2::gpu_preferences() const {
+  return gpu_preferences_;
+}
+
+std::unique_ptr<GpuWatchdogThread> GpuInit2::TakeWatchdogThread() {
+  return std::move(watchdog_thread_);
+}
+
+#if BUILDFLAG(SKIA_USE_DAWN)
+std::unique_ptr<DawnContextProvider> GpuInit2::TakeDawnContextProvider() {
+  return std::move(dawn_context_provider_);
+}
+#endif
+
+scoped_refptr<gl::GLSurface> GpuInit2::TakeDefaultOffscreenSurface() {
+  return std::move(default_offscreen_surface_);
+}
+
+bool GpuInit2::init_successful() const {
+  return init_successful_;
+}
+
+VulkanImplementation* GpuInit2::vulkan_implementation() {
+#if BUILDFLAG(ENABLE_VULKAN)
+  return vulkan_implementation_.get();
+#else
+  return nullptr;
+#endif
+}
+
+bool GpuInit2::InitializeAndStartSandbox(
+    base::CommandLine* command_line,
+    const GpuPreferences& gpu_preferences) {
   TRACE_EVENT("gpu,startup", "gpu::GpuInit2::InitializeAndStartSandbox");
 #if BUILDFLAG(IS_CHROMEOS)
   LOG(WARNING) << "Starting gpu initialization.";
@@ -448,166 +513,26 @@ bool GpuInit2::InitializeAndStartSandbox(base::CommandLine* command_line,
   gpu_preferences_ = gpu_preferences;
   InitState state(watchdog_thread_,
                   IsGpuWatchdogEnabled(gpu_preferences_, *command_line),
-                  gpu_preferences_.watchdog_starts_backgrounded);
+                  gpu_preferences_.watchdog_starts_backgrounded, command_line);
 
-  // Record the number of recent GPU process crashes as a crash key so that it
-  // is included in crash reports if this GPU process terminates unexpectedly.
-  if (command_line->HasSwitch(switches::kGpuRecentCrashCount)) {
-    static crash_reporter::CrashKeyString<16> crash_key("gpu_recent_crash_count");
-    crash_key.Set(
-        command_line->GetSwitchValueASCII(switches::kGpuRecentCrashCount));
-  }
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CASTOS)
-  state.needs_more_info = false;
-  CollectBasicGraphicsInfo(command_line, &gpu_info_);
-
-  // Set keys for crash logging based on preliminary gpu info, in case we
-  // crash during feature collection.
-  SetKeysForCrashLogging(gpu_info_);
-#if defined(SUBPIXEL_FONT_RENDERING_DISABLED)
-  gpu_info_.subpixel_font_rendering = false;
-#else
-  gpu_info_.subpixel_font_rendering = true;
-#endif  // defined(SUBPIXEL_FONT_RENDERING_DISABLED)
-
-  if (gpu_preferences_.enable_perf_data_collection) {
-    // This is only enabled on the info collection GPU process.
-    DevicePerfInfo device_perf_info;
-    CollectDevicePerfInfo(&device_perf_info, /*in_browser_process=*/false);
-    device_perf_info_ = device_perf_info;
-  }
-
-  if (!CanAccessDeviceFile(gpu_info_))
+  RecordStartupCrashKeys(state);
+  if (!CollectBasicInfoAndComputeFeatures(state)) {
     return false;
-
-  // Compute blocklist and driver bug workaround decisions based on basic GPU
-  // info.
-  gpu_feature_info_ = ComputeGpuFeatureInfo(
-      gpu_info_, gpu_preferences_, command_line, &state.needs_more_info);
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-  SetupGLDisplayManagerEGL(gpu_info_, gpu_feature_info_);
-#endif  // IS_WIN || IS_MAC
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CASTOS)
-
-  gpu_info_.in_process_gpu = false;
-
-  DCHECK_EQ(gl::GetGLImplementation(), gl::kGLImplementationNone);
-  if (SwitchableGPUsSupported(gpu_info_, *command_line)) {
-    InitializeSwitchableGPUs(
-        gpu_feature_info_.enabled_gpu_driver_bug_workarounds);
   }
-  gl_use_swiftshader_ = EnableSwiftShaderIfNeeded(
-      command_line, gpu_feature_info_,
-      gpu_preferences_.disable_software_rasterizer, state.needs_more_info);
-
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-  bool gpu_sandbox_start_early = gpu_preferences_.gpu_sandbox_start_early;
-#else   // !(BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
-  // For some reasons MacOSX's VideoToolbox might crash when called after
-  // initializing GL, see crbug.com/1047643 and crbug.com/871280. On other
-  // operating systems like Windows and Android the pre-sandbox steps have
-  // always been executed before initializing GL so keep it this way.
-  bool gpu_sandbox_start_early = true;
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-
-  // PreSandbox is mainly for resource handling and not related to the GPU
-  // driver, it doesn't need the GPU watchdog. The loadLibrary may take long
-  // time that killing and restarting the GPU process will not help.
-  if (gpu_sandbox_start_early) {
-    // The sandbox will be started earlier than usual (i.e. before GL) so
-    // execute the pre-sandbox steps now.
-    RunPreSandboxStartup(state);
-  }
-
-  // Start the GPU watchdog only after anything that is expected to be time
-  // consuming has completed, otherwise the process is liable to be aborted.
-  if (state.watchdog.enabled() && !kDelayGpuWatchdogStart) {
-    TRACE_EVENT("gpu,startup", "Create GpuWatchdog");
-    state.watchdog.Create(gl_use_swiftshader_);
-  }
-
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-  // On Chrome OS ARM Mali, GPU driver userspace creates threads when
-  // initializing a GL context, so start the sandbox early.
-  // TODO(zmo): Need to collect OS version before this.
-  if (gpu_preferences_.gpu_sandbox_start_early) {
-    StartSandbox(state);
-  }
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+  ConfigureGpuSelection(state);
+  MaybeFallbackToSwiftShaderEarly(state);
+  StartWatchdogAndMaybeSandboxEarly(state);
 
 #if BUILDFLAG(IS_OZONE)
-  // Initialize Ozone GPU after the watchdog in case it hangs. The sandbox
-  // may also have started at this point.
-  ui::OzonePlatform::InitParams params;
-  params.single_process = false;
-  params.enable_native_gpu_memory_buffers =
-      gpu_preferences_.enable_native_gpu_memory_buffers;
-
-#if BUILDFLAG(IS_CHROMEOS)
-  params.allow_sync_and_real_buffer_page_flip_testing = true;
-#endif  // BUILDFLAG(IS_CHROMEOS)
-  ui::OzonePlatform::InitializeForGPU(params);
+  gpu_init_internal::InitializePlatformForGpu(
+      gpu_preferences_.enable_native_gpu_memory_buffers,
+      /*single_process=*/false);
 #endif  // BUILDFLAG(IS_OZONE)
 
-  // Pause watchdog. LoadLibrary in GLBindings may take long time.
-  state.watchdog.Pause();
-
-  if (!gl::init::InitializeStaticGLBindingsOneOff()) {
-    VLOG(1) << "gl::init::InitializeStaticGLBindingsOneOff failed";
+  if (!InitializeGLBindingsAndDisplay(state)) {
     return false;
   }
-  if (gl::GetGLImplementation() != gl::kGLImplementationDisabled) {
-    state.gl_display = gl::init::InitializeGLNoExtensionsOneOff(
-        /*init_bindings*/ false, gl::GpuPreference::kDefault);
-    if (!state.gl_display) {
-      VLOG(1) << "gl::init::InitializeGLNoExtensionsOneOff failed";
-      return false;
-    }
-  }
-
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-  // The ContentSandboxHelper is currently the only one implementation of
-  // GpuSandboxHelper2 and it has no dependency. Except on Linux where
-  // VaapiWrapper checks the GL implementation to determine which display
-  // to use. So call PreSandboxStartup after GL initialization. But make
-  // sure the watchdog is paused as loadLibrary may take a long time and
-  // restarting the GPU process will not help.
-  if (!state.sandbox_start_attempted) {
-    // The sandbox is not started yet.
-    RunPreSandboxStartup(state);
-  }
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-
-  state.watchdog.Resume();
-
-  auto impl = gl::GetGLImplementationParts();
-  state.gl_disabled = impl == gl::kGLImplementationDisabled;
-
-#if BUILDFLAG(ENABLE_VALIDATING_COMMAND_DECODER)
-  bool is_swangle = impl == gl::ANGLEImplementation::kSwiftShader;
-  // Compute passthrough decoder status before ComputeGpuFeatureInfo below.
-  // Do this after GL is initialized so extensions can be queried.
-  // Using SwANGLE forces the passthrough command decoder.
-  gpu_preferences_.use_passthrough_cmd_decoder |= is_swangle;
-  gpu_info_.passthrough_cmd_decoder =
-      gpu_preferences_.use_passthrough_cmd_decoder;
-#else
-  // Use passthrough command decoder if validating was not compiled.
-  gpu_info_.passthrough_cmd_decoder = true;
-  gpu_preferences_.use_passthrough_cmd_decoder = true;
-#endif  // BUILDFLAG(ENABLE_VALIDATING_COMMAND_DECODER)
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // TODO(b/233238923): While passthrough is rolling out on CrOS, it's useful
-  // to know whether a bug report is for a session with passthrough enabled.
-  // Remove this logging when passthrough is fully launched on CrOS.
-  if (gpu_preferences_.use_passthrough_cmd_decoder) {
-    LOG(WARNING) << "Using passthrough command decoder. NOTE: This log is "
-        << "to help triage feedback reports and does not by itself mean there "
-        << "is an issue.";
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS)
+  SelectCommandDecoder(state);
 
   // We need to collect GL strings (VENDOR, RENDERER) for blocklisting purposes.
   if (!state.gl_disabled) {
@@ -766,13 +691,7 @@ bool GpuInit2::InitializeAndStartSandbox(base::CommandLine* command_line,
 
 #if BUILDFLAG(USE_WEBGPU_ON_VULKAN_VIA_GL_INTEROP)
 #if BUILDFLAG(IS_OZONE)
-  if (!ui::OzonePlatform::GetInstance()
-           ->GetPlatformProperties()
-           .webgpu_on_vulkan_via_gl_interop) {
-    gpu_feature_info_
-        .status_values[GPU_FEATURE_TYPE_WEBGPU_ON_VK_VIA_GL_INTEROP] =
-        kGpuFeatureStatusDisabled;
-  }
+  gpu_init_internal::MaybeDisableWebGPUOnVulkanViaGLInterop(gpu_feature_info_);
 #endif  // BUILDFLAG(IS_OZONE)
 
   if (gpu_feature_info_
@@ -871,20 +790,7 @@ bool GpuInit2::InitializeAndStartSandbox(base::CommandLine* command_line,
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_OZONE)
-  // We need to get supported formats before sandboxing to avoid an known
-  // issue which breaks the camera preview. (b/166850715)
-  {
-    TRACE_EVENT("gpu,startup", "ui::ozone::CanImportNativePixmap");
-    auto* surface_factory =
-        ui::OzonePlatform::GetInstance()->GetSurfaceFactoryOzone();
-    auto* gl_ozone = surface_factory->GetCurrentGLOzone();
-    if (gl_ozone) {
-      gpu_feature_info_.supports_nv12_gl_native_pixmap =
-          gl_ozone->CanImportNativePixmap(viz::MultiPlaneFormat::kNV12);
-      gpu_feature_info_.supports_p010_gl_native_pixmap =
-          gl_ozone->CanImportNativePixmap(viz::MultiPlaneFormat::kP010);
-    }
-  }
+  gpu_init_internal::QueryNativePixmapSupport(gpu_feature_info_);
 #endif  // BUILDFLAG(IS_OZONE)
 
   if (gl_use_swiftshader_) {
@@ -1020,32 +926,15 @@ bool GpuInit2::InitializeAndStartSandbox(base::CommandLine* command_line,
   init_successful_ = true;
   SetSkiaBackendType();
 #if BUILDFLAG(IS_OZONE)
-  ui::OzonePlatform::GetInstance()->AfterSandboxEntry();
-  [[maybe_unused]] auto* factory =
-      ui::OzonePlatform::GetInstance()->GetSurfaceFactoryOzone();
-  bool filter_set = false;
+  gpu_init_internal::SetDrmModifiersFilterParams params;
 #if BUILDFLAG(ENABLE_VULKAN)
-  if (gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] ==
-          kGpuFeatureStatusEnabled &&
-      factory->SupportsDrmModifiersFilter()) {
-    CHECK(!filter_set);
-    DCHECK(vulkan_implementation_ &&
-           vulkan_implementation_->GetVulkanInstance() &&
-           vulkan_implementation_->GetVulkanInstance()->vk_instance() !=
-               VK_NULL_HANDLE);
-    factory->SetDrmModifiersFilter(std::make_unique<DrmModifiersFilterVulkan>(
-        vulkan_implementation_.get()));
-    filter_set = true;
-  }
+  params.vulkan_implementation = vulkan_implementation();
 #endif  // BUILDFLAG(ENABLE_VULKAN)
-#if BUILDFLAG(SKIA_USE_DAWN) && BUILDFLAG(IS_CHROMEOS)
-  if (dawn_context_provider_ && factory->SupportsDrmModifiersFilter()) {
-    CHECK(!filter_set);
-    factory->SetDrmModifiersFilter(std::make_unique<DrmModifiersFilterDawn>(
-        dawn_context_provider_->GetDevice().GetAdapter()));
-    filter_set = true;
-  }
-#endif  // BUILDFLAG(SKIA_USE_DAWN) && BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(SKIA_USE_DAWN)
+  params.dawn_context_provider = dawn_context_provider_.get();
+#endif  // BUILDFLAG(SKIA_USE_DAWN)
+  gpu_init_internal::AfterSandboxEntryAndSetDrmModifiersFilter(
+      gpu_feature_info_, params);
 #endif  // BUILDFLAG(IS_OZONE)
 
   RecordUMA();
@@ -1123,13 +1012,9 @@ void GpuInit2::InitializeInProcess(base::CommandLine* command_line,
       gl::init::CreateOffscreenGLSurface(gl_display, gfx::Size());
 #else  // !BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(IS_OZONE)
-  ui::OzonePlatform::InitParams params;
-  params.single_process = true;
-
-#if BUILDFLAG(IS_CHROMEOS)
-  params.allow_sync_and_real_buffer_page_flip_testing = true;
-#endif  // BUILDFLAG(IS_CHROMEOS)
-  ui::OzonePlatform::InitializeForGPU(params);
+  gpu_init_internal::InitializePlatformForGpu(
+      /*enable_native_gpu_memory_buffers=*/false,
+      /*single_process=*/true);
 #endif  // BUILDFLAG(IS_OZONE)
 
   bool needs_more_info = true;
@@ -1257,15 +1142,7 @@ void GpuInit2::InitializeInProcess(base::CommandLine* command_line,
   }
 
 #if BUILDFLAG(IS_OZONE)
-  auto* surface_factory =
-      ui::OzonePlatform::GetInstance()->GetSurfaceFactoryOzone();
-  auto* gl_ozone = surface_factory->GetCurrentGLOzone();
-  if (gl_ozone) {
-    gpu_feature_info_.supports_nv12_gl_native_pixmap =
-        gl_ozone->CanImportNativePixmap(viz::MultiPlaneFormat::kNV12);
-    gpu_feature_info_.supports_p010_gl_native_pixmap =
-        gl_ozone->CanImportNativePixmap(viz::MultiPlaneFormat::kP010);
-  }
+  gpu_init_internal::QueryNativePixmapSupport(gpu_feature_info_);
 #endif  // BUILDFLAG(IS_OZONE)
 
   // We try to fall back to a valid GrContextType after GpuFeatureInfo is
@@ -1331,8 +1208,159 @@ void GpuInit2::AdjustInfoToSwiftShader() {
   CollectContextGraphicsInfo(&gpu_info_);
 }
 
-scoped_refptr<gl::GLSurface> GpuInit2::TakeDefaultOffscreenSurface() {
-  return std::move(default_offscreen_surface_);
+void GpuInit2::RecordStartupCrashKeys(InitState& state) {
+  // Record the number of recent GPU process crashes as a crash key so that it
+  // is included in crash reports if this GPU process terminates unexpectedly.
+  if (state.command_line->HasSwitch(switches::kGpuRecentCrashCount)) {
+    static crash_reporter::CrashKeyString<16> crash_key(
+        "gpu_recent_crash_count");
+    crash_key.Set(state.command_line->GetSwitchValueASCII(
+        switches::kGpuRecentCrashCount));
+  }
+}
+
+bool GpuInit2::CollectBasicInfoAndComputeFeatures(InitState& state) {
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CASTOS)
+  state.needs_more_info = false;
+  CollectBasicGraphicsInfo(state.command_line, &gpu_info_);
+
+  // Set keys for crash logging based on preliminary gpu info, in case we
+  // crash during feature collection.
+  SetKeysForCrashLogging(gpu_info_);
+#if defined(SUBPIXEL_FONT_RENDERING_DISABLED)
+  gpu_info_.subpixel_font_rendering = false;
+#else
+  gpu_info_.subpixel_font_rendering = true;
+#endif  // defined(SUBPIXEL_FONT_RENDERING_DISABLED)
+
+  if (gpu_preferences_.enable_perf_data_collection) {
+    // This is only enabled on the info collection GPU process.
+    DevicePerfInfo device_perf_info;
+    CollectDevicePerfInfo(&device_perf_info, /*in_browser_process=*/false);
+    device_perf_info_ = device_perf_info;
+  }
+
+  if (!CanAccessDeviceFile(gpu_info_)) {
+    return false;
+  }
+
+  // Compute blocklist and driver bug workaround decisions based on basic GPU
+  // info.
+  gpu_feature_info_ = ComputeGpuFeatureInfo(
+      gpu_info_, gpu_preferences_, state.command_line, &state.needs_more_info);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CASTOS)
+
+  gpu_info_.in_process_gpu = false;
+  return true;
+}
+
+void GpuInit2::ConfigureGpuSelection(InitState& state) {
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  SetupGLDisplayManagerEGL(gpu_info_, gpu_feature_info_);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+
+  CHECK_EQ(gl::GetGLImplementation(), gl::kGLImplementationNone);
+
+  if (SwitchableGPUsSupported(gpu_info_, *state.command_line)) {
+    InitializeSwitchableGPUs(
+        gpu_feature_info_.enabled_gpu_driver_bug_workarounds);
+  }
+}
+
+void GpuInit2::MaybeFallbackToSwiftShaderEarly(InitState& state) {
+  gl_use_swiftshader_ = EnableSwiftShaderIfNeeded(
+      state.command_line, gpu_feature_info_,
+      gpu_preferences_.disable_software_rasterizer, state.needs_more_info);
+}
+
+void GpuInit2::StartWatchdogAndMaybeSandboxEarly(InitState& state) {
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+  bool gpu_sandbox_start_early = gpu_preferences_.gpu_sandbox_start_early;
+#else   // !(BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
+  // For some reasons MacOSX's VideoToolbox might crash when called after
+  // initializing GL, see crbug.com/1047643 and crbug.com/871280. On other
+  // operating systems like Windows and Android the pre-sandbox steps have
+  // always been executed before initializing GL so keep it this way.
+  bool gpu_sandbox_start_early = true;
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+
+  // PreSandbox is mainly for resource handling and not related to the GPU
+  // driver, it doesn't need the GPU watchdog. The loadLibrary may take long
+  // time that killing and restarting the GPU process will not help.
+  if (gpu_sandbox_start_early) {
+    // The sandbox will be started earlier than usual (i.e. before GL) so
+    // execute the pre-sandbox steps now.
+    RunPreSandboxStartup(state);
+  }
+
+  // Start the GPU watchdog only after anything that is expected to be time
+  // consuming has completed, otherwise the process is liable to be aborted.
+  if (state.watchdog.enabled() && !kDelayGpuWatchdogStart) {
+    TRACE_EVENT("gpu,startup", "Create GpuWatchdog");
+    state.watchdog.Create(gl_use_swiftshader_);
+  }
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+  // On Chrome OS ARM Mali, GPU driver userspace creates threads when
+  // initializing a GL context, so start the sandbox early.
+  // TODO(zmo): Need to collect OS version before this.
+  if (gpu_preferences_.gpu_sandbox_start_early) {
+    StartSandbox(state);
+  }
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+}
+
+bool GpuInit2::InitializeGLBindingsAndDisplay(InitState& state) {
+  // Pause watchdog. LoadLibrary in GLBindings may take long time.
+  state.watchdog.Pause();
+
+  if (!gl::init::InitializeStaticGLBindingsOneOff()) {
+    VLOG(1) << "gl::init::InitializeStaticGLBindingsOneOff failed";
+    return false;
+  }
+  if (gl::GetGLImplementation() != gl::kGLImplementationDisabled) {
+    state.gl_display = gl::init::InitializeGLNoExtensionsOneOff(
+        /*init_bindings=*/false, gl::GpuPreference::kDefault);
+    if (!state.gl_display) {
+      VLOG(1) << "gl::init::InitializeGLNoExtensionsOneOff failed";
+      return false;
+    }
+  }
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+  // The ContentSandboxHelper is currently the only one implementation of
+  // GpuSandboxHelper and it has no dependency. Except on Linux where
+  // VaapiWrapper checks the GL implementation to determine which display
+  // to use. So call PreSandboxStartup after GL initialization. But make
+  // sure the watchdog is paused as loadLibrary may take a long time and
+  // restarting the GPU process will not help.
+  if (!state.sandbox_start_attempted) {
+    // The sandbox is not started yet.
+    RunPreSandboxStartup(state);
+  }
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+
+  state.watchdog.Resume();
+  return true;
+}
+
+void GpuInit2::SelectCommandDecoder(InitState& state) {
+  auto impl = gl::GetGLImplementationParts();
+  state.gl_disabled = impl == gl::kGLImplementationDisabled;
+
+#if BUILDFLAG(ENABLE_VALIDATING_COMMAND_DECODER)
+  bool is_swangle = impl == gl::ANGLEImplementation::kSwiftShader;
+  // Compute passthrough decoder status before ComputeGpuFeatureInfo below.
+  // Do this after GL is initialized so extensions can be queried.
+  // Using SwANGLE forces the passthrough command decoder.
+  gpu_preferences_.use_passthrough_cmd_decoder |= is_swangle;
+  gpu_info_.passthrough_cmd_decoder =
+      gpu_preferences_.use_passthrough_cmd_decoder;
+#else
+  // Use passthrough command decoder if validating was not compiled.
+  gpu_info_.passthrough_cmd_decoder = true;
+  gpu_preferences_.use_passthrough_cmd_decoder = true;
+#endif  // BUILDFLAG(ENABLE_VALIDATING_COMMAND_DECODER)
 }
 
 void GpuInit2::SetSkiaBackendType() {

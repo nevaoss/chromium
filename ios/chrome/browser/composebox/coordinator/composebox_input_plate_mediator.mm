@@ -803,6 +803,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     return;
   }
 
+  // Once the user submits a contextual query, promote any auto-added tab to a
+  // committed attachment so active-tab or focus updates do not remove it via
+  // `-removeAutoAddedItems`.
+  [self promoteAutoAddedItems];
+
   auto advancedToolsParams = [_stateManager additionalQueryParams];
   additionalParams.insert(advancedToolsParams.begin(),
                           advancedToolsParams.end());
@@ -1112,7 +1117,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     case contextual_search::ContextUploadStatus::kValidationFailed:
     case contextual_search::ContextUploadStatus::kUploadExpired:
       [self handleFailedAttachment:item.identifier];
-      break;
+      return;
     case contextual_search::ContextUploadStatus::kProcessingSuggestSignalsReady:
       // Signals are ready, we are no longer waiting.
       _awaitingAttachmentSignals = NO;
@@ -1263,6 +1268,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
 
   if (!webState || !page_context) {
+    [self handleFailedAttachment:identifier];
     return;
   }
 
@@ -1295,11 +1301,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                          (std::unique_ptr<lens::ContextualInputData>)inputData {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   if (!_contextualSearchSession) {
+    [self handleFailedAttachment:identifier];
     return;
   }
 
   web::WebStateID webStateID = _latestTabSelectionMapping[identifier];
   if (!webStateID.valid()) {
+    [self handleFailedAttachment:identifier];
     return;
   }
 

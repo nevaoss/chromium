@@ -27,7 +27,6 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_configuration.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_gateway_manager.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_page_context.h"
-#import "ios/chrome/browser/intelligence/bwg/model/gemini_page_state_change_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_session_handler.h"
@@ -41,6 +40,8 @@
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/zero_state_suggestions/ui/gemini_zero_state_consumer.h"
 #import "ios/chrome/browser/intelligence/zero_state_suggestions/zero_state_suggestions_service.h"
+#import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
@@ -61,7 +62,8 @@ using ios::provider::GeminiViewMode;
 using ios::provider::GeminiViewState;
 
 @interface GeminiContainerMediator () <ActorTaskLifecycleObserver,
-                                       GeminiContainerUIStateManagerDelegate>
+                                       GeminiContainerUIStateManagerDelegate,
+                                       TabGridStateObserving>
 
 // Called when the active `WebState` changes.
 - (void)onActiveWebStateChanged:(web::WebState*)oldActive
@@ -153,6 +155,9 @@ class GeminiContainerMediatorTabHelperObserver
       _webStateListObserver;
   // Observer for `GeminiTabHelper` events.
   std::unique_ptr<GeminiContainerMediatorTabHelperObserver> _tabHelperObserver;
+  // Tab grid state observed to minimize the container when entering the tab
+  // grid.
+  TabGridState* _tabGridState;
 }
 
 - (instancetype)initWithBrowser:(Browser*)browser
@@ -167,6 +172,7 @@ class GeminiContainerMediatorTabHelperObserver
     if (browser) {
       _webStateList = browser->GetWebStateList();
       _profile = browser->GetProfile();
+      _tabGridState = browser->GetSceneState().tabGridState;
     }
     _actorService = actorService;
     _gatewayManager = [[GeminiGatewayManager alloc] initWithBrowser:browser
@@ -185,10 +191,8 @@ class GeminiContainerMediatorTabHelperObserver
 
 #pragma mark - Public Methods
 
-- (GeminiConfiguration*)
-    createGeminiConfigurationForActiveWebState:(GeminiStartupState*)startupState
-                            baseViewController:
-                                (UIViewController*)baseViewController {
+- (GeminiConfiguration*)createGeminiConfigurationForActiveWebState:
+    (GeminiStartupState*)startupState {
   if (startupState) {
     _startupState = startupState;
   }
@@ -202,23 +206,9 @@ class GeminiContainerMediatorTabHelperObserver
       geminiTabHelper->GetPartialPageContext();
   [self applyUserPrefsToPageContext:initialPageContext];
 
-  GeminiConfiguration* config =
-      [self createGeminiConfigurationWithTabHelper:geminiTabHelper
-                                       pageContext:initialPageContext
-                                      startupState:startupState];
-  if (baseViewController) {
-    // TODO(crbug.com/537730178): Delegate the permission prompt request up to
-    // a delegate protocol implemented by GeminiContainerCoordinator, which will
-    // present the UIAlertController using its own baseViewController.
-    [_gatewayManager.pageStateChangeHandler
-        setBaseViewController:baseViewController];
-
-    // TODO(crbug.com/535579970): Remove after migration. Embadded floaty
-    // doesn't need the baseViewController.
-    config.baseViewController = baseViewController;
-  }
-
-  return config;
+  return [self createGeminiConfigurationWithTabHelper:geminiTabHelper
+                                          pageContext:initialPageContext
+                                         startupState:startupState];
 }
 
 - (BOOL)shouldShowSuggestionChipsForEntryPoint:
@@ -275,6 +265,7 @@ class GeminiContainerMediatorTabHelperObserver
   if (_actorService) {
     _actorService->AddTaskLifecycleObserver(self);
   }
+  [_tabGridState addObserver:self];
   [self setupInitialUIState];
   [self requestActivePageContextGeneration];
   [self onFloatyInvoked];
@@ -319,6 +310,8 @@ class GeminiContainerMediatorTabHelperObserver
     _actorService = nullptr;
   }
   _actuationTaskId.reset();
+  [_tabGridState removeObserver:self];
+  _tabGridState = nil;
 
   self.zeroStateConsumer = nil;
   _startupState = nil;
@@ -688,6 +681,13 @@ class GeminiContainerMediatorTabHelperObserver
   }
 }
 
+#pragma mark - TabGridStateObserving
+
+- (void)willEnterTabGrid {
+  [self.containerHandler
+      animateAssistantContainerToDetent:AssistantContainerDetent::kMinimized];
+}
+
 #pragma mark - Private
 
 // Forwards the worklog presentation for `state` to the consumer. Non-actuating
@@ -704,11 +704,22 @@ class GeminiContainerMediatorTabHelperObserver
 
 // Sets up the initial UI state for the container.
 - (void)setupInitialUIState {
+  GeminiConfiguration* config =
+      [self createGeminiConfigurationForActiveWebState:_startupState];
+  if (!config) {
+    return;
+  }
+
+  UIViewController* geminiViewController =
+      ios::provider::GetFloatyViewControllerWithConfiguration(config);
+  [self.consumer setGeminiViewController:geminiViewController];
+
   [self fetchZeroStateSuggestions:_startupState];
 
   [self.containerHandler setAssistantContainerLargestUndimmedDetent:
                              AssistantContainerDetent::kMinimized];
-  [_stateManager setupInitialUIState];
+  [_stateManager
+      setupInitialUIStateWithConversation:config.serverID.length > 0];
 
   // In initial zero state the view shouldn't be focused for input.
   [self.consumer dismissKeyboard];

@@ -685,25 +685,6 @@
     "expires": "never"
   },
   {
-    "prefix": "file-system-access-write-mode",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/file-system-access",
-      "external/wpt/fs"
-    ],
-    "args": [
-      "--enable-features=FileSystemAccessWriteMode"
-    ],
-    "expires": "Sep 10, 2026",
-    "owners": [
-      "mych@chromium.org"
-    ]
-  },
-  {
     "prefix": "delay-async-when-lcp-in-html",
     "platforms": [
       "Linux",
@@ -2063,26 +2044,6 @@
     "args": [
       "--use-gpu-in-tests",
       "--enable-features=MediaFoundationClearPlayback,MediaFoundationClearRendering:strategy/direct-composition"
-    ],
-    "expires": "Dec 1, 2024"
-  },
-  {
-    "prefix": "media-foundation-for-clear-frameserver",
-    "owners": [
-      "media-dev@chromium.org",
-      "frankli@microsoft.com"
-    ],
-    "platforms": [
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/media-source",
-      "media"
-    ],
-    "args": [
-      "--use-gpu-in-tests",
-      "--force-mfmediaengine-renderer",
-      "--enable-features=MediaFoundationClearRendering:strategy/frame-server"
     ],
     "expires": "Dec 1, 2024"
   },
@@ -5176,5 +5137,19 @@
     "args": ["--enable-features=RestrictLinkHeaderOnSubresource:disable_resource_load/false"],
     "owners": ["tnak@chromium.org"],
     "expires": "Jan 1, 2027"
+  },
+  {
+    "prefix": "approximate-geolocation",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "external/wpt/geolocation/getCurrentPosition-accuracyMode.https.html",
+      "external/wpt/geolocation/getCurrentPosition-accuracyMode-cache.https.html"
+    ],
+    "args": ["--enable-features=ApproximateGeolocationPermission"],
+    "owners": [
+      "antoniosartori@chromium.org",
+      "alvinji@chromium.org"
+    ],
+    "expires": "Feb 1, 2027"
   }
 ]

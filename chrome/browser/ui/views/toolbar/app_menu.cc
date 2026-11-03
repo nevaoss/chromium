@@ -1272,7 +1272,6 @@ bool AppMenu::IsCommandEnabled(int command_id) const {
     return true;
   }
 
-
   if (IsTabGroupsCommand(command_id)) {
     return stg_everything_menu_->ShouldEnableCommand(command_id);
   }
@@ -1282,7 +1281,7 @@ bool AppMenu::IsCommandEnabled(int command_id) const {
     return true;
   }
 
-  if (command_id == AppMenuModel::kSkillsMenuPlaceholder) {
+  if (command_id == AppMenuModel::kSkillsAndExtensionsMenuPlaceholder) {
     return true;
   }
 
@@ -1303,6 +1302,10 @@ bool AppMenu::IsCommandEnabled(int command_id) const {
   // The child views of these items enabled state updates appropriately.
   if (command_id == AppMenuModel::kEditMenuPlaceholder ||
       command_id == AppMenuModel::kZoomMenuPlaceholder) {
+    return true;
+  }
+
+  if (command_id == AppMenuModel::kContextualTasksMenuPlaceholder) {
     return true;
   }
 
@@ -1343,7 +1346,6 @@ void AppMenu::ExecuteCommand(int command_id, int mouse_event_flags) {
     return;
   }
 
-
   const Entry& entry = command_id_to_entry_.find(command_id)->second;
   return entry.first->ActivatedAt(entry.second, mouse_event_flags);
 }
@@ -1362,7 +1364,6 @@ bool AppMenu::GetAccelerator(int command_id,
 
     return false;
   }
-
 
   if (IsTabGroupsCommand(command_id)) {
     return false;

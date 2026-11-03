@@ -1383,6 +1383,11 @@ const FeatureEntry::FeatureParam kNTPThemeTipShowArm[] = {
      segmentation_platform::kNTPThemeEphemeralModule},
 };
 
+const FeatureEntry::FeatureParam kTipsNotificationTipShowArm[] = {
+    {segmentation_platform::features::kEphemeralCardRankerForceShowCardParam,
+     segmentation_platform::kTipsNotificationsEphemeralModule},
+};
+
 const FeatureEntry::FeatureVariation kEphemeralCardRankerCardOverrideOptions[] =
     {
         {"- Force Show Lens Search Tip", kLensSearchTipShowArm, nullptr},
@@ -1396,6 +1401,8 @@ const FeatureEntry::FeatureVariation kEphemeralCardRankerCardOverrideOptions[] =
         {"- Force Show Enhanced Safe Browsing Tip",
          kEnhancedSafeBrowsingTipShowArm, nullptr},
         {"- Force Show NTP Theme Tip", kNTPThemeTipShowArm, nullptr},
+        {"- Force Show Tips Notification Tip", kTipsNotificationTipShowArm,
+         nullptr},
 };
 
 const FeatureEntry::FeatureParam kEnterpriseProxyErrorForced403[] = {
@@ -2868,6 +2875,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          switches::kEnableAccountPreviewPreferredAccountFollowup)},
+    {"enable-account-preview-switching-account",
+     flag_descriptions::kEnableAccountPreviewSwitchingAccountName,
+     flag_descriptions::kEnableAccountPreviewSwitchingAccountDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(switches::kEnableAccountPreviewSwitchingAccount)},
     {"aim-history-threads-management",
      flag_descriptions::kAimHistoryThreadsManagementName,
      flag_descriptions::kAimHistoryThreadsManagementDescription,

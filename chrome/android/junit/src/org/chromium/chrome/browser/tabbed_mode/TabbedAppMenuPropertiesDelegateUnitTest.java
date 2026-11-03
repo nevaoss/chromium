@@ -36,6 +36,7 @@ import android.text.Spannable;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
@@ -2662,6 +2663,36 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     }
 
     @Test
+    public void testIncognitoMenuItemViewBinder_ShortcutText() {
+        Context context =
+                new ContextThemeWrapper(
+                        ContextUtils.getApplicationContext(), R.style.Theme_BrowserUI_DayNight);
+        View view = LayoutInflater.from(context).inflate(R.layout.custom_view_menu_item, null);
+        TextView shortcut = view.findViewById(R.id.menu_item_shortcut);
+
+        PropertyModel model =
+                new PropertyModel.Builder(AppMenuItemProperties.ALL_KEYS)
+                        .with(AppMenuItemProperties.MENU_ITEM_ID, R.id.new_incognito_window_menu_id)
+                        .build();
+        PropertyModelChangeProcessor.create(model, view, IncognitoMenuItemViewBinder::bind);
+
+        assertEquals(View.GONE, shortcut.getVisibility());
+
+        model.set(AppMenuItemProperties.SHORTCUT_TEXT, "Ctrl+Shift+N");
+        assertEquals(View.VISIBLE, shortcut.getVisibility());
+        assertEquals("Ctrl+Shift+N", shortcut.getText().toString());
+
+        model.set(AppMenuItemProperties.SHORTCUT_TEXT, "");
+        assertEquals(View.GONE, shortcut.getVisibility());
+
+        model.set(AppMenuItemProperties.SHORTCUT_TEXT, "Ctrl+Shift+N");
+        assertEquals(View.VISIBLE, shortcut.getVisibility());
+
+        model.set(AppMenuItemProperties.SHORTCUT_TEXT, null);
+        assertEquals(View.GONE, shortcut.getVisibility());
+    }
+
+    @Test
     public void readerModeEntryPointEnabled() {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
@@ -2727,6 +2758,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     @Test
     @EnableFeatures({ChromeFeatureList.SUBMENUS_IN_APP_MENU})
     public void nameWindowMenuVisible_Api31Enabled() {
+        MultiWindowTestUtils.ensureInitialized();
         setUpMocksForPageMenu();
         setMenuOptions(new MenuOptions());
         MultiWindowUtils.setMultiInstanceApi31EnabledForTesting(true);
@@ -3624,7 +3656,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         setUpMocksForPageMenu();
         Token token1 = new Token(1L, 1L);
         when(mTabModel.getAllTabGroupIds()).thenReturn(Set.of(token1));
-        when(mTabModel.tabGroupExists(token1)).thenReturn(true);
+        when(mTabModel.containsTabGroup(token1)).thenReturn(true);
         when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
         assertTrue(isMenuVisible(modelList, R.id.tab_groups_parent_menu_id));
@@ -4241,7 +4273,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         when(anotherTabModel.getTabGroupCount()).thenReturn(1);
         Token groupId = Token.createRandom();
         when(anotherTabModel.getAllTabGroupIds()).thenReturn(Set.of(groupId));
-        when(anotherTabModel.tabGroupExists(groupId)).thenReturn(true);
+        when(anotherTabModel.containsTabGroup(groupId)).thenReturn(true);
         when(anotherTabModel.getTabGroupTitle(groupId)).thenReturn("Group");
         when(anotherTabModel.getTabsInGroup(groupId)).thenReturn(List.of());
 

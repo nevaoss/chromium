@@ -7,7 +7,7 @@ import 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 
 import type {ComposeboxDropdownElement} from 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 import {createAutocompleteMatch} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
-import {createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {RenderType, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -66,12 +66,16 @@ suite('ComposeboxDropdown', () => {
         }),
         createAutocompleteMatch({
           contents: 'image match 1',
-          imageUrl: 'https://example.com/image1.png',
+          suggestTemplate: createSuggestTemplateInfo({
+            image: {url: 'https://example.com/image1.png', dominantColor: ''},
+          }),
           suggestionGroupId: 101,
         }),
         createAutocompleteMatch({
           contents: 'image match 2',
-          imageUrl: 'https://example.com/image2.png',
+          suggestTemplate: createSuggestTemplateInfo({
+            image: {url: 'https://example.com/image2.png', dominantColor: ''},
+          }),
           suggestionGroupId: 101,
         }),
       ],
@@ -205,5 +209,123 @@ suite('ComposeboxDropdown', () => {
         await microtasksFinished();
 
         assertTrue(scrollCalled);
+      });
+
+  test(
+      'getFirstVisibleIndex and getLastVisibleIndex for zero state',
+      async () => {
+        dropdown.richImageSuggestionsEnabled = true;
+        dropdown.result = createAutocompleteResultForTesting({
+          input: '',
+          matches: [
+            createAutocompleteMatch({contents: 'image match 1'}),
+            createAutocompleteMatch({contents: 'image match 2'}),
+          ],
+        });
+        await microtasksFinished();
+
+        assertEquals(0, dropdown.getFirstVisibleIndex());
+        assertEquals(1, dropdown.getLastVisibleIndex());
+      });
+
+  test(
+      'getFirstVisibleIndex hides verbatim for typed suggestions', async () => {
+        dropdown.richImageSuggestionsEnabled = true;
+        dropdown.result = createAutocompleteResultForTesting({
+          input: 'test',
+          matches: [
+            createAutocompleteMatch(
+                {contents: 'test', allowedToBeDefaultMatch: true}),
+            createAutocompleteMatch({contents: 'suggestion 1'}),
+            createAutocompleteMatch({contents: 'suggestion 2'}),
+          ],
+        });
+        await microtasksFinished();
+
+        assertEquals(1, dropdown.getFirstVisibleIndex());
+        assertEquals(2, dropdown.getLastVisibleIndex());
+      });
+
+  test('getFirstVisibleIndex returns -1 for empty or null result', async () => {
+    dropdown.result = null;
+    await microtasksFinished();
+    assertEquals(-1, dropdown.getFirstVisibleIndex());
+
+    dropdown.result = createAutocompleteResultForTesting({
+      matches: [],
+    });
+    await microtasksFinished();
+    assertEquals(-1, dropdown.getFirstVisibleIndex());
+  });
+
+  test(
+      'unselectOnTabExit unselects when navigating outside bounds',
+      async () => {
+        dropdown.result = createAutocompleteResultForTesting({
+          input: '',
+          matches: [
+            createAutocompleteMatch({supportsDeletion: false}),
+            createAutocompleteMatch({supportsDeletion: false}),
+          ],
+        });
+        await microtasksFinished();
+
+        // Shift-Tab on first visible match unselects.
+        dropdown.selectedMatchIndex = 0;
+        dropdown.unselectOnTabExit(
+            new KeyboardEvent('keydown', {key: 'Tab', shiftKey: true}));
+        assertEquals(-1, dropdown.selectedMatchIndex);
+
+        // Forward Tab on last visible match unselects.
+        dropdown.selectedMatchIndex = 1;
+        dropdown.unselectOnTabExit(new KeyboardEvent('keydown', {key: 'Tab'}));
+        assertEquals(-1, dropdown.selectedMatchIndex);
+
+        // Shift-Tab on last visible match does not unselect.
+        dropdown.selectedMatchIndex = 1;
+        dropdown.unselectOnTabExit(
+            new KeyboardEvent('keydown', {key: 'Tab', shiftKey: true}));
+        assertEquals(1, dropdown.selectedMatchIndex);
+
+        // When matches support deletion, Tab/Shift-Tab accounts for the inner
+        // remove button focus state.
+        dropdown.result = createAutocompleteResultForTesting({
+          input: '',
+          matches: [
+            createAutocompleteMatch({supportsDeletion: true}),
+            createAutocompleteMatch({supportsDeletion: true}),
+          ],
+        });
+        dropdown.selectedMatchIndex = 0;
+        await microtasksFinished();
+
+        const matches =
+            dropdown.shadowRoot.querySelectorAll('cr-composebox-match');
+        matches[0]!.$.remove.style.display = 'inline-flex';
+        matches[0]!.$.remove.focus();
+        await microtasksFinished();
+
+        // Shift-Tab while focused on the first match's remove button moves
+        // focus to the match row rather than exiting the dropdown.
+        dropdown.unselectOnTabExit(
+            new KeyboardEvent('keydown', {key: 'Tab', shiftKey: true}));
+        assertEquals(0, dropdown.selectedMatchIndex);
+
+        // Forward Tab on the last match row moves focus to its remove button
+        // rather than exiting the dropdown.
+        dropdown.selectedMatchIndex = 1;
+        await microtasksFinished();
+        matches[1]!.focus();
+        await microtasksFinished();
+        dropdown.unselectOnTabExit(new KeyboardEvent('keydown', {key: 'Tab'}));
+        assertEquals(1, dropdown.selectedMatchIndex);
+
+        // Forward Tab while focused on the last match's remove button exits
+        // the dropdown and unselects.
+        matches[1]!.$.remove.style.display = 'inline-flex';
+        matches[1]!.$.remove.focus();
+        await microtasksFinished();
+        dropdown.unselectOnTabExit(new KeyboardEvent('keydown', {key: 'Tab'}));
+        assertEquals(-1, dropdown.selectedMatchIndex);
       });
 });

@@ -485,16 +485,16 @@ inline constexpr char
         "Enables showing suggestions for multiple attachments";
 
 inline constexpr char kComposeboxPlusButtonBottomSheetName[] =
-    "Enable the large carousel in the bottom sheet for plus button in the plus "
-    "button";
+    "Enable the bottom sheet for plus button in Composebox";
 inline constexpr char kComposeboxPlusButtonBottomSheetDescription[] =
-    "Uses the larger size of the carousel in the bottom sheet for the plus "
-    "button multimodal menu.";
+    "Uses the updated bottom sheet for the plus button multimodal menu.";
 
 inline constexpr char kComposeboxPlusButtonLargeCarouselName[] =
-    "Enable the bottom sheet for plus button in Composebox";
+    "Enable the large carousel in the bottom sheet for plus button in the plus "
+    "button";
 inline constexpr char kComposeboxPlusButtonLargeCarouselDescription[] =
-    "Uses the updated bottom sheet for the plus button multimodal menu.";
+    "Uses the larger size of the carousel in the bottom sheet for the plus "
+    "button multimodal menu.";
 
 inline constexpr char kComposeboxServerSideStateName[] =
     "Enable server side state in Composebox";
@@ -725,7 +725,13 @@ inline constexpr char
 inline constexpr char kEnableAccountPreviewPreferredAccountName[] =
     "Enable Account Preview Preferred Account";
 inline constexpr char kEnableAccountPreviewPreferredAccountDescription[] =
-    "Controls whether computing and storing the preferred account is enabled.";
+    "Controls whether storing and exposing the preferred account is enabled.";
+
+inline constexpr char kEnableAccountPreviewSwitchingAccountName[] =
+    "Enable Account Preview Switching Account";
+inline constexpr char kEnableAccountPreviewSwitchingAccountDescription[] =
+    "Controls whether storing and exposing the preferred account for "
+    "switching is enabled.";
 
 inline constexpr char kEnableAutofillAddressSavePromptName[] =
     "Autofill Address Save Prompts";

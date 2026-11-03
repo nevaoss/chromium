@@ -110,7 +110,6 @@
 #include "media/base/media.h"
 #include "media/media_buildflags.h"
 #include "mojo/core/embedder/embedder.h"
-#include "mojo/public/cpp/base/shared_memory_utils.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "mojo/public/cpp/bindings/sync_call_restrictions.h"
 #include "mojo/public/cpp/platform/platform_channel.h"
@@ -1322,6 +1321,10 @@ int ContentMainRunnerImpl::RunBrowser(MainFunctionParams main_params,
         delegate_->PostEarlyInitialization(invoked_in_browser);
     if (post_early_initialization_exit_code.has_value())
       return post_early_initialization_exit_code.value();
+
+    // The memory coordinator policies are feature-gated, so they must be
+    // initialized after the FeatureList.
+    browser_memory_coordinator_->InitializePolicies();
 
     if (HasDisableBestEffortTasksSwitch()) {
       best_effort_fence_.emplace();

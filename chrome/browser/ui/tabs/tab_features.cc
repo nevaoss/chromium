@@ -24,6 +24,7 @@
 #include "chrome/browser/commerce/shopping_service_factory.h"
 #include "chrome/browser/complex_tasks/task_tab_helper.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+#include "chrome/browser/content_settings/mixed_content_settings_tab_helper.h"
 #include "chrome/browser/content_settings/sound_content_setting_observer.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
@@ -36,6 +37,7 @@
 #include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_navigation_observer.h"
 #include "chrome/browser/external_protocol/external_protocol_observer.h"
 #include "chrome/browser/facilitated_payments/ui/chrome_facilitated_payments_client.h"
+#include "chrome/browser/file_system_access/file_system_access_permission_request_manager.h"
 #include "chrome/browser/file_system_access/file_system_access_tab_helper.h"
 #include "chrome/browser/glic/host/context/glic_page_features_manager.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_helper.h"
@@ -49,6 +51,7 @@
 #include "chrome/browser/indigo/indigo_page_action_controller.h"
 #include "chrome/browser/loader/from_gws_navigation_and_keep_alive_request_observer.h"
 #include "chrome/browser/media/media_engagement_service.h"
+#include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
 #include "chrome/browser/multistep_filter/chrome_filter_navigation_observer.h"
 #include "chrome/browser/multistep_filter/ui/filter_ui_controller.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_preconnect_client.h"
@@ -86,6 +89,7 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/themes/theme_service_factory.h"
+#include "chrome/browser/trusted_vault/trusted_vault_encryption_keys_tab_helper.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/autofill/bubble_manager.h"
 #include "chrome/browser/ui/autofill/one_time_tokens/gmail_otp_opt_in_bubble_controller.h"
@@ -105,6 +109,7 @@
 #include "chrome/browser/ui/find_bar/find_bar_state.h"
 #include "chrome/browser/ui/focus_tab_after_navigation_helper.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
+#include "chrome/browser/ui/javascript_dialogs/javascript_tab_modal_dialog_manager_delegate_desktop.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/page_action/action_ids.h"
@@ -172,6 +177,7 @@
 #include "components/enterprise/net/content/enterprise_proxy_tab_helper.h"
 #include "components/history/content/browser/web_contents_top_sites_observer.h"
 #include "components/history/core/browser/top_sites.h"
+#include "components/javascript_dialogs/tab_modal_dialog_manager.h"
 #include "components/multistep_filter/core/features.h"
 #include "components/payments/core/features.h"
 #include "components/search/search.h"
@@ -234,10 +240,12 @@
 #include "components/page_content_annotations/content/page_content_annotations_web_contents_observer.h"
 #include "components/passage_embeddings/core/passage_embeddings_features.h"
 #include "components/permissions/permission_indicators_tab_data.h"
+#include "components/permissions/permission_recovery_success_rate_tracker.h"
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
 #include "components/security_interstitials/core/features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/wallet/core/common/wallet_features.h"
+#include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "components/webapps/browser/installable/ml_installability_promoter.h"
 #include "net/base/features.h"
 #include "ui/accessibility/accessibility_features.h"
@@ -298,7 +306,11 @@
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/extensions/api/web_navigation/web_navigation_tab_observer.h"
 #include "chrome/browser/extensions/navigation_extension_enabler.h"
+#include "chrome/browser/extensions/tab_helper.h"
+#include "extensions/browser/view_type_utils.h"
+#include "extensions/common/mojom/view_type.mojom.h"
 #endif
 
 #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
@@ -312,9 +324,11 @@
 #endif
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+#include "chrome/browser/safe_browsing/chrome_password_reuse_detection_manager_client.h"
 #include "chrome/browser/safe_browsing/chrome_safe_browsing_tab_observer_delegate.h"
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_service_factory.h"
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_url_observer.h"
+#include "chrome/browser/safe_browsing/trigger_creator.h"
 #include "components/safe_browsing/content/browser/safe_browsing_tab_observer.h"
 #include "components/safe_browsing/core/common/features.h"
 #endif
@@ -405,6 +419,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             .CreateInstance<IntentPickerViewPageActionController>(tab, tab);
   }
 
+  FileSystemAccessPermissionRequestManager::CreateForWebContents(
+      tab.GetContents());
   if (page_action_controller_->ActionExists(kActionShowFileSystemAccess)) {
     file_system_access_page_action_controller_ =
         std::make_unique<FileSystemAccessPageActionController>(tab);
@@ -558,7 +574,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
       selection_suggestion_service_ =
           GetUserDataFactory().CreateInstance<selection::SuggestionService>(
               tab, &tab,
-              OptimizationGuideKeyedServiceFactory::GetForProfile(profile));
+              OptimizationGuideKeyedServiceFactory::GetForProfile(profile),
+              GoogleGroupsManagerFactory::GetForBrowserContext(profile));
       if (base::FeatureList::IsEnabled(features::kGlicSelectionSuggestions)) {
         glic_selection_suggestion_tool_ =
             std::make_unique<glic::SelectionSuggestionTool>(tab);
@@ -1009,6 +1026,17 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  // If the web contents already have a view type, don't overwrite it here. One
+  // case where this can happen is when the user opens undocked developer tools.
+  // For all developer tools web contents, the view type is set to
+  // `kDeveloperTools` by the `DevToolsWindow` before tab helpers are attached.
+  if (extensions::GetViewType(tab.GetContents()) ==
+      extensions::mojom::ViewType::kInvalid) {
+    extensions::SetViewType(tab.GetContents(),
+                            extensions::mojom::ViewType::kTabContents);
+  }
+  extensions::WebNavigationTabObserver::CreateForWebContents(tab.GetContents());
+  extensions::TabHelper::CreateForWebContents(tab.GetContents());
   navigation_extension_enabler_ =
       std::make_unique<extensions::NavigationExtensionEnabler>(
           tab.GetContents());
@@ -1054,6 +1082,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   if (autofill::ContentAutofillClient::FromWebContents(tab.GetContents())) {
+    ChromePasswordReuseDetectionManagerClient::CreateForWebContents(
+        tab.GetContents());
     safe_browsing_tab_observer_ =
         GetUserDataFactory()
             .CreateInstance<safe_browsing::SafeBrowsingTabObserver>(
@@ -1069,6 +1099,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             safe_browsing::TailoredSecurityServiceFactory::GetForProfile(
                 profile));
   }
+  trigger_creator_ = std::make_unique<safe_browsing::TriggerCreator>(
+      tab, profile, tab.GetContents());
 #endif
 
   if (page_info::IsAboutThisSiteFeatureEnabled()) {
@@ -1211,6 +1243,24 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 #if BUILDFLAG(ENABLE_PRINTING)
   printing::InitializePrintingForWebContents(tab.GetContents());
 #endif
+
+  mixed_content_settings_tab_helper_ =
+      GetUserDataFactory().CreateInstance<MixedContentSettingsTabHelper>(
+          tab, tab, tab.GetContents());
+
+  permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents(
+      tab.GetContents());
+
+  javascript_dialogs::TabModalDialogManager::CreateForWebContents(
+      tab.GetContents(),
+      std::make_unique<JavaScriptTabModalDialogManagerDelegateDesktop>(
+          tab.GetContents()));
+
+  web_modal::WebContentsModalDialogManager::CreateForWebContents(
+      tab.GetContents());
+
+  // Attach TrustedVaultEncryptionKeysTabHelper to the tab.
+  TrustedVaultEncryptionKeysTabHelper::CreateForWebContents(tab.GetContents());
 }
 
 TabUIHelper* TabFeatures::SetTabUIHelperForTesting(
@@ -1320,6 +1370,15 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   security_state_event_observer_ =
       std::make_unique<SecurityStateEventObserver>(new_contents);
 
+  enterprise_proxy_tab_helper_.reset();
+  enterprise_proxy_tab_helper_ =
+      GetUserDataFactory()
+          .CreateInstance<enterprise_net::EnterpriseProxyTabHelper>(
+              *tab, *tab, new_contents,
+              EnterpriseProxyErrorServiceFactory::GetForProfile(profile));
+
+  http_auth_cache_status_ = std::make_unique<HttpAuthCacheStatus>(new_contents);
+
   if (search_engine_choice_tab_helper_) {
     search_engine_choice_tab_helper_ =
         std::make_unique<SearchEngineChoiceTabHelper>(new_contents);
@@ -1351,6 +1410,17 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
     sad_tab_helper_.reset();
     sad_tab_helper_ = GetUserDataFactory().CreateInstance<SadTabHelper>(
         *tab, *tab, new_contents);
+  }
+
+  from_gws_navigation_and_keep_alive_request_observer_ =
+      FromGWSNavigationAndKeepAliveRequestObserver::MaybeCreate(new_contents);
+
+  if (auto* contextual_cueing_service =
+          contextual_cueing::ContextualCueingServiceFactory::GetForProfile(
+              profile)) {
+    contextual_cueing_web_contents_observer_ = std::make_unique<
+        contextual_cueing::ContextualCueingWebContentsObserver>(
+        new_contents, contextual_cueing_service);
   }
 
   sync_sessions_router_.reset();
@@ -1432,6 +1502,11 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
+  if (saas_usage_navigation_observer_) {
+    saas_usage_navigation_observer_ =
+        std::make_unique<enterprise_reporting::SaasUsageNavigationObserver>(
+            new_contents);
+  }
   if (hats_helper_) {
     hats_helper_ = std::make_unique<HatsHelper>(new_contents);
   }
@@ -1514,6 +1589,13 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  if (extensions::GetViewType(new_contents) ==
+      extensions::mojom::ViewType::kInvalid) {
+    extensions::SetViewType(new_contents,
+                            extensions::mojom::ViewType::kTabContents);
+  }
+  extensions::WebNavigationTabObserver::CreateForWebContents(new_contents);
+  extensions::TabHelper::CreateForWebContents(new_contents);
   navigation_extension_enabler_ =
       std::make_unique<extensions::NavigationExtensionEnabler>(new_contents);
 #endif
@@ -1559,6 +1641,8 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   safe_browsing_tab_observer_.reset();
   if (autofill::ContentAutofillClient::FromWebContents(new_contents)) {
+    ChromePasswordReuseDetectionManagerClient::CreateForWebContents(
+        new_contents);
     safe_browsing_tab_observer_ =
         GetUserDataFactory()
             .CreateInstance<safe_browsing::SafeBrowsingTabObserver>(
@@ -1574,6 +1658,9 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
             safe_browsing::TailoredSecurityServiceFactory::GetForProfile(
                 profile));
   }
+  trigger_creator_.reset();
+  trigger_creator_ = std::make_unique<safe_browsing::TriggerCreator>(
+      *tab, profile, new_contents);
 #endif
 
   if (about_this_site_tab_helper_) {
@@ -1617,6 +1704,8 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   chained_back_navigation_tracker_ =
       GetUserDataFactory().CreateInstance<ChainedBackNavigationTracker>(
           *tab, *tab, new_contents);
+
+  FileSystemAccessPermissionRequestManager::CreateForWebContents(new_contents);
 
   file_system_access_tab_helper_ =
       std::make_unique<FileSystemAccessTabHelper>(new_contents);
@@ -1732,6 +1821,23 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 #if BUILDFLAG(ENABLE_PRINTING)
   printing::InitializePrintingForWebContents(new_contents);
 #endif
+
+  mixed_content_settings_tab_helper_.reset();
+  mixed_content_settings_tab_helper_ =
+      GetUserDataFactory().CreateInstance<MixedContentSettingsTabHelper>(
+          *tab, *tab, new_contents);
+
+  permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents(
+      new_contents);
+
+  javascript_dialogs::TabModalDialogManager::CreateForWebContents(
+      new_contents,
+      std::make_unique<JavaScriptTabModalDialogManagerDelegateDesktop>(
+          new_contents));
+
+  web_modal::WebContentsModalDialogManager::CreateForWebContents(new_contents);
+
+  TrustedVaultEncryptionKeysTabHelper::CreateForWebContents(new_contents);
 }
 
 customize_chrome::SidePanelController*

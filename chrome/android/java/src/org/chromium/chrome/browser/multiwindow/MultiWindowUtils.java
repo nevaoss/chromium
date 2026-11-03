@@ -1608,7 +1608,7 @@ public class MultiWindowUtils implements ActivityStateListener {
                 }
             }
         }
-        ChromeMultiInstancePersistentStore.writeTabCountForRelaunchSync(windowId, totalCount);
+        ChromeMultiInstancePersistentStore.writeTabCountForRelaunch(windowId, totalCount);
     }
 
     /**
@@ -1781,11 +1781,6 @@ public class MultiWindowUtils implements ActivityStateListener {
 
     /* package */ static boolean hasNoNormalTabs(int windowId) {
         return ChromeMultiInstancePersistentStore.readNormalTabCount(windowId) == 0;
-    }
-
-    /* package */ static boolean isTaskAlive(int windowId, Map<Integer, AppTask> appTasksById) {
-        int taskId = ChromeMultiInstancePersistentStore.readTaskId(windowId);
-        return appTasksById.containsKey(taskId);
     }
 
     /* package */ static Map<Integer, AppTask> getAppTasksById(Context context) {

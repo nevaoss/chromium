@@ -38,6 +38,8 @@
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/first_run/public/features.h"
 #import "ios/chrome/browser/home_customization/coordinator/home_customization_ephemeral_theme_promo_display_handler.h"
+#import "ios/chrome/browser/home_customization/model/home_background_customization_service.h"
+#import "ios/chrome/browser/home_customization/model/home_background_customization_service_factory.h"
 #import "ios/chrome/browser/level_up/model/level_up_promo_display_handler.h"
 #import "ios/chrome/browser/ntp/coordinator/home_background_customization_promo_display_handler.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
@@ -58,7 +60,6 @@
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
-#import "ios/chrome/browser/shared/public/commands/ephemeral_theme_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/level_up_commands.h"
 #import "ios/chrome/browser/shared/public/commands/new_tab_page_commands.h"
 #import "ios/chrome/browser/shared/public/commands/picture_in_picture_commands.h"
@@ -629,7 +630,11 @@
   }
 
   // Ephemeral theme promo handler.
-  if (IsNTPEphemeralThemeEnabled()) {
+  HomeBackgroundCustomizationService* backgroundCustomizationService =
+      HomeBackgroundCustomizationServiceFactory::GetForProfile(self.profile);
+  if (!backgroundCustomizationService
+           ->IsCustomizationDisabledOrColorManagedByPolicy() &&
+      IsNTPEphemeralThemeEnabled()) {
     id<NewTabPageCommands> ntpHandler = HandlerForProtocol(
         self.browser->GetCommandDispatcher(), NewTabPageCommands);
     _displayHandlerPromos[promos_manager::Promo::EphemeralTheme] =

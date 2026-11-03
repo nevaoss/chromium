@@ -186,6 +186,7 @@ test("components_unittests") {
     "//components/account_settings:unit_tests",
     "//components/activity_reporter:unit_tests",
     "//components/actor/core:unit_tests",
+    "//components/actor/transport:unit_tests",
     "//components/affiliations/core/browser:unit_tests",
     "//components/affiliations/core/browser/domain_matching:unit_tests",
     "//components/apdu:unit_tests",
@@ -1018,11 +1019,14 @@ test("components_unittests") {
     "CupEcdsaFuzzTest.EcdsaCupTestOneInputDoesNotCrash",
     "CupMldsa44FuzzTest.Mldsa44CupTestOneInputDoesNotCrash",
     "CurrencyFormatterFuzzTest.FormatDoesNotCrash",
+    "LocalDomainsStorageMigrationFuzzTest.MigrationAndMutationsMatchLegacyAdapter",
     "PaymentCurrencyAmountFuzzTest.FromValueDictDoesNotCrash",
     "PrivacySandboxAttestationsParserFuzzTest.ParseAttestationsFromStringDoesNotCrash",
     "PwgEncoderFuzzTest.EncodeDoesNotCrash",
     "RustStreamFramerFuzzTest.FeedDoesNotCrashOnArbitraryChunks",
     "TranslateUtilFuzzTest.GetTranslateSecurityOriginDoesNotCrash",
+    "WebPaymentsTelemetryFuzzTest.ThreeDSecureTelemetryChallengePostData",
+    "WebPaymentsTelemetryFuzzTest.ThreeDSecureTelemetryChallengeResponseValue",
   ]
 }
 

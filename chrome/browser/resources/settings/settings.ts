@@ -75,7 +75,8 @@ export {HomeUrlInputElement} from './appearance_page/home_url_input.js';
 export {SettingsAutofillAiEntriesListElement} from './autofill_page/autofill_ai_entries_list.js';
 export {SettingsAutofillPageElement} from './autofill_page/autofill_page.js';
 export {SettingsAutofillPageIndexElement} from './autofill_page/autofill_page_index.js';
-export {CollapsibleCardElement} from './autofill_page/collapsible_autofill_settings_card.js';
+export {CollapsibleAutofillSettingsCardElement} from './autofill_page/collapsible_autofill_settings_card.js';
+export type {CollapsibleCardElement} from './autofill_page/collapsible_autofill_settings_card.js';
 export {PasswordCheckReferrer, PasswordManagerImpl, PasswordManagerPage} from './autofill_page/passwords/password_manager_proxy.js';
 export type {PasswordManagerProxy} from './autofill_page/passwords/password_manager_proxy.js';
 export {BaseMixin} from './base_mixin.js';
@@ -149,7 +150,7 @@ export type {OmniboxEverywhereBrowserProxy} from './search_page/omnibox_everywhe
 export {SettingsOmniboxEverywhereSectionElement} from './search_page/omnibox_everywhere_section.js';
 export {SettingsSearchEngineListDialogElement} from './search_page/search_engine_list_dialog.js';
 export {ChoiceMadeLocation, SearchEnginesBrowserProxyImpl, SearchEnginesInteractions} from './search_page/search_engines_browser_proxy.js';
-export type {CategorizedTemplateUrls, SearchEngine, SearchEnginesBrowserProxy, SearchEnginesInfo} from './search_page/search_engines_browser_proxy.js';
+export type {CategorizedTemplateUrls, DefaultSearchEnginePickerData, SearchEngine, SearchEnginesBrowserProxy, SearchEnginesInfo} from './search_page/search_engines_browser_proxy.js';
 export {SettingsSearchPageElement} from './search_page/search_page.js';
 export {SettingsSearchPageIndexElement} from './search_page/search_page_index.js';
 export {SiteShortcutsPageElement} from './search_page/site_shortcuts_page.js';

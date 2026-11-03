@@ -383,9 +383,6 @@ struct SameSizeAsLayoutObject : public GarbageCollected<SameSizeAsLayoutObject>,
   unsigned bitfields2_;
   unsigned bitfields3_;
   Member<void*> members[6];
-#if DCHECK_IS_ON()
-  bool is_destroyed_;
-#endif
 };
 
 ASSERT_SIZE(LayoutObject, SameSizeAsLayoutObject);
@@ -524,9 +521,7 @@ LayoutObject::LayoutObject(Node* node)
 
 LayoutObject::~LayoutObject() {
   DCHECK(being_destroyed_);
-#if DCHECK_IS_ON()
   DCHECK(is_destroyed_);
-#endif
   InstanceCounters::DecrementCounter(InstanceCounters::kLayoutObjectCounter);
 }
 
@@ -2812,16 +2807,13 @@ void LayoutObject::DumpLayoutObject(StringBuilder& string_builder,
                                     bool dump_address,
                                     unsigned show_tree_character_offset) const {
   // This function doesn't call `NOT_DESTROYED()` to aid debugging.
-#if DCHECK_IS_ON()
-  std::optional<base::AutoReset<bool>> is_destroyed;
-  if (is_destroyed_) {
+  const bool is_destroyed = is_destroyed_;
+  if (is_destroyed) {
     string_builder.Append("[DESTROYED] ");
-
     // Temporarily reset `is_destroyed_` to make dumping possible. Code and
     // functions in this function must be safe to call for a destroyed object.
-    is_destroyed.emplace(const_cast<bool*>(&is_destroyed_), false);
+    const_cast<LayoutObject*>(this)->is_destroyed_ = false;
   }
-#endif  // DCHECK_IS_ON()
 
   string_builder.Append(DecoratedName());
 
@@ -2838,6 +2830,10 @@ void LayoutObject::DumpLayoutObject(StringBuilder& string_builder,
       string_builder.Append(' ');
     string_builder.Append('\t');
     string_builder.Append(GetNode()->ToString());
+  }
+
+  if (is_destroyed) {
+    const_cast<LayoutObject*>(this)->is_destroyed_ = true;
   }
 }
 
@@ -4357,35 +4353,6 @@ void LayoutObject::InsertedIntoTree() {
   }
 }
 
-enum FindReferencingScrollAnchorsBehavior { kDontClear, kClear };
-
-static bool FindReferencingScrollAnchors(
-    LayoutObject* layout_object,
-    FindReferencingScrollAnchorsBehavior behavior) {
-  PaintLayer* layer = nullptr;
-  if (LayoutObject* parent = layout_object->Parent())
-    layer = parent->EnclosingLayer();
-  bool found = false;
-
-  // Walk up the layer tree to clear any scroll anchors that reference us.
-  while (layer) {
-    if (PaintLayerScrollableArea* scrollable_area =
-            layer->GetScrollableArea()) {
-      ScrollAnchor* anchor = scrollable_area->GetScrollAnchor();
-      DCHECK(anchor);
-      if (anchor->RefersTo(layout_object)) {
-        found = true;
-        if (behavior == kClear)
-          anchor->NotifyRemoved(layout_object);
-        else
-          return true;
-      }
-    }
-    layer = layer->Parent();
-  }
-  return found;
-}
-
 void LayoutObject::WillBeRemovedFromTree() {
   NOT_DESTROYED();
   // FIXME: We should DCHECK(isRooted()) but we have some out-of-order removals
@@ -4410,13 +4377,6 @@ void LayoutObject::WillBeRemovedFromTree() {
 
   if (Parent()->ChildrenInline()) {
     Parent()->DirtyLinesFromChangedChild(this);
-  }
-
-  if (is_scroll_anchor_object_) {
-    // Clear the bit first so that anchor.clear() doesn't recurse into
-    // findReferencingScrollAnchors.
-    is_scroll_anchor_object_ = false;
-    FindReferencingScrollAnchors(this, kClear);
   }
 
   if (LocalFrameView* frame_view = GetFrameView()) {
@@ -4483,14 +4443,6 @@ void LayoutObject::SetDescendantNeedsPaintPropertyUpdate() {
   }
 }
 
-void LayoutObject::MaybeClearIsScrollAnchorObject() {
-  NOT_DESTROYED();
-  if (!is_scroll_anchor_object_) {
-    return;
-  }
-  is_scroll_anchor_object_ = FindReferencingScrollAnchors(this, kDontClear);
-}
-
 void LayoutObject::DestroyAndCleanupAnonymousWrappers(
     bool performing_reattach) {
   NOT_DESTROYED();
@@ -4541,9 +4493,9 @@ void LayoutObject::Destroy() {
   // the style into WillBeDestroyed so that the overrides explicitly check this.
   WillBeDestroyed(style_.Get());
 
+  is_destroyed_ = true;
 #if DCHECK_IS_ON()
   DCHECK(!has_ax_object_) << this;
-  is_destroyed_ = true;
 #endif
 }
 

@@ -3,14 +3,14 @@
 // found in the LICENSE file.
 
 import {isMac} from '//resources/js/platform.js';
-import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
-import type {OmniboxInputState, OmniboxPopupContextualEntrypointButtonElement, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
+import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas, UrlDeemphasisMode} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
+import type {OmniboxInputState, OmniboxPopupContextualEntrypointButtonElement, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement, UrlEmphasis} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {KeywordModeEntryMethod} from 'chrome://resources/cr_components/searchbox/keyword_mode_manager.js';
 import {createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {KeywordType, RenderType, SelectionDirection, SelectionLineState, SelectionStep, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -71,6 +71,8 @@ function createDefaultOmniboxInputState(overrides?: Partial<OmniboxInputState>):
     queryZps: false,
     keywordModel: null,
     isTabSwitch: false,
+    urlEmphasis: null,
+    unelidedUrlEmphasis: null,
     ...overrides,
   };
 }
@@ -2408,6 +2410,193 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals('google.com', keyword);
  });
 
+ test('BackspaceToEmptyInKeywordModeKeepsDropdownOpen', async () => {
+   // Register the default search engine's keyword so Ctrl+K can resolve it.
+   testProxy.page.setAvailableKeywordModels(
+       [{
+         type: KeywordType.kChip,
+         keyword: 'google.com',
+         displayText: 'Search Google',
+         iconPath: '',
+         placeholder: 'Search Google',
+       }],
+       'google.com');
+   await microtasksFinished();
+
+   // Start on a page with its URL shown and no user input.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'https://example.com',
+     userInputInProgress: false,
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   // Ctrl+K enters keyword mode for the default search engine.
+   callbackRouter.focusSearchWithDefaultSearchEngineKeywordMode();
+   await microtasksFinished();
+   assertTrue(searchbox.keywordModeManager.isInKeywordMode);
+
+   // Type a character and deliver results so the dropdown is open.
+   const inputEl = searchbox.getInputElement().inputElement;
+   inputEl.value = 'a';
+   inputEl.setSelectionRange(1, 1);
+   inputEl.dispatchEvent(
+       new InputEvent('input', {bubbles: true, composed: true}));
+   await microtasksFinished();
+
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'a',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         fillIntoEdit: 'a',
+         keywordModel: createMatchKeywordModelForTesting({
+           type: KeywordType.kInKeyword,
+           keyword: 'google.com',
+         }),
+       }),
+     ],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   handler.reset();
+   testProxy.handler.reset();
+
+   // Backspace until the input is empty.
+   inputEl.value = '';
+   inputEl.setSelectionRange(0, 0);
+   inputEl.dispatchEvent(new InputEvent(
+       'input',
+       {inputType: 'deleteContentBackward', bubbles: true, composed: true}));
+   await microtasksFinished();
+
+   // Keyword mode is preserved and the dropdown stays open. The empty input
+   // is not treated as cleared; a keyword-scoped query is issued instead.
+   assertTrue(searchbox.keywordModeManager.isInKeywordMode);
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals(0, testProxy.handler.getCallCount('stopAutocomplete'));
+   assertEquals(0, handler.getCallCount('onInputCleared'));
+   assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+   const [, , queryText, , , , , queryKeyword] =
+       testProxy.handler.getArgs('queryAutocomplete')[0];
+   assertEquals('', queryText);
+   assertEquals('google.com', queryKeyword);
+ });
+
+ test('CutAndUndoToEmptyInKeywordModeKeepsDropdownOpen', async () => {
+   // Same invariant as `BackspaceToEmptyInKeywordModeKeepsDropdownOpen`, but
+   // for the cut and undo/redo edit paths, which have their own "is the input
+   // now empty?" checks.
+   testProxy.page.setAvailableKeywordModels(
+       [{
+         type: KeywordType.kChip,
+         keyword: 'google.com',
+         displayText: 'Search Google',
+         iconPath: '',
+         placeholder: 'Search Google',
+       }],
+       'google.com');
+   await microtasksFinished();
+
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: '',
+     userInputInProgress: false,
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   callbackRouter.focusSearchWithDefaultSearchEngineKeywordMode();
+   await microtasksFinished();
+   assertTrue(searchbox.keywordModeManager.isInKeywordMode);
+
+   // Type a query and deliver results so the dropdown is open.
+   const inputEl = searchbox.getInputElement().inputElement;
+   inputEl.value = 'cats';
+   inputEl.setSelectionRange(4, 4);
+   inputEl.dispatchEvent(
+       new InputEvent('input', {bubbles: true, composed: true}));
+   await microtasksFinished();
+
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'cats',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         fillIntoEdit: 'cats',
+         keywordModel: createMatchKeywordModelForTesting({
+           type: KeywordType.kInKeyword,
+           keyword: 'google.com',
+         }),
+       }),
+     ],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // Cut all text (Ctrl+A, Ctrl+X).
+   handler.reset();
+   testProxy.handler.reset();
+   inputEl.setSelectionRange(0, 4);
+   inputEl.dispatchEvent(new ClipboardEvent('cut', {
+     clipboardData: new DataTransfer(),
+     bubbles: true,
+     composed: true,
+     cancelable: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals('', inputEl.value);
+   assertTrue(searchbox.keywordModeManager.isInKeywordMode);
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals(0, testProxy.handler.getCallCount('stopAutocomplete'));
+   assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+   const [, , cutQueryText, , , , , cutQueryKeyword] =
+       testProxy.handler.getArgs('queryAutocomplete')[0];
+   assertEquals('', cutQueryText);
+   assertEquals('google.com', cutQueryKeyword);
+
+   // Undo restores the text; redo empties it again. Redo-to-empty must also
+   // keep the dropdown open.
+   handler.reset();
+   testProxy.handler.reset();
+   inputEl.dispatchEvent(new KeyboardEvent('keydown', {
+     key: 'z',
+     ctrlKey: !isMac,
+     metaKey: isMac,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+   assertEquals('cats', inputEl.value);
+   assertTrue(searchbox.keywordModeManager.isInKeywordMode);
+
+   handler.reset();
+   testProxy.handler.reset();
+   inputEl.dispatchEvent(new KeyboardEvent('keydown', {
+     key: 'z',
+     shiftKey: true,
+     ctrlKey: !isMac,
+     metaKey: isMac,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals('', inputEl.value);
+   assertTrue(searchbox.keywordModeManager.isInKeywordMode);
+   assertTrue(searchbox.dropdownIsVisible);
+   assertEquals(0, testProxy.handler.getCallCount('stopAutocomplete'));
+   assertEquals(0, handler.getCallCount('onInputCleared'));
+   assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+   const [, , redoQueryText, , , , , redoQueryKeyword] =
+       testProxy.handler.getArgs('queryAutocomplete')[0];
+   assertEquals('', redoQueryText);
+   assertEquals('google.com', redoQueryKeyword);
+ });
+
  test('UndoRedoBeforeInput', async () => {
    const inputEl = searchbox.getInputElement().inputElement;
    inputEl.focus();
@@ -4521,5 +4710,473 @@ suite('OmniboxPopupSearchboxTest', function() {
    // When dropdown is already visible, mousedown should not force select all.
    assertFalse(
        input.selectionStart === 0 && input.selectionEnd === 'test'.length);
+ });
+
+ test('SetsUrlEmphasisFromInputState', async () => {
+   const emphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 19},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'https://example.com/foo',
+     urlEmphasis: emphasis,
+   }));
+   await microtasksFinished();
+
+   assertDeepEquals(emphasis, searchbox.$.input.urlEmphasis);
+ });
+
+ test('UpdatesUrlEmphasisFromAutocompleteMatchOnTextInput', async () => {
+   const matchEmphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 19},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: '',
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
+   // Simulate input typing; urlEmphasis is null until autocomplete results
+   // arrive.
+   searchbox.$.input.setInputText('https://example.com/test');
+   searchbox.$.input.fire(
+       'searchbox-input-text-updated',
+       {value: 'https://example.com/test', isComposing: false});
+   await microtasksFinished();
+   assertEquals(null, searchbox.$.input.urlEmphasis);
+
+   // Push autocomplete results with precomputed urlEmphasis on default match.
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'https://example.com/test',
+     matches: [
+       createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         isSearchType: false,
+         fillIntoEdit: 'https://example.com/test',
+         inlineAutocompletion: '',
+         urlEmphasis: matchEmphasis,
+       }),
+     ],
+   }));
+   await microtasksFinished();
+
+   assertDeepEquals(matchEmphasis, searchbox.$.input.urlEmphasis);
+ });
+
+ test('UpdatesUrlEmphasisOnUnelide', async () => {
+   const elidedEmphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 0},
+     hostRange: {start: 0, end: 11},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+   const unelidedEmphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 19},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'example.com',
+     fullUrl: 'https://example.com/',
+     urlEmphasis: elidedEmphasis,
+     unelidedUrlEmphasis: unelidedEmphasis,
+     showFullUrl: false,
+   }));
+   await microtasksFinished();
+
+   assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+
+   // Unelide URL by selecting a subrange via input state.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'example.com',
+     fullUrl: 'https://example.com/',
+     urlEmphasis: elidedEmphasis,
+     unelidedUrlEmphasis: unelidedEmphasis,
+     selection: {start: 0, end: 5},
+     showFullUrl: false,
+   }));
+   await microtasksFinished();
+
+   assertEquals(
+       'https://example.com/', searchbox.getInputElement().inputElement.value);
+   assertDeepEquals(unelidedEmphasis, searchbox.$.input.urlEmphasis);
+ });
+
+ test('SetsSecuritySchemeEmphasisFromInputState', async () => {
+   const emphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 26},
+     schemeStrikeThrough: true,
+     schemeDangerous: true,
+   };
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'https://expired.badssl.com/',
+     urlEmphasis: emphasis,
+   }));
+   await microtasksFinished();
+
+   assertDeepEquals(emphasis, searchbox.$.input.urlEmphasis);
+ });
+
+ test(
+     'UpdatesUrlEmphasisOnKeyboardArrowNavigationAndEscapeRevert', async () => {
+       const steadyStateEmphasis: UrlEmphasis = {
+         deemphasisMode: UrlDeemphasisMode.kAllButHost,
+         textIsUrl: true,
+         schemeRange: {start: 0, end: 0},
+         hostRange: {start: 0, end: 11},
+         schemeStrikeThrough: false,
+         schemeDangerous: false,
+       };
+       const match0Emphasis: UrlEmphasis = {
+         deemphasisMode: UrlDeemphasisMode.kAllButHost,
+         textIsUrl: true,
+         schemeRange: {start: 0, end: 0},
+         hostRange: {start: 0, end: 10},
+         schemeStrikeThrough: false,
+         schemeDangerous: false,
+       };
+       const match1Emphasis: UrlEmphasis = {
+         deemphasisMode: UrlDeemphasisMode.kAllButHost,
+         textIsUrl: true,
+         schemeRange: {start: 0, end: 5},
+         hostRange: {start: 8, end: 18},
+         schemeStrikeThrough: false,
+         schemeDangerous: false,
+       };
+
+       // Start on a webpage with a steady-state URL.
+       callbackRouter.setInputState(createDefaultOmniboxInputState({
+         text: 'example.com/page',
+         permanentDisplayText: 'example.com/page',
+         fullUrl: 'https://example.com/page',
+         urlEmphasis: steadyStateEmphasis,
+         isFocused: true,
+       }));
+       await microtasksFinished();
+       assertDeepEquals(steadyStateEmphasis, searchbox.$.input.urlEmphasis);
+
+       // User types 'red'.
+       searchbox.$.input.setInputText('red');
+       searchbox.$.input.fire(
+           'searchbox-input-text-updated', {value: 'red', isComposing: false});
+       await microtasksFinished();
+
+       // Provide autocomplete results with precomputed urlEmphasis.
+       const matches = [
+         createSearchMatchForTesting({
+           allowedToBeDefaultMatch: true,
+           isSearchType: false,
+           fillIntoEdit: 'redhat.com',
+           inlineAutocompletion: 'hat.com',
+           urlEmphasis: match0Emphasis,
+         }),
+         createSearchMatchForTesting({
+           allowedToBeDefaultMatch: false,
+           isSearchType: false,
+           fillIntoEdit: 'https://redhat.com',
+           destinationUrl: 'https://redhat.com',
+           urlEmphasis: match1Emphasis,
+         }),
+       ];
+       testProxy.page.autocompleteResultChanged(
+           createAutocompleteResultForTesting({
+             queryId: searchbox.activeQueryId,
+             input: 'red',
+             matches: matches,
+           }));
+       await microtasksFinished();
+
+       assertTrue(searchbox.dropdownIsVisible);
+       assertDeepEquals(match0Emphasis, searchbox.$.input.urlEmphasis);
+
+       // Arrow down to second match.
+       await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+         bubbles: true,
+         cancelable: true,
+         key: 'ArrowDown',
+       }));
+       await microtasksFinished();
+
+       assertEquals(1, searchbox.selectedMatchIndex);
+       assertEquals(
+           'https://redhat.com',
+           searchbox.getInputElement().inputElement.value);
+       assertDeepEquals(match1Emphasis, searchbox.$.input.urlEmphasis);
+
+       // Escape Stage 1 (kRevertTemporaryText): reverts to default match 0.
+       await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+         bubbles: true,
+         cancelable: true,
+         key: 'Escape',
+       }));
+       await microtasksFinished();
+       assertEquals(0, searchbox.selectedMatchIndex);
+       assertEquals(
+           'redhat.com', searchbox.getInputElement().inputElement.value);
+       assertDeepEquals(match0Emphasis, searchbox.$.input.urlEmphasis);
+
+       // Escape Stage 2 (kClosePopup): closes dropdown.
+       await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+         bubbles: true,
+         cancelable: true,
+         key: 'Escape',
+       }));
+       await microtasksFinished();
+       assertFalse(searchbox.dropdownIsVisible);
+
+       // Escape Stage 3 (kClearUserInput): reverts to permanentDisplayText and
+       // restores steadyStateEmphasis.
+       await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+         bubbles: true,
+         cancelable: true,
+         key: 'Escape',
+       }));
+       await microtasksFinished();
+       assertEquals(
+           'example.com/page', searchbox.getInputElement().inputElement.value);
+       assertDeepEquals(steadyStateEmphasis, searchbox.$.input.urlEmphasis);
+     });
+
+ test('ClearsUrlEmphasisWhenInputEmptied', async () => {
+   const emphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 18},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'https://redhat.com',
+     urlEmphasis: emphasis,
+   }));
+   await microtasksFinished();
+   assertDeepEquals(emphasis, searchbox.$.input.urlEmphasis);
+
+   searchbox.getInputElement().setInput({text: '', inline: ''});
+   await microtasksFinished();
+
+   assertEquals(null, searchbox.$.input.urlEmphasis);
+ });
+
+ test('RestoresSteadyStateUrlEmphasisForElidedAndUnelidedUrls', async () => {
+   const elidedEmphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 0},
+     hostRange: {start: 0, end: 11},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+   const unelidedEmphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 19},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+   const match0Emphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 18},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+   const match1Emphasis: UrlEmphasis = {
+     deemphasisMode: UrlDeemphasisMode.kAllButHost,
+     textIsUrl: true,
+     schemeRange: {start: 0, end: 5},
+     hostRange: {start: 8, end: 20},
+     schemeStrikeThrough: false,
+     schemeDangerous: false,
+   };
+
+   const zpsMatches = [
+     createSearchMatchForTesting({
+       allowedToBeDefaultMatch: false,
+       isSearchType: false,
+       fillIntoEdit: 'https://redhat.com',
+       destinationUrl: 'https://redhat.com',
+       urlEmphasis: match0Emphasis,
+     }),
+     createSearchMatchForTesting({
+       allowedToBeDefaultMatch: false,
+       isSearchType: false,
+       fillIntoEdit: 'https://chromium.org',
+       destinationUrl: 'https://chromium.org',
+       urlEmphasis: match1Emphasis,
+     }),
+   ];
+
+   // 1. Elided steady-state URL (`fullUrlShown_ === false`): returns
+   // `urlEmphasis_`.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'example.com/page',
+     permanentDisplayText: 'example.com/page',
+     fullUrl: 'https://example.com/page',
+     urlEmphasis: elidedEmphasis,
+     unelidedUrlEmphasis: unelidedEmphasis,
+     userInputInProgress: false,
+     showFullUrl: false,
+     isFocused: true,
+     isTabSwitch: true,
+     queryZps: true,
+   }));
+   await microtasksFinished();
+
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'example.com/page',
+     matches: zpsMatches,
+   }));
+   await microtasksFinished();
+   assertEquals(-1, searchbox.matchIndex);
+   assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+
+   // Arrow down to match 0 and then match 1; emphasis updates to the
+   // selected match's emphasis.
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'ArrowDown',
+   }));
+   await microtasksFinished();
+   assertDeepEquals(match0Emphasis, searchbox.$.input.urlEmphasis);
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'ArrowDown',
+   }));
+   await microtasksFinished();
+   assertDeepEquals(match1Emphasis, searchbox.$.input.urlEmphasis);
+
+   // Escape Stage 1 (`kRevertTemporaryText` when default match is not
+   // allowed to be default) restores elided steady-state URL emphasis.
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'Escape',
+   }));
+   await microtasksFinished();
+   assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+
+   // 2. Unelided steady-state URL (`fullUrlShown_ === true`): returns
+   // `unelidedUrlEmphasis_`.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'example.com/page',
+     permanentDisplayText: 'example.com/page',
+     fullUrl: 'https://example.com/page',
+     urlEmphasis: elidedEmphasis,
+     unelidedUrlEmphasis: unelidedEmphasis,
+     userInputInProgress: false,
+     showFullUrl: true,
+     isFocused: true,
+     isTabSwitch: true,
+     queryZps: true,
+   }));
+   await microtasksFinished();
+
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'example.com/page',
+     matches: zpsMatches,
+   }));
+   await microtasksFinished();
+   assertEquals(-1, searchbox.matchIndex);
+   assertDeepEquals(unelidedEmphasis, searchbox.$.input.urlEmphasis);
+
+   // Select match 0 and match 1 (overwriting the unelided URL with
+   // temporary match text), then revert via Escape Stage 1; since the
+   // input text reverts to the elided `lastQueriedInput`, emphasis returns
+   // to `elidedEmphasis`.
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'ArrowDown',
+   }));
+   await microtasksFinished();
+   assertDeepEquals(match0Emphasis, searchbox.$.input.urlEmphasis);
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'ArrowDown',
+   }));
+   await microtasksFinished();
+   assertDeepEquals(match1Emphasis, searchbox.$.input.urlEmphasis);
+
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'Escape',
+   }));
+   await microtasksFinished();
+   assertEquals(
+       'example.com/page', searchbox.getInputElement().inputElement.value);
+   assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+
+   searchbox.setSelection(kDefaultSelection);
+   await microtasksFinished();
+   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+     bubbles: true,
+     cancelable: true,
+     key: 'ArrowDown',
+   }));
+   await microtasksFinished();
+   assertDeepEquals(match0Emphasis, searchbox.$.input.urlEmphasis);
+
+   searchbox.setSelection(kDefaultSelection);
+   await microtasksFinished();
+   searchbox.updateInputForSelection(kDefaultSelection, 'Tab');
+   assertEquals(
+       'example.com/page', searchbox.getInputElement().inputElement.value);
+   assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+
+   // 3. Unelided steady-state URL when `unelidedUrlEmphasis_` is null:
+   // falls back to `urlEmphasis_`.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'example.com/page',
+     permanentDisplayText: 'example.com/page',
+     fullUrl: 'https://example.com/page',
+     urlEmphasis: elidedEmphasis,
+     unelidedUrlEmphasis: null,
+     userInputInProgress: false,
+     showFullUrl: true,
+     isFocused: true,
+     isTabSwitch: true,
+     queryZps: true,
+   }));
+   await microtasksFinished();
+
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'example.com/page',
+     matches: zpsMatches,
+   }));
+   await microtasksFinished();
+   assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
  });
 });

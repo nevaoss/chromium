@@ -417,6 +417,28 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Download.History.DownloadCount.PostRemoval{Window}"
+    units="downloads" expires_after="2027-09-24">
+  <owner>fdoray@chromium.org</owner>
+  <owner>qinmin@chromium.org</owner>
+  <owner>chrome-downloads@google.com</owner>
+  <summary>
+    Records the number of downloads loaded from download history for a profile
+    (in DownloadHistory::LoadHistoryDownloads), {Window}. Unlike
+    Download.History.DownloadCount, this excludes rows that are removed instead
+    of being loaded (e.g. overwritten downloads removed by
+    kDeleteOverwrittenDownloads). Used to evaluate the impact of limiting the
+    number and age of downloads kept in history.
+  </summary>
+  <token key="Window">
+    <variant name="" summary="in total"/>
+    <variant name=".Last30Days"
+        summary="restricted to downloads started in the last 30 days"/>
+    <variant name=".Last90Days"
+        summary="restricted to downloads started in the last 90 days"/>
+  </token>
+</histogram>
+
 <histogram name="Download.History.LoadedInSession" enum="BooleanLoaded"
     expires_after="2027-03-18">
   <owner>qinmin@chromium.org</owner>
@@ -719,41 +741,6 @@ chromium-metrics-reviews@google.com.
   <owner>bling-squid-squad@google.com</owner>
   <summary>
     Result when a user attempts to present a USDZ MIME type AR model on iOS.
-  </summary>
-</histogram>
-
-<histogram name="Download.Later.ScheduledDownloadSize" units="Mb"
-    expires_after="2022-05-01">
-  <owner>shaktisahu@chromium.org</owner>
-  <owner>clank-downloads@google.com</owner>
-  <summary>
-    The size of downloads when the user tries to download at a scheduled time.
-    Recorded when the positive button in download later dialog is clicked.
-  </summary>
-</histogram>
-
-<histogram name="Download.Later.UI.DialogChoice{DownloadDialogSource}"
-    enum="DownloadLaterDialogChoice" expires_after="2022-10-09">
-  <owner>shaktisahu@chromium.org</owner>
-  <owner>clank-downloads@google.com</owner>
-  <summary>
-    The user selection in the download later dialog. Recorded when the user
-    starts a download, or clicking the change button on download infobar and
-    download home UI. {DownloadDialogSource}
-  </summary>
-  <token key="DownloadDialogSource">
-    <variant name=".DownloadHome" summary="Download home."/>
-    <variant name=".Infobar" summary="Download infobar."/>
-    <variant name=".Main" summary="Main download later dialog."/>
-  </token>
-</histogram>
-
-<histogram name="Download.Later.UI.Events" enum="DownloadLaterUiEvent"
-    expires_after="2022-10-16">
-  <owner>shaktisahu@chromium.org</owner>
-  <owner>clank-downloads@google.com</owner>
-  <summary>
-    Records events for download later feature in download Android UI.
   </summary>
 </histogram>
 

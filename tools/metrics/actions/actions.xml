@@ -315,6 +315,8 @@ should be able to be added at any place in this file.
   <variant name="_BadgedTranslateManualTrigger"
       summary="For BadgedTranslateManualTrigger feature."/>
   <variant name="_BatterySaverMode" summary="For BatterySaverMode feature."/>
+  <variant name="_BlueBubbleCooldownGroup"
+      summary="Cooldown group for blue bubble IPHs on Android."/>
   <variant name="_Bookmark" summary="For Bookmark feature."/>
   <variant name="_BookmarkBarSimplified"
       summary="For bookmark bar simplified auto-hide toast."/>
@@ -500,6 +502,8 @@ should be able to be added at any place in this file.
       summary="For gesture user edcuation IPH feature."/>
   <variant name="_GlassFrameOptIn"
       summary="For GlassFrame opt-in IPH feature."/>
+  <variant name="_GlassFrameOptOut"
+      summary="For GlassFrame opt-out IPH feature."/>
   <variant name="_GlicPromo" summary="For Glic feature."/>
   <variant name="_GlicPromoAndroid" summary="For Glic promotion on Android."/>
   <variant name="_GlicTrustFirstOnboardingShortcutSnoozePromo"
@@ -534,6 +538,8 @@ should be able to be added at any place in this file.
   <variant name="_IntentChip"
       summary="In product help for opening a webpage in an app using the
                intent chip."/>
+  <variant name="_InterruptiveIphCooldownGroup"
+      summary="Cooldown group for interruptive IPHs on Android."/>
   <variant name="_iOSAddressPromoDesktop"
       summary="For iOSAddressPromoDesktop feature"/>
   <variant name="_iOSAIHubNewBadge" summary="For AI Hub New Badge feature."/>
@@ -803,6 +809,10 @@ should be able to be added at any place in this file.
       summary="For ReadingListInSidePanel feature."/>
   <variant name="_ReadingListMessages"
       summary="For ReadingListMessages feature."/>
+  <variant name="_ReadingModeAiPlayback"
+      summary="For AI playback toggle in Reading Mode feature."/>
+  <variant name="_ReadingModeAiPlaybackSettings"
+      summary="For settings promo after AI playback in Reading Mode feature."/>
   <variant name="_ReadingModeKeyboardShortcut"
       summary="For reading mode keyboard shortcut feature."/>
   <variant name="_ReadingModeLineFocus"
@@ -19237,6 +19247,14 @@ should be able to be added at any place in this file.
   <description>Reported when the user taps the New Feature Badge</description>
 </action>
 
+<action name="MobileAIModeSearchPerformed">
+  <owner>rkgibson@google.com</owner>
+  <owner>pabouchard@google.com</owner>
+  <description>
+    Recorded when a search is performed in AI Mode. iOS only.
+  </description>
+</action>
+
 <action name="MobileAutofillAndPasswordsSettingsBack">
   <owner>jsobiech@google.com</owner>
   <owner>chrome-autofill-team@google.com</owner>
@@ -20427,6 +20445,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiImmersiveLearningCardWebModalOpened">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the Gemini web modal is opened for an immersive learning card
+    (e.g. a quiz). iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiInputPlateAttachmentOptionTapped">
   <owner>joepeplowski@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -20727,6 +20754,15 @@ should be able to be added at any place in this file.
   <owner>bling-alchemy@google.com</owner>
   <description>
     Reported when the user opens a URL from a BWG session. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiWebModalNavigatedToNewTab">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when a navigation in the Gemini web modal closes the modal and
+    opens the URL in a new tab. iOS only.
   </description>
 </action>
 

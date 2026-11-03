@@ -43,7 +43,6 @@ class SessionControllerImpl : public SessionController,
   // SessionController implementation:
   void OnSessionInitialized() override;
   void OnError(ErrorCode error) override;
-  void GetPageContext(FetchCompleteCallback callback) override;
   SessionJournal& GetJournal() override;
   SessionLifecycle GetSessionLifecycle() const override;
   void SetSessionLifecycle(SessionLifecycle lifecycle) override;
@@ -59,20 +58,21 @@ class SessionControllerImpl : public SessionController,
   void OnVoiceFocusedContentsChanged(
       content::WebContents* web_contents) override;
 
-  // TODO(bokan): Android doesn't yet have a session_view so calling
-  // this will crash there.
+  // The contents of the tab this session acts on, or null. Same tab the page
+  // context is read from.
+  content::WebContents* GetVoiceFocusedWebContents();
+
   SessionView& session_view() { return CHECK_DEREF(session_view_.get()); }
   Conversation& conversation() { return CHECK_DEREF(conversation_.get()); }
 
  private:
-  // Invoked by `page_context_monitor_` when the monitored page changes.
-  void OnPageContextChanged();
+  void OnPageContextFetched(const PageContextResult& result);
 
   // Safe because TtcKeyedService owns this object and outlives it. Gets
   // assigned on construction.
   const raw_ref<TtcKeyedService> service_;
 
-  // Never null
+  // Neither is ever null.
   std::unique_ptr<Conversation> conversation_;
   std::unique_ptr<SessionView> session_view_;
 

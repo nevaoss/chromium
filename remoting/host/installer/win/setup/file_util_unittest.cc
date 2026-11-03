@@ -10,13 +10,13 @@
 #include <memory>
 #include <string>
 
+#include "base/containers/flat_set.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/win/scoped_handle.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -38,89 +38,6 @@ inline constexpr auto kSingleCorePayload = std::to_array<const wchar_t*>({
     kTestCoreBinary,
 });
 
-// Intercepts MoveFileExW(..., MOVEFILE_DELAY_UNTIL_REBOOT) calls in unit tests
-// so tests do not mutate HKLM\...\PendingFileRenameOperations on elevated bots,
-// and asserts that MoveFileExW is called with nullptr destination and
-// MOVEFILE_DELAY_UNTIL_REBOOT flags.
-class ScopedInterceptDeleteOnReboot {
- public:
-  ScopedInterceptDeleteOnReboot() {
-    SetMoveFileExCallbackForTesting(base::BindRepeating(
-        &ScopedInterceptDeleteOnReboot::OnMoveFileEx, base::Unretained(this)));
-  }
-
-  ScopedInterceptDeleteOnReboot(const ScopedInterceptDeleteOnReboot&) = delete;
-  ScopedInterceptDeleteOnReboot& operator=(
-      const ScopedInterceptDeleteOnReboot&) = delete;
-
-  ~ScopedInterceptDeleteOnReboot() {
-    SetMoveFileExCallbackForTesting(MoveFileExCallback());
-  }
-
-  int scheduled_count() const { return scheduled_count_; }
-
- private:
-  BOOL OnMoveFileEx(const wchar_t* existing,
-                    const wchar_t* new_name,
-                    DWORD flags) {
-    EXPECT_EQ(new_name, nullptr);
-    EXPECT_EQ(flags, static_cast<DWORD>(MOVEFILE_DELAY_UNTIL_REBOOT));
-    ++scheduled_count_;
-    return TRUE;
-  }
-
-  int scheduled_count_ = 0;
-};
-
-// Simulates the exact Windows kernel lock held by a running executable or
-// loaded DLL:
-// 1. A file handle opened with FILE_SHARE_READ | FILE_SHARE_DELETE (allowing
-//    MoveFileExW rename while preventing CopyFileW overwrite).
-// 2. An active memory-mapped view (preventing DeleteFileW from deleting the
-//    file on disk).
-class ScopedSimulatedLoadedBinary {
- public:
-  explicit ScopedSimulatedLoadedBinary(const base::FilePath& path) {
-    file_.Set(::CreateFileW(path.value().c_str(), GENERIC_READ,
-                            FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr,
-                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
-    if (!file_.is_valid()) {
-      PLOG(ERROR) << "Failed to open file for simulated lock: " << path.value();
-      return;
-    }
-    mapping_.Set(::CreateFileMappingW(file_.Get(), nullptr, PAGE_READONLY, 0, 0,
-                                      nullptr));
-    if (!mapping_.is_valid()) {
-      PLOG(ERROR) << "Failed to create file mapping for: " << path.value();
-      return;
-    }
-    view_ = ::MapViewOfFile(mapping_.Get(), FILE_MAP_READ, 0, 0, 0);
-    if (!view_) {
-      PLOG(ERROR) << "Failed to map view of file for: " << path.value();
-    }
-  }
-
-  ScopedSimulatedLoadedBinary(const ScopedSimulatedLoadedBinary&) = delete;
-  ScopedSimulatedLoadedBinary& operator=(const ScopedSimulatedLoadedBinary&) =
-      delete;
-
-  ~ScopedSimulatedLoadedBinary() {
-    if (view_) {
-      ::UnmapViewOfFile(view_);
-      view_ = nullptr;
-    }
-  }
-
-  bool is_valid() const { return view_ != nullptr; }
-
- private:
-  base::win::ScopedHandle file_;
-  base::win::ScopedHandle mapping_;
-  // `view_` is an OS memory-mapped section address returned by MapViewOfFile,
-  // not a PartitionAlloc heap allocation.
-  RAW_PTR_EXCLUSION void* view_ = nullptr;
-};
-
 }  // namespace
 
 class FileUtilTest : public testing::Test {
@@ -130,12 +47,73 @@ class FileUtilTest : public testing::Test {
     source_dir_ = temp_dir_.GetPath().Append(L"source");
     install_dir_ = temp_dir_.GetPath().Append(L"install");
     ASSERT_TRUE(base::CreateDirectory(source_dir_));
+
+    SetCopyFileCallbackForTesting(
+        base::BindRepeating(&FileUtilTest::OnCopyFile, base::Unretained(this)));
+    SetDeleteFileCallbackForTesting(base::BindRepeating(
+        &FileUtilTest::OnDeleteFile, base::Unretained(this)));
+    SetMoveFileExCallbackForTesting(base::BindRepeating(
+        &FileUtilTest::OnMoveFileEx, base::Unretained(this)));
   }
 
-  ScopedInterceptDeleteOnReboot intercept_delete_on_reboot_;
+  void TearDown() override {
+    SetCopyFileCallbackForTesting(CopyFileCallback());
+    SetDeleteFileCallbackForTesting(DeleteFileCallback());
+    SetMoveFileExCallbackForTesting(MoveFileExCallback());
+  }
+
+  // Simulates that `path` is in use by an active process:
+  // - Direct CopyFile to `path` fails (returns false).
+  // - DeleteFile on `path` fails (returns false).
+  // - MoveFileExW on `path` succeeds (moves file on disk and transfers lock).
+  void SimulateFileLocked(const base::FilePath& path) {
+    locked_files_.insert(path);
+  }
+
+  void SimulateFileUnlocked(const base::FilePath& path) {
+    locked_files_.erase(path);
+  }
+
+  int scheduled_reboot_delete_count() const { return reboot_delete_count_; }
+
+ private:
+  bool OnCopyFile(const base::FilePath& from, const base::FilePath& to) {
+    if (locked_files_.contains(to)) {
+      return false;
+    }
+    return base::CopyFile(from, to);
+  }
+
+  bool OnDeleteFile(const base::FilePath& path) {
+    if (locked_files_.contains(path)) {
+      return false;
+    }
+    return base::DeleteFile(path);
+  }
+
+  BOOL OnMoveFileEx(const wchar_t* existing,
+                    const wchar_t* new_name,
+                    DWORD flags) {
+    if (flags & MOVEFILE_DELAY_UNTIL_REBOOT) {
+      EXPECT_EQ(new_name, nullptr);
+      ++reboot_delete_count_;
+      return TRUE;
+    }
+    base::FilePath from(existing);
+    base::FilePath to(new_name);
+    if (locked_files_.contains(from)) {
+      locked_files_.erase(from);
+      locked_files_.insert(to);
+    }
+    return ::MoveFileExW(existing, new_name, flags);
+  }
+
+ protected:
   base::ScopedTempDir temp_dir_;
   base::FilePath source_dir_;
   base::FilePath install_dir_;
+  base::flat_set<base::FilePath> locked_files_;
+  int reboot_delete_count_ = 0;
 };
 
 TEST_F(FileUtilTest, DeployAndUninstallPayloadFiles_FreshInstallAndCleanup) {
@@ -144,7 +122,7 @@ TEST_F(FileUtilTest, DeployAndUninstallPayloadFiles_FreshInstallAndCleanup) {
   }
 
   EXPECT_TRUE(DeployPayloadFiles(source_dir_, install_dir_, kTestPayloadFiles));
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 0);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 0);
 
   for (const wchar_t* name : kTestPayloadFiles) {
     std::string content;
@@ -158,7 +136,7 @@ TEST_F(FileUtilTest, DeployAndUninstallPayloadFiles_FreshInstallAndCleanup) {
     ASSERT_TRUE(base::WriteFile(source_dir_.Append(name), "v2_content"));
   }
   EXPECT_TRUE(DeployPayloadFiles(source_dir_, install_dir_, kTestPayloadFiles));
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 0);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 0);
   EXPECT_FALSE(base::PathExists(install_dir_.Append(kTestCoreOld0)));
 
   for (const wchar_t* name : kTestPayloadFiles) {
@@ -215,7 +193,7 @@ TEST_F(FileUtilTest,
   ASSERT_TRUE(exclusive_lock.is_valid());
 
   EXPECT_FALSE(InstallFileWithStagedRename(src_file, dst_file));
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 0);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 0);
   EXPECT_FALSE(base::PathExists(old_file_0));
 }
 
@@ -231,12 +209,12 @@ TEST_F(FileUtilTest,
   ASSERT_TRUE(base::WriteFile(src_file, "v2_binary"));
   ASSERT_TRUE(base::WriteFile(dst_file, "v1_binary"));
 
-  auto locked_v1 = std::make_unique<ScopedSimulatedLoadedBinary>(dst_file);
-  ASSERT_TRUE(locked_v1->is_valid());
+  // Simulate v1 being locked by an active process.
+  SimulateFileLocked(dst_file);
 
   // First update: v1 -> remoting_core.dll.old, v2 -> remoting_core.dll.
   EXPECT_TRUE(InstallFileWithStagedRename(src_file, dst_file));
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 1);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 1);
 
   std::string dst_content;
   EXPECT_TRUE(base::ReadFileToString(dst_file, &dst_content));
@@ -245,12 +223,11 @@ TEST_F(FileUtilTest,
 
   // Now lock v2 while v1 (remoting_core.dll.old) is STILL locked, and perform
   // a second update (v3).
-  auto locked_v2 = std::make_unique<ScopedSimulatedLoadedBinary>(dst_file);
-  ASSERT_TRUE(locked_v2->is_valid());
+  SimulateFileLocked(dst_file);
   ASSERT_TRUE(base::WriteFile(src_file, "v3_binary"));
 
   EXPECT_TRUE(InstallFileWithStagedRename(src_file, dst_file));
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 2);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 2);
 
   EXPECT_TRUE(base::ReadFileToString(dst_file, &dst_content));
   EXPECT_EQ(dst_content, "v3_binary");
@@ -259,13 +236,13 @@ TEST_F(FileUtilTest,
 
   // Release only v1's lock and verify CleanupOldFiles deletes old_file_0 while
   // keeping old_file_1 (still locked by v2).
-  locked_v1.reset();
+  SimulateFileUnlocked(old_file_0);
   CleanupOldFiles(install_dir_);
   EXPECT_FALSE(base::PathExists(old_file_0));
   EXPECT_TRUE(base::PathExists(old_file_1));
 
   // Release v2's lock and verify CleanupOldFiles deletes old_file_1.
-  locked_v2.reset();
+  SimulateFileUnlocked(old_file_1);
   CleanupOldFiles(install_dir_);
   EXPECT_FALSE(base::PathExists(old_file_1));
 }
@@ -290,7 +267,7 @@ TEST_F(FileUtilTest, UninstallPayloadFiles_PreservesDirectoryWithExtraFiles) {
   EXPECT_TRUE(UninstallPayloadFiles(install_dir_, kSingleCorePayload));
   EXPECT_FALSE(base::PathExists(install_dir_.Append(kTestCoreBinary)));
   EXPECT_TRUE(base::PathExists(extra_file));
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 1);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 1);
 }
 
 TEST_F(FileUtilTest, UninstallPayloadFiles_LockedFileScheduledForReboot) {
@@ -302,18 +279,16 @@ TEST_F(FileUtilTest, UninstallPayloadFiles_LockedFileScheduledForReboot) {
   base::FilePath installed_file = install_dir_.Append(kTestCoreBinary);
   base::FilePath old_file = install_dir_.Append(kTestCoreOld0);
 
-  auto locked_file =
-      std::make_unique<ScopedSimulatedLoadedBinary>(installed_file);
-  ASSERT_TRUE(locked_file->is_valid());
+  SimulateFileLocked(installed_file);
 
   EXPECT_TRUE(UninstallPayloadFiles(install_dir_, kSingleCorePayload));
   // Both the renamed `.old` file and `install_dir` should be scheduled for
   // reboot removal.
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 2);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 2);
   EXPECT_FALSE(base::PathExists(installed_file));
   EXPECT_TRUE(base::PathExists(old_file));
 
-  locked_file.reset();
+  SimulateFileUnlocked(old_file);
 }
 
 TEST_F(FileUtilTest,
@@ -335,7 +310,7 @@ TEST_F(FileUtilTest,
   EXPECT_FALSE(UninstallPayloadFiles(install_dir_, kSingleCorePayload));
   // Both the locked original file and install_dir should be scheduled for
   // reboot removal.
-  EXPECT_EQ(intercept_delete_on_reboot_.scheduled_count(), 2);
+  EXPECT_EQ(scheduled_reboot_delete_count(), 2);
   EXPECT_TRUE(base::PathExists(installed_file));
 
   locked_file.Close();

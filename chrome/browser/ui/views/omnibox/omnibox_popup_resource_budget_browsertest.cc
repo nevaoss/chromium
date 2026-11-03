@@ -18,6 +18,7 @@
 #include "base/callback_list.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
+#include "base/memory/raw_ptr.h"
 #include "base/process/process.h"
 #include "base/process/process_handle.h"
 #include "base/test/scoped_feature_list.h"
@@ -52,7 +53,9 @@ namespace {
 
 // Classic (or full) popup plus the AIM popup, created eagerly per window.
 constexpr size_t kPopupWebContentsPerWindow = 2;
-constexpr size_t kPopupWidgetsPerWindow = 2;
+// Widgets are created on first show, so only a popup that is showing (at most
+// the focused window's, e.g. the full popup on startup) has one.
+constexpr size_t kMaxPopupWidgets = 1;
 // AIM-ineligible profiles still get an AIM popup they can never show.
 constexpr size_t kPopupWebContentsPerAimIneligibleWindow = 2;
 // Top-chrome WebUIs of one profile share a renderer process.
@@ -61,8 +64,8 @@ constexpr size_t kPopupRenderProcessesPerProfile = 1;
 constexpr size_t kExtraWindows = 4;
 
 struct PopupResources {
-  std::vector<content::WebContents*> web_contents;
-  std::set<content::RenderProcessHost*> processes;
+  std::vector<raw_ptr<content::WebContents>> web_contents;
+  std::set<raw_ptr<content::RenderProcessHost>> processes;
   size_t widgets = 0;
 };
 
@@ -213,7 +216,7 @@ class OmniboxPopupResourceBudgetBrowserTest
     PopupResources resources = CountPopupResources(profile);
     LogPopupResources(label, windows, resources);
     EXPECT_LE(resources.web_contents.size(), windows * web_contents_per_window);
-    EXPECT_LE(resources.widgets, windows * kPopupWidgetsPerWindow);
+    EXPECT_LE(resources.widgets, kMaxPopupWidgets);
     EXPECT_LE(resources.processes.size(), kPopupRenderProcessesPerProfile);
   }
 

@@ -36,6 +36,7 @@ if (_is_default_toolchain) {
   import("//chrome/common/features.gni")
   import("//chrome/version.gni")
   import("//components/autofill/android/browser/buildflags.gni")
+  import("//components/module_installer/android/module_interface_processor.gni")
   import("//components/password_manager/core/browser/buildflags.gni")
   import("//content/public/common/features.gni")
   import("//device/vr/buildflags/buildflags.gni")
@@ -436,6 +437,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/device_reauth/android:java",
       "//chrome/browser/devtools/android:java",
       "//chrome/browser/download/android:factory_java",
+      "//chrome/browser/download/android:features_java",
       "//chrome/browser/download/android:file_provider_java",
       "//chrome/browser/download/android:java",
       "//chrome/browser/download/android:java_resources",
@@ -551,6 +553,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/touch_to_fill/autofill/android/internal:java",
       "//chrome/browser/touch_to_fill/common/android:java",
       "//chrome/browser/translate/android:java",
+      "//chrome/browser/ttc/android:java",
       "//chrome/browser/ui/android/actions:java",
       "//chrome/browser/ui/android/actions:tabswitcher_java",
       "//chrome/browser/ui/android/ai_overlay_dialog:java",
@@ -729,7 +732,6 @@ if (_is_default_toolchain) {
       "//components/metrics:metrics_java",
       "//components/minidump_uploader:minidump_uploader_java",
       "//components/module_installer/android:module_installer_java",
-      "//components/module_installer/android:module_interface_java",
       "//components/navigation_interception/android:navigation_interception_java",
       "//components/ntp_tiles:mojo_bindings_java",
       "//components/offline_items_collection/core:core_java",
@@ -914,9 +916,6 @@ if (_is_default_toolchain) {
     sources += internal_tab_management_java_sources
 
     srcjar_deps += [ ":chrome_jni_headers" ]
-
-    annotation_processor_deps =
-        [ "//components/module_installer/android:module_interface_processor" ]
 
     resources_package = "org.chromium.chrome"
 
@@ -1174,7 +1173,6 @@ if (_is_default_toolchain) {
       "junit:chrome_junit_tests_org.chromium.chrome.browser.ui",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.webapps",
       "junit:chrome_junit_tests_various",
-      "//chrome/android/features/android_library_factory:junit_tests",
       "//chrome/browser/actor/android:junit",
       "//chrome/browser/android/browserservices/intents:junit",
       "//chrome/browser/android/cookies:junit",
@@ -1339,11 +1337,18 @@ if (_is_default_toolchain) {
     }
   }
 
+  module_interface_processor("xr_module_interface") {
+    sources = [
+      "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleProvider.java",
+    ]
+  }
+
   android_library("xr_java") {
     sources = [
       "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleBridge.java",
       "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleProvider.java",
     ]
+    srcjar_deps = [ ":xr_module_interface" ]
 
     deps = [
       "//base:base_java",
@@ -1356,9 +1361,6 @@ if (_is_default_toolchain) {
       "//third_party/jni_zero:jni_zero_java",
       "//ui/android:ui_java",
     ]
-
-    annotation_processor_deps =
-        [ "//components/module_installer/android:module_interface_processor" ]
   }
 
   # Files used by chrome integration and unit javatests.
@@ -2127,13 +2129,12 @@ if (_is_default_toolchain) {
     bundle_name = "ChromePublic"
   }
 
-  if (android_64bit_target_cpu && defined(android_app_secondary_abi)) {
-    chrome_public_apk_or_module_tmpl("chrome_public_32_apk") {
-      target_type = "android_apk"
-      apk_name = "ChromePublic32"
-      is_64_bit_browser = false
-    }
+  create_app_bundle_minimal_apks("chrome_public_minimal_apks") {
+    deps = [ ":chrome_public_bundle" ]
+    bundle_path = "$root_build_dir/apks/ChromePublic.aab"
+  }
 
+  if (android_64bit_target_cpu && defined(android_app_secondary_abi)) {
     chrome_public_bundle("chrome_public_32_bundle") {
       bundle_name = "ChromePublic32"
       is_64_bit_browser = false
@@ -2791,89 +2792,54 @@ if (_is_default_toolchain) {
 
     # Used for binary size monitoring things:
     if (is_official_build && defined(android_app_secondary_abi)) {
-      write_ssargs_trichrome("ssargs_trichrome") {
-        ssargs_path = "$root_build_dir/apks/Trichrome.ssargs"
+      write_ssargs("ssargs_chrome_and_webview_64") {
+        ssargs_path = "$root_build_dir/apks/ChromeAndWebView64.ssargs"
         abi_filter = android_app_abi
-        trichrome_library_basename = "TrichromeLibrary.apk"
-        trichrome_chrome_basename = "TrichromeChrome.minimal.apks"
-        trichrome_webview_basename = "TrichromeWebView.minimal.apks"
+        no_java = true
+        chrome_basename = "ChromePublic.minimal.apks"
+        webview_basename = "SystemWebView64.minimal.apks"
       }
 
-      # Measure _64 rather than _64_32 in order to save on compile time.
-      # The secondary ABI can be measured via trichrome_32_minimal_apks.
-      write_ssargs_trichrome("ssargs_trichrome_64") {
-        ssargs_path = "$root_build_dir/apks/Trichrome64.ssargs"
-        abi_filter = android_app_abi
-        trichrome_library_basename = "TrichromeLibrary64.apk"
-        trichrome_chrome_basename = "TrichromeChrome64.minimal.apks"
-        trichrome_webview_basename = "TrichromeWebView64.minimal.apks"
-      }
-
-      create_app_bundle_minimal_apks("trichrome_chrome_64_minimal_apks") {
-        deps = [ ":trichrome_chrome_64_bundle" ]
-        bundle_path = "$root_build_dir/apks/TrichromeChrome64.aab"
-      }
-
-      group("trichrome_64_minimal_apks") {
+      group("chrome_and_webview_64_minimal_apks") {
         deps = [
-          ":trichrome_chrome_64_minimal_apks",
-          ":trichrome_library_64_apk",
-          "//android_webview:trichrome_webview_64_minimal_apks",
+          ":chrome_public_minimal_apks",
+          "//android_webview:system_webview_64_minimal_apks",
         ]
       }
 
-      _trichrome_library_32_basename = "TrichromeLibrary32.apk"
-      _trichrome_chrome_32_basename = "TrichromeChrome32.minimal.apks"
-      _trichrome_chrome_32_bundle = "TrichromeChrome32.aab"
-      _trichrome_webview_32_basename = "TrichromeWebView32.minimal.apks"
-      _trichrome_webview_32_bundle = "TrichromeWebView32.aab"
-      _ssargs_32_filename = "Trichrome32.ssargs"
+      _chrome_32_basename = "ChromePublic32.minimal.apks"
+      _chrome_32_bundle = "ChromePublic32.aab"
+      _webview_32_basename = "SystemWebView32.minimal.apks"
+      _webview_32_bundle = "SystemWebView32.aab"
+      _ssargs_32_filename = "ChromeAndWebView32.ssargs"
 
-      write_ssargs_trichrome("ssargs_trichrome_32") {
+      write_ssargs("ssargs_chrome_and_webview_32") {
         ssargs_path = "$root_build_dir/apks/${_ssargs_32_filename}"
         abi_filter = android_app_secondary_abi
         symbols_dir = "android_clang_arm/lib.unstripped"
-        trichrome_library_basename = _trichrome_library_32_basename
-        trichrome_chrome_basename = _trichrome_chrome_32_basename
-        trichrome_webview_basename = _trichrome_webview_32_basename
+        chrome_basename = _chrome_32_basename
+        webview_basename = _webview_32_basename
       }
 
-      create_app_bundle_minimal_apks("trichrome_chrome_32_minimal_apks") {
-        deps = [ ":trichrome_chrome_32_bundle" ]
-        bundle_path = "$root_build_dir/apks/TrichromeChrome32.aab"
-      }
-
-      group("trichrome_32_minimal_apks") {
+      group("chrome_and_webview_32_minimal_apks") {
         deps = [
-          ":trichrome_chrome_32_minimal_apks",
-          ":trichrome_library_32_apk",
-          "//android_webview:trichrome_webview_32_minimal_apks",
+          ":chrome_public_32_minimal_apks",
+          "//android_webview:system_webview_32_minimal_apks",
         ]
       }
-      _trichrome_library_basename_for_size = _trichrome_library_32_basename
-      _trichrome_chrome_basename_for_size = _trichrome_chrome_32_basename
-      _trichrome_chrome_bundle_for_size = _trichrome_chrome_32_bundle
-      _trichrome_webview_basename_for_size = _trichrome_webview_32_basename
-      _trichrome_webview_bundle_for_size = _trichrome_webview_32_bundle
-      _symbol_dir_for_size = "android_clang_arm/lib.unstripped"
-      _ssargs_filename_for_size = _ssargs_32_filename
 
-      android_resource_sizes_test("resource_sizes_trichrome") {
-        apk_name = "Trichrome"
-        trichrome_library_path =
-            "$root_build_dir/apks/$_trichrome_library_basename_for_size"
-        trichrome_chrome_path =
-            "$root_build_dir/apks/$_trichrome_chrome_basename_for_size"
-        trichrome_webview_path =
-            "$root_build_dir/apks/$_trichrome_webview_basename_for_size"
-        data_deps = [ ":trichrome_32_minimal_apks" ]
+      android_resource_sizes_test("resource_sizes_chrome_and_webview") {
+        apk_name = "ChromeAndWebView"
+        chrome_path = "$root_build_dir/apks/$_chrome_32_basename"
+        webview_path = "$root_build_dir/apks/$_webview_32_basename"
+        data_deps = [ ":chrome_and_webview_32_minimal_apks" ]
       }
 
-      android_size_bot_config("resource_size_config_trichrome") {
-        name = "Trichrome"
+      android_size_bot_config("resource_size_config") {
+        name = "ChromeAndWebView"
         mapping_files = [
-          "apks/TrichromeChrome32.aab.mapping",
-          "apks/TrichromeWebView32.aab.mapping",
+          "apks/ChromePublic32.aab.mapping",
+          "apks/SystemWebView32.aab.mapping",
         ]
 
         # Save mapping files since they are needed by:
@@ -2881,37 +2847,41 @@ if (_is_default_toolchain) {
         # 2) SuperSize adding disassembly to symbols.
         # Save apk and unstripped library because they are needed for collecting
         # disassembly of large symbols.
-        archive_files = mapping_files + [
-                          "apks/$_trichrome_library_basename_for_size",
-                          "apks/$_trichrome_chrome_basename_for_size",
-                          "apks/$_trichrome_chrome_bundle_for_size.R.txt",
-                          "apks/$_trichrome_webview_basename_for_size",
-                          "apks/$_trichrome_webview_bundle_for_size.R.txt",
-                          "${_symbol_dir_for_size}/libmonochrome.so",
-                        ]
+        archive_files =
+            mapping_files + [
+              "apks/$_chrome_32_basename",
+              "apks/$_chrome_32_bundle.R.txt",
+              "apks/$_webview_32_basename",
+              "apks/$_webview_32_bundle.R.txt",
+              "android_clang_arm/lib.unstripped/libchrome.so",
+              "android_clang_arm/lib.unstripped/libwebviewchromium.so",
+            ]
         to_resource_sizes_py = {
           apk_name = "apks/$target_name"
-          trichrome_library = "apks/$_trichrome_library_basename_for_size"
-          trichrome_chrome = "apks/$_trichrome_chrome_basename_for_size"
-          trichrome_webview = "apks/$_trichrome_webview_basename_for_size"
+          chrome = "apks/$_chrome_32_basename"
+          webview = "apks/$_webview_32_basename"
         }
         to_resource_sizes_py_64 = {
-          apk_name = "apks/TrichromeLibrary64.apk"
+          apk_name = "apks/ChromeAndWebView64"
+          chrome = "apks/ChromePublic.minimal.apks"
+          webview = "apks/SystemWebView64.minimal.apks"
         }
-        supersize_input_file = "apks/$_ssargs_filename_for_size"
+        supersize_input_file = "apks/$_ssargs_32_filename"
       }
 
       # This one is used when arm32 shows no regression, but arm64 does. In
       # this case supersize is run a second time with this config.
-      android_size_bot_config("arm64_resource_size_config_trichrome") {
-        name = "TrichromeLibrary64"
+      android_size_bot_config("arm64_resource_size_config") {
+        name = "ChromeAndWebView64"
         mapping_files = []
 
         archive_files = [
-          "apks/TrichromeLibrary64.apk",
-          "lib.unstripped/libmonochrome_64.so",
+          "apks/ChromePublic.minimal.apks",
+          "apks/SystemWebView64.minimal.apks",
+          "lib.unstripped/libchrome.so",
+          "lib.unstripped/libwebviewchromium.so",
         ]
-        supersize_input_file = "apks/TrichromeLibrary64.apk"
+        supersize_input_file = "apks/ChromeAndWebView64.ssargs"
       }
     }
   }

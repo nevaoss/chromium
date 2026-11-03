@@ -598,6 +598,7 @@ if (!is_android) {
       "//chrome/browser/tab_group_sync:factories",
       "//chrome/browser/task_manager",
       "//chrome/browser/themes",
+      "//chrome/browser/trusted_vault",
       "//chrome/browser/ui:accelerator_table",
       "//chrome/browser/ui:browser_actions",
       "//chrome/browser/ui:browser_commands",
@@ -622,6 +623,7 @@ if (!is_android) {
       "//chrome/browser/ui/contextual_search",
       "//chrome/browser/ui/find_bar",
       "//chrome/browser/ui/interaction",
+      "//chrome/browser/ui/javascript_dialogs",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/passwords",
       "//chrome/browser/ui/performance_controls",
@@ -685,6 +687,7 @@ if (!is_android) {
       "//components/history/core/browser",
       "//components/history/core/common",
       "//components/image_fetcher/core",
+      "//components/javascript_dialogs",
       "//components/lens",
       "//components/metrics:content",
       "//components/metrics_services_manager",
@@ -707,6 +710,7 @@ if (!is_android) {
       "//components/tab_groups",
       "//components/tabs:impl",
       "//components/wallet/core/common:features",
+      "//components/web_modal",
       "//components/webapps/browser",
       "//net",
       "//printing/buildflags",
@@ -792,7 +796,12 @@ if (!is_android) {
     }
 
     if (enable_extensions_core) {
-      deps += [ "//chrome/browser/extensions" ]
+      deps += [
+        "//chrome/browser/extensions",
+        "//chrome/browser/extensions/api/web_navigation",
+        "//extensions/browser",
+        "//extensions/common:mojom",
+      ]
     }
 
     if (enable_offline_pages) {
@@ -919,7 +928,6 @@ if (!is_android) {
       "//chrome/browser/profiles:profile",
       "//chrome/browser/profiles/keep_alive",
       "//chrome/browser/sync",
-      "//chrome/browser/ui",
       "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
@@ -997,7 +1005,6 @@ if (!is_android) {
     sources = [
       "inactive_window_mouse_event_controller_unittest.cc",
       "split_view_iph_controller_unittest.cc",
-      "tab_collection_storage_unittest.cc",
       "tab_collection_unittest.cc",
       "tab_group_deletion_dialog_controller_unittest.cc",
       "tab_iterator_unittest.cc",

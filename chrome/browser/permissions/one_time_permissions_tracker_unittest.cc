@@ -313,6 +313,33 @@ TEST_F(OneTimePermissionsTrackerTest, PageTrackerSameOriginNavigation) {
   factory_tracker->RemoveObserver(&observer);
 }
 
+// The helper must also track the primary page that already exists when it is
+// attached (e.g. the initial empty document of a renderer-created popup), since
+// PrimaryPageChanged() for that page fired before the helper existed.
+TEST_F(OneTimePermissionsTrackerTest, PageTrackerCreatedForExistingPage) {
+  const GURL origin_url("https://example.com");
+  const url::Origin origin = url::Origin::Create(origin_url);
+
+  OneTimePermissionsTrackerObserverForTesting observer;
+  auto* factory_tracker =
+      OneTimePermissionsTrackerFactory::GetForBrowserContext(profile());
+  factory_tracker->AddObserver(&observer);
+
+  // Commit a page before the helper is attached.
+  NavigateAndCommit(origin_url);
+  OneTimePermissionsTrackerHelper::CreateForWebContents(web_contents());
+  EXPECT_EQ(observer.NotifiedCountLastPageClosed(), 0u);
+
+  // Navigating to a different origin should deactivate the existing page and
+  // fire OnLastPageFromOriginClosed for example.com.
+  NavigateAndCommit(GURL("https://other.com"));
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return observer.NotifiedCountLastPageClosed() == 1u; }));
+  EXPECT_EQ(observer.LastNotifiedOrigin(), origin);
+
+  factory_tracker->RemoveObserver(&observer);
+}
+
 TEST_F(OneTimePermissionsTrackerTest, PageTrackerDiscard) {
   OneTimePermissionsTrackerHelper::CreateForWebContents(web_contents());
 
@@ -380,16 +407,57 @@ TEST_F(OneTimePermissionsTrackerTest, PageTrackerPageCreatedInBackground) {
 
   NavigateAndCommit(origin_url);
 
-  EXPECT_EQ(observer.NotifiedCountShortTimeout(), 0u);
-  // Fast forward time by less than the timeout.
-  task_environment()->FastForwardBy(permissions::kOneTimePermissionTimeout -
+  // A page created in background never acquired a foreground condition, so no
+  // background countdown is started.
+  task_environment()->FastForwardBy(permissions::kOneTimePermissionTimeout +
                                     base::Seconds(1));
   EXPECT_EQ(observer.NotifiedCountShortTimeout(), 0u);
 
-  // Fast forward time by more than the timeout.
+  // Once the page is shown and hidden again, the countdown starts.
+  web_contents()->WasShown();
+  web_contents()->WasHidden();
+  task_environment()->FastForwardBy(permissions::kOneTimePermissionTimeout -
+                                    base::Seconds(1));
+  EXPECT_EQ(observer.NotifiedCountShortTimeout(), 0u);
   task_environment()->FastForwardBy(base::Seconds(2));
   EXPECT_EQ(observer.NotifiedCountShortTimeout(), 1u);
   EXPECT_EQ(observer.LastNotifiedOrigin(), origin);
+
+  factory_tracker->RemoveObserver(&observer);
+}
+
+// Regression test for crbug.com/563176035: a same-origin navigation committed
+// while the tab is hidden must not restart the running background countdown.
+TEST_F(OneTimePermissionsTrackerTest,
+       PageTrackerHiddenNavigationDoesNotResetTimer) {
+  OneTimePermissionsTrackerHelper::CreateForWebContents(web_contents());
+
+  const GURL origin_url1("https://example.com/page1.html");
+  const GURL origin_url2("https://example.com/page2.html");
+  const url::Origin origin = url::Origin::Create(origin_url1);
+
+  OneTimePermissionsTrackerObserverForTesting observer;
+  auto* factory_tracker =
+      OneTimePermissionsTrackerFactory::GetForBrowserContext(profile());
+  factory_tracker->AddObserver(&observer);
+
+  NavigateAndCommit(origin_url1);
+  web_contents()->WasHidden();
+
+  // Let most of the countdown elapse.
+  task_environment()->FastForwardBy(permissions::kOneTimePermissionTimeout -
+                                    base::Seconds(10));
+  ASSERT_EQ(observer.NotifiedCountShortTimeout(), 0u);
+
+  // Navigate same-origin while hidden.
+  NavigateAndCommit(origin_url2);
+  ASSERT_EQ(observer.NotifiedCountShortTimeout(), 0u);
+
+  // The countdown should still fire at the original deadline.
+  task_environment()->FastForwardBy(base::Seconds(11));
+  EXPECT_EQ(observer.NotifiedCountShortTimeout(), 1u);
+  EXPECT_EQ(observer.LastNotifiedOrigin(), origin);
+  EXPECT_EQ(observer.NotifiedCountLastPageClosed(), 0u);
 
   factory_tracker->RemoveObserver(&observer);
 }

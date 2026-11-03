@@ -198,6 +198,7 @@ export class MostVisitedElement extends MostVisitedElementBase {
         type: Boolean,
         reflect: true,
       },
+      inReorderMode_: {type: Boolean, reflect: true},
     };
   }
 
@@ -216,6 +217,7 @@ export class MostVisitedElement extends MostVisitedElementBase {
   private accessor showAll_: boolean = false;
   protected accessor showShowMore_: boolean = false;
   protected accessor showShowLess_: boolean = false;
+  protected accessor inReorderMode_: boolean = false;
   protected accessor useWhiteTileIcon_: boolean = false;
   protected accessor columnCount_: number = 3;
   protected accessor rowCount_: number = 1;
@@ -340,7 +342,10 @@ export class MostVisitedElement extends MostVisitedElementBase {
       this.isDark_ = this.computeIsDark_();
     }
 
-    if (changedPrivateProperties.has('info_') && this.info_ !== null) {
+    // Re-slice `tiles_` when `maxTiles` updates dynamically.
+    if ((changedPrivateProperties.has('info_') ||
+         changedProperties.has('maxTiles')) &&
+        this.info_ !== null) {
       this.visible_ = this.info_.visible;
       this.customLinksEnabled_ = this.info_.customLinksEnabled;
       this.enterpriseShortcutsEnabled_ = this.info_.enterpriseShortcutsEnabled;
@@ -999,6 +1004,13 @@ export class MostVisitedElement extends MostVisitedElementBase {
     this.$.dialog.showModal();
   }
 
+  protected async onReorderClick_() {
+    this.$.actionMenu.close();
+    this.inReorderMode_ = true;
+    await this.updateComplete;
+    this.tileFocus_(this.actionMenuTargetIndex_);
+  }
+
   protected onRestoreDefaultsClick_() {
     if (!this.$.toastManager.isToastOpen || this.$.toastManager.slottedHidden) {
       return;
@@ -1276,6 +1288,13 @@ export class MostVisitedElement extends MostVisitedElementBase {
 
   protected getRemoveButtonText_(title: string): string {
     return this.i18n('linkRemoveA11y', htmlEscape(title));
+  }
+
+  protected getTileAriaLabel_(title: string): string {
+    if (this.shortcutsReorderEnabled && this.inReorderMode_) {
+      return this.i18n('shortcutReorderA11y', htmlEscape(title));
+    }
+    return title;
   }
 
   protected isFromEnterpriseShortcut_(source: number) {

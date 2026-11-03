@@ -145,6 +145,8 @@ chromium-metrics-reviews@google.com.
       summary="What's New badge for Reading Mode"/>
   <variant name="IPH_BadgedReadingList" summary="badged reading list"/>
   <variant name="IPH_BatterySaverMode" summary="battery saver mode"/>
+  <variant name="IPH_BlueBubbleCooldownGroup"
+      summary="Cooldown group for blue bubble IPHs on Android."/>
   <variant name="IPH_Bookmark" summary="bookmark"/>
   <variant name="IPH_BookmarkBarSimplified"
       summary="bookmark bar simplified auto-hide toast"/>
@@ -316,6 +318,8 @@ chromium-metrics-reviews@google.com.
       summary="IPH for gesture user education"/>
   <variant name="IPH_GlassFrameOptIn"
       summary="IPH for opting into the transparent glass frame tab styling"/>
+  <variant name="IPH_GlassFrameOptOut"
+      summary="IPH for opting out of the glass frame"/>
   <variant name="IPH_GlicPromo" summary="Glic promotion"/>
   <variant name="IPH_GlicPromoAndroid" summary="Glic promotion on Android"/>
   <variant name="IPH_GlicTrustFirstOnboardingShortcutSnoozePromo"
@@ -346,6 +350,8 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_IncognitoWindow" summary="incognito window"/>
   <variant name="IPH_InstanceSwitcher" summary="instance switcher"/>
   <variant name="IPH_IntentChip" summary="opening a webpage in an app"/>
+  <variant name="IPH_InterruptiveIphCooldownGroup"
+      summary="Cooldown group for interruptive IPHs on Android."/>
   <variant name="IPH_iOSAddressPromoDesktop"
       summary="showing the iOS address promo on desktop"/>
   <variant name="IPH_iOSAIHubNewBadge"
@@ -653,6 +659,10 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_ReadingMode"
       summary="educating users to click the side panel icon to open reading
                mode"/>
+  <variant name="IPH_ReadingModeAiPlayback"
+      summary="promotes the AI playback toggle in Reading Mode"/>
+  <variant name="IPH_ReadingModeAiPlaybackSettings"
+      summary="promotes Reading Mode settings after trying AI playback"/>
   <variant name="IPH_ReadingModeKeyboardShortcut"
       summary="promotes the keyboard shortcut for reading mode"/>
   <variant name="IPH_ReadingModeLineFocus"

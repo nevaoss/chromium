@@ -43,6 +43,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/views/location_bar/lens_overlay_homework_page_action_controller.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/contextual_search/contextual_search_service.h"
@@ -556,7 +557,6 @@ class ContextualTasksLensInteractionBrowserTestBase
         .ExtractBool();
   }
 
-
   // Lens overlay takes a screenshot of the tab. In order to take a screenshot
   // the tab must not be about:blank and must be painted. By default opens in
   // the current tab.
@@ -939,7 +939,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       std::move(region), /*is_click=*/false);
 
-
   // This should trigger the logic to capture the region, but the overlay should
   // remain open. It should also open the side panel.
   ASSERT_TRUE(
@@ -978,7 +977,6 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensInteractionBrowserTest,
       lens::mojom::CenterRotatedBox_CoordinateType::kNormalized;
   controller->lens_overlay_controller()->IssueLensRegionRequestForTesting(
       std::move(region), /*is_click=*/false);
-
 
   // This should trigger the logic to capture the region, but the overlay should
   // remain open. It should also open the side panel.
@@ -1293,6 +1291,26 @@ IN_PROC_BROWSER_TEST_F(LensSearchControllerStartZeroStateSessionTest,
 }
 
 IN_PROC_BROWSER_TEST_F(LensSearchControllerStartZeroStateSessionTest,
+                       ExecAskGoogleAboutThisPageFromAppMenuOpensSidePanel) {
+  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  chrome::ExecAskGoogleAboutThisPage(
+      browser()->GetActiveTabInterface()->GetBrowserWindowInterface(),
+      lens::LensOverlayInvocationSource::kAppMenu);
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return IsContextualTasksSidePanelOpen(); }));
+
+  auto* panel_controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser());
+  ASSERT_TRUE(panel_controller);
+  auto* session_handle =
+      panel_controller->GetContextualSearchSessionHandleForPanel();
+  ASSERT_TRUE(session_handle);
+  EXPECT_EQ(session_handle->invocation_source(),
+            lens::LensOverlayInvocationSource::kAppMenu);
+}
+
+IN_PROC_BROWSER_TEST_F(LensSearchControllerStartZeroStateSessionTest,
                        IssueContextualSearchRequestPermittedSources) {
   ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
   auto* controller = GetLensSearchController();
@@ -1304,13 +1322,93 @@ IN_PROC_BROWSER_TEST_F(LensSearchControllerStartZeroStateSessionTest,
       lens::LensOverlayInvocationSource::kContentAreaContextMenuPage,
       GURL("https://www.google.com/search?q=test"),
       omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
-      /*is_zero_prefix_suggestion=*/false);
+      /*is_zero_prefix_suggestion=*/false,
+      /*grant_session_permission=*/false);
 
   controller->IssueContextualSearchRequest(
       lens::LensOverlayInvocationSource::kOmniboxPageAction,
       GURL("https://www.google.com/search?q=test2"),
       omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
-      /*is_zero_prefix_suggestion=*/false);
+      /*is_zero_prefix_suggestion=*/false,
+      /*grant_session_permission=*/false);
+
+  controller->IssueContextualSearchRequest(
+      lens::LensOverlayInvocationSource::kAppMenu,
+      GURL("https://www.google.com/search?q=test3"),
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
+      /*is_zero_prefix_suggestion=*/false,
+      /*grant_session_permission=*/false);
+
+  controller->IssueContextualSearchRequest(
+      lens::LensOverlayInvocationSource::kCobrowsePinnedToolbarButton,
+      GURL("https://www.google.com/search?q=test4"),
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
+      /*is_zero_prefix_suggestion=*/false,
+      /*grant_session_permission=*/false);
+
+  controller->IssueContextualSearchRequest(
+      lens::LensOverlayInvocationSource::kHomeworkActionChip,
+      GURL("https://www.google.com/search?q=test5"),
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
+      /*is_zero_prefix_suggestion=*/false,
+      /*grant_session_permission=*/false);
+}
+
+class LensSearchControllerUpdatedEntryPointsTest
+    : public LensSearchControllerStartZeroStateSessionTest {
+ public:
+  LensSearchControllerUpdatedEntryPointsTest() {
+    feature_list_.InitAndEnableFeature(
+        contextual_tasks::kContextualTasksUpdatedEntryPoints);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(
+    LensSearchControllerUpdatedEntryPointsTest,
+    ToggleContextualTasksSidePanelZeroStateOpensAndClosesSidePanel) {
+  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  BrowserWindowInterface* const bwi =
+      browser()->GetActiveTabInterface()->GetBrowserWindowInterface();
+  chrome::ToggleContextualTasksSidePanelZeroState(bwi);
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return IsContextualTasksSidePanelOpen(); }));
+
+  auto* panel_controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser());
+  ASSERT_TRUE(panel_controller);
+  auto* session_handle =
+      panel_controller->GetContextualSearchSessionHandleForPanel();
+  ASSERT_TRUE(session_handle);
+  EXPECT_EQ(session_handle->invocation_source(),
+            lens::LensOverlayInvocationSource::kCobrowsePinnedToolbarButton);
+
+  chrome::ToggleContextualTasksSidePanelZeroState(bwi);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return !IsContextualTasksSidePanelOpen(); }));
+}
+
+IN_PROC_BROWSER_TEST_F(LensSearchControllerUpdatedEntryPointsTest,
+                       HomeworkActionChipOpensSidePanel) {
+  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  LensOverlayHomeworkPageActionController::From(
+      *browser()->GetActiveTabInterface())
+      ->HandlePageActionEvent(/*is_from_keyboard=*/false);
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return IsContextualTasksSidePanelOpen(); }));
+
+  auto* panel_controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser());
+  ASSERT_TRUE(panel_controller);
+  auto* session_handle =
+      panel_controller->GetContextualSearchSessionHandleForPanel();
+  ASSERT_TRUE(session_handle);
+  EXPECT_EQ(session_handle->invocation_source(),
+            lens::LensOverlayInvocationSource::kHomeworkActionChip);
 }
 
 class LensSearchControllerAskGoogleOmniboxRoutingTest
@@ -1331,6 +1429,38 @@ IN_PROC_BROWSER_TEST_F(LensSearchControllerAskGoogleOmniboxRoutingTest,
   ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
   chrome::ExecAskGoogleAboutThisPage(
       browser()->GetActiveTabInterface()->GetBrowserWindowInterface());
+
+  LocationBar* location_bar =
+      BrowserWindow::FromBrowser(browser())->GetLocationBar();
+  ASSERT_TRUE(location_bar);
+  OmniboxController* omnibox_controller = location_bar->GetOmniboxController();
+  ASSERT_TRUE(omnibox_controller);
+  EXPECT_EQ(omnibox_controller->popup_state_manager()->popup_state(),
+            OmniboxPopupState::kAim);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    LensSearchControllerAskGoogleOmniboxRoutingTest,
+    ToggleContextualTasksSidePanelZeroStateOpensOmniboxComposebox) {
+  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  chrome::ToggleContextualTasksSidePanelZeroState(
+      browser()->GetActiveTabInterface()->GetBrowserWindowInterface());
+
+  LocationBar* location_bar =
+      BrowserWindow::FromBrowser(browser())->GetLocationBar();
+  ASSERT_TRUE(location_bar);
+  OmniboxController* omnibox_controller = location_bar->GetOmniboxController();
+  ASSERT_TRUE(omnibox_controller);
+  EXPECT_EQ(omnibox_controller->popup_state_manager()->popup_state(),
+            OmniboxPopupState::kAim);
+}
+
+IN_PROC_BROWSER_TEST_F(LensSearchControllerAskGoogleOmniboxRoutingTest,
+                       HomeworkActionChipOpensOmniboxComposebox) {
+  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  LensOverlayHomeworkPageActionController::From(
+      *browser()->GetActiveTabInterface())
+      ->HandlePageActionEvent(/*is_from_keyboard=*/false);
 
   LocationBar* location_bar =
       BrowserWindow::FromBrowser(browser())->GetLocationBar();

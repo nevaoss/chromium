@@ -110,6 +110,7 @@
 #define IDC_WEB_APP_SETTINGS            34073
 #define IDC_WEB_APP_MENU_APP_INFO       34074
 #define IDC_WEB_APP_UPGRADE_DIALOG      34075
+#define IDC_UNINSTALL_WEB_APP           34076
 
 #if BUILDFLAG(IS_CHROMEOS)
 // Move window to other user commands
@@ -561,8 +562,9 @@
 #define IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS                    54032
 #define IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT                        54033
 
-// "Ask Google about this page" context menu item
+// "Ask Google about this page" menu items
 #define IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE 54034
+#define IDC_ASK_GOOGLE_ABOUT_THIS_PAGE 54035
 
 
 // NOTE: The last valid command value is 57343 (0xDFFF)
@@ -602,7 +604,8 @@
 #define IDC_SAVED_TAB_GROUPS_MENU 57332
 #define IDC_MORE_TOOLS_MENU 57331
 #define IDC_HELP_MENU 57330
-#define IDC_SKILLS_MENU 57310
+#define IDC_SKILLS_AND_EXTENSIONS_MENU 57310
+#define IDC_CONTEXTUAL_TASKS_MENU 57308
 
 // Context Menu submenus
 #define IDC_SPELLCHECK_MENU 57329

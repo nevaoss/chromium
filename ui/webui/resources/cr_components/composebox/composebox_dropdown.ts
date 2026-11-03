@@ -5,6 +5,7 @@
 import './composebox_match.js';
 
 import {assert} from '//resources/js/assert.js';
+import {hasKeyModifiers} from '//resources/js/util.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import type {AutocompleteMatch, AutocompleteResult} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
@@ -13,6 +14,7 @@ import {ToolMode} from '//resources/mojo/components/omnibox/composebox/composebo
 
 import {getCss} from './composebox_dropdown.css.js';
 import {getHtml} from './composebox_dropdown.html.js';
+import type {ComposeboxMatchElement} from './composebox_match.js';
 
 // The '%' operator in JS returns negative numbers. This workaround avoids that.
 function remainder(lhs: number, rhs: number) {
@@ -167,6 +169,43 @@ export class ComposeboxDropdownElement extends CrLitElement {
     }
 
     this.selectedMatchIndex = remainder(next, maxVisibleIndex + 1);
+  }
+
+  /** Returns the minimum index of the visible matches. */
+  getFirstVisibleIndex(): number {
+    if (!this.result || this.result.matches.length === 0) {
+      return -1;
+    }
+    const firstIndex = this.hideVerbatimMatch_(0) ? 1 : 0;
+    return firstIndex <= this.getMaxVisibleIndex_() ? firstIndex : -1;
+  }
+
+  /** Returns the maximum index of the visible matches. */
+  getLastVisibleIndex(): number {
+    return this.getMaxVisibleIndex_();
+  }
+
+  /**
+   * Unselects the active match if a Tab or Shift-Tab event is about to move
+   * focus outside the visible dropdown matches.
+   */
+  unselectOnTabExit(e: KeyboardEvent) {
+    if (this.selectedMatchIndex < 0) {
+      return;
+    }
+    const isForwardExit = !hasKeyModifiers(e) &&
+        this.selectedMatchIndex === this.getLastVisibleIndex();
+    const isBackwardExit = e.shiftKey && !e.altKey && !e.ctrlKey &&
+        !e.metaKey && this.selectedMatchIndex === this.getFirstVisibleIndex();
+    if (!isForwardExit && !isBackwardExit) {
+      return;
+    }
+
+    const matchEl = this.shadowRoot.querySelector<ComposeboxMatchElement>(
+        `#match${this.selectedMatchIndex}`);
+    if (matchEl?.willTabExitMatch(e.shiftKey)) {
+      this.unselect();
+    }
   }
 
   /**

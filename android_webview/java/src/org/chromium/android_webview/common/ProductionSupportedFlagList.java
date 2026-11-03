@@ -64,6 +64,9 @@ public final class ProductionSupportedFlagList {
      * updating the "LoginCustomFlags" field in tools/metrics/histograms/enums.xml.
      */
     public static final Flag[] sFlagList = {
+        Flag.baseFeature(
+                "webviewprewarmdictionaryonpreconnect",
+                "Auto-generated flag for webviewprewarmdictionaryonpreconnect."),
         Flag.commandLine(
                 AwSwitches.HIGHLIGHT_ALL_WEBVIEWS,
                 "Highlight the contents (including web contents) of all WebViews with a yellow "
@@ -540,11 +543,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 NetFeatures.CACHE_CERT_VERIFICATION,
                 "Enables caching of certificate verification results"),
-        Flag.baseFeature("MojoIpcz"),
         Flag.baseFeature("MojoFixGeometricBufferGrowth"),
-        Flag.baseFeature(
-                "MojoDirectSharedMemoryAllocation",
-                "Enables direct shared memory allocation in Mojo without brokering."),
         Flag.baseFeature(
                 "FixDataPipeTrapBug",
                 "Used to disable a specific bug fix for a long-standing bug that may"

@@ -891,7 +891,6 @@ source_set("web_applications_test_support") {
     "//chrome/browser/apps/app_service:app_registry_cache_waiter",
     "//chrome/browser/component_updater",
     "//chrome/browser/profiles:profile",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:browser_commands",
     "//chrome/browser/ui/web_applications",
     "//chrome/browser/ui/webui/web_app_internals",
@@ -1470,10 +1469,6 @@ source_set("web_applications_browser_tests") {
   if (is_linux) {
     deps += [ "//chrome/browser:shell_integration_linux" ]
   }
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 
   if (!is_android) {
     deps += [ "//chrome/browser/ui/views/frame:browser_view_header" ]

@@ -193,6 +193,7 @@ GlicInstanceMetrics::GlicInstanceMetrics(
       saas_usage_reporting_controller_(nullptr),
       profile_(profile),
       pref_service_(profile ? profile->GetPrefs() : nullptr) {
+  CHECK(profile);
   // Used in the unit tests.
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Created"));
   activity_tracker_ = std::make_unique<GlicStateTracker>(
@@ -223,6 +224,7 @@ GlicInstanceMetrics::GlicInstanceMetrics(
       saas_usage_reporting_controller_(saas_usage_reporting_controller),
       profile_(profile),
       pref_service_(profile ? profile->GetPrefs() : nullptr) {
+  CHECK(profile);
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Created"));
   activity_tracker_ = std::make_unique<GlicStateTracker>(
       false, "Glic.Instance.UninterruptedActiveDuration");
@@ -789,11 +791,12 @@ void GlicInstanceMetrics::ResetShownState(EmbedderKey key) {
 void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
                                  const ShowOptions& options) {
   if (!is_client_ready_) {
-    invocation_load_state_ = {
-        .start_time = base::TimeTicks::Now(),
-        .embedder_type = GetEmbedderTypeFromShowOptions(options),
-        .has_logged_dismiss_while_loading = false,
-    };
+    if (invocation_load_state_.start_time.is_null()) {
+      invocation_load_state_.start_time = base::TimeTicks::Now();
+      invocation_load_state_.has_logged_dismiss_while_loading = false;
+    }
+    invocation_load_state_.embedder_type =
+        GetEmbedderTypeFromShowOptions(options);
   }
   last_invocation_source_ = source;
 

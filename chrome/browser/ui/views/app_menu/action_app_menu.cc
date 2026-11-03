@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
@@ -13,6 +14,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
@@ -21,6 +23,7 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_search_controller.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_zoom_view.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/user_education/user_education_service.h"
@@ -75,7 +78,8 @@ bool ShouldShowNewBadge(BrowserWindowInterface* browser_window_interface,
 bool ShouldRoundBottomCorners(size_t index,
                               const actions::ActionListVector& items) {
   // An item rounds its bottom corners if it is the last non-divider item in
-  // its list, if it is a notification item, OR if it is the zoom submenu.
+  // its list, if it is a notification item, OR if it is or precedes the zoom
+  // submenu.
   actions::BaseAction* const base_item = items[index].get();
   if (base_item->GetActionItem()->GetActionId() == kActionZoomSubmenu ||
       base_item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
@@ -90,7 +94,7 @@ bool ShouldRoundBottomCorners(size_t index,
         items[i]->GetProperty(AppMenuActionItem::kDisplayTypeKey);
     if (display_type != AppMenuActionItem::DisplayType::kDivider &&
         display_type != AppMenuActionItem::DisplayType::kHeader) {
-      return false;
+      return items[i]->GetActionItem()->GetActionId() == kActionZoomSubmenu;
     }
   }
   return true;
@@ -134,9 +138,7 @@ bool ShouldAddTopPadding(size_t index, const actions::ActionListVector& items) {
         display_type == AppMenuActionItem::DisplayType::kHeader) {
       continue;
     }
-    if (SupportsVerticalPadding(prev_base)) {
-      return false;
-    }
+    return !SupportsVerticalPadding(prev_base);
   }
   return true;
 }
@@ -178,10 +180,11 @@ ActionAppMenu::ActionAppMenu(BrowserWindowInterface* browser_window_interface,
 ActionAppMenu::~ActionAppMenu() {
   search_bar_ = nullptr;
   command_to_action_map_.clear();
+  search_controller_.reset();
   menu_manager_.reset();
 }
 
-void ActionAppMenu::RunMenu(views::MenuButtonController* host) {
+void ActionAppMenu::RunMenu(views::MenuButtonController* host, int run_types) {
   auto root = std::make_unique<views::MenuItemView>(/*delegate=*/this);
   // Stash the raw pointer before transferring the unique_ptr ownership to
   // `menu_runner_`. This allows us to reference the root menu item view later.
@@ -193,10 +196,19 @@ void ActionAppMenu::RunMenu(views::MenuButtonController* host) {
   root_->set_children_use_full_width(true);
 
   root_->CreateSubmenu();
-
   PopulateMenu(root_, menu_manager_->GetAppMenuRoot());
 
+  if (const std::string query = features::kChroMenuSearchQuery.Get();
+      !query.empty()) {
+    UpdateSearchQuery(base::UTF8ToUTF16(query));
+  }
+
   int32_t types = views::MenuRunner::HAS_MNEMONICS;
+  // Forward the keyboard-related flags, so that whenever the menu is opened
+  // with a key press it shows mnemonic underlines. This also selects the first
+  // item (on Windows only).
+  types |= run_types & (views::MenuRunner::SHOULD_SHOW_MNEMONICS |
+                        views::MenuRunner::INVOKED_FROM_KEYBOARD);
   menu_runner_ = std::make_unique<views::MenuRunner>(std::move(root), types);
 
   metrics_.OnMenuOpened();
@@ -338,6 +350,7 @@ void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
   if (action_to_execute) {
     action_to_execute->InvokeAction(std::move(action_context));
   }
+  search_controller_.reset();
 }
 
 void ActionAppMenu::WillShowMenu(views::MenuItemView* menu) {
@@ -696,6 +709,11 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
     menu_item->SetTitle(*text_override);
   }
 
+  if (!action_item->GetAccessibleName().empty()) {
+    menu_item->GetViewAccessibility().SetName(
+        std::u16string(action_item->GetAccessibleName()));
+  }
+
   if (std::u16string* secondary_text =
           child_base->GetProperty(AppMenuActionItem::kSecondaryTextKey)) {
     menu_item->SetSecondaryTitle(*secondary_text);
@@ -771,6 +789,10 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
       target_item_height = provider->GetDistanceMetric(
           DISTANCE_ACTION_APP_MENU_MEDIUM_ITEM_HEIGHT);
       break;
+    case AppMenuActionItem::ItemHeight::kLarge:
+      target_item_height = provider->GetDistanceMetric(
+          DISTANCE_ACTION_APP_MENU_LARGE_ITEM_HEIGHT);
+      break;
     case AppMenuActionItem::ItemHeight::kExpanded:
       target_item_height = provider->GetDistanceMetric(
           DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT);
@@ -784,11 +806,10 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
 
   menu_item->set_vertical_margin(vertical_padding);
 
-  const ui::ColorId container_color =
-      child_base->GetProperty(AppMenuActionItem::kContainerColorKey);
-
   // Get the styling from the ActionItem and apply it to its menu item.
-  if (container_color != ui::kColorMenuBackground) {
+  if (menu_item->GetParentMenuItem() == root_) {
+    const ui::ColorId container_color =
+        child_base->GetProperty(AppMenuActionItem::kContainerColorKey);
     const int top_radius = round_top_corners
                                ? provider->GetCornerRadiusMetric(
                                      kActionAppMenuContainerCornerRadius)
@@ -810,6 +831,23 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
 
     // Apply darker hover selection states matching section theme.
     menu_item->SetSelectedColorId(ui::kColorAppMenuRowBackgroundHovered);
+  }
+}
+
+void ActionAppMenu::UpdateSearchQuery(const std::u16string& query) {
+  if (!search_bar_) {
+    return;
+  }
+  search_bar_->SetText(query);
+  if (!search_controller_) {
+    search_controller_ = std::make_unique<AppMenuSearchController>(
+        menu_manager_->GetAppMenuRoot());
+    search_controller_->InitializeSearchIndex();
+  }
+  if (actions::ActionItem* results = search_controller_->Search(query)) {
+    ClearItemsBelowSearchBar();
+    PopulateMenu(root_, results);
+    root_->ChildrenChanged();
   }
 }
 

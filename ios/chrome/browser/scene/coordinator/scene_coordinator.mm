@@ -598,12 +598,10 @@ inline LayoutStateScenePassKey PassKey() {
       _regularBrowser->GetCommandDispatcher(), BookmarksCommands);
   [bookmarksHandler dismissBookmarkModalControllerAnimated:NO];
 
-  __weak __typeof(self) weakSelf = self;
   id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
       self.currentBrowser->GetCommandDispatcher(), BrowserCoordinatorCommands);
   ProceduralBlock closePresentedViewsCompletion = ^{
     ProceduralBlock finalCompletion = ^{
-      CHECK(!weakSelf.sceneState.signinInProgress, base::NotFatalUntil::M160);
       if (completion) {
         completion();
       }
@@ -644,13 +642,6 @@ inline LayoutStateScenePassKey PassKey() {
   [self startPasswordCheckupCoordinator:referrer];
   [_passwordCheckupCoordinator showPasswordIssuesWithWarningType:warningType];
   [self presentSettingsFromViewController:self.activeViewController];
-}
-
-- (void)maybeShowSettingsFromViewController {
-  if (self.sceneState.signinInProgress) {
-    return;
-  }
-  [self showSettingsFromViewController:nil];
 }
 
 - (void)showSettingsFromViewController:(UIViewController*)baseViewController {
@@ -728,7 +719,6 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)showPriceTrackingNotificationsSettings {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     __weak SceneCoordinator* weakSelf = self;
     [self closePresentedViews:NO
@@ -785,6 +775,8 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showAssistantWithNewSession {
   [self closeAssistant];
+  // Close any active gemini session.
+  [self dismissGeminiFlowWithCompletion:nil];
   [self showAssistant];
 }
 
@@ -1294,7 +1286,6 @@ inline LayoutStateScenePassKey PassKey() {
                                ![self isTabAvailableToPresentViewController])) {
     return;
   }
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
 
   if (self.currentBrowser->type() == Browser::Type::kIncognito) {
     // This can occur if the URL ended up loading while the user switched to
@@ -1344,9 +1335,22 @@ inline LayoutStateScenePassKey PassKey() {
                         completion:nil];
 }
 
-- (void)showSuggestionsFromGemini {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
+- (void)showGeminiContextualCueSettings {
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showGeminiContextualCueSettings];
+    return;
+  }
 
+  _settingsNavigationController = [SettingsNavigationController
+      BWGContextualCueControllerForBrowser:_regularBrowser.get()
+                                  delegate:self];
+
+  [self.activeViewController presentViewController:_settingsNavigationController
+                                          animated:YES
+                                        completion:nil];
+}
+
+- (void)showSuggestionsFromGemini {
   if (self.sceneState.isUIBlocked) {
     // This could occur due to race condition with multiple windows and
     // simultaneous taps. See crbug.com/368310663.
@@ -1384,7 +1388,6 @@ inline LayoutStateScenePassKey PassKey() {
 // TODO(crbug.com/41352590) : Do not pass baseViewController through dispatcher.
 - (void)showGoogleServicesSettingsFromViewController:
     (UIViewController*)baseViewController {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (!baseViewController) {
     baseViewController = self.activeViewController;
   }
@@ -1409,7 +1412,6 @@ inline LayoutStateScenePassKey PassKey() {
 // The user must be signed-in and sign-in must be enabled.
 - (void)showSyncSettingsFromViewController:
     (UIViewController*)baseViewController {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showSyncSettingsFromViewController:baseViewController];
@@ -1436,7 +1438,6 @@ inline LayoutStateScenePassKey PassKey() {
             (UIViewController*)baseViewController
                                           completion:
                                               (ProceduralBlock)completion {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showSyncPassphraseSettingsFromViewController:baseViewController];
@@ -1498,7 +1499,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showIdentityDocsWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showIdentityDocsWithReferrer:referrer];
     return;
@@ -1515,7 +1515,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showTravelWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showTravelWithReferrer:referrer];
     return;
@@ -1532,7 +1531,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showShoppingWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showShoppingWithReferrer:referrer];
     return;
@@ -1620,7 +1618,6 @@ inline LayoutStateScenePassKey PassKey() {
 // TODO(crbug.com/41352590) : Do not pass baseViewController through dispatcher.
 - (void)showProfileSettingsFromViewController:
     (UIViewController*)baseViewController {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showProfileSettingsFromViewController:baseViewController];
@@ -1636,7 +1633,6 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)showCreditCardSettings {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showCreditCardSettings];
     return;
@@ -2144,7 +2140,6 @@ inline LayoutStateScenePassKey PassKey() {
     // dispatched command.
     baseViewController = self.activeViewController;
   }
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
 
   if (_settingsNavigationController) {
     [_settingsNavigationController
@@ -2170,7 +2165,6 @@ inline LayoutStateScenePassKey PassKey() {
     // dispatched command.
     baseViewController = self.activeViewController;
   }
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
 
   if (_settingsNavigationController) {
     [_settingsNavigationController
@@ -2189,8 +2183,6 @@ inline LayoutStateScenePassKey PassKey() {
 // Shows the Autofill and Passwords settings in the settings UI.
 - (void)showAutofillAndPasswordsSettingsAfterModalDismissWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showAutofillAndPasswordsSettingsWithReferrer:referrer];
@@ -2207,8 +2199,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Shows the Autofill settings in the settings UI.
 - (void)showAutofillSettingsAfterModalDismiss {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
   if (_settingsNavigationController) {
     [_settingsNavigationController showAutofillSettings];
     return;
@@ -2228,8 +2218,6 @@ inline LayoutStateScenePassKey PassKey() {
 // Shows the Autofill settings in the settings UI from an Autofill notice (no
 // back button).
 - (void)showAutofillSettingsFromNoticeAfterModalDismiss {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
   if (_settingsNavigationController) {
     [_settingsNavigationController showAutofillSettingsFromNotice];
     return;
@@ -2320,7 +2308,6 @@ inline LayoutStateScenePassKey PassKey() {
                                    timeout:(base::TimeDelta)timeout
                                 completion:
                                     (UserFeedbackDataCallback)completion {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     return;
   }
@@ -2900,6 +2887,9 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Starts the Gemini session directly via the browser agent.
 - (void)startGeminiSessionWithStartupState:(GeminiStartupState*)startupState {
+  // Close any active assistant aim session.
+  [self closeAssistant];
+
   UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
                                              ? _viewController
                                              : self.activeViewController;

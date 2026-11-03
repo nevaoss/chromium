@@ -20,6 +20,20 @@ namespace remoting::installer {
 
 namespace {
 
+CopyFileCallback& GetCopyFileCallback() {
+  static base::NoDestructor<CopyFileCallback> callback(base::BindRepeating(
+      [](const base::FilePath& from, const base::FilePath& to) {
+        return base::CopyFile(from, to);
+      }));
+  return *callback;
+}
+
+DeleteFileCallback& GetDeleteFileCallback() {
+  static base::NoDestructor<DeleteFileCallback> callback(base::BindRepeating(
+      [](const base::FilePath& path) { return base::DeleteFile(path); }));
+  return *callback;
+}
+
 MoveFileExCallback& GetMoveFileExCallback() {
   static base::NoDestructor<MoveFileExCallback> callback(base::BindRepeating(
       [](const wchar_t* existing, const wchar_t* new_name, DWORD flags) {
@@ -47,7 +61,8 @@ bool MoveLockedFileToOldPath(const base::FilePath& dest_file,
         (i == 0) ? dest_file.AddExtension(kOldFileExtension)
                  : dest_file.AddExtension(base::NumberToWString(i))
                        .AddExtension(kOldFileExtension);
-    if (base::PathExists(candidate) && !base::DeleteFile(candidate)) {
+    if (base::PathExists(candidate) &&
+        !GetDeleteFileCallback().Run(candidate)) {
       // `candidate` is still locked by an active process; try the next slot.
       continue;
     }
@@ -56,8 +71,9 @@ bool MoveLockedFileToOldPath(const base::FilePath& dest_file,
     // any failure from MoveFileExW means `dest_file` itself cannot be renamed
     // (e.g. opened without FILE_SHARE_DELETE) and retrying other candidate
     // names will also fail.
-    if (::MoveFileExW(dest_file.value().c_str(), candidate.value().c_str(),
-                      MOVEFILE_REPLACE_EXISTING)) {
+    if (GetMoveFileExCallback().Run(dest_file.value().c_str(),
+                                    candidate.value().c_str(),
+                                    MOVEFILE_REPLACE_EXISTING)) {
       *out_old_file = candidate;
       return true;
     }
@@ -72,6 +88,26 @@ bool MoveLockedFileToOldPath(const base::FilePath& dest_file,
 }
 
 }  // namespace
+
+void SetCopyFileCallbackForTesting(CopyFileCallback callback) {
+  if (callback.is_null()) {
+    GetCopyFileCallback() = base::BindRepeating(
+        [](const base::FilePath& from, const base::FilePath& to) {
+          return base::CopyFile(from, to);
+        });
+  } else {
+    GetCopyFileCallback() = std::move(callback);
+  }
+}
+
+void SetDeleteFileCallbackForTesting(DeleteFileCallback callback) {
+  if (callback.is_null()) {
+    GetDeleteFileCallback() = base::BindRepeating(
+        [](const base::FilePath& path) { return base::DeleteFile(path); });
+  } else {
+    GetDeleteFileCallback() = std::move(callback);
+  }
+}
 
 void SetMoveFileExCallbackForTesting(MoveFileExCallback callback) {
   if (callback.is_null()) {
@@ -96,7 +132,7 @@ void CleanupOldFiles(const base::FilePath& install_dir) {
                                   base::FileEnumerator::FILES, L"*.old");
   for (base::FilePath old_file = enumerator.Next(); !old_file.empty();
        old_file = enumerator.Next()) {
-    if (!base::DeleteFile(old_file)) {
+    if (!GetDeleteFileCallback().Run(old_file)) {
       VLOG(1) << "Could not delete in-use old file: " << old_file.value();
     }
   }
@@ -114,7 +150,7 @@ bool InstallFileWithStagedRename(const base::FilePath& source_file,
 
   // First try a direct overwrite copy. This succeeds when `dest_file` does not
   // exist or is not locked by a running process.
-  if (base::CopyFile(source_file, dest_file)) {
+  if (GetCopyFileCallback().Run(source_file, dest_file)) {
     return true;
   }
 
@@ -132,13 +168,14 @@ bool InstallFileWithStagedRename(const base::FilePath& source_file,
     return false;
   }
 
-  if (!base::CopyFile(source_file, dest_file)) {
+  if (!GetCopyFileCallback().Run(source_file, dest_file)) {
     PLOG(ERROR) << "Failed to copy " << source_file.value() << " to "
                 << dest_file.value() << " after renaming existing file.";
     // Best-effort rollback: move the original file back into place before
     // scheduling reboot deletion.
-    ::MoveFileExW(old_file.value().c_str(), dest_file.value().c_str(),
-                  MOVEFILE_REPLACE_EXISTING);
+    GetMoveFileExCallback().Run(old_file.value().c_str(),
+                                dest_file.value().c_str(),
+                                MOVEFILE_REPLACE_EXISTING);
     return false;
   }
 
@@ -192,7 +229,7 @@ bool UninstallPayloadFiles(const base::FilePath& install_dir,
       continue;
     }
 
-    if (!base::DeleteFile(file_path)) {
+    if (!GetDeleteFileCallback().Run(file_path)) {
       // If the file is still locked during uninstall, rename to .old and
       // schedule for deletion on reboot.
       base::FilePath old_file;

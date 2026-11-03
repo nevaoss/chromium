@@ -33,6 +33,7 @@ import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.ExpandOnHov
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.LayoutSwitchEntryPoint;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.LayoutToggleSourceAndDirection;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.WindowWidthBoundary;
+import org.chromium.ui.base.DeviceInput;
 
 /** Unit tests for {@link VerticalTabUtils}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -67,23 +68,23 @@ public class VerticalTabUtilsUnitTest {
 
     @Test
     public void testUserResizedWidthPreference() {
-        assertEquals(0, VerticalTabUtils.getUserResizedWidthDp());
+        assertEquals(0, VerticalTabUtils.getUserResizedWidthDpFromSharedPref());
 
-        VerticalTabUtils.setUserResizedWidthDp(300);
-        assertEquals(300, VerticalTabUtils.getUserResizedWidthDp());
+        VerticalTabUtils.setUserResizedWidthDpInSharedPref(300);
+        assertEquals(300, VerticalTabUtils.getUserResizedWidthDpFromSharedPref());
     }
 
     @Test
     public void testUserResizedWidthPreference_ClearedByNonPositiveWidth() {
-        VerticalTabUtils.setUserResizedWidthDp(300);
-        assertEquals(300, VerticalTabUtils.getUserResizedWidthDp());
+        VerticalTabUtils.setUserResizedWidthDpInSharedPref(300);
+        assertEquals(300, VerticalTabUtils.getUserResizedWidthDpFromSharedPref());
 
-        VerticalTabUtils.setUserResizedWidthDp(0);
-        assertEquals(0, VerticalTabUtils.getUserResizedWidthDp());
+        VerticalTabUtils.setUserResizedWidthDpInSharedPref(0);
+        assertEquals(0, VerticalTabUtils.getUserResizedWidthDpFromSharedPref());
 
-        VerticalTabUtils.setUserResizedWidthDp(300);
-        VerticalTabUtils.setUserResizedWidthDp(-1);
-        assertEquals(0, VerticalTabUtils.getUserResizedWidthDp());
+        VerticalTabUtils.setUserResizedWidthDpInSharedPref(300);
+        VerticalTabUtils.setUserResizedWidthDpInSharedPref(-1);
+        assertEquals(0, VerticalTabUtils.getUserResizedWidthDpFromSharedPref());
     }
 
     @Test
@@ -161,6 +162,7 @@ public class VerticalTabUtilsUnitTest {
 
     @Test
     public void testIsExpandOnHoverEnabled() {
+        setDeviceForExpandOnHover(/* isDesktop= */ true, /* hasPrecisionPointer= */ true);
         assertFalse(VerticalTabUtils.isExpandOnHoverFeatureEnabled());
         assertFalse(VerticalTabUtils.isExpandOnHoverEnabled());
 
@@ -173,23 +175,56 @@ public class VerticalTabUtilsUnitTest {
 
     @Test
     public void testIsExpandOnHoverEnabled_RespectsUserSetting() {
+        setDeviceForExpandOnHover(/* isDesktop= */ true, /* hasPrecisionPointer= */ true);
         FeatureOverrides.overrideParam(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
 
-        VerticalTabUtils.setExpandOnHoverEnabled(false, ExpandOnHoverToggleEntryPoint.SETTINGS);
+        VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(
+                false, ExpandOnHoverToggleEntryPoint.SETTINGS);
         assertFalse(VerticalTabUtils.isExpandOnHoverEnabled());
         assertTrue(VerticalTabUtils.isExpandOnHoverFeatureEnabled());
 
-        VerticalTabUtils.setExpandOnHoverEnabled(true, ExpandOnHoverToggleEntryPoint.SETTINGS);
+        VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(
+                true, ExpandOnHoverToggleEntryPoint.SETTINGS);
         assertTrue(VerticalTabUtils.isExpandOnHoverEnabled());
     }
 
     @Test
     public void testIsExpandOnHoverEnabled_FalseWhenFeatureDisabled() {
+        setDeviceForExpandOnHover(/* isDesktop= */ true, /* hasPrecisionPointer= */ true);
         FeatureOverrides.overrideParam(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", false);
-        VerticalTabUtils.setExpandOnHoverEnabled(true, ExpandOnHoverToggleEntryPoint.SETTINGS);
+        VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(
+                true, ExpandOnHoverToggleEntryPoint.SETTINGS);
         assertFalse(VerticalTabUtils.isExpandOnHoverEnabled());
+    }
+
+    @Test
+    public void testIsExpandOnHoverEnabled_FalseWithoutPrecisionPointer() {
+        setDeviceForExpandOnHover(/* isDesktop= */ true, /* hasPrecisionPointer= */ false);
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
+        VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(
+                true, ExpandOnHoverToggleEntryPoint.SETTINGS);
+        assertFalse(VerticalTabUtils.isExpandOnHoverFeatureEnabled());
+        assertFalse(VerticalTabUtils.isExpandOnHoverEnabled());
+    }
+
+    @Test
+    public void testIsExpandOnHoverEnabled_FalseOnTablet() {
+        // Some tablets report built-in input devices as mice, so a precision pointer isn't enough.
+        setDeviceForExpandOnHover(/* isDesktop= */ false, /* hasPrecisionPointer= */ true);
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
+        VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(
+                true, ExpandOnHoverToggleEntryPoint.SETTINGS);
+        assertFalse(VerticalTabUtils.isExpandOnHoverFeatureEnabled());
+        assertFalse(VerticalTabUtils.isExpandOnHoverEnabled());
+    }
+
+    private static void setDeviceForExpandOnHover(boolean isDesktop, boolean hasPrecisionPointer) {
+        DeviceInfo.setIsDesktopForTesting(isDesktop);
+        DeviceInput.setSupportsPrecisionPointerForTesting(hasPrecisionPointer);
     }
 
     @Test
@@ -222,7 +257,7 @@ public class VerticalTabUtilsUnitTest {
                                         ? "Android.VerticalTabs.ExpandOnHoverToggle.Disable"
                                         : "Android.VerticalTabs.ExpandOnHoverToggle.Enable")
                         .build();
-        VerticalTabUtils.setExpandOnHoverEnabled(enabled, entryPoint);
+        VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(enabled, entryPoint);
         histogramWatcher.assertExpected();
     }
 

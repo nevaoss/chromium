@@ -26,14 +26,16 @@ example, it'd be very hard to implement the Settings UI without access to many
 different privacy and security sensitive services. Access to these services are
 not granted by default.
 
+### WebUI bindings
+
 Only special URLs are granted WebUI "bindings" via the child security process.
 
 Specifically, these bindings:
 
-* give a renderer access to load [`chrome:`](#chrome_urls) URLS
+* give a renderer access to load [`chrome:`](#how-urls-work) URLS
   * this is helpful for shared libraries, i.e. `chrome://resources/`
 * allow the browser to execute arbitrary JavaScript in that renderer via
-  [`CallJavascriptFunction()`](#CallJavascriptFunction)
+  [`CallJavascriptFunction()`](#webuimessagehandler_calljavascriptfunction)
 * allow communicating from the renderer to the browser with
   [`chrome.send()`](#chrome_send) and friends
 * ignore content settings regarding showing images or executing JavaScript
@@ -66,8 +68,7 @@ Examples:
 * view-source:
 
 This document mainly cares about the **chrome:** protocol, but others can also
-be granted [WebUI bindings](#bindings) or have special
-properties.
+be granted [WebUI bindings](#webui-bindings) or have special properties.
 
 ### `chrome:` hosts
 
@@ -115,13 +116,13 @@ map.AddWebUIConfig(std::make_unique<donuts::DonutsUIConfig>());
 
 ```
 
-If a factory knows how to handle a host (returns a `WebUIFactoryFunction`),
-the navigation machinery [grants the renderer process WebUI
-bindings](#bindings) via the child security policy.
+If a factory knows how to handle a URL (`UseWebUIForURL()` returns true), the
+navigation machinery [grants the renderer process WebUI
+bindings](#webui-bindings) via the child security policy.
 
 ```c++
 // RenderFrameHostImpl::AllowBindings():
-if (bindings_flags.Has(BindingsPolicyValue::kWebUi)) {
+if (!webui_bindings.empty()) {
   ChildProcessSecurityPolicyImpl::GetInstance()->GrantWebUIBindings(
       GetProcess()->GetDeprecatedID());
 }
@@ -179,9 +180,8 @@ Mmmm, donuts!
 
 Delicious success.
 
-By default $i18n{} escapes strings for HTML. $i18nRaw{} can be used for
-translations that embed HTML, and $i18nPolymer{} can be used for Polymer
-bindings. See
+By default $i18n{} escapes strings for HTML, while $i18nRaw{} can be used for
+translations that embed HTML. See
 [this comment](https://bugs.chromium.org/p/chromium/issues/detail?id=1010815#c1)
 for more information.
 
@@ -227,7 +227,7 @@ A `WebUIConfig` may contain logic to check if the WebUI is enabled for a given
 if the url path is valid, etc).
 
 A `WebUIConfig` can invoke the `WebUIController`'s constructor in its
-`CreateWebUIControllerForURL` method.
+`CreateWebUIController` method.
 
 `WebUIConfig`s are created at startup when factories are registered, so should
 be lightweight.
@@ -270,19 +270,19 @@ content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
 source->AddResourcePath("sign_in_promo.svg", IDR_HISTORY_SIGN_IN_PROMO_SVG);
 source->AddResourcePath("synced_tabs.html", IDR_HISTORY_SYNCED_TABS_HTML);
 
-source->AddString("title", IDS_HISTORY_TITLE);
-source->AddString("moreFromThisSite", IDS_HISTORY_MORE_FROM_THIS_SITE);
+source->AddLocalizedString("title", IDS_HISTORY_TITLE);
+source->AddLocalizedString("moreFromThisSite", IDS_HISTORY_MORE_FROM_THIS_SITE);
 
 source->AddBoolean("showDateRanges",
     base::FeatureList::IsEnabled(features::kHistoryShowDateRanges));
 
-webui::SetupWebUIDataSource(source, kHistoryResources, kGeneratedPath,
+webui::SetupWebUIDataSource(source, kHistoryResources,
     IDR_HISTORY_HISTORY_HTML);
 ```
 
 For more about each of the methods called on `WebUIDataSource` and the utility
-method that performs additional configuration, see [DataSources](#DataSources)
-and [WebUIDataSourceUtils](#WebUIDataSourceUtils)
+method that performs additional configuration, see [DataSources](#data-sources)
+and [WebUIDataSourceUtils](#webui-utils-for-working-with-data-sources)
 
 ### WebUIMessageHandler
 
@@ -324,15 +324,15 @@ $('bakeDonutsButton').onclick = function() {
 ### WebUIDataSource::CreateAndAdd()
 
 This is a factory method required to create and add a WebUIDataSource. The first
-argument to `Create()` is the browser context. The second argument is typically
-the host name of the page. The caller does not own the result.
+argument to `CreateAndAdd()` is the browser context. The second argument is
+typically the host name of the page. The caller does not own the result.
 
 Additionally, calling `CreateAndAdd()` will overwrite any existing data source
 with the same name.
 
 *** note
 *Note:* It's unsafe to keep references to a `WebUIDataSource` after calling
-`Add()`. Don't do this.
+`CreateAndAdd()`. Don't do this.
 ***
 
 ### WebUIDataSource::AddLocalizedString()
@@ -424,8 +424,8 @@ make sure to call `WebUIDataSource::Update()` when the value changes.
 
 ## WebUI utils for working with data sources
 
-chrome/browser/ui/webui/webui\_util.\* contains a number of methods to simplify
-common configuration tasks.
+ui/webui/webui\_util.\* contains a number of methods to simplify common
+configuration tasks.
 
 ### webui::SetupWebUIDataSource()
 
@@ -448,10 +448,10 @@ Specific setup steps include:
 
 ### Mojo
 
-[Mojo](https://chromium.googlesource.com/chromium/src/+/master/mojo/README.md)
-is used for IPC throughout Chromium, and should generally be used for new
-WebUIs to communicate between the browser (C++) and the renderer (JS/TS). To
-use Mojo, you will need to:
+[Mojo](https://chromium.googlesource.com/chromium/src/+/main/mojo/README.md) is
+used for IPC throughout Chromium, and should generally be used for new WebUIs to
+communicate between the browser (C++) and the renderer (JS/TS). To use Mojo, you
+will need to:
 
 * Write an interface definition for the JS/C++ interface in a mojom file
 * Add a build target in the BUILD.gn file to autogenerate C++ and TypeScript
@@ -829,8 +829,8 @@ When the browser process needs to tell the renderer/JS of an event or otherwise
 execute code, it can use `CallJavascriptFunction()`.
 
 *** note
-*Note:* Javascript must be [allowed](#AllowJavascript) to use
-`CallJavascriptFunction()`.
+*Note:* Javascript must be [allowed](#webuimessagehandler_allowjavascript) to
+use `CallJavascriptFunction()`.
 ***
 
 ```c++
@@ -847,7 +847,9 @@ to the call are serialized to JSON and the parameter list is wrapped with
 "functionCallName(" + argumentsAsJson + ")"
 ```
 
-and sent to the renderer via a `FrameMsg_JavaScriptExecuteRequest` IPC message.
+and sent to the renderer via the
+`blink.mojom.LocalFrame.JavaScriptExecuteRequest` Mojo method (see
+`RenderFrameHostImpl::ExecuteJavaScript()`).
 
 While this works, it implies that:
 
@@ -859,14 +861,15 @@ While this works, it implies that:
 webui codebase. This functionality can easily be accomplished with the following
 alternatives:
 
-* [`FireWebUIListener()`](#FireWebUIListener) allows easily notifying the page
-  when an event occurs in C++ and is more loosely coupled (nothing blows up if
-  the event dispatch is ignored). JS subscribes to notifications via
-  [`addWebUiListener`](#addWebUiListener).
-* [`ResolveJavascriptCallback`](#ResolveJavascriptCallback) and
-  [`RejectJavascriptCallback`](#RejectJavascriptCallback) are useful
-  when Javascript requires a response to an inquiry about C++-canonical state
-  (i.e. "Is Autofill enabled?", "Is the user incognito?")
+* [`FireWebUIListener()`](#webuimessagehandler_firewebuilistener) allows easily
+  notifying the page when an event occurs in C++ and is more loosely coupled
+  (nothing blows up if the event dispatch is ignored). JS subscribes to
+  notifications via [`addWebUiListener`](#addWebUiListener).
+* [`ResolveJavascriptCallback`](#webuimessagehandler_resolvejavascriptcallback)
+  and
+  [`RejectJavascriptCallback`](#webuimessagehandler_rejectjavascriptcallback)
+  are useful when Javascript requires a response to an inquiry about
+  C++-canonical state (i.e. "Is Autofill enabled?", "Is the user incognito?")
 
 #### WebUIMessageHandler::FireWebUIListener()
 
@@ -894,14 +897,14 @@ theme they'll choose, this is a good candidate for an event listener.
 
 If you simply need to get a response in Javascript from C++, consider using
 [`sendWithPromise()`](#sendWithPromise) and
-[`ResolveJavascriptCallback`](#ResolveJavascriptCallback).
+[`ResolveJavascriptCallback`](#webuimessagehandler_resolvejavascriptcallback).
 
 #### WebUIMessageHandler::OnJavascriptAllowed()
 
-`OnJavascriptDisallowed()` is a lifecycle method called in response to
-[`AllowJavascript()`](#AllowJavascript). It is a good place to register
-observers of global services or other callbacks that might call at unpredictable
-times.
+`OnJavascriptAllowed()` is a lifecycle method called in response to
+[`AllowJavascript()`](#webuimessagehandler_allowjavascript). It is a good place
+to register observers of global services or other callbacks that might call at
+unpredictable times.
 
 For example:
 
@@ -917,9 +920,10 @@ class MyHandler : public content::WebUIMessageHandler {
 ```
 
 Because browser-side C++ handlers are created before a renderer is ready, the
-above code may result in calling [`FireWebUIListener`](#FireWebUIListener)
-before the renderer is ready, which may result in dropped updates or
-accidentally running Javascript in a renderer that has navigated to a new URL.
+above code may result in calling
+[`FireWebUIListener`](#webuimessagehandler_firewebuilistener) before the
+renderer is ready, which may result in dropped updates or accidentally running
+Javascript in a renderer that has navigated to a new URL.
 
 A safer way to set up communication is:
 
@@ -963,7 +967,7 @@ Often, it makes sense to disconnect from observers in
 
 ```c++
 void OvenHandler::OnJavascriptDisallowed() {
-  scoped_oven_observation_.Reset()
+  scoped_oven_observation_.Reset();
 }
 ```
 
@@ -987,13 +991,14 @@ void OvenHandler::HandleBakeDonuts(const base::ListValue& args) {
   AllowJavascript();
   if (!GetOven()->HasGas()) {
     RejectJavascriptCallback(args[0],
-                             base::StringValue("need gas to cook the donuts!"));
+                             base::Value("need gas to cook the donuts!"));
   }
 ```
 
 This method is basically just a
-[`CallJavascriptFunction()`](#CallJavascriptFunction) wrapper that calls a
-global "cr.webUIResponse" method with a success value of false.
+[`CallJavascriptFunction()`](#webuimessagehandler_calljavascriptfunction)
+wrapper that calls a global "cr.webUIResponse" method with a success value of
+false.
 
 ```c++
 // WebUIMessageHandler::RejectJavascriptCallback():
@@ -1001,7 +1006,8 @@ CallJavascriptFunction("cr.webUIResponse", callback_id, base::Value(false),
                        response);
 ```
 
-See also: [`ResolveJavascriptCallback`](#ResolveJavascriptCallback)
+See also:
+[`ResolveJavascriptCallback`](#webuimessagehandler_resolvejavascriptcallback)
 
 #### WebUIMessageHandler::ResolveJavascriptCallback()
 
@@ -1033,12 +1039,14 @@ void OvenHandler::HandleBakeDonuts(const base::ListValue& args) {
 #### chrome.send()
 
 When the JavaScript `window` object is created, a renderer is checked for [WebUI
-bindings](#bindings).
+bindings](#webui-bindings).
 
 ```c++
 // RenderFrameImpl::DidClearWindowObject():
-if (enabled_bindings_.Has(BindingsPolicyValue::kWebUi))
-  WebUIExtension::Install(frame_);
+if (enabled_bindings_.Has(BindingsPolicyValue::kWebUi) ||
+    enabled_bindings_.Has(BindingsPolicyValue::kWebUiHistograms)) {
+  WebUIExtension::Install(frame_, enabled_bindings_);
+}
 ```
 
 If the bindings exist, a global `chrome.send()` function is exposed to the
@@ -1059,18 +1067,16 @@ The `chrome.send()` method takes a message name and argument list.
 chrome.send('messageName', [arg1, arg2, ...]);
 ```
 
-The message name and argument list are serialized to JSON and sent via the
-`FrameHostMsg_WebUISend` IPC message from the renderer to the browser.
+The message name and argument list are sent via the
+`content.mojom.WebUIHost.Send` Mojo method from the renderer to the browser.
 
 ```c++
-// In the renderer (WebUIExtension::Send()):
-render_frame->Send(new FrameHostMsg_WebUISend(render_frame->GetRoutingID(),
-                                              frame->GetDocument().Url(),
-                                              message, *content));
+// In the renderer (WebUIExtensionData::SendMessage()):
+remote_->Send(message, std::move(args));
 ```
 ```c++
-// In the browser (WebUIImpl::OnMessageReceived()):
-IPC_MESSAGE_HANDLER(FrameHostMsg_WebUISend, OnWebUISend)
+// In the browser (WebUIImpl::Send()):
+ProcessWebUIMessage(source_url, message, std::move(args));
 ```
 
 The browser-side code does a map lookup for the message name and calls the found
@@ -1078,7 +1084,7 @@ callback with the deserialized arguments:
 
 ```c++
 // WebUIImpl::ProcessWebUIMessage():
-message_callbacks_.find(message)->second.Run(&args);
+message_callbacks_.find(message)->second.Run(args);
 ```
 
 #### addWebUiListener()

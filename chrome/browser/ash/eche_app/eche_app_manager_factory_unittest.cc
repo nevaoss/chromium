@@ -16,13 +16,13 @@
 #include "ash/test/test_ash_web_view_factory.h"
 #include "ash/webui/eche_app_ui/apps_launch_info_provider.h"
 #include "ash/webui/eche_app_ui/eche_alert_generator.h"
+#include "ash/webui/eche_app_ui/eche_app_notification_controller.h"
 #include "ash/webui/eche_app_ui/system_info.h"
 #include "base/check_deref.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_chromeos_version_info.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
-#include "chrome/browser/ash/eche_app/eche_app_notification_controller.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/test/base/chrome_ash_test_base.h"
 #include "chrome/test/base/testing_browser_process.h"
@@ -212,10 +212,10 @@ TEST_F(EcheAppManagerFactoryTest, LaunchedAppInfo) {
   std::unique_ptr<LaunchedAppInfo> launched_app_info =
       EcheAppManagerFactory::GetInstance()->GetLastLaunchedAppInfo();
 
-  EXPECT_EQ(launched_app_info->user_id(), user_id);
-  EXPECT_EQ(launched_app_info->visible_name(), visible_name);
-  EXPECT_EQ(launched_app_info->package_name(), package_name);
-  EXPECT_EQ(launched_app_info->icon(), icon);
+  EXPECT_EQ(launched_app_info->user_id, user_id);
+  EXPECT_EQ(launched_app_info->visible_name, visible_name);
+  EXPECT_EQ(launched_app_info->package_name, package_name);
+  EXPECT_EQ(launched_app_info->icon, icon);
 }
 
 TEST_F(EcheAppManagerFactoryTest, CloseConnectionOrLaunchErrorNotifications) {

@@ -23,6 +23,58 @@
   width: 100%;
 }
 
+#mirrorContainer {
+  position: relative;
+  display: flex;
+  align-self: stretch;
+  flex: 1;
+}
+
+#mirror {
+  position: absolute;
+  overflow: hidden;
+  /* Match <input> whitespace treatment, which preserves spaces
+   * and never wraps. */
+  white-space: pre;
+  /* Font metrics should match underlying input element. */
+  font-family: inherit;
+  font-size: inherit;
+  /* Mirror text baseline should match underlying input element baseline. */
+  align-content: center;
+  line-height: normal;
+  /* All input events should pass through mirror to underlying input element. */
+  pointer-events: none;
+  user-select: none;
+  /* Dimensions should match underlying input element. */
+  height: 100%;
+  width: 100%;
+  /* Mirror overlay is placed atop underlying input element. */
+  z-index: 101;
+}
+
+#mirror span:not(.dimmed) {
+  color: var(--color-omnibox-text);
+}
+
+#mirror span.dimmed {
+  color: var(--color-omnibox-text-dimmed);
+}
+
+#mirror span.dangerous {
+  color: var(--color-omnibox-security-chip-dangerous);
+}
+
+#mirror span.strikethrough {
+  text-decoration: line-through;
+  text-decoration-color: currentColor;
+}
+
+:host([url-emphasis-enabled]) :is(input, textarea),
+:host([url-emphasis-enabled]) :is(input, textarea)::selection {
+  caret-color: var(--color-searchbox-foreground);
+  color: transparent;
+}
+
 :host([multi-line-enabled]) textarea {
   background-color: var(--color-cr-searchbox-input-textarea, transparent);
   box-sizing: border-box;
@@ -177,8 +229,17 @@ cr-searchbox-icon,
   text-overflow: ellipsis;
 }
 
-/* Kept in the accessibility tree but moved offscreen. */
+/* Kept in the accessibility tree but moved offscreen while it has a label. */
 #selectionAnnouncement {
   left: -10000px;
   position: absolute;
+}
+
+/* Without a label, leave it out of the layout altogether. Being positioned,
+   an empty box would otherwise remain in the accessibility tree as a leaf
+   with no text right after the input, and text range comparisons that cross
+   from the end of the input's value into it (e.g. VoiceOver asking for the
+   caret's line) resolve inconsistently. */
+#selectionAnnouncement:empty {
+  display: none;
 }

@@ -81,6 +81,8 @@
 
 namespace {
 
+constexpr char kApcDebuggingExtensionId[] = "bbnmkciocedkjdlapchelmdflhahacpa";
+
 #if BUILDFLAG(ENABLE_PDF)
 constexpr size_t kBytesPerMegabyte = 1'000'000;
 constexpr size_t kPdfUploadLimitBytes = 128 * kBytesPerMegabyte;
@@ -172,7 +174,7 @@ void GetInnerTextForModelPrototyping(
     content::WebContents* web_contents,
     AiDataKeyedService::AiDataCallback continue_callback) {
   TRACE_EVENT0("browser", "GetInnerTextForModelPrototyping");
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
   // If the tab has not actually navigated, then the remote interfaces will be
   // null, just leave off inner text in this case.
   if (!web_contents->GetPrimaryMainFrame() ||
@@ -280,7 +282,7 @@ void RequestAxTreeSnapshotForModelPrototyping(
     content::WebContents* web_contents,
     AiDataKeyedService::AiDataCallback continue_callback) {
   TRACE_EVENT0("browser", "RequestAxTreeSnapshotForModelPrototyping");
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
   ui::AXTreeUpdate update;
   web_contents->RequestAXTreeSnapshot(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
@@ -328,7 +330,7 @@ void RequestPdfBytesForModelPrototyping(
     content::WebContents* web_contents,
     AiDataKeyedService::AiDataCallback continue_callback) {
   TRACE_EVENT0("browser", "RequestPdfBytesForModelPrototyping");
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
 
   pdf::PDFDocumentHelper* pdf_helper = MaybeGetFullPagePdfHelper(web_contents);
   if (!pdf_helper) {
@@ -353,7 +355,7 @@ void OnDataCollectionsComplete(AiDataKeyedService::AiDataCallback callback,
                                AiDataKeyedService::AiData data,
                                std::vector<AiDataKeyedService::AiData> datas) {
   TRACE_EVENT0("browser", "OnDataCollectionsComplete");
-  DCHECK(data);
+  CHECK(data, base::NotFatalUntil::M161);
   for (const auto& data_slice : datas) {
     if (!data_slice) {
       // Return an empty data to indicate an error.
@@ -390,7 +392,7 @@ void FillTabInfo(content::WebContents* web_contents,
                  std::string title,
                  std::string url) {
   TRACE_EVENT0("browser", "FillTabInfo");
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
   // If the tab has not actually navigated, then the remote interfaces will be
   // null, just leave off inner text in this case.
   if (!web_contents->GetPrimaryMainFrame() ||
@@ -603,7 +605,7 @@ void GetModelPrototypingAiData(AiDataKeyedService::AiDataSpecifier specifiers,
                                content::WebContents* web_contents,
                                AiDataKeyedService::AiDataCallback callback) {
   TRACE_EVENT0("browser", "GetModelPrototypingAiData");
-  DCHECK(web_contents);
+  CHECK(web_contents, base::NotFatalUntil::M161);
 
   // Fill data with synchronous information.
   AiDataKeyedService::BrowserData data;
@@ -787,7 +789,7 @@ bool AiDataKeyedService::IsExtensionAllowlistedForData(
                                        "mofldjifenhadohlkkngamgbifiofbnd",
                                        // APC Debugging Extension.
                                        // https://issues.chromium.org/555303047
-                                       "bbnmkciocedkjdlapchelmdflhahacpa"});
+                                       kApcDebuggingExtensionId});
   if (std::ranges::contains(*kHardcodedAllowlistedExtensions, extension_id)) {
     return true;
   }
@@ -833,7 +835,12 @@ bool AiDataKeyedService::IsExtensionAllowlistedForActions(
 
 bool AiDataKeyedService::IsExtensionAllowlistedForStable(
     const std::string& extension_id) {
-  // Stable channel always requires --experimental-ai-stable-channel flag.
+  // APC debugging must work on the same Stable pages that users encounter.
+  if (extension_id == kApcDebuggingExtensionId) {
+    return true;
+  }
+
+  // Other extensions still require --experimental-ai-stable-channel.
   auto* command_line = base::CommandLine::ForCurrentProcess();
   if (!command_line->HasSwitch(::switches::kExperimentalAiStableChannel)) {
     return false;

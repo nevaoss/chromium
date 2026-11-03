@@ -20,6 +20,8 @@ const base::Feature* const kAllFeatures[] = {
 #if BUILDFLAG(IS_ANDROID)
     // ALL_FEATURES_ANDROID_START
     // keep-sorted start case=no
+    &kIPH_BlueBubbleCooldownGroup,
+    &kIPH_InterruptiveIphCooldownGroup,
     &kIPHAccountSettingsHistorySync,
     &kIPHAdaptiveButtonInTopToolbarCustomizationAddToBookmarksFeature,
     &kIPHAdaptiveButtonInTopToolbarCustomizationNewTabFeature,
@@ -273,6 +275,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHExplicitBrowserSigninPreferenceRememberedFeature,
     &kIPHFocusHelpBubbleScreenReaderPromoFeature,
     &kIPHGlassFrameOptInFeature,
+    &kIPHGlassFrameOptOutFeature,
     &kIPHGlicPromoFeature,
     &kIPHGlicTrustFirstOnboardingShortcutSnoozePromoFeature,
     &kIPHGlicTryItFeature,
@@ -307,6 +310,8 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHReadingListDiscoveryFeature,
     &kIPHReadingListEntryPointFeature,
     &kIPHReadingListInSidePanelFeature,
+    &kIPHReadingModeAiPlaybackFeature,
+    &kIPHReadingModeAiPlaybackSettingsFeature,
     &kIPHReadingModeKeyboardShortcutFeature,
     &kIPHReadingModeLineFocusFeature,
     &kIPHReadingModePageActionLabelFeature,

@@ -7,6 +7,7 @@ assert(is_win || is_mac || is_linux || is_chromeos)
 import("//build/config/compiler/compiler.gni")
 import("//chrome/common/features.gni")
 import("//extensions/buildflags/buildflags.gni")
+import("//pdf/features.gni")
 import("//testing/test.gni")
 
 source_set("prefs") {
@@ -54,9 +55,11 @@ source_set("read_anything") {
     "//chrome/common",
     "//chrome/common/read_anything:mojo_bindings",
     "//content/public/browser",
+    "//pdf:buildflags",
     "//ui/base",
     "//ui/views",
     "//ui/views/controls/webview",
+    "//url",
   ]
   deps = [
     "//chrome/browser/ui/page_action",
@@ -127,6 +130,13 @@ source_set("impl") {
     "//services/metrics/public/cpp:metrics_cpp",
     "//services/metrics/public/cpp:ukm_builders",
   ]
+
+  if (enable_pdf) {
+    deps += [
+      "//chrome/browser/pdf",
+      "//components/pdf/browser",
+    ]
+  }
 }
 
 source_set("browser_tests") {
@@ -149,7 +159,6 @@ source_set("browser_tests") {
     "//chrome/browser/pdf:pdf_extension_test_utils",
     "//chrome/browser/search_engines",
     "//chrome/browser/translate",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:browser_commands",
     "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui:ui_features",
@@ -174,6 +183,7 @@ source_set("browser_tests") {
     "//components/translate/core/browser",
     "//components/translate/core/common",
     "//content/test:test_support",
+    "//extensions/browser:test_support",
     "//pdf:buildflags",
     "//testing/gtest",
     "//ui/accessibility",
@@ -198,7 +208,6 @@ source_set("interactive_ui_tests") {
     "//base/test:test_support",
     "//chrome/browser",
     "//chrome/browser/accessibility",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/browser_window",

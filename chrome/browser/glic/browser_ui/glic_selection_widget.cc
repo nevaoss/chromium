@@ -9,13 +9,13 @@
 #include "base/feature_list.h"
 #include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
+#include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/resources/grit/glic_browser_resources.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/omnibox/browser/vector_icons.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -47,7 +47,6 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/view_class_properties.h"
-#include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
 
 namespace glic {
@@ -74,6 +73,11 @@ std::u16string GetCtaLabel() {
     return l10n_util::GetStringUTF16(IDS_GLIC_SELECTION_CTA_EXPLAIN);
   }
   return l10n_util::GetStringUTF16(IDS_GLIC_BUTTON_ENTRYPOINT_ASK_GEMINI_LABEL);
+}
+
+const gfx::VectorIcon& GetSmallChipIcon() {
+  return features::IsRoundedIconsEnabled() ? kTextAnalysisIcon
+                                           : kTextAnalysisOldIcon;
 }
 
 class GlicSelectionContentsView : public views::View {
@@ -190,17 +194,20 @@ class GlicSelectionContentsView : public views::View {
     active_icon_model_ = ui::ImageModel::FromImageSkia(resized_icon);
 
     auto inactive_generator = base::BindRepeating(
-        [](const ui::ColorProvider* color_provider) -> gfx::ImageSkia {
+        [](bool is_small_chip,
+           const ui::ColorProvider* color_provider) -> gfx::ImageSkia {
           if (!color_provider) {
             return gfx::ImageSkia();
           }
           const gfx::VectorIcon& vector_icon =
-              glic::GlicVectorIconManager::GetVectorIcon(
-                  IDR_GLIC_BUTTON_VECTOR_ICON);
+              is_small_chip ? GetSmallChipIcon()
+                            : glic::GlicVectorIconManager::GetVectorIcon(
+                                  IDR_GLIC_BUTTON_VECTOR_ICON);
           return gfx::CreateVectorIcon(
               vector_icon, kIconSize,
               color_provider->GetColor(ui::kColorSysOnSurfaceSubtle));
-        });
+        },
+        is_small_chip);
 
     inactive_icon_model_ = ui::ImageModel::FromImageGenerator(
         std::move(inactive_generator), gfx::Size(20, 20));
@@ -263,37 +270,6 @@ class GlicSelectionContentsView : public views::View {
                             ui::kColorSysOnSurfaceSubtle));
       CreateToolbarInkdropCallbacks(copy_btn, kColorToolbarInkDropHover,
                                     kColorToolbarInkDropRipple);
-
-      // Copy Link Button
-      auto copy_link_tooltip =
-          l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_COPYLINKTOTEXT);
-      copy_link_btn_ =
-          ask_pill_->AddChildView(views::ImageButton::CreateIconButton(
-              base::BindRepeating(
-                  &GlicSelectionWidgetDelegate::ActionDelegate::OnCopyLink,
-                  base::Unretained(&widget_delegate_->action_delegate())),
-              features::IsRoundedIconsEnabled()
-                  ? omnibox::kShareIcon
-                  : omnibox::kShareChromeRefreshOldIcon,
-              copy_link_tooltip));
-      copy_link_btn_->SetTooltipText(copy_link_tooltip);
-      copy_link_btn_->SetImageVerticalAlignment(
-          views::ImageButton::ALIGN_MIDDLE);
-      copy_link_btn_->SetBorder(views::CreateEmptyBorder(
-          views::LayoutProvider::Get()->GetInsetsMetric(
-              views::INSETS_VECTOR_IMAGE_BUTTON)));
-      views::SetImageFromVectorIconWithColor(
-          copy_link_btn_,
-          features::IsRoundedIconsEnabled()
-              ? omnibox::kShareIcon
-              : omnibox::kShareChromeRefreshOldIcon,
-          kIconSize,
-          views::IconColors(ui::kColorSysOnSurfaceSubtle,
-                            ui::kColorLabelForegroundDisabled,
-                            ui::kColorSysOnSurfaceSubtle));
-      CreateToolbarInkdropCallbacks(copy_link_btn_, kColorToolbarInkDropHover,
-                                    kColorToolbarInkDropRipple);
-      copy_link_btn_->SetEnabled(false);
     }
 
     if (!is_small_chip) {
@@ -397,12 +373,6 @@ class GlicSelectionContentsView : public views::View {
   }
 
   // Non-virtual helper methods:
-  void SetCopyLinkEnabled(bool enabled) {
-    if (copy_link_btn_) {
-      copy_link_btn_->SetEnabled(enabled);
-    }
-  }
-
   void OnAskGeminiButtonClicked() {
     if (ask_gemini_btn_) {
       ask_gemini_btn_->SetEnabled(false);
@@ -417,7 +387,6 @@ class GlicSelectionContentsView : public views::View {
   raw_ptr<views::MdTextButton> ask_gemini_btn_ = nullptr;
   ui::ImageModel inactive_icon_model_;
   ui::ImageModel active_icon_model_;
-  raw_ptr<views::ImageButton> copy_link_btn_ = nullptr;
   raw_ptr<views::BoxLayoutView> ask_pill_ = nullptr;
   base::CallbackListSubscription ask_gemini_btn_subscription_;
   raw_ptr<views::ImageButton> close_btn_ = nullptr;
@@ -575,13 +544,6 @@ void GlicSelectionWidgetDelegate::OnBeforeBubbleWidgetInit(
     views::Widget::InitParams* params,
     views::Widget* widget) const {
   params->shadow_type = views::Widget::InitParams::ShadowType::kNone;
-}
-
-void GlicSelectionWidgetDelegate::UpdateCopyLinkButton(bool enabled) {
-  if (auto* contents_view =
-          views::AsViewClass<GlicSelectionContentsView>(GetContentsView())) {
-    contents_view->SetCopyLinkEnabled(enabled);
-  }
 }
 
 }  // namespace glic

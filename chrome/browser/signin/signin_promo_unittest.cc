@@ -43,6 +43,7 @@
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_prefs.h"
 #include "components/signin/public/base/signin_switches.h"
+#include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
@@ -60,6 +61,7 @@
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "device/bluetooth/test/mock_bluetooth_adapter.h"
 #include "extensions/common/extension_builder.h"
+#include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/gaia_id.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -94,6 +96,139 @@ TEST(SigninPromoTest, TestReauthURL) {
                                     "example@domain.com"));
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+// Test that `GetChromeReauthURL()` targets `/AccountChooser` and appends
+// `ptc=1` after `Email` when `proceed_to_challenge` is set.
+TEST(SigninPromoTest, TestChromeReauthURLWithProceedToChallenge) {
+  EXPECT_EQ(GURL("https://accounts.google.com/"
+                 "AccountChooser?Email=example%40domain.com&ptc=1"),
+            GetChromeReauthURL(
+                {.email = "example@domain.com", .proceed_to_challenge = true}));
+}
+
+// Test that `ptc` is not appended by default.
+TEST(SigninPromoTest, TestChromeReauthURLWithoutProceedToChallenge) {
+  EXPECT_EQ(GURL("https://accounts.google.com/"
+                 "AccountChooser?Email=example%40domain.com"),
+            GetChromeReauthURL({.email = "example@domain.com"}));
+}
+
+// Test that `ptc` is not appended without an email, since Gaia cannot proceed
+// to a challenge for an unknown account.
+TEST(SigninPromoTest, TestChromeReauthURLWithProceedToChallengeNoEmail) {
+  EXPECT_EQ(GURL("https://accounts.google.com/AccountChooser"),
+            GetChromeReauthURL({.proceed_to_challenge = true}));
+}
+
+namespace {
+
+constexpr char kReauthTestEmail[] = "example@domain.com";
+constexpr char kReauthTestOtherEmail[] = "other@domain.com";
+constexpr char kReauthProceedToChallengeResultHistogram[] =
+    "Signin.Reauth.ProceedToChallengeResult";
+
+gaia::ListedAccount MakeListedAccount(const std::string& email,
+                                      bool valid,
+                                      bool signed_out) {
+  gaia::ListedAccount account;
+  account.email = email;
+  account.gaia_id = GaiaId(email);
+  account.valid = valid;
+  account.signed_out = signed_out;
+  return account;
+}
+
+}  // namespace
+
+// Test that reauth can proceed to challenge when the account is signed out of
+// the web.
+TEST(SigninPromoTest, TestCanReauthProceedToChallengeSignedOutAccount) {
+  base::HistogramTester histogram_tester;
+  EXPECT_TRUE(CanReauthProceedToChallenge(
+      kReauthTestEmail, AccountsInCookieJarInfo(
+                            /*accounts_are_fresh=*/true,
+                            {MakeListedAccount(kReauthTestEmail, /*valid=*/true,
+                                               /*signed_out=*/true)})));
+  histogram_tester.ExpectUniqueSample(
+      kReauthProceedToChallengeResultHistogram,
+      ReauthProceedToChallengeResult::kProceedToChallenge, 1);
+}
+
+// Test that reauth can proceed to challenge when the account is not in the
+// cookie jar.
+TEST(SigninPromoTest, TestCanReauthProceedToChallengeAccountNotInCookies) {
+  base::HistogramTester histogram_tester;
+  EXPECT_TRUE(CanReauthProceedToChallenge(
+      kReauthTestEmail,
+      AccountsInCookieJarInfo(
+          /*accounts_are_fresh=*/true,
+          {MakeListedAccount(kReauthTestOtherEmail, /*valid=*/true,
+                             /*signed_out=*/false)})));
+  EXPECT_TRUE(CanReauthProceedToChallenge(
+      kReauthTestEmail,
+      AccountsInCookieJarInfo(/*accounts_are_fresh=*/true, {})));
+  histogram_tester.ExpectUniqueSample(
+      kReauthProceedToChallengeResultHistogram,
+      ReauthProceedToChallengeResult::kAccountNotInCookies, 2);
+}
+
+// Test that reauth can proceed to challenge when the account session in the
+// cookie jar is invalid.
+TEST(SigninPromoTest, TestCanReauthProceedToChallengeInvalidSession) {
+  base::HistogramTester histogram_tester;
+  EXPECT_TRUE(CanReauthProceedToChallenge(
+      kReauthTestEmail,
+      AccountsInCookieJarInfo(
+          /*accounts_are_fresh=*/true,
+          {MakeListedAccount(kReauthTestEmail, /*valid=*/false,
+                             /*signed_out=*/false)})));
+  histogram_tester.ExpectUniqueSample(
+      kReauthProceedToChallengeResultHistogram,
+      ReauthProceedToChallengeResult::kProceedToChallenge, 1);
+}
+
+// Test that reauth cannot proceed to challenge when Gaia still has a valid
+// session for the account, since `/AccountChooser` would complete without a
+// new sign-in.
+TEST(SigninPromoTest, TestCanReauthProceedToChallengeValidSession) {
+  base::HistogramTester histogram_tester;
+  EXPECT_FALSE(CanReauthProceedToChallenge(
+      kReauthTestEmail, AccountsInCookieJarInfo(
+                            /*accounts_are_fresh=*/true,
+                            {MakeListedAccount(kReauthTestEmail, /*valid=*/true,
+                                               /*signed_out=*/false)})));
+  // Emails are compared after canonicalization.
+  EXPECT_FALSE(CanReauthProceedToChallenge(
+      "Example@Domain.com",
+      AccountsInCookieJarInfo(
+          /*accounts_are_fresh=*/true,
+          {MakeListedAccount(kReauthTestEmail, /*valid=*/true,
+                             /*signed_out=*/false)})));
+  histogram_tester.ExpectUniqueSample(
+      kReauthProceedToChallengeResultHistogram,
+      ReauthProceedToChallengeResult::kAddSessionFallback, 2);
+}
+
+// Test that reauth cannot proceed to challenge when the cookie jar info is
+// stale.
+TEST(SigninPromoTest, TestCanReauthProceedToChallengeStaleCookies) {
+  base::HistogramTester histogram_tester;
+  EXPECT_FALSE(CanReauthProceedToChallenge(
+      kReauthTestEmail,
+      AccountsInCookieJarInfo(/*accounts_are_fresh=*/false, {})));
+  histogram_tester.ExpectUniqueSample(
+      kReauthProceedToChallengeResultHistogram,
+      ReauthProceedToChallengeResult::kAddSessionFallback, 1);
+}
+
+// Test that reauth cannot proceed to challenge without an email.
+TEST(SigninPromoTest, TestCanReauthProceedToChallengeEmptyEmail) {
+  base::HistogramTester histogram_tester;
+  EXPECT_FALSE(CanReauthProceedToChallenge(
+      std::string(), AccountsInCookieJarInfo(/*accounts_are_fresh=*/true, {})));
+  histogram_tester.ExpectTotalCount(kReauthProceedToChallengeResultHistogram,
+                                    0);
+}
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // This test can be deleted once kReplaceSyncPromosWithSignInPromos is launched.

@@ -120,19 +120,6 @@
       ]
     },
     {
-      "id": 37,
-      "cr_bugs": [286468],
-      "description": "Program link fails in NVIDIA Linux if gl_Position is not set",
-      "os": {
-        "type": "linux"
-      },
-      "vendor_id": "0x10de",
-      "gl_vendor": "NVIDIA.*",
-      "features": [
-        "init_gl_position_in_vertex_shader"
-      ]
-    },
-    {
       "id": 42,
       "cr_bugs": [290876, 488463],
       "description": "Framebuffer discarding causes flickering on older IMG drivers",
@@ -274,21 +261,6 @@
       },
       "features": [
         "disable_d3d11"
-      ]
-    },
-    {
-      "id": 88,
-      "description": "Rewrite vec/mat constructors on older GLSL ES drivers, Android O and earlier",
-      "cr_bugs": [398694, 1165751],
-      "os": {
-        "type": "android",
-        "version": {
-          "op": "<=",
-          "value": "8.0"
-        }
-      },
-      "features": [
-        "scalarize_vec_and_mat_constructor_args"
       ]
     },
     {
@@ -581,31 +553,6 @@
       "gl_renderer": "Adreno.*",
       "features": [
         "force_cube_map_positive_x_allocation"
-      ]
-    },
-    {
-      "id": 128,
-      "description": "Linux ATI drivers crash on binding incomplete cube map texture to FBO",
-      "cr_bugs": [518889],
-      "os": {
-        "type": "linux"
-      },
-      "vendor_id": "0x1002",
-      "features": [
-        "force_cube_map_positive_x_allocation"
-      ]
-    },
-    {
-      "id": 130,
-      "description": "NVIDIA fails glReadPixels from incomplete cube map texture",
-      "cr_bugs": [518889],
-      "vendor_id": "0x10de",
-      "os": {
-        "type": "linux"
-      },
-      "gl_vendor": "NVIDIA.*",
-      "features": [
-        "force_cube_complete"
       ]
     },
     {
@@ -1035,22 +982,6 @@
       ]
     },
     {
-      "id": 220,
-      "description": "NV12 DXGI video displays incorrect colors on older AMD drivers",
-      "cr_bugs": [644293],
-      "os": {
-        "type": "win"
-      },
-      "vendor_id": "0x1002",
-      "driver_version": {
-        "op": "<",
-        "value": "21.19.519.2"
-      },
-      "features": [
-        "disable_nv12_dxgi_video"
-      ]
-    },
-    {
       "id": 221,
       "description": "Very large instanced draw calls crash on some Adreno 3xx drivers",
       "cr_bugs": [701682],
@@ -1072,18 +1003,6 @@
       "vendor_id": "0x1002",
       "features": [
         "disable_software_to_accelerated_canvas_upgrade"
-      ]
-    },
-    {
-      "id": 223,
-      "description": "Force integer or srgb cube map texture complete on Linux AMD",
-      "cr_bugs": [712117],
-      "os": {
-        "type": "linux"
-      },
-      "vendor_id": "0x1002",
-      "features": [
-        "force_int_or_srgb_cube_texture_complete"
       ]
     },
     {
@@ -1162,35 +1081,6 @@
       ]
     },
     {
-      "id": 235,
-      "description": "Avoid waiting on a egl fence before pageflipping and rely on implicit sync.",
-      "cr_bugs": [721463],
-      "os": {
-        "type": "chromeos"
-      },
-      "gl_vendor": "Intel.*",
-      "features": [
-        "rely_on_implicit_sync_for_swap_buffers"
-      ]
-    },
-    {
-      "id": 240,
-      "cr_bugs": [750306, 764526],
-      "description": "glGetQueryObject(GL_QUERY_RESULT_AVAILABLE) blocks unexpectedly on Adreno",
-      "os": {
-        "type": "android",
-        "version": {
-          "op": "<",
-          "value": "8.1"
-        }
-      },
-      "gl_renderer": "Adreno \\(TM\\) [345].*",
-      "disabled_extensions": [
-        "GL_EXT_disjoint_timer_query",
-        "GL_EXT_disjoint_timer_query_webgl2"
-      ]
-    },
-    {
       "id": 241,
       "description": "On Intel GPUs MSAA performance is not acceptable for GPU rasterization. Duplicate of 132 for Android",
       "cr_bugs": [759471],
@@ -1213,24 +1103,6 @@
       "gl_renderer": "Mali.*",
       "features": [
         "disable_program_caching_for_transform_feedback"
-      ]
-    },
-    {
-      "id": 245,
-      "description": "Switching framebuffers without a flush can lead to crashes on Intel 9th Generation GPU Macs.",
-      "cr_bugs": [783979, 1472087],
-      "os": {
-        "type": "macosx"
-      },
-      "gl_renderer": "ANGLE.*OpenGL.*",
-      "intel_gpu_series": [
-        "skylake",
-        "kabylake",
-        "coffeelake"
-      ],
-      "multi_gpu_category": "any",
-      "features": [
-        "flush_on_framebuffer_change"
       ]
     },
     {
@@ -1421,17 +1293,6 @@
       ]
     },
     {
-      "id": 269,
-      "cr_bugs": [841755],
-      "description": "glFlush error on Mac",
-      "os": {
-        "type": "macosx"
-      },
-      "features": [
-        "disable_2d_canvas_auto_flush"
-      ]
-    },
-    {
       "id": 272,
       "cr_bugs": [858879],
       "description": "A deleted query id for GL_TIMESTAMP cannot be reused for other query targets",
@@ -1513,7 +1374,6 @@
         "op": ">",
         "value": "0.0.100.0"
       },
-      "hardware_overlay": "unsupported",
       "features": [
         "disable_direct_composition_video_overlays"
       ]
@@ -1540,30 +1400,6 @@
       "gl_vendor": "NVIDIA.*",
       "features": [
         "adjust_src_dst_region_for_blitframebuffer"
-      ]
-    },
-    {
-      "id": 295,
-      "description": "Avoid waiting on a egl fence before swapping buffers and rely on implicit sync on Intel GPUs",
-      "cr_bugs": [938286],
-      "os": {
-        "type": "linux"
-      },
-      "gl_vendor": "Intel.*",
-      "features": [
-        "rely_on_implicit_sync_for_swap_buffers"
-      ]
-    },
-    {
-      "id": 296,
-      "description": "Avoid waiting on a egl fence before swapping buffers and rely on implicit sync on Broadcom GPUs",
-      "cr_bugs": [938286],
-      "os": {
-        "type": "linux"
-      },
-      "gl_vendor": "Broadcom.*",
-      "features": [
-        "rely_on_implicit_sync_for_swap_buffers"
       ]
     },
     {
@@ -2537,48 +2373,6 @@
         "disable_accelerated_av1_decode",
         "disable_accelerated_vp8_decode",
         "disable_accelerated_vp9_decode"
-      ]
-    },
-    {
-      "id": 389,
-      "description": "Avoid waiting on a egl fence before pageflipping and rely on implicit sync.",
-      "os": {
-        "type": "chromeos"
-      },
-      "gl_vendor": "nouveau.*",
-      "features": [
-        "rely_on_implicit_sync_for_swap_buffers"
-      ]
-    },
-    {
-      "id": 390,
-      "description": "AVC/AV1 hardware encoder MFT output bitrate incorrect upon framerate update on Intel GPUs.",
-      "cr_bugs": [1295815],
-      "os": {
-        "type": "win"
-      },
-      "vendor_id": "0x8086",
-      "multi_gpu_category": "any",
-      "driver_version": {
-        "op": "<",
-        "value": "30.0.101.1340"
-      },
-      "features": [
-        "disable_dynamic_video_encode_framerate_update"
-      ]
-    },
-    {
-      "id": 391,
-      "description": "Skia ReduceOpsTaskSplitting causes artifacts on Intel Skylake",
-      "cr_bugs": [1298809],
-      "os": {
-        "type": "win"
-      },
-      "intel_gpu_series": [
-        "skylake"
-      ],
-      "features": [
-        "disable_skia_reduce_ops_task_splitting"
       ]
     },
     {

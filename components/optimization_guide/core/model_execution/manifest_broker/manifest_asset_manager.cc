@@ -19,7 +19,6 @@
 #include "base/logging.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/notimplemented.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/sequence_checker.h"
 #include "base/strings/string_number_conversions.h"
@@ -29,7 +28,6 @@
 #include "base/values.h"
 #include "base/version.h"
 #include "build/branding_buildflags.h"
-#include "components/crx_file/id_util.h"
 #include "components/optimization_guide/core/model_execution/component_download_observer.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/manifest.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
@@ -327,22 +325,15 @@ bool ManifestAssetManager::DiskSpaceStatus::IsFresh() const {
          (base::Time::Now() - last_evaluated_) < kDiskSpaceFreshnessThreshold;
 }
 
-bool ManifestAssetManager::DiskSpaceStatus::CanSupportOnDemandInstall() const {
+bool ManifestAssetManager::DiskSpaceStatus::IsSufficientForOnDemandInstall()
+    const {
   return free_space_.has_value() &&
          features::IsFreeDiskSpaceSufficientForOnDeviceModelInstall(
              free_space_.value());
 }
 
-bool ManifestAssetManager::DiskSpaceStatus::CanSupportProactiveDownload()
+bool ManifestAssetManager::DiskSpaceStatus::IsSufficientForBackgroundInstall()
     const {
-  if (!base::FeatureList::IsEnabled(
-          features::kOnDeviceModelBackgroundDownload)) {
-    return false;
-  }
-  if (!base::PowerMonitor::GetInstance()->IsInitialized() ||
-      base::PowerMonitor::GetInstance()->IsOnBatteryPower()) {
-    return false;
-  }
   return free_space_.has_value() &&
          features::IsFreeDiskSpaceSufficientForBackgroundOnDeviceModelInstall(
              free_space_.value());
@@ -379,7 +370,7 @@ bool AssetPriorities::IsAtLeast(AssetPriority priority,
 ManifestAssetManager::ManifestAssetManager(
     PrefService& local_state,
     UsageTracker& usage_tracker,
-    Delegate& delegate,
+    ManifestAssetManagerDelegate& delegate,
     component_updater::ComponentUpdateService* component_update_service,
     std::unique_ptr<ManifestSolutionFactory> factory)
     : local_state_(local_state),
@@ -426,11 +417,7 @@ std::optional<std::string> ManifestAssetManager::GetCrxIdForAsset(
     return std::nullopt;
   }
 
-  std::vector<uint8_t> public_key_hash;
-  if (!base::HexStringToBytes(it->second.public_key(), &public_key_hash)) {
-    return std::nullopt;
-  }
-  return crx_file::id_util::GenerateIdFromHash(public_key_hash);
+  return GetCrxIdFromPublicKeyHex(it->second.public_key());
 }
 
 void ManifestAssetManager::AddDownloadProgressObserver(
@@ -495,7 +482,7 @@ void ManifestAssetManager::UpdateSolutionFactory(
   // solutions until we actually download assets for the new factory.
   factory_ = std::move(factory);
   if (std::optional<base::ByteSize> free_space =
-          disk_space_status_.GetFreeSpace()) {
+          disk_space_status_.free_space()) {
     factory_->UpdateFreeDiskSpace(free_space);
   }
 
@@ -521,13 +508,6 @@ void ManifestAssetManager::RefreshSolutions() {
   if (factory_) {
     factory_->UpdateSolutions();
   }
-}
-
-// static
-bool ManifestAssetManager::VerifyInstallation(const base::FilePath& install_dir,
-                                              const base::DictValue& manifest) {
-  // TODO(crbug.com/489511499): implement proper verification logic.
-  return base::PathExists(install_dir);
 }
 
 void ManifestAssetManager::OnPriorityIncrease(
@@ -571,7 +551,8 @@ void ManifestAssetManager::ScanForOrphanedAssets() {
 }
 
 void ManifestAssetManager::OnOrphanedAssetsFound(
-    std::vector<Delegate::InstalledAsset> installed_assets) {
+    std::vector<ManifestAssetManagerDelegate::InstalledAsset>
+        installed_assets) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   std::vector<std::string> keys_to_save;
   for (const auto& asset : installed_assets) {
@@ -599,7 +580,51 @@ void ManifestAssetManager::OnDiskSpaceEvaluated(
   UpdateRegistrations();
 }
 
-bool ManifestAssetManager::ShouldInstall(
+bool ManifestAssetManager::CanSupportProactiveDownload() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!base::FeatureList::IsEnabled(
+          features::kOnDeviceModelBackgroundDownload)) {
+    return false;
+  }
+  if (!base::PowerMonitor::GetInstance()->IsInitialized() ||
+      base::PowerMonitor::GetInstance()->IsOnBatteryPower()) {
+    return false;
+  }
+  return disk_space_status_.IsSufficientForBackgroundInstall();
+}
+
+bool ManifestAssetManager::ShouldRetain(const ComponentContext& context) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // If the component already has the target version requested (downloading or
+  // installed), retain it unless eviction is enabled and its priority has
+  // dropped below kRetain.
+  return !IsEvictionEnabled() ||
+         asset_priorities_.IsAtLeast(AssetPriority::kRetain,
+                                     context.asset_id());
+}
+
+bool ManifestAssetManager::ShouldRegisterNewVersion(
+    const ComponentContext& context) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(disk_space_status_.IsFresh());
+  if (!disk_space_status_.IsSufficientForOnDemandInstall()) {
+    if (std::optional<base::ByteSize> free_space =
+            disk_space_status_.free_space()) {
+      base::UmaHistogramCounts100(
+          "OptimizationGuide.ModelExecution.OnDeviceModelInstallCriteria."
+          "AtRegistration.DiskSpaceWhenNotEnoughAvailable",
+          free_space->InGiB());
+    }
+    return false;
+  }
+  return asset_priorities_.IsAtLeast(AssetPriority::kBestEffort,
+                                     context.asset_id()) ||
+         (CanSupportProactiveDownload() &&
+          asset_priorities_.IsAtLeast(AssetPriority::kSpeculative,
+                                      context.asset_id()));
+}
+
+bool ManifestAssetManager::ShouldInstallOrRetain(
     const ComponentContext& context,
     const proto::OnDemandComponent* component) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -620,31 +645,17 @@ bool ManifestAssetManager::ShouldInstall(
   // components/component_updater/required_components_controller.h.
   return true;
 #else
-  if (context.requested_version() == component->target_version()) {
-    // The component is either downloading or already installed.
-    return !IsEvictionEnabled() ||
-           asset_priorities_.IsAtLeast(AssetPriority::kRetain,
-                                       context.asset_id());
-  }
-  if (!disk_space_status_.CanSupportOnDemandInstall()) {
-    std::optional<base::ByteSize> free_space =
-        disk_space_status_.GetFreeSpace();
-    if (free_space) {
-      base::UmaHistogramCounts100(
-          "OptimizationGuide.ModelExecution.OnDeviceModelInstallCriteria."
-          "AtRegistration.DiskSpaceWhenNotEnoughAvailable",
-          free_space->InGiB());
-    }
-    return false;
-  }
-  if (asset_priorities_.IsAtLeast(AssetPriority::kBestEffort,
-                                  context.asset_id())) {
-    return true;
-  }
-  return disk_space_status_.CanSupportProactiveDownload() &&
-         asset_priorities_.IsAtLeast(AssetPriority::kSpeculative,
-                                     context.asset_id());
+  return context.requested_version() == component->target_version()
+             ? ShouldRetain(context)
+             : ShouldRegisterNewVersion(context);
 #endif
+}
+
+bool ManifestAssetManager::ShouldRequestForegroundDownload(
+    const ComponentContext& context) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return asset_priorities_.IsAtLeast(AssetPriority::kUserBlocking,
+                                     context.asset_id());
 }
 
 void ManifestAssetManager::RecordEvictableAssetsCount() const {
@@ -703,7 +714,7 @@ void ManifestAssetManager::UpdateRegistrations() {
     }
     const proto::OnDemandComponent* component =
         factory_->manifest().GetAssetByPublicKey(public_key);
-    if (!ShouldInstall(context, component)) {
+    if (!ShouldInstallOrRetain(context, component)) {
       if (context.NeedsCleanup()) {
         RecordUninstallReason(context, component);
         context.SetUninstalling();
@@ -748,8 +759,7 @@ void ManifestAssetManager::UpdateRegistrations() {
     NotifyFactory(public_key, context);
 
     if (context.state() == ComponentState::kRegistered) {
-      if (asset_priorities_.IsAtLeast(AssetPriority::kUserBlocking,
-                                      context.asset_id())) {
+      if (ShouldRequestForegroundDownload(context)) {
         context.SetOnDemandDownloading();
         // This doesn't change a persistent state, so it's okay to not save.
         delegate_->RequestUpdate(public_key,
@@ -880,19 +890,6 @@ void ManifestAssetManager::NotifyFactory(const std::string& public_key,
                              context.AsAssetState(component->target_version()));
 }
 
-std::vector<mojom::BrokerPropertyInfoPtr>
-ManifestAssetManager::GetBrokerProperties() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  std::vector<mojom::BrokerPropertyInfoPtr> properties;
-  properties.push_back(mojom::BrokerPropertyInfo::New(
-      "Supports Installs",
-      disk_space_status_.CanSupportOnDemandInstall() ? "true" : "false"));
-  properties.push_back(mojom::BrokerPropertyInfo::New(
-      "Supports Proactive Downloads",
-      disk_space_status_.CanSupportProactiveDownload() ? "true" : "false"));
-  return properties;
-}
-
 std::vector<mojom::BrokerAssetInfoPtr> ManifestAssetManager::GetBrokerAssets()
     const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -904,11 +901,10 @@ std::vector<mojom::BrokerAssetInfoPtr> ManifestAssetManager::GetBrokerAssets()
 
     // Fetch initial download progress if available.
     if (component_update_service_) {
-      std::vector<uint8_t> hash;
-      if (base::HexStringToBytes(public_key, &hash)) {
-        std::string crx_id = crx_file::id_util::GenerateIdFromHash(hash);
+      if (std::optional<std::string> crx_id =
+              GetCrxIdFromPublicKeyHex(public_key)) {
         if (auto progress =
-                GetDownloadProgress(component_update_service_, crx_id)) {
+                GetDownloadProgress(component_update_service_, *crx_id)) {
           asset_info->bytes_downloaded = progress->first;
           asset_info->bytes_total = progress->second;
         }

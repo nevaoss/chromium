@@ -347,7 +347,7 @@ void InsertSectionTitles(std::vector<Suggestion>& suggestions) {
   if (!is_personal_context_sourced(suggestions.front())) {
     suggestions.insert(
         suggestions.begin(),
-        CreateTitleSuggestion(IDS_AUTOFILL_AT_MEMORY_YOUR_SAVED_AUTOFILL_INFO));
+        CreateTitleSuggestion(IDS_AUTOFILL_AT_MEMORY_YOUR_SAVED_INFO));
   }
   if (auto remote_it =
           std::ranges::find_if(suggestions, is_personal_context_sourced);
@@ -1108,7 +1108,7 @@ void AtMemoryManager::ShowNoResultsStateSuggestions(
       suggestions.push_back(CreateNoDataSuggestion());
       break;
     case MemorySearchStatus::kPartialResponseSuccess:
-      break;
+      return;
     case MemorySearchStatus::kNoConnectionFailure:
       suggestions.push_back(CreateNoConnectionSuggestion(query));
       break;
@@ -1117,6 +1117,13 @@ void AtMemoryManager::ShowNoResultsStateSuggestions(
       suggestions.push_back(CreateGenericErrorSuggestion());
       break;
   }
+  CHECK(!suggestions.empty());
+  // For `kNoConnectionFailure`, `main_text` contains `query` instead of the
+  // error message.
+  suggestions.front().a11y_announcement =
+      result.status == MemorySearchStatus::kNoConnectionFailure
+          ? l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION)
+          : suggestions.front().main_text.value;
   MaybeAppendPersonalContextNotice(suggestions);
   SendSuggestions(std::move(suggestions));
 }

@@ -12,7 +12,6 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/no_destructor.h"
-#include "base/notimplemented.h"
 #include "base/state_transitions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/pass_key.h"
@@ -25,9 +24,13 @@
 #include "chrome/browser/ttc/core/ttc_page_context_monitor.h"
 #include "chrome/browser/ttc/core/voice_focused_contents_tracker.h"
 #include "components/actor/core/journal_details_builder.h"
+#include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "content/public/browser/web_contents.h"
+#include "url/gurl.h"
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ttc/android/session_view_android.h"
+#else
 #include "chrome/browser/ttc/core/session_view_impl.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #endif
@@ -36,11 +39,9 @@ namespace ttc {
 
 namespace {
 
-std::unique_ptr<SessionView> MakeSessionView(
-    [[maybe_unused]] SessionViewDelegate& delegate) {
+std::unique_ptr<SessionView> MakeSessionView(SessionViewDelegate& delegate) {
 #if BUILDFLAG(IS_ANDROID)
-  // SessionViewImpl is views-based; Android will need its own implementation.
-  return nullptr;
+  return std::make_unique<SessionViewAndroid>(delegate);
 #else
   return std::make_unique<SessionViewImpl>(delegate);
 #endif
@@ -77,16 +78,11 @@ SessionControllerImpl::SessionControllerImpl(TtcKeyedService& service)
   // calls back into GetProfile() on this object.
   conversation_ =
       service.MakeConversation(base::PassKey<SessionControllerImpl>(), *this);
-
-  if (conversation_) {
-    conversation_->Start();
-  }
+  conversation_->Start();
 }
 
 SessionControllerImpl::~SessionControllerImpl() {
-  if (conversation_) {
-    conversation_->Stop();
-  }
+  conversation_->Stop();
 
   GetJournal().Log(
       "TtcSessionEnd",
@@ -116,18 +112,6 @@ void SessionControllerImpl::SetSessionLifecycle(SessionLifecycle lifecycle) {
   session_lifecycle_ = lifecycle;
 }
 
-void SessionControllerImpl::GetPageContext(FetchCompleteCallback callback) {
-  if (!page_context_monitor_) {
-    std::move(callback).Run(base::unexpected(
-        page_content_annotations::FetchPageContextError::kWebContentsWentAway));
-    return;
-  }
-
-  // TODO(b/555804152) - Migrate to automatic extractions from
-  // PageContentExtractionService.
-  page_context_monitor_->StartNewFetch(std::move(callback));
-}
-
 Profile* SessionControllerImpl::GetProfile() {
   return service_->profile();
 }
@@ -144,12 +128,6 @@ std::vector<ToolDefinition> SessionControllerImpl::GetToolDefinitions() {
 }
 
 void SessionControllerImpl::UserAudioLevelUpdate(float audio_level) {
-  // Android doesn't have a SessionView implementation yet.
-  if (!session_view_) {
-    NOTIMPLEMENTED();
-    return;
-  }
-
   session_view_->UpdateAudioLevel(audio_level);
 }
 
@@ -164,11 +142,6 @@ BrowserWindowInterface* SessionControllerImpl::GetBrowserWindowInterface() {
 }
 
 void SessionControllerImpl::OnSessionInitialized() {
-  if (!session_view_) {
-    NOTIMPLEMENTED();
-    return;
-  }
-
   session_view_->OnSessionInitialized();
 }
 
@@ -186,11 +159,6 @@ void SessionControllerImpl::OnError(ErrorCode error) {
   if (is_fatal) {
     EndSessionAsync();
     fatal_error_reported_ = true;
-  }
-
-  if (!session_view_) {
-    NOTIMPLEMENTED();
-    return;
   }
 
   session_view_->OnError(error);
@@ -214,16 +182,29 @@ void SessionControllerImpl::OnVoiceFocusedContentsChanged(
   if (web_contents) {
     page_context_monitor_ = std::make_unique<TtcPageContextMonitor>(
         *web_contents,
-        base::BindRepeating(&SessionControllerImpl::OnPageContextChanged,
+        base::BindRepeating(&Conversation::OnPageContextInvalidated,
+                            base::Unretained(conversation_.get())),
+        base::BindRepeating(&SessionControllerImpl::OnPageContextFetched,
                             base::Unretained(this)));
   }
-  OnPageContextChanged();
+  conversation_->OnPageContextInvalidated();
 }
 
-void SessionControllerImpl::OnPageContextChanged() {
-  if (conversation_) {
-    conversation_->OnPageContextChanged();
+content::WebContents* SessionControllerImpl::GetVoiceFocusedWebContents() {
+  return voice_focused_contents_tracker_->GetActiveWebContents();
+}
+
+void SessionControllerImpl::OnPageContextFetched(
+    const PageContextResult& result) {
+  if (!result.has_value()) {
+    // TODO(b/555804152): Signal to the model when page context cannot be
+    // fetched or is ineligible.
+    return;
   }
+  const optimization_guide::proto::AnnotatedPageContent& apc =
+      result->annotated_page_content->data;
+  conversation_->SendContextUpdate(GURL(apc.main_frame_data().url()),
+                                   apc.main_frame_data().title(), apc);
 }
 
 }  // namespace ttc

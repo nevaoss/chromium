@@ -34,6 +34,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -100,6 +101,7 @@ import org.chromium.components.browser_ui.util.ChromeItemPickerUtils;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler.BackPressResult;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.contextual_search.ContextUploadErrorType;
 import org.chromium.components.contextual_search.ContextUploadStatus;
 import org.chromium.components.contextual_search.DisclaimerStatus;
@@ -285,6 +287,7 @@ public class FuseboxMediatorUnitTest {
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
     @Captor private ArgumentCaptor<WindowAndroid.IntentCallback> mIntentCallbackCaptor;
+    @Captor private ArgumentCaptor<PropertyModel> mScrimModelCaptor;
 
     private Context mContext;
     private Resources mResources;
@@ -971,11 +974,14 @@ public class FuseboxMediatorUnitTest {
 
         // Show popup.
         runnable.run();
-        verify(mScrimManager).showScrim(any());
+        verify(mScrimManager).showScrim(mScrimModelCaptor.capture());
+        PropertyModel scrimModel = mScrimModelCaptor.getValue();
+        assertNull(scrimModel.get(ScrimProperties.BACKGROUND_COLOR));
+        assertTrue(scrimModel.get(ScrimProperties.AFFECTS_STATUS_BAR));
 
         // Hide popup.
         runnable.run();
-        verify(mScrimManager).hideScrim(any(), eq(true));
+        verify(mScrimManager).hideScrim(scrimModel, /* animate= */ true);
     }
 
     @Test
@@ -1013,7 +1019,7 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void testPopupShowHide_floatingMode_doesNotTriggerScrim() {
+    public void testPopupShowHide_floatingMode_triggersTransparentScrim() {
         OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ false);
         recreateMediator();
         Runnable runnable = mModel.get(FuseboxProperties.PLUS_BUTTON_CLICKED);
@@ -1021,7 +1027,15 @@ public class FuseboxMediatorUnitTest {
 
         // Show popup.
         runnable.run();
-        verify(mScrimManager, never()).showScrim(any());
+        verify(mScrimManager).showScrim(mScrimModelCaptor.capture());
+        PropertyModel scrimModel = mScrimModelCaptor.getValue();
+        assertEquals(Color.TRANSPARENT, (int) scrimModel.get(ScrimProperties.BACKGROUND_COLOR));
+        assertFalse(scrimModel.get(ScrimProperties.AFFECTS_STATUS_BAR));
+        assertNotNull(scrimModel.get(ScrimProperties.CLICK_DELEGATE));
+
+        // Hide popup.
+        runnable.run();
+        verify(mScrimManager).hideScrim(scrimModel, /* animate= */ true);
     }
 
     @Test
@@ -1106,6 +1120,71 @@ public class FuseboxMediatorUnitTest {
     public void testBackPressHandler_inactive_returnsFailure() {
         assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
         assertEquals(BackPressResult.FAILURE, mMediator.handleBackPress());
+    }
+
+    @Test
+    public void popupItemSelectedMetric_closedWithoutSelection_recordsFalse() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Omnibox.MobileFusebox.AttachmentsPopupItemSelected", false);
+
+        // Opens the popup.
+        mMediator.onPlusButtonClicked();
+
+        // Closes it without selecting anything.
+        mMediator.onPlusButtonClicked();
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void popupItemSelectedMetric_itemTapped_recordsTrue() {
+        doReturn(true).when(mWindowAndroid).hasPermission(any());
+        mMediator.onPlusButtonClicked();
+
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Omnibox.MobileFusebox.AttachmentsPopupItemSelected", true);
+        mModel.get(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED).run();
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void popupItemSelectedMetric_moreOptionsThenBackPress_recordsFalse() {
+        OmniboxFeatures.setUseAccordionForTesting(true);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Omnibox.MobileFusebox.AttachmentsPopupItemSelected", false);
+        mModel.get(FuseboxProperties.POPUP_MORE_OPTIONS_CLICKED).run();
+        assertEquals(BackPressResult.SUCCESS, mMediator.handleBackPress());
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void popupItemSelectedMetric_resetsWhenPopupReopened() {
+        doReturn(true).when(mWindowAndroid).hasPermission(any());
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectBooleanRecord(
+                                "Omnibox.MobileFusebox.AttachmentsPopupItemSelected", true)
+                        .expectBooleanRecord(
+                                "Omnibox.MobileFusebox.AttachmentsPopupItemSelected", false)
+                        .build();
+
+        // First open: select an item.
+        mMediator.onPlusButtonClicked();
+        mModel.get(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED).run();
+        // Second open: dismiss without selecting.
+        mMediator.onPlusButtonClicked();
+        mMediator.onPlusButtonClicked();
+
+        histogramWatcher.assertExpected();
+        assertFalse(mMediator.wasPopupItemSelected());
     }
 
     @Test

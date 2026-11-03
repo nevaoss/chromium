@@ -247,6 +247,22 @@ source_set("chrome_test_scoped_utils") {
   ]
   public_deps = [ "//base" ]
   deps = [ "//chrome/browser:browser_process" ]
+
+  if (is_chrome_branded && (is_mac || is_win || is_linux)) {
+    sources += [ "scoped_channel_override.h" ]
+    public_deps += [ "//build:branding_buildflags" ]
+    if (is_mac) {
+      sources += [ "scoped_channel_override_mac.cc" ]
+      deps += [ "//chrome/common" ]
+    } else if (is_win) {
+      sources += [ "scoped_channel_override_win.cc" ]
+      public_deps += [ "//chrome/install_static/test:test_support" ]
+      deps += [ "//chrome/install_static:install_static_util" ]
+    } else {
+      sources += [ "scoped_channel_override_posix.cc" ]
+      public_deps += [ "//base/test:test_support" ]
+    }
+  }
 }
 
 source_set("menu_model_test") {
@@ -748,26 +764,6 @@ source_set("web_ui_mocha_browser_test") {
       "//chrome/browser/ui",
       "//content/public/common",
     ]
-  }
-}
-
-if (is_chrome_branded && (is_mac || is_win || is_linux)) {
-  source_set("scoped_channel_override") {
-    testonly = true
-    sources = [ "scoped_channel_override.h" ]
-    public_deps = [ "//build:branding_buildflags" ]
-    if (is_mac) {
-      sources += [ "scoped_channel_override_mac.cc" ]
-      deps = [ "//chrome/common" ]
-    } else if (is_win) {
-      sources += [ "scoped_channel_override_win.cc" ]
-      public_deps += [ "//chrome/install_static/test:test_support" ]
-      deps = [ "//chrome/install_static:install_static_util" ]
-    } else {
-      sources += [ "scoped_channel_override_posix.cc" ]
-      public_deps += [ "//base/test:test_support" ]
-      deps = [ "//base" ]
-    }
   }
 }
 
@@ -1283,6 +1279,22 @@ if (!is_android) {
   }
 }
 
+if (is_mac) {
+  source_set("interactive_ui_tests") {
+    testonly = true
+    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+    sources = [ "in_process_browser_test_mac_interactive_uitest.mm" ]
+    deps = [
+      ":in_process_browser_test",
+      "//base/test:test_support",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/test:test_support_ui",
+      "//content/test:test_support",
+      "//ui/base",
+    ]
+  }
+}
+
 if (is_android) {
   source_set("android_ui_test_utils") {
     testonly = true
@@ -1449,9 +1461,6 @@ if (is_chromeos) {
       "ash/web_ui_test_handler.h",
     ]
 
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
     public_deps = [
       ":devtools_coverage",
       ":javascript_browser_test",
@@ -1488,9 +1497,6 @@ if (is_chromeos) {
       "ash/extension_js_browser_test.h",
     ]
 
-    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-    # enable the diagnostic by removing this line.
-    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
     public_deps = [
       ":devtools_coverage",
       ":javascript_browser_test",

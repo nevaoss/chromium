@@ -723,16 +723,21 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       return this.handleVirtualFocusEnter(e);
     }
 
-    private updateInputForSelection_(
-        nextSelection: OmniboxPopupSelection, key: string) {
+    updateInputForSelection(nextSelection: OmniboxPopupSelection, key: string) {
       if (nextSelection.state === SelectionLineState.kFocusedButtonAim ||
           nextSelection.line === -1) {
-        this.getInputElement().setSelectionA11yLabel('');
+        // The input itself, or a button outside the matches: show the typed
+        // text again, without any inline autocompletion.
         this.getInputElement().setInput({
           text: this.lastQueriedInput ?? '',
           inline: '',
           moveCursorToEnd: true,
         });
+        // Follows `setInput()`, as in the WebUI toolbar, so the label is the
+        // last thing screen readers are told about and the value change does
+        // not talk over it.
+        this.getInputElement().setSelectionA11yLabel(
+            this.getSelectionA11yLabel(this.selectedMatch, nextSelection));
         return;
       }
 
@@ -750,16 +755,17 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         const text = newFill.substr(0, newFillEnd);
         const isMatchPreview =
             this.isMatchPreview_(this.selectedMatch, nextSelection.line);
-        // Must precede `setInput()` so screen readers narrate the selection's
-        // label rather than the input's new preview value.
-        this.getInputElement().setSelectionA11yLabel(
-            this.computeSelectionA11yLabel_(this.selectedMatch, nextSelection));
         this.getInputElement().setInput({
           text: text,
           inline: newInline,
           moveCursorToEnd: newInline.length === 0,
           isMatchPreview: isMatchPreview,
         });
+        // Follows `setInput()`, as in the WebUI toolbar, so the label is the
+        // last thing screen readers are told about and the preview value
+        // change does not talk over it.
+        this.getInputElement().setSelectionA11yLabel(
+            this.getSelectionA11yLabel(this.selectedMatch, nextSelection));
 
         if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'PageDown' ||
             key === 'PageUp') {
@@ -772,11 +778,24 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     }
 
     /**
-     * Returns the screen reader label for `selection` on `match`. Mirrors the
-     * label `cr-searchbox-match` announces for the same selection.
+     * Returns the label screen readers narrate for `selection`, where `match`
+     * is the match `selection` resolves to, if any. This is the only narration
+     * of virtual focus selection changes, so elements that can be virtually
+     * focused must not announce themselves too. Subclasses that add virtually
+     * focusable buttons should override this to label them; returning '' makes
+     * screen readers narrate the input instead.
      */
-    private computeSelectionA11yLabel_(
-        match: AutocompleteMatch, selection: OmniboxPopupSelection): string {
+    getSelectionA11yLabel(
+        match: AutocompleteMatch|null,
+        selection: OmniboxPopupSelection): string {
+      if (selection.state === SelectionLineState.kFocusedButtonAim) {
+        const button =
+            this.shadowRoot.querySelector('cr-searchbox-compose-button');
+        return button ? (button.a11yLabel || button.labelText) : '';
+      }
+      if (!match || selection.line < 0) {
+        return '';
+      }
       switch (selection.state) {
         case SelectionLineState.kNormal:
           return match.a11yLabel;
@@ -973,7 +992,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
 
           await this.updateComplete;
 
-          this.updateInputForSelection_(nextSelection, e.key);
+          this.updateInputForSelection(nextSelection, e.key);
           return;
         }
       }
@@ -1112,7 +1131,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
       this.setSelection(selection);
       await this.updateComplete;
-      this.updateInputForSelection_(selection, 'click');
+      this.updateInputForSelection(selection, 'click');
       const inputValue = this.getInputElement().getInputValue();
       if (inputValue) {
         this.queryAutocomplete(
@@ -1202,6 +1221,8 @@ export interface SearchboxMixinInterface extends
   handleKeyNavigation(e: KeyboardEvent): void;
   handleVirtualFocusEnter(e: KeyboardEvent): boolean;
   handleVirtualFocusSpace(e: KeyboardEvent): boolean;
+  getSelectionA11yLabel(
+      match: AutocompleteMatch|null, selection: OmniboxPopupSelection): string;
   hasMatches(): boolean;
   isAutocompleteResultStale(result: AutocompleteResult): boolean;
   isBackgroundTabNavigation(e: KeyboardEvent|MouseEvent): boolean;
@@ -1231,4 +1252,6 @@ export interface SearchboxMixinInterface extends
       isOnFocus: boolean): void;
   getTabId(): number|null;
   shouldAppendDotComOnCtrlEnter(): boolean;
+  updateInputForSelection(nextSelection: OmniboxPopupSelection, key: string):
+      void;
 }

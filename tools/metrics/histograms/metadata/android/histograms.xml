@@ -624,6 +624,62 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.AppSharedPreferences.CachedFlags.EstimatedSizeKB"
+    units="KB" expires_after="2027-10-01">
+  <owner>hnakashima@chromium.org</owner>
+  <owner>clank-commons@google.com</owner>
+  <summary>
+    Estimated serialized size of the CachedFlag and CachedFeatureParam entries
+    (keys prefixed with &quot;Chrome.Flags.CachedFlag.&quot; or
+    &quot;Chrome.Flags.FeatureParamCached.&quot;) in the app-wide (default)
+    SharedPreferences file, computed from key and value lengths plus a per-type
+    XML overhead. Rounded up to the next KB. Used to track the reduction of
+    CachedFlags storage as they are migrated away and their keys cleaned up.
+    Recorded once per browser process during deferred startup.
+  </summary>
+</histogram>
+
+<histogram name="Android.AppSharedPreferences.CachedFlags.KeyCount"
+    units="keys" expires_after="2027-10-01">
+  <owner>hnakashima@chromium.org</owner>
+  <owner>clank-commons@google.com</owner>
+  <summary>
+    Number of CachedFlag and CachedFeatureParam entries (keys prefixed with
+    &quot;Chrome.Flags.CachedFlag.&quot; or
+    &quot;Chrome.Flags.FeatureParamCached.&quot;) in the app-wide (default)
+    SharedPreferences file. Used to track the reduction of CachedFlags as they
+    are migrated away and their keys cleaned up. Recorded once per browser
+    process during deferred startup.
+  </summary>
+</histogram>
+
+<histogram name="Android.AppSharedPreferences.FileSizeKB" units="KB"
+    expires_after="2027-10-01">
+  <owner>hnakashima@chromium.org</owner>
+  <owner>clank-commons@google.com</owner>
+  <summary>
+    Size on disk of the app-wide (default) SharedPreferences XML file, used by
+    ContextUtils.getAppSharedPreferences() and ChromeSharedPreferences. The
+    whole file is rewritten on every apply()/commit(), so this approximates the
+    disk write cost of SharedPreferences. Recorded once per browser process
+    during deferred startup. Rounded up to the next KB. Not recorded if the file
+    does not exist.
+  </summary>
+</histogram>
+
+<histogram name="Android.AppSharedPreferences.KeyCount" units="keys"
+    expires_after="2027-10-01">
+  <owner>hnakashima@chromium.org</owner>
+  <owner>clank-commons@google.com</owner>
+  <summary>
+    Number of entries in the app-wide (default) SharedPreferences file, used by
+    ContextUtils.getAppSharedPreferences() and ChromeSharedPreferences. All
+    entries are kept in memory for the lifetime of the process, so this is
+    likely proportional to the RAM footprint of SharedPreferences. Recorded once
+    per browser process during deferred startup.
+  </summary>
+</histogram>
+
 <histogram name="Android.AssistContent.AttachedUrl" enum="BooleanSuccess"
     expires_after="2027-02-07">
   <owner>salg@google.com</owner>
@@ -2173,7 +2229,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.DragDrop{TabObjectType}.ReorderStripWithDragDrop"
-    enum="Boolean" expires_after="2026-11-15">
+    enum="Boolean" expires_after="2027-03-27">
   <owner>shuyng@google.com</owner>
   <owner>zheliooo@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -5382,7 +5438,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RequestDesktopSite.SubDomainSettingChanged"
-    enum="Boolean" expires_after="2026-11-15">
+    enum="Boolean" expires_after="2027-03-27">
   <owner>shuyng@google.com</owner>
   <owner>twellington@chromium.org</owner>
   <summary>
@@ -6542,7 +6598,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabSwitcher.NullContextMenuCoordinatorIsIncognito"
-    enum="Boolean" expires_after="2026-11-15">
+    enum="Boolean" expires_after="2027-03-27">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -6785,6 +6841,23 @@ chromium-metrics-reviews@google.com.
     drag and drop and when it was subsequently ungrouped (dragged back out) in
     Vertical Tabs.
   </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.DropRegion.{WindowRelation}"
+    enum="AndroidVerticalTabsDropRegion" expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>kije@chromium.org</owner>
+  <summary>
+    Records where on the vertical tabs rail a drop landed, when the drag started
+    {WindowRelation}. Recorded once per ACTION_DROP delivered to the rail. The
+    rail accepts drops outside both of its lists, on the header, the new tab
+    button and its own margin, and reparents them against the nearest item; the
+    &quot;Outside both lists&quot; bucket measures how often that path is taken.
+  </summary>
+  <token key="WindowRelation">
+    <variant name="CrossWindow" summary="in a different window"/>
+    <variant name="IntraWindow" summary="in the same window"/>
+  </token>
 </histogram>
 
 <histogram name="Android.VerticalTabs.DurationEnabled" units="ms"
@@ -7593,6 +7666,28 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.WebView.ContentRestriction.AppOptIn" enum="Boolean"
+    expires_after="2027-04-01">
+  <owner>vshenvi@google.com</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records whether an app has opted in to content restriction via manifest
+    metadata. True when apps have opted in, false otherwise. Recorded on startup
+    when content restriction status is derived.
+  </summary>
+</histogram>
+
+<histogram
+    name="Android.WebView.ContentRestriction.ClassificationRequestLatencyMs"
+    units="ms" expires_after="2027-04-01">
+  <owner>vshenvi@google.com</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the end-to-end latency in milliseconds needed to reach a content
+    restriction classification verdict.
+  </summary>
+</histogram>
+
 <histogram name="Android.WebView.CookieFixup.Url" enum="FixupResult"
     expires_after="2027-01-05">
   <owner>torne@chromium.org</owner>
@@ -7737,20 +7832,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the user's selection in the developer UI overflow menu or action
     bar, recorded after each selection.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DevUi.NetLogsCalled" enum="Boolean"
-    expires_after="2025-04-26">
-  <owner>ntfschr@chromium.org</owner>
-  <owner>thomasbull@chromium.org</owner>
-  <owner>torne@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records the number of times the Net Logs were captured. This only ever logs
-    the value &quot;true&quot; because we only care about the total count. This
-    is logged in the nonembedded AwNetLogService when the net-logs flag is
-    enabled and a webview is launched.
   </summary>
 </histogram>
 
@@ -8550,19 +8631,6 @@ chromium-metrics-reviews@google.com.
     foreground/background state of WebView that we typically track. Those track
     the state of the WebViews in an app while this tracks the state of the app
     as a whole.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.OptionallyBlockableMixedContentLoaded.Mode"
-    enum="WebViewMixedContentMode" expires_after="2024-08-25">
-  <owner>ntfschr@chromium.org</owner>
-  <owner>carlosil@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records the mixed content mode set when an app loads optionally blockable
-    mixed content (images, audio, or video). This histogram is logged on page
-    load, once per subresource (i.e. a single page load can cause multiple
-    records if the page contains multiple mixed content subresources).
   </summary>
 </histogram>
 

@@ -126,6 +126,13 @@ base::FilePath ResolveActorTraceFilePath(const base::FilePath& path) {
 namespace actor {
 
 namespace {
+
+// Returns true if `url` is an "empty" page (the NTP or about:blank) whose tab
+// can be reused for actuation instead of opening a new one.
+bool IsEmptyTabUrl(const GURL& url) {
+  return search::IsNTPURL(url) || url.IsAboutBlank();
+}
+
 BASE_FEATURE(kGlicActorFixPageObservationCrash,
              base::FEATURE_ENABLED_BY_DEFAULT);
 }
@@ -276,16 +283,20 @@ void ActorKeyedService::CreateActorTab(TaskId task_id,
     return;
   }
 
-  // Special case: if the initiator tab is the NTP, no need to create a new
-  // tab, reuse it.
-  // TODO(crbug.com/537432406): Check for about:blank URL in addition to NTP to
-  // reuse empty tabs.
-  if (initiator_tab && search::IsNTPURL(initiator_tab->GetContents()
-                                            ->GetPrimaryMainFrame()
-                                            ->GetLastCommittedURL())) {
-    GetJournal().Log(
-        GURL(), task_id, "CreateActorTab",
-        JournalDetailsBuilder().Add("Return", "Initiator is NTP").Build());
+  // Special case: if the initiator tab is empty (the NTP or about:blank) and
+  // isn't already owned by an active task, there's no need to create a new
+  // tab, reuse it. Tabs owned by a task are not reused: newly created actor
+  // tabs start out as about:blank, so a caller asking for another tab from one
+  // of them expects a distinct tab, and a tab owned by a different task must
+  // not be shared.
+  if (initiator_tab && !GetTaskFromTab(*initiator_tab) &&
+      IsEmptyTabUrl(initiator_tab->GetContents()
+                        ->GetPrimaryMainFrame()
+                        ->GetLastCommittedURL())) {
+    GetJournal().Log(GURL(), task_id, "CreateActorTab",
+                     JournalDetailsBuilder()
+                         .Add("Return", "Initiator is an empty tab")
+                         .Build());
 
     if (!open_in_background) {
       BrowserWindowInterface* window =
@@ -478,10 +489,12 @@ void ActorKeyedService::ResetForTesting() {
 
 TaskId ActorKeyedService::CreateTask(
     const TaskSourceInfo& source_info,
-    const EnterprisePolicyChecker* policy_checker) {
-  return CreateTaskWithOptions(source_info, policy_checker, /*options=*/nullptr,
-                               /*delegate=*/nullptr,
-                               actor_ui_state_manager_.get());
+    const EnterprisePolicyChecker* policy_checker,
+    AllowedSchemes allowed_schemes) {
+  return CreateTaskWithOptions(
+      source_info, policy_checker, /*options=*/nullptr,
+      /*delegate=*/nullptr, actor_ui_state_manager_.get(),
+      /*initial_invocation_source=*/std::nullopt, allowed_schemes);
 }
 
 TaskId ActorKeyedService::CreateTaskWithOptions(
@@ -490,11 +503,13 @@ TaskId ActorKeyedService::CreateTaskWithOptions(
     webui::mojom::TaskOptionsPtr options,
     base::WeakPtr<ActorTaskDelegate> delegate,
     actor::ui::ActorUiStateManagerInterface* ui_state_manager,
-    std::optional<glic::mojom::InvocationSource> initial_invocation_source) {
+    std::optional<glic::mojom::InvocationSource> initial_invocation_source,
+    AllowedSchemes allowed_schemes) {
   CHECK(ui_state_manager);
   return CreateTaskImpl(ui::NewUiEventDispatcher(ui_state_manager), source_info,
                         policy_checker, std::move(options), std::move(delegate),
-                        ui_state_manager, initial_invocation_source);
+                        ui_state_manager, initial_invocation_source,
+                        allowed_schemes);
 }
 
 TaskId ActorKeyedService::CreateTaskForTesting(
@@ -503,11 +518,12 @@ TaskId ActorKeyedService::CreateTaskForTesting(
     const EnterprisePolicyChecker* policy_checker,
     webui::mojom::TaskOptionsPtr options,
     base::WeakPtr<ActorTaskDelegate> delegate,
-    std::optional<glic::mojom::InvocationSource> initial_invocation_source) {
+    std::optional<glic::mojom::InvocationSource> initial_invocation_source,
+    AllowedSchemes allowed_schemes) {
   return CreateTaskImpl(std::move(ui_event_dispatcher), source_info,
                         policy_checker, std::move(options), std::move(delegate),
                         actor_ui_state_manager_.get(),
-                        initial_invocation_source);
+                        initial_invocation_source, allowed_schemes);
 }
 
 TaskId ActorKeyedService::CreateTaskImpl(
@@ -517,7 +533,8 @@ TaskId ActorKeyedService::CreateTaskImpl(
     webui::mojom::TaskOptionsPtr options,
     base::WeakPtr<ActorTaskDelegate> delegate,
     actor::ui::ActorUiStateManagerInterface* ui_state_manager,
-    std::optional<glic::mojom::InvocationSource> initial_invocation_source) {
+    std::optional<glic::mojom::InvocationSource> initial_invocation_source,
+    AllowedSchemes allowed_schemes) {
   TRACE_EVENT0("actor", "ActorKeyedService::CreateTask");
   GetJournal().Log(GURL(), TaskId(), "ActorKeyedService::CreateTask", {});
 
@@ -531,7 +548,8 @@ TaskId ActorKeyedService::CreateTaskImpl(
   auto actor_task = std::make_unique<ActorTask>(
       base::PassKey<ActorKeyedService>(), *this, task_id,
       std::move(ui_event_dispatcher), std::move(options), source_info,
-      policy_checker, std::move(delegate), initial_invocation_source);
+      policy_checker, std::move(delegate), initial_invocation_source,
+      allowed_schemes);
 
   if (initial_tab_handle != tabs::TabHandle::Null()) {
     actor_task->AddTab(initial_tab_handle, /*stop_task_on_detach=*/true,
@@ -587,26 +605,26 @@ void ActorKeyedService::NotifyTaskStateChanged(ActorTask& task) {
 base::CallbackListSubscription
 ActorKeyedService::AddTaskVisibilityChangedCallback(
     TaskVisibilityChangedCallback callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   return task_visibility_change_callback_list_.Add(std::move(callback));
 }
 
 void ActorKeyedService::NotifyTaskVisibilityChanged(ActorTask& task) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   task_visibility_change_callback_list_.Notify(task);
 }
 
 base::CallbackListSubscription
 ActorKeyedService::AddTaskStepProgressChangedCallback(
     TaskStepProgressChangedCallback callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   return task_step_progress_change_callback_list_.Add(std::move(callback));
 }
 
 void ActorKeyedService::NotifyTaskStepProgressChanged(
     ActorTask& task,
     const std::string& step_progress) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   task_step_progress_change_callback_list_.Notify(task, step_progress);
 }
 

@@ -601,7 +601,7 @@ public class TabGridDialogMediatorUnitTest {
         mModel.set(TabGridDialogProperties.ANIMATION_SOURCE_VIEW, mView);
         mModel.set(TabGridDialogProperties.IS_DIALOG_VISIBLE, true);
 
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
         mTabModelObserverCaptor
                 .getValue()
                 .didAddTab(
@@ -626,7 +626,7 @@ public class TabGridDialogMediatorUnitTest {
         mModel.set(TabGridDialogProperties.ANIMATION_SOURCE_VIEW, mView);
         mModel.set(TabGridDialogProperties.IS_DIALOG_VISIBLE, true);
 
-        when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.isTabStateInitialized()).thenReturn(true);
         mTabModelObserverCaptor
                 .getValue()
                 .didAddTab(
@@ -1062,7 +1062,7 @@ public class TabGridDialogMediatorUnitTest {
                 equalTo(CUSTOMIZED_DIALOG_TITLE));
 
         // Now mark the group as deleted and the filter should not be called.
-        when(mTabModel.tabGroupExists(TAB_GROUP_ID)).thenReturn(false);
+        when(mTabModel.containsTabGroup(TAB_GROUP_ID)).thenReturn(false);
         mMediator.hideDialog(false);
         verify(mTabModel, never()).setTabGroupTitle(any(), anyString());
     }
@@ -2202,14 +2202,11 @@ public class TabGridDialogMediatorUnitTest {
     }
 
     private void createTabGroup(List<Tab> tabs, Token tabGroupId) {
-        when(mTabModel.tabGroupExists(tabGroupId)).thenReturn(true);
+        when(mTabModel.containsTabGroup(tabGroupId)).thenReturn(true);
         when(mTabModel.getTabsInGroup(tabGroupId)).thenReturn(tabs);
-        int lastShownTabId = tabs.get(0).getId();
-        when(mTabModel.getGroupLastShownTabId(tabGroupId)).thenReturn(lastShownTabId);
         for (Tab tab : tabs) {
             when(mTabModel.isTabInTabGroup(tab)).thenReturn(true);
             when(tab.getTabGroupId()).thenReturn(tabGroupId);
-            when(mTabModel.getRelatedTabList(tab.getId())).thenReturn(tabs);
         }
     }
 

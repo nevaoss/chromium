@@ -3,7 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=too-many-lines
 # pylint: disable=line-too-long
 
 """Generates chromium.perf{,.fyi}.json from a set of condensed configs.
@@ -99,8 +98,8 @@ _STRUCTURED_TEST_ID_SUITES = {
   'resource_sizes_system_webview_google_bundle': _ModuleArgs(
     '//clank/java:resource_sizes_system_webview_google_bundle', 'single'
   ),
-  'resource_sizes_trichrome_google': _ModuleArgs(
-    '//clank/java:resource_sizes_trichrome_google', 'single'
+  'resource_sizes_chrome_and_webview_google': _ModuleArgs(
+    '//clank/java:resource_sizes_chrome_and_webview_google', 'single'
   ),
   'performance_test_suite_android_chrome_google_bundle': _ModuleArgs(
     '//chrome/test:performance_test_suite_android_chrome_google_bundle',
@@ -396,8 +395,8 @@ BUILDERS = {
   'android-builder-perf': {
     'tests': [
       {
-        'name': 'resource_sizes_trichrome_google',
-        'isolate': 'resource_sizes_trichrome_google',
+        'name': 'resource_sizes_chrome_and_webview_google',
+        'isolate': 'resource_sizes_chrome_and_webview_google',
         'type': TEST_TYPES.GENERIC,
         'resultdb': {
           'has_native_resultdb_integration': True,
@@ -430,8 +429,8 @@ BUILDERS = {
   'android_arm64-builder-perf': {
     'tests': [
       {
-        'name': 'resource_sizes_trichrome_google',
-        'isolate': 'resource_sizes_trichrome_google',
+        'name': 'resource_sizes_chrome_and_webview_google',
+        'isolate': 'resource_sizes_chrome_and_webview_google',
         'type': TEST_TYPES.GENERIC,
         'resultdb': {
           'has_native_resultdb_integration': True,
@@ -842,6 +841,21 @@ BUILDERS = {
     },
   },
   'android-pixel10_webview-perf-pgo': {
+    'tests': [
+      {
+        'isolate': 'performance_webview_test_suite',
+      }
+    ],
+    'platform': 'android-webview-standalone-google',
+    'dimension': {
+      'pool': 'chrome.tests.perf-webview-pgo',
+      'os': 'Android',
+      'device_type': 'frankel',
+      'device_os': 'BP4A.260105.004.E1',
+      'device_os_flavor': 'google',
+    },
+  },
+  'android-pixel10_webview-perf-cq': {
     'tests': [
       {
         'isolate': 'performance_webview_test_suite',
@@ -1587,7 +1601,7 @@ RESOURCE_SIZES_METADATA = BenchmarkMetadata(
 )
 
 OTHER_BENCHMARKS = {
-  'resource_sizes_trichrome_google': RESOURCE_SIZES_METADATA,
+  'resource_sizes_chrome_and_webview_google': RESOURCE_SIZES_METADATA,
   'resource_sizes_system_webview_google_bundle': RESOURCE_SIZES_METADATA,
 }
 
@@ -1664,7 +1678,7 @@ def get_scheduled_non_telemetry_benchmarks(perf_waterfall_file):
     # TODO(eyaich): Determine new way to generate ownership based
     # on the benchmark bot map instead of on the generated tests
     # for new perf recipe.
-    if not name in PERFORMANCE_TEST_SUITES:
+    if name not in PERFORMANCE_TEST_SUITES:
       test_names.add(name)
 
   for platform in bot_platforms.ALL_PLATFORMS:

@@ -45,6 +45,7 @@ source_set("actor") {
     "tools/attempt_login_tool_request.h",
     "tools/attempt_otp_filling_tool_request.h",
     "tools/bookmark_management_tool_request.h",
+    "tools/change_password_tool_request.h",
     "tools/click_tool_request.h",
     "tools/drag_and_release_tool_request.h",
     "tools/file_upload_tool_request.h",
@@ -67,6 +68,7 @@ source_set("actor") {
     "tools/translate_page_tool_request.h",
     "tools/type_tool_request.h",
     "tools/wait_tool_request.h",
+    "transport/actor_keyed_service_adapter.h",
   ]
   public_deps = [
     ":types",
@@ -84,6 +86,7 @@ source_set("actor") {
     "//components/actor/core",
     "//components/actor/core:journal",
     "//components/actor/core:task_id",
+    "//components/actor/transport",
     "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/critical_actions/core/browser",
     "//components/download/content/public",
@@ -170,6 +173,9 @@ source_set("impl") {
     "tools/bookmark_management_tool.cc",
     "tools/bookmark_management_tool.h",
     "tools/bookmark_management_tool_request.cc",
+    "tools/change_password_tool.cc",
+    "tools/change_password_tool.h",
+    "tools/change_password_tool_request.cc",
     "tools/click_tool_request.cc",
     "tools/drag_and_release_tool_request.cc",
     "tools/file_upload_tool.cc",
@@ -220,6 +226,7 @@ source_set("impl") {
     "tools/wait_tool.cc",
     "tools/wait_tool.h",
     "tools/wait_tool_request.cc",
+    "transport/actor_keyed_service_adapter.cc",
   ]
   deps = [
     ":actor",
@@ -248,7 +255,6 @@ source_set("impl") {
     "//chrome/browser/signin",
     "//chrome/browser/tab_list",
     "//chrome/browser/translate",
-    "//chrome/browser/ui",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/browser_window:create_browser_window",
     "//chrome/browser/ui/navigator",
@@ -457,12 +463,15 @@ source_set("unit_tests") {
     "tools/attempt_login_tool_request_unittest.cc",
     "tools/attempt_otp_filling_tool_request_unittest.cc",
     "tools/attempt_otp_filling_tool_unittest.cc",
+    "tools/change_password_tool_request_unittest.cc",
+    "tools/change_password_tool_unittest.cc",
     "tools/click_tool_request_unittest.cc",
     "tools/file_upload_tool_request_unittest.cc",
     "tools/file_upload_tool_unittest.cc",
     "tools/media_control_tool_request_unittest.cc",
     "tools/page_search_utils_unittest.cc",
     "tools/type_tool_request_unittest.cc",
+    "transport/actor_keyed_service_adapter_unittest.cc",
   ]
   deps = [
     ":actor",
@@ -577,7 +586,6 @@ source_set("browser_tests") {
     "//chrome/browser/optimization_guide:test_support",
     "//chrome/browser/safe_browsing",
     "//chrome/browser/subscription_eligibility",
-    "//chrome/browser/ui",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/zoom",
     "//chrome/test:test_support",

@@ -13,6 +13,7 @@
 #include "ash/webui/help_app_ui/help_app_prefs.h"
 #include "ash/webui/help_app_ui/help_app_untrusted_ui.h"
 #include "ash/webui/help_app_ui/url_constants.h"
+#include "base/check_deref.h"
 #include "base/check_is_test.h"
 #include "base/command_line.h"
 #include "base/containers/fixed_flat_set.h"
@@ -40,6 +41,7 @@
 #include "chromeos/ash/components/system/statistics_provider.h"
 #include "chromeos/ash/services/multidevice_setup/public/cpp/prefs.h"
 #include "chromeos/constants/chromeos_features.h"
+#include "components/application_locale_storage/application_locale_storage.h"
 #include "components/prefs/pref_service.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
@@ -98,7 +100,6 @@ void PopulateLoadTimeData(content::WebUI* web_ui,
                      accessibility_manager->IsSpokenFeedbackEnabled() ||
                          accessibility_manager->IsSwitchAccessEnabled());
 
-  source->AddString("appLocale", g_browser_process->GetApplicationLocale());
   source->AddBoolean("isLowEndDevice", base::SysInfo::IsLowEndDevice());
   // Add strings that can be pulled in.
   source->AddString("boardName", base::SysInfo::GetLsbReleaseBoard());
@@ -163,9 +164,7 @@ void PopulateLoadTimeData(content::WebUI* web_ui,
     // actively browsing the help app (such as UI-only features), avoid querying
     // them in the background page.
     source->AddBoolean("HelpAppAppsGamesBannerV2", true);
-    source->AddBoolean(
-        "HelpAppAppDetailPage",
-        base::FeatureList::IsEnabled(ash::features::kHelpAppAppDetailPage));
+    source->AddBoolean("HelpAppAppDetailPage", true);
     source->AddBoolean("HelpAppAppsList", base::FeatureList::IsEnabled(
                                               ash::features::kHelpAppAppsList));
     source->AddBoolean("HelpAppHomePageAppArticles",
@@ -253,8 +252,10 @@ void PopulateLoadTimeData(content::WebUI* web_ui,
 
 }  // namespace
 
-HelpAppUntrustedUIConfig::HelpAppUntrustedUIConfig()
-    : WebUIConfig(content::kChromeUIUntrustedScheme, kChromeUIHelpAppHost) {}
+HelpAppUntrustedUIConfig::HelpAppUntrustedUIConfig(
+    const ApplicationLocaleStorage* application_locale_storage)
+    : WebUIConfig(content::kChromeUIUntrustedScheme, kChromeUIHelpAppHost),
+      application_locale_storage_(CHECK_DEREF(application_locale_storage)) {}
 
 HelpAppUntrustedUIConfig::~HelpAppUntrustedUIConfig() = default;
 
@@ -279,7 +280,8 @@ HelpAppUntrustedUIConfig::CreateWebUIController(content::WebUI* web_ui,
   base::RepeatingCallback<void(content::WebUIDataSource*)> callback =
       base::BindRepeating(&PopulateLoadTimeData, web_ui);
 
-  return std::make_unique<HelpAppUntrustedUI>(web_ui, callback);
+  return std::make_unique<HelpAppUntrustedUI>(
+      application_locale_storage_->GetTag(), web_ui, callback);
 }
 
 }  // namespace ash

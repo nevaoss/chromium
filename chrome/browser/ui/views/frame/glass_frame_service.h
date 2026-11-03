@@ -57,12 +57,19 @@ class GlassFrameService : public BrowserCollectionObserver,
       BrowserWindowInterface* browser_window_interface,
       GlassFrameEligibilityChangedCallback callback);
 
+  base::CallbackListSubscription RegisterMultipleOpenProfilesChangedCallback(
+      base::RepeatingClosure callback);
+
   bool IsBrowserWindowEligible(BrowserWindowInterface* browser);
+
+  // Returns true if more than one profile is currently loaded.
+  bool HasMultipleOpenProfiles() const;
 
   explicit GlassFrameService(BrowserProcess& process);
   ~GlassFrameService() override;
 
   // BrowserCollectionObserver:
+  void OnBrowserCreated(BrowserWindowInterface* browser) override;
   void OnBrowserActivated(BrowserWindowInterface* browser) override;
   void OnBrowserClosed(BrowserWindowInterface* browser) override;
 
@@ -102,10 +109,13 @@ class GlassFrameService : public BrowserCollectionObserver,
 
   void OnEligibleStateChanged();
 
-  void MaybeShowOptInPromo(BrowserWindowInterface* browser);
+  void MaybeShowPromo(BrowserWindowInterface* browser);
+
+  void UpdateHasMultipleOpenProfiles();
 
   std::map<BrowserWindowInterface*, base::RepeatingCallbackList<void(bool)>>
       window_callbacks_;
+  base::RepeatingClosureList multiple_open_profiles_callbacks_;
   std::map<BrowserWindowInterface*, base::CallbackListSubscription>
       fullscreen_subscriptions_;
   // Set of tracked normal browsers.
@@ -126,6 +136,8 @@ class GlassFrameService : public BrowserCollectionObserver,
   std::unique_ptr<GlassFrameMetricsReporter> metrics_reporter_;
   bool is_glass_frame_enabled_ = true;
   bool is_battery_saver_mode_active_ = false;
+  bool has_attempted_startup_promo_ = false;
+  bool has_multiple_open_profiles_ = false;
   ::ui::ScopedUnownedUserData<GlassFrameService> scoped_unowned_user_data_;
 };
 

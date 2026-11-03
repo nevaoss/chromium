@@ -48,7 +48,8 @@ class MockAutofillPaymentsChurnedUsersBottomSheetBridge
       void,
       RequestShowContent,
       (AutofillEnableResurrectingPaymentsUsersTreatmentArm treatment_arm,
-       base::OnceCallback<void(PaymentsUiClosedReason)> callback),
+       base::OnceCallback<void(PaymentsUiClosedReason)> closed_callback,
+       base::OnceClosure show_confirmation_callback),
       (override));
 };
 
@@ -105,6 +106,7 @@ class PaymentsChurnedUsersUiDelegateAndroidTest
         treatment_param = "3";
         break;
     }
+    feature_list_.Reset();
     feature_list_.InitAndEnableFeatureWithParameters(
         features::kAutofillEnableResurrectingPaymentsUsers,
         {{features::kAutofillEnableResurrectingPaymentsUsersTreatment.name,
@@ -163,7 +165,8 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   EXPECT_CALL(
       *mock_bridge,
       RequestShowContent(
-          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _));
+          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _,
+          _));
 
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
       std::move(mock_bridge));
@@ -182,7 +185,7 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   EXPECT_CALL(
       *mock_bridge,
       RequestShowContent(
-          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kConvenience,
+          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kConvenience, _,
           _));
 
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
@@ -367,7 +370,8 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   EXPECT_CALL(
       *mock_bridge,
       RequestShowContent(
-          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _));
+          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _,
+          _));
 
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
       std::move(mock_bridge));
@@ -377,26 +381,74 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
 }
 
 TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
-       ShowPaymentsChurnedUsersUI_PassesCallbackToBridge) {
+       ShowPaymentsChurnedUsersUI_BottomSheetArm_AcceptedShowsSnackbar) {
+  for (AutofillEnableResurrectingPaymentsUsersTreatmentArm arm :
+       {AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity,
+        AutofillEnableResurrectingPaymentsUsersTreatmentArm::kConvenience}) {
+    InitFeatureWithTreatmentArm(arm);
+
+    base::OnceCallback<void(PaymentsUiClosedReason)> bridge_callback;
+    base::OnceClosure show_confirmation_callback;
+    auto mock_bridge =
+        std::make_unique<MockAutofillPaymentsChurnedUsersBottomSheetBridge>();
+    EXPECT_CALL(*mock_bridge, RequestShowContent(arm, _, _))
+        .WillOnce([&](AutofillEnableResurrectingPaymentsUsersTreatmentArm,
+                      base::OnceCallback<void(PaymentsUiClosedReason)>
+                          closed_callback,
+                      base::OnceClosure confirmation_callback) {
+          bridge_callback = std::move(closed_callback);
+          show_confirmation_callback = std::move(confirmation_callback);
+        });
+
+    delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
+        std::move(mock_bridge));
+
+    base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
+        closed_callback;
+    delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+    ASSERT_TRUE(bridge_callback);
+    ASSERT_TRUE(show_confirmation_callback);
+
+    EXPECT_CALL(closed_callback, Run(PaymentsUiClosedReason::kAccepted));
+    EXPECT_CALL(*mock_snackbar_controller(), Show).Times(0);
+    std::move(bridge_callback).Run(PaymentsUiClosedReason::kAccepted);
+    testing::Mock::VerifyAndClearExpectations(mock_snackbar_controller());
+
+    EXPECT_CALL(*mock_snackbar_controller(),
+                Show(AutofillSnackbarType::kResurrectChurnedUsers, _))
+        .WillOnce(RunOnceClosure<1>());
+    std::move(show_confirmation_callback).Run();
+  }
+}
+
+TEST_F(
+    PaymentsChurnedUsersUiDelegateAndroidTest,
+    ShowPaymentsChurnedUsersUI_BottomSheetArm_NonAcceptedDoesNotShowSnackbar) {
   InitFeatureWithTreatmentArm(
       AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity);
 
-  auto mock_bridge =
-      std::make_unique<MockAutofillPaymentsChurnedUsersBottomSheetBridge>();
-  EXPECT_CALL(
-      *mock_bridge,
-      RequestShowContent(
-          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _))
-      .WillOnce(RunOnceCallback<1>(PaymentsUiClosedReason::kAccepted));
+  for (PaymentsUiClosedReason reason : {PaymentsUiClosedReason::kCancelled,
+                                        PaymentsUiClosedReason::kNotInteracted,
+                                        PaymentsUiClosedReason::kUnknown}) {
+    auto mock_bridge =
+        std::make_unique<MockAutofillPaymentsChurnedUsersBottomSheetBridge>();
+    EXPECT_CALL(
+        *mock_bridge,
+        RequestShowContent(
+            AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _,
+            _))
+        .WillOnce(RunOnceCallback<1>(reason));
 
-  delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
-      std::move(mock_bridge));
+    delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
+        std::move(mock_bridge));
 
-  base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
-      closed_callback;
-  EXPECT_CALL(closed_callback, Run(PaymentsUiClosedReason::kAccepted));
+    base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
+        closed_callback;
+    EXPECT_CALL(closed_callback, Run(reason));
+    EXPECT_CALL(*mock_snackbar_controller(), Show).Times(0);
 
-  delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+    delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+  }
 }
 
 TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
@@ -405,13 +457,20 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
       AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity);
 
   base::OnceCallback<void(PaymentsUiClosedReason)> bridge_callback;
+  base::OnceClosure show_confirmation_callback;
   auto mock_bridge =
       std::make_unique<MockAutofillPaymentsChurnedUsersBottomSheetBridge>();
   EXPECT_CALL(
       *mock_bridge,
       RequestShowContent(
-          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _))
-      .WillOnce(MoveArg<1>(&bridge_callback));
+          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _, _))
+      .WillOnce(
+          [&](AutofillEnableResurrectingPaymentsUsersTreatmentArm,
+              base::OnceCallback<void(PaymentsUiClosedReason)> closed_callback,
+              base::OnceClosure confirmation_callback) {
+            bridge_callback = std::move(closed_callback);
+            show_confirmation_callback = std::move(confirmation_callback);
+          });
 
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
       std::move(mock_bridge));
@@ -428,6 +487,10 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
 
   EXPECT_CALL(first_callback, Run(PaymentsUiClosedReason::kAccepted));
   std::move(bridge_callback).Run(PaymentsUiClosedReason::kAccepted);
+
+  EXPECT_CALL(*mock_snackbar_controller(),
+              Show(AutofillSnackbarType::kResurrectChurnedUsers, _));
+  std::move(show_confirmation_callback).Run();
 }
 
 }  // namespace
@@ -444,6 +507,18 @@ TEST(AutofillPaymentsChurnedUsersBottomSheetBridgeTest,
 
   test_api(bridge).SetCallback(callback.Get());
   bridge.OnUiAccepted(/*env=*/nullptr);
+}
+
+TEST(AutofillPaymentsChurnedUsersBottomSheetBridgeTest,
+     OnShowConfirmation_InvokesShowConfirmationCallback) {
+  AutofillPaymentsChurnedUsersBottomSheetBridge bridge(
+      /*window_android=*/nullptr);
+  base::MockCallback<base::OnceClosure> show_confirmation_callback;
+  EXPECT_CALL(show_confirmation_callback, Run());
+
+  test_api(bridge).SetShowConfirmationCallback(
+      show_confirmation_callback.Get());
+  bridge.OnShowConfirmation(/*env=*/nullptr);
 }
 
 TEST(AutofillPaymentsChurnedUsersBottomSheetBridgeTest,
@@ -484,11 +559,13 @@ TEST(AutofillPaymentsChurnedUsersBottomSheetBridgeTest,
   AutofillPaymentsChurnedUsersBottomSheetBridge bridge(
       /*window_android=*/nullptr);
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>> callback;
+  base::MockCallback<base::OnceClosure> show_confirmation_callback;
   EXPECT_CALL(callback, Run(PaymentsUiClosedReason::kUnknown));
+  EXPECT_CALL(show_confirmation_callback, Run()).Times(0);
 
   bridge.RequestShowContent(
       AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity,
-      callback.Get());
+      callback.Get(), show_confirmation_callback.Get());
 }
 
 }  // namespace autofill

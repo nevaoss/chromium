@@ -85,6 +85,10 @@ DEFINE_VARIATION_PARAM(
     kIPHAdaptiveButtonInTopToolbarCustomizationPageSummaryPdfFeature,
     "IPH_AdaptiveButtonInTopToolbarCustomization_PageSummary_Pdf");
 DEFINE_VARIATION_PARAM(kIPHAimActivationHint, "IPH_AimActivationHint");
+DEFINE_VARIATION_PARAM(kIPH_BlueBubbleCooldownGroup,
+                       "IPH_BlueBubbleCooldownGroup");
+DEFINE_VARIATION_PARAM(kIPH_InterruptiveIphCooldownGroup,
+                       "IPH_InterruptiveIphCooldownGroup");
 DEFINE_VARIATION_PARAM(kIPHPageSummaryWebMenuFeature, "IPH_PageSummaryWebMenu");
 DEFINE_VARIATION_PARAM(kIPHPageSummaryPdfMenuFeature, "IPH_PageSummaryPdfMenu");
 DEFINE_VARIATION_PARAM(kIPHAutoDarkOptOutFeature, "IPH_AutoDarkOptOut");
@@ -424,6 +428,7 @@ DEFINE_VARIATION_PARAM(kIPHGMCLocalMediaCastingFeature,
                        "IPH_GMCLocalMediaCasting");
 DEFINE_VARIATION_PARAM(kIPHGMCSaveVideoFrameFeature, "IPH_GMCSaveVideoFrame");
 DEFINE_VARIATION_PARAM(kIPHGlassFrameOptInFeature, "IPH_GlassFrameOptIn");
+DEFINE_VARIATION_PARAM(kIPHGlassFrameOptOutFeature, "IPH_GlassFrameOptOut");
 DEFINE_VARIATION_PARAM(kIPHGlicPromoFeature, "IPH_GlicPromo");
 DEFINE_VARIATION_PARAM(kIPHGlicTrustFirstOnboardingShortcutSnoozePromoFeature,
                        "IPH_GlicTrustFirstOnboardingShortcutSnoozePromo");
@@ -479,6 +484,10 @@ DEFINE_VARIATION_PARAM(kIPHReadingListEntryPointFeature,
                        "IPH_ReadingListEntryPoint");
 DEFINE_VARIATION_PARAM(kIPHReadingListInSidePanelFeature,
                        "IPH_ReadingListInSidePanel");
+DEFINE_VARIATION_PARAM(kIPHReadingModeAiPlaybackFeature,
+                       "IPH_ReadingModeAiPlayback");
+DEFINE_VARIATION_PARAM(kIPHReadingModeAiPlaybackSettingsFeature,
+                       "IPH_ReadingModeAiPlaybackSettings");
 DEFINE_VARIATION_PARAM(kIPHReadingModeKeyboardShortcutFeature,
                        "IPH_ReadingModeKeyboardShortcut");
 DEFINE_VARIATION_PARAM(kIPHReadingModeLineFocusFeature,
@@ -650,6 +659,8 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
 #if BUILDFLAG(IS_ANDROID)
 // VARIATION_ENTRY_ANDROID_START
 // keep-sorted start case=no
+        VARIATION_ENTRY(kIPH_BlueBubbleCooldownGroup),
+        VARIATION_ENTRY(kIPH_InterruptiveIphCooldownGroup),
         VARIATION_ENTRY(kIPHAccountSettingsHistorySync),
         VARIATION_ENTRY(kIPHAdaptiveButtonInTopToolbarCustomizationAddToBookmarksFeature),
         VARIATION_ENTRY(kIPHAdaptiveButtonInTopToolbarCustomizationNewTabFeature),
@@ -868,6 +879,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHDiscardRingFeature),
         VARIATION_ENTRY(kIPHExplicitBrowserSigninPreferenceRememberedFeature),
         VARIATION_ENTRY(kIPHGlassFrameOptInFeature),
+        VARIATION_ENTRY(kIPHGlassFrameOptOutFeature),
         VARIATION_ENTRY(kIPHGlicPromoFeature),
         VARIATION_ENTRY(kIPHGlicTrustFirstOnboardingShortcutSnoozePromoFeature),
         VARIATION_ENTRY(kIPHGlicTryItFeature),
@@ -897,6 +909,8 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHReadingListDiscoveryFeature),
         VARIATION_ENTRY(kIPHReadingListEntryPointFeature),
         VARIATION_ENTRY(kIPHReadingListInSidePanelFeature),
+        VARIATION_ENTRY(kIPHReadingModeAiPlaybackFeature),
+        VARIATION_ENTRY(kIPHReadingModeAiPlaybackSettingsFeature),
         VARIATION_ENTRY(kIPHReadingModeKeyboardShortcutFeature),
         VARIATION_ENTRY(kIPHReadingModeLineFocusFeature),
         VARIATION_ENTRY(kIPHReadingModePageActionLabelFeature),

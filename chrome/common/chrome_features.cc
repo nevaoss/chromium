@@ -121,8 +121,9 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 // Sets the timeout until the startup observer stops waiting for a visible tab.
 // This can happen if a dialog is shown on start (eg. the profile picker), or in
 // Mac's zero-window mode. If a tab appears before this timeout, the observer
-// waits for it to fully load. If this is 0, the startup observer won't wait for
-// tabs to become loaded/idle.
+// waits for it to fully load. If all visible tabs are hidden or closed before
+// one fully loads (eg. the window is minimized), the timeout starts again. If
+// this is 0, the startup observer won't wait for tabs to become loaded/idle.
 //
 // The default matches kWaitingForNavigationTimeout because before the
 // kImprovedStartupBestEffortDelay feature, many startups were marked "finished"
@@ -1467,10 +1468,13 @@ BASE_FEATURE_PARAM(bool,
 // When enabled, ChromeOS extension API resource manager and dispatcher keyed
 // services (which do not register startup observers or perform proactive
 // background work at profile startup) are instantiated lazily on demand.
+//
+// TODO(crbug.com/527272238): Temporarily disabled due to increased renderer hangs on
+// ChromeOS caused by extension API resource managers
 BASE_FEATURE_PARAM(bool,
                    kLazyKeyedServiceInstantiationExtensionsChromeOSResources,
                    &kLazyKeyedServiceInstantiation,
-                   true);
+                   false);
 #endif
 
 // Enables the use of system notification centers instead of using the Message

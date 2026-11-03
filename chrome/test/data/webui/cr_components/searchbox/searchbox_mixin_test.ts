@@ -8,7 +8,7 @@ import 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import 'chrome://resources/cr_components/searchbox/searchbox_input.js';
 
 import {KeywordModeEntryMethod} from 'chrome://resources/cr_components/searchbox/keyword_mode_manager.js';
-import {createAutocompleteMatch, createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, SearchboxBrowserProxy} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteMatch, createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, createSuggestTemplateInfo, SearchboxBrowserProxy} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import type {ComposeClickEventDetail} from 'chrome://resources/cr_components/searchbox/searchbox_compose_button.js';
 import type {SearchboxDropdownElement} from 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import type {SearchboxInputElement} from 'chrome://resources/cr_components/searchbox/searchbox_input.js';
@@ -16,12 +16,14 @@ import {kDefaultSelection} from 'chrome://resources/cr_components/searchbox/sear
 import type {SearchboxMatchElement} from 'chrome://resources/cr_components/searchbox/searchbox_match.js';
 import {SearchboxMixin} from 'chrome://resources/cr_components/searchbox/searchbox_mixin.js';
 import type {AriaNotificationOptions} from 'chrome://resources/cr_components/searchbox/utils.js';
+import {afterNextPaint} from 'chrome://resources/cr_components/searchbox/utils.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {CrLitElement, html} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {NavigationPredictor} from 'chrome://resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import type {AutocompleteMatch} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {KeywordType, SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SecondaryTextPlacement} from 'chrome://resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -131,6 +133,14 @@ function simulateUserTextInput(
     data: value ? value.slice(-1) : '',
   }));
   return microtasksFinished();
+}
+
+/**
+ * Resolves once callbacks scheduled with `afterNextPaint()` before this call
+ * have run, e.g. the input's deferred selection notification.
+ */
+function paintFinished(): Promise<void> {
+  return new Promise(resolve => afterNextPaint(resolve));
 }
 
 function createCalculatorMatch(modifiers: Partial<AutocompleteMatch>):
@@ -1349,7 +1359,11 @@ suite('SearchboxMixinTest', () => {
 
   test('match calculator answer type', async () => {
     const mockInput = element.getInputElement();
-    const matches = [createCalculatorMatch({isTwoRowSuggestion: true})];
+    const matches = [createCalculatorMatch({
+      suggestTemplate: createSuggestTemplateInfo({
+        secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
+      }),
+    })];
 
     await simulateUserTextInput(mockInput, '2 + 3');
 
@@ -2273,6 +2287,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
     for (const eventName of FOCUS_EVENTS) {
       window.removeEventListener(eventName, stopTrustedFocusEvents, true);
     }
+    // Remove any stub of the native ariaNotify() installed by a test.
+    delete document.ariaNotify;
   });
 
   test('matchIndex returns selection line when virtual focus enabled', () => {
@@ -2384,9 +2400,11 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       'Input narrates the selected match label instead of its preview',
       async () => {
         const mockInput = element.getInputElement();
-        mockInput.inputElement.focus();
+        const inputElement = mockInput.inputElement;
+        const distraction = mockInput.$.selectionAnnouncement;
+        inputElement.focus();
         await simulateUserTextInput(mockInput, 'hello');
-        assertEquals(null, mockInput.inputElement.ariaActiveDescendantElement);
+        assertEquals(null, inputElement.ariaActiveDescendantElement);
 
         element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
           queryId: element.activeQueryId,
@@ -2406,27 +2424,115 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         }));
         await microtasksFinished();
 
-        const announcement = mockInput.$.selectionAnnouncement;
+        // Notifications are posted on the document, so these are all the
+        // announcements made, i.e. matches do not announce themselves too.
+        // Each one records the input's value at the time, to check the label
+        // is notified only after the preview value is in place.
+        const notifications: Array<{
+          message: string,
+          options: AriaNotificationOptions,
+          inputValue: string,
+        }> = [];
+        document.ariaNotify =
+            (message: string, options: AriaNotificationOptions) => {
+              notifications.push(
+                  {message, options, inputValue: inputElement.value});
+            };
 
-        mockInput.inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
+        inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
         await microtasksFinished();
-        assertEquals('hello world', mockInput.inputElement.value);
+        assertEquals('hello world', inputElement.value);
+        // The distraction keeps screen readers from narrating the input's new
+        // value. It has no role, so it does not become their focus.
+        assertEquals(distraction, inputElement.ariaActiveDescendantElement);
+        assertEquals(null, distraction.getAttribute('role'));
         assertEquals(
-            announcement, mockInput.inputElement.ariaActiveDescendantElement);
+            'hello world, search suggestion, 1 of 2', distraction.textContent);
+        // Pointing aria-activedescendant at the distraction is reported to
+        // screen readers as a focus change, so the first label is notified
+        // only with the following accessibility tree update.
+        assertEquals(0, notifications.length);
+        await paintFinished();
+        assertEquals(1, notifications.length);
         assertEquals(
-            'hello world, search suggestion, 1 of 2', announcement.textContent);
+            'hello world, search suggestion, 1 of 2',
+            notifications[0]!.message);
+        assertEquals('high', notifications[0]!.options.priority);
+        assertEquals('hello world', notifications[0]!.inputValue);
 
-        mockInput.inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
+        inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
         await microtasksFinished();
+        assertEquals('hello there', inputElement.value);
+        assertEquals(distraction, inputElement.ariaActiveDescendantElement);
         assertEquals(
-            announcement, mockInput.inputElement.ariaActiveDescendantElement);
+            'hello there, search suggestion, 2 of 2', distraction.textContent);
+        // Screen readers are on the distraction already, so the label is
+        // notified right away.
+        assertEquals(2, notifications.length);
         assertEquals(
-            'hello there, search suggestion, 2 of 2', announcement.textContent);
+            'hello there, search suggestion, 2 of 2',
+            notifications[1]!.message);
+        assertEquals('hello there', notifications[1]!.inputValue);
 
-        // Editing the text narrates the input itself again.
+        // Editing the text narrates the input itself again, silently.
         await simulateUserTextInput(mockInput, 'hello t');
-        assertEquals(null, mockInput.inputElement.ariaActiveDescendantElement);
-        assertEquals('', announcement.textContent);
+        assertEquals(null, inputElement.ariaActiveDescendantElement);
+        assertEquals('', distraction.textContent);
+        await paintFinished();
+        assertEquals(2, notifications.length);
+
+        // Editing before a deferred notification goes out cancels it.
+        mockInput.setSelectionA11yLabel('hello t, search suggestion, 1 of 1');
+        assertEquals(distraction, inputElement.ariaActiveDescendantElement);
+        await simulateUserTextInput(mockInput, 'hello th');
+        assertEquals(null, inputElement.ariaActiveDescendantElement);
+        await paintFinished();
+        assertEquals(2, notifications.length);
+      });
+
+  test(
+      'Input narrates the AI Mode button label when it is selected',
+      async () => {
+        element.isAimButtonVisibleOverride = true;
+        const mockInput = element.getInputElement();
+        const inputElement = mockInput.inputElement;
+        inputElement.focus();
+        await simulateUserTextInput(mockInput, 'test');
+
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: 'test',
+          matches: [createSearchMatchForTesting({
+            fillIntoEdit: 'test',
+            a11yLabel: 'test, search suggestion, 1 of 1',
+          })],
+        }));
+        await microtasksFinished();
+
+        const composeButton =
+            element.shadowRoot.querySelector('cr-searchbox-compose-button');
+        assertTrue(!!composeButton);
+        composeButton.a11yLabel = 'AI Mode';
+        // Notifications are posted on the document, so these are all the
+        // announcements made, i.e. the button does not announce itself too.
+        const notifications: string[] = [];
+        document.ariaNotify = (message: string) => {
+          notifications.push(message);
+        };
+
+        inputElement.dispatchEvent(createKeyboardEvent('Tab'));
+        await microtasksFinished();
+        assertEquals(
+            SelectionLineState.kFocusedButtonAim, element.selection.state);
+        assertEquals(
+            mockInput.$.selectionAnnouncement,
+            inputElement.ariaActiveDescendantElement);
+        assertEquals('AI Mode', mockInput.$.selectionAnnouncement.textContent);
+        // As the first selection, the label is notified only with the
+        // following accessibility tree update.
+        assertDeepEquals([], notifications);
+        await paintFinished();
+        assertDeepEquals(['AI Mode'], notifications);
       });
 
   test('PageDown and PageUp jump through selections', async () => {
@@ -2609,44 +2715,6 @@ suite('SearchboxMixinVirtualFocusTest', () => {
 
     assertTrue(enterEvent.defaultPrevented);
     assertTrue(composeClicked);
-  });
-
-  test('Virtual focus on AIM button announces its label', async () => {
-    element.virtualFocusEnabledOverride = true;
-    const mockInput = element.getInputElement();
-    await simulateUserTextInput(mockInput, 'aim query');
-
-    const matches = [createSearchMatchForTesting({fillIntoEdit: 'aim query'})];
-    element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
-      queryId: element.activeQueryId,
-      input: 'aim query',
-      matches: matches,
-    }));
-    await microtasksFinished();
-
-    const composeButton =
-        element.shadowRoot.querySelector('cr-searchbox-compose-button');
-    assertTrue(!!composeButton);
-
-    const notifications:
-        Array<{message: string, options?: AriaNotificationOptions}> = [];
-    composeButton.ariaNotify =
-        (message: string, options: AriaNotificationOptions) => {
-          notifications.push({message, options});
-        };
-
-    element.setSelection({
-      line: -1,
-      state: SelectionLineState.kFocusedButtonAim,
-      actionIndex: 0,
-    });
-    await microtasksFinished();
-
-    assertEquals(1, notifications.length);
-    assertEquals(
-        composeButton.a11yLabel || composeButton.labelText,
-        notifications[0]!.message);
-    assertEquals('high', notifications[0]!.options?.priority);
   });
 
   test('Enter on focused action executes action', async () => {
@@ -2942,18 +3010,15 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertEquals(0, element.selection.line);
         assertEquals('suggested query', mockInput.inputElement.value);
 
-        // Setting selection to line -1 and calling updateInputForSelection_
+        // Setting selection to line -1 and calling updateInputForSelection
         // restores typed input.
         element.setSelection(
             {line: -1, state: SelectionLineState.kNormal, actionIndex: 0});
         await microtasksFinished();
 
-        (element as unknown as {
-          updateInputForSelection_: (s: unknown, k: string) => void,
-        })
-            .updateInputForSelection_(
-                {line: -1, state: SelectionLineState.kNormal, actionIndex: 0},
-                'Tab');
+        element.updateInputForSelection(
+            {line: -1, state: SelectionLineState.kNormal, actionIndex: 0},
+            'Tab');
         await microtasksFinished();
         assertEquals('typed query', mockInput.inputElement.value);
       });
@@ -3353,12 +3418,9 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         element.setSelection(
             {line: 0, state: SelectionLineState.kNormal, actionIndex: 0});
         await element.updateComplete;
-        (element as unknown as {
-          updateInputForSelection_: (s: unknown, k: string) => void,
-        })
-            .updateInputForSelection_(
-                {line: 0, state: SelectionLineState.kNormal, actionIndex: 0},
-                'ArrowDown');
+        element.updateInputForSelection(
+            {line: 0, state: SelectionLineState.kNormal, actionIndex: 0},
+            'ArrowDown');
         await microtasksFinished();
         assertEquals('test default', mockInput.inputElement.value);
 
@@ -3367,12 +3429,9 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         element.setSelection(
             {line: 1, state: SelectionLineState.kNormal, actionIndex: 0});
         await element.updateComplete;
-        (element as unknown as {
-          updateInputForSelection_: (s: unknown, k: string) => void,
-        })
-            .updateInputForSelection_(
-                {line: 1, state: SelectionLineState.kNormal, actionIndex: 0},
-                'ArrowDown');
+        element.updateInputForSelection(
+            {line: 1, state: SelectionLineState.kNormal, actionIndex: 0},
+            'ArrowDown');
         await microtasksFinished();
         assertEquals('test secondary', mockInput.inputElement.value);
       });
@@ -3403,12 +3462,9 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         element.setSelection(
             {line: 0, state: SelectionLineState.kNormal, actionIndex: 0});
         await element.updateComplete;
-        (element as unknown as {
-          updateInputForSelection_: (s: unknown, k: string) => void,
-        })
-            .updateInputForSelection_(
-                {line: 0, state: SelectionLineState.kNormal, actionIndex: 0},
-                'ArrowDown');
+        element.updateInputForSelection(
+            {line: 0, state: SelectionLineState.kNormal, actionIndex: 0},
+            'ArrowDown');
         await microtasksFinished();
         assertEquals('test default', mockInput.inputElement.value);
         assertEquals(' default', mockInput.lastInput()?.inline);
@@ -3421,16 +3477,13 @@ suite('SearchboxMixinVirtualFocusTest', () => {
           actionIndex: 0,
         });
         await element.updateComplete;
-        (element as unknown as {
-          updateInputForSelection_: (s: unknown, k: string) => void,
-        })
-            .updateInputForSelection_(
-                {
-                  line: 0,
-                  state: SelectionLineState.kFocusedButtonAim,
-                  actionIndex: 0,
-                },
-                'Tab');
+        element.updateInputForSelection(
+            {
+              line: 0,
+              state: SelectionLineState.kFocusedButtonAim,
+              actionIndex: 0,
+            },
+            'Tab');
         await microtasksFinished();
         assertEquals('test', mockInput.inputElement.value);
         assertEquals('', mockInput.lastInput()?.inline);

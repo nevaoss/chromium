@@ -125,7 +125,6 @@ source_set("page_action_test_support") {
 
   deps = [
     "//base",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/interaction",
@@ -201,11 +200,13 @@ source_set("interactive_ui_tests") {
 
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
 
-  sources = [ "page_action_interactive_uitest.cc" ]
+  sources = [
+    "collaboration_messaging_page_action_icon_view_interactive_uitest.cc",
+    "page_action_interactive_uitest.cc",
+  ]
 
   deps = [
     ":page_action",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:browser_actions",
     "//chrome/browser/ui:browser_commands",
     "//chrome/browser/ui:ui_features",
@@ -216,5 +217,20 @@ source_set("interactive_ui_tests") {
     "//content/test:test_support",
     "//ui/base:test_support",
     "//ui/views:test_support",
+  ]
+}
+
+source_set("browser_tests") {
+  testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+
+  sources = [ "zoom_view_browsertest.cc" ]
+
+  deps = [
+    ":page_action",
+    "//chrome/browser/ui/views/frame:browser_view_header",
+    "//chrome/test:test_support",
+    "//content/test:test_support",
+    "//testing/gtest",
   ]
 }

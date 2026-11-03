@@ -49,8 +49,9 @@ class GlicInstanceMetricsTest : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   base::HistogramTester histogram_tester_;
   ukm::TestAutoSetUkmRecorder ukm_tester_;
+  TestingProfile profile_;
   metrics::ProfileMetricsService profile_metrics_service_;
-  GlicInstanceMetrics metrics_{&profile_metrics_service_};
+  GlicInstanceMetrics metrics_{&profile_metrics_service_, &profile_};
   tabs::MockTabInterface mock_tab_;
   ui::UnownedUserDataHost unowned_user_data_host_;
   base::UserActionTester user_action_tester_;
@@ -785,7 +786,7 @@ TEST_F(GlicInstanceMetricsTest, ActuationResponseStopTime) {
 
 TEST_F(GlicInstanceMetricsTest, InputModesUsed_IgnoresUnknown) {
   {
-    GlicInstanceMetrics metrics(&profile_metrics_service_);
+    GlicInstanceMetrics metrics(&profile_metrics_service_, &profile_);
     metrics.OnVisibilityChanged(true);
     metrics.OnUserInputSubmitted(mojom::WebClientMode::kUnknown,
                                  mojom::PromptType::kUnspecified);
@@ -798,7 +799,7 @@ TEST_F(GlicInstanceMetricsTest, InputModesUsed_IgnoresUnknown) {
                                       InputModesUsed::kOnlyAudio, 1);
 
   {
-    GlicInstanceMetrics metrics(&profile_metrics_service_);
+    GlicInstanceMetrics metrics(&profile_metrics_service_, &profile_);
     metrics.OnVisibilityChanged(true);
     metrics.OnUserInputSubmitted(mojom::WebClientMode::kUnknown,
                                  mojom::PromptType::kUnspecified);
@@ -983,7 +984,8 @@ TEST_F(GlicInstanceMetricsTest, OnInstanceDestroyed_LogsPerProfileTurnCount) {
   metrics::ProfileMetricsContext context = 1;  // Profile 1 -> .Profile1
   metrics::ProfileMetricsService profile_metrics_service{context};
   {
-    GlicInstanceMetrics metrics_with_profile(&profile_metrics_service);
+    GlicInstanceMetrics metrics_with_profile(&profile_metrics_service,
+                                             &profile_);
     metrics_with_profile.OnTurnCompleted(mojom::WebClientModel::kDefault,
                                          base::Milliseconds(100));
     metrics_with_profile.OnTurnCompleted(mojom::WebClientModel::kDefault,
@@ -997,7 +999,7 @@ TEST_F(GlicInstanceMetricsTest, OnInstanceDestroyed_LogsPerProfileTurnCount) {
 
 TEST_F(GlicInstanceMetricsTest, ZoomChangeCount) {
   {
-    GlicInstanceMetrics metrics(&profile_metrics_service_);
+    GlicInstanceMetrics metrics(&profile_metrics_service_, &profile_);
     metrics.OnZoomLevelChange();
     metrics.OnZoomLevelChange();
     metrics.OnZoomLevelChange();
@@ -1211,6 +1213,75 @@ TEST_F(GlicInstanceMetricsTest,
       "Glic.Instance.PanelPresentationTime.Inactive.SidePanel", 1);
   histogram_tester_.ExpectTotalCount(
       "Glic.Instance.PanelPresentationTime.SidePanel", 0);
+}
+
+TEST_F(
+    GlicInstanceMetricsTest,
+    PanelPresentationTime_ActiveFlow_MultipleOnOpenCallsDoNotResetStartTime) {
+  ShowOptions show_options{SidePanelShowOptions(mock_tab_)};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  metrics_.OnVisibilityChanged(true);
+  task_environment_.FastForwardBy(base::Milliseconds(100));
+
+  // A second OnOpen call occurs while still loading (e.g. tab switch during
+  // load).
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  task_environment_.FastForwardBy(base::Milliseconds(150));
+
+  metrics_.OnClientReady();
+
+  // Presentation time should be measured from the initial OnOpen (250ms total),
+  // not overwritten by the second OnOpen (which would be 150ms).
+  histogram_tester_.ExpectUniqueTimeSample(
+      "Glic.Instance.PanelPresentationTime.SidePanel", base::Milliseconds(250),
+      1);
+  histogram_tester_.ExpectTotalCount(
+      "Glic.Instance.PanelPresentationTime.Inactive.SidePanel", 0);
+}
+
+TEST_F(GlicInstanceMetricsTest,
+       PanelPresentationTime_EmbedderTypeUpdatedOnSubsequentOnOpen) {
+  ShowOptions side_panel_options{SidePanelShowOptions(mock_tab_)};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton,
+                  side_panel_options);
+  metrics_.OnVisibilityChanged(true);
+  task_environment_.FastForwardBy(base::Milliseconds(100));
+
+  // Switched to floaty while still loading.
+  ShowOptions floaty_options{FloatingShowOptions{}};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, floaty_options);
+  task_environment_.FastForwardBy(base::Milliseconds(150));
+
+  metrics_.OnClientReady();
+
+  // Should log under Floaty with the full 250ms elapsed time.
+  histogram_tester_.ExpectUniqueTimeSample(
+      "Glic.Instance.PanelPresentationTime.Floaty", base::Milliseconds(250), 1);
+  histogram_tester_.ExpectTotalCount(
+      "Glic.Instance.PanelPresentationTime.SidePanel", 0);
+}
+
+TEST_F(GlicInstanceMetricsTest,
+       PanelPresentationTime_ClosedBeforeReadyResetsStartTimeForNextOpen) {
+  ShowOptions show_options{SidePanelShowOptions(mock_tab_)};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  metrics_.OnVisibilityChanged(true);
+  task_environment_.FastForwardBy(base::Milliseconds(100));
+
+  // Explicit close cancels the in-flight load measurement.
+  metrics_.OnClose();
+  task_environment_.FastForwardBy(base::Milliseconds(50));
+
+  // Re-opened fresh.
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  metrics_.OnVisibilityChanged(true);
+  task_environment_.FastForwardBy(base::Milliseconds(200));
+  metrics_.OnClientReady();
+
+  // Should measure 200ms from the second open, not 350ms.
+  histogram_tester_.ExpectUniqueTimeSample(
+      "Glic.Instance.PanelPresentationTime.SidePanel", base::Milliseconds(200),
+      1);
 }
 
 TEST_F(GlicInstanceMetricsTest, OnUserInputSubmitted_RecordsPromptType) {

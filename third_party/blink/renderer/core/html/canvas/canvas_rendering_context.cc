@@ -234,8 +234,15 @@ scoped_refptr<StaticBitmapImage> CanvasRenderingContext::GetElementImage(
   // Element size in physical coordinates.
   gfx::RectF src_rect(drawable_paint_record->paint_state.box_size);
   if (sx && sy && swidth && sheight) {
-    float dpr = drawable_paint_record->paint_state.effective_zoom;
+    if (!CanvasRenderingContext::ValidateRectForCanvas(*sx, *sy, *swidth,
+                                                       *sheight)) {
+      exception_state.ThrowDOMException(
+          DOMExceptionCode::kDataError,
+          "The source rect is empty or not finite");
+      return nullptr;
+    }
     AdjustRectForCanvas(*sx, *sy, *swidth, *sheight);
+    float dpr = drawable_paint_record->paint_state.effective_zoom;
     src_rect = gfx::RectF(*sx * dpr, *sy * dpr, *swidth * dpr, *sheight * dpr);
   }
 
@@ -270,8 +277,8 @@ scoped_refptr<StaticBitmapImage> CanvasRenderingContext::GetElementImage(
     if (auto wrapper = SharedGpuContext::ContextProviderWrapper()) {
       return AcceleratedStaticBitmapImage::CreateFromRaster(
           dest_size, GetN32FormatForCanvas(), kPremul_SkAlphaType,
-          gfx::ColorSpace::CreateSRGB(), gfx::HDRMetadata(), wrapper,
-          gpu::SHARED_IMAGE_USAGE_RASTER_WRITE | usage, draw_to_canvas,
+          gfx::ColorSpace::CreateSRGB(), gfx::HDRMetadata(), wrapper, usage,
+          draw_to_canvas,
           drawable_paint_record->paint_state.animated_image_frame_index_map);
     }
   }

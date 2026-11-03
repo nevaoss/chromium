@@ -12,6 +12,7 @@
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -19,7 +20,6 @@
 #include "base/auto_reset.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
-#include "base/containers/adapters.h"
 #include "base/containers/flat_set.h"
 #include "base/debug/crash_logging.h"
 #include "base/debug/dump_without_crashing.h"
@@ -1662,7 +1662,7 @@ View* View::GetTooltipHandlerForPoint(const gfx::Point& point) {
   // tightly encloses the specified point.
   View::Views children = GetChildrenInZOrder();
   DCHECK_EQ(children_.size(), children.size());
-  for (views::View* child : base::Reversed(children)) {
+  for (views::View* child : std::views::reverse(children)) {
     if (!child->GetVisible()) {
       continue;
     }
@@ -2844,7 +2844,7 @@ void View::ReorderChildLayers(ui::Layer* parent_layer) {
     // the front.
     View::Views children = GetChildrenInZOrder();
     DCHECK_EQ(children_.size(), children.size());
-    for (views::View* child : base::Reversed(children)) {
+    for (views::View* child : std::views::reverse(children)) {
       child->ReorderChildLayers(parent_layer);
     }
   }
@@ -3687,7 +3687,7 @@ void View::UpdateEnabledInViewsSubtreeState() {
   GetViewAccessibility().SetIsEnabled(enabled_in_views_subtree_);
   AdvanceFocusIfNecessary();
   internal::ScopedChildrenLock lock(this);
-  for (views::View* child : base::Reversed(children_)) {
+  for (views::View* child : std::views::reverse(children_)) {
     child->UpdateEnabledInViewsSubtreeState();
   }
   OnPropertyChanged(&enabled_in_views_subtree_, PropertyEffects::kPaint);
@@ -3893,18 +3893,9 @@ void View::LayoutImmediately() {
   ++layouts_since_last_paint_;
   base::AutoReset performing_layout(&performing_layout_, true);
 
-  ++current_layout_call_depth_;
-  ++max_layout_call_depth_;
-
   Layout(PassKey());
   UMA_HISTOGRAM_COUNTS_100("Views.InvalidatesDuringLayout",
                            invalidates_during_layout_);
-  --current_layout_call_depth_;
-  if (current_layout_call_depth_ == 0) {
-    UMA_HISTOGRAM_EXACT_LINEAR("Views.LayoutCallDepth", max_layout_call_depth_,
-                               6);
-    max_layout_call_depth_ = 0;
-  }
 }
 
 // Input -----------------------------------------------------------------------
@@ -4082,7 +4073,7 @@ void View::AdvanceFocusIfNecessary() {
 void View::PropagateThemeChanged() {
   {
     internal::ScopedChildrenLock lock(this);
-    for (views::View* child : base::Reversed(children_)) {
+    for (views::View* child : std::views::reverse(children_)) {
       child->PropagateThemeChanged();
     }
   }
@@ -4109,7 +4100,7 @@ void View::PropagateDeviceScaleFactorChanged(float old_device_scale_factor,
                                              float new_device_scale_factor) {
   {
     internal::ScopedChildrenLock lock(this);
-    for (views::View* child : base::Reversed(children_)) {
+    for (views::View* child : std::views::reverse(children_)) {
       child->PropagateDeviceScaleFactorChanged(old_device_scale_factor,
                                                new_device_scale_factor);
     }

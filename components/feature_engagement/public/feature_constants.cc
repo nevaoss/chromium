@@ -131,6 +131,9 @@ BASE_FEATURE(kIPHGMCSaveVideoFrameFeature,
 BASE_FEATURE(kIPHGlassFrameOptInFeature,
              "IPH_GlassFrameOptIn",
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHGlassFrameOptOutFeature,
+             "IPH_GlassFrameOptOut",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHGlicPromoFeature,
              "IPH_GlicPromo",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -227,6 +230,12 @@ BASE_FEATURE(kIPHReadingListEntryPointFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadingListInSidePanelFeature,
              "IPH_ReadingListInSidePanel",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHReadingModeAiPlaybackFeature,
+             "IPH_ReadingModeAiPlayback",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHReadingModeAiPlaybackSettingsFeature,
+             "IPH_ReadingModeAiPlaybackSettings",
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadingModeKeyboardShortcutFeature,
              "IPH_ReadingModeKeyboardShortcut",
@@ -397,6 +406,9 @@ BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationPageSummaryPdfFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAimActivationHint,
              "IPH_AimActivationHint",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_BlueBubbleCooldownGroup, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_InterruptiveIphCooldownGroup,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPageSummaryWebMenuFeature,
              "IPH_PageSummaryWebMenu",

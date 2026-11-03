@@ -31,8 +31,6 @@
 #include "components/autofill/core/browser/ui/payments/card_name_fix_flow_controller_impl.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
-class GURL;
-
 namespace webauthn {
 class InternalAuthenticator;
 }
@@ -202,7 +200,6 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
   IbanManager* GetIbanManager() override;
   IbanAccessManager* GetIbanAccessManager() override;
   MerchantPromoCodeManager* GetMerchantPromoCodeManager() override;
-  void OpenPromoCodeOfferDetailsURL(const GURL& url) override;
   AutofillOfferManager* GetAutofillOfferManager() override;
   void UpdateOfferNotification(
       const AutofillOfferData& offer,
@@ -316,6 +313,8 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
 
  private:
   // content::WebContentsObserver:
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
   void OnVisibilityChanged(content::Visibility visibility) override;
 
   // PaymentsDataManager::Observer:

@@ -128,6 +128,17 @@ source_set("ios_chrome_test_with_web_state") {
   ]
 }
 
+source_set("eg_app_support+eg2") {
+  configs += [ "//build/config/ios:xctest_config" ]
+  testonly = true
+  sources = [
+    "scoped_eg_traits_overrider_app_interface.h",
+    "scoped_eg_traits_overrider_app_interface.mm",
+  ]
+  visibility = [ "//ios/chrome/test/earl_grey:eg_app_support+eg2" ]
+  frameworks = [ "UIKit.framework" ]
+}
+
 source_set("eg_test_support+eg2") {
   configs += [ "//build/config/ios:xctest_config" ]
   testonly = true
@@ -136,6 +147,8 @@ source_set("eg_test_support+eg2") {
     "scoped_eg_synchronization_disabler.mm",
     "scoped_eg_traits_overrider.h",
     "scoped_eg_traits_overrider.mm",
+    "scoped_eg_traits_overrider_app_interface.h",
+    "scoped_eg_traits_overrider_app_interface_stub.mm",
   ]
   deps = [
     "//base",
@@ -229,6 +242,7 @@ test("ios_chrome_unittests") {
     "//ios/chrome/browser/app_bar/ui:unit_tests",
     "//ios/chrome/browser/app_launcher/model:unit_tests",
     "//ios/chrome/browser/app_store_rating/model:unit_tests",
+    "//ios/chrome/browser/assistant/coordinator:unit_tests",
     "//ios/chrome/browser/assistant/ui:unit_tests",
     "//ios/chrome/browser/authentication/account_menu/coordinator:unit_tests",
     "//ios/chrome/browser/authentication/account_menu/ui:unit_tests",
@@ -723,6 +737,7 @@ test("ios_chrome_unittests") {
     "//ios/chrome/common/ui/confirmation_alert:unit_tests",
     "//ios/chrome/common/ui/reauthentication:unit_tests",
     "//ios/chrome/common/ui/util:unit_tests",
+    "//ios/chrome/test/app:unit_tests",
     "//ios/chrome/test/providers/signin:trusted_vault_provider",
     "//ios/testing:http_server_bundle_data",
     "//ios/testing/earl_grey:unit_tests",

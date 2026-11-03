@@ -177,6 +177,11 @@ chromium-metrics-reviews@google.com.
       summary="Triggered by server preferred address available."/>
   <variant name="OnWriteError" summary="Triggered by a socket write error."/>
   <variant name="Unknown" summary="Triggered by unknown cause."/>
+  <variant name="WaitForNewNetworkPostNetworkDisconnected"
+      summary="Triggered by waiting for a new network post network
+               disconnected."/>
+  <variant name="WaitForNewNetworkPostWriteError"
+      summary="Triggered by waiting for a new network post write error."/>
 </variants>
 
 <!-- LINT.ThenChange(//net/quic/quic_migration_attempt_context.h:QuicMigrationAttemptCause) -->
@@ -1573,16 +1578,6 @@ chromium-metrics-reviews@google.com.
     The origin breakdown of Signed Certificate Timestamps (SCTs). Emitted once
     for every SCT when first validated, which means 0 or more times during every
     SSL connection establishment.
-  </summary>
-</histogram>
-
-<histogram name="Net.CertVerifier.AndroidTrustStoreInit" units="ms"
-    expires_after="2024-04-28">
-  <owner>hchao@chromium.org</owner>
-  <owner>mattm@chromium.org</owner>
-  <summary>
-    Time needed to initialize the Android platform Trust store when using the
-    builtin certificate verifier on Android.
   </summary>
 </histogram>
 
@@ -5629,6 +5624,40 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="Net.QuicSession.AsyncDnsJob.AttemptTime.{Result}.{AttemptOrder}.{AddressFamily}"
+    units="ms" expires_after="2027-02-28">
+  <owner>bashi@chromium.org</owner>
+  <owner>blink-network-stack@google.com</owner>
+  <summary>
+    The time from the start of a connection attempt by a
+    QuicSessionPool::EndpointConnector to when {Result}. Partitioned by the
+    job-wide attempt order ({AttemptOrder}) and the endpoint's address family
+    ({AddressFamily}). Recorded once per connection attempt started by a
+    QuicSessionPool::AsyncDnsJob. Only recorded when the AsyncDnsQuicJob feature
+    is enabled.
+  </summary>
+  <token key="Result">
+    <variant name="Canceled"
+        summary="the attempt was canceled before completing for reasons other
+                 than another connector settling the job"/>
+    <variant name="Failure" summary="the attempt failed"/>
+    <variant name="Success" summary="the attempt succeeded"/>
+    <variant name="Superseded"
+        summary="the attempt was canceled because another connector settled
+                 the job"/>
+  </token>
+  <token key="AttemptOrder">
+    <variant name="First" summary="first attempt"/>
+    <variant name="Second" summary="second attempt"/>
+    <variant name="ThirdOrLater" summary="third or later attempt"/>
+  </token>
+  <token key="AddressFamily">
+    <variant name="IPv4" summary="IPv4"/>
+    <variant name="IPv6" summary="IPv6"/>
+  </token>
+</histogram>
+
+<histogram
     name="Net.QuicSession.AsyncDnsJob.SuccessfulAttemptElapsedTime.{MeasurementPoint}"
     units="ms" expires_after="2027-02-28">
   <owner>bashi@chromium.org</owner>
@@ -7741,16 +7770,25 @@ chromium-metrics-reviews@google.com.
   <token key="SuccessOrFailure" variants="SuccessOrFailure"/>
 </histogram>
 
-<histogram name="Net.QuicSessionPool.JobCompleteTime.{SuccessOrFailure}"
-    units="ms" expires_after="2027-09-28">
+<histogram name="Net.QuicSessionPool.JobCompleteTime.{Result}" units="ms"
+    expires_after="2027-09-28">
   <owner>bashi@chromium.org</owner>
   <owner>blink-network-stack@google.com</owner>
   <summary>
     The time from when a QuicSessionPool::Job is created to when it completes.
     Recorded when a QuicSessionPool::Job completes synchronously or
-    asynchronously.
+    asynchronously. For the address family variants, the address family is based
+    on the peer address of the resulting session (including pooled or proxied
+    sessions).
   </summary>
-  <token key="SuccessOrFailure" variants="SuccessOrFailure"/>
+  <token key="Result">
+    <variant name="Failure" summary="Job failed"/>
+    <variant name="Success" summary="Job succeeded"/>
+    <variant name="Success.IPv4" summary="Job succeeded with IPv4"/>
+    <variant name="Success.IPv6" summary="Job succeeded with IPv6"/>
+    <variant name="Success.Unspecified"
+        summary="Job succeeded with an unspecified address family"/>
+  </token>
 </histogram>
 
 <histogram name="Net.QuicStreamFactory.AttemptMigrationBeforeHandshake"
@@ -9926,12 +9964,6 @@ chromium-metrics-reviews@google.com.
     setsockopt on a UDPSocketPosix. This metric is sampled at 1% of socket
     creations.
   </summary>
-</histogram>
-
-<histogram name="Net.UDPSocketWinClose" units="ms" expires_after="2024-03-24">
-  <owner>dschinazi@chromium.org</owner>
-  <owner>src/net/OWNERS</owner>
-  <summary>The time spent in closesocket call in UDPSocketWin::Close.</summary>
 </histogram>
 
 <histogram name="Net.URLLoader.AcceptCH.NeedsObserverCheck" enum="Boolean"
