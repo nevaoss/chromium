@@ -1,0 +1,47 @@
+name: carry-over-statuses
+
+# Copies jenkins/* statuses from an already verified commit with the same tree
+# (e.g. the adaptation PR head) to the PR head, so that a rebase merge does not
+# force every Jenkins job to run again. See nevaoss/ci tools/carry-over-statuses.py.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+    inputs:
+      PullRequest:
+        description: "Pull Request number"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: carry-over-statuses-${{ github.event.pull_request.number || inputs.PullRequest }}
+  cancel-in-progress: true
+
+jobs:
+  carry-over:
+    name: carry-over-statuses
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out CI repository
+        uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: infra/NEVA-11527/carry-over-statuses
+          persist-credentials: false
+
+      - name: Carry over statuses from a commit with the same tree
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.PullRequest }}
+        run: python3 ./tools/carry-over-statuses.py
