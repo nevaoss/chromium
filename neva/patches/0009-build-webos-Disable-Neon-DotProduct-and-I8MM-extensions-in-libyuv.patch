@@ -82,7 +82,7 @@ index 2a79f2db..a6d3ecc3 100644
 +#endif  // !defined(OS_WEBOS)
  #endif
  
- uint32_t HammingDistance_C(const uint8_t* src_a,
+ // The following are available for WebAssembly SIMD128:
 diff --git a/include/libyuv/row.h b/include/libyuv/row.h
 index dbf501f6..af8d1404 100644
 --- a/include/libyuv/row.h
