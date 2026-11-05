@@ -1,7 +1,7 @@
-From 897b0c4fea0900e1635140c6dcdfa2f83ad84326 Mon Sep 17 00:00:00 2001
-From: German Cvetkov <german.cvetkov@lge.com>
-Date: Thu, 3 Sep 2026 11:32:11 +0300
-Subject: [PATCH] 129.0.6654.0~1: Disable Neon DotProduct and I8MM
+From fe5c674fcd3d6862ecffc284094e23a7d0cb0618 Mon Sep 17 00:00:00 2001
+From: "alexander.lapshenkov" <alexander.lapshenkov@lge.com>
+Date: Thu, 5 Nov 2026 10:00:59 +0300
+Subject: [PATCH] [PATCH] 129.0.6654.0~1: Disable Neon DotProduct and I8MM 
  instructions in libyuv
 
 :Release Notes:
@@ -42,7 +42,7 @@ fix this issue.
  5 files changed, 42 insertions(+), 1 deletion(-)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index e6913efd..e960afee 100644
+index 389a0894..77624fdb 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -7,6 +7,7 @@
@@ -53,7 +53,7 @@ index e6913efd..e960afee 100644
  import("//testing/test.gni")
  import("libyuv.gni")
  
-@@ -232,7 +233,11 @@ if (libyuv_use_neon) {
+@@ -240,7 +241,11 @@ if (libyuv_use_neon) {
        use_libcxx_modules = false
  
        # TODO(thakis): Do we get this from global flags already? Is this needed?
@@ -67,10 +67,10 @@ index e6913efd..e960afee 100644
    }
  }
 diff --git a/include/libyuv/compare_row.h b/include/libyuv/compare_row.h
-index 2a79f2db..a6d3ecc3 100644
+index fe2abdf4..85e59ba0 100644
 --- a/include/libyuv/compare_row.h
 +++ b/include/libyuv/compare_row.h
-@@ -63,8 +63,12 @@ extern "C" {
+@@ -72,8 +72,12 @@ extern "C" {
  #if !defined(LIBYUV_DISABLE_NEON) && defined(__aarch64__)
  #define HAS_HASHDJB2_NEON
  
@@ -84,10 +84,10 @@ index 2a79f2db..a6d3ecc3 100644
  
  uint32_t HammingDistance_C(const uint8_t* src_a,
 diff --git a/include/libyuv/row.h b/include/libyuv/row.h
-index dbf501f6..af8d1404 100644
+index fd2e8043..f6b1c0d2 100644
 --- a/include/libyuv/row.h
 +++ b/include/libyuv/row.h
-@@ -605,6 +605,9 @@ extern "C" {
+@@ -608,6 +608,9 @@ extern "C" {
  #define HAS_P410TOAR30ROW_NEON
  #define HAS_P410TOARGBROW_NEON
  
@@ -97,7 +97,7 @@ index dbf501f6..af8d1404 100644
  #define HAS_ABGRTOYJROW_NEON_DOTPROD
  #define HAS_ABGRTOYROW_NEON_DOTPROD
  #define HAS_ARGBGRAYROW_NEON_DOTPROD
-@@ -618,6 +621,7 @@ extern "C" {
+@@ -621,6 +624,7 @@ extern "C" {
  #define HAS_ARGBCOLORMATRIXROW_NEON_I8MM
  #define HAS_ARGBTOUVMATRIXROW_NEON_I8MM
  #define HAS_ARGBTOUV444MATRIXROW_NEON_I8MM
@@ -128,7 +128,7 @@ index 91d4c8d1..9eac844b 100644
  #endif  // !defined(LIBYUV_DISABLE_NEON) && defined(__aarch64__)
  
 diff --git a/source/row_neon64.cc b/source/row_neon64.cc
-index 368461e3..430a492e 100644
+index 8b76f445..5bc3e045 100644
 --- a/source/row_neon64.cc
 +++ b/source/row_neon64.cc
 @@ -2854,6 +2854,9 @@ void RGBToUV444MatrixRow_NEON(const uint8_t* src_rgb,
