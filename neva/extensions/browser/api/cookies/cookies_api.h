@@ -31,7 +31,7 @@
 #include "extensions/browser/browser_context_keyed_api_factory.h"
 #include "extensions/browser/extension_function.h"
 #include "net/cookies/canonical_cookie.h"
-#include "neva/extensions/common/api/cookies.h"
+#include "extensions/common/api/cookies.h"
 
 namespace neva {
 

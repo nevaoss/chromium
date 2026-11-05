@@ -29,7 +29,7 @@
 #define NEVA_EXTENSIONS_BROWSER_API_COOKIES_COOKIES_HELPERS_H_
 
 #include "net/cookies/cookie_partition_key.h"
-#include "neva/extensions/common/api/cookies.h"
+#include "extensions/common/api/cookies.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 
 namespace net {
