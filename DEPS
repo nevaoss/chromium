@@ -4586,13 +4586,6 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/perfetto', 'am',
               '../../neva/patches/0001-136.0.7081.0-1-GCC-Change-PERFETTO_HAS_NO_DESTROY-to.patch']
   },
-  # Apply 'V8: GCC: Explicitely cast NEON intrinsics in simd.cc' patch
-  {
-    'name': 'V8-GCC-Explicitely-cast-NEON-intrinsics-in-simd.cc',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/v8', 'am',
-               '../neva/patches/0001-webos-V8-GCC-Explicitely-cast-NEON-intrinsics-in-simd.cc.patch']
-  },
   # Apply 'GCC: Explicitely specify span template type in PDFium' patch
   {
     'name': 'GCC-Explicitely-specify-span-template-type-in-PDFium',
