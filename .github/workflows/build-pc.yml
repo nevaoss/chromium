@@ -12,9 +12,16 @@ permissions:
   contents: read
   statuses: write
 
+# The regular or the rolling Jenkins job is selected by branch, with the same
+# condition as the test workflows, so that the tests find the build of the
+# same commit. Both jobs report as jenkins/build-pc.
 jobs:
   build:
     name: build-pc
+    if: >-
+      github.ref_name != 'neva-main-rolling' &&
+      (!startsWith(github.ref_name, 'rolling/') ||
+      endsWith(github.ref_name, '/merge-rolling-in-main'))
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
@@ -43,5 +50,40 @@ jobs:
         with:
           context: jenkins/build-pc
           label: Jenkins PC build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
+
+  rolling-build:
+    name: rolling/build-pc
+    if: >-
+      (github.ref_name == 'neva-main-rolling' ||
+      startsWith(github.ref_name, 'rolling/')) &&
+      !endsWith(github.ref_name, '/merge-rolling-in-main')
+    runs-on: self-hosted
+    env:
+      CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+    steps:
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-pc
+          label: Jenkins rolling PC build
+          state: pending
+      - uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+      - name: Run PC builder (rolling settings & environment)
+        id: jenkins
+        shell: bash
+        run: |
+          ./rolling/build-pc.py
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-pc
+          label: Jenkins rolling PC build
           state: ${{ job.status }}
           build: ${{ steps.jenkins.outputs.jenkins_build }}
