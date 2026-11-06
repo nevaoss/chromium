@@ -129,6 +129,9 @@ jobs:
           set -euo pipefail
           
           REVIEW_JSON=$(./tools/clang-tidy.py) || true
+          # The diagnostics can exceed the step output size limit, so the
+          # posting step reads them from the workspace.
+          printf '%s\n' "${REVIEW_JSON}" > clang-tidy-result.json
 
           STATUS=$(jq -r '.status // empty' <<< "${REVIEW_JSON}")
 
@@ -160,7 +163,10 @@ jobs:
             COMMENT=$(printf '%s\n\n%s\n' "${HEADER}" "${REVIEW}")
           fi
 
-          echo "summary=${SUMMARY}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "summary=${SUMMARY}"
+            echo "header=${HEADER}"
+          } >> "${GITHUB_OUTPUT}"
 
           {
             echo "review<<CLANG_TIDY_REVIEW_EOF"
@@ -175,6 +181,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_HEAD_SHA: ${{ steps.prepare_params.outputs.head_sha }}
           PR_NUMBER: ${{ steps.prepare_params.outputs.number }}
+          HEADER: ${{ steps.clang_tidy.outputs.header }}
           REVIEW: ${{ steps.clang_tidy.outputs.review }}
         run: |
           set -euo pipefail
@@ -187,6 +194,89 @@ jobs:
 
           if [[ "${CURRENT_HEAD_SHA}" != "${PR_HEAD_SHA}" ]]; then
             echo "Pull Request was updated. Obsolete result will not be posted."
+            exit 0
+          fi
+
+          # Each entry of .comments is {path, line, message}, with the path
+          # relative to the repository root. Results without .comments come
+          # from a Jenkins job that only reports the Markdown review.
+          if jq -e '(.comments // []) | length > 0' \
+              clang-tidy-result.json > /dev/null; then
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+              --jq '.[] | {filename, patch}' > pr-files.jsonl
+
+            # GitHub rejects a whole review if one comment is on a line
+            # outside the diff. Such diagnostics become file-level threads,
+            # or go in the review body when the file is not in the PR.
+            python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          HUNK = re.compile(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@')
+
+          def commentable_lines(patch):
+              lines = set()
+              line = 0
+              for text in patch.splitlines():
+                  match = HUNK.match(text)
+                  if match:
+                      line = int(match.group(1))
+                  elif text.startswith(('-', '\\')):
+                      continue
+                  else:
+                      lines.add(line)
+                      line += 1
+              return lines
+
+          files = {}
+          with open('pr-files.jsonl') as f:
+              for entry in map(json.loads, f):
+                  files[entry['filename']] = commentable_lines(
+                      entry.get('patch') or '')
+
+          with open('clang-tidy-result.json') as f:
+              diagnostics = json.load(f)['comments']
+
+          line_comments = []
+          file_comments = []
+          unplaced = []
+          for d in diagnostics:
+              path, line = d['path'], int(d['line'])
+              body = '```\n' + d['message'].rstrip() + '\n```'
+              if line in files.get(path, ()):
+                  line_comments.append(
+                      {'path': path, 'line': line, 'side': 'RIGHT',
+                       'body': body})
+              elif path in files:
+                  file_comments.append(
+                      {'path': path, 'subject_type': 'file',
+                       'commit_id': os.environ['PR_HEAD_SHA'],
+                       'body': f'Line {line}:\n\n{body}'})
+              else:
+                  unplaced.append(f'`{path}:{line}`\n\n{body}')
+
+          review_body = '\n\n'.join([os.environ['HEADER']] + unplaced)
+          with open('review.json', 'w') as f:
+              json.dump({'commit_id': os.environ['PR_HEAD_SHA'],
+                         'event': 'COMMENT',
+                         'body': review_body,
+                         'comments': line_comments}, f)
+          with open('file-comments.jsonl', 'w') as f:
+              for comment in file_comments:
+                  f.write(json.dumps(comment) + '\n')
+          PY
+
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+              --input review.json > /dev/null
+
+            while IFS= read -r comment; do
+              gh api --method POST \
+                "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" \
+                --input - <<< "${comment}" > /dev/null
+            done < file-comments.jsonl
             exit 0
           fi
 
