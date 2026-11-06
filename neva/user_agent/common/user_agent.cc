@@ -43,7 +43,7 @@ std::string GetDefaultUserAgent() {
   }
 
   std::string product = GetProduct();
-  return embedder_support::BuildUserAgentFromProduct(product);
+  return embedder_support::BuildUnifiedPlatformUserAgentFromProduct(product);
 }
 
 bool IsUserAgentClientHintsEnabled() {
