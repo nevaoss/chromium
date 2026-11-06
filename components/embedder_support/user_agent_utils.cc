@@ -307,6 +307,8 @@ std::string GetUnifiedPlatform() {
   return "Windows NT 10.0; Win64; x64";
 #elif BUILDFLAG(IS_FUCHSIA)
   return "Fuchsia";
+#elif BUILDFLAG(IS_WEBOS)
+  return "Web0S; Linux";
 #elif BUILDFLAG(IS_LINUX)
   return "X11; Linux x86_64";
 #elif BUILDFLAG(IS_IOS)
