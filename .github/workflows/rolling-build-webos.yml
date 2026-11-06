@@ -1,3 +1,7 @@
+# Deprecated: build-webos selects the rolling job by branch. This workflow is
+# kept only for rolling branches cut before that change, whose build-webos.yml
+# runs the regular build. Remove it once neva-main-rolling has the change and
+# those branches are recreated.
 name: rolling/build-webos
 
 on:
