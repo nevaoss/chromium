@@ -131,6 +131,9 @@ void ReadAloudPlaybackController::InitializeAudio(
     return;
   }
   resources.audio_renderer->SetPlaybackRate(playback_rate_);
+  resources.audio_renderer->SetWordBoundaryCallback(
+      base::BindRepeating(&ReadAloudPlaybackController::OnWordBoundaryReached,
+                          session_weak_factory_.GetWeakPtr()));
 
   resources.audio_output_stream.Bind(std::move(stream));
 
@@ -346,22 +349,23 @@ void ReadAloudPlaybackController::OnPumpStatusChanged(
       return;
     case ReadAloudDecoderSequencer::PumpStatus::kDrained:
       // The document finished normally. Nothing is left to decode, so stop
-      // pumping. Report kPaused rather than a terminal state so the Read Aloud
-      // UI stays open and the user can replay. The output stream is
-      // intentionally left running and the queue is not flushed, so the
-      // segment the renderer just popped still plays out.
+      // pumping. Report kEndOfStream rather than kPaused so consumers can
+      // distinguish natural stream completion from pause or setup. The output
+      // stream is intentionally left running and the queue is not flushed, so
+      // the segment the renderer just popped still plays out.
       //
       // TODO(b/565419447): Drive this from a real end-of-stream signal rather
       // than inferring it from the segment queue draining. Draining only means
       // the renderer has taken the last segment, not that it has played it:
       // audio still held in the renderer algorithm buffer and the output
-      // stream buffer is audible, so kPaused lands early, while the 250ms pump
-      // period pushes detection late. The net error is on the order of a few
-      // hundred milliseconds. A precise signal needs end-of-stream detection
-      // inside ReadAloudAudioRenderer, which zero-fills on underflow today.
-      // Once available, this should call HaltPlayback(kPaused) instead.
+      // stream buffer is audible, so kEndOfStream lands early, while the 250ms
+      // pump period pushes detection late. The net error is on the order of a
+      // few hundred milliseconds. A precise signal needs end-of-stream
+      // detection inside ReadAloudAudioRenderer, which zero-fills on underflow
+      // today. Once available, this should call HaltPlayback(kEndOfStream)
+      // instead.
       decoder_sequencer_.StopPumping();
-      SetPlaybackState(read_aloud::mojom::PlaybackState::kPaused);
+      SetPlaybackState(read_aloud::mojom::PlaybackState::kEndOfStream);
       return;
     case ReadAloudDecoderSequencer::PumpStatus::kFailed:
       // The entire timeline was consumed without ever yielding a single audio
@@ -603,6 +607,20 @@ void ReadAloudPlaybackController::OnSpeechSynthesisResponse(
                                         std::move(result.timings));
 
   decoder_sequencer_.ReplenishBuffer();
+}
+
+void ReadAloudPlaybackController::OnWordBoundaryReached(
+    uint32_t start_character_offset,
+    uint32_t end_character_offset,
+    base::TimeDelta audio_timestamp) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!client_.is_bound()) {
+    return;
+  }
+  // TODO(b/524283143): Send (start, end) once OnWordBoundaryReached's
+  // signature changes. Until then the browser only reads `audio_timestamp`.
+  client_->OnWordBoundaryReached(/*segment_index=*/0, start_character_offset,
+                                 audio_timestamp);
 }
 
 }  // namespace readaloud

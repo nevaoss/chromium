@@ -2056,8 +2056,8 @@ IN_PROC_BROWSER_TEST_F(CrossPlatformAccessibilityBrowserTest,
   EXPECT_EQ(static_cast<int>(ax::mojom::SortDirection::kOther),
             header3->GetIntAttribute(ax::mojom::IntAttribute::kSortDirection));
 
-  ASSERT_FALSE(
-      header4->HasIntAttribute(ax::mojom::IntAttribute::kSortDirection));
+  EXPECT_EQ(static_cast<int>(ax::mojom::SortDirection::kUnsorted),
+            header4->GetIntAttribute(ax::mojom::IntAttribute::kSortDirection));
   ASSERT_FALSE(
       header5->HasIntAttribute(ax::mojom::IntAttribute::kSortDirection));
 }
@@ -3439,7 +3439,7 @@ IN_PROC_BROWSER_TEST_F(CrossPlatformAccessibilityBrowserTest,
   ASSERT_NE(button_node, nullptr);
 
   ui::BrowserAccessibilityManager* manager = button_node->manager();
-  manager->ScrollToMakeVisible(*button_node, gfx::Rect());
+  manager->ScrollToMakeVisible(*button_node);
 
   EXPECT_EQ(manager->GetAccessibilityFocus(), button_node);
 }
@@ -3469,7 +3469,7 @@ IN_PROC_BROWSER_TEST_F(CrossPlatformAccessibilityBrowserTest,
   ASSERT_NE(button_node, nullptr);
 
   ui::BrowserAccessibilityManager* manager = button_node->manager();
-  manager->ScrollToMakeVisible(*button_node, gfx::Rect());
+  manager->ScrollToMakeVisible(*button_node);
 
   EXPECT_EQ(GetManager()->GetAccessibilityFocus(), button_node);
 }

@@ -123,8 +123,10 @@ class ProxyConfigurationProviderTest : public PlatformTest {
   void TearDown() override {
     // Ensure no proxyConfigurations outlive these tests to avoid flake of
     // unrelated tests.
-    WKWebsiteDataStore* data_store = [WKWebsiteDataStore defaultDataStore];
-    data_store.proxyConfigurations = @[];
+    if (@available(iOS 17.0, *)) {
+      WKWebsiteDataStore* data_store = [WKWebsiteDataStore defaultDataStore];
+      data_store.proxyConfigurations = @[];
+    }
 
     PlatformTest::TearDown();
   }

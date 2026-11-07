@@ -56,6 +56,7 @@
 #include "third_party/blink/public/resources/grit/blink_image_resources.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_dom_rect_init.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_element_image_default_size.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_encode_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_element_elementimage.h"
@@ -953,12 +954,11 @@ void HTMLCanvasElement::ResetLayer() {
   }
 }
 
-DOMMatrix* HTMLCanvasElement::getElementTransform(
+ElementImageDefaultSize* HTMLCanvasElement::getElementImageDefaultSize(
     const V8UnionElementOrElementImage* element_or_image,
-    DOMMatrix* draw_transform,
-    ExceptionState& exception_state) {
+    ExceptionState& exception_state) const {
   if (!VerifyDrawElementImageEligibility(
-          element_or_image, "getElementTransform", exception_state)) {
+          element_or_image, "getElementImageDefaultSize", exception_state)) {
     return nullptr;
   }
 
@@ -969,9 +969,11 @@ DOMMatrix* HTMLCanvasElement::getElementTransform(
     return nullptr;
   }
 
-  gfx::Transform transform =
-      GetElementTransform(*paint_state, Size(), draw_transform->Matrix());
-  return MakeGarbageCollected<DOMMatrix>(transform, transform.Is2dTransform());
+  gfx::Vector2dF scale = GetCanvasGridScaleFactor(*paint_state, Size());
+  auto* default_size = ElementImageDefaultSize::Create();
+  default_size->setWidth(paint_state->box_size.width() * scale.x());
+  default_size->setHeight(paint_state->box_size.height() * scale.y());
+  return default_size;
 }
 
 DOMMatrix* HTMLCanvasElement::getElementTransform(

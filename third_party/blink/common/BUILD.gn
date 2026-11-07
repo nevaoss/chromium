@@ -60,6 +60,7 @@ blink_python_runner("make_generated_features") {
 
   visibility = [
     ":*",
+    "//chrome/browser/flags:java_flags",
     "//third_party/blink/public/common:java_features_srcjar",
   ]
 }

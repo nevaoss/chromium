@@ -25,6 +25,7 @@ import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.widget.TooltipCompat;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import org.chromium.base.MathUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
@@ -87,6 +88,7 @@ public class VerticalTabRailLayout extends ConstraintLayout {
     private @Px int mFooterButtonCollapsedWidthPx;
     private @Px int mFooterButtonCollapsedHeightPx;
     private @Px int mHoverOverlayCornerRadiusPx;
+    private @Px int mCollapsedRailWidthPx;
     private @RailCollapseState int mCollapseState = RailCollapseState.EXPANDED;
     // Cache for the last applied collapse state to prevent redundant header layout updates.
     private @RailCollapseState int mLastAppliedCollapseState = RailCollapseState.UNKNOWN;
@@ -177,20 +179,18 @@ public class VerticalTabRailLayout extends ConstraintLayout {
                                 : R.dimen.vertical_tabs_header_button_size);
         mHoverOverlayCornerRadiusPx =
                 res.getDimensionPixelSize(R.dimen.vertical_tabs_hover_overlay_corner_radius);
-        // While expanded for hovering, the rail overlays the web contents with rounded right
-        // corners. The outline is shifted left by the radius so its left corners fall outside the
-        // view bounds and only the right corners are rounded. It is only clipped to while hover
-        // expanded, see updateHeaderLayout().
+        mCollapsedRailWidthPx =
+                ViewUtils.dpToPx(
+                        getContext(), VerticalTabUtils.SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP);
+        // Rounds the right corners of the hover overlay; the left corners are shifted out of
+        // bounds. The radius follows the rail width, see getHoverOverlayCornerRadius(). Only
+        // clipped to while hover expanded, see updateHeaderLayout().
         setOutlineProvider(
                 new ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, Outline outline) {
-                        outline.setRoundRect(
-                                -mHoverOverlayCornerRadiusPx,
-                                0,
-                                view.getWidth(),
-                                view.getHeight(),
-                                mHoverOverlayCornerRadiusPx);
+                        @Px int radius = getHoverOverlayCornerRadius(view.getWidth());
+                        outline.setRoundRect(-radius, 0, view.getWidth(), view.getHeight(), radius);
                     }
                 });
         updateHeaderLayout();
@@ -375,8 +375,9 @@ public class VerticalTabRailLayout extends ConstraintLayout {
         boolean showSingleRowHeader =
                 !VerticalTabRailCollapseController.shouldUseCollapsedPositioning(mCollapseState);
 
+        Context context = getContext();
         Resources res = getResources();
-        boolean isTablet = VerticalTabUtils.isTablet(getContext());
+        boolean isTablet = VerticalTabUtils.isTablet(context);
 
         // The whole header button container. The buttons are start-aligned with an explicit offset
         // rather than centered, so they keep the same position when the rail is expanded for
@@ -387,7 +388,7 @@ public class VerticalTabRailLayout extends ConstraintLayout {
         int headerButtonMarginStart =
                 showSingleRowHeader
                         ? 0
-                        : getCollapsedRailCenteringMarginStart(getContext(), mHeaderButtonWidthPx);
+                        : getCollapsedRailCenteringMarginStart(context, mHeaderButtonWidthPx);
 
         // Collapse button
         boolean isManuallyExpanded = mCollapseState == RailCollapseState.EXPANDED;
@@ -415,7 +416,7 @@ public class VerticalTabRailLayout extends ConstraintLayout {
                 isManuallyExpanded
                         ? R.string.accessibility_collapse_vertical_tabs
                         : R.string.accessibility_expand_vertical_tabs;
-        String tooltipText = getContext().getString(resId);
+        String tooltipText = context.getString(resId);
         mCollapseButton.setContentDescription(tooltipText);
         TooltipCompat.setTooltipText(mCollapseButton, tooltipText);
 
@@ -436,37 +437,60 @@ public class VerticalTabRailLayout extends ConstraintLayout {
                 (LinearLayout.LayoutParams) mSearchIcon.getLayoutParams();
         searchIconParams.width = mHeaderButtonWidthPx;
         mSearchLabel.setVisibility(isExpandedForHovering ? View.VISIBLE : View.GONE);
+        // Align the label with the tab titles. It can be negative when the icon is wider than the
+        // space before the tab titles.
+        int searchIconEnd = searchParams.getMarginStart() + searchIconParams.width;
+        LinearLayout.LayoutParams searchLabelParams =
+                (LinearLayout.LayoutParams) mSearchLabel.getLayoutParams();
+        searchLabelParams.setMarginStart(getHoverTabTitleStart(context) - searchIconEnd);
 
         mCollapseButton.setLayoutParams(collapseParams);
         mSearchButton.setLayoutParams(searchParams);
         mSearchIcon.setLayoutParams(searchIconParams);
-        // Round the right corners of the hover overlay.
-        setClipToOutline(isExpandedForHovering);
+        mSearchLabel.setLayoutParams(searchLabelParams);
+        // Clip on hover expand, and keep it while collapsing back so the corners shrink with the
+        // width. Off after a manual expand, which moves the web contents edge with the rail.
+        setClipToOutline(
+                isExpandedForHovering
+                        || (mCollapseState == RailCollapseState.COLLAPSED && getClipToOutline()));
         updatePinnedTabsSeparatorLayout();
         updateFooterLayout();
     }
 
     /**
-     * Updates the separator between pinned and regular tabs. While the rail is expanded for
-     * hovering, the separator spans the tab row width. Otherwise, it keeps its fixed width,
-     * centered in the rail.
+     * Updates the separator between pinned and regular tabs. While the rail uses collapsed
+     * positioning, it is start-aligned at its collapsed centered offset, so its start keeps the
+     * same position when the rail is expanded for hovering. While expanded for hovering, it extends
+     * from that start to the end of the tab rows. Otherwise, it keeps its fixed width, centered in
+     * the rail.
      */
     private void updatePinnedTabsSeparatorLayout() {
         ConstraintLayout.LayoutParams params =
                 (ConstraintLayout.LayoutParams) mPinnedTabsSeparatorView.getLayoutParams();
-        if (mCollapseState == RailCollapseState.EXPANDED_FOR_HOVERING) {
-            params.width = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT;
-            params.setMarginStart(
-                    getCollapsedRailCenteringMarginStart(
-                            getContext(),
-                            TabVerticalViewBinder.getCollapsedTabItemWidth(getContext())));
-        } else {
-            params.width =
-                    getResources()
-                            .getDimensionPixelSize(R.dimen.vertical_tabs_pinned_separator_width);
-            params.setMarginStart(0);
-        }
+        @Px
+        int separatorWidthPx =
+                getResources().getDimensionPixelSize(R.dimen.vertical_tabs_pinned_separator_width);
+        boolean useCollapsedPositioning =
+                VerticalTabRailCollapseController.shouldUseCollapsedPositioning(mCollapseState);
+        params.width =
+                mCollapseState == RailCollapseState.EXPANDED_FOR_HOVERING
+                        ? ConstraintLayout.LayoutParams.MATCH_CONSTRAINT
+                        : separatorWidthPx;
+        params.setMarginStart(
+                useCollapsedPositioning
+                        ? getCollapsedRailCenteringMarginStart(getContext(), separatorWidthPx)
+                        : 0);
+        params.horizontalBias = useCollapsedPositioning ? 0f : 0.5f;
         mPinnedTabsSeparatorView.setLayoutParams(params);
+    }
+
+    /**
+     * Returns the hover overlay corner radius for the given rail width: the width past the
+     * collapsed rail width, capped at the full radius. 0 while the rail abuts the web contents.
+     */
+    @Px
+    int getHoverOverlayCornerRadius(@Px int railWidthPx) {
+        return MathUtils.clamp(railWidthPx - mCollapsedRailWidthPx, 0, mHoverOverlayCornerRadiusPx);
     }
 
     /**
@@ -480,6 +504,28 @@ public class VerticalTabRailLayout extends ConstraintLayout {
                 context.getResources()
                         .getDimensionPixelSize(R.dimen.vertical_tabs_rail_horizontal_margin);
         return (collapsedRailWidthPx - childWidthPx) / 2 - railPaddingStartPx;
+    }
+
+    /**
+     * Returns the horizontal position in pixels of the tab rows while the rail is expanded for
+     * hovering, relative to the rail's start padding. The tab rows keep their collapsed start.
+     */
+    static @Px int getHoverTabRowStart(Context context) {
+        return getCollapsedRailCenteringMarginStart(
+                context, TabVerticalViewBinder.getCollapsedTabItemWidth(context));
+    }
+
+    /**
+     * Returns the horizontal position in pixels of the tab titles while the rail is expanded for
+     * hovering, relative to the rail's start padding. Mirrors the favicon and title margins in
+     * {@code vertical_tab_item.xml}.
+     */
+    static @Px int getHoverTabTitleStart(Context context) {
+        Resources res = context.getResources();
+        return getHoverTabRowStart(context)
+                + res.getDimensionPixelSize(R.dimen.vertical_tab_item_padding_horizontal)
+                + res.getDimensionPixelSize(R.dimen.vertical_tab_item_icon_size)
+                + res.getDimensionPixelSize(R.dimen.vertical_tab_item_favicon_margin_end);
     }
 
     /**
@@ -506,6 +552,12 @@ public class VerticalTabRailLayout extends ConstraintLayout {
         newTabParams.height = isCollapsed ? mFooterButtonCollapsedHeightPx : newTabHeight;
         newTabParams.weight = (!isCollapsed && isIncognitoVisible) ? 1.0f : 0.0f;
         newTabParams.bottomMargin = (isCollapsed && isIncognitoVisible) ? mFooterButtonGapPx : 0;
+        // While expanded for hovering, the new tab button keeps its collapsed start position and
+        // extends from there, like the tab rows, so both have the same width.
+        newTabParams.setMarginStart(
+                mCollapseState == RailCollapseState.EXPANDED_FOR_HOVERING
+                        ? getHoverTabRowStart(getContext())
+                        : 0);
         newTabParams.setMarginEnd(0);
         mNewTabButton.setLayoutParams(newTabParams);
 

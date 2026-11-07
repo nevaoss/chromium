@@ -429,6 +429,7 @@ source_set("test_support") {
   deps = [ ":actor" ]
 
   public_deps = [
+    ":impl",
     "//base",
     "//chrome/browser/actor/ui:event_dispatcher",
     "//chrome/browser/actor/ui:test_support",
@@ -591,11 +592,6 @@ source_set("browser_tests") {
     "//chrome/test:test_support",
     "//chrome/test/base:chrome_test_utils",
     "//chrome/test/base:testing_browser_process",
-  ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  }
-  deps += [
     "//components/affiliations/core/browser:test_support",
     "//components/favicon/core/test:test_support",
     "//components/javascript_dialogs",

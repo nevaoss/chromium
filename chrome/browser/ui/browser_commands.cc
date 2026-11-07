@@ -3152,19 +3152,6 @@ void ExecLensRegionSearch(BrowserWindowInterface* browser) {
 #endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
 }
 
-void ExecAskGoogleAboutThisPage(BrowserWindowInterface* browser) {
-  ExecAskGoogleAboutThisPage(
-      browser, lens::LensOverlayInvocationSource::kContentAreaContextMenuPage);
-}
-
-void ExecAskGoogleAboutThisPage(
-    BrowserWindowInterface* browser,
-    lens::LensOverlayInvocationSource invocation_source) {
-  ExecAskGoogleAboutThisPage(
-      browser, invocation_source,
-      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION);
-}
-
 void ExecAskGoogleAboutThisPage(
     BrowserWindowInterface* browser,
     lens::LensOverlayInvocationSource invocation_source,
@@ -3172,6 +3159,11 @@ void ExecAskGoogleAboutThisPage(
 #if !BUILDFLAG(IS_ANDROID)
   if (!browser) {
     return;
+  }
+  if (auto* const user_education =
+          BrowserUserEducationInterface::From(browser)) {
+    user_education->NotifyNewBadgeFeatureUsed(
+        contextual_tasks::kContextualTasksUpdatedEntryPoints);
   }
   if (contextual_tasks::kContextualTasksContextMenuRouteAskGoogleToOmnibox
           .Get()) {

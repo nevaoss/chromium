@@ -5,7 +5,7 @@
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
 import type {TextMenuElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {DEFAULT_SETTINGS, ReadAnythingSettingsChange, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {ReadAnythingSettingsChange, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome-untrusted://webui-test/test_util.js';
 
@@ -80,10 +80,7 @@ suite('TextMenuElement', () => {
       'updating line spacing preference property renders checkmark on the selected spacing item',
       async () => {
         const looseLineSpacing = visualBrowserProxy.looseLineSpacing;
-        textMenu.settingsPrefs = {
-          ...textMenu.settingsPrefs,
-          lineSpacing: looseLineSpacing,
-        };
+        textMenu.lineSpacing = looseLineSpacing;
         await microtasksFinished();
 
         const selectedItems =
@@ -93,36 +90,24 @@ suite('TextMenuElement', () => {
             looseLineSpacing, selectedItems[0]!.data, 'selected spacing data');
       });
 
-  test(
-      'on line spacing change invokes reading mode callback and logs metrics',
-      async () => {
-        let closeAllMenusCount = 0;
-        document.addEventListener(
-            ToolbarEvent.CLOSE_ALL_MENUS, () => closeAllMenusCount += 1);
+  test('on line spacing change does not close menus', async () => {
+    let closeAllMenusCount = 0;
+    document.addEventListener(
+        ToolbarEvent.CLOSE_ALL_MENUS, () => closeAllMenusCount += 1);
 
-        const newSpacing = visualBrowserProxy.looseLineSpacing;
-        textMenu.$.menu.dispatchEvent(new CustomEvent(
-            ToolbarEvent.LINE_SPACING, {detail: {data: newSpacing}}));
-        await microtasksFinished();
+    textMenu.$.menu.dispatchEvent(new CustomEvent(
+        ToolbarEvent.LINE_SPACING,
+        {detail: {data: visualBrowserProxy.looseLineSpacing}}));
+    await microtasksFinished();
 
-        assertEquals(1, visualBrowserProxy.getCallCount('onLineSpacingChange'));
-        assertEquals(
-            newSpacing, visualBrowserProxy.getArgs('onLineSpacingChange')[0]);
-        assertEquals(
-            ReadAnythingSettingsChange.LINE_HEIGHT_CHANGE,
-            await metrics.whenCalled('recordTextSettingsChange'));
-        assertEquals(1, metrics.getCallCount('recordTextSettingsChange'));
-        assertEquals(0, closeAllMenusCount);
-      });
+    assertEquals(0, closeAllMenusCount);
+  });
 
   test(
       'updating letter spacing preference property renders checkmark on the selected spacing item',
       async () => {
         const wideLetterSpacing = visualBrowserProxy.wideLetterSpacing;
-        textMenu.settingsPrefs = {
-          ...textMenu.settingsPrefs,
-          letterSpacing: wideLetterSpacing,
-        };
+        textMenu.letterSpacing = wideLetterSpacing;
         await microtasksFinished();
 
         const selectedItems =
@@ -133,28 +118,18 @@ suite('TextMenuElement', () => {
             'selected letter spacing data');
       });
 
-  test(
-      'on letter spacing change invokes reading mode callback and logs metrics',
-      async () => {
-        let closeAllMenusCount = 0;
-        document.addEventListener(
-            ToolbarEvent.CLOSE_ALL_MENUS, () => closeAllMenusCount += 1);
+  test('on letter spacing change does not close menus', async () => {
+    let closeAllMenusCount = 0;
+    document.addEventListener(
+        ToolbarEvent.CLOSE_ALL_MENUS, () => closeAllMenusCount += 1);
 
-        const newSpacing = visualBrowserProxy.wideLetterSpacing;
-        textMenu.$.menu.dispatchEvent(new CustomEvent(
-            ToolbarEvent.LETTER_SPACING, {detail: {data: newSpacing}}));
-        await microtasksFinished();
+    textMenu.$.menu.dispatchEvent(new CustomEvent(
+        ToolbarEvent.LETTER_SPACING,
+        {detail: {data: visualBrowserProxy.wideLetterSpacing}}));
+    await microtasksFinished();
 
-        assertEquals(
-            1, visualBrowserProxy.getCallCount('onLetterSpacingChange'));
-        assertEquals(
-            newSpacing, visualBrowserProxy.getArgs('onLetterSpacingChange')[0]);
-        assertEquals(
-            ReadAnythingSettingsChange.LETTER_SPACING_CHANGE,
-            await metrics.whenCalled('recordTextSettingsChange'));
-        assertEquals(1, metrics.getCallCount('recordTextSettingsChange'));
-        assertEquals(0, closeAllMenusCount);
-      });
+    assertEquals(0, closeAllMenusCount);
+  });
 
   test(
       'font option titles show loading string when fonts not loaded',
@@ -190,10 +165,7 @@ suite('TextMenuElement', () => {
         textMenu.$.menu.menuGroups[1]!.items.find(item => item.selected);
     assertNotEquals(looseSpacing, startingSelected?.data);
 
-    textMenu.settingsPrefs = {
-      ...DEFAULT_SETTINGS,
-      lineSpacing: looseSpacing,
-    };
+    textMenu.lineSpacing = looseSpacing;
     await microtasksFinished();
 
     const newSelected =
@@ -206,10 +178,7 @@ suite('TextMenuElement', () => {
     const startingSelected =
         textMenu.$.menu.menuGroups[1]!.items.find(item => item.selected);
 
-    textMenu.settingsPrefs = {
-      ...textMenu.settingsPrefs,
-      lineSpacing: startingSelected?.data as number,
-    };
+    textMenu.lineSpacing = startingSelected?.data as number;
     await microtasksFinished();
 
     const newSelected =

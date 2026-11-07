@@ -1953,6 +1953,11 @@
       <message name="IDS_IOS_COMPOSEBOX_SELECT_TAB_ACTION" desc="The contextual menu option for opening the tab picker for selection. [iOS only].">
         Tabs
       </message>
+      <message name="IDS_IOS_COMPOSEBOX_SHARED_TABS_COUNT" desc="Title shown in the accessibility Large Content Viewer when long-pressing the shared tabs favicons accordion in the composebox. [iOS only].">
+        {COUNT, plural,
+        =1 {1 shared tab}
+        other {{COUNT} shared tabs}}
+      </message>
       <message name="IDS_IOS_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE" desc="Title for the Composebox tab picker when no tabs are selected.">
         Add recent tabs
       </message>
@@ -4906,6 +4911,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_STAT_TABS_DECLUTTERED_MAX" desc="Title for the tabs decluttered statistic card when the user has hit the max shown number. [iOS only]">
         You organized 15+ tabs
       </message>
+      <message name="IDS_IOS_LEVEL_UP_TAB_GROUP_USER_EDUCATION" desc="Text of the bubble for the Level Up help bubble for how to add a tab to a group. [iOS only]">
+        Press and hold to create a tab group
+      </message>
       <message name="IDS_IOS_LEVEL_UP_TASKS_REMAINING" desc="Progress message explaining how many tasks remain to level up. [iOS only]">
         {count, plural,
           =1 {Complete 1 more task to level up}
@@ -4915,7 +4923,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         "Search with AI Mode" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_AUTOFILL" desc="Completion snackbar message for the Autofill task. [iOS only]">
-        "Save a password" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_DELETE_BROWSING_DATA" desc="Completion snackbar message for the Delete Browsing Data task. [iOS only]">
         "Delete browsing data" completed!
@@ -4927,13 +4935,13 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_CAMERA_SEARCH" desc="Completion snackbar message for the Lens Camera Search task. [iOS only]">
-        "Use your camera to search with Google Lens" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_WEBSITE_SEARCH" desc="Completion snackbar message for the Lens Website Search task. [iOS only]">
         "Search your screen with Google Lens" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PASSWORD_CHECKUP" desc="Completion snackbar message for the Password Checkup task. [iOS only]">
-        "Check your passwords" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PAYMENT_METHODS" desc="Completion snackbar message for the Payment Methods task. [iOS only]">
         "Manage payment methods" completed!
@@ -4945,7 +4953,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_TAB_GROUPS" desc="Completion snackbar message for the Tab Groups task. [iOS only]">
-        "Create a tab group" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TURN_OFF_CONFIRMATION_SUBTITLE" desc="Subtitle message in the confirmation alert dialog when turning off Level Up. [iOS only]">
         This will permanently delete your Level Up progress and feature usage data for Level Up will no longer be sent to Google for your profile.

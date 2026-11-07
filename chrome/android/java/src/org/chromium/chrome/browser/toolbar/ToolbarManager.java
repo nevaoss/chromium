@@ -94,6 +94,7 @@ import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.dom_distiller.DomDistillerTabUtils;
 import org.chromium.chrome.browser.download.DownloadFeatures;
 import org.chromium.chrome.browser.download.DownloadToolbarButtonController;
+import org.chromium.chrome.browser.download.DownloadToolbarButtonState;
 import org.chromium.chrome.browser.download.items.OfflineContentAggregatorFactory;
 import org.chromium.chrome.browser.ephemeraltab.EphemeralTabCoordinator;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
@@ -451,8 +452,9 @@ public class ToolbarManager
     private @Nullable ExtensionsToolbarCoordinator mExtensionsToolbarCoordinator;
 
     private @Nullable DownloadToolbarButtonController mDownloadToolbarButtonController;
-    private final Callback<Boolean> mDownloadButtonShouldShowObserver =
-            mDownloadButtonShouldShowSupplier::set;
+    // Only visibility is bridged until the toolbar button renders progress and colour.
+    private final Callback<DownloadToolbarButtonState> mDownloadButtonStateObserver =
+            state -> mDownloadButtonShouldShowSupplier.set(state.shouldShow);
 
     private final BrowserStateBrowserControlsVisibilityDelegate mControlsVisibilityDelegate;
     private int mFullscreenFocusToken = TokenHolder.INVALID_TOKEN;
@@ -528,7 +530,6 @@ public class ToolbarManager
     private @Nullable ToolbarPositionController mToolbarPositionController;
     private @Nullable UndoBarThrottle mUndoBarThrottle;
     private final @Nullable BottomBarHostManager mBottomBarHostManager;
-    private final @Nullable OneshotSupplier<String> mCountrySupplier;
     private final @Nullable OneshotSupplier<HubManager> mHubManagerSupplier;
 
     private OverridableTabCount mOverridableTabCount;
@@ -797,7 +798,6 @@ public class ToolbarManager
      * @param pageZoomManager The {@link PageZoomManager} used to manage the page zoom.
      * @param omniboxChipManager The {@link OmniboxChipManager} to show chips in the omnibox.
      * @param bottomBarHostManager The {@link BottomBarHostManager} to manage the bottom bar.
-     * @param countrySupplier The supplier for the variations country code.
      * @param suppressTabStripAtStart if {@code true}, suppress tab strip when Chrome starts.
      */
     public ToolbarManager(
@@ -861,13 +861,11 @@ public class ToolbarManager
             @Nullable OmniboxChipManager omniboxChipManager,
             @Nullable BottomBarHostManager bottomBarHostManager,
             @Nullable ActionRegistry actionRegistry,
-            @Nullable OneshotSupplier<String> countrySupplier,
             GlicButtonDelegate toggleGlicCallback,
             boolean suppressTabStripAtStart,
             @Nullable OneshotSupplier<HubManager> hubManagerSupplier) {
         TraceEvent.begin("ToolbarManager.ToolbarManager");
         mActionRegistry = actionRegistry;
-        mCountrySupplier = countrySupplier;
         mToggleGlicCallback = toggleGlicCallback;
         mActivity = activity;
         mWindowAndroid = windowAndroid;
@@ -2582,9 +2580,7 @@ public class ToolbarManager
                         mActivityTabProvider.asObservable(),
                         (ScrollingBottomViewResourceFrameLayout) tabGroupUiContainer,
                         LayerType.TABSTRIP_TOOLBAR,
-                        mActivity
-                                .getResources()
-                                .getDimensionPixelSize(R.dimen.tab_group_ui_height),
+                        mActivity.getResources().getDimensionPixelSize(R.dimen.tab_group_ui_height),
                         SupplierUtils.upcast(
                                 mTabGroupUiOneshotSupplier, BottomControlsContentDelegate.class),
                         mTabObscuringHandler,
@@ -2612,9 +2608,6 @@ public class ToolbarManager
         var bottomBarContainerOneshotSupplier =
                 new OneshotSupplierImpl<BottomControlsContentDelegate>();
 
-        OneshotSupplier<String> countrySupplier =
-                mCountrySupplier != null ? mCountrySupplier : new OneshotSupplierImpl<>();
-
         BottomBarContainerCoordinator bottomBarContainerCoordinator =
                 new BottomBarContainerCoordinator(
                         bottomAppBarContainer.findViewById(R.id.bottom_container_slot),
@@ -2624,7 +2617,6 @@ public class ToolbarManager
                         mAppThemeColorProvider,
                         mHomepageEnabledSupplier,
                         mProfileSupplier,
-                        countrySupplier,
                         mOmniboxFocusStateSupplier,
                         mModalDialogManagerSupplier,
                         mAppMenuCoordinatorSupplier,
@@ -2933,8 +2925,8 @@ public class ToolbarManager
             mDownloadToolbarButtonController =
                     new DownloadToolbarButtonController(OfflineContentAggregatorFactory.get());
             mDownloadToolbarButtonController
-                    .getShouldShowSupplier()
-                    .addSyncObserverAndCall(mDownloadButtonShouldShowObserver);
+                    .getStateSupplier()
+                    .addSyncObserverAndCall(mDownloadButtonStateObserver);
         }
 
         TraceEvent.end("ToolbarManager.initializeWithNative");
@@ -3144,8 +3136,8 @@ public class ToolbarManager
 
         if (mDownloadToolbarButtonController != null) {
             mDownloadToolbarButtonController
-                    .getShouldShowSupplier()
-                    .removeObserver(mDownloadButtonShouldShowObserver);
+                    .getStateSupplier()
+                    .removeObserver(mDownloadButtonStateObserver);
             mDownloadToolbarButtonController.destroy();
             mDownloadToolbarButtonController = null;
         }

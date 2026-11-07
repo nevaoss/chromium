@@ -295,7 +295,6 @@ source_set("ui") {
     ":mojo_bindings",
     ":mojom_traits",
     "//base",
-    "//chrome/browser/actor",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_search",
     "//chrome/browser/tab_list",
@@ -307,7 +306,6 @@ source_set("ui") {
     "//components/contextual_search:public",
     "//components/contextual_tasks/public:feature_list",
     "//components/contextual_tasks/public:query_contextualizer",
-    "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/prefs",
     "//components/signin/public/identity_manager",
     "//components/tabs:public",
@@ -377,9 +375,13 @@ source_set("user_data") {
     "//components/signin/public/identity_manager",
     "//components/tabs:public",
     "//content/public/browser",
+    "//extensions/buildflags",
     "//third_party/lens_server_proto:lens_overlay_proto",
     "//url",
   ]
+  if (enable_extensions_core) {
+    deps += [ "//extensions/browser" ]
+  }
   if (!is_android) {
     deps += [
       "//chrome/browser/ui/lens",

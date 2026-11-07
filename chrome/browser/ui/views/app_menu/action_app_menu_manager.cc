@@ -603,7 +603,13 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
             section.AddAction(
                 kActionNewIsolatedWindow,
                 {.display_type = DisplayType::kBlock,
-                 .text_override = l10n_util::GetStringUTF16(IDS_ISOLATED)});
+                 .text_override =
+                     profile->IsEnterpriseIsolatedModeProfile()
+                         ? std::make_optional(
+                               BrowserActions::GetCleanTitleAndTooltipText(
+                                   l10n_util::GetStringUTF16(
+                                       IDS_NEW_ISOLATED_WINDOW)))
+                         : std::nullopt});
           } else {
             section.AddAction(
                 kActionNewIncognitoWindow,
@@ -891,7 +897,9 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
             if (show_ask_google) {
               target.AddAction(
                   kActionAskGoogleAboutThisPageFromAppMenu,
-                  {.element_id = AppMenuModel::kAskGoogleAboutThisPageItem});
+                  {.new_badge_feature =
+                       &contextual_tasks::kContextualTasksUpdatedEntryPoints,
+                   .element_id = AppMenuModel::kAskGoogleAboutThisPageItem});
             }
             target.AddAction(
                 kActionShowLensOverlayFromAppMenu,
@@ -1161,6 +1169,8 @@ void ActionAppMenuManager::AddFooterActions(actions::ActionItem* root) {
                .text_override = GetManagedUiMenuItemLabel(profile),
                .icon_override =
                    ui::ImageModel::FromVectorIcon(GetManagedUiIcon(profile))});
+          section.AddAction(kActionChromeEnterpriseReleaseNotes,
+                            {.display_type = DisplayType::kRow});
         }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
       });

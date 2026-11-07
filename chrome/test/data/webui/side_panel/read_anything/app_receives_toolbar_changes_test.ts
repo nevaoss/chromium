@@ -5,7 +5,7 @@
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
 import type {AppElement, ContentController, LanguageToastElement, LineFocusController, SpeechController, VoiceLanguageController, VoiceNotificationManager} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {LineFocusMovement, LineFocusStyle, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {LineFocusMovement, LineFocusStyle, ReadAnythingSettingsChange, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertArrayEquals, assertEquals, assertFalse, assertLT, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {keyDownOn} from 'chrome-untrusted://webui-test/keyboard_mock_interactions.js';
 import {hasStyle, microtasksFinished, whenCheck} from 'chrome-untrusted://webui-test/test_util.js';
@@ -76,18 +76,17 @@ suite('AppReceivesToolbarChanges', () => {
   }
 
   function emitLineSpacing(spacingEnumValue: number): void {
-    visualBrowserProxy.onLineSpacingChange(spacingEnumValue);
-    emitEvent(app, ToolbarEvent.LINE_SPACING);
+    emitEvent(
+        app, ToolbarEvent.LINE_SPACING, {detail: {data: spacingEnumValue}});
   }
 
   function emitLetterSpacing(spacingEnumValue: number): void {
-    visualBrowserProxy.onLetterSpacingChange(spacingEnumValue);
-    emitEvent(app, ToolbarEvent.LETTER_SPACING);
+    emitEvent(
+        app, ToolbarEvent.LETTER_SPACING, {detail: {data: spacingEnumValue}});
   }
 
   function emitColorTheme(colorEnumValue: number): void {
-    visualBrowserProxy.onThemeChange(colorEnumValue);
-    emitEvent(app, ToolbarEvent.THEME);
+    emitEvent(app, ToolbarEvent.THEME, {detail: {data: colorEnumValue}});
   }
 
   function emitPlayPause(): Promise<void> {
@@ -760,6 +759,20 @@ suite('AppReceivesToolbarChanges', () => {
     assertFontsEqual(containerFont(), 'Serif');
   });
 
+  test('restoreSettingsFromPrefs updates toolbar settings', async () => {
+    visualBrowserProxy.letterSpacing = 1;
+    visualBrowserProxy.lineSpacing = 2;
+    visualBrowserProxy.colorTheme = visualBrowserProxy.darkTheme;
+
+    visualBrowserProxy.restoreSettingsFromPrefs.callListeners();
+    await microtasksFinished();
+
+    const toolbar = app.$.toolbar;
+    assertEquals(1, toolbar.letterSpacing);
+    assertEquals(2, toolbar.lineSpacing);
+    assertEquals(visualBrowserProxy.darkTheme, toolbar.theme);
+  });
+
   suite('on links toggle', () => {
     const linkId = 44;
     const textId = 45;
@@ -900,6 +913,45 @@ suite('AppReceivesToolbarChanges', () => {
       await microtasksFinished();
 
       assertTrue(toast.$.toast.open);
+    });
+  });
+
+  suite('settings events write prefs, log, and update toolbar', () => {
+    test('theme', async () => {
+      emitColorTheme(visualBrowserProxy.darkTheme);
+      await microtasksFinished();
+
+      assertEquals(
+          visualBrowserProxy.darkTheme,
+          await visualBrowserProxy.whenCalled('onThemeChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.THEME_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals(visualBrowserProxy.darkTheme, app.$.toolbar.theme);
+    });
+
+    test('line spacing', async () => {
+      emitLineSpacing(2);
+      await microtasksFinished();
+
+      assertEquals(
+          2, await visualBrowserProxy.whenCalled('onLineSpacingChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.LINE_HEIGHT_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals(2, app.$.toolbar.lineSpacing);
+    });
+
+    test('letter spacing', async () => {
+      emitLetterSpacing(2);
+      await microtasksFinished();
+
+      assertEquals(
+          2, await visualBrowserProxy.whenCalled('onLetterSpacingChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.LETTER_SPACING_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals(2, app.$.toolbar.letterSpacing);
     });
   });
 

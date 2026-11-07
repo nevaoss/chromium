@@ -2,20 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {Token} from '//resources/mojo/mojo/public/mojom/base/token.mojom-webui.js';
-
-import type {OrganizerListSectionItemDescriptionPart} from '../organizer_list_section_item.js';
 
 export function tokenToString(token: Token): string {
   return `${token.high.toString()}#${token.low.toString()}`;
-}
-
-export function getHostnameOrUrl(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
 }
 
 export function compareTimeDescending(
@@ -26,16 +17,7 @@ export function compareTimeDescending(
   return valB > valA ? 1 : (valB < valA ? -1 : 0);
 }
 
-export function getTabDescriptionParts(
-    urls: string[],
-    lastActiveElapsedText?: string): OrganizerListSectionItemDescriptionPart[] {
-  const description: OrganizerListSectionItemDescriptionPart[] =
-      urls.map(url => ({
-                 text: getHostnameOrUrl(url),
-                 elideFromStart: true,
-               }));
-  if (lastActiveElapsedText) {
-    description.push({text: lastActiveElapsedText});
-  }
-  return description;
+export function getTabCountText(tabCount: number): string {
+  return loadTimeData.getStringF(
+      tabCount === 1 ? 'oneTab' : 'tabCount', tabCount);
 }

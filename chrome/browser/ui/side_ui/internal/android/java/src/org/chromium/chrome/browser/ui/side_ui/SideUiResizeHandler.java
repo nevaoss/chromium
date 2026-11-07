@@ -10,6 +10,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.SystemClock;
+import android.transition.ChangeBounds;
+import android.transition.Transition;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -39,7 +41,8 @@ import java.lang.annotation.RetentionPolicy;
  *
  * <p>The handle is a strip overlaying the inner edge of the anchor container, i.e. the edge facing
  * the web contents. Its width comes from {@link SideUiContainer#getResizeHandleWidthPx}, and it
- * draws a bar at its center. It also changes the pointer icon on hover.
+ * draws a bar at its center, or at {@link SideUiContainer#getResizeHandleBarInsetPx} from the
+ * container's inner edge. It also changes the pointer icon on hover.
  *
  * <p>The handle {@link View} is created lazily the first time the bound container is resizable, and
  * is removed when the container's {@link View} is detached from the anchor container.
@@ -156,8 +159,17 @@ import java.lang.annotation.RetentionPolicy;
 
     /** Syncs the handle with the bound container's state after a UI update. */
     /* package */ void onUiUpdateCompleted() {
-        if (!mContainer.supportsManualResize() || !isAnchorContainerShown()) {
+        if (!isAnchorContainerShown()) {
             if (mHandleView != null) mHandleView.setVisibility(View.GONE);
+            return;
+        }
+
+        if (!mContainer.supportsManualResize()) {
+            // Use INVISIBLE rather than GONE, so that the handle keeps being laid out at the
+            // container's current inner edge. If an animated resize makes the container resizable
+            // again (e.g. pinning a hover-expanded rail), ChangeBounds then animates the handle
+            // from the old edge to the new one, instead of the handle popping up at the new edge.
+            if (mHandleView != null) mHandleView.setVisibility(View.INVISIBLE);
             return;
         }
 
@@ -171,6 +183,7 @@ import java.lang.annotation.RetentionPolicy;
                             mAnchorContainer,
                             gravity,
                             mContainer.getResizeHandleWidthPx(),
+                            mContainer.getResizeHandleBarInsetPx(),
                             mContainer.getResizeHandleContentDescriptionRes(),
                             /* onTouchListener= */ this);
             mAnchorContainer.addView(mHandleView);
@@ -192,6 +205,20 @@ import java.lang.annotation.RetentionPolicy;
         clearDragState();
         mAnchorContainer.removeView(mHandleView);
         mHandleView = null;
+    }
+
+    /**
+     * Returns a {@link Transition} that moves the handle along with the container's inner edge
+     * during an animated resize, or null if the handle isn't laid out.
+     *
+     * <p>The anchor container is animated with {@link ChangeBounds}, which lays out its children
+     * only once on transition start, so without this the handle would jump to its final position
+     * right away. An {@link View#INVISIBLE} handle is targeted too, so that it moves from the right
+     * starting position if it is shown by the same update.
+     */
+    /* package */ @Nullable Transition createResizeTransition() {
+        if (mHandleView == null || mHandleView.getVisibility() == View.GONE) return null;
+        return new ChangeBounds().addTarget(mHandleView);
     }
 
     // View.OnTouchListener implementation:
@@ -310,14 +337,16 @@ import java.lang.annotation.RetentionPolicy;
     }
 
     /**
-     * Creates the handle {@link View}: a strip with a bar drawn at its center. The caller is
-     * responsible for adding it to {@code parent}.
+     * Creates the handle {@link View}: a strip with a bar drawn at its center, or at {@code
+     * containerBarInsetPx} from the edge given by {@code gravity}. The caller is responsible for
+     * adding it to {@code parent}.
      */
     private static View createHandleView(
             Context context,
             ViewGroup parent,
             int gravity,
             @Px @Nullable Integer containerHandleWidthPx,
+            @Px @Nullable Integer containerBarInsetPx,
             @StringRes int contentDescriptionRes,
             View.OnTouchListener onTouchListener) {
         View handleView =
@@ -327,6 +356,17 @@ import java.lang.annotation.RetentionPolicy;
         layoutParams.gravity = gravity;
         if (containerHandleWidthPx != null) layoutParams.width = containerHandleWidthPx;
         handleView.setLayoutParams(layoutParams);
+        if (containerBarInsetPx != null) {
+            View barView = handleView.findViewById(R.id.side_ui_resize_handle_bar);
+            var barLayoutParams = (FrameLayout.LayoutParams) barView.getLayoutParams();
+            barLayoutParams.gravity = gravity | Gravity.CENTER_VERTICAL;
+            if (gravity == Gravity.RIGHT) {
+                barLayoutParams.rightMargin = containerBarInsetPx;
+            } else {
+                barLayoutParams.leftMargin = containerBarInsetPx;
+            }
+            barView.setLayoutParams(barLayoutParams);
+        }
         if (contentDescriptionRes != Resources.ID_NULL) {
             handleView.setContentDescription(context.getString(contentDescriptionRes));
         }

@@ -37,6 +37,7 @@ import type {VoiceLanguageListener} from '../read_aloud/voice_language_controlle
 import {VoiceNotificationManager} from '../read_aloud/voice_notification_manager.js';
 import {getWordCount, isDistilledByReadability} from '../shared/common.js';
 import {isPlayPauseShortcut} from '../shared/keyboard_util.js';
+import {ReadAnythingSettingsChange} from '../shared/metrics_browser_proxy.js';
 import {ReadAnythingLogger, TimeFrom} from '../shared/read_anything_logger.js';
 
 import {getCss} from './app.css.js';
@@ -82,6 +83,9 @@ export class AppElement extends AppElementBase implements SpeechListener,
       isSpeechActive_: {type: Boolean},
       isAudioCurrentlyPlaying_: {type: Boolean},
       enabledLangs_: {type: Array},
+      theme_: {type: Number},
+      lineSpacing_: {type: Number},
+      letterSpacing_: {type: Number},
       settingsPrefs_: {type: Object},
       selectedVoice_: {type: Object},
       availableVoices_: {type: Array},
@@ -164,6 +168,12 @@ export class AppElement extends AppElementBase implements SpeechListener,
   private renderedTextBlocksAnimationFrameHandle_: number|null = null;
   protected accessor settingsPrefs_: SettingsPrefs = DEFAULT_SETTINGS;
 
+  // Current user settings, mirrored from the browser proxies by
+  // syncSettings_() and passed down to the toolbar.
+  protected accessor theme_: number = 0;
+  protected accessor lineSpacing_: number = 0;
+  protected accessor letterSpacing_: number = 0;
+
   protected accessor isSpeechActive_: boolean = false;
   protected accessor isAudioCurrentlyPlaying_: boolean = false;
 
@@ -224,15 +234,13 @@ export class AppElement extends AppElementBase implements SpeechListener,
     this.showLoading();
 
     this.settingsPrefs_ = {
-      letterSpacing: this.visualBrowserProxy_.getLetterSpacing(),
-      lineSpacing: this.visualBrowserProxy_.getLineSpacing(),
-      theme: this.visualBrowserProxy_.getColorTheme(),
       speechRate: this.audioBrowserProxy_.getSpeechRate(),
       font: this.visualBrowserProxy_.getFontName(),
       highlightGranularity: this.audioBrowserProxy_.getHighlightGranularity(),
       linksEnabled: this.visualBrowserProxy_.isLinksEnabled(),
       imagesEnabled: this.visualBrowserProxy_.isImagesEnabled(),
     };
+    this.syncSettings_();
 
     this.visualBrowserProxy_.sendPinStateRequest();
 
@@ -689,6 +697,14 @@ export class AppElement extends AppElementBase implements SpeechListener,
     }
   }
 
+  // Reads every setting back from the browser proxies. Called after any
+  // settings write so the props passed to the toolbar stay current.
+  private syncSettings_() {
+    this.theme_ = this.visualBrowserProxy_.getColorTheme();
+    this.lineSpacing_ = this.visualBrowserProxy_.getLineSpacing();
+    this.letterSpacing_ = this.visualBrowserProxy_.getLetterSpacing();
+  }
+
   protected onSpeechRateChange_() {
     // TODO(crbug.com/564638585): Replace manual settingsPrefs_ updates for each
     // onChange_ method with automated updates.
@@ -701,15 +717,13 @@ export class AppElement extends AppElementBase implements SpeechListener,
 
   private restoreSettingsFromPrefs_() {
     this.settingsPrefs_ = {
-      letterSpacing: this.visualBrowserProxy_.getLetterSpacing(),
-      lineSpacing: this.visualBrowserProxy_.getLineSpacing(),
-      theme: this.visualBrowserProxy_.getColorTheme(),
       speechRate: this.audioBrowserProxy_.getSpeechRate(),
       font: this.visualBrowserProxy_.getFontName(),
       highlightGranularity: this.audioBrowserProxy_.getHighlightGranularity(),
       linksEnabled: this.visualBrowserProxy_.isLinksEnabled(),
       imagesEnabled: this.visualBrowserProxy_.isImagesEnabled(),
     };
+    this.syncSettings_();
     this.styleUpdater_.setAllTextStyles();
     if (this.visualBrowserProxy_.isLineFocusEnabled()) {
       this.lineFocusController_.restoreFromPrefs(
@@ -719,20 +733,20 @@ export class AppElement extends AppElementBase implements SpeechListener,
     }
   }
 
-  protected onLineSpacingChange_() {
-    this.settingsPrefs_ = {
-      ...this.settingsPrefs_,
-      lineSpacing: this.visualBrowserProxy_.getLineSpacing(),
-    };
+  protected onLineSpacingChange_(event: CustomEvent<{data: number}>) {
+    this.visualBrowserProxy_.onLineSpacingChange(event.detail.data);
+    this.logger_.logTextSettingsChange(
+        ReadAnythingSettingsChange.LINE_HEIGHT_CHANGE);
+    this.syncSettings_();
     this.styleUpdater_.setLineSpacing();
     this.onTextLocationsChange_();
   }
 
-  protected onLetterSpacingChange_() {
-    this.settingsPrefs_ = {
-      ...this.settingsPrefs_,
-      letterSpacing: this.visualBrowserProxy_.getLetterSpacing(),
-    };
+  protected onLetterSpacingChange_(event: CustomEvent<{data: number}>) {
+    this.visualBrowserProxy_.onLetterSpacingChange(event.detail.data);
+    this.logger_.logTextSettingsChange(
+        ReadAnythingSettingsChange.LETTER_SPACING_CHANGE);
+    this.syncSettings_();
     this.styleUpdater_.setLetterSpacing();
     this.onTextLocationsChange_();
   }
@@ -753,13 +767,9 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   protected onThemeChange_(event: CustomEvent<{data: number}>) {
-    if (this.visualBrowserProxy_.isReadAnythingImprovedUiEnabled() &&
-        event.detail && event.detail.data !== undefined) {
-      this.settingsPrefs_ = {
-        ...this.settingsPrefs_,
-        theme: event.detail.data,
-      };
-    }
+    this.visualBrowserProxy_.onThemeChange(event.detail.data);
+    this.logger_.logTextSettingsChange(ReadAnythingSettingsChange.THEME_CHANGE);
+    this.syncSettings_();
     this.styleUpdater_.setTheme();
   }
 

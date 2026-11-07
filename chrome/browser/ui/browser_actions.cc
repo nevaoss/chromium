@@ -241,6 +241,7 @@
 #include "components/vector_icons/vector_icons.h"
 #include "components/webapps/browser/installable/installable_metrics.h"
 #include "printing/buildflags/buildflags.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/actions/actions.h"
 #include "ui/base/accelerators/menu_label_accelerator_util.h"
@@ -257,6 +258,7 @@
 #endif
 
 #if BUILDFLAG(IS_LINUX)
+#include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #endif
@@ -1064,6 +1066,9 @@ void BrowserActions::InitializeChromeMenuActions() {
               : vector_icons::kBusinessChromeRefreshOldIcon)
           .SetEnabled(
               enterprise_isolated_mode::IsolatedModeReplacesIncognito(profile))
+          .SetProperty(
+              actions::kShortTitleTextKey,
+              new std::u16string(l10n_util::GetStringUTF16(IDS_ISOLATED)))
           .SetAccelerator(GetAcceleratorForCommandId(IDC_NEW_INCOGNITO_WINDOW))
           .Build());
 
@@ -3737,7 +3742,12 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
-                chrome::ExecAskGoogleAboutThisPage(bwi);
+                chrome::ExecAskGoogleAboutThisPage(
+                    bwi,
+                    lens::LensOverlayInvocationSource::
+                        kContentAreaContextMenuPage,
+                    omnibox::ChromeAimEntryPoint::
+                        DESKTOP_CHROME_PAGE_CONTEXT_MENU_ASK_GOOGLE);
               },
               bwi))
           .SetActionId(kActionContentContextAskGoogleAboutThisPage)
@@ -4295,7 +4305,9 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   return;
                 }
                 chrome::ExecAskGoogleAboutThisPage(
-                    bwi, lens::LensOverlayInvocationSource::kAppMenu);
+                    bwi, lens::LensOverlayInvocationSource::kAppMenu,
+                    omnibox::ChromeAimEntryPoint::
+                        DESKTOP_CHROME_APP_MENU_ASK_GOOGLE);
               },
               bwi))
           .SetActionId(kActionAskGoogleAboutThisPageFromAppMenu)
@@ -4809,21 +4821,26 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                                                 : kSecurityOldIcon,
               ui::kColorMenuIconOnEmphasizedBackground))
           .Build());
-  if (base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes)) {
-    root_action_item_->AddChild(
-        ChromeMenuAction(
-            base::BindRepeating(
-                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
-                   actions::ActionInvocationContext context) {
-                  chrome::ShowChromeEnterpriseReleaseNotes(bwi);
-                },
-                bwi),
-            kActionChromeEnterpriseReleaseNotes,
-            IDS_CHROME_ENTERPRISE_RELEASE_NOTES,
-            IDS_CHROME_ENTERPRISE_RELEASE_NOTES, omnibox::kChromeProductIcon,
-            /*is_pinnable=*/false)
-            .Build());
-  }
+  root_action_item_->AddChild(
+      ChromeMenuAction(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                chrome::ShowChromeEnterpriseReleaseNotes(bwi);
+              },
+              bwi),
+          kActionChromeEnterpriseReleaseNotes,
+          IDS_CHROME_ENTERPRISE_RELEASE_NOTES,
+          IDS_CHROME_ENTERPRISE_RELEASE_NOTES, omnibox::kChromeProductIcon,
+          /*is_pinnable=*/false)
+#if BUILDFLAG(IS_LINUX)
+          .SetVisible(
+              enterprise_util::IsBrowserManaged(profile) &&
+              base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes))
+#else
+          .SetVisible(false)
+#endif
+          .Build());
 
   root_action_item_->AddChild(
       actions::ActionItem::Builder(

@@ -40,7 +40,8 @@
     [RuntimeEnabled=CanvasDrawElement] attribute EventHandler onpaint;
     [RuntimeEnabled=CanvasDrawElement] attribute EventHandler onelementgeometryupdate;
     [RuntimeEnabled=CanvasDrawElement] void requestPaint();
-    [RuntimeEnabled=CanvasDrawElement, RaisesException] DOMMatrix getElementTransform((Element or ElementImage) element, DOMMatrix draw_transform);
+    // The default size of the element in canvas grid coordinates.
+    [RuntimeEnabled=CanvasDrawElement, RaisesException] ElementImageDefaultSize getElementImageDefaultSize((Element or ElementImage) element);
     // Returns the current transform applied to the Element mapping its
     // border box, before CSS transfor to the canvas coordinate space. Applies before standard
     // CSS transforms.

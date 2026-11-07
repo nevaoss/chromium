@@ -268,7 +268,6 @@ const gfx::VectorIcon& GetSendTabToSelfIcon() {
                                            : kDevicesChromeRefreshOldIcon;
 }
 
-
 #if !BUILDFLAG(IS_CHROMEOS)
 std::u16string GetSyncSectionTitle(Profile* profile,
                                    signin::IdentityManager* identity_manager) {
@@ -1429,6 +1428,13 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
       }
       LogMenuAction(MENU_ACTION_MANAGE_EXTENSIONS);
       break;
+    case IDC_MANAGE_SKILLS:
+      if (!uma_action_recorded_) {
+        base::UmaHistogramMediumTimes("WrenchMenu.TimeToAction.ManageSkills",
+                                      delta);
+      }
+      LogMenuAction(MENU_ACTION_MANAGE_SKILLS);
+      break;
     case IDC_EXTENSIONS_SUBMENU_VISIT_CHROME_WEB_STORE:
       if (!uma_action_recorded_) {
         base::UmaHistogramMediumTimes(
@@ -1979,6 +1985,13 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
             is_vertical, tabs::VerticalTabStripEntryPoint::kAppMenu);
       }
       break;
+    case IDC_CHROME_ENTERPRISE_RELEASE_NOTES:
+      if (!uma_action_recorded_) {
+        base::UmaHistogramMediumTimes(
+            "WrenchMenu.TimeToAction.ChromeEnterpriseReleaseNotes", delta);
+      }
+      LogMenuAction(MENU_ACTION_CHROME_ENTERPRISE_RELEASE_NOTES);
+      break;
     default: {
       if (IsOtherProfileCommand(command_id)) {
         if (!uma_action_recorded_) {
@@ -2351,10 +2364,15 @@ void AppMenuModel::Build() {
       AddItemWithStringIdAndVectorIcon(
           target_model, IDC_ASK_GOOGLE_ABOUT_THIS_PAGE,
           IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_PAGE, search_spark_icon);
-      target_model->SetElementIdentifierAt(
+      const size_t ask_google_command_index =
           target_model->GetIndexOfCommandId(IDC_ASK_GOOGLE_ABOUT_THIS_PAGE)
-              .value(),
-          kAskGoogleAboutThisPageItem);
+              .value();
+      target_model->SetElementIdentifierAt(ask_google_command_index,
+                                           kAskGoogleAboutThisPageItem);
+      target_model->SetIsNewFeatureAt(
+          ask_google_command_index,
+          BrowserUserEducationInterface::From(browser())->MaybeShowNewBadgeFor(
+              contextual_tasks::kContextualTasksUpdatedEntryPoints));
     }
 
     AddItemWithStringIdAndVectorIcon(

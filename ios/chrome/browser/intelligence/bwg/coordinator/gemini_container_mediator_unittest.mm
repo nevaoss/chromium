@@ -69,6 +69,8 @@
 @interface GeminiContainerMediator (Testing) <ActorTaskLifecycleObserver>
 - (void)cancelPageContextGeneration;
 - (void)setActuationActive:(BOOL)actuationActive;
+- (GeminiConfiguration*)createGeminiConfigurationForActiveWebState:
+    (GeminiStartupState*)startupState;
 @end
 
 namespace {
@@ -229,6 +231,11 @@ std::optional<gemini::EntryPoint> GetLastUpdatePromptActionEntryPoint();
 NSString* GetLastUpdatePromptActionPrompt();
 BOOL GetLastUpdatePromptActionShouldAutoSubmit();
 int GetUpdateActivePageContextCallCount();
+UIImage* GetLastAttachedImage();
+std::optional<bool> GetLastShouldShowSuggestionChips();
+std::optional<bool> GetLastBlockQuerySubmissionWhileLoading();
+std::optional<bool> GetLastShowPageLoadingSnackbarOnOpeningInvocation();
+bool WasShowAccountSnackbarCalled();
 }  // namespace ios::provider
 
 namespace {
@@ -306,7 +313,7 @@ class GeminiContainerMediatorTest : public PlatformTest {
         OCMProtocolMock(@protocol(AssistantContainerCommands));
 
     startup_state_ = [[GeminiStartupState alloc]
-        initWithEntryPoint:gemini::EntryPoint::Promo];
+        initWithEntryPoint:gemini::EntryPoint::OverflowMenu];
 
     mediator_ = [[GeminiContainerMediator alloc]
               initWithBrowser:browser_.get()
@@ -385,6 +392,26 @@ TEST_F(GeminiContainerMediatorTest, TestCreateConfigurationWithAutoSubmit) {
       [mediator_ createGeminiConfigurationForActiveWebState:startup_state_];
   EXPECT_NE(nil, config);
   EXPECT_TRUE(config.shouldAutoSubmit);
+}
+
+// Tests that createGeminiConfigurationForActiveWebState:pageContext: uses the
+// given page context, with user preferences applied, instead of the partial
+// page context of the active web state.
+TEST_F(GeminiContainerMediatorTest, TestCreateConfigurationWithPageContext) {
+  AppendActiveWebState();
+
+  GeminiPageContext* page_context = [[GeminiPageContext alloc] init];
+  page_context.geminiPageContextComputationState =
+      ios::provider::GeminiPageContextComputationState::kSuccess;
+  GeminiConfiguration* config =
+      [mediator_ createGeminiConfigurationForActiveWebState:startup_state_
+                                                pageContext:page_context];
+  ASSERT_TRUE(config);
+  EXPECT_EQ(page_context, config.pageContext);
+  EXPECT_EQ(ios::provider::GeminiPageContextComputationState::kSuccess,
+            config.pageContext.geminiPageContextComputationState);
+  EXPECT_EQ(ios::provider::GeminiPageContextAttachmentState::kAttached,
+            config.pageContext.geminiPageContextAttachmentState);
 }
 
 // Tests that suggestion chips are hidden when creating configuration for
@@ -546,7 +573,7 @@ TEST_F(GeminiContainerMediatorTest,
       shouldShowSuggestionChipsForEntryPoint:gemini::EntryPoint::
                                                   AppSwitcherAISummarization]);
   EXPECT_TRUE([mediator_
-      shouldShowSuggestionChipsForEntryPoint:gemini::EntryPoint::Promo]);
+      shouldShowSuggestionChipsForEntryPoint:gemini::EntryPoint::OverflowMenu]);
 }
 
 // Tests that shouldShowSuggestionChipsForEntryPoint returns false for
@@ -565,7 +592,7 @@ TEST_F(GeminiContainerMediatorTest,
   EXPECT_FALSE([mediator_ shouldShowSuggestionChipsForEntryPoint:
                               gemini::EntryPoint::AtMemorySearch]);
   EXPECT_TRUE([mediator_
-      shouldShowSuggestionChipsForEntryPoint:gemini::EntryPoint::Promo]);
+      shouldShowSuggestionChipsForEntryPoint:gemini::EntryPoint::OverflowMenu]);
 }
 
 // Tests that the mediator correctly notifies the delegate when the view state
@@ -792,11 +819,11 @@ TEST_F(GeminiContainerMediatorTest,
 
   AppendActiveWebState();
 
-  GeminiStartupState* promo_startup_state =
-      [[GeminiStartupState alloc] initWithEntryPoint:gemini::EntryPoint::Promo];
+  GeminiStartupState* overflow_startup_state = [[GeminiStartupState alloc]
+      initWithEntryPoint:gemini::EntryPoint::OverflowMenu];
 
   GeminiConfiguration* config = [mediator_
-      createGeminiConfigurationForActiveWebState:promo_startup_state];
+      createGeminiConfigurationForActiveWebState:overflow_startup_state];
   EXPECT_FALSE(config.blockQuerySubmissionWhileLoading);
   EXPECT_FALSE(config.showPageLoadingSnackbarOnOpeningInvocation);
   histogram_tester.ExpectUniqueSample(
@@ -816,7 +843,7 @@ TEST_F(GeminiContainerMediatorTest,
   EXPECT_TRUE([mediator_ shouldBlockQuerySubmissionWhileLoadingForEntryPoint:
                              gemini::EntryPoint::AppSwitcherAISummarization]);
   EXPECT_FALSE([mediator_ shouldBlockQuerySubmissionWhileLoadingForEntryPoint:
-                              gemini::EntryPoint::Promo]);
+                              gemini::EntryPoint::OverflowMenu]);
 }
 
 // Tests that shouldShowPageLoadingSnackbarOnOpeningInvocationForEntryPoint
@@ -833,7 +860,7 @@ TEST_F(GeminiContainerMediatorTest,
                      gemini::EntryPoint::AppSwitcherAISummarization]);
   EXPECT_FALSE(
       [mediator_ shouldShowPageLoadingSnackbarOnOpeningInvocationForEntryPoint:
-                     gemini::EntryPoint::Promo]);
+                     gemini::EntryPoint::OverflowMenu]);
 }
 
 // Tests that changing detent to minimized when container is in zero state and
@@ -995,7 +1022,7 @@ TEST_F(GeminiContainerMediatorTest,
   [mediator_ geminiZeroStateViewController:nil didSelectSuggestion:suggestion];
 
   EXPECT_THAT(ios::provider::GetLastUpdatePromptActionEntryPoint(),
-              testing::Optional(gemini::EntryPoint::Promo));
+              testing::Optional(gemini::EntryPoint::OverflowMenu));
   EXPECT_NSEQ(@"What is this page about?",
               ios::provider::GetLastUpdatePromptActionPrompt());
   EXPECT_TRUE(ios::provider::GetLastUpdatePromptActionShouldAutoSubmit());
@@ -1584,6 +1611,62 @@ TEST_F(GeminiContainerMediatorTest, TestWillEnterTabGridMinimizesContainer) {
   [[mock_container_handler_ reject]
       animateAssistantContainerToDetent:AssistantContainerDetent::kMinimized];
   scene_state_.tabGridState.tabGridVisible = YES;
+  EXPECT_OCMOCK_VERIFY(mock_container_handler_);
+}
+
+// Test that `updateWithStartupState:` updates the provider with the image
+// attachment, partial page context, prompt action, suggestion chips, loading
+// configuration, and account snackbar.
+TEST_F(GeminiContainerMediatorTest, TestUpdateWithStartupState) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kAppSwitcherAISummarization, kPageActionMenu}, {});
+
+  ios::provider::ResetGemini();
+  AppendActiveWebState();
+
+  UIImage* dummy_image = [[UIImage alloc] init];
+  GeminiStartupState* startup_state = [[GeminiStartupState alloc]
+      initWithEntryPoint:gemini::EntryPoint::AppSwitcherAISummarization];
+  startup_state.imageAttachment = dummy_image;
+  startup_state.prepopulatedPrompt = @"Summarize this page";
+  startup_state.shouldAutoSubmit = YES;
+  startup_state.isMismatchedAccount = YES;
+
+  [mediator_ updateWithStartupState:startup_state];
+
+  EXPECT_EQ(startup_state, mediator_.startupState);
+  EXPECT_EQ(dummy_image, ios::provider::GetLastAttachedImage());
+  EXPECT_EQ(1, ios::provider::GetUpdateActivePageContextCallCount());
+  EXPECT_THAT(
+      ios::provider::GetLastUpdatePromptActionEntryPoint(),
+      testing::Optional(gemini::EntryPoint::AppSwitcherAISummarization));
+  EXPECT_NSEQ(@"Summarize this page",
+              ios::provider::GetLastUpdatePromptActionPrompt());
+  EXPECT_TRUE(ios::provider::GetLastUpdatePromptActionShouldAutoSubmit());
+  EXPECT_THAT(ios::provider::GetLastShouldShowSuggestionChips(),
+              testing::Optional(false));
+  EXPECT_THAT(ios::provider::GetLastBlockQuerySubmissionWhileLoading(),
+              testing::Optional(true));
+  EXPECT_THAT(
+      ios::provider::GetLastShowPageLoadingSnackbarOnOpeningInvocation(),
+      testing::Optional(true));
+  EXPECT_TRUE(ios::provider::WasShowAccountSnackbarCalled());
+}
+
+// Test that `updateWithStartupState:` animates the assistant container to the
+// medium detent when `IsIOSGeminiBottomSheetMigrationEnabled()` is true.
+TEST_F(GeminiContainerMediatorTest,
+       TestUpdateWithStartupStateAnimatesToMediumDetent) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kAssistantContainer, kIOSGeminiBottomSheetMigration}, {});
+
+  OCMExpect([mock_container_handler_
+      animateAssistantContainerToDetent:AssistantContainerDetent::kMedium]);
+
+  [mediator_ updateWithStartupState:startup_state_];
+
   EXPECT_OCMOCK_VERIFY(mock_container_handler_);
 }
 

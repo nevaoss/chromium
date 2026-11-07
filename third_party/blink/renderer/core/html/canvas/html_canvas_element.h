@@ -71,6 +71,7 @@ class DOMMatrix;
 class Element;
 class UpdateElementGeometryOptions;
 class ElementImage;
+class ElementImageDefaultSize;
 class GraphicsContext;
 class HTMLCanvasAccessibilityManager;
 class HTMLCanvasElement;
@@ -379,12 +380,9 @@ class CORE_EXPORT HTMLCanvasElement final
 
   void ResetLayer();
 
-  // If `element` is drawn into the canvas's coordinate system with
-  // `draw_transform`, this returns the transform that can be applied to
-  // `element` to make its CSS position match the drawn position.
-  DOMMatrix* getElementTransform(const V8UnionElementOrElementImage* element,
-                                 DOMMatrix* draw_transform,
-                                 ExceptionState&);
+  ElementImageDefaultSize* getElementImageDefaultSize(
+      const V8UnionElementOrElementImage* element,
+      ExceptionState&) const;
 
   DOMMatrix* getElementTransform(Element* element, ExceptionState&) const;
 

@@ -22,13 +22,11 @@
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/performance_manager/public/user_tuning/battery_saver_mode_manager.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
-#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
@@ -338,28 +336,23 @@ void GlassFrameService::MaybeShowPromo(BrowserWindowInterface* browser) {
 }
 
 void GlassFrameService::UpdateHasMultipleOpenProfiles() {
+  Profile* first_profile = nullptr;
   bool has_multiple_open_profiles = false;
-  if (ProfileManager* const profile_manager =
-          g_browser_process->profile_manager()) {
-    size_t open_profile_count = 0;
-    // Check `ProfileBrowserCollection` because a `Profile` remains loaded in
-    // `ProfileManager` while `OnBrowserClosed()` is running (before the
-    // `Browser` is destroyed) or if kept alive in the background.
-    // `ProfileBrowserCollection::IsEmpty()` excludes browsers scheduled for
-    // deletion, so it accurately reflects whether the profile still has open
-    // windows.
-    for (Profile* profile : profile_manager->GetLoadedProfiles()) {
-      if (auto* const collection =
-              ProfileBrowserCollection::GetForProfile(profile);
-          collection && !collection->IsEmpty()) {
-        open_profile_count++;
-        if (open_profile_count > 1) {
-          has_multiple_open_profiles = true;
-          break;
+  GlobalBrowserCollection::GetInstance()->ForEach(
+      [&first_profile,
+       &has_multiple_open_profiles](BrowserWindowInterface* browser) {
+        if (browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+          return true;
         }
-      }
-    }
-  }
+        Profile* const profile = browser->GetProfile();
+        if (!first_profile) {
+          first_profile = profile;
+        } else if (first_profile != profile) {
+          has_multiple_open_profiles = true;
+          return false;
+        }
+        return true;
+      });
 
   if (has_multiple_open_profiles_ != has_multiple_open_profiles) {
     has_multiple_open_profiles_ = has_multiple_open_profiles;

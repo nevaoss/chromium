@@ -9,6 +9,7 @@ import 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 
+import {ExtensionBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
 import {recordTabPickerTabSelected, TabPickerSurface} from 'chrome://resources/cr_components/composebox/common.js';
 import {AnchorAlignment} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
@@ -59,7 +60,6 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
       darkMode: {
         type: Boolean,
         reflect: true,
-        attribute: 'dark-mode',
       },
     };
   }
@@ -68,11 +68,13 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
   accessor selectedTabs: TabInfo[] = [];
   accessor tabMenuOpen: boolean = false;
   accessor recentTabId: number|null = null;
-  protected accessor sharingTabsText_: string = '';
   accessor useUnbounded: boolean = true;
   accessor darkMode: boolean = false;
 
+  protected accessor sharingTabsText_: string = '';
+
   private closeTimer_: number|null = null;
+  private listenerIds_: number[] = [];
   private browserProxy_: TabPickerBrowserProxy =
       TabPickerBrowserProxyImpl.getInstance();
 
@@ -81,11 +83,24 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
     this.darkMode = this.isDarkModeEnabled_();
     this.updateSharingTabsText_();
     this.fetchTabSuggestions_();
+
+    const callbackRouter =
+        ExtensionBrowserProxyImpl.getInstance().callbackRouter;
+    this.listenerIds_.push(
+        callbackRouter.onTabContextUpdated.addListener((tabs: TabInfo[]) => {
+          this.selectedTabs = tabs;
+        }));
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.cancelCloseTimer_();
+    const callbackRouter =
+        ExtensionBrowserProxyImpl.getInstance().callbackRouter;
+    for (const id of this.listenerIds_) {
+      callbackRouter.removeListener(id);
+    }
+    this.listenerIds_ = [];
   }
 
   override firstUpdated() {
@@ -271,14 +286,6 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
       window.clearTimeout(this.closeTimer_);
       this.closeTimer_ = null;
     }
-  }
-
-  setDarkModeForTesting(darkMode: boolean) {
-    this.darkMode = darkMode;
-  }
-
-  getDarkModeForTesting(): boolean {
-    return this.darkMode;
   }
 }
 

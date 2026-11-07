@@ -5,17 +5,19 @@
 #import "ios/chrome/browser/intelligence/actor/tools/model/navigate_tool.h"
 
 #import "base/memory/weak_ptr.h"
-#import "base/task/sequenced_task_runner.h"
 #import "base/test/gtest_util.h"
 #import "base/test/run_until.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/task_environment.h"
 #import "base/test/test_future.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
+#import "components/origin_gating/core/decision.h"
+#import "components/origin_gating/core/gateable_event.h"
+#import "components/origin_gating/core/gating_decision.h"
+#import "components/origin_gating/core/origin_gating_checker.h"
 #import "components/origin_gating/core/origin_gating_configuration.h"
 #import "components/origin_gating/core/origin_gating_registration.h"
 #import "components/origin_gating/core/origin_gating_service.h"
-#import "components/origin_gating/core/types.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
 #import "ios/chrome/browser/intelligence/actor/util/actor_test_utils.h"
@@ -628,10 +630,7 @@ TEST_F(NavigateToolTest, Cancel_BeforeGatingDecision_DoesNotLoadUrl) {
   maybe_tool.value()->Execute(future.GetCallback());
   maybe_tool.value()->Cancel();
 
-  base::test::TestFuture<void> flush_future;
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, flush_future.GetCallback());
-  ASSERT_TRUE(flush_future.Wait());
+  FlushCurrentSequence();
 
   EXPECT_TRUE(url_loading_observer_.last_url_.is_empty());
   EXPECT_FALSE(future.IsReady());

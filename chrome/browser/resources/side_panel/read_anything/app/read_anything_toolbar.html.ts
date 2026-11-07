@@ -112,15 +112,14 @@ export function getHtml(this: ReadAnythingToolbarElement) {
       @close-all-menus="${this.onCloseAllMenus_}">
   </highlight-menu>
   <color-menu id="colorMenu" class="settings-submenu" .nonModal="${true}"
-      .settingsPrefs="${this.settingsPrefs}"
-      @close-all-menus="${this.onCloseAllMenus_}">
+      .theme="${this.theme}" @close-all-menus="${this.onCloseAllMenus_}">
   </color-menu>
   <line-spacing-menu id="lineSpacingMenu" class="settings-submenu"
-      .nonModal="${true}" .settingsPrefs="${this.settingsPrefs}"
+      .nonModal="${true}" .lineSpacing="${this.lineSpacing}"
       @close-all-menus="${this.onCloseAllMenus_}">
   </line-spacing-menu>
   <letter-spacing-menu id="letterSpacingMenu" class="settings-submenu"
-      .nonModal="${true}" .settingsPrefs="${this.settingsPrefs}"
+      .nonModal="${true}" .letterSpacing="${this.letterSpacing}"
       @close-all-menus="${this.onCloseAllMenus_}">
   </letter-spacing-menu>
   <font-menu id="fontMenu" class="settings-submenu" .nonModal="${true}"
@@ -137,8 +136,7 @@ export function getHtml(this: ReadAnythingToolbarElement) {
       @close-all-menus="${this.onCloseAllMenus_}">
   </line-focus-menu>
   <appearance-menu id="appearanceMenu" class="settings-submenu" non-modal
-      .settingsPrefs="${this.settingsPrefs}"
-      .presentationState="${this.presentationState}"
+      .theme="${this.theme}" .presentationState="${this.presentationState}"
       @close-all-menus="${this.onCloseAllMenus_}">
   </appearance-menu>
   <audio-menu id="audioMenu" class="settings-submenu" non-modal
@@ -152,7 +150,8 @@ export function getHtml(this: ReadAnythingToolbarElement) {
       @close-all-menus="${this.onCloseAllMenus_}">
   </audio-menu>
   <text-menu id="textMenu" class="settings-submenu" non-modal
-      .settingsPrefs="${this.settingsPrefs}"
+      .settingsPrefs="${this.settingsPrefs}" .lineSpacing="${this.lineSpacing}"
+      .letterSpacing="${this.letterSpacing}"
       .areFontsLoaded="${this.areFontsLoaded_}"
       .pageLanguage="${this.pageLanguage}"
       @close-all-menus="${this.onCloseAllMenus_}">

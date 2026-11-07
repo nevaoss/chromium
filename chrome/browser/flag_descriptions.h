@@ -784,11 +784,6 @@ inline constexpr char kPrefetchActivationBeaconName[] =
 inline constexpr char kPrefetchActivationBeaconDescription[] =
     "If enabled, prefetch activation beacon will be sent when a prefetch is "
     "activated.";
-inline constexpr char kPrepopulatedEnginesShadowVariantsName[] =
-    "Prepopulated Engines Shadow Variants";
-inline constexpr char kPrepopulatedEnginesShadowVariantsDescription[] =
-    "Enables shadow variants for prepopulated engines resolution, allowing "
-    "alternative engines to be resolved in specific regions.";
 
 inline constexpr char kPrerender2Name[] = "Prerendering";
 inline constexpr char kPrerender2Description[] =
@@ -1433,6 +1428,11 @@ inline constexpr char kAndroidVerticalTabsName[] = "Android Vertical Tabs";
 inline constexpr char kAndroidVerticalTabsDescription[] =
     "Enables the Vertical Tabs feature on Android.";
 
+inline constexpr char kTabsFromOtherDevicesEnhancementName[] =
+    "Tabs from other devices";
+inline constexpr char kTabsFromOtherDevicesEnhancementDescription[] =
+    "Enables updated cross-device tab sharing and visibility features.";
+
 inline constexpr char kCCTNavigationInfoScreenshotName[] =
     "Enable Custom Tabs screenshot capturing";
 inline constexpr char kCCTNavigationInfoScreenshotDescription[] =
@@ -1930,6 +1930,27 @@ inline constexpr char kGlicContextualCueingV2AutoSubmitName[] =
 inline constexpr char kGlicContextualCueingV2AutoSubmitDescription[] =
     "Enable automatically submitting a suggested prompt when the v2 contextual "
     "cue UI for Glic is clicked.";
+
+inline constexpr char kGlicContextualCuesHandleEduName[] =
+    "Glic Contextual Cues Handle Edu";
+inline constexpr char kGlicContextualCuesHandleEduDescription[] =
+    "Enables Glic contextual cues for education pages.";
+
+inline constexpr char kGlicContextualCuesHandleShoppingName[] =
+    "Glic Contextual Cues Handle Shopping";
+inline constexpr char kGlicContextualCuesHandleShoppingDescription[] =
+    "Enables Glic contextual cues for shopping pages.";
+
+inline constexpr char kContextualSearchContextualCuesHandleEduName[] =
+    "Contextual Search Contextual Cues Handle Edu";
+inline constexpr char kContextualSearchContextualCuesHandleEduDescription[] =
+    "Enables Contextual Search contextual cues for education pages.";
+
+inline constexpr char kContextualSearchContextualCuesHandleShoppingName[] =
+    "Contextual Search Contextual Cues Handle Shopping";
+inline constexpr char
+    kContextualSearchContextualCuesHandleShoppingDescription[] =
+        "Enables Contextual Search contextual cues for shopping pages.";
 
 inline constexpr char kGlicContextualCueV2ActiveUserBackoffName[] =
     "Glic Contextual Cueing v2 Active User Backoff";
@@ -2958,11 +2979,6 @@ inline constexpr char kHeavyAdPrivacyMitigationsDescription[] =
     "Enables privacy mitigations for the heavy ad intervention. Disabling "
     "this makes the intervention deterministic. Defaults to enabled.";
 
-inline constexpr char kHideAimOmniboxEntrypointOnUserInputName[] =
-    "AI Entrypoint Disabled on User Input";
-inline constexpr char kHideAimOmniboxEntrypointOnUserInputDescription[] =
-    "Hide the Omnibox entrypoint for AI Mode while user is typing.";
-
 inline constexpr char kHistoryEmbeddingsName[] = "History Embeddings";
 inline constexpr char kHistoryEmbeddingsDescription[] =
     "When enabled, the history embeddings feature may operate.";
@@ -3724,10 +3740,6 @@ inline constexpr char kOmniboxLocalHistoryZeroSuggestBeyondNTPName[] =
 inline constexpr char kOmniboxLocalHistoryZeroSuggestBeyondNTPDescription[] =
     "Enables local history zero-prefix suggestions in every context in which "
     "the remote zero-prefix suggestions are enabled.";
-
-inline constexpr char kOmniboxMiaZps[] = "Omnibox Mia ZPS on NTP";
-inline constexpr char kOmniboxMiaZpsDescription[] =
-    "Enables Mia ZPS suggestions in NTP omnibox";
 
 inline constexpr char kOmniboxMlLogUrlScoringSignalsName[] =
     "Log Omnibox URL Scoring Signals";
@@ -8341,11 +8353,6 @@ inline constexpr char kAudioFlexibleLoopbackForSystemLoopbackName[] =
 inline constexpr char kAudioFlexibleLoopbackForSystemLoopbackDescription[] =
     "Request a FLEXIBLE_LOOPBACK instead of POST_MIX_LOOPBACK for system "
     "loopback";
-
-inline constexpr char kShowSpatialAudioToggleName[] =
-    "Enable a setting toggle for spatial audio";
-inline constexpr char kShowSpatialAudioToggleDescription[] =
-    "Enable a setting toggle for spatial audio.";
 
 inline constexpr char kSingleCaCertVerificationPhase2Name[] =
     "Use single CA cert for EAP networks if provided phase 2";

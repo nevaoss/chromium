@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/notimplemented.h"
 #include "base/task/sequenced_task_runner.h"
@@ -15,6 +16,7 @@
 #include "build/branding_buildflags.h"
 #include "build/buildflag.h"
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
+#include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -58,6 +60,7 @@
 #include "chrome/common/chrome_features.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom.h"
 #include "components/favicon/content/content_favicon_driver.h"
+#include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/location_bar_model.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/navigation_controller.h"
@@ -165,9 +168,17 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
   DCHECK(!is_devtools);
 
   if (omnibox::IsAimPopupFeatureEnabled()) {
-    omnibox_popup_aim_presenter_ = std::make_unique<OmniboxPopupAimPresenter>(
-        /*location_bar=*/this, omnibox_controller_.get(),
-        /*presenter_delegate=*/*this);
+    if (!CreateOmniboxPopupAimPresenterIfEligible()) {
+      // Eligibility often arrives after window creation (e.g. first run, or
+      // sign-in), so keep listening rather than deciding once.
+      if (auto* service =
+              AimEligibilityServiceFactory::GetForProfile(GetProfile())) {
+        aim_eligibility_subscription_ =
+            service->RegisterEligibilityChangedCallback(
+                base::BindRepeating(&WebUILocationBar::OnAimEligibilityChanged,
+                                    base::Unretained(this)));
+      }
+    }
     omnibox_popup_file_selector_ = std::make_unique<OmniboxPopupFileSelector>(
         GetLocationBarWidget()->GetNativeWindow());
   }
@@ -474,13 +485,37 @@ bool WebUILocationBar::IsMouseHovered() const {
 }
 
 bool WebUILocationBar::IsFocusWithin() const {
-  // If `using_full_popup_` is `true`, focus resides inside the WebUI popup's
-  // `WebContents` / `RenderWidgetHost` rather than a native child View of
-  // `WebUILocationBar`.
-  const bool full_popup_has_focus =
-      using_full_popup_ && omnibox_controller_ &&
-      omnibox_controller_->edit_model()->has_focus();
-  return full_popup_has_focus || focus_within_;
+  if (focus_within_) {
+    return true;
+  }
+
+  const bool omnibox_has_focus =
+      omnibox_controller_ && omnibox_controller_->edit_model()->has_focus();
+
+  // If `using_full_popup_` is `true`, focus is handed over from the toolbar's
+  // `WebContents` to the WebUI popup's `WebContents`. That handover is
+  // asynchronous: until it completes, focus is still in the toolbar and the
+  // `focus_within_` check above covers it. Once it completes, neither
+  // `focus_within_` (reported by the toolbar WebUI) nor the toolbar WebView's
+  // Views focus state reflects where focus actually is, so fall back to the
+  // edit model alone.
+  if (using_full_popup_) {
+    return omnibox_has_focus;
+  }
+
+  // `focus_within_` is reported asynchronously by the toolbar WebUI, so it can
+  // lag behind a focus request: the page may not have observed document focus
+  // yet when the omnibox element is focused, and then reports "not focused"
+  // until it does. The edit model's focus state, by contrast, is updated
+  // synchronously by SetFocusWithTarget() and OnBlur(). Trust it as long as
+  // the toolbar's WebView actually holds Views focus, so that callers running
+  // right after a focus request (e.g. ChromeWebContentsViewFocusHelper::
+  // StoreFocus() on a tab switch) see a consistent answer.
+  if (omnibox_has_focus && toolbar_delegate_) {
+    const views::View* web_view = toolbar_delegate_->GetInternalWebView();
+    return web_view && web_view->HasFocus();
+  }
+  return false;
 }
 
 void WebUILocationBar::InvalidateLayout() {
@@ -594,10 +629,9 @@ void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
 
   if (omnibox_controller_ &&
       omnibox_controller_->edit_model()->user_input_in_progress() &&
-          (!ShouldShowPermissionPromptEvenIfOmniboxEditedOrEmpty(
-              GetWebContents()) ||
-          omnibox_controller_->IsPopupOpen())
-      ) {
+      (!ShouldShowPermissionPromptEvenIfOmniboxEditedOrEmpty(
+           GetWebContents()) ||
+       omnibox_controller_->IsPopupOpen())) {
     // Permission requests get cancelled if user edits the URL.
     // (And won't show up if it was already edited when they occurred).
     bool has_visible_chip = GetChipController()->chip()->GetVisible();
@@ -618,9 +652,9 @@ void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
   auto accessibility_state = location_bar::GetSecurityChipAccessibilityState(
       model, is_editing_or_empty, security_chip_text);
 
+  content::WebContents* const web_contents = GetWebContents();
   const bool is_context_menu_visible =
-      PageInfoBubbleView::GetShownBubbleType() !=
-      PageInfoBubbleView::BUBBLE_NONE;
+      web_contents && PageInfoBubbleViewBase::IsShowing(web_contents);
 
   auto lhs_chips_state = toolbar_ui_api::mojom::LhsChipsState::New(
       toolbar_ui_api::mojom::SecurityChipState::New(
@@ -901,8 +935,9 @@ void WebUILocationBar::SetSuppressionThresholdForTesting(
       threshold);
   page_action_control_.SetSuppressionThresholdForTesting(threshold);  // IN-TEST
   if (permission_dashboard_controller_) {
-    permission_dashboard_controller_->SetSuppressionThresholdForTesting(  // IN-TEST
-        threshold);
+    permission_dashboard_controller_
+        ->SetSuppressionThresholdForTesting(  // IN-TEST
+            threshold);
   }
 }
 
@@ -1041,6 +1076,22 @@ bool WebUILocationBar::ShouldHideRHSIcons() {
   // Also hide them if the popup is open for any other reason, e.g. ZeroSuggest.
   // The page action icons are not relevant to the displayed suggestions.
   return omnibox_controller_->IsPopupOpen();
+}
+
+bool WebUILocationBar::CreateOmniboxPopupAimPresenterIfEligible() {
+  if (!omnibox_popup_aim_presenter_ &&
+      omnibox::ShouldCreateAimPopupPresenter(GetProfile())) {
+    omnibox_popup_aim_presenter_ = std::make_unique<OmniboxPopupAimPresenter>(
+        /*location_bar=*/this, omnibox_controller_.get(),
+        /*presenter_delegate=*/*this);
+  }
+  return !!omnibox_popup_aim_presenter_;
+}
+
+void WebUILocationBar::OnAimEligibilityChanged() {
+  if (CreateOmniboxPopupAimPresenterIfEligible()) {
+    aim_eligibility_subscription_ = {};
+  }
 }
 
 void WebUILocationBar::OnMovedOrShown(ui::TrackedElement* element) {

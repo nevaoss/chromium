@@ -1191,11 +1191,6 @@ inline constexpr char kPartitionedBlobUrlUsage[] =
 inline constexpr char kXSLTDeprecationBannerSuppressed[] =
     "profile.xslt_deprecation_banner_suppressed";
 
-// Boolean value indicating if the Reduce Accept-Language feature should be
-// enabled. Defaults to network::features::kReduceAcceptLanguage field trial.
-inline constexpr char kReduceAcceptLanguageEnabled[] =
-    "profile.reduce_accept_language_enabled";
-
 // Boolean indicating if JS dialogs triggered from a different origin iframe
 // should be blocked. Has no effect if
 // "SuppressDifferentOriginSubframeJSDialogs" feature is disabled.
@@ -1587,6 +1582,11 @@ inline constexpr char kScheduledRestartLastNudgeTime[] =
     "restart.scheduled_restart_last_nudge_time";
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
+// Pref name for controlling presentation of promotions, including full-tab
+// promotional and/or educational content.
+// This preference replaces browser.promotional_tabs_enabled.
+inline constexpr char kPromotionsEnabled[] = "browser.promotions_enabled";
+
 #if !BUILDFLAG(IS_ANDROID)
 #if !BUILDFLAG(IS_CHROMEOS)
 // Boolean that specifies whether or not to show security warnings for some
@@ -1601,11 +1601,6 @@ inline constexpr char kCommandLineFlagSecurityWarningsEnabled[] =
 // `NTPFooterExtensionAttributionEnabled` policy.
 inline constexpr char kNTPFooterExtensionAttributionEnabled[] =
     "ntp_footer.settings.extension_attribution";
-
-// Pref name for controlling presentation of promotions, including full-tab
-// promotional and/or educational content.
-// This preference replaces browser.promotional_tabs_enabled.
-inline constexpr char kPromotionsEnabled[] = "browser.promotions_enabled";
 
 // Boolean that specifies whether or not showing the unsupported OS warning is
 // suppressed. False by default. Controlled by the SuppressUnsupportedOSWarning
@@ -1623,6 +1618,11 @@ static_assert(std::string_view(kWasRestarted) ==
 // Dictionary containing the number of tabs and windows before a restart.
 inline constexpr char kPreSmartRestartSessionState[] =
     "session.pre_smart_restart_session_state";
+
+// Dictionary containing the number of profiles with open windows before a
+// restart.
+inline constexpr char kPreSmartRestartProfileCounts[] =
+    "session.pre_smart_restart_profile_counts";
 
 #if BUILDFLAG(IS_MAC)
 // Boolean preference controlling zero window relaunch per enterprise policy.

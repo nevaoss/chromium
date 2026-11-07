@@ -936,6 +936,7 @@ source_set("unit_tests") {
     ]
 
     deps += [
+      "//chrome/browser/glic/android",
       "//chrome/browser/glic/common",
       "//chrome/browser/ui/android/tab_model",
       "//chrome/browser/ui/android/tab_model:test_support",
@@ -974,7 +975,6 @@ source_set("browser_tests") {
     "host/glic_paste_eligibility_browsertest.cc",
     "host/glic_permission_enforcement_browsertest.cc",
     "host/glic_start_benchmark_browsertest.cc",
-    "host/glic_web_client_manager_browsertest.cc",
     "host/glic_web_contents_warming_pool_browsertest.cc",
     "service/glic_instance_coordinator_browsertest.cc",
     "service/glic_instance_helper_browsertest.cc",
@@ -1017,9 +1017,6 @@ source_set("browser_tests") {
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:testing_browser_process",
   ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  }
   if (use_aura) {
     deps += [ "//chrome/test/base:drag_and_drop_test_utils" ]
   }

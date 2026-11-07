@@ -603,17 +603,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Glic.Contents.TimeToWarmed" units="ms"
-    expires_after="2027-03-07">
-  <owner>harringtond@chromium.org</owner>
-  <owner>glic-dev@google.com</owner>
-  <summary>
-    Measures the time it takes from Glic contents creation until the web client
-    connects and enters the kWarmed state. Recorded for clean regular guest
-    navigations without auth or load errors.
-  </summary>
-</histogram>
-
 <histogram name="Glic.CookieSynchronization.FailureByTrigger"
     enum="GlicCookieSyncTrigger" expires_after="2027-04-23">
   <owner>harringtond@chromium.org</owner>
@@ -2698,6 +2687,19 @@ chromium-metrics-reviews@google.com.
     backup. Recorded when {Event}.
   </summary>
   <token key="Event" variants="PanelEvent"/>
+</histogram>
+
+<histogram name="Glic.Preferences.HotkeyCleared" enum="GlicHotkeyCleared"
+    expires_after="2027-02-01">
+  <owner>perrier@chromium.org</owner>
+  <owner>chrome-glic@google.com</owner>
+  <summary>
+    Recorded when a non-empty Glic hotkey is cleared (set to an empty string) in
+    Glic settings. Records the user's default hotkey scope established at
+    migration and their currently active hotkey scope at the time of clearing.
+    Also records DefaultGlobalWithGlobalScope when the user has not been
+    migrated (kGlicHotkeyLocalScope disabled) and the launcher is enabled.
+  </summary>
 </histogram>
 
 <histogram name="Glic.Preferences.HotkeyScopeChange"

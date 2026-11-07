@@ -428,8 +428,7 @@ chromium-metrics-reviews@google.com.
   <variant name="ExtractFormsAndNotifyPasswordAutofillAgent"/>
   <variant name="FocusedElementChanged"/>
   <variant name="FormWithEmailVerificationTokenSubmitted"/>
-  <variant name="GetFormDataFromUnownedInputElements"/>
-  <variant name="GetFormDataFromWebForm"/>
+  <variant name="GetFormData"/>
   <variant name="GetSubmittedForm"/>
   <variant name="HandleCaretMovedInFormField"/>
   <variant name="JavaScriptSetValue"/>
@@ -3469,18 +3468,6 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     Logs the count of bubbles that are not added to the queue because a
     non-timed-out, non-preemptible bubble of the same type is already pending.
     This metric is recorded when a bubble requests to show.
-  </summary>
-</histogram>
-
-<histogram name="Autofill.Bubble.Queue.Replaced" enum="AutofillBubbleType"
-    expires_after="2026-10-22">
-  <owner>vidhanj@google.com</owner>
-  <owner>chrome-autofill-alerts@google.com</owner>
-  <summary>
-    Logged when a bubble in the queue is replaced by a new bubble of the same
-    type due to the bubble type's immediate preemption policy (e.g., for
-    passwords), not due to a timeout. This metric is recorded once a bubble is
-    hidden and the pending queue of bubbles is cleaned up.
   </summary>
 </histogram>
 
@@ -7208,22 +7195,50 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   <owner>vinnypersky@google.com</owner>
   <owner>payments-autofill-team@google.com</owner>
   <summary>
-    Logs the result of the payments churned users bubble. Logged when the bubble
-    is closed. This will only be logged once per show, regardless of the show
-    being a first show or a reshow.
+    Obsolete. Replaced by Autofill.PaymentsChurnedUsersUi.Result in M157. Logs
+    the result of the payments churned users bubble. Logged when the bubble is
+    closed. This will only be logged once per show, regardless of the show being
+    a first show or a reshow.
   </summary>
 </histogram>
 
 <histogram name="Autofill.PaymentsChurnedUsersBubble.ShowResult"
-    enum="PaymentsChurnedUsersBubbleShowResult" expires_after="2027-04-30">
+    enum="PaymentsChurnedUsersUiShowResult" expires_after="2027-04-30">
   <owner>vinnypersky@google.com</owner>
   <owner>payments-autofill-team@google.com</owner>
   <summary>
+    Obsolete. Replaced by Autofill.PaymentsChurnedUsersUi.ShowResult in M157.
     Logs the result of attempting to show the payments churned users bubble,
     specifically either the reason it was not shown or that it was shown
     successfully. Logged at the point where the decision was made to not show
     the payments churned users bubble, or when it was shown successfully. This
     only applies to first shows.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.PaymentsChurnedUsersUi.Result"
+    enum="PaymentsUiClosedReason" expires_after="2027-04-30">
+  <owner>vinnypersky@google.com</owner>
+  <owner>viplavkadam@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Logs the result of the payments churned users UI. Logged when the UI is
+    closed. This will only be logged once per show, regardless of the show being
+    a first show or a reshow.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.PaymentsChurnedUsersUi.ShowResult"
+    enum="PaymentsChurnedUsersUiShowResult" expires_after="2027-04-30">
+  <owner>vinnypersky@google.com</owner>
+  <owner>viplavkadam@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Logs the result of attempting to show the payments churned users UI,
+    specifically either the reason it was not shown or that it was shown
+    successfully. Logged at the point where the decision was made to not show
+    the payments churned users UI, or when it was shown successfully. This only
+    applies to first shows.
   </summary>
 </histogram>
 

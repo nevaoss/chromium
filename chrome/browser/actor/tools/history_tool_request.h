@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_ACTOR_TOOLS_HISTORY_TOOL_REQUEST_H_
 #define CHROME_BROWSER_ACTOR_TOOLS_HISTORY_TOOL_REQUEST_H_
 
+#include <optional>
 #include <string_view>
 
 #include "chrome/browser/actor/tools/tool_request.h"
@@ -16,9 +17,15 @@ class ToolRequestVisitorFunctor;
 class HistoryBackToolRequest : public TabToolRequest {
  public:
   static constexpr char kName[] = "HistoryBack";
+  // Canonical model-facing name exposed in LLM prompt schemas and indexed by
+  // `ToolRegistry` for lookup and routing via `GetToolDefinition()`.
+  static constexpr std::string_view kModelFacingName = "go_back";
 
   explicit HistoryBackToolRequest(tabs::TabHandle tab_handle);
   ~HistoryBackToolRequest() override;
+
+  // Returns the `ToolId::kGoBack` tool schema definition.
+  static std::optional<ToolDefinition> GetToolDefinition();
 
   void Apply(ToolRequestVisitorFunctor& f) const override;
 
@@ -33,9 +40,15 @@ class HistoryBackToolRequest : public TabToolRequest {
 class HistoryForwardToolRequest : public TabToolRequest {
  public:
   static constexpr char kName[] = "HistoryForward";
+  // Canonical model-facing name exposed in LLM prompt schemas and indexed by
+  // `ToolRegistry` for lookup and routing via `GetToolDefinition()`.
+  static constexpr std::string_view kModelFacingName = "go_forward";
 
   explicit HistoryForwardToolRequest(tabs::TabHandle tab_handle);
   ~HistoryForwardToolRequest() override;
+
+  // Returns the `ToolId::kGoForward` tool schema definition.
+  static std::optional<ToolDefinition> GetToolDefinition();
 
   void Apply(ToolRequestVisitorFunctor& f) const override;
 
@@ -50,10 +63,16 @@ class HistoryForwardToolRequest : public TabToolRequest {
 class ReloadPageToolRequest : public TabToolRequest {
  public:
   static constexpr char kName[] = "ReloadPage";
+  // Canonical model-facing name exposed in LLM prompt schemas and indexed by
+  // `ToolRegistry` for lookup and routing via `GetToolDefinition()`.
+  static constexpr std::string_view kModelFacingName = "reload_page";
 
   explicit ReloadPageToolRequest(tabs::TabHandle tab_handle,
                                  bool bypass_cache = false);
   ~ReloadPageToolRequest() override;
+
+  // Returns the `ToolId::kReloadPage` tool schema definition.
+  static std::optional<ToolDefinition> GetToolDefinition();
 
   void Apply(ToolRequestVisitorFunctor& f) const override;
 

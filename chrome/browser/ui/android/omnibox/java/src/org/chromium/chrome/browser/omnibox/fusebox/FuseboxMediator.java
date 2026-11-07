@@ -71,6 +71,7 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.contextual_search.DisclaimerStatus;
 import org.chromium.components.contextual_search.InputState;
+import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AimModelsProtoIntDef.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
@@ -393,6 +394,10 @@ import java.util.function.Supplier;
             if (mInput.getRequestType() == AutocompleteRequestType.AI_MODE
                     && mInput.getFocusReason() == OmniboxFocusReason.NTP_AI_MODE) {
                 FuseboxMetrics.notifyAiModeActivated(AiModeActivationSource.NTP_BUTTON);
+            } else if (mInput.getRequestType() == AutocompleteRequestType.IMAGE_GENERATION
+                    && mInput.getFocusReason() == OmniboxFocusReason.NTP_AI_MODE) {
+                FuseboxMetrics.notifyAiModeActivated(
+                        AiModeActivationSource.NTP_CREATE_IMAGE_BUTTON);
             } else if (mInput.getFocusReason() == OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP) {
                 mNeedUnfocusOnCancel = true;
                 showPopup();
@@ -877,6 +882,8 @@ import java.util.function.Supplier;
             return;
         }
 
+        TrackerFactory.getTrackerForProfile(mProfile)
+                .notifyEvent(EventConstants.FUSEBOX_TAB_PICKER_TAB_ATTACHED);
         Set<Integer> selectedTabIds = new HashSet<>(tabIds);
         TabLoadingService.getInstance().checkpointLoadDurations(selectedTabIds);
         updateCurrentlyAttachedTabs(selectedTabIds);
@@ -1202,10 +1209,14 @@ import java.util.function.Supplier;
     private void launchDrivePicker(Profile profile) {
         long startTime = TimeUtils.elapsedRealtimeMillis();
         DriveFilePickerClient.getInstance()
-                .launchPicker(mWindowAndroid, profile, /* mimeTypes= */ null)
+                .launchPicker(
+                        mWindowAndroid,
+                        profile,
+                        /* mimeTypes= */ null,
+                        /* allowMultiSelect= */ true)
                 .then(
-                        metadata -> {
-                            if (metadata == null) {
+                        files -> {
+                            if (files.isEmpty()) {
                                 FuseboxMetrics.recordDrivePickerOutcome(
                                         MobileFuseboxPickerOutcome.MANUAL_USER_EXIT);
                                 handlePickerCanceled();
@@ -1215,16 +1226,19 @@ import java.util.function.Supplier;
 
                             FuseboxMetrics.recordDrivePickerOutcome(
                                     MobileFuseboxPickerOutcome.ATTACHMENT_ADDED);
-                            FuseboxMetrics.recordDriveDocumentType(
-                                    metadata.mimeType, metadata.title);
-
-                            var attachment =
-                                    FuseboxAttachment.forDrive(
-                                            mContext,
-                                            metadata,
-                                            startTime,
-                                            FuseboxAttachmentButtonType.DRIVE_FILES);
-                            uploadAndAddAttachment(attachment);
+                            try (var batchToken = mModelList.beginBatchEdit()) {
+                                for (var metadata : files) {
+                                    if (mModelList.getRemainingAttachments() == 0) break;
+                                    FuseboxMetrics.recordDriveDocumentType(
+                                            metadata.mimeType, metadata.title);
+                                    uploadAndAddAttachment(
+                                            FuseboxAttachment.forDrive(
+                                                    mContext,
+                                                    metadata,
+                                                    startTime,
+                                                    FuseboxAttachmentButtonType.DRIVE_FILES));
+                                }
+                            }
                         },
                         exception -> {
                             FuseboxMetrics.recordDrivePickerOutcome(

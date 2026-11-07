@@ -187,12 +187,6 @@ BASE_FEATURE(kDynamicAimSubmit, DISABLED);
 const base::FeatureParam<bool> kShowRhsAimHint{&kDynamicAimSubmit,
                                                "Omnibox_ShowRhsAimHint", false};
 
-// Hides the AIM entrypoint in the Omnibox when user input is in progress. Only
-// used on desktop platforms.
-BASE_FEATURE(kHideAimEntrypointOnUserInput,
-             "OmniboxHideAimEntrypointOnUserInput",
-             DISABLED);
-
 // Hides the AIM entrypoint in the Omnibox when the default suggestion is a URL.
 // Only used on desktop platforms.
 BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, ENABLED);
@@ -342,6 +336,12 @@ BASE_FEATURE(kOmniboxFullWebUIDestroyWidgetOnHide, ENABLED);
 // take effect regardless of whether the full WebUI omnibox is enabled.
 BASE_FEATURE(kOmniboxAimDestroyWidgetOnHide, ENABLED);
 BASE_FEATURE(kOmniboxWebUIDestroyWidgetOnHide, DISABLED);
+
+// When enabled, a location bar creates its AI Mode popup (and the WebContents
+// behind it) only once the profile is eligible for it, instead of at window
+// creation. Ineligible profiles never show the popup, so this saves one
+// WebUI document per window. Kill switch.
+BASE_FEATURE(kOmniboxAimPopupRequireEligibility, ENABLED);
 
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.

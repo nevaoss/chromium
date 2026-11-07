@@ -606,6 +606,11 @@ ContentBrowserClient::GetForcedColorsForWebContents(
   return ui::ColorProviderKey::ForcedColors::kNone;
 }
 
+bool ContentBrowserClient::
+    ShouldUpdateFontRendererPreferencesFromSystemSettings() const {
+  return true;
+}
+
 bool ContentBrowserClient::IsDataSaverEnabled(BrowserContext* context) {
   DCHECK(context);
   return false;
@@ -682,8 +687,6 @@ bool ContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
     content::PrivacySandboxInvokingAPI invoking_api) {
   return false;
 }
-
-
 
 bool ContentBrowserClient::IsFullCookieAccessAllowed(
     content::BrowserContext* browser_context,
@@ -1880,11 +1883,6 @@ bool ContentBrowserClient::IsUrlAllowedForBackForwardCache(
 }
 
 bool ContentBrowserClient::IsBlobUrlPartitioningEnabled(
-    content::BrowserContext* browser_context) {
-  return true;
-}
-
-bool ContentBrowserClient::ShouldReduceAcceptLanguage(
     content::BrowserContext* browser_context) {
   return true;
 }

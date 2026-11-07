@@ -429,6 +429,7 @@ public abstract class ChromeFeatureList {
     public static final String BROWSER_CONTROLS_EXTRA_HIDE_GESTURES =
             "BrowserControlsExtraHideGestures";
     public static final String BROWSER_CONTROLS_HIDING_TOKEN = "BrowserControlsHidingToken";
+    public static final String BROWSER_CONTROLS_LOCKOUT_DURATION = "BrowserControlsLockoutDuration";
     public static final String BROWSER_CONTROLS_PERSISTS_ON_CVH = "BrowserControlsPersistsOnCvh";
     public static final String BROWSER_CONTROLS_SCROLL_SNAP_ANIMATION =
             "BrowserControlsScrollSnapAnimation";
@@ -1062,6 +1063,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(BROWSER_CONTROLS_DEBUGGING, false);
     public static final CachedFlag sBrowserControlsHidingToken =
             newCachedFlag(BROWSER_CONTROLS_HIDING_TOKEN, /* defaultValue= */ true);
+    public static final CachedFlag sBrowserControlsLockoutDuration =
+            newCachedFlag(BROWSER_CONTROLS_LOCKOUT_DURATION, /* defaultValue= */ false);
     public static final CachedFlag sCacheIsGoogleSigned =
             newCachedFlag(CACHE_IS_GOOGLE_SIGNED, true, /* defaultValueInTests= */ true);
     public static final CachedFlag sCacheIsMultiInstanceApi31Enabled =
@@ -1538,6 +1541,7 @@ public abstract class ChromeFeatureList {
                     sBottomSheetOnDesktopWindowing,
                     sBrowserControlsDebugging,
                     sBrowserControlsHidingToken,
+                    sBrowserControlsLockoutDuration,
                     sCacheIsGoogleSigned,
                     sCacheIsMultiInstanceApi31Enabled,
                     sCctAlwaysOpenInBrowser,
@@ -2001,8 +2005,6 @@ public abstract class ChromeFeatureList {
     // go/keep-sorted start
     public static final BooleanCachedFeatureParam sAndroidBottomBarAlwaysUseFilledGlicIcon =
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "always_use_filled_glic_icon", true);
-    public static final BooleanCachedFeatureParam sAndroidBottomBarBypassGlicGeofencing =
-            newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "bypass_glic_geofencing", false);
     // Default value of the user's "Show bottom toolbar" setting while the user has not touched it.
     // Once the user flips the toggle, their explicit choice wins over this param. Cached because
     // the resulting enablement is read pre-native while the toolbar layout is inflated.
@@ -2037,6 +2039,17 @@ public abstract class ChromeFeatureList {
 
     public static final IntCachedFeatureParam sBackgroundThreadPoolFieldTrialConfig =
             newIntCachedFeatureParam(BACKGROUND_THREAD_POOL_FIELD_TRIAL, "config", 4);
+
+    public static final IntCachedFeatureParam sBrowserControlsLockoutFullscreenLoadDelayMs =
+            newIntCachedFeatureParam(
+                    BROWSER_CONTROLS_LOCKOUT_DURATION,
+                    "fullscreen_load_delay_ms",
+                    /* defaultValue= */ 3000);
+    public static final IntCachedFeatureParam sBrowserControlsLockoutMinimumShowDurationMs =
+            newIntCachedFeatureParam(
+                    BROWSER_CONTROLS_LOCKOUT_DURATION,
+                    "minimum_show_duration_ms",
+                    /* defaultValue= */ 3000);
 
     public static final IntCachedFeatureParam sClampAutomotiveScalingMaxScalingPercentage =
             newIntCachedFeatureParam(
@@ -2382,7 +2395,6 @@ public abstract class ChromeFeatureList {
                     sAndroidAppIntegrationMultiDataSourceSkipSchemaCheck,
                     sAndroidAppRatingPromptBypassChecks,
                     sAndroidBottomBarAlwaysUseFilledGlicIcon,
-                    sAndroidBottomBarBypassGlicGeofencing,
                     sAndroidBottomBarDefaultUserEnabled,
                     sAndroidBottomBarHeightDp,
                     sAndroidBottomBarKeepAppMenuInToolbar,
@@ -2398,6 +2410,8 @@ public abstract class ChromeFeatureList {
                     sAndroidVerticalTabsBlockDrawOnColdStart,
                     sAndroidVerticalTabsEnableByDefault,
                     sBackgroundThreadPoolFieldTrialConfig,
+                    sBrowserControlsLockoutFullscreenLoadDelayMs,
+                    sBrowserControlsLockoutMinimumShowDurationMs,
                     sCctAutoTranslateAllowAllFirstParties,
                     sCctAutoTranslatePackageNamesAllowlist,
                     sCctGoogleBottomBarButtonList,

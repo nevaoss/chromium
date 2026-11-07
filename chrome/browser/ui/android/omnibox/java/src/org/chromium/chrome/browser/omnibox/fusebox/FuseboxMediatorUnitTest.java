@@ -107,6 +107,7 @@ import org.chromium.components.contextual_search.ContextUploadStatus;
 import org.chromium.components.contextual_search.DisclaimerStatus;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.contextual_search.InputStateBuilder;
+import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AimModelsProtoIntDef.ModelMode;
@@ -376,9 +377,9 @@ public class FuseboxMediatorUnitTest {
         TabLoadingService.setInstanceForTesting(mTabLoadingService);
         lenient().doReturn(true).when(mDriveFilePickerClient).isAvailable(any(), any());
         lenient()
-                .doReturn(Promise.fulfilled(null))
+                .doReturn(Promise.fulfilled(List.of()))
                 .when(mDriveFilePickerClient)
-                .launchPicker(any(), any(), any());
+                .launchPicker(any(), any(), any(), anyBoolean());
         DriveDisclaimerBridgeJni.setInstanceForTesting(mDriveDisclaimerBridgeNatives);
 
         mInputStateSupplier.set(DEFAULT_INPUT_STATE);
@@ -1560,9 +1561,9 @@ public class FuseboxMediatorUnitTest {
                         /* resourceKey= */ null,
                         "Test Doc",
                         DriveIconUtils.MIME_TYPE_GOOGLE_DOCS);
-        doReturn(Promise.fulfilled(metadata))
+        doReturn(Promise.fulfilled(List.of(metadata)))
                 .when(mDriveFilePickerClient)
-                .launchPicker(mWindowAndroid, mProfile, null);
+                .launchPicker(mWindowAndroid, mProfile, null, true);
         doReturn("token123")
                 .when(mComposeboxQueryControllerBridge)
                 .addDriveFile("drive_id", null, "Test Doc", DriveIconUtils.MIME_TYPE_GOOGLE_DOCS);
@@ -1573,6 +1574,29 @@ public class FuseboxMediatorUnitTest {
         assertTrue(mModel.get(FuseboxProperties.ATTACHMENTS_VISIBLE));
         assertEquals(1, mAttachments.size());
         assertEquals("Test Doc", mAttachments.get(0).title);
+    }
+
+    @Test
+    public void onDrivePickerClicked_pickerMultipleFiles_attachesAllInOrder() {
+        setDriveConsentStatus(DisclaimerStatus.ACCEPTED);
+        var first = new DriveAttachmentMetadata("id_1", null, "Doc 1", "application/pdf");
+        var second = new DriveAttachmentMetadata("id_2", null, "Doc 2", "application/pdf");
+        doReturn(Promise.fulfilled(List.of(first, second)))
+                .when(mDriveFilePickerClient)
+                .launchPicker(mWindowAndroid, mProfile, null, true);
+        doReturn("token1")
+                .when(mComposeboxQueryControllerBridge)
+                .addDriveFile(eq("id_1"), any(), any(), any());
+        doReturn("token2")
+                .when(mComposeboxQueryControllerBridge)
+                .addDriveFile(eq("id_2"), any(), any(), any());
+
+        mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(2, mAttachments.size());
+        assertEquals("Doc 1", mAttachments.get(0).title);
+        assertEquals("Doc 2", mAttachments.get(1).title);
     }
 
     @Test
@@ -1595,7 +1619,7 @@ public class FuseboxMediatorUnitTest {
 
         mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
 
-        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any());
+        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -1604,7 +1628,7 @@ public class FuseboxMediatorUnitTest {
 
         mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
 
-        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any());
+        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -1744,13 +1768,26 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void beginInput_fromNtp_recordsAiModeActivationSource() {
-        mInput.setRequestType(AutocompleteRequestType.AI_MODE);
+        testBeginInputFromNtpRecordsActivationSourceImpl(
+                AutocompleteRequestType.AI_MODE, FuseboxMetrics.AiModeActivationSource.NTP_BUTTON);
+    }
+
+    @Test
+    public void beginInput_fromNtpCreateImage_recordsAiModeActivationSource() {
+        testBeginInputFromNtpRecordsActivationSourceImpl(
+                AutocompleteRequestType.IMAGE_GENERATION,
+                FuseboxMetrics.AiModeActivationSource.NTP_CREATE_IMAGE_BUTTON);
+    }
+
+    private void testBeginInputFromNtpRecordsActivationSourceImpl(
+            @AutocompleteRequestType int requestType,
+            @FuseboxMetrics.AiModeActivationSource int expectedActivationSource) {
+        mInput.setRequestType(requestType);
         mInput.setFocusReason(OmniboxFocusReason.NTP_AI_MODE);
 
         try (var ignored =
                 HistogramWatcher.newSingleRecordWatcher(
-                        "Omnibox.MobileFusebox.AiModeActivationSource",
-                        FuseboxMetrics.AiModeActivationSource.NTP_BUTTON)) {
+                        "Omnibox.MobileFusebox.AiModeActivationSource", expectedActivationSource)) {
             recreateMediator();
         }
     }
@@ -2059,6 +2096,18 @@ public class FuseboxMediatorUnitTest {
 
         // AI Mode is NOT activated and AutocompleteRequestType remains SEARCH.
         assertEquals(AutocompleteRequestType.SEARCH, mInput.getRequestType());
+    }
+
+    @Test
+    public void testOnTabPickerResult_notifiesTabAttachedEvent() {
+        mMediator.onTabPickerResult(Activity.RESULT_OK, createTabPickerResultIntent(List.of(101)));
+        verify(mTracker).notifyEvent(EventConstants.FUSEBOX_TAB_PICKER_TAB_ATTACHED);
+    }
+
+    @Test
+    public void testOnTabPickerResult_canceled_doesNotNotifyTabAttachedEvent() {
+        mMediator.onTabPickerResult(Activity.RESULT_CANCELED, /* data= */ null);
+        verify(mTracker, never()).notifyEvent(EventConstants.FUSEBOX_TAB_PICKER_TAB_ATTACHED);
     }
 
     @Test

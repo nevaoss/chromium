@@ -274,6 +274,7 @@
 #include "third_party/blink/public/mojom/frame/media_player_action.mojom.h"
 #include "third_party/blink/public/public_buildflags.h"
 #include "third_party/metrics_proto/omnibox_input_type.pb.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
@@ -2761,8 +2762,8 @@ void RenderViewContextMenu::AppendCopyItem() {
   if (menu_model_.GetItemCount()) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
-    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_COPY,
-                                    IDS_CONTENT_CONTEXT_COPY);
+  menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_COPY,
+                                  IDS_CONTENT_CONTEXT_COPY);
 }
 
 void RenderViewContextMenu::AppendLinkToTextItems() {
@@ -2826,8 +2827,7 @@ void RenderViewContextMenu::AppendPartialTranslateItem() {
 
   std::u16string label;
   if (is_menu_simplification_enabled) {
-      label =
-          l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2);
+    label = l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2);
   } else {
     label = l10n_util::GetStringFUTF16(
         IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE,
@@ -3328,6 +3328,11 @@ void RenderViewContextMenu::AppendRegionSearchItem() {
               .value();
       target_model->SetElementIdentifierAt(ask_google_command_index,
                                            kAskGoogleAboutThisPageItem);
+      target_model->SetIsNewFeatureAt(
+          ask_google_command_index,
+          UserEducationService::MaybeShowNewBadge(
+              GetBrowserContext(),
+              contextual_tasks::kContextualTasksUpdatedEntryPoints));
     }
 
     target_model->AddItemWithStringIdAndIcon(
@@ -4055,7 +4060,11 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       ExecRegionSearch(event_flags, true);
       break;
     case IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE:
-      chrome::ExecAskGoogleAboutThisPage(GetBrowser());
+      chrome::ExecAskGoogleAboutThisPage(
+          GetBrowser(),
+          lens::LensOverlayInvocationSource::kContentAreaContextMenuPage,
+          omnibox::ChromeAimEntryPoint::
+              DESKTOP_CHROME_PAGE_CONTEXT_MENU_ASK_GOOGLE);
       break;
     case IDC_CONTENT_CONTEXT_WEB_REGION_SEARCH:
       ExecRegionSearch(event_flags, false);

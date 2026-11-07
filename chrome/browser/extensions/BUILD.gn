@@ -2572,15 +2572,13 @@ source_set("browser_tests") {
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:test_launcher_utils",
     "//chrome/test/base:testing_browser_process",
+    "//chrome/test/base:tracing",
+    "//chrome/test/base:web_ui_test_support",
   ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  } else {
+  if (is_android) {
     deps += [ "//chrome/test/base:android_ui_test_utils" ]
   }
   deps += [
-    "//chrome/test/base:tracing",
-    "//chrome/test/base:web_ui_test_support",
     "//components/back_forward_cache",
     "//components/bookmarks/managed",
     "//components/contextual_tasks/public:feature_list",
@@ -3083,7 +3081,6 @@ source_set("browser_tests") {
       deps += [
         "//chrome/browser/enterprise/connectors/device_trust:features",
         "//chrome/browser/enterprise/connectors/device_trust/test:test_support",
-        "//chrome/browser/enterprise/network_header_injection:browser_tests",
         "//components/device_signals/core/common",
         "//components/device_signals/core/common:features",
         "//components/device_signals/test:test_support",

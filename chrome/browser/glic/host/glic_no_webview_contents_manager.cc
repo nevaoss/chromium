@@ -191,6 +191,10 @@ const char* ErrorPanelTypeToHistogramSuffix(mojom::ErrorPanelType error_type) {
   }
 }
 
+bool ShouldDisableLoadingOverlay() {
+  return base::FeatureList::IsEnabled(features::kGlicSsr);
+}
+
 }  // namespace
 
 class GlicNoWebviewContentsManager::Metrics {
@@ -416,10 +420,10 @@ GlicNoWebviewContentsManager::OverlayContentsManager::DetermineOverlayState(
     return mojom::OverlayState::NewError(*error_type);
   }
 
-  // Input 2: Guest presentation. When the guest is ready, or displaying a login
-  // or in-page error page, the guest WebContents is shown and no overlay is
-  // needed.
-  if (guest_state != GuestState::kLoading) {
+  // Input 2: Guest presentation. When the guest is ready, displaying a login
+  // or in-page error page, or when the loading overlay is disabled, the guest
+  // WebContents is shown and no overlay is needed.
+  if (guest_state != GuestState::kLoading || ShouldDisableLoadingOverlay()) {
     return nullptr;
   }
 
@@ -742,9 +746,23 @@ bool GlicNoWebviewContentsManager::ShouldReloadOnShow() const {
   return overlay_manager_.ShouldReloadOnShow();
 }
 
+bool GlicNoWebviewContentsManager::IsCrashed() const {
+  return (guest_contents() && guest_contents()->IsCrashed()) ||
+         overlay_manager_.IsCrashed();
+}
+
 void GlicNoWebviewContentsManager::Zoom(mojom::ZoomAction zoom_action,
                                         ZoomSource source) {
   zoom_controller_.Zoom(zoom_action, source);
+}
+
+void GlicNoWebviewContentsManager::SetErrorCallback(
+    base::RepeatingClosure callback) {
+  error_callback_ = std::move(callback);
+  if (ShouldReloadOnShow()) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+                                                             error_callback_);
+  }
 }
 
 void GlicNoWebviewContentsManager::OnZoomLevelChange() {
@@ -784,6 +802,9 @@ void GlicNoWebviewContentsManager::ShowGuestDirectly(GuestState state) {
     ApplySizeToGuest();
   }
   UpdateDisplayState();
+  if (error_callback_ && ShouldReloadOnShow()) {
+    error_callback_.Run();
+  }
 }
 
 GlicNoWebviewContentsManager::DisplayState
@@ -796,7 +817,8 @@ GlicNoWebviewContentsManager::CalculateDesiredState() const {
   if (overlay_manager_.error_type().has_value()) {
     return DisplayState::kShowingOverlay;
   }
-  if (guest_state_.get() != GuestState::kLoading) {
+  if (guest_state_.get() != GuestState::kLoading ||
+      ShouldDisableLoadingOverlay()) {
     return DisplayState::kShowingGuest;
   }
   return DisplayState::kShowingOverlay;
@@ -999,6 +1021,10 @@ void GlicNoWebviewContentsManager::TransitionTo(DisplayState next_state) {
     case DisplayState::kShowingGuest:
       CancelOverlayDeletion();
       NotifyWebContentsChanged();
+      // Stop the timer so UpdateLoadingTimer() restarts it from zero if the
+      // guest is still loading (e.g. under kGlicSsr), granting the full visible
+      // loading duration.
+      loading_timer_.Stop();
       // Destroy the loading overlay once the guest is ready and swapped.
       ScheduleOverlayDeletion(base::Milliseconds(0));
       break;
@@ -1030,6 +1056,9 @@ void GlicNoWebviewContentsManager::SetErrorState(
   // An error occurred; transition to overlay if visible, or record for when
   // shown.
   UpdateDisplayState();
+  if (error_callback_ && ShouldReloadOnShow()) {
+    error_callback_.Run();
+  }
 }
 
 void GlicNoWebviewContentsManager::ClearErrorState() {

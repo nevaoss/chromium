@@ -556,7 +556,7 @@ void ContextualTasksComposeboxHandler::OnTaskChanged() {
     // when Smart Tab Sharing is disabled or already inactive.
     if (auto* session_handle = GetContextualSessionHandle()) {
       session_handle->ClearSubmittedContextTokens();
-      session_handle->set_persisted_tabs({});
+      session_handle->SetPersistedTabs({});
       session_handle->set_deselected_tabs_urls({});
     }
     if (auto* browser = web_ui_interface_->GetBrowser()) {
@@ -616,7 +616,7 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
       }
 
       input_state_subscription_ =
-          input_state_model_->subscribe(base::BindRepeating(
+          input_state_model_->Subscribe(base::BindRepeating(
               &ContextualTasksComposeboxHandler::OnInputStateChanged,
               weak_ptr_factory_.GetWeakPtr()));
 

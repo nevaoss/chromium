@@ -881,8 +881,6 @@ if (is_chromeos) {
       "//chrome/browser/ui/webui/nearby_share",
       "//chrome/common:chrome_features",
       "//chromeos/ash/components/local_search_service/public/mojom",
-      "//chromeos/ash/experiences/guest_os/borealis/motd",
-      "//chromeos/ash/experiences/guest_os/borealis/motd:mojo_bindings",
       "//chromeos/ash/services/multidevice_setup",
       "//chromeos/ash/services/orca/public/mojom",
       "//chromeos/constants",
@@ -1126,6 +1124,7 @@ source_set("core") {
     "//chrome/browser/devtools",
     "//chrome/browser/digital_credentials",
     "//chrome/browser/dom_distiller",
+    "//chrome/browser/enterprise/network_header_injection",
     "//chrome/browser/enterprise/platform_auth:features",
     "//chrome/browser/external_protocol",
     "//chrome/browser/facilitated_payments",
@@ -1543,7 +1542,6 @@ source_set("core") {
   if (is_win || is_mac || is_linux || is_chromeos) {
     deps += [
       "//chrome/browser/captive_portal",
-      "//chrome/browser/enterprise/network_header_injection",
       "//chrome/browser/headless:headless_extra_parts",
       "//chrome/browser/indigo/onboarding",
       "//chrome/browser/media/router/discovery/access_code:access_code_sink_service",

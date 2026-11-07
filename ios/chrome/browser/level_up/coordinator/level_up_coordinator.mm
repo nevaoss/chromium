@@ -106,21 +106,16 @@ void RunPendingAction(TaskInfo::NavigationAction pending_action,
           self.browser->GetProfile());
   CHECK(tracker);
   tracker->NotifyEvent(feature_engagement::events::kIOSLevelUpPromoUsed);
-
+  PromosManagerFactory::GetForProfile(self.browser->GetProfile())
+      ->DeregisterPromo(promos_manager::Promo::LevelUp);
   _authService =
       AuthenticationServiceFactory::GetForProfile(self.browser->GetProfile());
   _prefService = self.browser->GetProfile()->GetPrefs();
 
-  // Deregisters the Level Up promo right after it is shown;
-  // Otherwise, displays the Level Up promo.
-  if (_prefService->GetBoolean(prefs::kLevelUpOptIn)) {
-    PromosManagerFactory::GetForProfile(self.browser->GetProfile())
-        ->DeregisterPromo(promos_manager::Promo::LevelUp);
-  } else {
+  if (!_prefService->GetBoolean(prefs::kLevelUpOptIn)) {
     [self showLevelUpPromo];
     return;
   }
-
   [self showLevelUp];
 }
 

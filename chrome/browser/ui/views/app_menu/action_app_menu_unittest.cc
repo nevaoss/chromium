@@ -2709,6 +2709,47 @@ TEST_F(ActionAppMenuTest, MenuOpenAndCommandExecutionMetrics) {
   menu.CloseMenu();
 }
 
+TEST_F(ActionAppMenuTest, ManageSkillsMetrics) {
+  actions::ActionItem* skills_and_extensions_action =
+      actions::ActionManager::Get().FindAction(
+          kActionSkillsAndExtensionsSubmenu,
+          browser_actions_->root_action_item());
+  ASSERT_NE(skills_and_extensions_action, nullptr);
+  skills_and_extensions_action->SetVisible(true);
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* skills_and_extensions_item =
+      root->GetMenuItemByID(kActionSkillsAndExtensionsSubmenu);
+  ASSERT_TRUE(skills_and_extensions_item);
+  menu.WillShowMenu(skills_and_extensions_item);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_SHOW_SKILLS_AND_EXTENSIONS, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ShowSkillsAndExtensions", 1);
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionManageSkills, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionManageSkills, /*mouse_event_flags=*/0);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_MANAGE_SKILLS, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.ManageSkills", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, ZoomAndBlockButtonMetrics) {
   base::HistogramTester histogram_tester;
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
@@ -3492,5 +3533,60 @@ TEST_F(ActionAppMenuTest, RecentTabsByDateHistoryInSidePanel) {
   histogram_tester.ExpectTotalCount(
       "WrenchMenu.TimeToAction.ShowHistoryClustersSidePanel", 1);
 }
+
+#if !BUILDFLAG(IS_CHROMEOS)
+TEST_F(ActionAppMenuTest, PopulatesFooterElementsWithEnterpriseReleaseNotes) {
+  policy::ScopedManagementServiceOverrideForTesting profile_management(
+      policy::ManagementServiceFactory::GetForProfile(profile_.get()),
+      policy::EnterpriseManagementAuthority::DOMAIN_LOCAL);
+
+  actions::ActionItem* release_notes_action =
+      actions::ActionManager::Get().FindAction(
+          kActionChromeEnterpriseReleaseNotes);
+  ASSERT_NE(release_notes_action, nullptr);
+  release_notes_action->SetVisible(true);
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_NE(root, nullptr);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_NE(submenu, nullptr);
+  views::MenuItemView* footer_item =
+      submenu->GetMenuItemAt(submenu->GetMenuItems().size() - 1);
+  ASSERT_NE(footer_item, nullptr);
+
+  auto* footer_view =
+      views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
+  ASSERT_NE(footer_view, nullptr);
+  ASSERT_NE(footer_view->bottom_container_for_testing(), nullptr);
+  EXPECT_EQ(footer_view->bottom_container_for_testing()->GetOrientation(),
+            views::BoxLayout::Orientation::kVertical);
+  ASSERT_EQ(footer_view->bottom_container_for_testing()->children().size(), 2u);
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[0]));
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[1]));
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionChromeEnterpriseReleaseNotes, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionChromeEnterpriseReleaseNotes,
+                      /*mouse_event_flags=*/0);
+  histogram_tester.ExpectBucketCount(
+      "WrenchMenu.MenuAction", MENU_ACTION_CHROME_ENTERPRISE_RELEASE_NOTES, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ChromeEnterpriseReleaseNotes", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
 }  // namespace

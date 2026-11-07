@@ -111,6 +111,7 @@ BASE_DECLARE_FEATURE(kOmniboxWebUIPopupCreateWidgetOnShow);
 BASE_DECLARE_FEATURE(kOmniboxFullWebUIDestroyWidgetOnHide);
 BASE_DECLARE_FEATURE(kOmniboxAimDestroyWidgetOnHide);
 BASE_DECLARE_FEATURE(kOmniboxWebUIDestroyWidgetOnHide);
+BASE_DECLARE_FEATURE(kOmniboxAimPopupRequireEligibility);
 BASE_DECLARE_FEATURE(kWebUISearchboxWithoutModelController);
 
 // Omnibox UI - these affect the UI or function of the location bar (not the
@@ -119,7 +120,6 @@ BASE_DECLARE_FEATURE(kAimEligibilityComponentExtension);
 extern const base::FeatureParam<bool> kAimEligibilityUseComponentUpdater;
 BASE_DECLARE_FEATURE(kDynamicAimSubmit);
 extern const base::FeatureParam<bool> kShowRhsAimHint;
-BASE_DECLARE_FEATURE(kHideAimEntrypointOnUserInput);
 BASE_DECLARE_FEATURE(kHideAimEntrypointForUrlSuggestions);
 BASE_DECLARE_FEATURE(kOmniboxMultimodalInput);
 BASE_DECLARE_FEATURE(kOmniboxDebounceKeyboardVisibility);

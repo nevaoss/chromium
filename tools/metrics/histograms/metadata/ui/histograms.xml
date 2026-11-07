@@ -1523,6 +1523,7 @@ features through Chrome Labs. -->
     <variant name=".BookmarkBarOnlyOnNtp"/>
     <variant name=".BookmarkPage"/>
     <variant name=".Cast"/>
+    <variant name=".ChromeEnterpriseReleaseNotes"/>
     <variant name=".ChromeOSRestart"/>
     <variant name=".ChromeTips"/>
     <variant name=".ChromeWhatsNew"/>
@@ -1552,6 +1553,7 @@ features through Chrome Labs. -->
     <variant name=".ManageChromeProfiles"/>
     <variant name=".ManageExtensions"/>
     <variant name=".ManageGoogleAccount"/>
+    <variant name=".ManageSkills"/>
     <variant name=".NameWindow"/>
     <variant name=".NewIncognitoWindow"/>
     <variant name=".NewIsolatedWindow"/>
@@ -1606,6 +1608,7 @@ features through Chrome Labs. -->
     <variant name=".ShowSavedTabGroups"/>
     <variant name=".ShowSignin"/>
     <variant name=".ShowSigninWhenPaused"/>
+    <variant name=".ShowSkillsAndExtensions"/>
     <variant name=".ShowSyncPassphraseDialog"/>
     <variant name=".ShowSyncSettings"/>
     <variant name=".ShowTranslate"/>

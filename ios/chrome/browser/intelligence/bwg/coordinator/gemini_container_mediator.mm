@@ -191,8 +191,9 @@ class GeminiContainerMediatorTabHelperObserver
 
 #pragma mark - Public Methods
 
-- (GeminiConfiguration*)createGeminiConfigurationForActiveWebState:
-    (GeminiStartupState*)startupState {
+- (GeminiConfiguration*)
+    createGeminiConfigurationForActiveWebState:(GeminiStartupState*)startupState
+                                   pageContext:(GeminiPageContext*)pageContext {
   if (startupState) {
     _startupState = startupState;
   }
@@ -203,7 +204,7 @@ class GeminiContainerMediatorTabHelperObserver
   }
 
   GeminiPageContext* initialPageContext =
-      geminiTabHelper->GetPartialPageContext();
+      pageContext ? pageContext : geminiTabHelper->GetPartialPageContext();
   [self applyUserPrefsToPageContext:initialPageContext];
 
   return [self createGeminiConfigurationWithTabHelper:geminiTabHelper
@@ -327,6 +328,46 @@ class GeminiContainerMediatorTabHelperObserver
   _gatewayManager = nil;
   [_stateManager reset];
   _stateManager.delegate = nil;
+}
+
+- (void)updateWithStartupState:(GeminiStartupState*)startupState {
+  if (!startupState) {
+    return;
+  }
+  _startupState = startupState;
+  gemini::EntryPoint entryPoint = startupState.entryPoint;
+
+  if (startupState.imageAttachment) {
+    ios::provider::AttachImage(startupState.imageAttachment);
+  }
+
+  [self updateFloatyWithPartialPageContext];
+
+  if (startupState.prepopulatedPrompt) {
+    ios::provider::UpdatePromptAction(entryPoint,
+                                      startupState.prepopulatedPrompt,
+                                      startupState.shouldAutoSubmit);
+  }
+
+  ios::provider::SetShouldShowSuggestionChips(
+      [self shouldShowSuggestionChipsForEntryPoint:entryPoint]);
+
+  ios::provider::SetBlockQuerySubmissionWhileLoading(
+      [self shouldBlockQuerySubmissionWhileLoadingForEntryPoint:entryPoint]);
+
+  ios::provider::SetShowPageLoadingSnackbarOnOpeningInvocation(
+      [self shouldShowPageLoadingSnackbarOnOpeningInvocationForEntryPoint:
+                entryPoint]);
+
+  if (startupState.isMismatchedAccount &&
+      IsAppSwitcherAISummarizationEnabled()) {
+    ios::provider::ShowAccountSnackbar();
+  }
+
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    // Assumes it's minimized.
+    [_containerHandler animateAssistantContainerToDetent:kMedium];
+  }
 }
 
 #pragma mark - ActorTaskLifecycleObserver
@@ -558,6 +599,14 @@ class GeminiContainerMediatorTabHelperObserver
     geminiPageContext.geminiPageContextAttachmentState =
         ios::provider::GeminiPageContextAttachmentState::kAttached;
   }
+}
+
+// Creates and returns the GeminiConfiguration for the active web state, using
+// its partial page context.
+- (GeminiConfiguration*)createGeminiConfigurationForActiveWebState:
+    (GeminiStartupState*)startupState {
+  return [self createGeminiConfigurationForActiveWebState:startupState
+                                              pageContext:nil];
 }
 
 - (GeminiConfiguration*)

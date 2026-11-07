@@ -17,7 +17,7 @@ import {VoiceSearchAction, VoiceSearchQuerySource} from 'chrome://resources/cr_c
 import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState, VoiceSearchState} from 'chrome://resources/cr_components/search/constants.js';
-import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteMatch, createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 /* clang-format off */
@@ -702,8 +702,11 @@ suite('ContextualTasksComposeboxTest', () => {
 
     // Setup mock zero-state results.
     const matches = [
-      createAutocompleteMatch(
-          {contents: 'focus match', destinationUrl: 'https://test.com'}),
+      createAutocompleteMatch({
+        suggestTemplate:
+            createSuggestTemplateInfo({primaryText: 'focus match'}),
+        destinationUrl: 'https://test.com',
+      }),
     ];
     contextualComposebox.zeroStateSuggestionsForTesting =
         createAutocompleteResultForTesting({
@@ -3582,7 +3585,8 @@ function createVoiceResults(transcripts: string[]): SpeechRecognitionEvent {
                   assertTrue(submitButton.part.contains('voice-submit-button'));
                   assertEquals(
                       SubmitButtonIconType.UPWARD, submitButton.iconType);
-                  assertTrue(submitButton.disabled);
+                  // Active even before any speech has been recognized.
+                  assertFalse(submitButton.disabled);
                   assertEquals(
                       '0',
                       window.getComputedStyle(submitButton)

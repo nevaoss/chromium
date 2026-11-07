@@ -4258,6 +4258,24 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Android.MultiWindow.StartupRestorationCompleted">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded when automatic multi-window restoration on startup finishes
+    creating all windows for which activity creation was initiated.
+  </description>
+</action>
+
+<action name="Android.MultiWindow.StartupRestorationInitiated">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded when automatic multi-window restoration on cold startup initiates
+    activity creation for at least one additional window.
+  </description>
+</action>
+
 <action name="Android.MultiWindowMode.Enter-SecondInstance">
   <owner>twellington@chromium.org</owner>
   <description>
@@ -29206,6 +29224,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="PageInfo.ExtensionsMenu.Opened">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>Extensions menu opened from PageInfo.</description>
+</action>
+
 <action name="PageInfo.ForgetSite.Cleared">
   <owner>olesiamarukhno@google.com</owner>
   <owner>dullweber@chromium.org</owner>
@@ -32850,6 +32874,24 @@ should be able to be added at any place in this file.
   <owner>gambard@chromium.org</owner>
   <description>
     Reported when user navigates to Bandwidth Settings. iOS only.
+  </description>
+</action>
+
+<action name="Settings.BottomBar.Disabled">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <description>
+    Logged when the user turns the bottom bar off in Appearance settings.
+    Android only.
+  </description>
+</action>
+
+<action name="Settings.BottomBar.Enabled">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <description>
+    Logged when the user turns the bottom bar on in Appearance settings. Android
+    only.
   </description>
 </action>
 

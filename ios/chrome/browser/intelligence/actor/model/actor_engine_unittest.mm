@@ -17,11 +17,13 @@
 #import "components/actor/core/task_source_info.h"
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
+#import "components/origin_gating/core/decision_source.h"
+#import "components/origin_gating/core/gateable_event.h"
+#import "components/origin_gating/core/gating_decision.h"
 #import "components/origin_gating/core/origin_gating_checker.h"
 #import "components/origin_gating/core/origin_gating_configuration.h"
 #import "components/origin_gating/core/origin_gating_registration.h"
 #import "components/origin_gating/core/origin_gating_service.h"
-#import "components/origin_gating/core/types.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_task.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_web_state_policy_decider.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
@@ -137,7 +139,18 @@ class MockActorEngineExecutionUpdatesDelegate
   bool on_will_execute_called_ = false;
 };
 
+enum class TestTool {
+  kClick = 1,
+};
+
 }  // namespace
+}  // namespace actor
+
+template <>
+const origin_gating::ToolDomain
+    origin_gating::ToolDomain::kInstance<actor::TestTool>{};
+
+namespace actor {
 
 // Test fixture for ActorEngine.
 class ActorEngineTest : public PlatformTest {
@@ -798,7 +811,8 @@ TEST_F(ActorEngineOriginGatingTest, BlocksActionOnBlockedUrl) {
   checker_->ComputeGatingDecision(
       std::make_unique<origin_gating::GatingDecisionContext>(),
       origin_gating::GateableEvent(origin_gating::PageActionEvent{
-          .destination = GURL("https://malicious.com")}),
+          .destination = GURL("https://malicious.com"),
+          .tool = origin_gating::ClientTool(TestTool::kClick)}),
       future.GetCallback());
 
   const origin_gating::GatingDecision& decision = future.Get<1>();
