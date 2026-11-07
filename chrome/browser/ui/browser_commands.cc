@@ -2597,8 +2597,8 @@ void ToggleContextualTasksSidePanelZeroState(BrowserWindowInterface* browser) {
   CHECK(controller);
   if (controller->IsPanelOpenForContextualTask()) {
     controller->Close();
-  } else if (base::FeatureList::IsEnabled(
-                 contextual_tasks::kContextualTasksUpdatedEntryPoints)) {
+  } else if (contextual_tasks::AreContextualTasksUpdatedEntryPointsEnabled(
+                 browser ? browser->GetProfile() : nullptr)) {
     ExecAskGoogleAboutThisPage(
         browser,
         lens::LensOverlayInvocationSource::kCobrowsePinnedToolbarButton,
@@ -3124,8 +3124,9 @@ void ExecLensOverlay(BrowserWindowInterface* browser) {
   CHECK(controller);
   controller->OpenLensOverlay(
       lens::LensOverlayInvocationSource::kAppMenu,
-      /*should_show_csb=*/!base::FeatureList::IsEnabled(
-          contextual_tasks::kContextualTasksUpdatedEntryPoints));
+      /*should_show_csb=*/!contextual_tasks::
+          AreContextualTasksUpdatedEntryPointsEnabled(
+              browser ? browser->GetProfile() : nullptr));
   BrowserUserEducationInterface::From(browser)->NotifyNewBadgeFeatureUsed(
       lens::features::kLensOverlay);
 }
@@ -3152,19 +3153,6 @@ void ExecLensRegionSearch(BrowserWindowInterface* browser) {
 #endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
 }
 
-void ExecAskGoogleAboutThisPage(BrowserWindowInterface* browser) {
-  ExecAskGoogleAboutThisPage(
-      browser, lens::LensOverlayInvocationSource::kContentAreaContextMenuPage);
-}
-
-void ExecAskGoogleAboutThisPage(
-    BrowserWindowInterface* browser,
-    lens::LensOverlayInvocationSource invocation_source) {
-  ExecAskGoogleAboutThisPage(
-      browser, invocation_source,
-      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION);
-}
-
 void ExecAskGoogleAboutThisPage(
     BrowserWindowInterface* browser,
     lens::LensOverlayInvocationSource invocation_source,
@@ -3173,8 +3161,15 @@ void ExecAskGoogleAboutThisPage(
   if (!browser) {
     return;
   }
-  if (contextual_tasks::kContextualTasksContextMenuRouteAskGoogleToOmnibox
-          .Get()) {
+  base::UmaHistogramEnumeration("ContextualTasks.AskGoogle.Invoked",
+                                invocation_source);
+  if (auto* const user_education =
+          BrowserUserEducationInterface::From(browser)) {
+    user_education->NotifyNewBadgeFeatureUsed(
+        contextual_tasks::kContextualTasksUpdatedEntryPoints);
+  }
+  if (contextual_tasks::ShouldRouteAskGoogleToOmnibox(
+          browser ? browser->GetProfile() : nullptr)) {
     BrowserWindow* window = BrowserWindow::FromBrowser(browser);
     LocationBar* location_bar = window ? window->GetLocationBar() : nullptr;
     OmniboxController* omnibox_controller =

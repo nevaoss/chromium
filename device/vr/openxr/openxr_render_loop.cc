@@ -607,7 +607,7 @@ void OpenXrRenderLoop::UpdateLayerBounds(int16_t frame_id,
 
 void OpenXrRenderLoop::SubmitOverlayTexture(
     int16_t frame_id,
-    gfx::GpuMemoryBufferHandle texture,
+    gpu::ExportedSharedImage exported_shared_image,
     const gpu::SyncToken& sync_token,
     const gfx::RectF& left_bounds,
     const gfx::RectF& right_bounds,
@@ -626,8 +626,9 @@ void OpenXrRenderLoop::SubmitOverlayTexture(
 
   pending_frame_->waiting_for_overlay_ = false;
 
-  graphics_binding_->SetOverlayTexture(std::move(texture), sync_token,
-                                       left_bounds, right_bounds);
+  graphics_binding_->SetOverlayTexture(
+      gpu::ClientSharedImage::ImportUnowned(std::move(exported_shared_image)),
+      sync_token, left_bounds, right_bounds);
   pending_frame_->overlay_submitted_ = true;
 
   // Regardless of success - try to composite what we have.
@@ -982,10 +983,8 @@ void OpenXrRenderLoop::SubmitFrameDrawnIntoTexture(
   // No GPU fence: a CPU finish guarantees the WebGL write completed before the
   // binding reads the shared image. WaitOnFence is a no-op without a fence FD.
   // TODO(crbug.com/506004811): use a GL-signal/Vulkan-wait fence if available.
-  for (const auto& sync_token : combined_sync_tokens) {
-    gl->WaitSyncTokenCHROMIUM(sync_token.GetConstData());
-  }
-  gl->Finish();
+  gpu::ClientSharedImage::WaitSyncTokenAndFinish(
+      std::move(shared_images), std::move(combined_sync_tokens), gl);
   TRACE_EVENT_END("xr", perfetto::Track(frame_index));
   MarkFrameSubmitted(frame_index);
   MaybeCompositeAndSubmit(layer_ids);

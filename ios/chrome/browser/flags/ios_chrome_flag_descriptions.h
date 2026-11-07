@@ -138,6 +138,10 @@ inline constexpr char kAssistantAimMinimizedStateDescription[] =
     "When enabled, the Assistant AIM (Co-browse) interface initially appears "
     "in a minimized state instead of the default medium state.";
 
+inline constexpr char kAssistantAimThreadsName[] = "AssistantAimThreads";
+inline constexpr char kAssistantAimThreadsDescription[] =
+    "Enables the AssistantAimThreads feature.";
+
 inline constexpr char kAssistantContainerName[] = "Assistant Container";
 inline constexpr char kAssistantContainerDescription[] =
     "Enables the Assistant Container feature. The debug parameter enables "
@@ -803,6 +807,11 @@ inline constexpr char kEnableLensOnIPadName[] = "Enable Lens on iPad";
 inline constexpr char kEnableLensOnIPadDescription[] =
     "When enabled, enables Lens Viewfinder entry points on iPad.";
 
+inline constexpr char kEnableLensViewFinderUnifiedExperienceName[] =
+    "Enable LVF Unified Experience";
+inline constexpr char kEnableLensViewFinderUnifiedExperienceDescription[] =
+    "Enables Lens View Finder unified experience";
+
 inline constexpr char kEnableNewStartupFlowName[] = "EnableNewStartupFlow";
 inline constexpr char kEnableNewStartupFlowDescription[] =
     "Enables the EnableNewStartupFlow feature.";
@@ -970,10 +979,6 @@ inline constexpr char kGeminiLuminousDescription[] =
 inline constexpr char kGeminiMultiTabContextName[] = "Gemini Multi Tab Context";
 inline constexpr char kGeminiMultiTabContextDescription[] =
     "Enables attaching multiple tabs in Gemini.";
-
-inline constexpr char kGeminiNavigationPromoName[] = "GeminiNavigationPromo";
-inline constexpr char kGeminiNavigationPromoDescription[] =
-    "Enables the automatic promo for Gemini on navigation.";
 
 inline constexpr char kGeminiPreciseLocationName[] = "BWG Precise Location";
 inline constexpr char kGeminiPreciseLocationDescription[] =
@@ -1515,10 +1520,6 @@ inline constexpr char kOmniboxMaxURLMatchesDescription[] =
     "still display more than MaxURLMatches if there are no non-URL suggestions "
     "to replace them.";
 
-inline constexpr char kOmniboxMiaZpsName[] = "Omnibox Mia ZPS on NTP";
-inline constexpr char kOmniboxMiaZpsDescription[] =
-    "Enables Mia ZPS suggestions in NTP omnibox";
-
 inline constexpr char kOmniboxMlLogUrlScoringSignalsName[] =
     "Log Omnibox URL Scoring Signals";
 inline constexpr char kOmniboxMlLogUrlScoringSignalsDescription[] =
@@ -1706,12 +1707,6 @@ inline constexpr char kPlusButtonMenuMoreOptionsSubmenuDescription[] =
     "When enabled, the full list of options in the plus menu is grouped in a "
     "submenu.";
 
-inline constexpr char kPrepopulatedEnginesShadowVariantsName[] =
-    "Prepopulated Engines Shadow Variants";
-inline constexpr char kPrepopulatedEnginesShadowVariantsDescription[] =
-    "Enables shadow variants for prepopulated engines resolution, allowing "
-    "alternative engines to be resolved in specific regions.";
-
 inline constexpr char kPriceTrackingPromoName[] =
     "Enables price tracking notification promo card";
 inline constexpr char kPriceTrackingPromoDescription[] =
@@ -1819,11 +1814,22 @@ inline constexpr char kSmoothScrollingUseDelegateDescription[] =
     "When enabled, the SmoothScrollingDefault experiment uses the regular "
     "UIScrollViewDelegate instead of KVO and broadcasting.";
 
+inline constexpr char kSnapshotBackgroundDecodeName[] =
+    "Snapshot Background Decode";
+inline constexpr char kSnapshotBackgroundDecodeDescription[] =
+    "Enables decoding tab snapshot images on the background thread pool.";
+
 inline constexpr char kSnapshotCompressedJPEGQualityName[] =
     "Snapshot Compressed JPEG Quality";
 inline constexpr char kSnapshotCompressedJPEGQualityDescription[] =
     "Reduces snapshot JPEG quality from 1.0 to 0.97 for visually lossless "
     "compression, reducing file size by ~3-5x.";
+
+inline constexpr char kSnapshotConcurrentAccessName[] =
+    "Snapshot Concurrent Access";
+inline constexpr char kSnapshotConcurrentAccessDescription[] =
+    "Enables concurrent reading, writing, and decoding of tab snapshot images "
+    "on the background thread pool.";
 
 inline constexpr char kSnapshotDownsampleImageName[] =
     "Snapshot Downsample Image";

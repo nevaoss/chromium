@@ -90,6 +90,7 @@ source_set("onc") {
       "//components/policy/core/common",
       "//components/policy/core/common:common_constants",
       "//components/prefs",
+      "//components/session_manager/core",
       "//components/user_manager",
       "//dbus",
       "//extensions/browser",
@@ -479,6 +480,9 @@ source_set("policy_specific_browser_tests") {
       "//chrome/browser/on_device_translation:test_support",
     ]
   }
+  if (is_chromeos) {
+    deps += [ "//chrome/browser/ui/ash/login" ]
+  }
 }
 
 source_set("browser_tests") {
@@ -511,6 +515,7 @@ source_set("browser_tests") {
     "//chrome/browser:main_extra_parts",
     "//chrome/browser/background",
     "//chrome/browser/invalidation",
+    "//chrome/browser/net",
     "//chrome/browser/policy:policy_util",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/search",
@@ -754,6 +759,9 @@ source_set("browser_tests") {
       "//chrome/browser/ui/webui/certificate_manager",
     ]
   }
+  if (!is_android) {
+    deps += [ "//chrome/browser/device_identity" ]
+  }
 }
 
 source_set("android_browsertests") {
@@ -848,6 +856,7 @@ source_set("unit_tests") {
     ":test_support",
     "//chrome/browser/policy:test_support",
     "//chrome/browser/prefs",
+    "//chrome/browser/ui:enterprise_startup_dialog",
     "//chrome/test:test_support",
     "//chrome/test/base:testing_browser_process",
     "//components/account_id:test_support",
@@ -878,7 +887,10 @@ source_set("unit_tests") {
   }
 
   if (is_win || is_mac || is_linux || is_chromeos) {
-    sources += [ "gemini_enterprise_settings_policy_handler_unittest.cc" ]
+    sources += [
+      "gemini_enterprise_settings_policy_handler_unittest.cc",
+      "gemini_enterprise_url_policy_handler_unittest.cc",
+    ]
   }
 
   if (!is_android) {
@@ -886,6 +898,7 @@ source_set("unit_tests") {
     deps += [
       ":path_parser",
       "//chrome/browser/device_api",
+      "//chrome/browser/device_identity",
       "//chrome/browser/web_applications",
       "//chrome/browser/web_applications:web_applications_test_support",
       "//components/webapps/isolated_web_apps",
@@ -923,6 +936,7 @@ source_set("unit_tests") {
       "chrome_browser_cloud_management_controller_android_unittest.cc",
       "client_data_delegate_android_unittest.cc",
     ]
+    deps += [ "//chrome/browser/net" ]
   }
 
   if (is_linux || is_chromeos) {
@@ -1105,7 +1119,10 @@ source_set("policy") {
   }
 
   if (is_win || is_mac || is_linux || is_chromeos) {
-    public += [ "gemini_enterprise_settings_policy_handler.h" ]
+    public += [
+      "gemini_enterprise_settings_policy_handler.h",
+      "gemini_enterprise_url_policy_handler.h",
+    ]
   }
 
   if (!is_android) {
@@ -1394,6 +1411,7 @@ source_set("impl") {
     ]
     deps += [
       "//chrome/browser/android:tabs_public",
+      "//chrome/browser/enterprise/connectors/device_trust/attestation/android",
       "//chrome/browser/enterprise/connectors/device_trust/key_management/android",
       "//chrome/browser/lens",
       "//chrome/browser/policy/android",
@@ -1406,7 +1424,10 @@ source_set("impl") {
   }
 
   if (is_win || is_mac || is_linux || is_chromeos) {
-    sources += [ "gemini_enterprise_settings_policy_handler.cc" ]
+    sources += [
+      "gemini_enterprise_settings_policy_handler.cc",
+      "gemini_enterprise_url_policy_handler.cc",
+    ]
     deps += [ "//chrome/browser/glic/gemini_enterprise:url_allowlist" ]
   }
 

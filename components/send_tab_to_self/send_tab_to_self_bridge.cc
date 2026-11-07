@@ -577,7 +577,7 @@ const SendTabToSelfEntry* SendTabToSelfBridge::SendEntry(
   syncer::DeviceInfo::FormFactor target_form_factor =
       syncer::DeviceInfo::FormFactor::kUnknown;
   const syncer::DeviceInfo* target_device =
-      device_info_tracker_->GetDeviceInfo(target_device_cache_guid);
+      device_info_tracker_->GetChromeDeviceInfo(target_device_cache_guid);
   if (target_device) {
     target_form_factor = target_device->form_factor();
   }
@@ -632,12 +632,9 @@ void SendTabToSelfBridge::MarkEntryOpenedImpl(std::string_view guid,
   SendTabToSelfEntry* entry = GetMutableEntryByGUID(guid);
   // Assure that an entry with that guid exists.
   if (!entry) {
-    auto it = unknown_opened_entries_.find(guid);
-    if (it != unknown_opened_entries_.end()) {
-      it->second = opened_time;
-    } else {
-      unknown_opened_entries_.emplace(guid, opened_time);
-    }
+    // Keep the first opened time, consistent with known entries, which ignore
+    // repeated opens.
+    unknown_opened_entries_.try_emplace(guid, opened_time);
     return;
   }
 
@@ -675,8 +672,7 @@ void SendTabToSelfBridge::MarkEntryActivatedImpl(
     // If the entry is not yet in the model (because it has not loaded yet or
     // has not been received from the server yet), store the activated time and
     // entry point and apply it when the entry is added to the model.
-    unknown_activated_entries_.emplace(
-        guid, std::make_pair(activated_time, entry_point));
+    unknown_activated_entries_.try_emplace(guid, activated_time, entry_point);
     return;
   }
 
@@ -1003,7 +999,7 @@ const syncer::DeviceInfo* SendTabToSelfBridge::GetLocalDeviceInfo() const {
   if (!change_processor()->IsTrackingMetadata()) {
     return nullptr;
   }
-  return device_info_tracker_->GetDeviceInfo(
+  return device_info_tracker_->GetChromeDeviceInfo(
       change_processor()->TrackedCacheGuid());
 }
 

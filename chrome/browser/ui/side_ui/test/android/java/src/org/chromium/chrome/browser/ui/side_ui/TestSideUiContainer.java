@@ -38,12 +38,23 @@ public final class TestSideUiContainer implements SideUiContainer {
     /** Map of {@link Tab} to whether this container has content to show for that tab. */
     public final Map<Tab, Boolean> mHasContentForTabMap = new ArrayMap<>();
 
+    /** Number of times {@link #hasContentToShow} is called. */
+    public int mNumHasContentToShowCalls;
+
     /**
      * Whether browser top controls should remain locked when this container is showing.
      *
      * <p>This will be returned by {@link #shouldLockTopControls()}.
      */
     public boolean mShouldLockTopControls = true;
+
+    /**
+     * Whether the anchor container holding this container should be filled with the default
+     * background color.
+     *
+     * <p>This will be returned by {@link #shouldDrawAnchorContainerBackground()}.
+     */
+    public boolean mShouldDrawAnchorContainerBackground = true;
 
     /** The last {@code availableWidth} received by {@link #determineShowableSize}. */
     public @Nullable @Px Integer mLastAvailableWidth;
@@ -181,6 +192,7 @@ public final class TestSideUiContainer implements SideUiContainer {
 
     @Override
     public boolean hasContentToShow(Tab tab) {
+        mNumHasContentToShowCalls++;
         return mHasContentForTabMap.getOrDefault(tab, true);
     }
 
@@ -194,6 +206,11 @@ public final class TestSideUiContainer implements SideUiContainer {
     @Override
     public boolean shouldLockTopControls() {
         return mShouldLockTopControls;
+    }
+
+    @Override
+    public boolean shouldDrawAnchorContainerBackground() {
+        return mShouldDrawAnchorContainerBackground;
     }
 
     @Override

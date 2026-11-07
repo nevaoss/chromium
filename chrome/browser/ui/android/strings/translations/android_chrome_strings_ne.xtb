@@ -322,6 +322,7 @@ Chrome मा तपाईंलाई अझ राम्रो ब्राउ
 <translation id="2297822946037605517">यो पेज सेयर गर्नुहोस्</translation>
 <translation id="230115972905494466">कुनै पनि मिल्दाजुल्दा यन्त्र भेटिएनन्</translation>
 <translation id="2305798319182970276">एउटा बटन ट्याप गरेकै भरमा आफ्नो हिस्ट्री मेटाउनुहोस्</translation>
+<translation id="2307420463693979699">यो साइटका हकमा <ph name="APP_NAME" /> लाई ह्युमन इन्टरफेस डिभाइस (HID) एक्सेस गर्ने अनुमति दिनु पर्ने हुन्छ।</translation>
 <translation id="2316129865977710310">पर्दैन, धन्यवाद</translation>
 <translation id="232137538351753795">पछि फर्कन बायाँ किनाराबाट स्वाइप गर्नुहोस्</translation>
 <translation id="2323763861024343754">साइटको भण्डारण</translation>
@@ -1690,6 +1691,7 @@ Chrome मा तपाईंलाई अझ राम्रो ब्राउ
 <translation id="7608245556672190037">Chrome Finds अन गर्ने विकल्प पूरै स्क्रिनमा खोलिएको छ</translation>
 <translation id="7612619742409846846">यस रूपमा Google मा साइन इन गरियो</translation>
 <translation id="7612989789287281429">साइन इन गरिँदै छ…</translation>
+<translation id="7617512710641355143">Chrome व्यवस्थापन गरिन्छ</translation>
 <translation id="7619072057915878432"><ph name="FILE_NAME" /> डाउनलोड नेटवर्क असफलताका कारणले असफल भयो।</translation>
 <translation id="7626032353295482388">Chrome मा स्वागत छ</translation>
 <translation id="7628417132421583481">पासवर्ड म्यानेजरमा जानुहोस्</translation>

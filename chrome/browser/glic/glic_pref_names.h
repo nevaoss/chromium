@@ -190,6 +190,12 @@ inline constexpr char kGlicActuationOnWebAllowedForURLs[] =
 inline constexpr char kGlicActuationOnWebBlockedForURLs[] =
     "glic.actuation_on_web_blocked_for_urls";
 
+// String pref populated by the `GeminiEnterpriseUrl` enterprise policy. Stores
+// the enterprise's Gemini Enterprise web application URL (e.g.
+// `https://business.gemini.google/home/cid/<id>`). Replaces
+// `kGlicGeminiEnterpriseSettings`.
+inline constexpr char kGlicGeminiEnterpriseUrl[] = "glic.gemini_enterprise_url";
+
 // Dict pref populated by the `GeminiEnterpriseSettings` enterprise policy.
 // Stores a `"url"` string key pointing to the enterprise's Gemini Enterprise
 // web application URL (e.g. `https://business.gemini.google/home/cid/<id>`).
@@ -218,8 +224,8 @@ inline constexpr char kGlicPreviouslyNotAllowed[] =
 inline constexpr char kGlicMarketingAutoOpenCount[] =
     "glic.marketing_auto_open_count";
 
-// String pref that records the acquisition cohort for Glic promotion page
-// visits.
+// String pref that records whether a Glic promotion page visit originated from
+// zss or a non-zss source.
 inline constexpr char kGlicPromotionSourceCohort[] =
     "glic.promotion_source_cohort";
 

@@ -69,6 +69,8 @@
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/sanitizer/sanitizer.h"
 #include "third_party/blink/renderer/core/script/html_parser_script_runner.h"
+#include "third_party/blink/renderer/core/script/script_element_base.h"
+#include "third_party/blink/renderer/core/script/script_loader.h"
 #include "third_party/blink/renderer/platform/bindings/runtime_call_stats.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -392,7 +394,8 @@ HTMLDocumentParser::HTMLDocumentParser(
   if (parser_content_policy == kAllowScriptingContentAndMarkAsParserInserted) {
     CHECK(RuntimeEnabledFeatures::NewHTMLSettingMethodsEnabled());
     script_runner_ = HTMLParserScriptRunner::Create(
-        ReentryPermit(), &fragment_target->GetDocument(), this);
+        ReentryPermit(), &fragment_target->GetDocument(), this,
+        /*is_parsing_fragment=*/true);
   }
 
   tree_builder_ = MakeGarbageCollected<HTMLTreeBuilder>(
@@ -507,6 +510,31 @@ void HTMLDocumentParser::Detach() {
 
 void HTMLDocumentParser::StopParsing() {
   DocumentParser::StopParsing();
+  // https://html.spec.whatwg.org/C/#abort-a-parser, fragment case: flush
+  // pending text, mark every open <script> as "already started" so a partially
+  // parsed script never runs later, pop all open elements, and drop the
+  // pending parser-blocking / deferred scripts (which also unblocks rendering
+  // on them).
+  if (tree_builder_ && IsParsingFragment()) {
+    // Only HTMLStream (streamHTML* etc.) stops a fragment parser mid-parse.
+    CHECK(RuntimeEnabledFeatures::NewHTMLSettingMethodsEnabled());
+    tree_builder_->Flush();
+    if (tree_builder_->OpenElements()->StackDepth() > 0) {
+      for (HTMLStackItem* item = tree_builder_->OpenElements()->TopStackItem();
+           item; item = item->NextItemInStack()) {
+        if (item->IsElementNode() && item->GetElement()->IsScriptElement()) {
+          if (ScriptLoader* loader =
+                  ScriptLoaderFromElement(item->GetElement())) {
+            loader->SetAlreadyStarted();
+          }
+        }
+      }
+      tree_builder_->OpenElements()->PopAll();
+    }
+    if (script_runner_) {
+      script_runner_->Detach();
+    }
+  }
   task_runner_state_->SetState(
       HTMLDocumentParserState::DeferredParserState::kNotScheduled);
 }
@@ -813,10 +841,7 @@ bool HTMLDocumentParser::PumpTokenizer() {
                     starting_bytes - input_.length());
   }
 
-  const bool is_stopped_or_parsing_fragment =
-      IsStopped() || IsParsingFragment();
-
-  if (!is_stopped_or_parsing_fragment) {
+  if (!IsStopped()) {
     // There should only be PendingText left since the tree-builder always
     // flushes the task queue before returning. In case that ever changes,
     // crash.
@@ -829,7 +854,7 @@ bool HTMLDocumentParser::PumpTokenizer() {
         chunk_parsing_timer.Elapsed() - time_executing_script, tokens_parsed);
   }
 
-  if (is_stopped_or_parsing_fragment) {
+  if (IsStopped() || IsParsingFragment()) {
     return false;
   }
 

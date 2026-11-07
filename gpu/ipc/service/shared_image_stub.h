@@ -16,7 +16,6 @@
 #include "gpu/ipc/common/command_buffer_id.h"
 #include "gpu/ipc/common/gpu_channel.mojom.h"
 #include "gpu/ipc/service/gpu_ipc_service_export.h"
-#include "ui/gfx/gpu_extra_info.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
@@ -64,10 +63,6 @@ class GPU_IPC_SERVICE_EXPORT SharedImageStub {
                                   base::OnceCallback<void(bool)> callback);
 #endif
 
-  bool CopyNativeBufferToSharedMemoryAsync(
-      gfx::GpuMemoryBufferHandle buffer_handle,
-      base::UnsafeSharedMemoryRegion shared_memory);
-
 #if BUILDFLAG(IS_FUCHSIA)
   void RegisterSysmemBufferCollection(zx::eventpair service_handle,
                                       zx::channel sysmem_token,
@@ -76,11 +71,19 @@ class GPU_IPC_SERVICE_EXPORT SharedImageStub {
                                       bool register_with_image_pipe);
 #endif  // BUILDFLAG(IS_FUCHSIA)
 
-  void SetGpuExtraInfo(const gfx::GpuExtraInfo& gpu_extra_info);
-
   bool MakeContextCurrent(bool needs_gl = false);
 
   MemoryTracker* memory_tracker() { return memory_tracker_.get(); }
+
+  // These functions run on IO-Thread, caller guarantees that SharedImageStub is
+  // alive during the call.
+  bool CopyNativeBufferToSharedMemoryAsync(
+      gfx::GpuMemoryBufferHandle buffer_handle,
+      base::UnsafeSharedMemoryRegion shared_memory);
+  gfx::GpuMemoryBufferHandle CreateGpuMemoryBufferHandle(
+      const gfx::Size& size,
+      const viz::SharedImageFormat& format,
+      gfx::BufferUsage buffer_usage);
 
  private:
   SharedImageStub(GpuChannel* channel, int32_t route_id);

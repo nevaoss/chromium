@@ -36,6 +36,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -107,6 +108,7 @@ import org.chromium.components.contextual_search.ContextUploadStatus;
 import org.chromium.components.contextual_search.DisclaimerStatus;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.contextual_search.InputStateBuilder;
+import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AimModelsProtoIntDef.ModelMode;
@@ -276,6 +278,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private ScrimManager mScrimManager;
     @Mock private BackPressManager mBackPressManager;
     @Mock private Runnable mOnFirstPickerInteractionCanceledCallback;
+    @Mock private Runnable mOnPickerInteractionSucceededCallback;
     @Mock private KeyEvent mKeyEvent;
     @Mock private Runnable mOnRemoveRunnable;
     @Mock private FuseboxAttachmentModelList mFuseboxAttachmentModelList;
@@ -314,7 +317,6 @@ public class FuseboxMediatorUnitTest {
 
     @Before
     public void setUp() {
-        OmniboxFeatures.sMultiattachmentFusebox.setForTesting(/* overrideValue= */ true);
         OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ false);
         mTabModelSelectorSupplier = ObservableSuppliers.createNonNull(mTabModelSelector);
 
@@ -376,9 +378,9 @@ public class FuseboxMediatorUnitTest {
         TabLoadingService.setInstanceForTesting(mTabLoadingService);
         lenient().doReturn(true).when(mDriveFilePickerClient).isAvailable(any(), any());
         lenient()
-                .doReturn(Promise.fulfilled(null))
+                .doReturn(Promise.fulfilled(List.of()))
                 .when(mDriveFilePickerClient)
-                .launchPicker(any(), any(), any());
+                .launchPicker(any(), any(), any(), anyBoolean());
         DriveDisclaimerBridgeJni.setInstanceForTesting(mDriveDisclaimerBridgeNatives);
 
         mInputStateSupplier.set(DEFAULT_INPUT_STATE);
@@ -428,6 +430,7 @@ public class FuseboxMediatorUnitTest {
                         mOnFirstPickerInteractionCanceledCallback,
                         mHasAttachmentsSupplier,
                         mUrlTextWrappingSupplier);
+        mMediator.setOnPickerInteractionSucceededCallback(mOnPickerInteractionSucceededCallback);
     }
 
     /* Useful for testing logic in the mediator's constructor. */
@@ -1488,7 +1491,7 @@ public class FuseboxMediatorUnitTest {
         verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());
         Intent intent = mIntentCaptor.getValue();
         assertEquals(
-                FuseboxAttachmentModelList.getMaxAttachments(),
+                FuseboxAttachmentModelList.MAX_ATTACHMENTS,
                 intent.getIntExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, /* defaultValue= */ -1));
     }
 
@@ -1510,7 +1513,7 @@ public class FuseboxMediatorUnitTest {
         verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());
         Intent intent = mIntentCaptor.getValue();
         assertEquals(
-                FuseboxAttachmentModelList.getMaxAttachments(),
+                FuseboxAttachmentModelList.MAX_ATTACHMENTS,
                 intent.getIntExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, /* defaultValue= */ -1));
     }
 
@@ -1560,9 +1563,9 @@ public class FuseboxMediatorUnitTest {
                         /* resourceKey= */ null,
                         "Test Doc",
                         DriveIconUtils.MIME_TYPE_GOOGLE_DOCS);
-        doReturn(Promise.fulfilled(metadata))
+        doReturn(Promise.fulfilled(List.of(metadata)))
                 .when(mDriveFilePickerClient)
-                .launchPicker(mWindowAndroid, mProfile, null);
+                .launchPicker(mWindowAndroid, mProfile, null, true);
         doReturn("token123")
                 .when(mComposeboxQueryControllerBridge)
                 .addDriveFile("drive_id", null, "Test Doc", DriveIconUtils.MIME_TYPE_GOOGLE_DOCS);
@@ -1573,6 +1576,51 @@ public class FuseboxMediatorUnitTest {
         assertTrue(mModel.get(FuseboxProperties.ATTACHMENTS_VISIBLE));
         assertEquals(1, mAttachments.size());
         assertEquals("Test Doc", mAttachments.get(0).title);
+    }
+
+    @Test
+    public void onDrivePickerClicked_pickerMultipleFiles_attachesAllInOrder() {
+        setDriveConsentStatus(DisclaimerStatus.ACCEPTED);
+        var first = new DriveAttachmentMetadata("id_1", null, "Doc 1", "application/pdf");
+        var second = new DriveAttachmentMetadata("id_2", null, "Doc 2", "application/pdf");
+        doReturn(Promise.fulfilled(List.of(first, second)))
+                .when(mDriveFilePickerClient)
+                .launchPicker(mWindowAndroid, mProfile, null, true);
+        doReturn("token1")
+                .when(mComposeboxQueryControllerBridge)
+                .addDriveFile(eq("id_1"), any(), any(), any());
+        doReturn("token2")
+                .when(mComposeboxQueryControllerBridge)
+                .addDriveFile(eq("id_2"), any(), any(), any());
+
+        mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(2, mAttachments.size());
+        assertEquals("Doc 1", mAttachments.get(0).title);
+        assertEquals("Doc 2", mAttachments.get(1).title);
+        verify(mSnackbarManager, never()).showSnackbar(any());
+    }
+
+    @Test
+    public void onDrivePickerClicked_filesExceedLimit_showsLimitSnackbar() {
+        setDriveConsentStatus(DisclaimerStatus.ACCEPTED);
+        List<DriveAttachmentMetadata> files = new ArrayList<>();
+        for (int i = 0; i < FuseboxAttachmentModelList.MAX_ATTACHMENTS + 1; i++) {
+            files.add(new DriveAttachmentMetadata("id_" + i, null, "Doc " + i, "application/pdf"));
+        }
+        doReturn(Promise.fulfilled(files))
+                .when(mDriveFilePickerClient)
+                .launchPicker(mWindowAndroid, mProfile, null, true);
+        doReturn("token")
+                .when(mComposeboxQueryControllerBridge)
+                .addDriveFile(any(), any(), any(), any());
+
+        mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(FuseboxAttachmentModelList.MAX_ATTACHMENTS, mAttachments.size());
+        verify(mSnackbarManager).showSnackbar(any());
     }
 
     @Test
@@ -1595,7 +1643,7 @@ public class FuseboxMediatorUnitTest {
 
         mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
 
-        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any());
+        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -1604,7 +1652,7 @@ public class FuseboxMediatorUnitTest {
 
         mModel.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run();
 
-        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any());
+        verify(mDriveFilePickerClient, never()).launchPicker(any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -1744,13 +1792,26 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void beginInput_fromNtp_recordsAiModeActivationSource() {
-        mInput.setRequestType(AutocompleteRequestType.AI_MODE);
+        testBeginInputFromNtpRecordsActivationSourceImpl(
+                AutocompleteRequestType.AI_MODE, FuseboxMetrics.AiModeActivationSource.NTP_BUTTON);
+    }
+
+    @Test
+    public void beginInput_fromNtpCreateImage_recordsAiModeActivationSource() {
+        testBeginInputFromNtpRecordsActivationSourceImpl(
+                AutocompleteRequestType.IMAGE_GENERATION,
+                FuseboxMetrics.AiModeActivationSource.NTP_CREATE_IMAGE_BUTTON);
+    }
+
+    private void testBeginInputFromNtpRecordsActivationSourceImpl(
+            @AutocompleteRequestType int requestType,
+            @FuseboxMetrics.AiModeActivationSource int expectedActivationSource) {
+        mInput.setRequestType(requestType);
         mInput.setFocusReason(OmniboxFocusReason.NTP_AI_MODE);
 
         try (var ignored =
                 HistogramWatcher.newSingleRecordWatcher(
-                        "Omnibox.MobileFusebox.AiModeActivationSource",
-                        FuseboxMetrics.AiModeActivationSource.NTP_BUTTON)) {
+                        "Omnibox.MobileFusebox.AiModeActivationSource", expectedActivationSource)) {
             recreateMediator();
         }
     }
@@ -1934,7 +1995,7 @@ public class FuseboxMediatorUnitTest {
         assertNotNull(
                 intent.getIntegerArrayListExtra(ChromeItemPickerExtras.EXTRA_PRESELECTED_TAB_IDS));
         assertEquals(
-                FuseboxAttachmentModelList.getMaxAttachments(),
+                FuseboxAttachmentModelList.MAX_ATTACHMENTS,
                 intent.getIntExtra(ChromeItemPickerExtras.EXTRA_ALLOWED_SELECTION_COUNT, -1));
     }
 
@@ -1957,7 +2018,7 @@ public class FuseboxMediatorUnitTest {
         assertTrue(preselectedIds.contains(tab1.getId()));
         assertTrue(preselectedIds.contains(tab2.getId()));
         assertEquals(
-                FuseboxAttachmentModelList.getMaxAttachments(),
+                FuseboxAttachmentModelList.MAX_ATTACHMENTS,
                 intent.getIntExtra(ChromeItemPickerExtras.EXTRA_ALLOWED_SELECTION_COUNT, -1));
     }
 
@@ -1975,7 +2036,7 @@ public class FuseboxMediatorUnitTest {
         int allowedSelectionCount =
                 intent.getIntExtra(ChromeItemPickerExtras.EXTRA_ALLOWED_SELECTION_COUNT, -1);
         // The image and file attachments should count against the max, the tab should not.
-        assertEquals(FuseboxAttachmentModelList.getMaxAttachments() - 2, allowedSelectionCount);
+        assertEquals(FuseboxAttachmentModelList.MAX_ATTACHMENTS - 2, allowedSelectionCount);
     }
 
     @Test
@@ -1992,7 +2053,7 @@ public class FuseboxMediatorUnitTest {
         int allowedSelectionCount =
                 intent.getIntExtra(ChromeItemPickerExtras.EXTRA_ALLOWED_SELECTION_COUNT, -1);
         // The image and file attachments should count against the max, the tab should not.
-        assertEquals(FuseboxAttachmentModelList.getMaxAttachments() - 2, allowedSelectionCount);
+        assertEquals(FuseboxAttachmentModelList.MAX_ATTACHMENTS - 2, allowedSelectionCount);
     }
 
     @Test
@@ -2062,8 +2123,26 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void testOnTabPickerResult_notifiesTabAttachedEvent() {
+        mMediator.onTabPickerResult(Activity.RESULT_OK, createTabPickerResultIntent(List.of(101)));
+        verify(mTracker).notifyEvent(EventConstants.FUSEBOX_TAB_PICKER_TAB_ATTACHED);
+    }
+
+    @Test
+    public void testOnTabPickerResult_canceled_doesNotNotifyTabAttachedEvent() {
+        mMediator.onTabPickerResult(Activity.RESULT_CANCELED, /* data= */ null);
+        verify(mTracker, never()).notifyEvent(EventConstants.FUSEBOX_TAB_PICKER_TAB_ATTACHED);
+    }
+
+    @Test
     public void testFailedUpload() {
         mMediator.onAttachmentUploadFailed();
+        verify(mSnackbarManager).showSnackbar(any());
+    }
+
+    @Test
+    public void testAttachmentLimitReached() {
+        mMediator.onAttachmentLimitReached();
         verify(mSnackbarManager).showSnackbar(any());
     }
 
@@ -2166,6 +2245,66 @@ public class FuseboxMediatorUnitTest {
         mIntentCallbackCaptor.getValue().onIntentCompleted(Activity.RESULT_OK, mockIntent);
 
         verify(mOnFirstPickerInteractionCanceledCallback).run();
+    }
+
+    @Test
+    public void testBeginInput_ntpGalleryChipClicked_opensGalleryPicker() {
+        mInput.setFocusReason(OmniboxFocusReason.NTP_GALLERY_CHIP_CLICKED);
+        recreateMediator();
+
+        assertEquals(PopupState.HIDDEN, mModel.get(FuseboxProperties.POPUP_STATE));
+        assertTrue(mMediator.wasPopupItemSelected());
+        verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());
+        assertEquals(MimeTypeUtils.IMAGE_ANY_MIME_TYPE, mIntentCaptor.getValue().getType());
+    }
+
+    @Test
+    public void testBeginInput_notNtpGalleryChipClicked_doesNotOpenGalleryPicker() {
+        mInput.setFocusReason(OmniboxFocusReason.FAKE_BOX_TAP);
+        recreateMediator();
+
+        verify(mWindowAndroid, never()).showCancelableIntent(any(Intent.class), any(), any());
+    }
+
+    @Test
+    public void testImagePickerResult_canceled_unfocuses_whenNtpGalleryChipClicked() {
+        mInput.setFocusReason(OmniboxFocusReason.NTP_GALLERY_CHIP_CLICKED);
+        recreateMediator();
+
+        verify(mWindowAndroid)
+                .showCancelableIntent(any(Intent.class), mIntentCallbackCaptor.capture(), any());
+        mIntentCallbackCaptor.getValue().onIntentCompleted(Activity.RESULT_CANCELED, null);
+
+        verify(mOnFirstPickerInteractionCanceledCallback).run();
+        verify(mOnPickerInteractionSucceededCallback, never()).run();
+    }
+
+    @Test
+    public void testImagePickerResult_imagesSelected_signalsSuccess_whenNtpGalleryChipClicked() {
+        mInput.setFocusReason(OmniboxFocusReason.NTP_GALLERY_CHIP_CLICKED);
+        recreateMediator();
+
+        verify(mWindowAndroid)
+                .showCancelableIntent(any(Intent.class), mIntentCallbackCaptor.capture(), any());
+        Intent result = new Intent().setData(Uri.parse("content://media/external/images/1"));
+        mIntentCallbackCaptor.getValue().onIntentCompleted(Activity.RESULT_OK, result);
+
+        verify(mOnPickerInteractionSucceededCallback).run();
+        verify(mOnFirstPickerInteractionCanceledCallback, never()).run();
+    }
+
+    @Test
+    public void testImagePickerResult_imagesSelected_noSuccessSignal_whenNotFirstInteraction() {
+        mInput.setFocusReason(OmniboxFocusReason.OMNIBOX_TAP);
+        recreateMediator();
+
+        mModel.get(FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED).run();
+        verify(mWindowAndroid)
+                .showCancelableIntent(any(Intent.class), mIntentCallbackCaptor.capture(), any());
+        Intent result = new Intent().setData(Uri.parse("content://media/external/images/1"));
+        mIntentCallbackCaptor.getValue().onIntentCompleted(Activity.RESULT_OK, result);
+
+        verify(mOnPickerInteractionSucceededCallback, never()).run();
     }
 
     @Test

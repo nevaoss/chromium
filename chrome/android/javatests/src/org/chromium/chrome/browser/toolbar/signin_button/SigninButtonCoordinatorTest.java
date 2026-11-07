@@ -47,6 +47,7 @@ import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
+import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.settings.SettingsActivity;
@@ -62,9 +63,11 @@ import org.chromium.chrome.test.transit.ntp.RegularNewTabPageStation;
 import org.chromium.chrome.test.transit.page.WebPageStation;
 import org.chromium.chrome.test.transit.signin.SignedOutAccountMenuFacility;
 import org.chromium.chrome.test.util.ActivityTestUtils;
+import org.chromium.chrome.test.util.ChromeTabUtils;
 import org.chromium.chrome.test.util.NewTabPageTestUtils;
 import org.chromium.chrome.test.util.OmniboxTestUtils;
 import org.chromium.chrome.test.util.browser.signin.SigninTestRule;
+import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.signin.SigninFeatures;
 import org.chromium.components.signin.test.util.TestAccounts;
@@ -544,6 +547,7 @@ public class SigninButtonCoordinatorTest {
         startActivityOnNtp();
 
         AppHeaderUtils.setAppInDesktopWindowForTesting(true);
+        MultiWindowUtils.getInstance().setIsInMultiWindowModeForTesting(true);
         ViewUtils.waitForVisibleView(withId(R.id.avatar_button));
         onView(withId(R.id.avatar_button)).check(matches(isEnabled()));
 
@@ -569,6 +573,7 @@ public class SigninButtonCoordinatorTest {
         startActivityOnNtp();
 
         AppHeaderUtils.setAppInDesktopWindowForTesting(true);
+        MultiWindowUtils.getInstance().setIsInMultiWindowModeForTesting(true);
         setSigninAllowed(false);
         ViewUtils.waitForVisibleView(withId(R.id.avatar_button));
 
@@ -611,6 +616,33 @@ public class SigninButtonCoordinatorTest {
         assertTrue(avatarButton.isPressed());
 
         accountMenu.dismissViaBack();
+    }
+
+    @Test
+    @MediumTest
+    @Restriction(DeviceFormFactor.DESKTOP)
+    @EnableFeatures({
+        SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU,
+        SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU_REFINEMENTS
+    })
+    public void testClickSigninButton_managedAccount_opensManagementPage() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        startActivityOnNtp();
+
+        AppHeaderUtils.setAppInDesktopWindowForTesting(true);
+        mSigninTestRule.addAccountThenSignin(TestAccounts.MANAGED_ACCOUNT);
+
+        ViewUtils.waitForVisibleView(withId(R.id.signin_button));
+
+        onView(withId(R.id.signin_button)).perform(click());
+
+        ViewUtils.waitForVisibleView(withId(R.id.account_menu_container));
+        ViewUtils.waitForVisibleView(withId(R.id.account_menu_managed_header));
+
+        onView(withId(R.id.account_menu_managed_header)).perform(click());
+
+        ChromeTabUtils.waitForTabPageLoaded(
+                mActivityTestRule.getActivityTab(), UrlConstants.MANAGEMENT_URL);
     }
 
     @Test

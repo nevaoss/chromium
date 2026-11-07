@@ -89,6 +89,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
+import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxAnimator;
@@ -278,6 +279,8 @@ public class LocationBarMediator
             this::onActivationChipSelectionChanged;
     private final Callback<@Nullable AiModeButtonUiConfig> mAiModeButtonUiConfigObserver =
             this::onAiModeButtonUiConfigChanged;
+    private final Callback<StatusIconResource> mAiModeButtonIconObserver =
+            this::onAiModeButtonIconChanged;
     private final Callback<@Nullable SiteSearchData> mSiteSearchDataObserver =
             _ -> {
                 updateActivationChip();
@@ -481,6 +484,8 @@ public class LocationBarMediator
                                 (present) -> updateNavigateButtonVisibility()));
         mFuseboxCoordinator.setOnInteractionCompletedCallback(this::onFuseboxInteractionCompleted);
         mFuseboxCoordinator.setOnFirstPickerInteractionCanceledCallback(this::endInput);
+        mFuseboxCoordinator.setOnPickerInteractionSucceededCallback(
+                () -> onFuseboxInteractionCompleted(/* actionTaken= */ true));
         mLocationBarLayout.getActivationChip().setOnClickListener(v -> onActivationChipClicked());
         mOmniboxChipManager = omniboxChipManager;
         mHintTextUpdater =
@@ -679,6 +684,9 @@ public class LocationBarMediator
             mSearchEngineService
                     .getAiModeButtonUiConfigSupplier()
                     .removeObserver(mAiModeButtonUiConfigObserver);
+            mSearchEngineService
+                    .getAiModeButtonIconSupplier()
+                    .removeObserver(mAiModeButtonIconObserver);
         }
         mHintTextUpdater.destroy();
         mStatusCoordinator = null;
@@ -1771,7 +1779,7 @@ public class LocationBarMediator
             // because different focus change causes need to be handled differently. E.g., defocus
             // via scrim click should not detach the session, while defocus via tab change should.
         } else {
-            if (userTextDiffersFromInitial()) {
+            if (devicePermitsDraftingNoFocus() && userTextDiffersFromInitial()) {
                 enterDraftingNoFocus();
             } else if (!displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
                 endInput();
@@ -2035,6 +2043,9 @@ public class LocationBarMediator
             mSearchEngineService
                     .getAiModeButtonUiConfigSupplier()
                     .removeObserver(mAiModeButtonUiConfigObserver);
+            mSearchEngineService
+                    .getAiModeButtonIconSupplier()
+                    .removeObserver(mAiModeButtonIconObserver);
         }
         mSearchEngineService = SearchEngineService.getForProfile(profile);
         mSearchEngineServiceSupplier.set(mSearchEngineService);
@@ -2050,6 +2061,9 @@ public class LocationBarMediator
         mSearchEngineService
                 .getAiModeButtonUiConfigSupplier()
                 .addSyncObserverAndCall(mAiModeButtonUiConfigObserver);
+        mSearchEngineService
+                .getAiModeButtonIconSupplier()
+                .addSyncObserverAndCallIfNonNull(mAiModeButtonIconObserver);
     }
 
     private void updateAlwaysShowAiModeCallback() {
@@ -2876,6 +2890,7 @@ public class LocationBarMediator
         if (mCurrentInput.getDisplayState() == DisplayState.SUGGESTIONS) {
             if (mCurrentInput.hasPreviewText()) {
                 mCurrentInput.commitPreviewText();
+                pushUrlBarDataFromCurrentInput();
             }
             mCurrentInput
                     .setRequestType(AutocompleteRequestType.SEARCH)
@@ -2991,11 +3006,9 @@ public class LocationBarMediator
                 maybeShowOrClearCursorInLocationBar();
             }
         } else {
-            // TODO(b/548102100): See if we can remove this desktop guard.
             // When the url changes via a link click, page reload, home button press, etc, we want
             // to end the input session and exit drafting w/o focus mode.
-            if (OmniboxCapabilities.isDesktopPlatform()
-                    && displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
+            if (displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
                 endInput();
             }
             updateUrl();
@@ -3185,11 +3198,15 @@ public class LocationBarMediator
 
     @Override
     public void onScrimClicked() {
-        if (OmniboxCapabilities.isDesktopPlatform() && userTextDiffersFromInitial()) {
+        if (devicePermitsDraftingNoFocus() && userTextDiffersFromInitial()) {
             enterDraftingNoFocus();
         } else {
             endInput();
         }
+    }
+
+    private boolean devicePermitsDraftingNoFocus() {
+        return mIsTablet || OmniboxCapabilities.isDesktopPlatform();
     }
 
     /** Enter the DRAFTING_NO_FOCUS state, executing all necessary and convenient pre-processing. */
@@ -3728,6 +3745,14 @@ public class LocationBarMediator
         activationChip.setTooltipText(config != null ? config.tooltip : null);
         updateActivationChip();
         updateAlwaysShowAiModeCallback();
+    }
+
+    private void onAiModeButtonIconChanged(StatusIconResource icon) {
+        mLocationBarLayout
+                .getActivationChip()
+                .setIconWithTint(
+                        icon.getDrawable(mContext),
+                        /* tintWithTextColor= */ icon.getIconRes() != 0);
     }
 
     /* package */ void updateActivationChip() {

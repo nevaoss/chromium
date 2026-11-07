@@ -9,11 +9,15 @@
 #include <string_view>
 #include <vector>
 
-#include "base/check.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/time/time.h"
+#include "chrome/browser/actor/actor_surface.h"
+#include "chrome/browser/actor/actor_surface_handle.h"
 #include "chrome/browser/actor/tools/media_control_tool.h"
+#include "chrome/browser/actor/tools/registry/tool_definition.h"
+#include "chrome/browser/actor/tools/registry/tool_definition_builder.h"
+#include "chrome/browser/actor/tools/registry/tool_schema_builder.h"
 #include "chrome/browser/actor/tools/tool_request_visitor_functor.h"
 #include "chrome/common/actor.mojom.h"
 #include "chrome/common/actor/action_result.h"
@@ -24,20 +28,34 @@ namespace actor {
 
 namespace {
 
+// Default description for the `play_video` tool.
+constexpr std::string_view kPlayMediaToolDescription = "Resume video playback.";
+
+// Default description for the `pause_video` tool.
+constexpr std::string_view kPauseMediaToolDescription = "Pause video playback.";
+
+// Default description for the `seek_to_timestamp` tool.
+constexpr std::string_view kSeekMediaToolDescription =
+    "Jump the video to a specific timecode.";
+
+// Description for the `timecode` parameter of the `seek_to_timestamp` tool.
+constexpr std::string_view kSeekMediaTimecodeParamDescription =
+    "The timecode to seek to, from the video transcript. Format: \"1:45\", "
+    "\"0:30\", \"1:02:15\".";
+
 ToolRequest::CreateToolResult CreateMediaControlTool(
     TaskId task_id,
     ToolDelegate& tool_delegate,
-    tabs::TabHandle tab_handle,
+    ActorSurfaceHandle actor_surface_handle,
     MediaControlTool::MediaControl media_control) {
-  tabs::TabInterface* tab = tab_handle.Get();
-  if (!tab) {
+  ActorSurface* actor_surface = actor_surface_handle.Get();
+  if (!actor_surface) {
     return {/*tool=*/nullptr, MakeResult(mojom::ActionResultCode::kTabWentAway,
                                          /*requires_page_stabilization=*/false,
                                          "The tab is no longer present.")};
   }
-  CHECK(tab->GetContents());
-  return {std::make_unique<MediaControlTool>(task_id, tool_delegate, *tab,
-                                             media_control),
+  return {std::make_unique<MediaControlTool>(task_id, tool_delegate,
+                                             *actor_surface, media_control),
           MakeOkResult()};
 }
 
@@ -48,10 +66,17 @@ PlayMediaToolRequest::PlayMediaToolRequest(tabs::TabHandle tab_handle)
 
 PlayMediaToolRequest::~PlayMediaToolRequest() = default;
 
+// static
+std::optional<ToolDefinition> PlayMediaToolRequest::GetToolDefinition() {
+  return ToolDefinitionBuilder(ToolId::kPlayVideo, kModelFacingName,
+                               kPlayMediaToolDescription)
+      .Build();
+}
+
 ToolRequest::CreateToolResult PlayMediaToolRequest::CreateTool(
     TaskId task_id,
     ToolDelegate& tool_delegate) const {
-  return CreateMediaControlTool(task_id, tool_delegate, GetTabHandle(),
+  return CreateMediaControlTool(task_id, tool_delegate, GetActorSurfaceHandle(),
                                 MediaControlTool::PlayMedia());
 }
 
@@ -68,10 +93,17 @@ PauseMediaToolRequest::PauseMediaToolRequest(tabs::TabHandle tab_handle)
 
 PauseMediaToolRequest::~PauseMediaToolRequest() = default;
 
+// static
+std::optional<ToolDefinition> PauseMediaToolRequest::GetToolDefinition() {
+  return ToolDefinitionBuilder(ToolId::kPauseVideo, kModelFacingName,
+                               kPauseMediaToolDescription)
+      .Build();
+}
+
 ToolRequest::CreateToolResult PauseMediaToolRequest::CreateTool(
     TaskId task_id,
     ToolDelegate& tool_delegate) const {
-  return CreateMediaControlTool(task_id, tool_delegate, GetTabHandle(),
+  return CreateMediaControlTool(task_id, tool_delegate, GetActorSurfaceHandle(),
                                 MediaControlTool::PauseMedia());
 }
 
@@ -118,11 +150,20 @@ SeekMediaToolRequest::SeekMediaToolRequest(tabs::TabHandle tab_handle,
 
 SeekMediaToolRequest::~SeekMediaToolRequest() = default;
 
+// static
+std::optional<ToolDefinition> SeekMediaToolRequest::GetToolDefinition() {
+  return ToolDefinitionBuilder(ToolId::kSeekToTimestamp, kModelFacingName,
+                               kSeekMediaToolDescription)
+      .SetToolParameterSchema(ToolSchemaBuilder().AddStringProperty(
+          kTimecodeParam, kSeekMediaTimecodeParamDescription))
+      .Build();
+}
+
 ToolRequest::CreateToolResult SeekMediaToolRequest::CreateTool(
     TaskId task_id,
     ToolDelegate& tool_delegate) const {
   return CreateMediaControlTool(
-      task_id, tool_delegate, GetTabHandle(),
+      task_id, tool_delegate, GetActorSurfaceHandle(),
       MediaControlTool::SeekMedia{.seek_time = seek_time_});
 }
 

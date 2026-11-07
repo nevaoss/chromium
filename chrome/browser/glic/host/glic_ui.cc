@@ -239,6 +239,8 @@ GlicUI::GlicUI(content::WebUI* web_ui)
   source->AddString("chromeVersion", version_info::GetVersionNumber());
   source->AddString("chromeChannel",
                     version_info::GetChannelString(chrome::GetChannel()));
+  source->AddBoolean("glicSsr",
+                     base::FeatureList::IsEnabled(features::kGlicSsr));
   source->AddBoolean("onboardingCompleted",
                      GlicEnabling::HasConsentedForProfile(profile));
   if (std::optional<std::string> onboarding_arm = GetOnboardingArm(profile);
@@ -345,7 +347,8 @@ GlicUI::GlicUI(content::WebUI* web_ui)
                      base::FeatureList::IsEnabled(features::kGlicDebugWebview));
 
   source->AddBoolean(
-      "noLoader", base::FeatureList::IsEnabled(features::kGlicNoWebUiLoader));
+      "noLoader", base::FeatureList::IsEnabled(features::kGlicNoWebUiLoader) ||
+                      base::FeatureList::IsEnabled(features::kGlicSsr));
 
   source->AddBoolean("enableWebClientUnresponsiveMetrics",
                      base::FeatureList::IsEnabled(

@@ -383,6 +383,7 @@
         "args": [
           "--test-launcher-print-test-stdio=always"
         ],
+        "enable_rts_filtering": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -422,6 +423,7 @@
         "args": [
           "--test-launcher-print-test-stdio=always"
         ],
+        "enable_rts_filtering": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -1394,6 +1396,7 @@
           "--test-launcher-print-test-stdio=always",
           "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup"
         ],
+        "enable_rts_filtering": true,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },

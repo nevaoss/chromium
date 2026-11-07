@@ -25,6 +25,7 @@ import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.StringDef;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -42,6 +43,9 @@ import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.device_lock.DeviceLockActivityLauncherImpl;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicEnabling;
+import org.chromium.chrome.browser.glic.GlicKeyedService;
+import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.history.FilterSheetCoordinator.FilterItem;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.preferences.PrefServiceUtil;
@@ -73,6 +77,8 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.url.GURL;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -127,6 +133,20 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
     // PageTransition value to use for all URL requests triggered by the history page.
     static final int PAGE_TRANSITION_TYPE = PageTransition.AUTO_BOOKMARK;
 
+    /** Various options for filtering history by actor. */
+    @StringDef({ActorFilter.USER, ActorFilter.ACTOR, ActorFilter.ANY})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActorFilter {
+        /** Only visits with source other than `SOURCE_ACTOR` are included. */
+        String USER = "userVisits";
+
+        /** Only visits with source `SOURCE_ACTOR` are included. */
+        String ACTOR = "actorVisits";
+
+        /** All visits are included. */
+        String ANY = "allVisits";
+    }
+
     private static @Nullable HistoryProvider sProviderForTests;
     private static @Nullable Boolean sIsScrollToLoadDisabledForTests;
 
@@ -144,10 +164,12 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
     private final boolean mShowAppFilter;
     private final boolean mShowHostFilter;
     private final boolean mShowClientFilter;
+    private final boolean mShowActorFilter;
 
     private final HistoryFilterChip mAppFilter;
     private final HistoryFilterChip mHostFilter;
     private final HistoryFilterChip mClientFilter;
+    private final HistoryFilterChip mActorFilter;
     private final List<HistoryFilterChip> mFilterChips;
     private boolean mHostInfoListInitialized;
 
@@ -228,6 +250,7 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
                 /* showAppFilter= */ false,
                 /* showHostFilter= */ false,
                 /* showClientFilter= */ false,
+                /* showActorFilter= */ false,
                 /* shouldClusterByDomain= */ false,
                 /* openHistoryItemCallback= */ null,
                 regularAsyncTabLauncher,
@@ -322,6 +345,7 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
                 showAppFilter,
                 /* showHostFilter= */ true,
                 /* showClientFilter= */ true,
+                /* showActorFilter= */ true,
                 shouldClusterByDomain,
                 openHistoryItemCallback,
                 regularAsyncTabLauncher,
@@ -352,6 +376,7 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
             boolean showAppFilter,
             boolean showHostFilter,
             boolean showClientFilter,
+            boolean showActorFilter,
             boolean shouldClusterByDomain,
             @Nullable Runnable openHistoryItemCallback,
             AsyncTabLauncher regularAsyncTabLauncher,
@@ -366,6 +391,7 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
         mShowAppFilter = showAppFilter;
         mShowHostFilter = showHostFilter;
         mShowClientFilter = showClientFilter;
+        mShowActorFilter = showActorFilter;
         mShouldShowPrivacyDisclaimers = shouldShowPrivacyDisclaimers;
         mShouldShowClearDataIfAvailable = shouldShowClearDataIfAvailable;
         mHostName = hostName;
@@ -451,7 +477,17 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
                         showClientFilter(),
                         mHistoryAdapter::updateClientFilter,
                         /* onSheetOpened= */ null);
-        mFilterChips = List.of(mAppFilter, mHostFilter, mClientFilter);
+        mActorFilter =
+                new HistoryFilterChip(
+                        R.id.actor_history_filter_chip,
+                        /* chipTextResId= */ R.string.history_actor_filter_chip_text,
+                        /* sheetHeaderResId= */ R.string.history_actor_filter_sheet_header,
+                        showActorFilter(),
+                        mHistoryAdapter::updateActorFilter,
+                        /* onSheetOpened= */ null);
+        mFilterChips = List.of(mAppFilter, mHostFilter, mClientFilter, mActorFilter);
+        // The actor filter offers a fixed set of options, so no query is needed to populate it.
+        maybeBuildActorInfoList();
 
         // Create a recycler view.
         mRecyclerView =
@@ -596,6 +632,25 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
             }
         }
         mClientFilter.setItems(clientInfoList);
+    }
+
+    /** Build the list of {@link FilterItem}s for the actor filter, if the filter is enabled. */
+    private void maybeBuildActorInfoList() {
+        if (!showActorFilter()) return;
+
+        List<FilterItem> actorInfoList = new ArrayList<>();
+        actorInfoList.add(
+                new FilterItem(
+                        ActorFilter.USER,
+                        AppCompatResources.getDrawable(mActivity, R.drawable.ic_person_24dp),
+                        mActivity.getString(R.string.history_actor_filter_user)));
+        actorInfoList.add(
+                new FilterItem(
+                        ActorFilter.ACTOR,
+                        AppCompatResources.getDrawable(
+                                mActivity, R.drawable.ic_arrow_selector_spark_24dp),
+                        mActivity.getString(R.string.history_actor_filter_actor)));
+        mActorFilter.setItems(actorInfoList);
     }
 
     /**
@@ -751,6 +806,26 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
      */
     boolean showClientFilter() {
         return ChromeFeatureList.sBrowsingHistoryFilterByDevice.isEnabled() && mShowClientFilter;
+    }
+
+    /**
+     * @return True if history page needs to show the actor filter UI.
+     */
+    boolean showActorFilter() {
+        return ChromeFeatureList.sBrowsingHistoryFilterByActor.isEnabled()
+                && mShowActorFilter
+                && isGlicWebActuationAvailable();
+    }
+
+    /**
+     * @return True if Glic web actuation is available for the current profile: Glic is enabled and
+     *     consented, and the user has turned on actuation on web. Mirrors the desktop check in
+     *     {@code history::PopulatePlatformDataSource}.
+     */
+    private boolean isGlicWebActuationAvailable() {
+        if (!GlicEnabling.isEnabledAndConsentForProfile(mProfile)) return false;
+        GlicKeyedService glicService = GlicKeyedServiceFactory.getForProfile(mProfile);
+        return glicService != null && glicService.getUserEnabledActuationOnWeb();
     }
 
     /** returns whether the info header will be available for user upon request. */
@@ -1080,5 +1155,9 @@ public class HistoryContentManager implements SignInStateObserver, PrefObserver 
 
     HistoryFilterChip getClientFilterForTesting() {
         return mClientFilter;
+    }
+
+    HistoryFilterChip getActorFilterForTesting() {
+        return mActorFilter;
     }
 }

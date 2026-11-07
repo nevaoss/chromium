@@ -37,6 +37,10 @@
 #include "net/base/schemeful_site.h"
 #include "ui/gfx/geometry/rect_f.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include "components/autofill/core/browser/ui/autofill_tapjacking_protector.h"
+#endif
+
 namespace net {
 class SchemefulSite;
 }
@@ -147,6 +151,7 @@ class FieldClassificationModelHandler;
 enum class FillingProduct;
 class FormDataImporter;
 class FormFieldData;
+enum class GmailOtpOptInResult;
 class LogManager;
 class OtpFieldDetector;
 class OtpMetricsTracker;
@@ -677,6 +682,10 @@ class AutofillClient {
   // Returns true if the Glic sidebar is enabled and can be opened.
   virtual bool IsGlicEnabled() const;
 
+  // Returns true if the user has completed onboarding / opted in to Gemini in
+  // Chrome (Glic).
+  virtual bool IsGlicConsented() const;
+
   // Update the data list values shown by the Autofill suggestions, if visible.
   virtual void UpdateAutofillDataListValues(
       const LocalFrameToken& frame_token,
@@ -789,8 +798,9 @@ class AutofillClient {
   virtual bool ShowPrivateInferenceNoticeBottomSheet(
       base::WeakPtr<TouchToFillAutofillDelegate> delegate);
 
-  // Hides the Personal Context ambient autofill notice.
-  virtual void HideAmbientAutofillNotice();
+  // Hides the currently shown Touch To Fill autofill notice (either the
+  // Personal Context ambient autofill notice or the private inference notice).
+  virtual void HideTouchToFillAutofillNotice();
 
   // The AutofillSnackbarController is used to show a snackbar notification
   // on Android.
@@ -803,6 +813,11 @@ class AutofillClient {
   // Closes the dialog that informs the user that their data is being fetched
   // from the server to fill the form.
   virtual void DismissAutofillAiLoadingDialog();
+
+  // Shows tapjacking protection for sensitive autofill actions.
+  virtual void ShowTapjackingProtector(
+      AutofillTapjackingProtector::AuthorizationType authorization_type,
+      AutofillTapjackingProtector::AuthorizationCallback callback);
 #endif
 
 #if BUILDFLAG(IS_IOS)
@@ -958,6 +973,13 @@ class AutofillClient {
   // Displays an error toast notifying the user that email verification failed.
   // Called when token verification fails or returns an error.
   virtual void ShowEmailVerificationErrorToast();
+
+  // Shows the bubble asking the user to opt in to fetching one-time
+  // verification codes from Gmail for `account_email`, invoking `callback` with
+  // the user's decision.
+  virtual void ShowGmailOtpOptInBubble(
+      const std::u16string& account_email,
+      base::OnceCallback<void(GmailOtpOptInResult)> callback);
 
   // May return null on platforms where OTPs are not supported.
   virtual OtpFieldDetector* GetOtpFieldDetector();

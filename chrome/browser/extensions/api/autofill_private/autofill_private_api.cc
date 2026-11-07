@@ -12,6 +12,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/base64.h"
 #include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -240,6 +241,31 @@ bool IsEligibleForWalletStorage(autofill::AutofillClient* client,
   return client &&
          autofill::MayPerformAutofillAiAction(
              *client, autofill::AutofillAiAction::kImportToWallet, entity_type);
+}
+
+// Resolves `entity_type_name_raw` to a valid `EntityType` if the public pass
+// disclosure feature is enabled and `entity_type` is eligible for Wallet
+// storage and public pass disclosure.
+std::optional<EntityType> GetEligibleEntityTypeForUpsertPass(
+    autofill::AutofillClient* client,
+    int entity_type_name_raw) {
+  if (!base::FeatureList::IsEnabled(
+          autofill::features::
+              kAutofillEnableWalletDisclosureNoticePublicPass)) {
+    return std::nullopt;
+  }
+  std::optional<EntityTypeName> entity_type_name =
+      autofill::ToSafeEntityTypeName(entity_type_name_raw);
+  if (!entity_type_name) {
+    return std::nullopt;
+  }
+  EntityType entity_type(*entity_type_name);
+  if (!IsEligibleForWalletStorage(client, entity_type) ||
+      !autofill::IsEligibleForWalletNotice(
+          entity_type, EntityInstance::RecordType::kServerWallet)) {
+    return std::nullopt;
+  }
+  return entity_type;
 }
 
 }  // namespace
@@ -1177,12 +1203,25 @@ AutofillPrivateAddOrUpdateEntityInstanceFunction::Run() {
     return RespondNow(NoArguments());
   }
 
+  // `context_token` is Base64-encoded in
+  // `AutofillPrivateGetDetailsForUpsertPassFunction::Run()` so that raw binary
+  // token bytes can be transported over the Extensions IDL `DOMString` API.
+  // Decode it back to raw bytes before forwarding to `EntityDataManager`.
+  std::optional<std::string> legal_message_token;
+  if (private_api_entity_instance.context_token &&
+      !private_api_entity_instance.context_token->empty()) {
+    std::string decoded_token;
+    if (base::Base64Decode(*private_api_entity_instance.context_token,
+                           &decoded_token)) {
+      legal_message_token = std::move(decoded_token);
+    }
+  }
+
   // Handles the following scenarios:
   // 1. Save/Update entity locally.
   // 2. Save entity to Wallet via Chrome sync.
-  edm->AddOrUpdateEntityInstance(
-      std::move(entity_instance.value()),
-      std::move(parameters->entity_instance.context_token));
+  edm->AddOrUpdateEntityInstance(std::move(entity_instance.value()),
+                                 std::move(legal_message_token));
   if (private_api_entity_instance.stored_in_wallet.value_or(false) &&
       !is_eligible_for_wallet_storage && autofill_client()) {
     autofill_client()->ShowAutofillAiLocalSaveNotification();
@@ -1393,25 +1432,26 @@ void AutofillPrivateGetEntityInstanceByGuidFunction::OnReauthCompleted(
 
 ExtensionFunction::ResponseAction
 AutofillPrivateGetDetailsForUpsertPassFunction::Run() {
-  if (!base::FeatureList::IsEnabled(
-          autofill::features::
-              kAutofillEnableWalletDisclosureNoticePublicPass)) {
-    return RespondNow(NoArguments());
-  }
+  std::optional<api::autofill_private::GetDetailsForUpsertPass::Params>
+      parameters =
+          api::autofill_private::GetDetailsForUpsertPass::Params::Create(
+              args());
+  EXTENSION_FUNCTION_VALIDATE(parameters);
 
+  std::optional<autofill::EntityType> entity_type =
+      GetEligibleEntityTypeForUpsertPass(autofill_client(),
+                                         parameters->entity_type_name);
   autofill::WalletPassAccessManager* pass_manager =
       autofill_client() ? autofill_client()->GetWalletPassAccessManager()
                         : nullptr;
-  if (!pass_manager) {
+  if (!entity_type || !pass_manager) {
     return RespondNow(NoArguments());
   }
 
-  // TODO(crbug.com/557059912): Pass the entity type from the caller instead of
-  // hardcoding vehicle.
   std::optional<
       autofill::WalletPassAccessManager::GetDetailsForUpsertPassResponse>
-      response = pass_manager->ExtractPreloadedDetailsForUpsertPass(
-          autofill::EntityType(autofill::EntityTypeName::kVehicle));
+      response =
+          pass_manager->ExtractPreloadedDetailsForUpsertPass(*entity_type);
 
   if (!response.has_value() ||
       !autofill::IsValidUpsertPassDetailsResponse(*response)) {
@@ -1419,7 +1459,13 @@ AutofillPrivateGetDetailsForUpsertPassFunction::Run() {
   }
 
   api::autofill_private::UpsertPassDetails details;
-  details.context_token = std::move(response->context_token);
+  // `response->context_token` contains raw encrypted binary bytes, whereas
+  // `base::Value(std::string)` (used by Extensions IDL serialization) enforces
+  // `DCHECK(IsStringUTF8AllowingNoncharacters(...))`. Base64-encode the token
+  // for transport to the WebUI;
+  // `AutofillPrivateAddOrUpdateEntityInstanceFunction` decodes it back to raw
+  // bytes via `base::Base64Decode`.
+  details.context_token = base::Base64Encode(response->context_token);
   details.legal_message_lines.reserve(response->legal_message_lines.size());
   for (const auto& line : response->legal_message_lines) {
     api::autofill_private::LegalMessageLine idl_line;
@@ -1448,30 +1494,27 @@ AutofillPrivateGetDetailsForUpsertPassFunction::Run() {
 
 ExtensionFunction::ResponseAction
 AutofillPrivatePreloadDetailsForUpsertPassFunction::Run() {
-  // Preloading is an opportunistic, fire-and-forget background pre-warm
-  // triggered when entering the settings page. If the feature is disabled,
-  // gracefully no-op without returning an error to avoid triggering
-  // `Unchecked runtime.lastError` in the WebUI console.
-  if (!base::FeatureList::IsEnabled(
-          autofill::features::
-              kAutofillEnableWalletDisclosureNoticePublicPass)) {
-    return RespondNow(NoArguments());
-  }
+  std::optional<api::autofill_private::PreloadDetailsForUpsertPass::Params>
+      parameters =
+          api::autofill_private::PreloadDetailsForUpsertPass::Params::Create(
+              args());
+  EXTENSION_FUNCTION_VALIDATE(parameters);
 
-  // `pass_manager` can be null during browser shutdown or in test
-  // environments where the wallet pass manager is not instantiated. In those
-  // cases, gracefully no-op as preloading is not applicable.
+  // Preloading is an opportunistic, fire-and-forget background pre-warm
+  // triggered when entering the settings page. Gracefully no-op without
+  // returning an error if ineligible or disabled to avoid triggering
+  // `Unchecked runtime.lastError` in the WebUI console.
+  std::optional<autofill::EntityType> entity_type =
+      GetEligibleEntityTypeForUpsertPass(autofill_client(),
+                                         parameters->entity_type_name);
   autofill::WalletPassAccessManager* pass_manager =
       autofill_client() ? autofill_client()->GetWalletPassAccessManager()
                         : nullptr;
-  if (!pass_manager) {
+  if (!entity_type || !pass_manager) {
     return RespondNow(NoArguments());
   }
 
-  // TODO(crbug.com/557059912): Pass the entity type from the caller instead of
-  // hardcoding vehicle.
-  pass_manager->PreloadDetailsForUpsertPass(
-      autofill::EntityType(autofill::EntityTypeName::kVehicle));
+  pass_manager->PreloadDetailsForUpsertPass(*entity_type);
   return RespondNow(NoArguments());
 }
 

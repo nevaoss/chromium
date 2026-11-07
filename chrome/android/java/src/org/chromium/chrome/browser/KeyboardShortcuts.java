@@ -114,8 +114,8 @@ public class KeyboardShortcuts {
         KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_TOGGLE_IMMERSIVE,
         KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_EXIT_IMMERSIVE,
         KeyboardShortcutsSemanticMeaning.DEV_TOOLS,
-        KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_DEV_TOOLS_CONSOLE,
-        KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_DEV_TOOLS_INSPECT,
+        KeyboardShortcutsSemanticMeaning.DEV_TOOLS_CONSOLE,
+        KeyboardShortcutsSemanticMeaning.DEV_TOOLS_INSPECT,
         KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_DEV_TOOLS_TOGGLE,
         KeyboardShortcutsSemanticMeaning.VIEW_SOURCE,
         KeyboardShortcutsSemanticMeaning.TASK_MANAGER,
@@ -206,8 +206,8 @@ public class KeyboardShortcuts {
 
         // Developer tools.
         int DEV_TOOLS = 38;
-        int NOT_IMPLEMENTED_DEV_TOOLS_CONSOLE = 39;
-        int NOT_IMPLEMENTED_DEV_TOOLS_INSPECT = 40;
+        int DEV_TOOLS_CONSOLE = 39;
+        int DEV_TOOLS_INSPECT = 40;
         int NOT_IMPLEMENTED_DEV_TOOLS_TOGGLE = 41;
         int VIEW_SOURCE = 42;
         int TASK_MANAGER = 43;
@@ -706,6 +706,12 @@ public class KeyboardShortcuts {
                 KeyboardShortcutsSemanticMeaning.DEV_TOOLS,
                 new KeyCombo(KeyEvent.KEYCODE_I, (KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON)));
         new KeyboardShortcutDefinition(
+                KeyboardShortcutsSemanticMeaning.DEV_TOOLS_CONSOLE,
+                new KeyCombo(KeyEvent.KEYCODE_J, (KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON)));
+        new KeyboardShortcutDefinition(
+                KeyboardShortcutsSemanticMeaning.DEV_TOOLS_INSPECT,
+                new KeyCombo(KeyEvent.KEYCODE_C, (KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON)));
+        new KeyboardShortcutDefinition(
                 KeyboardShortcutsSemanticMeaning.TASK_MANAGER,
                 new KeyCombo(KeyEvent.KEYCODE_ESCAPE, KeyEvent.META_CTRL_ON));
 
@@ -800,12 +806,6 @@ public class KeyboardShortcuts {
                 KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_TOGGLE_IMMERSIVE,
                 new KeyCombo(KeyEvent.KEYCODE_F11, NO_MODIFIER));
         new KeyboardShortcutDefinition(
-                KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_DEV_TOOLS_CONSOLE,
-                new KeyCombo(KeyEvent.KEYCODE_J, KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON));
-        new KeyboardShortcutDefinition(
-                KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_DEV_TOOLS_INSPECT,
-                new KeyCombo(KeyEvent.KEYCODE_C, KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON));
-        new KeyboardShortcutDefinition(
                 KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_DEV_TOOLS_TOGGLE,
                 new KeyCombo(KeyEvent.KEYCODE_F12, NO_MODIFIER));
         new KeyboardShortcutDefinition(
@@ -891,14 +891,6 @@ public class KeyboardShortcuts {
                                     ? R.id.switch_keyboard_focus_row_reverse
                                     : R.id.switch_keyboard_focus_row;
                     if (menuOrKeyboardActionController.onMenuOrKeyboardAction(actionId, false)) {
-                        return true;
-                    }
-                }
-                return true;
-            case KeyEvent.KEYCODE_F7:
-                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                    if (menuOrKeyboardActionController.onMenuOrKeyboardAction(
-                            R.id.toggle_caret_browsing, false)) {
                         return true;
                     }
                 }
@@ -1032,6 +1024,20 @@ public class KeyboardShortcuts {
                     R.string.keyboard_shortcut_developer_group_header,
                     R.string.keyboard_shortcut_developer_tools,
                     KeyEvent.KEYCODE_I,
+                    (KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON));
+            addShortcut(
+                    context,
+                    shortcutGroupsById,
+                    R.string.keyboard_shortcut_developer_group_header,
+                    R.string.keyboard_shortcut_developer_tools_console,
+                    KeyEvent.KEYCODE_J,
+                    (KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON));
+            addShortcut(
+                    context,
+                    shortcutGroupsById,
+                    R.string.keyboard_shortcut_developer_group_header,
+                    R.string.keyboard_shortcut_developer_tools_inspect,
+                    KeyEvent.KEYCODE_C,
                     (KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON));
         }
         if (TaskManager.isEnabled()) {
@@ -1167,6 +1173,14 @@ public class KeyboardShortcuts {
                 return true;
             case KeyboardShortcutsSemanticMeaning.DEV_TOOLS:
                 menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.dev_tools, false);
+                return true;
+            case KeyboardShortcutsSemanticMeaning.DEV_TOOLS_CONSOLE:
+                menuOrKeyboardActionController.onMenuOrKeyboardAction(
+                        R.id.dev_tools_console, false);
+                return true;
+            case KeyboardShortcutsSemanticMeaning.DEV_TOOLS_INSPECT:
+                menuOrKeyboardActionController.onMenuOrKeyboardAction(
+                        R.id.dev_tools_inspect, false);
                 return true;
             case KeyboardShortcutsSemanticMeaning.TASK_MANAGER:
                 menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.task_manager, false);
@@ -1336,7 +1350,10 @@ public class KeyboardShortcuts {
                         currentTab.goForward();
                     }
                     return true;
-
+                case KeyboardShortcutsSemanticMeaning.TOGGLE_CARET_BROWSING:
+                    menuOrKeyboardActionController.onMenuOrKeyboardAction(
+                            R.id.toggle_caret_browsing, false);
+                    return true;
                 case KeyboardShortcutsSemanticMeaning.OPEN_HELP:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.help_id, false);
                     return true;

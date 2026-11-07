@@ -50,7 +50,6 @@ class CreditCardFormEventLogger;
 
 // TODO(crbug.com/40927041): Remove CVC from CachedServerCardInfo.
 struct CachedServerCardInfo {
- public:
   // An unmasked CreditCard.
   CreditCard card;
 
@@ -100,6 +99,8 @@ class CreditCardAccessManager
 
   using OnCreditCardFetchedCallback =
       base::OnceCallback<void(const CreditCard&)>;
+  using OnCreditCardRetrievedForOpaqueTokenCallback =
+      base::OnceCallback<void(std::optional<CreditCard>)>;
   using OtpAuthenticationResponse =
       CreditCardOtpAuthenticator::OtpAuthenticationResponse;
 
@@ -132,6 +133,23 @@ class CreditCardAccessManager
       const CreditCard* card,
       bool require_user_confirmation,
       OnCreditCardFetchedCallback on_credit_card_fetched);
+
+  // Retrieves the credit card that Google Payments associated with
+  // `credit_card_opaque_token`. Google Payments issues the token after the user
+  // approved a purchase that an agent completes on the user's behalf. The token
+  // is single use: callers must not call this again with the same token, even
+  // if the first call failed.
+  // `callback` is invoked with std::nullopt if no card could be retrieved, and
+  // is invoked even if `this` is destroyed before the response arrives.
+  // Note: The returned card is a `CreditCard::RecordType::kLocalCard`.
+  // If a `kFullServerCard` were returned without being listed in
+  // `unmasked_card_cache_`, subsequent form filling via `FetchCreditCard`
+  // would reach a `NOTREACHED()` because `FetchCreditCard` assumes full server
+  // cards only originate from a previous unmasking on the same page and are
+  // served through the cache.
+  virtual void RetrieveCreditCardForOpaqueToken(
+      const std::string& credit_card_opaque_token,
+      OnCreditCardRetrievedForOpaqueTokenCallback callback);
 
   // Checks whether we should offer risk-based authentication for masked server
   // card retrieval.

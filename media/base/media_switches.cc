@@ -16,6 +16,7 @@
 #include "build/chromecast_buildflags.h"
 #include "gpu/config/gpu_driver_bug_workarounds.h"
 #include "gpu/config/gpu_finch_features.h"
+#include "media/base/audio_parameters.h"
 #include "media/media_buildflags.h"
 #include "ui/gl/gl_features.h"
 #include "ui/gl/gl_utils.h"
@@ -473,11 +474,11 @@ BASE_FEATURE(kCdmHostVerification, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Elevates the CDM service process' priority to improve media playback
 // performance.
-BASE_FEATURE(kCdmProcessPriorityElevation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCdmProcessPriorityElevation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Elevates the CDM service process' main thread priority to improve media
 // playback performance.
-BASE_FEATURE(kCdmThreadPriorityElevation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCdmThreadPriorityElevation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Safety switch to allow us to revert to the previous behavior of using the
 // cached bounds when the permission prompt is visible. If this feature is
@@ -499,12 +500,6 @@ BASE_FEATURE(kContextMenuSaveVideoFrameAs, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the "Search Video Frame with <Search Provider>" context menu item.
 BASE_FEATURE(kContextMenuSearchForVideoFrame, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Forces D3DVideoDecoder to use one decoder texture per picture buffer.
-// Owner: media-gpu-team@chromium.org
-// Expiry: When no longer needed for decode texture selection experiments.
-BASE_FEATURE(kD3D11VideoDecoderForceSingleTexture,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kD3D11VideoDecoderUseSharedHandle,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -966,9 +961,6 @@ BASE_FEATURE(kResumeBackgroundVideo,
 // for starting attachment to HTMLME.
 BASE_FEATURE(kRevokeMediaSourceObjectURLOnAttach,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables Rust version of MPEG parser (MP3/ADTS). Remove after M152 stable.
-BASE_FEATURE(kRustMpegAudioDataParser, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable the Speaker Change Detection feature, which inserts a line break when
 // the Speech On-Device API (SODA) detects a speaker change.
@@ -2051,4 +2043,19 @@ int GetAecDelayNumFilters() {
 }
 
 #endif  // BUILDFLAG(SYSTEM_LOOPBACK_AS_AEC_REFERENCE)
+
+bool IsMacAVFoundationPlaybackSupported(const AudioParameters& params) {
+#if BUILDFLAG(IS_MAC)
+  if (__builtin_available(macOS 27, *)) {
+    const bool pcm =
+        params.IsValid() &&
+        (params.format() == AudioParameters::AUDIO_PCM_LOW_LATENCY ||
+         params.format() == AudioParameters::AUDIO_PCM_LINEAR);
+    return pcm && base::FeatureList::IsEnabled(kMacAVFoundationPlayback) &&
+           params.latency_tag() == AudioLatency::Type::kPlayback;
+  }
+#endif
+  return false;
+}
+
 }  // namespace media

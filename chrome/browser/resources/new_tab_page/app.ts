@@ -133,6 +133,7 @@ const VOICE_MANUAL_SUBMIT_IDLE_TIMEOUT_MS = 10000;
 const COMPOSEBOX_INERT_ALLOWLIST = [
   '#logo',
   '#searchboxContainer',
+  '#voiceSearchDialog',
 ];
 
 export const CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID =
@@ -1624,7 +1625,7 @@ export class AppElement extends AppElementBase {
       }
     }
 
-    if (e.composedPath() && e.composedPath()[0] === $$(this, '#content')) {
+    if (e.composedPath()[0] === $$(this, '#rhsContent')) {
       recordClick(NtpElement.BACKGROUND);
       return;
     }
@@ -1850,7 +1851,7 @@ export class AppElement extends AppElementBase {
     const notSelector =
         COMPOSEBOX_INERT_ALLOWLIST.map(s => `:not(${s})`).join('');
     const blockedElements = this.shadowRoot.querySelectorAll<HTMLElement>(
-        `#content > ${notSelector}`);
+        `#rhsContent > ${notSelector}`);
     blockedElements.forEach(element => {
       if (this.showComposebox_) {
         element.setAttribute('inert', '');

@@ -118,6 +118,7 @@ import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.BookmarkOpenerImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkPane;
 import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
+import org.chromium.chrome.browser.bottombar.BottomBarEnabledChangeObserver;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
@@ -1063,10 +1064,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             return true;
         }
 
-        // Allowlist closing sources GRID_TAB_SWITCHER, BOTTOM_TAB_GROUP_STRIP, and QUICK_DELETE
-        // when
-        // the Grid Tab Switcher is enabled.
-        if (closingSource == TabClosingSource.QUICK_DELETE) {
+        // Allowlist closing sources GRID_TAB_SWITCHER, BOTTOM_TAB_GROUP_STRIP. For
+        // CLEAR_BROWSING_DATA, and QUICK_DELETE only when the Grid Tab Switcher is enabled.
+        if (closingSource == TabClosingSource.QUICK_DELETE
+                || closingSource == TabClosingSource.CLEAR_BROWSING_DATA) {
             return TabSwitcherUtils.isGridTabSwitcherDisabled();
         }
         return closingSource != TabClosingSource.GRID_TAB_SWITCHER
@@ -1679,6 +1680,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             TabbedStartupCoordinator.onNativeInitialized(originalProfile);
 
+            if (BottomBarConfigUtils.shouldShowSettingsToggle(this)) {
+                new BottomBarEnabledChangeObserver(
+                        this,
+                        getLifecycleDispatcher(),
+                        mBottomBarHostManager != null,
+                        this::doRecreateActivity);
+            }
+
             // Deliberately not deferred to onDeferredStartup(): this timestamp is not just a
             // metric, it gates feature eligibility (e.g. the Setup List time window, which treats
             // a missing timestamp as "inactive"), and deferred startup is not guaranteed to run.
@@ -2113,6 +2122,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         if (IntentHandler.isActorNotificationIntent(intent)) {
             ActorNotificationService.maybeDismissNotificationFromIntent(
                     intent, mTabModelProfileSupplier.get());
+            if (tabIdToBringToFront == Tab.INVALID_TAB_ID) {
+                ActorTabStateHelper.listenAndSelectTabOnAdded(
+                        getTabModelSelector(), getLayoutManager(), tabIdToBringToFront);
+            }
         }
         if (url == null
                 && tabIdToBringToFront == Tab.INVALID_TAB_ID
@@ -3003,27 +3016,26 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     // Standard tryToRestoreTabStateForId is only needed for non-Actor intents.
                     mTabModelOrchestrator.tryToRestoreTabStateForId(tabIdToBringToFront);
                     maybeRescueArchivedTab(profile, tabIdToBringToFront);
-                }
-
-                resultTab =
-                        ActorTabStateHelper.selectTabAndShow(
-                                getTabModelSelector(), getLayoutManager(), tabIdToBringToFront);
-                if (resultTab == null
-                        && isActorIntent
-                        && tabIdToBringToFront != Tab.INVALID_TAB_ID) {
-                    ActorTabStateHelper.listenAndSelectTabOnAdded(
-                            getTabModelSelector(),
-                            getLayoutManager(),
-                            tabIdToBringToFront,
-                            selectedTab -> {
-                                if (isActivityFinishingOrDestroyed()) return;
-                                GlicKeyedService.maybeInvokeGlic(
-                                        ChromeTabbedActivity.this,
-                                        getTabModelSelector(),
-                                        getProfileProviderSupplier(),
-                                        selectedTab,
-                                        glicConversationId);
-                            });
+                    resultTab =
+                            ActorTabStateHelper.selectTabAndShow(
+                                    getTabModelSelector(), getLayoutManager(), tabIdToBringToFront);
+                } else {
+                    resultTab = null;
+                    if (tabIdToBringToFront != Tab.INVALID_TAB_ID) {
+                        ActorTabStateHelper.listenAndSelectTabOnAdded(
+                                getTabModelSelector(),
+                                getLayoutManager(),
+                                tabIdToBringToFront,
+                                selectedTab -> {
+                                    if (isActivityFinishingOrDestroyed()) return;
+                                    GlicKeyedService.maybeInvokeGlic(
+                                            ChromeTabbedActivity.this,
+                                            getTabModelSelector(),
+                                            getProfileProviderSupplier(),
+                                            selectedTab,
+                                            glicConversationId);
+                                });
+                    }
                 }
                 break;
             case TabOpenType.CLOBBER_CURRENT_TAB:
@@ -3829,21 +3841,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         };
     }
 
-    @VisibleForTesting
-    VerticalTabsActionDelegate createVerticalTabsActionDelegate() {
-        return new VerticalTabsActionDelegate() {
-            @Override
-            public void openTabSearch() {
-                if (mRootUiCoordinator != null) {
-                    ((TabbedRootUiCoordinator) mRootUiCoordinator)
-                            .showTabSearchOverlay(TabSearchEntryPoint.VERTICAL_TABS);
-                }
-            }
-
-            @Override
-            public void openHubSearch() {
-                if (TabSwitcherUtils.isGridTabSwitcherDisabled()) return;
-                onMenuOrKeyboardAction(R.id.tab_search, /* fromMenu= */ false);
+    private VerticalTabsActionDelegate createVerticalTabsActionDelegate() {
+        return () -> {
+            if (mRootUiCoordinator != null) {
+                ((TabbedRootUiCoordinator) mRootUiCoordinator)
+                        .showTabSearchOverlay(TabSearchEntryPoint.VERTICAL_TABS);
             }
         };
     }
@@ -4259,7 +4261,17 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     NewWindowAppSource.NUM_ENTRIES);
         }
 
-        if (persistentState != null && persistentState.containsKey(WINDOW_INDEX)) {
+        // For persistentState, also verify that a valid profile type exists for this window
+        // in protobuf. This handles cases where instance data was deleted in protobuf, but
+        // leaving stale data in the persistent state (in which case we should not load data
+        // from  persistentState, but go into `else` clause to open a new window instead).
+        // `savedInstanceState` doesn't need this, since it would be cleared when activity is
+        // destroyed.
+        if (persistentState != null
+                && persistentState.containsKey(WINDOW_INDEX)
+                && MultiWindowUtils.readProfileType(
+                                persistentState.getInt(WINDOW_INDEX, INVALID_WINDOW_ID))
+                        != SupportedProfileType.UNSET) {
             mWindowId = persistentState.getInt(WINDOW_INDEX, INVALID_WINDOW_ID);
             Log.i(TAG_MULTI_INSTANCE, "Retrieved windowId from persistent state.");
             assert mWindowId != INVALID_WINDOW_ID;

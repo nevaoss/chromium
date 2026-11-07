@@ -72,29 +72,30 @@ void ActionAppMenuTestBase::SetUp() {
 
   // Create test ActionItems as children of a root ActionItem.
   auto root = actions::ActionItem::Builder().Build();
-  auto add_action = [&root, this](actions::ActionId action_id,
-                                  std::u16string text,
-                                  std::optional<std::u16string> short_title =
-                                      std::nullopt) {
-    auto item = actions::ActionItem::Builder(
-                    base::BindRepeating(&MockActionCallback::Call,
-                                        base::Unretained(&mock_action_invoked_),
-                                        action_id))
-                    .SetActionId(action_id)
-                    .SetText(text)
-                    .SetTooltipText(text)
-                    .SetAccessibleName(text)
-                    .SetEnabled(true)
-                    .SetVisible(action_id != kActionUpgradeDialog &&
-                                action_id != kActionGlobalError &&
-                                action_id != kActionSetBrowserAsDefault &&
-                                action_id != kActionSkillsAndExtensionsSubmenu)
-                    .Build();
-    if (short_title.has_value()) {
-      item->SetProperty(actions::kShortTitleTextKey, *short_title);
-    }
-    root->AddChild(std::move(item));
-  };
+  auto add_action =
+      [&root, this](actions::ActionId action_id, std::u16string text,
+                    std::optional<std::u16string> short_title = std::nullopt) {
+        auto item =
+            actions::ActionItem::Builder(
+                base::BindRepeating(&MockActionCallback::Call,
+                                    base::Unretained(&mock_action_invoked_),
+                                    action_id))
+                .SetActionId(action_id)
+                .SetText(text)
+                .SetTooltipText(text)
+                .SetAccessibleName(text)
+                .SetEnabled(true)
+                .SetVisible(action_id != kActionUpgradeDialog &&
+                            action_id != kActionGlobalError &&
+                            action_id != kActionSetBrowserAsDefault &&
+                            action_id != kActionSkillsAndExtensionsSubmenu &&
+                            action_id != kActionChromeEnterpriseReleaseNotes)
+                .Build();
+        if (short_title.has_value()) {
+          item->SetProperty(actions::kShortTitleTextKey, *short_title);
+        }
+        root->AddChild(std::move(item));
+      };
 
   add_action(kActionNewTab, u"New Tab");
   add_action(kActionNewWindow, u"New Window");
@@ -102,7 +103,10 @@ void ActionAppMenuTestBase::SetUp() {
              BrowserActions::GetCleanTitleAndTooltipText(
                  l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_WINDOW)),
              l10n_util::GetStringUTF16(IDS_APP_MENU_INCOGNITO));
-  add_action(kActionNewIsolatedWindow, u"New Isolated Window");
+  add_action(kActionNewIsolatedWindow,
+             BrowserActions::GetCleanTitleAndTooltipText(
+                 l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_WINDOW)),
+             l10n_util::GetStringUTF16(IDS_ISOLATED));
   add_action(kActionProfileSubmenu, u"Profile");
   add_action(kActionManageGoogleAccount, u"Manage your Google Account");
   add_action(kActionCustomizeChrome, u"Customize Chrome");
@@ -151,7 +155,6 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionFindExtensions, u"Find Extensions");
   add_action(kActionSkillsAndExtensionsSubmenu, u"Extensions and Skills");
   add_action(kActionManageSkills, u"Your skills");
-  add_action(kActionBrowseSkills, u"Browse skills");
   add_action(kActionClearBrowsingData, u"Clear Browsing Data");
   add_action(kActionSavedTabGroupsSubmenu, u"Tab Groups");
   add_action(kActionCreateNewTabGroup, u"New Tab Group");
@@ -207,6 +210,8 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionReportUnsafeSite, u"Report Unsafe Site");
   add_action(kActionExit, u"Exit");
   add_action(kActionShowManagementPage, u"Managed by your organization");
+  add_action(kActionChromeEnterpriseReleaseNotes,
+             u"Chrome Enterprise release notes");
   add_action(kActionZoomSubmenu, u"Zoom");
   add_action(kActionZoomMinus, u"Zoom Out");
   add_action(kActionZoomNormal, u"100%");

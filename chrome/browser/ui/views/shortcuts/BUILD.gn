@@ -22,10 +22,7 @@ source_set("impl") {
     "create_desktop_shortcut_delegate.cc",
     "create_desktop_shortcut_delegate.h",
   ]
-  public_deps = [
-    ":shortcuts",
-    "//chrome/browser:browser_public_dependencies",
-  ]
+  public_deps = [ ":shortcuts" ]
   deps = [
     "//chrome/app:branded_strings",
     "//chrome/app:generated_resources",
@@ -86,6 +83,7 @@ source_set("browser_tests") {
     "//chrome/browser/profiles:misc",
     "//chrome/browser/shortcuts:test_support",
     "//chrome/browser/ui:browser_commands",
+    "//chrome/browser/ui/dialogs:browser_dialogs",
     "//chrome/browser/ui/views/frame:browser_view_header",
     "//chrome/test:test_support",
     "//chrome/test:test_support_ui",

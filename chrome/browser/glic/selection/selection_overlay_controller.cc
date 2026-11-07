@@ -25,6 +25,7 @@
 #include "chrome/browser/glic/selection/selection_suggestion.h"
 #include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/selection/features.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
@@ -34,6 +35,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/input/native_web_keyboard_event.h"
+#include "components/optimization_guide/proto/features/smart_selection_suggestions.pb.h"
 #include "components/page_content_annotations/content/page_context_fetcher_options.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/vector_icons/vector_icons.h"
@@ -92,6 +94,18 @@ BASE_FEATURE(kStaticSelectionSuggestions, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kQuickAnswersSelectionSuggestions,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+selection::SuggestedActionIcon GetIconForTool(
+    ::selection::Suggestion::ToolId tool_id) {
+  switch (tool_id) {
+    case optimization_guide::proto::SMART_SELECTION_TOOL_QUICK_ANSWERS:
+      return selection::SuggestedActionIcon::kExplain;
+    case optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME:
+      return selection::SuggestedActionIcon::kSpark;
+    default:
+      return selection::SuggestedActionIcon::kNone;
+  }
+}
 
 gfx::RectF GetRectForRegion(const SkBitmap& image, const gfx::RectF& region) {
   double x_scale = image.width();
@@ -232,7 +246,9 @@ SelectionOverlayController::SelectionOverlayController(
     PrefService* pref_service)
     : OverlayBaseController(tab, pref_service),
       scoped_unowned_user_data_(tab->GetUnownedUserDataHost(), *this) {
-  if (base::FeatureList::IsEnabled(kQuickAnswersSelectionSuggestions)) {
+  if (base::FeatureList::IsEnabled(kQuickAnswersSelectionSuggestions) &&
+      base::FeatureList::IsEnabled(
+          ::selection::kSmartSelectionServerSuggestions)) {
     quick_answers_tool_ = std::make_unique<QuickAnswersTool>(CHECK_DEREF(tab_));
     if (auto* suggestion_service = ::selection::SuggestionService::From(tab_)) {
       suggestion_service->RegisterTool(quick_answers_tool_.get());
@@ -401,8 +417,7 @@ void SelectionOverlayController::CaptureRegion(
                << web_contents->GetURL();
     return;
   }
-  if (selection_overlay_controller->state() !=
-      OverlayBaseController::State::kOff) {
+  if (selection_overlay_controller->state() != State::kOff) {
     mojo::Remote<mojom::CaptureRegionObserver> remote(std::move(observer));
     remote->OnUpdate(mojom::CaptureRegionResultPtr(),
                      mojom::CaptureRegionErrorReason::kUnknown);
@@ -426,13 +441,10 @@ void SelectionOverlayController::CaptureRegion(
     LOG(ERROR) << "Cannot share tab context for " << web_contents->GetURL();
     return;
   }
-  auto* actor_service =
-      actor::ActorKeyedService::Get(web_contents->GetBrowserContext());
-  if (actor_service && actor_service->IsActiveOnTab(*tab)) {
+  if (!selection_overlay_controller->CanStartSession()) {
     mojo::Remote<mojom::CaptureRegionObserver> remote(std::move(observer));
     remote->OnUpdate(mojom::CaptureRegionResultPtr(),
                      mojom::CaptureRegionErrorReason::kUnknown);
-    LOG(ERROR) << "Tab has active actuation task: " << web_contents->GetURL();
     return;
   }
   // When the small chip is enabled, pre-select the tab's current text
@@ -453,10 +465,38 @@ void SelectionOverlayController::CaptureRegion(
     }
   }
   selection_overlay_controller->BindCaptureRegionObserver(std::move(observer));
-  selection_overlay_controller->Show(std::move(options));
+  selection_overlay_controller->ShowImpl(std::move(options));
+}
+
+bool SelectionOverlayController::CanStartSession() {
+  content::WebContents* web_contents = tab_->GetContents();
+  if (state() != State::kOff) {
+    LOG(ERROR) << "Overlay is still showing for " << web_contents->GetURL();
+    return false;
+  }
+  auto* actor_service =
+      actor::ActorKeyedService::Get(web_contents->GetBrowserContext());
+  if (actor_service && actor_service->IsActiveOnTab(*tab_)) {
+    LOG(ERROR) << "Tab has active actuation task: " << web_contents->GetURL();
+    return false;
+  }
+  // `ShowModalUI()` silently returns when this fails, which would leave the
+  // state staged by the caller behind while the controller is still `kOff`.
+  if (!CanShowModalUI()) {
+    LOG(ERROR) << "Cannot show modal UI for " << web_contents->GetURL();
+    return false;
+  }
+  return true;
 }
 
 void SelectionOverlayController::Show(mojom::TabContextOptionsPtr options) {
+  if (!CanStartSession()) {
+    return;
+  }
+  ShowImpl(std::move(options));
+}
+
+void SelectionOverlayController::ShowImpl(mojom::TabContextOptionsPtr options) {
   options_ = std::move(options);
   ObserveActiveTabChanges();
   ShowModalUI();
@@ -466,9 +506,12 @@ void SelectionOverlayController::ShowWithSelection(
     content::RenderFrameHost* selected_frame,
     const gfx::Rect& selection_bounds,
     selection::InteractionOptionsPtr interaction_options) {
+  if (!CanStartSession()) {
+    return;
+  }
   interaction_options_ = std::move(interaction_options);
   SetRegionFromBounds(selected_frame, selection_bounds);
-  Show(/*options=*/nullptr);
+  ShowImpl(/*options=*/nullptr);
 }
 
 void SelectionOverlayController::SetRegionFromBounds(
@@ -503,8 +546,15 @@ void SelectionOverlayController::SetRegionFromBounds(
   }
 }
 
-void SelectionOverlayController::Close() {
+void SelectionOverlayController::Close(CloseReason reason) {
+  close_reason_ = reason;
   CloseUI();
+}
+
+base::CallbackListSubscription
+SelectionOverlayController::RegisterOverlayClosedCallback(
+    OverlayClosedCallback callback) {
+  return overlay_closed_callbacks_.Add(std::move(callback));
 }
 
 void SelectionOverlayController::OnFocusedTabChanged(
@@ -561,13 +611,25 @@ void SelectionOverlayController::CloseUI() {
   if (state() == State::kOff) {
     return;
   }
+  CloseReason close_reason = close_reason_.value_or(CloseReason::kOther);
   Reset();
   OverlayBaseController::CloseUI();
+  overlay_closed_callbacks_.Notify(close_reason);
 }
 
 void SelectionOverlayController::RequestSyncClose(
     DismissalSource dismissal_source) {
-  CloseUI();
+  switch (dismissal_source) {
+    case DismissalSource::kPreselectionToastExitButton:
+      Close(CloseReason::kCloseButton);
+      break;
+    case DismissalSource::kPreselectionToastEscapeKeyPress:
+      Close(CloseReason::kEscapeKeyPress);
+      break;
+    default:
+      Close(CloseReason::kOther);
+      break;
+  }
 }
 
 void SelectionOverlayController::InitializeOverlay() {
@@ -609,7 +671,7 @@ bool SelectionOverlayController::HandleKeyboardEvent(
     return false;
   }
   if (IsEscapeEvent(event)) {
-    CloseUI();
+    Close(CloseReason::kEscapeKeyPress);
     return true;
   }
   return unhandled_keyboard_event_handler_.HandleKeyboardEvent(event,
@@ -790,7 +852,14 @@ void SelectionOverlayController::TabForegrounded(tabs::TabInterface* tab) {
 
 void SelectionOverlayController::DismissOverlay(
     selection::DismissOverlayReason reason) {
-  CloseUI();
+  switch (reason) {
+    case selection::DismissOverlayReason::kCloseButton:
+      Close(CloseReason::kCloseButton);
+      break;
+    case selection::DismissOverlayReason::kBackgroundClick:
+      Close(CloseReason::kOther);
+      break;
+  }
 }
 
 void SelectionOverlayController::AdjustRegion(
@@ -820,7 +889,7 @@ void SelectionOverlayController::DeleteRegion(const base::UnguessableToken& id,
   if (selected_regions_.erase(id)) {
     if (selected_regions_.empty()) {
       active_region_id_.reset();
-      CloseUI();
+      Close(CloseReason::kCloseButton);
       return;
     }
     if (active_region_id_ == id) {
@@ -906,6 +975,7 @@ void SelectionOverlayController::GetSuggestedActionsImpl(
           base::ToVector(region_data->suggestions, [](const auto& item) {
             return selection::SuggestedAction::New(
                 item.first, base::UTF16ToUTF8(item.second->GetLabel()),
+                GetIconForTool(item.second->GetToolId()),
                 item.second->GetAction());
           });
       callback.Run(std::move(actions));
@@ -964,14 +1034,6 @@ void SelectionOverlayController::RequestNewSuggestions(
   uint64_t generation = ++region_data.generation;
   base::UnguessableToken region_id = region_data.region->id;
 
-  if (base::FeatureList::IsEnabled(kStaticSelectionSuggestions)) {
-    std::vector<std::unique_ptr<::selection::Suggestion>> static_suggestions;
-    static_suggestions.emplace_back(std::make_unique<SelectionSuggestion>(
-        CHECK_DEREF(tab_), u"Ask Gemini"));
-    OnSuggestionsReceived(region_id, generation, std::move(static_suggestions),
-                          /*complete=*/false);
-  }
-
   ::selection::AreaOfInterest aoi;
   aoi.screenshot = redacted_screenshot_;
   aoi.selected_text = region_data.selected_text;
@@ -998,17 +1060,36 @@ void SelectionOverlayController::RequestNewSuggestions(
     }
   }
 
+  std::vector<std::unique_ptr<::selection::Suggestion>> static_suggestions;
+  if (base::FeatureList::IsEnabled(kStaticSelectionSuggestions)) {
+    static_suggestions.emplace_back(std::make_unique<SelectionSuggestion>(
+        CHECK_DEREF(tab_), u"Ask Gemini"));
+  }
+  if (base::FeatureList::IsEnabled(kQuickAnswersSelectionSuggestions) &&
+      !base::FeatureList::IsEnabled(
+          ::selection::kSmartSelectionServerSuggestions)) {
+    if (auto suggestion =
+            QuickAnswersTool::CreateSuggestion(CHECK_DEREF(tab_), aoi)) {
+      static_suggestions.push_back(std::move(suggestion));
+    }
+  }
+  if (!static_suggestions.empty()) {
+    OnSuggestionsReceived(region_id, generation, /*complete=*/false,
+                          std::move(static_suggestions));
+  }
+
   suggestion_service->RequestSuggestions(
-      aoi,
-      base::BindRepeating(&SelectionOverlayController::OnSuggestionsReceived,
-                          weak_factory_.GetWeakPtr(), region_id, generation));
+      std::move(aoi),
+      base::BindOnce(&SelectionOverlayController::OnSuggestionsReceived,
+                     weak_factory_.GetWeakPtr(), region_id, generation,
+                     /*complete=*/true));
 }
 
 void SelectionOverlayController::OnSuggestionsReceived(
     const base::UnguessableToken& region_id,
     uint64_t generation,
-    std::vector<std::unique_ptr<::selection::Suggestion>> suggestions,
-    bool complete) {
+    bool complete,
+    std::vector<std::unique_ptr<::selection::Suggestion>> suggestions) {
   SelectedRegionData* region_data =
       base::FindOrNull(selected_regions_, region_id);
   if (!region_data || region_data->generation != generation) {
@@ -1026,11 +1107,13 @@ void SelectionOverlayController::OnSuggestionsReceived(
   for (auto& suggestion : suggestions) {
     auto action_id = base::UnguessableToken::Create();
     std::string label = base::UTF16ToUTF8(suggestion->GetLabel());
+    selection::SuggestedActionIcon icon =
+        GetIconForTool(suggestion->GetToolId());
     ::selection::mojom::ActionPtr action = suggestion->GetAction();
     suggestion->OnSuggestionPresented();
     region_data->suggestions.emplace_back(action_id, std::move(suggestion));
     actions.push_back(selection::SuggestedAction::New(
-        action_id, std::move(label), std::move(action)));
+        action_id, std::move(label), icon, std::move(action)));
   }
 
   // This appends the new ones. The `suggested_actions_listener_` will be
@@ -1118,6 +1201,7 @@ void SelectionOverlayController::Reset() {
   options_.reset();
   overlay_web_view_focus_subscription_ = {};
   active_tab_subscription_ = {};
+  close_reason_.reset();
 }
 
 void SelectionOverlayController::RenderPendingRegions() {

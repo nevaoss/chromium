@@ -21,6 +21,16 @@ _ALLOWED_CREATE_FOR_CALLS = (
   # extensions::BookmarkManagerPrivateDragEventRouter, so the WebContents
   # must own it.
   'BookmarkTabHelper::CreateForWebContents',
+  # PopupBlockerTabHelper lives in //components/blocked_content and is looked up
+  # from arbitrary WebContents by PopupBlocker,
+  # ChromeContentBrowserClient::CanCreateWindow, and PopupOpenerTabHelper, so
+  # the WebContents must own it.
+  'blocked_content::PopupBlockerTabHelper::CreateForWebContents',
+  # BreadcrumbManagerTabHelper is looked up on old_contents by
+  # BreadcrumbManagerBrowserAgent::OnTabStripModelChanged
+  # (TabStripModelChange::kReplaced) after TabFeatures::WillDiscardContents
+  # swaps in new_contents, so the WebContents must own it.
+  'BreadcrumbManagerTabHelper::CreateForWebContents',
   # CaptivePortalTabHelper lives in //components/captive_portal/content and
   # is also attached to non-tab GuestView WebContents in
   # ChromeGuestViewManagerDelegate, so the WebContents must own it.
@@ -49,15 +59,74 @@ _ALLOWED_CREATE_FOR_CALLS = (
   # Chrome App window WebContents in ChromeAppDelegate::InitWebContents, so
   # the WebContents must own it.
   'FileSystemAccessPermissionRequestManager::CreateForWebContents',
+  # HistoryClustersTabHelper records final page-end metrics
+  # (RecordPageEndMetricsIfNeeded) in WebContentsDestroyed() after TabFeatures
+  # is destroyed, and is looked up on WebContents by
+  # UkmPageLoadMetricsObserver, so WebContents must own it.
+  'HistoryClustersTabHelper::CreateForWebContents',
+  # HttpsOnlyModeTabHelper is also attached to non-tab and pre-tab WebContents
+  # in HttpsUpgradesInterceptor::MaybeCreateLoader and
+  # HttpsUpgradesNavigationThrottle::MaybeCreateThrottleFor, and is queried on
+  # WebContents by chrome_security_state::GetVisibleSecurityState during
+  # WebContentsDestroyed() after TabFeatures is destroyed, so the WebContents
+  # must continue to own it.
+  'HttpsOnlyModeTabHelper::CreateForWebContents',
   # TabModalDialogManager lives in //components/javascript_dialogs and is also
   # attached to non-tab Document Picture-in-Picture WebContents in
   # DocumentPipHost, so the WebContents must own it.
   'javascript_dialogs::TabModalDialogManager::CreateForWebContents',
+  # LoginDetectionTabHelper is also attached to pre-tab popup WebContents in
+  # LoginDetectionTabHelper::DidOpenRequestedURL before a TabModel exists, and
+  # records popup-close metrics in WebContentsDestroyed() after TabFeatures is
+  # destroyed, so WebContents must own it.
+  'login_detection::LoginDetectionTabHelper::MaybeCreateForWebContents',
   # PermissionRecoverySuccessRateTracker lives in //components/permissions and
   # is also attached to non-tab WebContents in
   # PaymentHandlerWebFlowViewController::PopulateSheet, DocumentPipHost, and
   # GlicSidePanelUi, so the WebContents must own it.
   'permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents',
+  # PermissionRequestManager lives in //components/permissions and is also
+  # attached to non-tab WebContents in ChromeThinWebViewInitializer,
+  # DocumentPipHost, PaymentHandlerWebFlowViewController,
+  # ContextualTasksSidePanelCoordinator, OmniboxPopupWebuiBaseContent,
+  # OmniboxEverywhereUiManager, VrUiHostImpl, and ExternalAppDialog, so
+  # WebContents must own it.
+  'permissions::PermissionRequestManager::CreateForWebContents',
+  # PrefsTabHelper is also attached to non-tab WebContents in DevToolsWindow,
+  # ChromeExtensionHostDelegate::OnExtensionHostCreated,
+  # GlicNoWebviewContentsManager, GlicWebUIContentsManager,
+  # glic::OnGuestAdded, WebUIContentsPreloadManager, and WebUIContentsWrapper,
+  # so WebContents must own it.
+  'PrefsTabHelper::CreateForWebContents',
+  # RequestDesktopSiteWebContentsObserverAndroid is also attached synchronously
+  # to pre-tab WebContents on Android in ChromeExtensionHostDelegate::CreateTab,
+  # TabWebContentsDelegateAndroid::AddNewContents, and
+  # PrerenderWebContentsDelegateImpl::PrerenderWebContentsCreated before
+  # TabAndroid exists so DidStartNavigation can override the user agent for the
+  # initial load, so the WebContents must own it.
+  'RequestDesktopSiteWebContentsObserverAndroid::CreateForWebContents',
+  # ResourceCoordinatorTabHelper is also attached directly to WebContents in
+  # TabLifecycleUnit for unit tests and stops TabLoadTracker tracking in
+  # WebContentsDestroyed() after TabFeatures is destroyed, so WebContents must
+  # own it.
+  'resource_coordinator::ResourceCoordinatorTabHelper::CreateForWebContents',
+  # SafetyTipWebContentsObserver is queried on WebContents by
+  # chrome_security_state::GetVisibleSecurityState during
+  # SecurityStatePageLoadMetricsObserver::OnComplete in
+  # WebContentsDestroyed() after TabFeatures is destroyed, so the
+  # the WebContents must own it.
+  'SafetyTipWebContentsObserver::CreateForWebContents',
+  # SafeBrowsingNavigationObserver lives in
+  # //components/safe_browsing/content/browser, is looked up on WebContents by
+  # BrowserURLLoaderThrottle::WillRedirectRequest and
+  # SafeBrowsingNavigationObserverManager, and cleans up in
+  # WebContentsDestroyed() after TabFeatures is destroyed, so WebContents must
+  # own it.
+  'safe_browsing::SafeBrowsingNavigationObserver::MaybeCreateForWebContents',
+  # SiteEngagementService::Helper lives in //components/site_engagement/content
+  # and is also attached to non-tab WebContents in WebUIContentsWrapper, so
+  # WebContents must own it.
+  'site_engagement::SiteEngagementService::Helper::CreateForWebContents',
   # The task manager tag is looked up from WebContents user data by
   # WebContentsTaskProvider, is swapped in place by WebAppTabHelper, and is
   # also attached to non-tab WebContents (e.g. payment handler WebViews) and

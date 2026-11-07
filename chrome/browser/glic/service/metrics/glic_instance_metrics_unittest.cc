@@ -400,6 +400,35 @@ TEST_F(GlicInstanceMetricsTest,
       mojom::InvocationSource::kDaisyChainOnFollowLink, 1);
 }
 
+TEST_F(GlicInstanceMetricsTest, FreInvoked_RecordedOnceWhenUnconsented) {
+  profile_.GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre,
+      static_cast<int>(prefs::FreStatus::kNotStarted));
+
+  ShowOptions show_options{FloatingShowOptions{}};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  histogram_tester_.ExpectUniqueSample(
+      "Glic.Fre.Invoked.InvocationSource",
+      mojom::InvocationSource::kTopChromeButton, 1);
+  EXPECT_EQ(user_action_tester_.GetActionCount("Glic.Fre.Invoked"), 1);
+
+  metrics_.OnOpen(mojom::InvocationSource::kOsButton, show_options);
+  histogram_tester_.ExpectUniqueSample(
+      "Glic.Fre.Invoked.InvocationSource",
+      mojom::InvocationSource::kTopChromeButton, 1);
+  EXPECT_EQ(user_action_tester_.GetActionCount("Glic.Fre.Invoked"), 1);
+}
+
+TEST_F(GlicInstanceMetricsTest, FreInvoked_NotRecordedWhenConsented) {
+  profile_.GetPrefs()->SetInteger(
+      prefs::kGlicCompletedFre, static_cast<int>(prefs::FreStatus::kCompleted));
+
+  ShowOptions show_options{FloatingShowOptions{}};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  histogram_tester_.ExpectTotalCount("Glic.Fre.Invoked.InvocationSource", 0);
+  EXPECT_EQ(user_action_tester_.GetActionCount("Glic.Fre.Invoked"), 0);
+}
+
 TEST_F(GlicInstanceMetricsTest, SidePanelFirstOpenDuration_LoggedOnFirstClose) {
   EXPECT_CALL(mock_tab_, GetTabHandle()).WillRepeatedly(testing::Return(1));
 
@@ -1213,75 +1242,6 @@ TEST_F(GlicInstanceMetricsTest,
       "Glic.Instance.PanelPresentationTime.Inactive.SidePanel", 1);
   histogram_tester_.ExpectTotalCount(
       "Glic.Instance.PanelPresentationTime.SidePanel", 0);
-}
-
-TEST_F(
-    GlicInstanceMetricsTest,
-    PanelPresentationTime_ActiveFlow_MultipleOnOpenCallsDoNotResetStartTime) {
-  ShowOptions show_options{SidePanelShowOptions(mock_tab_)};
-  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
-  metrics_.OnVisibilityChanged(true);
-  task_environment_.FastForwardBy(base::Milliseconds(100));
-
-  // A second OnOpen call occurs while still loading (e.g. tab switch during
-  // load).
-  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
-  task_environment_.FastForwardBy(base::Milliseconds(150));
-
-  metrics_.OnClientReady();
-
-  // Presentation time should be measured from the initial OnOpen (250ms total),
-  // not overwritten by the second OnOpen (which would be 150ms).
-  histogram_tester_.ExpectUniqueTimeSample(
-      "Glic.Instance.PanelPresentationTime.SidePanel", base::Milliseconds(250),
-      1);
-  histogram_tester_.ExpectTotalCount(
-      "Glic.Instance.PanelPresentationTime.Inactive.SidePanel", 0);
-}
-
-TEST_F(GlicInstanceMetricsTest,
-       PanelPresentationTime_EmbedderTypeUpdatedOnSubsequentOnOpen) {
-  ShowOptions side_panel_options{SidePanelShowOptions(mock_tab_)};
-  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton,
-                  side_panel_options);
-  metrics_.OnVisibilityChanged(true);
-  task_environment_.FastForwardBy(base::Milliseconds(100));
-
-  // Switched to floaty while still loading.
-  ShowOptions floaty_options{FloatingShowOptions{}};
-  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, floaty_options);
-  task_environment_.FastForwardBy(base::Milliseconds(150));
-
-  metrics_.OnClientReady();
-
-  // Should log under Floaty with the full 250ms elapsed time.
-  histogram_tester_.ExpectUniqueTimeSample(
-      "Glic.Instance.PanelPresentationTime.Floaty", base::Milliseconds(250), 1);
-  histogram_tester_.ExpectTotalCount(
-      "Glic.Instance.PanelPresentationTime.SidePanel", 0);
-}
-
-TEST_F(GlicInstanceMetricsTest,
-       PanelPresentationTime_ClosedBeforeReadyResetsStartTimeForNextOpen) {
-  ShowOptions show_options{SidePanelShowOptions(mock_tab_)};
-  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
-  metrics_.OnVisibilityChanged(true);
-  task_environment_.FastForwardBy(base::Milliseconds(100));
-
-  // Explicit close cancels the in-flight load measurement.
-  metrics_.OnClose();
-  task_environment_.FastForwardBy(base::Milliseconds(50));
-
-  // Re-opened fresh.
-  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
-  metrics_.OnVisibilityChanged(true);
-  task_environment_.FastForwardBy(base::Milliseconds(200));
-  metrics_.OnClientReady();
-
-  // Should measure 200ms from the second open, not 350ms.
-  histogram_tester_.ExpectUniqueTimeSample(
-      "Glic.Instance.PanelPresentationTime.SidePanel", base::Milliseconds(200),
-      1);
 }
 
 TEST_F(GlicInstanceMetricsTest, OnUserInputSubmitted_RecordsPromptType) {

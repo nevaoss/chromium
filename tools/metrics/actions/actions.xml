@@ -1104,6 +1104,8 @@ should be able to be added at any place in this file.
   <variant name=".SafetySafetycheck" summary="Safety Check"/>
   <variant name=".SaveTabGroups" summary="Saved Tab Groups"/>
   <variant name=".SearchBoxSuggestions" summary="Search Box Suggestions"/>
+  <variant name=".SendTabToSelfEnhancedHandoff"
+      summary="Send Tab To Self Enhanced Handoff"/>
   <variant name=".SideBySide" summary="Split View"/>
   <variant name=".SidePanelPinning" summary="Side Panel Pinning"/>
   <variant name=".SyncAccountSettings"
@@ -4255,6 +4257,24 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user opts in to crash recovery by clicking the positive
     button on the recovery dialog.
+  </description>
+</action>
+
+<action name="Android.MultiWindow.StartupRestorationCompleted">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded when automatic multi-window restoration on startup finishes
+    creating all windows for which activity creation was initiated.
+  </description>
+</action>
+
+<action name="Android.MultiWindow.StartupRestorationInitiated">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded when automatic multi-window restoration on cold startup initiates
+    activity creation for at least one additional window.
   </description>
 </action>
 
@@ -10195,6 +10215,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="ContextualTasks.SidePanel.UserAction.Close.AskGoogle">
+  <owner>nguyenbryan@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user closes the side panel for a session entered via an
+    Ask Google entry point.
+  </description>
+</action>
+
 <action name="ContextualTasks.SidePanel.UserAction.Close.LensOverlay">
   <owner>nguyenbryan@chromium.org</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
@@ -13448,6 +13477,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Glic.Fre.Invoked">
+  <owner>perrier@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <description>
+    Logged when a Glic instance is opened for the first time while the user has
+    not yet consented to the FRE and the FRE opt-in will be shown.
+  </description>
+</action>
+
 <action name="Glic.Fre.NoThanks">
   <owner>iwells@google.com</owner>
   <owner>erikchen@chromium.org</owner>
@@ -13900,14 +13938,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="Glic.Onboarding.Invoked">
+<action name="Glic.Onboarding.Completed">
   <owner>perrier@google.com</owner>
   <owner>glic+metrics@google.com</owner>
   <description>
-    Logged when Glic is invoked during onboarding. Invoked is defined as a new
-    embedder being shown for a tab or Floaty. Tab switching or focus events are
-    not considered invoking, but daisy chaining, conversation switching, or
-    re-opening on an already bound tab are considered invoking.
+    Recorded when the user completes onboarding by both opting in and submitting
+    their first prompt (entering the PromptAndOptIn state).
   </description>
 </action>
 
@@ -13927,14 +13963,6 @@ should be able to be added at any place in this file.
   <description>
     The Glic web client has signalled that an onboarding flow has been shown,
     and the instance is ready and visible.
-  </description>
-</action>
-
-<action name="Glic.Onboarding.PromptSubmitted">
-  <owner>perrier@google.com</owner>
-  <owner>glic+metrics@google.com</owner>
-  <description>
-    Logged when a prompt is submitted by the user during onboarding.
   </description>
 </action>
 
@@ -20498,6 +20526,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiLiveFREConsentLinkClick">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user clicks any link on the Live Gemini FRE consent
+    screen. iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiLiveOSMicPromptAllowed">
   <owner>tarekmakkouk@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -24652,7 +24689,8 @@ should be able to be added at any place in this file.
   <owner>huitingyu@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
   <description>
-    User in the iOS tab group edition view, confirmed the group creation.
+    User in iOS created a new tab group (e.g., from the tab group edition view,
+    drag and drop in the tab grid, or opening a link in a new group).
   </description>
 </action>
 
@@ -29206,6 +29244,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="PageInfo.ExtensionsMenu.Opened">
+  <owner>hujasonx@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>Extensions menu opened from PageInfo.</description>
+</action>
+
 <action name="PageInfo.ForgetSite.Cleared">
   <owner>olesiamarukhno@google.com</owner>
   <owner>dullweber@chromium.org</owner>
@@ -32850,6 +32894,24 @@ should be able to be added at any place in this file.
   <owner>gambard@chromium.org</owner>
   <description>
     Reported when user navigates to Bandwidth Settings. iOS only.
+  </description>
+</action>
+
+<action name="Settings.BottomBar.Disabled">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <description>
+    Logged when the user turns the bottom bar off in Appearance settings.
+    Android only.
+  </description>
+</action>
+
+<action name="Settings.BottomBar.Enabled">
+  <owner>madhavpruthi@google.com</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <description>
+    Logged when the user turns the bottom bar on in Appearance settings. Android
+    only.
   </description>
 </action>
 
@@ -38097,6 +38159,23 @@ should be able to be added at any place in this file.
 <action name="styleWithCSS">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
+</action>
+
+<action name="Suggestions.AIM.UndoUnpin">
+  <owner>ericekey@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    iOS: User tapped Undo on the snackbar to revert unpinning the AIM tile in
+    Most Visited Tiles.
+  </description>
+</action>
+
+<action name="Suggestions.AIM.Unpinned">
+  <owner>ericekey@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    iOS: User unpinned the AIM tile in Most Visited Tiles.
+  </description>
 </action>
 
 <action name="Suggestions.AllDismissed.Shown">

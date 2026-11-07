@@ -322,6 +322,7 @@ Sadece parolanıza sahip olan kişiler şifrelenmiş verilerinizi okuyabilir. Pa
 <translation id="2297822946037605517">Bu sayfayı paylaş</translation>
 <translation id="230115972905494466">Uyumlu cihaz bulunamadı</translation>
 <translation id="2305798319182970276">Tek bir tuşa dokunarak geçmişinizi silin</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> uygulamasının bu sitede insan arabirim cihazlarına (HID) erişmesi için izin gerekiyor.</translation>
 <translation id="2316129865977710310">Hayır, teşekkürler</translation>
 <translation id="232137538351753795">Geri gitmek için sol kenardan kaydırın</translation>
 <translation id="2323763861024343754">Site depolama alanı</translation>
@@ -1691,6 +1692,7 @@ Bu ayarı değiştirmek için <ph name="BEGIN_LINK" />hesabınızdaki Chrome ver
 <translation id="7608245556672190037">Chrome Finds etkinleştirme sayfası tam ekranda açıldı</translation>
 <translation id="7612619742409846846">Google'da şu hesapla oturum açıldı:</translation>
 <translation id="7612989789287281429">Oturum açılıyor…</translation>
+<translation id="7617512710641355143">Chrome yönetiliyor</translation>
 <translation id="7619072057915878432">Ağ sorunları nedeniyle <ph name="FILE_NAME" /> dosyası indirilemedi.</translation>
 <translation id="7626032353295482388">Chrome'a hoş geldiniz</translation>
 <translation id="7628417132421583481">Şifre Yöneticisi'ne git</translation>

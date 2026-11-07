@@ -40,6 +40,7 @@
 #include "base/containers/fixed_flat_set.h"
 #include "base/containers/span.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/numerics/safe_conversions.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/web_keyboard_event.h"
@@ -97,6 +98,7 @@
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_body_element.h"
+#include "third_party/blink/renderer/core/html/html_capability_element_base.h"
 #include "third_party/blink/renderer/core/html/html_details_element.h"
 #include "third_party/blink/renderer/core/html/html_dialog_element.h"
 #include "third_party/blink/renderer/core/html/html_directory_element.h"
@@ -212,6 +214,10 @@
 
 namespace blink {
 namespace {
+
+// Used as max depth for Blink.Accessibility.RadioGroupAncestorSearchDepth
+// metric
+constexpr int kMaxRadioGroupDepth = 40;
 
 bool IsIgnoredAsInsideInactiveColumnTab(Node* node) {
   if (!node || !RuntimeEnabledFeatures::CSSScrollMarkerGroupModesEnabled() ||
@@ -1890,7 +1896,7 @@ ax::mojom::blink::SortDirection AXNodeObject::GetSortDirection() const {
   if (const AtomicString& aria_sort =
           AriaTokenAttribute(html_names::kAriaSortAttr)) {
     if (EqualIgnoringAsciiCase(aria_sort, "none")) {
-      return ax::mojom::blink::SortDirection::kNone;
+      return ax::mojom::blink::SortDirection::kUnsorted;
     }
     if (EqualIgnoringAsciiCase(aria_sort, "ascending")) {
       return ax::mojom::blink::SortDirection::kAscending;
@@ -2372,7 +2378,8 @@ ax::mojom::blink::Role AXNodeObject::RoleFromLayoutObjectOrNode() const {
     }
   }
 
-  // Capability elements (install, usermedia, geolocation) act as buttons.
+  // Capability elements (install, usermedia, geolocation, camera, microphone)
+  // act as buttons.
   if (IsA<HTMLCapabilityElementBase>(node)) {
     return ax::mojom::blink::Role::kButton;
   }
@@ -4108,11 +4115,22 @@ AXObject* AXNodeObject::NearestAriaRadioGroupAncestor(const AXObject* radio) {
   if (!radio) {
     return nullptr;
   }
-  for (AXObject* ancestor = radio->ParentObjectUnignored(); ancestor;
-       ancestor = ancestor->ParentObjectUnignored()) {
+
+  bool record_depth =
+      radio->RoleValue() == ax::mojom::blink::Role::kRadioButton;
+  int depth = 0;
+  AXObject* ancestor = radio->ParentObjectUnignored();
+  while (ancestor) {
+    ++depth;
     if (ancestor->RoleValue() == ax::mojom::blink::Role::kRadioGroup) {
+      if (record_depth) {
+        UMA_HISTOGRAM_EXACT_LINEAR(
+            "Blink.Accessibility.RadioGroupAncestorSearchDepth", depth,
+            kMaxRadioGroupDepth);
+      }
       return ancestor;
     }
+    ancestor = ancestor->ParentObjectUnignored();
   }
   return nullptr;
 }
@@ -7322,6 +7340,23 @@ String AXNodeObject::NativeTextAlternative(
         *found_text_alternative = true;
       }
       return text_alternative;
+    }
+  }
+
+  if (auto* capability_element =
+          DynamicTo<HTMLCapabilityElementBase>(GetNode())) {
+    if (capability_element->IsIconOnly()) {
+      name_from = ax::mojom::blink::NameFrom::kContents;
+      text_alternative = capability_element->AccessibleLabel();
+      if (!text_alternative.empty()) {
+        if (name_sources) {
+          name_sources->push_back(NameSource(*found_text_alternative));
+          name_sources->back().type = name_from;
+          name_sources->back().text = text_alternative;
+          *found_text_alternative = true;
+        }
+        return text_alternative;
+      }
     }
   }
 

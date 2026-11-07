@@ -1138,7 +1138,20 @@ inline constexpr char kHatsOsSettingsSearchSurveyCycleEndTs[] =
     "hats_os_settings_search_cycle_end_timestamp";
 inline constexpr char kHatsOsSettingsSearchSurveyIsSelected[] =
     "hats_os_settings_search_is_selected";
+inline constexpr char kDriveFsEnableMirrorSync[] = "drivefs.enable_mirror_sync";
+inline constexpr char kDriveFsMirrorSyncMachineRootId[] =
+    "drivefs.mirror_sync_machine_root_id";
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+// Deprecated 10/2026.
+inline constexpr char kDismissedHistoryEmbeddingsScopePromo[] =
+    "omnibox.dismissed_history_embeddings_scope_promo";
+inline constexpr char kDismissedHistoryEmbeddingsSettingsPromo[] =
+    "omnibox.dismissed_history_embeddings_settings_promo";
+inline constexpr char kShownCountHistoryEmbeddingsScopePromo[] =
+    "omnibox.shown_count_history_embeddings_scope_promo";
+inline constexpr char kShownCountHistoryEmbeddingsSettingsPromo[] =
+    "omnibox.shown_count_history_embeddings_settings_promo";
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1612,7 +1625,16 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(kHatsPhotosExperienceIsSelected, false);
   registry->RegisterInt64Pref(kHatsOsSettingsSearchSurveyCycleEndTs, 0);
   registry->RegisterBooleanPref(kHatsOsSettingsSearchSurveyIsSelected, false);
+  registry->RegisterBooleanPref(kDriveFsEnableMirrorSync, false);
+  registry->RegisterStringPref(kDriveFsMirrorSyncMachineRootId, "");
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+  // Deprecated 10/2026.
+  registry->RegisterBooleanPref(kDismissedHistoryEmbeddingsScopePromo, false);
+  registry->RegisterBooleanPref(kDismissedHistoryEmbeddingsSettingsPromo,
+                                false);
+  registry->RegisterIntegerPref(kShownCountHistoryEmbeddingsScopePromo, 0);
+  registry->RegisterIntegerPref(kShownCountHistoryEmbeddingsSettingsPromo, 0);
 }
 
 }  // namespace
@@ -1715,6 +1737,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
                              base::Time(), PrefRegistry::LOSSY_PREF);
   registry->RegisterBooleanPref(
       policy::policy_prefs::kIntensiveWakeUpThrottlingEnabled, false);
+  registry->RegisterBooleanPref(prefs::kPromotionsEnabled, true);
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
   registry->RegisterBooleanPref(prefs::kFeatureNotificationsEnabled, true);
 #endif  // BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -3036,7 +3059,15 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kHatsPhotosExperienceIsSelected);
   profile_prefs->ClearPref(kHatsOsSettingsSearchSurveyCycleEndTs);
   profile_prefs->ClearPref(kHatsOsSettingsSearchSurveyIsSelected);
+  profile_prefs->ClearPref(kDriveFsEnableMirrorSync);
+  profile_prefs->ClearPref(kDriveFsMirrorSyncMachineRootId);
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+  // Added 10/2026.
+  profile_prefs->ClearPref(kDismissedHistoryEmbeddingsScopePromo);
+  profile_prefs->ClearPref(kDismissedHistoryEmbeddingsSettingsPromo);
+  profile_prefs->ClearPref(kShownCountHistoryEmbeddingsScopePromo);
+  profile_prefs->ClearPref(kShownCountHistoryEmbeddingsSettingsPromo);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

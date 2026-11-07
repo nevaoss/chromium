@@ -208,7 +208,7 @@ public class TabStripContextMenuCoordinatorUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
     @Config(qualifiers = "sw600dp")
-    public void showMenu_vertical_expandOnHoverOn_showsTurnOffItem() {
+    public void showMenu_vertical_expandOnHoverOn_showsCheckedItem() {
         DeviceInfo.setIsDesktopForTesting(true);
         FeatureOverrides.overrideParam(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
@@ -225,8 +225,19 @@ public class TabStripContextMenuCoordinatorUnitTest {
                 R.id.toggle_expand_tabs_on_hover_menu_id,
                 expandOnHoverItemModel.get(ListMenuItemProperties.MENU_ITEM_ID));
         assertEquals(
-                R.string.turn_off_expand_tabs_on_hover,
+                R.string.expand_tabs_on_hover,
                 expandOnHoverItemModel.get(ListMenuItemProperties.TITLE_ID));
+        assertTrue(expandOnHoverItemModel.get(ListMenuItemProperties.CHECKABLE));
+        assertTrue(expandOnHoverItemModel.get(ListMenuItemProperties.CHECKED));
+        assertEquals(
+                R.drawable.material_ic_check_24dp,
+                expandOnHoverItemModel.get(ListMenuItemProperties.END_ICON_ID));
+        assertEquals(
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(
+                                R.dimen.vertical_tabs_expand_on_hover_menu_end_icon_margin),
+                expandOnHoverItemModel.get(ListMenuItemProperties.END_ICON_MARGIN_START));
 
         var histogramWatcher =
                 HistogramWatcher.newSingleRecordWatcher(
@@ -244,7 +255,7 @@ public class TabStripContextMenuCoordinatorUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_VERTICAL_TABS)
     @Config(qualifiers = "sw600dp")
-    public void showMenu_vertical_expandOnHoverOff_showsTurnOnItem() {
+    public void showMenu_vertical_expandOnHoverOff_showsUncheckedItem() {
         DeviceInfo.setIsDesktopForTesting(true);
         FeatureOverrides.overrideParam(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
@@ -258,8 +269,12 @@ public class TabStripContextMenuCoordinatorUnitTest {
         verifyMenuState(/* expectedNumItems= */ 9);
         PropertyModel expandOnHoverItemModel = getItemModelAtPosition(6);
         assertEquals(
-                R.string.turn_on_expand_tabs_on_hover,
+                R.string.expand_tabs_on_hover,
                 expandOnHoverItemModel.get(ListMenuItemProperties.TITLE_ID));
+        assertTrue(expandOnHoverItemModel.get(ListMenuItemProperties.CHECKABLE));
+        assertFalse(expandOnHoverItemModel.get(ListMenuItemProperties.CHECKED));
+        assertEquals(0, expandOnHoverItemModel.get(ListMenuItemProperties.END_ICON_ID));
+        assertEquals(0, expandOnHoverItemModel.get(ListMenuItemProperties.END_ICON_MARGIN_START));
 
         mCoordinator
                 .getListMenuDelegate(mContentView)

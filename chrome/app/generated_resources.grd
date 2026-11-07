@@ -681,6 +681,10 @@ are declared in tools/grit/grit_args.gni.
           New &amp;Incognito window
         </message>
 
+        <message name="IDS_NEW_ISOLATED_WINDOW" desc="The text label of a menu item for opening a new Isolated window">
+          New &amp;isolated window
+        </message>
+
         <message name="IDS_INCOGNITO" desc="The text label for the Incognito button in the block header section of the App Menu">
           Incognito
         </message>
@@ -1528,6 +1532,12 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_APP_MENU_INCOGNITO" desc="Label for the Incognito block button in the main App Menu">
           Incognito
         </message>
+        <message name="IDS_APP_MENU_BLOCK_INCOGNITO" desc="Label with a keyboard mnemonic for the Incognito block button in the main App Menu">
+          &amp;Incognito
+        </message>
+        <message name="IDS_APP_MENU_BLOCK_ISOLATED" desc="Label with a keyboard mnemonic for the Isolated block button in the main App Menu, shown instead of Incognito for enterprise isolated mode">
+          &amp;Isolated
+        </message>
         <message name="IDS_APP_MENU_BLOCK_TOOLTIP" desc="Tooltip for an App Menu button that includes its label and keyboard shortcut.">
           <ph name="TOOLTIP_TEXT">$1<ex>New tab</ex></ph> (<ph name="KEYBOARD_SHORTCUT">$2<ex>Ctrl+T</ex></ph>)
         </message>
@@ -1545,9 +1555,6 @@ are declared in tools/grit/grit_args.gni.
         <if expr="not use_titlecase">
           <message name="IDS_SHOW_AS_TAB" desc="The text label for the Show As tab menu item">
             &amp;Show as tab
-          </message>
-          <message name="IDS_NEW_ISOLATED_WINDOW" desc="The text label of a menu item for opening a new Isolated window">
-            New &amp;Isolated window
           </message>
           <message name="IDS_PROFILE_ROW_SIGNED_IN_MESSAGE_WITH_EMAIL" desc="Label that lets the user know what email they are signed into their profile as.">
             Signed in as <ph name="EMAIL">$1<ex>user@gmail.com</ex></ph>
@@ -1631,11 +1638,6 @@ are declared in tools/grit/grit_args.gni.
         <if expr="use_titlecase">
           <message name="IDS_SHOW_AS_TAB" desc="In Title Case: The text label for the Show As tab menu item">
             &amp;Show As Tab
-          </message>
-
-
-          <message name="IDS_NEW_ISOLATED_WINDOW" desc="In Title Case: The text label of a menu item for opening a new Isolated window">
-            New &amp;Isolated Window
           </message>
           <message name="IDS_PROFILE_ROW_SIGNED_IN_MESSAGE_WITH_EMAIL" desc="In Title Case: Label that lets the user know what email they are signed into their profile as.">
             Signed in as <ph name="EMAIL">$1<ex>user@gmail.com</ex></ph>
@@ -1753,7 +1755,7 @@ are declared in tools/grit/grit_args.gni.
         New Incognito &amp;tab
       </message>
       <message name="IDS_NEW_ISOLATED_TAB" desc="The text label of a menu item for opening a new isolated tab">
-        New Isolated &amp;tab
+        New isolated &amp;tab
       </message>
       <if expr="not use_titlecase">
         <message name="IDS_VIEW_SOURCE" desc="The text label of the View Page Source menu item">
@@ -5175,6 +5177,9 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_TASK_MANAGER_OMNIBOX" desc="A row in the task manager for the WebUI Omnibox.">
         Omnibox
       </message>
+      <message name="IDS_TASK_MANAGER_WEBUI_TOOLBAR" desc="A row in the task manager for the WebUI Toolbar.">
+        Toolbar
+      </message>
       <message name="IDS_UTILITY_PROCESS_FILE_UTILITY_NAME" desc="The name of the utility process used for various Chrome specific file operations.">
           Chrome File Utilities
       </message>
@@ -6222,11 +6227,11 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_EXTENSION_WEB_STORE_TITLE_SHORT" desc="Shortened version of text for the Chrome Web Store">
         Web Store
       </message>
-      <message name="IDS_EXTENSIONS_SHOW_DETAILS" desc="Tooltip for the button next to an extension that shows more details">
-        Show Details
+      <message name="IDS_EXTENSIONS_SHOW_ALL" desc="Text for the link next to an extension permission that shows all details">
+        Show all
       </message>
-      <message name="IDS_EXTENSIONS_HIDE_DETAILS" desc="Tooltip for the button next to an extension that hides details">
-        Hide Details
+      <message name="IDS_EXTENSIONS_SHOW_LESS" desc="Text for the link next to an extension permission that hides extra details">
+        Show less
       </message>
 
       <!-- Global error messages for extensions -->
@@ -7637,6 +7642,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
         </else>
       </if>
+      <message name="IDS_ASK_GOOGLE_ABOUT_THIS_PAGE" desc="The name of the Ask Google about this page command in the app menu and toolbar.">
+        Ask Google about this page
+      </message>
 
       <!-- NTP -->
       <!-- Google Drive integration disclaimer for New Tab Page -->
@@ -10713,6 +10721,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_ORGANIZER_PANEL_SHOW_SOME" desc="The label for the menu item in an organizer panel list section header that limits the section to showing a few items.">
         Show some
+      </message>
+      <message name="IDS_ORGANIZER_PANEL_SPLIT_VIEW" desc="The title for a split view item in an organizer panel list section.">
+        Split View
       </message>
       <message name="IDS_ORGANIZER_PANEL_TAB_GROUPS" desc="The label on the organizer panel list section corresponding to tab groups.">
         Tab Groups
@@ -15936,7 +15947,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </if>
 
       <!-- TTC -->
-      <message name="IDS_TTC_ENTRYPOINT_LABEL" desc="Text label of the TTC menu item." translateable="false">
+      <message name="IDS_TTC_ENTRYPOINT_LABEL" desc="Text label of the TTC menu item." translateable="false" formatter_data="android_java">
         TTC
       </message>
 
@@ -16894,6 +16905,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         </message>
         <message name="IDS_SHELF_CONTEXT_MENU_SWAP_WITH_PREVIOUS" desc="Label of the context menu item allowing to swap the selected shelf item with the previous one">
           Swap with previous
+        </message>
+        <message name="IDS_SHELF_APP_MENU_INACTIVE_TAB_TOOLTIP" desc="Tooltip for an item in the shelf application menu that represents a browser tab which is not the active tab of its window. No window preview is shown for such an item, because the window only shows its active tab. The placeholder is the title of the window.">
+          Inactive tab in "<ph name="WINDOW_TITLE">$1<ex>Google Search</ex></ph>"
         </message>
       </if>
 

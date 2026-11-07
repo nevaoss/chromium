@@ -11,6 +11,7 @@
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
 #include "chrome/browser/ui/safety_hub/menu_notification_service.h"
@@ -441,7 +442,21 @@ TEST_F(ActionAppMenuManagerTest,
   std::u16string* text_override =
       new_tab_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
   ASSERT_NE(text_override, nullptr);
-  EXPECT_EQ(*text_override, u"New Isolated tab");
+  EXPECT_EQ(*text_override, u"New isolated tab");
+
+  ASSERT_GE(block_section->GetChildren().children().size(), 3u);
+  actions::BaseAction* isolated_window_action =
+      block_section->GetChildren().children()[2].get();
+  ASSERT_NE(isolated_window_action, nullptr);
+  EXPECT_EQ(isolated_window_action->GetActionItem()->GetActionId(),
+            kActionNewIsolatedWindow);
+
+  std::u16string* isolated_window_text_override =
+      isolated_window_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
+  ASSERT_NE(isolated_window_text_override, nullptr);
+  EXPECT_EQ(*isolated_window_text_override,
+            BrowserActions::GetCleanTitleAndTooltipText(
+                l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_WINDOW)));
 }
 
 TEST_F(ActionAppMenuManagerTest, BookmarkBarSubmenuCheckItems) {

@@ -3741,6 +3741,19 @@ void MenuController::RepostEventAndCancel(SubmenuView* source,
     }
   }
 #if BUILDFLAG(IS_MAC)
+  if (exit_type == ExitType::kAll) {
+    // Release capture and the button's pressed lock before starting the 200ms
+    // closure animation so the 100ms post-close debounce starts immediately
+    // in parallel with the fade-out, and subsequent clicks can reach the
+    // underlying window.
+    if (state_.item) {
+      state_.item->GetRootMenuItem()->GetSubmenu()->ReleaseCapture();
+    }
+    pressed_lock_.reset();
+    for (auto& nested_menu : menu_stack_) {
+      nested_menu.second.reset();
+    }
+  }
   // When doing a menu closure animation, target the deepest submenu - that way
   // MenuClosureAnimationMac will fade out all the menus in sync, rather than
   // the shallowest menu only.
@@ -4018,7 +4031,10 @@ void MenuController::HandleMouseLocation(SubmenuView* source,
              pending_state_.item->GetParentMenuItem() &&
              !pending_state_.item->SubmenuIsShowing()) {
     // On exit if the user hasn't selected an item with a submenu, move the
-    // selection back to the parent menu item.
+    // selection back to the parent menu item. Note that if a submenu is already
+    // showing, Views intentionally follows Windows menu behavior across all
+    // platforms and keeps the submenu open (even when mousing away or across
+    // non-selectable areas) to accommodate imprecise mouse trajectories.
     SetSelection(pending_state_.item->GetParentMenuItem(),
                  SELECTION_OPEN_SUBMENU);
   }
@@ -4230,10 +4246,14 @@ bool MenuController::MaybeForwardToAnnotation(SubmenuView* source,
 }
 
 bool MenuController::CanProcessInputEvents() const {
+  return !IsDismissAnimationRunning();
+}
+
+bool MenuController::IsDismissAnimationRunning() const {
 #if BUILDFLAG(IS_MAC)
-  return !menu_closure_animation_;
+  return menu_closure_animation_ != nullptr;
 #else
-  return true;
+  return false;
 #endif
 }
 

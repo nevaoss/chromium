@@ -419,6 +419,10 @@ class ContextualSearchSessionHandle {
   // confirmation that they are available on the server.
   std::vector<base::UnguessableToken> GetSubmittedContextTokens() const;
 
+  // Returns `submitted_context_tokens_` combined with any non-deselected
+  // persisted submitted tab tokens in `tab_context_.attached` (deduplicated).
+  std::vector<base::UnguessableToken> GetActiveSubmittedContextTokens() const;
+
   // Returns true if any context tokens were submitted in any query in this
   // session.
   bool has_submitted_context() const { return has_submitted_context_; }
@@ -444,7 +448,7 @@ class ContextualSearchSessionHandle {
   void ClearSubmittedContextTokens();
 
   // Sets the submitted context tokens.
-  void set_submitted_context_tokens(
+  void SetSubmittedContextTokens(
       const std::vector<base::UnguessableToken>& tokens);
 
   using PersistedTabsMap =
@@ -453,14 +457,14 @@ class ContextualSearchSessionHandle {
 
   // Returns the tabs submitted in previous turns of this session, i.e. the
   // entries of `tab_context_.attached` with `submitted` set.
-  PersistedTabsMap persisted_tabs() const;
+  PersistedTabsMap GetPersistedTabs() const;
 
   // Delete all tabs that have persisted across submissions.
   void ClearAllPersistedTabs();
 
   // Replaces the tabs submitted in previous turns of this session. Used for
   // session handoff.
-  void set_persisted_tabs(PersistedTabsMap new_persisted_tabs);
+  void SetPersistedTabs(PersistedTabsMap new_persisted_tabs);
 
   // Returns the list of submitted FileInfo for this particular instance
   // of the session. These are uploaded and submitted, but we have not received

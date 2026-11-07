@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/containers/span.h"
 
 namespace actor {
 
@@ -19,11 +20,16 @@ constexpr std::string_view kKeyProperties = "properties";
 constexpr std::string_view kKeyRequired = "required";
 constexpr std::string_view kKeyDescription = "description";
 constexpr std::string_view kKeyFormat = "format";
+constexpr std::string_view kKeyEnum = "enum";
+constexpr std::string_view kKeyItems = "items";
 constexpr std::string_view kKeyAdditionalProperties = "additionalProperties";
 
 constexpr std::string_view kTypeObject = "object";
 constexpr std::string_view kTypeString = "string";
 constexpr std::string_view kTypeInteger = "integer";
+constexpr std::string_view kTypeNumber = "number";
+constexpr std::string_view kTypeBoolean = "boolean";
+constexpr std::string_view kTypeArray = "array";
 
 base::DictValue CreateProperty(std::string_view type,
                                std::string_view description) {
@@ -31,6 +37,20 @@ base::DictValue CreateProperty(std::string_view type,
   prop.Set(kKeyType, type);
   prop.Set(kKeyDescription, description);
   return prop;
+}
+
+std::string_view ArrayItemTypeToString(
+    ToolSchemaBuilder::ArrayItemType item_type) {
+  switch (item_type) {
+    case ToolSchemaBuilder::ArrayItemType::kString:
+      return kTypeString;
+    case ToolSchemaBuilder::ArrayItemType::kInteger:
+      return kTypeInteger;
+    case ToolSchemaBuilder::ArrayItemType::kNumber:
+      return kTypeNumber;
+    case ToolSchemaBuilder::ArrayItemType::kBoolean:
+      return kTypeBoolean;
+  }
 }
 
 }  // namespace
@@ -50,10 +70,51 @@ ToolSchemaBuilder& ToolSchemaBuilder::AddStringProperty(
   return *this;
 }
 
+ToolSchemaBuilder& ToolSchemaBuilder::AddStringEnumProperty(
+    std::string_view name,
+    std::string_view description,
+    base::span<const std::string_view> enum_values) {
+  CHECK(!enum_values.empty()) << "Empty enum_values for parameter: " << name;
+  base::ListValue enum_list;
+  enum_list.reserve(enum_values.size());
+  for (std::string_view value : enum_values) {
+    enum_list.Append(value);
+  }
+  base::DictValue prop = CreateProperty(kTypeString, description);
+  prop.Set(kKeyEnum, std::move(enum_list));
+  AddPropertyImpl(name, std::move(prop));
+  return *this;
+}
+
 ToolSchemaBuilder& ToolSchemaBuilder::AddIntegerProperty(
     std::string_view name,
     std::string_view description) {
   AddPropertyImpl(name, CreateProperty(kTypeInteger, description));
+  return *this;
+}
+
+ToolSchemaBuilder& ToolSchemaBuilder::AddNumberProperty(
+    std::string_view name,
+    std::string_view description) {
+  AddPropertyImpl(name, CreateProperty(kTypeNumber, description));
+  return *this;
+}
+
+ToolSchemaBuilder& ToolSchemaBuilder::AddBooleanProperty(
+    std::string_view name,
+    std::string_view description) {
+  AddPropertyImpl(name, CreateProperty(kTypeBoolean, description));
+  return *this;
+}
+
+ToolSchemaBuilder& ToolSchemaBuilder::AddArrayProperty(
+    std::string_view name,
+    std::string_view description,
+    ArrayItemType item_type) {
+  base::DictValue prop = CreateProperty(kTypeArray, description);
+  prop.Set(kKeyItems,
+           base::DictValue().Set(kKeyType, ArrayItemTypeToString(item_type)));
+  AddPropertyImpl(name, std::move(prop));
   return *this;
 }
 

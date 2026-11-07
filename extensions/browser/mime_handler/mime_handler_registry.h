@@ -9,13 +9,14 @@
 #include <vector>
 
 #include "base/containers/flat_map.h"
-#include "base/containers/span.h"
 #include "base/memory/raw_ref.h"
 #include "base/scoped_observation.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
 #include "extensions/common/extension_id.h"
+
+class MimeTypesHandler;
 
 namespace content {
 class BrowserContext;
@@ -44,7 +45,8 @@ class Extension;
 // and are profile-unaware. Per-(extension, mime_type) enable flags are
 // profile-scoped, stored in `ExtensionPrefs`, and applied uniformly by
 // both `GetHandlersForMimeType()` and `GetHandlersByMimeType()` — a
-// disabled handler is never surfaced. Callers layer profile-specific
+// disabled handler is never surfaced. A manifest entry supplies the enable
+// flag when none is stored. Callers layer profile-specific
 // eligibility filtering on top of what the registry returns.
 class MimeHandlerRegistry : public KeyedService,
                             public ExtensionRegistryObserver {
@@ -63,13 +65,9 @@ class MimeHandlerRegistry : public KeyedService,
   // Returns the ordered list of extension IDs registered for `mime_type`,
   // sorted descending by precedence: `front()` is the highest-precedence
   // candidate.
-  // The returned span references storage owned by this registry and is
-  // invalidated by any subsequent extension load/unload or
-  // `SetEnabledForMimeType` call. Disabled handlers are not present —
-  // they are removed from the registry's storage when disabled and
-  // re-added when enabled. Callers must apply profile-specific
+  // Disabled handlers are left out. Callers must apply profile-specific
   // eligibility filtering to the returned ids.
-  base::span<const ExtensionId> GetHandlersForMimeType(
+  std::vector<ExtensionId> GetHandlersForMimeType(
       const std::string& mime_type) const;
 
   using HandlersByMimeType =
@@ -77,16 +75,19 @@ class MimeHandlerRegistry : public KeyedService,
 
   // Returns a map from every MIME type with at least one enabled handler
   // to its ordered handler list. Each list follows the same precedence
-  // order as `GetHandlersForMimeType`. The reference is invalidated by
-  // any subsequent extension load/unload or `SetEnabledForMimeType` call.
-  const HandlersByMimeType& GetHandlersByMimeType() const;
+  // order as `GetHandlersForMimeType`.
+  HandlersByMimeType GetHandlersByMimeType() const;
 
   // Returns true if `extension_id` has MIME handling enabled for
-  // `mime_type`. Defaults to true when no preference is stored.
+  // `mime_type`. Defaults to the value declared in the manifest when no
+  // preference is stored. Requires `extension_id` to be an enabled extension
+  // that handles `mime_type`.
   bool IsEnabledForMimeType(const ExtensionId& extension_id,
                             const std::string& mime_type) const;
 
   // Persists the enabled state for (`extension_id`, `mime_type`).
+  // Changing the state requires `extension_id` to be an enabled extension
+  // that handles `mime_type`.
   void SetEnabledForMimeType(const ExtensionId& extension_id,
                              const std::string& mime_type,
                              bool enabled);
@@ -99,12 +100,23 @@ class MimeHandlerRegistry : public KeyedService,
                            const Extension* extension,
                            UnloadedExtensionReason reason) override;
 
-  // Registers `extension` as a MIME handler. Skips MIME types that
-  // are persistently disabled for this extension.
+  // Registers `extension` as a MIME handler of every MIME type it declares.
   void RegisterExtension(const Extension* extension);
 
   // Removes all mappings for `extension_id`.
   void UnregisterExtension(const ExtensionId& extension_id);
+
+  // Returns the MIME handler of `extension_id`, which must be an enabled
+  // extension that handles `mime_type`.
+  const MimeTypesHandler& GetHandlerOfMimeType(
+      const ExtensionId& extension_id,
+      const std::string& mime_type) const;
+
+  // Returns the handlers in `handlers` that are enabled for `mime_type`, in
+  // the same order.
+  std::vector<ExtensionId> EnabledHandlers(
+      const std::string& mime_type,
+      const std::vector<ExtensionId>& handlers) const;
 
   // Sorts `handlers` in descending precedence order. See
   // `RegisterExtension` for the precedence rules.
@@ -113,10 +125,9 @@ class MimeHandlerRegistry : public KeyedService,
   const raw_ref<content::BrowserContext> browser_context_;
 
   // MIME type -> ordered extension IDs. Sorted descending by precedence,
-  // so `front()` is the active handler. Contains only currently-enabled
-  // handlers — disabled extensions are removed from this map and re-
-  // added by `SetEnabledForMimeType`. See `RegisterExtension` for the
-  // full precedence rules.
+  // so `front()` is the active handler. Lists every declared handler of a
+  // loaded extension, enabled or not. See `RegisterExtension` for the full
+  // precedence rules.
   HandlersByMimeType handlers_by_type_;
 
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>

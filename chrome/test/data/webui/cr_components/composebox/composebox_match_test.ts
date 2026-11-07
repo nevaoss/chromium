@@ -6,6 +6,7 @@ import 'chrome://contextual-tasks/strings.m.js';
 import 'chrome://resources/cr_components/composebox/composebox_match.js';
 
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import {BaseLayout} from 'chrome://resources/cr_components/composebox/composebox_match.js';
 import type {ComposeboxMatchElement} from 'chrome://resources/cr_components/composebox/composebox_match.js';
 import {ComposeboxProxyImpl, createAutocompleteMatch} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import {createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
@@ -47,8 +48,10 @@ suite('ComposeboxMatch', () => {
   test('renders match contents', async () => {
     // Single-row matches don't show their description.
     matchElement.match = createAutocompleteMatch({
-      contents: 'test contents',
-      description: 'test description',
+      suggestTemplate: createSuggestTemplateInfo({
+        primaryText: 'test contents',
+        secondaryText: 'test description',
+      }),
     });
     await microtasksFinished();
 
@@ -58,9 +61,9 @@ suite('ComposeboxMatch', () => {
 
   test('renders the secondary text below the primary text', async () => {
     matchElement.match = createAutocompleteMatch({
-      contents: 'test contents',
-      description: 'test description',
       suggestTemplate: createSuggestTemplateInfo({
+        primaryText: 'test contents',
+        secondaryText: 'test description',
         secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
       }),
     });
@@ -69,9 +72,9 @@ suite('ComposeboxMatch', () => {
     assertEquals(
         'below-primary-text',
         matchElement.getAttribute('secondary-text-placement'));
-    assertEquals('test contents', getTextContent(matchElement, '#contents'));
+    assertEquals('test contents', getTextContent(matchElement, '#primaryText'));
     assertEquals(
-        'test description', getTextContent(matchElement, '#description'));
+        'test description', getTextContent(matchElement, '#secondaryText'));
 
     // The two-row height is not fixed; it falls out of the 24px primary line
     // and 20px secondary line inside the 10px of block padding.
@@ -89,8 +92,8 @@ suite('ComposeboxMatch', () => {
     // that they do not pick it up.
     matchElement.richImageSuggestionsEnabled = true;
     matchElement.match = createAutocompleteMatch({
-      contents: 'test contents',
       suggestTemplate: createSuggestTemplateInfo({
+        primaryText: 'test contents',
         secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
         image: {url: 'https://example.com/image.png', dominantColor: ''},
       }),
@@ -106,35 +109,39 @@ suite('ComposeboxMatch', () => {
     assertTrue(!!container);
     assertStyle(container, 'padding-block-start', '0px');
     assertStyle(container, 'padding-block-end', '0px');
+    const secondaryText =
+        matchElement.shadowRoot.querySelector('#secondaryText');
+    assertTrue(!!secondaryText);
+    assertStyle(secondaryText, 'display', 'none');
   });
 
   test('clamps the primary text of two-row matches', async () => {
     // #textContainer holds both rows for two-row matches, so a line clamp on it
-    // would cut the secondary text and has to be applied to #contents instead.
-    // `overrideClampLineNum` is read in connectedCallback, so it has to be set
-    // before the element is attached.
+    // would cut the secondary text and has to be applied to #primaryText
+    // instead. `overrideClampLineNum` is read in connectedCallback, so it has
+    // to be set before the element is attached.
     const el: ComposeboxMatchElement =
         document.createElement('cr-composebox-match');
     el.overrideClampLineNum = 3;
     document.body.appendChild(el);
     el.match = createAutocompleteMatch({
-      contents: 'Very long text '.repeat(20),
-      description: 'test description',
       suggestTemplate: createSuggestTemplateInfo({
+        primaryText: 'Very long text '.repeat(20),
+        secondaryText: 'test description',
         secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
       }),
     });
     await microtasksFinished();
 
-    const contents = el.shadowRoot.querySelector('#contents');
-    const description = el.shadowRoot.querySelector('#description');
-    assertTrue(!!contents);
-    assertTrue(!!description);
+    const primaryText = el.shadowRoot.querySelector('#primaryText');
+    const secondaryText = el.shadowRoot.querySelector('#secondaryText');
+    assertTrue(!!primaryText);
+    assertTrue(!!secondaryText);
     assertStyle(el.$.textContainer, '-webkit-line-clamp', 'none');
-    assertStyle(contents, '-webkit-line-clamp', '3');
+    assertStyle(primaryText, '-webkit-line-clamp', '3');
     // The secondary text always stays on a single line.
-    assertStyle(description, '-webkit-line-clamp', 'none');
-    assertStyle(description, 'white-space', 'nowrap');
+    assertStyle(secondaryText, '-webkit-line-clamp', 'none');
+    assertStyle(secondaryText, 'white-space', 'nowrap');
 
     // Clean up.
     el.remove();
@@ -154,9 +161,24 @@ suite('ComposeboxMatch', () => {
 
         assertTrue(matchElement.isRichImage);
         assertEquals('rich-image', matchElement.getAttribute('suggest-style'));
+        assertEquals('image', matchElement.getAttribute('base-layout'));
+        assertEquals(BaseLayout.IMAGE, matchElement.baseLayout);
         assertTrue(!!matchElement.$.image);
         assertTrue(
             matchElement.$.image.style.backgroundImage.includes('image.png'));
+
+        // Updating to a kRichImage match without an imageUrl transitions back
+        // to the default text base-layout.
+        matchElement.match = createAutocompleteMatch({
+          suggestStyle: SuggestStyle.kRichImage,
+        });
+        await microtasksFinished();
+
+        assertFalse(matchElement.isRichImage);
+        assertEquals('default', matchElement.getAttribute('suggest-style'));
+        assertEquals('text', matchElement.getAttribute('base-layout'));
+        assertEquals(BaseLayout.TEXT, matchElement.baseLayout);
+        assertEquals('', matchElement.$.image.style.backgroundImage);
       });
 
   test(
@@ -173,6 +195,8 @@ suite('ComposeboxMatch', () => {
 
         assertFalse(matchElement.isRichImage);
         assertEquals('default', matchElement.getAttribute('suggest-style'));
+        assertEquals('text', matchElement.getAttribute('base-layout'));
+        assertEquals(BaseLayout.TEXT, matchElement.baseLayout);
         assertTrue(!!matchElement.$.image);
         assertEquals('', matchElement.$.image.style.backgroundImage);
       });
@@ -189,6 +213,8 @@ suite('ComposeboxMatch', () => {
 
     assertFalse(matchElement.isRichImage);
     assertEquals('default', matchElement.getAttribute('suggest-style'));
+    assertEquals('text', matchElement.getAttribute('base-layout'));
+    assertEquals(BaseLayout.TEXT, matchElement.baseLayout);
     assertTrue(!!matchElement.$.image);
     assertEquals('', matchElement.$.image.style.backgroundImage);
   });
@@ -260,9 +286,9 @@ suite('ComposeboxMatch', () => {
         await microtasksFinished();
 
         assertEquals('3', el.style.getPropertyValue('--clamp-line-num'));
-        const contents = el.shadowRoot.querySelector('#contents');
-        assertTrue(!!contents);
-        assertStyle(contents, '-webkit-line-clamp', '3');
+        const primaryText = el.shadowRoot.querySelector('#primaryText');
+        assertTrue(!!primaryText);
+        assertStyle(primaryText, '-webkit-line-clamp', '3');
 
         // Clean up.
         el.remove();
@@ -270,7 +296,9 @@ suite('ComposeboxMatch', () => {
 
   test('iconContainer does not shrink with long text', async () => {
     matchElement.match = createAutocompleteMatch({
-      contents: 'Very long text '.repeat(20),
+      suggestTemplate: createSuggestTemplateInfo({
+        primaryText: 'Very long text '.repeat(20),
+      }),
     });
     await microtasksFinished();
 
@@ -312,4 +340,47 @@ suite('ComposeboxMatch', () => {
         assertTrue(matchElement.willTabExitMatch(/*shiftKey=*/ false));
         assertFalse(matchElement.willTabExitMatch(/*shiftKey=*/ true));
       });
+
+  test('loading state suppresses image/text and ignores clicks', async () => {
+    matchElement.richImageSuggestionsEnabled = true;
+    matchElement.matchIndex = 1;
+    matchElement.match = createAutocompleteMatch({
+      suggestStyle: SuggestStyle.kRichImage,
+      suggestTemplate: createSuggestTemplateInfo({
+        primaryText: 'test contents',
+        image: {url: 'https://example.com/image.png', dominantColor: ''},
+      }),
+    });
+    matchElement.loading = true;
+    await microtasksFinished();
+
+    assertTrue(matchElement.hasAttribute('loading'));
+    const imageEl =
+        matchElement.shadowRoot.querySelector<HTMLElement>('#image');
+    assertTrue(!!imageEl);
+    assertEquals('', imageEl.style.backgroundImage);
+
+    // Clicks and focusin while loading should be ignored.
+    let focusinFired = false;
+    matchElement.addEventListener('match-focusin', () => {
+      focusinFired = true;
+    });
+    matchElement.dispatchEvent(new FocusEvent('focusin'));
+    matchElement.click();
+    await microtasksFinished();
+    assertFalse(focusinFired);
+    assertEquals(0, searchboxHandler.getCallCount('openAutocompleteMatch'));
+
+    // Once loading finishes, background image is applied and events work.
+    matchElement.loading = false;
+    await microtasksFinished();
+    assertFalse(matchElement.hasAttribute('loading'));
+    assertTrue(imageEl.style.backgroundImage.includes('example.com'));
+
+    matchElement.dispatchEvent(new FocusEvent('focusin'));
+    matchElement.click();
+    await microtasksFinished();
+    assertTrue(focusinFired);
+    assertEquals(1, searchboxHandler.getCallCount('openAutocompleteMatch'));
+  });
 });

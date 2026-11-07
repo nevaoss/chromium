@@ -84,9 +84,7 @@ BASE_DECLARE_FEATURE(kWebViewPersistentMetricsInNoBackupDir);
 BASE_DECLARE_FEATURE(kWebViewPersistHttpServerProperties);
 BASE_DECLARE_FEATURE(kWebViewPrefetchAheadOfPrerender);
 BASE_DECLARE_FEATURE(kWebViewPrefetchNativeLibrary);
-extern const base::FeatureParam<bool> kWebViewPrefetchFromRenderer;
 BASE_DECLARE_FEATURE(kWebViewPrefetchOffTheMainThread);
-BASE_DECLARE_FEATURE(kWebViewPrefetchOnRendererReuse);
 BASE_DECLARE_FEATURE(kWebViewPrefetchPruneStaleWrappers);
 BASE_DECLARE_FEATURE(kWebViewPreloadServingMetrics);
 enum class AwPrewarmDictionaryCleanupMode {
@@ -111,9 +109,6 @@ BASE_DECLARE_FEATURE(kWebViewReduceUAAndroidVersionDeviceModel);
 BASE_DECLARE_FEATURE(kWebViewRelaxDataDirLocking);
 BASE_DECLARE_FEATURE(kWebViewRemoveInstantAppSupport);
 BASE_DECLARE_FEATURE(kWebViewRenderDocument);
-BASE_DECLARE_FEATURE(kWebViewRendererKeepAlive);
-extern const base::FeatureParam<base::TimeDelta>
-    kWebViewRendererKeepAliveDuration;
 BASE_DECLARE_FEATURE(kWebViewSaveStateIncludeHeaders);
 BASE_DECLARE_FEATURE(kWebViewSetDownloadFaviconsEnabled);
 BASE_DECLARE_FEATURE(kWebViewSingleSharedContextState);

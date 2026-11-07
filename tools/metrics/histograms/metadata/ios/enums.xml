@@ -935,7 +935,7 @@ chromium-metrics-reviews@google.com.
 <!-- LINT.IfChange(IOSGeminiEntryPoint) -->
 
 <enum name="IOSGeminiEntryPoint">
-  <int value="0" label="Promo"/>
+  <int value="0" label="Promo (Deprecated)"/>
   <int value="1" label="Overflow Menu"/>
   <int value="2" label="AI Hub"/>
   <int value="3" label="Omnibox Chip (Skipped AI Hub)"/>
@@ -1125,6 +1125,7 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Dismissed on Consent Screen"/>
   <int value="2" label="Denied OS Mic Permission"/>
   <int value="3" label="Denied Chrome Mic Permission"/>
+  <int value="4" label="Link Clicked on Consent Screen"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h:IOSGeminiLiveFREOutcome) -->
@@ -1231,6 +1232,8 @@ chromium-metrics-reviews@google.com.
   <int value="16" label="AIM Quick Action"/>
   <int value="17" label="Tab Switcher"/>
   <int value="18" label="Plus Button"/>
+  <int value="19" label="Standalone AIM Module"/>
+  <int value="20" label="AIM in Most Visited"/>
 </enum>
 
 <!-- LINT.IfChange(IOSHomeCustomizationBackgroundStyle) -->
@@ -1682,9 +1685,20 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Allowed by saved setting (no prompt)"/>
   <int value="2" label="Denied by saved setting (no prompt)"/>
   <int value="3" label="Blocked by parental controls (no prompt)"/>
+  <int value="4" label="Denied in background (no prompt)"/>
 </enum>
 
 <!-- LINT.ThenChange(//ios/chrome/browser/permissions/model/permissions_metrics.h:IOSPermissionRequestResolution) -->
+
+<!-- LINT.IfChange(IOSPermissionSetting) -->
+
+<enum name="IOSPermissionSetting">
+  <int value="0" label="Allow once"/>
+  <int value="1" label="Always allow"/>
+  <int value="2" label="Never allow"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/permissions/model/permissions_metrics.h:IOSPermissionSetting) -->
 
 <!-- LINT.IfChange(IOSPersistTabContextDeleteDirectoryResult) -->
 

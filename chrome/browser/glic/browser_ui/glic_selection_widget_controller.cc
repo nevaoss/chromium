@@ -307,6 +307,19 @@ void GlicSelectionWidgetController::ShowSelectionOverlay() {
     return;
   }
 
+  overlay_closed_subscription_ = controller->RegisterOverlayClosedCallback(
+      base::BindOnce(
+          [](GlicSelectionWidgetController* self,
+             SelectionOverlayController::CloseReason reason) {
+            if (reason ==
+                    SelectionOverlayController::CloseReason::kCloseButton ||
+                reason ==
+                    SelectionOverlayController::CloseReason::kEscapeKeyPress) {
+              self->OnHide();
+            }
+          },
+          base::Unretained(this)));
+
   // When the side panel is open, let the web client start the capture session.
   if (glic_keyed_service_ &&
       GlicSidePanelCoordinator::IsShowing(tab_interface) &&
@@ -332,7 +345,8 @@ void GlicSelectionWidgetController::ShowSelectionOverlay() {
 }
 
 bool GlicSelectionWidgetController::ShouldShowSelectionWidget() {
-  return !is_hidden_on_current_page_ && !is_site_blocked_on_current_page_;
+  return !is_hidden_on_current_page_ && !is_site_blocked_on_current_page_ &&
+         web_contents() && !web_contents()->IsShowingContextMenu();
 }
 
 void GlicSelectionWidgetController::UpdatePageBlockedState() {

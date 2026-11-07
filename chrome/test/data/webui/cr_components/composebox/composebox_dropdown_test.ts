@@ -8,8 +8,8 @@ import 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 import type {ComposeboxDropdownElement} from 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 import {createAutocompleteMatch} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import {createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
-import {RenderType, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {RenderType, SideType, SuggestStyle} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 suite('ComposeboxDropdown', () => {
@@ -26,8 +26,12 @@ suite('ComposeboxDropdown', () => {
     dropdown.richImageSuggestionsEnabled = false;
     dropdown.result = createAutocompleteResultForTesting({
       matches: [
-        createAutocompleteMatch({contents: 'match 1'}),
-        createAutocompleteMatch({contents: 'match 2'}),
+        createAutocompleteMatch({
+          suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
+        }),
+        createAutocompleteMatch({
+          suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 2'}),
+        }),
       ],
     });
     await microtasksFinished();
@@ -61,19 +65,20 @@ suite('ComposeboxDropdown', () => {
       },
       matches: [
         createAutocompleteMatch({
-          contents: 'text match',
+          suggestTemplate:
+              createSuggestTemplateInfo({primaryText: 'text match'}),
           suggestionGroupId: 100,
         }),
         createAutocompleteMatch({
-          contents: 'image match 1',
           suggestTemplate: createSuggestTemplateInfo({
+            primaryText: 'image match 1',
             image: {url: 'https://example.com/image1.png', dominantColor: ''},
           }),
           suggestionGroupId: 101,
         }),
         createAutocompleteMatch({
-          contents: 'image match 2',
           suggestTemplate: createSuggestTemplateInfo({
+            primaryText: 'image match 2',
             image: {url: 'https://example.com/image2.png', dominantColor: ''},
           }),
           suggestionGroupId: 101,
@@ -123,7 +128,10 @@ suite('ComposeboxDropdown', () => {
         },
       },
       matches: [
-        createAutocompleteMatch({contents: 'match', suggestionGroupId: 100}),
+        createAutocompleteMatch({
+          suggestTemplate: createSuggestTemplateInfo({primaryText: 'match'}),
+          suggestionGroupId: 100,
+        }),
       ],
     });
     await microtasksFinished();
@@ -152,8 +160,14 @@ suite('ComposeboxDropdown', () => {
         },
       },
       matches: [
-        createAutocompleteMatch({contents: 'm0', suggestionGroupId: 100}),
-        createAutocompleteMatch({contents: 'm1', suggestionGroupId: 101}),
+        createAutocompleteMatch({
+          suggestTemplate: createSuggestTemplateInfo({primaryText: 'm0'}),
+          suggestionGroupId: 100,
+        }),
+        createAutocompleteMatch({
+          suggestTemplate: createSuggestTemplateInfo({primaryText: 'm1'}),
+          suggestionGroupId: 101,
+        }),
       ],
     });
     await microtasksFinished();
@@ -185,11 +199,13 @@ suite('ComposeboxDropdown', () => {
           },
           matches: [
             createAutocompleteMatch({
-              contents: 'image match 1',
+              suggestTemplate:
+                  createSuggestTemplateInfo({primaryText: 'image match 1'}),
               suggestionGroupId: 101,
             }),
             createAutocompleteMatch({
-              contents: 'image match 2',
+              suggestTemplate:
+                  createSuggestTemplateInfo({primaryText: 'image match 2'}),
               suggestionGroupId: 101,
             }),
           ],
@@ -211,6 +227,168 @@ suite('ComposeboxDropdown', () => {
         assertTrue(scrollCalled);
       });
 
+  test('tracks isImageBatchLoading_ for rich image suggestions', async () => {
+    const createdImages: HTMLImageElement[] = [];
+    const OriginalImage = window.Image;
+    window.Image = class extends OriginalImage {
+      constructor(width?: number, height?: number) {
+        super(width, height);
+        createdImages.push(this);
+      }
+
+      override set src(_value: string) {
+        // Prevent real network/IPC fetch in unit test so onload/onerror is
+        // controlled deterministically by the test.
+      }
+    };
+
+    try {
+      dropdown.richImageSuggestionsEnabled = true;
+
+      // Hidden rich image matches (e.g. beyond maxSuggestions) should not
+      // trigger the ghost loader when no visible rich image matches exist.
+      dropdown.maxSuggestions = 1;
+      dropdown.result = createAutocompleteResultForTesting({
+        matches: [
+          createAutocompleteMatch({
+            suggestTemplate:
+                createSuggestTemplateInfo({primaryText: 'visible text match'}),
+          }),
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'hidden image match',
+              image: {url: 'https://example.com/hidden.png', dominantColor: ''},
+            }),
+          }),
+        ],
+      });
+      await microtasksFinished();
+      assertFalse(dropdown.isImageBatchLoading_);
+      assertEquals(0, createdImages.length);
+
+      // Showing rich image matches starts batch preloading.
+      dropdown.maxSuggestions = null;
+      dropdown.result = createAutocompleteResultForTesting({
+        matches: [
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'image match 1',
+              image: {url: 'https://example.com/image1.png', dominantColor: ''},
+            }),
+          }),
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'image match 2',
+              image: {url: 'https://example.com/image2.png', dominantColor: ''},
+            }),
+          }),
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo(
+                {primaryText: 'image match 3 without image'}),
+          }),
+        ],
+      });
+      await microtasksFinished();
+
+      const matches =
+          dropdown.shadowRoot.querySelectorAll('cr-composebox-match');
+      assertEquals(3, matches.length);
+      assertEquals(2, createdImages.length);
+      assertTrue(dropdown.isImageBatchLoading_);
+      assertTrue(matches[0]!.loading);
+      assertTrue(matches[1]!.loading);
+      assertFalse(matches[2]!.loading);
+      assertEquals(-1, matches[0]!.tabIndex);
+      assertEquals(-1, matches[1]!.tabIndex);
+      assertEquals(0, matches[2]!.tabIndex);
+
+      // Finishing only the first image keeps the batch in loading state.
+      createdImages[0]!.onload!(new Event('load'));
+      await microtasksFinished();
+      assertTrue(dropdown.isImageBatchLoading_);
+      assertTrue(matches[0]!.loading);
+      assertTrue(matches[1]!.loading);
+
+      // Finishing the remaining image reveals the entire batch atomically.
+      createdImages[1]!.onload!(new Event('load'));
+      await microtasksFinished();
+      assertFalse(dropdown.isImageBatchLoading_);
+      assertFalse(matches[0]!.loading);
+      assertFalse(matches[1]!.loading);
+      assertFalse(matches[2]!.loading);
+      assertEquals(0, matches[0]!.tabIndex);
+      assertEquals(0, matches[1]!.tabIndex);
+      assertEquals(0, matches[2]!.tabIndex);
+
+      // Subsequent result updates with already-loaded image URLs do not
+      // re-trigger the ghost loader.
+      dropdown.result = createAutocompleteResultForTesting({
+        matches: [
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'image match 1 updated',
+              image: {url: 'https://example.com/image1.png', dominantColor: ''},
+            }),
+          }),
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'image match 2 updated',
+              image: {url: 'https://example.com/image2.png', dominantColor: ''},
+            }),
+          }),
+        ],
+      });
+      await microtasksFinished();
+      assertFalse(dropdown.isImageBatchLoading_);
+      assertEquals(2, createdImages.length);
+
+      // If an image fails to load (onerror), the batch still finishes loading,
+      // but the failed URL is not cached as loaded so a subsequent update
+      // retries preloading it.
+      dropdown.result = createAutocompleteResultForTesting({
+        matches: [
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'failed image match',
+              image: {url: 'https://example.com/error.png', dominantColor: ''},
+            }),
+          }),
+        ],
+      });
+      await microtasksFinished();
+      assertTrue(dropdown.isImageBatchLoading_);
+      assertEquals(3, createdImages.length);
+
+      createdImages[2]!.onerror!(new Event('error'));
+      await microtasksFinished();
+      assertFalse(dropdown.isImageBatchLoading_);
+
+      dropdown.result = createAutocompleteResultForTesting({
+        matches: [
+          createAutocompleteMatch({
+            suggestStyle: SuggestStyle.kRichImage,
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'failed image match retry',
+              image: {url: 'https://example.com/error.png', dominantColor: ''},
+            }),
+          }),
+        ],
+      });
+      await microtasksFinished();
+      assertTrue(dropdown.isImageBatchLoading_);
+      assertEquals(4, createdImages.length);
+    } finally {
+      window.Image = OriginalImage;
+    }
+  });
+
   test(
       'getFirstVisibleIndex and getLastVisibleIndex for zero state',
       async () => {
@@ -218,8 +396,14 @@ suite('ComposeboxDropdown', () => {
         dropdown.result = createAutocompleteResultForTesting({
           input: '',
           matches: [
-            createAutocompleteMatch({contents: 'image match 1'}),
-            createAutocompleteMatch({contents: 'image match 2'}),
+            createAutocompleteMatch({
+              suggestTemplate:
+                  createSuggestTemplateInfo({primaryText: 'image match 1'}),
+            }),
+            createAutocompleteMatch({
+              suggestTemplate:
+                  createSuggestTemplateInfo({primaryText: 'image match 2'}),
+            }),
           ],
         });
         await microtasksFinished();
@@ -234,10 +418,18 @@ suite('ComposeboxDropdown', () => {
         dropdown.result = createAutocompleteResultForTesting({
           input: 'test',
           matches: [
-            createAutocompleteMatch(
-                {contents: 'test', allowedToBeDefaultMatch: true}),
-            createAutocompleteMatch({contents: 'suggestion 1'}),
-            createAutocompleteMatch({contents: 'suggestion 2'}),
+            createAutocompleteMatch({
+              suggestTemplate: createSuggestTemplateInfo({primaryText: 'test'}),
+              allowedToBeDefaultMatch: true,
+            }),
+            createAutocompleteMatch({
+              suggestTemplate:
+                  createSuggestTemplateInfo({primaryText: 'suggestion 1'}),
+            }),
+            createAutocompleteMatch({
+              suggestTemplate:
+                  createSuggestTemplateInfo({primaryText: 'suggestion 2'}),
+            }),
           ],
         });
         await microtasksFinished();

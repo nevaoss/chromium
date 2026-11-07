@@ -58,6 +58,16 @@ BASE_FEATURE(kAccountRetrievalWaitsForRestoration,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
+#if BUILDFLAG(IS_ANDROID)
+// When enabled, an ADDSESSION Mirror header without an email is handled for the
+// primary account if the primary account is not in the Gaia cookies: Chrome
+// waits for the cookies of the primary account (or starts the reauth flow if
+// the primary account is in a persistent auth error) instead of starting the
+// add account flow.
+BASE_FEATURE(kAddSessionFallbackToPrimaryAccount,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 BASE_FEATURE(kAvoidAutoTriggerListAccountsOnStale,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -291,11 +301,29 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 const base::FeatureParam<bool> kAccountPreviewDataPersistAccounts{
     &kEnableAccountPreviewData, "persist_accounts", true};
 
+// Controls optimizations for fetching account preview data. This flag has no
+// effect if `kEnableAccountPreviewData` is not enabled.
+BASE_FEATURE(kEnableAccountPreviewDataFetchOptimizations,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 // Controls whether only the reduced set of data types (required for heuristics
 // and string personalization) is requested and recorded for account preview
-// data. This flag has no effect if `kEnableAccountPreviewData` is not enabled.
-BASE_FEATURE(kEnableAccountPreviewDataReducedTypes,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+// data.
+BASE_FEATURE_PARAM(bool,
+                   kAccountPreviewDataReducedTypes,
+                   &kEnableAccountPreviewDataFetchOptimizations,
+                   true);
+// Controls whether sockets are preconnected to the Sync Preview server before
+// fetching account preview data.
+BASE_FEATURE_PARAM(bool,
+                   kAccountPreviewDataPreconnect,
+                   &kEnableAccountPreviewDataFetchOptimizations,
+                   true);
+// Controls whether account preview data network requests use `net::MEDIUM`
+// priority instead of the default `net::IDLE` priority.
+BASE_FEATURE_PARAM(bool,
+                   kAccountPreviewDataMediumPriority,
+                   &kEnableAccountPreviewDataFetchOptimizations,
+                   true);
 
 // Controls whether fetching entity preview data is enabled (via a specific api
 // method). This flag has no effect if `kEnableAccountPreviewData` is not
@@ -879,6 +907,9 @@ BASE_FEATURE(kSignOutOfChrome, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSkipCheckForAccountManagementOnSignin,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+BASE_FEATURE(kSkipListAccountsWithoutGaiaCookies,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSkipRefreshTokenCheckInIdentityManager,
              base::FEATURE_ENABLED_BY_DEFAULT);

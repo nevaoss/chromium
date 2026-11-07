@@ -25,6 +25,7 @@
 #include "base/rand_util.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
@@ -127,6 +128,7 @@
 #include "components/autofill/core/browser/foundations/autofill_manager.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/integrators/identity_credential/identity_credential_delegate.h"
+#include "components/autofill/core/browser/integrators/one_time_tokens/gmail_otp_opt_in_result.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_field_detector.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_metrics_tracker.h"
 #include "components/autofill/core/browser/integrators/optimization_guide/autofill_optimization_guide_decider.h"
@@ -213,6 +215,7 @@
 #include "chrome/browser/ui/android/tab_model/tab_model_list.h"
 #include "chrome/browser/ui/autofill/autofill_message_controller_impl.h"
 #include "chrome/browser/ui/autofill/autofill_snackbar_type.h"
+#include "chrome/browser/ui/autofill/autofill_tapjacking_protector_impl.h"
 #include "chrome/browser/ui/autofill/payments/offer_notification_controller_android.h"
 #include "components/autofill/core/browser/payments/autofill_save_card_infobar_delegate_mobile.h"
 #include "components/infobars/content/content_infobar_manager.h"
@@ -225,6 +228,7 @@
 #include "chrome/browser/ui/autofill/autofill_field_promo_controller_impl.h"
 #include "chrome/browser/ui/autofill/delete_address_profile_dialog_controller_impl.h"
 #include "chrome/browser/ui/autofill/email_verifier/email_verification_controller.h"
+#include "chrome/browser/ui/autofill/one_time_tokens/gmail_otp_opt_in_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/offer_notification_bubble_controller_impl.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -1175,6 +1179,18 @@ void ChromeAutofillClient::DismissAutofillAiLoadingDialog() {
   GetAutofillDialogController()->Dismiss();
 }
 
+void ChromeAutofillClient::ShowTapjackingProtector(
+    AutofillTapjackingProtector::AuthorizationType authorization_type,
+    AutofillTapjackingProtector::AuthorizationCallback callback) {
+  if (!autofill_tapjacking_protector_impl_) {
+    autofill_tapjacking_protector_impl_ =
+        std::make_unique<AutofillTapjackingProtectorImpl>(
+            GetAutofillDialogController());
+  }
+  autofill_tapjacking_protector_impl_->Show(authorization_type,
+                                            std::move(callback));
+}
+
 AutofillDialogController* ChromeAutofillClient::GetAutofillDialogController() {
   if (!autofill_dialog_controller_impl_) {
     autofill_dialog_controller_impl_ =
@@ -1221,7 +1237,7 @@ bool ChromeAutofillClient::ShowPrivateInferenceNoticeBottomSheet(
       std::move(delegate));
 }
 
-void ChromeAutofillClient::HideAmbientAutofillNotice() {
+void ChromeAutofillClient::HideTouchToFillAutofillNotice() {
   if (touch_to_fill_autofill_controller_) {
     touch_to_fill_autofill_controller_->Hide();
   }
@@ -1483,6 +1499,22 @@ void ChromeAutofillClient::ShowEmailVerificationErrorToast() {
 #if !BUILDFLAG(IS_ANDROID)
   GetEmailVerificationController()->ShowErrorToast();
 #endif
+}
+
+void ChromeAutofillClient::ShowGmailOtpOptInBubble(
+    const std::u16string& account_email,
+    base::OnceCallback<void(GmailOtpOptInResult)> callback) {
+#if !BUILDFLAG(IS_ANDROID)
+  tabs::TabInterface* tab = GetTabInterface();
+  if (auto* controller =
+          tab ? GmailOtpOptInBubbleController::From(*tab) : nullptr) {
+    controller->SetUpAndShowBubble(account_email, std::move(callback));
+    return;
+  }
+#endif
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(std::move(callback), GmailOtpOptInResult::kDiscarded));
 }
 
 void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
@@ -1867,12 +1899,11 @@ void ChromeAutofillClient::OpenGmailForOtps() {
 }
 
 void ChromeAutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {
-  Profile* profile = GetProfile();
-  if (!profile || !glic::GlicEnabling::IsEnabledForProfile(profile)) {
+  if (!IsGlicEnabled()) {
     return;
   }
   glic::GlicKeyedService* glic_keyed_service =
-      glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile);
+      glic::GlicKeyedServiceFactory::GetGlicKeyedService(GetProfile());
   if (!glic_keyed_service) {
     return;
   }
@@ -1888,8 +1919,11 @@ void ChromeAutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {
 }
 
 bool ChromeAutofillClient::IsGlicEnabled() const {
-  Profile* profile = GetProfile();
-  return profile && glic::GlicEnabling::IsEnabledForProfile(profile);
+  return glic::GlicEnabling::IsEnabledForProfile(GetProfile());
+}
+
+bool ChromeAutofillClient::IsGlicConsented() const {
+  return glic::GlicEnabling::HasConsentedForProfile(GetProfile());
 }
 
 }  // namespace autofill

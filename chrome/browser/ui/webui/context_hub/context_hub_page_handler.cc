@@ -35,7 +35,6 @@
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/page_image_service/image_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/common/channel_info.h"
 #include "components/history/core/browser/history_service.h"
@@ -46,9 +45,6 @@
 #include "components/page_image_service/image_service.h"
 #include "components/page_image_service/mojom/page_image_service.mojom.h"
 #include "components/sessions/core/session_id.h"
-#include "components/signin/public/base/consent_level.h"
-#include "components/signin/public/identity_manager/account_info.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
 
@@ -649,6 +645,35 @@ void ContextHubPageHandler::ClearTabGroups(ClearTabGroupsCallback callback) {
   service->DeleteAllTabGroups(std::move(callback));
 }
 
+void ContextHubPageHandler::ReplaceTabGroups(
+    std::vector<browser::context_hub::mojom::TabGroupPtr> groups,
+    ReplaceTabGroupsCallback callback) {
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(profile_);
+  if (!service) {
+    std::move(callback).Run();
+    return;
+  }
+
+  std::vector<context_hub::TabGroupEntry> entries;
+  entries.reserve(groups.size());
+  for (auto& group : groups) {
+    if (group->tabs.empty()) {
+      continue;
+    }
+    context_hub::TabGroupEntry entry;
+    entry.label = std::move(group->label);
+    for (auto& tab : group->tabs) {
+      entry.tab_ids.push_back(tab->id);
+      entry.tabs.push_back({.id = tab->id,
+                            .title = std::move(tab->title),
+                            .url = std::move(tab->url)});
+    }
+    entries.push_back(std::move(entry));
+  }
+  service->ReplaceTabGroups(std::move(entries), std::move(callback));
+}
+
 void ContextHubPageHandler::ClearTabGroupChatHistory(
     ClearTabGroupChatHistoryCallback callback) {
   context_hub::ContextHubService* service =
@@ -1183,25 +1208,16 @@ void ContextHubPageHandler::GetTopicsFeedbackExportPreview(
     return;
   }
 
-  std::string ldap;
-  if (signin::IdentityManager* identity_manager =
-          IdentityManagerFactory::GetForProfile(profile_)) {
-    ldap = context_hub::GetTopicsFeedbackLdap(
-        identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
-            .email);
-  }
-
   FetchTopicsFeedbackExportData(
       base::Time::Now() -
           base::Days(context_hub::ClampTopicsFeedbackWindowDays(window_days)),
       base::BindOnce(
-          [](GetTopicsFeedbackExportPreviewCallback callback, std::string ldap,
+          [](GetTopicsFeedbackExportPreviewCallback callback,
              context_hub::TopicsFeedbackExportData data) {
             std::move(callback).Run(
-                context_hub::BuildTopicsFeedbackExportPreview(data,
-                                                              std::move(ldap)));
+                context_hub::BuildTopicsFeedbackExportPreview(data));
           },
-          std::move(callback), std::move(ldap)));
+          std::move(callback)));
 }
 
 void ContextHubPageHandler::GenerateTopicsFeedbackBundle(

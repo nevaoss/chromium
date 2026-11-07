@@ -1379,6 +1379,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual ui::ColorProviderKey::ForcedColors GetForcedColorsForWebContents(
       WebContents& web_contents) const;
 
+  // Returns whether `WebContents` should initialize font-related
+  // `RendererPreferences` from system settings. Defaults to true.
+  virtual bool ShouldUpdateFontRendererPreferencesFromSystemSettings() const;
+
   // Notifies that BrowserURLHandler has been created, so that the embedder can
   // optionally add their own handlers.
   virtual void BrowserURLHandlerCreated(BrowserURLHandler* handler) {}
@@ -3109,11 +3113,6 @@ class CONTENT_EXPORT ContentBrowserClient {
   // Determine whether Blob URL fetching should be restricted for a given
   // context.
   virtual bool IsBlobUrlPartitioningEnabled(
-      content::BrowserContext* browser_context);
-
-  // Checks if the given BrowserContext allows to reduce Accept-Language in HTTP
-  // header and Javascript getter.
-  virtual bool ShouldReduceAcceptLanguage(
       content::BrowserContext* browser_context);
 
   // Checks whether window.name is allowed to be cleared for top-level

@@ -22,7 +22,7 @@ import {isMac} from 'chrome://resources/js/platform.js';
 import {CrLitElement, html} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {NavigationPredictor} from 'chrome://resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import type {AutocompleteMatch} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {KeywordType, SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {KeywordActivationMethod, KeywordType, SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {SecondaryTextPlacement} from 'chrome://resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -143,31 +143,31 @@ function paintFinished(): Promise<void> {
   return new Promise(resolve => afterNextPaint(resolve));
 }
 
-function createCalculatorMatch(modifiers: Partial<AutocompleteMatch>):
+function createCalculatorMatch(modifiers: Partial<AutocompleteMatch> = {}):
     AutocompleteMatch {
   return createAutocompleteMatch({
     isSearchType: true,
-    contents: '2 + 3',
-    contentsClass: [{offset: 0, style: 0}],
-    description: '5',
-    descriptionClass: [{offset: 0, style: 0}],
     destinationUrl: 'https://www.google.com/search?q=2+%2B+3',
     fillIntoEdit: '5',
     type: 'search-calculator-answer',
     iconPath: 'calculator_cr23.svg',
+    suggestTemplate: createSuggestTemplateInfo({
+      primaryText: '2 + 3',
+      secondaryText: '5',
+      secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
+    }),
     ...modifiers,
   });
 }
 
 function verifyMatch(match: AutocompleteMatch, matchEl: SearchboxMatchElement) {
   assertEquals('option', matchEl.getAttribute('role'));
+  const {primaryText, secondaryText} = match.suggestTemplate;
   const separatorText =
-      match.description ? loadTimeData.getString('searchboxSeparator') : '';
-  const contents = matchEl.$.contents.textContent;
-  const separator = matchEl.$.separator.textContent;
-  const description = matchEl.$.description.textContent;
-  const text = contents + separator + description;
-  assertEquals(match.contents + separatorText + match.description, text);
+      secondaryText ? loadTimeData.getString('searchboxSeparator') : '';
+  const text = matchEl.$.primaryText.textContent +
+      matchEl.$.separator.textContent + matchEl.$.secondaryText.textContent;
+  assertEquals(primaryText + separatorText + secondaryText, text);
 }
 
 const FOCUS_EVENTS = ['blur', 'focus', 'focusin', 'focusout'] as const;
@@ -1110,7 +1110,7 @@ suite('SearchboxMixinTest', () => {
 
     const matches = [createSearchMatchForTesting({
       allowedToBeDefaultMatch: true,
-      contents: 'hello',
+      suggestTemplate: createSuggestTemplateInfo({primaryText: 'hello'}),
     })];
     element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
       queryId: element.activeQueryId,
@@ -1359,11 +1359,7 @@ suite('SearchboxMixinTest', () => {
 
   test('match calculator answer type', async () => {
     const mockInput = element.getInputElement();
-    const matches = [createCalculatorMatch({
-      suggestTemplate: createSuggestTemplateInfo({
-        secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
-      }),
-    })];
+    const matches = [createCalculatorMatch()];
 
     await simulateUserTextInput(mockInput, '2 + 3');
 
@@ -2093,11 +2089,13 @@ suite('SearchboxMixinTest', () => {
   test('Tab key on non-default match does not enter keyword mode', async () => {
     const defaultMatch = createSearchMatchForTesting({
       allowedToBeDefaultMatch: true,
-      contents: 'google search',
+      suggestTemplate:
+          createSuggestTemplateInfo({primaryText: 'google search'}),
     });
     const secondaryMatchWithKeyword = createSearchMatchForTesting({
       allowedToBeDefaultMatch: false,
-      contents: 'google bookmarks',
+      suggestTemplate:
+          createSuggestTemplateInfo({primaryText: 'google bookmarks'}),
       keywordModel: createMatchKeywordModelForTesting({
         type: KeywordType.kChip,
         keyword: 'google.com',
@@ -2168,7 +2166,7 @@ suite('SearchboxMixinTest', () => {
     const mockInput = element.getInputElement();
     const match = createSearchMatchForTesting({
       allowedToBeDefaultMatch: true,
-      contents: 'youtube',
+      suggestTemplate: createSuggestTemplateInfo({primaryText: 'youtube'}),
       fillIntoEdit: 'youtube.com',
       keywordModel: createMatchKeywordModelForTesting({
         type: KeywordType.kChip,
@@ -2216,7 +2214,7 @@ suite('SearchboxMixinTest', () => {
         const mockInput = element.getInputElement();
         const match = createSearchMatchForTesting({
           allowedToBeDefaultMatch: true,
-          contents: 'youtube',
+          suggestTemplate: createSuggestTemplateInfo({primaryText: 'youtube'}),
           fillIntoEdit: 'youtube.com',
           keywordModel: createMatchKeywordModelForTesting({
             type: KeywordType.kChip,
@@ -2440,7 +2438,7 @@ suite('SearchboxMixinVirtualFocusTest', () => {
             };
 
         inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
-        await microtasksFinished();
+        await element.updateComplete;
         assertEquals('hello world', inputElement.value);
         // The distraction keeps screen readers from narrating the input's new
         // value. It has no role, so it does not become their focus.
@@ -2461,7 +2459,7 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertEquals('hello world', notifications[0]!.inputValue);
 
         inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
-        await microtasksFinished();
+        await element.updateComplete;
         assertEquals('hello there', inputElement.value);
         assertEquals(distraction, inputElement.ariaActiveDescendantElement);
         assertEquals(
@@ -2521,7 +2519,7 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         };
 
         inputElement.dispatchEvent(createKeyboardEvent('Tab'));
-        await microtasksFinished();
+        await element.updateComplete;
         assertEquals(
             SelectionLineState.kFocusedButtonAim, element.selection.state);
         assertEquals(
@@ -3605,6 +3603,17 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertEquals('@bookmarks', element.inputKeywordModel?.keyword);
         assertEquals('', mockInput.inputElement.value);
 
+        // The browser is told to enter keyword mode too, so its keyword state
+        // stays in sync with the WebUI.
+        assertEquals(1, testProxy.handler.getCallCount('activateKeyword'));
+        const activateKeywordArgs =
+            testProxy.handler.getArgs('activateKeyword')[0];
+        assertEquals(1, activateKeywordArgs.line);
+        assertDeepEquals(instantMatch.destinationUrl, activateKeywordArgs.url);
+        assertEquals(
+            KeywordActivationMethod.kKeyboard,
+            activateKeywordArgs.activationMethod);
+
         // ArrowUp back to default search match.
         mockInput.inputElement.dispatchEvent(createKeyboardEvent('ArrowUp'));
         await microtasksFinished();
@@ -3614,6 +3623,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertFalse(element.keywordModeManager.isInKeywordMode);
         assertEquals(null, element.inputKeywordModel);
         assertEquals('@', mockInput.inputElement.value);
+        // Leaving keyword mode doesn't activate a keyword.
+        assertEquals(1, testProxy.handler.getCallCount('activateKeyword'));
       });
 
   test(
@@ -3651,6 +3662,29 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertTrue(element.keywordModeManager.isInKeywordMode);
         assertEquals('youtube.com', element.inputKeywordModel?.keyword);
         assertEquals('', mockInput.inputElement.value);
+
+        // The browser is told to enter keyword mode too, like the keyword chip
+        // click does, so its keyword state stays in sync with the WebUI.
+        assertEquals(1, testProxy.handler.getCallCount('activateKeyword'));
+        const activateKeywordArgs =
+            testProxy.handler.getArgs('activateKeyword')[0];
+        assertEquals(0, activateKeywordArgs.line);
+        assertDeepEquals(defaultMatch.destinationUrl, activateKeywordArgs.url);
+        assertEquals(
+            KeywordActivationMethod.kKeyboard,
+            activateKeywordArgs.activationMethod);
+
+        // Shift+Tab leaves keyword mode back to the keyword hint.
+        mockInput.inputElement.dispatchEvent(
+            createKeyboardEvent('Tab', {shiftKey: true}));
+        await microtasksFinished();
+
+        assertEquals(0, element.selection.line);
+        assertEquals(SelectionLineState.kNormal, element.selection.state);
+        assertFalse(element.keywordModeManager.isInKeywordMode);
+        assertEquals('youtube.com', mockInput.inputElement.value);
+        // Leaving keyword mode doesn't activate a keyword.
+        assertEquals(1, testProxy.handler.getCallCount('activateKeyword'));
       });
 
   test('dynamic keyword space triggering pref change', async () => {

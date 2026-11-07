@@ -322,6 +322,7 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="2297822946037605517">Bendrinti šį puslapį</translation>
 <translation id="230115972905494466">Nerasta jokių suderinamų įrenginių</translation>
 <translation id="2305798319182970276">Ištrinkite istoriją vienu mygtuko palietimu</translation>
+<translation id="2307420463693979699">„<ph name="APP_NAME" />“ reikia leidimo, kad galėtų pasiekti žmogaus sąsajos įrenginius (ŽSĮ) šioje svetainėje.</translation>
 <translation id="2316129865977710310">Ne, ačiū</translation>
 <translation id="232137538351753795">Perbraukite iš kairiojo krašto, kad grįžtumėte</translation>
 <translation id="2323763861024343754">Svetainės saugykla</translation>
@@ -1691,6 +1692,7 @@ Jei norite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chro
 <translation id="7608245556672190037">„Chrome“ radinių pasirinkimo langas atidarytas per visą ekrano aukštį</translation>
 <translation id="7612619742409846846">Prisijungta prie „Google“ kaip</translation>
 <translation id="7612989789287281429">Prisijungiama…</translation>
+<translation id="7617512710641355143">„Chrome“ tvarkoma</translation>
 <translation id="7619072057915878432">Nepavyko atsisiųsti „<ph name="FILE_NAME" />“ dėl tinklo trikčių.</translation>
 <translation id="7626032353295482388">Sveiki, tai „Chrome“</translation>
 <translation id="7628417132421583481">Eiti į Slaptažodžių tvarkyklę</translation>

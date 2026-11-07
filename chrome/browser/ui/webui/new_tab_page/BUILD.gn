@@ -142,7 +142,6 @@ source_set("impl") {
     "//components/history_clusters/core",
     "//components/lens",
     "//components/ntp_tiles",
-    "//components/ntp_tiles:pref_names",
     "//components/omnibox/browser",
     "//components/omnibox/common",
     "//components/omnibox/common:features",
@@ -255,6 +254,7 @@ source_set("unit_tests") {
       "//chrome/browser/desktop_to_mobile_promos:utils",
       "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/views/side_panel/customize_chrome",
+      "//chrome/browser/ui/webui/util",
     ]
   }
 }

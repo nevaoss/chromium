@@ -19,12 +19,14 @@ using ItemIndexPath = Vector<wtf_size_t>;
 struct GridLanesItemPlacementData
     : public GarbageCollected<GridLanesItemPlacementData> {
   explicit GridLanesItemPlacementData(
-      const GridItemPlacementData& placement_data)
-      : placement_data(placement_data) {}
+      const GridItemPlacementData& placement_data,
+      LayoutUnit margin_block_end)
+      : placement_data(placement_data), margin_block_end(margin_block_end) {}
 
   void Trace(Visitor*) const {}
 
   GridItemPlacementData placement_data;
+  LayoutUnit margin_block_end;
 
   // Space available for alignment in the stacking axis. Fragmentation may
   // increase this if the track opening expands.
@@ -33,11 +35,6 @@ struct GridLanesItemPlacementData
   // Start of the item's opening in forward stacking order. Self-alignment and
   // fill-reverse may move the item without changing this position.
   LayoutUnit forward_stacking_start;
-
-  // Unique item identifier within a placement pass. All lane entries for a
-  // spanner share this value. It also breaks ties between equal final
-  // `CrossGap` centers.
-  wtf_size_t placement_sequence = 0;
 
   // Index of the item's fragment in the container builder during normal layout.
   // Unset during fragmentation collection.
@@ -66,10 +63,6 @@ struct GridLanesItemData : public GarbageCollected<GridLanesItemData> {
 
   LayoutUnit ForwardStackingStart() const {
     return grid_lanes_placement_data->forward_stacking_start;
-  }
-
-  wtf_size_t PlacementSequence() const {
-    return grid_lanes_placement_data->placement_sequence;
   }
 
   void AddDenselyPackedItem(GridLanesItemData* packed_item) {

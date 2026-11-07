@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.tasks.tab_management.vertical_tabs;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Resources;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.transition.Transition;
@@ -15,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import androidx.annotation.Px;
+import androidx.annotation.StringRes;
 
 import org.chromium.base.MathUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
@@ -255,6 +257,14 @@ public class VerticalTabsSideUiCoordinator
     }
 
     @Override
+    public boolean shouldDrawAnchorContainerBackground() {
+        // The rail draws its own background. While expanded for hovering, the anchor container is
+        // laid out at the expanded width over the web contents, so its fill would show around the
+        // rail's rounded corners instead of the web contents.
+        return false;
+    }
+
+    @Override
     public void onUiUpdateCompleted(
             @Px int oldReservedWidth,
             @Px int newReservedWidth,
@@ -277,6 +287,11 @@ public class VerticalTabsSideUiCoordinator
     }
 
     @Override
+    public @StringRes int getResizeHandleContentDescriptionRes() {
+        return R.string.accessibility_resize_vertical_tab_rail;
+    }
+
+    @Override
     public @Px Integer getResizeHandleWidthPx() {
         // Match the rail's inner padding so that the handle doesn't overlap the tabs.
         return mRootView
@@ -285,24 +300,30 @@ public class VerticalTabsSideUiCoordinator
     }
 
     @Override
+    public @Px Integer getResizeHandleBarInsetPx() {
+        // Align the bar with the tab list scrollbars, which are drawn at the end of the tab lists.
+        // The tab lists extend into the rail's inner padding by their negative end margin.
+        Resources res = mRootView.getResources();
+        return res.getDimensionPixelSize(R.dimen.vertical_tabs_rail_horizontal_margin)
+                + res.getDimensionPixelSize(R.dimen.vertical_tabs_scrollbar_margin_end);
+    }
+
+    @Override
     public void onResizeLive(@Px int proposedWidthPx) {
         mLiveResizeWidth = proposedWidthPx;
-        // Dragging the rail is an explicit request for an expanded rail. The width is clamped to
-        // the rail's minimum until the drag is released.
-        mCollapseController.setCollapsedByUserFromResize(/* isCollapsed= */ false);
+        mCollapseController.onResizeLive(ViewUtils.pxToDp(mRootView.getContext(), proposedWidthPx));
     }
 
     @Override
     public void onResizeCommitted(@Px int finalWidthPx) {
         mLiveResizeWidth = 0;
-        boolean isCollapsed = finalWidthPx < mMinManualWidth;
-        mCollapseController.setCollapsedByUserFromResize(isCollapsed);
+        int finalWidthDp = ViewUtils.pxToDp(mRootView.getContext(), finalWidthPx);
+        boolean isCollapsed = mCollapseController.onResizeCommitted(finalWidthDp);
 
-        // Releasing the drag below the rail's minimum usable width collapses it. When isCollapsed
-        // is true, setCollapsedByUserFromResize() persists the collapsed state, so we only persist
-        // the non-collapsed user-set width here.
+        // A collapsed rail keeps its previous expanded width, so only persist the width chosen for
+        // an expanded rail.
         if (!isCollapsed) {
-            mCommittedResizeWidthDp = ViewUtils.pxToDp(mRootView.getContext(), finalWidthPx);
+            mCommittedResizeWidthDp = finalWidthDp;
             VerticalTabUtils.setUserResizedWidthDpInSharedPref(mCommittedResizeWidthDp);
         }
     }

@@ -8,11 +8,11 @@ import {html} from '//resources/lit/v3_0/lit.rollup.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 import type {OrganizerListSectionClient, OrganizerListSectionDelegate} from '../organizer_list_section_delegate.js';
-import type {OrganizerListSectionItem, OrganizerListSectionItemDescriptionPart} from '../organizer_list_section_item.js';
+import type {OrganizerListSectionItem} from '../organizer_list_section_item.js';
 import type {BrowserProxy, ProfileData, RecentlyClosedTab, RecentlyClosedTabGroup, TabsRemovedInfo} from '../tab_search.mojom-webui.js';
 import {browserProxyFactory} from '../tab_search.mojom-webui.js';
 
-import {compareTimeDescending, getTabDescriptionParts, tokenToString} from './tab_delegate_utils.js';
+import {compareTimeDescending, getTabCountText, tokenToString} from './tab_delegate_utils.js';
 
 // Union type to represent all possible recently closed items (tabs, tab groups,
 // split views).
@@ -134,7 +134,8 @@ export class RecentTabsDelegate implements
       OrganizerListSectionItem<RecentlyClosedItem> {
     return {
       title: [tab.title],
-      description: getTabDescriptionParts([tab.url], tab.lastActiveElapsedText),
+      description:
+          tab.lastActiveElapsedText ? [{text: tab.lastActiveElapsedText}] : [],
       prefixIcon: {
         url: tab.url,
       },
@@ -144,22 +145,12 @@ export class RecentTabsDelegate implements
 
   private tabGroupToSectionItem_(tabGroup: RecentlyClosedTabGroup):
       OrganizerListSectionItem<RecentlyClosedItem> {
-    const description: OrganizerListSectionItemDescriptionPart[] = [];
-    const tabCount = tabGroup.tabCount;
-    description.push({
-      text: loadTimeData.getStringF(
-          tabCount === 1 ? 'oneTab' : 'tabCount', tabCount),
-    });
-
-    if (tabGroup.lastActiveElapsedText) {
-      description.push({
-        text: tabGroup.lastActiveElapsedText,
-      });
-    }
-
+    const title = tabGroup.title || getTabCountText(tabGroup.tabCount);
     return {
-      title: [tabGroup.title],
-      description,
+      title: [title],
+      description: tabGroup.lastActiveElapsedText ?
+          [{text: tabGroup.lastActiveElapsedText}] :
+          [],
       data: tabGroup,
     };
   }

@@ -322,6 +322,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="2297822946037605517">Del denne side</translation>
 <translation id="230115972905494466">Der blev ikke fundet nogen kompatible enheder</translation>
 <translation id="2305798319182970276">Slet din historik med et tryk på en knap</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> skal have tilladelse til at tilgå HID-enheder (human interface devices) for dette website.</translation>
 <translation id="2316129865977710310">Nej tak</translation>
 <translation id="232137538351753795">Stryg fra venstre kant for at gå tilbage</translation>
 <translation id="2323763861024343754">Websitelagerplads</translation>
@@ -1691,6 +1692,7 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="7608245556672190037">Tilvalg af Chrome Finds er åbnet i fuld højde</translation>
 <translation id="7612619742409846846">Du er logget ind på Google som</translation>
 <translation id="7612989789287281429">Logger dig ind…</translation>
+<translation id="7617512710641355143">Chrome er administreret</translation>
 <translation id="7619072057915878432">Download af <ph name="FILE_NAME" /> mislykkedes på grund af netværksfejl.</translation>
 <translation id="7626032353295482388">Velkommen til Chrome</translation>
 <translation id="7628417132421583481">Gå til Adgangs­kode­admin­istrator</translation>

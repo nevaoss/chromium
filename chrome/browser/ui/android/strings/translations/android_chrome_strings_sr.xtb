@@ -322,6 +322,7 @@
 <translation id="2297822946037605517">Дели ову страницу</translation>
 <translation id="230115972905494466">Није пронађен ниједан компатибилан уређај</translation>
 <translation id="2305798319182970276">Избришите историју притиском на дугме</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> тражи дозволу да приступи уређајима за људски интерфејс (HID-овима) за овај сајт.</translation>
 <translation id="2316129865977710310">Не, хвала</translation>
 <translation id="232137538351753795">Превуците од леве ивице да бисте се вратили</translation>
 <translation id="2323763861024343754">Меморијски простор за сајт</translation>
@@ -1691,6 +1692,7 @@ Google налог можда има друге облике историје п�
 <translation id="7608245556672190037">Табела за омогућавање Chrome проналазака отворена је у пуној висини</translation>
 <translation id="7612619742409846846">Пријављени сте у Google као</translation>
 <translation id="7612989789287281429">Пријављујете се…</translation>
+<translation id="7617512710641355143">Chrome-ом се управља</translation>
 <translation id="7619072057915878432">Преузимање датотеке <ph name="FILE_NAME" /> није успело због проблема са мрежом.</translation>
 <translation id="7626032353295482388">Добро дошли у Chrome</translation>
 <translation id="7628417132421583481">Иди у Менаџер лозинки</translation>

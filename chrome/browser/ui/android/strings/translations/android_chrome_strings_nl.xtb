@@ -322,6 +322,7 @@ Alleen iemand met je wachtwoordzin kan je versleutelde gegevens lezen. De wachtw
 <translation id="2297822946037605517">Deze pagina delen</translation>
 <translation id="230115972905494466">Geen geschikte apparaten gevonden</translation>
 <translation id="2305798319182970276">Je geschiedenis verwijderen met één tik op een knop</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> heeft toegangsrechten voor Human Interface Devices (HID's) nodig voor deze site.</translation>
 <translation id="2316129865977710310">Nee, bedankt</translation>
 <translation id="232137538351753795">Swipe vanaf de linkerrand om terug te gaan</translation>
 <translation id="2323763861024343754">Site-opslag</translation>
@@ -859,7 +860,7 @@ Alleen iemand met je wachtwoordzin kan je versleutelde gegevens lezen. De wachtw
 <translation id="4412123112245770507">Gedeelte samenvouwen</translation>
 <translation id="4412698727486357573">Helpcentrum</translation>
 <translation id="4414179633735763985"><ph name="TAB_GROUPS_AND_TABS_PART" /> verwijderd</translation>
-<translation id="4415276339145661267">Je Google-account beheren</translation>
+<translation id="4415276339145661267">Google-account beheren</translation>
 <translation id="4425140285732600465">Prijs wordt gevolgd. Krijg meldingen bij een prijsdaling op een site.</translation>
 <translation id="4425173294238317796">Bevestigingsblad voor toegangssleutel</translation>
 <translation id="442518031075347249">Je kunt je virtuele kaart niet meer gebruiken met Google Pay. <ph name="BEGIN_LINK1" />Meer informatie over virtuele kaarten<ph name="END_LINK1" /></translation>
@@ -1691,6 +1692,7 @@ Als je deze instelling wilt wijzigen, <ph name="BEGIN_LINK" />verwijder je de Ch
 <translation id="7608245556672190037">Aanmelding voor Chrome-vondsten is op volledige hoogte geopend</translation>
 <translation id="7612619742409846846">Ingelogd bij Google als</translation>
 <translation id="7612989789287281429">Inloggen…</translation>
+<translation id="7617512710641355143">Chrome wordt beheerd</translation>
 <translation id="7619072057915878432">Downloaden van <ph name="FILE_NAME" /> is mislukt door netwerkfouten.</translation>
 <translation id="7626032353295482388">Welkom bij Chrome</translation>
 <translation id="7628417132421583481">Naar Wachtwoordmanager</translation>
@@ -1738,7 +1740,7 @@ Als je deze instelling wilt wijzigen, <ph name="BEGIN_LINK" />verwijder je de Ch
 <translation id="7792388396321542707">Delen stoppen</translation>
 <translation id="780287761701992588">Gebruik je bookmarks, wachtwoorden en meer op al je apparaten</translation>
 <translation id="780301667611848630">Nee, bedankt</translation>
-<translation id="7804364787702057554">Je account in Chrome</translation>
+<translation id="7804364787702057554">Account in Chrome</translation>
 <translation id="7810647596859435254">Openen met…</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{Alle bestanden, 1 bestand in lijst}other{Alle bestanden, # bestanden in lijst}}</translation>
 <translation id="7815484226266492798">Lang screenshot</translation>

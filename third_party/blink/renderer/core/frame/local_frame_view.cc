@@ -232,8 +232,14 @@ std::optional<cc::PaintRecord> GetCanvasSnapshot(DOMNodeId id) {
     if (!nested_layout_obj) {
       return cc::PaintRecord();
     }
-    if (scoped_refptr<StaticBitmapImage> snapshot =
-            nested_canvas->Snapshot(kBackBuffer)) {
+    scoped_refptr<StaticBitmapImage> snapshot =
+        nested_canvas->Snapshot(kBackBuffer);
+    if (snapshot) {
+      // GraphicsContext cannot handle gpu resource serialization.
+      snapshot = snapshot->MakeUnaccelerated();
+    }
+    if (snapshot) {
+      DCHECK(!snapshot->IsTextureBacked());
       PaintRecordBuilder builder;
       gfx::RectF dest_rect(
           gfx::SizeF(nested_layout_obj->PhysicalContentBoxRect().size));
@@ -536,6 +542,9 @@ void LocalFrameView::Dispose() {
   if (update_plugins_timer_.IsActive())
     update_plugins_timer_.Stop();
   part_update_set_.clear();
+
+  // The frame may be detached before a pending intersection update fires.
+  delayed_intersection_timer_.Stop();
 
   // These are LayoutObjects whose layout has been deferred to a subsequent
   // lifecycle update. Not gonna happen.
@@ -1304,15 +1313,10 @@ bool LocalFrameView::RecordNaturalDimensions() {
 
 void LocalFrameView::RequestSameDocumentNavigationPresentationTime(
     base::OnceCallback<void(const viz::FrameTimingDetails&)> callback) {
-  if (RuntimeEnabledFeatures::RecordSameDocumentPresentationTimeOnceEnabled(
-          GetFrame().DomWindow())) {
-    GetFrame()
-        .LocalFrameRoot()
-        .View()
-        ->same_document_presentation_time_callback_ = std::move(callback);
-  } else if (auto* frame_widget = GetFrame().GetWidgetForLocalRoot()) {
-    frame_widget->NotifyPresentationTime(std::move(callback));
-  }
+  GetFrame()
+      .LocalFrameRoot()
+      .View()
+      ->same_document_presentation_time_callback_ = std::move(callback);
 }
 
 bool LocalFrameView::HasRunningAnchorTransformAnimation() const {

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -28,6 +29,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.DeviceInfo;
@@ -35,11 +37,14 @@ import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.base.test.util.UserActionTester;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.SessionStartupPolicy;
 import org.chromium.chrome.browser.multiwindow.TabbedStartupWindowPolicyDelegate.StartupMode;
+import org.chromium.chrome.browser.multiwindow.TabbedStartupWindowPolicyDelegate.StartupPolicy;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.preferences.Pref;
@@ -57,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link TabbedStartupWindowPolicyDelegate}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -114,12 +120,33 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         // Setup.
         setupRecoverableInstances(SessionStartupPolicy.RESTORE_ALL);
         mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupRestorationWindowCount", /* value= */ 1);
+        var userActionTester = new UserActionTester();
+        doAnswer(
+                        invocation -> {
+                            assertTrue(
+                                    userActionTester
+                                            .getActions()
+                                            .contains(
+                                                    "Android.MultiWindow.StartupRestorationInitiated"));
+                            return null;
+                        })
+                .when(mTabbedActivity)
+                .startActivity(any());
 
         // Act.
         mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity).startActivity(any());
+        histogramWatcher.assertExpected();
+        assertTrue(
+                userActionTester
+                        .getActions()
+                        .contains("Android.MultiWindow.StartupRestorationInitiated"));
+        userActionTester.tearDown();
         assertEquals(
                 SessionStartupPolicy.DEFAULT,
                 ChromeMultiInstancePersistentStore.readSessionStartupPolicy());
@@ -196,12 +223,22 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
         setupAppTasks(1);
         doReturn(false).when(mTabbedActivity).isInMultiWindowMode();
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupRestorationWindowCount", /* value= */ 1);
+        var userActionTester = new UserActionTester();
 
         // Act.
         mDelegate.applyPolicy(mTabbedActivity);
 
         // Verify.
         verify(mTabbedActivity, never()).startActivity(any());
+        histogramWatcher.assertExpected();
+        assertFalse(
+                userActionTester
+                        .getActions()
+                        .contains("Android.MultiWindow.StartupRestorationInitiated"));
+        userActionTester.tearDown();
         assertFalse(
                 "isRecoverable should be cleared when task is alive in non-multiwindow mode.",
                 ChromeMultiInstancePersistentStore.readIsRecoverable(1));
@@ -828,18 +865,91 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     public void testClaimStartupPolicy_subsequentLaunch_suppressesStartupUrls() {
         // Setup: Initial primary window claims startup policy with LAST pref.
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.LAST);
+        var initialWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupPolicy", StartupPolicy.LAST);
         mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+        initialWatcher.assertExpected();
 
         // While the session is active, synced pref changes to URLS.
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupUrls(
                 List.of("https://www.google.com"));
+        var subsequentWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.StartupPolicy")
+                        .build();
 
         // Act: A subsequent new window is requested to be opened while the session is active.
         mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.NEW_WINDOW);
 
-        // Verify: Startup URLs are suppressed for the subsequent window.
+        // Verify: Startup URLs are suppressed and startup policy histogram is not re-emitted.
+        subsequentWatcher.assertExpected();
         assertTrue(mDelegate.resolveStartupUrls(false).isEmpty());
+    }
+
+    @Test
+    public void testClaimStartupPolicy_prefUnset_recordsUnsetStartupPolicy() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                TabbedStartupWindowPolicyDelegate.PREF_UNSET);
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupPolicy", StartupPolicy.UNSET);
+
+        // Act.
+        mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+
+        // Verify.
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testClaimStartupPolicy_newTabPref_recordsNewTabStartupPolicy() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupPolicy", StartupPolicy.NEW_TAB);
+
+        // Act.
+        mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+
+        // Verify.
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testClaimStartupPolicy_urlsPref_recordsUrlsStartupPolicy() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupPolicy", StartupPolicy.URLS);
+
+        // Act.
+        mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+
+        // Verify.
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testClaimStartupPolicy_incognito_doesNotRecordStartupPolicy() {
+        // Setup.
+        ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
+                SessionStartupPref.NEW_TAB);
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.StartupPolicy")
+                        .build();
+
+        // Act.
+        mDelegate.claimStartupPolicy(/* isIncognito= */ true, StartupMode.UNMAPPED_TASK);
+
+        // Verify.
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -848,14 +958,24 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupUrls(
                 List.of("https://www.google.com", "https://www.chromium.org"));
+        var firstWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.RestoreOnStartupUrlsCount", /* value= */ 2);
 
         // Act & Verify.
         assertEquals(
                 List.of("https://www.google.com", "https://www.chromium.org"),
                 mDelegate.resolveStartupUrls(false));
+        firstWatcher.assertExpected();
 
-        // Subsequent invocations in the same browser process should return empty list.
+        // Subsequent invocations in the same browser process should return empty list and not
+        // record the histogram again.
+        var secondWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.RestoreOnStartupUrlsCount")
+                        .build();
         assertTrue(mDelegate.resolveStartupUrls(false).isEmpty());
+        secondWatcher.assertExpected();
     }
 
     @Test
@@ -875,9 +995,13 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         // Setup.
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupUrls(Collections.emptyList());
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.RestoreOnStartupUrlsCount", /* value= */ 0);
 
         // Act & Verify.
         assertTrue(mDelegate.resolveStartupUrls(false).isEmpty());
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -885,9 +1009,14 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         // Setup.
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(
                 SessionStartupPref.NEW_TAB);
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.RestoreOnStartupUrlsCount")
+                        .build();
 
         // Act & Verify.
         assertTrue(mDelegate.resolveStartupUrls(false).isEmpty());
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -905,12 +1034,17 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupPrefValue(SessionStartupPref.URLS);
         ChromeMultiInstancePersistentStore.writeRestoreOnStartupUrls(
                 List.of("https://www.google.com"));
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.RestoreOnStartupUrlsCount")
+                        .build();
 
         // Act & Verify.
         assertTrue(mDelegate.resolveStartupUrls(true).isEmpty());
         // Subsequent calls for regular windows in the same process should also return an empty
         // list.
         assertTrue(mDelegate.resolveStartupUrls(false).isEmpty());
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -942,18 +1076,90 @@ public class TabbedStartupWindowPolicyDelegateUnitTest {
     }
 
     @Test
-    public void testOnWindowCreated_relaunchSource_registersRestoration() {
+    public void testOnWindowCreated_relaunchSource_registersRestorationAndRecordsRetention() {
         // Setup.
         setupRecoverableInstances(SessionStartupPolicy.RESTORE_ALL);
         mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
         mDelegate.applyPolicy(mTabbedActivity);
         assertTrue(mDelegate.getWindowIdsPendingRestorationForTesting().contains(1));
+        var durationWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectAnyRecord("Android.MultiWindow.StartupRestorationDuration")
+                        .expectNoRecords("Android.MultiWindow.StartupRestorationWindowRetained")
+                        .build();
+        var userActionTester = new UserActionTester();
 
-        // Act.
+        // Act: Register restoration for window 1.
         TabbedStartupCoordinator.onWindowCreated(/* windowId= */ 1, NewWindowAppSource.RELAUNCH);
 
-        // Verify.
+        // Verify: Restoration completes immediately, while retention timer is still pending.
         assertTrue(mDelegate.getWindowIdsPendingRestorationForTesting().isEmpty());
+        durationWatcher.assertExpected();
+        assertTrue(
+                userActionTester
+                        .getActions()
+                        .contains("Android.MultiWindow.StartupRestorationCompleted"));
+        userActionTester.tearDown();
+
+        // Act: Advance main looper by 30 seconds.
+        var retentionWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupRestorationWindowRetained", /* value= */ true);
+        ShadowLooper.idleMainLooper(
+                TabbedStartupWindowPolicyDelegate.WINDOW_RETENTION_THRESHOLD_MS,
+                TimeUnit.MILLISECONDS);
+
+        // Verify: Window retention metric emits true after 30 seconds.
+        retentionWatcher.assertExpected();
+    }
+
+    @Test
+    public void testOnWindowClosed_withinRetentionThreshold_recordsWindowNotRetained() {
+        // Setup.
+        setupRecoverableInstances(SessionStartupPolicy.RESTORE_ALL);
+        mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+        mDelegate.applyPolicy(mTabbedActivity);
+        TabbedStartupCoordinator.onWindowCreated(/* windowId= */ 1, NewWindowAppSource.RELAUNCH);
+        var closeWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.MultiWindow.StartupRestorationWindowRetained", /* value= */ false);
+
+        // Act: Close the restored window before the 30-second retention timer expires.
+        TabbedStartupCoordinator.onWindowClosed(/* windowId= */ 1);
+
+        // Verify: Emits false immediately and cancels the 30-second timer.
+        closeWatcher.assertExpected();
+
+        var afterTimeoutWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.StartupRestorationWindowRetained")
+                        .build();
+        ShadowLooper.idleMainLooper(
+                TabbedStartupWindowPolicyDelegate.WINDOW_RETENTION_THRESHOLD_MS,
+                TimeUnit.MILLISECONDS);
+        afterTimeoutWatcher.assertExpected();
+    }
+
+    @Test
+    public void testResetState_cancelsPendingWindowRetentionRunnables() {
+        // Setup.
+        setupRecoverableInstances(SessionStartupPolicy.RESTORE_ALL);
+        mDelegate.claimStartupPolicy(/* isIncognito= */ false, StartupMode.UNMAPPED_TASK);
+        mDelegate.applyPolicy(mTabbedActivity);
+        TabbedStartupCoordinator.onWindowCreated(/* windowId= */ 1, NewWindowAppSource.RELAUNCH);
+
+        // Act: Reset state before 30 seconds elapse.
+        mDelegate.resetState();
+
+        // Verify: Pending retention runnable is cancelled and does not emit after 30 seconds.
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.MultiWindow.StartupRestorationWindowRetained")
+                        .build();
+        ShadowLooper.idleMainLooper(
+                TabbedStartupWindowPolicyDelegate.WINDOW_RETENTION_THRESHOLD_MS,
+                TimeUnit.MILLISECONDS);
+        histogramWatcher.assertExpected();
     }
 
     private void setupRecoverableInstances(@SessionStartupPolicy int startupPolicy) {

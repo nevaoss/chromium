@@ -2732,21 +2732,6 @@ inline LayoutStateScenePassKey PassKey() {
   geminiBrowserAgent->UpdateForTraitCollection(traitCollection);
 }
 
-- (void)showGeminiPromoIfPageIsEligible {
-  if (!_regularBrowser) {
-    return;
-  }
-  web::WebState* activeWebState =
-      _regularBrowser->GetWebStateList()->GetActiveWebState();
-  if (gemini::IsGeminiAvailable(gemini::EntryPoint::Promo, self.profile,
-                                activeWebState)
-          .enabled) {
-    [self startGeminiFlowWithStartupState:
-              [[GeminiStartupState alloc]
-                  initWithEntryPoint:gemini::EntryPoint::Promo]];
-  }
-}
-
 - (void)startGeminiLiveFirstRunWithBaseViewController:
             (UIViewController*)baseViewController
                                            completion:(void (^)(BOOL success))
@@ -2894,14 +2879,12 @@ inline LayoutStateScenePassKey PassKey() {
                                              ? _viewController
                                              : self.activeViewController;
   if (IsIOSGeminiBottomSheetMigrationEnabled()) {
-    if (_geminiContainerCoordinator) {
-      return;
+    if (!_geminiContainerCoordinator) {
+      _geminiContainerCoordinator = [[GeminiContainerCoordinator alloc]
+          initWithBaseViewController:baseViewController
+                             browser:_regularBrowser.get()];
     }
-
-    _geminiContainerCoordinator = [[GeminiContainerCoordinator alloc]
-        initWithBaseViewController:baseViewController
-                           browser:_regularBrowser.get()
-                      startupState:startupState];
+    _geminiContainerCoordinator.startupState = startupState;
     [_geminiContainerCoordinator start];
     return;
   }

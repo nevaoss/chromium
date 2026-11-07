@@ -28,6 +28,7 @@
 #include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_util.h"
+#include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/platform/web_network_state_notifier.h"
 #include "third_party/blink/public/platform/web_string.h"
@@ -423,6 +424,20 @@ TEST_F(ResourceMultiBufferDataProviderTest, InvalidPartialResponse) {
   response.SetExpectedContentLength(10);
   response.SetHttpStatusCode(kHttpPartialContent);
   loader_->DidReceiveResponse(response);
+}
+
+TEST_F(ResourceMultiBufferDataProviderTest, OpaqueRangeNotSatisfiableFails) {
+  Initialize(kHttpUrl, 0);
+  Start();
+
+  EXPECT_CALL(*this, RedirectCallback(scoped_refptr<UrlData>(nullptr)));
+
+  WebURLResponse response(url_);
+  response.SetHttpStatusCode(416);
+  response.SetType(network::mojom::FetchResponseType::kOpaque);
+  loader_->DidReceiveResponse(response);
+  EXPECT_TRUE(url_data_->is_cors_cross_origin());
+  EXPECT_TRUE(url_data_->multibuffer()->map().empty());
 }
 
 TEST_F(ResourceMultiBufferDataProviderTest, TestRedirects) {

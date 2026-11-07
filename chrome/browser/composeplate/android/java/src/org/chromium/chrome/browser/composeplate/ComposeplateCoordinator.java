@@ -47,7 +47,10 @@ public class ComposeplateCoordinator {
     }
 
     private void maybeRevertToLegacyLayout() {
-        if (NewTabPageUtils.isNtpAuroraButtonColorEnabled()) {
+        // Early return for isBesideMvtModuleEnabled to avoid modifying the AI Mode section beside
+        // the MVT.
+        if (NewTabPageUtils.isNtpAuroraButtonColorEnabled()
+                || NewTabPageUtils.isBesideMvtModuleEnabled()) {
             return;
         }
 
@@ -65,16 +68,6 @@ public class ComposeplateCoordinator {
         containerParams.height =
                 resources.getDimensionPixelSize(R.dimen.composeplate_view_legacy_height);
         mView.setLayoutParams(containerParams);
-
-        View searchIcon = mView.findViewById(R.id.composeplate_button_icon);
-        if (searchIcon != null) {
-            ViewGroup.LayoutParams searchIconParams = searchIcon.getLayoutParams();
-            int iconSize =
-                    mView.getResources().getDimensionPixelSize(R.dimen.composeplate_view_icon_size);
-            searchIconParams.width = iconSize;
-            searchIconParams.height = iconSize;
-            searchIcon.setLayoutParams(searchIconParams);
-        }
 
         mView.setTextStyle(R.style.TextAppearance_ComposeplateTextMedium);
     }
@@ -243,7 +236,7 @@ public class ComposeplateCoordinator {
      * @param optionalButtonClickListener The click listener for the optional button.
      * @param actionChipsType The {@link ActionChips} type shown on the optional button, used to
      *     record the click metric. Must be {@link ActionChips#CREATE_IMAGE} or {@link
-     *     ActionChips#CANVAS}.
+     *     ActionChips#GALLERY}.
      */
     public void setOptionalButtonClickListener(
             View.OnClickListener optionalButtonClickListener, @ActionChips int actionChipsType) {
@@ -258,7 +251,7 @@ public class ComposeplateCoordinator {
         return switch (actionChipsType) {
             case ActionChips.CREATE_IMAGE ->
                     ModuleTypeOnStartAndNtp.COMPOSEPLATE_VIEW_CREATE_IMAGE_BUTTON;
-            case ActionChips.CANVAS -> ModuleTypeOnStartAndNtp.COMPOSEPLATE_VIEW_CANVAS_BUTTON;
+            case ActionChips.GALLERY -> ModuleTypeOnStartAndNtp.COMPOSEPLATE_VIEW_GALLERY_BUTTON;
             default ->
                     throw new IllegalArgumentException(
                             "Unsupported action chips type: " + actionChipsType);

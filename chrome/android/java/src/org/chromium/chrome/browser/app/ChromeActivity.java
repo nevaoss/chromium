@@ -136,6 +136,7 @@ import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherImpl;
 import org.chromium.chrome.browser.firstrun.ForcedSigninProcessor;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.flags.ChromeFeatures;
 import org.chromium.chrome.browser.flags.ChromeSessionState;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
@@ -2202,7 +2203,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         // and send hardware key events directly to the InputConnection. In that case, those
         // events will eventually enter Chrome's PreHandleKeyboardEvent pipeline. We must
         // explicitly call this method here in order to allow the browser to handle the
-        // shortcut before the page in some cases (e.g. F6 or F7).
+        // shortcut before the page in some cases (e.g. F6).
         Boolean dispatchResult =
                 KeyboardShortcuts.dispatchKeyEvent(
                         event,
@@ -3415,6 +3416,20 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             return true;
         }
 
+        if (id == R.id.dev_tools_console
+                && DevToolsWindowAndroid.isDevToolsAllowedFor(
+                        this, currentTab.getProfile(), webContents)) {
+            DevToolsWindowAndroid.openDevToolsConsole(webContents);
+            return true;
+        }
+
+        if (id == R.id.dev_tools_inspect
+                && DevToolsWindowAndroid.isDevToolsAllowedFor(
+                        this, currentTab.getProfile(), webContents)) {
+            DevToolsWindowAndroid.openDevToolsInspect(webContents);
+            return true;
+        }
+
         return false;
     }
 
@@ -3588,11 +3603,13 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     /**
-     * Do the tab re-parenting during activity recreation.
+     * Recreates the activity, re-parenting tabs so they survive the recreation. Subclasses should
+     * prefer this over {@link #recreate()} whenever a setting that is only applied at activity
+     * creation changes (e.g. theme, bottom bar) and the tab reparenting controller is available.
      *
      * @return whether the activity is recreated.
      */
-    private boolean doRecreateActivity() {
+    protected boolean doRecreateActivity() {
         TabletMode tabletMode = getTabletMode();
         if (UiAndroidFeatureList.sConnectedDisplayDensityDebugLogs.isEnabled()) {
             Log.i(
@@ -3723,7 +3740,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     // === START of ThemeResourceProvider functionality ===
 
     private void initializeThemeResourceWrapper() {
-        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_THEME_RESOURCE_PROVIDER)) {
+        if (!ChromeFeatures.AndroidThemeResourceProvider.isEnabled()) {
             return;
         }
 

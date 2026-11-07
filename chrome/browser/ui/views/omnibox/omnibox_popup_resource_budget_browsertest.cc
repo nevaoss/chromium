@@ -48,40 +48,37 @@
 #include "services/resource_coordinator/public/cpp/memory_instrumentation/global_memory_dump.h"
 #include "services/resource_coordinator/public/cpp/memory_instrumentation/memory_instrumentation.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "ui/views/widget/widget.h"
 
 namespace {
 
 // Classic (or full) popup plus the AIM popup, created eagerly per window.
 constexpr size_t kPopupWebContentsPerWindow = 2;
-// Widgets are created on first show, so only a popup that is showing (at most
-// the focused window's, e.g. the full popup on startup) has one.
-constexpr size_t kMaxPopupWidgets = 1;
-// AIM-ineligible profiles still get an AIM popup they can never show.
-constexpr size_t kPopupWebContentsPerAimIneligibleWindow = 2;
+// Widgets are created on first show and, in these configurations, destroyed on
+// hide, so a hidden popup with a widget was created eagerly. Which popups are
+// showing depends on window focus, which varies by platform, so only hidden
+// ones are budgeted.
+constexpr size_t kMaxHiddenPopupWidgets = 0;
+// AIM-ineligible profiles get only the classic (or full) popup.
+constexpr size_t kPopupWebContentsPerAimIneligibleWindow = 1;
 // Top-chrome WebUIs of one profile share a renderer process.
 constexpr size_t kPopupRenderProcessesPerProfile = 1;
 
-constexpr size_t kExtraWindows = 4;
+// Enough to show scaling. Each window loads two WebUI documents, which is slow
+// on debug and sanitizer builds.
+constexpr size_t kExtraWindows = 2;
 
 struct PopupResources {
   std::vector<raw_ptr<content::WebContents>> web_contents;
   std::set<raw_ptr<content::RenderProcessHost>> processes;
   size_t widgets = 0;
+  size_t hidden_widgets = 0;
 };
 
-std::unique_ptr<KeyedService> BuildAimEligibilityService(
-    bool eligible,
-    content::BrowserContext* context) {
-  auto service = std::make_unique<testing::NiceMock<MockAimEligibilityService>>(
-      *Profile::FromBrowserContext(context)->GetPrefs(),
-      /*template_url_service=*/nullptr,
-      /*url_loader_factory=*/nullptr, /*identity_manager=*/nullptr,
-      AimEligibilityService::Configuration{});
-  ON_CALL(*service, IsAimEligible()).WillByDefault(testing::Return(eligible));
-  ON_CALL(*service, IsFuseboxEligible())
-      .WillByDefault(testing::Return(eligible));
-  ON_CALL(*service, GetLocaleImpl()).WillByDefault(testing::Return("en-US"));
-  return service;
+LocationBarView* GetLocationBarView(BrowserWindowInterface* browser) {
+  ToolbarView* toolbar =
+      BrowserView::GetBrowserViewForBrowser(browser)->toolbar();
+  return toolbar ? toolbar->location_bar_view() : nullptr;
 }
 
 bool IsOmniboxPopup(content::WebContents* contents) {
@@ -104,10 +101,7 @@ PopupResources CountPopupResources(Profile* profile) {
     if (browser->GetProfile() != profile) {
       continue;
     }
-    ToolbarView* toolbar =
-        BrowserView::GetBrowserViewForBrowser(browser)->toolbar();
-    LocationBarView* location_bar =
-        toolbar ? toolbar->location_bar_view() : nullptr;
+    LocationBarView* location_bar = GetLocationBarView(browser);
     if (!location_bar) {
       continue;
     }
@@ -115,8 +109,15 @@ PopupResources CountPopupResources(Profile* profile) {
         location_bar->GetOmniboxPopupView()->presenter(),
         location_bar->GetOmniboxPopupAimPresenter()};
     for (const OmniboxPopupPresenterBase* presenter : presenters) {
-      if (presenter && presenter->GetWidget()) {
-        ++resources.widgets;
+      // Widgets close asynchronously after hide; ignore ones on their way out.
+      const views::Widget* widget =
+          presenter ? presenter->GetWidget() : nullptr;
+      if (!widget || widget->IsClosed()) {
+        continue;
+      }
+      ++resources.widgets;
+      if (!presenter->IsShown()) {
+        ++resources.hidden_widgets;
       }
     }
   }
@@ -163,6 +164,7 @@ void LogPopupResources(std::string_view label,
   LOG(INFO) << "OmniboxPopupBudget[" << label << "] windows=" << windows
             << " web_contents=" << resources.web_contents.size()
             << " widgets=" << resources.widgets
+            << " hidden_widgets=" << resources.hidden_widgets
             << " processes=" << resources.processes.size()
             << " popup_process_pmf_kb=" << popup_process_kb
             << " renderer_pmf_kb=" << renderer_kb
@@ -184,7 +186,8 @@ class OmniboxPopupResourceBudgetBrowserTest
     : public InProcessBrowserTest,
       public testing::WithParamInterface<bool> {
  public:
-  OmniboxPopupResourceBudgetBrowserTest() {
+  explicit OmniboxPopupResourceBudgetBrowserTest(bool aim_eligible = true)
+      : aim_eligible_(aim_eligible) {
     std::vector<base::test::FeatureRef> enabled = {
         omnibox::internal::kWebUIOmniboxPopup,
         omnibox::internal::kWebUIOmniboxAimPopup};
@@ -205,7 +208,13 @@ class OmniboxPopupResourceBudgetBrowserTest
 
  protected:
   bool IsFullWebUI() const { return GetParam(); }
-  virtual bool IsAimEligible() const { return true; }
+
+  // Simulates the eligibility service learning that the profile is eligible,
+  // as happens on first run or after sign-in.
+  void BecomeAimEligible() {
+    aim_eligible_ = true;
+    eligibility_changed_callbacks_.Notify();
+  }
 
   // Waits for `profile`'s popups to load, logs them and checks the budgets.
   void CheckBudget(std::string_view label,
@@ -216,17 +225,40 @@ class OmniboxPopupResourceBudgetBrowserTest
     PopupResources resources = CountPopupResources(profile);
     LogPopupResources(label, windows, resources);
     EXPECT_LE(resources.web_contents.size(), windows * web_contents_per_window);
-    EXPECT_LE(resources.widgets, kMaxPopupWidgets);
+    EXPECT_LE(resources.hidden_widgets, kMaxHiddenPopupWidgets);
     EXPECT_LE(resources.processes.size(), kPopupRenderProcessesPerProfile);
   }
 
  private:
   void OnCreateServices(content::BrowserContext* context) {
     AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
-        context,
-        base::BindRepeating(&BuildAimEligibilityService, IsAimEligible()));
+        context, base::BindRepeating(
+                     &OmniboxPopupResourceBudgetBrowserTest::BuildAimService,
+                     base::Unretained(this)));
   }
 
+  std::unique_ptr<KeyedService> BuildAimService(
+      content::BrowserContext* context) {
+    auto service =
+        std::make_unique<testing::NiceMock<MockAimEligibilityService>>(
+            *Profile::FromBrowserContext(context)->GetPrefs(),
+            /*template_url_service=*/nullptr,
+            /*url_loader_factory=*/nullptr, /*identity_manager=*/nullptr,
+            AimEligibilityService::Configuration{});
+    // Read the fixture's state at call time so tests can flip eligibility.
+    auto eligible = [this] { return aim_eligible_; };
+    ON_CALL(*service, IsAimEligible()).WillByDefault(eligible);
+    ON_CALL(*service, IsFuseboxEligible()).WillByDefault(eligible);
+    ON_CALL(*service, GetLocaleImpl()).WillByDefault(testing::Return("en-US"));
+    ON_CALL(*service, RegisterEligibilityChangedCallback(testing::_))
+        .WillByDefault([this](base::RepeatingClosure callback) {
+          return eligibility_changed_callbacks_.Add(std::move(callback));
+        });
+    return service;
+  }
+
+  bool aim_eligible_;
+  base::RepeatingClosureList eligibility_changed_callbacks_;
   base::test::ScopedFeatureList feature_list_;
   base::CallbackListSubscription create_services_subscription_;
 };
@@ -270,8 +302,9 @@ IN_PROC_BROWSER_TEST_P(OmniboxPopupResourceBudgetBrowserTest, PopupWindow) {
 
 class OmniboxPopupResourceBudgetAimIneligibleBrowserTest
     : public OmniboxPopupResourceBudgetBrowserTest {
- protected:
-  bool IsAimEligible() const override { return false; }
+ public:
+  OmniboxPopupResourceBudgetAimIneligibleBrowserTest()
+      : OmniboxPopupResourceBudgetBrowserTest(/*aim_eligible=*/false) {}
 };
 
 INSTANTIATE_TEST_SUITE_P(All,
@@ -285,4 +318,18 @@ IN_PROC_BROWSER_TEST_P(OmniboxPopupResourceBudgetAimIneligibleBrowserTest,
                        AimIneligibleProfile) {
   CheckBudget("aim_ineligible", browser()->GetProfile(), 1,
               kPopupWebContentsPerAimIneligibleWindow);
+}
+
+// Eligibility can arrive after the window exists; the AIM popup must then be
+// created so it is available on the next show.
+IN_PROC_BROWSER_TEST_P(OmniboxPopupResourceBudgetAimIneligibleBrowserTest,
+                       CreatesAimPopupOnceEligible) {
+  LocationBarView* location_bar = GetLocationBarView(browser());
+  ASSERT_TRUE(location_bar);
+  EXPECT_FALSE(location_bar->GetOmniboxPopupAimPresenter());
+
+  BecomeAimEligible();
+  EXPECT_TRUE(location_bar->GetOmniboxPopupAimPresenter());
+  CheckBudget("aim_eligible_later", browser()->GetProfile(), 1,
+              kPopupWebContentsPerWindow);
 }

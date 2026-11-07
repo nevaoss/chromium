@@ -16,6 +16,9 @@ import org.jni_zero.NativeMethods;
 
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ResettersForTesting;
+import org.chromium.base.ThreadUtils;
+import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
@@ -25,6 +28,7 @@ import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.SessionStart
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.sync.SyncService;
@@ -35,6 +39,7 @@ import org.chromium.components.user_prefs.UserPrefs;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +53,7 @@ import java.util.Set;
 /* package */ class TabbedStartupWindowPolicyDelegate extends BaseTabbedStartupDelegate
         implements SyncStateChangedListener {
     /* package */ static final int PREF_UNSET = -1;
+    /* package */ static final long WINDOW_RETENTION_THRESHOLD_MS = 30_000;
 
     /**
      * Launch allocation modes for the primary window during browser startup that determine how
@@ -82,7 +88,38 @@ import java.util.Set;
         int UNMAPPED_TASK = 3;
     }
 
+    // LINT.IfChange(StartupPolicy)
+    @IntDef({
+        StartupPolicy.UNSET,
+        StartupPolicy.LAST,
+        StartupPolicy.NEW_TAB,
+        StartupPolicy.URLS,
+        StartupPolicy.NUM_ENTRIES
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    /* package */ @interface StartupPolicy {
+        /**
+         * No startup preference is configured or synced; defaults to restoring the last session.
+         */
+        int UNSET = 0;
+
+        /** Explicitly configured to restore the last session ("Continue where you left off"). */
+        int LAST = 1;
+
+        /** Explicitly configured to open the New Tab page. */
+        int NEW_TAB = 2;
+
+        /** Explicitly configured to open a specific page or set of pages. */
+        int URLS = 3;
+
+        int NUM_ENTRIES = 4;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:StartupPolicy)
+
     private static @Nullable TabbedStartupWindowPolicyDelegate sInstance;
+
+    private final Map<Integer, Runnable> mWindowRetentionRunnables = new HashMap<>();
 
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private @Nullable PrefService mPrefService;
@@ -115,13 +152,42 @@ import java.util.Set;
 
     // BaseTabbedStartupDelegate implementation.
     @Override
+    protected void onRestorationInitiated() {
+        RecordUserAction.record("Android.MultiWindow.StartupRestorationInitiated");
+    }
+
+    @Override
+    protected boolean registerRestoration(int windowId) {
+        boolean updated = super.registerRestoration(windowId);
+        if (updated) {
+            Runnable retentionRunnable =
+                    () -> {
+                        mWindowRetentionRunnables.remove(windowId);
+                        RecordHistogram.recordBooleanHistogram(
+                                "Android.MultiWindow.StartupRestorationWindowRetained",
+                                /* sample= */ true);
+                    };
+            mWindowRetentionRunnables.put(windowId, retentionRunnable);
+            ThreadUtils.getUiThreadHandler()
+                    .postDelayed(retentionRunnable, WINDOW_RETENTION_THRESHOLD_MS);
+        }
+        return updated;
+    }
+
+    @Override
     protected void onAllWindowsRestored(long durationMillis) {
-        // TODO: Record startup window restoration metrics here.
+        RecordHistogram.recordTimesHistogram(
+                "Android.MultiWindow.StartupRestorationDuration", durationMillis);
+        RecordUserAction.record("Android.MultiWindow.StartupRestorationCompleted");
     }
 
     @Override
     protected void resetState() {
         super.resetState();
+        for (Runnable runnable : mWindowRetentionRunnables.values()) {
+            ThreadUtils.getUiThreadHandler().removeCallbacks(runnable);
+        }
+        mWindowRetentionRunnables.clear();
         mStartupPolicyClaimed = false;
         mHasEvaluatedStartupUrls = false;
         mCanRestoreWindows = false;
@@ -194,7 +260,10 @@ import java.util.Set;
             return Collections.emptyList();
         }
 
-        return ChromeMultiInstancePersistentStore.readRestoreOnStartupUrls();
+        List<String> urls = ChromeMultiInstancePersistentStore.readRestoreOnStartupUrls();
+        RecordHistogram.recordCount100Histogram(
+                "Android.MultiWindow.RestoreOnStartupUrlsCount", urls.size());
+        return urls;
     }
 
     /**
@@ -291,6 +360,22 @@ import java.util.Set;
         if (isIncognito || startupMode == StartupMode.NEW_WINDOW) {
             mHasEvaluatedStartupUrls = true;
         }
+
+        if (!isIncognito) {
+            int startupPref = ChromeMultiInstancePersistentStore.readRestoreOnStartupPrefValue();
+            @StartupPolicy int startupPolicy;
+            if (startupPref == SessionStartupPref.LAST) {
+                startupPolicy = StartupPolicy.LAST;
+            } else if (startupPref == SessionStartupPref.NEW_TAB) {
+                startupPolicy = StartupPolicy.NEW_TAB;
+            } else if (startupPref == SessionStartupPref.URLS) {
+                startupPolicy = StartupPolicy.URLS;
+            } else {
+                startupPolicy = StartupPolicy.UNSET;
+            }
+            RecordHistogram.recordEnumeratedHistogram(
+                    "Android.MultiWindow.StartupPolicy", startupPolicy, StartupPolicy.NUM_ENTRIES);
+        }
     }
 
     /* package */ void applyPolicy(ChromeTabbedActivity activity) {
@@ -309,11 +394,13 @@ import java.util.Set;
         int currentInstanceId = activity.getWindowId();
         Set<Integer> allIds = ChromeMultiInstancePersistentStore.readAllInstanceIds();
         Map<Integer, AppTask> appTasksById = MultiWindowUtils.getAppTasksById(activity);
+        int recoverableWindowCount = 0;
         boolean windowsRestored = false;
         for (int windowId : allIds) {
             int taskId = ChromeMultiInstancePersistentStore.readTaskId(windowId);
             if (windowId != currentInstanceId
                     && ChromeMultiInstancePersistentStore.readIsRecoverable(windowId)) {
+                recoverableWindowCount++;
                 windowsRestored |=
                         restoreWindow(
                                 activity,
@@ -322,8 +409,23 @@ import java.util.Set;
                                 NewWindowAppSource.RELAUNCH);
             }
         }
+        if (recoverableWindowCount > 0) {
+            RecordHistogram.recordExactLinearHistogram(
+                    "Android.MultiWindow.StartupRestorationWindowCount",
+                    recoverableWindowCount,
+                    TabWindowManager.MAX_SELECTORS_1000 + 1);
+        }
         if (windowsRestored) {
             ApiCompatibilityUtils.moveTaskToFront(activity, activity.getTaskId(), /* flags= */ 0);
+        }
+    }
+
+    /* package */ void onWindowClosed(int windowId) {
+        Runnable retentionRunnable = mWindowRetentionRunnables.remove(windowId);
+        if (retentionRunnable != null) {
+            ThreadUtils.getUiThreadHandler().removeCallbacks(retentionRunnable);
+            RecordHistogram.recordBooleanHistogram(
+                    "Android.MultiWindow.StartupRestorationWindowRetained", /* sample= */ false);
         }
     }
 

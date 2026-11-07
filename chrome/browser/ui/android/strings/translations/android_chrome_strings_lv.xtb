@@ -322,6 +322,7 @@ Jūsu šifrētos datus var lasīt tikai personas, kurām ir jūsu ieejas frāze.
 <translation id="2297822946037605517">Kopīgot šo lapu</translation>
 <translation id="230115972905494466">Netika atrastas saderīgas ierīces.</translation>
 <translation id="2305798319182970276">Dzēsiet vēsturi, nospiežot pogu</translation>
+<translation id="2307420463693979699">Lietotnei <ph name="APP_NAME" /> ir nepieciešama atļauja piekļūt cilvēka saskarnes ierīcēm (HID) šajā tīmekļa vietnē.</translation>
 <translation id="2316129865977710310">Nē, paldies</translation>
 <translation id="232137538351753795">Velciet no kreisās malas, lai pārietu atpakaļ.</translation>
 <translation id="2323763861024343754">Vietnes krātuve</translation>
@@ -1691,6 +1692,7 @@ Lai mainītu šo iestatījumu, <ph name="BEGIN_LINK" />izdzēsiet Chrome datus s
 <translation id="7608245556672190037">Chrome ieteikumu izvēles ekrāna apakšdaļas lapa ir atvērta pilnā augstumā</translation>
 <translation id="7612619742409846846">Pierakstījies Google kontā kā</translation>
 <translation id="7612989789287281429">Notiek pierakstīšanās…</translation>
+<translation id="7617512710641355143">Pārlūks Chrome tiek pārvaldīts</translation>
 <translation id="7619072057915878432">Neizdevās lejupielādēt failu <ph name="FILE_NAME" />, jo radās tīkla kļūdas.</translation>
 <translation id="7626032353295482388">Laipni lūdzam pārlūkā Chrome</translation>
 <translation id="7628417132421583481">Pāriet uz Paroļu pārvaldnieku</translation>

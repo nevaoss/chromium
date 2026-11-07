@@ -1249,6 +1249,7 @@ export class BrowsingContextImpl {
       config.screenArea ?? null,
       config.scrollbarType ?? null,
       config.viewportMeta ?? null,
+      config.textLayoutMode ?? null,
     );
   }
 
@@ -1267,7 +1268,7 @@ export class BrowsingContextImpl {
   }
 
   async captureScreenshot(
-    params: BrowsingContext.CaptureScreenshotParameters,
+    params: ChromiumBidi.WithGoogParams<BrowsingContext.CaptureScreenshotParameters>,
   ): Promise<BrowsingContext.CaptureScreenshotResult> {
     if (!this.isTopLevelContext()) {
       throw new UnsupportedOperationException(
@@ -1334,15 +1335,17 @@ export class BrowsingContextImpl {
     return await this.#cdpTarget.cdpClient.sendCommand(
       'Page.captureScreenshot',
       {
+        // Standard BiDi options take precedence over `goog:` extensions.
+        ...params['goog:params'],
         clip: {...rect, scale: 1.0},
         ...formatParameters,
         captureBeyondViewport,
-      },
+      } as Protocol.Page.CaptureScreenshotRequest,
     );
   }
 
   async print(
-    params: BrowsingContext.PrintParameters,
+    params: ChromiumBidi.WithGoogParams<BrowsingContext.PrintParameters>,
   ): Promise<BrowsingContext.PrintResult> {
     if (!this.isTopLevelContext()) {
       throw new UnsupportedOperationException(
@@ -1350,7 +1353,10 @@ export class BrowsingContextImpl {
       );
     }
 
-    const cdpParams: Protocol.Page.PrintToPDFRequest = {};
+    // Standard BiDi options set below take precedence over `goog:` extensions.
+    const cdpParams: Protocol.Page.PrintToPDFRequest = {
+      ...params['goog:params'],
+    };
 
     if (params.background !== undefined) {
       cdpParams.printBackground = params.background;
@@ -1876,9 +1882,6 @@ export class BrowsingContextImpl {
       throw new InvalidArgumentException('Start nodes are not supported');
     }
     const contextId = locator.value.context;
-    if (!contextId) {
-      throw new InvalidSelectorException('Invalid context');
-    }
     const context = this.#browsingContextStorage.getContext(contextId);
     const parent = context.parent;
     if (!parent) {
@@ -2126,6 +2129,7 @@ export class BrowsingContextImpl {
       config.screenArea ?? null,
       scrollbarType,
       config.viewportMeta ?? null,
+      config.textLayoutMode ?? null,
     );
   }
 
@@ -2141,6 +2145,25 @@ export class BrowsingContextImpl {
       config.screenArea ?? null,
       config.scrollbarType ?? null,
       viewportMeta,
+      config.textLayoutMode ?? null,
+    );
+  }
+
+  async setTextLayoutModeOverride(
+    textLayoutMode: Emulation.TextLayoutMode | null,
+  ): Promise<void> {
+    const config = this.#configStorage.getActiveConfig(
+      this.id,
+      this.userContext,
+    );
+    await this.cdpTarget.setDeviceMetricsOverride(
+      config.viewport ?? null,
+      config.devicePixelRatio ?? null,
+      config.screenOrientation ?? null,
+      config.screenArea ?? null,
+      config.scrollbarType ?? null,
+      config.viewportMeta ?? null,
+      textLayoutMode,
     );
   }
 }

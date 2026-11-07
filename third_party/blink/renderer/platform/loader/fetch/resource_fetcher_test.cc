@@ -180,6 +180,7 @@ class ResourceFetcherTestBase : public testing::Test {
     void DidFinishLoading(uint64_t identifier,
                           base::TimeTicks finish_time,
                           int64_t encoded_data_length,
+                          uint64_t encoded_body_length,
                           int64_t decoded_body_length) override {}
     void DidFailLoading(const KURL&,
                         uint64_t identifier,
@@ -1873,7 +1874,7 @@ TEST_F(ResourceFetcherTestBase, PopulateResourceRequestPermissionsPolicy) {
              /*matches_all_origins=*/false,
              /*matches_opaque_src=*/false},
             {network::mojom::PermissionsPolicyFeature::
-                 kDeprecated_SharedStorage,
+                 kPrivateStateTokenIssuance,
              /*allowed_origins=*/{},
              /*self_if_matches=*/std::nullopt,
              /*matches_all_origins=*/false,
@@ -1911,7 +1912,7 @@ TEST_F(ResourceFetcherTestBase,
              /*matches_all_origins=*/false,
              /*matches_opaque_src=*/false},
             {network::mojom::PermissionsPolicyFeature::
-                 kDeprecated_SharedStorage,
+                 kPrivateStateTokenIssuance,
              /*allowed_origins=*/{},
              /*self_if_matches=*/std::nullopt,
              /*matches_all_origins=*/false,
@@ -1975,17 +1976,18 @@ TEST_P(ResourceFetcherInspectorTest,
   ASSERT_FALSE(fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
 
   // Set up the second fetcher.
-  auto* otherContextFetcher = CreateFetcher();
-  otherContextFetcher->SetResourceLoadObserver(observer);
+  auto* other_context_fetcher = CreateFetcher();
+  other_context_fetcher->SetResourceLoadObserver(observer);
 
   // Ensure that the url is initially not marked as cached or
   // emulated and the observer's last request is empty.
-  ASSERT_EQ(otherContextFetcher->CachedResource(url), nullptr);
+  ASSERT_EQ(other_context_fetcher->CachedResource(url), nullptr);
   ASSERT_FALSE(
-      otherContextFetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
+      other_context_fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(
+          url));
   ASSERT_EQ(observer->GetLastRequest(), std::nullopt);
 
-  otherContextFetcher->EmulateLoadStartedForInspector(
+  other_context_fetcher->EmulateLoadStartedForInspector(
       resource, mojom::blink::RequestContextType::FONT,
       network::mojom::RequestDestination::kFont,
       fetch_initiator_type_names::kCSS);
@@ -1993,9 +1995,10 @@ TEST_P(ResourceFetcherInspectorTest,
   // After the first emulation, ensure that the url is not cached,
   // is not marked as emulated and the observer's last
   // request is not empty with the feature disabled.
-  ASSERT_EQ(otherContextFetcher->CachedResource(url), nullptr);
+  ASSERT_EQ(other_context_fetcher->CachedResource(url), nullptr);
   ASSERT_FALSE(
-      otherContextFetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
+      other_context_fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(
+          url));
   if (IsSkipCallbacksWhenDevToolsNotOpenEnabled() &&
       !IsInterestedInAllRequests()) {
     ASSERT_EQ(observer->GetLastRequest(), std::nullopt);
@@ -2006,7 +2009,7 @@ TEST_P(ResourceFetcherInspectorTest,
   // Clear out the last request to start fresh
   observer->ClearLastRequest();
 
-  otherContextFetcher->EmulateLoadStartedForInspector(
+  other_context_fetcher->EmulateLoadStartedForInspector(
       resource, mojom::blink::RequestContextType::FONT,
       network::mojom::RequestDestination::kFont,
       fetch_initiator_type_names::kCSS);
@@ -2015,9 +2018,10 @@ TEST_P(ResourceFetcherInspectorTest,
   // the resource is not marked as emulated, and the observer's last
   // request is not empty with the feature disabled. This means that
   // the observer was notified with this emulation.
-  ASSERT_EQ(otherContextFetcher->CachedResource(url), nullptr);
+  ASSERT_EQ(other_context_fetcher->CachedResource(url), nullptr);
   ASSERT_FALSE(
-      otherContextFetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
+      other_context_fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(
+          url));
   if (IsSkipCallbacksWhenDevToolsNotOpenEnabled() &&
       !IsInterestedInAllRequests()) {
     ASSERT_EQ(observer->GetLastRequest(), std::nullopt);
@@ -2044,17 +2048,18 @@ TEST_P(ResourceFetcherInspectorTest,
   ASSERT_FALSE(fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
 
   // Set up the second fetcher.
-  auto* otherContextFetcher = CreateFetcher();
-  otherContextFetcher->SetResourceLoadObserver(observer);
+  auto* other_context_fetcher = CreateFetcher();
+  other_context_fetcher->SetResourceLoadObserver(observer);
 
   // Ensure that the url is initially not cached, not marked as emulated,
   // and the observer's last request is empty.
-  ASSERT_EQ(otherContextFetcher->CachedResource(url), nullptr);
+  ASSERT_EQ(other_context_fetcher->CachedResource(url), nullptr);
   ASSERT_FALSE(
-      otherContextFetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
+      other_context_fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(
+          url));
   ASSERT_EQ(observer->GetLastRequest(), std::nullopt);
 
-  otherContextFetcher->EmulateLoadStartedForInspector(
+  other_context_fetcher->EmulateLoadStartedForInspector(
       resource, mojom::blink::RequestContextType::FONT,
       network::mojom::RequestDestination::kFont,
       fetch_initiator_type_names::kCSS);
@@ -2062,9 +2067,10 @@ TEST_P(ResourceFetcherInspectorTest,
   // After the first emulation, ensure that the url is not cached,
   // marked as emulated, and the observer's last request is not empty with
   // the feature enabled.
-  ASSERT_EQ(otherContextFetcher->CachedResource(url), nullptr);
+  ASSERT_EQ(other_context_fetcher->CachedResource(url), nullptr);
   ASSERT_TRUE(
-      otherContextFetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
+      other_context_fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(
+          url));
   if (IsSkipCallbacksWhenDevToolsNotOpenEnabled() &&
       !IsInterestedInAllRequests()) {
     ASSERT_EQ(observer->GetLastRequest(), std::nullopt);
@@ -2075,7 +2081,7 @@ TEST_P(ResourceFetcherInspectorTest,
   // Clear out the last request to start fresh
   observer->ClearLastRequest();
 
-  otherContextFetcher->EmulateLoadStartedForInspector(
+  other_context_fetcher->EmulateLoadStartedForInspector(
       resource, mojom::blink::RequestContextType::FONT,
       network::mojom::RequestDestination::kFont,
       fetch_initiator_type_names::kCSS);
@@ -2084,9 +2090,10 @@ TEST_P(ResourceFetcherInspectorTest,
   // marked as emulated, and the observer's last request is empty with
   // the feature enabled. This means that the observer was not
   // notified with this emulation.
-  ASSERT_EQ(otherContextFetcher->CachedResource(url), nullptr);
+  ASSERT_EQ(other_context_fetcher->CachedResource(url), nullptr);
   ASSERT_TRUE(
-      otherContextFetcher->ResourceHasBeenEmulatedLoadStartedForInspector(url));
+      other_context_fetcher->ResourceHasBeenEmulatedLoadStartedForInspector(
+          url));
   ASSERT_EQ(observer->GetLastRequest(), std::nullopt);
 }
 

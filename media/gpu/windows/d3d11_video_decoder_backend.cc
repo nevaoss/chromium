@@ -174,13 +174,12 @@ D3D11VideoDecoderBackend::CreateDecoderConfigurator(
     VideoChromaSampling chroma_sampling,
     const gpu::GpuPreferences& gpu_preferences,
     const gpu::GpuDriverBugWorkarounds& gpu_workarounds,
-    bool use_shared_handle,
     MediaLog* media_log) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto decoder_configurator = D3DDecoderConfigurator::Create(
       gpu_preferences, gpu_workarounds, config, bit_depth, chroma_sampling,
-      media_log, use_shared_handle, device_);
+      media_log, device_);
   if (!decoder_configurator) {
     return D3DStatus::Codes::kDecoderUnsupportedProfile;
   }
@@ -366,13 +365,6 @@ D3D11VideoDecoderBackend::CreateAndInitPictureBuffer(
   }
 
   return picture_buffer;
-}
-
-D3DStatus D3D11VideoDecoderBackend::WaitForDecodeComplete(
-    D3DPictureBuffer* picture_buffer) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(picture_buffer);
-  return picture_buffer->WaitForDecodeCompleteGPU(device_context_.Get());
 }
 
 bool D3D11VideoDecoderBackend::ShouldUseDXVADeviceForHEVCRangeExtension(

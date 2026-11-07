@@ -187,12 +187,6 @@ BASE_FEATURE(kDynamicAimSubmit, DISABLED);
 const base::FeatureParam<bool> kShowRhsAimHint{&kDynamicAimSubmit,
                                                "Omnibox_ShowRhsAimHint", false};
 
-// Hides the AIM entrypoint in the Omnibox when user input is in progress. Only
-// used on desktop platforms.
-BASE_FEATURE(kHideAimEntrypointOnUserInput,
-             "OmniboxHideAimEntrypointOnUserInput",
-             DISABLED);
-
 // Hides the AIM entrypoint in the Omnibox when the default suggestion is a URL.
 // Only used on desktop platforms.
 BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, ENABLED);
@@ -343,6 +337,12 @@ BASE_FEATURE(kOmniboxFullWebUIDestroyWidgetOnHide, ENABLED);
 BASE_FEATURE(kOmniboxAimDestroyWidgetOnHide, ENABLED);
 BASE_FEATURE(kOmniboxWebUIDestroyWidgetOnHide, DISABLED);
 
+// When enabled, a location bar creates its AI Mode popup (and the WebContents
+// behind it) only once the profile is eligible for it, instead of at window
+// creation. Ineligible profiles never show the popup, so this saves one
+// WebUI document per window. Kill switch.
+BASE_FEATURE(kOmniboxAimPopupRequireEligibility, ENABLED);
+
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.
 BASE_FEATURE(kWebUISearchboxWithoutModelController, DISABLED);
@@ -449,9 +449,6 @@ BASE_FEATURE(kTruncateSearchUrlOq, DISABLED);
 // When enabled, truncates the length of the value attached to the "q" URL
 // parameter of search URLs.
 BASE_FEATURE(kTruncateSearchUrlQ, DISABLED);
-
-// Enable asynchronous Omnibox/Suggest view inflation.
-BASE_FEATURE(kOmniboxAsyncViewInflation, ENABLED);
 
 // Enable asynchronous Fusebox view inflation.
 BASE_FEATURE(kOmniboxFuseboxAsyncInflation, DISABLED);
@@ -674,7 +671,6 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kForceAndroidRealbox,
       &kOmniboxTouchDownTriggerForPrefetch,
       &kOmniboxPrefetchSelectedSuggestionsOmtAndroid,
-      &kOmniboxAsyncViewInflation,
       &kOmniboxFuseboxAsyncInflation,
       &kRichAutocompletion,
       &kUrlBarWithoutLigatures,
@@ -782,6 +778,9 @@ const base::FeatureParam<bool> kAskGBypassPrivacyNotice{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGBypassPrivacyNotice", false};
 const base::FeatureParam<bool> kAskGShowChip{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGShowChip", false};
+const base::FeatureParam<bool> kAskGSuggestionSidePanelDescription{
+    &kWebUIOmniboxAskGAboutThisPage,
+    "Omnibox_AskGSuggestionSidePanelDescription", false};
 
 // Note: no new flags beyond this point.
 

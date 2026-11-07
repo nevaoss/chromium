@@ -138,11 +138,6 @@ public class BottomBarConfigUtils {
         return ChromeFeatureList.sAndroidBottomBarAlwaysUseFilledGlicIcon.getValue();
     }
 
-    /** Whether to bypass geofencing country check for GLIC. */
-    public static boolean bypassGlicGeofencing() {
-        return ChromeFeatureList.sAndroidBottomBarBypassGlicGeofencing.getValue();
-    }
-
     /**
      * Whether the given tab is showing any NTP (regular or incognito).
      *
@@ -150,7 +145,7 @@ public class BottomBarConfigUtils {
      * starts, but the native page is only swapped when it commits. Frozen tabs keep a
      * FrozenNativePage with the original host.
      */
-    private static boolean isNtp(@Nullable Tab tab) {
+    public static boolean isNtp(@Nullable Tab tab) {
         NativePage nativePage = tab == null ? null : tab.getNativePage();
         return nativePage != null && UrlConstants.NTP_HOST.equals(nativePage.getHost());
     }

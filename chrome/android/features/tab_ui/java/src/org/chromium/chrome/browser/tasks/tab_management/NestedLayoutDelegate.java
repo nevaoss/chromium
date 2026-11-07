@@ -254,7 +254,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
     }
 
     @Override
-    public void didMoveTabGroup(Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
+    public void onTabGroupMoved(Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
         if (tabModelOldIndex == tabModelNewIndex) return;
 
         // Move the group header along with all the child tabs.
@@ -387,7 +387,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
         int headerIndex = mModelList.indexFromTabGroupId(tabGroupId);
         if (headerIndex == TabModel.INVALID_TAB_INDEX) return;
         TabModel tabModel = mMediator.getCurrentTabModelChecked();
-        int childCount = tabModel.getTabsInGroup(tabGroupId).size();
+        int childCount = tabModel.getTabCountForGroup(tabGroupId);
 
         for (int i = 0; i < childCount; i++) {
             if (headerIndex + 1 < mModelList.size()) {

@@ -52,6 +52,11 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE_PARAM(bool,
+                   kMigratedFileAccessDisabled,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
                    kMigratedGoogleApiKeys,
                    &kCentralizedInfoBarFramework,
                    false);
@@ -128,12 +133,22 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE_PARAM(bool,
+                   kMigratedStartupLaunch,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
                    kMigratedTabSharing,
                    &kCentralizedInfoBarFramework,
                    false);
 
 BASE_FEATURE_PARAM(bool,
                    kMigratedInstallationError,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
+                   kMigratedWebAppBlockedMigration,
                    &kCentralizedInfoBarFramework,
                    false);
 
@@ -159,6 +174,8 @@ const base::FeatureParam<bool>* GetInfoBarMigrationParam(
       return &kMigratedDevToolsConfirm;
     case InfoBarDelegate::DEV_TOOLS_SHARED_PROCESS_DELEGATE:
       return &kMigratedDevToolsSharedProcess;
+    case InfoBarDelegate::FILE_ACCESS_DISABLED_INFOBAR_DELEGATE:
+      return &kMigratedFileAccessDisabled;
     case InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE:
       return &kMigratedGoogleApiKeys;
     case InfoBarDelegate::INCOGNITO_CONNECTABILITY_INFOBAR_DELEGATE:
@@ -191,10 +208,14 @@ const base::FeatureParam<bool>* GetInfoBarMigrationParam(
       return &kMigratedExtensionDevTools;
     case InfoBarDelegate::SESSION_RESTORE_INFOBAR_DELEGATE:
       return &kMigratedSessionRestore;
+    case InfoBarDelegate::STARTUP_LAUNCH_INFOBAR_DELEGATE:
+      return &kMigratedStartupLaunch;
     case InfoBarDelegate::TAB_SHARING_INFOBAR_DELEGATE:
       return &kMigratedTabSharing;
     case InfoBarDelegate::INSTALLATION_ERROR_INFOBAR_DELEGATE:
       return &kMigratedInstallationError;
+    case InfoBarDelegate::WEB_APP_BLOCKED_MIGRATION_INFOBAR_DELEGATE:
+      return &kMigratedWebAppBlockedMigration;
     case InfoBarDelegate::EXTENSIONS_WEB_AUTH_FLOW_INFOBAR_DELEGATE:
       return &kMigratedWebAuthFlow;
     default:

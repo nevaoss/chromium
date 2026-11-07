@@ -46,19 +46,6 @@
       ]
     },
     {
-      "id": 19,
-      "comment": "Corresponds to software rendering list #140",
-      "description": "Disable depth textures on older Adreno 2xx Qualcomm GPUs (legacy blocklist entry, original problem unclear)",
-      "cr_bugs": [682075, 1042214],
-      "gl_renderer": "Adreno \\(TM\\) 2.*",
-      "features": [
-        "disable_depth_texture"
-      ],
-      "disabled_extensions": [
-        "GL_OES_depth_texture"
-      ]
-    },
-    {
       "id": 21,
       "description": "Vivante GPUs are buggy with context switching",
       "cr_bugs": [179250, 235935],
@@ -167,19 +154,6 @@
       "gl_vendor": "Qualcomm.*",
       "features": [
         "wake_up_gpu_before_drawing"
-      ]
-    },
-    {
-      "id": 59,
-      "description": "Multisampling is buggy in Intel IvyBridge",
-      "cr_bugs": [116370],
-      "os": {
-        "type": "linux"
-      },
-      "vendor_id": "0x8086",
-      "device_id": ["0x0152", "0x0156", "0x015a", "0x0162", "0x0166"],
-      "features": [
-        "disable_chromium_framebuffer_multisample"
       ]
     },
     {
@@ -328,19 +302,6 @@
       "gl_vendor": "Imagination.*",
       "features": [
         "gl_clear_broken"
-      ]
-    },
-    {
-      "id": 97,
-      "description": "Multisampling has poor performance in Intel BayTrail",
-      "cr_bugs": [443517],
-      "os": {
-        "type": "android"
-      },
-      "gl_vendor": "Intel.*",
-      "gl_renderer": "Intel.*BayTrail",
-      "features": [
-        "disable_chromium_framebuffer_multisample"
       ]
     },
     {
@@ -892,28 +853,6 @@
       "gl_renderer": "Adreno.*",
       "features": [
         "disable_program_caching_for_transform_feedback"
-      ]
-    },
-    {
-      "id": 214,
-      "comment": [
-        "Corresponds to software rendering list #140",
-        "Mysteriously, the first workaround won't work without the second. crbug.com/698197#c10",
-        "MSAA workaround shouldn't be needed beyond Adreno 3xx and Android 9. crbug.com/682075#c17, crbug.com/1042214"
-      ],
-      "description": "Some Adreno 3xx don't setup scissor state correctly when FBO0 is bound, nor support MSAA properly.",
-      "cr_bugs": [670607, 682075, 696627, 698197, 707839, 1042214],
-      "gl_renderer": "Adreno \\(TM\\) 3.*",
-      "os": {
-        "type": "android",
-        "version": {
-          "op": "<",
-          "value": "9.0"
-        }
-      },
-      "features": [
-        "force_update_scissor_state_when_binding_fbo0",
-        "disable_chromium_framebuffer_multisample"
       ]
     },
     {
@@ -1825,18 +1764,6 @@
       ]
     },
     {
-      "id": 343,
-      "description": "Disable using GPU backed resource for imageBitmap from video on d3d9",
-      "cr_bugs": [1098445, 1105923],
-      "os": {
-        "type": "win"
-      },
-      "gl_renderer": ".*Direct3D9.*",
-      "features": [
-        "disable_imagebitmap_from_video_using_gpu"
-      ]
-    },
-    {
       "id": 344,
       "description": "VP8 decoding crashes before Windows 10 Fall Creators Update.",
       "cr_bugs": [1094840],
@@ -2006,26 +1933,6 @@
       },
       "features": [
         "force_enable_color_buffer_float_except_rgb32f"
-      ]
-    },
-    {
-      "id": 359,
-      "comment": "Corresponds to software rendering list #140",
-      "description": "Disable depth textures on Adreno 3xx Qualcomm GPUs pre-Android 9 (legacy blocklist entry, original problem unclear)",
-      "cr_bugs": [682075, 1042214],
-      "gl_renderer": "Adreno \\(TM\\) 3.*",
-      "os": {
-        "type": "android",
-        "version": {
-          "op": "<",
-          "value": "9.0"
-        }
-      },
-      "features": [
-        "disable_depth_texture"
-      ],
-      "disabled_extensions": [
-        "GL_OES_depth_texture"
       ]
     },
     {

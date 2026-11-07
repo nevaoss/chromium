@@ -339,7 +339,7 @@ suite('NewTabPageAppTest', () => {
       spacer.style.width = '100%';
       spacer.style.height = '10000px';
       spacer.style.flexShrink = '0';
-      $$(app, '#content')!.append(spacer);
+      $$(app, '#rhsContent')!.append(spacer);
 
       // Simulates a vertical scroll.
       const scrollY = async (y: number) => {
@@ -777,7 +777,7 @@ suite('NewTabPageAppTest', () => {
     });
 
     ([
-      ['#content', NtpElement.BACKGROUND],
+      ['#rhsContent', NtpElement.BACKGROUND],
       ['ntp-logo', NtpElement.LOGO],
       ['ntp-searchbox', NtpElement.REALBOX],
       ['cr-most-visited', NtpElement.MOST_VISITED],
@@ -1358,7 +1358,7 @@ suite('NewTabPageAppTest', () => {
       await callbackRouterRemote.$.flushForTesting();
 
       const blockedElements = app.shadowRoot.querySelectorAll<HTMLElement>(
-          '#content > :not(#logo):not(#searchboxContainer)');
+          '#rhsContent > :not(#logo):not(#searchboxContainer)');
       assertTrue(blockedElements.length > 0);
       blockedElements.forEach(el => {
         assertFalse(el.hasAttribute('inert'));
@@ -3740,7 +3740,7 @@ suite('NewTabPageAppTest', () => {
 
       const leftHandSide = $$(app, 'cr-left-hand-side');
       assertTrue(!!leftHandSide);
-      assertEquals('forced-lhs', leftHandSide.id);
+      assertEquals('forcedLhs', leftHandSide.id);
     });
   });
 
@@ -4849,6 +4849,51 @@ suite('NewTabPageAppTest', () => {
           assertEquals(
               'chrome://new-tab-page/search?q=test+query&gs_ivs=1&sourceid=chrome',
               navigatedUrl);
+        });
+
+    test(
+        'clicking submit before any speech closes voice search and returns ' +
+            'to the realbox',
+        async () => {
+          loadTimeData.overrideValues({
+            voiceSearchCoherenceAnySearchboxExperimentEnabled: true,
+          });
+          await recreateApp();
+          metrics = fakeMetricsPrivate();
+
+          // Open voice search dialog.
+          const searchbox = $$(app, '#searchbox');
+          assertTrue(!!searchbox);
+          searchbox.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+              '#voiceSearchDialog');
+          assertTrue(!!dialog);
+          assertTrue(dialog.open);
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+
+          // Click the submit button without saying anything.
+          const submitButton =
+              voiceSearch.shadowRoot.querySelector('cr-composebox-submit');
+          assertTrue(!!submitButton);
+          assertFalse(submitButton.disabled);
+          $$<HTMLElement>(submitButton, '#submitContainer')!.click();
+          await microtasksFinished();
+
+          // Voice search is closed, nothing is searched and the realbox is
+          // showing again.
+          assertFalse(mockSpeechRecognition.voiceSearchInProgress);
+          assertFalse(dialog.open);
+          assertFalse(!!app.shadowRoot.querySelector('#voiceSearchDialog'));
+          assertEquals(0, windowProxy.getCallCount('navigate'));
+          assertEquals(
+              1,
+              metrics.count(
+                  'VoiceSearch.Action.NTP_REALBOX', 11 /* CANCELED_BY_USER */));
         });
 
     test(

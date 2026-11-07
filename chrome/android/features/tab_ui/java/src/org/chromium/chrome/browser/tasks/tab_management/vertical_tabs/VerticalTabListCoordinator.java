@@ -581,6 +581,9 @@ public class VerticalTabListCoordinator {
                         .setTabUnderlineManager(mTabUnderlineManager)
                         .build();
 
+        // The tab search button is only shown when tab search is enabled, matching the
+        // horizontal tab strip.
+        boolean isTabSearchEnabled = ChromeFeatureList.sTabSearchForDesktop.isEnabled();
         mContainerModel =
                 new PropertyModel.Builder(VerticalTabListProperties.ALL_KEYS)
                         .with(
@@ -588,12 +591,11 @@ public class VerticalTabListCoordinator {
                                 v -> {
                                     RecordUserAction.record(
                                             "Android.VerticalTabs.SearchButtonClicked");
-                                    if (ChromeFeatureList.sTabSearchForDesktop.isEnabled()) {
-                                        verticalTabsActionDelegate.openTabSearch();
-                                    } else {
-                                        verticalTabsActionDelegate.openHubSearch();
-                                    }
+                                    verticalTabsActionDelegate.openTabSearch();
                                 })
+                        .with(
+                                VerticalTabListProperties.IS_SEARCH_BUTTON_VISIBLE,
+                                isTabSearchEnabled)
                         .with(
                                 VerticalTabListProperties.ON_NEW_TAB_CLICK_LISTENER,
                                 v -> handleNewTabButtonClick())
@@ -636,7 +638,6 @@ public class VerticalTabListCoordinator {
                         /* undoBarExplicitTrigger */ null,
                         /* snackbarManager */ null,
                         TabListEditorCoordinator.UNLIMITED_SELECTION,
-                        /* isSingleContextMode */ false,
                         /* onDragStateChangedListener */ CallbackUtils.emptyRunnable());
 
         mMediator.initWithNative(profile.getOriginalProfile());
@@ -1038,6 +1039,7 @@ public class VerticalTabListCoordinator {
      */
     void setInTransition(boolean inTransition) {
         mPinnedTabsRecyclerView.setInTransition(inTransition);
+        mRailHoverController.setInTransition(inTransition);
     }
 
     /**
@@ -1519,7 +1521,8 @@ public class VerticalTabListCoordinator {
      * handler; see {@link VerticalTabRailHoverController#onDragEvent}.
      */
     private boolean onRailDrag(View view, DragEvent event) {
-        mRailHoverController.onDragEvent(event);
+        mRailHoverController.onDragEvent(
+                event, /* isExternalDrag= */ !mTabSwitcherDragHandler.isDragSourceInstance());
         return mTabSwitcherDragHandler.onDrag(view, event);
     }
 

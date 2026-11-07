@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//build/config/ozone.gni")
 import("//components/signin/features.gni")
 import("//ui/webui/webui_features.gni")
 
@@ -315,11 +316,15 @@ if (enable_webui_ntp && !is_android) {
       ":searchbox_test_utils",
       "//chrome/browser/autocomplete:aim_eligibility_service",
       "//chrome/browser/contextual_search",
+      "//chrome/browser/search_engines",
       "//chrome/browser/signin",
       "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui/find_bar",
+      "//chrome/browser/ui/views:find_bar_views",
       "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:contents_web_view",
+      "//chrome/browser/ui/views/frame:top_container_view",
       "//chrome/browser/ui/views/page_action:test_support",
       "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
       "//chrome/browser/ui/webui/test_support",
@@ -333,6 +338,7 @@ if (enable_webui_ntp && !is_android) {
       "//components/omnibox/browser",
       "//components/omnibox/common",
       "//components/prefs",
+      "//components/search_engines",
       "//components/signin/public/base",
       "//components/signin/public/identity_manager:test_support",
       "//content/public/browser",
@@ -344,5 +350,8 @@ if (enable_webui_ntp && !is_android) {
       "//ui/shell_dialogs",
       "//ui/views",
     ]
+    if (use_ozone) {
+      deps += [ "//ui/ozone" ]
+    }
   }
 }

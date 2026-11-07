@@ -35,7 +35,6 @@ static_library("saml") {
   public_deps = [
     "//ash/public/cpp",
     "//base",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/profiles:profile",
     "//chromeos/ash/components/login/auth",
     "//components/account_id",
@@ -114,6 +113,7 @@ static_library("test_support") {
     "//chrome/browser/ash/login/users",
     "//chrome/browser/ash/net",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/ash/login",
     "//chrome/browser/ui/webui/ash/lock_screen_reauth",
     "//chrome/browser/ui/webui/ash/login",
     "//chrome/browser/ui/webui/signin",

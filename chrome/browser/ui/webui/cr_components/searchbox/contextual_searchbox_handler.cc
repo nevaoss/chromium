@@ -328,8 +328,15 @@ ContextualSearchboxHandler::GetRecentTabInfos(
     }
   }
 
-  // Sort the tabs by last active time.
-  auto cmp = [](const TabTime& a, const TabTime& b) { return a.time > b.time; };
+  // Sort the tabs by last active time, prioritizing the active tab.
+  auto cmp = [active_tab_interface](const TabTime& a, const TabTime& b) {
+    const bool a_is_active = a.tab == active_tab_interface;
+    const bool b_is_active = b.tab == active_tab_interface;
+    if (a_is_active != b_is_active) {
+      return a_is_active > b_is_active;
+    }
+    return a.time > b.time;
+  };
   if (max_tab_suggestions > 0) {
     int count =
         std::min(static_cast<int>(tab_times.size()), max_tab_suggestions);
@@ -344,11 +351,6 @@ ContextualSearchboxHandler::GetRecentTabInfos(
   // selection, which is a small subset of all tabs.
   const bool tab_deselection_enabled =
       omnibox::IsTabDeselectionInComposeboxEnabled();
-  const GURL active_tab_url =
-      active_web_contents ? (tab_deselection_enabled
-                                 ? active_web_contents->GetVisibleURL()
-                                 : active_web_contents->GetLastCommittedURL())
-                          : GURL();
 
   std::vector<searchbox::mojom::TabInfoPtr> tabs;
   for (const TabTime& tab_time : tab_times) {
@@ -363,8 +365,7 @@ ContextualSearchboxHandler::GetRecentTabInfos(
     tab_data->title = base::UTF16ToUTF8(
         web_contents ? web_contents->GetTitle() : tab_time.tab->GetTitle());
     tab_data->url = url;
-    const bool show_in_current_tab_chip =
-        active_web_contents && active_tab_url == url;
+    const bool show_in_current_tab_chip = tab_time.tab == active_tab_interface;
     tab_data->show_in_current_tab_chip = show_in_current_tab_chip;
 
     lens::TabContextualizationController* tab_context_controller =
@@ -379,9 +380,7 @@ ContextualSearchboxHandler::GetRecentTabInfos(
             chrome::ChromeUINewTabURLAsGURL() &&
         !show_in_current_tab_chip;
     tab_data->last_active = tab_time.time;
-    tab_data->is_loading =
-        omnibox::IsFaviconSkeletonLoaderInComposeboxEnabled() &&
-        IsTabShowingLoadingIndicator(web_contents);
+    tab_data->is_loading = IsTabShowingLoadingIndicator(web_contents);
     tabs.push_back(std::move(tab_data));
   }
 
@@ -655,13 +654,16 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
               [](ContextualSearchboxHandler* handler,
                  content::WebContents* web_contents)
                   -> BrowserWindowInterface* {
-                if (handler->omnibox_controller() &&
-                    handler->omnibox_controller()->client() &&
-                    handler->omnibox_controller()
-                            ->client()
-                            ->GetPageClassification(/*is_prefetch=*/false) ==
-                        metrics::OmniboxEventProto::COMPOSEBOX_EVERYWHERE) {
-                  return nullptr;
+                if (handler->client()) {
+                  const auto page_classification =
+                      handler->client()->GetPageClassification(
+                          /*is_prefetch=*/false);
+                  if (page_classification ==
+                          metrics::OmniboxEventProto::COMPOSEBOX_EVERYWHERE ||
+                      page_classification ==
+                          metrics::OmniboxEventProto::OMNIBOX_EVERYWHERE) {
+                    return nullptr;
+                  }
                 }
                 return webui::GetBrowserWindowInterface(web_contents);
               },
@@ -1302,6 +1304,9 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
   auto pending_request = pending_tab_context_fetches_.find(context_token);
   if (pending_request != pending_tab_context_fetches_.end() &&
       pending_request->second->add_tab_context_callback) {
+    if (input_state_model_) {
+      input_state_model_->OnContextChanged();
+    }
     std::move(pending_request->second->add_tab_context_callback)
         .Run(base::ok(context_token));
   }
@@ -1632,7 +1637,7 @@ void ContextualSearchboxHandler::SetActiveToolMode(omnibox::ToolMode tool,
   if (!input_state_model_) {
     return;
   }
-  input_state_model_->setActiveTool(tool);
+  input_state_model_->SetActiveTool(tool);
 }
 
 void ContextualSearchboxHandler::RecordToolSelectionAction(
@@ -1659,7 +1664,7 @@ void ContextualSearchboxHandler::SetActiveModelMode(omnibox::ModelMode model,
   if (!input_state_model_) {
     return;
   }
-  input_state_model_->setActiveModel(model);
+  input_state_model_->SetActiveModel(model);
 }
 
 void ContextualSearchboxHandler::ActivateMetricsFunnel(
@@ -1746,7 +1751,7 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
     input_state_model_->SetPrefService(profile_->GetPrefs());
   }
 
-  input_state_subscription_ = input_state_model_->subscribe(
+  input_state_subscription_ = input_state_model_->Subscribe(
       base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
                           weak_ptr_factory_.GetWeakPtr()));
   input_state_model_->Initialize();
@@ -1793,6 +1798,9 @@ void ContextualSearchboxHandler::DeleteContext(
   // If the context token matches the cached tab context, we clear the snapshot.
   if (tab_context_snapshot_.has_value() &&
       tab_context_snapshot_.value().first == context_token) {
+    if (contextual_session_handle) {
+      contextual_session_handle->RemoveUploadedContextToken(context_token);
+    }
     tab_context_snapshot_.reset();
     context_input_data_ = std::nullopt;
   } else if (num_files == 0 && tab_context_snapshot_.has_value()) {
@@ -1877,11 +1885,16 @@ void ContextualSearchboxHandler::ClearFiles(
     bool should_block_auto_suggested_tabs,
     bool query_submitted) {
   CancelAllTabContextFetches();
+  std::set<base::UnguessableToken> submitted_tokens;
   if (auto* contextual_session_handle = GetContextualSessionHandle()) {
     // Clears files if `query_submitted`=true, and if
     // `omnibox::kContextManagementInComposebox` is enabled.
     contextual_session_handle->ClearFiles(
         query_submitted);
+    for (const auto& token :
+         contextual_session_handle->GetActiveSubmittedContextTokens()) {
+      submitted_tokens.insert(token);
+    }
     // Clear cached tab images (snapshots) if tab context no longer exists
     // due to being deleted in `clearFiles` (this will clear it fully
     // if it does decide to).
@@ -1894,19 +1907,36 @@ void ContextualSearchboxHandler::ClearFiles(
     tab_context_snapshot_.reset();
   }
 
-  // Clear token-to-tab id pairs and local tab underlines if this function is
-  // due to the 'clear all' or close button being clicked (not on query
-  // submission).
+  // Clear token-to-tab id pairs and local tab underlines for unsubmitted tabs
+  // if this function is due to the 'clear all' or close button being clicked
+  // (not on query submission). Tabs that were already submitted in previous
+  // turns remain in context and keep their underlines.
   if (!query_submitted) {
+    std::set<int32_t> removed_handles;
+    std::erase_if(selected_tabs, [&](const auto& pair) {
+      if (submitted_tokens.contains(pair.first)) {
+        return false;
+      }
+      removed_handles.insert(pair.second);
+      return true;
+    });
     if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
       if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
-        for (const auto& [token, handle] : selected_tabs) {
+        for (int32_t handle : removed_handles) {
           active_task_context_provider->RemoveLocalTabUnderline(
               tabs::TabHandle(handle));
         }
+        // `RemoveLocalTabUnderline()` only removes from
+        // `local_tab_underlines_`. Tabs attached on an AIM page are also cached
+        // in the provider's `backend_context_tabs_` (which is unioned with
+        // `local_tab_underlines_` when notifying observers). Calling
+        // `RefreshContext()` after `contextual_session_handle->ClearFiles()`
+        // dropped the pending tokens evicts those cleared unsubmitted tabs from
+        // `backend_context_tabs_` while keeping any tabs already submitted in
+        // prior turns underlined.
+        active_task_context_provider->RefreshContext();
       }
     }
-    selected_tabs.clear();
   }
 
   // Ensure `input_state_model_` is updated when context is cleared.
@@ -2404,10 +2434,10 @@ void ContextualSearchboxHandler::ProcessContextAndOpenUrl(
       contextual_session_handle->smart_tab_sharing_toggled_since_last_turn());
   new_contextual_session_handle->set_sts_toggled_removed_contexts(
       contextual_session_handle->sts_toggled_removed_contexts());
-  new_contextual_session_handle->set_submitted_context_tokens(
+  new_contextual_session_handle->SetSubmittedContextTokens(
       contextual_session_handle->GetSubmittedContextTokens());
-  new_contextual_session_handle->set_persisted_tabs(
-      contextual_session_handle->persisted_tabs());
+  new_contextual_session_handle->SetPersistedTabs(
+      contextual_session_handle->GetPersistedTabs());
   new_contextual_session_handle->set_deselected_tabs_urls(
       contextual_session_handle->deselected_tabs_urls());
 

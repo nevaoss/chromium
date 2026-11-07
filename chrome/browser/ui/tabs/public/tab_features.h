@@ -79,6 +79,7 @@ class MixedContentSettingsTabHelper;
 class NavigationMetricsRecorder;
 class NavigationPredictorPreconnectClient;
 class NewTabPagePreloadPipelineManager;
+class OneTimePermissionsTrackerHelper;
 class PinnedTranslateActionListener;
 class Profile;
 class PwaInstallPageActionController;
@@ -245,6 +246,10 @@ class ZoomViewController;
 namespace permissions {
 class PermissionIndicatorsTabData;
 }  // namespace permissions
+
+namespace predictors {
+class LoadingPredictorTabHelper;
+}  // namespace predictors
 
 namespace prerender {
 class NoStatePrefetchTabHelper;
@@ -1052,6 +1057,12 @@ class TabFeatures {
 
   std::unique_ptr<MixedContentSettingsTabHelper>
       mixed_content_settings_tab_helper_;
+
+  std::unique_ptr<OneTimePermissionsTrackerHelper>
+      one_time_permissions_tracker_helper_;
+
+  std::unique_ptr<predictors::LoadingPredictorTabHelper>
+      loading_predictor_tab_helper_;
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

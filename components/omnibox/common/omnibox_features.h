@@ -111,6 +111,7 @@ BASE_DECLARE_FEATURE(kOmniboxWebUIPopupCreateWidgetOnShow);
 BASE_DECLARE_FEATURE(kOmniboxFullWebUIDestroyWidgetOnHide);
 BASE_DECLARE_FEATURE(kOmniboxAimDestroyWidgetOnHide);
 BASE_DECLARE_FEATURE(kOmniboxWebUIDestroyWidgetOnHide);
+BASE_DECLARE_FEATURE(kOmniboxAimPopupRequireEligibility);
 BASE_DECLARE_FEATURE(kWebUISearchboxWithoutModelController);
 
 // Omnibox UI - these affect the UI or function of the location bar (not the
@@ -119,7 +120,6 @@ BASE_DECLARE_FEATURE(kAimEligibilityComponentExtension);
 extern const base::FeatureParam<bool> kAimEligibilityUseComponentUpdater;
 BASE_DECLARE_FEATURE(kDynamicAimSubmit);
 extern const base::FeatureParam<bool> kShowRhsAimHint;
-BASE_DECLARE_FEATURE(kHideAimEntrypointOnUserInput);
 BASE_DECLARE_FEATURE(kHideAimEntrypointForUrlSuggestions);
 BASE_DECLARE_FEATURE(kOmniboxMultimodalInput);
 BASE_DECLARE_FEATURE(kOmniboxDebounceKeyboardVisibility);
@@ -185,7 +185,6 @@ BASE_DECLARE_FEATURE(kTruncateSearchUrlQ);
 inline constexpr base::FeatureParam<int> kTruncateSearchUrlQLength{
     &kTruncateSearchUrlQ, "truncate_search_url_q_length", 2048};
 
-BASE_DECLARE_FEATURE(kOmniboxAsyncViewInflation);
 BASE_DECLARE_FEATURE(kOmniboxFuseboxAsyncInflation);
 BASE_DECLARE_FEATURE(kUseFusedLocationProvider);
 
@@ -341,6 +340,13 @@ extern const base::FeatureParam<bool> kAskGComposeboxPlaceholder;
 extern const base::FeatureParam<bool> kAskGBypassPrivacyNotice;
 // Whether to show a chip instead of action for Ask G.
 extern const base::FeatureParam<bool> kAskGShowChip;
+// Whether the AskG entrypoint match and the contextual suggestions should use
+// an "Opens in side panel" description (with a side panel icon) instead of the
+// page host / "Ask Google about this page", when AskG opens the cobrowse side
+// panel.
+// Note that this parameter is created for a follow-up iteration of the current
+// Ask G LE. This may be moved to another base param in the future.
+extern const base::FeatureParam<bool> kAskGSuggestionSidePanelDescription;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

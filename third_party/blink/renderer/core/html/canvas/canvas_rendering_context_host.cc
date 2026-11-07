@@ -59,7 +59,7 @@ CanvasRenderingContextHost::~CanvasRenderingContextHost() {
 void CanvasRenderingContextHost::Trace(Visitor* visitor) const {
   visitor->Trace(plain_text_painter_);
   visitor->Trace(unique_font_selector_);
-  CanvasResourceProviderDelegate::Trace(visitor);
+  GarbageCollectedMixin::Trace(visitor);
 }
 
 void CanvasRenderingContextHost::RecordCanvasSizeToUMA() {
@@ -152,15 +152,6 @@ bool CanvasRenderingContextHost::IsValidImageSize() const {
 bool CanvasRenderingContextHost::IsPaintable() const {
   return (RenderingContext() && RenderingContext()->IsPaintable()) ||
          IsValidImageSize();
-}
-
-
-scoped_refptr<const cc::AnimatedImageFrameIndexMap>
-CanvasRenderingContextHost::GetAnimatedImageFrameIndexes(uint32_t id) const {
-  if (auto* context = RenderingContext()) {
-    return context->GetAnimatedImageFrameIndexMap(id);
-  }
-  return nullptr;
 }
 
 bool CanvasRenderingContextHost::IsWebGL() const {

@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "base/callback_list.h"
 #include "base/containers/flat_map.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
@@ -54,6 +55,12 @@ class SelectionOverlayController
       public selection::SelectionOverlayPageHandler,
       public TabStripModelObserver {
  public:
+  enum class CloseReason {
+    kOther,
+    kCloseButton,
+    kEscapeKeyPress,
+  };
+
   SelectionOverlayController(tabs::TabInterface* tab,
                              PrefService* pref_service);
   ~SelectionOverlayController() override;
@@ -98,13 +105,21 @@ class SelectionOverlayController
       mojo::PendingRemote<mojom::CaptureRegionObserver> observer,
       mojom::TabContextOptionsPtr options);
 
+  // Returns whether a new overlay session can start on the current tab,
+  // applying to every entry point.
+  bool CanStartSession();
+
   void Show(mojom::TabContextOptionsPtr options);
   // Shows the overlay with a region pre-selected around `selection_bounds`,
   // which is in screen coordinates.
   void ShowWithSelection(content::RenderFrameHost* selected_frame,
                          const gfx::Rect& selection_bounds,
                          selection::InteractionOptionsPtr interaction_options);
-  void Close();
+  void Close(CloseReason reason = CloseReason::kOther);
+
+  using OverlayClosedCallback = base::OnceCallback<void(CloseReason)>;
+  base::CallbackListSubscription RegisterOverlayClosedCallback(
+      OverlayClosedCallback callback);
 
   // `selection::SelectionOverlayPageHandler`:
   void DeleteRegion(const base::UnguessableToken& id,
@@ -223,6 +238,8 @@ class SelectionOverlayController
       uint32_t start_offset,
       uint32_t end_offset);
   void GetSuggestedActionsImpl(SuggestedActionsCallback callback);
+  // Callers must check `CanStartSession()` before staging any session state.
+  void ShowImpl(mojom::TabContextOptionsPtr options);
   // Replaces any existing selected regions with a single region created from
   // `selection_bounds`, in screen coordinates. If `selected_frame` is live,
   // also requests the text surrounding its selection.
@@ -232,8 +249,8 @@ class SelectionOverlayController
   void OnSuggestionsReceived(
       const base::UnguessableToken& region_id,
       uint64_t generation,
-      std::vector<std::unique_ptr<::selection::Suggestion>> suggestions,
-      bool complete);
+      bool complete,
+      std::vector<std::unique_ptr<::selection::Suggestion>> suggestions);
   glic::mojom::AdditionalContextPtr CreateAdditionalContext(
       std::vector<std::pair<base::UnguessableToken,
                             glic::mojom::CapturedRegionPtr>> regions);
@@ -273,6 +290,9 @@ class SelectionOverlayController
   // Scoped to the lifetime of that WebView.
   base::CallbackListSubscription overlay_web_view_focus_subscription_;
   std::unique_ptr<::selection::SuggestionTool> quick_answers_tool_;
+  std::optional<CloseReason> close_reason_;
+
+  base::OnceCallbackList<void(CloseReason)> overlay_closed_callbacks_;
 
   ui::ScopedUnownedUserData<SelectionOverlayController>
       scoped_unowned_user_data_;

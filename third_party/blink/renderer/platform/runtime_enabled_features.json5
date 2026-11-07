@@ -711,6 +711,14 @@
       status: "experimental",
     },
     {
+      // Restricts the `display` adjustment in LayoutTheme::AdjustStyle() to
+      // elements which have a native widget appearance, so that `appearance`
+      // no longer changes `display` on other elements.
+      // See https://crbug.com/568576344 and https://crbug.com/408002786.
+      name: "AppearanceDisplayAdjustmentForWidgetsOnly",
+      status: "stable",
+    },
+    {
       name: "ApproximateGeolocationPermission",
       // This feature is controlled by the kApproximateGeolocationPermission
       // base::Feature in the browser process.
@@ -1091,7 +1099,7 @@
       // Note the API name has changed to `drawElementImage`.
       name: "CanvasDrawElement",
       origin_trial_feature_name: "HTMLInCanvas",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "CanvasFloatingPoint",
@@ -1143,6 +1151,10 @@
     },
     {
       name: "CapabilityDelegationDisplayCaptureRequest",
+      status: "experimental",
+    },
+    {
+      name: "CapabilityDelegationPopup",
       status: "experimental",
     },
     {
@@ -1232,10 +1244,6 @@
       // https://html.spec.whatwg.org/multipage/webappapis.html#event-handler-content-attributes
       // https://w3c.github.io/webappsec-csp/#should-block-inline
       name: "CheckCSPOnInlineScriptAttributeSet",
-      status: "stable",
-    },
-    {
-      name: "CheckVisibilityExtraProperties",
       status: "stable",
     },
     {
@@ -1921,10 +1929,6 @@
       // https://drafts.csswg.org/cssom/#dom-window-getcomputedstyle
       name: "CSSOMGetComputedStylePseudoElementRequiresColon",
       status: "experimental",
-    },
-    {
-      name: "CSSOverscrollBehaviorChain",
-      status: "stable",
     },
     {
       name: "CSSPaintAPIArguments",
@@ -3240,13 +3244,6 @@
       status: "stable",
     },
     {
-      // This fixes the suppression of markers for <details> and
-      // list items for appearance:auto.
-      // This was added in M146 and can be removed after M148.
-      // Note that as-is, this flag triggers crbug.com/408002786.
-      name: "FixMarkerSuppressionForAppearanceAuto",
-    },
-    {
       // Guard the kStart / kEnd / kStartAndEnd branches of
       // LayoutSelection::ComputeSelectionStatus against std::nullopt
       // start_offset / end_offset in SelectionPaintRange.
@@ -3974,11 +3971,6 @@
       // events - they should not be composed events.
       // This shipped in M149 and can be removed in M151.
       name: "InterestEventsNonComposed",
-      status: "stable",
-    },
-    {
-      name: "InterestGroupsInSharedStorageWorklet",
-      public: true,
       status: "stable",
     },
     {
@@ -5308,10 +5300,6 @@
       name: "RecheckParentDuringNodeVectorInsertion",
       status: "stable",
     },
-    {
-      name: "RecordSameDocumentPresentationTimeOnce",
-      status: "stable",
-    },
     // If enabled, both Accept-Language HTTP header and JavaScript getter will
     // be reduced.
     {
@@ -5656,10 +5644,6 @@
       base_feature: "none",
     },
     {
-      name: "ScrollAnchorPriorityCandidateSubtree",
-      status: "stable",
-    },
-    {
       // Use parent element for text node to compute relative offset when
       // serializing scroll anchor to ensure consistency with
       // ComputeUniqueSelector()
@@ -5740,11 +5724,6 @@
     // Limits the number of scroll-to-text-fragment directives parsed per URL.
     {
       name: "ScrollToTextFragmentDirectiveLimit",
-      status: "stable",
-    },
-    // Only consider unique case-insensitive scroll-to-text fragments.
-    {
-      name: "ScrollToTextFragmentUniqueFragments",
       status: "stable",
     },
     {
@@ -5936,6 +5915,15 @@
       status: "test",
     },
     {
+      // Adds the `shadowRoots` option to the Focusable constructors (and the
+      // constructor that takes a Focusable), which exposes focusable items
+      // inside those shadow trees.
+      // https://crbug.com/565786176
+      name: "SequentialFocusPrimitivesShadowRoots",
+      depends_on: ["SequentialFocusPrimitives"],
+      status: "test",
+    },
+    {
       name: "Serial",
       status: "stable",
       base_feature: "WebSerialAPI",
@@ -5981,6 +5969,11 @@
       // See https://chromestatus.com/feature/6497653025931264
       // See https://issues.chromium.org/issues/40364838
       name: "ServiceWorkerInDedicatedWorker",
+    },
+    {
+      // Killswitch for crbug.com/552757015.
+      name: "ServiceWorkerScriptEncoding",
+      status: "stable",
     },
     {
       name: "ServiceWorkerStaticRouterTimingInfo",
@@ -6037,15 +6030,6 @@
       name: "SharedArrayBufferUnrestrictedAccessAllowed",
       base_feature: "none",
       public: true,
-    },
-    {
-      name: "SharedStorageAPI",
-      base_feature: "none",
-      public: true,
-    },
-    {
-      name: "SharedStorageWebLocks",
-      depends_on: ["SharedStorageAPI"],
     },
     {
       name: "SharedWorker",
@@ -6116,6 +6100,15 @@
     {
       // crbug.com/517761566
       name: "SkipStaleUndoStepsInIdleSpellCheck",
+      status: "stable",
+    },
+    {
+      // Kill switch for https://crbug.com/569098933. Doesn't tick an animation
+      // on the main thread if none of its values can change while it's in play
+      // (e.g. the view transition `mix-blend-mode: plus-lighter` animation),
+      // even if it can't run on the compositor for another reason, such as
+      // affecting an !important property.
+      name: "SkipTickingStaticAnimations",
       status: "stable",
     },
     {
@@ -6330,6 +6323,7 @@
       // fullscreen, unless it has a fullscreen token through capability
       // delegation. https://crbug.com/40052279
       name: "SuppressFullscreenFromUnfocusedView",
+      status: "stable",
     },
     // 'pointercancel' and boundary leave ('pointerout' and 'pointerleave')
     // events would now fire after a mouse drag start, matching the spec's
@@ -7015,10 +7009,6 @@
       status: "stable",
     },
     {
-      name: "ViewTransitionDOMCallbackAfterCommit",
-      status: "stable",
-    },
-    {
       name: "ViewTransitionLongCallbackTimeoutForTesting",
       status: "test",
     },
@@ -7529,6 +7519,10 @@
     },
     {
       name: "WebTransportDraining",
+      status: "experimental",
+    },
+    {
+      name: "WebTransportExportKeyingMaterial",
       status: "experimental",
     },
     {

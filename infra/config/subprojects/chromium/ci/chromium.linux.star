@@ -706,12 +706,14 @@ ci.thin_tester(
                 args = [
                     "--additional-env-var=LLVM_PROFILE_FILE=${ISOLATED_OUTDIR}/profraw/default-%2m.profraw",
                 ],
+                enable_rts_filtering = True,
             ),
             "browser_tests": targets.mixin(
                 args = [
                     # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
+                enable_rts_filtering = True,
                 swarming = targets.swarming(
                     # Move to faster machine types to reduce capacity impact.
                     # TODO(crbug.com/541675870): Can remove this if/when
@@ -723,6 +725,9 @@ ci.thin_tester(
                     },
                     shards = 20,
                 ),
+            ),
+            "components_unittests": targets.mixin(
+                enable_rts_filtering = True,
             ),
             "content_browsertests": targets.mixin(
                 ci_only = True,
@@ -760,6 +765,7 @@ ci.thin_tester(
                     # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
+                enable_rts_filtering = True,
             ),
             "not_site_per_process_blink_web_tests": targets.mixin(
                 args = [

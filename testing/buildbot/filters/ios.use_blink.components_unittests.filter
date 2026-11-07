@@ -187,6 +187,17 @@
 -SharedPasswordControllerTest.SelectPasskeySuggestion
 -SharedPasswordControllerTest.SelectPasswordSuggestionWithAutoSubmission
 
+# TODO(crbug.com/571624237): SharedPasswordControllerTest.ActorLoginToolRescansFormsFoo
+# tests below added by https://crrev.com/c/8337068 have been failing on iOS Blink.
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_FrameDestroyedDuringExtraction
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_MultipleFrames_QueriesSameOriginOnly
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_MultipleSameOriginFrames_NoFormsFound
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_NilNoFormsFoundHandler
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_NoFrames
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_NonHTML
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_SingleFrame_FormsFound
+-SharedPasswordControllerTest.ActorLoginToolRescansForms_SingleFrame_NoFormsFound
+
 # TODO(crbug.com/40945948): Test currently fails on iOS blink.
 -SecurityStateUtilsTest.GetMaliciousContentStatus
 -SecurityStateUtilsTest.GetSecurityLevelForWebStateMaliciousContent
@@ -464,14 +475,15 @@
 
 # TODO(crbug.com/538332325): PasskeyTabHelperTest have been failing on iOS blink
 # port. Some of the tests were added by https://crrev.com/c/7868131.
+-PasskeyTabHelperTest.ConditionalCreateOffTheRecordDefersToRenderer
 -PasskeyTabHelperTest.HandleAssertionEmptyRemoteFrameIdGraceful
 -PasskeyTabHelperTest.HandleAssertionMalformedRemoteFrameIdGraceful
--PasskeyTabHelperTest.StartPasskeyCreationWithExcludedCredential
 -PasskeyTabHelperTest.HandleCreateRequestedEventDefersOnInvalidOrigin
 -PasskeyTabHelperTest.HandleGetRequestedEventDefersOnInvalidOrigin
--PasskeyTabHelperTest.StartPasskeyCreationFromCrossOriginIframe
 -PasskeyTabHelperTest.StartPasskeyAssertionFailureDoesNotLogBrowserAssistedLogin
 -PasskeyTabHelperTest.StartPasskeyAssertionSuccessLogsBrowserAssistedLogin
+-PasskeyTabHelperTest.StartPasskeyCreationFromCrossOriginIframe
+-PasskeyTabHelperTest.StartPasskeyCreationWithExcludedCredential
 
 # TODO(crbug.com/517208683): The test is flaky on the ios-blink and tvos bots.
 # The test was updated by https://crrev.com/c/7676358.

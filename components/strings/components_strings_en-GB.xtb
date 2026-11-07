@@ -668,6 +668,7 @@ This will otherwise be blocked by your privacy settings. This will allow the con
 <translation id="2127747486437921899">Italic</translation>
 <translation id="2130448033692577677">The templates that you've specified may not be applied due to the DnsOverHttpsMode policy not being set.</translation>
 <translation id="2130699163006053678">A3 x 7</translation>
+<translation id="2131006834960167560">Enable payments autofill opened at full height.</translation>
 <translation id="2131511685263818470"><ph name="SEARCH_ENGINE_NAME" />. <ph name="MARKETING_SNIPPET" /></translation>
 <translation id="2132825047782982803">These are shown in random order. You can change your default at any time.</translation>
 <translation id="2134584557120247184">Flight ticket</translation>
@@ -1366,6 +1367,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="3289578402369490638">From other stores across the web</translation>
 <translation id="3293642807462928945">Learn more about <ph name="POLICY_NAME" /> policy</translation>
 <translation id="3295444047715739395">View and manage your passwords in Chrome settings</translation>
+<translation id="3296595523896103792">Enable payments autofill closed.</translation>
 <translation id="3299098170013242198">Windows Hello is on for filling passwords</translation>
 <translation id="3299197721044635447">Content couldn't be pasted outside of the managed Chrome context due to your organisation's policies</translation>
 <translation id="3299720788264079132">Something went wrong while using <ph name="FEATURE_NAME" /></translation>
@@ -2805,7 +2807,6 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="5649053991847567735">Automatic downloads</translation>
 <translation id="5651323159439184939">Tractor feed</translation>
 <translation id="5653681867130739344">Update identity card securely in Google Wallet</translation>
-<translation id="5653744563415531641">Save your info and get things done faster, like filling forms across Google products. You can <ph name="MANAGE_WALLET_SETTINGS_LINK" /> for <ph name="ACCOUNT" />.</translation>
 <translation id="5654927323611874862">Uploaded crash report ID:</translation>
 <translation id="5654965123204121933">URL doesn't include required replacement string <ph name="SEARCH_TERMS_REPLACEMENT" />: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">Email</translation>
@@ -3257,7 +3258,6 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="6410264514553301377">Enter the expiry date and CVC for <ph name="CREDIT_CARD" /></translation>
 <translation id="6411107829285739505">A4 x 8</translation>
 <translation id="6412543105195503444">Parent approval dialogue</translation>
-<translation id="6413532517183895572">manage your Wallet settings</translation>
 <translation id="6415778972515849510">Chromium can help you protect your Google account and change your password.</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">Make sure that any critical business or personal data is stored externally.</translation>
@@ -3764,7 +3764,6 @@ Additional details:
 <translation id="7308436126008021607">background sync</translation>
 <translation id="7310392214323165548">Device will restart very soon</translation>
 <translation id="7311244614769792472">No results found</translation>
-<translation id="7311565174465466858"><ph name="TAB_KEY" /> Press Tab then Enter to ask <ph name="AI_ENGINE_NAME" /></translation>
 <translation id="7313107491291103073">Your organisation has flagged this site as it might violate a policy.</translation>
 <translation id="7315372670898739748">Linking failed. Please try again later</translation>
 <translation id="7316521168101843192">Saving file to Microsoft OneDrive</translation>
@@ -4172,6 +4171,7 @@ Additional details:
 <translation id="7955105108888461311">Ask in person</translation>
 <translation id="7956713633345437162">Mobile bookmarks</translation>
 <translation id="7961015016161918242">Never</translation>
+<translation id="7961493403319780137">Learn more about this feature – autofill verification codes from Gmail</translation>
 <translation id="7962467575542381659">Platform machine</translation>
 <translation id="796439090588610411">Chrome will stop automatically confirming this email on supported sites.</translation>
 <translation id="7966803981046576691">Job account type</translation>
@@ -4572,7 +4572,6 @@ Additional details:
 <translation id="8699041776323235191">HID device</translation>
 <translation id="8699985386408839112">Envelope Kaku 1</translation>
 <translation id="8702965365666568344">Mounting tape</translation>
-<translation id="8703242769654966101">Enable Pix in Wallet</translation>
 <translation id="8703372953981978786">This link doesn't work</translation>
 <translation id="8703575177326907206">Your connection to <ph name="DOMAIN" /> is not encrypted.</translation>
 <translation id="8705331520020532516">Serial Number</translation>

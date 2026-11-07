@@ -1637,8 +1637,7 @@ void LayerTreeImpl::DidUpdatePageScale() {
     if (host_impl_->recycle_tree())
       host_impl_->recycle_tree()->DidUpdatePageScale();
 
-    if (settings().scrollbar_flash_once_after_scroll_update ||
-        settings().scrollbar_flash_after_any_scroll_update) {
+    if (settings().scrollbar_flash_once_after_scroll_update) {
       host_impl_->OnPageScaleUpdated();
     } else if (auto* scroll_node = host_impl_->OuterViewportScrollNode()) {
       if (ScrollbarAnimationController* controller =
@@ -3359,13 +3358,6 @@ bool LayerTreeImpl::IsAnimatingHUDContents() const {
 base::flat_set<blink::ViewTransitionToken>
 LayerTreeImpl::GetCaptureViewTransitionTokens() const {
   base::flat_set<blink::ViewTransitionToken> result;
-  // This effectively disables the new mode, since none of the capture tokens
-  // will apply.
-  if (!base::FeatureList::IsEnabled(
-          features::kViewTransitionCaptureAndDisplay)) {
-    return result;
-  }
-
   for (const auto& request : view_transition_requests_) {
     if (request->type() == ViewTransitionRequest::Type::kSave) {
       result.insert(request->token());

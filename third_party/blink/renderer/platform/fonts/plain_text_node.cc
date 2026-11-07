@@ -116,11 +116,11 @@ wtf_size_t NextWordEndIndex(StringView text, wtf_size_t start_index) {
   // Non-CJK/Emoji words end at IsWordDelimiter() or CJK/Emoji characters.
   wtf_size_t end = start_index;
   UChar32 ch = UNSAFE_TODO(text.CodePointAtAndNext(end));
-  if (!Character::IsCjkIdeographOrSymbol(ch)) {
+  if (!unicode::IsCjkIdeographOrSymbol(ch)) {
     for (wtf_size_t next_end = end; end < length; end = next_end) {
       ch = UNSAFE_TODO(text.CodePointAtAndNext(next_end));
       if (IsWordDelimiter<true>(ch) ||
-          Character::IsCjkIdeographOrSymbolBase(ch)) {
+          unicode::IsCjkIdeographOrSymbolBase(ch)) {
         return end;
       }
     }
@@ -135,13 +135,13 @@ wtf_size_t NextWordEndIndex(StringView text, wtf_size_t start_index) {
     ch = UNSAFE_TODO(text.CodePointAtAndNext(next_end));
     // Modifier check in order not to split Emoji sequences.
     if (U_GET_GC_MASK(ch) & (U_GC_M_MASK | U_GC_LM_MASK | U_GC_SK_MASK) ||
-        ch == uchar::kZeroWidthJoiner || Character::IsEmojiComponent(ch) ||
-        Character::IsExtendedPictographic(ch)) {
+        ch == uchar::kZeroWidthJoiner || unicode::IsEmojiComponent(ch) ||
+        unicode::IsExtendedPictographic(ch)) {
       continue;
     }
     // Avoid delimiting COMMON/INHERITED alone, which makes harder to
     // identify the script.
-    if (Character::IsCjkIdeographOrSymbol(ch)) {
+    if (unicode::IsCjkIdeographOrSymbol(ch)) {
       if (Character::IsCommonOrInheritedScript(ch)) {
         continue;
       }

@@ -281,7 +281,7 @@ OmniboxContextMenuController::OmniboxContextMenuController(
       input_state_ = contextual_searchbox_handler_ptr->input_state_model()
                          ->GetInputState();
       input_state_subscription_ =
-          contextual_searchbox_handler_ptr->input_state_model()->subscribe(
+          contextual_searchbox_handler_ptr->input_state_model()->Subscribe(
               base::BindRepeating(
                   &OmniboxContextMenuController::OnInputStateChanged,
                   weak_ptr_factory_.GetWeakPtr()));
@@ -774,8 +774,8 @@ OmniboxContextMenuController::GetRecentTabs() const {
   }
 
   // Sort tabs by most recently active, up to `max_suggestions`
-  // number of tabs. Checked (selected) tabs are first; ties broken by most
-  // recent.
+  // number of tabs. Checked (selected) tabs are first, followed by the active
+  // tab, with remaining ties broken by most recent.
   std::optional<size_t> max_suggestions = GetMaxTabSuggestions();
   // Max tab suggestions allowed is infinite if nullopt is returned,
   // so use current number of tabs; otherwise, limit sorted tabs to
@@ -788,6 +788,9 @@ OmniboxContextMenuController::GetRecentTabs() const {
                        const OmniboxContextMenuController::TabInfo& b) {
                       if (a.is_checked != b.is_checked) {
                         return a.is_checked > b.is_checked;
+                      }
+                      if (a.is_active_tab != b.is_active_tab) {
+                        return a.is_active_tab > b.is_active_tab;
                       }
                       return a.last_active > b.last_active;
                     });
@@ -896,7 +899,7 @@ void OmniboxContextMenuController::OnGetInputState(
     if (contextual_searchbox_handler &&
         contextual_searchbox_handler->input_state_model()) {
       input_state_subscription_ =
-          contextual_searchbox_handler->input_state_model()->subscribe(
+          contextual_searchbox_handler->input_state_model()->Subscribe(
               base::BindRepeating(
                   &OmniboxContextMenuController::OnInputStateChanged,
                   weak_ptr_factory_.GetWeakPtr()));

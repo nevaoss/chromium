@@ -20,7 +20,11 @@
   --immersive-menu-font-weight: 400;
 }
 
-#lineFocus {
+/* Scope #lineFocus to the direct child of #appFlexParent so it cannot match
+   any element in distilled page content that happens to have id="lineFocus".
+   Wrapping the parent check in :where() gives it zero specificity so rules
+   like #lineFocus.line-mode below can still override its properties. */
+:where(:host > #appFlexParent) > #lineFocus {
   position: absolute;
   top: var(--line-focus-y);
   left: var(--line-focus-left);
@@ -366,7 +370,7 @@ img.possibly-transparent-img {
   clip-path: inset(0);
 }
 
-.settings-overlay {
+:host > #appFlexParent > .settings-overlay {
   width: 100vw;
   height: 100vh;
   position: fixed;

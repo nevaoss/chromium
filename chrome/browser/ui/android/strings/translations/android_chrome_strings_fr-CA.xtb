@@ -322,6 +322,7 @@ Seule une personne connaissant votre phrase de passe peut lire vos données chif
 <translation id="2297822946037605517">Partager cette page</translation>
 <translation id="230115972905494466">Aucun appareil compatible trouvé</translation>
 <translation id="2305798319182970276">Supprimer votre historique en touchant un bouton</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> a besoin de votre autorisation pour accéder aux appareils d'interface humaine (HID) pour ce site.</translation>
 <translation id="2316129865977710310">Non merci</translation>
 <translation id="232137538351753795">Balayez l'écran à partir de la gauche pour revenir en arrière</translation>
 <translation id="2323763861024343754">Stockage des sites</translation>
@@ -1691,6 +1692,7 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="7608245556672190037">La fenêtre d'activation des résultats de Chrome est ouverte à pleine hauteur</translation>
 <translation id="7612619742409846846">Connecté(e) à Google en tant que</translation>
 <translation id="7612989789287281429">Connexion en cours…</translation>
+<translation id="7617512710641355143">Chrome est géré</translation>
 <translation id="7619072057915878432">Échec du téléchargement de <ph name="FILE_NAME" /> en raison de défaillances du réseau.</translation>
 <translation id="7626032353295482388">Bienvenue dans Google Chrome</translation>
 <translation id="7628417132421583481">Accéder au gestionnaire de mots de passe</translation>

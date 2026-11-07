@@ -24,6 +24,7 @@
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "ui/gfx/geometry/point_conversions.h"
+#include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size_conversions.h"
 
 namespace blink {
@@ -155,6 +156,10 @@ void DisplayAdElementMonitor::UpdateToVideoAd() {
   if (is_sticky_ad_ && !is_sticky_video_ad_) {
     UpdateToStickyVideoAd();
   }
+}
+
+void DisplayAdElementMonitor::SetIsOverlayPopupAd() {
+  is_overlay_popup_ad_ = true;
 }
 
 void DisplayAdElementMonitor::MaybeRecordVideoAdUseCounter() {

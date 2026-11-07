@@ -129,6 +129,8 @@ MEDIA_EXPORT extern const char kHardwareVideoDevicePath[];
 
 namespace media {
 
+class AudioParameters;
+
 // All features in alphabetical order. The features should be documented
 // alongside the definition of their values in the .cc file.
 
@@ -179,7 +181,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kCoarseWallClockTimeSource);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kContextMenuCopyVideoFrame);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kContextMenuSaveVideoFrameAs);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kContextMenuSearchForVideoFrame);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kD3D11VideoDecoderForceSingleTexture);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kD3D11VideoDecoderUseSharedHandle);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDedicatedMediaServiceThread);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDeferAudioFocusUntilAudible);
@@ -290,7 +291,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kRenderMutedAudio);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kResolutionBasedDecoderPriority);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kResumeBackgroundVideo);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kRevokeMediaSourceObjectURLOnAttach);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kRustMpegAudioDataParser);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kSpeakerChangeDetection);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kSpecCompliantCanPlayThrough);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUnifiedAutoplay);
@@ -572,6 +572,13 @@ MEDIA_EXPORT std::string GetEffectiveAutoplayPolicy(
 
 // Return bitmask of audio formats supported by EDID.
 MEDIA_EXPORT uint32_t GetPassthroughAudioFormats();
+
+// Whether `params` selects the macOS AVFoundation playback backend. This is
+// not a no-argument platform capability: macOS 27 or newer,
+// kMacAVFoundationPlayback, linear or low-latency PCM, and a playback latency
+// tag are all required. False on every other platform.
+MEDIA_EXPORT bool IsMacAVFoundationPlaybackSupported(
+    const AudioParameters& params);
 
 // Returns true if application audio loopback capture is implemented for the
 // current OS.

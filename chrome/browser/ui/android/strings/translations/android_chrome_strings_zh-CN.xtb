@@ -322,6 +322,7 @@
 <translation id="2297822946037605517">分享此页</translation>
 <translation id="230115972905494466">未找到任何兼容设备</translation>
 <translation id="2305798319182970276">点按一下按钮即可删除历史记录</translation>
+<translation id="2307420463693979699">“<ph name="APP_NAME" />”需要获得相应权限，才能让此网站使用人机接口设备 (HID)。</translation>
 <translation id="2316129865977710310">不用了</translation>
 <translation id="232137538351753795">从左侧边缘滑动即可返回</translation>
 <translation id="2323763861024343754">网站存储数据</translation>
@@ -670,7 +671,7 @@
 <translation id="3710560693796335511">协作</translation>
 <translation id="3714430408451673233">标签页底部动作条已半屏打开。</translation>
 <translation id="3718765429352682176">您可能会看到在 Chrome 中打开了链接的其他应用的历史记录。</translation>
-<translation id="3721119614952978349">您与 Google</translation>
+<translation id="3721119614952978349">我与 Google</translation>
 <translation id="3727000368239390918">登录后即可将标签页等信息同步到您的所有设备上</translation>
 <translation id="3731865955999508196">立体</translation>
 <translation id="3737319253362202215">翻译设置</translation>
@@ -1689,6 +1690,7 @@
 <translation id="7608245556672190037">已以最大高度打开 Chrome 查找功能选择启用底部动作条</translation>
 <translation id="7612619742409846846">已使用以下账号登录 Google：</translation>
 <translation id="7612989789287281429">正在登录…</translation>
+<translation id="7617512710641355143">Chrome 处于受管理状态</translation>
 <translation id="7619072057915878432">未能成功下载 <ph name="FILE_NAME" />，因为出现了网络故障。</translation>
 <translation id="7626032353295482388">欢迎使用 Chrome</translation>
 <translation id="7628417132421583481">前往密码管理工具</translation>
@@ -1736,7 +1738,7 @@
 <translation id="7792388396321542707">停止分享</translation>
 <translation id="780287761701992588">在所有设备上获取保存的书签、密码等信息</translation>
 <translation id="780301667611848630">不用了</translation>
-<translation id="7804364787702057554">设置 Chrome 账号</translation>
+<translation id="7804364787702057554">您在 Chrome 中的账号</translation>
 <translation id="7810647596859435254">打开方式…</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{所有文件，列表中有 1 个文件}other{所有文件，列表中有 # 个文件}}</translation>
 <translation id="7815484226266492798">长屏幕截图</translation>

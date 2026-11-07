@@ -277,6 +277,11 @@ bool IsAccessibilityGoogleTtsAutomaticReconnectEnabled() {
       ::features::kAccessibilityGoogleTtsAutomaticReconnect);
 }
 
+BASE_FEATURE(kAccessibilityHoverText, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsAccessibilityHoverTextEnabled() {
+  return base::FeatureList::IsEnabled(::features::kAccessibilityHoverText);
+}
+
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -434,7 +439,7 @@ bool IsReadAnythingReadabilitySelectTextEnabled() {
 }
 
 BASE_FEATURE(kReadAnythingDistillationQualityEvaluation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsReadAnythingDistillationQualityEvaluationEnabled() {
   return base::FeatureList::IsEnabled(
       ::features::kReadAnythingDistillationQualityEvaluation);

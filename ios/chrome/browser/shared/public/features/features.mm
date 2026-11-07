@@ -55,6 +55,9 @@ bool IsLevelUpEnabled() {
 BASE_FEATURE(kEnableLensInOmniboxCopiedImage,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kEnableLensViewFinderUnifiedExperience,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kLensLoadAIMInLensResultPage, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLensOverlayEnableLandscapeCompatibility,
@@ -990,7 +993,7 @@ bool IsAssistantSidePanelEnabled() {
          IsChromeNextIaEnabled() && IsFullscreenRefactoringEnabled();
 }
 
-BASE_FEATURE(kYourSavedInfoSettingsPageIos, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kYourSavedInfoSettingsPageIos, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsYourSavedInfoSettingsPageIosEnabled() {
   return base::FeatureList::IsEnabled(kYourSavedInfoSettingsPageIos);
@@ -1213,4 +1216,10 @@ BASE_FEATURE(kLightAppBar, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsLightAppBarEnabled() {
   return base::FeatureList::IsEnabled(kLightAppBar);
+}
+
+BASE_FEATURE(kAssistantAimThreads, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAssistantAimThreadsEnabled() {
+  return base::FeatureList::IsEnabled(kAssistantAimThreads);
 }

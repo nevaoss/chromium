@@ -89,6 +89,7 @@
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/actor/android/offscreen_rendering_manager_android.h"
 #include "chrome/browser/glic/host/context/glic_empty_pinned_tab_manager.h"
 #include "chrome/browser/glic/widget/conversions.h"
 #include "chrome/browser/glic/widget/glic_floating_ui_android.h"
@@ -115,9 +116,6 @@ BASE_FEATURE(kGlicRemoveBlankInstancesOnClose,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicAlwaysBindOnPin, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicAvoidReactivatingActiveEmbedder,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kGlicUnpinOnUnbindIfUnused, base::FEATURE_ENABLED_BY_DEFAULT);
 
 constexpr size_t kMaxRecentConversationsForPanel = 3;
@@ -128,7 +126,6 @@ BASE_FEATURE(kGlicSuppressAnimationsOnDetach, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicRemoveDaisyChainingWhenFreShowing,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
 
 namespace {
 
@@ -309,7 +306,8 @@ GlicInstanceImpl::GlicInstanceImpl(
         &instance_metrics_, &GetSharingManagerInternal(), this);
     actuating_changed_subscription_ =
         actor_task_manager_->AddActuatingChangedCallback(
-            base::BindRepeating(&Host::OnActuatingChanged, host_.GetWeakPtr()));
+            base::BindRepeating(&GlicInstanceImpl::OnActuatingChanged,
+                                weak_ptr_factory_.GetWeakPtr()));
   }
   experimental_triggering_manager_ =
       std::make_unique<GlicExperimentalTriggeringManager>(
@@ -334,6 +332,7 @@ GlicInstanceImpl::~GlicInstanceImpl() {
   // the coordinator while this instance is being destroyed.
   coordinator_delegate_ = nullptr;
   tab_group_binding_.reset();
+  StopOffscreenRendering();
   // Destroying the web contents may result in calls back here, so do it first.
   host_.Hibernate();
 
@@ -488,8 +487,17 @@ void GlicInstanceImpl::Show(ShowOptions options) {
   GlicUiEmbedder* embedder_to_show = nullptr;
 
   if (IsActiveEmbedder(new_key)) {
-    if (base::FeatureList::IsEnabled(kGlicAvoidReactivatingActiveEmbedder) &&
-        !options.reinitialize_if_already_active) {
+    if (!options.reinitialize_if_already_active) {
+      // The panel is already up, so there is nothing to re-show. Unless this
+      // is an automatic reshow (such as OnBrowserActivated() when focusing a
+      // window whose panel is already open), the page still gets told: a show
+      // is also what makes it retry a client that failed to load, and someone
+      // invoking Glic again at a failed panel should get that retry rather than
+      // the stale failure. This is a no-op for a page whose client is up.
+      if (options.invocation_source !=
+          mojom::InvocationSource::kReshowInactive) {
+        host_.NotifyWindowIntentToShow();
+      }
       return;
     } else {
       embedder_to_show = GetActiveEmbedder();
@@ -498,6 +506,7 @@ void GlicInstanceImpl::Show(ShowOptions options) {
     DeactivateCurrentEmbedder();
     // Ensure that there is a WebContents for the embedder to use.
     EnsureHostAwake();
+    StopOffscreenRendering();
     embedder_to_show = CreateActiveEmbedder(options);
     CHECK(embedder_to_show);
     host_.SetDelegate(embedder_to_show->GetHostEmbedderDelegate());
@@ -924,6 +933,59 @@ GlicSharingManager* GlicInstanceImpl::GetSharingManager() {
 void GlicInstanceImpl::UpdateSkillPreviews(
     std::optional<tabs::TabInterface*> updated_tab) {
   skills_manager().UpdateSkillPreviews(updated_tab);
+}
+
+// TODO(b/572001459): Extract Android offscreen rendering management out of
+// GlicInstanceImpl into a dedicated helper class owned by this instance.
+void GlicInstanceImpl::SetHiddenInitializing(bool initializing) {
+  if (is_hidden_initializing_ == initializing) {
+    return;
+  }
+  is_hidden_initializing_ = initializing;
+  UpdateOffscreenRenderingState();
+}
+
+void GlicInstanceImpl::OnActuatingChanged(bool actuating) {
+  host_.OnActuatingChanged(actuating);
+  UpdateOffscreenRenderingState();
+}
+
+void GlicInstanceImpl::UpdateOffscreenRenderingState() {
+#if BUILDFLAG(IS_ANDROID)
+  if (!base::FeatureList::IsEnabled(features::kGlicAndroidOffscreenRendering)) {
+    return;
+  }
+
+  const bool should_render_offscreen =
+      !HasActiveEmbedder() &&
+      (is_hidden_initializing_ ||
+       (actor_task_manager_ && actor_task_manager_->IsActuating()));
+
+  if (should_render_offscreen == is_offscreen_rendering_active_) {
+    return;
+  }
+
+  if (should_render_offscreen) {
+    EnsureHostAwake();
+    if (content::WebContents* contents = host_.webui_contents()) {
+      actor::StartOffscreenRenderingForWebContents(contents);
+      is_offscreen_rendering_active_ = true;
+    }
+  } else {
+    StopOffscreenRendering();
+  }
+#endif
+}
+
+void GlicInstanceImpl::StopOffscreenRendering() {
+#if BUILDFLAG(IS_ANDROID)
+  if (is_offscreen_rendering_active_) {
+    if (content::WebContents* contents = host_.webui_contents()) {
+      actor::StopOffscreenRenderingForWebContents(contents);
+    }
+    is_offscreen_rendering_active_ = false;
+  }
+#endif
 }
 
 void GlicInstanceImpl::FetchZeroStateSuggestions(
@@ -1640,6 +1702,7 @@ void GlicInstanceImpl::OnAllEmbeddersInactive() {
 
   NotifyInstanceActivationChanged(false);
   host_.SetDebouncedVisibility(false);
+  UpdateOffscreenRenderingState();
   if (actor_task_manager_) {
     // Attempt to show toast on UI deactivated (and not replaced by anything
     // else).

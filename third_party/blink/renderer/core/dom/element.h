@@ -1947,11 +1947,17 @@ class CORE_EXPORT Element : public ContainerNode {
   // Marks this element as an ad-related video stream.
   void UpdateToVideoAd();
 
+  // Marks this element as an overlay popup ad.
+  void SetIsOverlayPopupAd();
+
   // Returns true if the element is considered ad-related.
   bool IsAdRelated() const;
 
   // Returns true if the element is an ad-related video stream.
   bool IsVideoAd() const;
+
+  // Returns true if the element is an overlay popup ad.
+  bool IsOverlayPopupAd() const;
 
   // Returns the `AdProvenance` if the element is ad-related, or `std::nullopt`
   // otherwise.
@@ -2552,25 +2558,13 @@ class CORE_EXPORT Element : public ContainerNode {
     AttachPrecedingScrollControlsPseudoElements(context);
   }
 
-  void AttachLayoutPrecedingPseudoElements(AttachContext& context) {
-    if (IsDocumentElement()) {
-      return;
-    }
-    AttachPrecedingScrollControlsPseudoElements(context);
-  }
+  void AttachLayoutPrecedingPseudoElements(AttachContext& context);
 
   void AttachPrecedingScrollControlsPseudoElements(AttachContext& context) {
     AttachPseudoElement(kPseudoIdScrollMarkerGroupBefore, context);
   }
 
-  void AttachPrecedingPseudoElements(AttachContext& context) {
-    AttachDocumentElementPrecedingPseudoElements(context);
-    AttachOverscrollPseudoElements(context);
-    AttachPseudoElement(kPseudoIdScrollMarker, context);
-    AttachPseudoElement(kPseudoIdMarker, context);
-    AttachPseudoElement(kPseudoIdCheckMark, context);
-    AttachPseudoElement(kPseudoIdBefore, context);
-  }
+  void AttachPrecedingPseudoElements(AttachContext& context);
 
   // For document element scroll control pseudo-elements become not layout
   // siblings, but layout children.
@@ -2581,23 +2575,8 @@ class CORE_EXPORT Element : public ContainerNode {
     AttachSucceedingScrollControlsPseudoElements(context);
   }
 
-  void AttachLayoutSucceedingPseudoElements(AttachContext& context) {
-    if (IsDocumentElement()) {
-      return;
-    }
-    AttachPseudoElement(kPseudoIdInterestButton, context);
-    AttachSucceedingScrollControlsPseudoElements(context);
-  }
-
-  void AttachSucceedingPseudoElements(AttachContext& context) {
-    AttachPseudoElement(kPseudoIdAfter, context);
-    AttachPseudoElement(kPseudoIdExpandIcon, context);
-    AttachPseudoElement(kPseudoIdPickerIcon, context);
-    AttachDocumentElementSucceedingPseudoElements(context);
-    AttachPseudoElement(kPseudoIdBackdrop, context);
-    UpdateFirstLetterPseudoElement(StyleUpdatePhase::kAttachLayoutTree);
-    AttachPseudoElement(kPseudoIdFirstLetter, context);
-  }
+  void AttachLayoutSucceedingPseudoElements(AttachContext& context);
+  void AttachSucceedingPseudoElements(AttachContext& context);
 
   void AttachSucceedingScrollControlsPseudoElements(AttachContext& context) {
     // The order for buttons is described in
@@ -2617,28 +2596,8 @@ class CORE_EXPORT Element : public ContainerNode {
   void AttachColumnPseudoElements(AttachContext& context);
   void AttachTransitionPseudoElements(AttachContext& context);
 
-  void DetachPrecedingPseudoElements(bool performing_reattach) {
-    DetachPseudoElement(kPseudoIdScrollMarker, performing_reattach);
-    DetachPseudoElement(kPseudoIdScrollMarkerGroupBefore, performing_reattach);
-    DetachPseudoElement(kPseudoIdMarker, performing_reattach);
-    DetachPseudoElement(kPseudoIdCheckMark, performing_reattach);
-    DetachPseudoElement(kPseudoIdBefore, performing_reattach);
-    DetachOverscrollPseudoElements(performing_reattach);
-  }
-
-  void DetachSucceedingPseudoElements(bool performing_reattach) {
-    DetachPseudoElement(kPseudoIdAfter, performing_reattach);
-    DetachPseudoElement(kPseudoIdExpandIcon, performing_reattach);
-    DetachPseudoElement(kPseudoIdPickerIcon, performing_reattach);
-    DetachPseudoElement(kPseudoIdInterestButton, performing_reattach);
-    DetachPseudoElement(kPseudoIdScrollButtonBlockStart, performing_reattach);
-    DetachPseudoElement(kPseudoIdScrollButtonInlineStart, performing_reattach);
-    DetachPseudoElement(kPseudoIdScrollButtonInlineEnd, performing_reattach);
-    DetachPseudoElement(kPseudoIdScrollButtonBlockEnd, performing_reattach);
-    DetachPseudoElement(kPseudoIdScrollMarkerGroupAfter, performing_reattach);
-    DetachPseudoElement(kPseudoIdBackdrop, performing_reattach);
-    DetachPseudoElement(kPseudoIdFirstLetter, performing_reattach);
-  }
+  void DetachPrecedingPseudoElements(bool performing_reattach);
+  void DetachSucceedingPseudoElements(bool performing_reattach);
 
   void DetachColumnPseudoElements(bool performing_reattach);
   void DetachTransitionPseudoElements(bool performing_reattach);

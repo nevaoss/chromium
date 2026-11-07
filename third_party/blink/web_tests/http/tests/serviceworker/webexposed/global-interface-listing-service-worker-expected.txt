@@ -524,8 +524,6 @@ interface DisposableStack
     method use
 interface ElementImage
     attribute @@toStringTag
-    getter height
-    getter width
     method close
     method constructor
 interface ErrorEvent : Event
@@ -949,7 +947,6 @@ interface GPUQueue
     attribute @@toStringTag
     getter label
     method constructor
-    method copyElementImageToTexture
     method copyExternalImageToTexture
     method drawElementImageToTexture
     method onSubmittedWorkDone
@@ -1501,7 +1498,7 @@ interface OffscreenCanvas : EventTarget
     method constructor
     method convertToBlob
     method getContext
-    method getElementTransform
+    method getElementImageDefaultSize
     method transferToImageBitmap
     method updateElementGeometry
     setter height
@@ -3046,7 +3043,6 @@ interface WebGL2RenderingContext
     method stencilMaskSeparate
     method stencilOp
     method stencilOpSeparate
-    method texElementImage2D
     method texElementSubImage2D
     method texImage2D
     method texImage3D
@@ -3551,7 +3547,6 @@ interface WebGLRenderingContext
     method stencilMaskSeparate
     method stencilOp
     method stencilOpSeparate
-    method texElementImage2D
     method texElementSubImage2D
     method texImage2D
     method texParameterf
@@ -3673,6 +3668,7 @@ interface WebTransport
     method createBidirectionalStream
     method createSendGroup
     method createUnidirectionalStream
+    method exportKeyingMaterial
     method getStats
     setter anticipatedConcurrentIncomingBidirectionalStreams
     setter anticipatedConcurrentIncomingUnidirectionalStreams

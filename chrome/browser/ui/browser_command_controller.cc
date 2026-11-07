@@ -51,6 +51,7 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_promo.h"
 #include "chrome/browser/signin/signin_ui_util.h"
+#include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/sync/sync_ui_util.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ttc/core/states.h"
@@ -87,7 +88,6 @@
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_prefs.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
-#include "chrome/browser/ui/tabs/tab_change_type.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
@@ -146,6 +146,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension_urls.h"
 #include "printing/buildflags/buildflags.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -1531,8 +1532,9 @@ void BrowserCommandController::HandleCommandWithDisposition(
       break;
 
     case IDC_ASK_GOOGLE_ABOUT_THIS_PAGE:
-      ExecAskGoogleAboutThisPage(browser_,
-                                 lens::LensOverlayInvocationSource::kAppMenu);
+      ExecAskGoogleAboutThisPage(
+          browser_, lens::LensOverlayInvocationSource::kAppMenu,
+          omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_APP_MENU_ASK_GOOGLE);
       break;
 
 #if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
@@ -1703,14 +1705,12 @@ void BrowserCommandController::TabGroupedStateChanged(
   UpdateCommandsForTabStripStateChanged();
 }
 
-void BrowserCommandController::OnTabChangedAt(tabs::TabInterface* tab,
-                                              TabChangeType change_type) {
-  if (change_type == TabChangeType::kBlockedOnly) {
-    PrintingStateChanged();
-    FullscreenStateChanged();
-    UpdateCommandsForFind();
-    UpdateCommandsForMediaRouter();
-  }
+void BrowserCommandController::OnTabBlockedStateChanged(
+    tabs::TabInterface* tab) {
+  PrintingStateChanged();
+  FullscreenStateChanged();
+  UpdateCommandsForFind();
+  UpdateCommandsForMediaRouter();
 }
 
 void BrowserCommandController::OnTabPinnedStateChanged(tabs::TabInterface* tab,
@@ -2860,6 +2860,22 @@ void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
         action->SetVisible(glic::GlicEnabling::ShouldShowGlicButton(profile()));
       }
     }
+  }
+
+  const bool show_skills_and_extensions =
+      profile()->IsRegularProfile() &&
+      skills::SkillsServiceFactory::IsSkillsEnabledForProfile(profile()) &&
+      base::FeatureList::IsEnabled(features::kSkillsAndExtensionsAppMenu) &&
+      glic::GlicEnabling::IsEnabledForProfile(profile());
+  if (auto* const action =
+          FindAction(kActionSkillsAndExtensionsSubmenu, browser_)) {
+    action->SetVisible(show_skills_and_extensions);
+  }
+  if (auto* const action = FindAction(kActionExtensionsSubmenu, browser_)) {
+    action->SetVisible(!show_skills_and_extensions);
+  }
+  if (auto* const action = FindAction(kActionFindExtensions, browser_)) {
+    action->SetVisible(!show_skills_and_extensions);
   }
 }
 

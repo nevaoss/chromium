@@ -322,6 +322,7 @@ Aðeins einstaklingar sem eru með aðgangsorðið þitt geta lesið dulkóðuð
 <translation id="2297822946037605517">Deila þessari síðu</translation>
 <translation id="230115972905494466">Engin samhæf tæki fundust</translation>
 <translation id="2305798319182970276">Eyddu ferlinum með því að ýta á hnapp</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> þarf heimild til að fá aðgang að notandaviðmótstækjum (HID) fyrir þetta vefsvæði.</translation>
 <translation id="2316129865977710310">Nei, takk</translation>
 <translation id="232137538351753795">Strjúktu frá vinstri brún til að fara til baka</translation>
 <translation id="2323763861024343754">Geymsla vefsvæða</translation>
@@ -1691,6 +1692,7 @@ Til að breyta þessari stillingu skaltu <ph name="BEGIN_LINK" />eyða Chrome-g�
 <translation id="7608245556672190037">Val um að taka þátt í Chrome Finds opið til fulls</translation>
 <translation id="7612619742409846846">Innskráð(ur) á Google sem</translation>
 <translation id="7612989789287281429">Skráir þig inn…</translation>
+<translation id="7617512710641355143">Chrome er stýrt</translation>
 <translation id="7619072057915878432">Niðurhal á <ph name="FILE_NAME" /> mistókst vegna villu í netkerfi.</translation>
 <translation id="7626032353295482388">Velkomin(n) í Chrome</translation>
 <translation id="7628417132421583481">Opna Aðgangsorðastjórnun</translation>

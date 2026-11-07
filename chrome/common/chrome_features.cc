@@ -1214,7 +1214,12 @@ BASE_FEATURE(kHttpsFirstBalancedMode, base::FEATURE_ENABLED_BY_DEFAULT);
 // Automatically enables HTTPS-First Mode in a balanced configuration when
 // possible.
 BASE_FEATURE(kHttpsFirstBalancedModeAutoEnable,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 // Kill switch for crbug.com/40892208.
 BASE_FEATURE(kHttpsFirstModeForAdvancedProtectionUsers,
@@ -2137,8 +2142,8 @@ const base::FeatureParam<double> kSmartRestartLockBypassBeforeUnloadThreshold{
 BASE_FEATURE(kRelaunchWaitForParentProcess, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-// A feature to record the difference in the number of tabs and windows between
-// the last session and the current session on restart.
+// A feature to record the difference in the number of tabs, windows, and
+// profiles between the last session and the current session on restart.
 BASE_FEATURE(kRecordTabWindowDiffOnRestart, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 

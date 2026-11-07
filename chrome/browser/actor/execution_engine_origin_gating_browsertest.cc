@@ -146,7 +146,11 @@ constexpr std::string_view kSameSiteInitiatorHistogram =
 
 optimization_guide::proto::LocationRule* AddAllowlistedSiteToActorConfig(
     std::string_view domain,
-    optimization_guide::proto::AgentContainerConfig& config_proto) {
+    optimization_guide::proto::AgentContainerConfig& config_proto,
+    base::span<
+        const optimization_guide::proto::RuleMetadata::ActuationCapability>
+        capabilities = {
+            optimization_guide::proto::RuleMetadata::CAPABILITY_ALL}) {
   optimization_guide::proto::LocationRule* rule =
       config_proto.add_location_rules();
   optimization_guide::proto::Site* site =
@@ -154,8 +158,9 @@ optimization_guide::proto::LocationRule* AddAllowlistedSiteToActorConfig(
   site->set_protocol(optimization_guide::proto::Protocol::PROTOCOL_HTTPS);
   site->set_domain(domain);
   optimization_guide::proto::RuleMetadata* metadata = rule->mutable_metadata();
-  metadata->add_capabilities(
-      optimization_guide::proto::RuleMetadata::CAPABILITY_ALL);
+  for (auto capability : capabilities) {
+    metadata->add_capabilities(capability);
+  }
   metadata->add_accessible_resources(
       optimization_guide::proto::RuleMetadata::RESOURCE_SESSION);
   return rule;
@@ -178,6 +183,7 @@ class ExecutionEngineOriginGatingBrowserTestBase
       const std::vector<base::test::FeatureRef>& additional_disabled_features) {
     std::vector<base::test::FeatureRefAndParams> enabled_features = {
         {features::kGlic, {}},
+        {features::kGlicActor, {}},
         {features::kGlicActorPolicyControlExemption, {}},
         {kGlicCrossOriginNavigationGating,
          {
@@ -894,6 +900,7 @@ class ExecutionEngineOriginGatingUserPromptingBrowserTest
         /*enabled_features=*/
         {
             {features::kGlic, {}},
+            {features::kGlicActor, {}},
             {features::kGlicActorPolicyControlExemption, {}},
             {kGlicCrossOriginNavigationGating,
              {{
@@ -1854,6 +1861,37 @@ IN_PROC_BROWSER_TEST_F(ExecutionEngineOriginGatingBrowserTest,
   ExpectErrorResult(result, mojom::ActionResultCode::kUrlBlocked);
 }
 
+IN_PROC_BROWSER_TEST_F(ExecutionEngineOriginGatingBrowserTest,
+                       TaskPolicyConfig_PageActionToolGating) {
+  optimization_guide::proto::AgentContainerConfig config_proto;
+  AddAllowlistedSiteToActorConfig(
+      "example.com", config_proto,
+      {optimization_guide::proto::RuleMetadata::CAPABILITY_CLICK});
+
+  const GURL page_url =
+      embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), page_url));
+  OpenGlicAndCreateTask();
+
+  PerformActionsFuture click_result;
+  actor_keyed_service().PerformActions(
+      actor_task().id(),
+      ToRequestList(MakeClickRequest(*active_tab(), gfx::Point(1, 1))),
+      ActorTaskMetadata::WithAgentContainerConfigForTesting(config_proto),
+      click_result.GetCallback());
+  ExpectOkResult(click_result);
+
+  PerformActionsFuture scroll_result;
+  actor_keyed_service().PerformActions(
+      actor_task().id(),
+      ToRequestList(MakeScrollRequest(*main_frame(),
+                                      /*content_node_id=*/std::nullopt,
+                                      /*scroll_offset_x=*/0,
+                                      /*scroll_offset_y=*/50)),
+      ActorTaskMetadata(), scroll_result.GetCallback());
+  ExpectErrorResult(scroll_result, mojom::ActionResultCode::kUrlBlocked);
+}
+
 // If the actor container config would allow a navigation but some other
 // predicate would disallow it, it should be disallowed.
 IN_PROC_BROWSER_TEST_F(
@@ -2431,6 +2469,7 @@ class ExecutionEngineBlocklistDisabledBrowserTest
         /*enabled_features=*/
         {
             {features::kGlic, {}},
+            {features::kGlicActor, {}},
             {features::kGlicActorPolicyControlExemption, {}},
             {kGlicCrossOriginNavigationGating,
              {
@@ -2507,6 +2546,7 @@ class ExecutionEngineOriginGatingDarkLaunchBrowserTest
         /*enabled_features=*/
         {
             {features::kGlic, {}},
+            {features::kGlicActor, {}},
             {features::kGlicActorPolicyControlExemption, {}},
             {kGlicCrossOriginNavigationGating,
              {
@@ -2609,6 +2649,7 @@ class ExecutionEngineOriginGatingSlowResponseBrowserTest
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
         {
+            {features::kGlicActor, {}},
             {features::kGlicActorPolicyControlExemption, {}},
             {kActorPageStability, {{kActorPageStabilityTimeout.name, "300ms"}}},
             {kActorObservationDelay,

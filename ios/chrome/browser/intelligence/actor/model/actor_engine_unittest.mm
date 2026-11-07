@@ -17,13 +17,16 @@
 #import "components/actor/core/task_source_info.h"
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
+#import "components/origin_gating/core/decision_source.h"
+#import "components/origin_gating/core/gateable_event.h"
+#import "components/origin_gating/core/gating_decision.h"
 #import "components/origin_gating/core/origin_gating_checker.h"
 #import "components/origin_gating/core/origin_gating_configuration.h"
 #import "components/origin_gating/core/origin_gating_registration.h"
 #import "components/origin_gating/core/origin_gating_service.h"
-#import "components/origin_gating/core/types.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_task.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_web_state_policy_decider.h"
+#import "ios/chrome/browser/intelligence/actor/public/actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
@@ -47,6 +50,13 @@
 #import "net/base/apple/url_conversions.h"
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/platform_test.h"
+
+@interface EngineFakeInterventionDelegate
+    : NSObject <ActorTaskInterventionDelegate>
+@end
+
+@implementation EngineFakeInterventionDelegate
+@end
 
 namespace actor {
 namespace {
@@ -137,7 +147,18 @@ class MockActorEngineExecutionUpdatesDelegate
   bool on_will_execute_called_ = false;
 };
 
+enum class TestTool {
+  kClick = 1,
+};
+
 }  // namespace
+}  // namespace actor
+
+template <>
+const origin_gating::ToolDomain
+    origin_gating::ToolDomain::kInstance<actor::TestTool>{};
+
+namespace actor {
 
 // Test fixture for ActorEngine.
 class ActorEngineTest : public PlatformTest {
@@ -195,9 +216,7 @@ class ActorEngineTest : public PlatformTest {
   // Runs tasks until the current tool is executing. Returns false on timeout.
   [[nodiscard]] bool WaitForToolInvoking() {
     return base::test::RunUntil([this]() {
-      ToolController* controller = GetToolController();
-      return controller &&
-             controller->state() == ToolController::State::kInvoking;
+      return GetToolController()->state() == ToolController::State::kInvoking;
     });
   }
 
@@ -223,6 +242,19 @@ TEST_F(ActorEngineTest, ToolDelegateForwardingAndOwnership) {
   EXPECT_EQ(&tool_delegate->GetJournal(), journal_.get());
   EXPECT_EQ(&tool_delegate->GetToolFactory(), tool_factory_.get());
   EXPECT_NE(tool_delegate->GetActorTaskFormFillingHandler(), nullptr);
+}
+
+// Tests that setting an intervention delegate on `ActorTask` initializes the
+// form filling handler on `ActorEngine`.
+TEST_F(ActorEngineTest, SetInterventionDelegateForwarding) {
+  EngineFakeInterventionDelegate* delegate =
+      [[EngineFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  ToolDelegate* tool_delegate = engine_.get();
+  EXPECT_NE(tool_delegate->GetActorTaskFormFillingHandler(), nullptr);
+
+  task_->SetInterventionDelegate(nil);
 }
 
 // Tests that ToolDelegate InterruptFromTool and UninterruptFromTool change
@@ -376,6 +408,57 @@ TEST_F(ActorEngineTest, ActMultipleSuccess) {
   EXPECT_EQ(results.size(), 2U);
   EXPECT_TRUE(results[0].tool_result.IsOk());
   EXPECT_TRUE(results[1].tool_result.IsOk());
+  EXPECT_EQ(ToolController::State::kReady, GetToolController()->state());
+}
+
+// Tests that a failed tool creation leaves the `ToolController` ready for the
+// next `Act()`.
+TEST_F(ActorEngineTest, ActRecoversAfterToolCreationFailure) {
+  std::vector<std::unique_ptr<ActorToolRequest>> failing_actions;
+  // An action with no case set fails tool creation.
+  failing_actions.push_back(
+      std::make_unique<ActorToolRequest>(optimization_guide::proto::Action()));
+  base::test::TestFuture<std::vector<ActionResult>> failing_future;
+  engine_->Act(std::move(failing_actions), failing_future.GetCallback());
+
+  std::vector<ActionResult> failing_results = failing_future.Take();
+  ASSERT_EQ(1U, failing_results.size());
+  EXPECT_FALSE(failing_results[0].tool_result.IsOk());
+  EXPECT_EQ(ToolController::State::kReady, GetToolController()->state());
+
+  std::vector<std::unique_ptr<ActorToolRequest>> actions;
+  actions.push_back(MakeSuccessfulActorToolRequest());
+  base::test::TestFuture<std::vector<ActionResult>> future;
+  engine_->Act(std::move(actions), future.GetCallback());
+
+  std::vector<ActionResult> results = future.Take();
+  ASSERT_EQ(1U, results.size());
+  EXPECT_TRUE(results[0].tool_result.IsOk());
+  EXPECT_EQ(ToolController::State::kReady, GetToolController()->state());
+}
+
+// Tests that a failed tool validation leaves the `ToolController` ready for the
+// next `Act()`.
+TEST_F(ActorEngineTest, ActRecoversAfterToolValidationFailure) {
+  std::vector<std::unique_ptr<ActorToolRequest>> failing_actions;
+  failing_actions.push_back(MakeFailingActorToolRequest());
+  base::test::TestFuture<std::vector<ActionResult>> failing_future;
+  engine_->Act(std::move(failing_actions), failing_future.GetCallback());
+
+  std::vector<ActionResult> failing_results = failing_future.Take();
+  ASSERT_EQ(1U, failing_results.size());
+  EXPECT_FALSE(failing_results[0].tool_result.IsOk());
+  EXPECT_EQ(ToolController::State::kReady, GetToolController()->state());
+
+  std::vector<std::unique_ptr<ActorToolRequest>> actions;
+  actions.push_back(MakeSuccessfulActorToolRequest());
+  base::test::TestFuture<std::vector<ActionResult>> future;
+  engine_->Act(std::move(actions), future.GetCallback());
+
+  std::vector<ActionResult> results = future.Take();
+  ASSERT_EQ(1U, results.size());
+  EXPECT_TRUE(results[0].tool_result.IsOk());
+  EXPECT_EQ(ToolController::State::kReady, GetToolController()->state());
 }
 
 // Tests the helper method that maps the 1-based `next_action_index_` to the
@@ -798,7 +881,8 @@ TEST_F(ActorEngineOriginGatingTest, BlocksActionOnBlockedUrl) {
   checker_->ComputeGatingDecision(
       std::make_unique<origin_gating::GatingDecisionContext>(),
       origin_gating::GateableEvent(origin_gating::PageActionEvent{
-          .destination = GURL("https://malicious.com")}),
+          .destination = GURL("https://malicious.com"),
+          .tool = origin_gating::ClientTool(TestTool::kClick)}),
       future.GetCallback());
 
   const origin_gating::GatingDecision& decision = future.Get<1>();

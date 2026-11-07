@@ -27,8 +27,10 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/accessibility_notification_waiter.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test.h"
 #include "content/public/test/content_browser_test_utils.h"
+#include "content/public/test/test_utils.h"
 #include "content/shell/browser/shell.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -642,7 +644,7 @@ IN_PROC_BROWSER_TEST_P(
 }
 
 #if BUILDFLAG(IS_ANDROID)
-// Exhaustively verifies per-WebContents vs. global/process AXMode,
+// Exhaustively verifies per-WebContents vs. GetAccessibilityMode(),
 // ActiveAssistiveTech, and UMA histograms when Java
 // WebContentsAccessibilityImpl becomes ready on one WebContents across all
 // combinations of accessibility services, while other WebContents without Java
@@ -655,8 +657,8 @@ IN_PROC_BROWSER_TEST_F(
   // Enable platform activation, as it is turned off by default in browsertests.
   accessibility_state().SetActivationFromPlatformEnabled(true);
 
-  // Initially, neither global mode nor any WebContents has accessibility
-  // enabled.
+  // Initially, neither GetAccessibilityMode() nor any WebContents has
+  // accessibility enabled.
   ASSERT_EQ(accessibility_state().GetAccessibilityMode(), ui::AXMode());
   ASSERT_EQ(web_contents1().GetAccessibilityMode(), ui::AXMode());
   ASSERT_EQ(web_contents2().GetAccessibilityMode(), ui::AXMode());
@@ -676,7 +678,7 @@ IN_PROC_BROWSER_TEST_F(
       /*is_complex_accessibility_service_enabled=*/false,
       /*is_form_controls_candidate=*/false,
       /*is_on_screen_mode_candidate=*/false);
-  // Global GetAccessibilityMode() reflects the union across all WebContents
+  // GetAccessibilityMode() reflects the active mode across WebContents
   // (ui::kAXModeBasic), while web_contents2() and web_contents3() remain at
   // ui::AXMode().
   EXPECT_EQ(accessibility_state().GetAccessibilityMode(), ui::kAXModeBasic);
@@ -853,6 +855,163 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_EQ(web_contents2().GetAccessibilityMode(), ui::AXMode());
   EXPECT_EQ(web_contents1().GetAccessibilityMode(), ui::AXMode());
 }
+
+// Verifies that adding and removing a process-wide scoper while a WebContents
+// has screen reader mode active preserves GetAccessibilityMode() and
+// ActiveAssistiveTech().
+IN_PROC_BROWSER_TEST_F(ScopedAccessibilityModeTest,
+                       ProcessAndWebContentsScoperCoexistence) {
+  accessibility_state().SetActivationFromPlatformEnabled(true);
+
+  auto* wcax1 = new WebContentsAccessibilityAndroid(&web_contents1());
+  wcax1->SetBrowserAXMode(
+      /*env=*/nullptr,
+      /*is_known_screen_reader_enabled=*/true,
+      /*is_complex_accessibility_service_enabled=*/true,
+      /*is_form_controls_candidate=*/false,
+      /*is_on_screen_mode_candidate=*/false);
+
+  ASSERT_EQ(accessibility_state().GetAccessibilityMode(),
+            ui::kAXModeComplete | ui::AXMode::kScreenReader);
+  ASSERT_EQ(accessibility_state().ActiveAssistiveTech(),
+            ui::AssistiveTech::kTalkback);
+
+  // Add a process-wide basic scoper (e.g. from chrome://accessibility).
+  auto process_scoper =
+      accessibility_state().CreateScopedModeForProcess(ui::kAXModeBasic);
+
+  // GetAccessibilityMode() and ActiveAssistiveTech must still reflect TalkBack
+  // on web_contents1(), while web_contents2() receives kAXModeBasic.
+  EXPECT_EQ(accessibility_state().GetAccessibilityMode(),
+            ui::kAXModeComplete | ui::AXMode::kScreenReader);
+  EXPECT_EQ(accessibility_state().ActiveAssistiveTech(),
+            ui::AssistiveTech::kTalkback);
+  EXPECT_EQ(web_contents1().GetAccessibilityMode(),
+            ui::kAXModeComplete | ui::AXMode::kScreenReader);
+  EXPECT_EQ(web_contents2().GetAccessibilityMode(), ui::kAXModeBasic);
+
+  // Removing the process scoper must keep TalkBack active on web_contents1()
+  // and in GetAccessibilityMode(), while returning web_contents2() to AXMode().
+  process_scoper.reset();
+  EXPECT_EQ(accessibility_state().GetAccessibilityMode(),
+            ui::kAXModeComplete | ui::AXMode::kScreenReader);
+  EXPECT_EQ(accessibility_state().ActiveAssistiveTech(),
+            ui::AssistiveTech::kTalkback);
+  EXPECT_EQ(web_contents1().GetAccessibilityMode(),
+            ui::kAXModeComplete | ui::AXMode::kScreenReader);
+  EXPECT_EQ(web_contents2().GetAccessibilityMode(), ui::AXMode());
+}
+
+// Verifies that when the only WebContents with an active accessibility mode is
+// destroyed (closed), GetAccessibilityMode() and ActiveAssistiveTech() cleanly
+// reset to off/kNone via OnAnyModeChanged() even though ~WebContentsImpl()
+// detaches the WebContents from GetAllWebContents() before
+// ~WebContentsAccessibilityAndroid() destroys its ScopedAccessibilityMode.
+IN_PROC_BROWSER_TEST_F(ScopedAccessibilityModeTest,
+                       LastWebContentsDestructionResetsAnyMode) {
+  accessibility_state().SetActivationFromPlatformEnabled(true);
+
+  Shell* extra_shell = CreateBrowser();
+  WebContents* extra_wc = extra_shell->web_contents();
+
+  auto* wcax_extra = new WebContentsAccessibilityAndroid(extra_wc);
+  wcax_extra->SetBrowserAXMode(
+      /*env=*/nullptr,
+      /*is_known_screen_reader_enabled=*/true,
+      /*is_complex_accessibility_service_enabled=*/true,
+      /*is_form_controls_candidate=*/false,
+      /*is_on_screen_mode_candidate=*/false);
+
+  ASSERT_EQ(accessibility_state().GetAccessibilityMode(),
+            ui::kAXModeComplete | ui::AXMode::kScreenReader);
+  ASSERT_EQ(accessibility_state().ActiveAssistiveTech(),
+            ui::AssistiveTech::kTalkback);
+
+  // Close the Shell, synchronously destroying `extra_wc` and `wcax_extra`.
+  extra_shell->Close();
+
+  EXPECT_EQ(accessibility_state().GetAccessibilityMode(), ui::AXMode());
+  EXPECT_EQ(accessibility_state().ActiveAssistiveTech(),
+            ui::AssistiveTech::kNone);
+}
+
+// Verifies that when WebContentsAccessibilityAndroid::SetBrowserAXMode enables
+// accessibility on an outer WebContents, attached inner WebContents (such as
+// SlimWebViewGuest <webview> instances) also receive the AXMode whether they
+// attach before or after SetBrowserAXMode is called.
+IN_PROC_BROWSER_TEST_F(
+    ScopedAccessibilityModeTest,
+    AndroidWebContentsScopedAXMode_PropagatesToInnerWebContents) {
+  GURL url("data:text/html,<iframe></iframe><iframe></iframe>");
+  ASSERT_TRUE(NavigateToURL(shell(), url));
+
+  // If the Android framework / AutofillManager on the device initialized
+  // WebContentsAccessibilityImpl during SetUpOnMainThread or navigation, reset
+  // its renderer accessibility scoper so we start from a clean ui::AXMode().
+  for (WebContentsImpl* wc : WebContentsImpl::GetAllWebContents()) {
+    if (auto* wcax = static_cast<WebContentsAccessibilityAndroid*>(
+            wc->GetPrimaryMainFrame()
+                ->AccessibilityGetWebContentsAccessibility())) {
+      wcax->DisableRendererAccessibility(/*env=*/nullptr);
+    }
+  }
+  accessibility_state().SetActivationFromPlatformEnabled(true);
+
+  // Case 1: Attach an inner WebContents BEFORE SetBrowserAXMode is called on
+  // the outer WebContents.
+  WebContents* inner_before =
+      CreateAndAttachInnerContents(ChildFrameAt(&web_contents1(), 0));
+  ASSERT_TRUE(inner_before);
+  EXPECT_EQ(web_contents1().GetAccessibilityMode(), ui::AXMode());
+  EXPECT_EQ(inner_before->GetAccessibilityMode(), ui::AXMode());
+
+  auto* wcax1 = static_cast<WebContentsAccessibilityAndroid*>(
+      static_cast<WebContentsImpl*>(&web_contents1())
+          ->GetPrimaryMainFrame()
+          ->AccessibilityGetWebContentsAccessibility());
+  if (!wcax1) {
+    wcax1 = new WebContentsAccessibilityAndroid(&web_contents1());
+  }
+  wcax1->SetBrowserAXMode(
+      /*env=*/nullptr,
+      /*is_known_screen_reader_enabled=*/true,
+      /*is_complex_accessibility_service_enabled=*/true,
+      /*is_form_controls_candidate=*/false,
+      /*is_on_screen_mode_candidate=*/false);
+
+  const ui::AXMode expected_mode =
+      ui::kAXModeComplete | ui::AXMode::kScreenReader;
+  EXPECT_EQ(web_contents1().GetAccessibilityMode(), expected_mode);
+  EXPECT_EQ(inner_before->GetAccessibilityMode(), expected_mode);
+
+  // Case 2: Attach an inner WebContents AFTER SetBrowserAXMode was already
+  // called on the outer WebContents (e.g. SlimWebViewGuest attaching after the
+  // outer WebUI initializes accessibility).
+  WebContents* inner_after =
+      CreateAndAttachInnerContents(ChildFrameAt(&web_contents1(), 1));
+  ASSERT_TRUE(inner_after);
+  EXPECT_EQ(inner_after->GetAccessibilityMode(), expected_mode);
+
+  // Updating the outer WebContents AXMode also updates all attached inner
+  // WebContents.
+  wcax1->SetBrowserAXMode(
+      /*env=*/nullptr,
+      /*is_known_screen_reader_enabled=*/false,
+      /*is_complex_accessibility_service_enabled=*/false,
+      /*is_form_controls_candidate=*/true,
+      /*is_on_screen_mode_candidate=*/false);
+  EXPECT_EQ(web_contents1().GetAccessibilityMode(), ui::kAXModeFormControls);
+  EXPECT_EQ(inner_before->GetAccessibilityMode(), ui::kAXModeFormControls);
+  EXPECT_EQ(inner_after->GetAccessibilityMode(), ui::kAXModeFormControls);
+
+  // Disabling renderer accessibility on the outer WebContents resets both the
+  // outer and inner WebContents modes.
+  wcax1->DisableRendererAccessibility(/*env=*/nullptr);
+  EXPECT_EQ(web_contents1().GetAccessibilityMode(), ui::AXMode());
+  EXPECT_EQ(inner_before->GetAccessibilityMode(), ui::AXMode());
+  EXPECT_EQ(inner_after->GetAccessibilityMode(), ui::AXMode());
+}
 #endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace content
+

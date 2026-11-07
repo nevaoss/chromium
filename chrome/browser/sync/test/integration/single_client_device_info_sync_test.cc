@@ -15,6 +15,7 @@
 #include "chrome/browser/metrics/chrome_metrics_service_accessor.h"
 #include "chrome/browser/metrics/testing/metrics_consent_override.h"
 #include "chrome/browser/personal_context/personal_context_eligibility_service_factory.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/device_info_sync_service_factory.h"
 #include "chrome/browser/sync/test/integration/bookmarks_helper.h"
@@ -50,7 +51,9 @@
 #include "components/sync_device_info/device_info_util.h"
 #include "components/sync_device_info/device_name_util.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_launcher.h"
+#include "google_apis/gaia/gaia_urls.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
@@ -410,7 +413,7 @@ IN_PROC_BROWSER_TEST_P(SingleClientDeviceInfoSyncTestWithServerDeterminedName,
 
   // Get the remote device info.
   const syncer::DeviceInfo* remote_device =
-      GetDeviceInfoTracker()->GetDeviceInfo(CacheGuidForSuffix(1));
+      GetDeviceInfoTracker()->GetChromeDeviceInfo(CacheGuidForSuffix(1));
   ASSERT_TRUE(remote_device);
   EXPECT_EQ(remote_device->server_determined_model_name(),
             kServerDeterminedModelName);
@@ -507,7 +510,7 @@ IN_PROC_BROWSER_TEST_P(SingleClientDeviceInfoSyncTestWithPersonalContext,
   // Verify that the local DeviceInfo in the tracker contains the personal
   // context info.
   const syncer::DeviceInfo* local_device =
-      GetDeviceInfoTracker()->GetDeviceInfo(GetLocalCacheGuid());
+      GetDeviceInfoTracker()->GetChromeDeviceInfo(GetLocalCacheGuid());
   ASSERT_TRUE(local_device);
   ASSERT_TRUE(local_device->personal_context_info().has_value());
   EXPECT_EQ(local_device->personal_context_info()->serialized_tink_keyset,
@@ -519,7 +522,7 @@ IN_PROC_BROWSER_TEST_P(SingleClientDeviceInfoSyncTestWithPersonalContext,
   ASSERT_TRUE(SetupSync());
 
   const syncer::DeviceInfo* local_device =
-      GetDeviceInfoTracker()->GetDeviceInfo(GetLocalCacheGuid());
+      GetDeviceInfoTracker()->GetChromeDeviceInfo(GetLocalCacheGuid());
   ASSERT_TRUE(local_device);
 
   // Clear existing private key from prefs to simulate first-time generation.
@@ -569,7 +572,7 @@ IN_PROC_BROWSER_TEST_P(SingleClientDeviceInfoSyncTestWithPersonalContext,
                            ModelEntryHasCacheGuid(CacheGuidForSuffix(1))));
 
   const syncer::DeviceInfo* remote_device =
-      GetDeviceInfoTracker()->GetDeviceInfo(CacheGuidForSuffix(1));
+      GetDeviceInfoTracker()->GetChromeDeviceInfo(CacheGuidForSuffix(1));
   ASSERT_TRUE(remote_device);
   ASSERT_TRUE(remote_device->personal_context_info().has_value());
   EXPECT_EQ(remote_device->personal_context_info()->serialized_tink_keyset,
@@ -1150,6 +1153,10 @@ IN_PROC_BROWSER_TEST_P(
   signin::MakeAccountAvailable(identity_manager,
                                options.Build(GetClient(0)->GetEmailForAccount(
                                    SyncTestAccount::kDefaultAccount)));
+  // Signing in on the web sets Gaia cookies. It must outlive the PRE_ test.
+  ASSERT_TRUE(content::SetCookie(
+      GetProfile(0), GaiaUrls::GetInstance()->secure_google_url(),
+      "SAPISID=fake; Secure; Domain=.google.com; Max-Age=86400"));
 }
 
 // TODO(crbug.com/483936092): signin::MakeAccountAvailable() (needed by the PRE_

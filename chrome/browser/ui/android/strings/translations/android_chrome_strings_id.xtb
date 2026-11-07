@@ -322,6 +322,7 @@ Hanya orang yang memiliki frasa sandi Anda yang dapat membaca data terenkripsi A
 <translation id="2297822946037605517">Bagikan halaman ini</translation>
 <translation id="230115972905494466">Tidak ada perangkat yang kompatibel</translation>
 <translation id="2305798319182970276">Hapus histori Anda dengan sekali ketuk</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> memerlukan izin guna mengakses perangkat antarmuka manusia (HID) untuk situs ini.</translation>
 <translation id="2316129865977710310">Lain kali</translation>
 <translation id="232137538351753795">Geser dari tepi kiri untuk kembali</translation>
 <translation id="2323763861024343754">Penyimpanan situs</translation>
@@ -1691,6 +1692,7 @@ Untuk mengubah setelan ini, <ph name="BEGIN_LINK" />hapus data Chrome di akun An
 <translation id="7608245556672190037">Pilihan untuk mengaktifkan Chrome Finds terbuka sepenuhnya</translation>
 <translation id="7612619742409846846">Login ke Google sebagai</translation>
 <translation id="7612989789287281429">Memproses login Anda…</translation>
+<translation id="7617512710641355143">Chrome dikelola</translation>
 <translation id="7619072057915878432">Download <ph name="FILE_NAME" /> gagal karena kesalahan jaringan.</translation>
 <translation id="7626032353295482388">Selamat Datang di Chrome</translation>
 <translation id="7628417132421583481">Buka Pengelola Sandi</translation>

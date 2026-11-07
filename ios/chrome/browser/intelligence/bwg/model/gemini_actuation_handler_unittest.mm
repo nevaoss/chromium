@@ -13,9 +13,10 @@
 #import "ios/chrome/browser/intelligence/actor/model/actor_browser_agent.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_service.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_service_factory.h"
-#import "ios/chrome/browser/intelligence/actor/public/actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_updates_observer.h"
+#import "ios/chrome/browser/intelligence/actor/test/fake_actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_actuation_data_types.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_chat_message_data_types.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
@@ -29,29 +30,6 @@
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/gtest_mac.h"
 #import "testing/platform_test.h"
-
-@interface FakeActuationInterventionDelegate
-    : NSObject <ActorTaskInterventionDelegate>
-
-@property(nonatomic, assign) BOOL requestInterventionCalled;
-@property(nonatomic, copy) NSString* promptTitle;
-@property(nonatomic, copy) void (^completionHandler)(void);
-
-@end
-
-@implementation FakeActuationInterventionDelegate
-
-- (void)actorTask:(actor::ActorTaskId)taskID
-    requestUserInterventionWithTitle:(NSString*)title
-                            subtitle:(NSString*)subtitle
-                          buttonText:(NSString*)buttonText
-                   completionHandler:(void (^)(void))completionHandler {
-  _requestInterventionCalled = YES;
-  _promptTitle = title;
-  _completionHandler = completionHandler;
-}
-
-@end
 
 namespace {
 
@@ -146,14 +124,14 @@ class GeminiActuationHandlerTest : public PlatformTest {
 
   // Registers a fake intervention delegate for `task_id` and dispatches a
   // `kConfirmation` yield request carrying `message`. The request stays pending
-  // until the returned delegate's `completionHandler` runs.
-  FakeActuationInterventionDelegate* DispatchConfirmationRequest(
+  // until the returned delegate's completion handler runs.
+  FakeActorTaskInterventionDelegate* DispatchConfirmationRequest(
       GeminiActuationHandler* handler,
       actor::ActorTaskId task_id,
       NSString* message,
       base::test::TestFuture<GeminiActuationResponse*>& future) {
-    FakeActuationInterventionDelegate* delegate =
-        [[FakeActuationInterventionDelegate alloc] init];
+    FakeActorTaskInterventionDelegate* delegate =
+        [[FakeActorTaskInterventionDelegate alloc] init];
     actor_service_->SetTaskInterventionDelegate(task_id, delegate);
     [handler dispatchActuationRequest:CreateConfirmationRequest(message)
                             forTaskID:task_id
@@ -161,7 +139,7 @@ class GeminiActuationHandlerTest : public PlatformTest {
     // `ActorTask` posts the prompt; wait until the prompt is delivered or the
     // request is answered.
     EXPECT_TRUE(base::test::RunUntil([&]() {
-      return delegate.requestInterventionCalled || future.IsReady();
+      return delegate.requestConfirmationCalled || future.IsReady();
     }));
     return delegate;
   }
@@ -203,6 +181,47 @@ TEST_F(GeminiActuationHandlerTest, CreateTask) {
   GeminiActuationHandler* handler = CreateHandler();
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
   EXPECT_FALSE(task_id.is_null());
+}
+
+// Test that chat messages are not consumed when there is no task.
+TEST_F(GeminiActuationHandlerTest, HandleChatMessageRequest_NoTask) {
+  GeminiActuationHandler* handler = CreateHandler();
+  GeminiChatMessageRequest* request =
+      [[GeminiChatMessageRequest alloc] initWithText:@"Hello"
+                                           sessionID:@"session_id"
+                                      conversationID:@"conversation_id"];
+  base::test::TestFuture<GeminiChatMessageResponse*> future;
+  base::test::TestFuture<GeminiChatMessageResponse*>* future_ptr = &future;
+  [handler handleChatMessageRequest:request
+                         completion:^(GeminiChatMessageResponse* response) {
+                           future_ptr->SetValue(response);
+                         }];
+  ASSERT_TRUE(future.IsReady());
+  GeminiChatMessageResponse* response = future.Get();
+  ASSERT_NE(nil, response);
+  EXPECT_FALSE(response.shouldConsume);
+}
+
+// Test that chat messages are not consumed while a task is active but has no
+// pending clarification request.
+TEST_F(GeminiActuationHandlerTest, HandleChatMessageRequest_ActiveTask) {
+  GeminiActuationHandler* handler = CreateHandler();
+  actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
+  ASSERT_FALSE(task_id.is_null());
+  GeminiChatMessageRequest* request =
+      [[GeminiChatMessageRequest alloc] initWithText:@"Hello"
+                                           sessionID:@"session_id"
+                                      conversationID:@"conversation_id"];
+  base::test::TestFuture<GeminiChatMessageResponse*> future;
+  base::test::TestFuture<GeminiChatMessageResponse*>* future_ptr = &future;
+  [handler handleChatMessageRequest:request
+                         completion:^(GeminiChatMessageResponse* response) {
+                           future_ptr->SetValue(response);
+                         }];
+  ASSERT_TRUE(future.IsReady());
+  GeminiChatMessageResponse* response = future.Get();
+  ASSERT_NE(nil, response);
+  EXPECT_FALSE(response.shouldConsume);
 }
 
 // Tests that `dispatchActuationRequest` correctly injects the active tab ID
@@ -620,16 +639,16 @@ TEST_F(GeminiActuationHandlerTest,
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
 
   base::test::TestFuture<GeminiActuationResponse*> future;
-  FakeActuationInterventionDelegate* delegate = DispatchConfirmationRequest(
+  FakeActorTaskInterventionDelegate* delegate = DispatchConfirmationRequest(
       handler, task_id, kConfirmationMessage, future);
 
-  EXPECT_TRUE(delegate.requestInterventionCalled);
-  EXPECT_NSEQ(kConfirmationMessage, delegate.promptTitle);
+  EXPECT_TRUE(delegate.requestConfirmationCalled);
+  EXPECT_NSEQ(kConfirmationMessage, delegate.confirmationTitle);
   // The request stays pending until the user answers.
   EXPECT_FALSE(future.IsReady());
-  ASSERT_NE(nil, delegate.completionHandler);
+  ASSERT_TRUE(delegate.hasPendingUserIntervention);
 
-  delegate.completionHandler();
+  [delegate runUserInterventionCompletion];
 
   ExpectConfirmedResponse(future.Get());
 }
@@ -642,14 +661,14 @@ TEST_F(GeminiActuationHandlerTest,
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
 
   base::test::TestFuture<GeminiActuationResponse*> future;
-  FakeActuationInterventionDelegate* delegate =
+  FakeActorTaskInterventionDelegate* delegate =
       DispatchConfirmationRequest(handler, task_id, /*message=*/nil, future);
 
   GeminiActuationResponse* response = future.Get();
   ASSERT_NE(nil, response);
   EXPECT_EQ(actor::mojom::ActionResultCode::kArgumentsInvalid,
             response.resultCode);
-  EXPECT_FALSE(delegate.requestInterventionCalled);
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
   EXPECT_NE(std::nullopt, actor_service_->GetActiveTaskState());
 }
 
@@ -680,16 +699,16 @@ TEST_F(GeminiActuationHandlerTest,
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
 
   base::test::TestFuture<GeminiActuationResponse*> future;
-  FakeActuationInterventionDelegate* delegate = DispatchConfirmationRequest(
+  FakeActorTaskInterventionDelegate* delegate = DispatchConfirmationRequest(
       handler, task_id, kConfirmationMessage, future);
-  ASSERT_NE(nil, delegate.completionHandler);
+  ASSERT_TRUE(delegate.hasPendingUserIntervention);
 
   // Close the actuated tab while the confirmation is pending.
   fake_web_state_ = nullptr;
   browser_->GetWebStateList()->CloseWebStateAt(
       0, WebStateList::ClosingReason::kUserAction);
 
-  delegate.completionHandler();
+  [delegate runUserInterventionCompletion];
 
   GeminiActuationResponse* response = future.Get();
   ASSERT_NE(nil, response);
@@ -704,11 +723,11 @@ TEST_F(GeminiActuationHandlerTest,
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
 
   base::test::TestFuture<GeminiActuationResponse*> future;
-  FakeActuationInterventionDelegate* delegate = DispatchConfirmationRequest(
+  FakeActorTaskInterventionDelegate* delegate = DispatchConfirmationRequest(
       handler, task_id, kConfirmationMessage, future);
-  ASSERT_NE(nil, delegate.completionHandler);
+  ASSERT_TRUE(delegate.hasPendingUserIntervention);
 
-  delegate.completionHandler();
+  [delegate runUserInterventionCompletion];
   ExpectConfirmedResponse(future.Get());
 
   // A resolution signal with no pending confirmation must be ignored rather
@@ -764,7 +783,7 @@ TEST_F(GeminiActuationHandlerTest,
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
 
   base::test::TestFuture<GeminiActuationResponse*> future1;
-  FakeActuationInterventionDelegate* delegate = DispatchConfirmationRequest(
+  FakeActorTaskInterventionDelegate* delegate = DispatchConfirmationRequest(
       handler, task_id, kConfirmationMessage, future1);
 
   GeminiActuationRequest* request2 =
@@ -782,8 +801,8 @@ TEST_F(GeminiActuationHandlerTest,
             response2.resultCode);
 
   EXPECT_FALSE(future1.IsReady());
-  ASSERT_NE(nil, delegate.completionHandler);
-  delegate.completionHandler();
+  ASSERT_TRUE(delegate.hasPendingUserIntervention);
+  [delegate runUserInterventionCompletion];
 
   ExpectConfirmedResponse(future1.Get());
 }
@@ -797,7 +816,7 @@ TEST_F(
   actor::ActorTaskId task_id = [handler createTaskWithTitle:@"Test Task"];
 
   base::test::TestFuture<GeminiActuationResponse*> future1;
-  FakeActuationInterventionDelegate* delegate = DispatchConfirmationRequest(
+  FakeActorTaskInterventionDelegate* delegate = DispatchConfirmationRequest(
       handler, task_id, kConfirmationMessage, future1);
 
   base::test::TestFuture<GeminiActuationResponse*> future2;
@@ -812,8 +831,8 @@ TEST_F(
             response2.resultCode);
 
   EXPECT_FALSE(future1.IsReady());
-  ASSERT_NE(nil, delegate.completionHandler);
-  delegate.completionHandler();
+  ASSERT_TRUE(delegate.hasPendingUserIntervention);
+  [delegate runUserInterventionCompletion];
 
   ExpectConfirmedResponse(future1.Get());
 }

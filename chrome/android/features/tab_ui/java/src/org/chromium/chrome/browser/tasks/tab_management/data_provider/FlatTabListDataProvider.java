@@ -4,12 +4,16 @@
 
 package org.chromium.chrome.browser.tasks.tab_management.data_provider;
 
+import org.chromium.base.Token;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
+import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab.TabSelectionType;
+import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
@@ -53,6 +57,16 @@ public class FlatTabListDataProvider extends TabListDataProvider {
                     }
 
                     @Override
+                    public void didMoveTab(Tab tab, int newIndex, int curIndex) {
+                        // Grouped tab moves and intra-group reorders are handled by
+                        // mTabGroupObserver; moveTabItem reorders standalone tabs when matching the
+                        // active filter.
+                        if (tab.getTabGroupId() == null) {
+                            moveTabItem(tab.getId());
+                        }
+                    }
+
+                    @Override
                     public void didRemoveTabForClosure(Tab tab) {
                         removeTabItem(tab.getId());
                     }
@@ -63,15 +77,56 @@ public class FlatTabListDataProvider extends TabListDataProvider {
                     }
 
                     @Override
+                    public void tabClosureUndone(Tab tab) {
+                        // Restores the undone tab if it matches the filter, or no-ops otherwise.
+                        syncTabItem(tab);
+                        // For metrics.
+                        notifyTabClosureUndone(tab);
+                    }
+
+                    @Override
+                    public void tabClosureCommitted(Tab tab) {
+                        // For metrics.
+                        notifyTabClosureCommitted(tab);
+                    }
+
+                    @Override
                     public void restoreCompleted() {
                         requestDataReset();
                     }
 
-                    // TODO(crbug.com/562590772): Add incremental TabModelObserver and
-                    // TabGroupObserver callbacks for tab moves and selection.
+                    @Override
+                    public void didSelectTab(
+                            Tab tab, @TabSelectionType int type, @TabId int lastId) {
+                        selectTab(tab, /* prevSelectedTabId= */ lastId);
+                    }
+
+                    @Override
+                    public void didChangePinState(Tab tab) {
+                        updatePinState(tab);
+                    }
                 };
 
-        initObservers(tabModelObserver);
+        TabGroupObserver tabGroupObserver =
+                new TabGroupObserver() {
+                    @Override
+                    public void didMergeTabToGroup(Tab movedTab, boolean isDestinationTab) {
+                        syncTabItem(movedTab);
+                    }
+
+                    @Override
+                    public void didMoveWithinGroup(
+                            Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
+                        moveTabItem(movedTab.getId());
+                    }
+
+                    @Override
+                    public void didMoveTabOutOfGroup(Tab movedTab, Token oldTabGroupId) {
+                        syncTabItem(movedTab);
+                    }
+                };
+
+        initObservers(tabModelObserver, tabGroupObserver);
     }
 
     @Override

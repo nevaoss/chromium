@@ -101,12 +101,7 @@ std::optional<std::u16string> FormatShortDate(
   }
   DateInfo date_info;
   date_info.SetDate(DateToIsoString(year, month, day), u"YYYY-MM-DD");
-  std::optional<std::u16string> pattern =
-      data_util::LocalizePattern(u"MMM d", app_locale);
-  if (!pattern) {
-    return std::nullopt;
-  }
-  std::u16string formatted = date_info.GetIcuDate(*pattern, app_locale);
+  std::u16string formatted = date_info.GetIcuDate(app_locale);
   return formatted.empty() ? std::nullopt
                            : std::make_optional(std::move(formatted));
 }
@@ -1511,7 +1506,7 @@ Suggestion::Icon GetSuggestionIcon(MemoryDataType type, bool is_autofill_only) {
                               : Suggestion::Icon::kCardGenericSpark;
     case MemoryDataTypeCategory::kLoyaltyCard:
       // TODO(crbug.com/566940947): Add spark icon for loyalty cards.
-      return is_autofill_only ? Suggestion::Icon::kLoyalty
+      return is_autofill_only ? Suggestion::Icon::kLoyaltyPrograms
                               : Suggestion::Icon::kTextSpark;
     case MemoryDataTypeCategory::kVehicle:
       return is_autofill_only ? Suggestion::Icon::kVehicle

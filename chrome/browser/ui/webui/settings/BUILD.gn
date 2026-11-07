@@ -16,6 +16,7 @@ source_set("settings") {
     "browser_lifetime_handler.h",
     "captions_handler.h",
     "custom_home_pages_table_model.h",
+    "device_tab_visibility_handler.h",
     "dictation_handler.h",
     "downloads_handler.h",
     "font_handler.h",
@@ -136,8 +137,6 @@ source_set("settings") {
 }
 
 source_set("impl") {
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   sources = [
     "about_handler.cc",
     "accessibility_main_handler.cc",
@@ -145,6 +144,7 @@ source_set("impl") {
     "browser_lifetime_handler.cc",
     "captions_handler.cc",
     "custom_home_pages_table_model.cc",
+    "device_tab_visibility_handler.cc",
     "dictation_handler.cc",
     "downloads_handler.cc",
     "font_handler.cc",
@@ -247,6 +247,7 @@ source_set("impl") {
     "//chrome/browser/search_engines",
     "//chrome/browser/serial",
     "//chrome/browser/signin",
+    "//chrome/browser/skills",
     "//chrome/browser/ssl",
     "//chrome/browser/subresource_filter",
     "//chrome/browser/sync",
@@ -293,6 +294,7 @@ source_set("impl") {
     "//chrome/browser/ui/webui/management",
     "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
     "//chrome/browser/ui/webui/version",
+    "//chrome/browser/universal_optout",
     "//chrome/browser/usb",
     "//chrome/browser/user_education",
     "//chrome/browser/web_applications",
@@ -326,8 +328,11 @@ source_set("impl") {
     "//components/site_engagement/content",
     "//components/skills:features",
     "//components/strings:components_strings",
+    "//components/sync/base:features",
     "//components/sync/protocol",
     "//components/sync/service",
+    "//components/sync_device_info",
+    "//components/sync_sessions",
     "//components/tabs:public",
     "//components/universal_optout",
     "//components/user_manager:common",
@@ -473,7 +478,6 @@ source_set("browser_tests") {
     "//chrome/browser/ui/toolbar/pinned_toolbar",
     "//chrome/common",
     "//chrome/test:test_support",
-    "//chrome/test/base:test_browser_window",
     "//components/browsing_data/core",
     "//components/country_codes",
     "//components/password_manager/core/browser/actor_login:common",
@@ -522,6 +526,7 @@ if (!is_android) {
   source_set("unit_tests") {
     testonly = true
     sources = [
+      "device_tab_visibility_handler_unittest.cc",
       "dictation_handler_unittest.cc",
       "downloads_handler_unittest.cc",
       "hats_handler_unittest.cc",
@@ -634,6 +639,7 @@ if (!is_android) {
       "//components/regional_capabilities",
       "//components/search_engines",
       "//components/search_engines:test_support",
+      "//components/search_engines/search_engine_choice:switches",
       "//components/services/app_service",
       "//components/signin/core/browser:test_support",
       "//components/signin/public/base",
@@ -643,8 +649,11 @@ if (!is_android) {
       "//components/sync:test_support",
       "//components/sync/base",
       "//components/sync/service",
+      "//components/sync_device_info",
       "//components/sync_preferences",
       "//components/sync_preferences:features",
+      "//components/sync_sessions",
+      "//components/sync_sessions:test_support",
       "//components/tabs:test_support",
       "//components/ukm:test_support",
       "//components/version_info",

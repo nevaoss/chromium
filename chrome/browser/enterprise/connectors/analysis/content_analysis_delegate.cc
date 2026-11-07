@@ -19,18 +19,15 @@
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
+#include "base/notimplemented.h"
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/enterprise/connectors/analysis/content_analysis_dialog_controller.h"
 #include "chrome/browser/enterprise/connectors/analysis/content_analysis_dialog_controller_base.h"
-#include "chrome/browser/enterprise/connectors/analysis/copy_warning_delegate_tracker.h"
 #include "chrome/browser/enterprise/connectors/analysis/files_request_handler.h"
-#include "chrome/browser/enterprise/connectors/analysis/page_print_analysis_request.h"
-#include "chrome/browser/enterprise/connectors/analysis/page_print_request_handler.h"
 #include "chrome/browser/enterprise/connectors/common.h"
 #include "chrome/browser/enterprise/connectors/connectors_service.h"
 #include "chrome/browser/enterprise/connectors/referrer_cache_utils.h"
@@ -82,9 +79,13 @@
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/enterprise/connectors/analysis/copy_warning_delegate_tracker.h"
+#include "chrome/browser/enterprise/connectors/analysis/page_print_analysis_request.h"
+#include "chrome/browser/enterprise/connectors/analysis/page_print_request_handler.h"
 #include "chrome/browser/enterprise/data_protection/clipboard_toast_tracker.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
+#include "chrome/browser/ui/toasts/toast_features.h"
 #endif
 
 namespace enterprise_connectors {
@@ -193,9 +194,11 @@ ContentAnalysisDelegate::Result::Result(Result&& other) = default;
 ContentAnalysisDelegate::Result::~Result() = default;
 
 ContentAnalysisDelegate::~ContentAnalysisDelegate() {
+#if !BUILDFLAG(IS_ANDROID)
   if (web_contents_) {
     CopyWarningDelegateTracker::ClearIfMatches(web_contents_.get(), this);
   }
+#endif
 }
 
 void ContentAnalysisDelegate::BypassWarnings(
@@ -228,11 +231,13 @@ void ContentAnalysisDelegate::BypassWarnings(
     }
   }
 
+#if !BUILDFLAG(IS_ANDROID)
   // Mark the printed page as complying and report a warning bypass.
   if (page_warning_) {
     result_.page_result = true;
     page_print_request_handler_->ReportWarningBypass(user_justification);
   }
+#endif
 
   RunCallback();
 }
@@ -459,6 +464,12 @@ void ContentAnalysisDelegate::CreateForWebContents(
 
   // If the UI is enabled, create the modal dialog.
   if (show_in_progress_ui || show_fail_closed_ui) {
+#if BUILDFLAG(IS_ANDROID)
+    // TODO(crbug.com/428696170): Implement ContentAnalysisDialogControllerBase
+    // and its Create() for Android, then remove this branch. Until then, the
+    // analysis continues without UI.
+    NOTIMPLEMENTED();
+#else
     ContentAnalysisDelegate* delegate_ptr = delegate.get();
     int files_count = delegate_ptr->data_.paths.size();
 
@@ -472,12 +483,13 @@ void ContentAnalysisDelegate::CreateForWebContents(
     content::WebContents* top_web_contents =
         guest_view::GuestViewBase::GetTopLevelWebContents(
             web_contents->GetResponsibleWebContents());
-    delegate_ptr->dialog_ = new ContentAnalysisDialogController(
+    delegate_ptr->dialog_ = ContentAnalysisDialogControllerBase::Create(
         std::move(delegate),
         delegate_ptr->data_.settings.cloud_or_local_settings
             .is_cloud_analysis(),
         top_web_contents, access_point, files_count, result);
     return;
+#endif  // BUILDFLAG(IS_ANDROID)
   }
 
   // If local client cannot be found, fail open on all the OS except on Windows
@@ -679,18 +691,27 @@ bool ContentAnalysisDelegate::ShowFinalResultInDialog() {
 #if !BUILDFLAG(IS_ANDROID)
     bool wait_for_verdict =
         data_.settings.block_until_verdict == BlockUntilVerdict::kBlock;
+    auto* tracker =
+        enterprise_data_protection::ClipboardToastTracker::GetForProfile(
+            profile_);
+    bool is_new_copy = creation_time_ > tracker->last_toast_time();
+    // Shows `toast_id`, unless it's already showing for the same copy.
+    auto maybe_show_toast = [&](ToastId toast_id) {
+      auto* toast_controller =
+          ToastController::MaybeGetForWebContents(web_contents_.get());
+      if (toast_controller && wait_for_verdict &&
+          (is_new_copy || toast_controller->GetCurrentToastId() != toast_id) &&
+          toast_controller->MaybeShowToast(ToastParams(toast_id))) {
+        tracker->set_last_toast_time(base::TimeTicks::Now());
+      }
+    };
     switch (final_result_) {
       case FinalContentAnalysisResult::WARNING:
         if (web_contents_) {
           // Set the delegate in the tracker so it can be found by the toast
           // controller later to bypass the copy warning.
           CopyWarningDelegateTracker::SetDelegate(web_contents_.get(), this);
-          auto* toast_controller =
-              ToastController::MaybeGetForWebContents(web_contents_.get());
-          if (toast_controller && wait_for_verdict) {
-            toast_controller->MaybeShowToast(
-                ToastParams(ToastId::kEnterpriseCopyWarning));
-          }
+          maybe_show_toast(ToastId::kEnterpriseCopyWarning);
           // Delay deleting the content analysis delegate until the toast is
           // clicked.
           return true;
@@ -705,21 +726,23 @@ bool ContentAnalysisDelegate::ShowFinalResultInDialog() {
         return false;
       case FinalContentAnalysisResult::SUCCESS:
         if (web_contents_) {
-          enterprise_data_protection::MaybeShowCopyToast(
-              profile_, web_contents_.get(),
-              enterprise_data_protection::CopyToastType::kAudit);
+          if (enterprise_data_protection::MaybeShowCopyToast(
+                  profile_, web_contents_.get(),
+                  enterprise_data_protection::CopyToastType::kAudit)) {
+            tracker->set_last_toast_time(base::TimeTicks::Now());
+          } else if (is_new_copy && !data_.image.empty() &&
+                     toast_features::IsEnabled(
+                         toast_features::kImageCopiedToast)) {
+            // The image is only copied now that the scan allowed it.
+            maybe_show_toast(ToastId::kImageCopied);
+          }
         }
         return false;
       // TODO(b/325455508): Add separate handling for fail-closed results.
       case FinalContentAnalysisResult::FAIL_CLOSED:
       case FinalContentAnalysisResult::FAILURE:
         if (web_contents_) {
-          auto* toast_controller =
-              ToastController::MaybeGetForWebContents(web_contents_.get());
-          if (toast_controller && wait_for_verdict) {
-            toast_controller->MaybeShowToast(
-                ToastParams(ToastId::kEnterpriseCopyBlocked));
-          }
+          maybe_show_toast(ToastId::kEnterpriseCopyBlocked);
         }
         return false;
       case FinalContentAnalysisResult::CANCELLED:
@@ -731,7 +754,7 @@ bool ContentAnalysisDelegate::ShowFinalResultInDialog() {
 #else
     // TODO(b/325455508): Add handling for copy trigger on Android later.
     return false;
-#endif
+#endif  // !BUILDFLAG(IS_ANDROID)
   }
 
   if (!dialog_) {
@@ -760,6 +783,7 @@ bool ContentAnalysisDelegate::CancelDialog() {
   return true;
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 void ContentAnalysisDelegate::PageRequestCallback(RequestHandlerResult result) {
   CHECK(page_print_request_handler_, base::NotFatalUntil::M161);
 
@@ -780,6 +804,7 @@ void ContentAnalysisDelegate::PageRequestCallback(RequestHandlerResult result) {
 
   MaybeCompleteScanRequest();
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 ContentAnalysisDelegate::UploadDataStatus
 ContentAnalysisDelegate::UploadData() {
@@ -968,12 +993,17 @@ void ContentAnalysisDelegate::PreparePageRequest() {
     // caller code doesn't interpret the print action as being blocked.
     result_.page_result = true;
   } else {
+#if BUILDFLAG(IS_ANDROID)
+    // Print scanning isn't supported on Android.
+    NOTREACHED();
+#else
     page_print_request_handler_ = PagePrintRequestHandler::Create(
         this, GetBinaryUploadService(), profile_, url_, data_.printer_name,
         page_content_type_, std::move(data_.page),
         base::BindOnce(&ContentAnalysisDelegate::PageRequestCallback,
                        weak_ptr_factory_.GetWeakPtr()));
     page_print_request_handler_->UploadData();
+#endif  // BUILDFLAG(IS_ANDROID)
   }
 }
 

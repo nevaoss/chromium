@@ -6201,6 +6201,13 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
 // eligible.
 TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
        PrivateInferenceNotice_DoesNotShowIfAutofillUiCantBeShown) {
+#if BUILDFLAG(IS_ANDROID)
+  // Disable the bottom sheet, so that the message is suppressed by
+  // `CanShowAutofillUi()` and not by the bottom sheet feature.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kAutofillAiPrivateInferenceNoticeBottomSheet);
+#endif  // BUILDFLAG(IS_ANDROID)
   EXPECT_CALL(autofill_driver(), CanShowAutofillUi)
       .WillRepeatedly(Return(false));
   SeeForm(/*may_run_model=*/false);
@@ -6226,6 +6233,12 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
 // eligible.
 TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
        TouchToFillAutofillSuggestion_DoesNotShowIfNotEligible) {
+#if BUILDFLAG(IS_ANDROID)
+  // The Android message is only shown if the bottom sheet is disabled.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kAutofillAiPrivateInferenceNoticeBottomSheet);
+#endif  // BUILDFLAG(IS_ANDROID)
   SeeForm(/*may_run_model=*/false);
 
   std::vector<Suggestion> suggestions = {
@@ -6244,6 +6257,31 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
                   SuggestionType::kAutofillAiPrivateInferenceNotice)));
   EXPECT_TRUE(external_delegate()->on_suggestions_returned_seen());
 }
+
+#if BUILDFLAG(IS_ANDROID)
+// Tests that the private inference notice is never shown as an Android message
+// if the bottom sheet feature is enabled, even if Touch To Fill isn't shown.
+TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
+       PrivateInferenceNotice_DoesNotShowMessageIfBottomSheetFeatureEnabled) {
+  base::test::ScopedFeatureList feature_list(
+      features::kAutofillAiPrivateInferenceNoticeBottomSheet);
+  SeeForm(/*may_run_model=*/false);
+
+  std::vector<Suggestion> suggestions = {
+      Suggestion(SuggestionType::kAutofillAiPrivateInferenceNotice)};
+  EXPECT_CALL(mock_ai_manager(), GetSuggestions).WillOnce(Return(suggestions));
+
+  EXPECT_CALL(touch_to_fill_autofill_delegate(), TryToShowTouchToFill)
+      .WillOnce(testing::Return(false));
+  EXPECT_CALL(autofill_client(), ShowAutofillAiPrivateInferenceNotice).Times(0);
+  TryToShowTouchToFill(passport_form(), passport_form().fields().front(),
+                       /*form_element_was_clicked=*/true);
+  EXPECT_THAT(external_delegate()->suggestions(),
+              ElementsAre(EqualsSuggestion(
+                  SuggestionType::kAutofillAiPrivateInferenceNotice)));
+  EXPECT_TRUE(external_delegate()->on_suggestions_returned_seen());
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -7841,7 +7879,10 @@ TEST_F(BrowserAutofillManagerTest,
       {"AutofillAi entity record types used", ""},
       {"AutofillAi entity types used", ""},
       {"BNPL used", "false"},
-      {"Time since last Autofill use", "42"}};
+      {"Time since last Autofill use", "42"},
+      {"GIC opt-in accepted", "false"},
+      {"Personal Intelligence available", "false"},
+      {"Origin of the website (eTLD+1)", "example.test"}};
   EXPECT_CALL(autofill_client(), TriggerPersonalizationAndTrustSurveys(
                                      Not(FillingProduct::kAddress), _))
       .Times(0);
@@ -7902,7 +7943,10 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
       {"AutofillAi entity record types used", ""},
       {"AutofillAi entity types used", ""},
       {"BNPL used", "false"},
-      {"Time since last Autofill use", "0"}};
+      {"Time since last Autofill use", "0"},
+      {"GIC opt-in accepted", "false"},
+      {"Personal Intelligence available", "false"},
+      {"Origin of the website (eTLD+1)", "example.test"}};
 
   // AutofillAi was not used, should trigger Address survey.
   EXPECT_CALL(autofill_client(), TriggerPersonalizationAndTrustSurveys(
@@ -7919,6 +7963,15 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
   FormSubmitted(response_data);
 
   Mock::VerifyAndClearExpectations(&autofill_client());
+
+  autofill_client().set_is_glic_consented(true);
+  NiceMock<personal_context::MockPersonalContextEligibilityService>
+      mock_eligibility_service;
+  ON_CALL(mock_eligibility_service, GetEligibilityState)
+      .WillByDefault(
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
+  autofill_client().set_personal_context_eligibility_service(
+      &mock_eligibility_service);
 
   // Fill the Autofill AI field.
   autofill_manager().FillOrPreviewField(
@@ -7958,7 +8011,10 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
       {"AutofillAi entity record types used", "PersonalContext"},
       {"AutofillAi entity types used", "Passport"},
       {"BNPL used", "false"},
-      {"Time since last Autofill use", "0"}};
+      {"Time since last Autofill use", "0"},
+      {"GIC opt-in accepted", "true"},
+      {"Personal Intelligence available", "true"},
+      {"Origin of the website (eTLD+1)", "example.test"}};
   EXPECT_CALL(autofill_client(), TriggerPersonalizationAndTrustSurveys(
                                      Not(FillingProduct::kAutofillAi), _))
       .Times(0);
@@ -7971,6 +8027,7 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
                   FillingProduct::kAutofillAi, expected_second_survey_data));
 
   FormSubmitted(response_data);
+  autofill_client().set_personal_context_eligibility_service(nullptr);
 }
 
 // Tests that the personalization survey is triggered when a credit card form is
@@ -8001,7 +8058,10 @@ TEST_F(BrowserAutofillManagerTest, PersonalizationAndTrust_CreditCard) {
       {"AutofillAi entity record types used", ""},
       {"AutofillAi entity types used", ""},
       {"BNPL used", "false"},
-      {"Time since last Autofill use", "0"}};
+      {"Time since last Autofill use", "0"},
+      {"GIC opt-in accepted", "false"},
+      {"Personal Intelligence available", "false"},
+      {"Origin of the website (eTLD+1)", "example.test"}};
   EXPECT_CALL(autofill_client(), TriggerPersonalizationAndTrustSurveys(
                                      Not(FillingProduct::kCreditCard), _))
       .Times(0);
@@ -8050,7 +8110,10 @@ TEST_F(BrowserAutofillManagerTest, PersonalizationAndTrust_CreditCard_Bnpl) {
       {"AutofillAi entity record types used", ""},
       {"AutofillAi entity types used", ""},
       {"BNPL used", "true"},
-      {"Time since last Autofill use", "0"}};
+      {"Time since last Autofill use", "0"},
+      {"GIC opt-in accepted", "false"},
+      {"Personal Intelligence available", "false"},
+      {"Origin of the website (eTLD+1)", "example.test"}};
   EXPECT_CALL(autofill_client(), TriggerPersonalizationAndTrustSurveys(
                                      Not(FillingProduct::kCreditCard), _))
       .Times(0);
@@ -8113,7 +8176,10 @@ TEST_F(BrowserAutofillManagerTest,
       {"AutofillAi entity record types used", ""},
       {"AutofillAi entity types used", ""},
       {"BNPL used", "false"},
-      {"Time since last Autofill use", "0"}};
+      {"Time since last Autofill use", "0"},
+      {"GIC opt-in accepted", "false"},
+      {"Personal Intelligence available", "false"},
+      {"Origin of the website (eTLD+1)", "example.test"}};
 
   // OTP was used and should take precedence over Address.
   EXPECT_CALL(autofill_client(), TriggerPersonalizationAndTrustSurveys(

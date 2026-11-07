@@ -177,6 +177,8 @@ source_set("impl") {
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_search",
     "//chrome/browser/favicon",
+    "//chrome/browser/feedback",
+    "//chrome/browser/feedback:feedback_enum",
     "//chrome/browser/glic",
     "//chrome/browser/history",
     "//chrome/browser/optimization_guide",
@@ -190,7 +192,6 @@ source_set("impl") {
     "//chrome/browser/sync",
     "//chrome/browser/tab_list",
     "//chrome/browser/themes",
-    "//chrome/browser/ui",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/contextual_search",
     "//chrome/browser/ui/omnibox",
@@ -295,7 +296,6 @@ source_set("ui") {
     ":mojo_bindings",
     ":mojom_traits",
     "//base",
-    "//chrome/browser/actor",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_search",
     "//chrome/browser/tab_list",
@@ -307,7 +307,6 @@ source_set("ui") {
     "//components/contextual_search:public",
     "//components/contextual_tasks/public:feature_list",
     "//components/contextual_tasks/public:query_contextualizer",
-    "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/prefs",
     "//components/signin/public/identity_manager",
     "//components/tabs:public",
@@ -377,9 +376,13 @@ source_set("user_data") {
     "//components/signin/public/identity_manager",
     "//components/tabs:public",
     "//content/public/browser",
+    "//extensions/buildflags",
     "//third_party/lens_server_proto:lens_overlay_proto",
     "//url",
   ]
+  if (enable_extensions_core) {
+    deps += [ "//extensions/browser" ]
+  }
   if (!is_android) {
     deps += [
       "//chrome/browser/ui/lens",
@@ -426,6 +429,7 @@ source_set("ui_impl") {
     "//chrome/browser/contextual_search",
     "//chrome/browser/devtools",
     "//chrome/browser/feature_engagement",
+    "//chrome/browser/feedback",
     "//chrome/browser/feedback:feedback_enum",
     "//chrome/browser/glic/browser_ui",
     "//chrome/browser/optimization_guide",
@@ -437,7 +441,6 @@ source_set("ui_impl") {
     "//chrome/browser/signin",
     "//chrome/browser/tab_list",
     "//chrome/browser/themes",
-    "//chrome/browser/ui",
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/color:color_headers",
@@ -651,6 +654,7 @@ if (!is_android) {
       ":user_data",
       "//base",
       "//base/test:test_support",
+      "//chrome/browser",
       "//chrome/browser:browser_process",
       "//chrome/browser/optimization_guide",
       "//chrome/browser/optimization_guide:test_support",
@@ -660,7 +664,6 @@ if (!is_android) {
       "//chrome/browser/search_engines",
       "//chrome/browser/signin",
       "//chrome/browser/tab_list",
-      "//chrome/browser/ui",
       "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/browser_window:create_browser_window",

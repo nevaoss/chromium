@@ -2181,7 +2181,14 @@ void AXObjectCacheImpl::RemoveSubtreeInternal(
       // **important**: this call must come before the node traversal remove
       // below since that could remove a child which would cause it to not point
       // to its image parent, making it impossible to notify the parent.
-      NotifyParentChildrenChanged(image_ax_object);
+      if (lifecycle_.GetState() ==
+          AXObjectCacheLifecycle::kProcessDeferredUpdates) {
+        if (AXObject* ancestor = InvalidateChildren(image_ax_object)) {
+          ancestor->ChildrenChangedWithCleanLayout();
+        }
+      } else {
+        NotifyParentChildrenChanged(image_ax_object);
+      }
     }
   }
 
@@ -3841,6 +3848,18 @@ void AXObjectCacheImpl::SerializeAXUpdatesIfNeeded(Document& document) {
   if (IsSerializationInFlight()) {
     // Another serialization is in flight. When it's finished, this method
     // will be called again.
+    return;
+  }
+
+  // Name computation requires a clean layout (see MayHaveHTMLLabel()), but
+  // layout cannot be updated here. Try to serialize in the next frame instead.
+  // The popup document, if any, is serialized at the same time as `document`,
+  // so the layout of both must be clean. See https://crbug.com/551990098.
+  Document* popup_document = GetPopupDocumentIfShowing();
+  if (document.Lifecycle().GetState() < DocumentLifecycle::kLayoutClean ||
+      (popup_document && popup_document->Lifecycle().GetState() <
+                             DocumentLifecycle::kLayoutClean)) {
+    ScheduleImmediateSerialization();
     return;
   }
 

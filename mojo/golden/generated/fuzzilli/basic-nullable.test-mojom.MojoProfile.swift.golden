@@ -10,8 +10,6 @@
 //     basic-nullable.test-mojom
 //
 
-private let mojoPrefix = "golden."
-
 ///
 /// Interfaces
 ///
@@ -30,9 +28,10 @@ extension ILType {
         ])
     fileprivate static let jsGoldenPrimaryRemoteWrapper: ILType = .object(
         ofGroup: "golden.PrimaryRemoteWrapper",
-        withMethods: ["close", "isBound", "associateAndPassReceiver"])
-    fileprivate static let jsGoldenPrimaryPendingReceiver: ILType = .object(
-        ofGroup: "golden.PrimaryPendingReceiver")
+        withMethods: [
+          "close",
+          "isBound",
+        ])
 
     // Observer
     fileprivate static let jsGoldenObserverCallbackRouter: ILType = .object(
@@ -43,15 +42,22 @@ extension ILType {
         ])
     fileprivate static let jsGoldenObserverCallbackRouterReceiverHelper: ILType = .object(
         ofGroup: "golden.ObserverCallbackRouterReceiverHelper",
-        withMethods: ["associateAndPassRemote", "closeBindings"])
-    fileprivate static let jsGoldenObserverRemote: ILType = .object(
-        ofGroup: "golden.ObserverRemote",
+        withMethods: [
+          "closeBindings",
+          "associateAndPassRemote",
+        ])
+    fileprivate static let jsGoldenObserverPendingAssociatedRemote: ILType = .object(
+        ofGroup: "golden.ObserverPendingAssociatedRemote",
         withProperties: ["$"])
     fileprivate static let jsGoldenObserverRemoteWrapper: ILType = .object(
         ofGroup: "golden.ObserverRemoteWrapper",
-        withMethods: ["close", "isBound", "associateAndPassReceiver"])
-    fileprivate static let jsGoldenObserverPendingReceiver: ILType = .object(
-        ofGroup: "golden.ObserverPendingReceiver")
+        withMethods: [
+          "close",
+          "isBound",
+          "associateAndPassReceiver",
+        ])
+    fileprivate static let jsGoldenObserverPendingAssociatedReceiver: ILType = .object(
+        ofGroup: "golden.ObserverPendingAssociatedReceiver")
     fileprivate static let jsGoldenObserverSendDelegateCallbackReceiver: ILType = .object(
         ofGroup: "GoldenObserverSendDelegateCallbackReceiver",
         withMethods: ["addListener"])
@@ -76,7 +82,7 @@ extension ObjectGroup {
                 .plain(.string),
             ] => .jsPromise(resolvingTo: .jsGoldenPrimary_GetMapValue_ResponseParams),
             "sendObserver": [
-                .either(.jsGoldenObserverRemote, .undefined),
+                .either(.jsGoldenObserverPendingAssociatedRemote, .undefined),
             ] => .undefined,
             "syncGetArrayValue": [
                 .plain(.jsFloatMojoArray),
@@ -96,16 +102,7 @@ extension ObjectGroup {
         methods: [
             "close": [] => .undefined,
             "isBound": [] => .boolean,
-            "associateAndPassReceiver": [] => .jsGoldenPrimaryPendingReceiver,
-        ]
-    )
-
-    fileprivate static let goldenPrimaryPendingReceiver = ObjectGroup(
-        name: "golden.PrimaryPendingReceiver",
-        instanceType: .jsGoldenPrimaryPendingReceiver,
-        properties: [:],
-        methods: [:]
-    )
+        ])
 
     // Observer
     fileprivate static let goldenObserverCallbackRouter = ObjectGroup(
@@ -123,10 +120,9 @@ extension ObjectGroup {
         instanceType: .jsGoldenObserverCallbackRouterReceiverHelper,
         properties: [:],
         methods: [
-            "associateAndPassRemote": [] => .jsGoldenObserverRemote,
             "closeBindings": [] => .undefined,
-        ]
-    )
+            "associateAndPassRemote": [] => .jsGoldenObserverPendingAssociatedRemote,
+        ])
 
     fileprivate static let goldenObserverSendDelegateCallbackReceiver = ObjectGroup(
         name: "GoldenObserverSendDelegateCallbackReceiver",
@@ -143,9 +139,9 @@ extension ObjectGroup {
             ] => .integer,
         ])
 
-    fileprivate static let goldenObserverRemote = ObjectGroup(
-        name: "golden.ObserverRemote",
-        instanceType: .jsGoldenObserverRemote,
+    fileprivate static let goldenObserverPendingAssociatedRemote = ObjectGroup(
+        name: "golden.ObserverPendingAssociatedRemote",
+        instanceType: .jsGoldenObserverPendingAssociatedRemote,
         properties: ["$": .jsGoldenObserverRemoteWrapper],
         methods: [:]
     )
@@ -157,13 +153,12 @@ extension ObjectGroup {
         methods: [
             "close": [] => .undefined,
             "isBound": [] => .boolean,
-            "associateAndPassReceiver": [] => .jsGoldenObserverPendingReceiver,
-        ]
-    )
+            "associateAndPassReceiver": [] => .jsGoldenObserverPendingAssociatedReceiver,
+        ])
 
-    fileprivate static let goldenObserverPendingReceiver = ObjectGroup(
-        name: "golden.ObserverPendingReceiver",
-        instanceType: .jsGoldenObserverPendingReceiver,
+    fileprivate static let goldenObserverPendingAssociatedReceiver = ObjectGroup(
+        name: "golden.ObserverPendingAssociatedReceiver",
+        instanceType: .jsGoldenObserverPendingAssociatedReceiver,
         properties: [:],
         methods: [:]
     )
@@ -354,10 +349,12 @@ private let MojoString_Uint64MojoMapGenerator = CodeGenerator(
 ///
 /// Generators
 ///
-// TODO(crbug.com/500386713) Consider using mojoBuiltins or another list instead of regex
+/// Names of every ObjectGroup registered by this profile.
+private let mojoTargetGroups = Set(mojoObjectGroups.map { $0.name })
+
 private func isTargetObject(type: ILType) -> Bool {
     guard type.Is(.object()), let group = type.group else { return false }
-    return group.starts(with: mojoPrefix)
+    return mojoTargetGroups.contains(group)
 }
 
 /// Mojo variant of the builtin `MethodCallGenerator` that operates only on
@@ -430,6 +427,26 @@ private let MojoGoldenObserverRouterListenerGenerator = CodeGenerator(
     b.callMethod("addListener", on: listenerHost, withArgs: [callback])
 }
 
+/// Every ObjectGroup registered by this profile. Also used by `isTargetObject`
+/// to decide which variables the Mojo generators operate on.
+private let mojoObjectGroups: [ObjectGroup] = [
+    .goldenPrimaryRemote,
+    .goldenPrimaryRemoteWrapper,
+    .goldenPrimaryPendingReceiver,
+    .goldenObserverCallbackRouter,
+    .goldenObserverCallbackRouterReceiverHelper,
+    .goldenObserverRemote,
+    .goldenObserverRemoteWrapper,
+    .goldenObserverPendingReceiver,
+    .goldenObserverSendDelegateCallbackReceiver,
+    .goldenSimpleStruct,
+    .goldenToken,
+    .goldenPrimaryGetArrayValueResponseParams,
+    .goldenPrimaryGetMapValueResponseParams,
+    .goldenPrimarySyncGetArrayValueResponseParams,
+    .goldenPrimarySyncGetMapValueResponseParams,
+] + commonMojoObjectGroups
+
 private let mojoBuiltins: [String: ILType] = [
     /// Profiles declare this method, a wrapper method around `getRemote` that follows
     /// the Singleton pattern, in `codePrefix`. This method ensures: (1) `getRemote`
@@ -496,23 +513,7 @@ let mojoPrimaryProfile = Profile(
         "ExplorationMutator", "ProbingMutator", "PropertyAccessorMutator"
     ],
     additionalBuiltins: mojoBuiltins.merging(commonMojoBuiltins) { (existing, _) in existing },
-    additionalObjectGroups: [
-        .goldenPrimaryRemote,
-        .goldenPrimaryRemoteWrapper,
-        .goldenPrimaryPendingReceiver,
-        .goldenObserverCallbackRouter,
-        .goldenObserverCallbackRouterReceiverHelper,
-        .goldenObserverRemote,
-        .goldenObserverRemoteWrapper,
-        .goldenObserverPendingReceiver,
-        .goldenObserverSendDelegateCallbackReceiver,
-        .goldenSimpleStruct,
-        .goldenToken,
-        .goldenPrimaryGetArrayValueResponseParams,
-        .goldenPrimaryGetMapValueResponseParams,
-        .goldenPrimarySyncGetArrayValueResponseParams,
-        .goldenPrimarySyncGetMapValueResponseParams,
-    ] + commonMojoObjectGroups,
+    additionalObjectGroups: mojoObjectGroups,
     additionalEnumerations: [
     ] + commonMojoEnumerations,
     additionalOptionsBags: [] + commonMojoOptionsBags,

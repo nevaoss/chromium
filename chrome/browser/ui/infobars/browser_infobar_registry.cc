@@ -122,6 +122,17 @@ void RegisterInfoBars() {
   }
 #endif
 
+  if (IsInfoBarMigrated(
+          InfoBarDelegate::FILE_ACCESS_DISABLED_INFOBAR_DELEGATE)) {
+    auto spec = InfoBarSpec::Builder(
+                    InfoBarDelegate::FILE_ACCESS_DISABLED_INFOBAR_DELEGATE)
+                    .SetMessageText(l10n_util::GetStringUTF16(
+                        IDS_FILE_SELECTION_DIALOG_INFOBAR))
+                    .SetScope(InfoBarScope::kTab)
+                    .Build();
+    browser_infobar_manager->Register(std::move(spec));
+  }
+
   if (IsInfoBarMigrated(InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE)) {
     auto spec =
         InfoBarSpec::Builder(InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE)
@@ -411,6 +422,35 @@ void RegisterInfoBars() {
   }
 #endif
 
+#if BUILDFLAG(IS_WIN)
+  if (IsInfoBarMigrated(InfoBarDelegate::STARTUP_LAUNCH_INFOBAR_DELEGATE)) {
+    auto spec =
+        InfoBarSpec::Builder(InfoBarDelegate::STARTUP_LAUNCH_INFOBAR_DELEGATE)
+            .SetMessageText(l10n_util::GetStringUTF16(
+                IDS_STARTUP_LAUNCH_INFOBAR_OPT_IN_TITLE))
+            .SetIcon(vector_icons::kProductRefreshIcon)
+            .SetDarkModeIcon(features::IsRoundedIconsEnabled()
+                                 ? omnibox::kChromeProductIcon
+                                 : omnibox::kProductChromeRefreshOldIcon)
+            .SetScope(InfoBarScope::kGlobal)
+            .SetExpireOnNavigation(false)
+            .SetShouldHideInFullscreen(true)
+            .SetBrowserFilter(
+                base::BindRepeating([](BrowserWindowInterface* browser) {
+                  const Profile* profile = browser->GetProfile();
+                  return browser->GetType() ==
+                             BrowserWindowInterface::TYPE_NORMAL &&
+                         !profile->IsPrimaryOTRProfileWithRegularParent() &&
+                         !profile->IsGuestSession();
+                }))
+            .AddOkButton(l10n_util::GetStringUTF16(
+                             IDS_STARTUP_LAUNCH_INFOBAR_ALLOW_BUTTON),
+                         base::DoNothing())
+            .Build();
+    browser_infobar_manager->Register(std::move(spec));
+  }
+#endif
+
   if (IsInfoBarMigrated(InfoBarDelegate::DEV_TOOLS_INFOBAR_DELEGATE)) {
     auto spec =
         InfoBarSpec::Builder(InfoBarDelegate::DEV_TOOLS_INFOBAR_DELEGATE)
@@ -468,6 +508,27 @@ void RegisterInfoBars() {
             .SetCloseOnCancel(false)
             .SetCloseOnExtraButton(false)
             .SetAllowDuplicates(true)
+            .Build();
+    browser_infobar_manager->Register(std::move(spec));
+  }
+
+  if (IsInfoBarMigrated(
+          InfoBarDelegate::WEB_APP_BLOCKED_MIGRATION_INFOBAR_DELEGATE)) {
+    auto spec =
+        InfoBarSpec::Builder(
+            InfoBarDelegate::WEB_APP_BLOCKED_MIGRATION_INFOBAR_DELEGATE)
+            .SetMessageText(l10n_util::GetStringUTF16(
+                IDS_WEB_APP_BLOCKED_MIGRATION_MESSAGE))
+            .SetIcon(features::IsRoundedIconsEnabled()
+                         ? vector_icons::kSettingsFilledIcon
+                         : vector_icons::kSettingsOldIcon)
+            .SetLinkText(l10n_util::GetStringUTF16(IDS_LEARN_MORE))
+            .SetLinkNavigationUrl(GURL(
+                "https://support.google.com/chrome/a/?p=pwa_origin_migration"))
+            .SetScope(InfoBarScope::kTab)
+            .SetExpireOnNavigation(false)
+            .AddOkButton(l10n_util::GetStringUTF16(IDS_APP_OK),
+                         base::DoNothing())
             .Build();
     browser_infobar_manager->Register(std::move(spec));
   }

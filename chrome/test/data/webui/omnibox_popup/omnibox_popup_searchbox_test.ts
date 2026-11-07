@@ -6,7 +6,7 @@ import {isMac} from '//resources/js/platform.js';
 import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas, UrlDeemphasisMode} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import type {OmniboxInputState, OmniboxPopupContextualEntrypointButtonElement, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement, UrlEmphasis} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {KeywordModeEntryMethod} from 'chrome://resources/cr_components/searchbox/keyword_mode_manager.js';
-import {createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {KeywordType, RenderType, SelectionDirection, SelectionLineState, SelectionStep, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
@@ -3178,13 +3178,14 @@ suite('OmniboxPopupSearchboxTest', function() {
  suite('InputIconState', () => {
    test('InputMatchUpdatesWithSelectedMatch', async () => {
      const navMatch = createSearchMatchForTesting({
-       contents: 'example.com',
+       suggestTemplate: createSuggestTemplateInfo({primaryText: 'example.com'}),
        destinationUrl: 'https://example.com/',
        isSearchType: false,
        type: 'history-url',
      });
      const searchMatch = createSearchMatchForTesting({
-       contents: 'example query',
+       suggestTemplate:
+           createSuggestTemplateInfo({primaryText: 'example query'}),
        destinationUrl: 'https://www.google.com/search?q=example',
        isSearchType: true,
        type: 'search-what-you-typed',
@@ -3209,14 +3210,18 @@ suite('OmniboxPopupSearchboxTest', function() {
      await microtasksFinished();
      assertEquals(
          searchbox.result!.matches[1], searchbox.$.input.selectedMatch);
-     assertEquals('example query', searchbox.$.input.selectedMatch?.contents);
+     assertEquals(
+         'example query',
+         searchbox.$.input.selectedMatch?.suggestTemplate.primaryText);
 
      // When navigating to match 0, input's selectedMatch should be match 0.
      searchbox.selectedMatchIndex = 0;
      await microtasksFinished();
      assertEquals(
          searchbox.result!.matches[0], searchbox.$.input.selectedMatch);
-     assertEquals('example.com', searchbox.$.input.selectedMatch?.contents);
+     assertEquals(
+         'example.com',
+         searchbox.$.input.selectedMatch?.suggestTemplate.primaryText);
 
      // When navigating back to unselected, input's selectedMatch should return
      // to null.
@@ -3338,7 +3343,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    const keyword = 'youtube.com';
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
-     contents: 'youtube',
+     suggestTemplate: createSuggestTemplateInfo({primaryText: 'youtube'}),
      keywordModel: createMatchKeywordModelForTesting({
        type: KeywordType.kChip,
        keyword,
@@ -3379,7 +3384,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    searchbox.virtualFocusEnabled = false;
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
-     contents: 'youtube.com',
+     suggestTemplate: createSuggestTemplateInfo({primaryText: 'youtube.com'}),
    });
    searchbox.activeQueryId = 0;
    searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
@@ -3739,11 +3744,11 @@ suite('OmniboxPopupSearchboxTest', function() {
 
        const match1 = createSearchMatchForTesting({
          allowedToBeDefaultMatch: true,
-         contents: 'match 1',
+         suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
        });
        const match2 = createSearchMatchForTesting({
          allowedToBeDefaultMatch: false,
-         contents: 'match 2',
+         suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 2'}),
        });
        localSearchbox.activeQueryId = 0;
        localSearchbox.onAutocompleteResultChanged(
@@ -3891,7 +3896,7 @@ suite('OmniboxPopupSearchboxTest', function() {
          input: 'test',
          matches: [createSearchMatchForTesting({
            allowedToBeDefaultMatch: true,
-           contents: 'match 1',
+           suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
          })],
        }));
    await microtasksFinished();
@@ -3975,7 +3980,7 @@ suite('OmniboxPopupSearchboxTest', function() {
          input: 'test',
          matches: [createSearchMatchForTesting({
            allowedToBeDefaultMatch: true,
-           contents: 'match 1',
+           suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
          })],
        }));
    await microtasksFinished();
@@ -4076,7 +4081,8 @@ suite('OmniboxPopupSearchboxTest', function() {
              input: 'test',
              matches: [createSearchMatchForTesting({
                allowedToBeDefaultMatch: true,
-               contents: 'match 1',
+               suggestTemplate:
+                   createSuggestTemplateInfo({primaryText: 'match 1'}),
              })],
            }));
        await microtasksFinished();
@@ -4286,7 +4292,8 @@ suite('OmniboxPopupSearchboxTest', function() {
 
        const match = createSearchMatchForTesting({
          allowedToBeDefaultMatch: true,
-         contents: 'first match',
+         suggestTemplate:
+             createSuggestTemplateInfo({primaryText: 'first match'}),
        });
        searchbox.activeQueryId = 0;
        searchbox.onAutocompleteResultChanged(
@@ -4395,7 +4402,7 @@ suite('OmniboxPopupSearchboxTest', function() {
 
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
-     contents: 'first match',
+     suggestTemplate: createSuggestTemplateInfo({primaryText: 'first match'}),
      inlineAutocompletion: ' match',
    });
    searchbox.activeQueryId = 0;
@@ -4621,6 +4628,42 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(5, input.selectionStart);
    assertEquals(5, input.selectionEnd);
  });
+
+ test(
+     'RightClickOnAllSelectedText_DoesNotUnelideOrModifySelection',
+     async () => {
+       const elidedText = 'example.com';
+       const fullUrl = 'https://example.com/';
+       callbackRouter.setInputState(createDefaultOmniboxInputState({
+         text: elidedText,
+         fullUrl: fullUrl,
+         isFocused: true,
+         selection: {start: 0, end: elidedText.length},
+       }));
+       await microtasksFinished();
+
+       const input = searchbox.getInputElement().inputElement;
+       assertEquals(elidedText, input.value);
+       assertEquals(0, input.selectionStart);
+       assertEquals(elidedText.length, input.selectionEnd);
+
+       // Right-click mousedown on already-focused input with all text selected.
+       searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+         button: 2,
+         buttons: 2,
+         clientX: 20,
+         clientY: 20,
+         detail: 1,
+         bubbles: true,
+         composed: true,
+       }));
+       await microtasksFinished();
+
+       // Verify text did not unelide and selection was not modified/collapsed.
+       assertEquals(elidedText, input.value);
+       assertEquals(0, input.selectionStart);
+       assertEquals(elidedText.length, input.selectionEnd);
+     });
 
  test('KeydownDuringMouseDown_CancelsSelectAll', async () => {
    callbackRouter.setInputState(createDefaultOmniboxInputState({
@@ -5178,5 +5221,69 @@ suite('OmniboxPopupSearchboxTest', function() {
    }));
    await microtasksFinished();
    assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+ });
+
+ test('UpdatesLayoutConstantsFromLoadTimeData', async () => {
+   const originalConstants = {
+     alignmentInsetTop: loadTimeData.getInteger('alignmentInsetTop'),
+     alignmentInsetHorizontal:
+         loadTimeData.getInteger('alignmentInsetHorizontal'),
+     alignmentInsetBottom: loadTimeData.getInteger('alignmentInsetBottom'),
+     locationBarHeight: loadTimeData.getInteger('locationBarHeight'),
+     locationBarFontSize: loadTimeData.getInteger('locationBarFontSize'),
+     locationBarIconSize: loadTimeData.getInteger('locationBarIconSize'),
+     locationBarPageInfoIconVerticalPadding:
+         loadTimeData.getInteger('locationBarPageInfoIconVerticalPadding'),
+   };
+
+   // Verify searchbox in `setup()` initialized its inline styles with the
+   // C++ layout constants provided by `OmniboxPopupUI`.
+   assertEquals(
+       `${originalConstants.alignmentInsetTop}px`,
+       searchbox.style.getPropertyValue('--alignment-inset-top'));
+   assertEquals(
+       `${originalConstants.locationBarHeight}px`,
+       searchbox.style.getPropertyValue('--cr-searchbox-height'));
+
+   // Override `loadTimeData` with custom layout constants and verify a newly
+   // connected searchbox applies them as inline style custom properties.
+   loadTimeData.overrideValues({
+     alignmentInsetTop: 10,
+     alignmentInsetHorizontal: 12,
+     alignmentInsetBottom: 8,
+     locationBarHeight: 40,
+     locationBarFontSize: 16,
+     locationBarIconSize: 22,
+     locationBarPageInfoIconVerticalPadding: 6,
+   });
+
+   const testSearchbox = document.createElement('omnibox-popup-searchbox');
+   document.body.appendChild(testSearchbox);
+   await microtasksFinished();
+
+   assertEquals(
+       '10px', testSearchbox.style.getPropertyValue('--alignment-inset-top'));
+   assertEquals(
+       '12px',
+       testSearchbox.style.getPropertyValue('--alignment-inset-horizontal'));
+   assertEquals(
+       '8px', testSearchbox.style.getPropertyValue('--alignment-inset-bottom'));
+   assertEquals(
+       '40px', testSearchbox.style.getPropertyValue('--cr-searchbox-height'));
+   assertEquals(
+       '16px',
+       testSearchbox.style.getPropertyValue('--cr-searchbox-font-size'));
+   assertEquals(
+       '22px',
+       testSearchbox.style.getPropertyValue(
+           '--cr-searchbox-icon-size-in-searchbox'));
+   assertEquals(
+       '6px',
+       testSearchbox.style.getPropertyValue(
+           '--location-bar-page-info-icon-vertical-padding'));
+
+   testSearchbox.remove();
+   // Restore original values so `loadTimeData` does not leak into other tests.
+   loadTimeData.overrideValues(originalConstants);
  });
 });

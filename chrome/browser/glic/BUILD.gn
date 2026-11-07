@@ -87,6 +87,7 @@ source_set("glic") {
     "public/glic_keyed_service_factory.h",
     "public/glic_passkeys.h",
     "public/glic_perf_traits_tracker.h",
+    "public/glic_provider_spec.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
     "public/glic_submit_query_cui_tracker.cc",
@@ -479,6 +480,8 @@ source_set("impl") {
     "public/glic_context_menu_invocation_helper.cc",
     "public/glic_enabling.cc",
     "public/glic_invoke_options.cc",
+    "glic_provider_spec_impl.cc",
+    "glic_provider_spec_impl.h",
     "public/glic_keyed_service.cc",
     "public/glic_keyed_service_factory.cc",
     "public/glic_perf_traits_tracker.cc",
@@ -551,6 +554,7 @@ source_set("impl") {
     "//chrome/browser/picture_in_picture",
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/profiles:profile_util",
+    "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles/keep_alive",
     "//chrome/browser/pwc",
     "//chrome/browser/resources/glic:resources",
@@ -936,6 +940,7 @@ source_set("unit_tests") {
     ]
 
     deps += [
+      "//chrome/browser/glic/android",
       "//chrome/browser/glic/common",
       "//chrome/browser/ui/android/tab_model",
       "//chrome/browser/ui/android/tab_model:test_support",
@@ -974,7 +979,6 @@ source_set("browser_tests") {
     "host/glic_paste_eligibility_browsertest.cc",
     "host/glic_permission_enforcement_browsertest.cc",
     "host/glic_start_benchmark_browsertest.cc",
-    "host/glic_web_client_manager_browsertest.cc",
     "host/glic_web_contents_warming_pool_browsertest.cc",
     "service/glic_instance_coordinator_browsertest.cc",
     "service/glic_instance_helper_browsertest.cc",
@@ -1017,9 +1021,6 @@ source_set("browser_tests") {
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:testing_browser_process",
   ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  }
   if (use_aura) {
     deps += [ "//chrome/test/base:drag_and_drop_test_utils" ]
   }

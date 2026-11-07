@@ -28,7 +28,6 @@
 #include "build/chromecast_buildflags.h"
 #include "build/chromeos_buildflags.h"
 #include "components/crash/core/common/crash_key.h"
-#include "components/viz/common/resources/shared_image_format.h"
 #include "gpu/command_buffer/service/gpu_switches.h"
 #include "gpu/config/gpu_driver_bug_list.h"
 #include "gpu/config/gpu_driver_bug_workaround_type.h"
@@ -57,18 +56,13 @@
 #endif
 
 #if BUILDFLAG(IS_OZONE)
-#if BUILDFLAG(ENABLE_VULKAN)
-#include "gpu/command_buffer/service/drm_modifiers_filter_vulkan.h"
-#endif
 #include "gpu/ipc/service/gpu_init_ozone.h"
-#include "ui/ozone/public/drm_modifiers_filter.h"
-#include "ui/ozone/public/ozone_platform.h"
 #include "ui/ozone/public/ozone_switches.h"
-#include "ui/ozone/public/surface_factory_ozone.h"
 #endif
 
 #if BUILDFLAG(IS_WIN)
 #include "gpu/config/gpu_driver_bug_workarounds.h"
+#include "gpu/ipc/service/gpu_init_win.h"
 #include "services/on_device_model/ml_internal_buildflags.h"
 #include "ui/gl/dc_surface_solid_color_pool.h"
 #include "ui/gl/direct_composition_support.h"
@@ -109,10 +103,6 @@
 #include "third_party/dawn/include/dawn/webgpu_cpp.h"  // nogncheck
 #endif
 
-#if BUILDFLAG(SKIA_USE_DAWN) && BUILDFLAG(IS_CHROMEOS)
-#include "gpu/command_buffer/service/drm_modifiers_filter_dawn.h"
-#endif
-
 namespace gpu {
 
 namespace {
@@ -136,33 +126,7 @@ void InitializeDawnProcs() {
 void InitializePlatformOverlaySettings(GPUInfo* gpu_info,
                                        const GpuFeatureInfo& gpu_feature_info) {
 #if BUILDFLAG(IS_WIN)
-  // This has to be called after a context is created, active GPU is identified,
-  // and GPU driver bug workarounds are computed again. Otherwise the workaround
-  // `disable_direct_composition_video_overlays` may not be correctly applied.
-  // Also, this has to be called after falling back to SwiftShader decision is
-  // finalized because this function depends on GL is ANGLE's GLES or not.
-  gl::DirectCompositionOverlayWorkarounds workarounds = {
-      .disable_sw_video_overlays = gpu_feature_info.IsWorkaroundEnabled(
-          DISABLE_DIRECT_COMPOSITION_SW_VIDEO_OVERLAYS),
-      .disable_decode_swap_chain =
-          gpu_feature_info.IsWorkaroundEnabled(DISABLE_DECODE_SWAP_CHAIN),
-      .enable_bgra8_overlays_with_yuv_overlay_support =
-          gpu_feature_info.IsWorkaroundEnabled(
-              gpu::ENABLE_BGRA8_OVERLAYS_WITH_YUV_OVERLAY_SUPPORT),
-      .force_nv12_overlay_support =
-          gpu_feature_info.IsWorkaroundEnabled(gpu::FORCE_NV12_OVERLAY_SUPPORT),
-      .force_rgb10a2_overlay_support = gpu_feature_info.IsWorkaroundEnabled(
-          gpu::FORCE_RGB10A2_OVERLAY_SUPPORT),
-      .check_ycbcr_studio_g22_left_p709_for_nv12_support =
-          gpu_feature_info.IsWorkaroundEnabled(
-              gpu::CHECK_YCBCR_STUDIO_G22_LEFT_P709_FOR_NV12_SUPPORT),
-      .disable_dcomp_texture =
-          gpu_feature_info.IsWorkaroundEnabled(gpu::DISABLE_DCOMP_TEXTURE),
-  };
-  SetDirectCompositionOverlayWorkarounds(workarounds);
-
-  DCHECK(gpu_info);
-  CollectHardwareOverlayInfo(&gpu_info->overlay_info);
+  gpu_init_internal::InitializeOverlaySettings(gpu_info, gpu_feature_info);
 #elif BUILDFLAG(IS_ANDROID)
   if (gpu_info->gpu.vendor_string.find("Qualcomm") != std::string::npos) {
     gfx::SurfaceControl::EnableQualcommUBWC();
@@ -506,7 +470,7 @@ VulkanImplementation* GpuInit2::vulkan_implementation() {
 bool GpuInit2::InitializeAndStartSandbox(
     base::CommandLine* command_line,
     const GpuPreferences& gpu_preferences) {
-  TRACE_EVENT("gpu,startup", "gpu::GpuInit2::InitializeAndStartSandbox");
+  TRACE_EVENT("gpu,startup", "gpu::GpuInit::InitializeAndStartSandbox");
 #if BUILDFLAG(IS_CHROMEOS)
   LOG(WARNING) << "Starting gpu initialization.";
 #endif  //  BUILDFLAG(IS_CHROMEOS)
@@ -533,158 +497,28 @@ bool GpuInit2::InitializeAndStartSandbox(
     return false;
   }
   SelectCommandDecoder(state);
-
-  // We need to collect GL strings (VENDOR, RENDERER) for blocklisting purposes.
-  if (!state.gl_disabled) {
-    if (!gl_use_swiftshader_) {
-      if (!CollectGraphicsInfo(&gpu_info_)) {
-        VLOG(1) << "gpu::CollectGraphicsInfo failed";
-        return false;
-      }
-
-      SetKeysForCrashLogging(gpu_info_);
-      gpu_feature_info_ = ComputeGpuFeatureInfo(gpu_info_, gpu_preferences_,
-                                                command_line, nullptr);
-      gl_use_swiftshader_ = EnableSwiftShaderIfNeeded(
-          command_line, gpu_feature_info_,
-          gpu_preferences_.disable_software_rasterizer, false);
-      if (gl_use_swiftshader_) {
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-        VLOG(1) << "Quit GPU process launch to fallback to SwiftShader cleanly "
-                << "on Linux";
-        return false;
-#else
-        SaveHardwareGpuInfoAndGpuFeatureInfo();
-        gl::init::ShutdownGL(state.gl_display, true);
-        if (state.watchdog.get()) {
-          // Recreate watchdog for software rasterizer.
-          state.watchdog.Create(/*software_rendering=*/true);
-        }
-        state.gl_display = gl::init::InitializeGLNoExtensionsOneOff(
-            /*init_bindings=*/true, gl::GpuPreference::kDefault);
-        if (!state.gl_display) {
-          VLOG(1)
-              << "gl::init::InitializeGLNoExtensionsOneOff with SwiftShader "
-              << "failed";
-          return false;
-        }
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-      }
-    } else {  // gl_use_swiftshader_ == true
-      switch (gpu_preferences_.use_vulkan) {
-        case VulkanImplementationName::kNative: {
-          // Collect GPU info, so we can use blocklist to disable vulkan if it
-          // is needed.
-          GPUInfo gpu_info;
-          if (!CollectGraphicsInfo(&gpu_info)) {
-            VLOG(1) << "gpu::CollectGraphicsInfo failed";
-            return false;
-          }
-          auto gpu_feature_info = ComputeGpuFeatureInfo(
-              gpu_info, gpu_preferences_, command_line, nullptr);
-          gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] =
-              gpu_feature_info.status_values[GPU_FEATURE_TYPE_VULKAN];
-          break;
-        }
-        case VulkanImplementationName::kForcedNative:
-        case VulkanImplementationName::kSwiftshader:
-          gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] =
-              kGpuFeatureStatusEnabled;
-          break;
-        case VulkanImplementationName::kNone:
-          gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] =
-              kGpuFeatureStatusDisabled;
-          break;
-      }
-    }
-  }
-
-  // Try to fall back to a valid GrContextType after GpuFeatureInfo is
-  // computed. For example, if the gpu_preferences_.gr_context_type is
-  // kGraphiteDawn but the GpuFeatureInfo indicates Graphite is blocklisted or
-  // the feature is not enabled, we will fall back to the next context type in
-  // gpu_preferences_.fallback_gr_context_types
-  if (!TryFallbackGrContextTypesIfNeeded(gpu_feature_info_, gpu_preferences_,
-                                         gpu_info_, command_line)) {
-    VLOG(1) << "All gr_context_type fallbacks exhausted";
+  if (!FinalizeFeaturesWithContextInfo(state)) {
     return false;
   }
-  gpu_preferences_.perform_graphite_precompilation =
-      gpu_feature_info_.status_values[GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
-          kGpuFeatureStatusEnabled &&
-      features::IsSkiaGraphitePrecompilationEnabled(command_line);
+  if (!ResolveGrContextType(state)) {
+    return false;
+  }
 
 #if BUILDFLAG(IS_WIN)
-  {
-    if (gpu_preferences_.gr_context_type == GrContextType::kGraphiteDawn &&
-        features::SkiaGraphiteDawnBackendValidation()) {
-      // Enable ANGLE debug layer for Graphite backend validation, sharing the
-      // D3D11 device between ANGLE and Dawn. Requires GL reinit.
-      gl::init::ShutdownGL(state.gl_display, true);
-      gl::GLDisplayEGL::EnableANGLEDebugLayer();
-      state.gl_display = gl::init::InitializeGLNoExtensionsOneOff(
-          /*init_bindings=*/true, gl::GpuPreference::kDefault);
-      if (!state.gl_display) {
-        VLOG(1) << "gl::init::InitializeGLNoExtensionsOneOff failed "
-                   "after enabling ANGLE debug layer";
-        return false;
-      }
-    }
-
-    // On Windows, MITIGATION_FORCE_MS_SIGNED_BINS is used which disallows
-    // loading any .dll that is not signed by Microsoft. Preload the SwiftShader
-    // .dll so it may be accessed later. This is needed for WebGPU to
-    // initialize a software fallback adapter. Also do the same for DXC,
-    // which WebGPU may use on D3D12 devices.
-    // Don't handle errors as failure here is non-fatal. Loading either DLL
-    // again at a later point will fail as well.
-    state.watchdog.Pause();
-
-    base::FilePath module_path;
-    if (base::PathService::Get(base::DIR_MODULE, &module_path)) {
-      // Preload vk_swiftshader.dll when SwiftShader may be needed:
-      // - IsSwiftShaderAllowed() covers ANGLE/GL flags like
-      //   --enable-unsafe-swiftshader and --use-angle=swiftshader.
-      // - use_webgpu_adapter covers --use-webgpu-adapter=swiftshader for
-      //   WebGPU fallback adapter selection.
-      // - DefaultForceFallbackAdapter() covers Graphite/Dawn using
-      //   SwiftShader via --skia-graphite-dawn-backend=swiftshader.
-      if (features::IsSwiftShaderAllowed(command_line) ||
-          gpu_preferences_.use_webgpu_adapter ==
-              WebGPUAdapterName::kSwiftShader ||
-          DawnContextProvider::DefaultForceFallbackAdapter()) {
-        TRACE_EVENT("gpu,startup", "Load vk_swiftshader.dll");
-        base::LoadNativeLibrary(module_path.Append(L"vk_swiftshader.dll"),
-                                nullptr);
-      }
-
-#if defined(DAWN_USE_BUILT_DXC)
-      // TODO(crbug.com/40075751): Preload dxil.dll to avoid loader lock issues
-      // since dxcompiler.dll loads dxil.dll from DllMain.
-      {
-        TRACE_EVENT("gpu,startup", "Load dxil.dll");
-        base::LoadNativeLibrary(module_path.Append(L"dxil.dll"), nullptr);
-      }
-      {
-        TRACE_EVENT("gpu,startup", "Load dxcompiler.dll");
-        base::LoadNativeLibrary(module_path.Append(L"dxcompiler.dll"), nullptr);
-      }
-#endif  // defined(DAWN_USE_BUILT_DXC)
-
-#if BUILDFLAG(ENABLE_ML_INTERNAL)
-      if (base::FeatureList::IsEnabled(
-              webnn::mojom::features::kWebMachineLearningNeuralNetwork)) {
-        // Ensure that optimization_guide_internal.dll is loaded before the
-        // sandbox is initialized as this provides a GPU delegate used as a
-        // fallback when Windows ML is not available.
-        TRACE_EVENT("gpu,startup", "Load optimization_guide_internal.dll");
-        base::LoadNativeLibrary(
-            module_path.Append(L"optimization_guide_internal.dll"), nullptr);
-      }
-#endif
-    }
-
-    state.watchdog.Resume();
+  // On Windows, MITIGATION_FORCE_MS_SIGNED_BINS is used which disallows
+  // loading any .dll that is not signed by Microsoft. Preload the SwiftShader
+  // .dll so it may be accessed later. This is needed for WebGPU to
+  // initialize a software fallback adapter. Also do the same for DXC,
+  // which WebGPU may use on D3D12 devices.
+  // Don't handle errors as failure here is non-fatal. Loading either DLL
+  // again at a later point will fail as well.
+  state.watchdog.Pause();
+  bool dlls_preloaded =
+      gpu_init_internal::PreloadDLLs(state.command_line, gpu_preferences_);
+  state.watchdog.Resume();
+  if (!dlls_preloaded) {
+    VLOG(1) << "Preload DLLs before sandbox failed";
+    return false;
   }
 #endif  // BUILDFLAG(IS_WIN)
 
@@ -890,35 +724,7 @@ bool GpuInit2::InitializeAndStartSandbox(
   }
 
 #if BUILDFLAG(IS_WIN)
-  {
-    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-    Microsoft::WRL::ComPtr<ID3D12CommandQueue> d3d12_command_queue;
-    gl::SolidColorPoolFactory solid_color_factory;
-    if (dawn_context_provider_) {
-      d3d11_device = dawn_context_provider_->GetD3D11Device();
-      d3d12_command_queue = dawn_context_provider_->GetD3D12CommandQueue();
-#if BUILDFLAG(SKIA_USE_DAWN)
-      // When Skia is on Graphite-D3D12, use Dawn (the same `wgpu::Device`
-      // and `ID3D12CommandQueue` Skia is using) to fill solid-color
-      // overlays.
-      if (d3d12_command_queue &&
-          base::FeatureList::IsEnabled(features::kDCompOnD3D12)) {
-        solid_color_factory = CreateDawnTextureSolidColorPoolFactory(
-            dawn_context_provider_->GetDevice(), d3d12_command_queue);
-      }
-#endif  // BUILDFLAG(SKIA_USE_DAWN)
-    } else {
-      d3d11_device = gl::QueryD3D11DeviceObjectFromANGLE();
-    }
-    if (!solid_color_factory) {
-      // Use DComp surfaces if Dawn or DComp Textures are not available.
-      solid_color_factory =
-          gl::CreateDCSurfaceSolidColorPoolFactory(d3d11_device);
-    }
-    gl::InitializeDirectComposition(std::move(d3d11_device),
-                                    std::move(d3d12_command_queue),
-                                    std::move(solid_color_factory));
-  }
+  gpu_init_internal::InitializeDirectComposition(dawn_context_provider_.get());
 #endif  // BUILDFLAG(IS_WIN)
 
   InitializePlatformOverlaySettings(&gpu_info_, gpu_feature_info_);
@@ -1363,6 +1169,114 @@ void GpuInit2::SelectCommandDecoder(InitState& state) {
 #endif  // BUILDFLAG(ENABLE_VALIDATING_COMMAND_DECODER)
 }
 
+bool GpuInit2::FinalizeFeaturesWithContextInfo(InitState& state) {
+  if (state.gl_disabled) {
+    return true;
+  }
+  if (gl_use_swiftshader_) {
+    // TODO(zmo): Clean up the following logic now that we no longer fall back
+    // to SwiftShader at runtime.
+    switch (gpu_preferences_.use_vulkan) {
+      case VulkanImplementationName::kNative: {
+        // Collect GPU info, so we can use blocklist to disable vulkan if it
+        // is needed.
+        GPUInfo gpu_info;
+        if (!CollectGraphicsInfo(&gpu_info)) {
+          VLOG(1) << "gpu::CollectGraphicsInfo failed";
+          return false;
+        }
+        auto gpu_feature_info = ComputeGpuFeatureInfo(
+            gpu_info, gpu_preferences_, state.command_line, nullptr);
+        gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] =
+            gpu_feature_info.status_values[GPU_FEATURE_TYPE_VULKAN];
+        break;
+      }
+      case VulkanImplementationName::kForcedNative:
+      case VulkanImplementationName::kSwiftshader:
+        gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] =
+            kGpuFeatureStatusEnabled;
+        break;
+      case VulkanImplementationName::kNone:
+        gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] =
+            kGpuFeatureStatusDisabled;
+        break;
+    }
+    return true;
+  }
+
+  // We need to collect GL strings (VENDOR, RENDERER) for blocklisting purposes.
+  if (!CollectGraphicsInfo(&gpu_info_)) {
+    VLOG(1) << "gpu::CollectGraphicsInfo failed";
+    return false;
+  }
+
+  SetKeysForCrashLogging(gpu_info_);
+  gpu_feature_info_ = ComputeGpuFeatureInfo(gpu_info_, gpu_preferences_,
+                                            state.command_line, nullptr);
+  // TODO(zmo): Clean up the following logic now that we no longer fall back
+  // to SwiftShader at runtime.
+  gl_use_swiftshader_ = EnableSwiftShaderIfNeeded(
+      state.command_line, gpu_feature_info_,
+      gpu_preferences_.disable_software_rasterizer, false);
+  if (gl_use_swiftshader_) {
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+    VLOG(1) << "Quit GPU process launch to fallback to SwiftShader cleanly "
+            << "on Linux";
+    return false;
+#else
+    SaveHardwareGpuInfoAndGpuFeatureInfo();
+    gl::init::ShutdownGL(state.gl_display, true);
+    if (state.watchdog.get()) {
+      // Recreate watchdog for software rasterizer.
+      state.watchdog.Create(/*software_rendering=*/true);
+    }
+    state.gl_display = gl::init::InitializeGLNoExtensionsOneOff(
+        /*init_bindings=*/true, gl::GpuPreference::kDefault);
+    if (!state.gl_display) {
+      VLOG(1) << "gl::init::InitializeGLNoExtensionsOneOff with SwiftShader "
+              << "failed";
+      return false;
+    }
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+  }
+  return true;
+}
+
+bool GpuInit2::ResolveGrContextType(InitState& state) {
+  // Try to fall back to a valid GrContextType after GpuFeatureInfo is
+  // computed. For example, if the gpu_preferences_.gr_context_type is
+  // kGraphiteDawn but the GpuFeatureInfo indicates Graphite is blocklisted or
+  // the feature is not enabled, we will fall back to the next context type in
+  // gpu_preferences_.fallback_gr_context_types
+  if (!TryFallbackGrContextTypesIfNeeded(gpu_feature_info_, gpu_preferences_,
+                                         gpu_info_, state.command_line)) {
+    VLOG(1) << "All gr_context_type fallbacks exhausted";
+    return false;
+  }
+  gpu_preferences_.perform_graphite_precompilation =
+      gpu_feature_info_.status_values[GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
+          kGpuFeatureStatusEnabled &&
+      features::IsSkiaGraphitePrecompilationEnabled(state.command_line);
+
+#if BUILDFLAG(IS_WIN)
+  if (gpu_preferences_.gr_context_type == GrContextType::kGraphiteDawn &&
+      features::SkiaGraphiteDawnBackendValidation()) {
+    // Enable ANGLE debug layer for Graphite backend validation, sharing the
+    // D3D11 device between ANGLE and Dawn. Requires GL reinit.
+    gl::init::ShutdownGL(state.gl_display, true);
+    gl::GLDisplayEGL::EnableANGLEDebugLayer();
+    state.gl_display = gl::init::InitializeGLNoExtensionsOneOff(
+        /*init_bindings=*/true, gl::GpuPreference::kDefault);
+    if (!state.gl_display) {
+      VLOG(1) << "gl::init::InitializeGLNoExtensionsOneOff failed "
+                 "after enabling ANGLE debug layer";
+      return false;
+    }
+  }
+#endif  // BUILDFLAG(IS_WIN)
+  return true;
+}
+
 void GpuInit2::SetSkiaBackendType() {
   CHECK(init_successful_);
   CHECK_EQ(gpu_info_.skia_backend_type, SkiaBackendType::kNone);
@@ -1419,7 +1333,7 @@ void GpuInit2::SetSkiaBackendType() {
 
 bool GpuInit2::InitializeDawn() {
 #if BUILDFLAG(SKIA_USE_DAWN)
-  TRACE_EVENT("gpu,startup", "gpu::GpuInit2::InitializeDawn");
+  TRACE_EVENT("gpu,startup", "gpu::GpuInit::InitializeDawn");
   if (gpu_feature_info_.status_values[GPU_FEATURE_TYPE_SKIA_GRAPHITE] !=
           kGpuFeatureStatusEnabled &&
       !gpu::DawnContextProvider::DefaultForceFallbackAdapter()) {
@@ -1488,7 +1402,7 @@ bool GpuInit2::InitializeDawn() {
 
 bool GpuInit2::InitializeVulkan() {
 #if BUILDFLAG(ENABLE_VULKAN)
-  TRACE_EVENT("gpu,startup", "gpu::GpuInit2::InitializeVulkan");
+  TRACE_EVENT("gpu,startup", "gpu::GpuInit::InitializeVulkan");
   DCHECK(gpu_feature_info_.IsFeatureEnabled(GPU_FEATURE_TYPE_VULKAN) ||
          gpu_feature_info_.IsFeatureEnabled(GPU_FEATURE_TYPE_SKIA_GRAPHITE) ||
          gpu_feature_info_.IsFeatureEnabled(

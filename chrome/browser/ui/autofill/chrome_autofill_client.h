@@ -51,6 +51,7 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/autofill/autofill_snackbar_controller_impl.h"
+#include "components/autofill/core/browser/ui/autofill_tapjacking_protector.h"
 #else  // BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/autofill/autofill_field_promo_controller.h"
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -227,6 +228,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void OpenGmailForOtps() final;
   void OpenGeminiInSidebar(const std::u16string& prompt) final;
   bool IsGlicEnabled() const final;
+  bool IsGlicConsented() const final;
   void TriggerDeclinedSaveAddressReasonSurvey() final;
   void TriggerPersonalizationAndTrustSurveys(
       FillingProduct filling_product,
@@ -266,11 +268,15 @@ class ChromeAutofillClient : public ContentAutofillClient {
   // from the server to fill the form.
   void DismissAutofillAiLoadingDialog() final;
 
+  void ShowTapjackingProtector(
+      AutofillTapjackingProtector::AuthorizationType authorization_type,
+      AutofillTapjackingProtector::AuthorizationCallback callback) final;
+
   bool ShowAmbientAutofillNotice(
       base::WeakPtr<TouchToFillAutofillDelegate> delegate) override;
   bool ShowPrivateInferenceNoticeBottomSheet(
       base::WeakPtr<TouchToFillAutofillDelegate> delegate) override;
-  void HideAmbientAutofillNotice() override;
+  void HideTouchToFillAutofillNotice() override;
 
   // The AutofillMessageController is used to show native Android messages via
   // the messages API.
@@ -330,6 +336,9 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void HideEmailVerificationPopup() final;
   void ShowEmailVerificationLoadingToast() final;
   void ShowEmailVerificationErrorToast() final;
+  void ShowGmailOtpOptInBubble(
+      const std::u16string& account_email,
+      base::OnceCallback<void(GmailOtpOptInResult)> callback) final;
 
   // TODO(crbug.com/407666146): Create a test API.
   base::WeakPtr<AutofillSuggestionController>
@@ -360,6 +369,12 @@ class ChromeAutofillClient : public ContentAutofillClient {
           autofill_snackbar_controller_impl) {
     autofill_snackbar_controller_impl_ =
         std::move(autofill_snackbar_controller_impl);
+  }
+  void SetAutofillTapjackingProtectorImplForTesting(
+      std::unique_ptr<AutofillTapjackingProtector>
+          autofill_tapjacking_protector_impl) {
+    autofill_tapjacking_protector_impl_ =
+        std::move(autofill_tapjacking_protector_impl);
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 #endif  // defined(UNIT_TEST)
@@ -466,6 +481,8 @@ class ChromeAutofillClient : public ContentAutofillClient {
       touch_to_fill_autofill_controller_;
   std::unique_ptr<EmailVerificationBottomSheetBridge>
       email_verification_bottom_sheet_bridge_;
+  std::unique_ptr<AutofillTapjackingProtector>
+      autofill_tapjacking_protector_impl_;
 #else   // BUILDFLAG(IS_ANDROID)
   std::unique_ptr<AutofillFieldPromoController>
       autofill_field_promo_controller_;

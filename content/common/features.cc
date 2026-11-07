@@ -417,7 +417,7 @@ BASE_FEATURE(kKeepChildProcessAfterIPCReset, base::FEATURE_DISABLED_BY_DEFAULT);
 // TODO(crbug.com/493236843): Remove this killswitch once the change has made it
 // through a stable channel revision.
 BASE_FEATURE(kKeepUnassignedSiteInstanceInOriginalBrowsingInstance,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the renderer process will be killed if it provides
 // invalid (non-allowlisted) headers in a navigation request.
@@ -904,10 +904,6 @@ BASE_FEATURE(kWebUIInProcessResourceLoading,
 // Enables WebOTP calls in cross-origin iframes if allowed by Permissions
 // Policy.
 BASE_FEATURE(kWebOTPAssertionFeaturePolicy, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Flag guard for fix for crbug.com/40942531.
-BASE_FEATURE(kLimitCrossOriginNonActivatedPaintHolding,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Please keep features in alphabetical order.
 

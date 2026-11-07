@@ -8,6 +8,7 @@
 #include <optional>
 #include <string_view>
 
+#include "base/containers/span.h"
 #include "base/values.h"
 
 namespace actor {
@@ -24,6 +25,14 @@ class ToolSchemaBuilder {
   // JSON Schema string format annotation for URI values.
   static constexpr std::string_view kFormatUri = "uri";
 
+  // JSON Schema type of the items in an array property.
+  enum class ArrayItemType {
+    kString,
+    kInteger,
+    kNumber,
+    kBoolean,
+  };
+
   ToolSchemaBuilder();
   ~ToolSchemaBuilder();
   ToolSchemaBuilder(const ToolSchemaBuilder&) = delete;
@@ -36,9 +45,30 @@ class ToolSchemaBuilder {
       std::string_view description,
       std::optional<std::string_view> format = std::nullopt);
 
+  // Adds a required string property constrained to `enum_values` to the schema.
+  // `enum_values` must be non-empty.
+  ToolSchemaBuilder& AddStringEnumProperty(
+      std::string_view name,
+      std::string_view description,
+      base::span<const std::string_view> enum_values);
+
   // Adds a required integer property to the schema.
   ToolSchemaBuilder& AddIntegerProperty(std::string_view name,
                                         std::string_view description);
+
+  // Adds a required number property to the schema.
+  ToolSchemaBuilder& AddNumberProperty(std::string_view name,
+                                       std::string_view description);
+
+  // Adds a required boolean property to the schema.
+  ToolSchemaBuilder& AddBooleanProperty(std::string_view name,
+                                        std::string_view description);
+
+  // Adds a required array property whose items are of type `item_type` to the
+  // schema.
+  ToolSchemaBuilder& AddArrayProperty(std::string_view name,
+                                      std::string_view description,
+                                      ArrayItemType item_type);
 
   // Consumes the accumulated properties and returns the top-level JSON Schema
   // object dictionary. Call at most once: `Build()` moves out the builder's

@@ -20,8 +20,10 @@ source_set("actor") {
     "actor_actions_runner.h",
     "actor_commit_deferring_condition.h",
     "actor_critical_action_logger.h",
+    "actor_enterprise_policy_checker.h",
     "actor_keyed_service.h",
     "actor_keyed_service_factory.h",
+    "actor_keyed_service_proto_wrapper.h",
     "actor_metrics.h",
     "actor_navigation_throttle.h",
     "actor_proto_conversion.h",
@@ -130,8 +132,10 @@ source_set("impl") {
     "actor_actions_runner.cc",
     "actor_commit_deferring_condition.cc",
     "actor_critical_action_logger.cc",
+    "actor_enterprise_policy_checker.cc",
     "actor_keyed_service.cc",
     "actor_keyed_service_factory.cc",
+    "actor_keyed_service_proto_wrapper.cc",
     "actor_metrics.cc",
     "actor_navigation_throttle.cc",
     "actor_proto_conversion.cc",
@@ -429,6 +433,7 @@ source_set("test_support") {
   deps = [ ":actor" ]
 
   public_deps = [
+    ":impl",
     "//base",
     "//chrome/browser/actor/ui:event_dispatcher",
     "//chrome/browser/actor/ui:test_support",
@@ -444,6 +449,7 @@ source_set("unit_tests") {
     "actor_actions_runner_unittest.cc",
     "actor_commit_deferring_condition_unittest.cc",
     "actor_critical_action_logger_unittest.cc",
+    "actor_keyed_service_proto_wrapper_unittest.cc",
     "actor_keyed_service_unittest.cc",
     "actor_metrics_unittest.cc",
     "actor_navigation_throttle_unittest.cc",
@@ -548,7 +554,10 @@ source_set("tools_test_support") {
     "//testing/gtest",
   ]
   if (is_android) {
-    deps += [ "//chrome/test:test_support_ui_android" ]
+    deps += [
+      "//chrome/browser/actor/android",
+      "//chrome/test:test_support_ui_android",
+    ]
   } else {
     deps += [ "//chrome/test:test_support_ui" ]
   }
@@ -591,11 +600,6 @@ source_set("browser_tests") {
     "//chrome/test:test_support",
     "//chrome/test/base:chrome_test_utils",
     "//chrome/test/base:testing_browser_process",
-  ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  }
-  deps += [
     "//components/affiliations/core/browser:test_support",
     "//components/favicon/core/test:test_support",
     "//components/javascript_dialogs",
