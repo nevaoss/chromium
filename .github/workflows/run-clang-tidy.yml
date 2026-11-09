@@ -15,6 +15,7 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
+  statuses: write
 
 concurrency:
   group: clang-tidy-pr-${{ github.event.issue.number || github.event.pull_request.number || inputs.PullRequest }}
@@ -96,6 +97,16 @@ jobs:
             echo "head_ref=${PR_HEAD_REF}"
           } >> "${GITHUB_OUTPUT}"
 
+      # Commit status is attached to the PR head commit, so the result is
+      # visible on the PR even though the run is triggered manually.
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/clang-tidy
+          label: Jenkins clang-tidy
+          state: pending
+          sha: ${{ steps.prepare_params.outputs.head_sha }}
+
       - name: Checkout CI repository
         uses: actions/checkout@v6
         with:
@@ -122,19 +133,34 @@ jobs:
           STATUS=$(jq -r '.status // empty' <<< "${REVIEW_JSON}")
 
           if [[ "${STATUS}" != "success" ]]; then
-            echo "clang-tidy check was not completed. PR comment will not be added."
-            exit 0
+            echo "::error::clang-tidy check was not completed. PR comment will not be added."
+            exit 1
           fi
 
           REVIEW=$(jq -r '.review // empty' <<< "${REVIEW_JSON}")
+          # Empty when the Jenkins job does not report the number.
+          DIAGNOSTICS=$(jq -r '.diagnostics // empty' <<< "${REVIEW_JSON}")
+
+          case "${DIAGNOSTICS}" in
+            "") SUMMARY="see PR comment"
+                HEADER="clang-tidy found issues:" ;;
+            0)  SUMMARY="no issues"
+                HEADER="clang-tidy found no issues." ;;
+            1)  SUMMARY="1 issue"
+                HEADER="clang-tidy found 1 issue:" ;;
+            *)  SUMMARY="${DIAGNOSTICS} issues"
+                HEADER="clang-tidy found ${DIAGNOSTICS} issues:" ;;
+          esac
 
           if [[ -z "${REVIEW}" ]]; then
             COMMENT="clang-tidy check completed successfully. No issues found."
           else
-            COMMENT=$(
-              printf 'clang-tidy found issues:\n\n```text\n%s\n```\n' "${REVIEW}"
-            )
+            # The review is Markdown with its own code block; wrapping it in
+            # another one would break the rendering.
+            COMMENT=$(printf '%s\n\n%s\n' "${HEADER}" "${REVIEW}")
           fi
+
+          echo "summary=${SUMMARY}" >> "${GITHUB_OUTPUT}"
 
           {
             echo "review<<CLANG_TIDY_REVIEW_EOF"
@@ -168,3 +194,15 @@ jobs:
           gh pr comment "${PR_NUMBER}" \
             --repo "${GITHUB_REPOSITORY}" \
             --body-file clang-tidy-review.md
+
+      - name: Report final status
+        if: always() && steps.prepare_params.outputs.head_sha != ''
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/clang-tidy
+          label: Jenkins clang-tidy
+          state: ${{ job.status }}
+          build: ${{ steps.clang_tidy.outputs.jenkins_build }}
+          sha: ${{ steps.prepare_params.outputs.head_sha }}
+          success-text: completed, ${{ steps.clang_tidy.outputs.summary || 'see PR comment' }}
+          failure-text: did not complete

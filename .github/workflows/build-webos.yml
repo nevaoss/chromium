@@ -8,18 +8,82 @@ on:
   # pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
+# The regular or the rolling Jenkins job is selected by branch, with the same
+# condition as the test workflows, so that the tests find the build of the
+# same commit. Both jobs report as jenkins/build-webos.
 jobs:
   build:
     name: build-webos
+    if: >-
+      github.ref_name != 'neva-main-rolling' &&
+      (!startsWith(github.ref_name, 'rolling/') ||
+      endsWith(github.ref_name, '/merge-rolling-in-main'))
     runs-on: self-hosted
     env:
       CI_TOKEN: ${{ secrets.CI_TOKEN }}
 
     steps:
+      # Commit status is attached to the dispatched commit, so it shows up on
+      # every PR whose head is this commit, regardless of the trigger type.
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins webOS build
+          state: pending
       - uses: actions/checkout@v6
         with:
           repository: nevaoss/ci
           ref: main
       - name: Run webOS/OSE builder
+        id: jenkins
+        shell: bash
         run: |
           ./build-webos.py
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins webOS build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
+
+  rolling-build:
+    name: rolling/build-webos
+    if: >-
+      (github.ref_name == 'neva-main-rolling' ||
+      startsWith(github.ref_name, 'rolling/')) &&
+      !endsWith(github.ref_name, '/merge-rolling-in-main')
+    runs-on: self-hosted
+    env:
+      CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+    steps:
+      - name: Report pending status
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins rolling webOS build
+          state: pending
+      - uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+      - name: Run webOS/OSE builder (rolling settings & environment)
+        id: jenkins
+        shell: bash
+        run: |
+          ./rolling/build-webos.py
+      - name: Report final status
+        if: always()
+        uses: nevaoss/ci/.github/actions/commit-status@main
+        with:
+          context: jenkins/build-webos
+          label: Jenkins rolling webOS build
+          state: ${{ job.status }}
+          build: ${{ steps.jenkins.outputs.jenkins_build }}
