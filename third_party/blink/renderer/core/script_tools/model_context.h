@@ -53,6 +53,10 @@ class DeclarativeWebMCPTool : public GarbageCollectedMixin {
 
   virtual String ToolName() const = 0;
 
+  // The unique, non-web-exposed identifier of this tool. It is fixed for the
+  // lifetime of the object, and is used to register and unregister the tool.
+  virtual const base::UnguessableToken& ToolId() const = 0;
+
   virtual String ToolDescription() const = 0;
 
   virtual String ToolTitle() const = 0;
@@ -85,6 +89,13 @@ class CORE_EXPORT ToolData : public GarbageCollected<ToolData> {
         declarative_tool_(declarative_tool) {}
 
   const String& Name() const;
+
+  // The unique, non-web-exposed identifier minted for this tool at
+  // registration time. The browser process uses it to identify the tool upon
+  // unregistration.
+  const base::UnguessableToken& Id() const {
+    return script_tool_->tool_id.value();
+  }
 
   const mojom::blink::ScriptTool& ScriptTool() const { return *script_tool_; }
 
@@ -162,7 +173,13 @@ class CORE_EXPORT ModelContext : public EventTarget,
       RegisteredTool* tool,
       ScriptObject input_object,
       const ExecuteToolOptions* options = nullptr);
-  void UnregisterTool(const String& name);
+  // Unregisters the tool identified by `tool_id`, if it is still registered.
+  // This is the single unregistration entry point for both imperative and
+  // declarative tools. Unlike a name-keyed lookup, this cannot accidentally
+  // unregister a *different* tool that was registered under the same name
+  // (for example, after the intended tool went away, or when the intended
+  // tool's registration was rejected because its name was already taken).
+  void UnregisterTool(const base::UnguessableToken& tool_id);
 
   std::optional<ScriptToolDeclaration> GetScriptToolDeclaration(
       const String& name) const;

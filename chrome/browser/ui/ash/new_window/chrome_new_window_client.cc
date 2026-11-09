@@ -32,7 +32,6 @@
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
 #include "chrome/browser/ash/file_manager/url_util.h"
-#include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/system_web_apps/apps/calculator_app/calculator_app_utils.h"
 #include "chrome/browser/ash/system_web_apps/apps/camera_app/chrome_camera_app_ui_delegate.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
@@ -54,10 +53,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
-#include "chrome/browser/ui/navigator/browser_navigator.h"
-#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
-#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/webui/chrome_web_contents_handler.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
@@ -82,7 +78,6 @@
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
-#include "third_party/blink/public/mojom/navigation/was_activated_option.mojom.h"
 #include "ui/aura/window.h"
 #include "ui/base/dragdrop/os_exchange_data.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
@@ -277,30 +272,34 @@ void ChromeNewWindowClient::OpenUrl(const GURL& url,
     }
   }
 
-  NavigateParams navigate_params(
-      profile, url,
-      ui::PageTransitionFromInt(ui::PAGE_TRANSITION_LINK |
-                                ui::PAGE_TRANSITION_FROM_API));
-  navigate_params.disposition = ToWindowOpenDisposition(disposition);
+  // TODO(crbug.com/447287122): Revisit here to see if there always is an
+  // active user session.
+  const user_manager::User* user =
+      ash::BrowserContextHelper::Get()->GetUserByBrowserContext(profile);
+  if (!user) {
+    return;
+  }
 
   // If the |from| is kUserInteraction, then the page will load with a user
   // activation. This means it will be able to autoplay media without
   // restriction.
-  if (from == OpenUrlFrom::kUserInteraction) {
-    navigate_params.was_activated = blink::mojom::WasActivatedOption::kYes;
+  content::WebContents* tab = ash::BrowserController::GetInstance()->OpenUrl(
+      user->GetAccountId(), url,
+      {.disposition = ToWindowOpenDisposition(disposition),
+       .transition = ui::PageTransitionFromInt(ui::PAGE_TRANSITION_LINK |
+                                               ui::PAGE_TRANSITION_FROM_API),
+       .user_activation = from == OpenUrlFrom::kUserInteraction});
+  if (!tab) {
+    return;
   }
 
-  Navigate(&navigate_params);
+  // The browser window might be on another user's desktop, and hence not
+  // visible. Ensure the browser becomes visible on this user's desktop.
+  multi_user_util::MoveWindowToCurrentDesktop(
+      CHECK_DEREF(ash::BrowserController::GetInstance()->GetBrowserForTab(tab))
+          .GetNativeWindow());
 
-  if (navigate_params.browser) {
-    // The browser window might be on another user's desktop, and hence not
-    // visible. Ensure the browser becomes visible on this user's desktop.
-    multi_user_util::MoveWindowToCurrentDesktop(
-        navigate_params.browser->GetWindow()->GetNativeWindow());
-  }
-
-  auto* tab = navigate_params.navigated_or_inserted_contents.get();
-  if (from == OpenUrlFrom::kArc && tab) {
+  if (from == OpenUrlFrom::kArc) {
     // Add a flag to remember this tab originated in the ARC context.
     tab->SetUserData(&arc::ArcWebContentsData::kArcTransitionFlag,
                      std::make_unique<arc::ArcWebContentsData>(tab));

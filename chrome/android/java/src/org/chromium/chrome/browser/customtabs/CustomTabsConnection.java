@@ -69,7 +69,6 @@ import org.chromium.chrome.browser.browserservices.SessionDataHolder;
 import org.chromium.chrome.browser.browserservices.SessionHandler;
 import org.chromium.chrome.browser.browserservices.intents.BrowserCallbackWrapper;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
-import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider.TitleVisibility;
 import org.chromium.chrome.browser.browserservices.intents.SessionHolder;
 import org.chromium.chrome.browser.content.WebContentsFactory;
 import org.chromium.chrome.browser.customtabs.ClientManager.CalledWarmup;
@@ -2177,11 +2176,6 @@ public class CustomTabsConnection {
                 .processFile(session, uri, purpose, extras);
     }
 
-    public void setCustomTabIsInForeground(
-            @Nullable SessionHolder session, boolean isInForeground) {
-        mClientManager.setCustomTabIsInForeground(session, isInForeground);
-    }
-
     public boolean isEngagementSignalsApiAvailable(
             CustomTabsSessionToken sessionToken, Bundle extras) {
         return isEngagementSignalsApiAvailableInternal(SessionHolder.of(sessionToken));
@@ -2214,20 +2208,6 @@ public class CustomTabsConnection {
 
     public boolean hasEngagementSignalsCallback(SessionHolder session) {
         return mClientManager.getEngagementSignalsCallbackForSession(session) != null;
-    }
-
-    /** Whether a CustomTabs instance should include interactive Omnibox. */
-    public boolean shouldEnableOmniboxForIntent(BrowserServicesIntentDataProvider intentData) {
-        return false;
-    }
-
-    /** Specifies what content should be presented by the CustomTabs instance in location bar. */
-    public @TitleVisibility int getTitleVisibilityState(
-            BrowserServicesIntentDataProvider intentData) {
-        if (shouldEnableOmniboxForIntent(intentData)) {
-            return CustomTabIntentDataProvider.TitleVisibility.HIDDEN;
-        }
-        return intentData.getTitleVisibilityState();
     }
 
     /**

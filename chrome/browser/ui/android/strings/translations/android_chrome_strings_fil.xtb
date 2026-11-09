@@ -322,12 +322,14 @@ Ang taong may passphrase mo lang ang makakabasa ng iyong naka-encrypt na data. H
 <translation id="2297822946037605517">Ibahagi ang pahinang ito</translation>
 <translation id="230115972905494466">Walang nahanap na tugmang device</translation>
 <translation id="2305798319182970276">I-delete ang iyong history sa isang pag-tap lang ng button</translation>
+<translation id="2307420463693979699">Kailangan ng <ph name="APP_NAME" /> ng pahintulot na i-access ang mga human interface device (mga HID) para sa site na ito.</translation>
 <translation id="2316129865977710310">Hindi, salamat</translation>
 <translation id="232137538351753795">Mag-swipe mula sa kaliwang gilid para bumalik</translation>
 <translation id="2323763861024343754">Storage ng site</translation>
 <translation id="2327445548174191329">Mula sa <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">I-save ang page bilang…</translation>
 <translation id="2328474416100889417">Mawawalan kaagad ng access ang lahat sa grupo ng tab na “<ph name="GROUP_NAME" />,” at mao-off ang lahat ng link ng imbitasyon</translation>
+<translation id="2328773543844041445">Awtomatikong i-expand ang mga tab kapag nag-hover</translation>
 <translation id="2330186936255788117">Higit pang bookmark</translation>
 <translation id="2330243730505117832">Isinara ang "Pumili ng device."</translation>
 <translation id="2332515770639153015">Naka-on ang Pinahusay na Ligtas na Pag-browse</translation>
@@ -1691,6 +1693,7 @@ Para baguhin ang setting na ito, <ph name="BEGIN_LINK" />i-delete ang data sa Ch
 <translation id="7608245556672190037">Binuksan nang buo ang pag-opt in sa mga nahanap ng Chrome</translation>
 <translation id="7612619742409846846">Naka-sign in sa Google bilang</translation>
 <translation id="7612989789287281429">Sina-sign in ka…</translation>
+<translation id="7617512710641355143">Pinapamahalaan ang Chrome</translation>
 <translation id="7619072057915878432">Hindi na-download ang <ph name="FILE_NAME" /> dahil sa mga problema sa network.</translation>
 <translation id="7626032353295482388">Welcome sa Chrome</translation>
 <translation id="7628417132421583481">Pumunta sa Password Manager</translation>

@@ -20,7 +20,11 @@
   --immersive-menu-font-weight: 400;
 }
 
-#lineFocus {
+/* Scope #lineFocus to the direct child of #appFlexParent so it cannot match
+   any element in distilled page content that happens to have id="lineFocus".
+   Wrapping the parent check in :where() gives it zero specificity so rules
+   like #lineFocus.line-mode below can still override its properties. */
+:where(:host > #appFlexParent) > #lineFocus {
   position: absolute;
   top: var(--line-focus-y);
   left: var(--line-focus-left);
@@ -366,7 +370,7 @@ img.possibly-transparent-img {
   clip-path: inset(0);
 }
 
-.settings-overlay {
+:host > #appFlexParent > .settings-overlay {
   width: 100vw;
   height: 100vh;
   position: fixed;
@@ -375,4 +379,53 @@ img.possibly-transparent-img {
   background-color: transparent;
   z-index: 9998;
   display: none;
+}
+
+@media print {
+  #toolbar-container,
+  #lineFocus,
+  #empty-state-container,
+  language-toast,
+  .settings-overlay {
+    display: none;
+  }
+
+  :host {
+    height: auto;
+    overflow: visible;
+    print-color-adjust: exact;
+    background-color: var(--background-color);
+    color: var(--foreground-color);
+  }
+
+  /* Expand the scrollers so that all content prints, not just one page. */
+  #appFlexParent,
+  #containerParent,
+  #containerScroller {
+    display: block !important;
+    height: auto !important;
+    max-height: none;
+    overflow: visible !important;
+  }
+
+  .sp-scroller.fade {
+    mask-image: none;
+  }
+
+  #appFlexParent #container {
+    height: auto;
+    overflow: visible;
+    max-width: 100%;
+    /* Override the line focus padding set by the #appFlexParent #container
+     * rule above. It only exists so the first and last lines can scroll to
+     * the middle of the screen, and would print as blank space. */
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .current-read-highlight,
+  .previous-read-highlight {
+    background: transparent !important;
+    color: inherit !important;
+  }
 }

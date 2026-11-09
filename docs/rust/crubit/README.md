@@ -6,7 +6,9 @@
     C++ to call Rust.  This direction of Crubit interop
     is fully supported in Chromium (but see the "Caveats" section below).
 *   `rust_api_from_cpp` enables Rust to call C++.
-    It is not yet supported in Chromium, but integration work is ongoing.
+    It is not yet officially supported in Chromium.
+    Information about partial, experimental support can be found in
+    [`rust_api_from_cpp.md`](./rust_api_from_cpp.md).
 
 Notes:
 
@@ -40,7 +42,9 @@ Notes:
     * Enable Crubit in their build system by
       [providing `//build_overrides/crubit.gni`](https://source.chromium.org/chromium/chromium/src/+/main:build/rust/gni_impl/cpp_api_from_rust.gni;l=59-62;drc=51d2448c9b469ac9a7e5fd349a624c71291a7510).
 
-## Other docs
+## Other resources
+
+### Documentation
 
 * Generic, Chromium-agnostic documentation of Crubit can be found at
   https://crubit.rs.
@@ -49,9 +53,20 @@ Notes:
 * Google-internal Crubit documentation can be found at
   [go/crubit](https://goto2.corp.google.com/crubit)
     * This is mostly the same content as above, but is mentioned here because it
-      includes a few extra things like document freshness and owner metadata,
-      link to a Google-internal chatroom, etc.)
-* Crubit's Discord server can be joined using the following invite link:
-  https://discord.gg/nHq5fdADKV
+      includes a few extra things like document freshness and owner metadata.
 * TODO: Cover Crubit in
   [Chromium/FFI chapter of Comprehensive Rust course](https://google.github.io/comprehensive-rust/chromium/interoperability-with-cpp.html)
+
+### Chat rooms
+
+* Crubit's Discord server can be joined using the following invite link:
+  https://discord.gg/nHq5fdADKV
+* Googlers can find Crubit chat behind the
+  [go/crubit-chat](https://goto.google.com/crubit-chat) short link.
+
+### Reporting bugs or feature requests
+
+* Googlers can use the [go/crubit-bug](https://goto.google.com/crubit-bug) short
+  link to report a Crubit bug or a feature request.
+* Alternatively, please open an issue at
+  https://github.com/google/crubit/issues/new

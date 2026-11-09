@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">اس صفحہ کا اشتراک کریں</translation>
 <translation id="230115972905494466">کوئی مطابقت پذیر آلہ نہیں ملا</translation>
 <translation id="2305798319182970276">ایک بٹن پر تھپتھپا کر اپنی سرگزشت حذف کریں</translation>
+<translation id="2307420463693979699">‏‫<ph name="APP_NAME" /> کو اس سائٹ کے لیے انسانی انٹرفیس آلات (HIDs) تک رسائی کی اجازت درکار ہے۔</translation>
 <translation id="2316129865977710310">نہیں، شکریہ</translation>
 <translation id="232137538351753795">واپس جانے کے لیے بائیں کنارے سے سوائپ کریں</translation>
 <translation id="2323763861024343754">سائٹ اسٹوریج</translation>
 <translation id="2327445548174191329">‫<ph name="DEVICE_NAME" /> سے</translation>
 <translation id="232757965409810352">صفحہ محفوظ کریں بطور…</translation>
 <translation id="2328474416100889417">ہر کوئی فوری طور پر "<ph name="GROUP_NAME" />" ٹیب گروپ تک رسائی سے محروم ہو جائے گا اور شامل ہونے کے تمام لنکس آف کر دئے جائیں گے</translation>
+<translation id="2328773543844041445">ہوور پر ٹیبز کو خودکار طور پر پھیلائیں</translation>
 <translation id="2330186936255788117">مزید بُک مارکس</translation>
 <translation id="2330243730505117832">"آلہ منتخب کریں" بند ہے۔</translation>
 <translation id="2332515770639153015">بہتر کردہ محفوظ براؤزنگ آن ہے</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">‏‫Chrome Finds آپٹ ان مکمل اونچائی پر کھلا ہے</translation>
 <translation id="7612619742409846846">‏Google میں سائن ان ہے بطور</translation>
 <translation id="7612989789287281429">آپ کو سائن ان کیا جا رہا ہے…</translation>
+<translation id="7617512710641355143">‏‫Chrome کا نظم کیا جاتا ہے</translation>
 <translation id="7619072057915878432">نیٹ ورک کی ناکامی کی وجہ سے <ph name="FILE_NAME" /> کو ڈاؤن لوڈ کرنا ناکام ہوگیا۔</translation>
 <translation id="7626032353295482388">‏Chrome میں خوش آمدید</translation>
 <translation id="7628417132421583481">پاس ورڈ مینیجر پر جائیں</translation>

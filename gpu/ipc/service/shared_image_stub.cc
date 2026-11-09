@@ -20,6 +20,7 @@
 #include "gpu/command_buffer/service/scheduler.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_factory.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_representation.h"
+#include "gpu/command_buffer/service/shared_image/shared_memory_image_backing_factory.h"
 #include "gpu/config/gpu_finch_features.h"
 #include "gpu/ipc/common/command_buffer_id.h"
 #include "gpu/ipc/common/gpu_peak_memory.h"
@@ -174,11 +175,6 @@ void SharedImageStub::ExecuteDeferredRequest(
     }
 #endif  // BUILDFLAG(IS_WIN)
   }
-}
-
-void SharedImageStub::SetGpuExtraInfo(const gfx::GpuExtraInfo& gpu_extra_info) {
-  CHECK(factory_);
-  factory_->SetGpuExtraInfo(gpu_extra_info);
 }
 
 void SharedImageStub::OnCreateSharedImagePool(
@@ -617,6 +613,30 @@ bool SharedImageStub::CopyNativeBufferToSharedMemoryAsync(
 
   return factory_->CopyNativeBufferToSharedMemoryAsync(
       std::move(buffer_handle), std::move(shared_memory));
+}
+
+gfx::GpuMemoryBufferHandle SharedImageStub::CreateGpuMemoryBufferHandle(
+    const gfx::Size& size,
+    const viz::SharedImageFormat& format,
+    gfx::BufferUsage buffer_usage) {
+  if (SharedImageFactory::IsNativeBufferSupported(format, buffer_usage)) {
+#if BUILDFLAG(IS_ANDROID)
+    // Creation of native buffer handles is not supported on Android (the
+    // only way that a non-null GpuMemoryBufferHandle can be created on
+    // Android is by importing an external AHB).
+    return gfx::GpuMemoryBufferHandle();
+#else
+    return factory_->CreateNativeGpuMemoryBufferHandle(size, format,
+                                                       buffer_usage);
+#endif
+  } else {
+    if (SharedMemoryImageBackingFactory::IsBufferUsageSupported(buffer_usage) &&
+        SharedMemoryImageBackingFactory::IsSizeValidForFormat(size, format)) {
+      return SharedMemoryImageBackingFactory::CreateGpuMemoryBufferHandle(
+          size, format);
+    }
+  }
+  return gfx::GpuMemoryBufferHandle();
 }
 
 bool SharedImageStub::ValidateGpuMemoryBufferHandle(

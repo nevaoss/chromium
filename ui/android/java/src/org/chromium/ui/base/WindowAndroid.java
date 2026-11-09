@@ -450,12 +450,12 @@ public class WindowAndroid
 
     private boolean shouldTrackOcclusionWithTrustedPresentationApi() {
         AconfigFlaggedApiDelegate delegate = AconfigFlaggedApiDelegate.getInstance();
+        String mode = UiAndroidFeatureList.sAndroidWindowOcclusionTrackingMode.getValue();
         return mOcclusionTrackingAllowed
-                && UiAndroidFeatureList.sAndroidWindowOcclusion.isEnabled()
-                && "trusted_presentation_strict_mode"
-                        .equals(UiAndroidFeatureList.sAndroidWindowOcclusionTrackingMode.getValue())
                 && delegate != null
-                && delegate.isStrictOcclusionAvailable();
+                && delegate.isStrictOcclusionAvailable()
+                && UiAndroidFeatureList.sAndroidWindowOcclusion.isEnabled()
+                && ("trusted_presentation_strict_mode".equals(mode) || "auto".equals(mode));
     }
 
     private void maybeTrackOcclusionWithTrustedPresentationApi() {
@@ -1798,9 +1798,13 @@ public class WindowAndroid
     }
 
     private void removePointerLockViews() {
-        var decorView = getDecorView();
-        if (mPointerLockChangeView != null && decorView instanceof ViewGroup decorViewGroup) {
-            decorViewGroup.removeView(mPointerLockChangeView);
+        // Remove the view from its actual parent rather than from getDecorView(), which returns
+        // null once the activity is finishing. The window can still receive pointer capture
+        // changes at that point, which would be delivered to a leaked view after the lock state
+        // below has been cleared.
+        if (mPointerLockChangeView != null
+                && mPointerLockChangeView.getParent() instanceof ViewGroup parent) {
+            parent.removeView(mPointerLockChangeView);
         }
         if (mPointerLockingView != null) {
             assert mPointerLockingViewFocusChangeListener != null;

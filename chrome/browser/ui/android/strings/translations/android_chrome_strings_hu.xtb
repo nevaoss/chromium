@@ -322,12 +322,14 @@ Csak az Ön összetett jelszava ismeretében tudja bárki is megtekinteni a titk
 <translation id="2297822946037605517">Az oldal megosztása</translation>
 <translation id="230115972905494466">Nem találhatók kompatibilis eszközök</translation>
 <translation id="2305798319182970276">Egy gombnyomással törölheti az előzményeket</translation>
+<translation id="2307420463693979699">A(z) <ph name="APP_NAME" /> alkalmazásnak engedélyre van szüksége ahhoz, hogy hozzáférjen a humán interfészeszközökhöz ennél a webhelynél.</translation>
 <translation id="2316129865977710310">Köszönöm, nem</translation>
 <translation id="232137538351753795">A visszalépéshez csúsztasson a képernyő bal széléről</translation>
 <translation id="2323763861024343754">Webhely tárhelye</translation>
 <translation id="2327445548174191329">Forrás: <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Oldal mentése másként…</translation>
 <translation id="2328474416100889417">Mindenki azonnal el fogja veszíteni a hozzáférését a(z) „<ph name="GROUP_NAME" />” lapcsoporthoz, és a rendszer az összes meghívólinket ki fogja kapcsolni.</translation>
+<translation id="2328773543844041445">Lapok automatikus kibontása rámutatáskor</translation>
 <translation id="2330186936255788117">További könyvjelzők</translation>
 <translation id="2330243730505117832">Az „Eszköz kiválasztása” bezárva.</translation>
 <translation id="2332515770639153015">A Biztonságos Böngészés fokozott védelemmel funkció be van kapcsolva</translation>
@@ -1691,6 +1693,7 @@ A beállítás módosításához <ph name="BEGIN_LINK" />törölje a fiókjában
 <translation id="7608245556672190037">A Chrome Keresés funkciójára való feliratkozás teljes magasságban megnyitva</translation>
 <translation id="7612619742409846846">Bejelentkezve a Google rendszerébe mint</translation>
 <translation id="7612989789287281429">Bejelentkezés…</translation>
+<translation id="7617512710641355143">A Chrome felügyelet alatt áll</translation>
 <translation id="7619072057915878432">A következő fájl letöltése hálózati hibák miatt nem sikerült: <ph name="FILE_NAME" />.</translation>
 <translation id="7626032353295482388">A Chrome üdvözli Önt!</translation>
 <translation id="7628417132421583481">A Jelszókezelő megnyitása</translation>

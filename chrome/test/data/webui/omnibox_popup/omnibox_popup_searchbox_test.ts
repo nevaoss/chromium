@@ -6,11 +6,11 @@ import {isMac} from '//resources/js/platform.js';
 import {OmniboxEscapeAction, omniboxPopupBrowserProxyFactory, OmniboxPopupPageHandlerRemote, sanitizeTextForPaste, SearchboxBrowserProxy, stripJavascriptSchemas, UrlDeemphasisMode} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import type {OmniboxInputState, OmniboxPopupContextualEntrypointButtonElement, OmniboxPopupPageRemote, OmniboxPopupSearchboxElement, UrlEmphasis} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {KeywordModeEntryMethod} from 'chrome://resources/cr_components/searchbox/keyword_mode_manager.js';
-import {createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {KeywordType, RenderType, SelectionDirection, SelectionLineState, SelectionStep, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {assertDeepEquals, assertEquals, assertFalse, assertNotReached, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -3178,13 +3178,14 @@ suite('OmniboxPopupSearchboxTest', function() {
  suite('InputIconState', () => {
    test('InputMatchUpdatesWithSelectedMatch', async () => {
      const navMatch = createSearchMatchForTesting({
-       contents: 'example.com',
+       suggestTemplate: createSuggestTemplateInfo({primaryText: 'example.com'}),
        destinationUrl: 'https://example.com/',
        isSearchType: false,
        type: 'history-url',
      });
      const searchMatch = createSearchMatchForTesting({
-       contents: 'example query',
+       suggestTemplate:
+           createSuggestTemplateInfo({primaryText: 'example query'}),
        destinationUrl: 'https://www.google.com/search?q=example',
        isSearchType: true,
        type: 'search-what-you-typed',
@@ -3209,14 +3210,18 @@ suite('OmniboxPopupSearchboxTest', function() {
      await microtasksFinished();
      assertEquals(
          searchbox.result!.matches[1], searchbox.$.input.selectedMatch);
-     assertEquals('example query', searchbox.$.input.selectedMatch?.contents);
+     assertEquals(
+         'example query',
+         searchbox.$.input.selectedMatch?.suggestTemplate.primaryText);
 
      // When navigating to match 0, input's selectedMatch should be match 0.
      searchbox.selectedMatchIndex = 0;
      await microtasksFinished();
      assertEquals(
          searchbox.result!.matches[0], searchbox.$.input.selectedMatch);
-     assertEquals('example.com', searchbox.$.input.selectedMatch?.contents);
+     assertEquals(
+         'example.com',
+         searchbox.$.input.selectedMatch?.suggestTemplate.primaryText);
 
      // When navigating back to unselected, input's selectedMatch should return
      // to null.
@@ -3338,7 +3343,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    const keyword = 'youtube.com';
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
-     contents: 'youtube',
+     suggestTemplate: createSuggestTemplateInfo({primaryText: 'youtube'}),
      keywordModel: createMatchKeywordModelForTesting({
        type: KeywordType.kChip,
        keyword,
@@ -3379,7 +3384,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    searchbox.virtualFocusEnabled = false;
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
-     contents: 'youtube.com',
+     suggestTemplate: createSuggestTemplateInfo({primaryText: 'youtube.com'}),
    });
    searchbox.activeQueryId = 0;
    searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
@@ -3537,6 +3542,52 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertEquals(0, line);
    assertEquals('https://example.com/delete', url);
    assertEquals(0, testProxy.handler.getCallCount('openAutocompleteMatch'));
+ });
+
+ test('SelectionStaysOnDeletedLineAfterMatchDeletion', async () => {
+   const matches = [0, 1, 2, 3].map(i => {
+     return createSearchMatchForTesting({
+       allowedToBeDefaultMatch: i === 0,
+       fillIntoEdit: `query ${i}`,
+       destinationUrl: `https://example.com/${i}`,
+       supportsDeletion: true,
+     });
+   });
+   searchbox.activeQueryId = 0;
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: 0,
+     input: 'query',
+     matches,
+   }));
+   await microtasksFinished();
+
+   searchbox.setSelection({
+     line: 2,
+     state: SelectionLineState.kFocusedButtonRemoveSuggestion,
+     actionIndex: 0,
+   });
+   await microtasksFinished();
+   await searchbox.handleKeyNavigation(
+       new KeyboardEvent('keydown', {key: 'Enter', cancelable: true}));
+   const [line, url] =
+       await testProxy.handler.whenCalled('deleteAutocompleteMatch');
+   assertEquals(2, line);
+   assertEquals('https://example.com/2', url);
+
+   // Like the native omnibox, the selection stays on the deleted line rather
+   // than moving to the default match.
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     input: 'query',
+     matches: matches.filter((_, i) => i !== 2),
+   }));
+   await microtasksFinished();
+
+   assertDeepEquals(
+       {line: 2, state: SelectionLineState.kNormal, actionIndex: 0},
+       searchbox.selection);
+   assertEquals(2, searchbox.selectedMatchIndex);
+   assertEquals('query 3', searchbox.$.input.inputElement.value);
  });
 
  test(
@@ -3739,11 +3790,11 @@ suite('OmniboxPopupSearchboxTest', function() {
 
        const match1 = createSearchMatchForTesting({
          allowedToBeDefaultMatch: true,
-         contents: 'match 1',
+         suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
        });
        const match2 = createSearchMatchForTesting({
          allowedToBeDefaultMatch: false,
-         contents: 'match 2',
+         suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 2'}),
        });
        localSearchbox.activeQueryId = 0;
        localSearchbox.onAutocompleteResultChanged(
@@ -3891,7 +3942,7 @@ suite('OmniboxPopupSearchboxTest', function() {
          input: 'test',
          matches: [createSearchMatchForTesting({
            allowedToBeDefaultMatch: true,
-           contents: 'match 1',
+           suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
          })],
        }));
    await microtasksFinished();
@@ -3975,7 +4026,7 @@ suite('OmniboxPopupSearchboxTest', function() {
          input: 'test',
          matches: [createSearchMatchForTesting({
            allowedToBeDefaultMatch: true,
-           contents: 'match 1',
+           suggestTemplate: createSuggestTemplateInfo({primaryText: 'match 1'}),
          })],
        }));
    await microtasksFinished();
@@ -4076,7 +4127,8 @@ suite('OmniboxPopupSearchboxTest', function() {
              input: 'test',
              matches: [createSearchMatchForTesting({
                allowedToBeDefaultMatch: true,
-               contents: 'match 1',
+               suggestTemplate:
+                   createSuggestTemplateInfo({primaryText: 'match 1'}),
              })],
            }));
        await microtasksFinished();
@@ -4286,7 +4338,8 @@ suite('OmniboxPopupSearchboxTest', function() {
 
        const match = createSearchMatchForTesting({
          allowedToBeDefaultMatch: true,
-         contents: 'first match',
+         suggestTemplate:
+             createSuggestTemplateInfo({primaryText: 'first match'}),
        });
        searchbox.activeQueryId = 0;
        searchbox.onAutocompleteResultChanged(
@@ -4395,7 +4448,7 @@ suite('OmniboxPopupSearchboxTest', function() {
 
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
-     contents: 'first match',
+     suggestTemplate: createSuggestTemplateInfo({primaryText: 'first match'}),
      inlineAutocompletion: ' match',
    });
    searchbox.activeQueryId = 0;
@@ -4620,6 +4673,209 @@ suite('OmniboxPopupSearchboxTest', function() {
 
    assertEquals(5, input.selectionStart);
    assertEquals(5, input.selectionEnd);
+ });
+
+ test(
+     'RightClickOnAllSelectedText_DoesNotUnelideOrModifySelection',
+     async () => {
+       const elidedText = 'example.com';
+       const fullUrl = 'https://example.com/';
+       callbackRouter.setInputState(createDefaultOmniboxInputState({
+         text: elidedText,
+         fullUrl: fullUrl,
+         isFocused: true,
+         selection: {start: 0, end: elidedText.length},
+       }));
+       await microtasksFinished();
+
+       const input = searchbox.getInputElement().inputElement;
+       assertEquals(elidedText, input.value);
+       assertEquals(0, input.selectionStart);
+       assertEquals(elidedText.length, input.selectionEnd);
+
+       // Right-click mousedown on already-focused input with all text selected.
+       searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+         button: 2,
+         buttons: 2,
+         clientX: 20,
+         clientY: 20,
+         detail: 1,
+         bubbles: true,
+         composed: true,
+       }));
+       await microtasksFinished();
+
+       // Verify text did not unelide and selection was not modified/collapsed.
+       assertEquals(elidedText, input.value);
+       assertEquals(0, input.selectionStart);
+       assertEquals(elidedText.length, input.selectionEnd);
+     });
+
+ suite('SecondClickOnAllSelectedElidedUrl', () => {
+   const elidedText = 'example.com/path';
+   const fullUrl = 'https://www.example.com/path';
+   const prefixLength = 'https://www.'.length;
+
+   let input: HTMLInputElement|HTMLTextAreaElement;
+
+   setup(async () => {
+     callbackRouter.setInputState(createDefaultOmniboxInputState({
+       text: elidedText,
+       fullUrl: fullUrl,
+       isFocused: true,
+       selection: {start: 0, end: elidedText.length},
+     }));
+     await microtasksFinished();
+     input = searchbox.getInputElement().inputElement;
+     input.focus();
+     assertEquals(elidedText, input.value);
+     assertEquals(0, input.selectionStart);
+     assertEquals(elidedText.length, input.selectionEnd);
+   });
+
+   function dispatchMouseEvent(
+       target: EventTarget, type: string, clientX: number) {
+     const rect = input.getBoundingClientRect();
+     target.dispatchEvent(new MouseEvent(type, {
+       button: 0,
+       buttons: type === 'mousedown' ? 1 : 0,
+       clientX,
+       clientY: rect.top + rect.height / 2,
+       detail: 1,
+       bubbles: true,
+       composed: true,
+     }));
+   }
+
+   // Returns a client X coordinate over the input at which a click places the
+   // caret at `offset` of the current input text.
+   function clientXForOffset(offset: number): number {
+     const rect = input.getBoundingClientRect();
+     const y = rect.top + rect.height / 2;
+     for (let x = Math.ceil(rect.left); x < rect.right; x++) {
+       const position = document.caretPositionFromPoint(
+           x, y, {shadowRoots: [input.getRootNode() as ShadowRoot]});
+       if (position?.offsetNode === input && position.offset === offset) {
+         return x;
+       }
+     }
+     assertNotReached(`No client X found for offset ${offset}`);
+   }
+
+   test('UnelidesOnMouseUpPlacingCaretOnClickedCharacter', async () => {
+     // Click between 'exam' and 'ple' of the elided URL.
+     const clientX = clientXForOffset(4);
+     dispatchMouseEvent(input, 'mousedown', clientX);
+     // Like Views, the press neither unelides nor changes the selection, so
+     // that it can still start a drag-and-drop of the selected URL.
+     assertEquals(elidedText, input.value);
+     assertEquals(0, input.selectionStart);
+     assertEquals(elidedText.length, input.selectionEnd);
+
+     dispatchMouseEvent(document, 'mouseup', clientX);
+     await microtasksFinished();
+
+     // On release, the caret is placed at the clicked character and the URL is
+     // unelided, keeping the caret on the same characters.
+     assertEquals(fullUrl, input.value);
+     assertEquals(prefixLength + 4, input.selectionStart);
+     assertEquals(prefixLength + 4, input.selectionEnd);
+     assertEquals(
+         'https://www.exam', input.value.substring(0, prefixLength + 4));
+   });
+
+   test('UnelidesOnMouseUpOutsideInputPlacingCaretAtEnd', async () => {
+     dispatchMouseEvent(input, 'mousedown', clientXForOffset(4));
+     // Release to the right of the input, which is clamped to the input, past
+     // the end of the elided URL.
+     dispatchMouseEvent(
+         document, 'mouseup', input.getBoundingClientRect().right + 50);
+     await microtasksFinished();
+
+     assertEquals(fullUrl, input.value);
+     assertEquals(prefixLength + elidedText.length, input.selectionStart);
+     assertEquals(prefixLength + elidedText.length, input.selectionEnd);
+   });
+
+   test('UnelidesOnMouseUpShiftingChangedSelection', async () => {
+     dispatchMouseEvent(input, 'mousedown', clientXForOffset(4));
+     // Simulate the selection having changed to 'example.com' by release.
+     input.setSelectionRange(0, 'example.com'.length);
+     dispatchMouseEvent(document, 'mouseup', clientXForOffset(4));
+     await microtasksFinished();
+
+     // The selection stays on the same characters of the unelided URL, without
+     // being extended over the elided prefix.
+     assertEquals(fullUrl, input.value);
+     assertEquals(prefixLength, input.selectionStart);
+     assertEquals(prefixLength + 'example.com'.length, input.selectionEnd);
+   });
+
+   test('DoesNotUnelideWhenDraggingSelectedUrl', async () => {
+     const clientX = clientXForOffset(4);
+     dispatchMouseEvent(input, 'mousedown', clientX);
+     // Dragging from inside the selection starts a drag-and-drop of the whole
+     // selected URL, rather than a new drag selection.
+     input.dispatchEvent(
+         new DragEvent('dragstart', {bubbles: true, composed: true}));
+     // No `mouseup` follows a real drag (Blink only dispatches `dragend`).
+     // Simulate a later, unrelated `mouseup` (e.g. from clicking a suggestion)
+     // to verify that the drag cancelled the pending unelision.
+     dispatchMouseEvent(document, 'mouseup', clientX);
+     await microtasksFinished();
+
+     // Like Views, the URL stays elided and fully selected.
+     assertEquals(elidedText, input.value);
+     assertEquals(0, input.selectionStart);
+     assertEquals(elidedText.length, input.selectionEnd);
+   });
+
+   test('KeydownDuringMouseDown_CancelsUnelide', async () => {
+     const clientX = clientXForOffset(4);
+     dispatchMouseEvent(input, 'mousedown', clientX);
+     // Cmd/Ctrl+L while the button is held selects all.
+     searchbox.$.inputWrapper.dispatchEvent(new KeyboardEvent('keydown', {
+       key: 'l',
+       ctrlKey: !isMac,
+       metaKey: isMac,
+       bubbles: true,
+       composed: true,
+     }));
+     dispatchMouseEvent(document, 'mouseup', clientX);
+     await microtasksFinished();
+
+     // The release neither collapses the selection nor unelides.
+     assertEquals(elidedText, input.value);
+     assertEquals(0, input.selectionStart);
+     assertEquals(elidedText.length, input.selectionEnd);
+   });
+
+   test('UnelidesIntranetUrlWithTrailingSlashElided', async () => {
+     // "https://foobar" is elided to "foobar/", which is not a substring of
+     // the full URL.
+     const intranetElidedText = 'foobar/';
+     const intranetFullUrl = 'https://foobar';
+     callbackRouter.setInputState(createDefaultOmniboxInputState({
+       text: intranetElidedText,
+       fullUrl: intranetFullUrl,
+       isFocused: true,
+       selection: {start: 0, end: intranetElidedText.length},
+     }));
+     await microtasksFinished();
+     input.focus();
+     assertEquals(intranetElidedText, input.value);
+
+     // Click between 'foo' and 'bar'.
+     const clientX = clientXForOffset(3);
+     dispatchMouseEvent(input, 'mousedown', clientX);
+     dispatchMouseEvent(document, 'mouseup', clientX);
+     await microtasksFinished();
+
+     // The caret stays between 'foo' and 'bar' of the unelided URL.
+     assertEquals(intranetFullUrl, input.value);
+     assertEquals('https://foo'.length, input.selectionStart);
+     assertEquals('https://foo'.length, input.selectionEnd);
+   });
  });
 
  test('KeydownDuringMouseDown_CancelsSelectAll', async () => {
@@ -5178,5 +5434,69 @@ suite('OmniboxPopupSearchboxTest', function() {
    }));
    await microtasksFinished();
    assertDeepEquals(elidedEmphasis, searchbox.$.input.urlEmphasis);
+ });
+
+ test('UpdatesLayoutConstantsFromLoadTimeData', async () => {
+   const originalConstants = {
+     alignmentInsetTop: loadTimeData.getInteger('alignmentInsetTop'),
+     alignmentInsetHorizontal:
+         loadTimeData.getInteger('alignmentInsetHorizontal'),
+     alignmentInsetBottom: loadTimeData.getInteger('alignmentInsetBottom'),
+     locationBarHeight: loadTimeData.getInteger('locationBarHeight'),
+     locationBarFontSize: loadTimeData.getInteger('locationBarFontSize'),
+     locationBarIconSize: loadTimeData.getInteger('locationBarIconSize'),
+     locationBarPageInfoIconVerticalPadding:
+         loadTimeData.getInteger('locationBarPageInfoIconVerticalPadding'),
+   };
+
+   // Verify searchbox in `setup()` initialized its inline styles with the
+   // C++ layout constants provided by `OmniboxPopupUI`.
+   assertEquals(
+       `${originalConstants.alignmentInsetTop}px`,
+       searchbox.style.getPropertyValue('--alignment-inset-top'));
+   assertEquals(
+       `${originalConstants.locationBarHeight}px`,
+       searchbox.style.getPropertyValue('--cr-searchbox-height'));
+
+   // Override `loadTimeData` with custom layout constants and verify a newly
+   // connected searchbox applies them as inline style custom properties.
+   loadTimeData.overrideValues({
+     alignmentInsetTop: 10,
+     alignmentInsetHorizontal: 12,
+     alignmentInsetBottom: 8,
+     locationBarHeight: 40,
+     locationBarFontSize: 16,
+     locationBarIconSize: 22,
+     locationBarPageInfoIconVerticalPadding: 6,
+   });
+
+   const testSearchbox = document.createElement('omnibox-popup-searchbox');
+   document.body.appendChild(testSearchbox);
+   await microtasksFinished();
+
+   assertEquals(
+       '10px', testSearchbox.style.getPropertyValue('--alignment-inset-top'));
+   assertEquals(
+       '12px',
+       testSearchbox.style.getPropertyValue('--alignment-inset-horizontal'));
+   assertEquals(
+       '8px', testSearchbox.style.getPropertyValue('--alignment-inset-bottom'));
+   assertEquals(
+       '40px', testSearchbox.style.getPropertyValue('--cr-searchbox-height'));
+   assertEquals(
+       '16px',
+       testSearchbox.style.getPropertyValue('--cr-searchbox-font-size'));
+   assertEquals(
+       '22px',
+       testSearchbox.style.getPropertyValue(
+           '--cr-searchbox-icon-size-in-searchbox'));
+   assertEquals(
+       '6px',
+       testSearchbox.style.getPropertyValue(
+           '--location-bar-page-info-icon-vertical-padding'));
+
+   testSearchbox.remove();
+   // Restore original values so `loadTimeData` does not leak into other tests.
+   loadTimeData.overrideValues(originalConstants);
  });
 });

@@ -24,9 +24,11 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
+#include "chrome/browser/password_manager/chrome_password_manager_client.h"
 #include "chrome/browser/password_manager/chrome_webauthn_credentials_delegate_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
+#include "chrome/browser/ui/autofill/chrome_autofill_client.h"
 #include "chrome/browser/webauthn/authenticator_request_dialog_model.h"
 #include "chrome/browser/webauthn/chrome_web_authentication_delegate.h"
 #include "chrome/browser/webauthn/fake_password_credential_fetcher.h"
@@ -61,12 +63,14 @@
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "device/fido/cable/v2_constants.h"
 #include "device/fido/discoverable_credential_metadata.h"
+#include "device/fido/fido_device_authenticator.h"
 #include "device/fido/fido_discovery_factory.h"
 #include "device/fido/fido_request_handler_base.h"
 #include "device/fido/public/features.h"
 #include "device/fido/public/fido_constants.h"
 #include "device/fido/public/fido_types.h"
 #include "device/fido/public/public_key_credential_user_entity.h"
+#include "device/fido/virtual_ctap2_device.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -137,6 +141,24 @@ class MockCableDiscoveryFactory : public device::FidoDiscoveryFactory {
   }
 
   std::optional<std::array<uint8_t, device::cablev2::kQRKeySize>> qr_key;
+};
+
+class MockPasswordManagerClient : public ChromePasswordManagerClient {
+ public:
+  static MockPasswordManagerClient* Create(content::WebContents* contents) {
+    auto client = std::make_unique<MockPasswordManagerClient>(contents);
+    auto* raw = client.get();
+    contents->SetUserData(UserDataKey(), std::move(client));
+    return raw;
+  }
+
+  explicit MockPasswordManagerClient(content::WebContents* web_contents)
+      : ChromePasswordManagerClient(web_contents) {}
+
+  MOCK_METHOD(void,
+              TriggerPersonalizationAndTrustSurvey,
+              (std::string_view),
+              (override));
 };
 
 class ChromeAuthenticatorRequestDelegateTest
@@ -342,6 +364,43 @@ TEST_F(ChromeAuthenticatorRequestDelegateTest, ConditionalUI) {
     EXPECT_EQ(observer.last_step() ==
                   AuthenticatorRequestDialogModel::Step::kPasskeyAutofill,
               conditional_ui);
+  }
+}
+
+// Conditional and ambient requests must not dispatch to external authenticators
+// (e.g. USB security keys) before the user selects an option. Otherwise, an
+// authenticator that cannot satisfy the request can end it with a page-modal
+// error.
+TEST_F(ChromeAuthenticatorRequestDelegateTest,
+       PassiveRequestsDeferExternalAuthenticatorDispatch) {
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(GURL("https://example.com"));
+  ChromeWebAuthnCredentialsDelegateFactory::CreateForWebContents(
+      web_contents());
+
+  device::FidoDeviceAuthenticator usb_authenticator(
+      std::make_unique<device::VirtualCtap2Device>());
+  ASSERT_EQ(usb_authenticator.AuthenticatorTransport(),
+            device::FidoTransportProtocol::kUsbHumanInterfaceDevice);
+
+  const struct {
+    UIPresentation ui_presentation;
+    bool expect_embedder_controls_dispatch;
+  } kTests[] = {
+      {UIPresentation::kAutofill, true},
+      {UIPresentation::kAmbient, true},
+      {UIPresentation::kModal, false},
+  };
+  for (const auto& test : kTests) {
+    SCOPED_TRACE(static_cast<int>(test.ui_presentation));
+    ChromeAuthenticatorRequestDelegate delegate(main_rfh());
+    delegate.SetUIPresentation(test.ui_presentation);
+    delegate.SetRelyingPartyId(kRpId);
+    TransportAvailabilityInfo transports_info;
+    transports_info.request_type = device::FidoRequestType::kGetAssertion;
+    delegate.OnTransportAvailabilityEnumerated(std::move(transports_info));
+    EXPECT_EQ(delegate.EmbedderControlsAuthenticatorDispatch(usb_authenticator),
+              test.expect_embedder_controls_dispatch);
   }
 }
 
@@ -1740,6 +1799,100 @@ TEST_P(ChromeAuthenticatorRequestDelegateHybridPasskeyEngagementTest,
   } else {
     histogram_tester_.ExpectTotalCount(engagement_histogram(), 0);
   }
+}
+
+// Tests that a HaT survey is triggered when WebAuthn credentials are used for
+// sign-in.
+TEST_F(ChromeAuthenticatorRequestDelegateTest,
+       TriggerPersonalizationAndTrustSurvey_WebAuthnCredentialUsed) {
+  autofill::ChromeAutofillClient::CreateForWebContents(web_contents());
+  MockPasswordManagerClient* client =
+      MockPasswordManagerClient::Create(web_contents());
+
+  EXPECT_CALL(*client, TriggerPersonalizationAndTrustSurvey(
+                           "WebAuthn credential was used"));
+
+  ChromeAuthenticatorRequestDelegate delegate(main_rfh());
+  delegate.OnTransactionSuccessful(content::AuthenticatorRequestClientDelegate::
+                                       RequestSource::kWebAuthentication,
+                                   device::FidoRequestType::kGetAssertion,
+                                   device::AuthenticatorType::kEnclave);
+}
+
+// Tests that a HaT survey is triggered when WebAuthn credentials are created.
+TEST_F(ChromeAuthenticatorRequestDelegateTest,
+       TriggerPersonalizationAndTrustSurvey_WebAuthnCredentialCreated) {
+  autofill::ChromeAutofillClient::CreateForWebContents(web_contents());
+  MockPasswordManagerClient* client =
+      MockPasswordManagerClient::Create(web_contents());
+
+  EXPECT_CALL(*client, TriggerPersonalizationAndTrustSurvey(
+                           "WebAuthn credential was created"));
+
+  ChromeAuthenticatorRequestDelegate delegate(main_rfh());
+  delegate.OnTransactionSuccessful(content::AuthenticatorRequestClientDelegate::
+                                       RequestSource::kWebAuthentication,
+                                   device::FidoRequestType::kMakeCredential,
+                                   device::AuthenticatorType::kOther);
+}
+
+// Tests that no HaT survey is triggered when no major Chrome UI interaction is
+// required by the user in the WebAuthn flow.
+TEST_F(
+    ChromeAuthenticatorRequestDelegateTest,
+    TriggerPersonalizationAndTrustSurvey_ExcludedWithoutChromeUiInteraction) {
+  autofill::ChromeAutofillClient::CreateForWebContents(web_contents());
+  MockPasswordManagerClient* client =
+      MockPasswordManagerClient::Create(web_contents());
+
+  EXPECT_CALL(*client, TriggerPersonalizationAndTrustSurvey).Times(0);
+
+  ChromeAuthenticatorRequestDelegate delegate(main_rfh());
+  delegate.OnTransactionSuccessful(content::AuthenticatorRequestClientDelegate::
+                                       RequestSource::kWebAuthentication,
+                                   device::FidoRequestType::kGetAssertion,
+                                   device::AuthenticatorType::kWinNative);
+  delegate.OnTransactionSuccessful(content::AuthenticatorRequestClientDelegate::
+                                       RequestSource::kWebAuthentication,
+                                   device::FidoRequestType::kGetAssertion,
+                                   device::AuthenticatorType::kICloudKeychain);
+}
+
+// Tests that a HaT survey is triggered when a WebAuthn sign-in or creation
+// offer is dismissed by the user.
+TEST_F(ChromeAuthenticatorRequestDelegateTest,
+       TriggerPersonalizationAndTrustSurvey_WebAuthnDismissed) {
+  autofill::ChromeAutofillClient::CreateForWebContents(web_contents());
+  MockPasswordManagerClient* client =
+      MockPasswordManagerClient::Create(web_contents());
+
+  EXPECT_CALL(*client, TriggerPersonalizationAndTrustSurvey(
+                           "WebAuthn credential sign-in offer dismissed"));
+  EXPECT_CALL(*client, TriggerPersonalizationAndTrustSurvey(
+                           "WebAuthn credential creation offer dismissed"));
+
+  auto cancel_request_at_step =
+      [&](AuthenticatorRequestDialogModel::Step step,
+          device::FidoRequestType request_type =
+              device::FidoRequestType::kGetAssertion,
+          std::vector<device::DiscoverableCredentialMetadata> creds = {}) {
+        ChromeAuthenticatorRequestDelegate delegate(main_rfh());
+        delegate.RegisterActionCallbacks(
+            base::DoNothing(), base::DoNothing(), base::DoNothing(),
+            base::DoNothing(), base::DoNothing(), base::DoNothing(),
+            base::DoNothing(), base::DoNothing(), base::DoNothing());
+        delegate.dialog_model()->request_type = request_type;
+        delegate.dialog_model()->SetStep(step);
+        delegate.dialog_model()->creds = std::move(creds);
+        delegate.OnCancelRequest();
+      };
+
+  cancel_request_at_step(AuthenticatorRequestDialogModel::Step::kSelectAccount,
+                         device::FidoRequestType::kGetAssertion,
+                         {device::DiscoverableCredentialMetadata()});
+  cancel_request_at_step(
+      AuthenticatorRequestDialogModel::Step::kGPMCreatePasskey,
+      device::FidoRequestType::kMakeCredential);
 }
 
 }  // namespace

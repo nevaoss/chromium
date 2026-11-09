@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">هم‌رسانی این صفحه</translation>
 <translation id="230115972905494466">هیچ دستگاه سازگاری پیدا نشد</translation>
 <translation id="2305798319182970276">سابقه‌تان را با تک‌ضرب روی یک دکمه حذف کنید</translation>
+<translation id="2307420463693979699">‏‫<ph name="APP_NAME" /> برای دست‌یابی به دستگاه‌های میانای انسانی (HID) برای این سایت به اجازه نیاز دارد.</translation>
 <translation id="2316129865977710310">نه متشکرم</translation>
 <translation id="232137538351753795">برای برگشتن، از لبه راست تند بکشید</translation>
 <translation id="2323763861024343754">فضای ذخیره‌سازی سایت</translation>
 <translation id="2327445548174191329">از <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">ذخیره کردن صفحه به‌عنوان…</translation>
 <translation id="2328474416100889417">همه دسترسی به گروه زبانه «<ph name="GROUP_NAME" />» را فوراً ازدست می‌دهند و همه پیوندهای دعوت غیرفعال می‌شود</translation>
+<translation id="2328773543844041445">گسترده کردن خودکار زبانه‌ها هنگام نگه داشتن روی آن‌ها</translation>
 <translation id="2330186936255788117">نشانک‌های بیشتر</translation>
 <translation id="2330243730505117832">«انتخاب دستگاه» بسته شد.</translation>
 <translation id="2332515770639153015">«مرور ایمن پیشرفته» روشن است</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">‏موافقت کردن با یافته‌های Chrome به‌صورت کامل باز شده است</translation>
 <translation id="7612619742409846846">‏ثبت ورودشده در Google به‌عنوان</translation>
 <translation id="7612989789287281429">درحال وارد کردن شما به سیستم…</translation>
+<translation id="7617512710641355143">‏‫Chrome تحت‌مدیریت است</translation>
 <translation id="7619072057915878432">به‌دلیل نقص‌هایی در شبکه، بارگیری <ph name="FILE_NAME" /> انجام نشد.</translation>
 <translation id="7626032353295482388">‏به Chrome خوش آمدید</translation>
 <translation id="7628417132421583481">رفتن به «مدیر گذرواژه»</translation>

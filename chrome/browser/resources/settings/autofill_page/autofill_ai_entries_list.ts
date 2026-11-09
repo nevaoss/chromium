@@ -235,6 +235,15 @@ export class SettingsAutofillAiEntriesListElement extends
 
     this.completeEntityTypesList_ =
         filteredEntities.sort(this.entityTypesComparator_);
+
+    for (const entityType of this.completeEntityTypesList_) {
+      if (entityType.supportsWalletStorage &&
+          entityType.passType ===
+              chrome.autofillPrivate.EntityPassType.PUBLIC_PASS) {
+        this.entityDataManager_.preloadDetailsForUpsertPass(
+            entityType.typeName);
+      }
+    }
   }
 
   /*
@@ -469,8 +478,6 @@ export class SettingsAutofillAiEntriesListElement extends
     }
   }
 }
-
-export type AutofillAiEntriesListElement = SettingsAutofillAiEntriesListElement;
 
 declare global {
   interface HTMLElementTagNameMap {

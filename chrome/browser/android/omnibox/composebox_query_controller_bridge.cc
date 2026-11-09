@@ -4,6 +4,7 @@
 
 #include "chrome/browser/android/omnibox/composebox_query_controller_bridge.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -379,7 +380,7 @@ void ComposeboxQueryControllerBridge::OnSearchUrlCreated(
               search_service->GetSession(session_handle_->session_id(),
                                          session_handle_->invocation_source());
       if (handle_copy) {
-        handle_copy->set_submitted_context_tokens(
+        handle_copy->SetSubmittedContextTokens(
             session_handle_->GetSubmittedContextTokens());
         handle_copy->CheckSearchContentSharingSettings(profile_->GetPrefs());
 
@@ -463,14 +464,14 @@ bool ComposeboxQueryControllerBridge::IsPdfUploadEligible() {
 void ComposeboxQueryControllerBridge::SetActiveTool(
     omnibox::ToolMode tool_mode) {
   if (input_state_model_) {
-    input_state_model_->setActiveTool(tool_mode);
+    input_state_model_->SetActiveTool(tool_mode);
   }
 }
 
 void ComposeboxQueryControllerBridge::SetActiveModel(
     omnibox::ModelMode model_mode) {
   if (input_state_model_) {
-    input_state_model_->setActiveModel(model_mode);
+    input_state_model_->SetActiveModel(model_mode);
   }
 }
 
@@ -713,7 +714,7 @@ void ComposeboxQueryControllerBridge::InitializeInputStateModel() {
       *session_handle_, config_ptr ? *config_ptr : omnibox::SearchboxConfig(),
       GURL(), profile_ ? profile_->IsOffTheRecord() : false, is_signed_in,
       browser_identity_matches_aim_identity);
-  input_state_subscription_ = input_state_model_->subscribe(
+  input_state_subscription_ = input_state_model_->Subscribe(
       base::BindRepeating(&ComposeboxQueryControllerBridge::OnInputStateChanged,
                           weak_ptr_factory_.GetWeakPtr()));
   input_state_model_->Initialize();
@@ -736,6 +737,35 @@ std::vector<int32_t> ComposeboxQueryControllerBridge::GetSelectedTabIds()
 static bool JNI_ComposeboxQueryControllerBridge_IsFuseboxEligibleForProfile(
     Profile* profile) {
   return IsFuseboxEligibleForProfileInternal(profile);
+}
+
+static bool JNI_ComposeboxQueryControllerBridge_IsToolAllowedForProfile(
+    Profile* profile,
+    omnibox::ToolMode tool_mode) {
+  if (!profile) {
+    return false;
+  }
+
+  // Mirror the checks in JNI_ComposeboxQueryControllerBridge_Init(): if a
+  // controller can't be created, no tools are available.
+  AimEligibilityService* aim_service =
+      AimEligibilityServiceFactory::GetForProfile(profile);
+  if (!aim_service || !aim_service->IsAimEligible()) {
+    return false;
+  }
+  if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
+          profile->GetPrefs())) {
+    return false;
+  }
+
+  const omnibox::SearchboxConfig* config = aim_service->GetSearchboxConfig();
+  if (!config) {
+    return false;
+  }
+  return std::ranges::contains(
+      contextual_search::InputStateModel::GetAllowedTools(
+          *config, profile->IsOffTheRecord()),
+      tool_mode);
 }
 
 DEFINE_JNI(ComposeboxQueryControllerBridge)

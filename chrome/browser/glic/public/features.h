@@ -47,7 +47,6 @@ extern const base::FeatureParam<bool> kAutoOpenGlicForPdfWithOnboarding;
 extern const base::FeatureParam<base::TimeDelta> kAutoOpenGlicCooldown;
 
 BASE_DECLARE_FEATURE(kGlicInvoke);
-BASE_DECLARE_FEATURE(kGlicOnboardingMetricsMigration);
 
 // Controls inline cue for text selection.
 BASE_DECLARE_FEATURE(kGlicSelectionPrompt);
@@ -237,6 +236,8 @@ BASE_DECLARE_FEATURE(kGlicWarmOnIph);
 BASE_DECLARE_FEATURE(kGlicBackfillWarmingUsePerformanceManager);
 
 BASE_DECLARE_FEATURE(kGlicColdWarmingUsePerformanceManager);
+
+BASE_DECLARE_FEATURE(kGlicSsr);
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

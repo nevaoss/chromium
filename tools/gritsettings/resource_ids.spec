@@ -473,7 +473,7 @@
     "includes": [3760],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/context_hub/resources.grd": {
-    "META": {"sizes": {"includes": [80]}},
+    "META": {"sizes": {"includes": [90]}},
     "includes": [3768],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_cueing/internals/resources.grd": {
@@ -837,7 +837,7 @@
     "includes": [4960],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/signin/resources.grd": {
-    "META": {"sizes": {"includes": [100],}},
+    "META": {"sizes": {"includes": [120],}},
     "includes": [4980],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/signin/signout_confirmation/resources.grd": {
@@ -995,10 +995,6 @@
     "META": {"sizes": {"includes": [45],}},
     "includes" : [5740],
   },
-  "<(SHARED_INTERMEDIATE_DIR)/chromeos/ash/experiences/guest_os/borealis/motd/resources/resources.grd": {
-    "META": {"sizes": {"includes": [5],}},
-    "includes": [5750],
-   },
   "chromeos/ash/resources/ash_resources.grd": {
     "includes": [5780],
   },

@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "base/check.h"
@@ -33,14 +34,9 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/net/system_network_context_manager.h"
+#include "chrome/browser/password_manager/chrome_password_manager_client.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
-#include "components/signin/public/base/signin_buildflags.h"
-#include "components/signin/public/base/signin_switches.h"
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-#include "chrome/browser/signin/dice_tab_helper.h"
-#include "chrome/browser/ui/signin/signin_qrcode_model.h"
-#endif
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -66,6 +62,8 @@
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
+#include "components/signin/public/base/signin_buildflags.h"
+#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/sync/protocol/webauthn_credential_specifics.pb.h"
 #include "components/sync/service/sync_service.h"
@@ -103,6 +101,11 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/gfx/native_ui_types.h"
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/signin/dice_tab_helper.h"
+#include "chrome/browser/ui/signin/signin_qrcode_model.h"
+#endif
 
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate_mac.h"
@@ -235,6 +238,151 @@ constexpr char kSigninHybridPasskeyOutcomeHistogram[] =
 constexpr char kHybridOutcomeHistogram[] = "WebAuthentication.Hybrid.Outcome";
 constexpr char kHybridQrEngagementHistogram[] =
     "WebAuthentication.Hybrid.QrEngagement";
+
+// Triggers a HaTS survey about the WebAuthn ("passkey") experience.
+void TriggerWebAuthnHatsSurvey(content::RenderFrameHost* render_frame_host,
+                               std::string_view filling_assistance) {
+  if (!render_frame_host) {
+    return;
+  }
+  if (content::WebContents* web_contents =
+          content::WebContents::FromRenderFrameHost(render_frame_host)) {
+    if (ChromePasswordManagerClient* client =
+            ChromePasswordManagerClient::FromWebContents(web_contents)) {
+      client->TriggerPersonalizationAndTrustSurvey(filling_assistance);
+    }
+  }
+}
+
+std::string_view GetWebAuthnAcceptedFillingAssistanceStringForHats(
+    device::FidoRequestType type) {
+  switch (type) {
+    case device::FidoRequestType::kGetAssertion:
+      return "WebAuthn credential was used";
+    case device::FidoRequestType::kMakeCredential:
+      return "WebAuthn credential was created";
+  }
+  NOTREACHED();
+}
+
+// Returns whether the given authenticator type has most user interactions in
+// Chrome UI (as opposed to delegating to native OS dialogs like Windows Hello
+// or Apple Passwords) in order to decide if a HaT survey can be shown about the
+// user experience in Chrome.
+bool HasChromeUiInteractionForHats(device::AuthenticatorType type) {
+  switch (type) {
+    // Most user interaction is in Chrome UI:
+    case device::AuthenticatorType::kTouchID:
+    case device::AuthenticatorType::kChromeOS:
+    case device::AuthenticatorType::kEnclave:
+    case device::AuthenticatorType::kPhone:
+    case device::AuthenticatorType::kOther:
+      return true;
+
+    // Completion of authentication flow is delegated to OS:
+    case device::AuthenticatorType::kWinNative:
+    case device::AuthenticatorType::kICloudKeychain:
+      return false;
+  }
+  NOTREACHED();
+}
+
+std::optional<std::string_view>
+GetWebAuthnDismissedFillingAssistanceStringForHats(
+    const AuthenticatorRequestDialogModel& dialog_model) {
+  using Step = AuthenticatorRequestDialogModel::Step;
+  switch (dialog_model.step()) {
+    // Software passkey creation flows.
+    case Step::kGPMCreatePasskey:
+    case Step::kChromeProfileCreatePasskey:
+    case Step::kGPMCreatePin:
+    case Step::kGPMCreateArbitraryPin:
+    case Step::kGPMTrustThisComputerCreation:
+    case Step::kResidentCredentialConfirmation:
+      return "WebAuthn credential creation offer dismissed";
+
+    // Software passkey sign-in flows with discovered accounts.
+    case Step::kSelectAccount:
+    case Step::kPreSelectAccount:
+    case Step::kGPMEnterPin:
+    case Step::kGPMEnterArbitraryPin:
+    case Step::kGPMTouchID:
+    case Step::kGPMTrustThisComputerAssertion:
+      return "WebAuthn credential sign-in offer dismissed";
+
+    // Physical security keys and hybrid (phone) prompts.
+    case Step::kUsbInsertAndActivate:
+    case Step::kClientPinEntry:
+    case Step::kClientPinSetup:
+    case Step::kClientPinTapAgain:
+    case Step::kCableV2QRCode:
+    case Step::kCableV2Connecting:
+      return dialog_model.request_type ==
+                     device::FidoRequestType::kMakeCredential
+                 ? "WebAuthn credential creation offer dismissed"
+                 : "WebAuthn credential sign-in offer dismissed";
+
+    // Selection sheets: may offer passkeys, security keys, phones, or
+    // passwords.
+    case Step::kSelectPriorityMechanism:
+    case Step::kMechanismSelection:
+      if (dialog_model.request_type ==
+          device::FidoRequestType::kMakeCredential) {
+        return "WebAuthn credential creation offer dismissed";
+      }
+      if (!dialog_model.creds.empty() ||
+          std::ranges::any_of(
+              dialog_model.mechanisms,
+              [](const AuthenticatorRequestDialogModel::Mechanism& m) {
+                using Mechanism = AuthenticatorRequestDialogModel::Mechanism;
+                return !std::holds_alternative<Mechanism::Password>(m.type) &&
+                       !std::holds_alternative<Mechanism::SignInAgain>(m.type);
+              })) {
+        return "WebAuthn credential sign-in offer dismissed";
+      }
+      break;
+
+    // Errors, timeouts, autofill (handled outside modal dialog), or terminal
+    // steps.
+    case Step::kNotStarted:
+    case Step::kPasskeyAutofill:
+    case Step::kPasskeyUpgrade:
+    case Step::kErrorNoAvailableTransports:
+    case Step::kErrorNoPasskeys:
+    case Step::kErrorGpmDisabled:
+    case Step::kErrorInternalUnrecognized:
+    case Step::kErrorWindowsHelloNotEnabled:
+    case Step::kTimedOut:
+    case Step::kKeyNotRegistered:
+    case Step::kKeyAlreadyRegistered:
+    case Step::kMissingCapability:
+    case Step::kStorageFull:
+    case Step::kClosed:
+    case Step::kBlePowerOnAutomatic:
+    case Step::kBlePowerOnManual:
+    case Step::kBlePermissionMac:
+    case Step::kOffTheRecordInterstitial:
+    case Step::kCableV2Connected:
+    case Step::kCableV2Error:
+    case Step::kClientPinChange:
+    case Step::kClientPinErrorSoftBlock:
+    case Step::kClientPinErrorHardBlock:
+    case Step::kClientPinErrorAuthenticatorRemoved:
+    case Step::kInlineBioEnrollment:
+    case Step::kRetryInternalUserVerification:
+    case Step::kGPMChangePin:
+    case Step::kGPMChangeArbitraryPin:
+    case Step::kGPMError:
+    case Step::kGPMConnecting:
+    case Step::kGPMRecoverSecurityDomain:
+    case Step::kGPMReauthForPinReset:
+    case Step::kGPMLockedPin:
+    case Step::kPasswordOsAuth:
+    case Step::kPlatformAuthenticator:
+      break;
+  }
+  return std::nullopt;
+}
 
 }  // namespace
 
@@ -430,6 +578,13 @@ void ChromeAuthenticatorRequestDelegate::OnTransactionSuccessful(
       authenticator_type == device::AuthenticatorType::kPhone
           ? HybridPasskeyOutcome::kSuccess
           : HybridPasskeyOutcome::kOtherAuthenticatorUsed);
+
+  if (HasChromeUiInteractionForHats(authenticator_type)) {
+    TriggerWebAuthnHatsSurvey(
+        content::RenderFrameHost::FromID(render_frame_host_id_),
+        GetWebAuthnAcceptedFillingAssistanceStringForHats(request_type));
+  }
+
 #if BUILDFLAG(IS_MAC)
   if (authenticator_type == device::AuthenticatorType::kTouchID) {
     base::Time::Exploded exploded;
@@ -782,7 +937,9 @@ bool ChromeAuthenticatorRequestDelegate::EmbedderControlsAuthenticatorDispatch(
     return false;
   }
 
-  if (dialog_controller_->ui_presentation() == UIPresentation::kAutofill &&
+  const UIPresentation ui_presentation = dialog_controller_->ui_presentation();
+  if ((ui_presentation == UIPresentation::kAutofill ||
+       ui_presentation == UIPresentation::kAmbient) &&
       (dialog_model_->step() ==
            AuthenticatorRequestDialogModel::Step::kPasskeyAutofill ||
        dialog_model_->step() ==
@@ -802,9 +959,9 @@ bool ChromeAuthenticatorRequestDelegate::EmbedderControlsAuthenticatorDispatch(
       return false;
     }
 #endif
-    // There is an active conditional request that is not showing any UI. The UI
-    // will dispatch to any plugged in authenticators after the user selects an
-    // option.
+    // There is an active conditional or ambient request that is not showing any
+    // modal UI. The UI will dispatch to any plugged in authenticators after the
+    // user selects an option.
     return true;
   }
   auto transport = authenticator.AuthenticatorTransport();
@@ -894,6 +1051,14 @@ void ChromeAuthenticatorRequestDelegate::OnStepTransition() {
 void ChromeAuthenticatorRequestDelegate::OnCancelRequest() {
   MaybeRecordHybridPasskeyOutcome(
       HybridPasskeyTerminationReason::kUserCancelled);
+
+  if (std::optional<std::string_view> filling_assistance =
+          GetWebAuthnDismissedFillingAssistanceStringForHats(*dialog_model_)) {
+    TriggerWebAuthnHatsSurvey(
+        content::RenderFrameHost::FromID(render_frame_host_id_),
+        *filling_assistance);
+  }
+
   // |cancel_callback_| must be invoked at most once as invocation of
   // |cancel_callback_| will destroy |this|.
   DCHECK(cancel_callback_);

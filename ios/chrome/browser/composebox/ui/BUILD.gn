@@ -75,9 +75,11 @@ source_set("favicons_accordion") {
     "composebox_favicons_accordion_view.mm",
   ]
   deps = [
+    "//ios/chrome/app/strings",
     "//ios/chrome/browser/shared/ui/symbols",
     "//ios/chrome/browser/shared/ui/util",
     "//ios/chrome/common/ui/colors",
+    "//ui/base",
   ]
   frameworks = [ "UIKit.framework" ]
 }
@@ -113,6 +115,7 @@ source_set("state") {
     "//ios/chrome/browser/composebox/public:attachment_options",
     "//ios/chrome/browser/composebox/public:composebox_mode",
     "//ios/chrome/browser/composebox/public:model_options",
+    "//ios/chrome/browser/shared/public/features",
     "//ios/chrome/browser/shared/ui/symbols",
     "//ui/base",
   ]

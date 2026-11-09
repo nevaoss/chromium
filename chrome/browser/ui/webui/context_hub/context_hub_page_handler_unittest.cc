@@ -8,12 +8,17 @@
 #include <optional>
 #include <vector>
 
+#include "base/base_paths.h"
 #include "base/containers/span.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/scoped_path_override.h"
 #include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "base/time/time.h"
@@ -82,6 +87,7 @@
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/tabs/public/mock_tab_interface.h"  // nogncheck
 #include "components/tabs/public/tab_interface.h"       // nogncheck
+#include "ui/base/clipboard/test/test_clipboard.h"      // nogncheck
 #endif
 
 namespace context_hub {
@@ -89,6 +95,10 @@ namespace {
 
 using ::base::test::RunOnceCallback;
 using ::testing::_;
+using ::testing::AllOf;
+using ::testing::ElementsAre;
+using ::testing::Field;
+using ::testing::FieldsAre;
 using ::testing::IsEmpty;
 using ::testing::Not;
 
@@ -254,6 +264,15 @@ class ContextHubPageHandlerTest : public testing::Test {
                                  base::Time::Now());
 
 #if !BUILDFLAG(IS_ANDROID)
+    ui::TestClipboard::CreateForCurrentThread();
+
+    // Override DIR_TEMP before constructing the handler so
+    // CopyAttachmentsToClipboard and startup pruning use an isolated per-test
+    // temp directory.
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    temp_dir_override_ = std::make_unique<base::ScopedPathOverride>(
+        base::DIR_TEMP, scoped_temp_dir_.GetPath());
+
     auto mock_tab_provider = std::make_unique<MockTabProvider>();
     mock_tab_provider_ = mock_tab_provider.get();
     handler_ = std::make_unique<ContextHubPageHandler>(
@@ -271,6 +290,7 @@ class ContextHubPageHandlerTest : public testing::Test {
 
   void TearDown() override {
 #if !BUILDFLAG(IS_ANDROID)
+    ui::Clipboard::DestroyClipboardForCurrentThread();
     mock_tab_provider_ = nullptr;
 #endif
     handler_.reset();
@@ -286,6 +306,9 @@ class ContextHubPageHandlerTest : public testing::Test {
          browser::context_hub::mojom::kAutoTodos,
          browser::context_hub::mojom::kSmartSearch,
          browser::context_hub::mojom::kTopics,
+#if !BUILDFLAG(IS_ANDROID)
+         browser::context_hub::mojom::kMemoryBanksSearchPalette,
+#endif
          optimization_guide::features::kOptimizationHints},
         {});
     return feature_list;
@@ -319,6 +342,8 @@ class ContextHubPageHandlerTest : public testing::Test {
   TestingProfile profile_;
 #if !BUILDFLAG(IS_ANDROID)
   raw_ptr<MockTabProvider> mock_tab_provider_ = nullptr;
+  base::ScopedTempDir scoped_temp_dir_;
+  std::unique_ptr<base::ScopedPathOverride> temp_dir_override_;
 #endif
   MockPage mock_page_;
   std::unique_ptr<ContextHubPageHandler> handler_;
@@ -408,12 +433,14 @@ TEST_F(ContextHubPageHandlerTest,
         EXPECT_EQ(first_party.actionable_url,
                   GURL("https://example.com/action2"));
         ASSERT_EQ(first_party.source_references.size(), 2u);
-        EXPECT_EQ(first_party.source_references[0].url,
-                  GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-        EXPECT_EQ(first_party.source_references[0].subject, "Subject 1");
-        EXPECT_EQ(first_party.source_references[1].url,
-                  GURL("https://mail.google.com/mail/u/0/#inbox/456"));
-        EXPECT_EQ(first_party.source_references[1].subject, "Subject 2");
+        EXPECT_THAT(first_party.source_references[0],
+                    ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                        GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+                        "Subject 1")));
+        EXPECT_THAT(first_party.source_references[1],
+                    ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                        GURL("https://mail.google.com/mail/u/0/#inbox/456"),
+                        "Subject 2")));
       });
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
@@ -541,11 +568,11 @@ TEST(ContextHubMojomTraitsTest, GroupTypeSerialization) {
 }
 
 TEST(ContextHubMojomTraitsTest, GmailReferenceSerialization) {
-  context_hub::SourceReference input{
+  context_hub::GmailReference input{
       .url = GURL("https://mail.google.com/mail/u/0/#inbox/123"),
       .subject = "Test Subject",
   };
-  context_hub::SourceReference output;
+  context_hub::GmailReference output;
   ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
               browser::context_hub::mojom::GmailReference>(input, output));
   EXPECT_EQ(output.url, GURL("https://mail.google.com/mail/u/0/#inbox/123"));
@@ -553,15 +580,35 @@ TEST(ContextHubMojomTraitsTest, GmailReferenceSerialization) {
 }
 
 TEST(ContextHubMojomTraitsTest, SourceReferenceSerialization) {
-  context_hub::SourceReference input{
+  context_hub::SourceReference input = context_hub::GmailReference{
       .url = GURL("https://mail.google.com/mail/u/0/#inbox/123"),
       .subject = "Test Subject",
   };
   context_hub::SourceReference output;
   ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
               browser::context_hub::mojom::SourceReference>(input, output));
-  EXPECT_EQ(output.url, GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-  EXPECT_EQ(output.subject, "Test Subject");
+  EXPECT_THAT(output,
+              ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                  GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+                  "Test Subject")));
+}
+
+TEST(ContextHubMojomTraitsTest,
+     SourceReferenceSerialization_ChromeHistoryEntry) {
+  const base::Time visit_time =
+      base::Time::FromMillisecondsSinceUnixEpoch(1700000000000);
+  context_hub::SourceReference input = context_hub::ChromeHistoryEntry{
+      .url = GURL("https://example.com/history"),
+      .title = "History Page Title",
+      .visit_timestamp = visit_time,
+  };
+  context_hub::SourceReference output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::SourceReference>(input, output));
+  EXPECT_THAT(output,
+              ::testing::VariantWith<ChromeHistoryEntry>(
+                  ::testing::FieldsAre(GURL("https://example.com/history"),
+                                       "History Page Title", visit_time)));
 }
 
 TEST(ContextHubMojomTraitsTest, SmartSearchResultSerialization) {
@@ -623,13 +670,47 @@ TEST(ContextHubMojomTraitsTest, SmartSearchResultSerialization_GmailAndPhotos) {
             "https://photos.google.com/photo/789");
 }
 
+TEST(ContextHubMojomTraitsTest,
+     SmartSearchResultSerialization_ChromeHistoryEntry) {
+  personal_context::proto::SmartSearchItem input;
+  input.set_description("Result with Chrome history source.");
+
+  personal_context::proto::ChromeHistoryEntry* history_ref =
+      input.add_source_references()->mutable_chrome_history_entry();
+  history_ref->set_url("https://example.com/history");
+  history_ref->set_title("History Page Title");
+  history_ref->mutable_visit_timestamp()->set_seconds(1700000000);
+  history_ref->mutable_visit_timestamp()->set_nanos(500000000);
+
+  personal_context::proto::SmartSearchItem output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::SmartSearchResult>(input, output));
+  EXPECT_EQ(output.description(), "Result with Chrome history source.");
+  ASSERT_EQ(output.source_references_size(), 1);
+  ASSERT_TRUE(output.source_references(0).has_chrome_history_entry());
+  EXPECT_EQ(output.source_references(0).chrome_history_entry().url(),
+            "https://example.com/history");
+  EXPECT_EQ(output.source_references(0).chrome_history_entry().title(),
+            "History Page Title");
+  EXPECT_EQ(output.source_references(0)
+                .chrome_history_entry()
+                .visit_timestamp()
+                .seconds(),
+            1700000000);
+  EXPECT_EQ(output.source_references(0)
+                .chrome_history_entry()
+                .visit_timestamp()
+                .nanos(),
+            500000000);
+}
+
 TEST(ContextHubMojomTraitsTest, FirstPartyDataSerialization) {
   context_hub::FirstPartyData input;
   input.actionable_url = GURL("https://docs.google.com/doc/123");
-  input.source_references.push_back(
-      {GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Email Subject 1"});
-  input.source_references.push_back(
-      {GURL("https://mail.google.com/mail/u/0/#inbox/456"), "Email Subject 2"});
+  input.source_references.push_back(context_hub::GmailReference{
+      GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Email Subject 1"});
+  input.source_references.push_back(context_hub::GmailReference{
+      GURL("https://mail.google.com/mail/u/0/#inbox/456"), "Email Subject 2"});
 
   context_hub::FirstPartyData output;
   ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
@@ -637,12 +718,36 @@ TEST(ContextHubMojomTraitsTest, FirstPartyDataSerialization) {
 
   EXPECT_EQ(output.actionable_url, GURL("https://docs.google.com/doc/123"));
   ASSERT_EQ(output.source_references.size(), 2u);
-  EXPECT_EQ(output.source_references[0].url,
-            GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-  EXPECT_EQ(output.source_references[0].subject, "Email Subject 1");
-  EXPECT_EQ(output.source_references[1].url,
-            GURL("https://mail.google.com/mail/u/0/#inbox/456"));
-  EXPECT_EQ(output.source_references[1].subject, "Email Subject 2");
+  EXPECT_THAT(output.source_references[0],
+              ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                  GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+                  "Email Subject 1")));
+  EXPECT_THAT(output.source_references[1],
+              ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                  GURL("https://mail.google.com/mail/u/0/#inbox/456"),
+                  "Email Subject 2")));
+}
+
+TEST(ContextHubMojomTraitsTest, FirstPartyDataSerialization_NullActionableUrl) {
+  const base::Time visit_time =
+      base::Time::FromMillisecondsSinceUnixEpoch(1700000000000);
+  context_hub::FirstPartyData input;
+  input.source_references.push_back(context_hub::ChromeHistoryEntry{
+      .url = GURL("https://example.com/history"),
+      .title = "History Page Title",
+      .visit_timestamp = visit_time,
+  });
+
+  context_hub::FirstPartyData output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::FirstPartyData>(input, output));
+
+  EXPECT_FALSE(output.actionable_url.has_value());
+  ASSERT_EQ(output.source_references.size(), 1u);
+  EXPECT_THAT(output.source_references[0],
+              ::testing::VariantWith<ChromeHistoryEntry>(
+                  ::testing::FieldsAre(GURL("https://example.com/history"),
+                                       "History Page Title", visit_time)));
 }
 
 TEST(ContextHubMojomTraitsTest, ThirdPartyDataSerialization) {
@@ -666,8 +771,8 @@ TEST(ContextHubMojomTraitsTest, ThirdPartyDataSerialization) {
 TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_FirstParty) {
   context_hub::FirstPartyData first_party;
   first_party.actionable_url = GURL("https://docs.google.com/doc/123");
-  first_party.source_references.push_back(
-      {GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Email Subject"});
+  first_party.source_references.push_back(context_hub::GmailReference{
+      GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Email Subject"});
   std::variant<context_hub::FirstPartyData, context_hub::ThirdPartyData> input =
       std::move(first_party);
 
@@ -680,9 +785,10 @@ TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_FirstParty) {
   EXPECT_EQ(out_first_party.actionable_url,
             GURL("https://docs.google.com/doc/123"));
   ASSERT_EQ(out_first_party.source_references.size(), 1u);
-  EXPECT_EQ(out_first_party.source_references[0].url,
-            GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-  EXPECT_EQ(out_first_party.source_references[0].subject, "Email Subject");
+  EXPECT_THAT(out_first_party.source_references[0],
+              ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                  GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+                  "Email Subject")));
 }
 
 TEST(ContextHubMojomTraitsTest, AutoTodoDataSerialization_ThirdParty) {
@@ -717,8 +823,8 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_FirstPartyData) {
 
   context_hub::FirstPartyData first_party;
   first_party.actionable_url = GURL("https://docs.google.com/doc/123");
-  first_party.source_references.push_back(
-      {GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Review Request"});
+  first_party.source_references.push_back(context_hub::GmailReference{
+      GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Review Request"});
   input.data = std::move(first_party);
 
   context_hub::AutoTodoEntry output;
@@ -736,14 +842,11 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_FirstPartyData) {
   ASSERT_EQ(std::get<context_hub::FirstPartyData>(output.data)
                 .source_references.size(),
             1u);
-  EXPECT_EQ(std::get<context_hub::FirstPartyData>(output.data)
-                .source_references[0]
-                .url,
-            GURL("https://mail.google.com/mail/u/0/#inbox/123"));
-  EXPECT_EQ(std::get<context_hub::FirstPartyData>(output.data)
-                .source_references[0]
-                .subject,
-            "Review Request");
+  EXPECT_THAT(
+      std::get<context_hub::FirstPartyData>(output.data).source_references[0],
+      ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+          GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+          "Review Request")));
 }
 
 TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_ThirdPartyData) {
@@ -849,7 +952,7 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_WithTodos) {
   FirstPartyData fp_data;
   fp_data.actionable_url = GURL("https://example.com/action");
   fp_data.source_references = {
-      {GURL("https://mail.google.com/123"), "Email Subject 1"}};
+      GmailReference{GURL("https://mail.google.com/123"), "Email Subject 1"}};
   fp_entry.data = std::move(fp_data);
 
   base::test::TestFuture<bool> fp_future;
@@ -888,9 +991,9 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_WithTodos) {
   const auto& fp_res_data = std::get<FirstPartyData>(first_party.at(0).data);
   EXPECT_EQ(fp_res_data.actionable_url, GURL("https://example.com/action"));
   ASSERT_EQ(fp_res_data.source_references.size(), 1u);
-  EXPECT_EQ(fp_res_data.source_references[0].url,
-            GURL("https://mail.google.com/123"));
-  EXPECT_EQ(fp_res_data.source_references[0].subject, "Email Subject 1");
+  EXPECT_THAT(fp_res_data.source_references[0],
+              ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+                  GURL("https://mail.google.com/123"), "Email Subject 1")));
 
   ASSERT_EQ(third_party.size(), 1u);
   EXPECT_EQ(third_party.at(0).id, "tp_1");
@@ -1108,13 +1211,13 @@ TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_Success) {
   todo.importance_score = 0.75f;
   FirstPartyData fp_data;
   fp_data.actionable_url = GURL("https://example.com/start");
-  fp_data.source_references = {
-      {GURL("https://mail.google.com/mail/u/0/#inbox/abc"), "ABC Subject"}};
+  fp_data.source_references = {GmailReference{
+      GURL("https://mail.google.com/mail/u/0/#inbox/abc"), "ABC Subject"}};
   todo.data = std::move(fp_data);
 
-  base::test::TestFuture<bool> update_future;
-  handler_->UpdateAutoTodo(std::move(todo), update_future.GetCallback());
-  EXPECT_TRUE(update_future.Get());
+  base::test::TestFuture<bool> replace_future;
+  handler_->UpdateAutoTodo(std::move(todo), replace_future.GetCallback());
+  EXPECT_TRUE(replace_future.Get());
 
   base::test::TestFuture<std::vector<AutoTodoEntry>> get_future;
   service->GetAutoTodos(get_future.GetCallback());
@@ -1128,9 +1231,10 @@ TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_Success) {
   const auto& stored_fp_data = std::get<FirstPartyData>(entries[0].data);
   EXPECT_EQ(stored_fp_data.actionable_url, GURL("https://example.com/start"));
   ASSERT_EQ(stored_fp_data.source_references.size(), 1u);
-  EXPECT_EQ(stored_fp_data.source_references[0].url,
-            GURL("https://mail.google.com/mail/u/0/#inbox/abc"));
-  EXPECT_EQ(stored_fp_data.source_references[0].subject, "ABC Subject");
+  EXPECT_THAT(
+      stored_fp_data.source_references[0],
+      ::testing::VariantWith<GmailReference>(::testing::FieldsAre(
+          GURL("https://mail.google.com/mail/u/0/#inbox/abc"), "ABC Subject")));
 }
 
 TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_ThirdParty_Success) {
@@ -1150,9 +1254,9 @@ TEST_F(ContextHubPageHandlerTest, UpdateAutoTodo_ThirdParty_Success) {
   tp_data.group_type = ThirdPartyData::GroupType::kUnfinishedAction;
   todo.data = std::move(tp_data);
 
-  base::test::TestFuture<bool> update_future;
-  handler_->UpdateAutoTodo(std::move(todo), update_future.GetCallback());
-  EXPECT_TRUE(update_future.Get());
+  base::test::TestFuture<bool> replace_future;
+  handler_->UpdateAutoTodo(std::move(todo), replace_future.GetCallback());
+  EXPECT_TRUE(replace_future.Get());
 
   base::test::TestFuture<std::vector<AutoTodoEntry>> get_future;
   service->GetAutoTodos(get_future.GetCallback());
@@ -1350,10 +1454,10 @@ TEST_F(ContextHubPageHandlerTest, OnAutoTodosChanged_IncludesDismissedTodos) {
         dismissed_notify_future.SetValue(updated_todos);
       });
 
-  base::test::TestFuture<bool> update_future;
+  base::test::TestFuture<bool> replace_future;
   handler_->UpdateAutoTodo(std::move(dismissed_entry),
-                           update_future.GetCallback());
-  EXPECT_TRUE(update_future.Get());
+                           replace_future.GetCallback());
+  EXPECT_TRUE(replace_future.Get());
 
   auto updated_todos = dismissed_notify_future.Take();
   ASSERT_EQ(updated_todos.size(), 1u);
@@ -1367,6 +1471,106 @@ TEST_F(ContextHubPageHandlerTest, OnAutoTodosChanged_IncludesDismissedTodos) {
   ASSERT_EQ(cached_items.size(), 1u);
   EXPECT_EQ(cached_items[0].id, "todo_1");
   EXPECT_EQ(cached_items[0].status, AutoTodoEntry::Status::kDismissed);
+}
+
+TEST_F(ContextHubPageHandlerTest, GetAutoTodos_FiltersOutChromeHistoryTodos) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  AutoTodoEntry gmail_entry;
+  gmail_entry.id = "gmail_1";
+  gmail_entry.title = "Gmail Todo";
+  gmail_entry.data = FirstPartyData{
+      .source_references = {GmailReference{
+          GURL("https://mail.google.com/mail/u/0/#inbox/123"), "Subject"}},
+      .actionable_url = GURL("https://example.com/action"),
+  };
+
+  AutoTodoEntry history_entry;
+  history_entry.id = "history_1";
+  history_entry.title = "History Todo";
+  history_entry.data = FirstPartyData{
+      .source_references = {ChromeHistoryEntry{
+          GURL("https://example.com/history"), "History Title",
+          base::Time::FromMillisecondsSinceUnixEpoch(1700000000000)}},
+  };
+
+  base::test::TestFuture<bool> gmail_future;
+  service->UpdateAutoTodo(std::move(gmail_entry), gmail_future.GetCallback());
+  ASSERT_TRUE(gmail_future.Get());
+
+  base::test::TestFuture<bool> history_future;
+  service->UpdateAutoTodo(std::move(history_entry),
+                          history_future.GetCallback());
+  ASSERT_TRUE(history_future.Get());
+
+  // Verify that `GetAutoTodos()` filters out the Chrome history todo.
+  base::test::TestFuture<const std::vector<context_hub::AutoTodoEntry>&,
+                         const std::vector<context_hub::AutoTodoEntry>&,
+                         const context_hub::AutoTodosGenerationMetadata&,
+                         const context_hub::AutoTodosGenerationMetadata&>
+      get_future;
+  handler_->GetAutoTodos(get_future.GetCallback());
+
+  auto [first_party, third_party, first_party_metadata, third_party_metadata] =
+      get_future.Take();
+  ASSERT_EQ(first_party.size(), 1u);
+  EXPECT_EQ(first_party[0].id, "gmail_1");
+  EXPECT_TRUE(third_party.empty());
+
+  // Verify both items are still in the underlying store.
+  base::test::TestFuture<std::vector<AutoTodoEntry>> service_get_future;
+  service->GetAutoTodos(service_get_future.GetCallback());
+  EXPECT_EQ(service_get_future.Get().size(), 2u);
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       OnAutoTodosChanged_FiltersOutChromeHistoryTodos) {
+  personal_context::proto::AutoTodosResponse response;
+
+  personal_context::proto::AutoTodoItem* gmail_todo = response.add_todos();
+  gmail_todo->set_title("Gmail Todo");
+  gmail_todo->set_actionable_url("https://example.com/action");
+  personal_context::proto::SourceReference* gmail_ref =
+      gmail_todo->add_source_references();
+  gmail_ref->mutable_gmail()->set_message_url(
+      "https://mail.google.com/mail/u/0/#inbox/123");
+  gmail_ref->mutable_gmail()->set_subject("Subject");
+
+  personal_context::proto::AutoTodoItem* history_todo = response.add_todos();
+  history_todo->set_title("History Todo");
+  personal_context::proto::SourceReference* history_ref =
+      history_todo->add_source_references();
+  history_ref->mutable_chrome_history_entry()->set_url(
+      "https://example.com/history");
+  history_ref->mutable_chrome_history_entry()->set_title("History Page");
+  history_ref->mutable_chrome_history_entry()
+      ->mutable_visit_timestamp()
+      ->set_seconds(1700000000);
+
+  personal_context::proto::Any any_response;
+  response.SerializeToString(any_response.mutable_value());
+
+  EXPECT_CALL(
+      *GetMockService(),
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_AUTO_TODOS,
+                   _, _, _))
+      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
+          base::ok(std::move(any_response)))));
+
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
+  EXPECT_CALL(mock_page_, OnAutoTodosChanged(Not(IsEmpty())))
+      .WillOnce([](const std::vector<context_hub::AutoTodoEntry>& todos) {
+        ASSERT_EQ(todos.size(), 1u);
+        EXPECT_EQ(todos[0].title, "Gmail Todo");
+      });
+  EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
+
+  base::test::TestFuture<bool> future;
+  handler_->GenerateFirstPartyAutoTodos(future.GetCallback());
+  EXPECT_TRUE(future.Get());
+  mock_page_.Flush();
 }
 
 TEST_F(ContextHubPageHandlerTest, GetAllMemoryBankEntries_Empty) {
@@ -1510,10 +1714,10 @@ TEST_F(ContextHubPageHandlerTest, MemoryBankEntryDeltaNotifications) {
   annotations->note = "Updated Note";
   annotations->collection = "Updated Collection";
 
-  base::test::TestFuture<bool> update_future;
+  base::test::TestFuture<bool> replace_future;
   handler_->UpdateMemoryBankEntryAnnotations(id, std::move(annotations),
-                                             update_future.GetCallback());
-  EXPECT_TRUE(update_future.Get());
+                                             replace_future.GetCallback());
+  EXPECT_TRUE(replace_future.Get());
 
   auto [updated_id, updated_annotations] = update_notify_future.Take();
   EXPECT_EQ(updated_id, id);
@@ -1899,6 +2103,94 @@ TEST_F(ContextHubPageHandlerTest, GetExistingTabGroupsAndChats_NoGroups) {
   EXPECT_TRUE(groups.empty());
   EXPECT_TRUE(ungrouped_tabs.empty());
   EXPECT_TRUE(chat_history.empty());
+}
+
+TEST_F(ContextHubPageHandlerTest, ReplaceTabGroups_ReplacesStoredGroups) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  TabGroupEntry old_group;
+  old_group.label = "Old";
+  old_group.tab_ids = {1, 2};
+  base::test::TestFuture<void> seed_future;
+  service->ReplaceTabGroups({old_group}, seed_future.GetCallback());
+  ASSERT_TRUE(seed_future.Wait());
+
+  std::vector<browser::context_hub::mojom::TabGroupPtr> groups;
+  groups.push_back(browser::context_hub::mojom::TabGroup::New());
+  groups.back()->label = "A";
+  groups.back()->tabs.push_back(browser::context_hub::mojom::TabInfo::New(
+      3, "Tab 3", GURL("https://example3.com")));
+  groups.back()->tabs.push_back(browser::context_hub::mojom::TabInfo::New(
+      4, "Tab 4", GURL("https://example4.com")));
+  groups.push_back(browser::context_hub::mojom::TabGroup::New());
+  groups.back()->label = "B";
+  groups.back()->tabs.push_back(browser::context_hub::mojom::TabInfo::New(
+      5, "Tab 5", GURL("https://example5.com")));
+
+  base::test::TestFuture<void> replace_future;
+  handler_->ReplaceTabGroups(std::move(groups), replace_future.GetCallback());
+  ASSERT_TRUE(replace_future.Wait());
+
+  base::test::TestFuture<std::vector<TabGroupEntry>> stored_future;
+  service->GetTabGroups(stored_future.GetCallback());
+  EXPECT_THAT(
+      stored_future.Get(),
+      ElementsAre(
+          AllOf(Field(&TabGroupEntry::label, "A"),
+                Field(&TabGroupEntry::tab_ids, ElementsAre(3, 4)),
+                Field(&TabGroupEntry::tabs,
+                      ElementsAre(
+                          FieldsAre(3, "Tab 3", GURL("https://example3.com"), _,
+                                    _),
+                          FieldsAre(4, "Tab 4", GURL("https://example4.com"), _,
+                                    _)))),
+          AllOf(Field(&TabGroupEntry::label, "B"),
+                Field(&TabGroupEntry::tab_ids, ElementsAre(5)))));
+}
+
+TEST_F(ContextHubPageHandlerTest, ReplaceTabGroups_DropsEmptyGroups) {
+  std::vector<browser::context_hub::mojom::TabGroupPtr> groups;
+  groups.push_back(browser::context_hub::mojom::TabGroup::New());
+  groups.back()->label = "Empty";
+  groups.push_back(browser::context_hub::mojom::TabGroup::New());
+  groups.back()->label = "Kept";
+  groups.back()->tabs.push_back(browser::context_hub::mojom::TabInfo::New(
+      1, "Tab 1", GURL("https://example1.com")));
+
+  base::test::TestFuture<void> replace_future;
+  handler_->ReplaceTabGroups(std::move(groups), replace_future.GetCallback());
+  ASSERT_TRUE(replace_future.Wait());
+
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+  base::test::TestFuture<std::vector<TabGroupEntry>> stored_future;
+  service->GetTabGroups(stored_future.GetCallback());
+  EXPECT_THAT(stored_future.Get(),
+              ElementsAre(Field(&TabGroupEntry::label, "Kept")));
+}
+
+TEST_F(ContextHubPageHandlerTest, ReplaceTabGroups_EmptyClearsStore) {
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  TabGroupEntry group;
+  group.label = "Group";
+  group.tab_ids = {1, 2};
+  base::test::TestFuture<void> seed_future;
+  service->ReplaceTabGroups({group}, seed_future.GetCallback());
+  ASSERT_TRUE(seed_future.Wait());
+
+  base::test::TestFuture<void> replace_future;
+  handler_->ReplaceTabGroups({}, replace_future.GetCallback());
+  ASSERT_TRUE(replace_future.Wait());
+
+  base::test::TestFuture<std::vector<TabGroupEntry>> stored_future;
+  service->GetTabGroups(stored_future.GetCallback());
+  EXPECT_THAT(stored_future.Get(), IsEmpty());
 }
 
 TEST_F(ContextHubPageHandlerTest, GenerateTabBasedTodos) {
@@ -2514,10 +2806,10 @@ TEST_F(ContextHubPageHandlerTest, UpdateMemoryBankEntryAnnotations_Success) {
   new_annotations->collection = "New Collection";
   new_annotations->tags = std::vector<std::string>{"new_tag1", "new_tag2"};
 
-  base::test::TestFuture<bool> update_future;
+  base::test::TestFuture<bool> replace_future;
   handler_->UpdateMemoryBankEntryAnnotations(id, std::move(new_annotations),
-                                             update_future.GetCallback());
-  EXPECT_TRUE(update_future.Get());
+                                             replace_future.GetCallback());
+  EXPECT_TRUE(replace_future.Get());
 
   base::test::TestFuture<std::vector<MemoryBankEntry>> updated_entries_future;
   service->GetAllEntries(updated_entries_future.GetCallback());
@@ -2535,10 +2827,10 @@ TEST_F(ContextHubPageHandlerTest, UpdateMemoryBankEntryAnnotations_NotFound) {
       browser::context_hub::mojom::MemoryBankEntryAnnotations::New();
   new_annotations->note = "Note";
 
-  base::test::TestFuture<bool> update_future;
+  base::test::TestFuture<bool> replace_future;
   handler_->UpdateMemoryBankEntryAnnotations(999999, std::move(new_annotations),
-                                             update_future.GetCallback());
-  EXPECT_FALSE(update_future.Get());
+                                             replace_future.GetCallback());
+  EXPECT_FALSE(replace_future.Get());
 }
 
 TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_Success) {
@@ -2862,8 +3154,6 @@ TEST_F(ContextHubPageHandlerTopicsExportTest, GetTopicsFeedbackExportPreview) {
   EXPECT_EQ(history::QueryOptions::KEEP_ALL_DUPLICATES,
             query_options_.duplicate_policy);
   ASSERT_TRUE(preview);
-  // The profile has no @google.com primary account.
-  EXPECT_EQ("", preview->ldap);
   EXPECT_EQ(1u, preview->stats->topics);
   EXPECT_EQ(2u, preview->stats->visits);
   EXPECT_EQ(1u, preview->stats->unclustered_visits);
@@ -2900,7 +3190,6 @@ TEST_F(ContextHubPageHandlerTopicsExportTest, GenerateTopicsFeedbackBundle) {
   options->window_days = 30;
   options->excluded_domains = {"docs.google.com"};
   options->missing_topics = "Gardening";
-  options->rater = "alice";
   base::test::TestFuture<const std::string&> future;
   handler_->GenerateTopicsFeedbackBundle(std::move(options),
                                          future.GetCallback());
@@ -2913,7 +3202,7 @@ TEST_F(ContextHubPageHandlerTopicsExportTest, GenerateTopicsFeedbackBundle) {
   EXPECT_EQ(14, bundle->FindInt("window_days"));
   EXPECT_EQ(FormatTopicsFeedbackTime(window_start),
             *bundle->FindString("window_start"));
-  EXPECT_EQ("alice", *bundle->FindString("rater"));
+  EXPECT_FALSE(bundle->contains("rater"));
   EXPECT_THAT(*bundle->FindStringByDottedPath("chrome.version"),
               Not(IsEmpty()));
   EXPECT_EQ("true", *bundle->FindStringByDottedPath(
@@ -3413,7 +3702,616 @@ TEST_F(ContextHubPageHandlerGlicTest, RunTodoTaskFailsWhenNotHostedInTab) {
   handler_->RunTodoTask("Task: Reply to Alice", future.GetCallback());
   EXPECT_FALSE(future.Get());
 }
-#endif
+
+TEST_F(ContextHubPageHandlerTest, OpenContextHubPage_Success) {
+  base::test::TestFuture<void> future;
+  handler_->OpenContextHubPage(future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+
+TEST_F(ContextHubPageHandlerTest, OpenWebUrl_Success) {
+  base::test::TestFuture<void> future;
+  handler_->OpenWebUrl(GURL("https://example.com"), future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+}
+
+TEST_F(ContextHubPageHandlerTest, OpenWebUrl_InvalidUrlReportsBadMessage) {
+  MockPage page;
+  mojo::Remote<browser::context_hub::mojom::PageHandler> remote;
+  ContextHubPageHandler handler(page.BindAndGetRemote(),
+                                remote.BindNewPipeAndPassReceiver(), &profile_,
+                                nullptr, nullptr);
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  remote->OpenWebUrl(GURL("not-a-valid-url"), base::DoNothing());
+  EXPECT_EQ("Invalid or disallowed URL scheme in OpenWebUrl",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       OpenWebUrl_DisallowedSchemesReportBadMessage) {
+  for (const char* disallowed_url : {
+           "chrome://settings",
+           "chrome://flags",
+           "file:///etc/passwd",
+           "javascript:alert(1)",
+           "data:text/html,bad",
+           "about:blank",
+       }) {
+    MockPage page;
+    mojo::Remote<browser::context_hub::mojom::PageHandler> remote;
+    ContextHubPageHandler handler(page.BindAndGetRemote(),
+                                  remote.BindNewPipeAndPassReceiver(),
+                                  &profile_, nullptr, nullptr);
+
+    mojo::test::BadMessageObserver bad_message_observer;
+    remote->OpenWebUrl(GURL(disallowed_url), base::DoNothing());
+    EXPECT_EQ("Invalid or disallowed URL scheme in OpenWebUrl",
+              bad_message_observer.WaitForBadMessage());
+  }
+}
+
+TEST_F(ContextHubPageHandlerTest, CopyAttachmentsToClipboard_SingleFile) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f->filename = "Itinerary.md";
+  f->content = "# Itinerary\n• Flight details\n• Hotel check-in";
+  files.push_back(std::move(f));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  ASSERT_EQ(result_files.size(), 1u);
+  EXPECT_EQ(result_files[0].path.BaseName().AsUTF8Unsafe(), "Itinerary.md");
+
+  std::string file_content;
+  ASSERT_TRUE(base::ReadFileToString(result_files[0].path, &file_content));
+  EXPECT_EQ(file_content, "# Itinerary\n• Flight details\n• Hotel check-in");
+}
+
+TEST_F(ContextHubPageHandlerTest, CopyAttachmentsToClipboard_SanitizeFilename) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  // Test sanitizing invalid filename characters and adding .md extension.
+  f->filename = "Invalid/File:Name*?<>|";
+  f->content = "# Content";
+  files.push_back(std::move(f));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  ASSERT_EQ(result_files.size(), 1u);
+  EXPECT_EQ(result_files[0].path.BaseName().AsUTF8Unsafe(),
+            "Invalid_File_Name_____.md");
+
+  std::string file_content;
+  ASSERT_TRUE(base::ReadFileToString(result_files[0].path, &file_content));
+  EXPECT_EQ(file_content, "# Content");
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_SanitizeFilename_InternationalUtf8) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f1 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f1->filename = "Itinéraire_2026";
+  f1->content = "# Voyage à Paris";
+  files.push_back(std::move(f1));
+
+  auto f2 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f2->filename = "旅行計画.md";
+  f2->content = "# 東京旅行";
+  files.push_back(std::move(f2));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  ASSERT_EQ(result_files.size(), 2u);
+  EXPECT_EQ(result_files[0].path.BaseName().AsUTF8Unsafe(),
+            "Itinéraire_2026.md");
+  EXPECT_EQ(result_files[1].path.BaseName().AsUTF8Unsafe(), "旅行計画.md");
+
+  std::string content1;
+  ASSERT_TRUE(base::ReadFileToString(result_files[0].path, &content1));
+  EXPECT_EQ(content1, "# Voyage à Paris");
+
+  std::string content2;
+  ASSERT_TRUE(base::ReadFileToString(result_files[1].path, &content2));
+  EXPECT_EQ(content2, "# 東京旅行");
+}
+
+TEST_F(ContextHubPageHandlerTest, CopyAttachmentsToClipboard_MultiFile) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f1 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f1->filename = "Trip.md";
+  f1->content = "# Trip Content";
+  files.push_back(std::move(f1));
+
+  auto f2 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f2->filename = "Hotel.md";
+  f2->content = "# Hotel Booking";
+  files.push_back(std::move(f2));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  ASSERT_EQ(result_files.size(), 2u);
+  EXPECT_EQ(result_files[0].path.BaseName().AsUTF8Unsafe(), "Trip.md");
+  EXPECT_EQ(result_files[1].path.BaseName().AsUTF8Unsafe(), "Hotel.md");
+
+  std::string content1, content2;
+  ASSERT_TRUE(base::ReadFileToString(result_files[0].path, &content1));
+  EXPECT_EQ(content1, "# Trip Content");
+  ASSERT_TRUE(base::ReadFileToString(result_files[1].path, &content2));
+  EXPECT_EQ(content2, "# Hotel Booking");
+}
+
+TEST_F(ContextHubPageHandlerTest, CopyAttachmentsToClipboard_DuplicateNames) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f1 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f1->filename = "Notes.md";
+  f1->content = "# First Note";
+  files.push_back(std::move(f1));
+
+  auto f2 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f2->filename = "Notes.md";
+  f2->content = "# Second Note";
+  files.push_back(std::move(f2));
+
+  auto f3 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f3->filename = "Notes.MD";
+  f3->content = "# Third Note";
+  files.push_back(std::move(f3));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  ASSERT_EQ(result_files.size(), 3u);
+  EXPECT_EQ(result_files[0].path.BaseName().AsUTF8Unsafe(), "Notes.md");
+  EXPECT_EQ(result_files[1].path.BaseName().AsUTF8Unsafe(), "Notes_2.md");
+  EXPECT_EQ(result_files[2].path.BaseName().AsUTF8Unsafe(), "Notes_3.md");
+
+  std::string content1, content2, content3;
+  ASSERT_TRUE(base::ReadFileToString(result_files[0].path, &content1));
+  EXPECT_EQ(content1, "# First Note");
+  ASSERT_TRUE(base::ReadFileToString(result_files[1].path, &content2));
+  EXPECT_EQ(content2, "# Second Note");
+  ASSERT_TRUE(base::ReadFileToString(result_files[2].path, &content3));
+  EXPECT_EQ(content3, "# Third Note");
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_CaseInsensitiveDuplicateNames) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f1 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f1->filename = "Summary.md";
+  f1->content = "# Title 1";
+  files.push_back(std::move(f1));
+
+  auto f2 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f2->filename = "SUMMARY.md";
+  f2->content = "# Title 2";
+  files.push_back(std::move(f2));
+
+  auto f3 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f3->filename = "summary.md";
+  f3->content = "# Title 3";
+  files.push_back(std::move(f3));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  ASSERT_EQ(result_files.size(), 3u);
+  EXPECT_EQ(result_files[0].path.BaseName().AsUTF8Unsafe(), "Summary.md");
+  EXPECT_EQ(result_files[1].path.BaseName().AsUTF8Unsafe(), "SUMMARY_2.md");
+  EXPECT_EQ(result_files[2].path.BaseName().AsUTF8Unsafe(), "summary_3.md");
+  EXPECT_TRUE(base::PathExists(result_files[0].path));
+  EXPECT_TRUE(base::PathExists(result_files[1].path));
+  EXPECT_TRUE(base::PathExists(result_files[2].path));
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_EmptyListReportsBadMessage) {
+  MockPage page;
+  mojo::Remote<browser::context_hub::mojom::PageHandler> remote;
+  ContextHubPageHandler handler(page.BindAndGetRemote(),
+                                remote.BindNewPipeAndPassReceiver(), &profile_,
+                                nullptr, nullptr);
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  remote->CopyAttachmentsToClipboard({}, base::DoNothing());
+  EXPECT_EQ("Invalid files count in CopyAttachmentsToClipboard",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_ExceedsMaxFilesReportsBadMessage) {
+  MockPage page;
+  mojo::Remote<browser::context_hub::mojom::PageHandler> remote;
+  ContextHubPageHandler handler(page.BindAndGetRemote(),
+                                remote.BindNewPipeAndPassReceiver(), &profile_,
+                                nullptr, nullptr);
+
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  for (int i = 0; i < 11; ++i) {
+    auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+    f->filename = base::StringPrintf("File_%d.md", i);
+    f->content = "content";
+    files.push_back(std::move(f));
+  }
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  remote->CopyAttachmentsToClipboard(std::move(files), base::DoNothing());
+  EXPECT_EQ("Invalid files count in CopyAttachmentsToClipboard",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_InvalidUtf8ReportsBadMessage) {
+  MockPage page;
+  mojo::Remote<browser::context_hub::mojom::PageHandler> remote;
+  ContextHubPageHandler handler(page.BindAndGetRemote(),
+                                remote.BindNewPipeAndPassReceiver(), &profile_,
+                                nullptr, nullptr);
+
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f->filename = "valid.md";
+  f->content = "\x80\x81\x82";  // Invalid UTF-8 sequence.
+  files.push_back(std::move(f));
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  remote->CopyAttachmentsToClipboard(std::move(files), base::DoNothing());
+  EXPECT_EQ("Invalid UTF-8 in CopyAttachmentsToClipboard",
+            bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_OversizedFilenameReturnsInvalidInput) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f->filename = std::string(300, 'a') + ".md";
+  f->content = "Short content";
+  files.push_back(std::move(f));
+
+  // A long title is legitimate user data, so the batch is refused without
+  // terminating the renderer.
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(future.Get(), browser::context_hub::mojom::
+                              CopyAttachmentsToClipboardStatus::kInvalidInput);
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_OversizedContentReturnsInvalidInput) {
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f->filename = "Oversized.md";
+  constexpr size_t kTargetSize = 10 * 1024 * 1024;
+  f->content = std::string(kTargetSize + 1, 'a');
+  files.push_back(std::move(f));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(future.Get(), browser::context_hub::mojom::
+                              CopyAttachmentsToClipboardStatus::kInvalidInput);
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_AggregateContentLimitReturnsInvalidInput) {
+  // Each file is individually within the per-file limit, but together they
+  // exceed the aggregate budget that bounds UI thread UTF-8 validation.
+  constexpr size_t kPerFileSize = 6 * 1024 * 1024;
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  for (int i = 0; i < 2; ++i) {
+    auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+    f->filename = base::StringPrintf("Large%d.md", i);
+    f->content = std::string(kPerFileSize, 'a');
+    files.push_back(std::move(f));
+  }
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(future.Get(), browser::context_hub::mojom::
+                              CopyAttachmentsToClipboardStatus::kInvalidInput);
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_AtAggregateContentLimitSucceeds) {
+  // Exactly at the aggregate budget: must still be copied in full.
+  constexpr size_t kPerFileSize = 5 * 1024 * 1024;
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  for (int i = 0; i < 2; ++i) {
+    auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+    f->filename = base::StringPrintf("Large%d.md", i);
+    f->content = std::string(kPerFileSize, 'a');
+    files.push_back(std::move(f));
+  }
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  EXPECT_EQ(read_future.Get().size(), 2u);
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_UniqueSubdirectoriesAndPersistence) {
+  // Batch 1: Write initial file.
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> batch1;
+  auto f1 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f1->filename = "OldNote.md";
+  f1->content = "Old content";
+  batch1.push_back(std::move(f1));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future1;
+  handler_->CopyAttachmentsToClipboard(std::move(batch1),
+                                       future1.GetCallback());
+  EXPECT_EQ(
+      future1.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future1;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future1.GetCallback());
+  const auto& files1 = read_future1.Get();
+  ASSERT_EQ(files1.size(), 1u);
+  base::FilePath old_path = files1[0].path;
+  EXPECT_TRUE(base::PathExists(old_path));
+
+  // Batch 2: Write a new file.
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> batch2;
+  auto f2 = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f2->filename = "NewNote.md";
+  f2->content = "New content";
+  batch2.push_back(std::move(f2));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future2;
+  handler_->CopyAttachmentsToClipboard(std::move(batch2),
+                                       future2.GetCallback());
+  EXPECT_EQ(
+      future2.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future2;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future2.GetCallback());
+  const auto& files2 = read_future2.Get();
+  ASSERT_EQ(files2.size(), 1u);
+  EXPECT_EQ(files2[0].path.BaseName().AsUTF8Unsafe(), "NewNote.md");
+  EXPECT_TRUE(base::PathExists(files2[0].path));
+
+  // Persistence: The old file must still exist on disk (not wiped immediately).
+  EXPECT_TRUE(base::PathExists(old_path));
+
+  // Isolation: Each batch must be staged in a distinct transactional
+  // subdirectory.
+  EXPECT_NE(files1[0].path.DirName(), files2[0].path.DirName());
+}
+
+TEST_F(ContextHubPageHandlerTest, CopyAttachmentsToClipboard_PrunesOldBatches) {
+  // Stage an initial batch.
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr>
+      stale_batch;
+  auto stale_attachment =
+      browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  stale_attachment->filename = "StaleNote.md";
+  stale_attachment->content = "stale content";
+  stale_batch.push_back(std::move(stale_attachment));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      stale_future;
+  handler_->CopyAttachmentsToClipboard(std::move(stale_batch),
+                                       stale_future.GetCallback());
+  EXPECT_EQ(
+      stale_future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> stale_read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      stale_read_future.GetCallback());
+  const auto& stale_files = stale_read_future.Get();
+  ASSERT_EQ(stale_files.size(), 1u);
+  const base::FilePath stale_batch_dir = stale_files[0].path.DirName();
+
+  // Stamp the batch directory with the current mock time, then advance mock
+  // time by 2 hours. Under `TimeSource::MOCK_TIME`, `base::Time::Now()` starts
+  // at `UnixEpoch() + system_uptime`, whereas newly created filesystem entries
+  // receive the OS wall-clock mtime (and subtracting 2 hours directly produces
+  // a pre-1970 timestamp with negative `tv_usec` on freshly booted VMs with
+  // <2h uptime, causing `futimens()` / `base::TouchFile()` to fail).
+  const base::Time stale_time = base::Time::Now();
+  ASSERT_TRUE(base::TouchFile(stale_batch_dir, stale_time, stale_time));
+  ASSERT_TRUE(base::PathExists(stale_batch_dir));
+
+  task_environment_.AdvanceClock(base::Hours(2));
+
+  // Trigger a new copy operation.
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> batch;
+  auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f->filename = "ActiveNote.md";
+  f->content = "Active content";
+  batch.push_back(std::move(f));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(batch), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  // Stale batch directory older than 1 hour must be pruned.
+  EXPECT_FALSE(base::PathExists(stale_batch_dir));
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       CopyAttachmentsToClipboard_ResourceLimitsEnforced) {
+  // Test 1: Bounded collection limit (valid batch of 10 files).
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr> files;
+  for (int i = 0; i < 10; ++i) {
+    auto f = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+    f->filename = base::StringPrintf("File_%d.md", i);
+    f->content = base::StringPrintf("Content %d", i);
+    files.push_back(std::move(f));
+  }
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      future;
+  handler_->CopyAttachmentsToClipboard(std::move(files), future.GetCallback());
+  EXPECT_EQ(
+      future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      read_future.GetCallback());
+  const auto& result_files = read_future.Get();
+  EXPECT_EQ(result_files.size(), 10u);
+
+  // Test 2: A filename at the maximum accepted wire length (255 bytes) is
+  // accepted, but is truncated to the smaller staged cap (128 bytes) so the
+  // full path stays under Windows MAX_PATH.
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr>
+      long_name_files;
+  auto f_long = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f_long->filename = std::string(252, 'a') + ".md";
+  f_long->content = "Short content";
+  long_name_files.push_back(std::move(f_long));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      long_future;
+  handler_->CopyAttachmentsToClipboard(std::move(long_name_files),
+                                       long_future.GetCallback());
+  EXPECT_EQ(
+      long_future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> long_read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      long_read_future.GetCallback());
+  const auto& long_result_files = long_read_future.Get();
+  ASSERT_EQ(long_result_files.size(), 1u);
+  EXPECT_EQ(long_result_files[0].path.BaseName().AsUTF8Unsafe().size(), 128u);
+
+  // Test 3: Maximum valid file content size (10MB limit).
+  std::vector<browser::context_hub::mojom::MemoryBankFileAttachmentPtr>
+      large_content_files;
+  auto f_content = browser::context_hub::mojom::MemoryBankFileAttachment::New();
+  f_content->filename = "LargeContent.md";
+  constexpr size_t kTargetSize = 10 * 1024 * 1024;
+  std::string large_content(kTargetSize, 'a');
+  f_content->content = std::move(large_content);
+  large_content_files.push_back(std::move(f_content));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus>
+      content_future;
+  handler_->CopyAttachmentsToClipboard(std::move(large_content_files),
+                                       content_future.GetCallback());
+  EXPECT_EQ(
+      content_future.Get(),
+      browser::context_hub::mojom::CopyAttachmentsToClipboardStatus::kSuccess);
+
+  base::test::TestFuture<std::vector<ui::FileInfo>> content_read_future;
+  ui::Clipboard::GetForCurrentThread()->ReadFilenames(
+      ui::ClipboardBuffer::kCopyPaste, /*data_dst=*/std::nullopt,
+      content_read_future.GetCallback());
+  const auto& content_result_files = content_read_future.Get();
+  ASSERT_EQ(content_result_files.size(), 1u);
+
+  std::string written_content;
+  ASSERT_TRUE(
+      base::ReadFileToString(content_result_files[0].path, &written_content));
+  EXPECT_TRUE(base::IsStringUTF8(written_content));
+  EXPECT_EQ(written_content.size(), kTargetSize);
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 }  // namespace
 }  // namespace context_hub

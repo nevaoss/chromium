@@ -133,6 +133,7 @@ const VOICE_MANUAL_SUBMIT_IDLE_TIMEOUT_MS = 10000;
 const COMPOSEBOX_INERT_ALLOWLIST = [
   '#logo',
   '#searchboxContainer',
+  '#voiceSearchDialog',
 ];
 
 export const CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID =
@@ -244,6 +245,7 @@ export class AppElement extends AppElementBase {
           {type: Boolean},
       voiceSearchCoherenceRealboxAutoEndpointEnabled_: {type: Boolean},
       voiceSearchCoherenceRealboxHelperTextEnabled_: {type: Boolean},
+      androidSpeechRecognition_: {type: Boolean},
 
       voiceSearchTranscript_: {type: String},
       voiceSearchReceivedSpeech_: {type: Boolean},
@@ -404,6 +406,10 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('voiceSearchCoherenceRealboxAutoEndpointEnabled');
   protected accessor voiceSearchCoherenceRealboxHelperTextEnabled_: boolean =
       loadTimeData.getBoolean('voiceSearchCoherenceRealboxHelperTextEnabled');
+  // `true` only on Android, where voice search uses Android's speech recognizer
+  // (see new_tab_page_ui.cc).
+  protected accessor androidSpeechRecognition_: boolean =
+      loadTimeData.getBoolean('androidSpeechRecognition');
 
   protected accessor voiceSearchTranscript_: string = '';
   protected accessor voiceSearchReceivedSpeech_: boolean = false;
@@ -1624,7 +1630,7 @@ export class AppElement extends AppElementBase {
       }
     }
 
-    if (e.composedPath() && e.composedPath()[0] === $$(this, '#content')) {
+    if (e.composedPath()[0] === $$(this, '#rhsContent')) {
       recordClick(NtpElement.BACKGROUND);
       return;
     }
@@ -1850,7 +1856,7 @@ export class AppElement extends AppElementBase {
     const notSelector =
         COMPOSEBOX_INERT_ALLOWLIST.map(s => `:not(${s})`).join('');
     const blockedElements = this.shadowRoot.querySelectorAll<HTMLElement>(
-        `#content > ${notSelector}`);
+        `#rhsContent > ${notSelector}`);
     blockedElements.forEach(element => {
       if (this.showComposebox_) {
         element.setAttribute('inert', '');

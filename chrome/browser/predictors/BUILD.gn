@@ -57,11 +57,13 @@ source_set("predictors") {
     "//components/network_hints/common:mojo_bindings",
     "//components/optimization_guide/core",
     "//components/sqlite_proto",
+    "//components/tabs:public",
     "//content/public/browser",
     "//net",
     "//services/metrics/public/cpp:metrics_cpp",
     "//services/network/public/mojom",
     "//third_party/blink/public/common:headers",
+    "//ui/base/unowned_user_data",
     "//url",
   ]
 }
@@ -85,7 +87,6 @@ source_set("impl") {
     "resource_prefetch_predictor.cc",
     "resource_prefetch_predictor_tables.cc",
   ]
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
   deps = [
     ":config",
     ":predictors",
@@ -117,6 +118,9 @@ source_set("impl") {
     "//third_party/blink/public/common:headers",
     "//ui/base",
   ]
+  if (enable_extensions_core) {
+    deps += [ "//extensions/browser" ]
+  }
 }
 
 source_set("test_support") {
@@ -174,6 +178,7 @@ source_set("unit_tests") {
     "//components/optimization_guide/core",
     "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/sessions",
+    "//components/tabs:test_support",
     "//components/ukm:test_support",
     "//components/variations",
     "//content/test:test_support",

@@ -681,6 +681,10 @@ are declared in tools/grit/grit_args.gni.
           New &amp;Incognito window
         </message>
 
+        <message name="IDS_NEW_ISOLATED_WINDOW" desc="The text label of a menu item for opening a new Isolated window">
+          New &amp;isolated window
+        </message>
+
         <message name="IDS_INCOGNITO" desc="The text label for the Incognito button in the block header section of the App Menu">
           Incognito
         </message>
@@ -1528,6 +1532,12 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_APP_MENU_INCOGNITO" desc="Label for the Incognito block button in the main App Menu">
           Incognito
         </message>
+        <message name="IDS_APP_MENU_BLOCK_INCOGNITO" desc="Label with a keyboard mnemonic for the Incognito block button in the main App Menu">
+          &amp;Incognito
+        </message>
+        <message name="IDS_APP_MENU_BLOCK_ISOLATED" desc="Label with a keyboard mnemonic for the Isolated block button in the main App Menu, shown instead of Incognito for enterprise isolated mode">
+          &amp;Isolated
+        </message>
         <message name="IDS_APP_MENU_BLOCK_TOOLTIP" desc="Tooltip for an App Menu button that includes its label and keyboard shortcut.">
           <ph name="TOOLTIP_TEXT">$1<ex>New tab</ex></ph> (<ph name="KEYBOARD_SHORTCUT">$2<ex>Ctrl+T</ex></ph>)
         </message>
@@ -1545,9 +1555,6 @@ are declared in tools/grit/grit_args.gni.
         <if expr="not use_titlecase">
           <message name="IDS_SHOW_AS_TAB" desc="The text label for the Show As tab menu item">
             &amp;Show as tab
-          </message>
-          <message name="IDS_NEW_ISOLATED_WINDOW" desc="The text label of a menu item for opening a new Isolated window">
-            New &amp;Isolated window
           </message>
           <message name="IDS_PROFILE_ROW_SIGNED_IN_MESSAGE_WITH_EMAIL" desc="Label that lets the user know what email they are signed into their profile as.">
             Signed in as <ph name="EMAIL">$1<ex>user@gmail.com</ex></ph>
@@ -1631,11 +1638,6 @@ are declared in tools/grit/grit_args.gni.
         <if expr="use_titlecase">
           <message name="IDS_SHOW_AS_TAB" desc="In Title Case: The text label for the Show As tab menu item">
             &amp;Show As Tab
-          </message>
-
-
-          <message name="IDS_NEW_ISOLATED_WINDOW" desc="In Title Case: The text label of a menu item for opening a new Isolated window">
-            New &amp;Isolated Window
           </message>
           <message name="IDS_PROFILE_ROW_SIGNED_IN_MESSAGE_WITH_EMAIL" desc="In Title Case: Label that lets the user know what email they are signed into their profile as.">
             Signed in as <ph name="EMAIL">$1<ex>user@gmail.com</ex></ph>
@@ -1753,7 +1755,7 @@ are declared in tools/grit/grit_args.gni.
         New Incognito &amp;tab
       </message>
       <message name="IDS_NEW_ISOLATED_TAB" desc="The text label of a menu item for opening a new isolated tab">
-        New Isolated &amp;tab
+        New isolated &amp;tab
       </message>
       <if expr="not use_titlecase">
         <message name="IDS_VIEW_SOURCE" desc="The text label of the View Page Source menu item">
@@ -5175,6 +5177,9 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_TASK_MANAGER_OMNIBOX" desc="A row in the task manager for the WebUI Omnibox.">
         Omnibox
       </message>
+      <message name="IDS_TASK_MANAGER_WEBUI_TOOLBAR" desc="A row in the task manager for the WebUI Toolbar.">
+        Toolbar
+      </message>
       <message name="IDS_UTILITY_PROCESS_FILE_UTILITY_NAME" desc="The name of the utility process used for various Chrome specific file operations.">
           Chrome File Utilities
       </message>
@@ -6222,11 +6227,11 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_EXTENSION_WEB_STORE_TITLE_SHORT" desc="Shortened version of text for the Chrome Web Store">
         Web Store
       </message>
-      <message name="IDS_EXTENSIONS_SHOW_DETAILS" desc="Tooltip for the button next to an extension that shows more details">
-        Show Details
+      <message name="IDS_EXTENSIONS_SHOW_ALL" desc="Text for the link next to an extension permission that shows all details">
+        Show all
       </message>
-      <message name="IDS_EXTENSIONS_HIDE_DETAILS" desc="Tooltip for the button next to an extension that hides details">
-        Hide Details
+      <message name="IDS_EXTENSIONS_SHOW_LESS" desc="Text for the link next to an extension permission that hides extra details">
+        Show less
       </message>
 
       <!-- Global error messages for extensions -->
@@ -7557,6 +7562,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_OMNIBOX_EVERYWHERE_CONTEXT_MENU_MINIMIZE" desc="Label for the minimize option in the Loomnibox (Omnibox Everywhere) right-click context menu. Minimizes Loomnibox while keeping the taskbar icon visible.">
         Minimize
       </message>
+      <message name="IDS_OMNIBOX_EVERYWHERE_SWITCH_PROFILE" desc="Label for the button in the Omnibox Everywhere profile menu that opens the Chrome profile switcher.">
+        Switch Profile
+      </message>
 
       <!-- Contextual Search -->
       <if expr="use_titlecase">
@@ -7637,6 +7645,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
         </else>
       </if>
+      <message name="IDS_ASK_GOOGLE_ABOUT_THIS_PAGE" desc="The name of the Ask Google about this page command in the app menu and toolbar.">
+        Ask Google about this page
+      </message>
 
       <!-- NTP -->
       <!-- Google Drive integration disclaimer for New Tab Page -->
@@ -10686,6 +10697,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
           <message name="IDS_TAB_GROUP_MORE_OPTIONS" desc="In Title Case: The tooltip for the button in a tab group item that opens the options menu.">
             More options
           </message>
+          <message name="IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH" desc="In Title Case: The label for the context menu item in the organizer panel to close tab search.">
+            Close Tab Search
+          </message>
+          <message name="IDS_ORGANIZER_PANEL_EXPAND_ALL" desc="In Title Case: The label for the context menu item in the organizer panel that expands all sections.">
+            Expand All
+          </message>
         </then>
         <else>
           <message name="IDS_VIEW_ORGANIZER_PANEL" desc="The tooltip for the button in the top container that shows the organizer panel.">
@@ -10696,6 +10713,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
           </message>
           <message name="IDS_TAB_GROUP_MORE_OPTIONS" desc="The tooltip for the button in a tab group item that opens the options menu.">
             More options
+          </message>
+          <message name="IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH" desc="The label for the context menu item in the organizer panel to close tab search.">
+            Close tab search
+          </message>
+          <message name="IDS_ORGANIZER_PANEL_EXPAND_ALL" desc="The label for the context menu item in the organizer panel that expands all sections.">
+            Expand all
           </message>
         </else>
       </if>
@@ -10713,6 +10736,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_ORGANIZER_PANEL_SHOW_SOME" desc="The label for the menu item in an organizer panel list section header that limits the section to showing a few items.">
         Show some
+      </message>
+      <message name="IDS_ORGANIZER_PANEL_SPLIT_VIEW" desc="The title for a split view item in an organizer panel list section.">
+        Split View
       </message>
       <message name="IDS_ORGANIZER_PANEL_TAB_GROUPS" desc="The label on the organizer panel list section corresponding to tab groups.">
         Tab Groups
@@ -12303,13 +12329,16 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
           Remove from group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TAB_GROUP" desc="The label of the tab context menu item for focusing the tab group containing the tab.">
-          Focus tab group
+          Focus on tab group
         </message>
         <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="The label of the tab context menu item for unfocusing the tab group containing the tab.">
           Unfocus tab group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TABS" desc="The label of the tab context menu item for focusing one or more tabs. [ICU Syntax]">
-          {NUM_TABS, plural, =1 {Focus tab} other {Focus # tabs}}
+          {NUM_TABS, plural, =1 {Focus on tab} other {Focus on tabs}}
+        </message>
+        <message name="IDS_TAB_CXMENU_UNFOCUS_TABS" desc="The label of the tab context menu item for unfocusing one or more tabs. [ICU Syntax]">
+          {NUM_TABS, plural, =1 {Unfocus tab} other {Unfocus tabs}}
         </message>
         <message name="IDS_TAB_CXMENU_PLACEHOLDER_GROUP_TITLE" desc="The descriptive placeholder title of a group used when the user has not explicitly named a group. The plural value refers to the number of tabs in the group other than the one explicitly named. [ICU Syntax]">
           {NUM_OTHER_TABS, plural, =0 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>"} =1 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and 1 other tab} other {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and # other tabs}}
@@ -12428,13 +12457,16 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
           Remove From Group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for focusing the tab group containing the tab.">
-          Focus Tab Group
+          Focus on Tab Group
         </message>
         <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for unfocusing the tab group containing the tab.">
           Unfocus Tab Group
         </message>
         <message name="IDS_TAB_CXMENU_FOCUS_TABS" desc="In Title Case: The label of the tab context menu item for focusing one or more tabs. [ICU Syntax]">
-          {NUM_TABS, plural, =1 {Focus Tab} other {Focus # Tabs}}
+          {NUM_TABS, plural, =1 {Focus on Tab} other {Focus on Tabs}}
+        </message>
+        <message name="IDS_TAB_CXMENU_UNFOCUS_TABS" desc="In Title Case: The label of the tab context menu item for unfocusing one or more tabs. [ICU Syntax]">
+          {NUM_TABS, plural, =1 {Unfocus Tab} other {Unfocus Tabs}}
         </message>
         <message name="IDS_TAB_CXMENU_PLACEHOLDER_GROUP_TITLE" desc="In Title Case: The descriptive placeholder title of a group used when the user has not explicitly named a group. The plural value refers to the number of tabs in the group other than the one explicitly named. [ICU Syntax]">
           {NUM_OTHER_TABS, plural, =0 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>"} =1 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and 1 Other Tab} other {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and # Other Tabs}}
@@ -12993,10 +13025,13 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         Ungroup
       </message>
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_FOCUS_GROUP" desc="The label for focus group in the tab group editor bubble.">
-        Focus group
+        Focus on Tab Group
       </message>
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_UNFOCUS_GROUP" desc="The label for unfocus group in the tab group editor bubble.">
-        Unfocus group
+        Unfocus Tab Group
+      </message>
+      <message name="IDS_TAB_GROUP_HEADER_UNFOCUS_BUTTON" desc="The label for the unfocus button header attached to a focused tab group.">
+        Unfocus
       </message>
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_CREATE_GROUP" desc="The label for create button in the tab group editor bubble when creating a permanent tab group from an ephemeral one.">
         Create
@@ -15936,7 +15971,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </if>
 
       <!-- TTC -->
-      <message name="IDS_TTC_ENTRYPOINT_LABEL" desc="Text label of the TTC menu item." translateable="false">
+      <message name="IDS_TTC_ENTRYPOINT_LABEL" desc="Text label of the TTC menu item." translateable="false" formatter_data="android_java">
         TTC
       </message>
 
@@ -16895,6 +16930,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         <message name="IDS_SHELF_CONTEXT_MENU_SWAP_WITH_PREVIOUS" desc="Label of the context menu item allowing to swap the selected shelf item with the previous one">
           Swap with previous
         </message>
+        <message name="IDS_SHELF_APP_MENU_INACTIVE_TAB_TOOLTIP" desc="Tooltip for an item in the shelf application menu that represents a browser tab which is not the active tab of its window. No window preview is shown for such an item, because the window only shows its active tab. The placeholder is the title of the window.">
+          Inactive tab in "<ph name="WINDOW_TITLE">$1<ex>Google Search</ex></ph>"
+        </message>
       </if>
 
       <!-- Live caption. -->
@@ -17205,6 +17243,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_TOOLTIP_TAB_ALERT_STATE_VR_PRESENTING" desc="Extra tool tip text, when the tab is presenting VR content to a headset." formatter_data="android_java">
         This tab is presenting VR content to a headset
       </message>
+      <message name="IDS_TOOLTIP_TAB_ALERT_STATE_AI_MODE_SHARING" desc="Extra tool tip text, when the tab's context is being shared with AI Mode." formatter_data="android_java" translateable="false">
+        You're sharing this tab with AI Mode
+      </message>
 
       <!-- Tab accessibility labels -->
       <message name="IDS_TAB_AX_LABEL_MEDIA_RECORDING_FORMAT" is_accessibility_with_no_ui="true" desc="Accessibility label text, when the tab is recording media. Example: 'Google Hangouts - Camera and microphone recording'">
@@ -17256,6 +17297,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         <ph name="WINDOW_TITLE">
           $1<ex>A VR-enabled website</ex>
         </ph> - VR presenting to headset
+      </message>
+      <message name="IDS_TAB_AX_LABEL_AI_MODE_SHARING" is_accessibility_with_no_ui="true" desc="Accessibility label text, when the tab is sharing data with AI Mode. Example: 'Wikipedia - You're sharing this tab with AI Mode'" translateable="false">
+        <ph name="WINDOW_TITLE">$1<ex>Wikipedia</ex></ph> - You're sharing this tab with AI Mode
       </message>
       <message name="IDS_TAB_AX_LABEL_SPLIT_TAB_LEFT_VIEW_FORMAT" desc="Accessibility label text for a tab, when it is the left tab of a split view. Example: 'Google Search - Left view'">
         <ph name="WINDOW_TITLE">$1<ex>Google Search</ex></ph> - Left view

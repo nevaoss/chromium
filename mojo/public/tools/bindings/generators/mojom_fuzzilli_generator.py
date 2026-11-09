@@ -86,6 +86,9 @@ class Generator(generator.Generator):
     self.primary_interface = None
     self.interface_remotes = {}
     self.interface_receivers = {}
+    # An interface may appear as both associated and non-associated
+    self.associated_interfaces = set()
+    self.non_associated_interfaces = set()
     self.arrays = {}
     self.maps = {}
     self.enums = {}
@@ -107,6 +110,8 @@ class Generator(generator.Generator):
       "is_synchronous_method": self._IsSynchronousMethod,
       "namespace_as_array": self._NamespaceAsArray,
       "to_camel": generator.ToCamel,
+      "uses_associated_endpoints": self._UsesAssociatedEndpoints,
+      "uses_non_associated_endpoints": self._UsesNonAssociatedEndpoints,
     }
 
   @staticmethod
@@ -199,18 +204,23 @@ class Generator(generator.Generator):
 
     interface = None
     if is_pending_remote or is_pending_receiver:
-      # TODO(crbug.com/522372048): add handling for non-associated interfaces
-      assert self._IsPendingAssociatedKind(kind), (
-        "Only pending associated interfaces are supported."
-      )
       interface = kind.kind
     else:
       interface = kind
+    name = self._FormatUniqueName(interface)
+
+    # TODO(crbug.com/570073119): Separately track which interfaces are only
+    # ever sent from the browser to avoid emitting unnecessary types (e.g.,
+    # currently emits unused *PendingReceiver when getting a pending_remote
+    # from the browser).
+    if self._IsPendingAssociatedKind(kind):
+      self.associated_interfaces.add(name)
+    elif is_pending_remote or is_pending_receiver:
+      self.non_associated_interfaces.add(name)
 
     # TODO(crbug.com/522372048): this check prevents interfaces from being
     # registered as both remotes and receivers. Rewrite the logic to
     # support the edge case where an interface is used as both.
-    name = self._FormatUniqueName(interface)
     if name in self.interface_remotes or name in self.interface_receivers:
       return
 
@@ -286,11 +296,13 @@ class Generator(generator.Generator):
     ):
       return f"{prefix}{self._FlattenKind(kind.kind)}"
 
-    if (
-      mojom.IsStructKind(kind)
-      or mojom.IsEnumKind(kind)
-      or mojom.IsUnionKind(kind)
-    ):
+    if mojom.IsUnionKind(kind):
+      # Fuzzilli union constructors combine the union name with the field name,
+      # creating the potential for collisions with other constructors generated
+      # by Fuzzilli.
+      return f"{prefix}{self._FlattenKind(kind)}Union"
+
+    if mojom.IsStructKind(kind) or mojom.IsEnumKind(kind):
       return f"{prefix}{self._FlattenKind(kind)}"
 
     if mojom.IsInterfaceKind(kind):
@@ -325,11 +337,23 @@ class Generator(generator.Generator):
     if mojom.IsInterfaceKind(kind):
       return f"js{self._FormatUniqueName(kind)}Remote"
 
+    # When JS implements the interface (i.e., it is a receiver), JS only passes
+    # remotes to the browser, so they are typed after their Mojom kind
+    # (`PendingRemote` / `PendingAssociatedRemote`). Remotes that JS calls into
+    # keep the `Remote` type, which carries the interface's methods.
     if self._IsAnyPendingRemoteKind(kind):
-      return f"js{self._FormatUniqueName(kind.kind)}Remote"
+      name = self._FormatUniqueName(kind.kind)
+      if name not in self.interface_receivers:
+        return f"js{name}Remote"
+      if mojom.IsPendingAssociatedRemoteKind(kind):
+        return f"js{name}PendingAssociatedRemote"
+      return f"js{name}PendingRemote"
 
-    if self._IsAnyPendingReceiverKind(kind):
+    if mojom.IsPendingReceiverKind(kind):
       return f"js{self._FormatUniqueName(kind.kind)}PendingReceiver"
+
+    if mojom.IsPendingAssociatedReceiverKind(kind):
+      return f"js{self._FormatUniqueName(kind.kind)}PendingAssociatedReceiver"
 
     assert False, f"Unsupported type: {kind}."
 
@@ -372,6 +396,12 @@ class Generator(generator.Generator):
     return mojom.IsPendingAssociatedRemoteKind(
       kind
     ) or mojom.IsPendingAssociatedReceiverKind(kind)
+
+  def _UsesAssociatedEndpoints(self, interface):
+    return self._FormatUniqueName(interface) in self.associated_interfaces
+
+  def _UsesNonAssociatedEndpoints(self, interface):
+    return self._FormatUniqueName(interface) in self.non_associated_interfaces
 
   def _IsAnyPendingRemoteKind(self, kind):
     return mojom.IsPendingRemoteKind(

@@ -19,27 +19,24 @@
 #import "components/actor/core/aggregated_journal.h"
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/sessions/core/session_id.h"
-#import "ios/chrome/app/background_task/background_continued_processing_task_context.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_browser_agent.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_engine.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_tab_helper.h"
+#import "ios/chrome/browser/intelligence/actor/model/actor_task_background_worker.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_web_state_policy_decider.h"
 #import "ios/chrome/browser/intelligence/actor/model/posted_observer_list.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_control_state.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_updates_observer.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/actor_task_form_filling_handler.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
 #import "ios/chrome/browser/intelligence/actor/tools/utils/logging_util.h"
-#import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/tab_insertion/model/tab_insertion_browser_agent.h"
-#import "ios/web/public/js_messaging/content_world.h"
-#import "ios/web/public/js_messaging/web_frame.h"
-#import "ios/web/public/js_messaging/web_frames_manager.h"
 #import "ios/web/public/web_state.h"
 
 namespace actor {
@@ -52,14 +49,6 @@ constexpr base::TimeDelta kPageLoadTimeout = base::Seconds(7);
 // Default button text for confirmation intervention prompts.
 // TODO(crbug.com/556739755): Localize default button text string.
 NSString* const kDefaultConfirmationButtonText = @"Continue";
-
-// Interval between JavaScript heartbeat pings. Found to be the sweetspot for
-// keeping renderer processes alive & accepting IPC messages (otherwise they
-// drop their keep-alive assertions after about 1 second of inactivity.)
-constexpr base::TimeDelta kHeartbeatInterval = base::Milliseconds(400);
-
-// Minimal zero side effects script executed to generate IPC activity.
-constexpr char16_t kHeartbeatScript[] = u";";
 
 // Returns the string representation of the ActorTaskState.
 std::string ActorTaskStateToString(ActorTaskState state) {
@@ -163,14 +152,18 @@ ActorTask::ActorTask(ActorTaskId task_id,
                                           /*owner_task=*/this);
   observers_ = [[PostedObserverList alloc]
       initWithProtocol:@protocol(ActorTaskUpdatesObserver)];
+
+  // TODO(crbug.com/571205137): Inject as dependency.
+  background_worker_ = std::make_unique<ActorTaskBackgroundWorker>(
+      /*delegate=*/this, task_id_, *journal_);
 }
 
 ActorTask::~ActorTask() {
   SetControlStateOnWebStates(ActorControlState::kInactive);
   load_timeout_timer_.Stop();
 
-  StopHeartbeatTimer();
-  FinalizeBackgroundTask(/*success=*/false);
+  // Stops the heartbeat and fails any live background task.
+  background_worker_.reset();
 
   observers_ = nil;
 }
@@ -222,13 +215,10 @@ void ActorTask::Act(std::vector<std::unique_ptr<ActorToolRequest>> actions,
   }
 
   pending_act_.emplace(std::move(callback));
-  SetState(ActorTaskState::kActing);
   if (!task_update.empty()) {
     last_task_update_ = task_update;
   }
-
-  UpdateBackgroundTaskSubtitle(task_update);
-  StartHeartbeatTimer();
+  SetState(ActorTaskState::kActing);
 
   engine_->Act(std::move(actions),
                base::BindOnce(&ActorTask::OnActCompleted,
@@ -269,7 +259,7 @@ void ActorTask::AddControlledWebState(web::WebState* web_state) {
       tab_helper->SetControlState(ControlStateForTaskState(state_));
     }
 
-    StartHeartbeatTimer();
+    background_worker_->OnWebStateAdded();
 
     const ActorTaskId task_id = task_id_;
     const web::WebStateID web_state_id = web_state->GetUniqueIdentifier();
@@ -289,10 +279,9 @@ void ActorTask::Stop(ActorTaskStoppedReason stop_reason) {
   // `SetState` also transitions the web states to `kInactive` control state.
   SetState(ActorTaskState::kCancelled);
 
-  StopHeartbeatTimer();
   const bool success = stop_reason == ActorTaskStoppedReason::kTaskComplete ||
                        stop_reason == ActorTaskStoppedReason::kStoppedByUser;
-  FinalizeBackgroundTask(success);
+  background_worker_->OnStopped(success);
 
   // TODO(crbug.com/496164697): Implement and test.
   // TODO(crbug.com/565875367): Remove once observers migrate to
@@ -309,14 +298,16 @@ void ActorTask::Pause(bool from_actor) {
 }
 
 void ActorTask::Resume() {
-  StartHeartbeatTimer();
-
   // TODO(crbug.com/496164697): Implement and test.
 }
 
 void ActorTask::SetInterventionDelegate(
     id<ActorTaskInterventionDelegate> delegate) {
   intervention_delegate_ = delegate;
+  if (engine_) {
+    engine_->GetActorTaskFormFillingHandler()->SetInterventionDelegate(
+        base::PassKey<ActorTask>(), delegate);
+  }
 }
 
 void ActorTask::Interrupt(ActorTaskInterruptReason interrupt_reason,
@@ -495,15 +486,6 @@ bool ActorTask::allow_incognito_web_states() const {
   return allow_incognito_web_states_;
 }
 
-void ActorTask::SetBackgroundTaskContext(
-    BackgroundContinuedProcessingTaskContext* background_task_context) {
-  if (!IsGeminiActorBackgroundingEnabled()) {
-    return;
-  }
-  background_task_context_ = background_task_context;
-  UpdateBackgroundTaskSubtitle(last_task_update_);
-}
-
 #pragma mark - web::WebStateObserver
 
 void ActorTask::DidStopLoading(web::WebState* web_state) {
@@ -518,9 +500,7 @@ void ActorTask::WebStateDestroyed(web::WebState* web_state) {
   }
   PruneDestroyedWebStates(web_state);
 
-  if (controlled_web_states_.empty()) {
-    StopHeartbeatTimer();
-  }
+  background_worker_->OnWebStateDestroyed();
 }
 
 #pragma mark - Private
@@ -553,9 +533,7 @@ void ActorTask::SetState(ActorTaskState new_state) {
     SetControlStateOnWebStates(new_control_state);
   }
 
-  if (IsTerminalState(new_state)) {
-    StopHeartbeatTimer();
-  }
+  background_worker_->OnStateChanged(new_state);
 
   const ActorTaskId task_id = task_id_;
   [observers_ postNotification:^(id<ActorTaskUpdatesObserver> observers) {
@@ -642,7 +620,7 @@ void ActorTask::OnPageLoadedTimeout() {
 
 void ActorTask::OnWillExecuteTool(ToolType tool_type,
                                   web::WebStateID web_state_id) {
-  UpdateBackgroundTaskProgress();
+  background_worker_->OnWillExecuteTool();
 
   const ActorTaskId task_id = task_id_;
   NSString* task_update = base::SysUTF8ToNSString(last_task_update_);
@@ -689,103 +667,28 @@ void ActorTask::OnNavigationBlocked(mojom::ActionResultCode code) {
   }
 }
 
-void ActorTask::UpdateBackgroundTaskSubtitle(const std::string& task_update) {
-  if (!background_task_context_ || task_update.empty()) {
-    return;
-  }
-  NSString* subtitle = base::SysUTF8ToNSString(task_update);
-  if ([background_task_context_.subtitle isEqualToString:subtitle]) {
-    return;
-  }
-  background_task_context_.subtitle = subtitle;
-}
+#pragma mark - ActorTaskBackgroundWorker::TaskStateDelegate
 
-void ActorTask::UpdateBackgroundTaskProgress() {
-  if (background_task_context_) {
-    [background_task_context_ incrementStepProgress];
-  }
-}
-
-void ActorTask::FinalizeBackgroundTask(bool success) {
-  if (!background_task_context_) {
-    return;
-  }
-
-  if (!background_task_context_.completed) {
-    [background_task_context_ setTaskCompletedWithSuccess:success];
-  }
-  background_task_context_ = nil;
-}
-
-void ActorTask::StartHeartbeatTimer() {
-  if (!IsGeminiActorBackgroundingEnabled()) {
-    return;
-  }
-
-  if (IsTerminalState(state_)) {
-    return;
-  }
-
-  if (heartbeat_timer_.IsRunning()) {
-    return;
-  }
-
+std::vector<web::WebState*> ActorTask::GetControlledWebStates() {
   PruneDestroyedWebStates();
-  if (controlled_web_states_.empty()) {
-    return;
-  }
-
-  heartbeat_timer_.Start(FROM_HERE, kHeartbeatInterval,
-                         base::BindRepeating(&ActorTask::SendHeartbeatPing,
-                                             weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ActorTask::StopHeartbeatTimer() {
-  heartbeat_timer_.Stop();
-}
-
-void ActorTask::SendHeartbeatPing() {
-  PruneDestroyedWebStates();
-  if (controlled_web_states_.empty()) {
-    StopHeartbeatTimer();
-    return;
-  }
-
+  std::vector<web::WebState*> web_states;
   for (const base::WeakPtr<web::WebState>& web_state_weak :
        controlled_web_states_) {
-    web::WebState* web_state = web_state_weak.get();
-    if (!web_state) {
-      continue;
-    }
-
-    web::WebFramesManager* frames_manager =
-        web_state->GetWebFramesManager(web::ContentWorld::kIsolatedWorld);
-    if (!frames_manager) {
-      continue;
-    }
-
-    web::WebFrame* main_frame = frames_manager->GetMainWebFrame();
-    if (!main_frame) {
-      continue;
-    }
-
-    main_frame->ExecuteJavaScript(
-        kHeartbeatScript, base::BindOnce(&ActorTask::OnHeartbeatPingResponse,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         web_state->GetUniqueIdentifier()));
+    web_states.push_back(web_state_weak.get());
   }
+  return web_states;
 }
 
-void ActorTask::OnHeartbeatPingResponse(web::WebStateID web_state_id,
-                                        const base::Value* /*result*/,
-                                        NSError* error) {
-  if (error) {
-    LogJournalEvent(
-        *journal_, GURL(), task_id_, "ActorTask::HeartbeatPingFailed",
-        {{"web_state_id", base::NumberToString(web_state_id.identifier())},
-         {"error_domain", base::SysNSStringToUTF8(error.domain)},
-         {"error_code", base::NumberToString(error.code)}});
-  }
+ActorTaskState ActorTask::GetTaskState() const {
+  return state_;
+}
+
+const std::string& ActorTask::GetTaskTitle() const {
+  return title_;
+}
+
+const std::string& ActorTask::GetLastTaskUpdate() const {
+  return last_task_update_;
 }
 
 }  // namespace actor

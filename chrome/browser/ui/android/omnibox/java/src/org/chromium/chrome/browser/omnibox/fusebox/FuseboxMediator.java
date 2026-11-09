@@ -25,6 +25,8 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 
+import androidx.annotation.ColorInt;
+import androidx.annotation.StyleRes;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
@@ -71,6 +73,7 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.contextual_search.DisclaimerStatus;
 import org.chromium.components.contextual_search.InputState;
+import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.omnibox.AimModelsProtoIntDef.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
@@ -124,6 +127,7 @@ import java.util.function.Supplier;
     private final Callback<List<SuggestedTabInfo>> mOnSuggestedTabsChanged =
             this::reconcileSuggestedTabs;
     private final SnackbarManager mSnackbarManager;
+    private final Snackbar mAttachmentLimitSnackbar;
     private final Snackbar mAttachmentUploadFailedSnackbar;
     private final ScrimManager mScrimManager;
     private final Supplier<@Nullable View> mScrimAnchorViewSupplier;
@@ -147,6 +151,7 @@ import java.util.function.Supplier;
     private @Nullable PropertyModel mScrimModel;
     private boolean mPopupItemSelected;
     private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
+    private @Nullable Runnable mOnPickerInteractionSucceededCallback;
     private boolean mNeedUnfocusOnCancel;
     private @Nullable DriveConsentDialog mDriveConsentDialog;
 
@@ -196,7 +201,13 @@ import java.util.function.Supplier;
         mUrlTextWrappingSupplier = urlTextWrappingSupplier;
         mUrlTextWrappingSupplier.addSyncObserver(mOnTextWrappingChanged);
 
-        // Create the upload failed snackbar.
+        mAttachmentLimitSnackbar =
+                Snackbar.make(
+                        context.getText(R.string.fusebox_max_attachments),
+                        /* controller= */ null,
+                        Snackbar.TYPE_NOTIFICATION,
+                        Snackbar.UMA_FUSEBOX_MAX_ATTACHMENTS);
+
         mAttachmentUploadFailedSnackbar =
                 Snackbar.make(
                         context.getText(R.string.fusebox_upload_failed),
@@ -256,6 +267,14 @@ import java.util.function.Supplier;
 
     public void setOnFirstPickerInteractionCanceledCallback(Runnable callback) {
         mOnFirstPickerInteractionCanceledCallback = callback;
+    }
+
+    /**
+     * Sets a callback invoked when a picker launched directly on focus (without the popup) returns
+     * content, signaling that the Omnibox should now be focused.
+     */
+    public void setOnPickerInteractionSucceededCallback(Runnable callback) {
+        mOnPickerInteractionSucceededCallback = callback;
     }
 
     boolean handleKeyEvent(int keyCode, KeyEvent event) {
@@ -389,13 +408,22 @@ import java.util.function.Supplier;
         }
 
         if (mInput != null) {
+            boolean shouldOpenGalleryPicker = false;
             // TODO(crbug.com/481365131): there must be a better way to do that.
             if (mInput.getRequestType() == AutocompleteRequestType.AI_MODE
                     && mInput.getFocusReason() == OmniboxFocusReason.NTP_AI_MODE) {
                 FuseboxMetrics.notifyAiModeActivated(AiModeActivationSource.NTP_BUTTON);
+            } else if (mInput.getRequestType() == AutocompleteRequestType.IMAGE_GENERATION
+                    && mInput.getFocusReason() == OmniboxFocusReason.NTP_AI_MODE) {
+                FuseboxMetrics.notifyAiModeActivated(
+                        AiModeActivationSource.NTP_CREATE_IMAGE_BUTTON);
             } else if (mInput.getFocusReason() == OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP) {
                 mNeedUnfocusOnCancel = true;
                 showPopup();
+            } else if (mInput.getFocusReason() == OmniboxFocusReason.NTP_GALLERY_CHIP_CLICKED) {
+                FuseboxMetrics.notifyAiModeActivated(AiModeActivationSource.NTP_GALLERY_BUTTON);
+                mNeedUnfocusOnCancel = true;
+                shouldOpenGalleryPicker = true;
             }
 
             mInput.getRequestTypeSupplier()
@@ -404,19 +432,29 @@ import java.util.function.Supplier;
                     .addSyncObserverAndCallIfNonNull(mOnAutocompleteStateChanged);
             mInput.getDisplayStateSupplier()
                     .addSyncObserverAndCallIfNonNull(mOnDisplayStateChanged);
+
+            // Behave as if the gallery button in the Fusebox popup was clicked. Done after
+            // observers are registered so the session state is fully set up.
+            if (shouldOpenGalleryPicker) {
+                onImagePickerClicked();
+            }
         }
     }
 
     private void updateSnackbarStyling() {
         boolean isIncognito = mProfile != null && mProfile.isOffTheRecord();
-        mAttachmentUploadFailedSnackbar.setBackgroundColor(
-                ChromeColors.getInverseBgColor(mContext, isIncognito));
-
+        @ColorInt int inverseBgColor = ChromeColors.getInverseBgColor(mContext, isIncognito);
+        @StyleRes
         int textAppearanceResId =
                 isIncognito
                         ? R.style.TextAppearance_TextMedium_Primary_Baseline_Dark
                         : R.style.TextAppearance_TextMedium_OnInverseSurface;
+
+        mAttachmentUploadFailedSnackbar.setBackgroundColor(inverseBgColor);
         mAttachmentUploadFailedSnackbar.setTextAppearance(textAppearanceResId);
+
+        mAttachmentLimitSnackbar.setBackgroundColor(inverseBgColor);
+        mAttachmentLimitSnackbar.setTextAppearance(textAppearanceResId);
     }
 
     /** Apply a variant of the branded color scheme to Fusebox UI elements. */
@@ -620,6 +658,7 @@ import java.util.function.Supplier;
         int targetState = shouldShowBottomSheetPopup ? PopupState.BOTTOM : PopupState.FLOATING;
         mModel.set(FuseboxProperties.POPUP_STATE, targetState);
         mPopupStateSupplier.set(targetState);
+        FuseboxMetrics.notifyPlusMenuShown();
         if (mScrimManager != null) {
             if (mScrimModel != null) {
                 mScrimManager.hideScrim(mScrimModel, /* animate= */ false);
@@ -842,9 +881,6 @@ import java.util.function.Supplier;
         int maxAllowedTabs = tabIds.size() + mModelList.getRemainingAttachments();
         intent.putExtra(ChromeItemPickerExtras.EXTRA_ALLOWED_SELECTION_COUNT, maxAllowedTabs);
 
-        boolean isSingleContextMode = !OmniboxFeatures.sMultiattachmentFusebox.getValue();
-        intent.putExtra(ChromeItemPickerExtras.EXTRA_IS_SINGLE_CONTEXT_MODE, isSingleContextMode);
-
         mWindowAndroid.showCancelableIntent(
                 intent, this::onTabPickerResult, R.string.low_memory_error);
     }
@@ -855,6 +891,16 @@ import java.util.function.Supplier;
             mNeedUnfocusOnCancel = false;
             if (mOnFirstPickerInteractionCanceledCallback != null) {
                 mOnFirstPickerInteractionCanceledCallback.run();
+            }
+        }
+    }
+
+    private void handlePickerSucceeded() {
+        if (!isInInputSession()) return;
+        if (mNeedUnfocusOnCancel) {
+            mNeedUnfocusOnCancel = false;
+            if (mOnPickerInteractionSucceededCallback != null) {
+                mOnPickerInteractionSucceededCallback.run();
             }
         }
     }
@@ -877,6 +923,8 @@ import java.util.function.Supplier;
             return;
         }
 
+        TrackerFactory.getTrackerForProfile(mProfile)
+                .notifyEvent(EventConstants.FUSEBOX_TAB_PICKER_TAB_ATTACHED);
         Set<Integer> selectedTabIds = new HashSet<>(tabIds);
         TabLoadingService.getInstance().checkpointLoadDurations(selectedTabIds);
         updateCurrentlyAttachedTabs(selectedTabIds);
@@ -887,8 +935,13 @@ import java.util.function.Supplier;
     }
 
     @VisibleForTesting
-    /* package */ void onAttachmentUploadFailed() {
+    void onAttachmentUploadFailed() {
         mSnackbarManager.showSnackbar(mAttachmentUploadFailedSnackbar);
+    }
+
+    @VisibleForTesting
+    void onAttachmentLimitReached() {
+        mSnackbarManager.showSnackbar(mAttachmentLimitSnackbar);
     }
 
     /**
@@ -1128,6 +1181,7 @@ import java.util.function.Supplier;
                                     FuseboxAttachmentButtonType.GALLERY);
                         }
                     }
+                    handlePickerSucceeded();
                 },
                 R.string.low_memory_error);
     }
@@ -1202,10 +1256,14 @@ import java.util.function.Supplier;
     private void launchDrivePicker(Profile profile) {
         long startTime = TimeUtils.elapsedRealtimeMillis();
         DriveFilePickerClient.getInstance()
-                .launchPicker(mWindowAndroid, profile, /* mimeTypes= */ null)
+                .launchPicker(
+                        mWindowAndroid,
+                        profile,
+                        /* mimeTypes= */ null,
+                        /* allowMultiSelect= */ true)
                 .then(
-                        metadata -> {
-                            if (metadata == null) {
+                        files -> {
+                            if (files.isEmpty()) {
                                 FuseboxMetrics.recordDrivePickerOutcome(
                                         MobileFuseboxPickerOutcome.MANUAL_USER_EXIT);
                                 handlePickerCanceled();
@@ -1215,16 +1273,22 @@ import java.util.function.Supplier;
 
                             FuseboxMetrics.recordDrivePickerOutcome(
                                     MobileFuseboxPickerOutcome.ATTACHMENT_ADDED);
-                            FuseboxMetrics.recordDriveDocumentType(
-                                    metadata.mimeType, metadata.title);
-
-                            var attachment =
-                                    FuseboxAttachment.forDrive(
-                                            mContext,
-                                            metadata,
-                                            startTime,
-                                            FuseboxAttachmentButtonType.DRIVE_FILES);
-                            uploadAndAddAttachment(attachment);
+                            try (var batchToken = mModelList.beginBatchEdit()) {
+                                for (var metadata : files) {
+                                    if (mModelList.getRemainingAttachments() == 0) {
+                                        onAttachmentLimitReached();
+                                        break;
+                                    }
+                                    FuseboxMetrics.recordDriveDocumentType(
+                                            metadata.mimeType, metadata.title);
+                                    uploadAndAddAttachment(
+                                            FuseboxAttachment.forDrive(
+                                                    mContext,
+                                                    metadata,
+                                                    startTime,
+                                                    FuseboxAttachmentButtonType.DRIVE_FILES));
+                                }
+                            }
                         },
                         exception -> {
                             FuseboxMetrics.recordDrivePickerOutcome(

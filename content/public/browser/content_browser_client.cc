@@ -606,6 +606,11 @@ ContentBrowserClient::GetForcedColorsForWebContents(
   return ui::ColorProviderKey::ForcedColors::kNone;
 }
 
+bool ContentBrowserClient::
+    ShouldUpdateFontRendererPreferencesFromSystemSettings() const {
+  return true;
+}
+
 bool ContentBrowserClient::IsDataSaverEnabled(BrowserContext* context) {
   DCHECK(context);
   return false;
@@ -682,8 +687,6 @@ bool ContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
     content::PrivacySandboxInvokingAPI invoking_api) {
   return false;
 }
-
-
 
 bool ContentBrowserClient::IsFullCookieAccessAllowed(
     content::BrowserContext* browser_context,
@@ -1022,11 +1025,12 @@ bool ContentBrowserClient::PreSpawnChild(
     sandbox::TargetConfig* config,
     sandbox::mojom::Sandbox sandbox_type,
     ChildSpawnFlags flags,
-    base::optional_ref<const base::Version> child_module_version) {
+    base::optional_ref<const ChildModule> child_module) {
   return true;
 }
 
-std::optional<base::Version> ContentBrowserClient::GetChildModuleVersion() {
+std::optional<ContentBrowserClient::ChildModule>
+ContentBrowserClient::GetChildModule() {
   return std::nullopt;
 }
 
@@ -1880,11 +1884,6 @@ bool ContentBrowserClient::IsUrlAllowedForBackForwardCache(
 }
 
 bool ContentBrowserClient::IsBlobUrlPartitioningEnabled(
-    content::BrowserContext* browser_context) {
-  return true;
-}
-
-bool ContentBrowserClient::ShouldReduceAcceptLanguage(
     content::BrowserContext* browser_context) {
   return true;
 }

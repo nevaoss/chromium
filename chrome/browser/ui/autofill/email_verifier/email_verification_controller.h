@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_AUTOFILL_EMAIL_VERIFIER_EMAIL_VERIFICATION_CONTROLLER_H_
 #define CHROME_BROWSER_UI_AUTOFILL_EMAIL_VERIFIER_EMAIL_VERIFICATION_CONTROLLER_H_
 
-#include <memory>
 #include <optional>
 #include <string>
 
@@ -15,6 +14,7 @@
 #include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "chrome/browser/ui/autofill/email_verifier/email_verification_popup_controller.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "net/base/schemeful_site.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -28,8 +28,6 @@ class WebContents;
 }  // namespace content
 
 namespace autofill {
-
-class EmailVerificationPopupController;
 
 // Coordinates the Email Verification Protocol (EVP) UI flows on Desktop,
 // including the first-run permission prompt popup, the subsequent-run loading
@@ -74,10 +72,50 @@ class EmailVerificationController {
   // duration.
   void ShowVerifiedToast(const GURL& url);
 
+ protected:
+  // Lifecycle state of the first-run permission prompt:
+  //
+  // clang-format off
+  //                            ┌───────────────────┐
+  //                            │      kClosed      │◄─────────────────────────┐
+  //                            └─────────┬─────────┘                          │
+  //                                      │  ▲                                 │
+  //                          ShowPopup() │  │ OnPromptDecision(!kAllowed)     │
+  //                                      │  │   or HidePopup()                │
+  //                                      │  │   or ShowLoadingToast()         │
+  //                                      ▼  │                                 │
+  //                            ┌───────────────────┐                          │
+  //         ┌─────────────────►│     kShowing      │                          │
+  //         │                  └─────────┬─────────┘                          │
+  //         │                            │                                    │
+  //         │ ShowPopup()                │ OnPromptDecision(kAllowed)         │
+  //         │ [timer running]            │                                    │
+  //         │                            ▼                                    │
+  //         │                  ┌───────────────────┐                          │
+  //         └──────────────────┤     kLoading      ├──────────────────────────┘
+  //                            └───────────────────┘  HidePopup() [>= 800ms]
+  //                              │               ▲      or ShowLoadingToast()
+  //                              └───────────────┘
+  //                             HidePopup() [< 800ms]
+  //                               or ShowPopup() [in flight]
+  // clang-format on
+  enum class PromptState {
+    kClosed,
+    kShowing,
+    kLoading,
+  };
+
+  // Handles the user's decision from the first-run permission prompt.
+  void OnPromptDecision(
+      AutofillClient::EmailVerificationPermissionUiStatus status);
+
+  PromptState prompt_state() const { return prompt_state_; }
+
  private:
   friend class EmailVerificationControllerTestApi;
 
   bool IsWebContentsVisible() const;
+  bool IsFirstRunRequestInFlight() const;
   BrowserWindowInterface* GetBrowserWindowInterface() const;
   ToastController* GetToastController() const;
 
@@ -88,11 +126,17 @@ class EmailVerificationController {
   // popup was in the loading state.
   void DismissPopup();
 
+  // Records `loading_start_time_` so that subsequent transitions out of loading
+  // (`HidePopup()`, `ShowVerifiedToast()`, or `ShowErrorToast()`) enforce
+  // `kMinimumLoadingDuration`.
+  void StartLoadingTimer();
+
   // Defers executing `show_toast_callback` if the active loading state has not
   // yet satisfied `kMinimumLoadingDuration` (800ms). Returns true if deferred
   // via `toast_timer_`, or false if no remaining delay was needed (in which
   // case `loading_start_time_` is reset).
   bool DeferToast(base::OnceClosure show_toast_callback);
+
   void OnToastTimerFired(base::OnceClosure show_toast_callback);
 
   // Computes the remaining duration needed to satisfy the minimum loading
@@ -104,7 +148,15 @@ class EmailVerificationController {
   const raw_ref<content::WebContents> web_contents_;
 
   // Controller for the first-run permission popup.
-  std::unique_ptr<EmailVerificationPopupController> popup_controller_;
+  EmailVerificationPopupController popup_controller_;
+
+  // Tracks the lifecycle state of the first-run permission prompt. Needed
+  // alongside `loading_start_time_` because `loading_start_time_` is set for
+  // both the first-run prompt (`kLoading`) and the subsequent-run loading
+  // toast, whereas `HidePopup()` is called unconditionally by
+  // `EmailVerifierDelegate` on every verification response and must be a no-op
+  // when no prompt is open (`kClosed`).
+  PromptState prompt_state_ = PromptState::kClosed;
 
   // Start timestamp when the loading state was initiated (either when the user
   // confirmed the first-run prompt or when the subsequent-run loading toast was

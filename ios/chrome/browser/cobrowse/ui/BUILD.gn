@@ -46,16 +46,21 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "assistant_aim_header_view_unittest.mm",
+    "assistant_aim_history_view_controller_unittest.mm",
+    "assistant_aim_view_controller_unittest.mm",
     "assistant_aim_zero_state_view_controller_unittest.mm",
   ]
   deps = [
     ":constants",
     ":ui",
     "//base",
+    "//base/test:test_support",
     "//components/strings",
     "//ios/chrome/app/strings",
+    "//ios/chrome/browser/shared/public/features",
     "//ios/chrome/browser/shared/ui/elements",
     "//ios/chrome/test:test_support",
+    "//ios/chrome/test/app:test_support",
     "//testing/gtest",
     "//ui/base",
   ]

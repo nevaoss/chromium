@@ -25,6 +25,7 @@
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
+#include "chrome/browser/selection/features.h"
 #include "chrome/browser/selection/suggestion_service.h"
 #include "chrome/browser/selection/suggestion_tool.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -34,6 +35,9 @@
 #include "chrome/browser/ui/tabs/split_tab_menu_model.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/toasts/api/toast_id.h"
+#include "chrome/browser/ui/toasts/toast_controller.h"
+#include "chrome/browser/ui/toasts/toast_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view.h"
@@ -212,22 +216,42 @@ namespace {
 
 class FakePromptSuggestionTool : public ::selection::SuggestionTool {
  public:
-  explicit FakePromptSuggestionTool(tabs::TabInterface* tab) : tab_(tab) {}
+  explicit FakePromptSuggestionTool(tabs::TabInterface* tab) : tab_(tab) {
+    QueueServerResponse();
+  }
   ~FakePromptSuggestionTool() override = default;
 
   ToolId GetToolId() const override {
     return optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME;
   }
 
-  void RequestSuggestions(const ::selection::AreaOfInterest& processed_area,
-                          ::selection::SuggestionsCallback callback) override {
-    std::vector<std::unique_ptr<::selection::Suggestion>> suggestions;
-    suggestions.push_back(
-        std::make_unique<SelectionSuggestion>(*tab_, u"Ask Gemini"));
-    std::move(callback).Run(std::move(suggestions), /*complete=*/true);
+  std::unique_ptr<::selection::Suggestion> CreateSuggestion(
+      const ::selection::AreaOfInterest& processed_area,
+      const optimization_guide::proto::SmartSelectionSuggestion&
+          server_suggestion) override {
+    QueueServerResponse();
+    return std::make_unique<SelectionSuggestion>(*tab_, u"Ask Gemini");
   }
 
  private:
+  void QueueServerResponse() {
+    optimization_guide::proto::SmartSelectionSuggestionsResponse response;
+    auto* s = response.add_suggestions();
+    s->set_tool(
+        optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME);
+    s->set_label("Ask Gemini");
+    optimization_guide::proto::Any any;
+    any.set_value(response.SerializeAsString());
+    any.set_type_url(
+        base::StrCat({"type.googleapis.com/", response.GetTypeName()}));
+    OptimizationGuideKeyedServiceFactory::GetForProfile(tab_->GetProfile())
+        ->AddExecutionResultForTesting(
+            optimization_guide::ModelBasedCapabilityKey::
+                kSmartSelectionSuggestions,
+            optimization_guide::OptimizationGuideModelExecutionResult(
+                std::move(any), nullptr));
+  }
+
   raw_ptr<tabs::TabInterface> tab_;
 };
 
@@ -239,7 +263,8 @@ class SelectionOverlayInteractiveTestWithPrompt
   SelectionOverlayInteractiveTestWithPrompt() {
     feature_list_.InitWithFeatures(
         {features::kGlicSelectionOverlayPrompt,
-         features::kGlicSelectionOverlayPromptBox},
+         features::kGlicSelectionOverlayPromptBox,
+         ::selection::kSmartSelectionServerSuggestions},
         {});
   }
 
@@ -273,7 +298,8 @@ class SelectionOverlayInteractiveTestWithPromptWithoutBox
  public:
   SelectionOverlayInteractiveTestWithPromptWithoutBox() {
     feature_list_.InitWithFeatures(
-        /*enabled_features=*/{features::kGlicSelectionOverlayPrompt},
+        /*enabled_features=*/{features::kGlicSelectionOverlayPrompt,
+                              ::selection::kSmartSelectionServerSuggestions},
         /*disabled_features=*/{features::kGlicSelectionOverlayPromptBox});
   }
 
@@ -1623,6 +1649,8 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithPromptWithoutBox,
   const DeepQuery kOverlayApp = {"selection-overlay-app"};
   const DeepQuery kSelectionOverlay = {"selection-overlay-app",
                                        "glic-selection-overlay"};
+  const DeepQuery kCloseRegionButton = {
+      "selection-overlay-app", "glic-selection-overlay", "#closeRegionButton"};
 
   RunTestSequence(
       OpenGlic(), ClickMockGlicElement({"#captureRegionBtn"}),
@@ -1639,7 +1667,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithPromptWithoutBox,
       MoveMouseTo(OverlayBaseController::kOverlayId,
                   GetPointWithOffset(50, 50)),
       DragMouseTo(OverlayBaseController::kOverlayId,
-                  GetPointWithOffset(150, 150)),
+                  GetPointWithOffset(250, 150)),
       WaitForJsResultAt(
           kOverlayWebContentsId, kSelectionOverlay,
           "el => {"
@@ -1659,7 +1687,41 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithPromptWithoutBox,
           "  const titles = chips.map(c => "
           "c.querySelector('.chip-label')?.textContent?.trim());"
           "  return titles[0] === 'Ask Gemini';"
-          "}"));
+          "}"),
+      WaitForJsResultAt(
+          kOverlayWebContentsId, kSelectionOverlay,
+          "el => {"
+          "  const renderer = "
+          "el.shadowRoot.querySelector('#postSelectionRenderer');"
+          "  const rendererCloseBtn = "
+          "renderer?.shadowRoot?.querySelector('.close-button');"
+          "  return renderer?.hideCloseButton === true && "
+          "      rendererCloseBtn !== null && "
+          "      getComputedStyle(rendererCloseBtn).display === 'none';"
+          "}"),
+      WaitForJsResultAt(
+          kOverlayWebContentsId, kSelectionOverlay,
+          "el => {"
+          "  const container = "
+          "el.shadowRoot.querySelector('#floatingPromptContainer');"
+          "  const closeBtn = "
+          "el.shadowRoot.querySelector('#closeRegionButton');"
+          "  const chip = el.shadowRoot.querySelector('.action-chip');"
+          "  if (!container || !closeBtn || !chip) return false;"
+          "  const containerRect = container.getBoundingClientRect();"
+          "  const btnRect = closeBtn.getBoundingClientRect();"
+          "  const chipRect = chip.getBoundingClientRect();"
+          "  const overlayRect = el.selectionOverlayRect;"
+          "  const sel = el.activeSelection;"
+          "  const selRight = overlayRect.left + (sel.left + sel.width) * "
+          "overlayRect.width;"
+          "  const selTop = overlayRect.top + sel.top * overlayRect.height;"
+          "  return Math.abs(containerRect.left - selRight) <= 2 && "
+          "      Math.abs(containerRect.bottom - selTop) <= 2 && "
+          "      btnRect.left >= chipRect.right;"
+          "}"),
+      MoveMouseTo(kOverlayWebContentsId, kCloseRegionButton), ClickMouse(),
+      WaitForHide(OverlayBaseController::kOverlayId));
 }
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithPrompt,
@@ -1786,8 +1848,8 @@ class SelectionOverlayInteractiveTestWithInlineFulfillment
   const DeepQuery kSelectionOverlay = {"selection-overlay-app",
                                        "glic-selection-overlay"};
 
-  auto OpenExplainCard(ui::ElementIdentifier tab,
-                       ui::ElementIdentifier overlay) {
+  auto OpenOverlayFromSmallChip(ui::ElementIdentifier tab,
+                                ui::ElementIdentifier overlay) {
     const DeepQuery kOverlayApp = {"selection-overlay-app"};
 
     // Text for the user to select.
@@ -1796,25 +1858,15 @@ class SelectionOverlayInteractiveTestWithInlineFulfillment
         document.body.innerHTML = '<p>Explain this sentence please</p>';
       }
     )js";
-    static constexpr char kClickExplainChipJs[] = R"js(
-      el => {
-        const chip = [...el.shadowRoot.querySelectorAll('.action-chip')].find(
-            c => c.querySelector('.chip-label')?.textContent === 'Explain');
-        chip?.click();
-        return !!chip;
-      }
-    )js";
 
     return Steps(
         InstrumentTab(tab), NavigateWebContents(tab, GetEmptyDocURL()),
         ExecuteJs(tab, kAddTextJs),
-        // Select the text. The small chip shows up on it. This avoids an OS
-        // mouse drag, which can hang on Windows bots.
-        WaitForWebContentsPainted(tab), Do([this] {
-          content::WebContents* contents =
-              browser()->tab_strip_model()->GetActiveWebContents();
-          contents->Focus();
-          contents->SelectAll();
+        // Focus the page and select the text. The small chip shows up on it.
+        // This avoids an OS mouse drag, which can hang on Windows bots.
+        WaitForWebContentsPainted(tab), MoveMouseTo(tab, DeepQuery{"p"}),
+        ClickMouse(), Do([this] {
+          browser()->tab_strip_model()->GetActiveWebContents()->SelectAll();
         }),
         // The chip is its own widget, outside the browser's context.
         InAnyContext(
@@ -1826,7 +1878,22 @@ class SelectionOverlayInteractiveTestWithInlineFulfillment
         InstrumentNonTabWebView(overlay, OverlayBaseController::kOverlayId),
         WaitForJsResultAt(overlay, kOverlayApp,
                           "el => el.screenshot_ !== null"),
-        WaitForElementVisible(overlay, kSelectionOverlay),
+        WaitForElementVisible(overlay, kSelectionOverlay));
+  }
+
+  auto OpenExplainCard(ui::ElementIdentifier tab,
+                       ui::ElementIdentifier overlay) {
+    static constexpr char kClickExplainChipJs[] = R"js(
+      el => {
+        const chip = [...el.shadowRoot.querySelectorAll('.action-chip')].find(
+            c => c.querySelector('.chip-label')?.textContent === 'Explain');
+        chip?.click();
+        return !!chip;
+      }
+    )js";
+
+    return Steps(
+        OpenOverlayFromSmallChip(tab, overlay),
         WaitForJsResultAt(overlay, kSelectionOverlay, kClickExplainChipJs));
   }
 
@@ -1926,7 +1993,9 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
 
   RunTestSequence(OpenExplainCard(kActiveTab, kOverlayWebContentsId),
                   WaitForElementVisible(kOverlayWebContentsId, kAskGemini),
-                  ClickElement(kOverlayWebContentsId, kAskGemini),
+                  ClickElement(kOverlayWebContentsId, kAskGemini,
+                               ExecuteJsMode::kFireAndForget),
+                  WaitForHide(OverlayBaseController::kOverlayId),
                   // Glic opens in the side panel.
                   WaitForShow(kSidePanelElementId),
                   InAnyContext(WaitForShow(kGlicViewElementId)));
@@ -1962,6 +2031,63 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
       OpenExplainCard(kActiveTab, kOverlayWebContentsId),
       WaitForJsResultAt(kOverlayWebContentsId, kSelectionOverlay, kCardShownJs),
       CheckJsResultAt(kOverlayWebContentsId, kRenderer, kHandlesHiddenJs));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       CloseOverlayWithCloseButtonShowsHiddenToast) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kCloseRegionButton = {
+      "selection-overlay-app", "glic-selection-overlay", "#closeRegionButton"};
+
+  RunTestSequence(
+      OpenOverlayFromSmallChip(kActiveTab, kOverlayWebContentsId),
+      WaitForElementVisible(kOverlayWebContentsId, kCloseRegionButton),
+      ClickElement(kOverlayWebContentsId, kCloseRegionButton,
+                   ExecuteJsMode::kFireAndForget),
+      WaitForHide(OverlayBaseController::kOverlayId),
+      WaitForShow(toasts::ToastView::kToastViewId),
+      CheckResult(
+          [this]() {
+            auto* toast_controller = ToastController::MaybeGetForWebContents(
+                browser()->tab_strip_model()->GetActiveWebContents());
+            return toast_controller ? toast_controller->GetCurrentToastId()
+                                    : std::nullopt;
+          },
+          std::optional<ToastId>(ToastId::kGlicSelectionHiddenForSite)));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       CloseOverlayWithEscapeKeyShowsHiddenToast) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+
+  RunTestSequence(
+      OpenOverlayFromSmallChip(kActiveTab, kOverlayWebContentsId),
+      SendKeyPress(OverlayBaseController::kOverlayId, ui::VKEY_ESCAPE),
+      WaitForHide(OverlayBaseController::kOverlayId),
+      WaitForShow(toasts::ToastView::kToastViewId),
+      CheckResult(
+          [this]() {
+            auto* toast_controller = ToastController::MaybeGetForWebContents(
+                browser()->tab_strip_model()->GetActiveWebContents());
+            return toast_controller ? toast_controller->GetCurrentToastId()
+                                    : std::nullopt;
+          },
+          std::optional<ToastId>(ToastId::kGlicSelectionHiddenForSite)));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithInlineFulfillment,
+                       CloseOverlayWithBackgroundClickDoesNotShowHiddenToast) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+
+  RunTestSequence(
+      OpenOverlayFromSmallChip(kActiveTab, kOverlayWebContentsId),
+      MoveMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(300, 300)),
+      ClickMouse(), WaitForHide(OverlayBaseController::kOverlayId),
+      EnsureNotPresent(toasts::ToastView::kToastViewId));
 }
 
 namespace {

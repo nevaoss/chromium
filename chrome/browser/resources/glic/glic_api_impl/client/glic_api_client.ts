@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import {assertNotReached} from '//resources/js/assert.js';
 import type {BitmapN32} from '//resources/mojo/skia/public/mojom/bitmap.mojom-webui.js';
 
 import type {PageMetadata as PageMetadataMojo} from '../../ai_page_content_metadata.mojom-webui.js';
@@ -10,6 +11,8 @@ import {enumFromClient, enumToClient} from '../../enum_conversions.js';
 import {                                       //
   CaptureRegionObserverReceiver,               //
   PinCandidatesObserverReceiver,               //
+  PromptType as PromptTypeMojo,                //
+  ResponseStopCause as ResponseStopCauseMojo,  //
   SettingsPageField as SettingsPageFieldMojo,  //
   TabDataHandlerReceiver,                      //
   TabFaviconHandlerReceiver,                   //
@@ -35,7 +38,12 @@ import type {                                                          //
              WebClientHandlerRemote,                                   //
              WebClientInterface,                                       //
 } from '../../glic.mojom-webui.js';
-import {CaptureRegionErrorReason, ClientCapabilities, HostCapability} from '../../glic_api/glic_api.js';
+import {                     //
+  CaptureRegionErrorReason,  //
+  ClientCapabilities,        //
+  HostCapability,            //
+  ResponseStopCause,         //
+} from '../../glic_api/glic_api.js';
 import type {                            //
              ActivateTabOptions,         //
              AdditionalContext,          //
@@ -102,6 +110,7 @@ import {                              //
   idFromClient,                       //
   idToClient,                         //
   invokeOptionsToClient,              //
+  microphoneStatusToMojo,             //
   pageMetadataToClient,               //
   panelOpeningDataToClient,           //
   panelStateToClient,                 //
@@ -264,7 +273,7 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
     this.getTabByIdObservableSet = new TabDataObservableSet(this.handler);
     this.getTabFaviconByIdObservableSet =
         new TabFaviconObservableSet(this.handler);
-    this.metrics = new GlicBrowserHostMetricsImpl(this.clientRemote);
+    this.metrics = new GlicBrowserHostMetricsImpl(this.handler);
 
     const proxy = createDelegationProxy(this as GlicBrowserHostImpl, [
       this.actorClient,
@@ -814,27 +823,28 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
   }
 
   onModeChange?(newMode: WebClientMode): void {
-    this.clientRemote.requestNoResponse('onModeChange', {newMode});
+    this.handler.onModeChange(webClientModeToMojo(newMode));
   }
 
   onMicrophoneStatusChange?(status: MicrophoneStatus): void {
-    this.clientRemote.requestNoResponse('onMicrophoneStatusChange', {status});
+    this.handler.onMicrophoneStatusChange(microphoneStatusToMojo(status));
   }
 
   setErrorDialogState?(shownDialogType?: ClientErrorDialogType): void {
-    this.clientRemote.requestNoResponse(
-        'setErrorDialogState', {shownDialogType});
+    this.handler.clientErrorDialogStateChanged(enumFromClient(shownDialogType));
+    // TODO(b/506142920): Avoid showing error panels to the user if it is
+    // presented while the panel is backgrounded. Automatically reload the
+    // page instead.
   }
 
-  async resizeWindow(
-      width: number, height: number,
-      options?: ResizeWindowOptions): Promise<void> {
-    return this.clientRemote.requestWithResponse(
-        'resizeWindow', {size: {width, height}, options});
+  resizeWindow(width: number, height: number, options?: ResizeWindowOptions):
+      Promise<void> {
+    return this.handler.resizeWidget(
+        {width, height}, timeDeltaFromClient(options?.durationMs));
   }
 
-  enableDragResize?(enabled: boolean): Promise<void> {
-    return this.clientRemote.requestWithResponse('enableDragResize', {enabled});
+  async enableDragResize?(enabled: boolean): Promise<void> {
+    this.handler.enableDragResize(enabled);
   }
 
   captureRegion?
@@ -852,9 +862,8 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
         'deleteCapturedRegion', {tabId, regionId});
   }
 
-  setMinimumWidgetSize(width: number, height: number): Promise<void> {
-    return this.clientRemote.requestWithResponse(
-        'setMinimumWidgetSize', {size: {width, height}});
+  async setMinimumWidgetSize(width: number, height: number): Promise<void> {
+    this.handler.setMinimumPanelSize({width, height});
   }
 
   getPanelState?(): ObservableValueImpl<PanelState> {
@@ -915,13 +924,11 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
   }
 
   setMicrophonePermissionState(enabled: boolean): Promise<void> {
-    return this.clientRemote.requestWithResponse(
-        'setMicrophonePermissionState', {enabled});
+    return this.handler.setMicrophonePermissionState(enabled);
   }
 
   setLocationPermissionState(enabled: boolean): Promise<void> {
-    return this.clientRemote.requestWithResponse(
-        'setLocationPermissionState', {enabled});
+    return this.handler.setLocationPermissionState(enabled);
   }
 
   setTabContextPermissionState(enabled: boolean): Promise<void> {
@@ -929,13 +936,11 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
       this.permissionStateTabContext.assignAndSignal(enabled);
       return Promise.resolve();
     }
-    return this.clientRemote.requestWithResponse(
-        'setTabContextPermissionState', {enabled});
+    return this.handler.setTabContextPermissionState(enabled);
   }
 
   setClosedCaptioningSetting?(enabled: boolean): Promise<void> {
-    return this.clientRemote.requestWithResponse(
-        'setClosedCaptioningSetting', {enabled});
+    return this.handler.setClosedCaptioningSetting(enabled);
   }
 
   setContextAccessIndicator(show: boolean): void {
@@ -943,8 +948,7 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
   }
 
   setActuationOnWebSetting?(enabled: boolean): Promise<void> {
-    return this.clientRemote.requestWithResponse(
-        'setActuationOnWebSetting', {enabled});
+    return this.handler.setActuationOnWebSetting(enabled);
   }
 
   async getUserProfileInfo?(): Promise<UserProfileInfo> {
@@ -1014,7 +1018,7 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
   }
 
   setAudioDucking?(enabled: boolean): void {
-    this.clientRemote.requestNoResponse('setAudioDucking', {enabled});
+    this.handler.setAudioDucking(enabled);
   }
 
   getMetrics(): GlicBrowserHostMetrics {
@@ -1027,8 +1031,7 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
 
 
   setSyntheticExperimentState(trialName: string, groupName: string): void {
-    this.clientRemote.requestNoResponse(
-        'setSyntheticExperimentState', {trialName, groupName});
+    this.handler.setSyntheticExperimentState(trialName, groupName);
   }
 
   openOsPermissionSettingsMenu?(permission: string): void {
@@ -1052,9 +1055,8 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
   }
 
   async getOsMicrophonePermissionStatus(): Promise<boolean> {
-    return (await this.clientRemote.requestWithResponse(
-                'getOsMicrophonePermissionStatus', undefined))
-        .enabled;
+    const {enabled} = await this.handler.getOsMicrophonePermissionStatus();
+    return enabled;
   }
 
   isManuallyResizing(): ObservableValueImpl<boolean> {
@@ -1158,8 +1160,7 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
 
 
   setOnboardingCompleted?(): void {
-    return this.clientRemote.requestNoResponse(
-        'setOnboardingCompleted', undefined);
+    this.handler.setOnboardingCompleted();
   }
 
   isOnboardingCompleted?(): ObservableValue<boolean> {
@@ -1168,61 +1169,76 @@ export class GlicBrowserHostImpl implements GlicBrowserHostBaseContext,
 }
 
 class GlicBrowserHostMetricsImpl implements GlicBrowserHostMetrics {
-  constructor(private sender: PostMessageRemote<WebClientHost>) {}
+  constructor(private handler: WebClientHandlerRemote) {}
 
   onOptinImpression(): void {
-    this.sender.requestNoResponse('onOptinImpression', undefined);
+    this.handler.onOptinImpression();
   }
 
   onUserInputSubmitted(mode: number, promptType?: PromptType): void {
-    this.sender.requestNoResponse('onUserInputSubmitted', {mode, promptType});
+    this.handler.onUserInputSubmitted(
+        webClientModeToMojo(mode),
+        enumFromClient(promptType) ?? PromptTypeMojo.kUnspecified);
   }
 
   onReaction(reactionType: number): void {
-    this.sender.requestNoResponse('onReaction', {reactionType});
+    this.handler.onReaction(reactionType);
   }
 
   onPerformActionResultSubmitted(isRetry?: boolean): void {
-    this.sender.requestNoResponse('onActionSubmitted', {isRetry});
+    this.handler.onActionSubmitted(isRetry ?? false);
   }
 
   onContextUploadStarted(): void {
-    this.sender.requestNoResponse('onContextUploadStarted', undefined);
+    this.handler.onContextUploadStarted();
   }
 
   onContextUploadCompleted(): void {
-    this.sender.requestNoResponse('onContextUploadCompleted', undefined);
+    this.handler.onContextUploadCompleted();
   }
 
   onResponseStarted(): void {
-    this.sender.requestNoResponse('onResponseStarted', undefined);
+    this.handler.onResponseStarted();
   }
 
   onResponseStopped(details?: OnResponseStoppedDetails): void {
-    this.sender.requestNoResponse('onResponseStopped', {details});
+    let cause: ResponseStopCauseMojo;
+    switch (details?.cause) {
+      case undefined:
+        cause = ResponseStopCauseMojo.kUnknown;
+        break;
+      case ResponseStopCause.USER:
+        cause = ResponseStopCauseMojo.kUser;
+        break;
+      case ResponseStopCause.OTHER:
+        cause = ResponseStopCauseMojo.kOther;
+        break;
+      default:
+        assertNotReached();
+    }
+    this.handler.onResponseStopped({cause});
   }
 
   onSessionTerminated(): void {
-    this.sender.requestNoResponse('onSessionTerminated', undefined);
+    this.handler.onSessionTerminated();
   }
 
   onResponseRated(positive: boolean): void {
-    this.sender.requestNoResponse('onResponseRated', {positive});
+    this.handler.onResponseRated(positive);
   }
 
-  onClosedCaptionsShown?(): void {
-    this.sender.requestNoResponse('onClosedCaptionsShown', undefined);
+  onClosedCaptionsShown(): void {
+    this.handler.onClosedCaptionsShown();
   }
 
-  onTurnCompleted?(model: number, duration: number): void {
-    this.sender.requestNoResponse('onTurnCompleted', {model, duration});
+  onTurnCompleted(model: number, duration: number): void {
+    this.handler.onTurnCompleted(model, timeDeltaFromClient(duration));
   }
 
-  onRecordUseCounter?(counter: number): void {
+  onRecordUseCounter(counter: number): void {
     // Since the frontend can contain a newer version than what Chrome is
     // built against, we use a sparse histogram.
-    this.sender.requestNoResponse(
-        'recordHistogram', {name: 'Glic.Api.UseCounter', sparseValue: counter});
+    this.handler.recordSparseValue('Glic.Api.UseCounter', counter);
   }
 }
 

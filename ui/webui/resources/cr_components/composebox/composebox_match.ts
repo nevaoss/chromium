@@ -13,6 +13,7 @@ import {SuggestStyle} from '//resources/mojo/components/omnibox/browser/searchbo
 import {SecondaryTextPlacement} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 
+import {computeImageUrl} from './common.js';
 import {getCss} from './composebox_match.css.js';
 import {getHtml} from './composebox_match.html.js';
 import {ComposeboxProxyImpl, createAutocompleteMatch} from './composebox_proxy.js';
@@ -24,6 +25,11 @@ export interface ComposeboxMatchElement {
     remove: HTMLElement,
     textContainer: HTMLElement,
   };
+}
+
+export enum BaseLayout {
+  TEXT = 'text',
+  IMAGE = 'image',
 }
 
 // Displays an autocomplete match
@@ -72,18 +78,25 @@ export class ComposeboxMatchElement extends CrLitElement {
         reflect: true,
         attribute: 'suggest-style',
       },
+      baseLayout: {
+        type: String,
+        reflect: true,
+        attribute: 'base-layout',
+      },
 
-      /**
-       * Where the description (secondary text) is rendered relative to the
-       * contents (primary text).
-       */
+      /** Where the secondary text is rendered relative to the primary text. */
       secondaryTextPlacement: {
         type: String,
+        reflect: true,
+      },
+      loading: {
+        type: Boolean,
         reflect: true,
       },
     };
   }
 
+  accessor loading: boolean = false;
   accessor match: AutocompleteMatch = createAutocompleteMatch();
   accessor overrideClampLineNum: number = -1;
 
@@ -92,6 +105,7 @@ export class ComposeboxMatchElement extends CrLitElement {
   accessor toolMode: ToolMode = ToolMode.kUnspecified;
   accessor richImageSuggestionsEnabled: boolean = false;
   accessor suggestStyle: string = 'default';
+  accessor baseLayout: BaseLayout = BaseLayout.TEXT;
   accessor secondaryTextPlacement: string = 'in-front-of-primary-text';
   private searchboxHandler_: SearchboxPageHandlerRemote;
   protected accessor removeButtonTitle_: string =
@@ -121,6 +135,10 @@ export class ComposeboxMatchElement extends CrLitElement {
     this.style.setProperty('--clamp-line-num', `${this.overrideClampLineNum}`);
   }
 
+  // Maps the backend SuggestStyle to a WebUI suggest-style string attribute.
+  // When adding support for new SuggestStyle enum values (e.g. kEnriched,
+  // kAnnotated), add a case here and define any variant-specific CSS overrides
+  // in composebox_match.css.
   private computeSuggestStyle_(): string {
     switch (this.match.suggestStyle) {
       case SuggestStyle.kRichImage:
@@ -131,6 +149,20 @@ export class ComposeboxMatchElement extends CrLitElement {
       case SuggestStyle.kDefault:
       default:
         return 'default';
+    }
+  }
+
+  // Maps the current suggestion to its base layout category (TEXT vs IMAGE).
+  // New text-based suggestions automatically inherit the shared text layout
+  // (height, hover, selection, icons, and text clamping) from
+  // base-layout="text".
+  private computeBaseLayout_(): BaseLayout {
+    switch (this.suggestStyle) {
+      case 'rich-image':
+        return BaseLayout.IMAGE;
+      case 'default':
+      default:
+        return BaseLayout.TEXT;
     }
   }
 
@@ -147,6 +179,7 @@ export class ComposeboxMatchElement extends CrLitElement {
     if (changedProperties.has('match') ||
         changedProperties.has('richImageSuggestionsEnabled')) {
       this.suggestStyle = this.computeSuggestStyle_();
+      this.baseLayout = this.computeBaseLayout_();
       this.secondaryTextPlacement = this.computeSecondaryTextPlacement_();
     }
   }
@@ -155,33 +188,27 @@ export class ComposeboxMatchElement extends CrLitElement {
     return this.match.iconPath || '';
   }
 
-  // Returns a CSP-safe image URL using Chrome's SanitizedImageSource
-  // (//image?...).
-  protected computeImageUrl_(url: string|undefined): string {
-    if (!url) {
-      return '';
-    }
-    return `//image?staticEncode=true&encodeType=webp&url=${
-        encodeURIComponent(url)}`;
-  }
-
   protected imageStyle_(): string {
-    if (!this.isRichImage) {
+    if (!this.isRichImage || this.loading) {
       return '';
     }
-    const src = this.computeImageUrl_(this.match.suggestTemplate.image?.url);
+    const src = computeImageUrl(this.match.suggestTemplate.image?.url);
     return src ? `background-image: ${getUrlForCss(src)};` : '';
   }
 
   private onMatchFocusin_() {
+    if (this.loading) {
+      return;
+    }
     this.fire('match-focusin', {
       index: this.matchIndex,
     });
   }
 
   private onMouseClick_(e: MouseEvent) {
-    if (e.button > 1) {
-      // Only handle main (generally left) and middle button presses.
+    if (this.loading || e.button > 1) {
+      // Only handle main (generally left) and middle button presses, and ignore
+      // clicks while cards are in a loading state.
       return;
     }
 

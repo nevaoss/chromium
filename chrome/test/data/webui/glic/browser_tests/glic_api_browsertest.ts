@@ -1291,8 +1291,11 @@ class ApiTests extends ApiTestFixtureBase {
     const link = document.createElement('a');
     link.setAttribute('href', 'https://www.chromium.org');
     document.body.appendChild(link);
+    const isMac = (await this.host.getPlatform?.()) === Platform.MAC_OS ||
+        /Mac/.test(navigator.platform);
     link.dispatchEvent(new MouseEvent('click', {
-      ctrlKey: true,
+      ctrlKey: !isMac,
+      metaKey: isMac,
       bubbles: true,
       cancelable: true,
       view: window,
@@ -2655,6 +2658,16 @@ class ApiTests extends ApiTestFixtureBase {
     await waitFor(stopMicrophonePromise.promise);
   }
 
+  // Android only: the browser window loses focus.
+  async testStopMicrophoneOnWindowDeactivated() {
+    await this.testStopMicrophone();
+  }
+
+  // Android only: the bottom sheet closes.
+  async testStopMicrophoneOnBottomSheetClosed() {
+    await this.testStopMicrophone();
+  }
+
   async testSetSyntheticExperimentState() {
     assertDefined(this.host.setSyntheticExperimentState);
     this.host.setSyntheticExperimentState('TestTrial', 'Enabled');
@@ -3101,12 +3114,14 @@ class FaviconTest extends ApiTests {
     const tab = tabs[0]!;
 
     assertDefined(this.host.getTabFaviconById);
-    const subscription =
-        this.host.getTabFaviconById(tab.tabId).subscribe(() => {});
+    const faviconObs = this.host.getTabFaviconById(tab.tabId);
+    const subscription = faviconObs.subscribe(() => {});
+    await runUntil(() => faviconObs.getCurrentValue() !== undefined);
 
     await this.advanceToNextStep();
 
     subscription.unsubscribe();
+    await runUntil(() => faviconObs.getCurrentValue() === undefined);
   }
 
   async testTabFaviconObserverTabWillClose() {

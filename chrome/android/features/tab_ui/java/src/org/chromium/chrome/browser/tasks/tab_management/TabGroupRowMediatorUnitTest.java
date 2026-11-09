@@ -55,6 +55,7 @@ import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
@@ -67,6 +68,7 @@ import org.chromium.chrome.browser.hub.PaneManager;
 import org.chromium.chrome.browser.multiwindow.MultiWindowTestUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
+import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
@@ -132,6 +134,7 @@ public class TabGroupRowMediatorUnitTest {
     private Context mContext;
     private SavedTabGroup mSyncGroup;
     private int mFirstTabId = Tab.INVALID_TAB_ID;
+    private boolean mIsArchived;
 
     @Before
     public void setUp() {
@@ -153,6 +156,8 @@ public class TabGroupRowMediatorUnitTest {
         when(mDataSharingService.getUiDelegate()).thenReturn(mDataSharingUiDelegate);
         when(mPaneManager.getPaneForId(PaneId.TAB_SWITCHER)).thenReturn(mTabSwitcherPaneBase);
         when(mTabSwitcherPaneBase.requestOpenTabGroupDialog(any())).thenReturn(true);
+        when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_CURRENT);
+        mIsArchived = false;
     }
 
     private PropertyModel buildTestModel(GURL... urls) {
@@ -160,10 +165,12 @@ public class TabGroupRowMediatorUnitTest {
     }
 
     private PropertyModel buildTestModel(boolean isShared, GURL... urls) {
+        Long archivalTime = mSyncGroup != null ? mSyncGroup.archivalTimeMs : null;
         mSyncGroup = mSyncedGroupTestHelper.newTabGroup(SYNC_GROUP_ID1, GROUP_ID1);
         mSyncGroup.collaborationId = isShared ? COLLABORATION_ID1 : null;
         mSyncGroup.title = TITLE;
         mSyncGroup.savedTabs = SyncedGroupTestHelper.tabsFromUrls(urls);
+        mSyncGroup.archivalTimeMs = archivalTime;
 
         mFirstTabId =
                 mSyncGroup.savedTabs.isEmpty()
@@ -178,10 +185,25 @@ public class TabGroupRowMediatorUnitTest {
         }
         when(mTabModel.getTabsInGroup(GROUP_ID1)).thenReturn(tabList);
 
+        Token localId = GROUP_ID1;
+        List<GURL> urlList = TabGroupFaviconCluster.buildUrlListFromSyncGroup(mSyncGroup);
+        GroupWindowInfo groupInfo =
+                new GroupWindowInfo(
+                        localId,
+                        SYNC_GROUP_ID1,
+                        TITLE,
+                        mSyncGroup.color,
+                        mSyncGroup.savedTabs.size(),
+                        urlList,
+                        GroupWindowState.IN_CURRENT,
+                        mSyncGroup.updateTimeMs,
+                        mSyncGroup.collaborationId,
+                        mIsArchived || mSyncGroup.archivalTimeMs != null);
+
         TabGroupRowMediator mediator =
                 new TabGroupRowMediator(
                         mContext,
-                        mSyncGroup,
+                        groupInfo,
                         mTabModel,
                         mTabGroupSyncService,
                         mDataSharingService,
@@ -388,6 +410,7 @@ public class TabGroupRowMediatorUnitTest {
                 .when(mTabGroupUiActionHandler)
                 .openTabGroup(SYNC_GROUP_ID1);
         when(mFetchGroupState.get()).thenReturn(GroupWindowState.HIDDEN);
+        mIsArchived = true;
         PropertyModel propertyModel = buildTestModel(/* isShared= */ true, mUrl1);
         UserActionTester userActionTester = new UserActionTester();
         HistogramWatcher histograms =
@@ -460,19 +483,69 @@ public class TabGroupRowMediatorUnitTest {
     public void testDelete_NotShared_InAnother() {
         when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_ANOTHER);
         PropertyModel propertyModel = buildTestModel(/* isShared= */ false, mUrl1);
+        when(mTabModel.getTabsInGroup(GROUP_ID1)).thenReturn(List.of());
 
         assertNotNull(propertyModel.get(DELETE_RUNNABLE));
         assertNull(propertyModel.get(LEAVE_RUNNABLE));
         propertyModel.get(DELETE_RUNNABLE).run();
-        verifyNoInteractions(mTabRemover);
-        verify(mTabModel, never()).commitTabClosure(anyInt());
-        verify(mTabGroupSyncService, never()).removeGroup((String) any());
+        verify(mActionConfirmationManager).processDeleteGroupAttempt(mConfirmationCaptor.capture());
+
+        mConfirmationCaptor.getValue().onResult(ActionConfirmationResult.CONFIRMATION_POSITIVE);
+        verify(mTabGroupSyncService).removeGroup(SYNC_GROUP_ID1);
+    }
+
+    @Test
+    public void testDelete_NotShared_InAnother_ConfirmationNegative() {
+        when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_ANOTHER);
+        PropertyModel propertyModel = buildTestModel(/* isShared= */ false, mUrl1);
+
+        assertNotNull(propertyModel.get(DELETE_RUNNABLE));
+        assertNull(propertyModel.get(LEAVE_RUNNABLE));
+        propertyModel.get(DELETE_RUNNABLE).run();
+        verify(mActionConfirmationManager).processDeleteGroupAttempt(mConfirmationCaptor.capture());
+
+        mConfirmationCaptor.getValue().onResult(ActionConfirmationResult.CONFIRMATION_NEGATIVE);
+        verify(mTabGroupSyncService, never()).removeGroup(SYNC_GROUP_ID1);
+    }
+
+    @Test
+    public void testDelete_NotShared_InAnother_DestroyedBeforeConfirmation() {
+        when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_ANOTHER);
+        PropertyModel propertyModel = buildTestModel(/* isShared= */ false, mUrl1);
+
+        assertNotNull(propertyModel.get(DELETE_RUNNABLE));
+        assertNull(propertyModel.get(LEAVE_RUNNABLE));
+        propertyModel.get(DELETE_RUNNABLE).run();
+        verify(mActionConfirmationManager).processDeleteGroupAttempt(mConfirmationCaptor.capture());
+
+        propertyModel.get(DESTROYABLE).destroy();
+        mConfirmationCaptor.getValue().onResult(ActionConfirmationResult.CONFIRMATION_POSITIVE);
+        verify(mTabGroupSyncService, never()).removeGroup(SYNC_GROUP_ID1);
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.CROSS_WINDOW_TAB_GROUP_OPERATIONS)
+    public void testDelete_NotShared_InAnother_FlagDisabled_NoDialog() {
+        when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_ANOTHER);
+        PropertyModel propertyModel = buildTestModel(/* isShared= */ false, mUrl1);
+
+        assertNotNull(propertyModel.get(DELETE_RUNNABLE));
+        propertyModel.get(DELETE_RUNNABLE).run();
+
+        verify(mActionConfirmationManager, never()).processDeleteGroupAttempt(any());
     }
 
     @Test
     public void testDelete_NotShared_InCurrentClosing() {
         when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_CURRENT_CLOSING);
         PropertyModel propertyModel = buildTestModel(/* isShared= */ false, mUrl1);
+        Tab closingTab = mock(Tab.class);
+        when(closingTab.getId()).thenReturn(mFirstTabId);
+        when(closingTab.getTabGroupId()).thenReturn(GROUP_ID1);
+        when(closingTab.isClosing()).thenReturn(true);
+        TabList comprehensiveModel = mock(TabList.class);
+        when(comprehensiveModel.iterator()).thenAnswer(inv -> List.of(closingTab).iterator());
+        when(mTabModel.getComprehensiveModel()).thenReturn(comprehensiveModel);
 
         assertNotNull(propertyModel.get(DELETE_RUNNABLE));
         assertNull(propertyModel.get(LEAVE_RUNNABLE));
@@ -520,7 +593,6 @@ public class TabGroupRowMediatorUnitTest {
         when(mCollaborationService.getGroupData(eq(COLLABORATION_ID1))).thenReturn(shareGroup);
         when(mCollaborationService.getCurrentUserRoleForGroup(COLLABORATION_ID1))
                 .thenReturn(MemberRole.OWNER);
-        when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_CURRENT);
         PropertyModel propertyModel = buildTestModel(/* isShared= */ true, mUrl1);
 
         assertNotNull(propertyModel.get(DELETE_RUNNABLE));
@@ -541,7 +613,6 @@ public class TabGroupRowMediatorUnitTest {
         when(mCollaborationService.getGroupData(eq(COLLABORATION_ID1))).thenReturn(shareGroup);
         when(mCollaborationService.getCurrentUserRoleForGroup(COLLABORATION_ID1))
                 .thenReturn(MemberRole.MEMBER);
-        when(mFetchGroupState.get()).thenReturn(GroupWindowState.IN_CURRENT);
         PropertyModel propertyModel = buildTestModel(/* isShared= */ true, mUrl1, mUrl2);
 
         assertNull(propertyModel.get(DELETE_RUNNABLE));

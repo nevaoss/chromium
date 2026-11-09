@@ -329,6 +329,7 @@
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" />-с</translation>
 <translation id="232757965409810352">Хуудсыг дараахаар хадгалах…</translation>
 <translation id="2328474416100889417">Хүн бүр “<ph name="GROUP_NAME" />” табын бүлэгт хандах эрхээ тэр даруй алдах бөгөөд урилгын бүх холбоосыг унтраана</translation>
+<translation id="2328773543844041445">Курсорыг зөөхөд табуудыг автоматаар дэлгэх</translation>
 <translation id="2330186936255788117">Бусад хавчуурга</translation>
 <translation id="2330243730505117832">"Төхөөрөмж сонгох" цонхыг хаалаа.</translation>
 <translation id="2332515770639153015">Сайжруулсан аюулгүй хөтөч асаалттай байна</translation>
@@ -1692,6 +1693,7 @@ Tаны Google бүртгэл <ph name="BEGIN_LINK" />history.google.com<ph name
 <translation id="7608245556672190037">Chrome-р зөвлөмж олуулахад нэгдэх сонголтыг бүтэн өндрөөр нээсэн</translation>
 <translation id="7612619742409846846">Google-д дараахаар нэвтэрсэн</translation>
 <translation id="7612989789287281429">Та нэвтэрч байна…</translation>
+<translation id="7617512710641355143">Chrome-г удирддаг</translation>
 <translation id="7619072057915878432">Сүлжээний доголдлоос болж <ph name="FILE_NAME" />-г татаж чадсангүй.</translation>
 <translation id="7626032353295482388">Chrome-д тавтай морил</translation>
 <translation id="7628417132421583481">Нууц үгний менежер рүү очих</translation>

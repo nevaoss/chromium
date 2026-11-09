@@ -64,8 +64,18 @@ void PasswordManagerClient::ShowKeyboardReplacingSurface(
 #endif
 
 bool PasswordManagerClient::IsReauthBeforeFillingRequired(
+    device_reauth::DeviceAuthAvailabilityChecker*) {
+  return false;
+}
+
+bool PasswordManagerClient::IsReauthBeforeFillingRequiredLegacy(
     device_reauth::DeviceAuthenticator*) {
   return false;
+}
+
+std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
+PasswordManagerClient::GetDeviceAuthAvailabilityChecker() {
+  return nullptr;
 }
 
 std::unique_ptr<device_reauth::DeviceAuthenticator>
@@ -231,8 +241,7 @@ bool PasswordManagerClient::IsActorTaskActive() {
   return false;
 }
 
-void PasswordManagerClient::OnPasswordFilled(
-    PasswordManagerDriver* driver) {}
+void PasswordManagerClient::OnPasswordFilled(PasswordManagerDriver* driver) {}
 
 bool PasswordManagerClient::IsChromeSigninPage() const {
   return false;

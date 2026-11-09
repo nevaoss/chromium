@@ -658,6 +658,9 @@ ci.builder(
                 # Re-enable cq when the issue is fixed.
                 ci_only = True,
             ),
+            "ash_unittests": targets.mixin(
+                enable_rts_filtering = True,
+            ),
             "browser_tests": targets.mixin(
                 args = [
                     # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
@@ -678,7 +681,11 @@ ci.builder(
                     shards = 60,
                 ),
             ),
+            "components_unittests": targets.mixin(
+                enable_rts_filtering = True,
+            ),
             "content_browsertests": targets.mixin(
+                enable_rts_filtering = True,
                 swarming = targets.swarming(
                     shards = 6,
                 ),

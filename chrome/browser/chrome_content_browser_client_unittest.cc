@@ -250,6 +250,7 @@ using ::testing::_;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::NotNull;
+using ::testing::Optional;
 
 #if BUILDFLAG(ENABLE_PDF)
 using ::testing::NiceMock;
@@ -1825,8 +1826,7 @@ namespace override_geo_api_keys {
 
 }  // namespace override_geo_api_keys
 
-// Test that when `kCrosSeparateGeoApiKey` feature is enabled,
-// Chrome-on-ChromeOS switches to using a separate (ChromeOS-specific) API Key
+// Test that Chrome-on-ChromeOS uses a separate (ChromeOS-specific) API Key
 // for the location requests.
 TEST_F(ChromeContentBrowserClientTest, UseCorrectGeoAPIKey) {
   auto default_key_values =
@@ -1836,19 +1836,7 @@ TEST_F(ChromeContentBrowserClientTest, UseCorrectGeoAPIKey) {
   auto scoped_override =
       google_apis::SetScopedApiKeyCacheForTesting(&api_key_cache);
 
-  // Check the legacy behavior that Chrome-on-ChromeOS uses shared API key for
-  // geolocation requests.
   ChromeContentBrowserClient client;
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndDisableFeature(
-      ash::features::kCrosSeparateGeoApiKey);
-  EXPECT_EQ(client.GetGeolocationApiKey(), google_apis::GetAPIKey());
-
-  // Check that when the `kCrosSeparateGeoApiKey` feature is enabled,
-  // Chrome-on-ChromeOS uses ChromeOS-specific API key for geolocation.
-  scoped_feature_list.Reset();
-  scoped_feature_list.InitAndEnableFeature(
-      ash::features::kCrosSeparateGeoApiKey);
   EXPECT_EQ(client.GetGeolocationApiKey(),
             google_apis::GetCrosChromeGeoAPIKey());
 }
@@ -3118,6 +3106,9 @@ class ChromeContentBrowserClientDynamicPatchTest : public testing::Test {
   // `version` synchronously as the latest available version, and returns the
   // expected renderer binary path.
   base::FilePath StagePatch(const base::Version& version) {
+    const child_module::ChildModuleManager::Module expected = {
+        .version = version,
+        .renderer_binary_path = child_module::GetRendererBinaryPath(version)};
     auto* features = TestingBrowserProcess::GetGlobal()->GetFeatures();
     features->PostMainMessageLoopRun();
     WritePatchFiles(version);
@@ -3126,9 +3117,9 @@ class ChromeContentBrowserClientDynamicPatchTest : public testing::Test {
     EXPECT_NE(manager, nullptr);
     if (manager) {
       manager->WaitForInitialScanForTesting();
-      EXPECT_EQ(manager->GetLatestVersion(), version);
+      EXPECT_EQ(manager->GetLatestModule(), expected);
     }
-    return child_module::GetRendererBinaryPath(version);
+    return expected.renderer_binary_path;
   }
 
   // TODO(crbug.com/558598893): Enable GetChildProcessPath tests on macOS once
@@ -3235,6 +3226,17 @@ TEST_F(ChromeContentBrowserClientDynamicPatchTest,
   cmd.AppendSwitchASCII(switches::kProcessType, switches::kUtilityProcess);
   client.AppendExtraCommandLineSwitches(&cmd, /*child_process_id=*/1);
   EXPECT_FALSE(cmd.HasSwitch(switches::kChildModuleVersion));
+}
+
+TEST_F(ChromeContentBrowserClientDynamicPatchTest, GetChildModule) {
+  ChromeContentBrowserClient client;
+  EXPECT_EQ(client.GetChildModule(), std::nullopt);
+
+  const base::Version version("9999.0.0.1");
+  base::FilePath patched_binary = StagePatch(version);
+  EXPECT_THAT(client.GetChildModule(),
+              Optional(content::ContentBrowserClient::ChildModule{
+                  .version = version, .path = patched_binary}));
 }
 #endif  // BUILDFLAG(IS_WIN)
 

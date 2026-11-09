@@ -7,31 +7,40 @@
 
 #import <Foundation/Foundation.h>
 
+#import <memory>
+
 #import "ios/chrome/browser/ai_prototyping/ttc/model/ttc_states.h"
 
-@class TTCConversation;
+namespace ttc {
+class TtcBackend;
+}  // namespace ttc
+
+class TtcConversation;
 @protocol TTCSessionControllerObserver;
 
 // Coordinates the lifecycle, observer notifications, and backgrounding teardown
-// for an active TTC voice session on iOS.
+// for an active TTC session on iOS.
 @interface TTCSessionController : NSObject
 
 // Underlying conversation coordinator.
-@property(nonatomic, readonly) TTCConversation* conversation;
+@property(nonatomic, readonly) TtcConversation* conversation;
 
 // Current lifecycle state of this session.
 @property(nonatomic, readonly, assign) TTCSessionLifecycle lifecycle;
 
 // Designated initializer injecting a custom conversation coordinator.
-- (instancetype)initWithConversation:(TTCConversation*)conversation
-    NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithConversation:
+    (std::unique_ptr<TtcConversation>)conversation NS_DESIGNATED_INITIALIZER;
 
-// Convenience initializer using a default `TTCConversation`.
+// Convenience initializer creating a `TtcConversation` with `backend`.
+- (instancetype)initWithBackend:(std::unique_ptr<ttc::TtcBackend>)backend;
+
+// Convenience initializer using a default `TtcConversation`.
 - (instancetype)init;
 
 #pragma mark - Session Lifecycle
 
-// Starts the voice session.
+// Starts the session.
 - (void)startSession;
 
 // Marks the session as initialized and transitions lifecycle to `kLive`.

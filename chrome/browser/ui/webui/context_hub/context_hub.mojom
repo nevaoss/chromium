@@ -33,6 +33,11 @@ feature kTopics {
   const bool default_state = false;
 };
 
+feature kMemoryBanksSearchPalette {
+  const string name = "MemoryBanksSearchPalette";
+  const bool default_state = false;
+};
+
 enum AutoTodoStatus {
   kActive,
   kCompleted,
@@ -61,18 +66,26 @@ struct DriveFile {
   string name;
 };
 
+struct ChromeHistoryEntry {
+  url.mojom.Url url;
+  string title;
+  mojo_base.mojom.Time visit_timestamp;
+};
+
 union SourceReference {
   GmailReference gmail;
   PhotosReference photos;
   DriveFile drive;
+  ChromeHistoryEntry chrome_history_entry;
 };
 
-// Data for Gmail-based AutoTodos.
+// Data for first-party AutoTodos.
 struct FirstPartyData {
-  // Source URLs where the AutoTodo was generated from.
+  // Source references where the AutoTodo was generated from.
   array<SourceReference> source_references;
-  // The URL to navigate to when the user clicks to start the item.
-  url.mojom.Url actionable_url;
+  // The URL to navigate to when the user clicks to start the item. Null if
+  // using source references instead.
+  url.mojom.Url? actionable_url;
 };
 
 // Data for Browser tab-based AutoTodos.
@@ -290,12 +303,14 @@ enum TopicDefectCategory {
   kTooNarrowOrFragmented = 7,
   // "Incidental browsing (not intended)"
   kIncidentalBrowsing = 8,
-  // "Duplicate of another topic"
+  // "Overlaps with another topic, and should be combined with it"
   kDuplicateOfAnotherTopic = 9,
   // "Sensitive topic shouldn't be shown"
   kSensitiveTopic = 10,
   // "Other"; `TopicFeedback.comment` is required when selected.
   kOther = 11,
+  // "Outdated, no longer relevant"
+  kOutdated = 12,
 };
 
 // What a Topic looked like when it was rated. Stored alongside the rating so
@@ -392,15 +407,14 @@ struct TopicsFeedbackExportDomain {
 // What the Topics fishfood feedback export would contain, shown to the rater
 // before generating the bundle.
 struct TopicsFeedbackExportPreview {
-  // Prefilled rater LDAP, from the primary account if it is an @google.com
-  // account; empty otherwise.
-  string ldap;
   TopicsFeedbackExportStats stats;
   // Hosts visited in the window, most visited first.
   array<TopicsFeedbackExportDomain> domains;
 };
 
-// The rater's choices for generating the Topics fishfood feedback bundle.
+// The rater's choices for generating the Topics fishfood feedback bundle. A
+// visit is either exported with its URL and title, or as a redacted stub. The
+// bundle doesn't identify the rater.
 struct TopicsFeedbackExportOptions {
   // Number of days of history to export. Clamped to [1, 14].
   int32 window_days;
@@ -410,14 +424,8 @@ struct TopicsFeedbackExportOptions {
   array<string> excluded_domains;
   // Minimized URLs whose visits are exported as redacted stubs.
   array<url.mojom.Url> excluded_urls;
-  // Whether to drop the page title of every exported visit.
-  bool strip_all_titles;
-  // Hosts whose visits are exported without a page title.
-  array<string> title_stripped_domains;
   // Free-text description of Topics the rater expected but did not see.
   string missing_topics;
-  // Rater LDAP written to the bundle.
-  string rater;
 };
 
 // Interface for the browser process to push updates to the WebUI page.
@@ -455,6 +463,25 @@ interface PageHandlerFactory {
   // remote.
   CreatePageHandler(
       pending_remote<Page> page, pending_receiver<PageHandler> handler);
+};
+
+// Result status of staging memory bank file attachments to disk and clipboard.
+enum CopyAttachmentsToClipboardStatus {
+  kSuccess,
+  kFileWriteFailed,
+  // The batch exceeded a documented resource bound (filename length, per-file
+  // content size, or aggregate content size).
+  kInvalidInput,
+};
+
+// Represents a virtual file attachment to be staged to the clipboard, mapping
+// 1:1 to a selected MemoryBankEntry.
+struct MemoryBankFileAttachment {
+  // Target filename (e.g., "Itinerary.md"). Enforced maximum length
+  // (255 bytes).
+  string filename;
+  // Markdown content of the file. Enforced maximum size (10 MB).
+  string content;
 };
 
 // Provides access to context hub features.
@@ -558,6 +585,12 @@ interface PageHandler {
   // Clears stored tab groups.
   [RuntimeFeature=kAutoTabGroups]
   ClearTabGroups() => ();
+
+  // Replaces the stored (unconfirmed) tab group suggestions with `groups`,
+  // e.g. after the user renamed, dismissed or rearranged suggested groups.
+  // Groups without tabs are dropped.
+  [RuntimeFeature=kAutoTabGroups]
+  ReplaceTabGroups(array<TabGroup> groups) => ();
 
   // Clears stored tab group chat history.
   [RuntimeFeature=kAutoTabGroups]
@@ -677,4 +710,20 @@ interface PageHandler {
   // `prompt`.
   [RuntimeFeature=kAutoTodos]
   RunTodoTask(string prompt) => (bool success);
+
+  // Opens the Context Hub debug UI (chrome://context-hub).
+  [RuntimeFeature=kMemoryBanksSearchPalette]
+  OpenContextHubPage() => ();
+
+  // Opens the specified HTTP/HTTPS URL in a browser tab. Used to open memory
+  // bank source URLs.
+  [RuntimeFeature=kMemoryBanksSearchPalette]
+  OpenWebUrl(url.mojom.Url url) => ();
+
+  // Writes the given files as temporary Markdown files and puts them onto the
+  // system clipboard as file attachments (text/uri-list) so that web apps
+  // attach them when pasted.
+  [RuntimeFeature=kMemoryBanksSearchPalette]
+  CopyAttachmentsToClipboard(array<MemoryBankFileAttachment> files)
+      => (CopyAttachmentsToClipboardStatus status);
 };

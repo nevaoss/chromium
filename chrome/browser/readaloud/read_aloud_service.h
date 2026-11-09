@@ -18,6 +18,7 @@
 #include "components/dom_distiller/core/task_tracker.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "url/gurl.h"
@@ -30,9 +31,11 @@ class Profile;
 
 namespace readaloud {
 
+class OverviewGenerationBroker;
 class ReadAloudPlaybackSession;
 class ReadAloudServiceTest;
 class SpeechSynthesisBroker;
+class VoicePreviewController;
 
 // Central lifecycle and state orchestrator for the Read Aloud feature in
 // Chrome, which allows users to listen to web page content.
@@ -53,6 +56,10 @@ class ReadAloudService
       public read_aloud::mojom::ReadAloudPlaybackControllerClient,
       public content::WebContentsObserver {
  public:
+  // Maximum plausible duration for article playback, used to reject invalid or
+  // overflowing progress reports from the utility process.
+  static constexpr base::TimeDelta kMaxPlaybackDuration = base::Hours(24);
+
   enum class PlaybackMode {
     // Unspecified playback mode.
     kUnspecified = 0,
@@ -176,8 +183,11 @@ class ReadAloudService
   // Sets the target language code for text-to-speech synthesis.
   void SetLanguageCode(std::string_view language_code);
 
-  // Plays a short audio sample of the specified voice.
+  // Plays or resumes a short audio sample of the specified voice.
   void PreviewVoice(std::string_view voice_id);
+
+  // Pauses the active voice preview playback.
+  void PauseVoicePreview();
 
   // Stops the active voice preview playback.
   void StopVoicePreview();
@@ -199,8 +209,6 @@ class ReadAloudService
   void OnSessionSuspended();
   void OnSessionResumed();
 
-  bool IsPlaybackPaused() const;
-
   // content::WebContentsObserver:
   void WebContentsDestroyed() override;
   void PrimaryPageChanged(content::Page& page) override;
@@ -220,7 +228,8 @@ class ReadAloudService
 
   // read_aloud::mojom::ReadAloudPlaybackControllerClient (called by Utility):
   void OnPlaybackStateChanged(read_aloud::mojom::PlaybackState state) override;
-  void OnPlaybackDurationChanged(base::TimeDelta duration) override;
+  void OnPlaybackProgressChanged(base::TimeDelta elapsed,
+                                 base::TimeDelta duration) override;
   void OnWordBoundaryReached(uint32_t segment_index,
                              uint32_t character_offset,
                              base::TimeDelta audio_timestamp) override;
@@ -254,8 +263,23 @@ class ReadAloudService
       media::mojom::ReadWriteAudioDataPipePtr data_pipe);
   void OnUtilityDisconnect();
   void ResetUtilityConnection();
+  // Requests overview script generation from the distilled page texts.
+  void RequestOverviewGeneration(
+      const std::vector<std::string_view>& page_texts);
+  // Called when the request for overview script
+  // generation has completed.
+  void OnOverviewGenerated(mojo_base::BigBuffer response_bytes, bool success);
+  // Called when the utility process has finished
+  // parsing the overview generation response.
+  void OnOverviewContentSet(bool success, const std::string& title);
+  // Returns true if in overview mode and overview content hasn't been set yet.
+  bool IsWaitingForOverviewContent() const;
   void HandlePlaybackError(std::string_view error_message);
   void NotifyPlaybackStateChanged(read_aloud::mojom::PlaybackState state);
+  void OnVoicePreviewStateChanged(std::string_view voice_id,
+                                  read_aloud::mojom::PlaybackState state);
+  // Stops any active voice preview and tears down preview session resources.
+  void ResetVoicePreview();
   // Releases the media session, distillation and utility resources without
   // notifying the delegate.
   void ResetPlayback();
@@ -266,9 +290,8 @@ class ReadAloudService
   std::unique_ptr<dom_distiller::ViewerHandle> viewer_handle_;
   std::unique_ptr<Delegate> delegate_;
   base::TimeTicks distillation_start_time_;
-  std::string current_title_;
+  std::string article_title_;
   std::string current_publisher_;
-  base::TimeDelta current_duration_;
 
   // Connection to the Utility process Factory.
   mojo::Remote<read_aloud::mojom::ReadAloudPlaybackControllerFactory>
@@ -281,7 +304,17 @@ class ReadAloudService
 
   std::unique_ptr<ReadAloudPlaybackSession> media_session_;
   std::unique_ptr<SpeechSynthesisBroker> speech_synthesis_broker_;
+  std::unique_ptr<OverviewGenerationBroker> overview_generation_broker_;
+  std::unique_ptr<VoicePreviewController> voice_preview_controller_;
   PlaybackMode playback_mode_ = PlaybackMode::kClassic;
+
+  // True if the overview script has been generated and set
+  // for the utility process.
+  bool overview_script_loaded_ = false;
+
+  // Tracks explicit user playback intent in the browser process across
+  // asynchronous distillation and overview generation operations.
+  bool user_requested_play_ = false;
 
   base::WeakPtrFactory<ReadAloudService> weak_factory_{this};
 };

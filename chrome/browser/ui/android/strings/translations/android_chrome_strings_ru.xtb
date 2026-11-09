@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">Поделиться этой страницей</translation>
 <translation id="230115972905494466">Совместимые устройства не найдены.</translation>
 <translation id="2305798319182970276">Удаляйте историю одним нажатием кнопки</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> запрашивает доступ к HID-устройствам для этого сайта.</translation>
 <translation id="2316129865977710310">Нет, спасибо</translation>
 <translation id="232137538351753795">Чтобы вернуться, проведите слева направо</translation>
 <translation id="2323763861024343754">Данные сайтов</translation>
 <translation id="2327445548174191329">С устройства <ph name="DEVICE_NAME" />.</translation>
 <translation id="232757965409810352">Сохранить страницу как…</translation>
 <translation id="2328474416100889417">Группа вкладок "<ph name="GROUP_NAME" />" сразу станет недоступна всем пользователям, а ссылки для приглашения больше не будут работать.</translation>
+<translation id="2328773543844041445">Автоматически разворачивать вкладки при наведении указателя</translation>
 <translation id="2330186936255788117">Ещё закладки</translation>
 <translation id="2330243730505117832">Окно "Выберите устройство" закрыто.</translation>
 <translation id="2332515770639153015">Включен улучшенный Безопасный просмотр</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">Нижний экран с предложением разрешить Автопоиск в Chrome открыт полностью</translation>
 <translation id="7612619742409846846">Вы вошли в аккаунт</translation>
 <translation id="7612989789287281429">Вход в аккаунт…</translation>
+<translation id="7617512710641355143">Chrome находится под управлением</translation>
 <translation id="7619072057915878432">Не удалось скачать файл <ph name="FILE_NAME" /> из-за сбоев сети.</translation>
 <translation id="7626032353295482388">Это ваш Chrome</translation>
 <translation id="7628417132421583481">Открыть Менеджер паролей</translation>

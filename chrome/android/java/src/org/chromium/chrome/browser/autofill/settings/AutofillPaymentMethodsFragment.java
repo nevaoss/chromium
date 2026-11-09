@@ -797,6 +797,7 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
         return SettingsFragment.AnimationType.PROPERTY;
     }
 
+    // TODO(crbug.com/513493349): Remove this override after full launch of Autofill and Passwords.
     @Override
     public @Nullable String getMainMenuKey() {
         return "autofill_payment_methods";
@@ -997,7 +998,11 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                                 frag, PREF_ADD_IBAN, R.string.autofill_add_local_iban);
                     }
                     indexData.addEntryForKey(
-                            frag, PREF_PAYMENT_APPS, R.string.payment_apps_title, 0);
+                            frag,
+                            PREF_PAYMENT_APPS,
+                            R.string.payment_apps_title,
+                            0,
+                            AndroidPaymentAppsFragment.class.getName());
                     indexData.addEntryForKey(
                             frag,
                             PREF_LOYALTY_CARDS,

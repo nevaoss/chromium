@@ -166,9 +166,7 @@ class BrowserActuatorIntegrationTest : public testing::Test {
     service_ = std::make_unique<BrowserActuatorServiceImpl>(
         base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
             &test_url_loader_factory_),
-        identity_test_env_.identity_manager(),
-        /*extra_factories=*/
-        std::vector<std::unique_ptr<TransportHandlerFactory>>{});
+        identity_test_env_.identity_manager());
   }
 
   // Waits for an upstream HTTP POST request, parses its protobuf body into
@@ -263,8 +261,8 @@ TEST_F(BrowserActuatorIntegrationTest,
   // Verify chrome://browser-actuator-internals SessionStreamRecorderFactory
   // records both the downstream StartSession message (via TransportHandler)
   // and the upstream StartSessionAck message (via TransportMessageObserver).
-  auto* recorder_factory = static_cast<SessionStreamRecorderFactory*>(
-      service_->GetFactory(FactoryId::kSessionStreamRecorder));
+  SessionStreamRecorderFactory* recorder_factory =
+      service_->GetStreamRecorderFactory();
   ASSERT_NE(recorder_factory, nullptr);
   base::DictValue dump = recorder_factory->ExportAllSessionsAsValue();
   const base::ListValue* sessions = dump.FindList("sessions");
@@ -301,7 +299,7 @@ TEST_F(
   components_sharing_message::GlicExperimentalTriggering downstream_payload;
   downstream_payload.set_context_id("navigate:https://example.com");
   stream_server.PushMessage(BuildDownstreamExperimentalTriggeringMessage(
-      "session-feature-1", /*sequence_number=*/7, downstream_payload));
+      "session-feature-1", /*sequence_number=*/1, downstream_payload));
 
   SendSessionMessageRequest upstream_req = WaitForUpstreamRequest();
   ASSERT_EQ(received_messages_.size(), 1u);
@@ -311,7 +309,7 @@ TEST_F(
       upstream_req.actuator_upstream_message();
   EXPECT_EQ(upstream_msg.session_id(), "session-feature-1");
   EXPECT_EQ(upstream_msg.client_sequence_number(), 1);
-  EXPECT_EQ(upstream_msg.responding_to_sequence_number(), 7);
+  EXPECT_EQ(upstream_msg.responding_to_sequence_number(), 1);
   ASSERT_EQ(upstream_msg.typed_payloads_size(), 1);
   EXPECT_EQ(upstream_msg.typed_payloads(0).payload_type(),
             ACTUATOR_UPSTREAM_PAYLOAD_TYPE_EXPERIMENTAL_TRIGGERING);
@@ -339,8 +337,8 @@ TEST_F(BrowserActuatorIntegrationTest, DownstreamCloseSessionDestroysSession) {
   ASSERT_TRUE(WaitFor(
       [&]() { return service_->GetSession("session-to-close") == nullptr; }));
 
-  auto* recorder_factory = static_cast<SessionStreamRecorderFactory*>(
-      service_->GetFactory(FactoryId::kSessionStreamRecorder));
+  SessionStreamRecorderFactory* recorder_factory =
+      service_->GetStreamRecorderFactory();
   ASSERT_NE(recorder_factory, nullptr);
   base::DictValue dump = recorder_factory->ExportAllSessionsAsValue();
   const base::ListValue* sessions = dump.FindList("sessions");
@@ -397,14 +395,14 @@ TEST_F(BrowserActuatorIntegrationTest,
                 .last_seen_sequence_number(),
             0);
 
-  // 1. Push a StreamBody noop keep-alive followed by sequence_number = 42.
+  // 1. Push a StreamBody noop keep-alive followed by sequence_number = 1.
   stream_server.PushKeepAlive("keepalive-1");
-  components_sharing_message::GlicExperimentalTriggering payload_42;
-  payload_42.set_context_id("step-42");
+  components_sharing_message::GlicExperimentalTriggering payload_1;
+  payload_1.set_context_id("step-1");
   stream_server.PushMessage(BuildDownstreamExperimentalTriggeringMessage(
-      "session-resume", /*sequence_number=*/42, payload_42));
+      "session-resume", /*sequence_number=*/1, payload_1));
   ASSERT_TRUE(WaitFor([&]() { return received_messages_.size() == 1u; }));
-  EXPECT_EQ(received_messages_[0].context_id(), "step-42");
+  EXPECT_EQ(received_messages_[0].context_id(), "step-1");
 
   // 2. Abort the stream with a network reset and advance mock time by the 3s
   // base reconnection delay so ProtoStreamClient reconnects with the updated
@@ -420,7 +418,7 @@ TEST_F(BrowserActuatorIntegrationTest,
   EXPECT_EQ(stream_server.last_watch_request()
                 .sessions(0)
                 .last_seen_sequence_number(),
-            42);
+            1);
 }
 
 TEST_F(BrowserActuatorIntegrationTest,
@@ -487,6 +485,45 @@ TEST_F(
   ASSERT_TRUE(WaitFor([&]() { return received_messages_.size() == 1u; }));
   EXPECT_EQ(received_messages_[0].context_id(), "step-after-unknown");
   EXPECT_NE(service_->GetSession("session-unknown-type"), nullptr);
+}
+
+TEST_F(BrowserActuatorIntegrationTest,
+       OutOfOrderDownstreamMessagesDeliveredInSequence) {
+  EchoExperimentalTriggeringFactory feature_factory(
+      &received_messages_, /*send_upstream_reply=*/true);
+  service_->GetChannel()->GetHandlerFactoryRegistry()->RegisterFactory(
+      &feature_factory);
+  base::ScopedClosureRunner unregister_runner(base::BindOnce(
+      &TransportHandlerFactoryRegistry::UnregisterFactory,
+      base::Unretained(service_->GetChannel()->GetHandlerFactoryRegistry()),
+      &feature_factory));
+
+  FakeProtoStreamServer stream_server(&test_url_loader_factory_,
+                                      GetWatchSessionsEndPoint());
+
+  ASSERT_NE(service_->GetOrCreateSession("session-reordered"), nullptr);
+  stream_server.WaitForConnection();
+
+  components_sharing_message::GlicExperimentalTriggering payload_2;
+  payload_2.set_context_id("step-2");
+  stream_server.PushMessage(BuildDownstreamExperimentalTriggeringMessage(
+      "session-reordered", /*sequence_number=*/2, payload_2));
+
+  components_sharing_message::GlicExperimentalTriggering payload_1;
+  payload_1.set_context_id("step-1");
+  stream_server.PushMessage(BuildDownstreamExperimentalTriggeringMessage(
+      "session-reordered", /*sequence_number=*/1, payload_1));
+
+  SendSessionMessageRequest req_1 = WaitForUpstreamRequest();
+  SendSessionMessageRequest req_2 = WaitForUpstreamRequest();
+
+  ASSERT_EQ(received_messages_.size(), 2u);
+  EXPECT_EQ(received_messages_[0].context_id(), "step-1");
+  EXPECT_EQ(received_messages_[1].context_id(), "step-2");
+  EXPECT_EQ(req_1.actuator_upstream_message().responding_to_sequence_number(),
+            1);
+  EXPECT_EQ(req_2.actuator_upstream_message().responding_to_sequence_number(),
+            2);
 }
 
 }  // namespace

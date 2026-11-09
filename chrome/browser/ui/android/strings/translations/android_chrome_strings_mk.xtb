@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">Споделете ја страницава</translation>
 <translation id="230115972905494466">Не се најдени компатибилни уреди</translation>
 <translation id="2305798319182970276">Избришете ја историјата допирајќи копче</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> бара дозвола за да пристапува до уредите со човечки интерфејс (HID) за сајтов.</translation>
 <translation id="2316129865977710310">Не, фала</translation>
 <translation id="232137538351753795">Повлечете од левиот раб за да се вратите назад</translation>
 <translation id="2323763861024343754">Достапен простор на сајтот</translation>
 <translation id="2327445548174191329">Од <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Зачувајте ја страницата како…</translation>
 <translation id="2328474416100889417">Сите веднаш ќе го изгубат пристапот до групата картички „<ph name="GROUP_NAME" />“ и сите линкови за покана ќе се исклучат</translation>
+<translation id="2328773543844041445">Прошири ги картичките автоматски при наместување на курсорот над нив</translation>
 <translation id="2330186936255788117">Повеќе обележувачи</translation>
 <translation id="2330243730505117832">„Изберете уред“ е затворен.</translation>
 <translation id="2332515770639153015">„Подобреното безбедно прелистување“ е вклучено</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">Долниот лист за прифаќање на препораките што ги наоѓа Chrome е отворен на цел екран</translation>
 <translation id="7612619742409846846">Најавени на Google како</translation>
 <translation id="7612989789287281429">Ве најавуваме…</translation>
+<translation id="7617512710641355143">Chrome е управуван</translation>
 <translation id="7619072057915878432">Преземањето на <ph name="FILE_NAME" /> не успеа поради прекини на мрежата.</translation>
 <translation id="7626032353295482388">Добре дојдовте на Chrome</translation>
 <translation id="7628417132421583481">Одете во Password Manager</translation>

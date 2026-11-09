@@ -9,7 +9,6 @@
 #include <ostream>
 #include <utility>
 
-#include "base/types/pass_key.h"
 #include "components/tabs/public/tab_interface.h"
 
 namespace actor {
@@ -50,8 +49,6 @@ class ActorSurfaceHandle {
   static constexpr int32_t kNullValue = 0;
 
   constexpr ActorSurfaceHandle() = default;
-  constexpr explicit ActorSurfaceHandle(int32_t raw_value)
-      : raw_value_(raw_value) {}
 
   static constexpr ActorSurfaceHandle Null() { return ActorSurfaceHandle(); }
 
@@ -62,19 +59,27 @@ class ActorSurfaceHandle {
   ActorSurface* Get() const;
 
   // Returns the tab currently backing this surface, or TabHandle::Null() if
-  // the surface no longer exists or is not backed by a tab. This is the
-  // inverse of From(); callers must not assume the two share a raw value.
+  // there is none. This is the inverse of From(); callers must not assume the
+  // two share a raw value.
+  //
+  // Like From(), also returns the tab if it was just destroyed (Get() returns
+  // null, but the handle lookup still exists), so that cleanups can still
+  // happen.
   tabs::TabHandle GetTabHandle() const;
 
   // Returns the handle of the surface currently backed by `tab`, or Null() if
-  // there is none (e.g. the tab is gone, or belongs to a profile without an
-  // ActorKeyedService). This is the supported way to convert a tab to a
-  // surface: callers must not assume the two share a raw value.
+  // there is none. This is the supported way to convert a tab to a surface:
+  // callers must not assume the two share a raw value.
+  //
+  // Also returns the handle if the tab was just destroyed, even though its
+  // ActorSurface is destroyed right away (Get() returns null, but the handle
+  // lookup still exists), so that cleanups can still happen.
   static ActorSurfaceHandle From(tabs::TabHandle tab);
 
-  // Mints the next unique handle (> 0, or < 0 for headless surfaces while
-  // kUseTabHandleAsSurfaceHandle is enabled).
-  static ActorSurfaceHandle NextHandle(base::PassKey<ActorSurfaceRegistry>);
+  // Mints a new, unique handle with no surface registered under it. Tests use
+  // it to construct surfaces directly or to get a handle that resolves to
+  // nothing. It takes no value, so a test can't make a handle from a TabHandle.
+  static ActorSurfaceHandle CreateForTesting();
 
   friend constexpr bool operator==(ActorSurfaceHandle,
                                    ActorSurfaceHandle) = default;
@@ -87,7 +92,16 @@ class ActorSurfaceHandle {
   }
 
  private:
+  // Only the surface code mints handles, so no other raw value (in particular
+  // a tabs::TabHandle's) can be turned into a handle.
   friend class ActorSurfaceImpl;
+  friend class ActorSurfaceRegistry;
+
+  constexpr explicit ActorSurfaceHandle(int32_t raw_value)
+      : raw_value_(raw_value) {}
+
+  // Mints a new, unique, non-null handle. Handles are never reused.
+  static ActorSurfaceHandle NextHandle();
 
   // Registers or unregisters an ActorSurface in the lookup table.
   static void Register(ActorSurfaceHandle handle, ActorSurface* surface);

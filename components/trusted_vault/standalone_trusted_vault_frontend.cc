@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
@@ -17,8 +18,10 @@
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
 #include "components/trusted_vault/command_line_switches.h"
+#include "components/trusted_vault/features.h"
 #include "components/trusted_vault/legacy_standalone_trusted_vault_storage.h"
 #include "components/trusted_vault/legacy_standalone_trusted_vault_storage_adapter.h"
+#include "components/trusted_vault/local_domains_storage.h"
 #include "components/trusted_vault/proto/local_trusted_vault.pb.h"
 #include "components/trusted_vault/standalone_trusted_vault_client.h"
 #include "components/trusted_vault/trusted_vault_access_token_fetcher_impl.h"
@@ -247,27 +250,83 @@ StandaloneTrustedVaultFrontend::StandaloneTrustedVaultFrontend(
     const base::FilePath& base_dir,
     signin::IdentityManager* identity_manager,
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory)
-    : backend_task_runner_(
+    : StandaloneTrustedVaultFrontend(
+#if BUILDFLAG(IS_MAC)
+          icloud_keychain_access_group_prefix,
+#endif
+          identity_manager,
+          std::move(url_loader_factory)) {
+  std::unique_ptr<StandaloneTrustedVaultStorage> storage;
+  if (base::FeatureList::IsEnabled(
+          kTrustedVaultSharedRecoveryFactorsAndEncryption)) {
+    storage = LocalDomainsStorage::Create(base_dir);
+  } else {
+    storage = std::make_unique<LegacyStandaloneTrustedVaultStorageAdapter>(
+        std::make_unique<LegacyStandaloneTrustedVaultStorage>(
+            base_dir, SecurityDomainId::kChromeSync));
+  }
+  InitializeBackend(std::move(storage));
+}
+
+// static
+scoped_refptr<StandaloneTrustedVaultFrontend>
+StandaloneTrustedVaultFrontend::CreateForTesting(
+#if BUILDFLAG(IS_MAC)
+    const std::string& icloud_keychain_access_group_prefix,
+#endif
+    signin::IdentityManager* identity_manager,
+    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory) {
+  return base::WrapRefCounted(new StandaloneTrustedVaultFrontend(
+#if BUILDFLAG(IS_MAC)
+      icloud_keychain_access_group_prefix,
+#endif
+      identity_manager, std::move(url_loader_factory)));
+}
+
+StandaloneTrustedVaultFrontend::StandaloneTrustedVaultFrontend(
+#if BUILDFLAG(IS_MAC)
+    const std::string& icloud_keychain_access_group_prefix,
+#endif
+    signin::IdentityManager* identity_manager,
+    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory)
+    :
+#if BUILDFLAG(IS_MAC)
+      icloud_keychain_access_group_prefix_(icloud_keychain_access_group_prefix),
+#endif
+      identity_manager_(identity_manager),
+      url_loader_factory_(std::move(url_loader_factory)),
+      backend_task_runner_(
           base::ThreadPool::CreateSequencedTaskRunner(kBackendTaskTraits)),
       access_token_fetcher_frontend_(identity_manager),
       backend_(nullptr, base::OnTaskRunnerDeleter(backend_task_runner_)) {
+}
+
+StandaloneTrustedVaultFrontend::~StandaloneTrustedVaultFrontend() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(clients_.empty());
+}
+
+void StandaloneTrustedVaultFrontend::InitializeBackend(
+    std::unique_ptr<StandaloneTrustedVaultStorage> storage) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK(!backend_);
+  CHECK(storage);
+
   std::unique_ptr<TrustedVaultConnection> connection;
   GURL trusted_vault_service_gurl =
       ExtractTrustedVaultServiceURLFromCommandLine();
   if (trusted_vault_service_gurl.is_valid()) {
     connection = std::make_unique<TrustedVaultConnectionImpl>(
-        trusted_vault_service_gurl, url_loader_factory->Clone(),
+        trusted_vault_service_gurl, url_loader_factory_->Clone(),
         std::make_unique<TrustedVaultAccessTokenFetcherImpl>(
             access_token_fetcher_frontend_.GetWeakPtr()));
   }
 
   backend_.reset(new StandaloneTrustedVaultBackend(
 #if BUILDFLAG(IS_MAC)
-      icloud_keychain_access_group_prefix,
+      icloud_keychain_access_group_prefix_,
 #endif
-      std::make_unique<LegacyStandaloneTrustedVaultStorageAdapter>(
-          std::make_unique<LegacyStandaloneTrustedVaultStorage>(
-              base_dir, SecurityDomainId::kChromeSync)),
+      std::move(storage),
       std::make_unique<BackendDelegate>(base::BindPostTaskToCurrentDefault(
           base::BindRepeating(&StandaloneTrustedVaultFrontend::
                                   NotifyRecoverabilityDegradedChanged,
@@ -286,12 +345,11 @@ StandaloneTrustedVaultFrontend::StandaloneTrustedVaultFrontend(
       base::BindRepeating(
           &StandaloneTrustedVaultFrontend::NotifyTrustedVaultKeysChanged,
           base::Unretained(this), std::nullopt),
-      identity_manager);
-}
+      identity_manager_);
 
-StandaloneTrustedVaultFrontend::~StandaloneTrustedVaultFrontend() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(clients_.empty());
+  for (base::OnceClosure& task : std::exchange(pending_tasks_, {})) {
+    std::move(task).Run();
+  }
 }
 
 void StandaloneTrustedVaultFrontend::RegisterClient(
@@ -318,7 +376,12 @@ void StandaloneTrustedVaultFrontend::FetchKeys(
     SecurityDomainId security_domain,
     base::OnceCallback<void(const std::vector<std::vector<uint8_t>>&)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::FetchKeys, base::Unretained(this),
+        account_info, security_domain, std::move(cb)));
+    return;
+  }
   // TODO(crbug.com/40255601): consider notifying observers when FetchKeys()
   // downloads new keys from the server.
   backend_task_runner_->PostTask(
@@ -335,7 +398,12 @@ void StandaloneTrustedVaultFrontend::StoreKeys(
     const std::vector<std::vector<uint8_t>>& keys,
     int last_key_version) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::StoreKeys, base::Unretained(this),
+        gaia_id, security_domain, keys, last_key_version));
+    return;
+  }
   backend_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&StandaloneTrustedVaultBackend::StoreKeys,
                                 base::Unretained(backend_.get()), gaia_id,
@@ -347,7 +415,12 @@ void StandaloneTrustedVaultFrontend::MarkLocalKeysAsStale(
     SecurityDomainId security_domain,
     base::OnceCallback<void(bool)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::MarkLocalKeysAsStale,
+        base::Unretained(this), account_info, security_domain, std::move(cb)));
+    return;
+  }
   backend_task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(&StandaloneTrustedVaultBackend::MarkLocalKeysAsStale,
@@ -361,7 +434,12 @@ void StandaloneTrustedVaultFrontend::GetIsRecoverabilityDegraded(
     SecurityDomainId security_domain,
     base::OnceCallback<void(bool)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::GetIsRecoverabilityDegraded,
+        base::Unretained(this), account_info, security_domain, std::move(cb)));
+    return;
+  }
   backend_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
@@ -377,7 +455,13 @@ void StandaloneTrustedVaultFrontend::AddTrustedRecoveryMethod(
     int method_type_hint,
     base::OnceCallback<void(bool)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::AddTrustedRecoveryMethod,
+        base::Unretained(this), gaia_id, security_domain, public_key,
+        method_type_hint, std::move(cb)));
+    return;
+  }
   backend_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&StandaloneTrustedVaultBackend::AddTrustedRecoveryMethod,
@@ -389,17 +473,32 @@ void StandaloneTrustedVaultFrontend::AddTrustedRecoveryMethod(
 void StandaloneTrustedVaultFrontend::ClearLocalDataForAccount(
     const CoreAccountInfo& account_info) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::ClearLocalDataForAccount,
+        base::Unretained(this), account_info));
+    return;
+  }
   backend_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&StandaloneTrustedVaultBackend::ClearLocalDataForAccount,
                      base::Unretained(backend_.get()), account_info));
 }
 
+void StandaloneTrustedVaultFrontend::InitializeBackendForTesting(
+    std::unique_ptr<StandaloneTrustedVaultStorage> storage) {
+  InitializeBackend(std::move(storage));
+}
+
 void StandaloneTrustedVaultFrontend::WaitForIdleForTesting(
-    base::OnceClosure cb) const {
+    base::OnceClosure cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(
+        base::BindOnce(&StandaloneTrustedVaultFrontend::WaitForIdleForTesting,
+                       base::Unretained(this), std::move(cb)));
+    return;
+  }
   backend_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&StandaloneTrustedVaultBackend::WaitForIdleForTesting,
@@ -411,7 +510,13 @@ void StandaloneTrustedVaultFrontend::
     GetLastAddedRecoveryMethodPublicKeyForTesting(
         base::OnceCallback<void(const std::vector<uint8_t>&)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(
+        base::BindOnce(&StandaloneTrustedVaultFrontend::
+                           GetLastAddedRecoveryMethodPublicKeyForTesting,
+                       base::Unretained(this), std::move(callback)));
+    return;
+  }
   backend_task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(&StandaloneTrustedVaultBackend::
@@ -425,7 +530,12 @@ void StandaloneTrustedVaultFrontend::GetLastKeyVersionForTesting(
     SecurityDomainId security_domain,
     base::OnceCallback<void(int last_key_version)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(backend_);
+  if (!backend_) {
+    pending_tasks_.push_back(base::BindOnce(
+        &StandaloneTrustedVaultFrontend::GetLastKeyVersionForTesting,
+        base::Unretained(this), gaia_id, security_domain, std::move(callback)));
+    return;
+  }
   backend_task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(

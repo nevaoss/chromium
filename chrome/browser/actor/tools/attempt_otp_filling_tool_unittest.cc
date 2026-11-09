@@ -20,6 +20,8 @@
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
+#include "chrome/browser/actor/actor_surface_handle.h"
+#include "chrome/browser/actor/actor_surface_impl.h"
 #include "chrome/browser/actor/tools/actor_login_flow_verifier.h"
 #include "chrome/browser/actor/tools/attempt_otp_filling_metrics.h"
 #include "chrome/browser/actor/tools/tool_delegate.h"
@@ -234,6 +236,8 @@ class AttemptOtpFillingToolTest : public testing::Test {
         web_contents_, GURL("https://example.com"));
     EXPECT_CALL(*mock_tab_, GetContents())
         .WillRepeatedly(Return(web_contents_));
+    actor_surface_ = std::make_unique<ActorSurfaceImpl>(
+        ActorSurfaceHandle::CreateForTesting(), mock_tab_->GetHandle());
     EXPECT_CALL(delegate_->mock_otp_service(), ValidateFormFillingContext)
         .WillRepeatedly(Return(autofill::FormFillingContextStatus::kSecure));
     ON_CALL(delegate_->mock_otp_service(), GetLoginContextOrigin())
@@ -276,7 +280,7 @@ class AttemptOtpFillingToolTest : public testing::Test {
       verifier =
           std::make_unique<ActorLoginFlowVerifier>(fake_affiliation_service_);
     }
-    return AttemptOtpFillingTool(TaskId(1), delegate(), mock_tab().GetHandle(),
+    return AttemptOtpFillingTool(TaskId(1), delegate(), *actor_surface_,
                                  std::move(trigger_fields), for_signin,
                                  predicted_otp_type, std::move(verifier));
   }
@@ -330,6 +334,7 @@ class AttemptOtpFillingToolTest : public testing::Test {
   affiliations::FakeAffiliationService fake_affiliation_service_;
   std::unique_ptr<FakeToolDelegate> delegate_;
   std::unique_ptr<tabs::MockTabInterface> mock_tab_;
+  std::unique_ptr<ActorSurfaceImpl> actor_surface_;
   base::HistogramTester histogram_tester_;
 };
 
@@ -494,6 +499,8 @@ TEST_F(AttemptOtpFillingToolTest,
 // available any more.
 TEST_F(AttemptOtpFillingToolTest, TimeOfUseValidation_TabWentAway) {
   AttemptOtpFillingTool tool = CreateTool({PageTarget(gfx::Point(10, 10))});
+  // The surface is destroyed before its backing tab.
+  actor_surface_.reset();
   mock_tab_.reset();
   AnnotatedPageContent observation;
 

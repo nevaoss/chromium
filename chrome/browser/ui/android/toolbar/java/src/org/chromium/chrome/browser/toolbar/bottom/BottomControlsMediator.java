@@ -8,6 +8,7 @@ import android.content.Context;
 
 import androidx.annotation.ColorInt;
 
+import org.chromium.base.Callback;
 import org.chromium.base.CallbackController;
 import org.chromium.base.ValueChangedCallback;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
@@ -16,6 +17,7 @@ import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.cc.input.BrowserControlsState;
 import org.chromium.chrome.browser.browser_controls.BottomControlsLayer;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerScrollBehavior;
@@ -94,12 +96,18 @@ class BottomControlsMediator
 
     private final Supplier<Boolean> mReadAloudRestoringSupplier;
 
+    /** Requests a compositor frame; see {@link #setYOffset(int)}. */
+    private final Runnable mRequestRenderRunnable;
+
     private final NullableObservableSupplier<Tab> mTabSupplier;
 
     private final ValueChangedCallback<EdgeToEdgeController> mEdgeToEdgeControllerCallback =
             new ValueChangedCallback<>(this::onEdgeToEdgeControllerChanged);
 
     private final ChangeObserver mEdgeToEdgeChangeObserver = this::onEdgeToEdgeChanged;
+
+    private final Callback<@BrowserControlsState Integer> mBrowserControlsConstraintsObserver =
+            this::onBrowserControlsConstraintsChanged;
 
     private @Nullable CurrentTabObserver mTabObserver;
     private @Nullable EdgeToEdgeController mActiveEdgeToEdgeController;
@@ -143,6 +151,7 @@ class BottomControlsMediator
      * @param tabSupplier Supplies the current tab.
      * @param readAloudRestoringSupplier Supplier that returns true if Read Aloud is currently
      *     restoring its player, e.g. after theme change.
+     * @param requestRenderRunnable Requests a new compositor frame.
      */
     BottomControlsMediator(
             WindowAndroid windowAndroid,
@@ -158,7 +167,8 @@ class BottomControlsMediator
             NonNullObservableSupplier<@PanelState Integer> overlayPanelStateSupplier,
             MonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
             NullableObservableSupplier<Tab> tabSupplier,
-            Supplier<Boolean> readAloudRestoringSupplier) {
+            Supplier<Boolean> readAloudRestoringSupplier,
+            Runnable requestRenderRunnable) {
         // Watch for keyboard events so we can hide the bottom toolbar when the keyboard is showing.
         mWindowAndroid = windowAndroid;
         mWindowAndroid.getKeyboardDelegate().addKeyboardVisibilityListener(this);
@@ -168,6 +178,7 @@ class BottomControlsMediator
         mBottomControlsStacker = controlsStacker;
         controlsStacker.getBrowserControls().addObserver(this);
         mBrowserControlsVisibilityDelegate = browserControlsVisibilityDelegate;
+        mBrowserControlsVisibilityDelegate.addSyncObserver(mBrowserControlsConstraintsObserver);
         mFullscreenManager = fullscreenManager;
         mFullscreenManager.addObserver(this);
         mLayerType = layerType;
@@ -226,6 +237,7 @@ class BottomControlsMediator
                 mEdgeToEdgeControllerCallback);
 
         mReadAloudRestoringSupplier = readAloudRestoringSupplier;
+        mRequestRenderRunnable = requestRenderRunnable;
         mBottomControlsStacker.addLayer(this);
 
         overlayPanelStateSupplier.addSyncObserverAndCallIfNonNull(
@@ -260,6 +272,7 @@ class BottomControlsMediator
         mCallbackController.destroy();
         getBrowserControls().removeObserver(this);
         mBottomControlsStacker.removeLayer(this);
+        mBrowserControlsVisibilityDelegate.removeObserver(mBrowserControlsConstraintsObserver);
         mFullscreenManager.removeObserver(this);
         mWindowAndroid.getKeyboardDelegate().removeKeyboardVisibilityListener(this);
         if (mLayoutStateProvider != null) {
@@ -298,6 +311,17 @@ class BottomControlsMediator
         if (mContentViewScrolling == scrolling) return;
         mContentViewScrolling = scrolling;
         if (!scrolling && ChromeFeatureList.sBottomControlsJankImprovement.isEnabled()) {
+            updateAndroidViewVisibility();
+        }
+    }
+
+    private void onBrowserControlsConstraintsChanged(@BrowserControlsState int constraints) {
+        // Mirrors BrowserControlsManager#onConstraintsChanged -> scheduleVisibilityUpdate(). If
+        // the Android view show was deferred while scrolling and the offset has already settled
+        // at 0, no further onBrowserControlsOffsetUpdate() arrives when the controls become
+        // locked, so re-evaluate visibility now that the BOTH deferral no longer applies.
+        if (constraints != BrowserControlsState.BOTH
+                && ChromeFeatureList.sBottomControlsJankImprovement.isEnabled()) {
             updateAndroidViewVisibility();
         }
     }
@@ -344,7 +368,17 @@ class BottomControlsMediator
     }
 
     private void setYOffset(int yOffset) {
+        int oldYOffset = mModel.get(BottomControlsProperties.Y_OFFSET);
         mModel.set(BottomControlsProperties.Y_OFFSET, yOffset);
+
+        // Under the jank improvement Y_OFFSET is excluded from the compositor MCP's frame
+        // requests because viz normally moves the bar via its OffsetTag. Without a tag the
+        // browser owns the motion and nothing else is guaranteed to draw it, so request a frame.
+        if (oldYOffset != yOffset
+                && ChromeFeatureList.sBottomControlsJankImprovement.isEnabled()
+                && mModel.get(BottomControlsProperties.OFFSET_TAG) == null) {
+            mRequestRenderRunnable.run();
+        }
 
         // This call also updates the view's position if the animation has just finished.
         updateAndroidViewVisibility();
@@ -431,9 +465,15 @@ class BottomControlsMediator
                                 || mOverlayPanelState == PanelState.PEEKED)
                         && !mIsInSwipeLayout
                         && (browserControls.getBottomControlOffset() == 0 || offsetOverridden);
+        // Defer showing the Android view until scrolling stops, but only while the browser-level
+        // constraints still allow the controls to scroll (BOTH). This mirrors
+        // BrowserControlsManager#updateVisibility: when something forces the controls SHOWN
+        // mid-scroll (e.g. a Message or bottom sheet), the controls animate in and the view must
+        // become interactive immediately rather than at the end of the fling.
         if (visible
                 && ChromeFeatureList.sBottomControlsJankImprovement.isEnabled()
                 && mContentViewScrolling
+                && mBrowserControlsVisibilityDelegate.get() == BrowserControlsState.BOTH
                 && !offsetOverridden
                 && !mModel.get(BottomControlsProperties.ANDROID_VIEW_VISIBLE)
                 && !isNtpScrollOffEnabled()) {

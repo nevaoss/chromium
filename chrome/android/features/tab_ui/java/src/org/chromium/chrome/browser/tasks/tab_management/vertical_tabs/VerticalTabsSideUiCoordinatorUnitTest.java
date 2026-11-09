@@ -21,6 +21,7 @@ import static org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.Ver
 
 import android.app.Activity;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
 import android.transition.Transition;
@@ -411,6 +412,17 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
     }
 
     @Test
+    public void testResizeHandleBarInset_MatchesScrollbarInset() {
+        Resources res = mActivity.getResources();
+        int scrollbarInsetFromRailEdge =
+                res.getDimensionPixelSize(R.dimen.vertical_tabs_rail_horizontal_margin)
+                        + res.getDimensionPixelSize(R.dimen.vertical_tabs_scrollbar_margin_end);
+        assertEquals(
+                Integer.valueOf(scrollbarInsetFromRailEdge),
+                mCoordinator.getResizeHandleBarInsetPx());
+    }
+
+    @Test
     public void testHoverExpanded_IgnoresUserResizedWidth() {
         enableManualResize();
         mCoordinator.onResizeCommitted(ViewUtils.dpToPx(mActivity, 300));
@@ -505,8 +517,6 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
         verify(mMockTabListCoordinator).setInTransition(true);
     }
 
-    // TODO(crbug.com/542280452): The rail should animate when it is pinned from hover, as the
-    // pinned UI will differ from the hover overlay. Update this test once it does.
     @Test
     public void testOnPreSideUiSpecsChange_PinningHoverExpandedRailKeepsRailStill() {
         // Expanded on hover over the web contents.
@@ -520,6 +530,24 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
                         specs(mExpandedRailWidth, mExpandedRailWidth),
                         UiUpdateRequest.getRequestForTesting(/* suppressAnimations= */ true)));
         verify(mMockTabListCoordinator, never()).setInTransition(true);
+    }
+
+    @Test
+    public void testOnPreSideUiSpecsChange_PinningHoverExpandedRailToDifferentWidthAnimates() {
+        // Expanded on hover over the web contents, at the fixed hover width.
+        when(mMockSideUiCoordinator.getCurrentSideUiSpecs())
+                .thenReturn(specs(mCollapsedRailWidth, mExpandedRailWidth));
+
+        // Pinning it at a different width (e.g. a user-resized width) changes the rendered width,
+        // so the rail's contents animate to it.
+        @Px int pinnedWidth = (mCollapsedRailWidth + mExpandedRailWidth) / 2;
+        Transition transition =
+                mCoordinator.onPreSideUiSpecsChange(
+                        specs(pinnedWidth, pinnedWidth),
+                        UiUpdateRequest.getRequestForTesting(/* suppressAnimations= */ true));
+
+        assertNotNull(transition);
+        verify(mMockTabListCoordinator).setInTransition(true);
     }
 
     @Test
@@ -731,15 +759,18 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
     @Test
     public void testSupportsManualResize() {
-        // Off by default.
-        assertFalse(mCoordinator.supportsManualResize());
-
-        enableManualResize();
+        // On by default.
         assertTrue(mCoordinator.supportsManualResize());
 
         // A user-collapsed rail can still be manually resized.
         mCollapseController.toggleCollapseState();
         assertTrue(mCoordinator.supportsManualResize());
+
+        // Can be turned off via the feature param.
+        FeatureOverrides.newBuilder()
+                .param(ChromeFeatureList.ANDROID_VERTICAL_TABS, "manual_resize", false)
+                .apply();
+        assertFalse(mCoordinator.supportsManualResize());
     }
 
     @Test
@@ -763,18 +794,69 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
     }
 
     @Test
-    public void testOnResizeLive_ClampsToRailBounds() {
+    public void testOnResizeLive_ClampsToMaxWidth() {
         enableManualResize();
-
-        mCoordinator.onResizeLive(ViewUtils.dpToPx(mActivity, 10));
-        assertShowableWidth(
-                ViewUtils.dpToPx(mActivity, VerticalTabUtils.MIN_EXPANDED_WIDTH_DP),
-                mWideWindowWidth);
 
         mCoordinator.onResizeLive(ViewUtils.dpToPx(mActivity, 10000));
         assertShowableWidth(
                 ViewUtils.dpToPx(mActivity, VerticalTabUtils.MAX_EXPANDED_WIDTH_DP),
                 ViewUtils.dpToPx(mActivity, 2000));
+    }
+
+    @Test
+    public void testOnResizeLive_MinimumWidthStaysExpanded() {
+        enableManualResize();
+
+        mCoordinator.onResizeLive(
+                ViewUtils.dpToPx(mActivity, VerticalTabUtils.MIN_EXPANDED_WIDTH_DP));
+        assertEquals(RailCollapseState.EXPANDED, mCoordinator.getRailCollapseStateForTesting());
+        assertShowableWidth(
+                ViewUtils.dpToPx(mActivity, VerticalTabUtils.MIN_EXPANDED_WIDTH_DP),
+                mWideWindowWidth);
+    }
+
+    @Test
+    public void testOnResizeLive_CollapsesAndExpandsDuringDrag() {
+        enableManualResize();
+
+        // Dragging below the collapse threshold collapses the rail before the drag is released,
+        // without persisting the collapsed state yet.
+        mCoordinator.onResizeLive(ViewUtils.dpToPx(mActivity, 40));
+        assertEquals(RailCollapseState.COLLAPSED, mCoordinator.getRailCollapseStateForTesting());
+        assertShowableWidth(mCollapsedRailWidth, mWideWindowWidth);
+        assertFalse(VerticalTabUtils.isRailCollapsedFromSharedPref());
+
+        // Dragging back out expands the rail again within the same drag.
+        mCoordinator.onResizeLive(ViewUtils.dpToPx(mActivity, 200));
+        assertEquals(RailCollapseState.EXPANDED, mCoordinator.getRailCollapseStateForTesting());
+        assertShowableWidth(ViewUtils.dpToPx(mActivity, 200), mWideWindowWidth);
+    }
+
+    @Test
+    public void testOnResizeCommitted_KeepsLiveCollapsedState() {
+        enableManualResize();
+        VerticalTabUtils.setUserResizedWidthDpInSharedPref(200);
+
+        mCoordinator.onResizeLive(ViewUtils.dpToPx(mActivity, 40));
+        mCoordinator.onResizeCommitted(ViewUtils.dpToPx(mActivity, 40));
+
+        assertTrue(VerticalTabUtils.isRailCollapsedFromSharedPref());
+        assertEquals(RailCollapseState.COLLAPSED, mCoordinator.getRailCollapseStateForTesting());
+        // The expanded width is kept for when the rail is expanded again.
+        assertEquals(200, VerticalTabUtils.getUserResizedWidthDpFromSharedPref());
+    }
+
+    @Test
+    public void testOnResizeCommitted_CancelRestoresExpandedState() {
+        enableManualResize();
+
+        // The drag collapses the rail, then the gesture is cancelled, which commits the width the
+        // drag started from.
+        mCoordinator.onResizeLive(ViewUtils.dpToPx(mActivity, 40));
+        mCoordinator.onResizeCommitted(ViewUtils.dpToPx(mActivity, VIEW_WIDTH_DP));
+
+        assertFalse(VerticalTabUtils.isRailCollapsedFromSharedPref());
+        assertEquals(RailCollapseState.EXPANDED, mCoordinator.getRailCollapseStateForTesting());
     }
 
     @Test

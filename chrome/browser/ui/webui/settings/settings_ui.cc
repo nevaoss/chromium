@@ -29,6 +29,7 @@
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_provider_spec.h"
 #include "chrome/browser/history_embeddings/history_embeddings_utils.h"
 #include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
 #include "chrome/browser/password_manager/chrome_password_change_service.h"
@@ -52,6 +53,7 @@
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/webui/batch_upload_promo/batch_upload_promo_handler.h"
 #include "chrome/browser/ui/webui/cr_components/customize_color_scheme_mode/customize_color_scheme_mode_handler.h"
 #include "chrome/browser/ui/webui/extension_control_handler.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
@@ -63,6 +65,7 @@
 #include "chrome/browser/ui/webui/settings/accessibility_main_handler.h"
 #include "chrome/browser/ui/webui/settings/appearance_handler.h"
 #include "chrome/browser/ui/webui/settings/browser_lifetime_handler.h"
+#include "chrome/browser/ui/webui/settings/device_tab_visibility_handler.h"
 #include "chrome/browser/ui/webui/settings/dictation_handler.h"
 #include "chrome/browser/ui/webui/settings/downloads_handler.h"
 #include "chrome/browser/ui/webui/settings/font_handler.h"
@@ -93,6 +96,7 @@
 #include "chrome/browser/ui/webui/settings/shared_settings_localized_strings_provider.h"
 #include "chrome/browser/ui/webui/settings/site_settings_handler.h"
 #include "chrome/browser/ui/webui/theme_source.h"
+#include "chrome/browser/universal_optout/universal_optout_service_factory.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
@@ -142,6 +146,7 @@
 #include "components/sync/base/features.h"
 #include "components/universal_optout/features.h"
 #include "components/universal_optout/prefs.h"
+#include "components/universal_optout/universal_optout_service.h"
 #include "content/public/browser/isolated_web_apps_policy.h"
 #include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_contents.h"
@@ -200,6 +205,7 @@
 #include "chrome/browser/ui/webui/settings/system_handler.h"
 #include "components/language/core/common/language_experiments.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #include "chrome/browser/ui/webui/settings/on_device_ai_settings_handler.h"
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -216,8 +222,6 @@
 #include "device/vr/public/cpp/features.h"
 #endif
 
-#include "chrome/browser/ui/webui/batch_upload_promo/batch_upload_promo_handler.h"
-
 namespace settings {
 
 using optimization_guide::UserVisibleFeatureKey;
@@ -230,6 +234,7 @@ void SettingsUI::RegisterProfilePrefs(
   registry->RegisterBooleanPref(prefs::kImportDialogHistory, true);
   registry->RegisterBooleanPref(prefs::kImportDialogSavedPasswords, true);
   registry->RegisterBooleanPref(prefs::kImportDialogSearchEngine, true);
+  registry->RegisterDictionaryPref(prefs::kDeviceTabVisibilityHiddenSessions);
 }
 
 SettingsUI::SettingsUI(content::WebUI* web_ui)
@@ -256,6 +261,10 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   AddSettingsPageUIHandler(
       std::make_unique<ClearBrowsingDataHandler>(web_ui, profile));
   AddSettingsPageUIHandler(std::make_unique<SafetyHubHandler>(profile));
+  if (base::FeatureList::IsEnabled(syncer::kDeviceTabVisibilitySettings)) {
+    AddSettingsPageUIHandler(
+        std::make_unique<DeviceTabVisibilityHandler>(profile));
+  }
   AddSettingsPageUIHandler(std::make_unique<DictationHandler>());
   AddSettingsPageUIHandler(std::make_unique<DownloadsHandler>(profile));
   AddSettingsPageUIHandler(std::make_unique<ExtensionControlHandler>());
@@ -566,21 +575,27 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       base::FeatureList::IsEnabled(features::kGlicSelectionPrompt));
 
   // AI
+  auto* glic_service = glic::GlicKeyedService::Get(profile);
   const bool show_geic_section =
-      glic::GlicEnabling::GetProviderForProfile(profile) ==
-      glic::GlicProvider::kGeminiEnterprise;
+      glic_service && glic_service->provider_spec().GetSettingsSection() ==
+                          glic::GlicSettingsSection::kGeminiEnterprise;
   bool show_glic_section = false;
   bool glic_disallowed_by_admin = false;
 
   auto glic_enablement = glic::GlicEnabling::EnablementForProfile(profile);
+  // No service means an ineligible profile shown via
+  // kAiSettingsPageForceAvailable; keep showing the Gemini page there.
+  // TODO(crbug.com/571928442): Derive AI settings page visibility in one place
+  // instead of checking the settings section per provider.
   show_glic_section =
-      glic_enablement.ShouldShowSettingsPage() && !show_geic_section;
+      glic_enablement.ShouldShowSettingsPage() &&
+      (!glic_service || glic_service->provider_spec().GetSettingsSection() ==
+                            glic::GlicSettingsSection::kGemini);
   glic_disallowed_by_admin = glic_enablement.DisallowedByAdmin();
 
   if (glic_enablement.IsProfileEligible()) {
     AddSettingsPageUIHandler(std::make_unique<GlicHandler>());
 
-    auto* glic_service = glic::GlicKeyedService::Get(profile);
     CHECK(glic_service);
 
     // `this` unretained because the subscription is owned by this and will
@@ -713,6 +728,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       "webuiRefresh2026",
       features::IsWebuiRefresh2026Enabled() ? "webui-refresh-2026" : "");
 
+  universal_optout::UniversalOptOutService* universal_optout_service =
+      universal_optout::UniversalOptOutServiceFactory::GetForProfile(profile);
   html_source->AddBoolean(
       "showUniversalOptOutSettings",
       base::FeatureList::IsEnabled(
@@ -721,8 +738,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
               universal_optout::features::kUniversalOptOutSettings) &&
           (profile->GetPrefs()->GetBoolean(
                universal_optout::prefs::kUniversalOptOutEnabled) ||
-           profile->GetPrefs()->GetBoolean(
-               universal_optout::prefs::kUniversalOptOutEligible)));
+           (universal_optout_service &&
+            universal_optout_service->IsEligible())));
 
   ui::TrackedElementHandlerDocumentSingleton::Register(
       this, std::vector<ui::ElementIdentifier>{
@@ -919,9 +936,13 @@ void SettingsUI::UpdateShowGlicState() {
   // page.
   Profile* profile = Profile::FromWebUI(web_ui());
   auto enablement = glic::GlicEnabling::EnablementForProfile(profile);
-  const bool show_glic = enablement.ShouldShowSettingsPage() &&
-                         glic::GlicEnabling::GetProviderForProfile(profile) !=
-                             glic::GlicProvider::kGeminiEnterprise;
+  auto* glic_service = glic::GlicKeyedService::Get(profile);
+  // TODO(crbug.com/571928442): Derive AI settings page visibility in one place
+  // instead of checking the settings section per provider.
+  const bool show_glic =
+      enablement.ShouldShowSettingsPage() &&
+      (!glic_service || glic_service->provider_spec().GetSettingsSection() ==
+                            glic::GlicSettingsSection::kGemini);
 
   base::DictValue update;
   update.Set("showGlicSettings", show_glic);

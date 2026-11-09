@@ -89,6 +89,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
+import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxAnimator;
@@ -278,6 +279,8 @@ public class LocationBarMediator
             this::onActivationChipSelectionChanged;
     private final Callback<@Nullable AiModeButtonUiConfig> mAiModeButtonUiConfigObserver =
             this::onAiModeButtonUiConfigChanged;
+    private final Callback<StatusIconResource> mAiModeButtonIconObserver =
+            this::onAiModeButtonIconChanged;
     private final Callback<@Nullable SiteSearchData> mSiteSearchDataObserver =
             _ -> {
                 updateActivationChip();
@@ -481,6 +484,8 @@ public class LocationBarMediator
                                 (present) -> updateNavigateButtonVisibility()));
         mFuseboxCoordinator.setOnInteractionCompletedCallback(this::onFuseboxInteractionCompleted);
         mFuseboxCoordinator.setOnFirstPickerInteractionCanceledCallback(this::endInput);
+        mFuseboxCoordinator.setOnPickerInteractionSucceededCallback(
+                () -> onFuseboxInteractionCompleted(/* actionTaken= */ true));
         mLocationBarLayout.getActivationChip().setOnClickListener(v -> onActivationChipClicked());
         mOmniboxChipManager = omniboxChipManager;
         mHintTextUpdater =
@@ -679,6 +684,9 @@ public class LocationBarMediator
             mSearchEngineService
                     .getAiModeButtonUiConfigSupplier()
                     .removeObserver(mAiModeButtonUiConfigObserver);
+            mSearchEngineService
+                    .getAiModeButtonIconSupplier()
+                    .removeObserver(mAiModeButtonIconObserver);
         }
         mHintTextUpdater.destroy();
         mStatusCoordinator = null;
@@ -1079,6 +1087,7 @@ public class LocationBarMediator
                     !OmniboxCapabilities.isDesktopPlatform()
                             && mCurrentInput.getAutocompleteState() == AutocompleteState.ENABLED);
         }
+        updateScrimOpacity(hasSuggestions);
 
         if (mUrlCoordinator.shouldAutocomplete()) {
             String siteSearchLabel = null;
@@ -1467,6 +1476,7 @@ public class LocationBarMediator
                 mContext,
                 mLocationBarDataProvider.getWebContents(),
                 mProfileSupplier,
+                mLocationBarDataProvider,
                 () -> {
                     if (mAutocompleteCoordinator == null || mCurrentInput == null) return;
 
@@ -1771,7 +1781,7 @@ public class LocationBarMediator
             // because different focus change causes need to be handled differently. E.g., defocus
             // via scrim click should not detach the session, while defocus via tab change should.
         } else {
-            if (userTextDiffersFromInitial()) {
+            if (devicePermitsDraftingNoFocus() && userTextDiffersFromInitial()) {
                 enterDraftingNoFocus();
             } else if (!displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
                 endInput();
@@ -2035,6 +2045,9 @@ public class LocationBarMediator
             mSearchEngineService
                     .getAiModeButtonUiConfigSupplier()
                     .removeObserver(mAiModeButtonUiConfigObserver);
+            mSearchEngineService
+                    .getAiModeButtonIconSupplier()
+                    .removeObserver(mAiModeButtonIconObserver);
         }
         mSearchEngineService = SearchEngineService.getForProfile(profile);
         mSearchEngineServiceSupplier.set(mSearchEngineService);
@@ -2050,6 +2063,9 @@ public class LocationBarMediator
         mSearchEngineService
                 .getAiModeButtonUiConfigSupplier()
                 .addSyncObserverAndCall(mAiModeButtonUiConfigObserver);
+        mSearchEngineService
+                .getAiModeButtonIconSupplier()
+                .addSyncObserverAndCallIfNonNull(mAiModeButtonIconObserver);
     }
 
     private void updateAlwaysShowAiModeCallback() {
@@ -2616,6 +2632,24 @@ public class LocationBarMediator
         mLocationBarLayout.onSpecializedFuseboxModeActivated(isSpecializedRequestType);
         updateAlwaysShowAiModeCallback();
         mSelectionController.reset();
+        updateScrimOpacity(
+                mAutocompleteCoordinator != null
+                        && mAutocompleteCoordinator.getSuggestionCount() != 0);
+    }
+
+    /**
+     * Makes the scrim opaque when the current input uses an unconventional request type and there
+     * are no suggestions to show; otherwise restores the default scrim appearance.
+     *
+     * @param hasSuggestions Whether any suggestions are currently present.
+     */
+    private void updateScrimOpacity(boolean hasSuggestions) {
+        if (mScrimHandler == null) return;
+        boolean useOpaqueScrim =
+                mCurrentInput != null
+                        && !mCurrentInput.isConventionalRequestType()
+                        && !hasSuggestions;
+        mScrimHandler.setUseOpaqueScrim(useOpaqueScrim);
     }
 
     private void onDisplayStateChanged(@DisplayState int displayState) {
@@ -2876,6 +2910,7 @@ public class LocationBarMediator
         if (mCurrentInput.getDisplayState() == DisplayState.SUGGESTIONS) {
             if (mCurrentInput.hasPreviewText()) {
                 mCurrentInput.commitPreviewText();
+                pushUrlBarDataFromCurrentInput();
             }
             mCurrentInput
                     .setRequestType(AutocompleteRequestType.SEARCH)
@@ -2991,11 +3026,9 @@ public class LocationBarMediator
                 maybeShowOrClearCursorInLocationBar();
             }
         } else {
-            // TODO(b/548102100): See if we can remove this desktop guard.
             // When the url changes via a link click, page reload, home button press, etc, we want
             // to end the input session and exit drafting w/o focus mode.
-            if (OmniboxCapabilities.isDesktopPlatform()
-                    && displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
+            if (displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) {
                 endInput();
             }
             updateUrl();
@@ -3047,9 +3080,10 @@ public class LocationBarMediator
      */
     @Override
     public void beginInput(AutocompleteInput input) {
-        input.setPageClassification(mLocationBarDataProvider.getPageClassification(false));
-        input.setPageUrl(mLocationBarDataProvider.getCurrentGurl());
-        input.setPageTitle(mLocationBarDataProvider.getTitle());
+        // Stamp the request with the current page so that applying it to the session below never
+        // leaves the session with stale page metadata. FuseboxSessionState.activate() stamps the
+        // session again, which also covers sessions begun without a request, e.g. on focus.
+        FuseboxSessionState.applyPageMetadata(input, mLocationBarDataProvider);
         if (input.getDisplayState() == DisplayState.WEBSITE) {
             input.setDisplayState(DisplayState.DRAFTING);
         }
@@ -3185,19 +3219,25 @@ public class LocationBarMediator
 
     @Override
     public void onScrimClicked() {
-        if (OmniboxCapabilities.isDesktopPlatform() && userTextDiffersFromInitial()) {
+        if (devicePermitsDraftingNoFocus() && userTextDiffersFromInitial()) {
             enterDraftingNoFocus();
         } else {
             endInput();
         }
     }
 
-    /** Enter the DRAFTING_NO_FOCUS state, executing all necessary and convenient pre-processing. */
-    @VisibleForTesting
-    /* package */ void enterDraftingNoFocus() {
-        assert mCurrentInput != null;
-        if (displayStateEquals(DisplayState.DRAFTING_NO_FOCUS)) return;
+    private boolean devicePermitsDraftingNoFocus() {
+        return mIsTablet || OmniboxCapabilities.isDesktopPlatform();
+    }
 
+    /** Enter the DRAFTING_NO_FOCUS state, executing all necessary and convenient pre-processing. */
+    @Override
+    public void enterDraftingNoFocus() {
+        if (displayStateEquals(DisplayState.DRAFTING_NO_FOCUS) || !userTextDiffersFromInitial()) {
+            return;
+        }
+
+        assert mCurrentInput != null;
         // We set the selection to SELECT_END so that on resume, when we set the selection to
         // SELECT_ALL in @see #beginOrResumeInput(boolean), a view update actually occurs (the
         // UrlBarMediator guards against duplicate updates.
@@ -3517,9 +3557,7 @@ public class LocationBarMediator
     public void onResumeWithNative() {
         Profile profile = mProfileSupplier.get();
         TemplateUrlService templateUrlService = mTemplateUrlServiceSupplier.get();
-        if (OmniboxFeatures.sUseFusedLocationProvider.isEnabled()
-                && profile != null
-                && templateUrlService != null) {
+        if (profile != null && templateUrlService != null) {
             GeolocationHeader.primeLocationForGeoHeaderIfEnabled(profile, templateUrlService);
         }
     }
@@ -3527,9 +3565,7 @@ public class LocationBarMediator
     @Override
     public void onPauseWithNative() {
         OmniboxFeatures.updateLastExitTimestamp();
-        if (OmniboxFeatures.sUseFusedLocationProvider.isEnabled()) {
-            GeolocationHeader.stopListeningForLocationUpdates();
-        }
+        GeolocationHeader.stopListeningForLocationUpdates();
     }
 
     /* package */ void setLocationBarButtonTranslationForNtpAnimation(float translationX) {
@@ -3728,6 +3764,14 @@ public class LocationBarMediator
         activationChip.setTooltipText(config != null ? config.tooltip : null);
         updateActivationChip();
         updateAlwaysShowAiModeCallback();
+    }
+
+    private void onAiModeButtonIconChanged(StatusIconResource icon) {
+        mLocationBarLayout
+                .getActivationChip()
+                .setIconWithTint(
+                        icon.getDrawable(mContext),
+                        /* tintWithTextColor= */ icon.getIconRes() != 0);
     }
 
     /* package */ void updateActivationChip() {

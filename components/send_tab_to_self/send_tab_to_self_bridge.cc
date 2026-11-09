@@ -31,11 +31,9 @@
 #include "components/send_tab_to_self/proto_conversions.h"
 #include "components/send_tab_to_self/send_tab_to_self_commit_tracker.h"
 #include "components/send_tab_to_self/send_tab_to_self_entry.h"
-#include "components/send_tab_to_self/target_device_info.h"
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/data_type.h"
 #include "components/sync/base/deletion_origin.h"
-#include "components/sync/base/features.h"
 #include "components/sync/model/data_type_local_change_processor.h"
 #include "components/sync/model/entity_change.h"
 #include "components/sync/model/metadata_batch.h"
@@ -43,6 +41,7 @@
 #include "components/sync/model/mutable_data_batch.h"
 #include "components/sync_device_info/device_name_util.h"
 #include "components/sync_device_info/local_device_info_util.h"
+#include "components/sync_device_info/remote_device_info.h"
 #include "components/sync_sessions/open_tabs_ui_delegate.h"
 #include "components/sync_sessions/session_sync_service.h"
 namespace send_tab_to_self {
@@ -577,7 +576,7 @@ const SendTabToSelfEntry* SendTabToSelfBridge::SendEntry(
   syncer::DeviceInfo::FormFactor target_form_factor =
       syncer::DeviceInfo::FormFactor::kUnknown;
   const syncer::DeviceInfo* target_device =
-      device_info_tracker_->GetDeviceInfo(target_device_cache_guid);
+      device_info_tracker_->GetChromeDeviceInfo(target_device_cache_guid);
   if (target_device) {
     target_form_factor = target_device->form_factor();
   }
@@ -632,12 +631,9 @@ void SendTabToSelfBridge::MarkEntryOpenedImpl(std::string_view guid,
   SendTabToSelfEntry* entry = GetMutableEntryByGUID(guid);
   // Assure that an entry with that guid exists.
   if (!entry) {
-    auto it = unknown_opened_entries_.find(guid);
-    if (it != unknown_opened_entries_.end()) {
-      it->second = opened_time;
-    } else {
-      unknown_opened_entries_.emplace(guid, opened_time);
-    }
+    // Keep the first opened time, consistent with known entries, which ignore
+    // repeated opens.
+    unknown_opened_entries_.try_emplace(guid, opened_time);
     return;
   }
 
@@ -675,8 +671,7 @@ void SendTabToSelfBridge::MarkEntryActivatedImpl(
     // If the entry is not yet in the model (because it has not loaded yet or
     // has not been received from the server yet), store the activated time and
     // entry point and apply it when the entry is added to the model.
-    unknown_activated_entries_.emplace(
-        guid, std::make_pair(activated_time, entry_point));
+    unknown_activated_entries_.try_emplace(guid, activated_time, entry_point);
     return;
   }
 
@@ -761,7 +756,7 @@ bool SendTabToSelfBridge::HasValidTargetDevice() {
   return GetTargetDeviceInfoSortedList().size() > 0;
 }
 
-std::vector<TargetDeviceInfo>
+std::vector<syncer::RemoteDeviceInfo>
 SendTabToSelfBridge::GetTargetDeviceInfoSortedList() {
   TRACE_EVENT0("ui", "SendTabToSelfBridge::GetTargetDeviceInfoSortedList");
   if (!IsReady()) {
@@ -791,54 +786,30 @@ SendTabToSelfBridge::GetTargetDeviceInfoSortedList() {
     }
   }
 
-  if (base::FeatureList::IsEnabled(syncer::kSyncSimplifyDeviceNaming)) {
-    // Resolve display names for the filtered list by using the most user
-    // friendly name, disambiguating duplicates with release channel if enabled.
-    std::vector<const syncer::DeviceInfo*> raw_devices = base::ToVector(
-        devices,
-        [](const DeviceWithTimestamp& entry) { return entry.device.get(); });
-    // TODO(crbug.com/522788942): Consider moving TargetDeviceInfo out of
-    // send_tab_to_self (e.g. into sync_device_info or sharing) so multiple
-    // clients can share a unified struct.
-    std::vector<std::string> device_names =
-        syncer::GetDeviceDisplayNames(raw_devices, GetLocalDeviceInfo());
-    std::vector<TargetDeviceInfo> target_devices;
-    target_devices.reserve(devices.size());
-    for (size_t i = 0; i < devices.size(); ++i) {
-      target_devices.emplace_back(
-          std::move(device_names[i]), devices[i].device->guid(),
-          devices[i].device->form_factor(), devices[i].device->os_type(),
-          devices[i].last_active, devices[i].has_high_precision);
-    }
-    return target_devices;
-  }
-
-  // TODO(crbug.com/522788942): Remove this temporary conversion when
-  // kSyncSimplifyDeviceNaming is fully launched.
-  std::vector<const syncer::DeviceInfo*> legacy_devices = base::ToVector(
+  // Resolve display names for the filtered list by using the most user
+  // friendly name, disambiguating duplicates with release channel if enabled.
+  std::vector<const syncer::DeviceInfo*> raw_devices = base::ToVector(
       devices,
       [](const DeviceWithTimestamp& entry) { return entry.device.get(); });
-
-  // Resolve display names for the filtered list. This handles de-duplication
-  // by name and chooses between preferred/fallback names based on collisions.
-  std::vector<syncer::DeviceInfoWithName> device_names =
-      syncer::DetermineDisplayNamesAndDeduplicate(legacy_devices,
-                                                  GetLocalDeviceName());
-
-  return base::ToVector(device_names, [&](const auto& info) {
-    auto it =
-        std::ranges::find(devices, info.device, &DeviceWithTimestamp::device);
-    return TargetDeviceInfo(info.display_name, info.device->guid(),
-                            info.device->form_factor(), info.device->os_type(),
-                            it->last_active, it->has_high_precision);
-  });
+  std::vector<std::string> device_names =
+      syncer::GetDeviceDisplayNames(raw_devices, GetLocalDeviceInfo());
+  std::vector<syncer::RemoteDeviceInfo> target_devices;
+  target_devices.reserve(devices.size());
+  for (size_t i = 0; i < devices.size(); ++i) {
+    target_devices.emplace_back(
+        std::move(device_names[i]), devices[i].device->guid(),
+        devices[i].device->form_factor(), devices[i].device->os_type(),
+        devices[i].last_active, devices[i].has_high_precision);
+  }
+  return target_devices;
 }
 
-std::optional<TargetDeviceInfo> SendTabToSelfBridge::GetTargetDeviceInfo(
-    std::string_view cache_guid) {
-  const std::vector<TargetDeviceInfo> devices = GetTargetDeviceInfoSortedList();
-  auto it =
-      std::ranges::find(devices, cache_guid, &TargetDeviceInfo::cache_guid);
+std::optional<syncer::RemoteDeviceInfo>
+SendTabToSelfBridge::GetTargetDeviceInfo(std::string_view cache_guid) {
+  const std::vector<syncer::RemoteDeviceInfo> devices =
+      GetTargetDeviceInfoSortedList();
+  auto it = std::ranges::find(devices, cache_guid,
+                              &syncer::RemoteDeviceInfo::cache_guid);
   return it != devices.end() ? std::make_optional(*it) : std::nullopt;
 }
 
@@ -847,11 +818,6 @@ std::unique_ptr<syncer::DataTypeStore>
 SendTabToSelfBridge::DestroyAndStealStoreForTest(
     std::unique_ptr<SendTabToSelfBridge> bridge) {
   return std::move(bridge->store_);
-}
-
-void SendTabToSelfBridge::SetLocalDeviceNameForTest(
-    const std::string& local_device_name) {
-  local_device_name_for_testing_ = local_device_name;
 }
 
 void SendTabToSelfBridge::NotifyRemoteSendTabToSelfEntryAdded(
@@ -1003,14 +969,11 @@ const syncer::DeviceInfo* SendTabToSelfBridge::GetLocalDeviceInfo() const {
   if (!change_processor()->IsTrackingMetadata()) {
     return nullptr;
   }
-  return device_info_tracker_->GetDeviceInfo(
+  return device_info_tracker_->GetChromeDeviceInfo(
       change_processor()->TrackedCacheGuid());
 }
 
 std::string SendTabToSelfBridge::GetLocalDeviceName() const {
-  if (local_device_name_for_testing_.has_value()) {
-    return *local_device_name_for_testing_;
-  }
   // `local_device` may be null during early startup before DeviceInfoTracker is
   // initialized.
   const syncer::DeviceInfo* local_device = GetLocalDeviceInfo();
@@ -1018,14 +981,7 @@ std::string SendTabToSelfBridge::GetLocalDeviceName() const {
     return std::string();
   }
 
-  // TODO(crbug.com/531649027): Remove fallback_full_name logic once
-  // kSyncSimplifyDeviceNaming launches. It is only needed for legacy name
-  // deduplication; simplified naming filters the local device by GUID.
-  if (base::FeatureList::IsEnabled(syncer::kSyncSimplifyDeviceNaming)) {
-    return syncer::GetDeviceDisplayName(local_device);
-  }
-
-  return syncer::GetDisplayNameCandidates(local_device).fallback_full_name;
+  return syncer::GetDeviceDisplayName(local_device);
 }
 
 bool SendTabToSelfBridge::ShouldIncludeDevice(

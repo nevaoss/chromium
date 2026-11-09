@@ -92,7 +92,6 @@ import org.chromium.chrome.browser.compositor.CompositorViewHolder;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.overlays.strip.GlicButtonContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelper.LeadingButtonDelegate;
-import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutHelperManager;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator.TabStripLayoutType;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulator;
 import org.chromium.chrome.browser.contextmenu.ChromeContextMenuPopulatorFactory;
@@ -240,13 +239,13 @@ import org.chromium.chrome.browser.toolbar.ToolbarIntentMetadata;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarBehavior;
 import org.chromium.chrome.browser.toolbar.top.ToolbarControlContainer;
+import org.chromium.chrome.browser.ttc.TtcSessionCoordinator;
 import org.chromium.chrome.browser.ui.RootUiCoordinator;
 import org.chromium.chrome.browser.ui.actions.ActionRegistry;
 import org.chromium.chrome.browser.ui.actions.ActionUtils;
 import org.chromium.chrome.browser.ui.app_rating.AppRatingPromoController;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
-import org.chromium.chrome.browser.ui.bottombar.BottomBarActionEligibility;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
@@ -357,6 +356,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private @Nullable OfflineIndicatorControllerV2 mOfflineIndicatorController;
     private @Nullable OfflineIndicatorInProductHelpController
             mOfflineIndicatorInProductHelpController;
+    private @Nullable LinkToTextIphController mLinkToTextIphController;
     private @Nullable ReadAloudIphController mReadAloudIphController;
     private @Nullable ReadLaterIphController mReadLaterIphController;
     private @Nullable SendTabToSelfOmniboxIphController mSendTabToSelfOmniboxIphController;
@@ -428,6 +428,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mBottomSheetContainerMarginAdjuster;
     private @Nullable ContextualTasksBridge mContextualTasksBridge;
     private @Nullable GlicUiCoordinator mGlicUiCoordinator;
+    private @Nullable TtcSessionCoordinator mTtcSessionCoordinator;
     private @Nullable ForcedSigninController mForcedSigninController;
     private @Nullable VerticalTabsSideUiCoordinator mVerticalTabsSideUiCoordinator;
     private @Nullable TabSearchOverlayCoordinator mTabSearchOverlayCoordinator;
@@ -734,7 +735,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 mBottomOverviewColorSupplier =
                         initHubOverviewColorSupplier(hubManagerSupplier, supplierGetter);
             }
-            mCountrySupplier = new OneshotSupplierImpl<>();
             mActionRegistry = new ActionRegistry();
             ActionUtils.registerBottomBarActions(mActionRegistry);
         }
@@ -930,6 +930,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (mOfflineIndicatorInProductHelpController != null) {
             mOfflineIndicatorInProductHelpController.destroy();
         }
+        if (mLinkToTextIphController != null) {
+            mLinkToTextIphController.destroy();
+            mLinkToTextIphController = null;
+        }
         if (mStatusIndicatorCoordinator != null) {
             mStatusIndicatorCoordinator.removeObserver(mStatusIndicatorObserver);
             mStatusIndicatorCoordinator.removeObserver(mStatusBarColorController);
@@ -1079,6 +1083,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (mGlicUiCoordinator != null) {
             mGlicUiCoordinator.destroy();
             mGlicUiCoordinator = null;
+        }
+
+        if (mTtcSessionCoordinator != null) {
+            mTtcSessionCoordinator.destroy();
+            mTtcSessionCoordinator = null;
         }
 
         if (mGlicButtonContextMenuCoordinator != null) {
@@ -1310,16 +1319,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         super.onFinishNativeInitialization();
         assert mLayoutManager != null;
 
-        if (mCountrySupplier != null && mCountrySupplier.get() == null) {
-            String country =
-                    BottomBarActionEligibility.resolveCountryCodeWithLocalDevFallback(
-                            ChromeActivitySessionTracker.getInstance()
-                                    .getVariationsLatestCountry());
-            if (country != null && !country.isEmpty()) {
-                mCountrySupplier.set(country);
-            }
-        }
-
         mAdvancedProtectionCoordinator =
                 new AdvancedProtectionCoordinator(mWindowAndroid, PrivacySettings.class);
 
@@ -1516,6 +1515,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             if (IntentHandler.hasPendingActorTaskExtra(mActivity.getIntent())) {
                 mGlicUiCoordinator.onPendingActorTaskTrigger();
             }
+        }
+
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.TTC)) {
+            mTtcSessionCoordinator =
+                    new TtcSessionCoordinator(
+                            mActivity.findViewById(R.id.coordinator),
+                            mWindowAndroid,
+                            mProfileSupplier,
+                            mActivityLifecycleDispatcher);
         }
 
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DEVICE_SIGNALS_DISCLAIMER)) {
@@ -1872,10 +1880,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mStatusIndicatorCoordinator);
         }
 
-        new LinkToTextIphController(
-                mActivityTabProvider.asObservable(),
-                mTabModelSelectorSupplier.asNonNull().get(),
-                mProfileSupplier);
+        mLinkToTextIphController =
+                new LinkToTextIphController(
+                        mActivityTabProvider.asObservable(),
+                        mTabModelSelectorSupplier.asNonNull().get(),
+                        mProfileSupplier);
 
         Tab tab = mActivityTabProvider.get();
 
@@ -2124,6 +2133,23 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         defaultVisibility);
         mSystemBarColorHelperSupplier.set(bottomChinColorHelper);
         return bottomChinColorHelper;
+    }
+
+    @Override
+    protected @Nullable Destroyable createEdgeToEdgeTopScalp() {
+        if (!EdgeToEdgeUtils.isTopEdgeToEdgeEnabled()
+                || !EdgeToEdgeUtils.isEdgelessTopInsetSupported(mActivity)) {
+            return null;
+        }
+        assert mLayoutManager != null;
+        EdgeToEdgeController edgeToEdgeController = mEdgeToEdgeControllerSupplier.get();
+        assert edgeToEdgeController != null;
+        return EdgeToEdgeControllerFactory.createTopScalp(
+                mLayoutManager,
+                mTopControlsStacker,
+                edgeToEdgeController,
+                mFullscreenManager,
+                getTopUiThemeColorProvider());
     }
 
     /**
@@ -2439,7 +2465,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         anchorContainerParent,
                         sideUiStartAnchorContainerStub,
                         sideUiEndAnchorContainerStub,
-                        mIncognitoStateProvider,
                         mTabModelSelectorSupplier.asNonNull().get());
 
         if (mSideUiCoordinator == null) {
@@ -2451,7 +2476,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mWindowAndroid,
                         mSideUiCoordinator,
                         mTabModelSelectorSupplier.asNonNull().get(),
-                        mTopControlsStacker);
+                        mTopControlsStacker,
+                        mIncognitoStateProvider);
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.init();
 
@@ -3202,15 +3228,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mKeyboardFocusRowManager.onKeyboardFocusRowSwitch(/* forward= */ false);
             return true;
         } else if (id == R.id.open_tab_strip_context_menu) {
-            if (mVerticalTabsSideUiCoordinator != null
-                    && mVerticalTabsSideUiCoordinator.openKeyboardFocusedContextMenu()) {
-                return true;
-            }
-            assumeNonNull(mLayoutManager);
-            @Nullable StripLayoutHelperManager stripLayoutHelperManager =
-                    mLayoutManager.getStripLayoutHelperManager();
-            if (stripLayoutHelperManager == null) return false;
-            return stripLayoutHelperManager.openKeyboardFocusedContextMenu();
+            return mVerticalTabsSideUiCoordinator != null
+                    && mVerticalTabsSideUiCoordinator.openKeyboardFocusedContextMenu();
         } else if (id == R.id.focus_bookmarks) {
             if (mBookmarkBarCoordinator != null && mBookmarkBarCoordinator.isVisible()) {
                 mBookmarkBarCoordinator.requestFocus();
@@ -3304,6 +3323,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             return true;
         } else if (id == R.id.glic_menu_id) {
             return toggleGlic(false, GlicInvocationSource.THREE_DOTS_MENU);
+        } else if (id == R.id.ttc_menu_id) {
+            if (mTtcSessionCoordinator == null) return false;
+            mTtcSessionCoordinator.toggleSession();
+            return true;
         }
         return false;
     }
@@ -3451,11 +3474,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
     @Nullable GlicPromoCoordinator getGlicPromoCoordinatorForTesting() {
         return mGlicPromoCoordinator;
-    }
-
-    @Override
-    public @Nullable OneshotSupplier<String> getCountrySupplierForTesting() {
-        return mCountrySupplier;
     }
 
     /** Returns the {@link TabSearchOverlayCoordinator} for testing. */

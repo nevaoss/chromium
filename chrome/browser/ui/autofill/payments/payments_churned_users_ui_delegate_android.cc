@@ -19,6 +19,7 @@
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/core/browser/payments/payments_churned_users_metrics.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
+#include "components/signin/public/identity_manager/account_info.h"
 #include "content/public/browser/web_contents.h"
 
 namespace autofill::payments {
@@ -31,6 +32,7 @@ PaymentsChurnedUsersUiDelegateAndroid::
     ~PaymentsChurnedUsersUiDelegateAndroid() = default;
 
 void PaymentsChurnedUsersUiDelegateAndroid::ShowPaymentsChurnedUsersUI(
+    AccountInfo /*account_info*/,
     base::OnceCallback<void(PaymentsUiClosedReason)> closed_callback) {
   if (is_showing_opt_in_ui_) {
     if (closed_callback) {
@@ -55,6 +57,10 @@ void PaymentsChurnedUsersUiDelegateAndroid::ShowPaymentsChurnedUsersUI(
             base::BindOnce(&PaymentsChurnedUsersUiDelegateAndroid::
                                ShowConfirmationSnackbar,
                            weak_ptr_factory_.GetWeakPtr()));
+        if (is_showing_opt_in_ui_) {
+          autofill_metrics::LogPaymentsChurnedUsersUiShowResult(
+              autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown);
+        }
       } else if (closed_callback) {
         std::move(closed_callback).Run(PaymentsUiClosedReason::kUnknown);
       }
@@ -70,8 +76,8 @@ void PaymentsChurnedUsersUiDelegateAndroid::ShowPaymentsChurnedUsersUI(
               base::BindOnce(
                   &PaymentsChurnedUsersUiDelegateAndroid::OnMessageDismissed,
                   weak_ptr_factory_.GetWeakPtr())));
-      autofill_metrics::LogPaymentsChurnedUsersBubbleShowResult(
-          autofill_metrics::PaymentsChurnedUsersBubbleShowResult::kShown);
+      autofill_metrics::LogPaymentsChurnedUsersUiShowResult(
+          autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown);
       break;
   }
 }
@@ -134,9 +140,8 @@ void PaymentsChurnedUsersUiDelegateAndroid::OnOptInUiClosed(
   if (!closed_callback_) {
     return;
   }
-  if (GetTreatmentArm() ==
-      AutofillEnableResurrectingPaymentsUsersTreatmentArm::kMessage) {
-    autofill_metrics::LogPaymentsChurnedUsersBubbleResult(closed_reason);
+  if (closed_reason != PaymentsUiClosedReason::kUnknown) {
+    autofill_metrics::LogPaymentsChurnedUsersUiResult(closed_reason);
   }
   std::move(closed_callback_).Run(closed_reason);
 }

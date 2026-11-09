@@ -1257,6 +1257,10 @@ interface CanvasGradient
     setter colorInterpolationMethod
     setter hueInterpolationMethod
     setter premultipliedAlpha
+interface CanvasPaintEvent : Event
+    attribute @@toStringTag
+    getter changedElements
+    method constructor
 interface CanvasPattern
     attribute @@toStringTag
     method constructor
@@ -2084,6 +2088,7 @@ interface Document : Node
     getter onended
     getter onerror
     getter onfocus
+    getter onfocusreset
     getter onformdata
     getter onfreeze
     getter onfullscreenchange
@@ -2319,6 +2324,7 @@ interface Document : Node
     setter onended
     setter onerror
     setter onfocus
+    setter onfocusreset
     setter onformdata
     setter onfreeze
     setter onfullscreenchange
@@ -2760,8 +2766,6 @@ interface ElementGeometryUpdateEvent : Event
     method constructor
 interface ElementImage
     attribute @@toStringTag
-    getter height
-    getter width
     method close
     method constructor
 interface ElementInternals
@@ -3378,7 +3382,6 @@ interface GPUQueue
     attribute @@toStringTag
     getter label
     method constructor
-    method copyElementImageToTexture
     method copyExternalImageToTexture
     method drawElementImageToTexture
     method onSubmittedWorkDone
@@ -3936,6 +3939,7 @@ interface HTMLCanvasElement : HTMLElement
     method configureHighDynamicRange
     method constructor
     method getContext
+    method getElementImageDefaultSize
     method getElementTransform
     method requestPaint
     method toBlob
@@ -7329,6 +7333,7 @@ interface OfflineAudioContext : BaseAudioContext
     attribute @@toStringTag
     getter length
     getter oncomplete
+    method close
     method constructor
     method resume
     method startRendering
@@ -7344,7 +7349,7 @@ interface OffscreenCanvas : EventTarget
     method constructor
     method convertToBlob
     method getContext
-    method getElementTransform
+    method getElementImageDefaultSize
     method transferToImageBitmap
     method updateElementGeometry
     setter height
@@ -12078,7 +12083,6 @@ interface WebGL2RenderingContext
     method stencilMaskSeparate
     method stencilOp
     method stencilOpSeparate
-    method texElementImage2D
     method texElementSubImage2D
     method texImage2D
     method texImage3D
@@ -12583,7 +12587,6 @@ interface WebGLRenderingContext
     method stencilMaskSeparate
     method stencilOp
     method stencilOpSeparate
-    method texElementImage2D
     method texElementSubImage2D
     method texImage2D
     method texParameterf
@@ -12770,6 +12773,7 @@ interface WebTransport
     method createBidirectionalStream
     method createSendGroup
     method createUnidirectionalStream
+    method exportKeyingMaterial
     method getStats
     setter anticipatedConcurrentIncomingBidirectionalStreams
     setter anticipatedConcurrentIncomingUnidirectionalStreams

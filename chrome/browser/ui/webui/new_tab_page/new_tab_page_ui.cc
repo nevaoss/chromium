@@ -95,7 +95,6 @@
 #include "components/lens/lens_url_utils.h"
 #include "components/ntp_tiles/features.h"
 #include "components/ntp_tiles/most_visited_sites.h"
-#include "components/ntp_tiles/pref_names.h"
 #include "components/ntp_tiles/tile_type.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
@@ -743,8 +742,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                      ntp_composebox::IsNtpComposeboxEnabled(profile));
   source->AddBoolean("composeboxContextMenuTooltipsEnabled",
                      omnibox::IsContextMenuTooltipsInComposeboxEnabled());
-  source->AddBoolean("composeboxFaviconSkeletonLoaderEnabled",
-                     omnibox::IsFaviconSkeletonLoaderInComposeboxEnabled());
   source->AddBoolean("composeboxShowZps", true);
   source->AddBoolean("composeboxShowTypedSuggest",
                      ntp_composebox::kShowComposeboxTypedSuggest.Get());
@@ -758,6 +755,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
 
   source->AddBoolean("enableThreadsRail", base::FeatureList::IsEnabled(
                                               ntp_features::kNtpThreadsRail));
+  source->AddBoolean("enableThreadsRailHybrid",
+                     ntp_features::kNtpThreadsRailHybridParam.Get());
 
   // Action Chips LoadTimeData
   const auto* aim_eligibility_service =

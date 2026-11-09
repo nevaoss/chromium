@@ -104,7 +104,8 @@ Legend: ✅ supported · ⚠️ partial / approximated · ❌ not supported
 |---|---|---|
 | Primary interface methods | ✅ | |
 | `pending_associated_remote<T>` / `pending_associated_receiver<T>` | ✅ | Emitted helpers use `associateAndPassRemote` / `associateAndPassReceiver`. |
-| `pending_remote<T>` / `pending_receiver<T>` (non-associated) | ❌ | Generator always emits helpers for creating associated remotes/receivers |
+| `pending_remote<T>` / `pending_receiver<T>` (non-associated) | ✅ | Emitted helpers use `bindNewPipeAndPassRemote` / `bindNewPipeAndPassReceiver`. |
+| Interfaces used both as associated and non-associated | ✅ | Associated and non-associated endpoints have distinct types. |
 | An interface used both as a remote and as a receiver | ❌ | Only the first role seen is emitted. |
 | Async methods | ✅ | |
 | `[Sync]` methods | ✅ | |
@@ -139,6 +140,8 @@ Legend: ✅ supported · ⚠️ partial / approximated · ❌ not supported
     retrievals, thereby creating more Mojo objects and exploring the API. They
     are the entry point for the intended execution loop. Accordingly, they have
     weights of 10000.
+*   A variable is a "Mojo object" (`isTargetObject`) if its type's group is one
+    of the `ObjectGroup`s registered by the profile (`mojoObjectGroups`).
 *   The `findOrGenerateArguments` method, used by `MojoMethodCallGenerator`,
     has a default generation budget of 100 objects that is too small for
     complex arguments that require many types to be created. The budget has
@@ -155,7 +158,6 @@ Legend: ✅ supported · ⚠️ partial / approximated · ❌ not supported
 
 ##### Issues:
 
-*   `isTargetObject` only matches objects in the primary interface's module.
 *   `findOrGenerateType` crashes with no visible variables. This can happen
     when a generator is marked as `producing`, as Fuzzilli schedules such
     generators to run at the start of the program. Adding a dummy `inputs:

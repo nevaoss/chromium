@@ -188,8 +188,10 @@ TEST_F(MimeTypesHandlerTest, LoadLegacy) {
             handler->GetHandlerUrl(kTextPlainMimeType));
   EXPECT_EQ(extension->GetResourceURL("index.html"),
             handler->GetHandlerUrl("application/octet-stream"));
-  EXPECT_FALSE(handler->CanEmbedMimeType(kTextPlainMimeType));
+  // The test extension is allowlisted, so its legacy entries should embed.
+  EXPECT_TRUE(handler->CanEmbedMimeType(kTextPlainMimeType));
   EXPECT_TRUE(handler->HasPlugin());
+  EXPECT_TRUE(handler->EnabledByDefault(kTextPlainMimeType));
 }
 
 TEST_F(MimeTypesHandlerTest, DictFormatParsing) {
@@ -211,6 +213,57 @@ TEST_F(MimeTypesHandlerTest, DictFormatParsing) {
   EXPECT_FALSE(handler->GetHandlerUrl(kTextPlainMimeType).is_valid());
   EXPECT_TRUE(handler->GetHandlerUrl(kTextPlainMimeType).is_empty());
   EXPECT_FALSE(handler->CanEmbedMimeType(kTextPlainMimeType));
+  EXPECT_FALSE(handler->EnabledByDefault(kTextPlainMimeType));
+}
+
+TEST_F(MimeTypesHandlerTest, DictFormatEnabledByDefault) {
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(extensions_features::kApiMimeHandler);
+
+  static constexpr char kManifest[] = R"({
+    "name": "Test Extension",
+    "manifest_version": 3,
+    "version": "0.1",
+    "mime_types_handler": {
+      "application/pdf": {"handler_url": "viewer.html"},
+      "text/plain": {"handler_url": "viewer.html", "enabled": true},
+      "text/csv": {"handler_url": "viewer.html", "enabled": false}
+    }
+  })";
+  scoped_refptr<Extension> extension =
+      LoadAndExpectSuccess(ManifestData::FromJSON(kManifest));
+  ASSERT_TRUE(extension);
+
+  const MimeTypesHandler* handler = MimeTypesHandler::Get(*extension);
+  ASSERT_TRUE(handler);
+  EXPECT_THAT(handler->GetSupportedMimeTypes(),
+              ElementsAre("application/pdf", "text/csv", "text/plain"));
+  EXPECT_TRUE(handler->EnabledByDefault(kPdfMimeType));
+  EXPECT_TRUE(handler->EnabledByDefault(kTextPlainMimeType));
+  EXPECT_FALSE(handler->EnabledByDefault("text/csv"));
+}
+
+// Unlike the legacy format, the dict format lets an allowlisted handler embed
+// only the MIME types that set can_embed.
+TEST_F(MimeTypesHandlerTest, AllowlistedDictFormatEmbedsOnlyWithCanEmbed) {
+  static constexpr char kManifest[] = R"({
+    "name": "Test Extension",
+    "manifest_version": 3,
+    "version": "0.1",
+    "mime_types_handler": {
+      "application/pdf": {"handler_url": "viewer.html"},
+      "text/plain": {"handler_url": "viewer.html", "can_embed": true}
+    }
+  })";
+  scoped_refptr<Extension> extension =
+      LoadAndExpectSuccess(ManifestData::FromJSON(kManifest));
+  ASSERT_TRUE(extension);
+
+  const MimeTypesHandler* handler = MimeTypesHandler::Get(*extension);
+  ASSERT_TRUE(handler);
+  ASSERT_TRUE(handler->IsPluginExtension());
+  EXPECT_FALSE(handler->CanEmbedMimeType(kPdfMimeType));
+  EXPECT_TRUE(handler->CanEmbedMimeType(kTextPlainMimeType));
 }
 
 TEST_F(MimeTypesHandlerTest, DictFormatFlagDisabledByChannel) {
@@ -352,6 +405,25 @@ TEST_F(MimeTypesHandlerTest, DictFormatRejectsNonDictConfig) {
     "version": "0.1",
     "mime_types_handler": {
       "application/pdf": "viewer.html"
+    }
+  })";
+  LoadAndExpectError(ManifestData::FromJSON(kManifest),
+                     manifest_errors::kInvalidMimeTypesHandler);
+}
+
+TEST_F(MimeTypesHandlerTest, DictFormatRejectsNonBoolEnabled) {
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(extensions_features::kApiMimeHandler);
+
+  static constexpr char kManifest[] = R"({
+    "name": "Test Extension",
+    "manifest_version": 3,
+    "version": "0.1",
+    "mime_types_handler": {
+      "application/pdf": {
+        "handler_url": "viewer.html",
+        "enabled": "false"
+      }
     }
   })";
   LoadAndExpectError(ManifestData::FromJSON(kManifest),

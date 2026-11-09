@@ -237,6 +237,7 @@ public class OmniboxTestUtils {
                     Criteria.checkThat(
                             "Omnibox is focused.", mUrlBar.hasFocus(), Matchers.is(true));
                 });
+        waitAnimationsComplete();
     }
 
     /**
@@ -261,6 +262,7 @@ public class OmniboxTestUtils {
         checkFocus(true);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
+                    mAutocomplete.stopAutocompleteForTest(AutocompleteStopReason.INTERACTION);
                     OnSuggestionsReceivedListener listener =
                             mAutocomplete.getSuggestionsReceivedListenerForTest();
                     listener.onSuggestionsReceived(autocompleteResult, true);
@@ -484,9 +486,10 @@ public class OmniboxTestUtils {
         checkFocus(true);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mUrlBar.setText(userText);
-                    // Push this to the model as well.
-                    mUrlBar.setAutocompleteText(userText, "", null, null);
+                    InputConnection conn = mUrlBar.getInputConnection();
+                    assert conn != null;
+                    conn.setComposingRegion(0, mUrlBar.getText().length());
+                    conn.commitText(userText, 1);
                 });
         checkText(Matchers.equalTo(userText), null);
     }

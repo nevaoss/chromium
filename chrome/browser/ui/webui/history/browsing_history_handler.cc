@@ -19,6 +19,7 @@
 #include "base/i18n/time_formatting.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -148,7 +149,8 @@ void GetDeviceNameAndType(const syncer::DeviceInfoTracker* tracker,
   DCHECK(tracker);
   DCHECK(tracker->IsSyncing());
 
-  const syncer::DeviceInfo* device_info = tracker->GetDeviceInfo(client_id);
+  const syncer::DeviceInfo* device_info =
+      tracker->GetChromeDeviceInfo(client_id);
   if (device_info) {
     *name = device_info->client_name();
     switch (device_info->form_factor()) {
@@ -275,8 +277,8 @@ history::mojom::HistoryEntryPtr HistoryEntryToMojom(
   auto result_mojom = history::mojom::HistoryEntry::New();
   base::DictValue dictionary;
   auto url_and_title = SetHistoryEntryUrlAndTitle(entry);
-  result_mojom->url = url_and_title.first;
-  result_mojom->title = url_and_title.second;
+  result_mojom->url = std::move(url_and_title.first);
+  result_mojom->title = std::move(url_and_title.second);
 
   // UrlIdentity holds a user-identifiable string for a URL. We will display
   // this string to the user.
@@ -288,7 +290,7 @@ history::mojom::HistoryEntryPtr HistoryEntryToMojom(
   // When the domain is empty, use the scheme instead. This allows for a
   // sensible treatment of e.g. file: URLs when group by domain is on.
   if (domain.empty()) {
-    domain = base::UTF8ToUTF16(entry.url.GetScheme() + ":");
+    domain = base::UTF8ToUTF16(base::StrCat({entry.url.scheme(), ":"}));
   }
 
   // The items which are to be written into result are also described in
@@ -349,8 +351,8 @@ history::mojom::HistoryEntryPtr HistoryEntryToMojom(
     GetDeviceNameAndType(tracker, entry.client_id, &device_name, &device_type);
   }
 
-  result_mojom->device_name = device_name;
-  result_mojom->device_type = device_type;
+  result_mojom->device_name = std::move(device_name);
+  result_mojom->device_type = std::move(device_type);
 
   supervised_user::FilteringBehavior filtering_behavior;
   if (profile.IsChild()) {
@@ -494,9 +496,8 @@ void BrowsingHistoryHandler::SetPage(
   // feature is enabled and any of the history improvement features is enabled.
   // Check the HaTS feature last, so that clients are only counted as active if
   // one of the other feature is enabled.
-  if ((history::IsBrowsingHistoryActorIntegrationM3Enabled() ||
-       base::FeatureList::IsEnabled(
-           history::kBrowsingHistorySimilarVisitsGrouping)) &&
+  if (base::FeatureList::IsEnabled(
+          history::kBrowsingHistorySimilarVisitsGrouping) &&
       base::FeatureList::IsEnabled(
           features::kHappinessTrackingSurveysForDesktopHistoryPageExperiment)) {
     hats_service->LaunchDelayedSurveyForWebContents(
@@ -510,8 +511,7 @@ void BrowsingHistoryHandler::SetPage(
   // is enabled and none of the history improvement features is enabled.
   // Check the HaTS feature last, so that clients are only counted as active if
   // all of the other features are disabled.
-  if (!history::IsBrowsingHistoryActorIntegrationM3Enabled() &&
-      !base::FeatureList::IsEnabled(
+  if (!base::FeatureList::IsEnabled(
           history::kBrowsingHistorySimilarVisitsGrouping) &&
       base::FeatureList::IsEnabled(
           features::kHappinessTrackingSurveysForDesktopHistoryPageControl)) {
@@ -537,8 +537,12 @@ void BrowsingHistoryHandler::StartQueryHistory() {
       profile_, ServiceAccessType::EXPLICIT_ACCESS);
   syncer::SyncService* sync_service =
       SyncServiceFactory::GetForProfile(profile_);
+  auto* device_info_service =
+      DeviceInfoSyncServiceFactory::GetForProfile(profile_);
   browsing_history_service_ = std::make_unique<BrowsingHistoryService>(
-      this, local_history, sync_service);
+      this, local_history, sync_service,
+      device_info_service ? device_info_service->GetDeviceInfoTracker()
+                          : nullptr);
 
   // 150 = RESULTS_PER_PAGE from chrome/browser/resources/history/constants.js
   SendHistoryQuery(150, std::string(), std::nullopt, true, true);
@@ -644,8 +648,8 @@ void BrowsingHistoryHandler::RemoveVisits(
   std::vector<BrowsingHistoryService::HistoryEntry> items_to_remove;
   items_to_remove.reserve(items.size());
   for (const auto& item : items) {
-    const std::string url = item->url;
-    const std::vector<double> timestamps = item->timestamps;
+    const std::string& url = item->url;
+    const std::vector<double>& timestamps = item->timestamps;
     if (url.empty()) {
       NOTREACHED() << "Unable to extract arguments";
     }

@@ -86,7 +86,7 @@ BASE_FEATURE(kIPHExplicitBrowserSigninPreferenceRememberedFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHHistorySearchFeature,
              "IPH_HistorySearch",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 BASE_FEATURE(kIPHExtensionsMenuFeature,
              "IPH_ExtensionsMenu",
@@ -565,7 +565,7 @@ BASE_FEATURE(kIPHInstanceSwitcherFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHRecentTabsFeature,
              "IPH_RecentTabs",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHKeyboardAccessoryPaymentOfferFeature,
              "IPH_KeyboardAccessoryPaymentOffer",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -768,6 +768,9 @@ BASE_FEATURE(kIPHiOSPromoBackgroundCustomizationFeature,
 BASE_FEATURE(kIPHiOSPromoLevelUpFeature, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHiOSPromoEphemeralThemeFeature,
              "IPH_iOSPromoEphemeralTheme",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHiOSPromoAccountSwitchingFeature,
+             "IPH_iOSPromoAccountSwitching",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHiOSPromoSigninFullscreenFeature,
              "IPH_iOSPromoSigninFullscreen",

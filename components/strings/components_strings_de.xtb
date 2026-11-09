@@ -71,7 +71,6 @@
 <translation id="1110994991967754504">Berechtigung für <ph name="PERMISSION_NAME" /> auswählen</translation>
 <translation id="1113000785583998331">IBAN speichern?</translation>
 <translation id="1113869188872983271">&amp;Neu anordnen rückgängig machen</translation>
-<translation id="1117709830616495622">Basierend auf Personal Intelligence mit Gemini.</translation>
 <translation id="111897705806685148">Passkey von einem anderen Gerät verwenden</translation>
 <translation id="1119009590493440389"><ph name="MANAGE_SYNC_FOCUSED_FRIENDLY_MATCH_TEXT" /> – drücke die Tabulatortaste und dann die Eingabetaste, um festzulegen, welche Chrome-Daten in deinem Google-Konto gespeichert werden sollen</translation>
 <translation id="1121990216147052230">Erstelle eine To-do-Liste für mich</translation>
@@ -532,7 +531,6 @@ Du wirst sonst gemäß deinen Datenschutzeinstellungen blockiert. Wenn Cookies u
 <translation id="1890171020361705182">Dino-Spiel. Ein verpixelter Dinosaurier weicht Kakteen und kleinen Flugsauriern aus, während er durch eine karge Landschaft läuft. Sobald du einen Ton hörst, tippe, um über Hindernisse zu springen.</translation>
 <translation id="1898423065542865115">Filtern</translation>
 <translation id="1898678876221454577">Melde dich an, um deinen Scan zu speichern</translation>
-<translation id="1898804291554630487">Fragen zu dieser Seite stellen</translation>
 <translation id="1901443836186977402">{1,plural, =1{Dieser Server konnte nicht beweisen, dass er <ph name="DOMAIN" /> ist. Sein Sicherheitszertifikat ist in den letzten 24 Stunden abgelaufen. Mögliche Gründe sind eine fehlerhafte Konfiguration oder ein Angreifer, der deine Verbindung abfängt. Die Uhr deines Computers ist derzeit auf <ph name="CURRENT_DATE" /> eingestellt. Ist das korrekt? Falls nicht, stelle die Uhr deines Systems richtig ein und aktualisiere anschließend diese Seite.}other{Dieser Server konnte nicht beweisen, dass er <ph name="DOMAIN" /> ist. Sein Sicherheitszertifikat ist vor # Tagen abgelaufen. Mögliche Gründe sind eine fehlerhafte Konfiguration oder ein Angreifer, der deine Verbindung abfängt. Die Uhr deines Computers ist momentan auf <ph name="CURRENT_DATE" /> eingestellt. Ist das richtig? Wenn nicht, korrigiere die Uhrzeit deines Systems und aktualisiere dann diese Seite.}}</translation>
 <translation id="190166348986967700">Dein Administrator beginnt am <ph name="DATE_TIME" /> damit, deine Dateien in <ph name="CLOUD_PROVIDER" /> hochzuladen. Lass dein Gerät verbunden, bis der Dateiupload abgeschlossen ist. Während des Uploads kannst du nur lokale Dateien lesen.</translation>
 <translation id="1902576642799138955">Gültigkeitsdauer</translation>
@@ -668,6 +666,7 @@ Du wirst sonst gemäß deinen Datenschutzeinstellungen blockiert. Wenn Cookies u
 <translation id="2127747486437921899">Kursiv</translation>
 <translation id="2130448033692577677">Die von dir angegebenen Vorlagen können nicht angewendet werden, weil die Richtlinie "DnsOverHttpsMode" nicht konfiguriert ist.</translation>
 <translation id="2130699163006053678">A3x7</translation>
+<translation id="2131006834960167560">Funktion zum automatischen Ausfüllen von Zahlungsinformationen ist vollständig geöffnet.</translation>
 <translation id="2131511685263818470"><ph name="SEARCH_ENGINE_NAME" />. <ph name="MARKETING_SNIPPET" /></translation>
 <translation id="2132825047782982803">Die Reihenfolge ist zufällig. Du kannst deine Einstellung jederzeit ändern.</translation>
 <translation id="2134584557120247184">Flugticket</translation>
@@ -840,8 +839,6 @@ Du wirst sonst gemäß deinen Datenschutzeinstellungen blockiert. Wenn Cookies u
 <translation id="2384307209577226199">Unternehmensstandard</translation>
 <translation id="2385809941344967209">Chrome über die Chrome-Einstellungen aktualisieren</translation>
 <translation id="2386255080630008482">Das Serverzertifikat wurde aufgehoben.</translation>
-<translation id="2387424091060104123">Von Gemini vorgeschlagen · <ph name="SRC_LINK" />Quellen ansehen<ph name="END_SRC_LINK" />
-Du kannst diesen Vorschlag aus Chrome entfernen. Die ursprüngliche Quelle wird nicht gelöscht. <ph name="MANAGE_LINK" />Funktion „Erweitertes Autofill“ verwalten<ph name="END_MANAGE_LINK" /></translation>
 <translation id="239203817277685015">Genauer ausführen</translation>
 <translation id="2392959068659972793">Richtlinien ohne Wert zeigen</translation>
 <translation id="239429038616798445">Diese Versandart ist nicht verfügbar. Bitte wähle eine andere aus.</translation>
@@ -864,6 +861,7 @@ Du kannst diesen Vorschlag aus Chrome entfernen. Die ursprüngliche Quelle wird 
 <translation id="2436186046335138073">Öffnen aller <ph name="PROTOCOL" />-Links durch <ph name="HANDLER_HOSTNAME" /> zulassen?</translation>
 <translation id="243815215670139125">Diese Karte konnte nicht in deinem Google-Konto gespeichert werden. Sie wurde stattdessen in Chrome auf diesem Gerät gespeichert.</translation>
 <translation id="2438874542388153331">Vierfache Lochung rechts</translation>
+<translation id="2442033148418774391">Hinweis „Nutze die Cloud – für eine smartere ‚Autofill‘-Funktion“ geschlossen</translation>
 <translation id="2442865686365739754">Folgende Daten werden <ph name="BEGIN_EMPHASIS" />nicht<ph name="END_EMPHASIS" /> von Chrome gespeichert:
           <ph name="BEGIN_LIST" />
             <ph name="LIST_ITEM" />Den Browserverlauf
@@ -876,6 +874,7 @@ Du kannst diesen Vorschlag aus Chrome entfernen. Die ursprüngliche Quelle wird 
 <translation id="2451607499823206582">Tracking</translation>
 <translation id="2452837234288608067">Dabei konnten wir nicht helfen. Bitte versuche es noch einmal.</translation>
 <translation id="2453045048779611513">Deine Organisation schränkt ein, was du speichern kannst</translation>
+<translation id="2456490423293803882">Hinweis „Nutze die Cloud – für eine smartere ‚Autofill‘-Funktion“ vollständig geöffnet</translation>
 <translation id="2459882793359532780">Angewandte Browserrichtlinien (Computer- und Profilrichtlinien)</translation>
 <translation id="2461385121573678775">Mit Chrome Enterprise Core kannst du Browserrichtlinien über die Cloud zentral konfigurieren</translation>
 <translation id="2461822463642141190">Aktuell</translation>
@@ -1104,6 +1103,7 @@ Du kannst diesen Vorschlag aus Chrome entfernen. Die ursprüngliche Quelle wird 
 <translation id="2878197950673342043">Posterfaltung</translation>
 <translation id="2878424575911748999">A1</translation>
 <translation id="2879694782644540289">die Displaysperre zum Ausfüllen von Passwörtern zu verwenden</translation>
+<translation id="2880119244122776372">Erstellen und programmieren</translation>
 <translation id="2881276955470682203">Karte speichern?</translation>
 <translation id="2882280148032777436">Known Traveler Number löschen</translation>
 <translation id="2882949212241984732">Doppelte Fensterfaltung</translation>
@@ -1241,7 +1241,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="3109788962812161063">Profilverwaltung</translation>
 <translation id="3112892588078695695">Telefonnummer: <ph name="PHONE" />.</translation>
 <translation id="3113284927548439113">Dritte Schicht</translation>
-<translation id="3113930177999394798">Gib „@Verlauf“ ein, um deinen Browserverlauf basierend auf KI zu durchsuchen</translation>
 <translation id="3114040155724590991">Android-System wird aktualisiert
     Das Starten deiner App kann länger als gewöhnlich dauern.</translation>
 <translation id="3114197119223448048">Neue Aktivität</translation>
@@ -1363,6 +1362,7 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="3289578402369490638">Von anderen Onlineshops</translation>
 <translation id="3293642807462928945">Weitere Informationen zur "<ph name="POLICY_NAME" />"-Richtlinie</translation>
 <translation id="3295444047715739395">Passwörter in den Chrome-Einstellungen ansehen und verwalten</translation>
+<translation id="3296595523896103792">Funktion zum automatischen Ausfüllen von Zahlungsinformationen geschlossen.</translation>
 <translation id="3299098170013242198">Windows Hello ist zum Ausfüllen von Passwörtern aktiviert</translation>
 <translation id="3299197721044635447">Inhalte konnten aufgrund der Richtlinien deiner Organisation nicht außerhalb des verwalteten Chrome-Kontexts eingefügt werden</translation>
 <translation id="3299720788264079132">Bei der Verwendung von <ph name="FEATURE_NAME" /> ist ein Fehler aufgetreten</translation>
@@ -1421,7 +1421,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="3413466783792948876">Wenn du ein öffentliches Netzwerk verwendest, ist es am sichersten, diese Website erst später aufzurufen. Das Risiko ist bei einem vertrauenswürdigen Netzwerk – wie dem WLAN zu Hause oder am Arbeitsplatz – geringer.</translation>
 <translation id="3414952576877147120">Größe:</translation>
 <translation id="341513675006332771">Button „Chrome Dino spielen“ – aktivieren, um Chrome Dino zu spielen</translation>
-<translation id="3415471717466570460">Deine Suchanfragen, die besten Ergebnisse und die zugehörigen Seiteninhalte werden an Google gesendet und möglicherweise von Prüfern gelesen, um diese Funktion zu verbessern. Dies ist eine experimentelle Funktion, die manchmal fehlerhaft sein kann.</translation>
 <translation id="3417390269491141648">Vergleiche meine Krankenversicherungsoptionen und liste die wichtigsten Unterschiede zwischen ihnen auf</translation>
 <translation id="3421387094817716717">Öffentlicher Schlüssel für elliptische Kurven</translation>
 <translation id="3422248202833853650">Versuche, andere Programme zu beenden, um Speicher freizugeben.</translation>
@@ -1885,7 +1884,7 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="4165422751765527461">Hilfeartikel wird in einem neuen Tab geöffnet</translation>
 <translation id="4165986682804962316">Website-Einstellungen</translation>
 <translation id="4169189393773057143">Du kannst in Google Wallet Kundenkarten verwalten oder diese Vorschläge deaktivieren</translation>
-<translation id="4169535189173047238">Nicht zulassen</translation>
+<translation id="4169535189173047238">Nicht erlauben</translation>
 <translation id="4170851022123611628">Liste mit Kundenkarten ist geschlossen.</translation>
 <translation id="4171400957073367226">Ungültige Bestätigungssignatur</translation>
 <translation id="4171489848299289778"><ph name="RESULT_MODIFIED_DATE" /> – <ph name="RESULT_OWNER" /> – <ph name="RESULT_PRODUCT_SOURCE" /></translation>
@@ -1897,7 +1896,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="4179515394835346607"><ph name="ROW_NAME" />: <ph name="ROW_CONTENT" /></translation>
 <translation id="4185037616931963178">Redress Number sicher aktualisieren</translation>
 <translation id="4186035307311647330">Preis nicht mehr beobachten</translation>
-<translation id="4190446002599583608">KI‑gestützte Verlaufssuche</translation>
 <translation id="4191334393248735295">Länge</translation>
 <translation id="4195459680867822611">Button „Chrome-Tipps aufrufen“ – aktivieren, um mehr über die Funktionen von Chrome zu erfahren</translation>
 <translation id="4195643157523330669">In neuem Tab öffnen</translation>
@@ -1944,7 +1942,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="424063167283213501">Known Traveler Number speichern</translation>
 <translation id="4241830393007970744">Auf dieser Website besteht die Gefahr, dass Angreifer dich zur Installation von Software oder zur Preisgabe von Daten wie Passwörtern, deiner Telefonnummer oder Kreditkartennummern verleiten möchten.</translation>
 <translation id="4242380780309416996">Umschlag (schwer)</translation>
-<translation id="4242981939686657948">Du kannst deinen Browserverlauf jetzt effektiver durchsuchen – aktiviere dazu</translation>
 <translation id="4244926541863471678">Film</translation>
 <translation id="42481816218163154">Erstelle eine 15-minütige Morgenroutine, die mir hilft, besser in den Tag zu starten. Achte darauf, dass eine Achtsamkeitsübung enthalten ist.</translation>
 <translation id="4250343410682686342">Der Fehlerbildschirm für „Jetzt kaufen, später bezahlen“ ist vollständig geöffnet.</translation>
@@ -2800,7 +2797,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="5649053991847567735">Automatische Downloads</translation>
 <translation id="5651323159439184939">Endlosdruck</translation>
 <translation id="5653681867130739344">Amtlichen Ausweis sicher in Google Wallet aktualisieren</translation>
-<translation id="5653744563415531641">Wenn du deine Daten speicherst, lassen sich viele Dinge schneller erledigen, z. B. das Ausfüllen von Formularen in Google-Produkten. Du kannst für <ph name="ACCOUNT" /> <ph name="MANAGE_WALLET_SETTINGS_LINK" />.</translation>
 <translation id="5654927323611874862">ID für hochgeladenen Absturzbericht:</translation>
 <translation id="5654965123204121933">Die URL enthält nicht den erforderlichen Ersatzstring „<ph name="SEARCH_TERMS_REPLACEMENT" />“: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">E-Mail</translation>
@@ -3252,7 +3248,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="6410264514553301377">Ablaufdatum und CVC für <ph name="CREDIT_CARD" /> eingeben</translation>
 <translation id="6411107829285739505">A4x8</translation>
 <translation id="6412543105195503444">Dialogfeld für die Genehmigung auf der übergeordneten Website</translation>
-<translation id="6413532517183895572">Wallet-Einstellungen verwalten</translation>
 <translation id="6415778972515849510">Mithilfe von Chromium kannst du dein Google-Konto schützen und dein Passwort ändern.</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">Achte darauf, dass alle wichtigen geschäftlichen oder privaten Daten extern gespeichert sind.</translation>
@@ -3759,7 +3754,6 @@ Weitere Details:
 <translation id="7308436126008021607">Hintergrundsynchronisierung</translation>
 <translation id="7310392214323165548">Das Gerät wird sehr bald neu gestartet</translation>
 <translation id="7311244614769792472">Keine Ergebnisse gefunden</translation>
-<translation id="7311565174465466858"><ph name="TAB_KEY" /> Tabulatortaste und dann Eingabetaste drücken, um <ph name="AI_ENGINE_NAME" /> zu fragen</translation>
 <translation id="7313107491291103073">Deine Organisation hat diese Website gemeldet, da sie möglicherweise gegen eine Richtlinie verstößt.</translation>
 <translation id="7315372670898739748">Verknüpfung fehlgeschlagen, versuche es später noch einmal</translation>
 <translation id="7316521168101843192">Datei wird in Microsoft OneDrive gespeichert</translation>
@@ -3891,7 +3885,6 @@ Weitere Details:
 <translation id="7514365320538308">Herunterladen</translation>
 <translation id="7515998400212163428">Android</translation>
 <translation id="7516123895971374904">VR-Berechtigung einmalig gewährt</translation>
-<translation id="7517198908921983825">Von Gemini vorgeschlagen · <ph name="SOURCES" /></translation>
 <translation id="7517414872996418597">Umschlag C10</translation>
 <translation id="7518003948725431193">Für folgende Webadresse wurde keine Webseite gefunden: <ph name="URL" />.</translation>
 <translation id="7521387064766892559">JavaScript</translation>
@@ -3907,6 +3900,7 @@ Weitere Details:
 <translation id="753713322968419914">Privatadresse aus Chrome Autofill entfernen?</translation>
 <translation id="753714465667062283">Melde dich an, um dein Foto zu speichern</translation>
 <translation id="7537536606612762813">Verbindlich</translation>
+<translation id="7540924742308928499">Brainstormen und zusammenfassen</translation>
 <translation id="7543525346216957623">Frag deine Eltern</translation>
 <translation id="7546409722674205727"><ph name="APP_NAME" /> wird gestartet</translation>
 <translation id="7548892272833184391">Verbindungsfehler beheben</translation>
@@ -4166,6 +4160,7 @@ Weitere Details:
 <translation id="7955105108888461311">Persönlich fragen</translation>
 <translation id="7956713633345437162">Mobile Lesezeichen</translation>
 <translation id="7961015016161918242">Nie</translation>
+<translation id="7961493403319780137">Weitere Informationen zu dieser Funktion – Bestätigungscodes aus Gmail automatisch einfügen</translation>
 <translation id="7962467575542381659">Plattformgerät</translation>
 <translation id="796439090588610411">Chrome bestätigt diese E‑Mail-Adresse auf unterstützten Websites nicht mehr automatisch.</translation>
 <translation id="7966803981046576691">Kontotyp des Auftrags</translation>
@@ -4386,7 +4381,6 @@ Weitere Details:
 <translation id="8350416046273606058">Kürzel darf keine Leerzeichen enthalten: „<ph name="SHORTCUT_NAME" />“</translation>
 <translation id="8351131234907093545">Notiz erstellen</translation>
 <translation id="8352849934814541340">Der Administrator dieses Geräts hat Anwendungen für zusätzliche Funktionen installiert. Diese Anwendungen können auf einige deiner Daten zugreifen.</translation>
-<translation id="8353273112634584260">Basierend auf Personal Intelligence mit Gemini. Deine Anfragen, Seitentitel und URLs werden möglicherweise überprüft, um die Funktion „Erweitertes Autofill“ zu verbessern.</translation>
 <translation id="8355270400102541638">Kontext für lokalen Absturz:</translation>
 <translation id="8362914115861174987">Zielsprache</translation>
 <translation id="8363502534493474904">Flugmodus ausschalten</translation>
@@ -4567,7 +4561,6 @@ Weitere Details:
 <translation id="8699041776323235191">HID-Gerät</translation>
 <translation id="8699985386408839112">Umschlag Kaku 1</translation>
 <translation id="8702965365666568344">Klebeband</translation>
-<translation id="8703242769654966101">Pix in Wallet aktivieren</translation>
 <translation id="8703372953981978786">Dieser Link funktioniert nicht</translation>
 <translation id="8703575177326907206">Die Verbindung zu <ph name="DOMAIN" /> ist nicht verschlüsselt.</translation>
 <translation id="8705331520020532516">Seriennummer</translation>
@@ -4735,7 +4728,6 @@ Weitere Details:
 <translation id="9001074447101275817">Für den Proxy <ph name="DOMAIN" /> sind ein Nutzername und ein Passwort erforderlich.</translation>
 <translation id="9001963517402879850">Springen!</translation>
 <translation id="9002677862950442746">Bestätigungscode: <ph name="OTP" /></translation>
-<translation id="9003263770394939629">Von Gemini vorgeschlagen. Du kannst die Funktion „Erweitertes Autofill“ in den Einstellungen verwalten.</translation>
 <translation id="9003639428623471314">Umschlag Kaku</translation>
 <translation id="9004367719664099443">VR-Sitzung läuft</translation>
 <translation id="9005998258318286617">Fehler beim Laden des PDF-Dokuments.</translation>
@@ -4754,7 +4746,6 @@ Weitere Details:
 <translation id="9027531288681624875">Zum Beenden des Vollbildmodus |<ph name="ACCELERATOR" />| gedrückt halten</translation>
 <translation id="9030785788945687215">Gmail</translation>
 <translation id="9035022520814077154">Sicherheitsfehler</translation>
-<translation id="9035699147763101514">Unterstützt durch Personal Intelligence mit Gemini. Du kannst deine Auswahl in den Einstellungen verwalten.</translation>
 <translation id="9035824888276246493">Sicherheitscodes speichern</translation>
 <translation id="9036306139374661733">Mikrofon zulassen?</translation>
 <translation id="9036484080057916082">Liste mit Zeitstempeln der signierten Zertifikate</translation>
@@ -4909,7 +4900,6 @@ Weitere Details:
 <translation id="961930410699694996">Berechtigung zur Standortermittlung einmal gewährt</translation>
 <translation id="962484866189421427">Dieser Inhalt könnte betrügerische Apps installieren, die scheinbar einem anderen Zweck dienen oder Daten erfassen, um dich auszuspionieren. <ph name="BEGIN_LINK" />Trotzdem zeigen<ph name="END_LINK" /></translation>
 <translation id="963734905955638680">Gemäß einem Gesetz in deiner Region wirst du von Chromium aufgefordert, deine Standardsuchmaschine festzulegen. Diese Suchmaschinen sind in deiner Region beliebt und werden in zufälliger Reihenfolge angezeigt.</translation>
-<translation id="963837307749850257">Alle Nutzer</translation>
 <translation id="963988220224168636">Redress Number sicher zu Google Wallet hinzufügen</translation>
 <translation id="964050462028070434">Passwörter und Passkeys verwalten…</translation>
 <translation id="964681140808832181">Ja, ich möchte abbrechen</translation>

@@ -87,6 +87,7 @@ source_set("glic") {
     "public/glic_keyed_service_factory.h",
     "public/glic_passkeys.h",
     "public/glic_perf_traits_tracker.h",
+    "public/glic_provider_spec.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
     "public/glic_submit_query_cui_tracker.cc",
@@ -107,6 +108,7 @@ source_set("glic") {
     "//chrome/browser:shell_integration",
     "//chrome/browser/actor",
     "//chrome/browser/actor/ui:states",
+    "//chrome/browser/enterprise",
     "//chrome/browser/glic/public:features",
     "//chrome/browser/glic/public:request_headers",
     "//chrome/browser/glic/resources:browser_resources",
@@ -121,6 +123,7 @@ source_set("glic") {
     "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/browser_actuator/public",
     "//components/content_extraction/content/browser",
+    "//components/enterprise",
     "//components/favicon/core",
     "//components/feature_engagement/public",
     "//components/glic:glic_pref_names",
@@ -185,6 +188,7 @@ source_set("glic") {
       "//chrome/browser/ui/tabs",
     ]
   } else {  # is_android
+    public_deps += [ "//chrome/browser/android:resource_mapper" ]
     sources += [
       "public/widget/glic_side_panel_coordinator_android.h",
       "public/widget/glic_side_panel_coordinator_desktop_android.h",
@@ -389,6 +393,8 @@ source_set("impl") {
     "glic_pref_names.cc",
     "glic_profile_manager.cc",
     "glic_promotion_source_navigation_observer.cc",
+    "glic_provider_spec_impl.cc",
+    "glic_provider_spec_impl.h",
     "glic_settings_util.cc",
     "glic_tab_restore_data.cc",
     "glic_tab_restore_helper.cc",
@@ -433,6 +439,8 @@ source_set("impl") {
     "host/glic_annotation_manager.cc",
     "host/glic_cookie_synchronizer.cc",
     "host/glic_cookie_synchronizer.h",
+    "host/glic_guest_actionable_mark_observer.cc",
+    "host/glic_guest_actionable_mark_observer.h",
     "host/glic_guest_navigation_throttle.cc",
     "host/glic_guest_observer.cc",
     "host/glic_guest_observer.h",
@@ -517,7 +525,6 @@ source_set("impl") {
 
   public_deps = [
     ":private_types",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/actor",
   ]
   deps = [
@@ -549,6 +556,7 @@ source_set("impl") {
     "//chrome/browser/metrics",
     "//chrome/browser/page_content_annotations",
     "//chrome/browser/picture_in_picture",
+    "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/profiles/keep_alive",
@@ -592,11 +600,13 @@ source_set("impl") {
     "//components/gcm_driver/crypto",
     "//components/google/core/common",
     "//components/guest_view/buildflags",
+    "//components/input",
     "//components/language/core/common",
     "//components/metrics",
     "//components/metrics/structured:structured_events",
     "//components/metrics_services_manager",
     "//components/origin_matcher",
+    "//components/page_load_metrics/browser",
     "//components/pdf/common:constants",
     "//components/pref_registry",
     "//components/prefs",
@@ -607,6 +617,8 @@ source_set("impl") {
     "//components/skills/public:mojo_bindings",
     "//components/startup_metric_utils",
     "//components/url_formatter",
+    "//components/user_education/common",
+    "//components/user_education/common:features",
     "//components/variations/service",
     "//components/webui/chrome_urls",
     "//extensions/buildflags",
@@ -922,12 +934,15 @@ source_set("unit_tests") {
       "//chrome/test/base:scoped_metrics_service",
       "//components/live_caption",
       "//components/live_caption:constants",
+      "//components/metrics",
       "//components/metrics/structured:structured_events",
       "//components/metrics/structured/buildflags",
       "//components/skills:features",
       "//components/skills/public",
       "//components/skills/public:metrics",
       "//components/web_modal:test_support",
+      "//content/test:test_support",
+      "//ui/base",
     ]
   } else {
     sources += [
@@ -936,6 +951,7 @@ source_set("unit_tests") {
     ]
 
     deps += [
+      "//chrome/browser/glic/android",
       "//chrome/browser/glic/common",
       "//chrome/browser/ui/android/tab_model",
       "//chrome/browser/ui/android/tab_model:test_support",
@@ -968,6 +984,7 @@ source_set("browser_tests") {
     "host/glic_api_skills_browsertest.cc",
     "host/glic_api_zss_browsertest.cc",
     "host/glic_chrome_tools_browsertest.cc",
+    "host/glic_drag_and_drop_browsertest.cc",
     "host/glic_internals_browsertest.cc",
     "host/glic_no_webview_contents_manager_browsertest.cc",
     "host/glic_overlay_browsertest.cc",
@@ -1014,16 +1031,9 @@ source_set("browser_tests") {
     "//chrome/test:test_support",
     "//chrome/test/base:browser_test_waiters",
     "//chrome/test/base:chrome_test_utils",
+    "//chrome/test/base:drag_and_drop_test_utils",
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:testing_browser_process",
-  ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  }
-  if (use_aura) {
-    deps += [ "//chrome/test/base:drag_and_drop_test_utils" ]
-  }
-  deps += [
     "//components/actor/core",
     "//components/actor/public/mojom:mojo_bindings",
     "//components/contextual_tasks/public:feature_list",
@@ -1046,11 +1056,6 @@ source_set("browser_tests") {
     "//third_party/blink/public/common:headers",
     "//ui/gfx/geometry",
   ]
-
-  if (!is_mac) {
-    sources += [ "host/glic_drag_and_drop_browsertest.cc" ]
-    deps += [ "//chrome/test/base:drag_and_drop_test_utils" ]
-  }
 
   if (!is_android) {
     sources += [
@@ -1078,13 +1083,12 @@ source_set("browser_tests") {
       "widget/glic_side_panel_coordinator_browsertest.cc",
     ]
 
-    if (!is_mac && enterprise_cloud_content_analysis) {
+    if (enterprise_cloud_content_analysis) {
       sources += [
         "host/glic_drag_and_drop_policy_browsertest.cc",
         "host/glic_web_drag_and_drop_browsertest.cc",
       ]
     }
-
     deps += [
       ":glic",
       ":impl",

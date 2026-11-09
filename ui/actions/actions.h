@@ -15,6 +15,7 @@
 
 #include "base/component_export.h"
 #include "base/containers/flat_map.h"
+#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
@@ -470,7 +471,14 @@ class COMPONENT_EXPORT(ACTIONS) ActionItem : public BaseAction {
   void SetGroupId(std::optional<int> group_id);
   const ui::ImageModel& GetImage() const;
   void SetImage(const ui::ImageModel& image);
+  // - SetText() takes text that may contain a mnemonic marker, like u"&Find".
+  //   A literal "&" must be written as "&&" for it not to be considered a
+  //   mnemonic.
+  // - GetText() returns the text without the marker for cases that do not need
+  //   to show mnemonics, like buttons and tooltips. "&Find" becomes "Find".
+  // - GetTextWithMnemonic() returns the text as it is set.
   std::u16string_view GetText() const;
+  std::u16string_view GetTextWithMnemonic() const;
   void SetText(std::u16string_view text);
   std::u16string_view GetTooltipText() const;
   void SetTooltipText(std::u16string_view tooltip);
@@ -487,7 +495,7 @@ class COMPONENT_EXPORT(ACTIONS) ActionItem : public BaseAction {
   void AddSynonyms(std::initializer_list<std::u16string> synonyms);
 
   // Returns the synonyms for this action. Used for fuzzy search.
-  const std::vector<std::u16string>& GetSynonyms() const;
+  base::span<const std::u16string> GetSynonyms() const;
 
   // Do a "batch" update of the ActionItem state without triggering
   // ActionChanged callbacks for each state change.
@@ -516,9 +524,9 @@ class COMPONENT_EXPORT(ACTIONS) ActionItem : public BaseAction {
   void EndUpdate();
 
   using Synonyms = std::vector<std::u16string>;
-  // When `updating_` > 0, calling ActionItemChanged() will only record whether
-  // is item was updated in `updated_`. Once `updating_` returns to 0 and
-  // `updated_` = true, the ActionChanged callbacks will trigger.
+  // When updating_ > 0, calling ActionItemChanged() will only record whether
+  // the item was updated in updated_. Once updating_ returns to 0 and
+  // updated_ = true, the ActionChanged callbacks will trigger.
   int updating_ = 0;
   bool updated_ = false;
   std::u16string accessible_name_;
@@ -528,7 +536,11 @@ class COMPONENT_EXPORT(ACTIONS) ActionItem : public BaseAction {
   bool enabled_ = true;
   std::optional<int> group_id_;
   bool visible_ = true;
+  // raw_text_ is the text as set, which may have a mnemonic marker.
+  // text_ is the same text without the marker, stored so that GetText() can
+  // return a view of it.
   std::u16string text_;
+  std::u16string raw_text_;
   std::u16string tooltip_;
   ui::ImageModel image_;
   Synonyms synonyms_;
@@ -625,10 +637,9 @@ class COMPONENT_EXPORT(ACTIONS) ActionManager
   static void ResetForTesting();
 
   void IndexActions();
-  ActionItem* FindAction(std::u16string term, ActionItem* scope = nullptr);
-  ActionItem* FindAction(ActionId action_id, ActionItem* scope = nullptr);
-  ActionItem* FindAction(const ui::KeyEvent& key_event,
-                         ActionItem* scope = nullptr);
+  ActionItem* FindAction(std::u16string term, ActionItem* scope);
+  ActionItem* FindAction(ActionId action_id, ActionItem* scope);
+  ActionItem* FindAction(const ui::KeyEvent& key_event, ActionItem* scope);
   void GetActions(ActionItemVector& items, ActionItem* scope = nullptr);
 
   ActionItem* AddAction(std::unique_ptr<ActionItem> action_item);

@@ -118,6 +118,10 @@ namespace payments {
 class WebPaymentsObserver;
 }  // namespace payments
 
+namespace predictors {
+class LoadingPredictorTabHelper;
+}  // namespace predictors
+
 namespace prerender {
 class NoStatePrefetchTabHelper;
 }  // namespace prerender
@@ -153,6 +157,7 @@ class MLInstallabilityPromoter;
 
 class AboutThisSiteTabHelper;
 class AutoPictureInPictureTabHelper;
+class BreadcrumbManagerTabHelper;
 class ChainedBackNavigationTracker;
 class ChromeFacilitatedPaymentsClient;
 class ConnectionHelpTabHelper;
@@ -166,6 +171,7 @@ class MediaStateObserver;
 class MixedContentSettingsTabHelper;
 class NavigationMetricsRecorder;
 class NavigationPredictorPreconnectClient;
+class OneTimePermissionsTrackerHelper;
 class OomInterventionTabHelper;
 class PluginObserverAndroid;
 class PolicyAuditorBridge;
@@ -345,6 +351,11 @@ class TabFeatures {
   std::unique_ptr<vr::VrTabHelper> vr_tab_helper_;
   std::unique_ptr<MixedContentSettingsTabHelper>
       mixed_content_settings_tab_helper_;
+  std::unique_ptr<OneTimePermissionsTrackerHelper>
+      one_time_permissions_tracker_helper_;
+  std::unique_ptr<predictors::LoadingPredictorTabHelper>
+      loading_predictor_tab_helper_;
+  std::unique_ptr<BreadcrumbManagerTabHelper> breadcrumb_manager_tab_helper_;
 
   // Holds the WebUI embedding context subscription.
   base::CallbackListSubscription tab_subscription_;

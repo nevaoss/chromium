@@ -41,6 +41,7 @@ import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.back_press.BackPressManager;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
@@ -156,6 +157,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     private boolean mDestroyed;
     private @Nullable Callback<Boolean> mOnInteractionCompletedCallback;
     private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
+    private @Nullable Runnable mOnPickerInteractionSucceededCallback;
     private final boolean mIsForcedPhoneStyleOmnibox;
     private final OmniboxResourceProvider mResourceProvider;
 
@@ -332,6 +334,10 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         mOnFirstPickerInteractionCanceledCallback,
                         mHasAttachmentsSupplier,
                         assertNonNull(mUrlTextWrappingSupplier));
+        if (mOnPickerInteractionSucceededCallback != null) {
+            mMediator.setOnPickerInteractionSucceededCallback(
+                    mOnPickerInteractionSucceededCallback);
+        }
         if (mLastBrandedColorScheme != null) {
             mMediator.updateVisualsForState(mLastBrandedColorScheme);
         }
@@ -397,6 +403,8 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                             PageClassification.SEARCH_RESULT_PAGE_NO_SEARCH_TERM_REPLACEMENT,
                             PageClassification.OTHER ->
                             true;
+                    case PageClassification.ANDROID_SHORTCUTS_WIDGET ->
+                            ChromeFeatureList.sOneStepAimAccess.isEnabled();
                     // LINT.ThenChange(/components/omnibox/browser/android/java/src/org/chromium/components/omnibox/AutocompleteInput.java:FuseboxSupportedPageClassifications)
                     default -> false;
                 };
@@ -582,6 +590,17 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mOnFirstPickerInteractionCanceledCallback = callback;
         if (mMediator != null) {
             mMediator.setOnFirstPickerInteractionCanceledCallback(callback);
+        }
+    }
+
+    /**
+     * Set callback to be invoked when a picker launched directly on focus (e.g. from the NTP
+     * gallery chip) returns content.
+     */
+    public void setOnPickerInteractionSucceededCallback(Runnable callback) {
+        mOnPickerInteractionSucceededCallback = callback;
+        if (mMediator != null) {
+            mMediator.setOnPickerInteractionSucceededCallback(callback);
         }
     }
 

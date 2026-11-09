@@ -667,6 +667,16 @@ Called by update_autofill_enums.py.-->
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h:AutofillAiUnmaskResult) -->
 
+<!-- LINT.IfChange(AutofillAiUpsertDetailsCacheStatus) -->
+
+<enum name="AutofillAiUpsertDetailsCacheStatus">
+  <int value="0" label="Cache hit"/>
+  <int value="1" label="Cache miss (preload request in flight)"/>
+  <int value="2" label="Cache miss (no preload request in flight)"/>
+</enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h:AutofillAiUpsertDetailsCacheStatus) -->
+
 <!-- LINT.IfChange(AutofillAiWalletManagementUrlSyncStatus) -->
 
 <enum name="AutofillAiWalletManagementUrlSyncStatus">
@@ -731,6 +741,17 @@ Called by update_autofill_enums.py.-->
   <int value="4" label="Inference failure"/>
   <int value="5" label="Internal error"/>
 </enum>
+
+<!-- LINT.IfChange(AutofillAtMemoryStateRestored) -->
+
+<enum name="AutofillAtMemoryStateRestored">
+  <int value="0" label="New session"/>
+  <int value="1" label="Restored with existing query"/>
+  <int value="2" label="Restored while searching"/>
+  <int value="3" label="Restored with response"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/autofill/core/browser/at_memory/at_memory_metrics_recorder.h:AutofillAtMemoryStateRestored) -->
 
 <enum name="AutofillAtMemoryTriggerSource">
   <int value="0" label="(Obsolete) Typed trigger"/>
@@ -5843,7 +5864,9 @@ Called by update_autofill_enums.py.-->
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/metrics/payments/bnpl_metrics.h:PayLaterTabsFormEvent) -->
 
-<enum name="PaymentsChurnedUsersBubbleShowResult">
+<!-- LINT.IfChange(PaymentsChurnedUsersUiShowResult) -->
+
+<enum name="PaymentsChurnedUsersUiShowResult">
   <int value="0" label="Shown successfully"/>
   <int value="1" label="Off The Record"/>
   <int value="2" label="No Cached Form"/>
@@ -5853,6 +5876,8 @@ Called by update_autofill_enums.py.-->
   <int value="6" label="Pref Not User Controlled"/>
   <int value="7" label="No Account Info Present"/>
 </enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/payments/payments_churned_users_metrics.h:PaymentsChurnedUsersUiShowResult) -->
 
 <enum name="PaymentsUiClosedReason">
   <int value="0" label="Unknown"/>

@@ -142,6 +142,8 @@ class MetaBuildWrapper:
 
   def ParseArgs(self, argv):
     def AddCommonOptions(subp):
+      # Commands can regenerate GN files without exposing these output flags.
+      subp.set_defaults(write_ide_json=False, json_output=None)
       group = subp.add_mutually_exclusive_group()
       group.add_argument(
         '-m',
@@ -1061,7 +1063,9 @@ class MetaBuildWrapper:
       vals = self.Lookup()
       # Re-run gn gen in order to ensure the config is consistent with the
       # build dir.
-      self.RunGNGen(vals)
+      ret = self.RunGNGen(vals)
+      if ret != 0:
+        raise MBErr('GN gen failed: %d' % ret, retcode=ret)
       return vals
 
     toolchain_path = self.PathJoin(self.ToAbsPath(build_dir), 'toolchain.ninja')
@@ -1415,7 +1419,10 @@ class MetaBuildWrapper:
     self.WriteFile(gn_runtime_deps_path, '\n'.join(runtime_deps) + '\n')
     cmd = self.GNCmd('gen', build_dir)
     cmd.append('--runtime-deps-list-file=%s' % gn_runtime_deps_path)
-    self.Run(cmd)
+    ret, _, _ = self.Run(cmd)
+    if ret != 0:
+      self.Print('GN gen failed: %d' % ret, file=sys.stderr)
+      return ret
 
     return self.GenerateIsolates(vals, isolate_targets, isolate_map, build_dir)
 

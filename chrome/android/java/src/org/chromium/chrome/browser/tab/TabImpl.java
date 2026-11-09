@@ -36,6 +36,9 @@ import org.jni_zero.CalledByNativeForTesting;
 import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
+import org.chromium.base.ActivityState;
+import org.chromium.base.ApplicationStatus;
+import org.chromium.base.ApplicationStatus.ActivityStateListener;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
@@ -152,10 +155,6 @@ class TabImpl implements Tab, TabInternal {
     // ScopedGlobalRef tables are finite.
     private static final LongSparseArray<TabImpl> sTabMap = new LongSparseArray<>();
 
-    private static final String BACKGROUND_COLOR_CHANGE_PRE_OPTIMIZATION_HISTOGRAM =
-            "Android.Tab.BackgroundColorChange.PreOptimization";
-    private static final String BACKGROUND_COLOR_CHANGE_HISTOGRAM =
-            "Android.Tab.BackgroundColorChange";
     private static final String UMA_AUTOFILL_THIRD_PARTY_MODE_DISABLED_PROVIDER =
             "Autofill.ThirdPartyModeDisabled.Provider";
 
@@ -207,6 +206,8 @@ class TabImpl implements Tab, TabInternal {
 
     /** The current native page (e.g. chrome-native://newtab), or {@code null} if there is none. */
     private @Nullable NativePage mNativePage;
+
+    private @Nullable ActivityStateListener mDetachedNativePageFreezeListener;
 
     /**
      * True after a native page has been hidden, before a new background color has been explicitly
@@ -400,22 +401,6 @@ class TabImpl implements Tab, TabInternal {
      */
     private SensitiveContentClient.@Nullable Observer mSensitiveContentClientObserver;
 
-    /** Tracks the origin of a background color change. */
-    @IntDef({
-        BackgroundColorChangeOrigin.WEB_BACKGROUND_COLOR_CHANGE,
-        BackgroundColorChangeOrigin.CUSTOM_VIEW_SET,
-        BackgroundColorChangeOrigin.NATIVE_PAGE_SHOWN,
-        BackgroundColorChangeOrigin.BG_COLOR_UPDATE_AFTER_HIDING_NATIVE_PAGE
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface BackgroundColorChangeOrigin {
-        int WEB_BACKGROUND_COLOR_CHANGE = 0;
-        int CUSTOM_VIEW_SET = 1;
-        int NATIVE_PAGE_SHOWN = 2;
-        int BG_COLOR_UPDATE_AFTER_HIDING_NATIVE_PAGE = 3;
-        int NUM_ENTRIES = 4;
-    }
-
     /**
      * Creates an instance of a {@link TabImpl}. Package-private. Use {@link TabBuilder} to create
      * an instance.
@@ -523,6 +508,8 @@ class TabImpl implements Tab, TabInternal {
         // Non-null delegate factory while being detached is not valid.
         assert !(window == null && tabDelegateFactory != null);
 
+        unregisterAndClearDetachedNativePageFreezeListener();
+
         if (window != null) {
             // Firstly updating the delegates as the fullscreen state is now checked by the delegate
             if (tabDelegateFactory != null) setDelegateFactory(tabDelegateFactory);
@@ -543,6 +530,7 @@ class TabImpl implements Tab, TabInternal {
                 if (isHidden() && (!mNativePage.isPdf() || mNativePage.isFrozen())) {
                     detachAndFreezeNativePage();
                 } else {
+                    detachNativePageView();
                     maybeShowNativePage(
                             getUrl().getSpec(),
                             /* forceReload= */ true,
@@ -552,20 +540,31 @@ class TabImpl implements Tab, TabInternal {
         } else {
             updateIsDetachedFromActivity(window);
             if (isNativePage() && !mNativePage.isFrozen()) {
-                // Since mIsDetachedFromActivity is now true, getView() returns null while
-                // isNativePage() remains true. Update interactability first so NativePage
-                // observers (e.g. NtpFeedSurfaceLifecycleManager) can save UI state while the
-                // view hierarchy is still attached to the window, then notify observers so
-                // CompositorViewHolder detaches the NativePage view and reclaims focus via
-                // updateContentOverlayVisibility(false) before detaching the view and freezing.
-                // PDF pages are exempted from freezing because freezing destroys the PdfPage and
-                // loses unsaved annotations, but their view is still detached from the Activity.
-                updateInteractableState();
-                notifyContentChanged();
-                if (mNativePage.isPdf()) {
-                    detachNativePageView();
+                Activity activity = getActivity(mWindowAndroid);
+                if (ChromeFeatureList.sDeferDetachedNativePageFreeze.isEnabled()
+                        && activity != null
+                        && ApplicationStatus.isInitialized()
+                        && ApplicationStatus.getStateForActivity(activity) < ActivityState.STOPPED
+                        && !isHidden()) {
+                    // Defer freezing the NativePage until the old Activity is stopped. This
+                    // prevents visual glitches (e.g. blank NTP or misdrawn ToolbarPhone) while the
+                    // old Activity is still visible before being torn down or paused.
+                    mDetachedNativePageFreezeListener =
+                            (listenerActivity, newState) -> {
+                                if (newState >= ActivityState.STOPPED) {
+                                    unregisterAndClearDetachedNativePageFreezeListener();
+                                    if (mIsDestroyed) return;
+                                    if (mIsDetachedFromActivity
+                                            && isNativePage()
+                                            && !mNativePage.isFrozen()) {
+                                        freezeDetachedNativePage();
+                                    }
+                                }
+                            };
+                    ApplicationStatus.registerStateListenerForActivity(
+                            mDetachedNativePageFreezeListener, activity);
                 } else {
-                    detachAndFreezeNativePage();
+                    freezeDetachedNativePage();
                 }
             }
 
@@ -590,6 +589,33 @@ class TabImpl implements Tab, TabInternal {
         updateInteractableState();
     }
 
+    private void freezeDetachedNativePage() {
+        // Since mIsDetachedFromActivity is now true, getView() returns null while
+        // isNativePage() remains true. Update interactability first so NativePage
+        // observers (e.g. NtpFeedSurfaceLifecycleManager) can save UI state while the
+        // view hierarchy is still attached to the window.
+        // PDF pages are exempted from freezing because freezing destroys the PdfPage and
+        // loses unsaved annotations, but their view is still detached from the Activity.
+        // Notify observers afterwards so they observe the final NativePage state
+        // (e.g. ToolbarPhone must not keep NTP layout for a frozen NewTabPage) and
+        // CompositorViewHolder reclaims focus.
+        updateInteractableState();
+        NativePage nativePage = mNativePage;
+        if (nativePage != null && nativePage.isPdf()) {
+            detachNativePageView();
+        } else {
+            detachAndFreezeNativePage();
+        }
+        notifyContentChanged();
+    }
+
+    private void unregisterAndClearDetachedNativePageFreezeListener() {
+        if (mDetachedNativePageFreezeListener != null) {
+            ApplicationStatus.unregisterActivityStateListener(mDetachedNativePageFreezeListener);
+            mDetachedNativePageFreezeListener = null;
+        }
+    }
+
     void setContentViewDeferred(boolean deferred) {
         mIsContentViewDeferred = deferred;
     }
@@ -605,7 +631,7 @@ class TabImpl implements Tab, TabInternal {
         mCustomView = view;
         mCustomViewBackgroundColor = backgroundColor;
         notifyContentChanged();
-        onBackgroundColorChanged(BackgroundColorChangeOrigin.CUSTOM_VIEW_SET);
+        onBackgroundColorChanged();
     }
 
     @Override
@@ -712,8 +738,8 @@ class TabImpl implements Tab, TabInternal {
     }
 
     /**
-     * @returns The local file path or `content://` URI of the displayed PDF (for web PDFs,
-     *     the transiently downloaded file), or null if unavailable or unsafe to share.
+     * @returns The local file path or `content://` URI of the displayed PDF (for web PDFs, the
+     *     transiently downloaded file), or null if unavailable or unsafe to share.
      */
     @CalledByNative
     public @Nullable @JniType("std::string") String getCanonicalFilepath() {
@@ -1604,6 +1630,8 @@ class TabImpl implements Tab, TabInternal {
     @CalledByNative
     private @TabDestroyStatus int destroyInternal(boolean deleteNativeWebContents) {
         ThreadUtils.assertOnUiThread();
+        unregisterAndClearDetachedNativePageFreezeListener();
+        detachNativePageView();
 
         // Ensure the tab signals to C++ it was removed from the TabModel. This should be a no-op
         // for most tab closures, but during activity shutdown/recreation it can be relevant.
@@ -2420,41 +2448,25 @@ class TabImpl implements Tab, TabInternal {
      */
     void changeWebContentBackgroundColor(int color) {
         mWebContentBackgroundColor = color;
-        onBackgroundColorChanged(BackgroundColorChangeOrigin.WEB_BACKGROUND_COLOR_CHANGE);
+        onBackgroundColorChanged();
         mWaitingOnBgColorAfterHidingNativePage = false;
     }
 
     /** Called to notify when the page had painted something non-empty. */
     void notifyDidFirstVisuallyNonEmptyPaint() {
         if (mWaitingOnBgColorAfterHidingNativePage) {
-            onBackgroundColorChanged(
-                    BackgroundColorChangeOrigin.BG_COLOR_UPDATE_AFTER_HIDING_NATIVE_PAGE);
+            onBackgroundColorChanged();
         }
         mWaitingOnBgColorAfterHidingNativePage = false;
     }
 
-    /**
-     * @param backgroundColorChangeOrigin The origin of the background color change update. This is
-     *     used to track the number of color changes and the potential performance impact those
-     *     entail.
-     */
-    private void onBackgroundColorChanged(
-            @BackgroundColorChangeOrigin int backgroundColorChangeOrigin) {
-        RecordHistogram.recordEnumeratedHistogram(
-                BACKGROUND_COLOR_CHANGE_PRE_OPTIMIZATION_HISTOGRAM,
-                backgroundColorChangeOrigin,
-                BackgroundColorChangeOrigin.NUM_ENTRIES);
-
+    private void onBackgroundColorChanged() {
         int newBackgroundColor = getBackgroundColor();
         // Avoid notifying the observers if the background color hasn't actually changed.
         if (mTabBackgroundColor == newBackgroundColor) return;
 
         mTabBackgroundColor = newBackgroundColor;
 
-        RecordHistogram.recordEnumeratedHistogram(
-                BACKGROUND_COLOR_CHANGE_HISTOGRAM,
-                backgroundColorChangeOrigin,
-                BackgroundColorChangeOrigin.NUM_ENTRIES);
         for (TabObserver observer : mObservers) {
             observer.onBackgroundColorChanged(this, mTabBackgroundColor);
         }
@@ -2696,7 +2708,7 @@ class TabImpl implements Tab, TabInternal {
                         mNativePageSmoothTransitionDelegate.prepare();
                     }
                     pushNativePageStateToNavigationEntry();
-                    onBackgroundColorChanged(BackgroundColorChangeOrigin.NATIVE_PAGE_SHOWN);
+                    onBackgroundColorChanged();
                     updateThemeColor(TabState.UNSPECIFIED_THEME_COLOR);
                 });
     }

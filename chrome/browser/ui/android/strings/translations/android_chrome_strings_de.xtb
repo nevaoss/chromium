@@ -322,12 +322,14 @@ Nur Personen, die deine Passphrase kennen, können deine verschlüsselten Daten 
 <translation id="2297822946037605517">Seite teilen</translation>
 <translation id="230115972905494466">Keine kompatiblen Geräte gefunden</translation>
 <translation id="2305798319182970276">Verlauf mit einem Tippen löschen</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> benötigt für diese Website die Berechtigung, auf Human Interface Devices (HID) zuzugreifen.</translation>
 <translation id="2316129865977710310">Nein, danke</translation>
 <translation id="232137538351753795">Vom linken Rand aus wischen, um zurück­zugehen</translation>
 <translation id="2323763861024343754">Websitespeicher</translation>
 <translation id="2327445548174191329">Von <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Seite speichern unter…</translation>
 <translation id="2328474416100889417">Alle Mitglieder verlieren dann sofort den Zugriff auf die Tabgruppe „<ph name="GROUP_NAME" />“ und alle Einladungslinks werden deaktiviert</translation>
+<translation id="2328773543844041445">Tabs automatisch maximieren, wenn der Mauszeiger darauf bewegt wird</translation>
 <translation id="2330186936255788117">Weitere Lesezeichen</translation>
 <translation id="2330243730505117832">„Gerät auswählen“ ist geschlossen.</translation>
 <translation id="2332515770639153015">Erweitertes Safe Browsing ist aktiviert</translation>
@@ -775,6 +777,7 @@ Nur Personen, die deine Passphrase kennen, können deine verschlüsselten Daten 
 <translation id="4136632885151622181"><ph name="TAB_TITLE" />, mehrfach ausgewählter, angepinnter Tab zum Aufzeichnen</translation>
 <translation id="4137746084635924146">Aktuelle Gerätesprache</translation>
 <translation id="414128724510021958">Desktopwebsites werden standardmäßig angefordert</translation>
+<translation id="4150837143272125910">Ein Update wurde heruntergeladen</translation>
 <translation id="4162867837470729563">Die Liste der Freigabeoptionen ist vollständig geöffnet.</translation>
 <translation id="4164642020717536140">Schnell und sicher im Web surfen</translation>
 <translation id="4165077084524712774">Weitere Tools</translation>
@@ -1241,6 +1244,7 @@ Eventuell findest du unter <ph name="BEGIN_LINK" />history.google.com<ph name="E
 <translation id="6039379616847168523">Zum nächsten Tab wechseln</translation>
 <translation id="6040143037577758943">Schließen</translation>
 <translation id="604124094241169006">Automatisch</translation>
+<translation id="6041959688070413372">Verbindung zwischen Suchdiensten und Google Workspace-Apps wie Google Drive verwalten</translation>
 <translation id="6042308850641462728">Mehr</translation>
 <translation id="6047066316630165190">Tab-Wechsler im Raster öffnen</translation>
 <translation id="604996488070107836"><ph name="FILE_NAME" /> konnte aufgrund eines unbekannten Fehlers nicht heruntergeladen werden.</translation>
@@ -1401,6 +1405,7 @@ Einige Websites schalten möglicherweise Werbeanzeigen, deren Auswahl nicht dara
 <translation id="6565959834589222080">WLAN wird verwendet, wenn es verfügbar ist</translation>
 <translation id="657177046675873214">Um auf all deinen Geräten auf deine Lesezeichen zugreifen zu können, musst du in den Einstellungen die Option „Lesezeichen“ aktivieren</translation>
 <translation id="6573096386450695060">Immer zulassen</translation>
+<translation id="657480975869429144">Eine neue Chrome-Version ist verfügbar</translation>
 <translation id="658099107946526506">Private Browsersitzung mit einer PIN schützen, um unerwünschten Zugriff zu verhindern</translation>
 <translation id="6583199322650523874">Aktuelle Seite als Lesezeichen speichern</translation>
 <translation id="6588043302623806746">Sicheres DNS verwenden</translation>
@@ -1688,6 +1693,7 @@ Wenn du diese Einstellung ändern möchtest, <ph name="BEGIN_LINK" />lösche die
 <translation id="7608245556672190037">Ansicht zur Aktivierung von „Chrome findet“ am unteren Rand vollständig geöffnet</translation>
 <translation id="7612619742409846846">Bei Google angemeldet als</translation>
 <translation id="7612989789287281429">Du wirst angemeldet…</translation>
+<translation id="7617512710641355143">Chrome wird verwaltet</translation>
 <translation id="7619072057915878432"><ph name="FILE_NAME" /> konnte aufgrund von Netzwerkfehlern nicht heruntergeladen werden.</translation>
 <translation id="7626032353295482388">Willkommen bei Chrome</translation>
 <translation id="7628417132421583481">Passwortmanager aufrufen</translation>

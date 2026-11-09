@@ -114,7 +114,6 @@
 <translation id="1327794256477341646">जिन सुविधाओं के लिए जगह की जानकारी की ज़रूरत होती है वे काम नहीं करेंगी</translation>
 <translation id="132969855425874290">'खोजें और भरें' सुविधा को बंद करें</translation>
 <translation id="1333455942675373522">कीबोर्ड</translation>
-<translation id="1333669029961409292">"पासवर्ड की जांच" टास्क पूरा हुआ!</translation>
 <translation id="1334485477792811969">वेब सेवाएं</translation>
 <translation id="1335767868357998043">पता बार की जगह चुनें</translation>
 <translation id="1347468774581902829">गतिविधि प्रबंधित करें</translation>
@@ -321,7 +320,6 @@
 <translation id="1909201414196501151">साइट जोड़ी गई और पिन की गई</translation>
 <translation id="1911619930368729126">Google डिस्क पर अपलोड करें</translation>
 <translation id="1925706052394657380">iOS में, <ph name="BEGIN_BOLD" />डिफ़ॉल्ट ऐप्लिकेशन<ph name="END_BOLD" /> की सेटिंग खोलें</translation>
-<translation id="1929759944176590572">"Google Lens की मदद से खोजने के लिए अपने कैमरे का इस्तेमाल करना" टास्क पूरा हुआ!</translation>
 <translation id="1938871630297275912">{count,plural, =1{लिंक मिला}one{{count} लिंक मिला}other{{count} लिंक मिले}}</translation>
 <translation id="1941314575388338491">कॉपी करने के लिए दो बार टैप करें.</translation>
 <translation id="1943478190258551035">मेन्यू → सेटिंग</translation>
@@ -558,6 +556,7 @@
 <translation id="2664621323652615289">बंद करें</translation>
 <translation id="2666092431469916601">शीर्ष</translation>
 <translation id="2669454659051515572">इस डिवाइस का इस्तेमाल करने वाले लोग, गुप्त मोड में डाउनलोड की गई फ़ाइलें देख सकते हैं</translation>
+<translation id="2671316366021598595">"<ph name="SITE_DOMAIN" />" आपके कैमरे को ऐक्सेस नहीं कर सकता है</translation>
 <translation id="2671423594960767771">ग्रुप शेयर करें</translation>
 <translation id="2672512470874391563"><ph name="OWNER_NAME" /> • <ph name="DEVICE_NAME" /></translation>
 <translation id="2673183423393669407">किश्तों में पैसे चुकाएं</translation>
@@ -770,7 +769,6 @@
 <translation id="340669334496430859">आइटम में पिछली बार कब बदलाव किया गया</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">25 अक्टूबर, 2023</translation>
-<translation id="3416904994126232207">"पासवर्ड सेव करना" टास्क पूरा हुआ!</translation>
 <translation id="3419787211763835342">बेहतर ऑटोफ़िल की सुविधा को सुधारने में मदद करें</translation>
 <translation id="3422958112451181446">अपने पसंदीदा टूल को यहां पिन करने के लिए, उसे दबाकर रखें</translation>
 <translation id="3430407169377889553">Gemini का इस्तेमाल सावधानी से करें और ज़रूरत पड़ने पर कंट्रोल अपने हाथ में लें. कोई टास्क करने के दौरान, Gemini जो भी कार्रवाइयां करेगा उनकी ज़िम्मेदारी आपकी होगी.</translation>
@@ -854,6 +852,7 @@
 <translation id="3672283986707092811">सभी चुनें</translation>
 <translation id="3679163990085797665">पढ़ी गई एंट्री मिटाएं</translation>
 <translation id="368329460027487650">साइन आउट किया गया. इस बटन पर टैप करने से, साइन इन करने के विकल्प मिलते हैं.</translation>
+<translation id="3689746421535476813">बदलाव करने के लिए, पेमेंट का सेव किया गया कोई तरीका चुनें या कोई नया तरीका जोड़ें</translation>
 <translation id="3695446226812920698">तरीका जानें</translation>
 <translation id="3700134753671613714">अपने सभी डिवाइसों पर अपने बुकमार्क प्राप्‍त करने के लिए प्रवेश करें.</translation>
 <translation id="3701167022068948696">अभी ठीक करें</translation>
@@ -1135,7 +1134,6 @@
 <translation id="4601095002996233687">संदिग्ध डाउनलोड की गहराई से जांच की जाती है.</translation>
 <translation id="4606247758155004938">आपके ब्राउज़र को आपका संगठन मैनेज करता है.</translation>
 <translation id="4607887340472970274">कीमत को ट्रैक करने की सुविधा</translation>
-<translation id="4614482404958079763">सीमित समय के लिए उपलब्ध, त्योहार वाली थीम आज़माएं. इसमें कस्टम इलस्ट्रेशन और ऐनिमेशन शामिल हैं</translation>
 <translation id="4619564267100705184">अपनी पहचान की पुष्टि करें</translation>
 <translation id="4621768135601674446">रीडिंग मोड से जुड़े विकल्प खोलें</translation>
 <translation id="4627107755957573804">साइटों और ऐप्लिकेशन को, मौजूदा खाते अपग्रेड करने की अनुमति दें, ताकि वे पासकी इस्तेमाल कर सकें</translation>
@@ -1243,7 +1241,6 @@
 <translation id="4896467949657706481">टैब बंद कर दिए गए थे. साथ ही, आपको साइन आउट कर दिया गया था</translation>
 <translation id="4911042367886397055">आपका फिर से स्वागत है, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">अपने फ़ैमिली ग्रुप के किसी सदस्य के साथ, पासवर्ड की कॉपी सुरक्षित तरीके से शेयर की जा सकती है. <ph name="BEGIN_LINK" />ज़्यादा जानें<ph name="END_LINK" /></translation>
-<translation id="4916679969857390442">लैंस</translation>
 <translation id="4917025507570489430"><ph name="USER_EMAIL" /> से साइन इन करने पर, मौजूदा ब्राउज़िंग डेटा का इस्तेमाल किया जा सकता है. ऐसा हो सकता है कि आपका संगठन इस डेटा को देख पाए.</translation>
 <translation id="4918086044614829423">स्वीकार करें</translation>
 <translation id="4930714375720679147">चालू करें</translation>
@@ -1268,6 +1265,7 @@
 <translation id="498624032394115435">जिन लोगों के पास यह लिंक है वे हर टैब में बदलाव कर सकते हैं.</translation>
 <translation id="4986428648020277392">प्रॉम्प्ट: मुझे क्या खरीदना चाहिए? तीन में से दूसरी स्लाइड</translation>
 <translation id="498768198683310172">Gemini का इस्तेमाल करना शुरू करें</translation>
+<translation id="4989163558385430922">सभी देखें</translation>
 <translation id="499122600724363620"><ph name="NAME" />, <ph name="EMAIL" /> को आपका संगठन मैनेज करता है.</translation>
 <translation id="4991383000638469704"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="AI_TIER" />.</translation>
 <translation id="4992255726304765516">टैब ग्रुप का रंग <ph name="COLOR" /></translation>
@@ -1389,6 +1387,7 @@
 <translation id="5351613737248079168">'लेवल अप' इस्तेमाल करने के लिए, आपको साइन इन करना होगा</translation>
 <translation id="5352128922772839949">फ़ाइल सेव करें</translation>
 <translation id="5355191726083956201">बेहतर सुरक्षा की सुविधा चालू है</translation>
+<translation id="5355871759168485600">जब भी इस साइट पर विज़िट किया जाएगा, तब "<ph name="SITE_DOMAIN" />" आपके माइक्रोफ़ोन को ऐक्सेस करेगा</translation>
 <translation id="5359436665022446585">लिंक खोलने की सुविधा को और बेहतर बनाएं</translation>
 <translation id="536067926684072644">बुकमार्क दिखाएं</translation>
 <translation id="5364647308446127983">{count,plural, =1{{count} पासकी इंपोर्ट नहीं की जा सकी}one{{count} पासकी इंपोर्ट नहीं की जा सकी}other{{count} पासकी इंपोर्ट नहीं की जा सकीं}}</translation>
@@ -1689,7 +1688,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="6301104306974789820">प्रॉडक्ट की कीमत ट्रैक करने से जुड़ी सूचनाएं पाएं</translation>
 <translation id="6301767200000930965">Aa</translation>
 <translation id="630308129961693966">पता बार की जगह अडजस्ट करें</translation>
-<translation id="6305257382500066042">इसे अभी आज़माएं</translation>
 <translation id="6307241780749477694">इस डिवाइस पर अपने सभी पासवर्ड ऐक्सेस करने के लिए, अपनी पहचान की पुष्टि करें</translation>
 <translation id="6307792728709337290">अपने Google खाते में कार्ड की जानकारी सेव करें. इससे, Chrome पर मौजूदा और आगे की जाने वाली खरीदारी के लिए, कार्ड की जानकारी ऑटोमैटिक तरीके से भर जाती है.</translation>
 <translation id="6316141353357700666">सूची में से वह पासवर्ड चुनें जिसे आपको इस्तेमाल करना है.</translation>
@@ -1723,6 +1721,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="6372558618707314581">किसी भी पेज पर जाएं</translation>
 <translation id="6374469231428023295">फिर से कोशिश करें</translation>
 <translation id="6374514103145916800">पूछें</translation>
+<translation id="6381241974485088375">यहां से 'नया टैब' पेज को कभी भी अपनी पसंद के मुताबिक बनाएं</translation>
 <translation id="6383719166112032471">जगह की जानकारी की सेटिंग खोलें…</translation>
 <translation id="6387994324662817823">पासवर्ड, सिर्फ़ इस डिवाइस में Google पासवर्ड मैनेजर में सेव हैं.</translation>
 <translation id="6393156038355142111">मज़बूत पासवर्ड सुझाएं</translation>
@@ -1732,6 +1731,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="6410390304316730527">सुरक्षित ब्राउज़िंग की सुविधा आपको ऐसे हमलावरों से बचाती है जो धोखे से आपसे नुकसान पहुंचाने वाले सॉफ़्टवेयर इंस्टॉल करा सकते हैं या फिर आपकी व्यक्तिगत जानकारी चुरा सकते हैं जैसे कि पासवर्ड, फ़ोन नंबर या क्रेडिट कार्ड की जानकारी. अगर आप इस सुविधा को बंद करते हैं, तो ऐसी साइटें ब्राउज़ करते समय सावधान रहें जिनसे आप अनजान हैं या जो जानी-मानी नहीं हैं.</translation>
 <translation id="6410883413783534063">एक ही समय में अलग-अलग पेजों पर जाने के लिए कई टैब खोलें</translation>
 <translation id="6412195388778525440">टैब हटाएं</translation>
+<translation id="6417468503703810114">डिफ़ॉल्ट सेटिंग</translation>
 <translation id="6418346271604475326">PDF तैयार हो रहा है</translation>
 <translation id="6420292512900923139">डेटा इंपोर्ट करने में समस्या आ रही है</translation>
 <translation id="6421038304268477484">अनुवाद किया गया टेक्स्ट</translation>
@@ -2030,7 +2030,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="7346922058131593019"><ph name="USER_FIRST_NAME" />, आपको किस विषय पर काम करना है?</translation>
 <translation id="7347998088283246662">पासवर्ड, इतिहास, बुकमार्क वगैरह इंपोर्ट करें</translation>
 <translation id="7352651011704765696">कुछ गलत हुआ</translation>
-<translation id="7357999308187750900">सभी देखें</translation>
 <translation id="736564850024123010">अपनी पसंद के मुताबिक अनुभव पाने के लिए, पता बार की जगह बदलें.</translation>
 <translation id="7366909168761621528">ब्राउज़िंग डेटा</translation>
 <translation id="7367530036083223701">Password Manager विजेट की मदद से, होम स्क्रीन से अपने पासवर्ड सुरक्षित तरीके से ऐक्सेस करें.</translation>
@@ -2083,7 +2082,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="7491131399623468277">Settings पर जाएं…</translation>
 <translation id="7491161827858509164">पहले डाउनलोड की गई फ़ाइलें देखने के लिए <ph name="BEGIN_LINK" />Files<ph name="END_LINK" /> खोलें</translation>
 <translation id="7498234416455752244">बदलाव करना जारी रखें</translation>
-<translation id="7498557042323380380">अपने 'नया टैब' पेज के लिए, सीज़न के हिसाब से लुक सेट करें</translation>
 <translation id="7500244509706269886">ऑटोमैटिक भरने की सुविधा की मदद से फ़ॉर्म भरें</translation>
 <translation id="750493650310597496">0 चयनित</translation>
 <translation id="7505402981231763928">Gemini का इस्तेमाल करने के लिए, साइन इन करें</translation>
@@ -2144,7 +2142,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="7669493687462784703">क्या आपको <ph name="WEBSITE" /> से कॉन्फ़िगरेशन प्रोफ़ाइल को डाउनलोड करना है?</translation>
 <translation id="7673346542062368520">गुप्त मोड में ब्राउज़ करने के लिए, बाईं ओर स्वाइप किया जा सकता है.</translation>
 <translation id="7679915578945954324">साइट के पते कॉपी किए गए</translation>
-<translation id="76830702375944649">"टैब ग्रुप बनाना" टास्क पूरा हुआ!</translation>
 <translation id="7695953765525234038">खोज बार</translation>
 <translation id="7696316012653762532">पेज का अनुवाद करने के विकल्प</translation>
 <translation id="7700527812567437847">Google Lens के ज़रिए, स्क्रीन पर मौजूद कॉन्टेंट के बारे में खोजें</translation>
@@ -2170,6 +2167,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="7758789811447313947">बैंगनी रंग वाली थीम</translation>
 <translation id="7759809451544302770">वैकल्पिक</translation>
 <translation id="7765158879357617694">ले जाएं</translation>
+<translation id="7768507955883790804">किसी साइट पर जाने पर, वह अपने-आप इस सेटिंग को फ़ॉलो करती है</translation>
 <translation id="7772032839648071052">'पासफ़्रेज' की पुष्टि करें</translation>
 <translation id="7772948288262733182">आपका फिर से स्वागत है</translation>
 <translation id="777637629667389858">अगर आप साइन इन हैं, तो यह Google की सभी सेवाओं पर आपकी सुरक्षा करती है.</translation>
@@ -2308,6 +2306,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8157532349231307196"><ph name="NUMBER_OF_ACCOUNTS" /> खाते</translation>
 <translation id="8161614462829037225"><ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> से अनलॉक करें</translation>
 <translation id="8173034266693057059">लंबाई</translation>
+<translation id="8181328232274170248">जब भी इस साइट पर विज़िट किया जाएगा, तब "<ph name="SITE_DOMAIN" />" आपके कैमरे को ऐक्सेस करेगा</translation>
 <translation id="8182037667962849780">{count,plural, =1{{website_1} के लिए}=2{{website_2} और {website_1} के लिए}=3{{website_1}, {website_2}, और 1 वेबसाइट के लिए}one{{website_1}, {website_2}, और {more_count} वेबसाइट के लिए}other{{website_1}, {website_2}, और {more_count} वेबसाइटों के लिए}}</translation>
 <translation id="8184895727539791845">Gemini को कैमरे का ऐक्सेस देने के लिए, iOS की सेटिंग में जाकर कैमरे का विकल्प चालू करें</translation>
 <translation id="8185076488803799132">इंपोर्ट करें</translation>
@@ -2364,7 +2363,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8333459276976141586">Live बातचीत में आपके माइक्रोफ़ोन का इस्तेमाल किया जाएगा. 'Live बातचीत' बटन पर टैप करने से माइक चालू हो जाता है. माइक बंद करने के लिए, 'रोकें' बटन पर टैप करें या Gemini को बंद करें.</translation>
 <translation id="833647236762414178">साइटों और ऐप्लिकेशन में आसानी से साइन इन करने के लिए, पासवर्ड और पासकी बनाएं, उन्हें सेव करें, और मैनेज करें. <ph name="BEGIN_LINK" />ज़्यादा जानें<ph name="END_LINK" /></translation>
 <translation id="8343993175958086504">अपने डेटा का बैक अप लें और इसे किसी भी डिवाइस पर इस्तेमाल करें</translation>
-<translation id="8345328955902001853">{count,plural, =1{अगले लेवल पर जाने के लिए, 1 और टास्क पूरा करें}one{अगले लेवल पर जाने के लिए, {count} और टास्क पूरा करें}other{अगले लेवल पर जाने के लिए, {count} और टास्क पूरे करें}}</translation>
 <translation id="8348530355586151720">तीन बिंदु वाले मेन्यू पर टैप करें</translation>
 <translation id="8349305172487531364">बुकमार्क बार</translation>
 <translation id="8360164927489392419">Gemini के साथ की गई Live बातचीत की रिकॉर्डिंग और बातचीत में शेयर किए गए कॉन्टेंट को, <ph name="BEGIN_LINK" />Gemini Apps के निजता नोटिस<ph name="END_LINK" /> के मुताबिक सेव और प्रोसेस किया जाता है. <ph name="BEGIN_LINK" />ज़्यादा जानें<ph name="END_LINK" /></translation>
@@ -2428,6 +2426,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8535368836838588657">पासवर्ड दिखाएं</translation>
 <translation id="8540426897269305488"><ph name="CELL_ACCESSIBILITY_LABEL" /> से साइन इन करें</translation>
 <translation id="8542331710562073430">कोई गड़बड़ी हुई. Gemini Live का फिर से इस्तेमाल करने के लिए, 'Live बातचीत' बटन पर टैप करें.</translation>
+<translation id="8544172904312384600">पेमेंट का कोई नया तरीका जोड़ें या उसमें बदलाव करें</translation>
 <translation id="8545276357312221485">अपने डिफ़ॉल्ट ब्राउज़र की सेटिंग देखें</translation>
 <translation id="854938212724803178">आपका एक पासवर्ड या तो हैक हुआ है या चोरी हुआ है. सुरक्षित रहने के लिए इस समस्या को अभी ठीक करें.</translation>
 <translation id="8551311254462607218">पता बार में मौजूद, Google Lens के कैमरा आइकॉन पर टैप करें</translation>
@@ -2442,6 +2441,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8571213806525832805">पिछले चार हफ़्ते</translation>
 <translation id="8577056989960190117">समयसीमा खत्म होने का साल <ph name="YEAR" /> ऑटोमैटिक भरने का विकल्प चुनें</translation>
 <translation id="8582026929965253036">Gemini से Live बातचीत करें</translation>
+<translation id="8585841788766257444">नीचे दी गई साइटें, डिफ़ॉल्ट के बजाय कस्टम सेटिंग को फ़ॉलो करती हैं</translation>
 <translation id="8587001564479545614">खाता वापस पाने के लिए पिन बनाएं</translation>
 <translation id="8588404856427128947">बंद है</translation>
 <translation id="8590286732816598906">टैब ग्रुप, <ph name="GROUP_TITLE" />, मेन्यू.</translation>
@@ -2465,6 +2465,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8639963783467694461">ऑटोमैटिक भरना की सेटिंग...</translation>
 <translation id="8642417828095157370">आपको ज़्यादा काम के जवाब देने के लिए, टैब शेयर किए जाते हैं</translation>
 <translation id="8643403533759285912">ग्रुप मिटाएं</translation>
+<translation id="8646357898207744479">Lens</translation>
 <translation id="8647280737650867362">कीमत को ट्रैक करने की सुविधा बंद नहीं की जा सकी.</translation>
 <translation id="8654802032646794042">रद्द करें</translation>
 <translation id="8655861111558401309">'ब्राउज़िंग डेटा मिटाएं' को चुनें</translation>
@@ -2480,6 +2481,7 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8680643216091361291">आपकी <ph name="BEGIN_LINK" />गतिविधि सेव करके रखने की सेटिंग<ph name="END_LINK" /> डिफ़ॉल्ट रूप से बंद है. इसके बंद होने पर, Google आपकी चैट को तीन दिनों तक सेव करके रखता है. इन चैट का इस्तेमाल, Gemini Apps को सुरक्षित रखने और यह पक्का करने के लिए किया जाता है कि ये सही तरीके से काम करते रहें. साथ ही, चैट के दौरान दिए गए आपके सुझाव, शिकायत या राय से हमें Gemini Apps से जुड़ी समस्याएं हल करने में मदद मिलती है. गतिविधि सेव करके रखने की सेटिंग चालू करें, ताकि Google के एआई को सभी के लिए और बेहतर बनाया जा सके.</translation>
 <translation id="8680786875305615692">वेब को सभी के लिए ज़्यादा सुरक्षित बनाने में मदद करें</translation>
 <translation id="8680787084697685621">खाते में साइन इन से जुड़ी जानकारियां पुरानी हो गई हैं.</translation>
+<translation id="868648444055742370">"<ph name="SITE_DOMAIN" />" आपके माइक्रोफ़ोन को ऐक्सेस नहीं कर सकता है</translation>
 <translation id="8690752723634292147">मिटाने की पुष्टि करें</translation>
 <translation id="8692107307702113268">पासवर्ड में 1000 से ज़्यादा वर्ण हैं</translation>
 <translation id="8692689525339542358">नुकसान पहुंचाने वाली साइटों, डाउनलोड, और एक्सटेंशन से सुरक्षित रहें.</translation>
@@ -2587,7 +2589,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="8988107725234939347"><ph name="WEBSITE_TITLE" />, पिन की गई साइट</translation>
 <translation id="8990960056509724223">आपके संगठन की नीतियों की वजह से, फ़ाइल सेव नहीं की जा सकी</translation>
 <translation id="8998289560386111590">यह मोड आपके डिवाइस पर उपलब्ध नहीं है</translation>
-<translation id="9003263770394939629">Gemini ने सुझाया है. सेटिंग में जाकर, ऑटोमैटिक तरीके से भरने की बेहतर सुविधा मैनेज करें.</translation>
 <translation id="9003677638446136377">फिर से जाँचें</translation>
 <translation id="9006453925669499173">मेन्यू → नया गुप्त टैब</translation>
 <translation id="9008201768610948239">ध्यान न दें</translation>
@@ -2596,7 +2597,6 @@ Handoff को Settings के General अनुभाग में भी स�
 <translation id="9029650858822697271">आपको साइन आउट कर दिया गया था</translation>
 <translation id="9030785788945687215">Gmail</translation>
 <translation id="9032405509996909363">ब्राउज़िंग डेटा मिटाने की पुष्टि करें</translation>
-<translation id="9035699147763101514">यह सुविधा Gemini के पर्सनल इंटेलिजेंस की मदद से काम करती है. सेटिंग में जाकर, अपनी पसंद के मुताबिक बदलाव करें.</translation>
 <translation id="9038526468059454274">इसकी मदद से खास जानकारी पाएं</translation>
 <translation id="9039373489628511875">बैंडविड्थ</translation>
 <translation id="9042893549633094279">निजता और सुरक्षा</translation>

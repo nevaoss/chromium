@@ -25,6 +25,7 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
+#include "chrome/browser/ui/webui/omnibox_popup/full_webui_omnibox_layout_helper.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_aim_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
@@ -33,6 +34,8 @@
 #include "chrome/browser/ui/webui/searchbox/omnibox_composebox_handler.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_full_handler.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
+#include "chrome/browser/ui/webui/theme_colors_source_manager.h"
+#include "chrome/browser/ui/webui/theme_colors_source_manager_factory.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
@@ -50,7 +53,6 @@
 #include "net/base/url_util.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/webui/webui_util.h"
 
@@ -126,11 +128,13 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       profile_, chrome::kChromeUIOmniboxPopupHost);
 
-  bool session_allows_drag_and_drop = false;
-  if (auto* session_handle = GetOrCreateContextualSessionHandle()) {
-    session_allows_drag_and_drop =
-        session_handle->CheckSearchContentSharingSettings(profile_->GetPrefs());
-  }
+  // Read the pref directly rather than creating the contextual search session
+  // here: every window builds popups, and most never use the session.
+  // Handlers create it on first use.
+  const bool session_allows_drag_and_drop =
+      ContextualSearchServiceFactory::GetForProfile(profile_) &&
+      contextual_search::ContextualSearchService::IsContextSharingEnabled(
+          profile_->GetPrefs());
 
   source->AddLocalizedStrings(SearchboxHandler::GetWebUIDataSourceDict(
       Profile::FromWebUI(web_ui),
@@ -141,7 +145,7 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   PopulateAiModeButtonUiConfig(source, profile_);
 
   source->AddBoolean("isTopChromeSearchbox", true);
-  source->AddBoolean("isTouchUi", ui::TouchUiController::Get()->touch_ui());
+  FullWebUIOmniboxLayoutHelper::PopulateLoadTimeData(source);
   source->AddString("searchboxDefaultIcon",
                     GetDefaultSearchProviderIcon(
                         TemplateURLServiceFactory::GetForProfile(profile_)));
@@ -178,7 +182,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
       "Omnibox.Popup.WebUI.ResultChangedToRepaintLatency.ToPaint");
 
   // Add composebox data.
-  auto composebox_config = omnibox::FeatureConfig::Get().config.composebox();
+  const auto& composebox_config =
+      omnibox::FeatureConfig::Get().config.composebox();
   const std::string attachment_mime_types =
       composebox_config.attachment_upload().mime_types_allowed();
   source->AddString("composeboxAttachmentFileTypes", attachment_mime_types);
@@ -309,6 +314,21 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
 OmniboxPopupUI::~OmniboxPopupUI() = default;
 
 WEB_UI_CONTROLLER_TYPE_IMPL(OmniboxPopupUI)
+
+// The popup's render-blocking chrome://theme/colors.css is served from the
+// renderer without a browser round-trip, like the WebUI toolbar.
+void OmniboxPopupUI::PopulateLocalResourceLoaderConfig(
+    blink::mojom::LocalResourceLoaderConfig* config,
+    const url::Origin& requesting_origin) {
+  auto* theme_colors_manager =
+      ThemeColorsSourceManagerFactory::GetForProfile(profile_);
+  // Without a manager the stylesheet is still fetched over the network.
+  if (!theme_colors_manager) {
+    return;
+  }
+  theme_colors_manager->PopulateLocalResourceLoaderConfig(
+      config, requesting_origin, web_ui()->GetWebContents());
+}
 
 void OmniboxPopupUI::BindInterface(
     content::RenderFrameHost* host,

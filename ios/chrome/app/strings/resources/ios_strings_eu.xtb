@@ -1,6 +1,7 @@
 <?xml version="1.0" ?>
 <!DOCTYPE translationbundle>
 <translationbundle lang="eu">
+<translation id="1004615467759797184">Pertsonalizatu fitxa berriaren orria</translation>
 <translation id="1004825134262590729">{count,plural, =1{{count} sarbide-gako}other{{count} sarbide-gako}}</translation>
 <translation id="1005023885865154304">Ireki pasahitzak automatikoki betetzeko ezarpenak</translation>
 <translation id="1005230401424685968">UUUU</translation>
@@ -113,7 +114,6 @@
 <translation id="1327794256477341646">Kokapenerako sarbidea behar duten eginbideek ez dute funtzionatuko</translation>
 <translation id="132969855425874290">Itxi bilatu eta betetzeko aukera</translation>
 <translation id="1333455942675373522">Teklatua</translation>
-<translation id="1333669029961409292">Osatu da "Egiaztatu pasahitzak"!</translation>
 <translation id="1334485477792811969">Web-zerbitzuak</translation>
 <translation id="1335767868357998043">Aukeratu helbide-barraren posizioa</translation>
 <translation id="1347468774581902829">Kudeatu jarduerak</translation>
@@ -320,7 +320,6 @@
 <translation id="1909201414196501151">Gehitu eta ainguratu da webgunea</translation>
 <translation id="1911619930368729126">Kargatu Google Drive-ra</translation>
 <translation id="1925706052394657380">Ireki <ph name="BEGIN_BOLD" />Default Apps<ph name="END_BOLD" /> (aplikazio lehenetsiak) ataleko ezarpenak iOS-en.</translation>
-<translation id="1929759944176590572">Osatu da "Erabili kamera Google Lens-ekin bilatzeko"!</translation>
 <translation id="1938871630297275912">{count,plural, =1{Jaso da esteka}other{{count} esteka jaso dira}}</translation>
 <translation id="1941314575388338491">Kopiatzeko, sakatu birritan.</translation>
 <translation id="1943478190258551035">Menua → Ezarpenak</translation>
@@ -557,6 +556,7 @@
 <translation id="2664621323652615289">Gelditu</translation>
 <translation id="2666092431469916601">Goiko elementua</translation>
 <translation id="2669454659051515572">Gailu hau darabilen edonork ikus ditzake deskargatutako fitxategiak</translation>
+<translation id="2671316366021598595">"<ph name="SITE_DOMAIN" />" webguneak ez du kamera erabiltzeko baimenik</translation>
 <translation id="2671423594960767771">Partekatu taldea</translation>
 <translation id="2672512470874391563"><ph name="OWNER_NAME" /> • <ph name="DEVICE_NAME" /></translation>
 <translation id="2673183423393669407">Ordaindu epeka</translation>
@@ -769,7 +769,6 @@
 <translation id="340669334496430859">Azken aldatze-data</translation>
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">2023ko urriaren 25a</translation>
-<translation id="3416904994126232207">Osatu da "Gorde pasahitz bat"!</translation>
 <translation id="3419787211763835342">Lagundu betetze automatiko hobetua hobetzen</translation>
 <translation id="3422958112451181446">Eduki sakatuta gogoko duzun tresna hemen ainguratzeko</translation>
 <translation id="3430407169377889553">Erabili Gemini kontuz eta hartu kontrola behar izanez gero. Zeu zara Gemini-k zereginak burutzean egiten duenaren erantzule.</translation>
@@ -1134,7 +1133,6 @@
 <translation id="4601095002996233687">Deskarga susmagarrien azterketa sakonak.</translation>
 <translation id="4606247758155004938">Zure erakundeak kudeatzen du arakatzailea.</translation>
 <translation id="4607887340472970274">Prezioen jarraipena</translation>
-<translation id="4614482404958079763">Probatu epe baterako jaietako gai bat, ilustrazio eta animazio pertsonalizatuekin</translation>
 <translation id="4619564267100705184">Egiaztatu zeu zarela</translation>
 <translation id="4621768135601674446">Ireki irakurtzeko moduaren aukerak</translation>
 <translation id="4627107755957573804">Eman dauden kontuak bertsio-berritzeko baimena webguneei eta aplikazioei, kontuok sarbide-gakoak erabil ditzaten</translation>
@@ -1242,7 +1240,6 @@
 <translation id="4896467949657706481">Fitxak itxi dira, eta zure saioa amaitu da</translation>
 <translation id="4911042367886397055">Ongi etorri berriro ere, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Pasahitzaren kopia bat era seguruan parteka dezakezu zure familia-taldeko beste norbaitekin. <ph name="BEGIN_LINK" />Lortu informazio gehiago<ph name="END_LINK" /></translation>
-<translation id="4916679969857390442">Leiarra</translation>
 <translation id="4917025507570489430"><ph name="USER_EMAIL" /> gisa saioa hasita daukazunean erabil ditzakezu lehendik dauden arakatze-datuak. Baliteke erakundeak datu horiek ikusi ahal izatea.</translation>
 <translation id="4918086044614829423">Onartu</translation>
 <translation id="4930714375720679147">Aktibatu</translation>
@@ -1267,6 +1264,7 @@
 <translation id="498624032394115435">Esteka duten guztiek fitxa guztiak edita ditzakete.</translation>
 <translation id="4986428648020277392">Eskaera-mezua: zein erosi beharko nuke? Hirutik bigarrena.</translation>
 <translation id="498768198683310172">Hasi Gemini erabiltzen</translation>
+<translation id="4989163558385430922">Ikusi guztiak</translation>
 <translation id="499122600724363620"><ph name="NAME" /> (<ph name="EMAIL" />), erakundeak kudeatzen du.</translation>
 <translation id="4991383000638469704"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="AI_TIER" />.</translation>
 <translation id="4992255726304765516">Fitxa talderako kolore <ph name="COLOR" /></translation>
@@ -1388,6 +1386,7 @@
 <translation id="5351613737248079168">Saioa hasita eduki behar duzu mailaz igotzeko eginbidea erabiltzeko</translation>
 <translation id="5352128922772839949">Gorde fitxategia</translation>
 <translation id="5355191726083956201">Babes hobetua aktibatuta dago</translation>
+<translation id="5355871759168485600">"<ph name="SITE_DOMAIN" />" webguneak mikrofonoa erabil dezake webgune hau bisitatzen duzun bakoitzean</translation>
 <translation id="5359436665022446585">Estekak irekitzeko modu hobea</translation>
 <translation id="536067926684072644">Erakutsi laster-markak</translation>
 <translation id="5364647308446127983">{count,plural, =1{Ezin izan da inportatu {count} sarbide-gako}other{Ezin izan dira inportatu {count} sarbide-gako}}</translation>
@@ -1688,11 +1687,11 @@
 <translation id="6301104306974789820">Jaso prezio-jaitsieren jakinarazpenak</translation>
 <translation id="6301767200000930965">Aa</translation>
 <translation id="630308129961693966">Aukeratu helbide-barraren posizioa</translation>
-<translation id="6305257382500066042">Probatu</translation>
 <translation id="6307241780749477694">Egiaztatu zeu zarela pasahitz guztiak gailu honetan lortzeko</translation>
 <translation id="6307792728709337290">Gorde txartela Google-ko kontuan, erosketa honetan eta Chrome-n etorkizunean egingo dituzun erosketetan datu hori automatikoki bete dadin.</translation>
 <translation id="6316141353357700666">Aukeratu erabili nahi duzun pasahitza agertuko den zerrendatik.</translation>
 <translation id="6321526113093607004">Gehitu Laster-markak atalean</translation>
+<translation id="6324054713176642683">Aukeratu gai edo koloreen artean, edo kargatu zeure argazkia.</translation>
 <translation id="6327249202318869726">Gemini desaktibatuta dago zure kontuan. Informazio gehiago lortzeko, jarri administratzailearekin harremanetan.</translation>
 <translation id="6331836477476466332">Zuretzako arakatzaile seguruago eta ahaltsuago bat</translation>
 <translation id="6337234675334993532">Enkriptatzea</translation>
@@ -1730,6 +1729,7 @@
 <translation id="6410390304316730527">Arakatze seguruaren helburua zu balizko erasotzaileen aurrean babestea da, litekeena baita halakoek, azpikeriaz, zu zerbait arriskutsua egitera bultzatzea; esate baterako, software gaiztoa instalatu edo informazio pertsonala ezagutzera eman (adibidez, pasahitzak, telefono-zenbakiak edo kreditu-txartelak). Arakatze segurua desaktibatuz gero, tentuz ibili ezagunak edo izen onekoak ez diren webguneak arakatzean.</translation>
 <translation id="6410883413783534063">Erabili fitxak aldi berean webgune bat baino gehiago ikusteko</translation>
 <translation id="6412195388778525440">Kendu fitxa</translation>
+<translation id="6417468503703810114">Jokaera lehenetsia</translation>
 <translation id="6418346271604475326">Prestatzen</translation>
 <translation id="6420292512900923139">Arazoak ditugu datuak inportatzeko</translation>
 <translation id="6421038304268477484">Itzulpena</translation>
@@ -2028,7 +2028,6 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="7346922058131593019">Zertan egin nahi duzu lan, <ph name="USER_FIRST_NAME" />?</translation>
 <translation id="7347998088283246662">Inportatu pasahitzak, historia, laster-markak eta abar</translation>
 <translation id="7352651011704765696">Arazo bat izan da</translation>
-<translation id="7357999308187750900">Ikusi guztiak</translation>
 <translation id="736564850024123010">Zerbitzua pertsonalizatzeko, aldatu helbide-barraren posizioa.</translation>
 <translation id="7366909168761621528">Arakatze-datuak</translation>
 <translation id="7367530036083223701">Atzitu zure pasahitzak orri nagusitik segurtasun osoz Pasahitz-kudeatzailea widgetarekin.</translation>
@@ -2081,7 +2080,6 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="7491131399623468277">Joan Ezarpenak atalera…</translation>
 <translation id="7491161827858509164">Lehen deskargatu dituzun fitxategiak ikusteko, ireki <ph name="BEGIN_LINK" />Fitxategiak<ph name="END_LINK" /></translation>
 <translation id="7498234416455752244">Jarraitu editatzen</translation>
-<translation id="7498557042323380380">Ezarri urtaroaren araberako itxura fitxa berriaren orriari</translation>
 <translation id="7500244509706269886">Bete inprimakia automatikoki</translation>
 <translation id="750493650310597496">Ez da bat ere hautatu</translation>
 <translation id="7505402981231763928">Saioa hasi behar duzu Gemini erabiltzeko</translation>
@@ -2142,7 +2140,6 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="7669493687462784703"><ph name="WEBSITE" /> webgunetik konfigurazio-profil bat deskargatzen jarraitu nahi duzu?</translation>
 <translation id="7673346542062368520">Ezkutuko moduan arakatzeko, pasatu hatza ezkerrera.</translation>
 <translation id="7679915578945954324">Kopiatu dira webguneen helbideak</translation>
-<translation id="76830702375944649">Osatu da "Sortu fitxa talde bat"!</translation>
 <translation id="7695953765525234038">Bilaketa-barra</translation>
 <translation id="7696316012653762532">Orria itzultzeko aukerak</translation>
 <translation id="7700527812567437847">Bilatu pantaila Google Lens bidez</translation>
@@ -2168,6 +2165,7 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="7758789811447313947">Bioleta-koloreko gaia</translation>
 <translation id="7759809451544302770">Aukerakoa</translation>
 <translation id="7765158879357617694">Eraman</translation>
+<translation id="7768507955883790804">Webguneetan sartzen zarenean, webguneek automatikoki jarraitzen diote ezarpen honi</translation>
 <translation id="7772032839648071052">Berretsi pasaesaldia</translation>
 <translation id="7772948288262733182">Ongi etorri berriro</translation>
 <translation id="777637629667389858">Saioa hasita daukazunean, Google-ren zerbitzu guztietan babesten zaitu.</translation>
@@ -2306,6 +2304,7 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="8157532349231307196"><ph name="NUMBER_OF_ACCOUNTS" /> kontu</translation>
 <translation id="8161614462829037225">Desblokeatu <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> erabilita</translation>
 <translation id="8173034266693057059">Luzera</translation>
+<translation id="8181328232274170248">"<ph name="SITE_DOMAIN" />" webguneak kamera erabil dezake webgune hau bisitatzen duzun bakoitzean</translation>
 <translation id="8182037667962849780">{count,plural, =1{Webgunea: {website_1}}=2{Webguneak: {website_1} eta {website_2}}=3{Webguneak: {website_1}, {website_2} eta beste bat}other{Webguneak: {website_1}, {website_2} eta beste {more_count}}}</translation>
 <translation id="8184895727539791845">Gemini-k kamera erabili ahal dezan, aktibatu Camera (kamera) iOS-en ezarpenetan</translation>
 <translation id="8185076488803799132">Import (inportatu)</translation>
@@ -2362,7 +2361,6 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="8333459276976141586">Live-k mikrofonoa erabiliko du. Live botoia sakatuz gero, mikrofonoa aktibatuko da. Mikrofonoa desaktibatzeko, sakatu gelditzeko botoia edo itxi Gemini.</translation>
 <translation id="833647236762414178">Sortu, gorde eta kudeatu pasahitzak eta sarbide-gakoak webgune eta aplikazioetan saioa erraz hasteko. <ph name="BEGIN_LINK" />Lortu informazio gehiago<ph name="END_LINK" /></translation>
 <translation id="8343993175958086504">Egin zure gauzen babeskopiak, edozein gailutan erabil ditzazun.</translation>
-<translation id="8345328955902001853">{count,plural, =1{Mailaz igotzeko, osatu beste zeregin bat}other{Mailaz igotzeko, osatu beste {count} zeregin}}</translation>
 <translation id="8348530355586151720">Sakatu 3 puntuko menua.</translation>
 <translation id="8349305172487531364">Laster-marken barra</translation>
 <translation id="8360164927489392419">Live-rekin dituzun interakzioen grabaketak eta harekin partekatzen duzun edukia <ph name="BEGIN_LINK" />Gemini-ren aplikazioen Pribatutasun-oharra<ph name="END_LINK" /> oinarri hartuta gordetzen eta prozesatzen dira. <ph name="BEGIN_LINK" />Lortu informazio gehiago<ph name="END_LINK" /></translation>
@@ -2440,6 +2438,7 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="8571213806525832805">Azken lau asteetakoak</translation>
 <translation id="8577056989960190117">Bete automatikoki iraungitze-urtea <ph name="YEAR" /> urtearekin</translation>
 <translation id="8582026929965253036">Hitz egin zuzenean Gemini-rekin</translation>
+<translation id="8585841788766257444">Behean aipatutako webguneek ezarpen pertsonalizatuei jarraitzen diete, eta ez lehenetsitakoei</translation>
 <translation id="8587001564479545614">Sortu kontua berreskuratzeko PIN bat.</translation>
 <translation id="8588404856427128947">Itzalita</translation>
 <translation id="8590286732816598906">Fitxa taldea, <ph name="GROUP_TITLE" />, menua.</translation>
@@ -2478,6 +2477,7 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="8680643216091361291"><ph name="BEGIN_LINK" />Gorde jarduerak<ph name="END_LINK" /> ezarpena desaktibatuta dago modu lehenetsian. Desaktibatuta dagoenean, Google-k 3 egunez gordetzen ditu zure elkarrizketak. Gemini-ren aplikazioek behar bezala funtzionatzen dutela ziurtatzeko, segurtasuna areagotzeko eta zure oharren bidez arazoak konpontzeko erabiltzen ditu elkarrizketak. Google-ren AA guztiontzat hobetzen laguntzeko aktiba dezakezu jarduerak gordetzeko ezarpena.</translation>
 <translation id="8680786875305615692">Hobetu sareko segurtasuna denontzat</translation>
 <translation id="8680787084697685621">Kontuan saioa hasteko xehetasunak zaharkituta daude.</translation>
+<translation id="868648444055742370">"<ph name="SITE_DOMAIN" />" webguneak ez du mikrofonoa erabiltzeko baimenik</translation>
 <translation id="8690752723634292147">Berretsi ezabatu nahi duzula</translation>
 <translation id="8692107307702113268">Pasahitzak 1.000 karaktere baino gehiago ditu</translation>
 <translation id="8692689525339542358">Babestu zeure burua webgune, deskarga eta luzapen arriskutsuen aurrean.</translation>
@@ -2585,7 +2585,6 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="8988107725234939347"><ph name="WEBSITE_TITLE" />, ainguratutako webgunea</translation>
 <translation id="8990960056509724223">Ezin izan da gorde fitxategia, erakundearen gidalerroak direla eta</translation>
 <translation id="8998289560386111590">Ez dago erabilgarri zure gailuan</translation>
-<translation id="9003263770394939629">Gemini-k iradokita. Kudeatu betetze automatiko hobetua ezarpenetan.</translation>
 <translation id="9003677638446136377">Egiaztatu berriro</translation>
 <translation id="9006453925669499173">Menua → Ezkutuko moduko fitxa berria</translation>
 <translation id="9008201768610948239">Egin ez ikusi</translation>
@@ -2594,7 +2593,6 @@ Nahi duzunean has zaitezke berriro.</translation>
 <translation id="9029650858822697271">Zure saioa amaitu da</translation>
 <translation id="9030785788945687215">Gmail</translation>
 <translation id="9032405509996909363">Berretsi arakatze-datuak ezabatu nahi dituzula</translation>
-<translation id="9035699147763101514">Gemini-ren adimen pertsonalizatuarekin. Kudeatu aukerak ezarpenetan.</translation>
 <translation id="9038526468059454274">Laburbildu honekin:</translation>
 <translation id="9039373489628511875">Banda-zabalera</translation>
 <translation id="9042893549633094279">Pribatutasuna eta segurtasuna</translation>

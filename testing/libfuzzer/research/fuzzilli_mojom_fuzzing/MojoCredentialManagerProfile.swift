@@ -10,8 +10,6 @@
 //     third_party/blink/public/mojom/credentialmanagement/credential_manager.mojom
 //
 
-private let mojoPrefix = "blink.mojom."
-
 ///
 /// Interfaces
 ///
@@ -27,9 +25,10 @@ extension ILType {
         ])
     fileprivate static let jsBlinkMojomCredentialManagerRemoteWrapper: ILType = .object(
         ofGroup: "blink.mojom.CredentialManagerRemoteWrapper",
-        withMethods: ["close", "isBound", "associateAndPassReceiver"])
-    fileprivate static let jsBlinkMojomCredentialManagerPendingReceiver: ILType = .object(
-        ofGroup: "blink.mojom.CredentialManagerPendingReceiver")
+        withMethods: [
+          "close",
+          "isBound",
+        ])
 }
 
 extension ObjectGroup {
@@ -59,16 +58,7 @@ extension ObjectGroup {
         methods: [
             "close": [] => .undefined,
             "isBound": [] => .boolean,
-            "associateAndPassReceiver": [] => .jsBlinkMojomCredentialManagerPendingReceiver,
-        ]
-    )
-
-    fileprivate static let blinkMojomCredentialManagerPendingReceiver = ObjectGroup(
-        name: "blink.mojom.CredentialManagerPendingReceiver",
-        instanceType: .jsBlinkMojomCredentialManagerPendingReceiver,
-        properties: [:],
-        methods: [:]
-    )
+        ])
 }
 
 ///
@@ -193,10 +183,12 @@ extension ILType {
 ///
 /// Generators
 ///
-// TODO(crbug.com/500386713) Consider using mojoBuiltins or another list instead of regex
+/// Names of every ObjectGroup registered by this profile.
+private let mojoTargetGroups = Set(mojoObjectGroups.map { $0.name })
+
 private func isTargetObject(type: ILType) -> Bool {
     guard type.Is(.object()), let group = type.group else { return false }
-    return group.starts(with: mojoPrefix)
+    return mojoTargetGroups.contains(group)
 }
 
 /// Mojo variant of the builtin `MethodCallGenerator` that operates only on
@@ -239,6 +231,17 @@ private let MojoPropertyRetrievalGenerator = CodeGenerator(
         b.type(of: obj).randomProperty() ?? b.randomCustomPropertyName()
     b.getProperty(propertyName, of: obj)
 }
+
+/// Every ObjectGroup registered by this profile. Also used by `isTargetObject`
+/// to decide which variables the Mojo generators operate on.
+private let mojoObjectGroups: [ObjectGroup] = [
+    .blinkMojomCredentialManagerRemote,
+    .blinkMojomCredentialManagerRemoteWrapper,
+    .blinkMojomCredentialInfo,
+    .blinkMojomCredentialManagerStoreResponseParams,
+    .blinkMojomCredentialManagerPreventSilentAccessResponseParams,
+    .blinkMojomCredentialManagerGetResponseParams,
+] + commonMojoObjectGroups
 
 private let mojoBuiltins: [String: ILType] = [
     /// Profiles declare this method, a wrapper method around `getRemote` that follows
@@ -301,15 +304,7 @@ let mojoCredentialManagerProfile = Profile(
         "ExplorationMutator", "ProbingMutator", "PropertyAccessorMutator"
     ],
     additionalBuiltins: mojoBuiltins.merging(commonMojoBuiltins) { (existing, _) in existing },
-    additionalObjectGroups: [
-        .blinkMojomCredentialManagerRemote,
-        .blinkMojomCredentialManagerRemoteWrapper,
-        .blinkMojomCredentialManagerPendingReceiver,
-        .blinkMojomCredentialInfo,
-        .blinkMojomCredentialManagerStoreResponseParams,
-        .blinkMojomCredentialManagerPreventSilentAccessResponseParams,
-        .blinkMojomCredentialManagerGetResponseParams,
-    ] + commonMojoObjectGroups,
+    additionalObjectGroups: mojoObjectGroups,
     additionalEnumerations: [
         .jsBlinkMojomCredentialType,
         .jsBlinkMojomCredentialMediationRequirement,

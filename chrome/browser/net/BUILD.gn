@@ -169,10 +169,7 @@ source_set("impl") {
     sources += [ "device_bound_session_prewarmer.cc" ]
   }
 
-  public_deps = [
-    ":net",
-    "//chrome/browser:browser_public_dependencies",
-  ]
+  public_deps = [ ":net" ]
 
   deps = [
     ":key_pinning_proto",
@@ -195,6 +192,7 @@ source_set("impl") {
     "//chrome/browser/task_manager",
     "//chrome/browser/webid",
     "//chrome/common:version_header",
+    "//chrome/common/request_header_integrity:buildflags",
     "//components/certificate_transparency",
     "//components/content_settings/core/common",
     "//components/contextual_tasks/public:feature_list",
@@ -209,6 +207,8 @@ source_set("impl") {
     "//components/enterprise/encryption/cache",
     "//components/language/core/browser",
     "//components/link_header_util",
+    "//chrome/common",
+    "//chrome/common:channel_info",
     "//components/metrics",
     "//components/net_log",
     "//components/no_state_prefetch/browser",
@@ -599,6 +599,9 @@ if (!is_android) {
     # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
     # enable the diagnostic by removing this line.
     configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+    if (is_chromeos) {
+      deps += [ "//chrome/browser/ui/ash/login" ]
+    }
   }
 
   source_set("interactive_ui_tests") {

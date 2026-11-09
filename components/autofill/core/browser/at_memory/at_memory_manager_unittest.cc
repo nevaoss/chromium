@@ -2494,7 +2494,7 @@ TEST_P(AtMemoryManagerIconTest,
        Suggestion::Icon::kCardGenericSpark},
       {MemoryDataType::kIban, Suggestion::Icon::kCardGenericVector,
        Suggestion::Icon::kCardGenericSpark},
-      {MemoryDataType::kLoyaltyMembershipId, Suggestion::Icon::kLoyalty,
+      {MemoryDataType::kLoyaltyMembershipId, Suggestion::Icon::kLoyaltyPrograms,
        Suggestion::Icon::kTextSpark},
       {MemoryDataType::kOrderId, Suggestion::Icon::kOrder,
        Suggestion::Icon::kOrderSpark},
@@ -3140,6 +3140,126 @@ TEST_F(AtMemoryManagerTestBase,
           Bucket(AutofillMetrics::AtMemoryTriggerSource::kContextMenu, 1)));
 }
 
+// Tests that with search statefulness, "Autofill.AtMemory.StateRestored" is
+// logged as `kNewSession` once per display when there is no persisted query,
+// and not again when the suggestions of the visible popup are updated.
+TEST_F(AtMemoryManagerTestBase, SearchStatefulness_StateRestoredNewSession) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAtMemorySearchStatefulness};
+  base::HistogramTester histogram_tester;
+
+  auto [form_id, field_id] = SeeFormAndShowPopup();
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.StateRestored",
+                                      AtMemoryStateRestored::kNewSession, 1);
+
+  // Updating the suggestions of the visible popup re-triggers `OnPopupShown()`,
+  // which must not log again.
+  manager().OnPopupShown(autofill_manager(), form_id, field_id,
+                         AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl,
+                         /*metadata=*/{}, update_callback_.Get(),
+                         ukm::kInvalidSourceId);
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.StateRestored",
+                                      AtMemoryStateRestored::kNewSession, 1);
+
+  // Re-showing without having typed anything is still a new session.
+  manager().OnPopupHidden(SuggestionHidingReason::kUserAborted);
+  manager().GetStateForField(field_id, form_origin());
+  manager().OnPopupShown(autofill_manager(), form_id, field_id,
+                         AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl,
+                         /*metadata=*/{}, update_callback_.Get(),
+                         ukm::kInvalidSourceId);
+  histogram_tester.ExpectUniqueSample("Autofill.AtMemory.StateRestored",
+                                      AtMemoryStateRestored::kNewSession, 2);
+}
+
+// Tests that with search statefulness, re-showing the popup after typing a
+// query without submitting it logs `kRestoredWithExistingQuery`.
+TEST_F(AtMemoryManagerTestBase,
+       SearchStatefulness_StateRestoredWithExistingQuery) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAtMemorySearchStatefulness};
+  base::HistogramTester histogram_tester;
+
+  auto [form_id, field_id] = SeeFormAndShowPopup();
+  manager().OnFilterChanged(u"john");
+  manager().OnPopupHidden(SuggestionHidingReason::kUserAborted);
+
+  ASSERT_EQ(manager().GetStateForField(field_id, form_origin()).filter,
+            u"john");
+  manager().OnPopupShown(autofill_manager(), form_id, field_id,
+                         AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl,
+                         /*metadata=*/{}, update_callback_.Get(),
+                         ukm::kInvalidSourceId);
+
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples("Autofill.AtMemory.StateRestored"),
+      BucketsAre(Bucket(AtMemoryStateRestored::kNewSession, 1),
+                 Bucket(AtMemoryStateRestored::kRestoredWithExistingQuery, 1)));
+}
+
+// Tests that with search statefulness, re-showing the popup while a submitted
+// query is in flight logs `kRestoredWhileSearching`, and re-showing it after
+// the query completed logs `kRestoredWithResponse`.
+TEST_F(AtMemoryManagerTestBase,
+       SearchStatefulness_StateRestoredWhileSearchingAndWithResponse) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAtMemorySearchStatefulness};
+  base::HistogramTester histogram_tester;
+
+  auto [form_id, field_id] = SeeFormAndShowPopup();
+  manager().OnFilterChanged(u"john");
+
+  base::RepeatingCallback<void(MemorySearchResults)> saved_query_callback;
+  EXPECT_CALL(mock_query_service(),
+              Query(std::u16string_view(u"john"), _, _, _))
+      .WillOnce(SaveArg<3>(&saved_query_callback));
+  EXPECT_CALL(update_callback_, Run).Times(testing::AnyNumber());
+  manager().OnSearchSubmitted(u"john");
+  ASSERT_TRUE(saved_query_callback);
+
+  // Hide and re-show the popup while the query is in flight.
+  manager().OnPopupHidden(SuggestionHidingReason::kUserAborted);
+  manager().GetStateForField(field_id, form_origin());
+  manager().OnPopupShown(autofill_manager(), form_id, field_id,
+                         AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl,
+                         /*metadata=*/{}, update_callback_.Get(),
+                         ukm::kInvalidSourceId);
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples("Autofill.AtMemory.StateRestored"),
+      BucketsAre(Bucket(AtMemoryStateRestored::kNewSession, 1),
+                 Bucket(AtMemoryStateRestored::kRestoredWhileSearching, 1)));
+
+  // Complete the query, then hide and re-show the popup.
+  MemorySearchResult entry(MemoryDataType::kNameFull, u"John Doe", u"John Doe");
+  entry.sources = {MemoryEntrySource(MemoryEntrySourceType::kAutofill)};
+  saved_query_callback.Run(
+      MemorySearchResults(MemorySearchStatus::kFinalResponseSuccess, {entry}));
+  manager().OnPopupHidden(SuggestionHidingReason::kUserAborted);
+  manager().GetStateForField(field_id, form_origin());
+  manager().OnPopupShown(autofill_manager(), form_id, field_id,
+                         AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl,
+                         /*metadata=*/{}, update_callback_.Get(),
+                         ukm::kInvalidSourceId);
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples("Autofill.AtMemory.StateRestored"),
+      BucketsAre(Bucket(AtMemoryStateRestored::kNewSession, 1),
+                 Bucket(AtMemoryStateRestored::kRestoredWhileSearching, 1),
+                 Bucket(AtMemoryStateRestored::kRestoredWithResponse, 1)));
+}
+
+// Tests that "Autofill.AtMemory.StateRestored" is not logged when search
+// statefulness is disabled.
+TEST_F(AtMemoryManagerTestBase,
+       StateRestoredNotLoggedWhenStatefulnessDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      features::kAutofillAtMemorySearchStatefulness);
+  base::HistogramTester histogram_tester;
+
+  SeeFormAndShowPopup();
+  histogram_tester.ExpectTotalCount("Autofill.AtMemory.StateRestored", 0);
+}
+
 INSTANTIATE_TEST_SUITE_P(All, AtMemoryManagerTest, testing::Bool());
 
 // Tests that empty query displays previously filled suggestions below the
@@ -3438,8 +3558,13 @@ TEST_F(AtMemoryManagerTestBase,
 
 // Tests that a survey is shown after accepting an AtMemory suggestion.
 TEST_F(AtMemoryManagerTestBase, FillSearchResult_TriggersSurvey) {
-  EXPECT_CALL(autofill_client(), TriggerAtMemoryPersonalizationAndTrustSurvey(
-                                     /*is_dismissed=*/false, _));
+  EXPECT_CALL(autofill_client(),
+              TriggerAtMemoryPersonalizationAndTrustSurvey(
+                  /*is_dismissed=*/false,
+                  HatsSurveyStringData{
+                      {"GIC opt-in accepted", "false"},
+                      {"Personal Intelligence available", "true"},
+                      {"Origin of the website (eTLD+1)", "example.test"}}));
 
   const auto [form_id, field_id] = SeeFormAndShowPopup();
   manager().FillSearchResult(
@@ -3477,9 +3602,13 @@ TEST_F(AtMemoryManagerTestBase, OnPopupHidden_TriggersSurveyAfterDelay) {
   EXPECT_CALL(autofill_client(),
               TriggerAtMemoryPersonalizationAndTrustSurvey(
                   /*is_dismissed=*/true,
-                  HatsSurveyStringData{{"Type of dismissal", "User dismissed"},
-                                       {"Query count", "1"},
-                                       {"Query results count", "2"}}));
+                  HatsSurveyStringData{
+                      {"Type of dismissal", "User dismissed"},
+                      {"Query count", "1"},
+                      {"Query results count", "2"},
+                      {"GIC opt-in accepted", "false"},
+                      {"Personal Intelligence available", "true"},
+                      {"Origin of the website (eTLD+1)", "example.test"}}));
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -3505,9 +3634,13 @@ TEST_F(AtMemoryManagerTestBase,
   EXPECT_CALL(autofill_client(),
               TriggerAtMemoryPersonalizationAndTrustSurvey(
                   /*is_dismissed=*/true,
-                  HatsSurveyStringData{{"Type of dismissal", "User dismissed"},
-                                       {"Query count", "10+"},
-                                       {"Query results count", "10+"}}));
+                  HatsSurveyStringData{
+                      {"Type of dismissal", "User dismissed"},
+                      {"Query count", "10+"},
+                      {"Query results count", "10+"},
+                      {"GIC opt-in accepted", "false"},
+                      {"Personal Intelligence available", "true"},
+                      {"Origin of the website (eTLD+1)", "example.test"}}));
   task_environment_.FastForwardBy(base::Seconds(15));
 }
 

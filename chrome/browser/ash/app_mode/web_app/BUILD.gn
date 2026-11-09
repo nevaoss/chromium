@@ -15,7 +15,6 @@ static_library("web_app") {
   ]
   public_deps = [
     "//base",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/web_applications",
     "//components/account_id",
@@ -34,6 +33,7 @@ static_library("web_app") {
     "//components/services/app_service/public/cpp:app_types",
     "//content/public/browser",
     "//net/traffic_annotation",
+    "//services/data_decoder/public/cpp",
     "//services/network/public/cpp",
     "//skia",
   ]

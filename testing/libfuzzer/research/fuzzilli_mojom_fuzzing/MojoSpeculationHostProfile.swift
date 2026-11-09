@@ -10,8 +10,6 @@
 //     third_party/blink/public/mojom/speculation_rules/speculation_rules.mojom
 //
 
-private let mojoPrefix = "blink.mojom."
-
 ///
 /// Interfaces
 ///
@@ -27,9 +25,10 @@ extension ILType {
         ])
     fileprivate static let jsBlinkMojomSpeculationHostRemoteWrapper: ILType = .object(
         ofGroup: "blink.mojom.SpeculationHostRemoteWrapper",
-        withMethods: ["close", "isBound", "associateAndPassReceiver"])
-    fileprivate static let jsBlinkMojomSpeculationHostPendingReceiver: ILType = .object(
-        ofGroup: "blink.mojom.SpeculationHostPendingReceiver")
+        withMethods: [
+          "close",
+          "isBound",
+        ])
 }
 
 extension ObjectGroup {
@@ -59,16 +58,7 @@ extension ObjectGroup {
         methods: [
             "close": [] => .undefined,
             "isBound": [] => .boolean,
-            "associateAndPassReceiver": [] => .jsBlinkMojomSpeculationHostPendingReceiver,
-        ]
-    )
-
-    fileprivate static let blinkMojomSpeculationHostPendingReceiver = ObjectGroup(
-        name: "blink.mojom.SpeculationHostPendingReceiver",
-        instanceType: .jsBlinkMojomSpeculationHostPendingReceiver,
-        properties: [:],
-        methods: [:]
-    )
+        ])
 }
 
 ///
@@ -118,7 +108,7 @@ extension ILType {
             "varyOnKeyOrder",
         ])
     fileprivate static let jsNetworkMojomNoVarySearchConstructor: ILType = .constructor([
-        .plain(.jsNetworkMojomSearchParamsVariance),
+        .plain(.jsNetworkMojomSearchParamsVarianceUnion),
         .plain(.boolean),
     ] => .jsNetworkMojomNoVarySearch)
 }
@@ -154,7 +144,7 @@ extension ObjectGroup {
         name: "network.mojom.NoVarySearch",
         instanceType: .jsNetworkMojomNoVarySearch,
         properties: [
-            "searchVariance": .jsNetworkMojomSearchParamsVariance,
+            "searchVariance": .jsNetworkMojomSearchParamsVarianceUnion,
             "varyOnKeyOrder": .boolean,
         ],
         methods: [:]
@@ -229,18 +219,18 @@ extension ILType {
 /// Unions
 ///
 extension ILType {
-    fileprivate static let jsNetworkMojomSearchParamsVariance: ILType = .object(
+    fileprivate static let jsNetworkMojomSearchParamsVarianceUnion: ILType = .object(
         ofGroup: "network.mojom.SearchParamsVariance")
-    fileprivate static let jsNetworkMojomSearchParamsVarianceNoVaryParamsConstructor: ILType = .constructor(
-        [.plain(.jsStringMojoArray)] => .jsNetworkMojomSearchParamsVariance)
-    fileprivate static let jsNetworkMojomSearchParamsVarianceVaryParamsConstructor: ILType = .constructor(
-        [.plain(.jsStringMojoArray)] => .jsNetworkMojomSearchParamsVariance)
+    fileprivate static let jsNetworkMojomSearchParamsVarianceUnionNoVaryParamsConstructor: ILType = .constructor(
+        [.plain(.jsStringMojoArray)] => .jsNetworkMojomSearchParamsVarianceUnion)
+    fileprivate static let jsNetworkMojomSearchParamsVarianceUnionVaryParamsConstructor: ILType = .constructor(
+        [.plain(.jsStringMojoArray)] => .jsNetworkMojomSearchParamsVarianceUnion)
 }
 
 extension ObjectGroup {
-    fileprivate static let networkMojomSearchParamsVariance = ObjectGroup(
+    fileprivate static let networkMojomSearchParamsVarianceUnion = ObjectGroup(
         name: "network.mojom.SearchParamsVariance",
-        instanceType: .jsNetworkMojomSearchParamsVariance,
+        instanceType: .jsNetworkMojomSearchParamsVarianceUnion,
         properties: [:],
         methods: [:]
     )
@@ -249,10 +239,12 @@ extension ObjectGroup {
 ///
 /// Generators
 ///
-// TODO(crbug.com/500386713) Consider using mojoBuiltins or another list instead of regex
+/// Names of every ObjectGroup registered by this profile.
+private let mojoTargetGroups = Set(mojoObjectGroups.map { $0.name })
+
 private func isTargetObject(type: ILType) -> Bool {
     guard type.Is(.object()), let group = type.group else { return false }
-    return group.starts(with: mojoPrefix)
+    return mojoTargetGroups.contains(group)
 }
 
 /// Mojo variant of the builtin `MethodCallGenerator` that operates only on
@@ -296,6 +288,17 @@ private let MojoPropertyRetrievalGenerator = CodeGenerator(
     b.getProperty(propertyName, of: obj)
 }
 
+/// Every ObjectGroup registered by this profile. Also used by `isTargetObject`
+/// to decide which variables the Mojo generators operate on.
+private let mojoObjectGroups: [ObjectGroup] = [
+    .blinkMojomSpeculationHostRemote,
+    .blinkMojomSpeculationHostRemoteWrapper,
+    .blinkMojomSpeculationCandidate,
+    .blinkMojomReferrer,
+    .networkMojomNoVarySearch,
+    .networkMojomSearchParamsVarianceUnion,
+] + commonMojoObjectGroups
+
 private let mojoBuiltins: [String: ILType] = [
     /// Profiles declare this method, a wrapper method around `getRemote` that follows
     /// the Singleton pattern, in `codePrefix`. This method ensures: (1) `getRemote`
@@ -305,8 +308,8 @@ private let mojoBuiltins: [String: ILType] = [
     "blink.mojom.SpeculationCandidate": .jsBlinkMojomSpeculationCandidateConstructor,
     "blink.mojom.Referrer": .jsBlinkMojomReferrerConstructor,
     "network.mojom.NoVarySearch": .jsNetworkMojomNoVarySearchConstructor,
-    "network.mojom.SearchParamsVariance.noVaryParams": .jsNetworkMojomSearchParamsVarianceNoVaryParamsConstructor,
-    "network.mojom.SearchParamsVariance.varyParams": .jsNetworkMojomSearchParamsVarianceVaryParamsConstructor,
+    "network.mojom.SearchParamsVariance.noVaryParams": .jsNetworkMojomSearchParamsVarianceUnionNoVaryParamsConstructor,
+    "network.mojom.SearchParamsVariance.varyParams": .jsNetworkMojomSearchParamsVarianceUnionVaryParamsConstructor,
 ]
 
 private let keepGenerators = [
@@ -362,15 +365,7 @@ let mojoSpeculationHostProfile = Profile(
         "ExplorationMutator", "ProbingMutator", "PropertyAccessorMutator"
     ],
     additionalBuiltins: mojoBuiltins.merging(commonMojoBuiltins) { (existing, _) in existing },
-    additionalObjectGroups: [
-        .blinkMojomSpeculationHostRemote,
-        .blinkMojomSpeculationHostRemoteWrapper,
-        .blinkMojomSpeculationHostPendingReceiver,
-        .blinkMojomSpeculationCandidate,
-        .blinkMojomReferrer,
-        .networkMojomNoVarySearch,
-        .networkMojomSearchParamsVariance,
-    ] + commonMojoObjectGroups,
+    additionalObjectGroups: mojoObjectGroups,
     additionalEnumerations: [
         .jsBlinkMojomSpeculationAction,
         .jsNetworkMojomReferrerPolicy,

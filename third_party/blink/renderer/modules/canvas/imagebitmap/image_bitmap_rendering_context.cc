@@ -63,7 +63,7 @@ scoped_refptr<StaticBitmapImage> ImageBitmapRenderingContext::MakeAccelerated(
   }
 
 #if BUILDFLAG(IS_LINUX)
-  // TODO(b/330865436): On Linux, CanvasResourceProvider doesn't always check
+  // TODO(b/330865436): On Linux, CreateFromRaster() doesn't always check
   // for SCANOUT support correctly on X11 and it's never supported in
   // practice. Therefore, don't include it until this flow is reworked.
   constexpr gpu::SharedImageUsageSet kSharedImageUsageFlags =
@@ -71,7 +71,7 @@ scoped_refptr<StaticBitmapImage> ImageBitmapRenderingContext::MakeAccelerated(
 #else
   // Always request gpu::SHARED_IMAGE_USAGE_SCANOUT when using gpu compositing,
   // if possible. This is safe because the prerequisite capabilities are checked
-  // downstream in CanvasResourceProvider::CreateSharedImageProvider.
+  // downstream in AcceleratedStaticBitmapImage::CreateFromRaster().
   constexpr gpu::SharedImageUsageSet kSharedImageUsageFlags =
       gpu::SHARED_IMAGE_USAGE_DISPLAY_READ | gpu::SHARED_IMAGE_USAGE_SCANOUT;
 #endif  // BUILDFLAG(IS_LINUX)
@@ -465,12 +465,16 @@ ImageBitmapRenderingContext::GetResourceForPushFrame(
           CanvasNon2DResourceProvider::Create(
               image->Size(), format, alpha_type, color_space, hdr_metadata,
               SharedGpuContext::ContextProviderWrapper(),
-              gpu::SHARED_IMAGE_USAGE_DISPLAY_READ, Host());
+              gpu::SHARED_IMAGE_USAGE_DISPLAY_READ,
+              blink::BindOnce(&CanvasRenderingContextHost::NotifyGpuContextLost,
+                              WrapWeakPersistent(Host())));
     } else if (static_cast<OffscreenCanvas*>(Host())->HasPlaceholderCanvas()) {
       resource_provider_for_offscreen_canvas_ =
           CanvasNon2DResourceProvider::CreateForSoftwareCompositor(
               image->Size(), format, alpha_type, color_space, hdr_metadata,
-              SharedGpuContext::SharedImageInterfaceProvider(), Host());
+              SharedGpuContext::SharedImageInterfaceProvider(),
+              blink::BindOnce(&CanvasRenderingContextHost::NotifyGpuContextLost,
+                              WrapWeakPersistent(Host())));
     }
 
     Host()->UpdateMemoryUsage();

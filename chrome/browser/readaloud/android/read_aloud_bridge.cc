@@ -42,6 +42,7 @@ int32_t ToJavaPlaybackState(read_aloud::mojom::PlaybackState state) {
     case read_aloud::mojom::PlaybackState::kBuffering:
       return 3;  // PlaybackListener.State.BUFFERING
     case read_aloud::mojom::PlaybackState::kPaused:
+    case read_aloud::mojom::PlaybackState::kEndOfStream:
       return 4;  // PlaybackListener.State.PAUSED
     case read_aloud::mojom::PlaybackState::kPlaying:
       return 5;  // PlaybackListener.State.PLAYING
@@ -320,6 +321,12 @@ void ReadAloudBridge::SetLanguageCode(JNIEnv* env,
 void ReadAloudBridge::PreviewVoice(JNIEnv* env, const std::string& voice_id) {
   if (service_) {
     service_->PreviewVoice(voice_id);
+  }
+}
+
+void ReadAloudBridge::PauseVoicePreview(JNIEnv* env) {
+  if (service_) {
+    service_->PauseVoicePreview();
   }
 }
 

@@ -59,6 +59,9 @@ BASE_DECLARE_FEATURE(kEnableLensInNTP);
 // Feature flag to enable the Lens "Search copied image" omnibox entrypoint.
 BASE_DECLARE_FEATURE(kEnableLensInOmniboxCopiedImage);
 
+// Feature flag to enable the Lens View Finder Unified experience
+BASE_DECLARE_FEATURE(kEnableLensViewFinderUnifiedExperience);
+
 // Whether to enable loading AIM in the lens result page.
 BASE_DECLARE_FEATURE(kLensLoadAIMInLensResultPage);
 
@@ -847,6 +850,18 @@ BASE_DECLARE_FEATURE(kPlusButtonMenuMoreOptionsSubmenu);
 // Returns true if the submenu groupping is enabled in the plus menu.
 bool IsPlusButtonMenuMoreOptionsSubmenu();
 
+// Enables the string updates in the plus button menu.
+BASE_DECLARE_FEATURE(kPlusButtonMenuStringUpdates);
+
+// Returns true if the string updates in the plus button menu.
+bool IsPlusButtonMenuStringUpdatesEnabled();
+
+// Enables the string updates in the plus button menu.
+BASE_DECLARE_FEATURE(kPlusButtonMenuVerticalListView);
+
+// Returns true if the vertical list view is enabled in the plus button menu.
+bool IsPlusButtonMenuVerticalListView();
+
 // Enables the `AssistantAimMinimizedState` feature.
 BASE_DECLARE_FEATURE(kAssistantAimMinimizedState);
 
@@ -994,5 +1009,17 @@ BASE_DECLARE_FEATURE(kLightAppBar);
 
 // Returns true if the LightAppBar feature is enabled.
 bool IsLightAppBarEnabled();
+
+// Enables the AssistantAimThreads feature.
+BASE_DECLARE_FEATURE(kAssistantAimThreads);
+
+// Returns true if the AssistantAimThreads feature is enabled.
+bool IsAssistantAimThreadsEnabled();
+
+// Enables the `kVoiceSearchEvolutionPhase1` feature.
+BASE_DECLARE_FEATURE(kVoiceSearchEvolutionPhase1);
+
+// Returns true if the `kVoiceSearchEvolutionPhase1` feature is enabled.
+bool IsVoiceSearchEvolutionPhase1Enabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

@@ -2537,79 +2537,6 @@ TEST_F(WebuiOmniboxHandlerTest,
                    ->show_contextual_description);  // Header not empty -> False
 }
 
-// Verifies that `swap_contents_and_description` is resolved in the handler so
-// that the WebUI always renders `contents` as the primary text.
-TEST_F(WebuiOmniboxHandlerTest, SwapContentsAndDescriptionResolvedInHandler) {
-  page_.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(&page_);
-
-  scoped_refptr<FakeAutocompleteProvider> provider =
-      new FakeAutocompleteProvider(AutocompleteProvider::Type::kHistoryQuick);
-
-  AutocompleteMatch swapped_match(
-      provider.get(), 1000, false,
-      omnibox::AutocompleteMatchType::kHistoryUrl);
-  swapped_match.destination_url = GURL("https://example.com/");
-  swapped_match.contents = u"example.com";
-  swapped_match.contents_class = {{0, ACMatchClassification::URL}};
-  swapped_match.description = u"Example Title";
-  swapped_match.description_class = {{0, ACMatchClassification::MATCH}};
-  swapped_match.swap_contents_and_description = true;
-
-  AutocompleteMatch unswapped_match(
-      provider.get(), 900, false,
-      omnibox::AutocompleteMatchType::kHistoryUrl);
-  unswapped_match.destination_url = GURL("https://other.com/");
-  unswapped_match.contents = u"other.com";
-  unswapped_match.contents_class = {{0, ACMatchClassification::URL}};
-  unswapped_match.description = u"Other Title";
-  unswapped_match.description_class = {{0, ACMatchClassification::MATCH}};
-  unswapped_match.swap_contents_and_description = false;
-
-  auto fake_autocomplete_controller =
-      std::make_unique<FakeAutocompleteController>(&task_environment_);
-  fake_autocomplete_controller->providers_.push_back(provider);
-  fake_autocomplete_controller->published_result_.AppendMatches(
-      {swapped_match, unswapped_match});
-
-  handler_->autocomplete_controller_observation_.Reset();
-  handler_->SetAutocompleteControllerForTesting(
-      std::move(fake_autocomplete_controller));
-
-  searchbox::mojom::AutocompleteResultPtr received_result;
-  EXPECT_CALL(page_, AutocompleteResultChanged)
-      .WillOnce(
-          [&received_result](searchbox::mojom::AutocompleteResultPtr result) {
-            received_result = std::move(result);
-          });
-
-  handler_->OnResultChanged(handler_->autocomplete_controller(), false);
-  page_.FlushForTesting();
-
-  ASSERT_TRUE(received_result);
-  ASSERT_EQ(2u, received_result->matches.size());
-
-  // Swapped: the title becomes the primary text, the URL the secondary text,
-  // and classifications travel with their text.
-  const auto& swapped = received_result->matches[0];
-  EXPECT_EQ(u"Example Title", swapped->contents);
-  ASSERT_EQ(1u, swapped->contents_class.size());
-  EXPECT_EQ(ACMatchClassification::MATCH, swapped->contents_class[0]->style);
-  EXPECT_EQ(u"example.com", swapped->description);
-  ASSERT_EQ(1u, swapped->description_class.size());
-  EXPECT_EQ(ACMatchClassification::URL, swapped->description_class[0]->style);
-
-  // Unswapped: passed through unchanged.
-  const auto& unswapped = received_result->matches[1];
-  EXPECT_EQ(u"other.com", unswapped->contents);
-  ASSERT_EQ(1u, unswapped->contents_class.size());
-  EXPECT_EQ(ACMatchClassification::URL, unswapped->contents_class[0]->style);
-  EXPECT_EQ(u"Other Title", unswapped->description);
-  ASSERT_EQ(1u, unswapped->description_class.size());
-  EXPECT_EQ(ACMatchClassification::MATCH,
-            unswapped->description_class[0]->style);
-}
-
 // Verifies that `show_aim_activity_link` is set on the result only when a
 // match belongs to the MIA recommendations group.
 TEST_F(WebuiOmniboxHandlerTest, ShowAimActivityLink) {
@@ -3326,7 +3253,7 @@ TEST_F(OmniboxComposeboxHandlerTest,
   EXPECT_CALL(*mock_controller, GetFileInfo(active_tab_token))
       .WillRepeatedly(testing::Return(&file_info));
 
-  session_handle_->set_submitted_context_tokens({active_tab_token});
+  session_handle_->SetSubmittedContextTokens({active_tab_token});
   EXPECT_EQ(session_handle_->GetSubmittedContextTokens().size(), 1u);
   EXPECT_TRUE(session_handle_->IsTabInContext(active_tab_id));
 
@@ -3392,7 +3319,7 @@ TEST_F(OmniboxComposeboxHandlerTest,
   EXPECT_CALL(*mock_controller, GetFileInfo(active_tab_token))
       .WillRepeatedly(testing::Return(&file_info));
 
-  session_handle_->set_submitted_context_tokens({active_tab_token});
+  session_handle_->SetSubmittedContextTokens({active_tab_token});
   session_handle_->set_invocation_source(
       lens::LensOverlayInvocationSource::kOmniboxPageAction);
 
@@ -3463,7 +3390,7 @@ TEST_F(OmniboxComposeboxHandlerTest,
   EXPECT_CALL(*mock_controller, GetFileInfo(second_tab_token))
       .WillRepeatedly(testing::Return(&file_info_2));
 
-  session_handle_->set_submitted_context_tokens(
+  session_handle_->SetSubmittedContextTokens(
       {active_tab_token, second_tab_token});
   EXPECT_EQ(session_handle_->GetSubmittedContextTokens().size(), 2u);
   EXPECT_TRUE(session_handle_->IsTabInContext(active_tab_id));
@@ -3539,7 +3466,7 @@ TEST_F(
   EXPECT_CALL(*mock_controller, GetFileInfo(second_tab_token))
       .WillRepeatedly(testing::Return(&file_info_2));
 
-  session_handle_->set_submitted_context_tokens(
+  session_handle_->SetSubmittedContextTokens(
       {first_tab_token, second_tab_token});
   EXPECT_EQ(session_handle_->GetSubmittedContextTokens().size(), 2u);
 
@@ -3606,7 +3533,7 @@ TEST_F(OmniboxComposeboxHandlerTest,
   EXPECT_CALL(*mock_controller, GetFileInfo(active_tab_token))
       .WillRepeatedly(testing::Return(&file_info));
 
-  session_handle_->set_submitted_context_tokens({active_tab_token});
+  session_handle_->SetSubmittedContextTokens({active_tab_token});
 
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
       passed_session_handle;
@@ -3656,7 +3583,7 @@ TEST_F(
       omnibox::UNKNOWN_AIM_ENTRY_POINT));
 
   // 2. No tabs attached returns false and leaves session_handle_ intact.
-  session_handle_->set_submitted_context_tokens({});
+  session_handle_->SetSubmittedContextTokens({});
   EXPECT_FALSE(lens_search_controller_->StartContextualAimQueryInSidePanel(
       GURL("https://www.google.com/search?q=test"), session_handle_,
       omnibox::UNKNOWN_AIM_ENTRY_POINT));
@@ -3674,7 +3601,7 @@ TEST_F(
           session_handle_->GetController());
   EXPECT_CALL(*mock_controller, GetFileInfo(other_tab_token))
       .WillRepeatedly(testing::Return(&file_info));
-  session_handle_->set_submitted_context_tokens({other_tab_token});
+  session_handle_->SetSubmittedContextTokens({other_tab_token});
 
   EXPECT_FALSE(lens_search_controller_->StartContextualAimQueryInSidePanel(
       GURL("https://www.google.com/search?q=test"), session_handle_,
@@ -3740,7 +3667,7 @@ TEST_F(
       .WillRepeatedly(testing::Return(&second_file_info));
 
   // Multiple tokens are not supported by the legacy Lens side panel fallback.
-  session_handle_->set_submitted_context_tokens(
+  session_handle_->SetSubmittedContextTokens(
       {active_tab_token, second_tab_token});
   EXPECT_CALL(*lens_search_controller_,
               IssueContextualSearchRequest(testing::_, testing::_, testing::_,
@@ -3753,7 +3680,7 @@ TEST_F(
 
   // A single active-tab token falls back to IssueContextualSearchRequest and
   // resets session_handle_.
-  session_handle_->set_submitted_context_tokens({active_tab_token});
+  session_handle_->SetSubmittedContextTokens({active_tab_token});
   GURL target_url("https://www.google.com/search?q=test");
   EXPECT_CALL(
       *lens_search_controller_,

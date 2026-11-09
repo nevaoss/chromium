@@ -39,8 +39,6 @@ source_set("impl") {
     "translate_service.cc",
   ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   deps = [
     ":translate",
     "//chrome/browser:browser_process",
@@ -141,6 +139,7 @@ if (!is_android) {
       "//chrome/browser/prefs:util",
       "//chrome/browser/search_engines",
       "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui/read_anything",
       "//chrome/browser/ui/toasts",
       "//chrome/browser/ui/toasts/api:toasts",
       "//chrome/browser/ui/translate",

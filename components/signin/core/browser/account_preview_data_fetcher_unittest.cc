@@ -22,6 +22,7 @@
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/sync/base/data_type.h"
 #include "components/sync/base/time.h"
+#include "net/base/request_priority.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -53,7 +54,7 @@ class AccountPreviewDataFetcherTest : public testing::Test {
   AccountPreviewDataFetcherTest() {
     feature_list_.InitWithFeatures(
         {switches::kEnableAccountPreviewData,
-         switches::kEnableAccountPreviewDataReducedTypes,
+         switches::kEnableAccountPreviewDataFetchOptimizations,
          switches::kEnableAccountPreviewEntityPreviews},
         {});
   }
@@ -212,17 +213,70 @@ TEST_F(AccountPreviewDataFetcherTest, GetRequestedDataTypes) {
   EXPECT_EQ(GetRequestedDataTypes(),
             base::span<const syncer::DataType>(kRequestedDataTypes));
 
+  {
+    base::test::ScopedFeatureList scoped_feature_list;
+    scoped_feature_list.InitAndEnableFeatureWithParameters(
+        switches::kEnableAccountPreviewDataFetchOptimizations,
+        {{switches::kAccountPreviewDataReducedTypes.name, "false"}});
+    EXPECT_EQ(GetRequestedDataTypes(),
+              base::span<const syncer::DataType>(kLegacyRequestedDataTypes));
+  }
+
+  {
+    base::test::ScopedFeatureList scoped_feature_list;
+    scoped_feature_list.InitAndDisableFeature(
+        switches::kEnableAccountPreviewDataFetchOptimizations);
+    EXPECT_EQ(GetRequestedDataTypes(),
+              base::span<const syncer::DataType>(kLegacyRequestedDataTypes));
+  }
+}
+
+TEST_F(AccountPreviewDataFetcherTest, RequestPriorityMedium) {
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("user@gmail.com");
+
+  auto fetcher = std::make_unique<AccountPreviewDataFetcher>(
+      account_info.GetGaiaId(), identity_test_env_.identity_manager(),
+      test_url_loader_factory_.GetSafeWeakWrapper(),
+      version_info::Channel::UNKNOWN,
+      /*current_device_cache_guids=*/base::flat_set<std::string>(),
+      base::DoNothing());
+  fetcher->Start();
+
+  ASSERT_EQ(2, test_url_loader_factory_.NumPending());
+  for (const auto& pending : *test_url_loader_factory_.pending_requests()) {
+    EXPECT_EQ(net::MEDIUM, pending.request.priority);
+  }
+}
+
+TEST_F(AccountPreviewDataFetcherTest, RequestPriorityIdleWhenParamDisabled) {
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndDisableFeature(
-      switches::kEnableAccountPreviewDataReducedTypes);
-  EXPECT_EQ(GetRequestedDataTypes(),
-            base::span<const syncer::DataType>(kLegacyRequestedDataTypes));
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      switches::kEnableAccountPreviewDataFetchOptimizations,
+      {{switches::kAccountPreviewDataMediumPriority.name, "false"}});
+
+  AccountInfo account_info =
+      identity_test_env_.MakeAccountAvailable("user@gmail.com");
+
+  auto fetcher = std::make_unique<AccountPreviewDataFetcher>(
+      account_info.GetGaiaId(), identity_test_env_.identity_manager(),
+      test_url_loader_factory_.GetSafeWeakWrapper(),
+      version_info::Channel::UNKNOWN,
+      /*current_device_cache_guids=*/base::flat_set<std::string>(),
+      base::DoNothing());
+  fetcher->Start();
+
+  ASSERT_EQ(2, test_url_loader_factory_.NumPending());
+  for (const auto& pending : *test_url_loader_factory_.pending_requests()) {
+    EXPECT_EQ(net::IDLE, pending.request.priority);
+  }
 }
 
 TEST_F(AccountPreviewDataFetcherTest, SuccessWithLegacyDataTypes) {
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndDisableFeature(
-      switches::kEnableAccountPreviewDataReducedTypes);
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      switches::kEnableAccountPreviewDataFetchOptimizations,
+      {{switches::kAccountPreviewDataReducedTypes.name, "false"}});
 
   AccountInfo account_info =
       identity_test_env_.MakeAccountAvailable("user@gmail.com");

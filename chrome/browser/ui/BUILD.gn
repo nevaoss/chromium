@@ -304,7 +304,6 @@ if (!is_android) {
       ":chrome_pages",
       ":intent_picker_tab_helper",
       ":singleton_tabs",
-      ":ui",
       "//build:branding_buildflags",
       "//chrome/app:command_ids",
       "//chrome/app/vector_icons",
@@ -313,6 +312,7 @@ if (!is_android) {
       "//chrome/browser/contextual_tasks:ui",
       "//chrome/browser/devtools",
       "//chrome/browser/enterprise/isolated_mode",
+      "//chrome/browser/feedback",
       "//chrome/browser/glic",
       "//chrome/browser/glic:mojo_bindings",
       "//chrome/browser/glic/browser_ui",
@@ -340,6 +340,7 @@ if (!is_android) {
       "//chrome/browser/ui/bookmarks",
       "//chrome/browser/ui/commerce",
       "//chrome/browser/ui/customize_chrome",
+      "//chrome/browser/ui/dialogs:browser_dialogs",
       "//chrome/browser/ui/fuzzy_search",
       "//chrome/browser/ui/interaction",
       "//chrome/browser/ui/lens",
@@ -381,11 +382,13 @@ if (!is_android) {
       "//chrome/browser/ui/webid",
       "//chrome/browser/ui/webui/inspect",
       "//chrome/browser/ui/webui/omnibox_popup",
+      "//chrome/browser/ui/webui/util",
       "//chrome/browser/undo",
       "//components/commerce/core:metrics",
       "//components/multistep_filter/core:features",
       "//components/omnibox/common:features",
       "//components/profile_metrics",
+      "//components/record_replay/core/common",
       "//components/skills:features",
       "//components/spellcheck/browser",
       "//components/undo",
@@ -435,10 +438,7 @@ if (!is_android) {
 
   source_set("browser_content_setting_bubble_model_delegate_impl") {
     sources = [ "browser_content_setting_bubble_model_delegate.cc" ]
-    public_deps = [
-      ":browser_content_setting_bubble_model_delegate",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_content_setting_bubble_model_delegate" ]
     deps = [
       ":browser_tabstrip",
       "//base",
@@ -464,10 +464,7 @@ if (!is_android) {
 
   source_set("browser_window_theme_observer_impl") {
     sources = [ "browser_window_theme_observer.cc" ]
-    public_deps = [
-      ":browser_window_theme_observer",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_window_theme_observer" ]
     deps = [
       ":browser_window_header",
       "//chrome/browser/themes",
@@ -481,10 +478,7 @@ if (!is_android) {
 
   source_set("browser_window_deleter_impl") {
     sources = [ "browser_window_deleter.cc" ]
-    public_deps = [
-      ":browser_window_deleter",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_window_deleter" ]
     deps = [
       ":browser_window_header",
       "//chrome/browser/ui/browser_window",
@@ -501,10 +495,7 @@ if (!is_android) {
 
   source_set("browser_tabrestore_impl") {
     sources = [ "browser_tabrestore.cc" ]
-    public_deps = [
-      ":browser_tabrestore",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_tabrestore" ]
     deps = [
       ":browser_window_header",
       ":tab_ui_helper",
@@ -562,10 +553,7 @@ if (!is_android) {
 
   source_set("browser_live_tab_context_impl") {
     sources = [ "browser_live_tab_context.cc" ]
-    public_deps = [
-      ":browser_live_tab_context",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_live_tab_context" ]
     deps = [
       ":browser_commands",
       ":browser_init_state",
@@ -624,10 +612,7 @@ if (!is_android) {
 
   source_set("unload_controller_impl") {
     sources = [ "unload_controller.cc" ]
-    public_deps = [
-      ":unload_controller",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":unload_controller" ]
     deps = [
       ":browser_commands",
       ":browser_live_tab_context",
@@ -691,10 +676,7 @@ if (!is_android) {
 
   source_set("browser_command_controller_impl") {
     sources = [ "browser_command_controller.cc" ]
-    public_deps = [
-      ":browser_command_controller",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_command_controller" ]
     deps = [
       ":accelerator_table",
       ":browser_actions",
@@ -727,6 +709,7 @@ if (!is_android) {
       "//chrome/browser/sharing_hub",
       "//chrome/browser/shortcuts",
       "//chrome/browser/signin",
+      "//chrome/browser/skills",
       "//chrome/browser/sync",
       "//chrome/browser/translate",
       "//chrome/browser/ui/actions",
@@ -762,6 +745,7 @@ if (!is_android) {
       "//components/bookmarks/browser",
       "//components/dom_distiller/core",
       "//components/feed:feature_list",
+      "//components/input",
       "//components/lens:buildflags",
       "//components/lens:features",
       "//components/live_caption",
@@ -781,6 +765,7 @@ if (!is_android) {
       "//components/skills:features",
       "//components/translate/core/browser",
       "//components/user_education/common",
+      "//components/user_manager",
       "//components/webapps/browser",
       "//content/public/browser",
       "//content/public/common",
@@ -840,10 +825,7 @@ if (!is_android) {
 
   source_set("browser_commands_impl") {
     sources = [ "browser_commands.cc" ]
-    public_deps = [
-      ":browser_commands",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_commands" ]
     deps = [
       ":accelerator_utils_headers",
       ":browser_command_controller",
@@ -1006,10 +988,7 @@ if (is_mac) {
 
   source_set("browser_commands_mac_impl") {
     sources = [ "browser_commands_mac.mm" ]
-    public_deps = [
-      ":browser_commands_mac",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_commands_mac" ]
     deps = [
       ":browser_commands",
       ":browser_window_header",
@@ -1125,28 +1104,26 @@ if (!is_android) {
   }
 }
 
-if (!is_android) {
-  source_set("accelerator_table") {
-    public = [ "accelerator_table.h" ]
-    sources = [ "accelerator_table.cc" ]
-    public_deps = [ "//ui/actions:actions_headers" ]
-    deps = [
-      "//chrome/app:command_ids",
-      "//chrome/browser/ui:ui_features",
-      "//chrome/browser/ui/actions:command_id_to_action_id",
-      "//chrome/browser/ui/tabs",
-      "//components/lens:buildflags",
-      "//components/lens:features",
-      "//ui/base",
-      "//ui/base:features",
-      "//ui/events:event_constants",
-      "//ui/events:events_base",
-    ]
-    if (is_mac) {
-      deps += [ "//chrome/browser:global_keyboard_shortcuts_mac" ]
-    }
+source_set("accelerator_table") {
+  public = [ "accelerator_table.h" ]
+  sources = [ "accelerator_table.cc" ]
+  public_deps = [ "//ui/actions:actions_headers" ]
+  deps = [
+    "//build:branding_buildflags",
+    "//chrome/app:command_ids",
+    "//chrome/browser/ui/actions:command_id_to_action_id",
+    "//printing/buildflags",
+    "//ui/base",
+    "//ui/base:features",
+    "//ui/events:event_constants",
+    "//ui/events:events_base",
+  ]
+  if (is_mac) {
+    deps += [ "//chrome/browser:global_keyboard_shortcuts_mac" ]
   }
+}
 
+if (!is_android) {
   source_set("breadcrumb_manager_browser_agent") {
     public = [ "breadcrumb_manager_browser_agent.h" ]
     sources = [ "breadcrumb_manager_browser_agent.cc" ]
@@ -1155,6 +1132,7 @@ if (!is_android) {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs:tab_strip_model_observer",
       "//components/breadcrumbs/core",
+      "//components/tabs:public",
     ]
   }
 
@@ -1372,9 +1350,9 @@ source_set("tab_helpers_impl") {
     "//chrome/browser/complex_tasks",
     "//chrome/browser/content_settings",
     "//chrome/browser/content_settings:content_settings_factory",
-    "//chrome/browser/enterprise",
     "//chrome/browser/facilitated_payments",
     "//chrome/browser/favicon",
+    "//chrome/browser/file_system_access",
     "//chrome/browser/glic:impl",
     "//chrome/browser/glic/public:features",
     "//chrome/browser/history",
@@ -1391,14 +1369,11 @@ source_set("tab_helpers_impl") {
     "//chrome/browser/page_info",
     "//chrome/browser/page_load_metrics",
     "//chrome/browser/password_manager",
-    "//chrome/browser/permissions",
     "//chrome/browser/picture_in_picture",
     "//chrome/browser/predictors",
     "//chrome/browser/preloading/prefetch/no_state_prefetch",
     "//chrome/browser/profiles",
     "//chrome/browser/profiles:profile",
-    "//chrome/browser/resource_coordinator",
-    "//chrome/browser/safe_browsing",
     "//chrome/browser/search_engines",
     "//chrome/browser/sessions",
     "//chrome/browser/ssl",
@@ -1409,6 +1384,7 @@ source_set("tab_helpers_impl") {
     "//chrome/browser/sync_tab_context",
     "//chrome/browser/task_manager",
     "//chrome/browser/translate",
+    "//chrome/browser/trusted_vault",
     "//chrome/browser/ui/autofill",
     "//chrome/browser/ui/find_bar",
     "//chrome/browser/ui/prefs",
@@ -1421,7 +1397,6 @@ source_set("tab_helpers_impl") {
     "//chrome/common:buildflags",
     "//chrome/common:chrome_features",
     "//chrome/common:non_code_constants",
-    "//components/blocked_content",
     "//components/breadcrumbs/core:status",
     "//components/captive_portal/core:buildflags",
     "//components/client_hints/browser",
@@ -1445,17 +1420,13 @@ source_set("tab_helpers_impl") {
     "//components/page_content_annotations/core",
     "//components/page_info/core",
     "//components/password_manager/core/browser",
-    "//components/performance_manager",
-    "//components/permissions",
-    "//components/safe_browsing/content/browser",
-    "//components/safe_browsing/core/common:features",
+    "//components/permissions:permissions_common",
     "//components/search",
     "//components/sessions",
     "//components/sessions:session_id",
     "//components/site_engagement/content",
     "//components/tabs:public",
     "//components/tracing:tracing_config",
-    "//components/ukm/content",
     "//components/webapps/browser",
     "//components/zoom",
     "//content/public/browser",
@@ -1471,8 +1442,11 @@ source_set("tab_helpers_impl") {
     deps += [
       "//chrome/browser/android",
       "//chrome/browser/android:tabs_public",
+      "//chrome/browser/banners",
       "//chrome/browser/flags:flags_android",
       "//chrome/browser/plugins",
+      "//components/sensitive_content",
+      "//components/sensitive_content:features",
       "//content/public/common",
     ]
   } else {
@@ -1489,13 +1463,6 @@ source_set("tab_helpers_impl") {
 
   if (enable_offline_pages) {
     deps += [ "//chrome/browser/offline_pages" ]
-  }
-
-  if (safe_browsing_mode > 0) {
-    deps += [
-      "//components/safe_browsing/content/browser:client_side_detection",
-      "//components/safe_browsing/content/browser:safe_browsing_blocking_page",
-    ]
   }
 }
 
@@ -1538,7 +1505,6 @@ if (!is_android) {
 
   source_set("core") {
     sources = [ "browser.cc" ]
-    public_deps = [ "//chrome/browser:browser_public_dependencies" ]
     deps = [
       ":browser_command_controller",
       ":browser_header",
@@ -1659,126 +1625,6 @@ if (!is_android) {
       deps += [ "//components/captive_portal/content" ]
     }
   }
-}
-
-# This target no longer has any sources of its own; it only aggregates
-# dependencies. It must be a source_set (not a static_library) because an empty
-# static_library produces an empty archive, which the Windows librarian
-# (lld-link /lib) rejects with "lib failed".
-# TODO(https://crbug.com/353332589): Once //chrome/browser is properly
-# modularized, this target should be folded in with //chrome/browser:browser.
-source_set("ui") {
-  public_deps = [
-    ":accelerator_utils_headers",
-    ":browser_live_tab_context",
-    ":crypto_module_password_dialog",
-    ":download_close_type",
-    ":enterprise_startup_dialog",
-    ":screen_capture_notification_ui",
-    ":simple_message_box_headers",
-    ":tab_dialogs",
-    ":tab_modal_confirm_dialog",
-    "//chrome/browser:browser_public_dependencies",
-    "//chrome/browser/feedback",
-    "//chrome/browser/headless",
-    "//chrome/browser/history",
-    "//chrome/browser/history:impl",
-    "//chrome/browser/loader",
-    "//chrome/browser/media",
-    "//chrome/browser/media:impl",
-    "//chrome/browser/media/webrtc",
-    "//chrome/browser/memory",
-    "//chrome/browser/net",
-    "//chrome/browser/net:impl",
-    "//chrome/browser/notifications",
-    "//chrome/browser/notifications:impl",
-    "//chrome/browser/task_manager",
-    "//chrome/browser/ui/dialogs",
-    "//chrome/browser/ui/webui/flags",
-    "//chrome/browser/ui/webui/subresource_filter",
-  ]
-
-  if (is_win || is_mac || is_linux) {
-    public_deps += [
-      "//chrome/browser/ui/views/scheduled_restart",
-      "//chrome/browser/ui/views/scheduled_restart:impl",
-    ]
-  }
-
-  if (!is_android) {
-    public_deps += [
-      "//chrome/browser/contextual_cueing/internals",
-      "//chrome/browser/importer",
-      "//chrome/browser/importer:impl",
-      "//chrome/browser/personal_context/first_run",
-      "//chrome/browser/ui/commerce",
-      "//chrome/browser/ui/read_anything:impl",
-      "//chrome/browser/ui/views/side_panel",
-      "//chrome/browser/ui/waap:manager",
-      "//chrome/browser/ui/webui/data_sharing",
-      "//chrome/browser/ui/webui/feedback",
-      "//chrome/browser/ui/webui/feedback:impl",
-      "//chrome/browser/ui/webui/indigo_internals",
-      "//chrome/browser/ui/webui/media_router",
-      "//chrome/browser/ui/webui/multistep_filter_internals",
-      "//chrome/browser/ui/webui/on_device_internals",
-      "//chrome/browser/ui/webui/password_manager:password_manager_ui",
-      "//chrome/browser/ui/webui/search_engine_choice",
-      "//chrome/browser/ui/webui/side_panel/bookmarks",
-      "//chrome/browser/ui/webui/side_panel/comments",
-      "//chrome/browser/ui/webui/side_panel/customize_chrome/customize_toolbar",
-      "//chrome/browser/ui/webui/side_panel/customize_chrome/wallpaper_search",
-      "//chrome/browser/ui/webui/side_panel/history",
-      "//chrome/browser/ui/webui/side_panel/history_clusters",
-      "//chrome/browser/ui/webui/side_panel/read_anything",
-      "//chrome/browser/ui/webui/side_panel/reading_list",
-      "//chrome/browser/ui/webui/util",
-      "//chrome/browser/ui/webui/webnn_internals",
-    ]
-
-    if (use_aura) {
-      public_deps += [ "//chrome/browser/ui:overscroll_pref_manager" ]
-    }
-  }
-
-  if (enable_webui_ntp) {
-    public_deps += [
-      "//chrome/browser/ui/webui/new_tab_page",
-      "//chrome/browser/ui/webui/side_panel/customize_chrome:customize_chrome_ui",
-    ]
-  }
-
-  if (is_chromeos) {
-    public_deps += [
-      "//chrome/browser/ash/accessibility",
-      "//chrome/browser/ash/account_manager",
-      "//chrome/browser/ash/usb",
-      "//chrome/browser/ui/ash/login",
-      "//chrome/browser/ui/webui/ash/login",
-    ]
-  }
-
-  if (!is_android || is_desktop_android) {
-    public_deps += [ "//chrome/browser/ui/webui/ai_overlay_dialog" ]
-  }
-
-  if (is_win) {
-    public_deps += [
-      "//chrome/browser/ui/search_promotion",
-      "//chrome/browser/win",
-      "//chrome/browser/win:jumplist",
-    ]
-  }
-
-  if (enable_extensions) {
-    public_deps +=
-        [ "//chrome/browser/ui/views/extensions:extension_view_views" ]
-  }
-
-  # This target has no sources, allow_circular_includes_from, or deps. Do not
-  # add any to it.
-  sources = []
-  deps = []
 }
 
 # These are the dependencies for the "ui" target that are outside of
@@ -1979,10 +1825,7 @@ if (!is_android) {
 
   source_set("browser_tab_strip_model_delegate_impl") {
     sources = [ "browser_tab_strip_model_delegate.cc" ]
-    public_deps = [
-      ":browser_tab_strip",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":browser_tab_strip" ]
     deps = [
       ":browser_commands",
       ":browser_init_state",
@@ -2066,10 +1909,7 @@ if (!is_android) {
 
   source_set("chrome_pages_impl") {
     sources = [ "chrome_pages.cc" ]
-    public_deps = [
-      ":chrome_pages",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":chrome_pages" ]
     deps = [
       ":browser_element_identifiers",
       ":browser_window_header",
@@ -2156,6 +1996,10 @@ if (!is_android) {
       "unload_controller_browsertest.cc",
       "update_chrome_dialog_browsertest.cc",
     ]
+    public_deps = [
+      ":tab_modal_confirm_dialog",
+      ":tab_modal_confirm_dialog_delegate",
+    ]
 
     # Some of these tests have pre-existing size_t-vs-int comparisons that
     # only compiled in //chrome/test because it transitively depends on
@@ -2175,6 +2019,8 @@ if (!is_android) {
       ":browser_window_header",
       ":confirm_bubble",
       ":managed_ui",
+      ":screen_capture_notification_ui",
+      ":tab_dialogs",
       ":tab_ui_helper",
       "//base",
       "//base/test:test_support",
@@ -2193,10 +2039,11 @@ if (!is_android) {
       "//chrome/browser/resource_coordinator:utils",
       "//chrome/browser/search:test_support",
       "//chrome/browser/tab_group_sync:factories",
-      "//chrome/browser/ui",
       "//chrome/browser/ui/browser_active_state_manager",
+      "//chrome/browser/ui/browser_ui_controller",
       "//chrome/browser/ui/browser_web_contents_delegate",
       "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/dialogs:browser_dialogs",
       "//chrome/browser/ui/exclusive_access",
       "//chrome/browser/ui/fullscreen",
       "//chrome/browser/ui/performance_controls/test_support",
@@ -2213,7 +2060,6 @@ if (!is_android) {
       "//chrome/common:constants",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
-      "//chrome/test/base:test_browser_window",
       "//chrome/test/base:testing_browser_process",
       "//components/bookmarks/browser",
       "//components/bookmarks/test",
@@ -2237,6 +2083,9 @@ if (!is_android) {
       "//third_party/fuzztest",
       "//ui/native_window_tracker",
     ]
+    if (use_aura) {
+      deps += [ ":overscroll_pref_manager" ]
+    }
 
     if (use_aura) {
       sources += [ "overscroll_pref_manager_browsertest.cc" ]
@@ -2310,10 +2159,7 @@ static_library("test_support") {
 
   sources = [ "chooser_bubble_testapi.h" ]
 
-  public_deps = [
-    ":ui",
-    "//chrome/browser/ui/browser_window/test:test_support",
-  ]
+  public_deps = [ "//chrome/browser/ui/browser_window/test:test_support" ]
 
   deps = [
     "//chrome/app/theme:theme_resources",
@@ -2424,16 +2270,17 @@ source_set("unit_tests") {
   configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 
   sources = [
+    "accelerator_table_unittest.cc",
     "incognito_allowed_url_unittest.cc",
     "recently_audible_helper_unittest.cc",
     "url_identity_unittest.cc",
   ]
 
   deps = [
+    ":accelerator_table",
     ":incognito_allowed_url",
     ":recently_audible_helper",
     ":test_support",
-    ":ui",
     ":url_identity",
     "//base",
     "//base/test:test_support",
@@ -2448,7 +2295,6 @@ source_set("unit_tests") {
 
   if (!is_android) {
     sources += [
-      "accelerator_table_unittest.cc",
       "browser_manager_service_factory_unittest.cc",
       "browser_unittest.cc",
       "browser_window_state_unittest.cc",
@@ -2456,7 +2302,6 @@ source_set("unit_tests") {
       "managed_ui_for_supervised_user_unittest.cc",
     ]
     deps += [
-      ":accelerator_table",
       ":browser_manager_service",
       ":browser_window_state",
       ":intent_picker_tab_helper",
@@ -2509,7 +2354,6 @@ if (!is_android && !is_chromeos_device) {
       ":browser_window_header",
       ":chrome_pages",
       ":test_support",
-      ":ui",
       "//base",
       "//base/test:test_support",
       "//chrome/browser",
@@ -2518,6 +2362,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/ui/views:find_bar_views",
       "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:contents_web_view",
+      "//chrome/browser/ui/waap:manager",
       "//chrome/test:test_support",
       "//content/test:test_support",
       "//testing/gtest",
@@ -2615,13 +2460,6 @@ if (toolkit_views) {
       "//ui/gfx",
       "//ui/views",
     ]
-
-    # The sad tab feature (base SadTab, its controller, the WebContents helper
-    # and the SadTabView). Public headers are free of ui:ui blockers; the
-    # implementation reaches views/frame (browser_view.h, contents_web_view.h)
-    # through browser_public_dependencies, with an allow_circular_includes_from
-    # entry on //chrome/browser/ui:ui.
-    public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 
     if (is_chromeos) {
       # sad_tab.cc / sad_tab_view.cc check kiosk mode on ChromeOS.
@@ -2817,10 +2655,7 @@ if (is_chromeos) {
 
   source_set("settings_window_manager_chromeos_impl") {
     sources = [ "settings_window_manager_chromeos.cc" ]
-    public_deps = [
-      ":settings_window_manager_chromeos",
-      "//chrome/browser:browser_public_dependencies",
-    ]
+    public_deps = [ ":settings_window_manager_chromeos" ]
     deps = [
       ":browser_window_header",
       "//ash",

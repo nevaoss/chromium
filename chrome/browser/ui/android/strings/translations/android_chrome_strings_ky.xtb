@@ -322,12 +322,14 @@ Chrome'дун ишин жакшыртуу үчүн маалыматтарды к
 <translation id="2297822946037605517">Бул баракты бөлүшүү</translation>
 <translation id="230115972905494466">Шайкеш түзмөктөр табылган жок</translation>
 <translation id="2305798319182970276">Баскычты бир эле басып, таржымалды өчүрүңүз</translation>
+<translation id="2307420463693979699">Бул сайтта иштөө үчүн <ph name="APP_NAME" /> адам менен аракеттешүүчү түзмөктөрдү (HID) колдонушу керек.</translation>
 <translation id="2316129865977710310">Жок, рахмат</translation>
 <translation id="232137538351753795">Артка кайтуу үчүн экранды солдон оңго карай сүрүңүз</translation>
 <translation id="2323763861024343754">Сайт дайындары</translation>
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" /> баштап</translation>
 <translation id="232757965409810352">Бетти төмөнкүдөй сактоо…</translation>
 <translation id="2328474416100889417">Ар бир адам дароо "<ph name="GROUP_NAME" />" өтмөктөр тобуна кирүү мүмкүнчүлүгүн жоготот жана бардык чакыруу шилтемелери өчүрүлөт</translation>
+<translation id="2328773543844041445">Курсорду өтмөктүн үстүнө алып келгенде аны автоматтык түрдө жайып көрсөтүү</translation>
 <translation id="2330186936255788117">Дагы башка кыстармалар</translation>
 <translation id="2330243730505117832">"Түзмөк тандоо" жабылды.</translation>
 <translation id="2332515770639153015">Өркүндөтүлгөн коопсуз серептөө күйүк</translation>
@@ -1691,6 +1693,7 @@ Google аккаунтуңуздун башка Google кызматтарынан
 <translation id="7608245556672190037">Chrome'догу Издөө функциясын күйгүзүүчү ылдыйкы экран толугу менен ачылды</translation>
 <translation id="7612619742409846846">Google'га төмөнкү аркылуу кирип турасыз</translation>
 <translation id="7612989789287281429">Кирип жатасыз…</translation>
+<translation id="7617512710641355143">Chrome башкарылат</translation>
 <translation id="7619072057915878432"><ph name="FILE_NAME" /> тармак жөндөмсүздүгүнө байланыштуу жүктөлбөй калды.</translation>
 <translation id="7626032353295482388">Chrome'го кош келиңиз</translation>
 <translation id="7628417132421583481">Сырсөздөрдү башкаргычка өтүү</translation>

@@ -29,6 +29,12 @@ public class TabListConfig {
     public final @UiType int tabUiType;
 
     /**
+     * Whether the layout supports displaying tab groups (e.g. as group cards in GTS or group
+     * headers in Vertical Tabs). False for layouts that ignore tab groups (like Flat layout).
+     */
+    public final boolean supportsTabGroups;
+
+    /**
      * Whether the layout supports message card items (e.g. IPH, promo cards, price welcome cards).
      * Currently only the Tab Switcher Grid ({@link TabListLayoutType#GROUPED}) uses message cards
      * and price tracking. If a non-grid layout needs price tracking independently in the future,
@@ -52,6 +58,12 @@ public class TabListConfig {
      */
     public final boolean supportsTabContextClick;
 
+    /**
+     * Whether this layout requires a thumbnail cache invalidation fetch when a tab is deselected.
+     * Often required for multi-thumbnail cluster views (like Grouped layouts).
+     */
+    public final boolean requiresThumbnailUpdateOnDeselect;
+
     /** The {@link TabClosingSource} to attribute when tabs or tab groups are closed. */
     public final @TabClosingSource int tabClosingSource;
 
@@ -70,11 +82,13 @@ public class TabListConfig {
     private TabListConfig(Builder builder) {
         layoutType = builder.mLayoutType;
         tabUiType = builder.mTabUiType;
+        supportsTabGroups = builder.mSupportsTabGroups;
         supportsMessageCards = builder.mSupportsMessageCards;
         supportsModifierMultiSelect = builder.mSupportsModifierMultiSelect;
         supportsTabLoadingState = builder.mSupportsTabLoadingState;
         supportsShrinkCloseAnimation = builder.mSupportsShrinkCloseAnimation;
         supportsTabContextClick = builder.mSupportsTabContextClick;
+        requiresThumbnailUpdateOnDeselect = builder.mRequiresThumbnailUpdateOnDeselect;
         tabClosingSource = builder.mTabClosingSource;
         railCollapseStateSupplier = builder.mRailCollapseStateSupplier;
         tabHoverListener = builder.mTabHoverListener;
@@ -85,11 +99,13 @@ public class TabListConfig {
     public static class Builder {
         private final @TabListLayoutType int mLayoutType;
         private @UiType int mTabUiType;
+        private boolean mSupportsTabGroups;
         private boolean mSupportsMessageCards;
         private boolean mSupportsModifierMultiSelect;
         private boolean mSupportsTabLoadingState;
         private boolean mSupportsShrinkCloseAnimation;
         private boolean mSupportsTabContextClick;
+        private boolean mRequiresThumbnailUpdateOnDeselect;
         private @TabClosingSource int mTabClosingSource;
         private @Nullable NonNullObservableSupplier<@RailCollapseState Integer>
                 mRailCollapseStateSupplier;
@@ -111,6 +127,15 @@ public class TabListConfig {
          */
         public Builder setTabUiType(@UiType int tabUiType) {
             mTabUiType = tabUiType;
+            return this;
+        }
+
+        /**
+         * @param supportsTabGroups Whether the tab list supports displaying tab groups.
+         * @return The {@link Builder} instance.
+         */
+        public Builder setSupportsTabGroups(boolean supportsTabGroups) {
+            mSupportsTabGroups = supportsTabGroups;
             return this;
         }
 
@@ -159,6 +184,17 @@ public class TabListConfig {
          */
         public Builder setSupportsTabContextClick(boolean supportsTabContextClick) {
             mSupportsTabContextClick = supportsTabContextClick;
+            return this;
+        }
+
+        /**
+         * @param requiresThumbnailUpdateOnDeselect Whether the tab list requires a thumbnail cache
+         *     invalidation fetch when a tab is deselected.
+         * @return The {@link Builder} instance.
+         */
+        public Builder setRequiresThumbnailUpdateOnDeselect(
+                boolean requiresThumbnailUpdateOnDeselect) {
+            mRequiresThumbnailUpdateOnDeselect = requiresThumbnailUpdateOnDeselect;
             return this;
         }
 

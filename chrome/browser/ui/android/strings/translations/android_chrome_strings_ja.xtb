@@ -322,12 +322,14 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="2297822946037605517">このページを共有</translation>
 <translation id="230115972905494466">対応デバイスが見つかりませんでした</translation>
 <translation id="2305798319182970276">ボタンをタップすると履歴を削除できます</translation>
+<translation id="2307420463693979699">このサイトを利用するには、<ph name="APP_NAME" /> でヒューマン インターフェース デバイス（HID）の使用を許可する必要があります。</translation>
 <translation id="2316129865977710310">今はしない</translation>
 <translation id="232137538351753795">左端からスワイプすると前の画面に戻ります</translation>
 <translation id="2323763861024343754">サイトのストレージ</translation>
 <translation id="2327445548174191329">送信元: <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">名前を付けてページを保存…</translation>
 <translation id="2328474416100889417">全員が「<ph name="GROUP_NAME" />」タブグループに直ちにアクセスできなくなり、招待リンクはすべて無効になります</translation>
+<translation id="2328773543844041445">カーソルを合わせたときにタブを自動的に展開する</translation>
 <translation id="2330186936255788117">その他のブックマーク</translation>
 <translation id="2330243730505117832">[デバイスの選択] が閉じられました。</translation>
 <translation id="2332515770639153015">セーフ ブラウジング保護強化機能はオンになっています</translation>
@@ -1691,6 +1693,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7608245556672190037">Chrome Finds のオプトイン メッセージが画面全体に表示されています</translation>
 <translation id="7612619742409846846">Google にログイン済みのユーザー</translation>
 <translation id="7612989789287281429">ログインしています…</translation>
+<translation id="7617512710641355143">Chrome は管理されています</translation>
 <translation id="7619072057915878432">ネットワーク障害が発生したため、<ph name="FILE_NAME" /> をダウンロードできませんでした。</translation>
 <translation id="7626032353295482388">Chrome へようこそ</translation>
 <translation id="7628417132421583481">パスワード マネージャーに移動</translation>

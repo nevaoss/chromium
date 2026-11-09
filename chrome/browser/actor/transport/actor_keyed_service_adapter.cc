@@ -5,12 +5,13 @@
 #include "chrome/browser/actor/transport/actor_keyed_service_adapter.h"
 
 #include <utility>
+#include <vector>
 
 #include "base/check.h"
 #include "base/functional/callback.h"
 #include "base/notimplemented.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
-#include "chrome/browser/actor/enterprise_policy_checker.h"
+#include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/ui/actor_ui_state_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/actor_webui.mojom.h"
@@ -20,9 +21,12 @@
 namespace actor {
 
 ActorKeyedServiceAdapter::ActorKeyedServiceAdapter(
-    ActorKeyedService* actor_service)
-    : actor_service_(actor_service) {
+    ActorKeyedService* actor_service,
+    const EnterprisePolicyChecker* enterprise_policy_checker)
+    : actor_service_(actor_service),
+      enterprise_policy_checker_(enterprise_policy_checker) {
   CHECK(actor_service_);
+  CHECK(enterprise_policy_checker_);
 }
 
 ActorKeyedServiceAdapter::~ActorKeyedServiceAdapter() = default;
@@ -36,10 +40,9 @@ void ActorKeyedServiceAdapter::StartTask(
     options->actuation_tab_id = request.tab_id();
   }
 
-  // TODO(crbug.com/568105613): Use a non-null enterprise policy checker.
   TaskId task_id = actor_service_->CreateTaskWithOptions(
       TaskSourceInfo(TaskSourceInfo::Client::kBrowserActuator, session_id),
-      GetNullEnterprisePolicyChecker(), std::move(options),
+      enterprise_policy_checker_, std::move(options),
       weak_ptr_factory_.GetWeakPtr(),
       ui::ActorUiStateManager::Get(actor_service_->GetProfile()));
 
@@ -54,15 +57,22 @@ void ActorKeyedServiceAdapter::StartTask(
 
 void ActorKeyedServiceAdapter::StopTask(TaskId task_id,
                                         StopTaskCallback callback) {
-  // TODO(crbug.com/565390793): Pipe StopTask to ActorKeyedService.
-  NOTIMPLEMENTED();
+  if (!actor_service_->GetTask(task_id)) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  // TODO(crbug.com/571106281): Update StoppedReason to one provided by the
+  // downstream message.
+  actor_service_->StopTask(task_id, ActorTask::StoppedReason::kTaskComplete);
+  std::move(callback).Run(true);
 }
 
 void ActorKeyedServiceAdapter::Act(
     const optimization_guide::proto::Actions& actions,
     ActCallback callback) {
-  // TODO(crbug.com/565390794): Pipe Act to ActorKeyedService.
-  NOTIMPLEMENTED();
+  actor_keyed_service_proto_wrapper_.PerformActions(actions,
+                                                    std::move(callback));
 }
 
 void ActorKeyedServiceAdapter::OnTabAddedToTask(

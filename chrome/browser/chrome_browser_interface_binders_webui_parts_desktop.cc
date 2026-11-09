@@ -57,7 +57,6 @@
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "chrome/browser/ui/webui/new_tab_page/ntp_promo/ntp_promo.mojom.h"
-#include "chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h"
 #include "chrome/browser/ui/webui/ntp_microsoft_auth/ntp_microsoft_auth_untrusted_ui.h"
 #include "chrome/browser/ui/webui/omnibox/logging/logs.mojom.h"
 #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
@@ -603,10 +602,6 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
         .Add<help_bubble::mojom::HelpBubbleHandlerFactory>();
   }
 
-  registry.ForWebUI<NewTabPageThirdPartyUI>()
-      .Add<most_visited::mojom::MostVisitedPageHandlerFactory>()
-      .Add<new_tab_page_third_party::mojom::PageHandlerFactory>();
-
   if (base::FeatureList::IsEnabled(
           omnibox::kComposeboxDriveContextMenuOption)) {
     registry.ForWebUI<DrivePickerHostUI>()
@@ -637,9 +632,7 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
         .Add<tabs_api::mojom::TabStripUIController>();
   }
 
-  if (features::IsWebUIToolbarEnabled() ||
-      base::FeatureList::IsEnabled(
-          features::kWebUIToolbarProcessOverheadExperiment)) {
+  if (features::IsWebUIToolbarEnabled()) {
     registry.ForWebUI<WebUIToolbarUI>()
         .Add<browser_controls_api::mojom::BrowserControlsService>()
         .Add<toolbar_ui_api::mojom::ToolbarUIService>()

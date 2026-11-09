@@ -1381,9 +1381,13 @@ using ntp_tiles::AimButtonRefactorArm;
 }
 
 - (void)openMainCustomizationMenuWithIconBubbleOnDismiss:
-    (BOOL)withIconBubbleOnDismiss {
+            (BOOL)withIconBubbleOnDismiss
+                                          scrollToBottom:(BOOL)scrollToBottom {
   _presentCustomizationButtonBubbleOnDismiss = withIconBubbleOnDismiss;
   [self openCustomizationMenuAtPage:CustomizationMenuPage::kMain animated:YES];
+  if (scrollToBottom) {
+    [_customizationCoordinator scrollMainPageToBottom];
+  }
 }
 
 - (void)openSafariDataImport {
@@ -1395,6 +1399,16 @@ using ntp_tiles::AimButtonRefactorArm;
   _safariDataImportExportCoordinator.delegate = self;
   [self.NTPMediator markSafariDataImportSetupListItemAsComplete];
   [_safariDataImportExportCoordinator start];
+}
+
+- (void)openNTPBackgroundPhotoPicker {
+  UIViewController* baseVC = [self activeViewController];
+  _customizationCoordinator = [[HomeCustomizationCoordinator alloc]
+      initWithBaseViewController:baseVC
+                         browser:self.browser];
+  _customizationCoordinator.delegate = self;
+  [_customizationCoordinator start];
+  [_customizationCoordinator presentPhotoPicker];
 }
 
 #pragma mark - FeedSignInPromoDelegate
@@ -1646,6 +1660,21 @@ using ntp_tiles::AimButtonRefactorArm;
 
 - (void)mostVisitedTileOpened {
   RecordHomeAction(IOSHomeActionType::kMostVisitedTile, [self isStartSurface]);
+}
+
+- (void)aimInMostVisitedOpened {
+  if (ntp_tiles::GetAimButtonRefactorArm() ==
+      ntp_tiles::AimButtonRefactorArm::kAimAsMvt) {
+    RecordHomeAction(IOSHomeActionType::kAimInMostVisited,
+                     [self isStartSurface]);
+    [self.NTPMetricsRecorder recordAIMButtonTapped];
+  }
+}
+
+- (void)standaloneAIMModuleOpened {
+  RecordHomeAction(IOSHomeActionType::kStandaloneAIMModule,
+                   [self isStartSurface]);
+  [self.NTPMetricsRecorder recordAIMButtonTapped];
 }
 
 - (void)shortcutTileOpened {
@@ -2437,8 +2466,7 @@ using ntp_tiles::AimButtonRefactorArm;
   CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
            ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction);
 
-  // TODO(crbug.com/549020046): Add metrics recording hooks and a fallback to
-  // AIM web if the composebox cannot be shown.
+  // TODO(crbug.com/549020046): Add metrics recording hooks.
   if (![self canFocusComposeboxForAIM]) {
     return;
   }
@@ -2453,8 +2481,9 @@ using ntp_tiles::AimButtonRefactorArm;
 }
 
 - (void)openAIMAttachImage {
-  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
-           ntp_tiles::AimButtonRefactorArm::kAttachImageQuickAction);
+  AimButtonRefactorArm arm = ntp_tiles::GetAimButtonRefactorArm();
+  CHECK(arm == AimButtonRefactorArm::kImageGenerationQuickAction ||
+        arm == AimButtonRefactorArm::kAttachImageQuickAction);
   // TODO(crbug.com/549020046): Implement this method and add metrics recording
   // hooks.
 }

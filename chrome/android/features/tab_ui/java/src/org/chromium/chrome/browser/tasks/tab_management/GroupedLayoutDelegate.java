@@ -49,21 +49,6 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
     }
 
     @Override
-    boolean requiresThumbnailUpdateOnDeselect() {
-        return true;
-    }
-
-    @Override
-    boolean requiresThumbnailUpdateOnSelect() {
-        return true;
-    }
-
-    @Override
-    boolean supportsTabGroups() {
-        return true;
-    }
-
-    @Override
     boolean isChildTabRepresentedByGroupCard(Tab tab) {
         return mMediator.isTabInTabGroup(tab);
     }
@@ -490,7 +475,7 @@ class GroupedLayoutDelegate extends TabListLayoutDelegate {
     }
 
     @Override
-    public void didMoveTabGroup(Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
+    public void onTabGroupMoved(Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
         if (tabModelOldIndex == tabModelNewIndex) return;
 
         TabModel tabModel = mMediator.getCurrentTabModelChecked();

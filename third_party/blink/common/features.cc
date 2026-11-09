@@ -110,7 +110,7 @@ BASE_FEATURE(kBlockMidiByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
 }
 
 BASE_FEATURE(kClipboardOnExtensionServiceWorker,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kComputePressureRateObfuscationMitigation,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -743,10 +743,6 @@ BASE_FEATURE(kOffscreenCanvasPropagateVisibility,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebGLDiscardBackBuffer, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kForceSkExifCppParsing, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Automatically convert light-themed pages to use a Blink-generated dark theme
 BASE_FEATURE(kForceWebContentsDarkMode,

@@ -193,7 +193,7 @@ class FormStructureBrowserTest : public PlatformTest,
   std::unique_ptr<web::WebState> web_state_;
   std::unique_ptr<AutofillClient> autofill_client_;
   AutofillAgent* autofill_agent_;
-  std::unique_ptr<TestAutofillManagerInjector<TestAutofillManager>>
+  std::unique_ptr<TestAutofillManagerInjectorIOS<TestAutofillManager>>
       autofill_manager_injector_;
   FormSuggestionController* suggestion_controller_;
 
@@ -233,6 +233,8 @@ FormStructureBrowserTest::FormStructureBrowserTest()
           features::kAutofillSupportSplitZipCode,
           features::kAutofillSupportStandaloneZipCodeGlobally,
           features::kAutofillEnableOneTimeCodeHeuristics,
+          // TODO(crbug.com/566051797): Remove once launched.
+          features::kAutofillOnlyConsiderSingleFieldFormsAsSearchForms,
       },
       // Disabled
       {
@@ -280,7 +282,7 @@ void FormStructureBrowserTest::SetUp() {
       std::make_unique<TestAutofillClientIOS>(web_state(), autofill_agent_);
 
   autofill_manager_injector_ =
-      std::make_unique<TestAutofillManagerInjector<TestAutofillManager>>(
+      std::make_unique<TestAutofillManagerInjectorIOS<TestAutofillManager>>(
           web_state());
 }
 
@@ -394,6 +396,7 @@ bool IsFailingTestName(const std::string& test_name) {
           // TODO(crbug.com/40229922): These pages contain labels which are only
           // inferred by the label detection improvements that haven't been
           // implemented on iOS.
+          "018_checkout_ae.com.html",
           "074_register_threadless.com.html",
           "097_register_alaskaair.com.html",
           "115_checkout_walgreens.com.html",

@@ -47,18 +47,6 @@ class FakeTransportSession : public TransportSession {
   std::string session_id_;
 };
 
-class FakeOtherFactory : public TransportHandlerFactory {
- public:
-  FactoryId GetFactoryId() const override { return FactoryId::kControl; }
-  std::vector<PayloadType> GetSupportedPayloadTypes() const override {
-    return {};
-  }
-  std::unique_ptr<TransportHandler> OnNewSession(
-      TransportSession* session) override {
-    return nullptr;
-  }
-};
-
 class TestObserver : public SessionStreamRecorder::Observer {
  public:
   void OnDownstreamMessage(base::TimeTicks timestamp,
@@ -464,6 +452,33 @@ TEST(SessionStreamRecorderFactoryTest, ExportAllSessionsAsJson) {
   ASSERT_NE(s2_m1, nullptr);
   EXPECT_EQ(*s2_m1->FindString("client_sequence_number"), "10");
   EXPECT_EQ(*s2_m1->FindString("responding_to_sequence_number"), "5");
+}
+
+TEST(SessionStreamRecorderFactoryTest,
+     ExportSessionsAsJsonFiltersBySessionIds) {
+  SessionStreamRecorderFactory factory;
+  FakeTransportSession session1("session_1");
+  FakeTransportSession session2("session_2");
+
+  std::unique_ptr<TransportHandler> h1 = factory.OnNewSession(&session1);
+  std::unique_ptr<TransportHandler> h2 = factory.OnNewSession(&session2);
+  h2.reset();  // Moves session_2 to retained_sessions_.
+
+  const std::vector<std::string> filter_ids = {"session_2"};
+  std::string json_str = factory.ExportSessionsAsJson(filter_ids);
+  ASSERT_FALSE(json_str.empty());
+
+  std::optional<base::DictValue> parsed_json =
+      base::JSONReader::ReadDict(json_str, base::JSON_PARSE_RFC);
+  ASSERT_TRUE(parsed_json.has_value());
+
+  const base::ListValue* sessions = parsed_json->FindList("sessions");
+  ASSERT_NE(sessions, nullptr);
+  ASSERT_EQ(sessions->size(), 1u);
+
+  const base::DictValue* s2_dict = (*sessions)[0].GetIfDict();
+  ASSERT_NE(s2_dict, nullptr);
+  EXPECT_EQ(*s2_dict->FindString("session_id"), "session_2");
 }
 
 TEST(SessionStreamRecorderFactoryTest, RetainsDestroyedSessionsForDump) {
@@ -874,16 +889,6 @@ TEST(SessionStreamRecorderFactoryTest, GetAllSessionsIncludesUpstreamEvents) {
   EXPECT_EQ(sessions[0].total_upstream_messages, 1u);
   ASSERT_EQ(sessions[0].events.size(), 1u);
   EXPECT_FALSE(sessions[0].events[0].is_downstream);
-}
-
-TEST(SessionStreamRecorderFactoryTest, FromFactory) {
-  EXPECT_EQ(SessionStreamRecorderFactory::FromFactory(nullptr), nullptr);
-
-  SessionStreamRecorderFactory factory;
-  EXPECT_EQ(SessionStreamRecorderFactory::FromFactory(&factory), &factory);
-
-  FakeOtherFactory other_factory;
-  EXPECT_EQ(SessionStreamRecorderFactory::FromFactory(&other_factory), nullptr);
 }
 
 }  // namespace

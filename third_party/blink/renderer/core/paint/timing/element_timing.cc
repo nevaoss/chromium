@@ -243,7 +243,7 @@ void ElementTiming::QueueElementTimingInfoForReportingIfNeeded(
   CHECK(!generating_node.IsInShadowTree());
 
   RespectImageOrientationEnum respect_orientation =
-      image_layout_object.StyleRef().ImageOrientation();
+      image_layout_object.Style().ImageOrientation();
 
   gfx::RectF intersection_rect = ComputeIntersectionRect(
       frame, image_border, current_paint_chunk_properties);
@@ -286,16 +286,11 @@ void ElementTiming::QueueElementTimingInfoForReportingIfNeeded(
       performance_->NavigationId()));
 }
 
-HeapVector<Member<ElementTimingInfo>>
-ElementTiming::TakeElementTimingsOnPaintFinished() {
-  return std::move(element_timings_);
-}
-
 PaintTimingClient::Type ElementTiming::GetType() const {
   return Type::kElementTiming;
 }
 
-void ElementTiming::OnPaintFinished(
+OptionalPaintTimingCallback ElementTiming::OnPaintFinished(
     const HeapVector<Member<ImageRecord>>&,
     const HeapVector<Member<TextRecord>>& text_records) {
   // Ensure image entries queued during paint use the updated navigation ID, if
@@ -316,19 +311,29 @@ void ElementTiming::OnPaintFinished(
     }
     QueueElementTimingInfoForReportingIfNeeded(*record);
   }
+
+  if (element_timings_.empty()) {
+    return std::nullopt;
+  }
+
+  auto* pending_timings =
+      MakeGarbageCollected<GCedHeapVector<Member<ElementTimingInfo>>>(
+          std::move(element_timings_));
+  return blink::BindOnce(&ElementTiming::FlushElementTimingsOnFramePresented,
+                         WrapWeakPersistent(this),
+                         WrapPersistent(pending_timings));
 }
 
-void ElementTiming::OnFramePresented(
-    const HeapVector<Member<ImageRecord>>&,
-    const HeapVector<Member<TextRecord>>&,
-    const HeapVector<Member<ElementTimingInfo>>& element_timings,
+void ElementTiming::FlushElementTimingsOnFramePresented(
+    GCedHeapVector<Member<ElementTimingInfo>>* element_timings,
+    const base::TimeTicks&,
     const DOMPaintTimingInfo& paint_timing_info) {
-  for (ElementTimingInfo* info : element_timings) {
-    OnElementPresented(*info, paint_timing_info);
+  for (ElementTimingInfo* info : *element_timings) {
+    FlushElementTiming(*info, paint_timing_info);
   }
 }
 
-void ElementTiming::OnElementPresented(
+void ElementTiming::FlushElementTiming(
     const ElementTimingInfo& element_timing_info,
     const DOMPaintTimingInfo& paint_timing_info) {
   CHECK(performance_);

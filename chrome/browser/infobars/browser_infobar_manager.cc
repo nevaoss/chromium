@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/auto_reset.h"
+#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
@@ -120,7 +121,7 @@ class RegistryInfoBarDelegate final : public ConfirmInfoBarDelegate,
     return spec_.message_text_template();
   }
 
-  const std::vector<MessageSubstitution>& GetMessageSubstitutions()
+  base::span<const MessageSubstitution> GetMessageSubstitutions()
       const override {
     if (!substitutions_.has_value()) {
       substitutions_ = spec_.substitutions_callback()
@@ -738,8 +739,11 @@ void BrowserInfoBarManager::OnInfoBarRemoved(infobars::InfoBar* infobar,
   }
   instances.erase(instance);
 
+  // Use the delegate, not the owner: when called from ~InfoBarManager(), the
+  // owner's WebContentsObserver base is already destroyed.
   content::WebContents* web_contents =
-      ContentInfoBarManager::WebContentsFromInfoBar(infobar);
+      static_cast<RegistryInfoBarDelegate*>(infobar->delegate())
+          ->web_contents();
   tabs::TabInterface* tab =
       web_contents ? tabs::TabInterface::MaybeGetFromContents(web_contents)
                    : nullptr;

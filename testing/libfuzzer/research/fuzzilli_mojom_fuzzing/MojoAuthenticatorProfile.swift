@@ -10,8 +10,6 @@
 //     third_party/blink/public/mojom/webauthn/authenticator.mojom
 //
 
-private let mojoPrefix = "blink.mojom."
-
 ///
 /// Interfaces
 ///
@@ -31,9 +29,10 @@ extension ILType {
         ])
     fileprivate static let jsBlinkMojomAuthenticatorRemoteWrapper: ILType = .object(
         ofGroup: "blink.mojom.AuthenticatorRemoteWrapper",
-        withMethods: ["close", "isBound", "associateAndPassReceiver"])
-    fileprivate static let jsBlinkMojomAuthenticatorPendingReceiver: ILType = .object(
-        ofGroup: "blink.mojom.AuthenticatorPendingReceiver")
+        withMethods: [
+          "close",
+          "isBound",
+        ])
 }
 
 extension ObjectGroup {
@@ -70,16 +69,7 @@ extension ObjectGroup {
         methods: [
             "close": [] => .undefined,
             "isBound": [] => .boolean,
-            "associateAndPassReceiver": [] => .jsBlinkMojomAuthenticatorPendingReceiver,
-        ]
-    )
-
-    fileprivate static let blinkMojomAuthenticatorPendingReceiver = ObjectGroup(
-        name: "blink.mojom.AuthenticatorPendingReceiver",
-        instanceType: .jsBlinkMojomAuthenticatorPendingReceiver,
-        properties: [:],
-        methods: [:]
-    )
+        ])
 }
 
 ///
@@ -910,7 +900,7 @@ extension ObjectGroup {
         name: "blink.mojom.Authenticator_GetCredential_ResponseParams",
         instanceType: .jsBlinkMojomAuthenticator_GetCredential_ResponseParams,
         properties: [
-            "response": .jsBlinkMojomGetCredentialResponse,
+            "response": .jsBlinkMojomGetCredentialResponseUnion,
         ],
         methods: [:]
     )
@@ -1112,18 +1102,18 @@ extension ILType {
 /// Unions
 ///
 extension ILType {
-    fileprivate static let jsBlinkMojomGetCredentialResponse: ILType = .object(
+    fileprivate static let jsBlinkMojomGetCredentialResponseUnion: ILType = .object(
         ofGroup: "blink.mojom.GetCredentialResponse")
-    fileprivate static let jsBlinkMojomGetCredentialResponseGetAssertionResponseConstructor: ILType = .constructor(
-        [.plain(.jsBlinkMojomGetAssertionResponse)] => .jsBlinkMojomGetCredentialResponse)
-    fileprivate static let jsBlinkMojomGetCredentialResponsePasswordResponseConstructor: ILType = .constructor(
-        [.plain(.jsBlinkMojomCredentialInfo)] => .jsBlinkMojomGetCredentialResponse)
+    fileprivate static let jsBlinkMojomGetCredentialResponseUnionGetAssertionResponseConstructor: ILType = .constructor(
+        [.plain(.jsBlinkMojomGetAssertionResponse)] => .jsBlinkMojomGetCredentialResponseUnion)
+    fileprivate static let jsBlinkMojomGetCredentialResponseUnionPasswordResponseConstructor: ILType = .constructor(
+        [.plain(.jsBlinkMojomCredentialInfo)] => .jsBlinkMojomGetCredentialResponseUnion)
 }
 
 extension ObjectGroup {
-    fileprivate static let blinkMojomGetCredentialResponse = ObjectGroup(
+    fileprivate static let blinkMojomGetCredentialResponseUnion = ObjectGroup(
         name: "blink.mojom.GetCredentialResponse",
-        instanceType: .jsBlinkMojomGetCredentialResponse,
+        instanceType: .jsBlinkMojomGetCredentialResponseUnion,
         properties: [:],
         methods: [:]
     )
@@ -1132,10 +1122,12 @@ extension ObjectGroup {
 ///
 /// Generators
 ///
-// TODO(crbug.com/500386713) Consider using mojoBuiltins or another list instead of regex
+/// Names of every ObjectGroup registered by this profile.
+private let mojoTargetGroups = Set(mojoObjectGroups.map { $0.name })
+
 private func isTargetObject(type: ILType) -> Bool {
     guard type.Is(.object()), let group = type.group else { return false }
-    return group.starts(with: mojoPrefix)
+    return mojoTargetGroups.contains(group)
 }
 
 /// Mojo variant of the builtin `MethodCallGenerator` that operates only on
@@ -1179,6 +1171,47 @@ private let MojoPropertyRetrievalGenerator = CodeGenerator(
     b.getProperty(propertyName, of: obj)
 }
 
+/// Every ObjectGroup registered by this profile. Also used by `isTargetObject`
+/// to decide which variables the Mojo generators operate on.
+private let mojoObjectGroups: [ObjectGroup] = [
+    .blinkMojomAuthenticatorRemote,
+    .blinkMojomAuthenticatorRemoteWrapper,
+    .blinkMojomPublicKeyCredentialCreationOptions,
+    .blinkMojomPublicKeyCredentialRpEntity,
+    .blinkMojomPublicKeyCredentialUserEntity,
+    .blinkMojomPublicKeyCredentialParameters,
+    .mojoBaseMojomTimeDelta,
+    .blinkMojomPublicKeyCredentialDescriptor,
+    .blinkMojomAuthenticatorSelectionCriteria,
+    .blinkMojomPRFValues,
+    .blinkMojomRemoteDesktopClientOverride,
+    .urlMojomOrigin,
+    .mojoBaseMojomUnguessableToken,
+    .blinkMojomMakeCredentialAuthenticatorResponse,
+    .blinkMojomCommonCredentialInfo,
+    .blinkMojomAuthenticationExtensionsPaymentResponse,
+    .blinkMojomCmtgKeyResponse,
+    .blinkMojomWebAuthnDOMExceptionDetails,
+    .blinkMojomGetCredentialOptions,
+    .blinkMojomPublicKeyCredentialRequestOptions,
+    .blinkMojomAuthenticationExtensionsClientInputs,
+    .blinkMojomGetAssertionResponse,
+    .blinkMojomGetAssertionAuthenticatorResponse,
+    .blinkMojomAuthenticationExtensionsClientOutputs,
+    .blinkMojomCredentialInfo,
+    .blinkMojomPublicKeyCredentialReportOptions,
+    .blinkMojomAllAcceptedCredentialsOptions,
+    .blinkMojomCurrentUserDetailsOptions,
+    .blinkMojomWebAuthnClientCapability,
+    .blinkMojomAuthenticatorMakeCredentialResponseParams,
+    .blinkMojomAuthenticatorGetCredentialResponseParams,
+    .blinkMojomAuthenticatorIsUserVerifyingPlatformAuthenticatorAvailableResponseParams,
+    .blinkMojomAuthenticatorIsConditionalMediationAvailableResponseParams,
+    .blinkMojomAuthenticatorReportResponseParams,
+    .blinkMojomAuthenticatorGetClientCapabilitiesResponseParams,
+    .blinkMojomGetCredentialResponseUnion,
+] + commonMojoObjectGroups
+
 private let mojoBuiltins: [String: ILType] = [
     /// Profiles declare this method, a wrapper method around `getRemote` that follows
     /// the Singleton pattern, in `codePrefix`. This method ensures: (1) `getRemote`
@@ -1212,8 +1245,8 @@ private let mojoBuiltins: [String: ILType] = [
     "blink.mojom.AllAcceptedCredentialsOptions": .jsBlinkMojomAllAcceptedCredentialsOptionsConstructor,
     "blink.mojom.CurrentUserDetailsOptions": .jsBlinkMojomCurrentUserDetailsOptionsConstructor,
     "blink.mojom.WebAuthnClientCapability": .jsBlinkMojomWebAuthnClientCapabilityConstructor,
-    "blink.mojom.GetCredentialResponse.getAssertionResponse": .jsBlinkMojomGetCredentialResponseGetAssertionResponseConstructor,
-    "blink.mojom.GetCredentialResponse.passwordResponse": .jsBlinkMojomGetCredentialResponsePasswordResponseConstructor,
+    "blink.mojom.GetCredentialResponse.getAssertionResponse": .jsBlinkMojomGetCredentialResponseUnionGetAssertionResponseConstructor,
+    "blink.mojom.GetCredentialResponse.passwordResponse": .jsBlinkMojomGetCredentialResponseUnionPasswordResponseConstructor,
 ]
 
 private let keepGenerators = [
@@ -1276,45 +1309,7 @@ let mojoAuthenticatorProfile = Profile(
         "ExplorationMutator", "ProbingMutator", "PropertyAccessorMutator"
     ],
     additionalBuiltins: mojoBuiltins.merging(commonMojoBuiltins) { (existing, _) in existing },
-    additionalObjectGroups: [
-        .blinkMojomAuthenticatorRemote,
-        .blinkMojomAuthenticatorRemoteWrapper,
-        .blinkMojomAuthenticatorPendingReceiver,
-        .blinkMojomPublicKeyCredentialCreationOptions,
-        .blinkMojomPublicKeyCredentialRpEntity,
-        .blinkMojomPublicKeyCredentialUserEntity,
-        .blinkMojomPublicKeyCredentialParameters,
-        .mojoBaseMojomTimeDelta,
-        .blinkMojomPublicKeyCredentialDescriptor,
-        .blinkMojomAuthenticatorSelectionCriteria,
-        .blinkMojomPRFValues,
-        .blinkMojomRemoteDesktopClientOverride,
-        .urlMojomOrigin,
-        .mojoBaseMojomUnguessableToken,
-        .blinkMojomMakeCredentialAuthenticatorResponse,
-        .blinkMojomCommonCredentialInfo,
-        .blinkMojomAuthenticationExtensionsPaymentResponse,
-        .blinkMojomCmtgKeyResponse,
-        .blinkMojomWebAuthnDOMExceptionDetails,
-        .blinkMojomGetCredentialOptions,
-        .blinkMojomPublicKeyCredentialRequestOptions,
-        .blinkMojomAuthenticationExtensionsClientInputs,
-        .blinkMojomGetAssertionResponse,
-        .blinkMojomGetAssertionAuthenticatorResponse,
-        .blinkMojomAuthenticationExtensionsClientOutputs,
-        .blinkMojomCredentialInfo,
-        .blinkMojomPublicKeyCredentialReportOptions,
-        .blinkMojomAllAcceptedCredentialsOptions,
-        .blinkMojomCurrentUserDetailsOptions,
-        .blinkMojomWebAuthnClientCapability,
-        .blinkMojomAuthenticatorMakeCredentialResponseParams,
-        .blinkMojomAuthenticatorGetCredentialResponseParams,
-        .blinkMojomAuthenticatorIsUserVerifyingPlatformAuthenticatorAvailableResponseParams,
-        .blinkMojomAuthenticatorIsConditionalMediationAvailableResponseParams,
-        .blinkMojomAuthenticatorReportResponseParams,
-        .blinkMojomAuthenticatorGetClientCapabilitiesResponseParams,
-        .blinkMojomGetCredentialResponse,
-    ] + commonMojoObjectGroups,
+    additionalObjectGroups: mojoObjectGroups,
     additionalEnumerations: [
         .jsBlinkMojomPublicKeyCredentialType,
         .jsBlinkMojomAuthenticatorTransport,

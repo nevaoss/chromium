@@ -21,16 +21,19 @@ class GlicWebClientManagerBrowserTest
       public testing::WithParamInterface<bool> {
  public:
   GlicWebClientManagerBrowserTest() {
-    std::vector<base::test::FeatureRef> enabled;
+    std::vector<base::test::FeatureRefAndParams> enabled = {
+        {features::kGlicWebContentsWarming,
+         {{features::kGlicWebContentsWarmingDelay.name, "7d"}}},
+    };
     std::vector<base::test::FeatureRef> disabled;
 
     if (IsNoWebview()) {
-      enabled.push_back(features::kGlicNoWebview);
+      enabled.push_back({features::kGlicNoWebview, {}});
     } else {
       disabled.push_back(features::kGlicNoWebview);
     }
 
-    feature_list_.InitWithFeatures(enabled, disabled);
+    feature_list_.InitWithFeaturesAndParameters(enabled, disabled);
   }
 
   void SetUpOnMainThread() override {

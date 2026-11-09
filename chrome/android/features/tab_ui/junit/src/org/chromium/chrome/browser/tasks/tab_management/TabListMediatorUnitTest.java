@@ -528,7 +528,6 @@ public class TabListMediatorUnitTest {
                     mUndoBarExplicitTrigger,
                     mSnackbarManager,
                     mAllowedSelectionCount,
-                    /* isSingleContextMode= */ false,
                     /* onDragStateChangedListener= */ CallbackUtils.emptyRunnable());
         }
     }
@@ -842,6 +841,20 @@ public class TabListMediatorUnitTest {
                 .didRemoveTabGroup(TAB_GROUP_ID, DidRemoveTabGroupReason.UNGROUP);
 
         verify(mTabGroupColorViewProvider).destroy();
+    }
+
+    @Test
+    public void testUpdateColorForChildTabs() {
+        PropertyModel childModel = mModelList.get(0).model;
+        PropertyModel ungroupedModel = mModelList.get(1).model;
+        childModel.set(TabProperties.TAB_GROUP_ID, TAB_GROUP_ID);
+
+        mMediator.updateColorForChildTabs(TAB_GROUP_ID, TabGroupColorId.BLUE);
+
+        var provider = childModel.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER);
+        assertNotNull(provider);
+        assertEquals(TabGroupColorId.BLUE, provider.getTabGroupColorIdForTesting());
+        assertNull(ungroupedModel.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
     }
 
     @Test
@@ -3605,8 +3618,8 @@ public class TabListMediatorUnitTest {
             tabs.add(mTabModel.getTabAt(i));
         }
 
-        boolean showQuickly = mMediator.resetWithListOfTabs(tabs, null, /* quickMode= */ false);
-        assertThat(showQuickly, equalTo(true));
+        mMediator.resetWithListOfTabs(tabs, /* tabGroupSyncIds= */ null, /* quickMode= */ false);
+        assertThat(mModelList.size(), equalTo(tabs.size()));
 
         // Create a PropertyModel that is not a tab and add it to the existing TabListModel.
         PropertyModel propertyModel = mPropertyModel;
@@ -3615,8 +3628,8 @@ public class TabListMediatorUnitTest {
         assertThat(mModelList.size(), equalTo(tabs.size() + 1));
 
         // TabListModel unchange check should ignore the non-Tab item.
-        showQuickly = mMediator.resetWithListOfTabs(tabs, null, /* quickMode= */ false);
-        assertThat(showQuickly, equalTo(true));
+        mMediator.resetWithListOfTabs(tabs, /* tabGroupSyncIds= */ null, /* quickMode= */ false);
+        assertThat(mModelList.size(), equalTo(tabs.size() + 1));
     }
 
     // TODO(crbug.com/40168614): the assertThat in fetch callback is never reached.
@@ -3958,7 +3971,7 @@ public class TabListMediatorUnitTest {
         createTabGroup(group1, TAB_GROUP_ID);
 
         // Reset with show quickly.
-        assertThat(mMediator.resetWithListOfTabs(tabs, null, false), equalTo(true));
+        mMediator.resetWithListOfTabs(tabs, /* tabGroupSyncIds= */ null, /* quickMode= */ false);
         assertThat(
                 mModelList
                         .get(POSITION2)
@@ -3969,7 +3982,7 @@ public class TabListMediatorUnitTest {
 
         // Reset without show quickly.
         mModelList.clear();
-        assertThat(mMediator.resetWithListOfTabs(tabs, null, false), equalTo(false));
+        mMediator.resetWithListOfTabs(tabs, /* tabGroupSyncIds= */ null, /* quickMode= */ false);
         assertThat(
                 mModelList
                         .get(POSITION2)
@@ -7145,6 +7158,10 @@ public class TabListMediatorUnitTest {
                 hasMatchingConfig
                         ? mTabListConfig.tabUiType
                         : (mode == TabListMode.BOTTOM_STRIP ? UiType.STRIP : UiType.TAB);
+        boolean supportsTabGroups =
+                hasMatchingConfig
+                        ? mTabListConfig.supportsTabGroups
+                        : (layoutType != TabListLayoutType.FLAT);
         boolean supportsMessageCards =
                 hasMatchingConfig
                         ? mTabListConfig.supportsMessageCards
@@ -7165,6 +7182,10 @@ public class TabListMediatorUnitTest {
                 hasMatchingConfig
                         ? mTabListConfig.supportsTabContextClick
                         : (type != TabListMediatorType.VERTICAL_TABS);
+        boolean requiresThumbnailUpdateOnDeselect =
+                hasMatchingConfig
+                        ? mTabListConfig.requiresThumbnailUpdateOnDeselect
+                        : (layoutType == TabListLayoutType.GROUPED);
         @TabClosingSource
         int tabClosingSource =
                 hasMatchingConfig
@@ -7184,11 +7205,13 @@ public class TabListMediatorUnitTest {
         mTabListConfig =
                 new TabListConfig.Builder(layoutType)
                         .setTabUiType(tabUiType)
+                        .setSupportsTabGroups(supportsTabGroups)
                         .setSupportsMessageCards(supportsMessageCards)
                         .setSupportsModifierMultiSelect(supportsModifierMultiSelect)
                         .setSupportsTabLoadingState(supportsTabLoadingState)
                         .setSupportsShrinkCloseAnimation(supportsShrinkCloseAnimation)
                         .setSupportsTabContextClick(supportsTabContextClick)
+                        .setRequiresThumbnailUpdateOnDeselect(requiresThumbnailUpdateOnDeselect)
                         .setTabClosingSource(tabClosingSource)
                         .setRailCollapseStateSupplier(railCollapseStateSupplier)
                         .setTabHoverListener(tabHoverListener)

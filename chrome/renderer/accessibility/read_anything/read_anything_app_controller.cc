@@ -455,7 +455,9 @@ void ReadAnythingAppController::ProcessModelUpdates() {
     Distill();
   }
 
-  if (IsReadabilityEnabled() && model_.requires_readability_distillation()) {
+  if (IsReadabilityEnabled() &&
+      model_.is_readability_next_distillation_method() &&
+      model_.requires_readability_distillation()) {
     // Readability distillation is triggered immediately when the active tree
     // changes. Subsequent page events like kLoadComplete also
     // request distillation (primarily to handle same-document or SPA
@@ -2590,28 +2592,50 @@ void ReadAnythingAppController::OnSelectionChange(ui::AXNodeID anchor_node_id,
   }
 
   model_.increment_selections_from_reading_mode();
-  page_handler_->OnSelectionChange(model_.active_tree_id(), anchor_node_id,
-                                   anchor_offset, focus_node_id, focus_offset);
+  page_handler_->OnSelectionChange(
+      model_.active_tree_id(), anchor_node_id, anchor_offset, focus_node_id,
+      focus_offset,
+      base::BindOnce(&ReadAnythingAppController::OnSelectionRequestHandled,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ReadAnythingAppController::OnCollapseSelection() {
-  // With no selection, the browser drops the empty PDF selection set below, so
-  // the incremented count would never be consumed.
-  if (IsPdf() && !model_.has_selection()) {
+  // Nothing to collapse unless a side panel selection is still pending. This
+  // drops collapses from the side panel clearing or redrawing its selection.
+  // PDFs also need the model's selection to set an empty one below.
+  if (!model_.has_selection() &&
+      (IsPdf() || model_.unprocessed_selections_from_reading_mode() == 0)) {
+    return;
+  }
+  // Until mapping finishes, Readability content has no node IDs, so every side
+  // panel selection change arrives as a collapse.
+  if (model_.is_readability_mapping_in_progress()) {
     return;
   }
 
   model_.increment_selections_from_reading_mode();
+  auto callback =
+      base::BindOnce(&ReadAnythingAppController::OnSelectionRequestHandled,
+                     weak_ptr_factory_.GetWeakPtr());
   if (IsPdf()) {
     // CollapseSelection does nothing in pdfs, so just set an empty selection
     // instead.
     page_handler_->OnSelectionChange(
         model_.active_tree_id(), model_.start_node_id(), model_.start_offset(),
-        model_.start_node_id(), model_.start_offset());
+        model_.start_node_id(), model_.start_offset(), std::move(callback));
   } else {
-    page_handler_->OnCollapseSelection();
+    page_handler_->OnCollapseSelection(std::move(callback));
   }
 }
+
+void ReadAnythingAppController::OnSelectionRequestHandled(bool applied) {
+  // A dropped request produces no selection event. A user selection on the
+  // main page may have already reset the count.
+  if (!applied && model_.unprocessed_selections_from_reading_mode() > 0) {
+    model_.decrement_selections_from_reading_mode();
+  }
+}
+
 void ReadAnythingAppController::ResetGranularityIndex() {
   read_aloud_model_.ResetGranularityIndex();
 }
@@ -3127,14 +3151,11 @@ void ReadAnythingAppController::UpdateContent(const std::string& title,
   // If readability distillation returns empty content, consider distillation as
   // failure and default to Screen2X distillation.
   if (dom_distiller_content_html_.empty()) {
-    model_.set_next_distillation_method(
-        ReadAnythingAppModel::DistillationMethod::kScreen2x);
-
     // Immediately attempt distillation. If there's not yet an active tree,
     // distillation will be attempted after the event processes. However,
     // attempting distillation immediately will allow distillation failures
     // to register.
-    model_.set_requires_distillation(true);
+    model_.FallbackToScreen2x();
     DistillNewTree();
     return;
   }
@@ -3230,7 +3251,7 @@ void ReadAnythingAppController::ApplyAccessibilityUpdatesForReadability(
 
   // If there's been a selection on the main page, the selection should be
   // processed so that Immersive can open to the correctly selected text.
-  if (IsReadabilitySelectTextEnabled() &&
+  if (IsReadabilitySelectTextEnabled() && !read_aloud_model_.speech_playing() &&
       model_.requires_post_process_selection()) {
     // TODO: crbug.com/505770261- Once general select-to-distill is enabled
     // this should be re-evaluated to prevent switching distillation modes
@@ -3238,8 +3259,11 @@ void ReadAnythingAppController::ApplyAccessibilityUpdatesForReadability(
     PostProcessSelection();
   }
 
-  // Check if we should perform text mapping for readability text selection.
-  MaybeMapRenderedTextToTree();
+  // Only attempt mapping when the tree changes or loading finishes (as
+  // kLoadComplete may arrive with an empty `updates` list).
+  if (!updates.empty() || model_.page_finished_loading()) {
+    MaybeMapRenderedTextToTree();
+  }
 }
 
 void ReadAnythingAppController::OnRenderedTextBlocksAvailable(

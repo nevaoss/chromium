@@ -339,7 +339,7 @@ suite('NewTabPageAppTest', () => {
       spacer.style.width = '100%';
       spacer.style.height = '10000px';
       spacer.style.flexShrink = '0';
-      $$(app, '#content')!.append(spacer);
+      $$(app, '#rhsContent')!.append(spacer);
 
       // Simulates a vertical scroll.
       const scrollY = async (y: number) => {
@@ -777,7 +777,7 @@ suite('NewTabPageAppTest', () => {
     });
 
     ([
-      ['#content', NtpElement.BACKGROUND],
+      ['#rhsContent', NtpElement.BACKGROUND],
       ['ntp-logo', NtpElement.LOGO],
       ['ntp-searchbox', NtpElement.REALBOX],
       ['cr-most-visited', NtpElement.MOST_VISITED],
@@ -1358,7 +1358,7 @@ suite('NewTabPageAppTest', () => {
       await callbackRouterRemote.$.flushForTesting();
 
       const blockedElements = app.shadowRoot.querySelectorAll<HTMLElement>(
-          '#content > :not(#logo):not(#searchboxContainer)');
+          '#rhsContent > :not(#logo):not(#searchboxContainer)');
       assertTrue(blockedElements.length > 0);
       blockedElements.forEach(el => {
         assertFalse(el.hasAttribute('inert'));
@@ -3740,7 +3740,7 @@ suite('NewTabPageAppTest', () => {
 
       const leftHandSide = $$(app, 'cr-left-hand-side');
       assertTrue(!!leftHandSide);
-      assertEquals('forced-lhs', leftHandSide.id);
+      assertEquals('forcedLhs', leftHandSide.id);
     });
   });
 
@@ -4776,6 +4776,9 @@ suite('NewTabPageAppTest', () => {
         vsClass.activeRecognition_ = null;
         vsClass.pendingStartInstance_ = null;
       }
+
+      // Use desktop speech recognition unless a test opts into Android's.
+      loadTimeData.overrideValues({androidSpeechRecognition: false});
     });
 
     teardown(() => {
@@ -4849,6 +4852,107 @@ suite('NewTabPageAppTest', () => {
           assertEquals(
               'chrome://new-tab-page/search?q=test+query&gs_ivs=1&sourceid=chrome',
               navigatedUrl);
+        });
+
+    test(
+        'clicking submit before any speech closes voice search and returns ' +
+            'to the realbox',
+        async () => {
+          loadTimeData.overrideValues({
+            voiceSearchCoherenceAnySearchboxExperimentEnabled: true,
+          });
+          await recreateApp();
+          metrics = fakeMetricsPrivate();
+
+          // Open voice search dialog.
+          const searchbox = $$(app, '#searchbox');
+          assertTrue(!!searchbox);
+          searchbox.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+              '#voiceSearchDialog');
+          assertTrue(!!dialog);
+          assertTrue(dialog.open);
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+
+          // Click the submit button without saying anything.
+          const submitButton =
+              voiceSearch.shadowRoot.querySelector('cr-composebox-submit');
+          assertTrue(!!submitButton);
+          assertFalse(submitButton.disabled);
+          $$<HTMLElement>(submitButton, '#submitContainer')!.click();
+          await microtasksFinished();
+
+          // Voice search is closed, nothing is searched and the realbox is
+          // showing again.
+          assertFalse(mockSpeechRecognition.voiceSearchInProgress);
+          assertFalse(dialog.open);
+          assertFalse(!!app.shadowRoot.querySelector('#voiceSearchDialog'));
+          assertEquals(0, windowProxy.getCallCount('navigate'));
+          assertEquals(
+              1,
+              metrics.count(
+                  'VoiceSearch.Action.NTP_REALBOX', 11 /* CANCELED_BY_USER */));
+        });
+
+    test(
+        'keeps listening when Android speech recognition ends after an ' +
+            'utterance',
+        async () => {
+          loadTimeData.overrideValues({
+            googleBaseUrl: 'chrome://new-tab-page/',
+            voiceSearchCoherenceAnySearchboxExperimentEnabled: true,
+            voiceSearchCoherenceRealboxAutoEndpointEnabled: false,
+            androidSpeechRecognition: true,
+          });
+          await recreateApp();
+
+          // Open voice search dialog.
+          const searchbox = $$(app, '#searchbox');
+          assertTrue(!!searchbox);
+          searchbox.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          assertTrue(voiceSearch.androidContinuousRecognitionEnabled);
+
+          // Simulate speech recognition result (user speaks).
+          mockSpeechRecognition.onresult!
+              (createResults('test query', /*isFinal=*/ true));
+          await microtasksFinished();
+
+          // Android's recognizer ends its session after every utterance.
+          mockSpeechRecognition.voiceSearchInProgress = false;
+          mockSpeechRecognition.onend!();
+          await microtasksFinished();
+
+          // Like on desktop, voice search keeps listening instead of
+          // submitting right away.
+          assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+          assertEquals(0, windowProxy.getCallCount('navigate'));
+          assertTrue(!!app.shadowRoot.querySelector('#voiceSearchDialog'));
+
+          // The user keeps speaking, then submits.
+          mockSpeechRecognition.onresult!
+              (createResults('tomorrow', /*isFinal=*/ true));
+          await voiceSearch.updateComplete;
+          const submitButton =
+              voiceSearch.shadowRoot.querySelector('#submitButton');
+          assertTrue(!!submitButton);
+          submitButton.dispatchEvent(new CustomEvent('submit-click'));
+          await microtasksFinished();
+
+          // Both utterances are submitted.
+          assertEquals(1, windowProxy.getCallCount('navigate'));
+          assertEquals(
+              'chrome://new-tab-page/search?q=test+query+tomorrow&gs_ivs=1&sourceid=chrome',
+              windowProxy.getArgs('navigate')[0]);
         });
 
     test(
@@ -4929,6 +5033,8 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!voiceSearch);
           await voiceSearch.updateComplete;
           assertFalse(voiceSearch.dynamicTimeoutEnabled);
+          // Only enabled where voice search uses Android's speech recognizer.
+          assertFalse(voiceSearch.androidContinuousRecognitionEnabled);
           assertTrue(voiceSearch.autosubmitEnabled);
           assertEquals(3000, voiceSearch.idleTimeout);
           assertEquals(10000, voiceSearch.manualSubmitIdleTimeout);

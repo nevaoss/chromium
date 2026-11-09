@@ -16,11 +16,11 @@ source_set("management") {
     "management_ui_constants.h",
     "management_ui_handler.h",
   ]
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
   deps = [
     "//base",
     "//chrome/app:generated_resources",
     "//chrome/app/theme:theme_resources",
+    "//chrome/browser:browser_features",
     "//chrome/browser:browser_process",
     "//chrome/browser:browser_process_platform_part",
     "//chrome/browser/enterprise",
@@ -109,6 +109,7 @@ source_set("unit_tests") {
     "//base",
     "//base/test:test_support",
     "//chrome/browser/enterprise/connectors/test:test_support",
+    "//chrome/browser/net",
     "//chrome/browser/prefs",
     "//chrome/browser/profiles:profile",
     "//chrome/test:test_support",

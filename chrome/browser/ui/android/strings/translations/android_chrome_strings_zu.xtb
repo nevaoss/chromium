@@ -322,12 +322,14 @@ Ngumuntu onomushwana wakho wokungena kuphela ongafunda idatha yakho ebetheliwe. 
 <translation id="2297822946037605517">Yaba leli khasi</translation>
 <translation id="230115972905494466">Awekho amadivayisi asebenzisanayo atholakele</translation>
 <translation id="2305798319182970276">Sula umlando wakho ngokuthepha inkinobho</translation>
+<translation id="2307420463693979699">I-<ph name="APP_NAME" /> idinga imvume yokufinyelela amadivayisi esixhumi esibonakalayo somuntu (ama-HID) kuleli sayithi.</translation>
 <translation id="2316129865977710310">Cha, ngiyabonga</translation>
 <translation id="232137538351753795">Swayipha ukusuka emaphethelweni ukuze ubuyele emuva</translation>
 <translation id="2323763861024343754">Isitoreji sesayithi</translation>
 <translation id="2327445548174191329">Kusukela ku-<ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Londoloza ikhasi ngokuthi…</translation>
 <translation id="2328474416100889417">Wonke umuntu uzolahlekelwa ukufinyelela eqenjini lethebhu ethi "<ph name="GROUP_NAME" />" ngokushesha, futhi wonke amalinki ezimemo azovalwa</translation>
+<translation id="2328773543844041445">Nweba ngokuzenzakalelayo amathebhu lapho uhambisa phezulu</translation>
 <translation id="2330186936255788117">Amanye amabhukhimakhi</translation>
 <translation id="2330243730505117832">Okuthi "Khetha idivayisi" kuvaliwe.</translation>
 <translation id="2332515770639153015">Ukuphequlula Ngokuphepha Okugqamile kuvuliwe</translation>
@@ -1691,6 +1693,7 @@ Ukuze ushintshe le sethingi, <ph name="BEGIN_LINK" />sula idatha yakho ye-Chrome
 <translation id="7608245556672190037">IChrome ithola ukukhetha ukungena kuvuliwe ngobude obuphelele</translation>
 <translation id="7612619742409846846">Ingene ngemvume ku-Google njenge-</translation>
 <translation id="7612989789287281429">Ikungenisa ngemvume…</translation>
+<translation id="7617512710641355143">IChrome iphethwe</translation>
 <translation id="7619072057915878432">Ukulandwa kwe-<ph name="FILE_NAME" /> kuhlulekile ngenxa yokuhluleka kwenethiwekhi.</translation>
 <translation id="7626032353295482388">Siyakwamukela ku-Chrome</translation>
 <translation id="7628417132421583481">Iya Kusiphathi Sephasiwedi</translation>

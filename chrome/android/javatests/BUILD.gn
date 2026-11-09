@@ -587,6 +587,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.appearance") {
 
   deps = [
     ":chrome_test_java_helper",
+    "//chrome/browser/ui/android/bottombar:config_java",
     "//chrome/browser/ui/android/toolbar:adaptive_features_java",
     "//chrome/browser/ui/android/toolbar:optional_button_java",
     "//chrome/browser/ui/vertical_tabs:java",
@@ -1071,7 +1072,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.omnibox") {
     "src/org/chromium/chrome/browser/omnibox/OmniboxTest.java",
     "src/org/chromium/chrome/browser/omnibox/SiteSearchTest.java",
     "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxActionsTest.java",
-    "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxPedalsRenderTest.java",
     "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxPedalsTest.java",
     "src/org/chromium/chrome/browser/omnibox/voice/VoiceSearchPTTest.java",
   ]
@@ -1783,6 +1783,7 @@ android_library("chrome_test_java_various") {
     "src/org/chromium/chrome/browser/document/LauncherActivityTest.java",
     "src/org/chromium/chrome/browser/dragdrop/DragAndDropLauncherActivityTest.java",
     "src/org/chromium/chrome/browser/externalnav/UrlOverridingTest.java",
+    "src/org/chromium/chrome/browser/eye_dropper/EyeDropperTest.java",
     "src/org/chromium/chrome/browser/findinpage/FindTest.java",
     "src/org/chromium/chrome/browser/fullscreen/FullscreenManagerTest.java",
     "src/org/chromium/chrome/browser/history/HistoryPageOnLffTest.java",

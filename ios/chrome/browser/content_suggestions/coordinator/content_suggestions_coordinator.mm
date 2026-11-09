@@ -715,6 +715,12 @@ using segmentation_platform::TipIdentifier;
   [self.delegate contentSuggestionsWasUpdated];
 }
 
+- (void)didTapAIMModule {
+  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
+           ntp_tiles::AimButtonRefactorArm::kAimAsModule);
+  [self.NTPActionsDelegate standaloneAIMModuleOpened];
+}
+
 - (void)didSelectTip:(segmentation_platform::TipIdentifier)tip {
   CHECK(_tipsMediator);
 
@@ -822,7 +828,8 @@ using segmentation_platform::TipIdentifier;
     case TipIdentifier::kNTPTheme: {
       CHECK(!segmentation_platform::features::
                 IsMagicStackTipsV2IosActionableEnabled());
-      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:YES];
+      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:YES
+                                                       scrollToBottom:NO];
       break;
     }
     case TipIdentifier::kTipsNotifications: {
@@ -835,9 +842,13 @@ using segmentation_platform::TipIdentifier;
                              baseViewController:self.magicStackCollectionView];
       break;
     }
-    case TipIdentifier::kNTPCustomization:
-      // TODO(crbug.com/566958720): Open the NTP Customization destination.
-      NOTREACHED();
+    case TipIdentifier::kNTPCustomization: {
+      CHECK(!segmentation_platform::features::
+                IsMagicStackTipsV2IosActionableEnabled());
+      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:YES
+                                                       scrollToBottom:YES];
+      break;
+    }
   }
 
   [self.NTPActionsDelegate tipsOpened];
@@ -853,6 +864,17 @@ using segmentation_platform::TipIdentifier;
 
     registry->NotifyCardInteracted(std::string(name.value()).c_str());
   }
+}
+
+- (void)didSelectNTPThemePhotoPicker {
+  [self.delegate openNTPBackgroundPhotoPicker];
+  [self.NTPActionsDelegate tipsOpened];
+  segmentation_platform::home_modules::HomeModulesCardRegistry* registry =
+      segmentation_platform::SegmentationPlatformServiceFactory::
+          GetHomeCardRegistryForProfile(self.profile);
+  CHECK(registry);
+  registry->NotifyCardInteracted(
+      segmentation_platform::kNTPThemeEphemeralModule);
 }
 
 #pragma mark - MagicStackCollectionViewAudience
@@ -1290,7 +1312,8 @@ using segmentation_platform::TipIdentifier;
       [self.delegate openSafariDataImport];
       break;
     case SetUpListItemType::kBackgroundCustomization:
-      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:NO];
+      [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:NO
+                                                       scrollToBottom:NO];
       [HandlerForProtocol(self.browser->GetCommandDispatcher(), HelpCommands)
           presentInProductHelpWithType:InProductHelpType::
                                            kHomeBackgroundCustomization];

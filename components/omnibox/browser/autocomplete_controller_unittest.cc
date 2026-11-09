@@ -1989,53 +1989,6 @@ TEST_F(AutocompleteControllerTest,
   }
   {
     SCOPED_TRACE(
-        "Composebox: verbatim-only sync pass while not done should not notify; "
-        "async pass with suggestions should notify.");
-    controller_.internal_result_.Reset();
-    controller_.published_result_.Reset();
-    AutocompleteMatch verbatim_match = CreateSearchMatch("verbatim", true, 900);
-    verbatim_match.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
-    search_provider.done_ = false;
-    search_provider.matches_ = {verbatim_match};
-    controller_.Start(
-        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
-    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
-
-    search_provider.matches_ = {
-        verbatim_match, CreateSearchMatch("search suggestion", false, 800)};
-    search_provider.done_ = true;
-    controller_.OnProviderUpdate(true, &search_provider);
-    controller_.ExpectOnResultChanged(
-        0, AutocompleteController::UpdateType::kLastAsyncPass);
-    controller_.ExpectNoNotificationOrStop();
-  }
-  {
-    SCOPED_TRACE(
-        "Composebox: transferred-only sync pass while not done should not "
-        "notify; async pass with suggestions should notify.");
-    controller_.internal_result_.Reset();
-    controller_.published_result_.Reset();
-    AutocompleteMatch old_match = CreateSearchMatch("old search", true, 900);
-    old_match.provider = &search_provider;
-    controller_.internal_result_.AppendMatches({old_match});
-    search_provider.done_ = false;
-    search_provider.matches_ = {};
-    controller_.Start(
-        create_composebox_input(metrics::OmniboxEventProto::NTP_COMPOSEBOX));
-    EXPECT_FALSE(controller_.internal_result_.empty());
-    EXPECT_TRUE(controller_.internal_result_.match_at(0)->from_previous);
-    EXPECT_EQ(controller_.observer_->on_result_changed_call_count_, 0);
-
-    search_provider.matches_ = {
-        CreateSearchMatch("new suggestion", true, 900)};
-    search_provider.done_ = true;
-    controller_.OnProviderUpdate(true, &search_provider);
-    controller_.ExpectOnResultChanged(
-        0, AutocompleteController::UpdateType::kLastAsyncPass);
-    controller_.ExpectNoNotificationOrStop();
-  }
-  {
-    SCOPED_TRACE(
         "Composebox: Stop(kClobbered) after suppressed empty sync pass should "
         "clear published_result_ and notify observers.");
     // Populate a SEARCH_WHAT_YOU_TYPED match on search_provider so it won't be
@@ -3739,6 +3692,42 @@ TEST_F(AutocompleteControllerTest,
   controller_.UpdateKeywordDescriptions(&controller_.internal_result_);
   EXPECT_EQ(
       l10n_util::GetStringUTF16(IDS_CONTEXTUAL_SEARCH_OPEN_LENS_ACTION_LABEL),
+      controller_.internal_result_.match_at(0)->description);
+}
+
+TEST_F(AutocompleteControllerTest,
+       UpdateKeywordDescriptions_ContextualSearchSidePanelDescription) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      omnibox::kWebUIOmniboxAskGAboutThisPage,
+      {{"Omnibox_AskGSuggestionSidePanelDescription", "true"}});
+  TemplateURLData turl_data;
+  turl_data.SetShortName(u"Google");
+  turl_data.SetKeyword(u"google.com");
+  turl_data.SetURL("https://google.com/search?q={searchTerms}");
+  controller_.template_url_service_->Add(
+      std::make_unique<TemplateURL>(turl_data));
+
+  AutocompleteMatch match(nullptr, 1100, false,
+                          omnibox::AutocompleteMatchType::kSearchSuggest);
+  match.keyword = u"google.com";
+  match.subtypes = {omnibox::SuggestSubtype::SUBTYPE_CONTEXTUAL_SEARCH};
+  SetAutocompleteMatches({match});
+
+  // The AskG action falls back to the Lens overlay.
+  EXPECT_CALL(*provider_client(), ShouldOpenCoBrowsePanel())
+      .WillRepeatedly(testing::Return(false));
+  controller_.UpdateKeywordDescriptions(&controller_.internal_result_);
+  EXPECT_EQ(
+      l10n_util::GetStringUTF16(IDS_CONTEXTUAL_SEARCH_OPEN_LENS_ACTION_LABEL),
+      controller_.internal_result_.match_at(0)->description);
+
+  // The AskG action opens the cobrowse side panel.
+  EXPECT_CALL(*provider_client(), ShouldOpenCoBrowsePanel())
+      .WillRepeatedly(testing::Return(true));
+  controller_.UpdateKeywordDescriptions(&controller_.internal_result_);
+  EXPECT_EQ(
+      l10n_util::GetStringUTF16(IDS_CONTEXTUAL_SEARCH_OPENS_IN_SIDE_PANEL),
       controller_.internal_result_.match_at(0)->description);
 }
 

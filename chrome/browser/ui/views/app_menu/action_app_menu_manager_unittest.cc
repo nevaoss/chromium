@@ -11,6 +11,7 @@
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
 #include "chrome/browser/ui/safety_hub/menu_notification_service.h"
@@ -38,11 +39,11 @@
 #include "components/send_tab_to_self/fake_send_tab_to_self_model.h"
 #include "components/send_tab_to_self/features.h"
 #include "components/send_tab_to_self/stub_send_tab_to_self_sync_service.h"
-#include "components/send_tab_to_self/target_device_info.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/skills/features.h"
 #include "components/sync/test/test_sync_service.h"
 #include "components/sync_device_info/device_info.h"
+#include "components/sync_device_info/remote_device_info.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "components/user_education/common/tutorial/tutorial_description.h"
 #include "content/public/test/test_renderer_host.h"
@@ -84,8 +85,8 @@ TEST_F(ActionAppMenuManagerTest, ProxySyncsWithDelegateAndInvokes) {
                                     &mock_drag_and_drop_host_);
   menu_manager.CreateMenuHierarchy();
 
-  actions::ActionItem* delegate =
-      actions::ActionManager::Get().FindAction(kActionShowPasswordManager);
+  actions::ActionItem* delegate = actions::ActionManager::Get().FindAction(
+      kActionShowPasswordManager, nullptr);
   ASSERT_NE(delegate, nullptr);
 
   actions::ActionItem* root = menu_manager.GetAppMenuRoot();
@@ -441,7 +442,21 @@ TEST_F(ActionAppMenuManagerTest,
   std::u16string* text_override =
       new_tab_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
   ASSERT_NE(text_override, nullptr);
-  EXPECT_EQ(*text_override, u"New Isolated tab");
+  EXPECT_EQ(*text_override, u"New isolated tab");
+
+  ASSERT_GE(block_section->GetChildren().children().size(), 3u);
+  actions::BaseAction* isolated_window_action =
+      block_section->GetChildren().children()[2].get();
+  ASSERT_NE(isolated_window_action, nullptr);
+  EXPECT_EQ(isolated_window_action->GetActionItem()->GetActionId(),
+            kActionNewIsolatedWindow);
+
+  std::u16string* isolated_window_text_override =
+      isolated_window_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
+  ASSERT_NE(isolated_window_text_override, nullptr);
+  EXPECT_EQ(*isolated_window_text_override,
+            BrowserActions::GetCleanTitleAndTooltipText(
+                l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_WINDOW)));
 }
 
 TEST_F(ActionAppMenuManagerTest, BookmarkBarSubmenuCheckItems) {
@@ -524,7 +539,7 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderUpgradeNotification) {
   }
 
   actions::ActionItem* upgrade_action =
-      actions::ActionManager::Get().FindAction(kActionUpgradeDialog);
+      actions::ActionManager::Get().FindAction(kActionUpgradeDialog, nullptr);
   ASSERT_NE(upgrade_action, nullptr);
   upgrade_action->SetVisible(true);
 
@@ -622,7 +637,7 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderSafetyHubNotification) {
 
 TEST_F(ActionAppMenuManagerTest, NotificationHeaderGlobalError) {
   actions::ActionItem* global_error_action =
-      actions::ActionManager::Get().FindAction(kActionGlobalError);
+      actions::ActionManager::Get().FindAction(kActionGlobalError, nullptr);
   ASSERT_NE(global_error_action, nullptr);
   global_error_action->SetVisible(true);
 
@@ -677,7 +692,8 @@ TEST_F(ActionAppMenuManagerTest, ZoomSubmenuHasExpandedHeightProperty) {
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
 TEST_F(ActionAppMenuManagerTest, NotificationHeaderDefaultBrowserPrompt) {
   actions::ActionItem* default_browser_action =
-      actions::ActionManager::Get().FindAction(kActionSetBrowserAsDefault);
+      actions::ActionManager::Get().FindAction(kActionSetBrowserAsDefault,
+                                               nullptr);
   ASSERT_NE(default_browser_action, nullptr);
   default_browser_action->SetVisible(true);
 
@@ -930,7 +946,7 @@ TEST_F(ActionAppMenuManagerTest,
 
   // 2. kOfferFeature with non-empty devices creates a dynamic submenu.
   sync_service->GetFakeSendTabToSelfModel()->SetTargetDeviceInfoSortedList(
-      {send_tab_to_self::TargetDeviceInfo(
+      {syncer::RemoteDeviceInfo(
           "My Phone", "guid1", syncer::DeviceInfo::FormFactor::kPhone,
           syncer::DeviceInfo::OsType::kAndroid, base::Time::Now())});
   root->ResetActionList();

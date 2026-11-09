@@ -322,12 +322,14 @@ Net iemand met jou wagfrase kan jou geënkripteerde data lees. Die wagfrase word
 <translation id="2297822946037605517">Deel hierdie bladsy</translation>
 <translation id="230115972905494466">Geen versoenbare toestelle gekry nie</translation>
 <translation id="2305798319182970276">Vee jou geskiedenis uit met die tik van ’n knoppie</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> het toestemming nodig om toegang tot menskoppelvlaktoestelle (MKT’s) vir hierdie werf te kry.</translation>
 <translation id="2316129865977710310">Nee, dankie</translation>
 <translation id="232137538351753795">Swiep van die linkerkant af om terug te gaan</translation>
 <translation id="2323763861024343754">Werfberging</translation>
 <translation id="2327445548174191329">Vanaf <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Stoor bladsy as …</translation>
 <translation id="2328474416100889417">Almal sal onmiddellik toegang tot die “<ph name="GROUP_NAME" />”-oortjiegroep verloor, en alle uitnodigingskakels sal afgeskakel word</translation>
+<translation id="2328773543844041445">Vou oortjies outomaties uit deur oor hulle te hou</translation>
 <translation id="2330186936255788117">Meer boekmerke</translation>
 <translation id="2330243730505117832">“Kies ’n toestel” is toegemaak.</translation>
 <translation id="2332515770639153015">Verbeterde Veiligblaai is aan</translation>
@@ -1691,6 +1693,7 @@ Byvoorbeeld, sommige webwerwe kan op hierdie versoek reageer deur vir jou advert
 <translation id="7608245556672190037">Chrome Finds-intekening is teen volle hoogte oopgemaak</translation>
 <translation id="7612619742409846846">By Google aangemeld as</translation>
 <translation id="7612989789287281429">Meld jou tans aan …</translation>
+<translation id="7617512710641355143">Chrome is bestuur</translation>
 <translation id="7619072057915878432">Kon <ph name="FILE_NAME" /> weens netwerkmislukkings nie aflaai nie.</translation>
 <translation id="7626032353295482388">Welkom by Chrome</translation>
 <translation id="7628417132421583481">Gaan na Wagwoordbestuurder</translation>

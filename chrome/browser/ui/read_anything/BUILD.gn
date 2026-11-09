@@ -8,6 +8,7 @@ import("//build/config/compiler/compiler.gni")
 import("//chrome/common/features.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//pdf/features.gni")
+import("//printing/buildflags/buildflags.gni")
 import("//testing/test.gni")
 
 source_set("prefs") {
@@ -47,15 +48,16 @@ source_set("read_anything") {
   public_deps = [
     ":prefs",
     "//base",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser:primitives",
     "//chrome/browser/dom_distiller",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/webui_browser:headers",
     "//chrome/common",
     "//chrome/common/read_anything:mojo_bindings",
+    "//components/user_education/common",
     "//content/public/browser",
     "//pdf:buildflags",
+    "//printing/buildflags",
     "//ui/base",
     "//ui/views",
     "//ui/views/controls/webview",
@@ -122,11 +124,13 @@ source_set("impl") {
     "//chrome/browser/ui/webui/side_panel/read_anything",
     "//components/accessibility:reading",
     "//components/find_in_page",
+    "//components/input",
     "//components/language/core/browser",
     "//components/language/core/common",
     "//components/page_load_metrics/browser",
     "//components/translate/content/browser",
     "//pdf:buildflags",
+    "//printing/buildflags",
     "//services/metrics/public/cpp:metrics_cpp",
     "//services/metrics/public/cpp:ukm_builders",
   ]
@@ -136,6 +140,9 @@ source_set("impl") {
       "//chrome/browser/pdf",
       "//components/pdf/browser",
     ]
+  }
+  if (enable_printing) {
+    deps += [ "//chrome/browser/printing" ]
   }
 }
 
@@ -151,6 +158,7 @@ source_set("browser_tests") {
   ]
 
   deps = [
+    ":impl",
     ":read_anything",
     "//base",
     "//base/test:test_support",
@@ -159,6 +167,7 @@ source_set("browser_tests") {
     "//chrome/browser/pdf:pdf_extension_test_utils",
     "//chrome/browser/search_engines",
     "//chrome/browser/translate",
+    "//chrome/browser/ui:browser_actions",
     "//chrome/browser/ui:browser_commands",
     "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui:ui_features",
@@ -171,6 +180,7 @@ source_set("browser_tests") {
     "//chrome/browser/ui/views/frame:contents_container_view",
     "//chrome/browser/ui/views/side_panel",
     "//chrome/browser/ui/webui:webui_util",
+    "//chrome/browser/ui/webui/side_panel/read_anything",
     "//chrome/test:test_support",
     "//chrome/test:test_support_ui",
     "//chrome/test/base:browser_test_waiters",
@@ -189,6 +199,18 @@ source_set("browser_tests") {
     "//ui/accessibility",
     "//ui/views",
   ]
+
+  if (enable_print_preview) {
+    sources += [ "read_anything_printing_browsertest.cc" ]
+    deps += [
+      "//chrome/browser/printing",
+      "//chrome/browser/printing:test_support",
+      "//chrome/browser/ui/webui/print_preview",
+      "//components/web_modal",
+      "//printing",
+      "//printing/backend:test_support",
+    ]
+  }
 }
 
 source_set("interactive_ui_tests") {

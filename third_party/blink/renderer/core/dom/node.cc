@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <ranges>
 
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_get_root_node_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_node_string_trustedscript.h"
@@ -1702,7 +1703,7 @@ void Node::FocusabilityLost() {
 
 LinkHighlightCandidate Node::IsLinkHighlightCandidate() const {
   if (const LayoutObject* layout_object = GetLayoutObject()) {
-    const ECursor cursor = layout_object->StyleRef().Cursor();
+    const ECursor cursor = layout_object->Style().Cursor();
     if (cursor == ECursor::kPointer)
       return LinkHighlightCandidate::kYes;
     if (cursor != ECursor::kAuto)
@@ -2004,7 +2005,7 @@ bool Node::CanStartSelection() const {
   }
 
   if (GetLayoutObject()) {
-    const ComputedStyle& style = GetLayoutObject()->StyleRef();
+    const ComputedStyle& style = GetLayoutObject()->Style();
     EUserSelect user_select = style.UsedUserSelect();
     if (user_select == EUserSelect::kNone)
       return false;
@@ -2563,8 +2564,9 @@ void Node::InvalidateIfHasEffectiveAppearance() const {
   if (!layout_object)
     return;
 
-  if (!layout_object->StyleRef().HasEffectiveAppearance())
+  if (!layout_object->Style().HasEffectiveAppearance()) {
     return;
+  }
 
   layout_object->SetSubtreeShouldDoFullPaintInvalidation();
 }
@@ -3844,7 +3846,8 @@ void Node::AddConsoleMessage(mojom::blink::ConsoleMessageSource source,
                              const String& message) {
   auto* console_message =
       MakeGarbageCollected<ConsoleMessage>(source, level, message);
-  console_message->SetNodes(GetDocument().GetFrame(), {GetDomNodeId()});
+  console_message->SetNodes(GetDocument().GetFrame(),
+                            {DOMNodeIdType(GetDomNodeId())});
   GetDocument().AddConsoleMessage(console_message);
 }
 

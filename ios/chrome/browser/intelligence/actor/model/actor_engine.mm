@@ -14,7 +14,6 @@
 #import "components/origin_gating/core/origin_gating_registration.h"
 #import "components/origin_gating/core/origin_gating_service.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_task.h"
-#import "ios/chrome/browser/intelligence/actor/model/actor_task_intervention_handler.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_task_form_filling_handler.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
@@ -22,6 +21,7 @@
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
 #import "ios/chrome/browser/intelligence/actor/tools/utils/actor_tool_utils.h"
 #import "ios/chrome/browser/intelligence/actor/tools/utils/logging_util.h"
+#import "ios/chrome/browser/intelligence/features/features.h"
 
 namespace actor {
 
@@ -129,7 +129,9 @@ ActorEngine::ActorEngine(ExecutionUpdatesDelegate* execution_updates_delegate,
                          ActorTask* owner_task)
     : state_(State::kInit),
       execution_updates_delegate_(execution_updates_delegate),
-      owner_task_(owner_task) {
+      owner_task_(owner_task),
+      tool_controller_(
+          std::make_unique<ToolController>(/*tool_delegate=*/this)) {
   CHECK(execution_updates_delegate_);
   CHECK(owner_task_);
   origin_gating::OriginGatingService* origin_gating_service =
@@ -162,10 +164,7 @@ void ActorEngine::CancelOngoingAndPendingActions(
   weak_ptr_factory_.InvalidateWeakPtrs();
   action_sequence_.clear();
 
-  if (tool_controller_) {
-    tool_controller_->Cancel();
-    tool_controller_.reset();
-  }
+  tool_controller_->Cancel();
 
   SetState(State::kFailed);
 
@@ -179,7 +178,7 @@ void ActorEngine::CancelOngoingAndPendingActions(
 
 void ActorEngine::FailCurrentTool(mojom::ActionResultCode reason) {
   CHECK_NE(reason, mojom::ActionResultCode::kOk);
-  if (state_ != State::kToolInvoke || !tool_controller_) {
+  if (state_ != State::kToolInvoke) {
     return;
   }
 
@@ -213,11 +212,8 @@ ActorToolFactory& ActorEngine::GetToolFactory() const {
 
 ActorTaskFormFillingHandler* ActorEngine::GetActorTaskFormFillingHandler() {
   if (!form_filling_handler_) {
-    intervention_handler_ = [[ActorTaskInterventionHandler alloc] init];
     form_filling_handler_ = ActorTaskFormFillingHandler::Create(
         base::PassKey<ActorEngine>(), GetJournal(), GetTaskId());
-    form_filling_handler_->SetInterventionDelegate(base::PassKey<ActorEngine>(),
-                                                   intervention_handler_);
   }
   return form_filling_handler_.get();
 }
@@ -281,6 +277,41 @@ ActorEngine::CreateOriginGatingConfig() {
       origin_gating::OriginGatingConfiguration::CacheScope::kOrigin);
 }
 
+void ActorEngine::IsAcceptableNavigationDestination(
+    const GURL& url,
+    ToolExecutionCallback callback) {
+  if (!IsActorOriginGatingForExplicitNavigationEnabled()) {
+    std::move(callback).Run(ToolExecutionResult::Ok());
+    return;
+  }
+
+  origin_gating::OriginGatingChecker* checker = GetOriginGatingChecker();
+  if (!checker) {
+    std::move(callback).Run(ToolExecutionResult(
+        InternalToolErrorCode::kExecutionMissingDependencies));
+    return;
+  }
+
+  checker->ComputeGatingDecision(
+      std::make_unique<origin_gating::GatingDecisionContext>(),
+      origin_gating::GateableEvent(origin_gating::NavigationRequestEvent{
+          .source = GURL(), .destination = url}),
+      base::BindOnce(&ActorEngine::OnNavigationDestinationGatingDecision,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void ActorEngine::OnNavigationDestinationGatingDecision(
+    ToolExecutionCallback callback,
+    std::unique_ptr<origin_gating::GatingDecisionContext> context,
+    origin_gating::GatingDecision decision) {
+  if (!decision.is_allowed) {
+    std::move(callback).Run(ToolExecutionResult(
+        mojom::ActionResultCode::kTriggeredNavigationBlocked));
+    return;
+  }
+  std::move(callback).Run(ToolExecutionResult::Ok());
+}
+
 void ActorEngine::ExecuteNextAction() {
   if (next_action_index_ >= action_sequence_.size()) {
     CompleteActions(ActionResult(ToolExecutionResult::Ok()));
@@ -335,7 +366,6 @@ void ActorEngine::FinishedUiPreInvoke(ActionResult result) {
 
   const ActorToolRequest* action =
       action_sequence_[InProgressActionIndex()].get();
-  tool_controller_ = std::make_unique<ToolController>(/*tool_delegate=*/this);
   tool_controller_->CreateToolAndValidate(
       *action, base::BindOnce(&ActorEngine::OnToolValidationComplete,
                               weak_ptr_factory_.GetWeakPtr()));

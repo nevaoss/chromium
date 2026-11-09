@@ -329,6 +329,7 @@
 <translation id="2327445548174191329">ຈາກ <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">ບັນທຶກໜ້າເປັນ…</translation>
 <translation id="2328474416100889417">ທຸກຄົນຈະສູນເສຍສິດເຂົ້າເຖິງກຸ່ມແຖບ “<ph name="GROUP_NAME" />” ທັນທີ ແລະ ລະບົບຈະປິດລິ້ງຄຳເຊີນທັງໝົດ</translation>
+<translation id="2328773543844041445">ຂະຫຍາຍແຖບອັດຕະໂນມັດເມື່ອເລື່ອນເມົ້າໄປໃສ່</translation>
 <translation id="2330186936255788117">ບຸກມາກເພີ່ມເຕີມ</translation>
 <translation id="2330243730505117832">"ເລືອກອຸປະກອນ" ປິດຢູ່.</translation>
 <translation id="2332515770639153015">ເປີດໃຊ້ Safe Browsing ທີ່ປັບປຸງດີຂຶ້ນແລ້ວ</translation>
@@ -1692,6 +1693,7 @@
 <translation id="7608245556672190037">ການເປີດໃຊ້ Chrome Finds ຖືກເປີດຢູ່ລະດັບຄວາມສູງເຕັມໜ້າຈໍແລ້ວ</translation>
 <translation id="7612619742409846846">ເຂົ້າສູ່ລະບົບ Google ເປັນ</translation>
 <translation id="7612989789287281429">ກຳລັງພາທ່ານເຂົ້າສູ່ລະບົບ…</translation>
+<translation id="7617512710641355143">Chrome ໄດ້ຮັບການຈັດການ</translation>
 <translation id="7619072057915878432">ການ​ດາວ​ໂຫຼ​ດ <ph name="FILE_NAME" /> ລົ້ມເຫລວ​ເນື່ອງ​ຈາກ​ເຄືອ​ຂ່າຍ​ຂັດຂ້ອງ.</translation>
 <translation id="7626032353295482388">ຍິນ​ດີ​ຕ້ອນ​ຮັບສູ່ Chrome</translation>
 <translation id="7628417132421583481">ເຂົ້າໄປຕົວຈັດການລະຫັດຜ່ານ</translation>

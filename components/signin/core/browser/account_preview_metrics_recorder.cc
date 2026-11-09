@@ -53,7 +53,8 @@ std::optional<CountScale> GetScaleForDataType(syncer::DataType type) {
   }
 
   if (!base::FeatureList::IsEnabled(
-          switches::kEnableAccountPreviewDataReducedTypes)) {
+          switches::kEnableAccountPreviewDataFetchOptimizations) ||
+      !switches::kAccountPreviewDataReducedTypes.Get()) {
     switch (type) {
       case syncer::APPS:
         return CountScale::k100;
@@ -257,7 +258,7 @@ void AccountPreviewMetricsRecorder::RecordSwitchingHeuristicResult(
   }
 
   profile_metrics_service_->UmaHistogramEnumeration(
-      "Signin.SwitchingHeuristic.WouldShowPromo", switching_result.outcome);
+      "Signin.SwitchingHeuristic.WouldShowPromo2", switching_result.outcome);
 
   pref_service_->SetTime(
       prefs::kAccountPreviewSwitchingHeuristicLastRecordedPref, now);

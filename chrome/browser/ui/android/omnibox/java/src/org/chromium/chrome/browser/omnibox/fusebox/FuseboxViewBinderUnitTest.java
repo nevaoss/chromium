@@ -21,6 +21,7 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -276,6 +277,18 @@ public class FuseboxViewBinderUnitTest {
         Drawable startDrawable = mViewHolder.requestType.getCompoundDrawablesRelative()[0];
         assertNotNull(startDrawable);
         assertEquals(expectedResId, shadowOf(startDrawable).getCreatedFromResId());
+    }
+
+    private static void assertIconSize(View button, int expectedSizePx) {
+        ViewGroup.LayoutParams params = button.findViewById(R.id.start_icon).getLayoutParams();
+        assertEquals(expectedSizePx, params.width);
+        assertEquals(expectedSizePx, params.height);
+    }
+
+    private static void assertVerticalMargins(View row, int expectedMarginPx) {
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) row.getLayoutParams();
+        assertEquals(expectedMarginPx, params.topMargin);
+        assertEquals(expectedMarginPx, params.bottomMargin);
     }
 
     @Test
@@ -1028,6 +1041,24 @@ public class FuseboxViewBinderUnitTest {
     }
 
     @Test
+    public void listItems_truncateAfterTwoLines() {
+        PopupButtonData tool =
+                new PopupButtonData.Builder()
+                        .setType(PopupButtonType.TOOL)
+                        .setText("pinned tool")
+                        .build();
+        mModel.set(FuseboxProperties.POPUP_PINNED_TOOL_BUTTON_DATA_LIST, List.of(tool));
+
+        TextView staticRowText = mPopup.mMoreOptionsButton.findViewById(R.id.action_text);
+        TextView dynamicRowText =
+                mPopup.mPinnedToolsContainer.getChildAt(0).findViewById(R.id.action_text);
+        for (TextView text : List.of(staticRowText, dynamicRowText)) {
+            assertEquals(2, text.getMaxLines());
+            assertEquals(TextUtils.TruncateAt.END, text.getEllipsize());
+        }
+    }
+
+    @Test
     public void recentTabsEnabled_withFavicon() {
         Bitmap favicon = UiUtils.createBitmap(/* size= */ 1, Color.BLUE);
         PopupButtonData dataWithFavicon =
@@ -1164,6 +1195,7 @@ public class FuseboxViewBinderUnitTest {
     }
 
     @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void popupIconSize_bottomSheetPreserves24dp() {
         PropertyModel model = createBottomSheetModel();
         FuseboxViewHolder viewHolder = createBottomSheetViewHolder();
@@ -1187,6 +1219,103 @@ public class FuseboxViewBinderUnitTest {
         ViewGroup.LayoutParams dynamicLayoutParams = dynamicIcon.getLayoutParams();
         assertEquals(expectedBottomSheetIconSize, dynamicLayoutParams.width);
         assertEquals(expectedBottomSheetIconSize, dynamicLayoutParams.height);
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void popupIconSize_variationsEnabled_carouselTilesLargeListRowsUnchanged() {
+        FuseboxViewHolder viewHolder =
+                createViewHolder(
+                        /* isBottomSheet= */ true,
+                        /* useCarousel= */ true,
+                        /* useScrollableCarousel= */ false,
+                        CurrentTabPlacement.BELOW_ATTACHMENTS);
+        mBinder.bind(createBottomSheetModel(), viewHolder, FuseboxProperties.COLOR_SCHEME);
+        Resources res = mActivityController.get().getResources();
+        int tileSize = res.getDimensionPixelSize(R.dimen.fusebox_carousel_item_large_icon_size);
+        int rowSize = res.getDimensionPixelSize(R.dimen.fusebox_bottom_sheet_attachment_icon_size);
+        assertFalse(viewHolder.popup.mCarouselTiles.isEmpty());
+        assertFalse(viewHolder.popup.mListAttachmentButtons.isEmpty());
+
+        for (View tile : viewHolder.popup.mCarouselTiles) {
+            assertIconSize(tile, tileSize);
+        }
+        for (View row : viewHolder.popup.mListAttachmentButtons) {
+            assertIconSize(row, rowSize);
+        }
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void rowSpacing_currentTabBelowAttachments_appliesToRowsOnly() {
+        PropertyModel model = createBottomSheetModel();
+        FuseboxViewHolder viewHolder =
+                createViewHolder(
+                        /* isBottomSheet= */ true,
+                        /* useCarousel= */ true,
+                        /* useScrollableCarousel= */ false,
+                        CurrentTabPlacement.BELOW_ATTACHMENTS);
+        addModelButton(model, viewHolder);
+        int margin =
+                mActivityController
+                        .get()
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.fusebox_bottom_sheet_item_vertical_margin);
+
+        for (View row : viewHolder.popup.mListAttachmentButtons) {
+            assertVerticalMargins(row, margin);
+        }
+        assertVerticalMargins(viewHolder.popup.mMoreOptionsButton, margin);
+        assertVerticalMargins(getDynamicButton(viewHolder.popup, 0), margin);
+        for (View tile : viewHolder.popup.mCarouselTiles) {
+            assertVerticalMargins(tile, 0);
+        }
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void rowSpacing_currentTabAboveAttachments_notApplied() {
+        PropertyModel model = createBottomSheetModel();
+        FuseboxViewHolder viewHolder =
+                createViewHolder(
+                        /* isBottomSheet= */ true,
+                        /* useCarousel= */ false,
+                        /* useScrollableCarousel= */ false,
+                        CurrentTabPlacement.ABOVE_ATTACHMENTS);
+        addModelButton(model, viewHolder);
+        assertVerticalMargins(viewHolder.popup.mMoreOptionsButton, 0);
+        assertVerticalMargins(getDynamicButton(viewHolder.popup, 0), 0);
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void rowSpacing_currentTabWithAttachments_notApplied() {
+        FuseboxViewHolder viewHolder = createBottomSheetViewHolder();
+        addModelButton(createBottomSheetModel(), viewHolder);
+        assertVerticalMargins(viewHolder.popup.mMoreOptionsButton, 0);
+        assertVerticalMargins(getDynamicButton(viewHolder.popup, 0), 0);
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void currentTabFavicon_variationsEnabled_inCarousel_scaledToCarouselSize() {
+        PropertyModel model = createBottomSheetModel();
+        FuseboxViewHolder viewHolder = createBottomSheetViewHolder();
+        assertTrue(viewHolder.popup.mCarouselTiles.contains(viewHolder.popup.mAddCurrentTab));
+
+        model.set(
+                FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON,
+                UiUtils.createBitmap(/* size= */ 1, Color.RED));
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_FAVICON);
+
+        ImageView icon = viewHolder.popup.mAddCurrentTab.findViewById(R.id.start_icon);
+        int expectedTileSize =
+                mActivityController
+                        .get()
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.fusebox_carousel_item_large_icon_size);
+        assertEquals(
+                expectedTileSize, ((BitmapDrawable) icon.getDrawable()).getBitmap().getWidth());
     }
 
     @Test

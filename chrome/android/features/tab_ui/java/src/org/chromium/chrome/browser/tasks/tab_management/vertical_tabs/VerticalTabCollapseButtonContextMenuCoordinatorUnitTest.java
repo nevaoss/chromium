@@ -69,7 +69,7 @@ public class VerticalTabCollapseButtonContextMenuCoordinatorUnitTest {
     }
 
     @Test
-    public void testShowMenu_ExpandOnHoverOn_ShowsTurnOffItem() {
+    public void testShowMenu_ExpandOnHoverOn_ShowsCheckedItem() {
         mCoordinator.showMenu(mRectProvider, /* isIncognito= */ false);
 
         assertTrue(mCoordinator.isMenuShowing());
@@ -77,21 +77,33 @@ public class VerticalTabCollapseButtonContextMenuCoordinatorUnitTest {
         assertEquals(
                 R.id.toggle_expand_tabs_on_hover_menu_id,
                 itemModel.get(ListMenuItemProperties.MENU_ITEM_ID));
+        assertEquals(R.string.expand_tabs_on_hover, itemModel.get(ListMenuItemProperties.TITLE_ID));
+        assertTrue(itemModel.get(ListMenuItemProperties.CHECKABLE));
+        assertTrue(itemModel.get(ListMenuItemProperties.CHECKED));
         assertEquals(
-                R.string.turn_off_expand_tabs_on_hover,
-                itemModel.get(ListMenuItemProperties.TITLE_ID));
+                R.drawable.material_ic_check_24dp,
+                itemModel.get(ListMenuItemProperties.END_ICON_ID));
+        assertEquals(
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(
+                                R.dimen.vertical_tabs_expand_on_hover_menu_end_icon_margin),
+                itemModel.get(ListMenuItemProperties.END_ICON_MARGIN_START));
     }
 
     @Test
-    public void testShowMenu_ExpandOnHoverOff_ShowsTurnOnItem() {
+    public void testShowMenu_ExpandOnHoverOff_ShowsUncheckedItem() {
         VerticalTabUtils.setExpandOnHoverEnabledInSharedPref(
                 false, ExpandOnHoverToggleEntryPoint.SETTINGS);
 
         mCoordinator.showMenu(mRectProvider, /* isIncognito= */ false);
 
-        assertEquals(
-                R.string.turn_on_expand_tabs_on_hover,
-                getOnlyItemModel().get(ListMenuItemProperties.TITLE_ID));
+        PropertyModel itemModel = getOnlyItemModel();
+        assertEquals(R.string.expand_tabs_on_hover, itemModel.get(ListMenuItemProperties.TITLE_ID));
+        assertTrue(itemModel.get(ListMenuItemProperties.CHECKABLE));
+        assertFalse(itemModel.get(ListMenuItemProperties.CHECKED));
+        assertEquals(0, itemModel.get(ListMenuItemProperties.END_ICON_ID));
+        assertEquals(0, itemModel.get(ListMenuItemProperties.END_ICON_MARGIN_START));
     }
 
     @Test

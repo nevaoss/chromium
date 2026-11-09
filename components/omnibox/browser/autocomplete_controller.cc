@@ -690,7 +690,6 @@ void AutocompleteController::Start(const AutocompleteInput& input) {
 
   // Start the new query.
   last_update_type_ = UpdateType::kNone;
-  has_deferred_notify_changed_ = false;
   // Use `start_time` rather than `metrics.start_time_` for
   // 'Omnibox.QueryTime2.*'. They differ by 3 μs, which though too small to be
   // distinguished in the ms-scale buckets, is large enough to move the
@@ -827,10 +826,12 @@ void AutocompleteController::Stop(AutocompleteStopReason stop_reason) {
       RequestNotifyChanged(/*notify_default_match=*/false, /*delayed=*/false);
     }
   } else if (stop_reason == AutocompleteStopReason::kInactivity &&
-             has_deferred_notify_changed_) {
+             omnibox::IsComposebox(input_.current_page_classification()) &&
+             internal_result_.empty()) {
+    // If Composebox suppressed the initial empty synchronous notification and
+    // timed out without receiving any async results, notify observers now.
     RequestNotifyChanged(/*notify_default_match=*/false, /*delayed=*/false);
   }
-  has_deferred_notify_changed_ = false;
 }
 
 void AutocompleteController::DeleteMatch(const AutocompleteMatch& match) {
@@ -1622,7 +1623,6 @@ void AutocompleteController::UpdateResult(UpdateType update_type,
   const bool can_show_contextual_suggestions = CanShowContextualSuggestions(
       autocomplete_provider_client()->IsPagePaywalled());
   const bool mia_enabled =
-      omnibox_feature_configs::MiaZPS::Get().enabled &&
       AimEligibilityService::IsAimAllowedByPolicy(provider_client_->GetPrefs());
   const bool is_incognito = provider_client_->IsOffTheRecord();
 
@@ -1679,8 +1679,11 @@ void AutocompleteController::UpdateResult(UpdateType update_type,
                    update_type == UpdateType::kMatchDeletion ||
                    update_type == UpdateType::kLastAsyncPassExceptDoc;
 
-  if (ShouldDeferNotifyChanged(update_type)) {
-    has_deferred_notify_changed_ = true;
+  // For composebox, do not notify observers of empty results while asynchronous
+  // providers are still running, to avoid sending an empty synchronous pass
+  // before asynchronous zero-suggest or search results arrive.
+  if (omnibox::IsComposebox(input_.current_page_classification()) &&
+      internal_result_.empty() && !done()) {
     return;
   }
 
@@ -2050,7 +2053,10 @@ void AutocompleteController::UpdateKeywordDescriptions(
             if (!i->IsStaticContextualSearchSuggestion() ||
                 autocomplete_provider_client()->IsAskGShowChipEnabled()) {
               i->description = l10n_util::GetStringUTF16(
-                  IDS_CONTEXTUAL_SEARCH_OPEN_LENS_ACTION_LABEL);
+                  ContextualSearchProvider::ShouldShowSidePanelDescription(
+                      autocomplete_provider_client())
+                      ? IDS_CONTEXTUAL_SEARCH_OPENS_IN_SIDE_PANEL
+                      : IDS_CONTEXTUAL_SEARCH_OPEN_LENS_ACTION_LABEL);
             } else {
               i->description.clear();
             }
@@ -2351,7 +2357,6 @@ void AutocompleteController::NotifyChanged() {
     obs.OnResultChanged(this, notify_changed_default_match_);
   }
   CancelNotifyChangedRequest();
-  has_deferred_notify_changed_ = false;
 }
 
 void AutocompleteController::RequestNotifyChanged(bool notify_default_match,
@@ -2369,33 +2374,6 @@ void AutocompleteController::RequestNotifyChanged(bool notify_default_match,
 void AutocompleteController::CancelNotifyChangedRequest() {
   notify_changed_debouncer_.CancelRequest();
   notify_changed_default_match_ = false;
-}
-
-bool AutocompleteController::ShouldDeferNotifyChanged(
-    UpdateType update_type) const {
-  // For composebox, do not notify observers of sync results while async
-  // providers are still running, unless synchronous/prefetched non-verbatim
-  // matches are already available for the new input. This avoids
-  // closing/flickering while still serving prefetched results immediately.
-  if (!omnibox::IsComposebox(input_.current_page_classification())) {
-    return false;
-  }
-
-  if (done()) {
-    return false;
-  }
-
-  if (update_type != UpdateType::kSyncPassOnly &&
-      update_type != UpdateType::kSyncPass) {
-    return false;
-  }
-
-  return std::ranges::all_of(
-      internal_result_, [](const AutocompleteMatch& match) {
-        return match.from_previous ||
-               match.type ==
-                   omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
-      });
 }
 
 AutocompleteController::ProviderDoneState

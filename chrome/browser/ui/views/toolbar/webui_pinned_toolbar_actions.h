@@ -48,7 +48,7 @@ class WebUIPinnedToolbarActions : public PinnedToolbarActions,
   bool IsActionPinnedOrPoppedOut(actions::ActionId id) override;
   bool IsActionHighlighted(actions::ActionId id) override;
   void PostOrQueueActionAfterAnimation(base::OnceClosure action) override;
-  ToolbarButton* GetDownloadButton() override;
+  DownloadButton* GetDownloadButton() override;
   views::BubbleAnchor GetBubbleAnchor(actions::ActionId action_id) override;
   void GetBubbleAnchorAsync(
       actions::ActionId action_id,
@@ -93,7 +93,15 @@ class WebUIPinnedToolbarActions : public PinnedToolbarActions,
   void RetryPostOrQueueAction(base::OnceClosure action,
                               BubbleAnchorResult result);
 
+  // Returns whether the downloads button is currently displayed.
+  bool IsDownloadButtonShowing();
+
+  // Show `id` action ephemerally if `show`, otherwise hide. `need_update`
+  // indicates if we need to call `OnActionsChanged()` afterwards.
+  void ShowActionEphemerally(actions::ActionId id, bool show, bool need_update);
+
   struct PendingAnchorRequest;
+  class WebUIDownloadButton;
 
   // Parent toolbar.
   const raw_ptr<WebUIToolbarControlDelegate> delegate_;
@@ -103,8 +111,10 @@ class WebUIPinnedToolbarActions : public PinnedToolbarActions,
   base::ScopedObservation<PinnedToolbarActionsModel,
                           PinnedToolbarActionsModel::Observer>
       model_observation_{this};
-  // List of active (highlighted) actions. If unpinned, these actions also
-  // display ephemerally in the toolbar as popped out buttons.
+  // List of highlighted actions.
+  std::vector<actions::ActionId> highlighted_actions_;
+  // List of active actions. If unpinned, these actions also display ephemerally
+  // in the toolbar as popped out buttons.
   std::vector<actions::ActionId> active_actions_;
   // Allow this class to observe actions for currently displaying buttons.
   std::vector<base::CallbackListSubscription> action_subscriptions_;
@@ -116,6 +126,8 @@ class WebUIPinnedToolbarActions : public PinnedToolbarActions,
   std::optional<actions::ActionId> active_context_menu_action_;
   // Pending requests for bubble anchors.
   std::list<std::unique_ptr<PendingAnchorRequest>> pending_anchor_requests_;
+  // Implements DownloadButton for the downloads button, when it's displayed.
+  const std::unique_ptr<WebUIDownloadButton> download_button_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TOOLBAR_WEBUI_PINNED_TOOLBAR_ACTIONS_H_

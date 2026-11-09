@@ -329,6 +329,7 @@ Dim ond rhywun sydd â'ch cyfrinymadrodd all ddarllen eich data sydd wedi'u hamg
 <translation id="2327445548174191329">O <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Cadw'r dudalen fel…</translation>
 <translation id="2328474416100889417">Bydd pawb yn colli mynediad at y grŵp tabiau "<ph name="GROUP_NAME" />" ar unwaith, a bydd yr holl ddolenni gwahoddiad yn cael eu diffodd</translation>
+<translation id="2328773543844041445">Ehangu tabiau yn awtomatig wrth hofran</translation>
 <translation id="2330186936255788117">Rhagor o nodau tudalen</translation>
 <translation id="2330243730505117832">Mae "Dewiswch ddyfais" ar gau.</translation>
 <translation id="2332515770639153015">Mae Gwell Pori'n Ddiogel ymlaen</translation>
@@ -1693,6 +1694,7 @@ I newid y gosodiad hwn, <ph name="BEGIN_LINK" />dileu'r data Chrome yn eich cyfr
 <translation id="7608245556672190037">Mae dalen waelod optio i mewn i Chrome Finds wedi'i agor ar uchder llawn</translation>
 <translation id="7612619742409846846">Wedi mewngofnodi i Google fel</translation>
 <translation id="7612989789287281429">Wrthi'n mewngofnodi…</translation>
+<translation id="7617512710641355143">Rheolir Chrome</translation>
 <translation id="7619072057915878432">Wedi methu â lawrlwytho <ph name="FILE_NAME" /> oherwydd methiannau rhwydwaith.</translation>
 <translation id="7626032353295482388">Croeso i Chrome</translation>
 <translation id="7628417132421583481">Ewch i'r Rheolwr Cyfrineiriau</translation>

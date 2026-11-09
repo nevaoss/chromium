@@ -190,10 +190,7 @@ source_set("impl") {
     "scheduler/notification_schedule_service_factory.cc",
   ]
 
-  public_deps = [
-    ":notifications",
-    "//chrome/browser:browser_public_dependencies",
-  ]
+  public_deps = [ ":notifications" ]
 
   deps = [
     "//chrome/browser:browser_features",
@@ -218,6 +215,9 @@ source_set("impl") {
     "//components/site_engagement/content",
     "//components/visibility_timer",
     "//ui/message_center",
+    "//chrome/app:generated_resources",
+    "//components/search_engines",
+    "//ui/native_theme",
     "//ui/strings:ui_strings_grit",
   ]
 
@@ -379,7 +379,6 @@ source_set("system_notification_helper_impl") {
   deps = [
     ":notifications",
     ":system_notification_helper",
-    "//chrome/browser:browser_public_dependencies",
     "//ui/message_center/public/cpp",
   ]
 }
@@ -446,6 +445,7 @@ source_set("unit_tests") {
   ]
 
   deps = [
+    ":impl",
     ":notifications",
     ":test_support",
     "//base",

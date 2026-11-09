@@ -191,6 +191,10 @@ const char* ErrorPanelTypeToHistogramSuffix(mojom::ErrorPanelType error_type) {
   }
 }
 
+bool ShouldDisableLoadingOverlay() {
+  return base::FeatureList::IsEnabled(features::kGlicSsr);
+}
+
 }  // namespace
 
 class GlicNoWebviewContentsManager::Metrics {
@@ -327,6 +331,8 @@ GlicNoWebviewContentsManager::OverlayContentsManager::EnsureWebContents() {
   if (web_contents_) {
     return web_contents_.get();
   }
+  // The overlay is only created when Glic is visible (kShowingOverlay), so it
+  // is never created hidden regardless of `initially_hidden`.
   web_contents_ = content::WebContents::Create(
       MakeOverlayCreateParams(profile_, /*initially_hidden=*/false));
   CHECK(web_contents_);
@@ -416,10 +422,10 @@ GlicNoWebviewContentsManager::OverlayContentsManager::DetermineOverlayState(
     return mojom::OverlayState::NewError(*error_type);
   }
 
-  // Input 2: Guest presentation. When the guest is ready, or displaying a login
-  // or in-page error page, the guest WebContents is shown and no overlay is
-  // needed.
-  if (guest_state != GuestState::kLoading) {
+  // Input 2: Guest presentation. When the guest is ready, displaying a login
+  // or in-page error page, or when the loading overlay is disabled, the guest
+  // WebContents is shown and no overlay is needed.
+  if (guest_state != GuestState::kLoading || ShouldDisableLoadingOverlay()) {
     return nullptr;
   }
 
@@ -617,7 +623,8 @@ GlicNoWebviewContentsManager::GlicNoWebviewContentsManager(
       privileged_guest_contents_(pwc::PrivilegedWebContents::Create(
           pwc::PrivilegedComponent::kGlic,
           profile,
-          std::make_unique<GlicPwcPolicyDelegate>(profile))),
+          std::make_unique<GlicPwcPolicyDelegate>(profile),
+          {.initially_hidden = initially_hidden})),
       zoom_controller_(
           privileged_guest_contents_->web_contents(),
           profile ? profile->GetPrefs() : nullptr,
@@ -742,9 +749,23 @@ bool GlicNoWebviewContentsManager::ShouldReloadOnShow() const {
   return overlay_manager_.ShouldReloadOnShow();
 }
 
+bool GlicNoWebviewContentsManager::IsCrashed() const {
+  return (guest_contents() && guest_contents()->IsCrashed()) ||
+         overlay_manager_.IsCrashed();
+}
+
 void GlicNoWebviewContentsManager::Zoom(mojom::ZoomAction zoom_action,
                                         ZoomSource source) {
   zoom_controller_.Zoom(zoom_action, source);
+}
+
+void GlicNoWebviewContentsManager::SetErrorCallback(
+    base::RepeatingClosure callback) {
+  error_callback_ = std::move(callback);
+  if (ShouldReloadOnShow()) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+                                                             error_callback_);
+  }
 }
 
 void GlicNoWebviewContentsManager::OnZoomLevelChange() {
@@ -773,7 +794,11 @@ void GlicNoWebviewContentsManager::ApplySizeToGuest() {
     return;
   }
   guest_contents()->GetRenderWidgetHostView()->SetSize(target_size);
-  guest_contents()->UpdateWebContentsVisibility(content::Visibility::VISIBLE);
+  // While the overlay is shown, the guest is not attached to a view, so mark it
+  // visible to let it load and render at full priority.
+  if (is_visible_) {
+    guest_contents()->UpdateWebContentsVisibility(content::Visibility::VISIBLE);
+  }
 }
 
 void GlicNoWebviewContentsManager::ShowGuestDirectly(GuestState state) {
@@ -784,6 +809,9 @@ void GlicNoWebviewContentsManager::ShowGuestDirectly(GuestState state) {
     ApplySizeToGuest();
   }
   UpdateDisplayState();
+  if (error_callback_ && ShouldReloadOnShow()) {
+    error_callback_.Run();
+  }
 }
 
 GlicNoWebviewContentsManager::DisplayState
@@ -796,7 +824,8 @@ GlicNoWebviewContentsManager::CalculateDesiredState() const {
   if (overlay_manager_.error_type().has_value()) {
     return DisplayState::kShowingOverlay;
   }
-  if (guest_state_.get() != GuestState::kLoading) {
+  if (guest_state_.get() != GuestState::kLoading ||
+      ShouldDisableLoadingOverlay()) {
     return DisplayState::kShowingGuest;
   }
   return DisplayState::kShowingOverlay;
@@ -999,10 +1028,19 @@ void GlicNoWebviewContentsManager::TransitionTo(DisplayState next_state) {
     case DisplayState::kShowingGuest:
       CancelOverlayDeletion();
       NotifyWebContentsChanged();
+      // Stop the timer so UpdateLoadingTimer() restarts it from zero if the
+      // guest is still loading (e.g. under kGlicSsr), granting the full visible
+      // loading duration.
+      loading_timer_.Stop();
       // Destroy the loading overlay once the guest is ready and swapped.
       ScheduleOverlayDeletion(base::Milliseconds(0));
       break;
   }
+
+  // The guest is mounted only while it's the WebContents shown in the panel.
+  // Unlike <webview> mode, a visible panel can be showing the loading/error
+  // overlay WebContents instead, so visibility alone isn't enough here.
+  web_client_manager_.SetGuestMounted(state_ == DisplayState::kShowingGuest);
 }
 
 void GlicNoWebviewContentsManager::SetErrorState(
@@ -1030,6 +1068,9 @@ void GlicNoWebviewContentsManager::SetErrorState(
   // An error occurred; transition to overlay if visible, or record for when
   // shown.
   UpdateDisplayState();
+  if (error_callback_ && ShouldReloadOnShow()) {
+    error_callback_.Run();
+  }
 }
 
 void GlicNoWebviewContentsManager::ClearErrorState() {
@@ -1068,6 +1109,13 @@ void GlicNoWebviewContentsManager::OnProfileReadyStateChanged() {
 void GlicNoWebviewContentsManager::SetVisibility(
     content::Visibility visibility) {
   is_visible_ = (visibility == content::Visibility::VISIBLE);
+  // Update the guest WebContents visibility before `UpdateDisplayState()` so
+  // that if transitioning to `kShowingGuest` requests a visual state callback
+  // (`InsertVisualStateCallback`) on an already-warmed guest, its
+  // `RenderWidgetHost` is already visible and ready to produce a frame.
+  if (guest_contents()) {
+    guest_contents()->UpdateWebContentsVisibility(visibility);
+  }
   // Re-evaluate display state on visibility change (swaps to guest/overlay
   // when visible, or tears down/debounces overlay when hidden).
   UpdateDisplayState();
@@ -1081,9 +1129,6 @@ void GlicNoWebviewContentsManager::SetVisibility(
       cached_overlay_size_ = size;
       ApplySizeToGuest();
     }
-  }
-  if (guest_contents()) {
-    guest_contents()->UpdateWebContentsVisibility(visibility);
   }
 }
 

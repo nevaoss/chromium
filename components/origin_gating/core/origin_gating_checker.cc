@@ -11,15 +11,19 @@
 #include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/functional/function_ref.h"
-#include "base/memory/ptr_util.h"
 #include "base/notreached.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/thread_annotations.h"
 #include "base/types/expected_macros.h"
+#include "base/types/pass_key.h"
+#include "components/origin_gating/core/decision.h"
+#include "components/origin_gating/core/decision_attribution.h"
+#include "components/origin_gating/core/decision_source.h"
+#include "components/origin_gating/core/gateable_event.h"
+#include "components/origin_gating/core/gating_decision.h"
 #include "components/origin_gating/core/origin_gating_cache.h"
 #include "components/origin_gating/core/origin_gating_configuration.h"
 #include "components/origin_gating/core/task_policy_config_slot.h"
-#include "components/origin_gating/core/types.h"
 #include "net/base/url_util.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
 #include "url/gurl.h"
@@ -122,9 +126,10 @@ Decision EvaluateActorContainerConfig(
     return Decision::kNoDecision;
   }
   const TaskPolicyConfig& config = config_slot.value();
-  if (event.GetIfPageAction()) {
-    return config.IsActuationAllowed(destination_origin) ? Decision::kAllowed
-                                                         : Decision::kBlocked;
+  if (const PageActionEvent* page_action = event.GetIfPageAction()) {
+    return config.IsActuationAllowed(destination_origin, page_action->tool)
+               ? Decision::kAllowed
+               : Decision::kBlocked;
   }
 
   CHECK(source_origin.has_value());
@@ -139,8 +144,14 @@ Decision EvaluateActorContainerConfig(
 std::unique_ptr<OriginGatingChecker> OriginGatingChecker::CreateForTesting(
     base::WeakPtr<Delegate> delegate,
     OriginGatingConfiguration config) {
-  return base::WrapUnique(new OriginGatingChecker(delegate, std::move(config)));
+  return std::make_unique<OriginGatingChecker>(
+      base::PassKey<OriginGatingChecker>(), delegate, std::move(config));
 }
+
+OriginGatingChecker::OriginGatingChecker(base::PassKey<OriginGatingChecker>,
+                                         base::WeakPtr<Delegate> delegate,
+                                         OriginGatingConfiguration config)
+    : OriginGatingChecker(delegate, std::move(config)) {}
 
 OriginGatingChecker::OriginGatingChecker(base::PassKey<OriginGatingService>,
                                          base::WeakPtr<Delegate> delegate,

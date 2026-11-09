@@ -79,7 +79,6 @@ const base::FeatureParam<base::TimeDelta> kAutoOpenGlicCooldown({
 });
 
 BASE_FEATURE(kGlicInvoke, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicOnboardingMetricsMigration, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicCreateTabAdjacent, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -351,4 +350,6 @@ BASE_FEATURE(kGlicBackfillWarmingUsePerformanceManager,
 
 BASE_FEATURE(kGlicColdWarmingUsePerformanceManager,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicSsr, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

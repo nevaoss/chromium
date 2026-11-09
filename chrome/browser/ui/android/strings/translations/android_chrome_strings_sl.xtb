@@ -322,12 +322,14 @@ Vaše šifrirane podatke lahko bere samo oseba, ki ima vaše geslo. Geslo ni pos
 <translation id="2297822946037605517">Skupna raba te strani</translation>
 <translation id="230115972905494466">Ni združljivih naprav</translation>
 <translation id="2305798319182970276">Brisanje zgodovine z dotikom gumba</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> potrebuje dovoljenje za dostop do vnosnih naprav za to spletno mesto.</translation>
 <translation id="2316129865977710310">Ne, hvala</translation>
 <translation id="232137538351753795">Povlecite z levega roba za vrnitev</translation>
 <translation id="2323763861024343754">Shranjeni podatki splet. mesta</translation>
 <translation id="2327445548174191329">Od <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Shrani stran kot …</translation>
 <translation id="2328474416100889417">Vsi bodo takoj izgubili dostop do skupine zavihkov »<ph name="GROUP_NAME" />« in vse povezave do povabila bodo izklopljene</translation>
+<translation id="2328773543844041445">Samodejna razširitev zavihkov pri premiku miškinega kazalca nanje</translation>
 <translation id="2330186936255788117">Več zaznamkov</translation>
 <translation id="2330243730505117832">Podokno »Izbira naprave« je zaprto.</translation>
 <translation id="2332515770639153015">Izboljšano varno brskanje je vklopljeno</translation>
@@ -1691,6 +1693,7 @@ Nekatera spletna mesta se lahko na primer na zahtevo odzovejo tako, da prikažej
 <translation id="7608245556672190037">Možnost omogočanja funkcije Chrome Finds je odprta pri polni višini</translation>
 <translation id="7612619742409846846">V Google ste prijavljeni kot</translation>
 <translation id="7612989789287281429">Prijavljamo vas …</translation>
+<translation id="7617512710641355143">Chrome je upravljan</translation>
 <translation id="7619072057915878432">Prenos datoteke <ph name="FILE_NAME" /> ni uspel zaradi napak v omrežju.</translation>
 <translation id="7626032353295482388">Dobrodošli v Chromu</translation>
 <translation id="7628417132421583481">Odpri Upravitelja gesel</translation>

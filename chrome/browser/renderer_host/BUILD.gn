@@ -22,7 +22,7 @@ source_set("renderer_host") {
     "//chrome/browser/preloading/prefetch/no_state_prefetch",
   ]
 
-  if (enable_extensions) {
+  if (enable_extensions_core) {
     public_deps += [ "//extensions/browser" ]
   }
 
@@ -119,6 +119,7 @@ if (!is_android) {
       "//chrome/browser/devtools",
       "//chrome/browser/extensions",
       "//chrome/browser/history",
+      "//chrome/browser/infobars",
       "//chrome/browser/preloading:test_support",
       "//chrome/browser/safe_browsing",
       "//chrome/browser/search",
@@ -178,6 +179,7 @@ if (!is_android) {
       "//chrome/browser:chrome_content_browser_client",
       "//chrome/browser/content_settings:content_settings_factory",
       "//chrome/browser/history",
+      "//chrome/browser/infobars",
       "//chrome/browser/safe_browsing",
       "//chrome/browser/site_protection",
       "//chrome/browser/site_protection:utils",

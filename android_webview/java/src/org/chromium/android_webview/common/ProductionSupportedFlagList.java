@@ -228,6 +228,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 BlinkFeatures.WEBVIEW_ACCELERATE_SMALL_CANVASES,
                 "Accelerate all canvases in webview."),
+        Flag.baseFeature(
+                BlinkFeatures.RUSTY_ICO_FEATURE,
+                "When enabled, uses Rust `image` crate to decode ICO images."),
         Flag.baseFeature("RustyJpegFeature", "Enables Rust-based JPEG image decoding."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_BOOST_RENDERER_PRIORITY_ON_NAVIGATION,
@@ -293,6 +296,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_MOVE_SMALL_FORM_LOGIC_TO_CLIENT,
                 "Moves the small form handling from Autofill server to client."),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_ONLY_CONSIDER_SINGLE_FIELD_FORMS_AS_SEARCH_FORMS,
+                "When enabled, only single-field forms can be considered search forms."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_POLICY_CONTROLLED_FEATURE_AUTOFILL,
                 "Enables the policy-controlled feature \"autofill\"."),
@@ -391,13 +397,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_REDUCE_UA_ANDROID_VERSION_DEVICE_MODEL,
                 "Enables reduce webview user-agent android version and device model."),
-        Flag.baseFeature(
-                AwFeatures.WEBVIEW_RENDERER_KEEP_ALIVE,
-                "Keeps the renderer process alive after the last WebView is destroyed to "
-                        + "allow for reuse."),
-        Flag.baseFeature(
-                AwFeatures.WEBVIEW_PREFETCH_ON_RENDERER_REUSE,
-                "Prefetches the native WebView code to memory when renderer is reused."),
         Flag.baseFeature(
                 BlinkFeatures.REDUCE_USER_AGENT_MINOR_VERSION,
                 "Enables reduce webview user-agent minor version."),
@@ -852,6 +851,8 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER2),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER_HOST_RESOLVER),
+        Flag.baseFeature(
+                NetworkServiceFeatures.BIND_URL_LOADER_FACTORY_TO_HIGH_PRIORITY_TASK_RUNNER),
         Flag.baseFeature("BrowserThreadPoolAdjustment"),
         Flag.baseFeature(
                 "LevelDBProtoAsyncWrite",
@@ -1273,6 +1274,10 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.XML_RUST_FOR_NON_XSLT,
                 "Enables the Rust based XML parser in situations where the XML document is"
                         + " guaranteed to not trigger XSLT processing."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_NONEMBEDDED_LOW_ENTROPY_SOURCE_KILL_SWITCH,
+                "Kill switch for using the low entropy source provided by the "
+                        + "nonembedded WebView service."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_TEST_NONEMBEDDED_LOW_ENTROPY_SOURCE,
                 "No-op experiment to verify WebView uses low entropy source provided by the"

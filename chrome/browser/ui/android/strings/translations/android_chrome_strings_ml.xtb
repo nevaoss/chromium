@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">ഈ പേജ് പങ്കിടുക</translation>
 <translation id="230115972905494466">അനുയോജ്യമായ ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</translation>
 <translation id="2305798319182970276">ഒരു ബട്ടൺ ടാപ്പ് ചെയ്യുന്നതിലൂടെ നിങ്ങളുടെ ചരിത്രം ഇല്ലാതാക്കൂ</translation>
+<translation id="2307420463693979699">ഈ സൈറ്റിനായി, <ph name="APP_NAME" /> എന്നതിന് ഹ്യൂമൻ ഇന്റർഫേസ് ഉപകരണങ്ങൾ (HID-കൾ) ആക്‌സസ് ചെയ്യാനുള്ള അനുമതി ആവശ്യമാണ്.</translation>
 <translation id="2316129865977710310">വേണ്ട, നന്ദി</translation>
 <translation id="232137538351753795">തിരികെ പോകാൻ ഇടത്തേയറ്റത്ത് നിന്ന് സ്വൈപ്പ് ചെയ്യുക</translation>
 <translation id="2323763861024343754">സൈറ്റ് സ്‌റ്റോറേജ്</translation>
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന്</translation>
 <translation id="232757965409810352">പേജ് ഇതായി സംരക്ഷിക്കുക…</translation>
 <translation id="2328474416100889417">എല്ലാവർക്കും ഉടൻ തന്നെ “<ph name="GROUP_NAME" />” ടാബ് ഗ്രൂപ്പിലേക്കുള്ള ആക്‌സസ് നഷ്‌ടമാകും, എല്ലാ ക്ഷണ ലിങ്കുകളും ഓഫാക്കുകയും ചെയ്യും</translation>
+<translation id="2328773543844041445">ഹോവർ ചെയ്യുമ്പോൾ ടാബുകൾ സ്വയമേവ വികസിപ്പിക്കുക</translation>
 <translation id="2330186936255788117">കൂടുതൽ ബുക്ക്‌മാർക്കുകൾ</translation>
 <translation id="2330243730505117832">"ഉപകരണം തിരഞ്ഞെടുക്കുക" അടച്ചു.</translation>
 <translation id="2332515770639153015">മെച്ചപ്പെടുത്തിയ സുരക്ഷിത ബ്രൗസിംഗ് ഓണാണ്</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">ഓപ്റ്റ് ഇൻ പൂർണ്ണ ഉയരത്തിൽ തുറന്നതായി Chrome കണ്ടെത്തി</translation>
 <translation id="7612619742409846846">ഇനി പറയുന്നതിൽ നിന്നും Google-ലേക്ക് സൈൻ ഇൻ ചെയ്‌തു</translation>
 <translation id="7612989789287281429">നിങ്ങളെ സൈൻ ഇൻ ചെയ്യിക്കുന്നു…</translation>
+<translation id="7617512710641355143">Chrome മാനേജ് ചെയ്യുന്നു</translation>
 <translation id="7619072057915878432">നെറ്റ്‌വർക്ക് പരാജയം കാരണം <ph name="FILE_NAME" /> ഡൗൺലോഡ് ചെയ്യാനായില്ല.</translation>
 <translation id="7626032353295482388">Chrome-ലേക്ക് സ്വാഗതം</translation>
 <translation id="7628417132421583481">Password Manager-ലേക്ക് പോകുക</translation>

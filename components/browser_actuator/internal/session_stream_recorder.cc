@@ -299,16 +299,6 @@ SessionStreamRecorderFactory::~SessionStreamRecorderFactory() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-// static
-SessionStreamRecorderFactory* SessionStreamRecorderFactory::FromFactory(
-    TransportHandlerFactory* factory) {
-  if (!factory ||
-      factory->GetFactoryId() != FactoryId::kSessionStreamRecorder) {
-    return nullptr;
-  }
-  return static_cast<SessionStreamRecorderFactory*>(factory);
-}
-
 FactoryId SessionStreamRecorderFactory::GetFactoryId() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return FactoryId::kSessionStreamRecorder;
@@ -377,9 +367,18 @@ size_t SessionStreamRecorderFactory::GetActiveRecordersCountForTesting() const {
 }
 
 base::DictValue SessionStreamRecorderFactory::ExportAllSessionsAsValue() const {
+  return ExportSessionsAsValue(std::nullopt);
+}
+
+base::DictValue SessionStreamRecorderFactory::ExportSessionsAsValue(
+    std::optional<base::span<const std::string>> session_ids) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::DictValue root_dict;
   base::ListValue sessions_list;
+
+  auto should_include = [&session_ids](std::string_view id) {
+    return !session_ids.has_value() || std::ranges::contains(*session_ids, id);
+  };
 
   auto append_session =
       [&sessions_list](
@@ -395,13 +394,15 @@ base::DictValue SessionStreamRecorderFactory::ExportAllSessionsAsValue() const {
       };
 
   for (const auto& weak_recorder : active_recorders_) {
-    if (weak_recorder) {
+    if (weak_recorder && should_include(weak_recorder->session_id())) {
       append_session(weak_recorder->metadata(), weak_recorder->entries());
     }
   }
 
   for (const auto& retained : retained_sessions_) {
-    append_session(retained.metadata, retained.entries);
+    if (should_include(retained.metadata.session_id)) {
+      append_session(retained.metadata, retained.entries);
+    }
   }
 
   root_dict.Set("sessions", std::move(sessions_list));
@@ -437,6 +438,13 @@ std::vector<SessionSnapshot> SessionStreamRecorderFactory::GetAllSessions(
 
 std::string SessionStreamRecorderFactory::ExportAllSessionsAsJson() const {
   return base::WriteJsonWithOptions(ExportAllSessionsAsValue(),
+                                    base::OPTIONS_PRETTY_PRINT)
+      .value_or("");
+}
+
+std::string SessionStreamRecorderFactory::ExportSessionsAsJson(
+    base::span<const std::string> session_ids) const {
+  return base::WriteJsonWithOptions(ExportSessionsAsValue(session_ids),
                                     base::OPTIONS_PRETTY_PRINT)
       .value_or("");
 }

@@ -205,21 +205,11 @@ class CORE_EXPORT LargestContentfulPaintCalculator final
 
   void ReportMetricsCandidateToTrace(const ImageRecord&, base::TimeTicks);
   void ReportMetricsCandidateToTrace(const TextRecord&);
-  void ReportNoMetricsImageCandidateToTrace();
-
-  void UpdateLatestLcpDetailsTypeIfNeeded();
 
   // Processes a list of LCP candidates, updating the `LcpCandidates` with the
-  // largest candidate. Also handles recording use counters for the largest
-  // removed element (see `MaybeRecordRemovedCandidateUseCounter()`).
+  // largest candidate.
   template <IsDerivedFromPaintTimingRecord T>
   void ProcessLcpCandidates(const HeapVector<Member<T>>&, LcpCandidates*);
-
-  // Records the kLcpCandidateRemovedWhilePaintTimePending UseCounter for the
-  // given record if it's larger than the current largest painted record of the
-  // same type (image or text). Such records would have been LCP candidates in
-  // the frame they were presented in.
-  void MaybeRecordRemovedCandidateUseCounter(const PaintTimingRecord&);
 
   ImageRecord* LargestPresentedOrPendingImage() const;
 

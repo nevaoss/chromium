@@ -50,6 +50,7 @@
 #include "chrome/browser/push_messaging/push_messaging_service_factory.h"
 #include "chrome/browser/push_messaging/push_messaging_service_impl.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/extensions/api/web_navigation.h"
@@ -115,7 +116,9 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/service_worker/service_worker_status_code.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
+#include "ui/base/base_window.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/ui_base_types.h"
 #include "ui/message_center/public/cpp/notification.h"
 #include "url/url_constants.h"
 
@@ -572,8 +575,22 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerBasedBackgroundTest, TabsExecuteScript) {
 // Tests chrome.windows APIs.
 IN_PROC_BROWSER_TEST_F(ServiceWorkerBasedBackgroundTest, WindowsBasic) {
   base::HistogramTester histogram_tester;
+  // On Android, requested window bounds are only applied when the window can be
+  // resized (e.g. the SDK supports the window bounds API and the window is in
+  // desktop windowing mode), and may differ slightly due to rounding during
+  // dip->px conversion. The extension creates the window itself, so query the
+  // existing normal window as a proxy for the new one.
+  const char* bounds_check_mode = nullptr;
+#if BUILDFLAG(IS_ANDROID)
+  ui::WindowResizePrecheckResult resize_precheck_result;
+  bounds_check_mode =
+      browser_window_interface()->GetWindow()->CanResize(resize_precheck_result)
+          ? "allowBoundsTolerance"
+          : "skipBoundsChecks";
+#endif
   ASSERT_TRUE(
-      RunExtensionTest("service_worker/worker_based_background/windows_basic"))
+      RunExtensionTest("service_worker/worker_based_background/windows_basic",
+                       {.custom_arg = bounds_check_mode}))
       << message_;
   // Extension should issue one chrome.windows.create call and two
   // chrome.windows.getAll, verify that we logged histogram for it.
@@ -3420,6 +3437,75 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerBasedBackgroundTest,
     return task_queue->RetrieveRegisteredServiceWorkerVersion(extension->id())
         .IsValid();
   }));
+}
+
+// Tests that when prefs record a registration that //content doesn't have,
+// tasks added both before and after the mismatch is found wait for the worker
+// to be registered again.
+// Regression test for crbug.com/529976577.
+IN_PROC_BROWSER_TEST_F(ServiceWorkerBasedBackgroundTest,
+                       TasksWaitForReRegistrationOnMismatch) {
+  TestExtensionDir test_dir;
+  test_dir.WriteManifest(
+      R"({
+           "name": "Test Extension",
+           "manifest_version": 3,
+           "version": "0.1",
+           "background": {"service_worker": "worker.js"}
+         })");
+  test_dir.WriteFile(FILE_PATH_LITERAL("worker.js"), "");
+  const Extension* extension = LoadExtension(
+      test_dir.UnpackedPath(), {.wait_for_registration_stored = true});
+  ASSERT_TRUE(extension);
+  const ExtensionId extension_id = extension->id();
+
+  // Disable the extension to unregister its worker in //content. Then restore
+  // the stored registration, so that the next activation expects a
+  // registration that //content doesn't have.
+  base::HistogramTester histogram_tester;
+  TestServiceWorkerTaskQueueObserver task_queue_observer;
+  ServiceWorkerTaskQueue* task_queue = ServiceWorkerTaskQueue::Get(profile());
+  extension_registrar()->DisableExtension(
+      extension_id, {disable_reason::DISABLE_USER_ACTION});
+  task_queue_observer.WaitForWorkerUnregistered(extension_id);
+  task_queue->SetRegisteredServiceWorkerInfoForTesting(extension_id,
+                                                       extension->version());
+
+  // Enabling the extension marks the worker as registered, and verifies the
+  // registration with //content asynchronously.
+  extension_registrar()->EnableExtension(extension_id);
+
+  // Add a task before the verification finishes. Since the worker is marked as
+  // registered, this requests a worker start, which fails.
+  const LazyContextId lazy_context_id =
+      LazyContextId::ForExtension(profile(), extension);
+  base::test::TestFuture<std::unique_ptr<LazyContextTaskQueue::ContextInfo>>
+      task_before_verification;
+  task_queue->AddPendingTask(lazy_context_id,
+                             task_before_verification.GetCallback());
+  EXPECT_EQ(task_queue_observer.GetRequestedWorkerStartedCount(extension_id),
+            1);
+
+  // Wait for the verification to find the registration missing, and to start
+  // registering the worker again.
+  task_queue_observer.WaitForWorkerRegistrationStarted(extension_id);
+
+  // A task added during the re-registration waits for it, without requesting
+  // another worker start.
+  base::test::TestFuture<std::unique_ptr<LazyContextTaskQueue::ContextInfo>>
+      task_during_reregistration;
+  task_queue->AddPendingTask(lazy_context_id,
+                             task_during_reregistration.GetCallback());
+  EXPECT_EQ(task_queue_observer.GetRequestedWorkerStartedCount(extension_id),
+            1);
+
+  // Both tasks run once the new registration starts the worker, and the failed
+  // start isn't retried.
+  EXPECT_NE(nullptr, task_before_verification.Get());
+  EXPECT_NE(nullptr, task_during_reregistration.Get());
+  EXPECT_THAT(histogram_tester.GetTotalCountsForPrefix(
+                  "Extensions.ServiceWorkerBackground.StartWorkerRetry."),
+              testing::IsEmpty());
 }
 
 // Tests that an extension's service worker can't be used to relax the extension

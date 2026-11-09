@@ -5,6 +5,7 @@
 #ifndef CHROME_RENDERER_ACCESSIBILITY_READ_ANYTHING_READ_ANYTHING_APP_MODEL_H_
 #define CHROME_RENDERER_ACCESSIBILITY_READ_ANYTHING_READ_ANYTHING_APP_MODEL_H_
 
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <set>
@@ -366,6 +367,14 @@ class ReadAnythingAppModel {
   bool is_readability_next_distillation_method() const {
     return next_distillation_method() == DistillationMethod::kReadability;
   }
+
+  // Switches the next distillation method from Readability to Screen2x. Clears
+  // Readability-only state (e.g. a pending Readability re-distillation request)
+  // so it cannot be dispatched to the Screen2x distiller, and marks that a
+  // Screen2x distillation is required. All Readability -> Screen2x fallbacks
+  // should go through this method.
+  void FallbackToScreen2x();
+
   bool is_readability_current_distillation_method() const {
     return current_content_distillation_method_ ==
            DistillationMethod::kReadability;
@@ -958,13 +967,12 @@ class ReadAnythingAppModel {
   void FlattenAXTree(ui::AXSerializableTree* tree);
 
   // Logs the execution time for each step of the Readability mapping algorithm.
-  void RecordReadabilityMappingMetrics(
-      const std::vector<std::u16string>& blocks,
-      base::TimeDelta total_duration,
-      base::TimeDelta flattening_duration,
-      base::TimeDelta suffix_array_duration,
-      base::TimeDelta initial_anchors_duration,
-      base::TimeDelta gap_alignment_duration);
+  void RecordReadabilityMappingMetrics(std::optional<size_t> success_rate,
+                                       base::TimeDelta total_duration,
+                                       base::TimeDelta flattening_duration,
+                                       base::TimeDelta suffix_array_duration,
+                                       base::TimeDelta initial_anchors_duration,
+                                       base::TimeDelta gap_alignment_duration);
 
   // Checks if a candidate AXTree range overlaps with text that has already
   // been mapped to a distilled block. This prevents multiple mappings to the
@@ -1149,6 +1157,11 @@ class ReadAnythingAppModel {
   // The minimum number of characters required for a substring to be considered
   // valid during RelativeOrderAlignment mapping.
   static constexpr size_t kMinSequentialMatchLength = 5;
+
+  // Minimum percentage of distilled characters that must map to the AXTree for
+  // mapping to be considered complete rather than deferred for a still-loading
+  // tree.
+  static constexpr size_t kMinReadabilityMappingSuccessRate = 50;
 
   // The distillation method that will be used for the next content update.
   DistillationMethod next_distillation_method_;

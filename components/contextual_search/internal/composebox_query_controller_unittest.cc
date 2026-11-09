@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/base64url.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/protobuf_matchers.h"
@@ -1568,6 +1569,7 @@ TEST_F(ComposeboxQueryControllerTest, UploadImageFileRequestSuccess) {
                 .phase_latencies_metadata()
                 .phase_size(),
             1);
+  // The logged encoded size should describe the image payload being uploaded.
   EXPECT_EQ(controller()
                 .last_sent_file_upload_request()
                 ->client_logs()
@@ -1575,7 +1577,14 @@ TEST_F(ComposeboxQueryControllerTest, UploadImageFileRequestSuccess) {
                 .phase(0)
                 .image_encode_data()
                 .encoded_image_size_bytes(),
-            360);
+            base::checked_cast<int64_t>(
+                controller()
+                    .last_sent_file_upload_request()
+                    ->objects_request()
+                    .image_data()
+                    .payload()
+                    .image_bytes()
+                    .size()));
   EXPECT_EQ(controller()
                 .last_sent_file_upload_request()
                 ->objects_request()
@@ -2856,7 +2865,7 @@ TEST_F(ComposeboxQueryControllerTest,
                 .media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
   // Validate that the file upload request and the viewport upload request have
-  // different request ids.
+  // different request id UUIDs but the same context_id.
   EXPECT_NE(file_upload_request->objects_request()
                 .request_context()
                 .request_id()
@@ -2865,6 +2874,14 @@ TEST_F(ComposeboxQueryControllerTest,
                 .request_context()
                 .request_id()
                 .uuid());
+  EXPECT_EQ(file_upload_request->objects_request()
+                .request_context()
+                .request_id()
+                .context_id(),
+            viewport_upload_request->objects_request()
+                .request_context()
+                .request_id()
+                .context_id());
 
   // Act: Create the destination URL for the query.
   std::unique_ptr<CreateSearchUrlRequestInfo> search_url_request_info =
@@ -2889,19 +2906,28 @@ TEST_F(ComposeboxQueryControllerTest,
           .request_context()
           .request_id()
           .uuid();
-  auto viewport_file_request_id_from_cinpts =
-      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 0 : 1)
-          .request_id();
-  auto pdf_file_request_id_from_cinpts =
-      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 1 : 0)
-          .request_id();
+  const auto& viewport_contextual_input_from_cinpts =
+      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 0 : 1);
+  const auto& pdf_contextual_input_from_cinpts =
+      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 1 : 0);
 
   // Check that the media types are different and match the expected media
   // types.
-  EXPECT_EQ(viewport_file_request_id_from_cinpts.media_type(),
+  EXPECT_EQ(viewport_contextual_input_from_cinpts.request_id().media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
-  EXPECT_EQ(pdf_file_request_id_from_cinpts.media_type(),
+  EXPECT_EQ(pdf_contextual_input_from_cinpts.request_id().media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_PDF);
+
+  // Check that the request_ids in cinpts have different UUIDs and the same
+  // context_id.
+  EXPECT_NE(viewport_contextual_input_from_cinpts.request_id().uuid(),
+            pdf_contextual_input_from_cinpts.request_id().uuid());
+  EXPECT_EQ(viewport_contextual_input_from_cinpts.request_id().context_id(),
+            pdf_contextual_input_from_cinpts.request_id().context_id());
+
+  // Check that is_viewport_image is set only on the viewport contextual input.
+  EXPECT_TRUE(viewport_contextual_input_from_cinpts.is_viewport_image());
+  EXPECT_FALSE(pdf_contextual_input_from_cinpts.is_viewport_image());
 }
 
 TEST_F(ComposeboxQueryControllerTest, CreateSearchUrlWithInvocationSource) {

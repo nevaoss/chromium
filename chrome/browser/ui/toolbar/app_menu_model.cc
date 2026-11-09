@@ -25,6 +25,7 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/defaults.h"
 #include "chrome/browser/enterprise/isolated_mode/isolated_mode_settings_service_factory.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
@@ -267,7 +268,6 @@ const gfx::VectorIcon& GetSendTabToSelfIcon() {
   return features::IsRoundedIconsEnabled() ? kDevicesIcon
                                            : kDevicesChromeRefreshOldIcon;
 }
-
 
 #if !BUILDFLAG(IS_CHROMEOS)
 std::u16string GetSyncSectionTitle(Profile* profile,
@@ -1429,6 +1429,13 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
       }
       LogMenuAction(MENU_ACTION_MANAGE_EXTENSIONS);
       break;
+    case IDC_MANAGE_SKILLS:
+      if (!uma_action_recorded_) {
+        base::UmaHistogramMediumTimes("WrenchMenu.TimeToAction.ManageSkills",
+                                      delta);
+      }
+      LogMenuAction(MENU_ACTION_MANAGE_SKILLS);
+      break;
     case IDC_EXTENSIONS_SUBMENU_VISIT_CHROME_WEB_STORE:
       if (!uma_action_recorded_) {
         base::UmaHistogramMediumTimes(
@@ -1979,6 +1986,13 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
             is_vertical, tabs::VerticalTabStripEntryPoint::kAppMenu);
       }
       break;
+    case IDC_CHROME_ENTERPRISE_RELEASE_NOTES:
+      if (!uma_action_recorded_) {
+        base::UmaHistogramMediumTimes(
+            "WrenchMenu.TimeToAction.ChromeEnterpriseReleaseNotes", delta);
+      }
+      LogMenuAction(MENU_ACTION_CHROME_ENTERPRISE_RELEASE_NOTES);
+      break;
     default: {
       if (IsOtherProfileCommand(command_id)) {
         if (!uma_action_recorded_) {
@@ -2336,11 +2350,11 @@ void AppMenuModel::Build() {
     const gfx::VectorIcon& search_spark_icon =
         features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
                                           : omnibox::kSearchSparkOldIcon;
+    Profile* const profile = browser_->GetProfile();
     const bool show_ask_google =
-        contextual_tasks::kContextualTasksContextMenuShowAskGoogle.Get();
+        contextual_tasks::ShouldShowAskGoogleContextMenu(profile);
     const bool use_submenu =
-        contextual_tasks::kContextualTasksContextMenuSubmenu.Get() &&
-        show_ask_google;
+        contextual_tasks::ShouldUseContextualTasksContextMenuSubmenu(profile);
     ui::SimpleMenuModel* target_model = this;
     if (use_submenu) {
       sub_menus_.push_back(std::make_unique<ui::SimpleMenuModel>(this));
@@ -2350,11 +2364,16 @@ void AppMenuModel::Build() {
     if (show_ask_google) {
       AddItemWithStringIdAndVectorIcon(
           target_model, IDC_ASK_GOOGLE_ABOUT_THIS_PAGE,
-          IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_PAGE, search_spark_icon);
-      target_model->SetElementIdentifierAt(
+          IDS_ASK_GOOGLE_ABOUT_THIS_PAGE, search_spark_icon);
+      const size_t ask_google_command_index =
           target_model->GetIndexOfCommandId(IDC_ASK_GOOGLE_ABOUT_THIS_PAGE)
-              .value(),
-          kAskGoogleAboutThisPageItem);
+              .value();
+      target_model->SetElementIdentifierAt(ask_google_command_index,
+                                           kAskGoogleAboutThisPageItem);
+      target_model->SetIsNewFeatureAt(
+          ask_google_command_index,
+          BrowserUserEducationInterface::From(browser())->MaybeShowNewBadgeFor(
+              contextual_tasks::kContextualTasksUpdatedEntryPoints));
     }
 
     AddItemWithStringIdAndVectorIcon(

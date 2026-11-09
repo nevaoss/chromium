@@ -5,7 +5,7 @@
 import 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import 'chrome://new-tab-page/strings.m.js';
 
-import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createSearchMatchForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import type {SearchboxDropdownElement} from 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {$$, microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -24,8 +24,13 @@ suite('SearchboxDropdown', () => {
   test('hides matches that have `isHidden` field set to true', async () => {
     // Arrange.
     const matches = [
-      createSearchMatchForTesting({contents: 'bar', isHidden: true}),
-      createSearchMatchForTesting({contents: 'foo'}),
+      createSearchMatchForTesting({
+        suggestTemplate: createSuggestTemplateInfo({primaryText: 'bar'}),
+        isHidden: true,
+      }),
+      createSearchMatchForTesting({
+        suggestTemplate: createSuggestTemplateInfo({primaryText: 'foo'}),
+      }),
     ];
 
     // Act.
@@ -35,9 +40,9 @@ suite('SearchboxDropdown', () => {
     // Assert.
     const matchEls = dropdown.shadowRoot.querySelectorAll('cr-searchbox-match');
     assertEquals(1, matchEls.length);
-    const contentsEl = $$(matchEls[0]!, '#contents');
-    assertTrue(!!contentsEl);
-    assertEquals('foo', contentsEl.textContent.trim());
+    const primaryTextEl = $$(matchEls[0]!, '#primaryText');
+    assertTrue(!!primaryTextEl);
+    assertEquals('foo', primaryTextEl.textContent.trim());
     // The visible element's matchIndex must retain its original index (1),
     // even though it is the first (and only) visible element.
     assertEquals(1, matchEls[0]!.matchIndex);

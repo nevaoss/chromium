@@ -107,10 +107,6 @@ const size_t kAdditionalOverheadForIPv6 = 20;
 // IP address changes.
 const size_t kMaxReadersPerQuicSession = 5;
 
-// Time to wait (in seconds) when no networks are available and
-// migrating sessions need to wait for a new network to connect.
-const size_t kWaitTimeForNewNetworkSecs = 10;
-
 const size_t kMinRetryTimeForDefaultNetworkSecs = 1;
 
 // These values are persisted to logs. Entries should not be renumbered,
@@ -1082,8 +1078,9 @@ void QuicChromiumClientSession::QuicChromiumPathValidationWriterDelegate::
 
 void QuicChromiumClientSession::QuicChromiumPathValidationWriterDelegate::
     NotifySessionProbeFailed(handles::NetworkHandle network) {
-  session_->MaybeCancelProbing(network, peer_address_,
-                               ProbingCancellationReason::kWriterError);
+  session_->MaybeCancelSpecificInFlightProbe(
+      network, peer_address_, ProbingCancellationReason::kWriterError,
+      /*superseded_cause=*/std::nullopt);
 }
 
 void QuicChromiumClientSession::QuicChromiumPathValidationWriterDelegate::
@@ -2582,6 +2579,12 @@ void QuicChromiumClientSession::OnNoNewNetwork(
     QuicMigrationAttemptCause migration_cause) {
   DCHECK(OneRttKeysAvailable());
   wait_for_new_network_cause_ = migration_cause;
+  // If a previous migration attempt is already waiting for a new network, keep
+  // its start time to measure the true total wait time. The cause is updated to
+  // the most recent signal, matching historical behavior.
+  if (wait_for_new_network_start_time_.is_null()) {
+    wait_for_new_network_start_time_ = tick_clock_->NowTicks();
+  }
   net_log_.AddEvent(
       NetLogEventType::QUIC_CONNECTION_MIGRATION_WAITING_FOR_NEW_NETWORK);
 
@@ -2591,13 +2594,15 @@ void QuicChromiumClientSession::OnNoNewNetwork(
   static_cast<QuicChromiumPacketWriter*>(connection()->writer())
       ->set_force_write_blocked(true);
 
+  base::TimeDelta timeout = features::kQuicWaitForNewNetworkTimeoutParam.Get();
+
   // Post a task to maybe close the session if the alarm fires.
   task_runner_->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&QuicChromiumClientSession::OnMigrationTimeout,
                      weak_factory_.GetWeakPtr(), packet_readers_.size(),
                      migration_cause),
-      base::Seconds(kWaitTimeForNewNetworkSecs));
+      timeout);
 }
 
 void QuicChromiumClientSession::WriteToNewSocket() {
@@ -2624,6 +2629,9 @@ void QuicChromiumClientSession::OnMigrationTimeout(
   if (num_sockets != packet_readers_.size()) {
     return;
   }
+
+  wait_for_new_network_cause_.reset();
+  wait_for_new_network_start_time_ = base::TimeTicks();
 
   net_log_.AddEvent(
       NetLogEventType::QUIC_CONNECTION_MIGRATION_FAILURE_WAITING_FOR_NETWORK);
@@ -2851,17 +2859,10 @@ void QuicChromiumClientSession::LogProbeFailure(
   }
 }
 
-void QuicChromiumClientSession::MaybeCancelProbing(
-    handles::NetworkHandle network,
-    const quic::QuicSocketAddress& peer_address,
+void QuicChromiumClientSession::CancelInFlightProbe(
     ProbingCancellationReason reason,
     std::optional<QuicMigrationAttemptCause> superseded_cause) {
-  auto* context = static_cast<QuicChromiumPathValidationContext*>(
-      connection()->GetPathValidationContext());
-  if (!context || context->network() != network ||
-      context->peer_address() != peer_address) {
-    return;
-  }
+  CHECK(connection()->HasPendingPathValidation());
 
   quic::PathValidationFailure::Reason failure_reason =
       quic::PathValidationFailure::Reason::kUnknown;
@@ -2887,6 +2888,31 @@ void QuicChromiumClientSession::MaybeCancelProbing(
 
   connection()->CancelPathValidation(
       quic::PathValidationFailure{failure_reason});
+}
+
+void QuicChromiumClientSession::MaybeCancelSpecificInFlightProbe(
+    handles::NetworkHandle network,
+    const quic::QuicSocketAddress& peer_address,
+    ProbingCancellationReason reason,
+    std::optional<QuicMigrationAttemptCause> superseded_cause) {
+  auto* context = static_cast<QuicChromiumPathValidationContext*>(
+      connection()->GetPathValidationContext());
+  if (!context || context->network() != network ||
+      context->peer_address() != peer_address) {
+    return;
+  }
+
+  CancelInFlightProbe(reason, superseded_cause);
+}
+
+void QuicChromiumClientSession::MaybeCancelAnyInFlightProbe(
+    QuicMigrationAttemptCause superseded_by_cause) {
+  if (!connection()->HasPendingPathValidation()) {
+    return;
+  }
+
+  CancelInFlightProbe(ProbingCancellationReason::kSuperseded,
+                      superseded_by_cause);
 }
 
 void QuicChromiumClientSession::OnNetworkConnected(
@@ -2917,6 +2943,12 @@ void QuicChromiumClientSession::OnNetworkConnected(
   if (wait_for_new_network_cause_.has_value()) {
     QuicMigrationAttemptCause migration_cause = *wait_for_new_network_cause_;
     wait_for_new_network_cause_.reset();
+    CHECK(!wait_for_new_network_start_time_.is_null());
+    base::TimeDelta duration =
+        tick_clock_->NowTicks() - wait_for_new_network_start_time_;
+    wait_for_new_network_start_time_ = base::TimeTicks();
+    QuicMigrationAttemptContext::RecordWaitForNewNetworkDuration(
+        migration_cause, duration);
     net_log_.AddEventWithInt64Params(
         NetLogEventType::QUIC_CONNECTION_MIGRATION_SUCCESS_WAITING_FOR_NETWORK,
         "network", network);
@@ -2950,8 +2982,10 @@ void QuicChromiumClientSession::OnNetworkDisconnectedV2(
       NetLogEventType::QUIC_CONNECTION_MIGRATION_ON_NETWORK_DISCONNECTED,
       "disconnected_network", disconnected_network);
 
-  MaybeCancelProbing(disconnected_network, peer_address(),
-                     ProbingCancellationReason::kNetworkDisconnected);
+  MaybeCancelSpecificInFlightProbe(
+      disconnected_network, peer_address(),
+      ProbingCancellationReason::kNetworkDisconnected,
+      /*superseded_cause=*/std::nullopt);
 
   if (disconnected_network == default_network_) {
     DVLOG(1) << "Default network: " << default_network_ << " is disconnected.";
@@ -3117,8 +3151,14 @@ void QuicChromiumClientSession::MigrateNetworkImmediately(
     return;
   }
 
-  MaybeCancelProbing(network, peer_address(),
-                     ProbingCancellationReason::kSuperseded, migration_cause);
+  if (!base::FeatureList::IsEnabled(
+          features::kQuicAlwaysCancelPreExistingProbingOnMigration)) {
+    // When enabled, cancellation for any probe happens within
+    // MigrateWithoutProbing.
+    MaybeCancelSpecificInFlightProbe(network, peer_address(),
+                                     ProbingCancellationReason::kSuperseded,
+                                     migration_cause);
+  }
   pending_migrate_network_immediately_ = true;
   MigrateWithoutProbing(
       migration_cause, network, ToIPEndPoint(connection()->peer_address()),
@@ -3737,14 +3777,9 @@ void QuicChromiumClientSession::FinishStartProbing(
   }
 
   QuicMigrationAttemptCause cause = context->cause();
-  if (auto* existing_context = static_cast<QuicChromiumPathValidationContext*>(
-          connection()->GetPathValidationContext())) {
-    // If a probe is currently in flight, explicitly cancel it with its
-    // superseding cause before ValidatePath() starts the new one.
-    MaybeCancelProbing(existing_context->network(),
-                       existing_context->peer_address(),
-                       ProbingCancellationReason::kSuperseded, cause);
-  }
+  // If a probe is currently in flight, explicitly cancel it with its
+  // superseding cause before ValidatePath() starts the new one.
+  MaybeCancelAnyInFlightProbe(cause);
 
   context->reader()->StartReading();
   path_validation_writer_delegate_.set_network(context->target_network());
@@ -4416,6 +4451,15 @@ void QuicChromiumClientSession::MigrateWithoutProbing(
     }
   }
 
+  if (base::FeatureList::IsEnabled(
+          features::kQuicAlwaysCancelPreExistingProbingOnMigration)) {
+    // For immediate migrations, cancel any in-flight probe before starting
+    // asynchronous socket configuration for the new path. This way we prevent
+    // an in-flight probe from completing and committing another migration
+    // while `ConnectAndConfigureSocket` is in flight.
+    MaybeCancelAnyInFlightProbe(migration_cause);
+  }
+
   // Create and configure socket on `network`.
   // TODO(crbug.com/518753285): Once we no longer bindToNetwork via
   // `ConnectAndConfigureSocket`, bind the socket via this `CreateSocket` call,
@@ -4536,6 +4580,15 @@ bool QuicChromiumClientSession::CommitMigration(
     HistogramAndLogMigrationFailure(MIGRATION_STATUS_TOO_MANY_CHANGES,
                                     connection_id(), "Too many changes");
     return false;
+  }
+
+  if (base::FeatureList::IsEnabled(
+          features::kQuicAlwaysCancelPreExistingProbingOnMigration)) {
+    // When committing a migration, cancel any in-flight probe. This catches
+    // any probe that was started while an immediate migration was
+    // asynchronously configuring its socket; or, any other probe that was
+    // started during the probing of a probing migration.
+    MaybeCancelAnyInFlightProbe(migration_context->cause());
   }
 
   IPEndPoint local_address;

@@ -11,7 +11,6 @@ import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isEnabled;
-import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
@@ -27,9 +26,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.base.test.transit.ViewFinder.waitForNoView;
 import static org.chromium.chrome.browser.settings.SettingsSearchTestUtils.assertPreferenceScreenMatchesIndex;
-import static org.chromium.ui.test.util.ViewUtils.VIEW_NULL;
-import static org.chromium.ui.test.util.ViewUtils.withEventualExpectedViewState;
 
 import android.app.PendingIntent;
 import android.content.Context;
@@ -56,6 +54,7 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
@@ -97,6 +96,7 @@ import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
 import org.chromium.components.policy.test.annotations.Policies;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
 import org.chromium.components.signin.test.util.TestAccounts;
+import org.chromium.ui.base.DeviceFormFactor;
 
 /** Tests for {@link AutofillAndPasswordsFragment}. */
 @RunWith(ChromeJUnit4ClassRunner.class)
@@ -280,10 +280,7 @@ public class AutofillAndPasswordsFragmentTest {
         // applies visibility changes on a posted runnable and RecyclerView only detaches the
         // row on a subsequent layout pass. Neither is covered by Espresso's idle detection, so
         // poll for the removal instead of sampling the hierarchy once.
-        onView(isRoot())
-                .check(
-                        withEventualExpectedViewState(
-                                withId(R.id.signin_promo_view_container), VIEW_NULL));
+        waitForNoView(withId(R.id.signin_promo_view_container));
         assertTrue(
                 ChromeSharedPreferences.getInstance()
                         .readBoolean(
@@ -516,6 +513,7 @@ public class AutofillAndPasswordsFragmentTest {
         ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID,
         ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA
     })
+    @DisableIf.Device(DeviceFormFactor.AUTOMOTIVE) // crbug.com/571973537
     public void testClickAutofillSettingsLaunchesAutofillOptions() {
         mSettingsTestRule.startSettingsActivity();
 
