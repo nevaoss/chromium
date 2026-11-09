@@ -5360,14 +5360,9 @@ RenderFrameImpl::MakeDidCommitProvisionalLoadParams(
         SCOPED_CRASH_KEY_STRING256("MakeDCPLParams", "mismatched_origin",
                                    params->origin.GetDebugString());
         NOTREACHED() << " url:" << params->url << " origin:" << params->origin;
-<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
         }
 #endif
-      } else {
-        requires_universal_access = true;
-=======
->>>>>>> 157.0.8103.0~1
       }
     }
   }

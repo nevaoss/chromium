@@ -38,13 +38,8 @@ declare_args() {
       include_both_v8_snapshots ||
       (!is_chromeos && !is_android && !is_castos && !is_fuchsia &&
        !(host_toolchain == default_toolchain && is_msan) &&
-<<<<<<< HEAD
-       !(is_win && host_os != "win") && !(is_mac && host_os != "mac"))
-       && !is_webos && !is_webos_lite
-=======
        !(is_win && host_os != "win") && !(is_mac && host_os != "mac") &&
-       !(is_linux && host_os != "linux"))
->>>>>>> 157.0.8103.0~1
+       !(is_linux && host_os != "linux") && !is_webos && !is_webos_lite)
 }
 # Apply the secondary abi overrides. Must occur outside of declare_args in
 # order to take effect when include_both_v8_snapshots / use_v8_context_snapshot
