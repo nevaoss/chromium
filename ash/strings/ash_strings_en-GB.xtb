@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Undo</translation>
 <translation id="2086334242442703436">Open emoji picker</translation>
 <translation id="2089550919269323883">Installing <ph name="VM_NAME" /> is blocked by enterprise policy. Please contact your system administrator for support. The error code is <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Steam for Chromebook news</translation>
 <translation id="209965399369889474">Not connected to network</translation>
 <translation id="2107581415810719320">Other button <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">Your USB-C cable does not support Thunderbolt. Device performance may be limited.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">What would you like to focus on? Press enter to add the task.</translation>
 <translation id="229397294990920565">Mobile data is turning off…</translation>
 <translation id="2295777434187870477">Mic is on, toggling will mute input.</translation>
+<translation id="2296880470921996802">Clipboard history was disabled by your IT admin</translation>
 <translation id="2302092602801625023">This account is managed by Family Link</translation>
 <translation id="2303600792989757991">Toggle window overview</translation>
 <translation id="2304702218354340897">Are you sure that you want to turn off face control?</translation>
@@ -1786,7 +1786,6 @@ No devices connected.</translation>
 <translation id="6127395413317891856">You're offline. Check your connection and try again.</translation>
 <translation id="6129953537138746214">Space</translation>
 <translation id="6132714462430777655">Skip school enrolment?</translation>
-<translation id="6136872094979134163">Unable to retrieve Steam for Chromebook news.</translation>
 <translation id="6137566720514957455">Open remove dialogue for <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">What would you like to focus on?</translation>
 <translation id="6141988275892716286">Confirm download</translation>

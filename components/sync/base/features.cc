@@ -195,13 +195,8 @@ BASE_FEATURE(kEstimateNewSignInUsersWithFinchAvailablePopulation,
 BASE_FEATURE(kSyncFixWebSigninSessionDurationForShortLivedSessions,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSyncSimplifyDeviceNaming, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSyncDisambiguateDeviceNamesWithChannel,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSyncUseServerDeterminedDeviceName,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncCopyPreferencesToTransportModeOnServerForcedDisable,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -221,5 +216,11 @@ BASE_FEATURE(kSyncDoNotSyncAppsAndAppSettings,
 BASE_FEATURE(kSyncWipeAppsAndAppSettingsData,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+BASE_FEATURE(kDeviceTabVisibilitySettings, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kCrossDeviceTabsInAppMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 }  // namespace syncer

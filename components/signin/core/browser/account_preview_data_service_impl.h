@@ -27,6 +27,7 @@
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 
 class PrefService;
+class SigninClient;
 
 namespace network {
 class SharedURLLoaderFactory;
@@ -52,11 +53,14 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
     kRefreshTokenRemoved = 2,
     kRefreshTokenInvalidated = 3,
     kExternalAppAccountUpdated = 4,
-    kMaxValue = kExternalAppAccountUpdated,
+    kPrimaryAccountSet = 5,
+    kPrimaryAccountCleared = 6,
+    kMaxValue = kPrimaryAccountCleared,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:AccountPreviewFetchTriggerCause)
 
   AccountPreviewDataServiceImpl(
+      SigninClient* signin_client,
       IdentityManager* identity_manager,
       syncer::SyncService* sync_service,
       PrefService* local_state,
@@ -104,6 +108,8 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   void SetAllDataAvailableCallbackForTesting(base::OnceClosure callback);
 
   // IdentityManager::Observer implementation:
+  void OnPrimaryAccountChanged(
+      const PrimaryAccountChangeEvent& event_details) override;
   void OnRefreshTokenUpdatedForAccount(
       const CoreAccountInfo& account_info) override;
   void OnRefreshTokenRemovedForAccount(
@@ -122,6 +128,7 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   void EnsureAllAccountsFetched(FetchTriggerCause cause);
   void FetchAccountPreviewData(const GaiaId& gaia_id);
   void StartFetch(const GaiaId& gaia_id);
+  void MaybePreconnectSockets();
   void OnSingleFetchCompleted(const GaiaId& gaia_id,
                               std::optional<AccountPreviewData> data,
                               bool hit_429);
@@ -173,6 +180,7 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   void CleanUpExternalAppAccountIfNotOnDevice();
 #endif
 
+  raw_ptr<SigninClient> signin_client_ = nullptr;
   raw_ptr<IdentityManager> identity_manager_ = nullptr;
   raw_ptr<syncer::SyncService> sync_service_ = nullptr;
   raw_ptr<PrefService> local_state_ = nullptr;
@@ -211,6 +219,10 @@ class AccountPreviewDataServiceImpl : public AccountPreviewDataService,
   // Mapping used to look up gaia_id based on account_id, used when an account
   // is removed.
   absl::flat_hash_map<CoreAccountId, GaiaId> account_id_to_gaia_id_;
+
+  // True if `OnPrimaryAccountChanged()` was called with `kSet` before the
+  // primary account refresh token was available.
+  bool waiting_for_primary_account_token_ = false;
 
   PrefChangeRegistrar pref_change_registrar_;
   base::ScopedObservation<IdentityManager, IdentityManager::Observer>

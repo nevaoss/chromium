@@ -11,6 +11,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/autofill/payments/payments_ui_constants.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -68,31 +69,16 @@ class OfferNotificationBubbleViewsInteractiveUiTest
 
   void ShowBubbleForOfferAndVerify() {
     switch (test_offer_type_) {
-      case AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER:
-        ShowBubbleForCardLinkedOfferAndVerify();
-        break;
       case AutofillOfferData::OfferType::GPAY_PROMO_CODE_OFFER:
         ShowBubbleForGPayPromoCodeOfferAndVerify();
         break;
       case AutofillOfferData::OfferType::WALLET_DIRECT_OFFER:
         ShowBubbleForWalletDirectOfferAndVerify();
         break;
+      case AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER:
       case AutofillOfferData::OfferType::UNKNOWN:
         NOTREACHED();
     }
-  }
-
-  void ShowBubbleForCardLinkedOfferAndVerify() {
-    NavigateTo(chrome::ChromeUINewTabPageURLAsGURL());
-    // Set the initial origin that the bubble will be displayed on.
-    SetUpCardLinkedOfferDataWithDomains(
-        {GetUrl("www.merchantsite1.test", "/"),
-         GetUrl("www.merchantsite2.test", "/")});
-    ResetEventWaiterForSequence({DialogEvent::BUBBLE_SHOWN});
-    NavigateToAndWaitForForm(GetUrl("www.merchantsite1.test", "/first"));
-    ASSERT_TRUE(WaitForObservedEvent());
-    EXPECT_TRUE(IsIconVisible());
-    EXPECT_TRUE(GetOfferNotificationBubbleViews());
   }
 
   void ShowBubbleForGPayPromoCodeOfferAndVerify() {
@@ -137,7 +123,8 @@ class OfferNotificationBubbleViewsInteractiveUiTest
     EXPECT_TRUE(icon);
     ResetEventWaiterForSequence({DialogEvent::BUBBLE_SHOWN});
     actions::ActionManager::Get()
-        .FindAction(kActionOffersAndRewardsForPage)
+        .FindAction(kActionOffersAndRewardsForPage,
+                    BrowserActions::From(browser())->root_action_item())
         ->InvokeAction();
     ASSERT_TRUE(WaitForObservedEvent());
     EXPECT_TRUE(IsIconVisible());
@@ -154,15 +141,6 @@ class OfferNotificationBubbleViewsInteractiveUiTest
 
 // TODO(crbug.com/40228302): Split parameterized tests that are
 // applicable for only one offer type.
-
-INSTANTIATE_TEST_SUITE_P(
-    GPayCardLinked,
-    OfferNotificationBubbleViewsInteractiveUiTest,
-    testing::Values(OfferNotificationBubbleViewsInteractiveUiTestData{
-        "GPayCardLinked",
-        AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER,
-    }),
-    &GetTestName);
 
 INSTANTIATE_TEST_SUITE_P(
     GPayPromoCode,
@@ -350,32 +328,6 @@ IN_PROC_BROWSER_TEST_P(OfferNotificationBubbleViewsInteractiveUiTest,
   // Icon should be visible and the bubble should not be visible.
   EXPECT_TRUE(IsIconVisible());
   EXPECT_FALSE(GetOfferNotificationBubbleViews());
-}
-
-// Tests that bubble behaves correctly after user dismisses it.
-IN_PROC_BROWSER_TEST_P(OfferNotificationBubbleViewsInteractiveUiTest,
-                       DismissBubble) {
-  // Applies to card-linked offers only, as promo code offers do not have an OK
-  // button.
-  if (test_offer_type_ !=
-      AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER) {
-    return;
-  }
-
-  ShowBubbleForOfferAndVerify();
-
-  // Dismiss the bubble by clicking the ok button.
-  CloseBubbleWithReason(views::Widget::ClosedReason::kAcceptButtonClicked);
-
-  // Navigates to another valid domain will not reshow the bubble.
-  NavigateToAndWaitForForm(GetUrl("www.merchantsite1.test", "/second"));
-  EXPECT_FALSE(GetOfferNotificationBubbleViews());
-  EXPECT_TRUE(IsIconVisible());
-
-  // Navigates to an invalid domain will dismiss the icon.
-  NavigateToAndWaitForForm(GetUrl("www.about.test", "/"));
-  EXPECT_FALSE(GetOfferNotificationBubbleViews());
-  EXPECT_FALSE(IsIconVisible());
 }
 
 IN_PROC_BROWSER_TEST_P(OfferNotificationBubbleViewsInteractiveUiTest,

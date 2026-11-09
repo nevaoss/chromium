@@ -6,6 +6,7 @@
 
 #include "third_party/blink/renderer/core/animation/css/css_image_animations.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
+#include "third_party/blink/renderer/core/display_lock/display_lock_utilities.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
@@ -77,6 +78,13 @@ void ImagePainter::PaintAreaElementFocusRing(const PaintInfo& paint_info) {
 
   if (area_element->ImageElement() != layout_image_.GetNode())
     return;
+
+  // Don't paint or force style computation for <area> elements inside
+  // a display-locked subtree.
+  if (DisplayLockUtilities::IsDisplayLockedPreventingPaint(
+          area_element, /*inclusive_check=*/true)) {
+    return;
+  }
 
   // We use EnsureComputedStyle() instead of GetComputedStyle() here because
   // <area> is used and its style applied even if it has display:none. The style
@@ -198,7 +206,7 @@ void ImagePainter::PaintReplaced(const PaintInfo& paint_info,
     gfx::RectF outline_rect(ToPixelSnappedRect(content_rect));
     outline_rect.Inset(0.5f);
     context.StrokeRect(outline_rect,
-                       PaintAutoDarkMode(layout_image_.StyleRef(),
+                       PaintAutoDarkMode(layout_image_.Style(),
                                          DarkModeFilter::ElementRole::kBorder));
     return;
   }
@@ -257,8 +265,8 @@ void ImagePainter::PaintIntoRect(GraphicsContext& context,
       gfx::RectF(dest_rect));
 
   ScopedImageRenderingSettings image_rendering_settings_scope(
-      context, layout_image_.StyleRef().GetInterpolationQuality(),
-      layout_image_.StyleRef().GetDynamicRangeLimit());
+      context, layout_image_.Style().GetInterpolationQuality(),
+      layout_image_.Style().GetDynamicRangeLimit());
 
   Node* node = layout_image_.GetNode();
   auto* image_element = DynamicTo<HTMLImageElement>(node);
@@ -268,7 +276,7 @@ void ImagePainter::PaintIntoRect(GraphicsContext& context,
           : Image::kUnspecifiedDecode;
 
   auto image_auto_dark_mode = ImageClassifierHelper::GetImageAutoDarkMode(
-      *layout_image_.GetFrame(), layout_image_.StyleRef(),
+      *layout_image_.GetFrame(), layout_image_.Style(),
       gfx::RectF(pixel_snapped_dest_rect), src_rect);
 
   // At this point we have all the necessary information to report paint
@@ -277,7 +285,7 @@ void ImagePainter::PaintIntoRect(GraphicsContext& context,
   ImageResourceContent* image_content = image_resource.CachedImage();
   ImageNodeAnimationInfo image_animation =
       CSSImageAnimations::CreateImageNodeAnimationInfo(
-          node, image_content, layout_image_.StyleRef().ImageAnimation());
+          node, image_content, layout_image_.Style().ImageAnimation());
   context.DrawImage(
       *image, decode_mode, image_auto_dark_mode,
       ComputeReportPaintTiming(layout_image_, *image, image_content, context,

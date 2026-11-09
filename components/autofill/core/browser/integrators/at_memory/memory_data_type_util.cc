@@ -101,12 +101,7 @@ std::optional<std::u16string> FormatShortDate(
   }
   DateInfo date_info;
   date_info.SetDate(DateToIsoString(year, month, day), u"YYYY-MM-DD");
-  std::optional<std::u16string> pattern =
-      data_util::LocalizePattern(u"MMM d", app_locale);
-  if (!pattern) {
-    return std::nullopt;
-  }
-  std::u16string formatted = date_info.GetIcuDate(*pattern, app_locale);
+  std::u16string formatted = date_info.GetIcuDate(app_locale);
   return formatted.empty() ? std::nullopt
                            : std::make_optional(std::move(formatted));
 }
@@ -942,30 +937,6 @@ std::vector<MemorySearchResult> ExtractRemoteResults(
   return remote_results;
 }
 
-AttributeType GetPrimaryAttributeType(EntityType entity_type) {
-  switch (entity_type.name()) {
-    case EntityTypeName::kVehicle:
-      return AttributeType(AttributeTypeName::kVehiclePlateNumber);
-    case EntityTypeName::kPassport:
-      return AttributeType(AttributeTypeName::kPassportNumber);
-    case EntityTypeName::kDriversLicense:
-      return AttributeType(AttributeTypeName::kDriversLicenseNumber);
-    case EntityTypeName::kOrder:
-      return AttributeType(AttributeTypeName::kOrderId);
-    case EntityTypeName::kNationalIdCard:
-      return AttributeType(AttributeTypeName::kNationalIdCardNumber);
-    case EntityTypeName::kKnownTravelerNumber:
-      return AttributeType(AttributeTypeName::kKnownTravelerNumberNumber);
-    case EntityTypeName::kRedressNumber:
-      return AttributeType(AttributeTypeName::kRedressNumberNumber);
-    case EntityTypeName::kFlightReservation:
-      return AttributeType(AttributeTypeName::kFlightReservationFlightNumber);
-    case EntityTypeName::kShipment:
-      return AttributeType(AttributeTypeName::kShipmentTrackingNumber);
-  }
-  NOTREACHED();
-}
-
 std::u16string FormatMemoryDataTypeLabelValue(
     MemoryDataType type,
     std::u16string_view value,
@@ -1511,7 +1482,7 @@ Suggestion::Icon GetSuggestionIcon(MemoryDataType type, bool is_autofill_only) {
                               : Suggestion::Icon::kCardGenericSpark;
     case MemoryDataTypeCategory::kLoyaltyCard:
       // TODO(crbug.com/566940947): Add spark icon for loyalty cards.
-      return is_autofill_only ? Suggestion::Icon::kLoyalty
+      return is_autofill_only ? Suggestion::Icon::kLoyaltyPrograms
                               : Suggestion::Icon::kTextSpark;
     case MemoryDataTypeCategory::kVehicle:
       return is_autofill_only ? Suggestion::Icon::kVehicle

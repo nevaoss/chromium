@@ -8,6 +8,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -15,7 +16,6 @@
 #include "base/check.h"
 #include "base/check_deref.h"
 #include "base/command_line.h"
-#include "base/containers/adapters.h"
 #include "base/feature_list.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/scoped_refptr.h"
@@ -96,6 +96,7 @@
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/passwords/manage_passwords_ui_controller.h"
 #include "chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
@@ -1621,7 +1622,7 @@ void SelectLastTab(BrowserWindowInterface* browser,
   TabStripModel* model = browser->GetTabStripModel();
   std::optional<tab_groups::TabGroupId> focused_group =
       model->GetFocusedGroup();
-  for (tabs::TabInterface* tab : base::Reversed(*model)) {
+  for (tabs::TabInterface* tab : std::views::reverse(*model)) {
     if (!IsTabSelectable(model, tab, focused_group)) {
       continue;
     }
@@ -2455,8 +2456,8 @@ bool CanSavePage(const BrowserWindowInterface* browser) {
 
 void Print(BrowserWindowInterface* browser) {
 #if BUILDFLAG(ENABLE_PRINTING)
-  auto* const web_contents =
-      browser->GetTabStripModel()->GetActiveWebContents();
+  auto* const web_contents = printing::GetWebContentsToPrint(
+      browser->GetTabStripModel()->GetActiveTab());
 
   printing::StartPrint(web_contents,
 #if BUILDFLAG(IS_CHROMEOS)
@@ -2491,8 +2492,8 @@ bool CanPrint(BrowserWindowInterface* browser) {
 
 #if BUILDFLAG(ENABLE_PRINTING)
 void BasicPrint(BrowserWindowInterface* browser) {
-  printing::StartBasicPrint(
-      browser->GetTabStripModel()->GetActiveWebContents());
+  printing::StartBasicPrint(printing::GetWebContentsToPrint(
+      browser->GetTabStripModel()->GetActiveTab()));
 }
 
 bool CanBasicPrint(BrowserWindowInterface* browser) {
@@ -2597,8 +2598,8 @@ void ToggleContextualTasksSidePanelZeroState(BrowserWindowInterface* browser) {
   CHECK(controller);
   if (controller->IsPanelOpenForContextualTask()) {
     controller->Close();
-  } else if (base::FeatureList::IsEnabled(
-                 contextual_tasks::kContextualTasksUpdatedEntryPoints)) {
+  } else if (contextual_tasks::AreContextualTasksUpdatedEntryPointsEnabled(
+                 browser ? browser->GetProfile() : nullptr)) {
     ExecAskGoogleAboutThisPage(
         browser,
         lens::LensOverlayInvocationSource::kCobrowsePinnedToolbarButton,
@@ -3124,8 +3125,9 @@ void ExecLensOverlay(BrowserWindowInterface* browser) {
   CHECK(controller);
   controller->OpenLensOverlay(
       lens::LensOverlayInvocationSource::kAppMenu,
-      /*should_show_csb=*/!base::FeatureList::IsEnabled(
-          contextual_tasks::kContextualTasksUpdatedEntryPoints));
+      /*should_show_csb=*/!contextual_tasks::
+          AreContextualTasksUpdatedEntryPointsEnabled(
+              browser ? browser->GetProfile() : nullptr));
   BrowserUserEducationInterface::From(browser)->NotifyNewBadgeFeatureUsed(
       lens::features::kLensOverlay);
 }
@@ -3152,19 +3154,6 @@ void ExecLensRegionSearch(BrowserWindowInterface* browser) {
 #endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
 }
 
-void ExecAskGoogleAboutThisPage(BrowserWindowInterface* browser) {
-  ExecAskGoogleAboutThisPage(
-      browser, lens::LensOverlayInvocationSource::kContentAreaContextMenuPage);
-}
-
-void ExecAskGoogleAboutThisPage(
-    BrowserWindowInterface* browser,
-    lens::LensOverlayInvocationSource invocation_source) {
-  ExecAskGoogleAboutThisPage(
-      browser, invocation_source,
-      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION);
-}
-
 void ExecAskGoogleAboutThisPage(
     BrowserWindowInterface* browser,
     lens::LensOverlayInvocationSource invocation_source,
@@ -3173,8 +3162,18 @@ void ExecAskGoogleAboutThisPage(
   if (!browser) {
     return;
   }
-  if (contextual_tasks::kContextualTasksContextMenuRouteAskGoogleToOmnibox
-          .Get()) {
+  base::UmaHistogramEnumeration("ContextualTasks.AskGoogle.Invoked",
+                                invocation_source);
+  if (auto* const user_education =
+          BrowserUserEducationInterface::From(browser)) {
+    user_education->NotifyNewBadgeFeatureUsed(
+        contextual_tasks::kContextualTasksUpdatedEntryPoints);
+  }
+  // Only route to the omnibox if the window has an AIM popup to show;
+  // otherwise the popup state becomes kAim with nothing shown. Fall back to
+  // the side panel.
+  if (contextual_tasks::ShouldRouteAskGoogleToOmnibox(browser->GetProfile()) &&
+      omnibox::ShouldCreateAimPopupPresenter(browser->GetProfile())) {
     BrowserWindow* window = BrowserWindow::FromBrowser(browser);
     LocationBar* location_bar = window ? window->GetLocationBar() : nullptr;
     OmniboxController* omnibox_controller =

@@ -11,6 +11,7 @@
 #include "base/containers/flat_map.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/actor/actor_keyed_service_proto_wrapper.h"
 #include "chrome/browser/actor/actor_task_delegate.h"
 #include "components/actor/core/task_id.h"
 #include "components/actor/transport/actuation_delegate.h"
@@ -24,13 +25,16 @@ namespace actor {
 
 class ActorKeyedService;
 class AutofillSelectionDialogEventHandler;
+class EnterprisePolicyChecker;
 
 // Adapts ActorKeyedService to the ActuationDelegate interface used by
 // ActuationTransportHandler.
 class ActorKeyedServiceAdapter : public ActuationDelegate,
                                  public ActorTaskDelegate {
  public:
-  explicit ActorKeyedServiceAdapter(ActorKeyedService* actor_service);
+  ActorKeyedServiceAdapter(
+      ActorKeyedService* actor_service,
+      const EnterprisePolicyChecker* enterprise_policy_checker);
   ActorKeyedServiceAdapter(const ActorKeyedServiceAdapter&) = delete;
   ActorKeyedServiceAdapter& operator=(const ActorKeyedServiceAdapter&) = delete;
   ~ActorKeyedServiceAdapter() override;
@@ -76,8 +80,11 @@ class ActorKeyedServiceAdapter : public ActuationDelegate,
       GmailOtpConfirmationCallback callback) override;
 
  private:
-  // ActorKeyedService outlives this adapter.
+  // ActorKeyedService and EnterprisePolicyChecker outlive this adapter.
   raw_ptr<ActorKeyedService> actor_service_;
+  raw_ptr<const EnterprisePolicyChecker> enterprise_policy_checker_;
+  ActorKeyedServiceProtoWrapper actor_keyed_service_proto_wrapper_{
+      actor_service_};
   base::WeakPtrFactory<ActorKeyedServiceAdapter> weak_ptr_factory_{this};
 };
 

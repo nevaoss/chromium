@@ -484,8 +484,15 @@ class WebMediaPlayerImplTest
     compositor_ = compositor.get();
 
     CHECK(!wmpi_);
+    WebLocalFrame* frame = GetWebLocalFrame();
     wmpi_ = std::make_unique<WebMediaPlayerImpl>(
-        GetWebLocalFrame(), client_.Get(), &encrypted_client_, &delegate_,
+        frame->Scheduler(), frame->GetSecurityOrigin(),
+        frame->GetDocument().Url(), frame->GetDocument().Title(),
+        // Unretained() is safe because `wmpi_` is destroyed before
+        // `web_view_helper_`, which owns the frame.
+        BindRepeating(&WebLocalFrame::HasTransientUserActivation,
+                      Unretained(frame)),
+        client_.Get(), &encrypted_client_, &delegate_,
         std::move(factory_selector), url_index_.get(), std::move(compositor),
         std::move(media_log), player_id, WebMediaPlayerBuilder::DeferLoadCB(),
         audio_sink_, media_thread_.task_runner(), media_thread_.task_runner(),
@@ -1168,6 +1175,28 @@ TEST_F(WebMediaPlayerImplTest, LoadPreloadMetadataSuspend) {
             data_source_size);
 }
 
+// Verify that re-entrant Shutdown() during OnPipelineSuspended() does not
+// destroy `pipeline_controller_` while it is still on the call stack.
+TEST_F(WebMediaPlayerImplTest, ShutdownDuringOnPipelineSuspended) {
+  InitializeWebMediaPlayerImpl();
+  base::RunLoop loop;
+  EXPECT_CALL(*client_, CouldPlayIfEnoughData())
+      .WillOnce(Return(false))
+      .WillOnce([&]() {
+        EXPECT_CALL(*client_, SetCcLayer(nullptr));
+        EXPECT_CALL(*client_, MediaRemotingStopped(_));
+        wmpi_->Shutdown();
+        loop.Quit();
+        return true;
+      });
+  wmpi_->SetPreload(WebMediaPlayer::kPreloadMetaData);
+  Load(kAudioOnlyTestFile);
+  loop.Run();
+
+  wmpi_.reset();
+  CycleThreads();
+}
+
 // Verify that Play() before kReadyStateHaveEnough doesn't increase buffer size.
 TEST_F(WebMediaPlayerImplTest, NoBufferSizeIncreaseUntilHaveEnough) {
   InitializeWebMediaPlayerImpl();
@@ -1251,6 +1280,45 @@ TEST_F(WebMediaPlayerImplTest, LazyLoadPreloadMetadataSuspend) {
             data_source_size);
 
   EXPECT_CALL(*surface_layer_bridge_ptr_, ClearObserver());
+}
+
+// Verify that shutting down WebMediaPlayerImpl before destroying it cancels the
+// delayed lazy load StopPreloading callback before DemuxerManager is destroyed.
+TEST_F(WebMediaPlayerImplTest,
+       LazyLoadPreloadMetadataSuspendShutdownBeforeDestroy) {
+  InitializeWebMediaPlayerImpl();
+  EXPECT_CALL(*client_, CouldPlayIfEnoughData()).WillRepeatedly(Return(false));
+  wmpi_->SetPreload(WebMediaPlayer::kPreloadMetaData);
+
+  LoadAndWaitForReadyState(kVideoOnlyTestFile,
+                           WebMediaPlayer::kReadyStateHaveMetadata);
+  testing::Mock::VerifyAndClearExpectations(client_.Get());
+  EXPECT_CALL(*client_, ReadyStateChanged()).Times(AnyNumber());
+  CycleThreads();
+  EXPECT_TRUE(IsSuspended());
+  EXPECT_TRUE(wmpi_->DidLazyLoad());
+  EXPECT_FALSE(ShouldCancelUponDefer());
+
+  EXPECT_CALL(*surface_layer_bridge_ptr_, ClearObserver());
+  EXPECT_CALL(*client_, SetCcLayer(nullptr));
+  EXPECT_CALL(*client_, MediaRemotingStopped(_));
+
+  // Shut down the player without destroying it yet, then cycle threads so
+  // DestructionHelper deletes `demuxer_manager_`.
+  wmpi_->Shutdown();
+  CycleThreads();
+
+  // Wait past the 250ms delay used by `have_enough_after_lazy_load_cb_` while
+  // `wmpi_` is still alive.
+  base::RunLoop loop;
+  GetWebLocalFrame()
+      ->Scheduler()
+      ->GetTaskRunner(TaskType::kMediaElementEvent)
+      ->PostDelayedTask(FROM_HERE, loop.QuitClosure(), base::Milliseconds(300));
+  loop.Run();
+
+  wmpi_.reset();
+  CycleThreads();
 }
 
 // Verify that lazy load is skipped when rVFC has been requested.

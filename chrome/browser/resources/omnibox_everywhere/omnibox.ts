@@ -37,6 +37,7 @@ import type {InputState} from '//resources/mojo/components/omnibox/composebox/co
 import {OmniboxEverywhereBrowserProxyImpl} from './browser_proxy.js';
 import {getCss} from './omnibox.css.js';
 import {getHtml} from './omnibox.html.js';
+import type {OmniboxEverywhereProfileIconElement} from './profile_icon.js';
 
 
 export interface OmniboxEverywhereOmniboxElement {
@@ -44,6 +45,7 @@ export interface OmniboxEverywhereOmniboxElement {
     input: SearchboxInputElement,
     inputWrapper: HTMLElement,
     matches: SearchboxDropdownElement,
+    profileIcon: OmniboxEverywhereProfileIconElement,
   };
 }
 
@@ -529,10 +531,16 @@ export class OmniboxEverywhereOmniboxElement extends
     this.processFiles_(e.detail.files, ComposeboxContextAddedMethod.COPY_PASTE);
   }
 
+  // Files are attached as AI Mode context, so they can only be added when AI
+  // Mode is available and policy allows sharing context with search.
+  protected canAddFileContext_(): boolean {
+    return this.fileContextEnabled_ && this.isFuseboxEnabled;
+  }
+
   protected processFiles_(
       files: FileList|null,
       contextAdditionMethod: ComposeboxContextAddedMethod) {
-    if (!files || files.length === 0) {
+    if (!files || files.length === 0 || !this.canAddFileContext_()) {
       return;
     }
     recordContextAdditionMethod(contextAdditionMethod, 'OmniboxEverywhere');
@@ -614,7 +622,7 @@ export class OmniboxEverywhereOmniboxElement extends
   }
 
   override onInputWrapperFocusout(e: FocusEvent) {
-    if (this.isContextMenuOpen) {
+    if (this.isContextMenuOpen || this.$.profileIcon.isMenuOpen) {
       return;
     }
     super.onInputWrapperFocusout(e);

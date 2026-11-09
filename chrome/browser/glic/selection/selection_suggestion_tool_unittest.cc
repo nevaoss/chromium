@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/test/test_future.h"
 #include "chrome/browser/glic/selection/selection_suggestion.h"
 #include "chrome/browser/selection/suggestion.h"
 #include "chrome/browser/selection/suggestion_service.h"
@@ -22,8 +21,6 @@
 namespace glic {
 namespace {
 
-using ::base::test::TestFuture;
-using ::testing::IsEmpty;
 using ::testing::ReturnRef;
 
 class SelectionSuggestionToolTest : public testing::Test {
@@ -54,11 +51,6 @@ TEST_F(SelectionSuggestionToolTest, GetToolId) {
             optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME);
 }
 
-// Tests that SelectionSuggestionTool supports server suggestions.
-TEST_F(SelectionSuggestionToolTest, SupportsServerSuggestions) {
-  EXPECT_TRUE(tool().SupportsServerSuggestions());
-}
-
 // Tests that SelectionSuggestionTool registers itself on construction and
 // unregisters itself on destruction.
 TEST_F(SelectionSuggestionToolTest, RegistersAndUnregistersWithService) {
@@ -79,18 +71,6 @@ TEST_F(SelectionSuggestionToolTest, RegistersAndUnregistersWithService) {
   const SelectionSuggestionTool second_tool{other_tab};
 }
 
-// Tests that SelectionSuggestionTool generates no static suggestions.
-TEST_F(SelectionSuggestionToolTest, RequestSuggestionsReturnsEmpty) {
-  const ::selection::AreaOfInterest aoi;
-  TestFuture<std::vector<std::unique_ptr<::selection::Suggestion>>, bool>
-      future;
-  tool().RequestSuggestions(aoi, future.GetRepeatingCallback());
-
-  const auto& [suggestions, complete] = future.Get();
-  EXPECT_TRUE(complete);
-  EXPECT_THAT(suggestions, IsEmpty());
-}
-
 // Tests that CreateSuggestion creates a SelectionSuggestion for non-empty
 // labels.
 TEST_F(SelectionSuggestionToolTest, CreateSuggestionWithValidLabel) {
@@ -102,6 +82,8 @@ TEST_F(SelectionSuggestionToolTest, CreateSuggestionWithValidLabel) {
       tool().CreateSuggestion(aoi, server_suggestion);
   ASSERT_NE(suggestion, nullptr);
   EXPECT_EQ(suggestion->GetLabel(), u"Ask Glic");
+  EXPECT_EQ(suggestion->GetToolId(),
+            optimization_guide::proto::SMART_SELECTION_TOOL_GEMINI_IN_CHROME);
   const SelectionSuggestion* const selection_suggestion =
       static_cast<const SelectionSuggestion*>(suggestion.get());
   EXPECT_EQ(selection_suggestion->prompt(), "Ask Glic");

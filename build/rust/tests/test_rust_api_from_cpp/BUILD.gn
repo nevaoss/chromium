@@ -2,21 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/rust/rs_bindings_from_cc.gni")
-import("//build/rust/rust_executable.gni")
+import("//build/rust/rust_api_from_cpp.gni")
+import("//build/rust/rust_static_library.gni")
 
-rust_executable("test_rs_bindings_from_cc") {
-  crate_root = "main.rs"
-  sources = [ "main.rs" ]
+rust_static_library("test_rust_api_from_cpp") {
+  testonly = true
+  is_gtest_unittests = true
+  crate_root = "tests.rs"
+  sources = [ crate_root ]
   deps = [
+    ":assume_lifetimes_rs_api",
+    ":explicit_lifetimes_rs_api",
+    ":lifetime_bound_rs_api",
     ":self_contained_target_rs_api",
     ":target_depending_on_another_rs_api",
-    "//third_party/crubit:ctor",
+    "//build/rust/crubit:cref",
+    "//testing/rust_gtest_interop",
   ]
-  build_native_rust_unit_tests = true
 }
 
-rs_bindings_from_cc("self_contained_target_rs_api") {
+rust_api_from_cpp("self_contained_target_rs_api") {
   # This is the target that the bindings are for / call into.
   bindings_target = ":self_contained_target"
 
@@ -35,7 +40,7 @@ source_set("self_contained_target") {
   ]
 }
 
-rs_bindings_from_cc("target_depending_on_another_rs_api") {
+rust_api_from_cpp("target_depending_on_another_rs_api") {
   # This is the target that the bindings are for / call into.
   bindings_target = ":target_depending_on_another"
 
@@ -55,4 +60,33 @@ rs_bindings_from_cc("target_depending_on_another_rs_api") {
 source_set("target_depending_on_another") {
   sources = [ "target_depending_on_another.h" ]
   public_deps = [ ":self_contained_target" ]
+}
+
+rust_api_from_cpp("assume_lifetimes_rs_api") {
+  bindings_target = ":assume_lifetimes"
+  public_headers = [ "assume_lifetimes.h" ]
+}
+
+source_set("assume_lifetimes") {
+  sources = [ "assume_lifetimes.h" ]
+}
+
+rust_api_from_cpp("lifetime_bound_rs_api") {
+  bindings_target = ":lifetime_bound"
+  public_headers = [ "lifetime_bound.h" ]
+}
+
+source_set("lifetime_bound") {
+  sources = [ "lifetime_bound.h" ]
+  public_deps = [ "//base:compiler_specific" ]
+}
+
+rust_api_from_cpp("explicit_lifetimes_rs_api") {
+  bindings_target = ":explicit_lifetimes"
+  public_headers = [ "explicit_lifetimes.h" ]
+}
+
+source_set("explicit_lifetimes") {
+  sources = [ "explicit_lifetimes.h" ]
+  public_deps = [ "//build/rust/crubit" ]
 }

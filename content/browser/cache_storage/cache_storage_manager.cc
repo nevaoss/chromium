@@ -30,6 +30,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "components/services/storage/public/cpp/buckets/bucket_locator.h"
@@ -66,11 +67,8 @@ void DeleteBucketDidDeleteDir(
 
 void DidDeleteAllBuckets(
     storage::mojom::QuotaClient::DeleteBucketDataCallback callback,
-    bool enumeration_succeeded,
     std::vector<blink::mojom::QuotaStatusCode> results) {
-  auto status = enumeration_succeeded
-                    ? blink::mojom::QuotaStatusCode::kOk
-                    : blink::mojom::QuotaStatusCode::kErrorAbort;
+  auto status = blink::mojom::QuotaStatusCode::kOk;
   for (auto result : results) {
     if (result != blink::mojom::QuotaStatusCode::kOk) {
       status = result;
@@ -80,51 +78,6 @@ void DidDeleteAllBuckets(
   // On scheduler sequence.
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), status));
-}
-
-void DidDoomAllCaches(
-    CacheStorageHandle cache_storage,
-    storage::mojom::QuotaClient::DeleteBucketDataCallback callback,
-    std::vector<blink::mojom::CacheStorageError> results) {
-  auto status = blink::mojom::QuotaStatusCode::kOk;
-  for (auto result : results) {
-    if (result != blink::mojom::CacheStorageError::kSuccess &&
-        result != blink::mojom::CacheStorageError::kErrorNotFound) {
-      status = blink::mojom::QuotaStatusCode::kErrorAbort;
-      break;
-    }
-  }
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), status));
-}
-
-void DoomCachesForOrigin(
-    CacheStorageHandle cache_storage,
-    storage::mojom::QuotaClient::DeleteBucketDataCallback callback,
-    std::vector<std::u16string> cache_names,
-    blink::mojom::CacheStorageError error) {
-  if (error != blink::mojom::CacheStorageError::kSuccess) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  blink::mojom::QuotaStatusCode::kErrorAbort));
-    return;
-  }
-  if (cache_names.empty()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  blink::mojom::QuotaStatusCode::kOk));
-    return;
-  }
-
-  auto* storage = CacheStorage::From(cache_storage);
-  const auto barrier_callback =
-      base::BarrierCallback<blink::mojom::CacheStorageError>(
-          cache_names.size(),
-          base::BindOnce(&DidDoomAllCaches, std::move(cache_storage),
-                         std::move(callback)));
-  for (const std::u16string& cache_name : cache_names) {
-    storage->DoomCache(cache_name, /*trace_id=*/0, barrier_callback);
-  }
 }
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -178,32 +131,30 @@ base::FilePath ConstructOriginPath(const base::FilePath& profile_path,
   return first_party_default_root_path.AppendASCII(origin_hash_hex);
 }
 
-bool ValidateAndAddBucketFromPath(
+void ValidateAndAddBucketFromPath(
     const base::FilePath& index_file_directory_path,
     storage::mojom::CacheStorageOwner owner,
     const base::FilePath& profile_path,
     std::vector<storage::BucketLocator>& buckets,
     bool is_origin_path = false) {
   if (!base::PathExists(index_file_directory_path)) {
-    return true;
+    return;
   }
   base::FilePath index_path =
       index_file_directory_path.AppendASCII(CacheStorage::kIndexFileName);
   std::string protobuf;
-  if (!base::ReadFileToString(index_path, &protobuf)) {
-    return base::IsDirectoryEmpty(index_file_directory_path);
-  }
+  base::ReadFileToString(index_path, &protobuf);
 
   proto::CacheStorageIndex index;
   if (!index.ParseFromString(protobuf)) {
     RecordIndexValidationResult(IndexResult::kFailedToParse);
-    return false;
+    return;
   }
 
   IndexResult rv = ValidateIndex(index);
   if (rv != IndexResult::kOk) {
     RecordIndexValidationResult(rv);
-    return false;
+    return;
   }
 
   blink::StorageKey storage_key;
@@ -212,7 +163,7 @@ bool ValidateAndAddBucketFromPath(
         blink::StorageKey::Deserialize(index.storage_key());
     if (!result) {
       RecordIndexValidationResult(IndexResult::kInvalidStorageKey);
-      return false;
+      return;
     }
     storage_key = result.value();
   } else {
@@ -272,33 +223,24 @@ bool ValidateAndAddBucketFromPath(
       auto other_owner_path = CacheStorageManager::ConstructBucketPath(
           profile_path, bucket_locator, other_owner);
       if (index_file_directory_path == other_owner_path) {
-        return true;
+        return;
       }
     }
     RecordIndexValidationResult(IndexResult::kPathMismatch);
-    return false;
+    return;
   }
 
-  // An index with no caches has no visible origin data to report.
-  if (index.cache_size() > 0) {
-    buckets.emplace_back(bucket_locator);
-  }
+  buckets.emplace_back(bucket_locator);
   RecordIndexValidationResult(IndexResult::kOk);
-  return true;
 }
 
 // Open the various cache directories' index files and extract their bucket
-// locators.
-void GetBucketsFromDiskOnTaskRunner(
-    scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
-    std::vector<storage::BucketLocator> buckets,
+// locators. This should be run on the "cache task runner" which is allowed to
+// do disk I/O. Returns the found buckets.
+std::vector<storage::BucketLocator> GetBucketsFromDisk(
     base::FilePath profile_path,
-    storage::mojom::CacheStorageOwner owner,
-    base::OnceCallback<void(bool, std::vector<storage::BucketLocator>)>
-        callback) {
-  // Invalid indexes may hide matching buckets. Continue collecting readable
-  // indexes, but report that origin deletion could not enumerate all data.
-  bool success = true;
+    storage::mojom::CacheStorageOwner owner) {
+  std::vector<storage::BucketLocator> buckets;
   // Add entries to `buckets` from the directory for default buckets
   // corresponding to first-party contexts.
   {
@@ -311,8 +253,8 @@ void GetBucketsFromDiskOnTaskRunner(
 
     base::FilePath path;
     while (!(path = file_enum.Next()).empty()) {
-      success &= ValidateAndAddBucketFromPath(
-          path, owner, profile_path, buckets, true /* is_origin_path */);
+      ValidateAndAddBucketFromPath(path, owner, profile_path, buckets,
+                                   true /* is_origin_path */);
     }
   }
 
@@ -334,16 +276,13 @@ void GetBucketsFromDiskOnTaskRunner(
       if (!base::PathExists(cache_storage_path)) {
         continue;
       }
-      success &= ValidateAndAddBucketFromPath(cache_storage_path, owner,
-                                              profile_path, buckets);
+      ValidateAndAddBucketFromPath(cache_storage_path, owner, profile_path,
+                                   buckets);
     }
   }
 
   // Don't attempt to resolve any missing bucket IDs.
-  scheduler_task_runner->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), success, std::move(buckets)));
-  return;
+  return buckets;
 }
 
 // Match a bucket for deletion if its storage key matches any of the given
@@ -371,32 +310,11 @@ bool BucketMatchesOriginsForDeletion(
 }  // namespace
 
 // static
-scoped_refptr<CacheStorageManager> CacheStorageManager::Create(
-    const base::FilePath& profile_path,
-    scoped_refptr<base::SequencedTaskRunner> cache_task_runner,
-    scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
-    scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
-    scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
-    base::WeakPtr<CacheStorageDispatcherHost> cache_storage_dispatcher_host) {
-  CHECK(cache_task_runner, base::NotFatalUntil::M158);
-  CHECK(scheduler_task_runner, base::NotFatalUntil::M158);
-  CHECK(quota_manager_proxy, base::NotFatalUntil::M158);
-  CHECK(blob_storage_context, base::NotFatalUntil::M158);
-
-  return base::MakeRefCounted<CacheStorageManager>(
-      profile_path, std::move(cache_task_runner),
-      std::move(scheduler_task_runner), std::move(quota_manager_proxy),
-      std::move(blob_storage_context),
-      std::move(cache_storage_dispatcher_host));
-}
-
-// static
-scoped_refptr<CacheStorageManager> CacheStorageManager::CreateForTesting(
+std::unique_ptr<CacheStorageManager> CacheStorageManager::CreateForTesting(
     CacheStorageManager* old_manager) {
-  return base::MakeRefCounted<CacheStorageManager>(
+  return std::make_unique<CacheStorageManager>(
       old_manager->profile_path(), old_manager->cache_task_runner(),
-      old_manager->scheduler_task_runner(), old_manager->quota_manager_proxy_,
-      old_manager->blob_storage_context_,
+      old_manager->quota_manager_proxy_, old_manager->blob_storage_context_,
       old_manager->cache_storage_dispatcher_host_);
 }
 
@@ -455,6 +373,10 @@ bool CacheStorageManager::ConflictingInstanceExistsInMap(
   return false;
 }
 
+base::WeakPtr<CacheStorageManager> CacheStorageManager::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
+
 CacheStorageHandle CacheStorageManager::OpenCacheStorage(
     const storage::BucketLocator& bucket_locator,
     storage::mojom::CacheStorageOwner owner) {
@@ -483,8 +405,8 @@ CacheStorageHandle CacheStorageManager::OpenCacheStorage(
 #endif
     it->second = std::make_unique<CacheStorage>(
         bucket_path, IsMemoryBacked(), cache_task_runner_.get(),
-        scheduler_task_runner_, quota_manager_proxy_, blob_storage_context_,
-        this, bucket_locator, owner);
+        quota_manager_proxy_, blob_storage_context_, this, bucket_locator,
+        owner);
   }
   return it->second->CreateHandle();
 }
@@ -531,9 +453,9 @@ void CacheStorageManager::GetBucketUsage(
   if (IsMemoryBacked()) {
     auto it = cache_storage_map_.find({bucket_locator, owner});
     if (it == cache_storage_map_.end()) {
-      scheduler_task_runner_->PostTask(FROM_HERE,
-                                       base::BindOnce(std::move(callback),
-                                                      /*usage=*/0));
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(std::move(callback),
+                                    /*usage=*/0));
       return;
     }
     CacheStorageHandle cache_storage = OpenCacheStorage(bucket_locator, owner);
@@ -557,7 +479,7 @@ void CacheStorageManager::GetBucketUsageDidGetExists(
     bool exists) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!exists || ConflictingInstanceExistsInMap(owner, bucket_locator)) {
-    scheduler_task_runner_->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback), /*usage=*/0));
     return;
   }
@@ -585,65 +507,67 @@ void CacheStorageManager::GetStorageKeys(
         continue;
       }
 
-      if (key_value.second->HasCaches()) {
-        storage_keys.push_back(bucket_locator.storage_key);
-      }
+      storage_keys.push_back(bucket_locator.storage_key);
     }
 
-    scheduler_task_runner_->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback), std::move(storage_keys)));
     return;
   }
 
-  std::vector<storage::BucketLocator> buckets;
-  cache_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &GetBucketsFromDiskOnTaskRunner,
-          base::WrapRefCounted(scheduler_task_runner_.get()),
-          std::move(buckets), profile_path_, owner,
-          base::IgnoreArgs<bool>(base::BindOnce(
-              &CacheStorageManager::ListStorageKeysOnTaskRunner,
-              weak_ptr_factory_.GetWeakPtr(), std::move(callback)))));
+  cache_task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE, base::BindOnce(&GetBucketsFromDisk, profile_path_, owner),
+      base::BindOnce([](std::vector<storage::BucketLocator> buckets) {
+        // Note that bucket IDs will not be populated in the `buckets` entries.
+        std::vector<blink::StorageKey> out_storage_keys;
+        for (const storage::BucketLocator& bucket_locator : buckets) {
+          if (!bucket_locator.is_default) {
+            continue;
+          }
+          out_storage_keys.emplace_back(bucket_locator.storage_key);
+        }
+        return out_storage_keys;
+      }).Then(std::move(callback)));
 }
 
 void CacheStorageManager::DeleteOriginsDataGotAllBucketInfo(
     const std::set<url::Origin>& origins,
     storage::mojom::CacheStorageOwner owner,
     base::OnceCallback<void(blink::mojom::QuotaStatusCode)> callback,
-    bool enumeration_succeeded,
     std::vector<storage::BucketLocator> buckets) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (buckets.empty()) {
-    scheduler_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback),
-                       enumeration_succeeded
-                           ? blink::mojom::QuotaStatusCode::kOk
-                           : blink::mojom::QuotaStatusCode::kErrorAbort));
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback),
+                                  blink::mojom::QuotaStatusCode::kOk));
     return;
   }
 
   const auto barrier_callback =
       base::BarrierCallback<blink::mojom::QuotaStatusCode>(
           buckets.size(),
-          base::BindOnce(&DidDeleteAllBuckets, std::move(callback),
-                         enumeration_succeeded));
+          base::BindOnce(&DidDeleteAllBuckets, std::move(callback)));
 
   for (const storage::BucketLocator& bucket_locator : buckets) {
     if (!BucketMatchesOriginsForDeletion(bucket_locator, origins)) {
       barrier_callback.Run(blink::mojom::QuotaStatusCode::kOk);
       continue;
     }
-    CacheStorageHandle cache_storage = OpenCacheStorage(bucket_locator, owner);
-    // Keep the bucket directory and index: existing doomed cache handles and
-    // subsequent CacheStorage operations can still use this instance.
-    CacheStorage::From(cache_storage)
-        ->EnumerateCaches(
-            /*trace_id=*/0,
-            base::BindOnce(&DoomCachesForOrigin, std::move(cache_storage),
-                           barrier_callback));
+    if (!bucket_locator.is_null()) {
+      // The bucket locator is fully formed, so use the same steps to delete as
+      // `DeleteBucketData()`.
+      DeleteBucketDataDidGetExists(owner, barrier_callback, bucket_locator,
+                                   /*exists=*/true);
+    } else {
+      // This must be for an unmigrated cache storage instance using an origin
+      // path, so just directly delete the directory.
+      cache_task_runner_->PostTaskAndReplyWithResult(
+          FROM_HERE,
+          base::BindOnce(&DeleteDir, CacheStorageManager::ConstructBucketPath(
+                                         profile_path_, bucket_locator, owner)),
+          base::BindOnce(&DeleteBucketDidDeleteDir, barrier_callback));
+    }
   }
 }
 
@@ -654,7 +578,7 @@ void CacheStorageManager::DeleteOriginData(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (origins.empty()) {
-    scheduler_task_runner_->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback),
                                   blink::mojom::QuotaStatusCode::kOk));
     return;
@@ -674,22 +598,16 @@ void CacheStorageManager::DeleteOriginData(
       to_delete.emplace_back(key_value.first.first);
     }
 
-    DeleteOriginsDataGotAllBucketInfo(origins, owner, std::move(callback), true,
+    DeleteOriginsDataGotAllBucketInfo(origins, owner, std::move(callback),
                                       std::move(to_delete));
     return;
   }
 
-  std::vector<storage::BucketLocator> buckets;
-  cache_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &GetBucketsFromDiskOnTaskRunner,
-          base::WrapRefCounted(scheduler_task_runner_.get()),
-          std::move(buckets), profile_path_, owner,
-          base::BindOnce(
-              &CacheStorageManager::DeleteOriginsDataGotAllBucketInfo,
-              weak_ptr_factory_.GetWeakPtr(), origins, owner,
-              std::move(callback))));
+  cache_task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE, base::BindOnce(&GetBucketsFromDisk, profile_path_, owner),
+      base::BindOnce(&CacheStorageManager::DeleteOriginsDataGotAllBucketInfo,
+                     weak_ptr_factory_.GetWeakPtr(), origins, owner,
+                     std::move(callback)));
 }
 
 void CacheStorageManager::DeleteBucketData(
@@ -710,7 +628,7 @@ void CacheStorageManager::DeleteBucketData(
   if (IsMemoryBacked()) {
     auto it = cache_storage_map_.find({bucket_locator, owner});
     if (it == cache_storage_map_.end()) {
-      scheduler_task_runner_->PostTask(
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(std::move(callback),
                                     blink::mojom::QuotaStatusCode::kOk));
       return;
@@ -738,7 +656,7 @@ void CacheStorageManager::DeleteBucketDataDidGetExists(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!exists || ConflictingInstanceExistsInMap(owner, bucket_locator)) {
-    scheduler_task_runner_->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback),
                                   blink::mojom::QuotaStatusCode::kOk));
     return;
@@ -787,7 +705,7 @@ void CacheStorageManager::DeleteBucketDidClose(
   }
 
   if (IsMemoryBacked()) {
-    scheduler_task_runner_->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback),
                                   blink::mojom::QuotaStatusCode::kOk));
     return;
@@ -803,20 +721,15 @@ void CacheStorageManager::DeleteBucketDidClose(
 CacheStorageManager::CacheStorageManager(
     const base::FilePath& profile_path,
     scoped_refptr<base::SequencedTaskRunner> cache_task_runner,
-    scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
     scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
     scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
     base::WeakPtr<CacheStorageDispatcherHost> cache_storage_dispatcher_host)
-    : base::RefCountedDeleteOnSequence<CacheStorageManager>(
-          scheduler_task_runner),
-      profile_path_(profile_path),
+    : profile_path_(profile_path),
       cache_task_runner_(std::move(cache_task_runner)),
-      scheduler_task_runner_(std::move(scheduler_task_runner)),
       quota_manager_proxy_(std::move(quota_manager_proxy)),
       blob_storage_context_(std::move(blob_storage_context)),
       cache_storage_dispatcher_host_(std::move(cache_storage_dispatcher_host)) {
   CHECK(cache_task_runner_, base::NotFatalUntil::M158);
-  CHECK(scheduler_task_runner_, base::NotFatalUntil::M158);
   CHECK(quota_manager_proxy_, base::NotFatalUntil::M158);
   CHECK(blob_storage_context_, base::NotFatalUntil::M158);
 }
@@ -872,23 +785,4 @@ base::FilePath CacheStorageManager::ConstructThirdPartyAndNonDefaultRootPath(
   return profile_path.Append(storage::kWebStorageDirectory);
 }
 
-// Used by QuotaClient which only wants the storage keys that have data in the
-// default bucket. Keep this function to return a vector of StorageKeys, instead
-// of buckets.
-void CacheStorageManager::ListStorageKeysOnTaskRunner(
-    storage::mojom::QuotaClient::GetDefaultStorageKeysCallback callback,
-    std::vector<storage::BucketLocator> buckets) {
-  // Note that bucket IDs will not be populated in the `buckets` entries.
-  std::vector<blink::StorageKey> out_storage_keys;
-  for (const storage::BucketLocator& bucket_locator : buckets) {
-    if (!bucket_locator.is_default) {
-      continue;
-    }
-    out_storage_keys.emplace_back(bucket_locator.storage_key);
-  }
-
-  scheduler_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), std::move(out_storage_keys)));
-}
 }  // namespace content

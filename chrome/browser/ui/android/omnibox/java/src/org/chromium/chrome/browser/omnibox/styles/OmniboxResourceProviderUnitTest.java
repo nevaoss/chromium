@@ -484,6 +484,24 @@ public class OmniboxResourceProviderUnitTest {
 
     @Test
     @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void getFuseboxCarouselIconSize() {
+        assertEquals(
+                mContext.getResources()
+                        .getDimensionPixelSize(R.dimen.fusebox_bottom_sheet_attachment_icon_size),
+                mProvider.getFuseboxCarouselIconSize());
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
+    public void getFuseboxCarouselIconSize_variationsEnabled() {
+        assertEquals(
+                mContext.getResources()
+                        .getDimensionPixelSize(R.dimen.fusebox_carousel_item_large_icon_size),
+                mProvider.getFuseboxCarouselIconSize());
+    }
+
+    @Test
+    @DisableFeatures(OmniboxFeatureList.OMNIBOX_FUSEBOX_POPUP_VARIATIONS)
     public void getPopupItemTextRes_variationsDisabled() {
         int expected = IncognitoColors.getTextMediumPrimary(/* isIncognito= */ false);
 
@@ -730,7 +748,7 @@ public class OmniboxResourceProviderUnitTest {
                 IncognitoColors.getTextMediumThickSecondary(/* isIncognito= */ false),
                 mProvider.getPopupAttachmentsHeaderTextRes(/* useLarge= */ false));
         assertEquals(
-                IncognitoColors.getHeadlinePrimary(/* isIncognito= */ false),
+                IncognitoColors.getHeadline2ThickPrimary(/* isIncognito= */ false),
                 mProvider.getPopupAttachmentsHeaderTextRes(/* useLarge= */ true));
 
         OmniboxResourceProvider incognitoProvider =
@@ -739,7 +757,7 @@ public class OmniboxResourceProviderUnitTest {
                 IncognitoColors.getTextMediumThickSecondary(/* isIncognito= */ true),
                 incognitoProvider.getPopupAttachmentsHeaderTextRes(/* useLarge= */ false));
         assertEquals(
-                IncognitoColors.getHeadlinePrimary(/* isIncognito= */ true),
+                IncognitoColors.getHeadline2ThickPrimary(/* isIncognito= */ true),
                 incognitoProvider.getPopupAttachmentsHeaderTextRes(/* useLarge= */ true));
     }
 }

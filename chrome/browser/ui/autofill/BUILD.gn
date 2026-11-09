@@ -171,8 +171,6 @@ source_set("impl") {
     "risk_util.cc",
   ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   deps = [
     ":autofill",
     ":autofill_ai_ui_utils_impl",
@@ -523,6 +521,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/ui/browser_web_contents_delegate",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/user_education",
+      "//chrome/browser/ui/webui/feedback",
       "//chrome/common:constants",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",

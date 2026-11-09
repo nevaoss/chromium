@@ -127,17 +127,17 @@
     {
         "name": "collection",
         "group": "androidx.collection",
-        "version": "1.7.0-SNAPSHOT"
+        "version": "1.7.0"
     },
     {
         "name": "collection-jvm",
         "group": "androidx.collection",
-        "version": "1.7.0-SNAPSHOT"
+        "version": "1.7.0"
     },
     {
         "name": "collection-ktx",
         "group": "androidx.collection",
-        "version": "1.7.0-SNAPSHOT"
+        "version": "1.7.0"
     },
     {
         "name": "animation",
@@ -522,7 +522,7 @@
     {
         "name": "exifinterface",
         "group": "androidx.exifinterface",
-        "version": "1.4.2"
+        "version": "1.5.0-SNAPSHOT"
     },
     {
         "name": "fragment",
@@ -897,22 +897,22 @@
     {
         "name": "navigationevent",
         "group": "androidx.navigationevent",
-        "version": "1.2.0-SNAPSHOT"
+        "version": "1.2.0"
     },
     {
         "name": "navigationevent-android",
         "group": "androidx.navigationevent",
-        "version": "1.2.0-SNAPSHOT"
+        "version": "1.2.0"
     },
     {
         "name": "navigationevent-compose",
         "group": "androidx.navigationevent",
-        "version": "1.2.0-SNAPSHOT"
+        "version": "1.2.0"
     },
     {
         "name": "navigationevent-compose-android",
         "group": "androidx.navigationevent",
-        "version": "1.2.0-SNAPSHOT"
+        "version": "1.2.0"
     },
     {
         "name": "paging-common",
@@ -1477,22 +1477,22 @@
     {
         "name": "okio",
         "group": "com.squareup.okio",
-        "version": "3.17.0"
+        "version": "3.18.2"
     },
     {
         "name": "okio-jvm",
         "group": "com.squareup.okio",
-        "version": "3.17.0"
+        "version": "3.18.2"
     },
     {
         "name": "wire-runtime",
         "group": "com.squareup.wire",
-        "version": "6.4.7"
+        "version": "7.0.3"
     },
     {
         "name": "wire-runtime-jvm",
         "group": "com.squareup.wire",
-        "version": "6.4.7"
+        "version": "7.0.3"
     },
     {
         "name": "javawriter",

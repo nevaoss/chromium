@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">Поділитися цією сторінкою</translation>
 <translation id="230115972905494466">Сумісних пристроїв не знайдено</translation>
 <translation id="2305798319182970276">Видаляйте історію одним кліком</translation>
+<translation id="2307420463693979699">Додаток <ph name="APP_NAME" /> запитує доступ до пристроїв взаємодії з людиною (HID) для цього сайту.</translation>
 <translation id="2316129865977710310">Ні, дякую</translation>
 <translation id="232137538351753795">Щоб перейти назад, проведіть пальцем від лівого краю екрана</translation>
 <translation id="2323763861024343754">Дані сайтів</translation>
 <translation id="2327445548174191329">З пристрою "<ph name="DEVICE_NAME" />"</translation>
 <translation id="232757965409810352">Зберегти сторінку як…</translation>
 <translation id="2328474416100889417">Усі користувачі відразу втратять доступ до групи вкладок "<ph name="GROUP_NAME" />", і всі посилання для запрошення буде вимкнено</translation>
+<translation id="2328773543844041445">Автоматично розгортати вкладки під час наведення курсора</translation>
 <translation id="2330186936255788117">Більше закладок</translation>
 <translation id="2330243730505117832">Вікно "Виберіть пристрій" закрито.</translation>
 <translation id="2332515770639153015">Безпечний перегляд із розширеним захистом увімкнено</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">Екран "Увімкнути Знахідки в Chrome" відкрито на всю висоту</translation>
 <translation id="7612619742409846846">Ви ввійшли в обліковий запис Google як</translation>
 <translation id="7612989789287281429">Виконується вхід…</translation>
+<translation id="7617512710641355143">Вебпереглядачем Chrome керує адміністратор</translation>
 <translation id="7619072057915878432">Не вдалося завантажити файл <ph name="FILE_NAME" />. Помилка мережі.</translation>
 <translation id="7626032353295482388">Вітаємо у Chrome!</translation>
 <translation id="7628417132421583481">Перейти в Менеджер паролів</translation>

@@ -93,6 +93,7 @@ source_set("impl") {
     "//components/content_settings/core/common",
     "//components/lens:features",
     "//components/metrics_services_manager",
+    "//components/page_info/core",
     "//components/password_manager/core/browser/features:password_features",
     "//components/password_manager/core/common",
     "//components/permissions",
@@ -128,7 +129,6 @@ source_set("impl") {
       "//pdf:features",
     ]
   }
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 }
 
 if (is_android) {

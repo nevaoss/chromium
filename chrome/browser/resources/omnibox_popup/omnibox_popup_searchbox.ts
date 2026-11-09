@@ -145,16 +145,6 @@ export class OmniboxPopupSearchboxElement extends
         type: Boolean,
         reflect: true,
       },
-      // TODO(b/517218130): Ensure Omnibox is laid out correctly when
-      //   `isTouchUi_` is true.
-      isTouchUi_: {
-        type: Boolean,
-        reflect: true,
-      },
-      isMac_: {
-        type: Boolean,
-        reflect: true,
-      },
       /**
        * Whether this page, rather than the Views frame, paints the popup's
        * drop shadow. See `omnibox::kOmniboxFullWebUIShadow`.
@@ -266,10 +256,6 @@ export class OmniboxPopupSearchboxElement extends
   protected accessor useWebkitSearchIcons_: boolean = false;
   override accessor multiLineEnabled: boolean =
       loadTimeData.getBoolean('searchboxMultiline');
-  // TODO(b/519185419): Remove `isTouchUi_` property and from `loadTimeData` and
-  // get layout constants and font sizes from a C++ layout helper instead.
-  protected accessor isTouchUi_: boolean = loadTimeData.getBoolean('isTouchUi');
-  protected accessor isMac_: boolean = isMac;
   protected accessor webuiShadowEnabled_: boolean =
       loadTimeData.getBoolean('omniboxFullWebUIShadowEnabled');
   protected accessor searchboxDynamicColorScheme_: boolean =
@@ -354,6 +340,10 @@ export class OmniboxPopupSearchboxElement extends
   // If true, the entire text will be selected on mouse release (if no drag
   // occurred).
   private selectAllOnMouseRelease_: boolean = false;
+  // If true, on mouse release, the caret will be placed at the release point
+  // (unless the selection changed during the press) and the elided URL will be
+  // unelided, keeping the caret (or selection) on the same characters.
+  private unelideOnMouseRelease_: boolean = false;
   private textfieldModel_: TextfieldModel = new TextfieldModel();
   // Stores the input text prior to the latest edit or selection change event.
   // Paired with `lastInputSelection_` to compute character diffs and offsets
@@ -390,8 +380,38 @@ export class OmniboxPopupSearchboxElement extends
     this.popupPageHandler_ = popupBrowserProxy.handler;
   }
 
+  private updateLayoutConstants_() {
+    if (!loadTimeData.valueExists('alignmentInsetTop')) {
+      return;
+    }
+    this.style.setProperty(
+        '--alignment-inset-top',
+        `${loadTimeData.getInteger('alignmentInsetTop')}px`);
+    this.style.setProperty(
+        '--alignment-inset-horizontal',
+        `${loadTimeData.getInteger('alignmentInsetHorizontal')}px`);
+    this.style.setProperty(
+        '--alignment-inset-bottom',
+        `${loadTimeData.getInteger('alignmentInsetBottom')}px`);
+    this.style.setProperty(
+        '--cr-searchbox-height',
+        `${loadTimeData.getInteger('locationBarHeight')}px`);
+    this.style.setProperty(
+        '--cr-searchbox-font-size',
+        `${loadTimeData.getInteger('locationBarFontSize')}px`);
+    this.style.setProperty(
+        '--cr-searchbox-icon-size-in-searchbox',
+        `${loadTimeData.getInteger('locationBarIconSize')}px`);
+    this.style.setProperty(
+        '--location-bar-page-info-icon-vertical-padding',
+        `${
+            loadTimeData.getInteger(
+                'locationBarPageInfoIconVerticalPadding')}px`);
+  }
+
   override connectedCallback() {
     super.connectedCallback();
+    this.updateLayoutConstants_();
     // TODO(crbug.com/497883783): Move autocompleteResultChangedListenerId_
     // property to SearchboxMixin.
     this.listenerIds_ = [
@@ -460,6 +480,12 @@ export class OmniboxPopupSearchboxElement extends
 
     this.eventTracker_.add(document, 'mousemove', this.onMouseMove_.bind(this));
     this.eventTracker_.add(document, 'mouseup', this.onMouseUp_.bind(this));
+    // A press inside the selected elided URL that turns into a drag-and-drop
+    // should leave the URL elided. Blink does not dispatch `mouseup` after a
+    // drag, so cancel the pending unelision here.
+    this.eventTracker_.add(document, 'dragstart', () => {
+      this.unelideOnMouseRelease_ = false;
+    });
 
     this.eventTracker_.add(
         canShowSecondarySideMediaQueryList, 'change',
@@ -593,6 +619,10 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   override shouldAppendDotComOnCtrlEnter(): boolean {
+    return true;
+  }
+
+  override shouldPreserveSelectionOnMatchDeletion(): boolean {
     return true;
   }
 
@@ -839,10 +869,33 @@ export class OmniboxPopupSearchboxElement extends
   protected onInputMousedown_(e: MouseEvent) {
     const wasUnfocused = this.shadowRoot?.activeElement !== this.$.input;
     const input = this.getInputElement().inputElement;
+    const hasSelection = input.selectionStart !== input.selectionEnd;
+
+    // A right-click should only open the context menu: keep the current
+    // selection and elided URL, matching Views omnibox. On Mac, Blink's
+    // context menu selects the word under the pointer (native behavior), so
+    // only guard when there is an active selection. Blink still dispatches
+    // the `contextmenu` event.
+    if (e.button === 2 && (hasSelection || !isMac)) {
+      e.preventDefault();
+      return;
+    }
 
     // If the full url is currently selected, a second mouse click should
     // show the full url.
-    this.showFullUrlOnDeselect_();
+    this.unelideOnMouseRelease_ = false;
+    if (e.button === 0 && e.detail < 2 && !wasUnfocused &&
+        e.composedPath().includes(input) && this.isElidedUrlAllSelected_()) {
+      // Uneliding now would shift the text (e.g. prepend "https://") before
+      // Blink hit-tests the click, dropping the caret at the raw mouse position
+      // in the unelided text. Instead, matching `OmniboxViewViews`, leave the
+      // selection intact on press, so that dragging can still drag-and-drop
+      // the selected URL, and only place the caret and unelide on release (see
+      // `onMouseUp_()`).
+      this.unelideOnMouseRelease_ = true;
+    } else {
+      this.showFullUrlOnDeselect_();
+    }
 
     // Multi-clicks (e.g. double-click word select) should let Blink handle
     // selection without being overwritten on mouseup.
@@ -895,10 +948,49 @@ export class OmniboxPopupSearchboxElement extends
       this.getInputElement().select();
     }
     this.selectAllOnMouseRelease_ = false;
+
+    if (this.shadowRoot?.activeElement === this.$.input &&
+        this.unelideOnMouseRelease_ && e.button === 0) {
+      this.placeCaretAtMouseRelease_(e);
+      this.unelideAndUpdateSelection_();
+    }
+    this.unelideOnMouseRelease_ = false;
+  }
+
+  /**
+   * If all the text is still selected, i.e. the press landed inside the
+   * selection, collapses the selection to a caret at the character under the
+   * release point, matching `views::SelectionController::OnMouseReleased()`.
+   * Blink would only do this after the `mouseup` event has been dispatched,
+   * too late to then unelide. Also, unlike Views, Blink does not place the
+   * caret if the pointer moved at all between press and release.
+   */
+  private placeCaretAtMouseRelease_(e: MouseEvent) {
+    const input = this.getInputElement().inputElement;
+    if (input.selectionStart !== 0 ||
+        input.selectionEnd !== input.value.length) {
+      return;
+    }
+    // Clamp the point to the input, like Views does for releases outside the
+    // textfield, so it hit-tests the input's text. Both
+    // `getBoundingClientRect()` and `caretPositionFromPoint()` need an
+    // up-to-date layout, but this runs only once per such click, when layout is
+    // usually already clean (Blink updates it after `mouseup` anyway to
+    // hit-test the release).
+    const rect = input.getBoundingClientRect();
+    const x = Math.min(Math.max(e.clientX, rect.left), rect.right - 1);
+    const y = rect.top + rect.height / 2;
+    const position = document.caretPositionFromPoint(
+        x, y, {shadowRoots: [input.getRootNode() as ShadowRoot]});
+    if (position?.offsetNode !== input) {
+      return;
+    }
+    input.setSelectionRange(position.offset, position.offset);
   }
 
   override async onInputWrapperKeydown(e: KeyboardEvent) {
     this.selectAllOnMouseRelease_ = false;
+    this.unelideOnMouseRelease_ = false;
 
     const modifier = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
     const key = e.key.toLowerCase();
@@ -1096,6 +1188,62 @@ export class OmniboxPopupSearchboxElement extends
     if (input.selectionEnd - input.selectionStart === input.value.length) {
       this.maybeShowFullUrl_();
     }
+  }
+
+  /**
+   * Returns whether the input shows an elided URL, i.e. one that
+   * `maybeShowFullUrl_()` would replace with `fullUrl_`, and all of it is
+   * selected.
+   */
+  private isElidedUrlAllSelected_(): boolean {
+    const input = this.getInputElement().inputElement;
+    return !this.fullUrlShown_ && !this.userInputInProgress_ &&
+        !!this.fullUrl_ && !!input.value && input.value !== this.fullUrl_ &&
+        input.selectionStart === 0 && input.selectionEnd === input.value.length;
+  }
+
+  /**
+   * Unelides the URL, keeping the caret (or selection) on the same characters
+   * by shifting it past the prefix (e.g. "https://www.") that was elided. Does
+   * nothing if all the text is selected. Compare
+   * `OmniboxViewViews::UnapplySteadyStateElisions()` for mouse release.
+   */
+  private unelideAndUpdateSelection_() {
+    const input = this.getInputElement().inputElement;
+    const elidedText = input.value;
+    let start = input.selectionStart ?? 0;
+    let end = input.selectionEnd ?? 0;
+    const direction = input.selectionDirection ?? undefined;
+    // If everything is selected, the user likely does not intend to edit the
+    // URL.
+    if (this.fullUrlShown_ || (start === 0 && end === elidedText.length)) {
+      return;
+    }
+    this.maybeShowFullUrl_();
+    if (!this.fullUrlShown_) {
+      return;
+    }
+
+    // Find the length of the prefix that was chopped off to form the elided
+    // URL. This only works because only prefixes are elided from the full URL.
+    let offset = this.fullUrl_.indexOf(elidedText);
+    // Some intranet URLs have an elided form that's not a substring of the full
+    // URL, e.g. "https://foobar" has the elided form "foobar/". In this case,
+    // chop off the trailing slash and search again.
+    if (offset === -1 && elidedText.endsWith('/')) {
+      offset = this.fullUrl_.indexOf(elidedText.slice(0, -1));
+    }
+    if (offset === -1) {
+      return;
+    }
+
+    // Keep the selection on the same characters. Unlike Views, a selection
+    // that starts at the beginning of the elided URL is not extended over the
+    // elided prefix, for simplicity.
+    start += offset;
+    end += offset;
+    this.getInputElement().setSelectionRange(start, end, direction);
+    this.lastInputSelection_ = {start, end};
   }
 
   private isChromeScheme_(): boolean {

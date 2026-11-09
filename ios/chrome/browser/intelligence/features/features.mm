@@ -302,18 +302,6 @@ base::TimeDelta GetPersistedContextEffectiveTTL(PrefService* prefs) {
   return std::min(persist_ttl, inactive_tabs_ttl);
 }
 
-BASE_FEATURE(kGeminiNavigationPromo, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsGeminiNavigationPromoEnabled() {
-  if (!IsPageActionMenuEnabled() ||
-      !base::FeatureList::IsEnabled(
-          feature_engagement::kIPHiOSGeminiFullscreenPromoFeature)) {
-    return false;
-  }
-
-  return base::FeatureList::IsEnabled(kGeminiNavigationPromo);
-}
-
 BASE_FEATURE(kZeroStateSuggestions, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsZeroStateSuggestionsEnabled() {
@@ -668,6 +656,16 @@ BASE_FEATURE_PARAM(bool,
                    kGeminiActorBackgroundingParam,
                    true);
 
+const char kGeminiActorBackgroundWebStateKeepAliveHeartbeatIntervalParam[] =
+    "background_web_state_keep_alive_heartbeat_interval";
+
+BASE_FEATURE_PARAM(
+    base::TimeDelta,
+    kGeminiActorBackgroundWebStateKeepAliveHeartbeatInterval,
+    &kGeminiActor,
+    kGeminiActorBackgroundWebStateKeepAliveHeartbeatIntervalParam,
+    base::Milliseconds(400));
+
 bool IsGeminiActorEnabled() {
   if (!IsPageActionMenuEnabled() || !IsActorEnabled() ||
       !IsGeminiClientMigrationEnabled()) {
@@ -681,6 +679,10 @@ bool IsGeminiActorBackgroundingEnabled() {
     return false;
   }
   return kGeminiActorBackgrounding.Get();
+}
+
+base::TimeDelta GetGeminiActorBackgroundWebStateKeepAliveHeartbeatInterval() {
+  return kGeminiActorBackgroundWebStateKeepAliveHeartbeatInterval.Get();
 }
 
 BASE_FEATURE(kGeminiUnaryMigration, base::FEATURE_ENABLED_BY_DEFAULT);

@@ -734,7 +734,15 @@ bool PasswordAutofillManager::MaybeShowPasswordSuggestionsWithGeneration(
       /*is_for_webauthn_request=*/false);
 }
 
-void PasswordAutofillManager::DidNavigateMainFrame() {
+void PasswordAutofillManager::DidNavigateFrame() {
+  // Hide the suggestions shown for the previous document, but only if they were
+  // shown by `this`, so that suggestions of other frames are not affected.
+  if (autofill_client_ && last_session_id_ &&
+      last_session_id_ ==
+          autofill_client_->GetSessionIdForCurrentAutofillSuggestions()) {
+    autofill_client_->HideSuggestions(
+        autofill::SuggestionHidingReason::kStaleData, GetMainFillingProduct());
+  }
   fill_data_.reset();
   CancelBiometricReauthIfOngoing();
   favicon_tracker_.TryCancelAll();
@@ -751,6 +759,10 @@ void PasswordAutofillManager::DidNavigateMainFrame() {
   cross_domain_confirmation_controller_.reset();
 #endif
   wait_for_passkeys_timer_.Stop();
+  // Drop the callbacks created for the previous document, e.g. a pending
+  // `OnAddPasswordFillData()` call or filling a credential after the user
+  // re-authenticated.
+  weak_ptr_factory_.InvalidateWeakPtrs();
 }
 
 base::WeakPtr<PasswordAutofillManager> PasswordAutofillManager::GetWeakPtr() {
@@ -961,7 +973,7 @@ void PasswordAutofillManager::OnPasswordCredentialSuggestionAccepted(
       password_client_->GetDeviceAuthenticator();
   // Note: this is currently only implemented on Android, Mac and Windows.
   // For other platforms, the `authenticator` will be null.
-  if (!password_client_->IsReauthBeforeFillingRequired(authenticator.get())) {
+  if (!password_client_->IsReauthBeforeFillingRequiredLegacy(authenticator.get())) {
     std::move(fill_suggestion_callback).Run();
     return;
   }

@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_button.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "ui/actions/actions.h"
+#include "ui/base/accelerators/menu_label_accelerator_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
 #include "ui/compositor/layer.h"
@@ -40,6 +41,7 @@ enum class FooterContainer {
 FooterContainer GetFooterContainerForAction(actions::ActionId action_id) {
   switch (action_id) {
     case kActionShowManagementPage:
+    case kActionChromeEnterpriseReleaseNotes:
       return FooterContainer::kBottom;
 #if BUILDFLAG(IS_MAC)
     case kActionOptions:
@@ -116,6 +118,9 @@ AppMenuFooterView::AppMenuFooterView(
   for (const auto& footer_child :
        footer_action_item->GetChildren().children()) {
     actions::ActionItem* footer_child_ptr = footer_child->GetActionItem();
+    if (!footer_child_ptr->GetVisible()) {
+      continue;
+    }
     std::optional<actions::ActionId> action_id =
         footer_child_ptr->GetActionId();
     CHECK(action_id.has_value());
@@ -154,6 +159,9 @@ AppMenuFooterView::AppMenuFooterView(
             footer_child->GetProperty(AppMenuActionItem::kTextOverrideKey)) {
       button->SetText(*text_override);
     }
+    button->SetProperty(views::kMenuMnemonicKey,
+                        ui::GetMnemonic(std::u16string(
+                            footer_child_ptr->GetTextWithMnemonic())));
     if (ui::ImageModel* icon_override =
             footer_child->GetProperty(AppMenuActionItem::kIconOverrideKey)) {
       button->SetImageModel(*icon_override);

@@ -3727,6 +3727,36 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram
+    name="PasswordManager.RemoteActorCredentialSharing.SharingFailureReason"
+    enum="RemoteActorCredentialSharingFailureReason" expires_after="2027-04-28">
+  <owner>derinel@google.com</owner>
+  <owner>anki-team@google.com</owner>
+  <summary>
+    Records the reason why sharing a credential with a remote actor failed in
+    RemoteActorCredentialSharingService. Recorded when a credential sharing
+    operation fails.
+  </summary>
+</histogram>
+
+<histogram
+    name="PasswordManager.RemoteActorCredentialSharing.{Request}.Latency"
+    units="ms" expires_after="2027-04-28">
+  <owner>derinel@google.com</owner>
+  <owner>anki-team@google.com</owner>
+  <summary>
+    Records the time elapsed from starting a {Request} request (including OAuth2
+    token fetch and HTTP request) to receiving a response during remote actor
+    credential sharing.
+  </summary>
+  <token key="Request">
+    <variant name="PassboxDelete" summary="Passbox credential deletion"/>
+    <variant name="PassboxUpdate" summary="Passbox credential update"/>
+    <variant name="PermissionService"
+        summary="Agentic Permission Service permission grant"/>
+  </token>
+</histogram>
+
 <histogram name="PasswordManager.RequestVerificationAsyncResult"
     enum="AuthenticationResultStatusWin" expires_after="2027-02-28">
   <owner>sygiet@google.com</owner>
@@ -3903,30 +3933,6 @@ useful for Chirp alerts (go/crca-alerts). -->
   <summary>
     The elapsed time between the PasswordManager requesting server-side
     credentials and receiving a response.
-  </summary>
-</histogram>
-
-<histogram name="PasswordManager.Settings.Export.Event"
-    enum="PasswordExportEvent" expires_after="2025-04-20">
-  <owner>ioanap@chromium.org</owner>
-  <owner>atsvirchkova@google.com</owner>
-  <summary>
-    Measures the frequency of various password export events in settings menu.
-    Recorded when the user interacts with the password export menu item or
-    dialog. Curently logged only on Android.
-  </summary>
-</histogram>
-
-<histogram name="PasswordManager.Settings.Export.Result2"
-    enum="HistogramExportResult" expires_after="2025-04-20">
-  <owner>ioanap@chromium.org</owner>
-  <owner>atsvirchkova@google.com</owner>
-  <summary>
-    Records whether the export flow finished successfully or the type of error
-    for passwords export started from password settings. Recorded when the
-    export flow finishes. Logged only on Android. This is an updated version of
-    PasswordManager.Settings.Export.Result, which logs more possible export flow
-    results in adition to the old values.
   </summary>
 </histogram>
 

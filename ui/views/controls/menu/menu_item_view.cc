@@ -133,8 +133,12 @@ MenuItemView::MenuItemView(MenuDelegate* delegate)
 
 MenuItemView::~MenuItemView() {
   SetAnchorView(nullptr);
-  if (controller_) {
-    NotifyControllerOfDestructionRecursively(this, controller_.get());
+  // Only the root item holds `controller_`, so walk up to the root to also
+  // cover destruction of a non-root subtree (e.g. via RemoveMenuItem()). This
+  // is safe because each item clears its children's `parent_menu_item_` below,
+  // before those children are destroyed.
+  if (MenuController* controller = GetMenuController()) {
+    NotifyControllerOfDestructionRecursively(this, controller);
   }
   if (submenu_) {
     for (auto* item : submenu_->GetMenuItems()) {
@@ -395,6 +399,7 @@ std::u16string MenuItemView::GetAccessibleNameForMenuItem(
 }
 
 void MenuItemView::Cancel() {
+  CHECK(!parent_menu_item_);
   if (controller_ && !canceled_) {
     canceled_ = true;
     controller_->Cancel(MenuController::ExitType::kAll);
@@ -414,7 +419,31 @@ MenuItemView* MenuItemView::AddMenuItemAt(
     std::optional<ui::ColorId> submenu_background_color,
     std::optional<ui::ColorId> foreground_color,
     std::optional<ui::ColorId> selected_color_id) {
+  if (type == Type::kSeparator) {
+    AddSeparatorAt(index, separator_style);
+    return nullptr;
+  }
+  auto item = base::WrapUnique(new MenuItemView(this, item_id, type));
+  item->SetTitle(label.empty() && GetDelegate()
+                     ? GetDelegate()->GetLabel(item_id)
+                     : label);
+  item->SetSecondaryTitle(secondary_label);
+  item->SetMinorText(minor_text);
+  item->SetMinorIcon(minor_icon);
+  item->SetIcon(icon);
+  item->SetForegroundColorId(foreground_color);
+  item->SetSelectedColorId(selected_color_id);
+  return AddMenuItemViewImpl(std::move(item), index, submenu_background_color);
+}
+
+MenuItemView* MenuItemView::AddMenuItemViewImpl(
+    std::unique_ptr<MenuItemView> item,
+    std::optional<size_t> index,
+    std::optional<ui::ColorId> submenu_background_color) {
+  CHECK(item);
+  const Type type = item->GetType();
   DCHECK_NE(type, Type::kEmpty);
+  DCHECK_NE(type, Type::kSeparator);
   if (!submenu_) {
     CreateSubmenu();
     // Set the submenu border color to be the same as the first submenu
@@ -425,33 +454,20 @@ MenuItemView* MenuItemView::AddMenuItemAt(
           views::CreateSolidBackground(submenu_background_color.value()));
     }
   }
-  DCHECK_LE(index, submenu_->children().size());
-  if (type == Type::kSeparator) {
-    submenu_->AddChildViewAt(std::make_unique<MenuSeparator>(separator_style),
-                             index);
-    return nullptr;
-  }
-  MenuItemView* item = new MenuItemView(this, item_id, type);
-  item->SetTitle(label.empty() && GetDelegate()
-                     ? GetDelegate()->GetLabel(item_id)
-                     : label);
-  item->SetSecondaryTitle(secondary_label);
-  item->SetMinorText(minor_text);
-  item->SetMinorIcon(minor_icon);
-  item->SetIcon(icon);
-  item->SetForegroundColorId(foreground_color);
-  item->SetSelectedColorId(selected_color_id);
+  const size_t insert_index = index.value_or(submenu_->children().size());
+  DCHECK_LE(insert_index, submenu_->children().size());
+
   if (type == Type::kSubMenu || type == Type::kActionableSubMenu) {
     item->CreateSubmenu();
   }
   if (type == Type::kHighlighted) {
     item->set_vertical_margin(MenuConfig::instance().footnote_vertical_margin);
   }
-  if (GetDelegate() && !GetDelegate()->IsCommandVisible(item_id)) {
+  if (GetDelegate() && !GetDelegate()->IsCommandVisible(item->GetCommand())) {
     item->SetVisible(false);
   }
 
-  auto* added_item = submenu_->AddChildViewAt(item, index);
+  auto* added_item = submenu_->AddChildViewAt(std::move(item), insert_index);
 
   added_item->UpdateTooltipText();
 
@@ -786,6 +802,17 @@ int MenuItemView::GetTrailingPadding() const {
          MenuConfig::instance().item_horizontal_padding;
 }
 
+void MenuItemView::SetController(MenuController* controller) {
+  // Only the root holds the controller; everything else goes through
+  // GetMenuController(), which walks up to the root.
+  CHECK(!parent_menu_item_);
+  if (controller) {
+    controller_ = controller->AsWeakPtr();
+  } else {
+    controller_.reset();
+  }
+}
+
 MenuController* MenuItemView::GetMenuController() {
   return GetRootMenuItem()->controller_.get();
 }
@@ -833,7 +860,9 @@ char16_t MenuItemView::GetMnemonic() {
         // from a 'dotted i'. Similar issues may exist for az and lt locales.
         return base::i18n::ToLower(char_array)[0];
       }
-      index++;
+      // "&&" shows a literal "&" and isn't a mnemonic marker. Skip both
+      // characters, so the second "&" isn't read as a marker for the next one.
+      index += 2;
     }
   } while (index != std::u16string::npos);
   return 0;
@@ -2107,7 +2136,7 @@ void MenuItemActionViewInterface::ActionItemChangedImpl(
   BaseActionViewInterface::ActionItemChangedImpl(action_item);
   auto* menu_item_view = views::AsViewClass<MenuItemView>(action_view());
   CHECK(menu_item_view);
-  menu_item_view->SetTitle(std::u16string(action_item->GetText()));
+  menu_item_view->SetTitle(std::u16string(action_item->GetTextWithMnemonic()));
   if (!action_item->GetImage().IsEmpty()) {
     menu_item_view->SetIcon(action_item->GetImage());
   }
@@ -2129,7 +2158,9 @@ BEGIN_METADATA(EmptyMenuMenuItem)
 END_METADATA
 
 DEFINE_UI_CLASS_PROPERTY_KEY(MenuItemView*, kSubmenuItemKey, nullptr)
+DEFINE_UI_CLASS_PROPERTY_KEY(char16_t, kMenuMnemonicKey, 0)
 
 }  // namespace views
 
+DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(VIEWS_EXPORT, char16_t)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(VIEWS_EXPORT, views::MenuItemView*)

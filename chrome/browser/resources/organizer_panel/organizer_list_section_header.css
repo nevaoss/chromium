@@ -10,10 +10,13 @@
 :host {
   align-items: center;
   display: flex;
+  border-radius: 8px;
 }
 
 :host(:not([disabled]):hover),
-:host(.hovered:not([disabled])) {
+:host(.hovered:not([disabled])),
+:host([menu-open_]:not([disabled])),
+:host-context(html.focus-outline-visible):host(:not([disabled]):focus-within) {
   background-color: var(--cr-hover-background-color);
 }
 
@@ -30,7 +33,7 @@
   font-size: 9px;
   font-weight: 700;
   line-height: 16px;
-  padding: 8px 16px;
+  padding: 8px;
   text-transform: uppercase;
 }
 
@@ -40,8 +43,8 @@
 
 #expandButton::part(icon) {
   margin-block: -4px;
-  margin-inline-end: 12px;
-  margin-inline-start: 8px;
+  margin-inline-end: 8px;
+  margin-inline-start: 2px;
   order: -1;
 }
 
@@ -59,7 +62,10 @@
 }
 
 :host([expanded]:not([disabled]):hover) #menuButton,
-:host([expanded]:not([disabled]).hovered) #menuButton {
+:host([expanded]:not([disabled]).hovered) #menuButton,
+:host([expanded][menu-open_]:not([disabled])) #menuButton,
+:host-context(html.focus-outline-visible):host(
+    [expanded]:not([disabled]):focus-within) #menuButton {
   display: inline-flex;
 }
 
@@ -67,3 +73,18 @@
 :host-context(html:not(.focus-outline-visible)) #menuButton {
   --cr-icon-button-focus-outline-color: transparent;
 }
+
+#menu cr-icon {
+  --iron-icon-height: 16px;
+  --iron-icon-width: 16px;
+  margin-inline-start: -16px;
+}
+
+cr-icon[invisible] {
+  visibility: hidden;
+}
+
+.dropdown-item {
+  gap: 8px;
+}
+

@@ -708,7 +708,6 @@ mojom("url_loader_base") {
     "//components/sqlite_vfs/mojom",
     "//components/variations:variations_mojom",
     "//mojo/public/mojom/base",
-    "//services/proxy_resolver/public/mojom",
     "//url/mojom:url_mojom_gurl",
     "//url/mojom:url_mojom_origin",
   ]
@@ -876,8 +875,6 @@ mojom("url_loader_base") {
       traits_headers = [
         "//services/network/public/cpp/network_ipc_param_traits.h",
         "//services/network/public/cpp/url_request_mojom_traits.h",
-        "//services/network/public/cpp/network_isolation_key_mojom_traits.h",
-        "//services/network/public/cpp/network_anonymization_key_mojom_traits.h",
       ]
       traits_private_headers = [
         "//services/network/public/mojom/devtools_observer.mojom.h",
@@ -886,7 +883,6 @@ mojom("url_loader_base") {
         "//services/network/public/mojom/device_bound_sessions.mojom.h",
       ]
       traits_public_deps = [
-        ":mojom_network_isolation_key",
         "//base",
         "//url/mojom:url_mojom_gurl",
       ]
@@ -1103,6 +1099,17 @@ mojom("url_loader_base") {
     {
       types = [
         {
+          mojom = "network.mojom.WebTransportSendStreamStats"
+          cpp = "::net::WebTransportSendStreamStats"
+          copyable_pass_by_value = true
+        },
+      ]
+      traits_headers = [ "//services/network/public/cpp/web_transport_send_stream_stats_mojom_traits.h" ]
+      traits_public_deps = [ "//net" ]
+    },
+    {
+      types = [
+        {
           mojom = "network.mojom.WebTransportError"
           cpp = "::net::WebTransportError"
         },
@@ -1113,6 +1120,16 @@ mojom("url_loader_base") {
         "//net",
         "//services/network/public/cpp:ip_address_mojom_support",
       ]
+    },
+    {
+      types = [
+        {
+          mojom = "network.mojom.WebTransportKeyingMaterialParams"
+          cpp = "::network::WebTransportKeyingMaterialParams"
+        },
+      ]
+      traits_headers = [ "//services/network/public/cpp/web_transport_keying_material_params_mojom_traits.h" ]
+      traits_public_deps = [ "//base" ]
     },
   ]
 

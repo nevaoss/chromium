@@ -103,7 +103,9 @@ source_set("impl") {
     "//components/payments/content",
     "//components/payments/content:utils",
     "//components/payments/content/icon",
+    "//components/payments/core",
     "//components/payments/core:currency_formatter",
+    "//components/payments/core:error_strings",
     "//components/permissions",
     "//components/security_state/core",
     "//components/tabs:public",
@@ -115,7 +117,6 @@ source_set("impl") {
   # //chrome/browser/ui:ui (browser_tabstrip.h). Reach them via
   # browser_public_dependencies; the reverse edge is expressed by the
   # allow_circular_includes_from entry on //chrome/browser/ui:ui.
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 }
 
 source_set("test_support") {

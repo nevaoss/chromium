@@ -204,16 +204,16 @@ class ModelContext::ToolUnregisterAbortAlgorithm final
     : public AbortSignal::Algorithm {
  public:
   ToolUnregisterAbortAlgorithm(ModelContext* model_context,
-                               const String& tool_name,
+                               const base::UnguessableToken& tool_id,
                                ScriptPromiseResolverBase* resolver,
                                AbortSignal* signal)
       : model_context_(model_context),
-        tool_name_(tool_name),
+        tool_id_(tool_id),
         resolver_(resolver),
         signal_(signal) {}
 
   void Run() override {
-    model_context_->UnregisterTool(tool_name_);
+    model_context_->UnregisterTool(tool_id_);
     resolver_->Reject(signal_->reason(resolver_->GetScriptState()));
   }
 
@@ -226,7 +226,11 @@ class ModelContext::ToolUnregisterAbortAlgorithm final
 
  private:
   Member<ModelContext> model_context_;
-  String tool_name_;
+  // The specific tool this algorithm was created for. Keyed by ID rather than
+  // by name, so that aborting a signal belonging to an already-unregistered
+  // tool cannot unregister a different tool that has since been registered
+  // under the same name.
+  const base::UnguessableToken tool_id_;
   // Never null. The `ScriptPromiseResolverBase` that `this` must reject when
   // `signal_` is aborted (as notified by `Run()` above).
   Member<ScriptPromiseResolverBase> resolver_;
@@ -421,6 +425,10 @@ ScriptPromise<IDLUndefined> ModelContext::registerTool(
     }
   }
 
+  // Mint the tool's identity up-front, so that the unregistration abort
+  // algorithm below can be bound to this specific tool.
+  const base::UnguessableToken tool_id = base::UnguessableToken::Create();
+
   AbortSignal::AlgorithmHandle* abort_handle = nullptr;
   if (options && options->hasSignal()) {
     AbortSignal* signal = options->signal();
@@ -430,10 +438,11 @@ ScriptPromise<IDLUndefined> ModelContext::registerTool(
     // below.
     abort_handle =
         signal->AddAlgorithm(MakeGarbageCollected<ToolUnregisterAbortAlgorithm>(
-            this, tool->name(), resolver, signal));
+            this, tool_id, resolver, signal));
   }
 
   auto script_tool = mojom::blink::ScriptTool::New();
+  script_tool->tool_id = tool_id;
   script_tool->name = tool->name();
   // If `tool` is not provided, the null string fallback is treated as a
   // nullable member by mojo.
@@ -480,15 +489,24 @@ ScriptPromise<IDLUndefined> ModelContext::registerTool(
   return promise;
 }
 
-void ModelContext::UnregisterTool(const String& name) {
-  auto it = tool_map_.find(name);
-  if (it == tool_map_.end()) {
-    return;
+void ModelContext::UnregisterTool(const base::UnguessableToken& tool_id) {
+  // `tool_map_` is keyed by name, and the number of tools a document registers
+  // is small, so a linear scan is fine.
+  for (auto it = tool_map_.begin(); it != tool_map_.end(); ++it) {
+    if (it->value->Id() == tool_id) {
+      probe::WebMCPToolRemoved(document_, *it->value);
+      tool_map_.erase(it);
+      model_context_host_remote_->UnregisterScriptTool(tool_id);
+      return;
+    }
   }
 
-  probe::WebMCPToolRemoved(document_, *it->value);
-  tool_map_.erase(it);
-  model_context_host_remote_->UnregisterScriptTool(name);
+  // Not finding `tool_id` is expected: `RegisterDeclarativeTool()` silently
+  // rejects some declarative tools (e.g., duplicate or invalid names), but the
+  // owning form still holds onto the tool and later unregisters it. Once those
+  // failures are surfaced to the form, we can prevent forms from holding their
+  // active tool whose registration failed, and therefore it will become
+  // impossible to fall-through the above loop. See https://crbug.com/509983792.
 }
 
 std::optional<ScriptToolDeclaration> ModelContext::GetScriptToolDeclaration(
@@ -828,6 +846,7 @@ void ModelContext::RegisterDeclarativeTool(
                     WebFeature::kModelContextRegisterDeclarativeTool);
 
   auto script_tool = mojom::blink::ScriptTool::New();
+  script_tool->tool_id = declarative_tool->ToolId();
   script_tool->name = declarative_tool->ToolName();
   script_tool->description = declarative_tool->ToolDescription();
   script_tool->title = declarative_tool->ToolTitle();

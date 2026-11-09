@@ -18,7 +18,6 @@ source_set("read_anything") {
     "read_anything_untrusted_ui.h",
   ]
   public_deps = [
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/ui/read_anything",
     "//chrome/browser/ui/toolbar/pinned_toolbar",
     "//chrome/browser/ui/webui/top_chrome",
@@ -27,6 +26,7 @@ source_set("read_anything") {
     "//components/translate/core/browser",
     "//content/public/browser",
     "//mojo/public/cpp/bindings",
+    "//ui/webui/resources/cr_components/help_bubble:mojo_bindings",
   ]
   deps = [
     "//chrome/app:command_ids",
@@ -64,6 +64,7 @@ source_set("read_anything") {
     "//pdf:features",
     "//ui/strings",
     "//ui/webui",
+    "//ui/webui/resources",
     "//ui/webui/tracked_element",
   ]
 
@@ -110,6 +111,7 @@ source_set("browser_tests") {
     "//chrome/browser/speech",
     "//chrome/browser/translate",
     "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/read_anything:impl",
     "//chrome/browser/ui/side_panel",
     "//chrome/browser/ui/side_panel:side_panel_views_dependent",
     "//chrome/browser/ui/user_education",

@@ -398,6 +398,11 @@ TEST(AXNodeTest, TreeWalkingCrossingTreeBoundary) {
   EXPECT_EQ(root_node_1, root_node_2->GetParentCrossingTreeBoundary());
   EXPECT_EQ(nullptr, root_node_2->GetUnignoredParent());
   EXPECT_EQ(root_node_1, root_node_2->GetUnignoredParentCrossingTreeBoundary());
+
+  EXPECT_EQ(nullptr, root_node_1->GetDeepestLastUnignoredDescendant());
+  EXPECT_EQ(
+      root_node_2,
+      root_node_1->GetDeepestLastUnignoredDescendantCrossingTreeBoundary());
 }
 
 // Builds a parent tree whose middle child is an ignored host of a child tree.

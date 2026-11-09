@@ -4,14 +4,33 @@
 
 package org.chromium.chrome.browser.tasks.tab_management.data_provider;
 
+import androidx.annotation.IntDef;
+
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.tab.TabId;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.List;
 
 /** Observer interface for data change events emitted by {@link TabListDataProvider}. */
 @NullMarked
 public interface TabListDataObserver {
+    /** Types of property updates for granular viewholder payload invalidation. */
+    @IntDef({PayloadType.PIN_STATE, PayloadType.SELECTION})
+    @Retention(RetentionPolicy.SOURCE)
+    @Target(ElementType.TYPE_USE)
+    @interface PayloadType {
+        /** Updates only pinned state. */
+        int PIN_STATE = 0;
+
+        /** Updates only selection state. */
+        int SELECTION = 1;
+    }
+
     /**
      * Called when the entire data set is reset.
      *
@@ -51,5 +70,43 @@ public interface TabListDataObserver {
         // and removing it from TabListModel.
     }
 
-    // TODO(crbug.com/562590772): Add remaining structural and property update callbacks.
+    /**
+     * Called when items are moved within the data set.
+     *
+     * @param items The moved {@link TabListItem} entries.
+     * @param after The item immediately preceding the new position, or null if moved to the start
+     *     of the list.
+     */
+    default void onItemsMoved(List<? extends TabListItem> items, @Nullable TabListItem after) {
+        // TODO(crbug.com/562590772): TabListMediator will listen to this callback on
+        // TabListDataObserver instead of observing TabModelObserver#didMoveTab directly, resolving
+        // `after` via TabListModel#indexFromTabId (or the start of the tab region when `after` is
+        // null) and moving each TabItem in TabListModel.
+    }
+
+    /**
+     * Called when an existing item in the data set changes properties.
+     *
+     * @param item The updated {@link TabListItem} entry.
+     * @param payload The {@link PayloadType} indicating which properties changed.
+     */
+    default void onItemUpdated(TabListItem item, @PayloadType int payload) {
+        // TODO(crbug.com/562590772): TabListMediator will listen to this callback on
+        // TabListDataObserver instead of observing individual TabModelObserver / TabObserver
+        // property events directly, updating specific PropertyModel keys based on payload.
+    }
+
+    /**
+     * Called when a tab closure has been undone in the underlying tab model.
+     *
+     * @param tabId The ID of the tab whose closure was undone.
+     */
+    default void onTabClosureUndone(@TabId int tabId) {}
+
+    /**
+     * Called when a tab closure has been committed in the underlying tab model.
+     *
+     * @param tabId The ID of the tab whose closure was committed.
+     */
+    default void onTabClosureCommitted(@TabId int tabId) {}
 }

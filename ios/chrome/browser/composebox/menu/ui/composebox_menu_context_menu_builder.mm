@@ -228,6 +228,7 @@ struct MenuItemAvailability {
                         handler:^(UIAction*) {
                           [weakSelf handleItemPickedWithType:menuItemType];
                         }];
+  action.subtitle = [self subtitleForMenuItem:menuItemType];
   action.accessibilityIdentifier =
       AccessibilityIdentifierForMenuItemType(menuItemType);
   if (availability.disabled) {
@@ -296,6 +297,7 @@ struct MenuItemAvailability {
       return driveSymbol;
     }
     case ComposeboxMenuItemType::kAttachmentSharedTabs:
+    case ComposeboxMenuItemType::kMoreOptionsSubmenu:
     case ComposeboxMenuItemType::kUnknown:
       return nil;
   }
@@ -314,7 +316,11 @@ struct MenuItemAvailability {
     case ComposeboxMenuItemType::kCanvas:
       return [_inputState.uiConfig menuLabelForTool:ComposeboxMode::kCanvas];
     case ComposeboxMenuItemType::kCurrentTab:
-      return l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_ADD_CURRENT_TAB_ACTION);
+      return IsPlusButtonMenuStringUpdatesEnabled()
+                 ? l10n_util::GetNSString(
+                       IDS_IOS_COMPOSEBOX_ASK_ABOUT_THIS_PAGE_ACTION)
+                 : l10n_util::GetNSString(
+                       IDS_IOS_COMPOSEBOX_ADD_CURRENT_TAB_ACTION);
     case ComposeboxMenuItemType::kModelRegular:
       return [_inputState.uiConfig
           menuLabelForModel:ComposeboxModelOption::kRegular];
@@ -341,6 +347,7 @@ struct MenuItemAvailability {
     case ComposeboxMenuItemType::kAttachmentDrive:
       return l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_DRIVE_ACTION);
     case ComposeboxMenuItemType::kAttachmentSharedTabs:
+    case ComposeboxMenuItemType::kMoreOptionsSubmenu:
     case ComposeboxMenuItemType::kUnknown:
       return nil;
   }
@@ -401,8 +408,24 @@ struct MenuItemAvailability {
     case ComposeboxMenuItemType::kModelFlash:
       return MenuItemAvailability(_inputState, ComposeboxModelOption::kFlash);
     case ComposeboxMenuItemType::kUnknown:
+    case ComposeboxMenuItemType::kMoreOptionsSubmenu:
     case ComposeboxMenuItemType::kAttachmentSharedTabs:
       return MenuItemAvailability();
+  }
+}
+
+// Returns the optional subtitle of the menu item.
+- (NSString*)subtitleForMenuItem:(ComposeboxMenuItemType)menuItemType {
+  switch (menuItemType) {
+    case ComposeboxMenuItemType::kAIM:
+      return [_inputState.uiConfig menuSubtitleForTool:ComposeboxMode::kAIM];
+    case ComposeboxMenuItemType::kCreateImage:
+      return [_inputState.uiConfig
+          menuSubtitleForTool:ComposeboxMode::kImageGeneration];
+    case ComposeboxMenuItemType::kCanvas:
+      return [_inputState.uiConfig menuSubtitleForTool:ComposeboxMode::kCanvas];
+    default:
+      return nil;
   }
 }
 

@@ -593,8 +593,8 @@
       <message name="IDS_IOS_AMBIENT_AUTOFILL_NOTICE_SETTINGS" desc="Secondary button label for Ambient Autofill notice bottom sheet. [iOS only]">
         Settings
       </message>
-      <message name="IDS_IOS_AMBIENT_AUTOFILL_NOTICE_SUBTITLE" desc="Subtitle of the bottom sheet notice for Ambient Autofill. [iOS only]">
-        Powered by Personal Intelligence with Gemini. Manage your choices in settings.
+      <message name="IDS_IOS_AMBIENT_AUTOFILL_NOTICE_SUBTITLE" desc="Subtitle of the bottom sheet notice for Ambient Autofill. [iOS only]" translateable="false">
+        Powered by Gemini with Personal Intelligence. Manage your choices in settings.
       </message>
       <message name="IDS_IOS_AMBIENT_AUTOFILL_NOTICE_TITLE" desc="Title of the bottom sheet notice for Ambient Autofill. [iOS only]">
         Now you can find and fill info from Gmail and more
@@ -739,8 +739,8 @@
       <message name="IDS_IOS_AUTOFILL_AI_CLOSE_FIND_AND_FILL_ACCESSIBILITY_LABEL" desc="Accessibility label for the button that closes find and fill. [iOS only]">
         Close find and fill
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_CONTEXT_MENU_PERSONAL_CONTEXT_DESCRIPTION" desc="Description text displayed at the top of the context menu for Autofill AI suggestions that are from personal context. [iOS only]">
-        Suggested by Gemini. Manage enhanced autofill in settings.
+      <message name="IDS_IOS_AUTOFILL_AI_CONTEXT_MENU_PERSONAL_CONTEXT_DESCRIPTION" desc="Description text displayed at the top of the context menu for Autofill AI suggestions that are from personal context. [iOS only]" translateable="false">
+        From Gemini and connected apps. Manage enhanced autofill in settings.
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_FIND_AND_FILL_TITLE" desc="Title for the Autofill AI suggestions popup. [iOS only]">
         Find and fill
@@ -1917,6 +1917,9 @@
       <message name="IDS_IOS_COMPOSEBOX_MENU_ADD_CURRENT_TAB_ACTION" desc="The contextual menu option for attaching the current tab. [iOS only].">
         Add tab
       </message>
+      <message name="IDS_IOS_COMPOSEBOX_MENU_ATTACHMENTS_SECTION_TITLE" desc="The title or the attachments section in the plus button menu.">
+       Add to your search
+      </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_CURRENT_TAB_ACTION" desc="The contextual menu option for attaching the current tab. [iOS only].">
         Current tab
       </message>
@@ -1925,6 +1928,15 @@
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_SHARED_TABS" desc="The Composebox menu title for shared tabs section. [iOS only].">
         Shared tabs
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_MENU_SUBITITLE_AIM" desc="The Composebox menu option subtitle for AIM. [iOS only].">
+        Smarter, faster answers
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_MENU_SUBITITLE_CANVAS" desc="The Composebox menu option subtitle for canvas. [iOS only].">
+        Code, write or make slides
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_MENU_SUBITITLE_IMAGE_GENERATION" desc="The Composebox menu option subtitle for image generation. [iOS only].">
+        Visualize and edit
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_TAB_NO_LONGER_SHARED" desc="Message shown in a snackbar after a tab is removed from the shared list. [iOS only].">
         Tab removed
@@ -1952,6 +1964,11 @@
       </message>
       <message name="IDS_IOS_COMPOSEBOX_SELECT_TAB_ACTION" desc="The contextual menu option for opening the tab picker for selection. [iOS only].">
         Tabs
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_SHARED_TABS_COUNT" desc="Title shown in the accessibility Large Content Viewer when long-pressing the shared tabs favicons accordion in the composebox. [iOS only].">
+        {COUNT, plural,
+        =1 {1 shared tab}
+        other {{COUNT} shared tabs}}
       </message>
       <message name="IDS_IOS_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE" desc="Title for the Composebox tab picker when no tabs are selected.">
         Add recent tabs
@@ -4851,7 +4868,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         Explore more ways to search
       </message>
       <message name="IDS_IOS_LEVEL_UP_SEE_ALL" desc="Link button to open all available level-up tasks. [iOS only]">
-        See All
+        See all
       </message>
       <message name="IDS_IOS_LEVEL_UP_SIGNED_OUT_SNACKBAR" desc="Snackbar message displayed when a user attempts to use Level Up without being signed in. [iOS only]">
         You have to be signed in to use Level Up
@@ -4906,16 +4923,19 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_STAT_TABS_DECLUTTERED_MAX" desc="Title for the tabs decluttered statistic card when the user has hit the max shown number. [iOS only]">
         You organized 15+ tabs
       </message>
+      <message name="IDS_IOS_LEVEL_UP_TAB_GROUP_USER_EDUCATION" desc="Text of the bubble for the Level Up help bubble for how to add a tab to a group. [iOS only]">
+        Press and hold to create a tab group
+      </message>
       <message name="IDS_IOS_LEVEL_UP_TASKS_REMAINING" desc="Progress message explaining how many tasks remain to level up. [iOS only]">
         {count, plural,
-          =1 {Complete 1 more task to level up}
-          other {Complete {count} more tasks to level up}}
+          =1 {Complete 1 task to level up}
+          other {Complete {count} tasks to level up}}
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_AI_SEARCH" desc="Completion snackbar message for the AI Search task. [iOS only]">
         "Search with AI Mode" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_AUTOFILL" desc="Completion snackbar message for the Autofill task. [iOS only]">
-        "Save a password" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_DELETE_BROWSING_DATA" desc="Completion snackbar message for the Delete Browsing Data task. [iOS only]">
         "Delete browsing data" completed!
@@ -4927,13 +4947,13 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_CAMERA_SEARCH" desc="Completion snackbar message for the Lens Camera Search task. [iOS only]">
-        "Use your camera to search with Google Lens" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_WEBSITE_SEARCH" desc="Completion snackbar message for the Lens Website Search task. [iOS only]">
         "Search your screen with Google Lens" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PASSWORD_CHECKUP" desc="Completion snackbar message for the Password Checkup task. [iOS only]">
-        "Check your passwords" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PAYMENT_METHODS" desc="Completion snackbar message for the Payment Methods task. [iOS only]">
         "Manage payment methods" completed!
@@ -4942,10 +4962,10 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         "Pin a tab" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_SAFE_BROWSING" desc="Completion snackbar message for the Safe Browsing task. [iOS only]">
-        "Go Incognito" completed!
+        "Explore Enhanced Safe Browsing" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_TAB_GROUPS" desc="Completion snackbar message for the Tab Groups task. [iOS only]">
-        "Create a tab group" completed!
+        New achievement unlocked! 🥳
       </message>
       <message name="IDS_IOS_LEVEL_UP_TURN_OFF_CONFIRMATION_SUBTITLE" desc="Subtitle message in the confirmation alert dialog when turning off Level Up. [iOS only]">
         This will permanently delete your Level Up progress and feature usage data for Level Up will no longer be sent to Google for your profile.
@@ -5351,11 +5371,11 @@ You can restart anytime.
       <message name="IDS_IOS_NEW_FEATURE_ACCESSIBILITY_HINT" desc="Accessibility hint spoken by VoiceOver to let the user know there is a new feature. This string will be appended to an existing accesibility label when the UI is showing a 'new' badge to attract the user's attention. For example, the label 'Default Browser' would become 'Default Browser, new feature', which is why the string is not capitalized at its start. [iOS/iPadOS only]">
         new feature
       </message>
-      <message name="IDS_IOS_NEW_IA_PROMO_IPH_BOTTOM_OMNIBOX_TEXT" desc="Main text of the in-product help informing the user that the address bar moved to the bottom and they can revert this change from the settings [iOS only]">
-        You can now change the position of the address bar in "Settings" and then "Address bar"
+      <message name="IDS_IOS_NEW_IA_PROMO_IPH_BOTTOM_OMNIBOX_TEXT" desc="Main text of the in-product help informing the user that they can press and hold to move the address bar and back button to the bottom of the screen [iOS only]">
+        You can press and hold to move the address bar and back button to the bottom
       </message>
-      <message name="IDS_IOS_NEW_IA_PROMO_IPH_BOTTOM_OMNIBOX_TITLE" desc="Title of the in-product help informing the user that the address bar moved to the bottom of the screen [iOS only]">
-        Your controls, where you need them
+      <message name="IDS_IOS_NEW_IA_PROMO_IPH_BOTTOM_OMNIBOX_TITLE" desc="Title of the in-product help informing the user that they can press and hold to move the address bar to the bottom of the screen [iOS only]">
+        Press and hold to move
       </message>
       <message name="IDS_IOS_NEW_IA_PROMO_IPH_GEMINI_TEXT" desc="Main text for the second in-product help bubble suggesting Gemini built-in. [Length: unlimited] [iOS only]">
         Get help with your tabs and tasks

@@ -338,22 +338,6 @@ AXNode* AXNode::GetDeepestFirstDescendant() const {
   return deepest_descendant;
 }
 
-AXNode* AXNode::GetDeepestFirstDescendantCrossingTreeBoundary() const {
-  DCHECK(!tree_->GetTreeUpdateInProgressState());
-  if (!GetChildCountCrossingTreeBoundary())
-    return nullptr;
-
-  AXNode* deepest_descendant = GetFirstChildCrossingTreeBoundary();
-  DCHECK(deepest_descendant);
-  while (deepest_descendant->GetChildCountCrossingTreeBoundary()) {
-    deepest_descendant =
-        deepest_descendant->GetFirstChildCrossingTreeBoundary();
-    DCHECK(deepest_descendant);
-  }
-
-  return deepest_descendant;
-}
-
 AXNode* AXNode::GetDeepestFirstUnignoredDescendant() const {
   DCHECK(!tree_->GetTreeUpdateInProgressState());
   DCHECK(!IsIgnored()) << "Called unignored method on ignored node: " << *this;
@@ -370,23 +354,6 @@ AXNode* AXNode::GetDeepestFirstUnignoredDescendant() const {
   return deepest_descendant;
 }
 
-AXNode* AXNode::GetDeepestFirstUnignoredDescendantCrossingTreeBoundary() const {
-  DCHECK(!tree_->GetTreeUpdateInProgressState());
-  DCHECK(!IsIgnored()) << "Called unignored method on ignored node: " << *this;
-  if (!GetUnignoredChildCountCrossingTreeBoundary())
-    return nullptr;
-
-  AXNode* deepest_descendant = GetFirstUnignoredChildCrossingTreeBoundary();
-  DCHECK(deepest_descendant);
-  while (deepest_descendant->GetUnignoredChildCountCrossingTreeBoundary()) {
-    deepest_descendant =
-        deepest_descendant->GetFirstUnignoredChildCrossingTreeBoundary();
-    DCHECK(deepest_descendant);
-  }
-
-  return deepest_descendant;
-}
-
 AXNode* AXNode::GetDeepestLastDescendant() const {
   DCHECK(!tree_->GetTreeUpdateInProgressState());
   if (!GetChildCount())
@@ -396,22 +363,6 @@ AXNode* AXNode::GetDeepestLastDescendant() const {
   DCHECK(deepest_descendant);
   while (deepest_descendant->GetChildCount()) {
     deepest_descendant = deepest_descendant->GetLastChild();
-    DCHECK(deepest_descendant);
-  }
-
-  return deepest_descendant;
-}
-
-AXNode* AXNode::GetDeepestLastDescendantCrossingTreeBoundary() const {
-  DCHECK(!tree_->GetTreeUpdateInProgressState());
-  DCHECK(!IsIgnored()) << "Called unignored method on ignored node: " << *this;
-  if (!GetChildCountCrossingTreeBoundary())
-    return nullptr;
-
-  AXNode* deepest_descendant = GetLastChildCrossingTreeBoundary();
-  DCHECK(deepest_descendant);
-  while (deepest_descendant->GetChildCountCrossingTreeBoundary()) {
-    deepest_descendant = deepest_descendant->GetLastChildCrossingTreeBoundary();
     DCHECK(deepest_descendant);
   }
 
@@ -1945,15 +1896,7 @@ namespace {
 bool IsCountableFallbackMenuItem(const AXNode* item,
                                  const AXNode* ordered_set) {
   DCHECK(ordered_set);
-  if (ordered_set->GetRole() != ax::mojom::Role::kList &&
-      ordered_set->GetRole() != ax::mojom::Role::kDialog) {
-    // Content-violated menu owners only have list or dialog roles.
-    return false;
-  }
-  const std::string& ordered_set_tag =
-      ordered_set->GetStringAttribute(ax::mojom::StringAttribute::kHtmlTag);
-  if (ordered_set_tag != "menubar" && ordered_set_tag != "menulist") {
-    // This is a list or dialog, but not one stemming from a violated menu.
+  if (!ordered_set->IsContentViolatedMenu()) {
     return false;
   }
   // This is a first approximation to what we don't want to include as countable
@@ -1997,15 +1940,17 @@ bool AXNode::IsOrderedSet() const {
   if (IsRowGroupInTreeGrid())
     return true;
 
-  if (GetRole() == ax::mojom::Role::kDialog) {
-    const std::string& tag =
-        GetStringAttribute(ax::mojom::StringAttribute::kHtmlTag);
-    if (tag == "menubar" || tag == "menulist") {
-      return true;
-    }
-  }
-
   return ui::IsSetLike(GetRole());
+}
+
+bool AXNode::IsContentViolatedMenu() const {
+  if (GetRole() != ax::mojom::Role::kList) {
+    // Content-violated menu owners only have the list role.
+    return false;
+  }
+  const std::string& tag =
+      GetStringAttribute(ax::mojom::StringAttribute::kHtmlTag);
+  return tag == "menubar" || tag == "menulist";
 }
 
 // Uses AXTree's cache to calculate node's PosInSet.
@@ -2078,9 +2023,6 @@ bool AXNode::SetRoleMatchesItemRole(const AXNode* ordered_set) const {
     case ax::mojom::Role::kComboBoxSelect:
       // kComboBoxSelect wraps a kMenuListPopUp.
       return item_role == ax::mojom::Role::kMenuListPopup;
-    case ax::mojom::Role::kDialog: {
-      return IsCountableFallbackMenuItem(this, ordered_set);
-    }
     default:
       return false;
   }

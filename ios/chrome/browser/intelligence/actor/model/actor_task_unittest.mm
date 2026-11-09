@@ -7,18 +7,14 @@
 #import <optional>
 
 #import "base/functional/callback_helpers.h"
-#import "base/run_loop.h"
 #import "base/strings/string_number_conversions.h"
-#import "base/task/sequenced_task_runner.h"
 #import "base/test/bind.h"
 #import "base/test/run_until.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/test_future.h"
-#import "base/values.h"
 #import "components/actor/core/aggregated_journal.h"
 #import "components/actor/core/safety_list_manager.h"
 #import "components/actor/core/task_source_info.h"
-#import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/origin_gating/core/origin_gating_checker.h"
 #import "components/origin_gating/core/origin_gating_configuration.h"
 #import "components/origin_gating/core/origin_gating_registration.h"
@@ -32,11 +28,11 @@
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_updates_observer.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
+#import "ios/chrome/browser/intelligence/actor/test/fake_actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
 #import "ios/chrome/browser/intelligence/actor/util/actor_test_utils.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
-#import "ios/chrome/browser/origin_gating/model/origin_gating_service_factory.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
@@ -132,43 +128,6 @@
 - (void)actorTaskDidResolveConfirmationInterruptWithID:
     (actor::ActorTaskId)taskID {
   _didResolveConfirmationCalled = YES;
-}
-
-@end
-
-@interface ActorTaskFakeInterventionDelegate
-    : NSObject <ActorTaskInterventionDelegate>
-
-@property(nonatomic, assign) BOOL requestConfirmationCalled;
-@property(nonatomic, assign) BOOL respondsSynchronously;
-@property(nonatomic, copy) NSString* confirmationTitle;
-@property(nonatomic, copy) NSString* confirmationSubtitle;
-@property(nonatomic, copy) NSString* confirmationButtonText;
-@property(nonatomic, copy) void (^confirmationCompletionHandler)(void);
-// Run right after a synchronous completion, while the delegate call is still
-// on the stack.
-@property(nonatomic, copy) void (^afterSynchronousCompletion)(void);
-
-@end
-
-@implementation ActorTaskFakeInterventionDelegate
-
-- (void)actorTask:(actor::ActorTaskId)taskID
-    requestUserInterventionWithTitle:(NSString*)title
-                            subtitle:(NSString*)subtitle
-                          buttonText:(NSString*)buttonText
-                   completionHandler:(void (^)(void))completionHandler {
-  _requestConfirmationCalled = YES;
-  _confirmationTitle = [title copy];
-  _confirmationSubtitle = [subtitle copy];
-  _confirmationButtonText = [buttonText copy];
-  _confirmationCompletionHandler = [completionHandler copy];
-  if (_respondsSynchronously && completionHandler) {
-    completionHandler();
-    if (_afterSynchronousCompletion) {
-      _afterSynchronousCompletion();
-    }
-  }
 }
 
 @end
@@ -364,15 +323,6 @@ class ActorTaskTest : public PlatformTest {
   // Fires the page load timeout, cancelling the timer as production does.
   void TriggerOnPageLoadedTimeout() { task_->load_timeout_timer_.FireNow(); }
 
-  // Runs the tasks already posted to the current sequence. Tasks they post in
-  // turn are not run; use `base::test::RunUntil()` to wait on such chains.
-  void FlushTaskRunner() {
-    base::RunLoop run_loop;
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, run_loop.QuitClosure());
-    run_loop.Run();
-  }
-
   web::FakeWebFrame* AttachMainWebFrame(web::FakeWebState* web_state) {
     auto frames_manager = std::make_unique<web::FakeWebFramesManager>();
     auto main_frame = web::FakeWebFrame::CreateMainWebFrame();
@@ -381,10 +331,6 @@ class ActorTaskTest : public PlatformTest {
     web_state->SetWebFramesManager(web::ContentWorld::kIsolatedWorld,
                                    std::move(frames_manager));
     return main_frame_ptr;
-  }
-
-  bool IsHeartbeatTimerRunning() const {
-    return task_->heartbeat_timer_.IsRunning();
   }
 
   base::test::ScopedFeatureList scoped_feature_list_;
@@ -511,7 +457,7 @@ TEST_F(ActorTaskTest, AddControlledWebState) {
   observer.didAddWebStateCalled = NO;
   task_->AddControlledWebState(nullptr);
   task_->AddControlledWebState(web_state.get());
-  FlushTaskRunner();
+  FlushCurrentSequence();
   EXPECT_FALSE(observer.didAddWebStateCalled);
   EXPECT_EQ(1u, GetControlledWebStates().size());
   EXPECT_EQ(1u, GetLogsForTesting(journal_.get()).size());
@@ -592,7 +538,7 @@ TEST_F(ActorTaskTest, RemoveObserverStopsUpdates) {
 
   observer.didChangeStateCalled = NO;
   SetTaskState(ActorTaskState::kActing);
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_FALSE(observer.didRegisterCalled);
   EXPECT_FALSE(observer.didChangeStateCalled);
@@ -693,11 +639,14 @@ TEST_F(ActorTaskTest, NewObserverRegistrationIsIsolated) {
 // when non-empty, preserves the cached blurb when given an empty string, and
 // provides the latest cached update to subsequent observer registrations.
 TEST_F(ActorTaskTest, CachesLatestTaskUpdateAcrossActs) {
+  std::unique_ptr<web::FakeWebState> web_state =
+      std::make_unique<web::FakeWebState>();
+  AddControlledWebState(web_state->GetWeakPtr());
+
   std::vector<std::unique_ptr<ActorToolRequest>> actions_1;
-  actions_1.push_back(MakeSuccessfulActorToolRequest());
-  base::test::TestFuture<std::vector<ActionResult>> future_1;
-  task_->Act(std::move(actions_1), "First Update", future_1.GetCallback());
-  ASSERT_TRUE(future_1.Wait());
+  actions_1.push_back(
+      MakeSuccessfulActorToolRequest(web_state->GetUniqueIdentifier()));
+  task_->Act(std::move(actions_1), "First Update", base::DoNothing());
 
   FakeActorTaskUpdatesObserver* observer1 =
       [[FakeActorTaskUpdatesObserver alloc] init];
@@ -708,10 +657,9 @@ TEST_F(ActorTaskTest, CachesLatestTaskUpdateAcrossActs) {
 
   // An empty task update should not overwrite the previously cached update.
   std::vector<std::unique_ptr<ActorToolRequest>> actions_empty;
-  actions_empty.push_back(MakeSuccessfulActorToolRequest());
-  base::test::TestFuture<std::vector<ActionResult>> future_empty;
-  task_->Act(std::move(actions_empty), "", future_empty.GetCallback());
-  ASSERT_TRUE(future_empty.Wait());
+  actions_empty.push_back(
+      MakeSuccessfulActorToolRequest(web_state->GetUniqueIdentifier()));
+  task_->Act(std::move(actions_empty), "", base::DoNothing());
 
   FakeActorTaskUpdatesObserver* observer_empty =
       [[FakeActorTaskUpdatesObserver alloc] init];
@@ -721,7 +669,8 @@ TEST_F(ActorTaskTest, CachesLatestTaskUpdateAcrossActs) {
   EXPECT_NSEQ(@"First Update", observer_empty.registeredTaskUpdate);
 
   std::vector<std::unique_ptr<ActorToolRequest>> actions_2;
-  actions_2.push_back(MakeSuccessfulActorToolRequest());
+  actions_2.push_back(
+      MakeSuccessfulActorToolRequest(web_state->GetUniqueIdentifier()));
   task_->Act(std::move(actions_2), "Second Update", base::DoNothing());
 
   FakeActorTaskUpdatesObserver* observer2 =
@@ -746,7 +695,7 @@ TEST_F(ActorTaskTest, OptionalMethodsGracefullyIgnored) {
     TriggerOnWillExecuteTool(ToolType::kNavigate,
                              web::WebStateID::FromSerializedValue(123));
   });
-  EXPECT_NO_FATAL_FAILURE({ FlushTaskRunner(); });
+  EXPECT_NO_FATAL_FAILURE({ FlushCurrentSequence(); });
 
   task_->RemoveObserver(observer);
 }
@@ -774,7 +723,7 @@ TEST_F(ActorTaskTest, SafeSelfRemovalDuringNotification) {
 
     observer.didChangeStateCalled = NO;
     SetTaskState(ActorTaskState::kFinished);
-    FlushTaskRunner();
+    FlushCurrentSequence();
     EXPECT_FALSE(observer.didChangeStateCalled);
   }
 }
@@ -1226,7 +1175,7 @@ TEST_F(ActorTaskBackgroundingTest,
   TestBackgroundContinuedProcessingTaskContext* context =
       CreateBackgroundTaskContext();
 
-  task_->SetBackgroundTaskContext(context);
+  task_->background_worker()->SetContext(context);
 
   EXPECT_DOUBLE_EQ(context.fractionCompleted, 0.0);
 
@@ -1246,7 +1195,7 @@ TEST_F(ActorTaskBackgroundingTest, BackgroundTaskStoppedByUser) {
   TestBackgroundContinuedProcessingTaskContext* context =
       CreateBackgroundTaskContext();
 
-  task_->SetBackgroundTaskContext(context);
+  task_->background_worker()->SetContext(context);
   TriggerOnWillExecuteTool(ToolType::kClick,
                            web::WebStateID::FromSerializedValue(1));
   EXPECT_LT(context.fractionCompleted, 1.0);
@@ -1263,7 +1212,7 @@ TEST_F(ActorTaskBackgroundingTest, BackgroundTaskSubtitleUpdate) {
   TestBackgroundContinuedProcessingTaskContext* context =
       CreateBackgroundTaskContext();
 
-  task_->SetBackgroundTaskContext(context);
+  task_->background_worker()->SetContext(context);
   EXPECT_EQ(context.subtitleUpdateCount, 0);
 
   // Empty update should not send a subtitle update.
@@ -1297,8 +1246,8 @@ TEST_F(ActorTaskBackgroundingTest, BackgroundTaskSubtitleUpdate) {
   EXPECT_EQ(context.subtitleUpdateCount, 2);
 }
 
-// Test that registering a background task context via
-// `SetBackgroundTaskContext()` applies the latest cached non-empty task update.
+// Test that setting a background task context on the task's worker applies
+// the latest cached non-empty task update.
 TEST_F(ActorTaskBackgroundingTest,
        BackgroundTaskContextUsesCachedTaskUpdateOnRegistration) {
   // Execute an action with a non-empty update, followed by one with an empty
@@ -1309,21 +1258,30 @@ TEST_F(ActorTaskBackgroundingTest,
   TestBackgroundContinuedProcessingTaskContext* context =
       CreateBackgroundTaskContext();
 
-  task_->SetBackgroundTaskContext(context);
+  task_->background_worker()->SetContext(context);
   EXPECT_NSEQ(context.subtitle, @"Foo");
   EXPECT_EQ(context.subtitleUpdateCount, 1);
 }
 
+// Test that `background_worker()` is non-null and reflects the task's ID
+// and title.
+TEST_F(ActorTaskTest, BackgroundWorkerReflectsTask) {
+  ActorTaskBackgroundWorker* worker = task_->background_worker();
+  ASSERT_NE(nullptr, worker);
+  EXPECT_EQ(task_->task_id(), worker->task_id());
+  EXPECT_EQ(task_->title(), worker->title());
+}
+
 // Test that when backgrounding is disabled (via the killswitch that
 // `ActorTaskTest` disables, or because it is unavailable in the current
-// configuration), the task ignores background contexts and never starts the
-// heartbeat timer.
+// configuration), the task ignores background contexts and never sends
+// heartbeat pings.
 TEST_F(ActorTaskTest, BackgroundingInertWhenDisabled) {
   ASSERT_FALSE(IsGeminiActorBackgroundingEnabled());
 
   TestBackgroundContinuedProcessingTaskContext* context =
       CreateBackgroundTaskContext();
-  task_->SetBackgroundTaskContext(context);
+  task_->background_worker()->SetContext(context);
 
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
@@ -1333,7 +1291,6 @@ TEST_F(ActorTaskTest, BackgroundingInertWhenDisabled) {
   task_->Act({}, "Should not update subtitle", base::DoNothing());
   TriggerOnWillExecuteTool(ToolType::kClick,
                            web::WebStateID::FromSerializedValue(1));
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
 
   task_environment_.FastForwardBy(base::Milliseconds(800));
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 0u);
@@ -1351,7 +1308,7 @@ TEST_F(ActorTaskBackgroundingTest, BackgroundTaskStoppedWithShutdown) {
   TestBackgroundContinuedProcessingTaskContext* context =
       CreateBackgroundTaskContext();
 
-  task_->SetBackgroundTaskContext(context);
+  task_->background_worker()->SetContext(context);
 
   FakeActorTaskUpdatesObserver* observer =
       [[FakeActorTaskUpdatesObserver alloc] init];
@@ -1359,7 +1316,8 @@ TEST_F(ActorTaskBackgroundingTest, BackgroundTaskStoppedWithShutdown) {
 
   task_->Stop(ActorTaskStoppedReason::kShutdown);
 
-  EXPECT_TRUE(observer.didStopCalled);
+  // The stop notification is posted.
+  ASSERT_TRUE(base::test::RunUntil([&]() { return observer.didStopCalled; }));
   EXPECT_EQ(observer.finalState, ActorTaskState::kCancelled);
   EXPECT_TRUE(context.completed);
   EXPECT_DOUBLE_EQ(context.fractionCompleted, 0.0);
@@ -1374,7 +1332,7 @@ TEST_F(ActorTaskBackgroundingTest, DestructorFinalizesBackgroundTask) {
       ActorTaskId(1), "Test Task", TestSource(),
       /*allow_incognito_web_states=*/false, journal_.get(), tool_factory_.get(),
       BrowserListFactory::GetForProfile(profile_.get()));
-  task->SetBackgroundTaskContext(context);
+  task->background_worker()->SetContext(context);
   EXPECT_FALSE(context.completed);
 
   task.reset();
@@ -1382,24 +1340,42 @@ TEST_F(ActorTaskBackgroundingTest, DestructorFinalizesBackgroundTask) {
   EXPECT_TRUE(context.completed);
 }
 
-// Test that adding a controlled WebState starts the 400ms heartbeat timer
-// immediately to keep WebContent processes alive, and sends periodic JavaScript
-// pings.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatStartsOnActAndPings) {
+// Tests that waiting on user confirmation completes the background task with
+// success, through the task's state change.
+TEST_F(ActorTaskBackgroundingTest, WaitingOnUserCompletesBackgroundTask) {
+  task_->Act({}, "Act", base::DoNothing());
+  TestBackgroundContinuedProcessingTaskContext* context =
+      CreateBackgroundTaskContext();
+  task_->background_worker()->SetContext(context);
+
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm");
+  ASSERT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+
+  EXPECT_TRUE(context.completed);
+  EXPECT_DOUBLE_EQ(context.fractionCompleted, 1.0);
+}
+
+// Test that the task forwards actuation to the background worker, which
+// then sends a JavaScript heartbeat ping to the controlled WebState every
+// 400ms.
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPingsStartOnActAndRepeat) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
 
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_->Act({}, "Starting actuation", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
+  // No pings before the WebState is controlled and the task starts acting.
+  task_environment_.FastForwardBy(base::Milliseconds(800));
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 0u);
 
-  // Fast forward 399ms; timer should not have fired yet.
+  AddControlledWebState(web_state->GetWeakPtr());
+  task_->Act({}, "Starting actuation", base::DoNothing());
+  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 0u);
+
+  // Fast forward 399ms; no ping yet.
   task_environment_.FastForwardBy(base::Milliseconds(399));
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 0u);
 
@@ -1408,264 +1384,37 @@ TEST_F(ActorTaskBackgroundingTest, HeartbeatStartsOnActAndPings) {
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
   EXPECT_EQ(main_frame->GetLastJavaScriptCall(), u";");
 
-  // Fast forward another 800ms; two more pings should have executed.
+  // Fast forward another 800ms (total 1200ms); two more pings should have
+  // executed.
   task_environment_.FastForwardBy(base::Milliseconds(800));
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 3u);
 }
 
-// Test that `Act()` starts the heartbeat timer if it was not already running.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatStartsOnAct) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  // Temporarily disable backgrounding to verify timer does not start initially.
-  scoped_feature_list.InitAndDisableFeature(
-      kEnableBackgroundContinuedProcessing);
-
-  auto web_state = std::make_unique<web::FakeWebState>();
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  task_->Act({}, "Act without backgrounding", base::DoNothing());
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-
-  // Resetting the local override restores the fixture-level features, which
-  // enable background continued processing.
-  scoped_feature_list.Reset();
-
-  // Calling `Act()` should start the timer.
-  task_->Act({}, "Starting actuation", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
-  EXPECT_EQ(main_frame->GetLastJavaScriptCall(), u";");
-}
-
-// Test that the heartbeat timer continues running while the task is reflecting.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatPersistsDuringReflecting) {
-  auto web_state = std::make_unique<web::FakeWebState>();
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  // Untargeted, so the tool runs instead of failing on tab resolution.
-  std::vector<std::unique_ptr<ActorToolRequest>> actions;
-  actions.push_back(MakeSuccessfulActorToolRequest());
-  task_->Act(std::move(actions), "Executing tool", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  // Let the tool complete, transitioning to reflecting.
-  task_environment_.FastForwardBy(base::TimeDelta());
-  EXPECT_EQ(task_->GetState(), ActorTaskState::kReflecting);
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  // Verify pings continue while in reflecting state.
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
-  EXPECT_EQ(main_frame->GetLastJavaScriptCall(), u";");
-}
-
-// Test that stopping the task stops the heartbeat timer.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatStopsOnTaskStop) {
+// Test that stopping the task forwards to the background worker, which
+// stops sending heartbeat pings.
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPingsStopOnStop) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
 
   AddControlledWebState(web_state->GetWeakPtr());
   task_->Act({}, "Act", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
 
   task_environment_.FastForwardBy(base::Milliseconds(400));
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
 
-  // Stop the task.
   task_->Stop(ActorTaskStoppedReason::kTaskComplete);
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
 
-  // Verify no further pings occur after stopping.
-  task_environment_.FastForwardBy(base::Milliseconds(800));
+  // No further pings occur after stopping.
+  task_environment_.FastForwardBy(base::Milliseconds(1200));
   EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
 }
 
-// Test that pausing the task does not stop the heartbeat timer so that
-// WebContent processes remain alive throughout the entire duration of the task.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatPersistsDuringPause) {
-  auto web_state = std::make_unique<web::FakeWebState>();
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  task_->Act({}, "Act", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
-
-  // Pause the task. The heartbeat timer must remain running.
-  task_->Pause(/*from_actor=*/false);
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 2u);
-
-  // Resume the task.
-  task_->Resume();
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 3u);
-}
-
-// Test that interrupting the task to wait on user input does not stop the
-// heartbeat timer.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatPersistsDuringWaitingOnUser) {
-  auto web_state = std::make_unique<web::FakeWebState>();
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  task_->Act({}, "Act", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
-  task_->SetInterventionDelegate(delegate);
-
-  // Interrupt the task to wait on user input.
-  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
-                   "Please confirm");
-  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
-
-  // Uninterrupt resumes the task.
-  task_->Uninterrupt(ActorTaskState::kActing);
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 2u);
-}
-
-// Test that destroying all controlled WebStates stops the heartbeat timer.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatStopsWhenAllWebStatesDestroyed) {
-  auto web_state = std::make_unique<web::FakeWebState>();
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  task_->Act({}, "Act", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
-
-  // Destroy the WebState.
-  web_state.reset();
-
-  // On the next interval, SendHeartbeatPing detects that no valid WebStates
-  // remain, prunes expired weak references, and stops the timer.
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-
-  // Adding a new WebState while the task is actuating resumes the heartbeat
-  // timer.
-  auto web_state2 = std::make_unique<web::FakeWebState>();
-  AttachMainWebFrame(web_state2.get());
-  AddControlledWebState(web_state2->GetWeakPtr());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_->WebStateDestroyed(web_state2.get());
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-}
-
-// Test that heartbeat pings are fire-and-forget, logging failures to the
-// journal without stopping the task.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatPingsFireAndForget) {
-  auto web_state = std::make_unique<web::FakeWebState>();
-  // Note: Do not add a result for executed JS so FakeWebFrame generates an
-  // error.
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-
-  FakeActorTaskUpdatesObserver* observer =
-      [[FakeActorTaskUpdatesObserver alloc] init];
-  task_->AddObserver(observer);
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  task_->Act({}, "Act", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  // Fast forward across 10 intervals (4000ms total).
-  task_environment_.FastForwardBy(base::Milliseconds(4000));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 10u);
-  EXPECT_EQ(main_frame->GetLastJavaScriptCall(), u";");
-  EXPECT_FALSE(observer.didStopCalled);
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  // Verify journal logs recorded the failures.
-  std::vector<mojom::JournalEntryPtr> logs = GetLogsForTesting(journal_.get());
-  int failure_events = 0;
-  for (const auto& entry : logs) {
-    if (entry->event == "ActorTask::HeartbeatPingFailed") {
-      failure_events++;
-    }
-  }
-  EXPECT_EQ(failure_events, 10);
-}
-
-// Test that successful heartbeat pings do not log failure events to the
-// journal.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatSuccessfulPingDoesNotLogFailure) {
-  auto web_state = std::make_unique<web::FakeWebState>();
-  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
-  ASSERT_TRUE(main_frame);
-  base::Value success_result;
-  main_frame->AddResultForExecutedJs(&success_result, u";");
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  task_->Act({}, "Act", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 1u);
-
-  std::vector<mojom::JournalEntryPtr> logs = GetLogsForTesting(journal_.get());
-  for (const auto& entry : logs) {
-    EXPECT_NE(entry->event, "ActorTask::HeartbeatPingFailed");
-  }
-}
-
-// Test that the heartbeat timer is not started when the backgrounding feature
-// parameter is disabled, even though the killswitch is enabled.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatDisabledWhenFeatureParamDisabled) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeatureWithParameters(
-      kGeminiActor, {{kGeminiActorBackgroundingParam, "false"}});
-
-  auto web_state = std::make_unique<web::FakeWebState>();
-  AttachMainWebFrame(web_state.get());
-
-  AddControlledWebState(web_state->GetWeakPtr());
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-
-  task_->Act({}, "Act with backgrounding disabled", base::DoNothing());
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-
-  task_environment_.FastForwardBy(base::Milliseconds(800));
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
-}
-
-// Test that heartbeat pings are dispatched to multiple controlled WebStates,
-// and that destroying one WebState keeps the timer active for the remaining
-// valid WebStates until all are destroyed.
-TEST_F(ActorTaskBackgroundingTest, HeartbeatMultipleWebStates) {
+// Test that heartbeat pings reach every WebState controlled by the task.
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPingsReachAllControlledWebStates) {
   auto web_state1 = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame1 = AttachMainWebFrame(web_state1.get());
   ASSERT_TRUE(main_frame1);
-  base::Value success_result;
-  main_frame1->AddResultForExecutedJs(&success_result, u";");
 
   auto web_state2 = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame2 = AttachMainWebFrame(web_state2.get());
@@ -1673,31 +1422,35 @@ TEST_F(ActorTaskBackgroundingTest, HeartbeatMultipleWebStates) {
 
   AddControlledWebState(web_state1->GetWeakPtr());
   AddControlledWebState(web_state2->GetWeakPtr());
-
   task_->Act({}, "Act across multiple WebStates", base::DoNothing());
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
 
-  // Fast-forward one interval; both frames receive a ping.
+  // Each interval, both frames receive a ping.
   task_environment_.FastForwardBy(base::Milliseconds(400));
   EXPECT_EQ(main_frame1->GetJavaScriptCallHistory().size(), 1u);
   EXPECT_EQ(main_frame2->GetJavaScriptCallHistory().size(), 1u);
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
 
-  // Destroy only the first WebState.
-  web_state1.reset();
-
-  // Fast-forward another interval; heartbeat should still be running for
-  // `web_state2`.
   task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_TRUE(IsHeartbeatTimerRunning());
+  EXPECT_EQ(main_frame1->GetJavaScriptCallHistory().size(), 2u);
   EXPECT_EQ(main_frame2->GetJavaScriptCallHistory().size(), 2u);
+}
 
-  // Destroy the second WebState.
-  web_state2.reset();
+// Test that no heartbeat pings are sent when the backgrounding feature
+// parameter is disabled, even though the killswitch is enabled.
+TEST_F(ActorTaskBackgroundingTest,
+       HeartbeatPingsDisabledWhenFeatureParamDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      kGeminiActor, {{kGeminiActorBackgroundingParam, "false"}});
 
-  // On the next interval, all WebStates have expired, so timer stops.
-  task_environment_.FastForwardBy(base::Milliseconds(400));
-  EXPECT_FALSE(IsHeartbeatTimerRunning());
+  auto web_state = std::make_unique<web::FakeWebState>();
+  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
+  ASSERT_TRUE(main_frame);
+
+  AddControlledWebState(web_state->GetWeakPtr());
+  task_->Act({}, "Act with backgrounding disabled", base::DoNothing());
+
+  task_environment_.FastForwardBy(base::Milliseconds(1200));
+  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 0u);
 }
 
 // Tests that AddControlledWebState attaches the policy decider to the WebState
@@ -1772,8 +1525,8 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromActing) {
   EXPECT_EQ(helper->GetControlState(),
             actor::ActorControlState::kActorControlled);
 
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
@@ -1796,8 +1549,8 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromActing) {
 TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromReflecting) {
   SetTaskState(ActorTaskState::kReflecting);
 
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
@@ -1813,21 +1566,21 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromReflecting) {
 
 // Test that interrupting a task in non-executing states is ignored.
 TEST_F(ActorTaskTest, InterruptIgnoredWhenNotExecuting) {
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   SetTaskState(ActorTaskState::kPausedByUser);
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Ignored message");
-  FlushTaskRunner();
+  FlushCurrentSequence();
   EXPECT_EQ(task_->GetState(), ActorTaskState::kPausedByUser);
   EXPECT_FALSE(delegate.requestConfirmationCalled);
 
   SetTaskState(ActorTaskState::kCancelled);
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Ignored message");
-  FlushTaskRunner();
+  FlushCurrentSequence();
   EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
   EXPECT_FALSE(delegate.requestConfirmationCalled);
 }
@@ -1839,18 +1592,18 @@ TEST_F(ActorTaskTest, ResolveConfirmationResumesToReflecting) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer);
 
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   SetTaskState(ActorTaskState::kActing);
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Please confirm");
   ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return delegate.confirmationCompletionHandler != nil; }));
+      [&]() { return delegate.hasPendingUserIntervention; }));
   EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
 
-  delegate.confirmationCompletionHandler();
+  [delegate runUserInterventionCompletion];
   EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
   EXPECT_FALSE(observer.didResolveConfirmationCalled);
   ASSERT_TRUE(base::test::RunUntil(
@@ -1864,23 +1617,23 @@ TEST_F(ActorTaskTest, ResolveConfirmationResumesToReflecting) {
 // Test that stopping an interrupted task transitions it to kCancelled and
 // subsequent completion block invocations are safely ignored.
 TEST_F(ActorTaskTest, StopWhileInterruptedIgnoresSubsequentCompletion) {
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   SetTaskState(ActorTaskState::kActing);
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Please confirm");
   ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return delegate.confirmationCompletionHandler != nil; }));
+      [&]() { return delegate.hasPendingUserIntervention; }));
   EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
 
   task_->Stop(ActorTaskStoppedReason::kStoppedByUser);
   EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
 
   // Invoke completion block after task was stopped.
-  delegate.confirmationCompletionHandler();
-  FlushTaskRunner();
+  [delegate runUserInterventionCompletion];
+  FlushCurrentSequence();
 
   EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
 }
@@ -1888,15 +1641,15 @@ TEST_F(ActorTaskTest, StopWhileInterruptedIgnoresSubsequentCompletion) {
 // Test that the intervention delegate is not called if the task is stopped
 // before the posted confirmation request is delivered.
 TEST_F(ActorTaskTest, StopBeforeConfirmationShownSkipsDelegate) {
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   SetTaskState(ActorTaskState::kActing);
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Please confirm");
   task_->Stop(ActorTaskStoppedReason::kStoppedByUser);
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
   EXPECT_FALSE(delegate.requestConfirmationCalled);
@@ -1905,15 +1658,15 @@ TEST_F(ActorTaskTest, StopBeforeConfirmationShownSkipsDelegate) {
 // Test that the confirmation request is dropped, without stopping the task, if
 // the intervention delegate goes away before the posted request is delivered.
 TEST_F(ActorTaskTest, DelegateRemovedBeforeConfirmationShownSkipsRequest) {
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   SetTaskState(ActorTaskState::kActing);
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Please confirm");
   task_->SetInterventionDelegate(nil);
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
   EXPECT_FALSE(delegate.requestConfirmationCalled);
@@ -1944,8 +1697,8 @@ TEST_F(ActorTaskTest, InterruptWithEmptyConfirmationMessageStopsTask) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer);
 
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   SetTaskState(ActorTaskState::kActing);
@@ -1967,12 +1720,12 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationSyncResolution) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer);
 
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
-  delegate.respondsSynchronously = YES;
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
+  delegate.autoConfirmInterventions = YES;
   ActorTask* task = task_.get();
   __block std::optional<ActorTaskState> state_after_completion;
-  delegate.afterSynchronousCompletion = ^{
+  delegate.onUserInterventionCompleted = ^{
     state_after_completion = task->GetState();
   };
   task_->SetInterventionDelegate(delegate);
@@ -2013,8 +1766,8 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromInit) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer);
 
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   // The task yields on start: it is interrupted before any call to `Act()`.
@@ -2032,12 +1785,12 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromInit) {
   EXPECT_NSEQ(delegate.confirmationTitle, @"Please confirm before starting");
   EXPECT_EQ(delegate.confirmationSubtitle, nil);
   EXPECT_NSEQ(delegate.confirmationButtonText, @"Continue");
-  ASSERT_TRUE(delegate.confirmationCompletionHandler != nil);
+  ASSERT_TRUE(delegate.hasPendingUserIntervention);
 
   // Resolving resumes into kReflecting rather than back into kInit: a task
   // which yielded before acting still has to reflect before issuing its first
   // actions.
-  delegate.confirmationCompletionHandler();
+  [delegate runUserInterventionCompletion];
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return observer.didResolveConfirmationCalled; }));
 
@@ -2054,8 +1807,8 @@ TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromInit) {
 // Test that interrupting a task which is already waiting on the user is
 // ignored and does not re-prompt the intervention delegate.
 TEST_F(ActorTaskTest, InterruptIgnoredWhenAlreadyWaitingOnUser) {
-  ActorTaskFakeInterventionDelegate* delegate =
-      [[ActorTaskFakeInterventionDelegate alloc] init];
+  FakeActorTaskInterventionDelegate* delegate =
+      [[FakeActorTaskInterventionDelegate alloc] init];
   task_->SetInterventionDelegate(delegate);
 
   // Start from an executing state so this test isolates the "already waiting
@@ -2068,10 +1821,10 @@ TEST_F(ActorTaskTest, InterruptIgnoredWhenAlreadyWaitingOnUser) {
   ASSERT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
   ASSERT_TRUE(delegate.requestConfirmationCalled);
 
-  delegate.requestConfirmationCalled = NO;
+  [delegate resetRequestConfirmationCalled];
   task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
                    "Second prompt");
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
   EXPECT_FALSE(delegate.requestConfirmationCalled);
@@ -2105,14 +1858,14 @@ TEST_F(ActorTaskTest, ObserverAddedAfterPostSkipsEarlierNotifications) {
   FakeActorTaskUpdatesObserver* early_observer =
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(early_observer);
-  FlushTaskRunner();
+  FlushCurrentSequence();
   ASSERT_TRUE(early_observer.didRegisterCalled);
 
   SetTaskState(ActorTaskState::kActing);
   FakeActorTaskUpdatesObserver* late_observer =
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(late_observer);
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_TRUE(early_observer.didChangeStateCalled);
   EXPECT_EQ(ActorTaskState::kActing, early_observer.newState);
@@ -2128,7 +1881,7 @@ TEST_F(ActorTaskTest, DidRegisterPrecedesLaterNotifications) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer);
   SetTaskState(ActorTaskState::kActing);
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_TRUE(observer.didRegisterCalled);
   EXPECT_FALSE(observer.didChangeStateBeforeRegister);
@@ -2143,11 +1896,11 @@ TEST_F(ActorTaskTest, ObserverRemovedBeforeRegistrationIsNeverNotified) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer);
   task_->RemoveObserver(observer);
-  FlushTaskRunner();
+  FlushCurrentSequence();
   EXPECT_FALSE(observer.didRegisterCalled);
 
   SetTaskState(ActorTaskState::kActing);
-  FlushTaskRunner();
+  FlushCurrentSequence();
   EXPECT_FALSE(observer.didChangeStateCalled);
 }
 
@@ -2159,7 +1912,7 @@ TEST_F(ActorTaskTest, PendingRegistrationRunsAfterTaskDestroyed) {
   task_->AddObserver(observer);
   SetTaskState(ActorTaskState::kActing);
   task_.reset();
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_TRUE(observer.didRegisterCalled);
   EXPECT_FALSE(observer.didChangeStateBeforeRegister);
@@ -2180,7 +1933,7 @@ TEST_F(ActorTaskTest, ObserverRemovedFromDeallocWhileRegistrationPending) {
   }
   EXPECT_EQ(nil, weak_observer);
 
-  FlushTaskRunner();
+  FlushCurrentSequence();
 }
 
 // Test that an observer removed after a notification is posted, but before it
@@ -2194,7 +1947,7 @@ TEST_F(ActorTaskTest, ObserverRemovedBeforeDeliverySkipsNotification) {
 
   SetTaskState(ActorTaskState::kActing);
   task_->RemoveObserver(observer);
-  FlushTaskRunner();
+  FlushCurrentSequence();
 
   EXPECT_FALSE(observer.didChangeStateCalled);
 }

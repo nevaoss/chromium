@@ -12,9 +12,11 @@
 #import "components/omnibox/common/omnibox_features.h"
 #import "ios/chrome/browser/composebox/menu/coordinator/composebox_menu_shared_tab.h"
 #import "ios/chrome/browser/composebox/menu/ui/composebox_menu_attachment_cell.h"
+#import "ios/chrome/browser/composebox/menu/ui/composebox_menu_header_view.h"
 #import "ios/chrome/browser/composebox/menu/ui/composebox_menu_item.h"
 #import "ios/chrome/browser/composebox/menu/ui/composebox_menu_item_type.h"
 #import "ios/chrome/browser/composebox/menu/ui/composebox_menu_list_cell.h"
+#import "ios/chrome/browser/composebox/menu/ui/composebox_menu_page_view_controller.h"
 #import "ios/chrome/browser/composebox/public/composebox_attachment_option.h"
 #import "ios/chrome/browser/composebox/shared/ui/composebox_ui_constants.h"
 #import "ios/chrome/browser/composebox/ui/composebox_favicons_accordion_view.h"
@@ -27,10 +29,6 @@
 #import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
 
-@interface ComposeboxMenuViewController (Testing)
-@property(nonatomic, readonly) UICollectionView* collectionView;
-@end
-
 namespace {
 
 // iPhone 16 screen width in points.
@@ -41,6 +39,11 @@ const CGFloat kIPhoneSEScreenWidth = 375.0f;
 const CGFloat kTestViewHeight = 600.0f;
 
 using ComposeboxMenuViewControllerTest = PlatformTest;
+
+UICollectionView* CollectionViewForMenu(ComposeboxMenuViewController* menu) {
+  return [(ComposeboxMenuPageViewController*)
+              menu.topViewController collectionView];
+}
 
 // Helper to create a dummy UIImage for testing.
 UIImage* CreateTestImage() {
@@ -91,9 +94,9 @@ TEST_F(ComposeboxMenuViewControllerTest, TestSharedTabsCellConfiguration) {
 
   [viewController setUIInputState:inputState];
   [viewController.view layoutIfNeeded];
-  [viewController.collectionView layoutIfNeeded];
+  [CollectionViewForMenu(viewController) layoutIfNeeded];
 
-  UICollectionView* collectionView = viewController.collectionView;
+  UICollectionView* collectionView = CollectionViewForMenu(viewController);
   ASSERT_NE(collectionView, nil);
   ASSERT_EQ(collectionView.numberOfSections, 2);
   ASSERT_EQ([collectionView numberOfItemsInSection:1], 1);
@@ -113,6 +116,7 @@ TEST_F(ComposeboxMenuViewControllerTest, TestSharedTabsCellConfiguration) {
   EXPECT_NSEQ(contentConfig.text,
               l10n_util::GetNSString(IDS_IOS_COMPOSEBOX_MENU_SHARED_TABS));
   EXPECT_NSEQ(contentConfig.secondaryText, @"alltrails.com, nps.gov");
+  EXPECT_EQ(contentConfig.secondaryTextProperties.numberOfLines, 0);
 
   ASSERT_EQ(cell.accessories.count, 2u);
   EXPECT_TRUE([cell.accessories[0]
@@ -128,6 +132,13 @@ TEST_F(ComposeboxMenuViewControllerTest, TestSharedTabsCellConfiguration) {
   ComposeboxFaviconsAccordionView* faviconsView =
       static_cast<ComposeboxFaviconsAccordionView*>(customAccessory.customView);
   EXPECT_EQ(faviconsView.arrangedSubviews.count, 2u);
+}
+
+// Tests that section header views allow multi-line titles.
+TEST_F(ComposeboxMenuViewControllerTest, TestSectionHeaderViewMultiLine) {
+  ComposeboxMenuHeaderView* headerView =
+      [[ComposeboxMenuHeaderView alloc] initWithFrame:CGRectZero];
+  EXPECT_EQ(headerView.label.numberOfLines, 0);
 }
 
 // Tests that when 5 attachment items are present, each button is wider than or
@@ -153,7 +164,7 @@ TEST_F(ComposeboxMenuViewControllerTest,
   [viewController setUIInputState:inputState];
   [viewController.view layoutIfNeeded];
 
-  UICollectionView* collectionView = viewController.collectionView;
+  UICollectionView* collectionView = CollectionViewForMenu(viewController);
   ASSERT_NE(collectionView, nil);
   ASSERT_GE(collectionView.numberOfSections, 1);
   EXPECT_EQ([collectionView numberOfItemsInSection:0], 5);
@@ -198,7 +209,7 @@ TEST_F(ComposeboxMenuViewControllerTest,
   [viewController setUIInputState:inputState];
   [viewController.view layoutIfNeeded];
 
-  UICollectionView* collectionView = viewController.collectionView;
+  UICollectionView* collectionView = CollectionViewForMenu(viewController);
   ASSERT_NE(collectionView, nil);
   ASSERT_GE(collectionView.numberOfSections, 1);
   EXPECT_EQ([collectionView numberOfItemsInSection:0], 6);
@@ -252,7 +263,7 @@ TEST_F(ComposeboxMenuViewControllerTest,
   [viewController setUIInputState:inputState];
   [viewController.view layoutIfNeeded];
 
-  UICollectionView* collectionView = viewController.collectionView;
+  UICollectionView* collectionView = CollectionViewForMenu(viewController);
   ASSERT_NE(collectionView, nil);
   ASSERT_GE(collectionView.numberOfSections, 1);
   EXPECT_EQ([collectionView numberOfItemsInSection:0], 6);
@@ -301,9 +312,9 @@ TEST_F(ComposeboxMenuViewControllerTest,
 
   [viewController setUIInputState:inputState];
   [viewController.view layoutIfNeeded];
-  [viewController.collectionView layoutIfNeeded];
+  [CollectionViewForMenu(viewController) layoutIfNeeded];
 
-  UICollectionView* collectionView = viewController.collectionView;
+  UICollectionView* collectionView = CollectionViewForMenu(viewController);
   ASSERT_NE(collectionView, nil);
   ASSERT_GE(collectionView.numberOfSections, 1);
   ASSERT_EQ([collectionView numberOfItemsInSection:0], 6);

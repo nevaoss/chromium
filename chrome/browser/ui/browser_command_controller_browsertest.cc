@@ -63,7 +63,6 @@
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
-#include "chrome/test/base/test_browser_window.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -93,6 +92,7 @@
 #include "google_apis/gaia/gaia_urls.h"
 #include "net/base/network_change_notifier.h"
 #include "ui/actions/actions.h"
+#include "ui/base/base_window.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/dom/dom_code.h"
@@ -1400,25 +1400,31 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestToolbarPinningOnly,
 
   chrome::BrowserCommandController::From(browser())->TabStateChanged();
 
-  EXPECT_FALSE(actions::ActionManager::GetForTesting()
-                   .FindAction(kActionShowTranslate)
-                   ->GetEnabled());
+  EXPECT_FALSE(
+      actions::ActionManager::GetForTesting()
+          .FindAction(kActionShowTranslate,
+                      BrowserActions::From(browser())->root_action_item())
+          ->GetEnabled());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestToolbarPinningOnly,
                        ShowTranslateStatusEnglishPage) {
   LoadAndWaitForLanguage("/english_page.html");
-  EXPECT_TRUE(actions::ActionManager::GetForTesting()
-                  .FindAction(kActionShowTranslate)
-                  ->GetEnabled());
+  EXPECT_TRUE(
+      actions::ActionManager::GetForTesting()
+          .FindAction(kActionShowTranslate,
+                      BrowserActions::From(browser())->root_action_item())
+          ->GetEnabled());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestToolbarPinningOnly,
                        ShowTranslateStatusFrenchPage) {
   LoadAndWaitForLanguage("/french_page.html");
-  EXPECT_TRUE(actions::ActionManager::GetForTesting()
-                  .FindAction(kActionShowTranslate)
-                  ->GetEnabled());
+  EXPECT_TRUE(
+      actions::ActionManager::GetForTesting()
+          .FindAction(kActionShowTranslate,
+                      BrowserActions::From(browser())->root_action_item())
+          ->GetEnabled());
 }
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)

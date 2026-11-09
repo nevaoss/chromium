@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Buat asal</translation>
 <translation id="2086334242442703436">Buka Pemilih Emoji</translation>
 <translation id="2089550919269323883">Memasang <ph name="VM_NAME" />, disekat oleh dasar perusahaan. Sila hubungi pentadbir sistem anda untuk mendapatkan sokongan. Kod ralat ialah <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Berita Steam untuk Chromebook</translation>
 <translation id="209965399369889474">Tidak bersambung ke rangkaian</translation>
 <translation id="2107581415810719320">Butang Lain <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">Kabel USB-C anda tidak menyokong Thunderbolt. Prestasi peranti mungkin terhad.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">Apakah yang mahu anda fokuskan? Tekan kekunci Enter untuk menambahkan tugasan.</translation>
 <translation id="229397294990920565">Data mudah alih sedang dimatikan...</translation>
 <translation id="2295777434187870477">Mikrofon dihidupkan, tindakan menogol akan meredamkan input.</translation>
+<translation id="2296880470921996802">Sejarah papan keratan telah dilumpuhkan oleh pentadbir IT anda</translation>
 <translation id="2302092602801625023">Akaun ini diurus oleh Family Link</translation>
 <translation id="2303600792989757991">Togol gambaran keseluruhan tetingkap</translation>
 <translation id="2304702218354340897">Adakah anda pasti mahu mematikan kawalan wajah?</translation>
@@ -1786,7 +1786,6 @@ Tiada peranti disambungkan.</translation>
 <translation id="6127395413317891856">Anda luar talian. Periksa sambungan anda, kemudian cuba lagi.</translation>
 <translation id="6129953537138746214">Bar ruang</translation>
 <translation id="6132714462430777655">Langkau pendaftaran sekolah?</translation>
-<translation id="6136872094979134163">Tidak dapat mendapatkan kembali berita Steam untuk Chromebook.</translation>
 <translation id="6137566720514957455">Buka dialog alih keluar untuk <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">Apakah yang mahu anda fokuskan?</translation>
 <translation id="6141988275892716286">Sahkan muat turun</translation>

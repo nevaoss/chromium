@@ -71,7 +71,6 @@
 <translation id="1110994991967754504">ເລືອກການອະນຸຍາດສຳລັບ <ph name="PERMISSION_NAME" /></translation>
 <translation id="1113000785583998331">ບັນທຶກ IBAN ບໍ?</translation>
 <translation id="1113869188872983271">ປ່ຽນ​ກັບ​ຄືນຄໍາສັ່ງຈັດລໍາດັບຄືນ</translation>
-<translation id="1117709830616495622">ຂັບເຄື່ອນໂດຍ Personal Intelligence ຈາກ Gemini.</translation>
 <translation id="111897705806685148">ໃຊ້ກະແຈຜ່ານຈາກອຸປະກອນອື່ນ</translation>
 <translation id="1119009590493440389"><ph name="MANAGE_SYNC_FOCUSED_FRIENDLY_MATCH_TEXT" />, ກົດ Tab ຕາມດ້ວຍ Enter ເພື່ອຈັດການຂໍ້ມູນ Chrome ທີ່ທ່ານບັນທຶກໄວ້ໃນບັນຊີ Google ຂອງທ່ານ</translation>
 <translation id="1121990216147052230">ສ້າງລາຍການທີ່ຕ້ອງເຮັດໃຫ້ຂ້ອຍ</translation>
@@ -532,7 +531,6 @@
 <translation id="1890171020361705182">ເກມ Dino. ໄດໂນເສົາແບບພິກເຊວໂດດຂ້າມຕົ້ນຕະບອງເພັດ ແລະ ເທີໂຣແດັກທິນລັສໃນເວລາທີ່ມັນແລ່ນຂ້າມພື້ນທີ່ອັກຮົກຮ້າງ. ເມື່ອທ່ານໄດ້ຍິນສັນຍານສຽງ, ໃຫ້ແຕະເພື່ອໂດດຂ້າມສິ່ງກີດຂວາງ.</translation>
 <translation id="1898423065542865115">ການກັ່ນຕອງ</translation>
 <translation id="1898678876221454577">ເຂົ້າສູ່ລະບົບເພື່ອບັນທຶກການສະແກນຂອງທ່ານ</translation>
-<translation id="1898804291554630487">ສອບຖາມກ່ຽວກັບໜ້ານີ້</translation>
 <translation id="1901443836186977402">{1,plural, =1{ເຊີບເວີນີ້ບໍ່ສາມາດພິສູດໄດ້ວ່າມັນແມ່ນ <ph name="DOMAIN" />; ໃບຮັບຮອງຄວາມປອດໄພຂອງມັນໝົດອາຍຸແລ້ວໃນມື້ຜ່ານມາ. ສິ່ງນີ້ອາດຈະເກີດຈາກການກຳນົດຄ່າຜິດ ຫຼື ຜູ້ໂຈມຕີທີ່ດັກສະກັດການເຊື່ອມຕໍ່ຂອງທ່ານ. ໂມງໃນຄອມພິວເຕີຂອງທ່ານປັດຈຸບັນຖືກຕັ້ງເປັນ <ph name="CURRENT_DATE" />. ມັນຖືກຕ້ອງແລ້ວບໍ? ຖ້າບໍ່ຖືກ, ທ່ານຄວນແກ້ໄຂໂມງຂອງລະບົບຂອງທ່ານ ຈາກນັ້ນ ໂຫຼດໜ້ານີ້ຄືນໃໝ່.}other{ເຊີບເວີນີ້ບໍ່ສາມາດພິສູດໄດ້ວ່າມັນແມ່ນ <ph name="DOMAIN" />; ໃບຮັບຮອງຄວາມປອດໄພຂອງມັນໝົດອາຍຸແລ້ວເມື່ອ # ກ່ອນ. ນີ້ອາດຈະເກີດຈາກການກຳນົດຄ່າຜິດ ຫຼື ຜູ້ໂຈມຕີທີ່ດັກສະກັດການເຊື່ອມຕໍ່ຂອງທ່ານ. ໂມງໃນຄອມພິວເຕີຂອງທ່ານປັດຈຸບັນຖືກຕັ້ງເປັນ <ph name="CURRENT_DATE" />. ມັນຖືກຕ້ອງແລ້ວບໍ? ຖ້າບໍ່, ທ່ານຄວນແກ້ໄຂໂມງລະບົບຂອງທ່ານໃຫ້ຖືກຕ້ອງ ຈາກນັ້ນໂຫຼດໜ້ານີ້ຄືນໃໝ່.}}</translation>
 <translation id="190166348986967700">ຜູ້ເບິ່ງແຍງລະບົບຂອງທ່ານຈະເລີ່ມອັບໂຫຼດໄຟລ໌ຂອງທ່ານໃສ່ໃນ <ph name="CLOUD_PROVIDER" /> ໃນວັນທີ <ph name="DATE_TIME" />. ເຊື່ອມຕໍ່ອຸປະກອນຂອງທ່ານໄວ້ຈົນກວ່າການອັບໂຫຼດໄຟລ໌ຂອງທ່ານຈະສຳເລັດ. ໃນລະຫວ່າງທີ່ອັບໂຫຼດ, ທ່ານຈະສາມາດອ່ານໄຟລ໌ໃນເຄື່ອງໄດ້ເທົ່ານັ້ນ.</translation>
 <translation id="1902576642799138955">ໄລຍະການນໍາໃຊ້ໄດ້</translation>
@@ -668,6 +666,7 @@
 <translation id="2127747486437921899">ໂຕອຽງ</translation>
 <translation id="2130448033692577677">ແມ່ແບບທີ່ທ່ານລະບຸອາດຈະນຳໃຊ້ບໍ່ໄດ້ຍ້ອນບໍ່ໄດ້ຕັ້ງຄ່ານະໂຍບາຍ DnsOverHttpsMode.</translation>
 <translation id="2130699163006053678">A3x7</translation>
+<translation id="2131006834960167560">ເປີດແຜງ “ເປີດການນຳໃຊ້ການຕື່ມຂໍ້ມູນການຈ່າຍເງິນອັດຕະໂນມັດ” ເຕັມຄວາມສູງແລ້ວ.</translation>
 <translation id="2131511685263818470"><ph name="SEARCH_ENGINE_NAME" />. <ph name="MARKETING_SNIPPET" /></translation>
 <translation id="2132825047782982803">ໂປຣແກຣມຊອກຫາເຫຼົ່ານີ້ສະແດງແບບສຸ່ມລຳດັບ. ທ່ານສາມາດປ່ຽນຄ່າເລີ່ມຕົ້ນຂອງທ່ານໄດ້ທຸກເວລາ.</translation>
 <translation id="2134584557120247184">ປີ້ຖ້ຽວບິນ</translation>
@@ -840,8 +839,6 @@
 <translation id="2384307209577226199">ຄ່າເລີ່ມຕົ້ນ​ວິ​ສາ​ຫະ​ກິດ</translation>
 <translation id="2385809941344967209">ອັບເດດ Chrome ຈາກການຕັ້ງຄ່າ Chrome ຂອງທ່ານ</translation>
 <translation id="2386255080630008482">ໃບຢັ້ງຢືນຂອງເຊີບເວີຖືກຖອນຄືນແລ້ວ.</translation>
-<translation id="2387424091060104123">ແນະນຳໂດຍ Gemini · <ph name="SRC_LINK" />ເບິ່ງແຫຼ່ງຂໍ້ມູນ<ph name="END_SRC_LINK" />
-ທ່ານສາມາດລຶບຄຳແນະນຳນີ້ອອກຈາກ Chrome ໄດ້. ລະບົບຈະບໍ່ລຶບແຫຼ່ງຂໍ້ມູນຕົ້ນສະບັບຂອງທ່ານ. <ph name="MANAGE_LINK" />ຈັດການການຕື່ມຂໍ້ມູນອັດຕະໂນມັດທີ່ປັບປຸງໃຫ້ດີຂຶ້ນ<ph name="END_MANAGE_LINK" /></translation>
 <translation id="239203817277685015">ຂະຫຍາຍຄວາມ</translation>
 <translation id="2392959068659972793">ສະແດງນະ​ໂຍ​ບາຍໂດຍບໍ່ມີຄ່າຕັ້ງໄວ້​</translation>
 <translation id="239429038616798445">ວິທີການຈັດສົ່ງນີ້ບໍ່ສາມາດໃຊ້ໄດ້. ລອງວິທີອື່ນ.</translation>
@@ -1244,7 +1241,6 @@
 <translation id="3109788962812161063">ການຈັດການໂປຣໄຟລ໌</translation>
 <translation id="3112892588078695695">ເບີໂທລະສັບ: <ph name="PHONE" />.</translation>
 <translation id="3113284927548439113">ຜຽນສາມ</translation>
-<translation id="3113930177999394798">ພິມ @history ເພື່ອຊອກຫາປະຫວັດການທ່ອງເວັບຂອງທ່ານ, ເຊິ່ງຂັບເຄື່ອນໂດຍ AI</translation>
 <translation id="3114040155724590991">ກຳລັງອັບເດດລະບົບ Android
     ການເລີ່ມແອັບຂອງທ່ານອາດໃຊ້ເວລາດົນກວ່າປົກກະຕິ.</translation>
 <translation id="3114197119223448048">ການເຄື່ອນໄຫວໃໝ່</translation>
@@ -1366,6 +1362,7 @@
 <translation id="3289578402369490638">ຈາກຮ້ານຄ້າອື່ນໆໃນທົ່ວເວັບ</translation>
 <translation id="3293642807462928945">ສຶກສາເພີ່ມເຕີມກ່ຽວກັບນະໂຍບາຍ <ph name="POLICY_NAME" /></translation>
 <translation id="3295444047715739395">ເບິ່ງ ແລະ ຈັດການລະຫັດຜ່ານຂອງທ່ານໃນການຕັ້ງຄ່າ Chrome</translation>
+<translation id="3296595523896103792">ປິດແຜງ “ເປີດການນຳໃຊ້ການຕື່ມຂໍ້ມູນການຈ່າຍເງິນອັດຕະໂນມັດ” ແລ້ວ.</translation>
 <translation id="3299098170013242198">Windows Hello ເປີດຢູ່ເພື່ອການຕື່ມລະຫັດຜ່ານ</translation>
 <translation id="3299197721044635447">ບໍ່ສາມາດວາງເນື້ອຫາພາຍນອກບໍລິບົດ Chrome ທີ່ມີການຈັດການໄດ້ເນື່ອງຈາກນະໂຍບາຍຂອງອົງກອນຂອງທ່ານ</translation>
 <translation id="3299720788264079132">ມີບາງຢ່າງຜິດພາດເກີດຂຶ້ນໃນລະຫວ່າງທີ່ໃຊ້ <ph name="FEATURE_NAME" /></translation>
@@ -1424,7 +1421,6 @@
 <translation id="3413466783792948876">ການເຂົ້າເບິ່ງເວັບໄຊນີ້ໃນພາຍຫຼັງຈະປອດໄພທີ່ສຸດຫາກທ່ານກຳລັງໃຊ້ເຄືອຂ່າຍສາທາລະນະ. ໂດຍຈະມີຄວາມສ່ຽງໜ້ອຍລົງຫາກໃຊ້ເຄືອຂ່າຍທີ່ເຊື່ອຖືໄດ້ ເຊັ່ນ: Wi-Fi ຢູ່ເຮືອນ ຫຼື ຢູ່ຫ້ອງການຂອງທ່ານ.</translation>
 <translation id="3414952576877147120">ຂະໜາດ:</translation>
 <translation id="341513675006332771">ປຸ່ມຫຼິ້ນເກມ Chrome Dino, ເປີດນຳໃຊ້ເພື່ອຫຼິ້ນເກມ Dino Run ໃນ Chrome</translation>
-<translation id="3415471717466570460">ລະບົບຈະສົ່ງການຊອກຫາຂອງທ່ານ, ຜົນຮັບທີ່ກົງກັນທີ່ສຸດ ແລະ ເນື້ອຫາໃນໜ້າໄປຫາ Google ແລະ ທີມງານກວດສອບອາດເຫັນຂໍ້ມູນດັ່ງກ່າວເພື່ອນຳໄປໃຊ້ປັບປຸງຄຸນສົມບັດນີ້. ຄຸນສົມບັດນີ້ເປັນເວີຊັນທົດລອງ ແລະ ອາດເຮັດວຽກໄດ້ບໍ່ຖືກຕ້ອງສະເໝີໄປ.</translation>
 <translation id="3417390269491141648">ປຽບທຽບຕົວເລືອກແພັກເກດສຸຂະພາບຂອງຂ້ອຍ ແລະ ແຍກຄວາມແຕກຕ່າງທີ່ສຳຄັນລະຫວ່າງແພັກເກດເຫຼົ່ານັ້ນ</translation>
 <translation id="3421387094817716717">Elliptic Curve Public Key</translation>
 <translation id="3422248202833853650">ລອງອອກຈາກໂປຣແກຣມອື່ນເພື່ອຂະຫຍາຍຄວາມຈຳ.</translation>
@@ -1902,7 +1898,6 @@
 <translation id="4179515394835346607"><ph name="ROW_NAME" /> <ph name="ROW_CONTENT" /></translation>
 <translation id="4185037616931963178">ອັບເດດໝາຍເລກແກ້ໄຂບັນຫາຜູ້ເດີນທາງຢ່າງປອດໄພ</translation>
 <translation id="4186035307311647330">ເຊົາຕິດຕາມລາຄາ</translation>
-<translation id="4190446002599583608">ການຊອກຫາປະຫວັດທີ່ຂັບເຄື່ອນໂດຍ AI</translation>
 <translation id="4191334393248735295">ຄວາມຍາວ</translation>
 <translation id="4195459680867822611">ປຸ່ມເບິ່ງເຄັດລັບໃນການໃຊ້ Chrome, ເປີດນຳໃຊ້ເພື່ອສຶກສາກ່ຽວກັບຄຸນສົມບັດຕ່າງໆຂອງ Chrome</translation>
 <translation id="4195643157523330669">ເປີດຢູ່ໃນແຖບໃໝ່</translation>
@@ -1949,7 +1944,6 @@
 <translation id="424063167283213501">ບັນທຶກໝາຍເລກປະຈຳຕົວຜູ້ເດີນທາງທີ່ກວດສອບແລ້ວ</translation>
 <translation id="4241830393007970744">ຜູ້ໂຈມຕີຢູ່ເວັບໄຊທີ່ທ່ານພະຍາຍາມເຂົ້າເບິ່ງອາດຈະຫຼອກລວງໃຫ້ທ່ານຕິດຕັ້ງຊອບແວ ຫຼື ເປີດເຜີຍຂໍ້ມູນຕ່າງໆ ເຊັ່ນ: ລະຫັດຜ່ານ, ເບີໂທລະສັບ ຫຼື ໝາຍເລກບັດເຄຣດິດຂອງທ່ານ.</translation>
 <translation id="4242380780309416996">ຊອງ (ນ້ຳໜັກຫຼາຍ)</translation>
-<translation id="4242981939686657948">ສຳລັບວິທີທີ່ມີປະສິດທິພາບເພີ່ມຂຶ້ນເພື່ອຊອກຫາປະຫວັດການທ່ອງເວັບຂອງທ່ານ, ໃຫ້ເປີດ</translation>
 <translation id="4244926541863471678">ຟີມ</translation>
 <translation id="42481816218163154">ສ້າງກິດຈະວັດຕອນເຊົ້າ 15 ນາທີທີ່ຊ່ວຍໃຫ້ຕອນເຊົ້າຂອງຂ້ອຍດຳເນີນໄປໄດ້ຢ່າງລ່ຽນໄຫຼຫຼາຍຂຶ້ນ. ກວດສອບໃຫ້ໝັ້ນໃຈວ່າມັນຮວມເອົາການເຝິກສະຕິ</translation>
 <translation id="4250343410682686342">ໜ້າຈໍຄວາມຜິດພາດຂອງຊື້ກ່ອນຈ່າຍນຳຫຼັງເປີດຢູ່ລະດັບຄວາມສູງເຕັມໜ້າຈໍ.</translation>
@@ -2805,7 +2799,6 @@
 <translation id="5649053991847567735">ດາວ​ໂຫຼດ​ອັດ​ຕະ​ໂນ​ມັດ</translation>
 <translation id="5651323159439184939">ຖາດປ້ອນເຈ້ຍດ້ວຍເຟືອງດັນທາງຫຼັງ</translation>
 <translation id="5653681867130739344">ອັບເດດບັດປະຈຳຕົວໃນ Google Wallet ຢ່າງປອດໄພ</translation>
-<translation id="5653744563415531641">ບັນທຶກຂໍ້ມູນຂອງທ່ານ ແລະ ເຮັດສິ່ງຕ່າງໆໃຫ້ສຳເລັດໄວຂຶ້ນ ເຊັ່ນ: ການຕື່ມຂໍ້ມູນໃສ່ແບບຟອມໃນຜະລິດຕະພັນຕ່າງໆຂອງ Google. ທ່ານສາມາດ <ph name="MANAGE_WALLET_SETTINGS_LINK" /> ໃນລາຄາ <ph name="ACCOUNT" /> ໄດ້.</translation>
 <translation id="5654927323611874862">ID ລາຍງານການຂັດຂ້ອງທີ່ອັບໂຫຼດແລ້ວ:</translation>
 <translation id="5654965123204121933">URL ບໍ່ມີສະຕຣິງການປ່ຽນແທນ <ph name="SEARCH_TERMS_REPLACEMENT" />: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">ອີເມວ</translation>
@@ -3257,7 +3250,6 @@
 <translation id="6410264514553301377">ປ້ອນວັນທີໝົດອາຍຸ ແລະ CVC ສຳລັບ <ph name="CREDIT_CARD" /></translation>
 <translation id="6411107829285739505">A4x8</translation>
 <translation id="6412543105195503444">ກ່ອງໂຕ້ຕອບການອະນຸມັດຂອງພໍ່ແມ່</translation>
-<translation id="6413532517183895572">ຈັດການການຕັ້ງຄ່າ Wallet ຂອງທ່ານ</translation>
 <translation id="6415778972515849510">Chromium ສາມາດຊ່ວຍທ່ານປົກປ້ອງບັນຊີ Google ຂອງທ່ານ ແລະ ປ່ຽນລະຫັດຜ່າຂອງທ່ານໄດ້.</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">ໃຫ້ແນ່ໃຈວ່າຂໍ້ມູນທຸລະກິດ ຫຼື ຂໍ້ມູນສ່ວນຕົວທີ່ສຳຄັນໃດໆໄດ້ຖືກຈັດເກັບໄວ້ພາຍນອກແລ້ວ.</translation>
@@ -3763,7 +3755,6 @@
 <translation id="7308436126008021607">ການຊິ້ງຂໍ້ມູນໃນພື້ນຫຼັງ</translation>
 <translation id="7310392214323165548">ອຸປະກອນຈະຣີສະຕາດໃນອີກບໍ່ດົນນີ້</translation>
 <translation id="7311244614769792472">ບໍ່ພົບຜົນການຊອກຫາ</translation>
-<translation id="7311565174465466858"><ph name="TAB_KEY" /> ກົດ Tab ແລ້ວກົດ Enter ເພື່ອຖາມ <ph name="AI_ENGINE_NAME" /></translation>
 <translation id="7313107491291103073">ອົງການຂອງທ່ານປັກທຸງເວັບໄຊນີ້ວ່າມັນອາດລະເມີດນະໂຍບາຍໃດໜຶ່ງ.</translation>
 <translation id="7315372670898739748">ການລິ້ງບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່ໃນພາຍຫຼັງ</translation>
 <translation id="7316521168101843192">ກຳລັງບັນທຶກໄຟລ໌ໄປໃສ່ Microsoft OneDrive</translation>
@@ -3895,7 +3886,6 @@
 <translation id="7514365320538308">ດາວ​ໂຫລດ</translation>
 <translation id="7515998400212163428">Android</translation>
 <translation id="7516123895971374904">ອະນຸຍາດ VR ໃນເທື່ອນີ້</translation>
-<translation id="7517198908921983825">ແນະນຳໂດຍ Gemini · <ph name="SOURCES" /></translation>
 <translation id="7517414872996418597">Envelope C10</translation>
 <translation id="7518003948725431193">ບໍ່ພົບໜ້າ​​ເວັບສໍາລັບທີ່ຢູ່ເວັບ: <ph name="URL" /></translation>
 <translation id="7521387064766892559">JavaScript</translation>
@@ -4171,6 +4161,7 @@
 <translation id="7955105108888461311">ຖາມດ້ວຍຕົນເອງ</translation>
 <translation id="7956713633345437162">ບຸກມາກສ໌ມື​ຖື</translation>
 <translation id="7961015016161918242">ບໍ່​ເລີຍ</translation>
+<translation id="7961493403319780137">ສຶກສາເພີ່ມເຕີມກ່ຽວກັບຄຸນສົມບັດນີ້ - ຕື່ມຂໍ້ມູນລະຫັດການຢັ້ງຢືນຈາກ Gmail ໂດຍອັດຕະໂນມັດ</translation>
 <translation id="7962467575542381659">ເຄື່ອງຈັກແພລດຟອມ</translation>
 <translation id="796439090588610411">Chrome ຈະຢຸດການຢືນຢັນອີເມວນີ້ໂດຍອັດຕະໂນມັດໃນເວັບໄຊທີ່ຮອງຮັບ.</translation>
 <translation id="7966803981046576691">ປະເພດບັນຊີວຽກ</translation>
@@ -4391,7 +4382,6 @@
 <translation id="8350416046273606058">ທາງລັດບໍ່ສາມາດມີຍະຫວ່າງໄດ້: "<ph name="SHORTCUT_NAME" />"</translation>
 <translation id="8351131234907093545">ສ້າງບັນທຶກ</translation>
 <translation id="8352849934814541340">ຜູ້ເບິ່ງແຍງລະບົບຂອງອຸປະກອນນີ້ໄດ້ຕິດຕັ້ງແອັບພລິເຄຊັນສຳລັບຟັງຊັນເພີ່ມເຕີມແລ້ວ. ແອັບພລິເຄຊັນມີສິດເຂົ້າເຖິງບາງຂໍ້ມູນຂອງທ່ານ.</translation>
-<translation id="8353273112634584260">ຂັບເຄື່ອນໂດຍ Personal Intelligence ຈາກ Gemini. ລະບົບອາດກວດສອບຄຳຮ້ອງຂໍ, ຊື່ໜ້າ ແລະ URL ຂອງທ່ານເພື່ອປັບປຸງການຕື່ມຂໍ້ມູນອັດຕະໂນມັດທີ່ປັບປຸງໃຫ້ດີຂຶ້ນ.</translation>
 <translation id="8355270400102541638">ບໍລິບົດການຂັດຂ້ອງພາຍໃນເຄື່ອງ:</translation>
 <translation id="8362914115861174987">ແປພາສາເປັນ</translation>
 <translation id="8363502534493474904">ກຳລັງປິດໂໝດເຮືອບິນ</translation>
@@ -4571,7 +4561,6 @@
 <translation id="8699041776323235191">ອຸປະກອນ HID</translation>
 <translation id="8699985386408839112">Envelope Kaku 1</translation>
 <translation id="8702965365666568344">ເທັບສຳລັບຍຶດຕິດ</translation>
-<translation id="8703242769654966101">ເປີດການນຳໃຊ້ Pix ໃນ Wallet</translation>
 <translation id="8703372953981978786">ລິ້ງນີ້ໃຊ້ບໍ່ໄດ້</translation>
 <translation id="8703575177326907206">ການເຊື່ອມຕໍ່ຂອງທ່ານກັບ <ph name="DOMAIN" /> ບໍ່ໄດ້ຖືກໃສ່ລະຫັດໄວ້.</translation>
 <translation id="8705331520020532516">ເລກລໍາດັບ</translation>
@@ -4739,7 +4728,6 @@
 <translation id="9001074447101275817">ພຣັອກຊີ <ph name="DOMAIN" /> ຮຽກຮ້ອງໃຫ້ມີຊື່ຜູ້ໃຊ້ ແລະລະຫັດຜ່ານ.</translation>
 <translation id="9001963517402879850">ໂດດ​!</translation>
 <translation id="9002677862950442746">ລະຫັດການຢັ້ງຢືນ: <ph name="OTP" /></translation>
-<translation id="9003263770394939629">ແນະນຳໂດຍ Gemini. ຈັດການການຕື່ມຂໍ້ມູນອັດຕະໂນມັດທີ່ປັບປຸງໃຫ້ດີຂຶ້ນໃນການຕັ້ງຄ່າ.</translation>
 <translation id="9003639428623471314">Envelope Kahu</translation>
 <translation id="9004367719664099443">ເຊດຊັນ VR ພວມດຳເນີນຢູ່</translation>
 <translation id="9005998258318286617">ໂຫຼດເອກະສານ PDF ບໍ່ສຳເລັດ.</translation>
@@ -4758,7 +4746,6 @@
 <translation id="9027531288681624875">ເພື່ອອອກຈາກໂໝດເຕັມຈໍ, ໃຫ້ກົດ |<ph name="ACCELERATOR" />| ຄ້າງໄວ້</translation>
 <translation id="9030785788945687215">Gmail</translation>
 <translation id="9035022520814077154">ຄວາມປອດໄພຂັດຂ້ອງ</translation>
-<translation id="9035699147763101514">ຂັບເຄື່ອນໂດຍ Personal Intelligence ຈາກ Gemini. ຈັດການຕົວເລືອກຂອງທ່ານໄດ້ໃນການຕັ້ງຄ່າ.</translation>
 <translation id="9035824888276246493">ບັນທຶກລະຫັດຄວາມປອດໄພ</translation>
 <translation id="9036306139374661733">ອະນຸຍາດໄມໂຄຣໂຟນບໍ?</translation>
 <translation id="9036484080057916082">ລາຍຊື່ເວລາໃບຮັບຮອງທີ່ໄດ້ເຊັນ</translation>
@@ -4913,7 +4900,6 @@
 <translation id="961930410699694996">ຂະນະນີ້ອະນຸຍາດສະຖານທີ່ແລ້ວ</translation>
 <translation id="962484866189421427">ເນື້ອຫານີ້ອາດຈະພະຍາຍາມຕິດຕັ້ງແອັບຫຼອກລວງທີ່ປອມເປັນສິ່ງອື່ນ ຫຼື ເກັບກຳຂໍ້ມູນທີ່ອາດຈະຖືກໃຊ້ເພື່ອຕິດຕາມທ່ານ. <ph name="BEGIN_LINK" />ຢືນຢັນການສະແດງ<ph name="END_LINK" /></translation>
 <translation id="963734905955638680">ໂດຍອີງຕາມກົດໝາຍໃນພາກພື້ນຂອງທ່ານ, Chromium ຈະຂໍໃຫ້ທ່ານເລືອກໂປຣແກຣມຊອກຫາເລີ່ມຕົ້ນຂອງທ່ານ. ໂປຣແກຣມຊອກຫາເຫຼົ່ານີ້ໄດ້ຮັບຄວາມນິຍົມໃນພາກພື້ນຂອງທ່ານ ແລະ ສະແດງແບບສຸ່ມລຳດັບ.</translation>
-<translation id="963837307749850257">ຜູ້ໃຊ້ທັງໝົດ</translation>
 <translation id="963988220224168636">ເພີ່ມໝາຍເລກແກ້ໄຂບັນຫາຜູ້ເດີນທາງໃສ່ໃນ Google Wallet ຢ່າງປອດໄພ</translation>
 <translation id="964050462028070434">ຈັດການລະຫັດຜ່ານ ແລະ ກະແຈຜ່ານ…</translation>
 <translation id="964681140808832181">ແມ່ນ, ຂ້ອຍຕ້ອງການຍົກເລີກ</translation>

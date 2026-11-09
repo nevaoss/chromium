@@ -122,7 +122,7 @@ class VIZ_SERVICE_EXPORT SkiaRenderer
   void EnsureScissorTestDisabled() override;
   void CopyDrawnRenderPass(const copy_output::RenderPassGeometry& geometry,
                            std::unique_ptr<CopyOutputRequest> request) override;
-  void DidChangeVisibility() override;
+  void DidChangeHasBackBuffers() override;
   void SetDelegatedInkPointRendererSkiaForTest(
       std::unique_ptr<DelegatedInkPointRendererSkia> renderer) override;
   bool SupportsBGRA() const override;
@@ -194,6 +194,8 @@ class VIZ_SERVICE_EXPORT SkiaRenderer
       const SkImage* image,
       const gfx::RectF& valid_texel_bounds,
       DrawQuadParams* params) const;
+  gfx::RectF GetRenderPassLogicalBounds(
+      AggregatedRenderPassId render_pass_id) const;
 
   bool MustFlushBatchedQuads(const DrawQuad* new_quad,
                              const DrawRPDQParams* rpdq_params,
@@ -223,11 +225,6 @@ class VIZ_SERVICE_EXPORT SkiaRenderer
                        const DrawRPDQParams* rpdq_params,
                        SkPaint* paint,
                        DrawQuadParams* params);
-
-  void DrawPaintOpBuffer(const cc::PaintOpBuffer* buffer,
-                         const std::optional<SkColor4f>& clear_color,
-                         const TileDrawQuad* quad,
-                         const DrawQuadParams* params);
 
   // RenderPass draw quads can only be batch when they aren't bypassed and
   // don't have any advanced effects (eg. filter).
@@ -549,8 +546,6 @@ class VIZ_SERVICE_EXPORT SkiaRenderer
   std::unordered_set<OverlayLock, OverlayLockHash, OverlayLockKeyEqual>
       awaiting_release_overlay_locks_;
 #endif  // BUILDFLAG(IS_APPLE)
-
-  const bool is_using_raw_draw_;
 
   // Returns true if we need to push a color conversion layer to correctly draw
   // |render_pass|'s contents.

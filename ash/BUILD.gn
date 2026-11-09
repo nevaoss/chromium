@@ -3686,6 +3686,7 @@ test("ash_unittests") {
     "accessibility/magnifier/magnifier_utils_unittest.cc",
     "accessibility/magnifier/partial_magnifier_controller_unittest.cc",
     "accessibility/mouse_keys/mouse_keys_unittest.cc",
+    "accessibility/mouse_locator/mouse_shake_detector_unittest.cc",
     "accessibility/sticky_keys/sticky_keys_overlay_unittest.cc",
     "accessibility/sticky_keys/sticky_keys_unittest.cc",
     "accessibility/switch_access/point_scan_controller_unittest.cc",
@@ -4977,6 +4978,25 @@ static_library("interactive_ui_test_support") {
     "//ui/base",
     "//ui/base:test_support",
     "//ui/gl:test_support",
+  ]
+}
+
+source_set("interactive_ui_tests") {
+  testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+  sources = [ "drag_drop/drag_drop_interactive_uitest.cc" ]
+  deps = [
+    ":ash",
+    ":interactive_ui_test_support",
+    ":test_support",
+    "//base",
+    "//testing/gtest",
+    "//ui/aura",
+    "//ui/base",
+    "//ui/base:test_support",
+    "//ui/base/dragdrop/mojom",
+    "//ui/compositor",
+    "//ui/views",
   ]
 }
 

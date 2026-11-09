@@ -26,6 +26,7 @@
 #include "components/autofill/core/browser/payments/payments_churned_users_metrics.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/messages/android/message_enums.h"
+#include "components/signin/public/identity_manager/account_info.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -134,17 +135,25 @@ class PaymentsChurnedUsersUiDelegateAndroidTest
   }
 
   void ExpectShowResultRecorded(
-      autofill_metrics::PaymentsChurnedUsersBubbleShowResult show_result,
+      autofill_metrics::PaymentsChurnedUsersUiShowResult show_result,
       base::HistogramBase::Count32 expected_count = 1) {
     histogram_tester_.ExpectUniqueSample(
-        "Autofill.PaymentsChurnedUsersBubble.ShowResult", show_result,
+        "Autofill.PaymentsChurnedUsersUi.ShowResult", show_result,
         expected_count);
   }
 
   void ExpectResultRecorded(PaymentsUiClosedReason closed_reason,
                             base::HistogramBase::Count32 expected_count = 1) {
     histogram_tester_.ExpectUniqueSample(
-        "Autofill.PaymentsChurnedUsersBubble.Result", closed_reason,
+        "Autofill.PaymentsChurnedUsersUi.Result", closed_reason,
+        expected_count);
+  }
+
+  void ExpectResultBucketCount(
+      PaymentsUiClosedReason closed_reason,
+      base::HistogramBase::Count32 expected_count = 1) {
+    histogram_tester_.ExpectBucketCount(
+        "Autofill.PaymentsChurnedUsersUi.Result", closed_reason,
         expected_count);
   }
 
@@ -171,8 +180,11 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
       std::move(mock_bridge));
 
-  delegate()->ShowPaymentsChurnedUsersUI(
-      /*closed_callback=*/base::DoNothing());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                         /*closed_callback=*/base::DoNothing());
+
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown);
 }
 
 TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
@@ -191,8 +203,11 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
       std::move(mock_bridge));
 
-  delegate()->ShowPaymentsChurnedUsersUI(
-      /*closed_callback=*/base::DoNothing());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                         /*closed_callback=*/base::DoNothing());
+
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown);
 }
 
 TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
@@ -204,8 +219,10 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
       closed_callback;
   EXPECT_CALL(closed_callback, Run(PaymentsUiClosedReason::kUnknown));
 
-  delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(), closed_callback.Get());
 
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown, 0);
   ExpectResultRecorded(PaymentsUiClosedReason::kUnknown, 0);
 }
 
@@ -227,10 +244,10 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
       closed_callback;
 
-  delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(), closed_callback.Get());
 
   ExpectShowResultRecorded(
-      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::kShown);
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown);
 
   ASSERT_TRUE(shown_message_model);
   EXPECT_EQ(shown_message_model->GetType(),
@@ -259,7 +276,7 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
       closed_callback;
 
-  delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(), closed_callback.Get());
 
   ASSERT_TRUE(shown_message_model);
   EXPECT_CALL(closed_callback, Run(PaymentsUiClosedReason::kCancelled));
@@ -285,7 +302,8 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
         messages::DismissReason::SCOPE_DESTROYED}) {
     base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
         closed_callback;
-    delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+    delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                           closed_callback.Get());
     ASSERT_TRUE(shown_message_model);
     EXPECT_CALL(closed_callback, Run(PaymentsUiClosedReason::kNotInteracted));
     EXPECT_CALL(*mock_snackbar_controller(), Show).Times(0);
@@ -306,7 +324,8 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
 
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
       initial_closed_callback;
-  delegate()->ShowPaymentsChurnedUsersUI(initial_closed_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                         initial_closed_callback.Get());
   ASSERT_TRUE(shown_message_model);
 
   // A second request while the first message is still showing must not trigger
@@ -315,10 +334,11 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
       second_closed_callback;
   EXPECT_CALL(second_closed_callback, Run(PaymentsUiClosedReason::kUnknown));
-  delegate()->ShowPaymentsChurnedUsersUI(second_closed_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                         second_closed_callback.Get());
 
   ExpectShowResultRecorded(
-      autofill_metrics::PaymentsChurnedUsersBubbleShowResult::kShown);
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown);
 
   EXPECT_CALL(initial_closed_callback, Run(PaymentsUiClosedReason::kAccepted));
   EXPECT_CALL(*mock_snackbar_controller(),
@@ -337,8 +357,8 @@ TEST_F(
   EXPECT_CALL(*mock_message_controller(), Show)
       .WillOnce(MoveArg<0>(&shown_message_model));
 
-  delegate()->ShowPaymentsChurnedUsersUI(
-      /*closed_callback=*/base::DoNothing());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                         /*closed_callback=*/base::DoNothing());
   ASSERT_TRUE(shown_message_model);
 
   base::OnceClosure snackbar_action_callback;
@@ -376,8 +396,8 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
   delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
       std::move(mock_bridge));
 
-  delegate()->ShowPaymentsChurnedUsersUI(
-      /*closed_callback=*/base::DoNothing());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                         /*closed_callback=*/base::DoNothing());
 }
 
 TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
@@ -405,7 +425,8 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
 
     base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
         closed_callback;
-    delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+    delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                           closed_callback.Get());
     ASSERT_TRUE(bridge_callback);
     ASSERT_TRUE(show_confirmation_callback);
 
@@ -419,6 +440,10 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
         .WillOnce(RunOnceClosure<1>());
     std::move(show_confirmation_callback).Run();
   }
+
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown, 2);
+  ExpectResultRecorded(PaymentsUiClosedReason::kAccepted, 2);
 }
 
 TEST_F(
@@ -427,9 +452,10 @@ TEST_F(
   InitFeatureWithTreatmentArm(
       AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity);
 
-  for (PaymentsUiClosedReason reason : {PaymentsUiClosedReason::kCancelled,
-                                        PaymentsUiClosedReason::kNotInteracted,
-                                        PaymentsUiClosedReason::kUnknown}) {
+  for (PaymentsUiClosedReason reason :
+       {PaymentsUiClosedReason::kCancelled,
+        PaymentsUiClosedReason::kNotInteracted}) {
+    base::OnceCallback<void(PaymentsUiClosedReason)> bridge_callback;
     auto mock_bridge =
         std::make_unique<MockAutofillPaymentsChurnedUsersBottomSheetBridge>();
     EXPECT_CALL(
@@ -437,18 +463,55 @@ TEST_F(
         RequestShowContent(
             AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _,
             _))
-        .WillOnce(RunOnceCallback<1>(reason));
+        .WillOnce(MoveArg<1>(&bridge_callback));
 
     delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
         std::move(mock_bridge));
 
     base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
         closed_callback;
+    delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(),
+                                           closed_callback.Get());
+    ASSERT_TRUE(bridge_callback);
+
     EXPECT_CALL(closed_callback, Run(reason));
     EXPECT_CALL(*mock_snackbar_controller(), Show).Times(0);
 
-    delegate()->ShowPaymentsChurnedUsersUI(closed_callback.Get());
+    std::move(bridge_callback).Run(reason);
+
+    ExpectResultBucketCount(reason, 1);
   }
+
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown, 2);
+}
+
+TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
+       ShowPaymentsChurnedUsersUI_BottomSheetArm_NotShownDoesNotLogMetrics) {
+  InitFeatureWithTreatmentArm(
+      AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity);
+
+  auto mock_bridge =
+      std::make_unique<MockAutofillPaymentsChurnedUsersBottomSheetBridge>();
+  EXPECT_CALL(
+      *mock_bridge,
+      RequestShowContent(
+          AutofillEnableResurrectingPaymentsUsersTreatmentArm::kSecurity, _, _))
+      .WillOnce(RunOnceCallback<1>(PaymentsUiClosedReason::kUnknown));
+
+  delegate()->SetAutofillPaymentsChurnedUsersBottomSheetBridgeForTesting(
+      std::move(mock_bridge));
+
+  base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
+      closed_callback;
+  EXPECT_CALL(closed_callback, Run(PaymentsUiClosedReason::kUnknown));
+  EXPECT_CALL(*mock_snackbar_controller(), Show).Times(0);
+
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(), closed_callback.Get());
+
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown, 0);
+  ExpectResultRecorded(PaymentsUiClosedReason::kUnknown, 0);
 }
 
 TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
@@ -477,16 +540,21 @@ TEST_F(PaymentsChurnedUsersUiDelegateAndroidTest,
 
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
       first_callback;
-  delegate()->ShowPaymentsChurnedUsersUI(first_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(), first_callback.Get());
 
   // Second request while first is showing is ignored, and returns kUnknown.
   base::MockCallback<base::OnceCallback<void(PaymentsUiClosedReason)>>
       second_callback;
   EXPECT_CALL(second_callback, Run(PaymentsUiClosedReason::kUnknown));
-  delegate()->ShowPaymentsChurnedUsersUI(second_callback.Get());
+  delegate()->ShowPaymentsChurnedUsersUI(AccountInfo(), second_callback.Get());
+
+  ExpectShowResultRecorded(
+      autofill_metrics::PaymentsChurnedUsersUiShowResult::kShown, 1);
 
   EXPECT_CALL(first_callback, Run(PaymentsUiClosedReason::kAccepted));
   std::move(bridge_callback).Run(PaymentsUiClosedReason::kAccepted);
+
+  ExpectResultRecorded(PaymentsUiClosedReason::kAccepted, 1);
 
   EXPECT_CALL(*mock_snackbar_controller(),
               Show(AutofillSnackbarType::kResurrectChurnedUsers, _));

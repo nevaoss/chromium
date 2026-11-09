@@ -24,6 +24,7 @@ enum class EntryPoint;
 class AuthenticationService;
 class Browser;
 class GeminiContainerMediatorEventHandler;
+class GeminiSharedTabsDelegate;
 @class GeminiConfiguration;
 @class GeminiGatewayManager;
 @class GeminiPageContext;
@@ -32,7 +33,6 @@ class GeminiContainerMediatorEventHandler;
 @protocol BWGGatewayProtocol;
 @protocol GeminiCommands;
 @protocol GeminiContainerMediatorDelegate;
-@protocol GeminiSharedTabsDelegate;
 @protocol GeminiZeroStateConsumer;
 
 // Mediator for the Gemini container.
@@ -43,9 +43,6 @@ class GeminiContainerMediatorEventHandler;
 
 // Delegate notified of Gemini actuation task transitions.
 @property(nonatomic, weak) id<GeminiContainerMediatorDelegate> delegate;
-
-// Delegate for shared tabs in a Gemini session.
-@property(nonatomic, weak) id<GeminiSharedTabsDelegate> sharedTabsDelegate;
 
 // Delegate for handling events from the mediator. Temporarily used by
 // `GeminiBrowserAgent` to support pre-migration logic.
@@ -79,14 +76,18 @@ class GeminiContainerMediatorEventHandler;
           authenticationService:(AuthenticationService*)authService
                    eventHandler:
                        (GeminiContainerMediatorEventHandler*)eventHandler
+             sharedTabsDelegate:(GeminiSharedTabsDelegate*)sharedTabsDelegate
     NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
 
 // TODO(crbug.com/535579970): Move to private after migration is complete.
-// Creates and returns the GeminiConfiguration for the active web state.
-- (GeminiConfiguration*)createGeminiConfigurationForActiveWebState:
-    (GeminiStartupState*)startupState;
+// Creates and returns the GeminiConfiguration for the active web state, using
+// `pageContext` as its initial page context (e.g. an already generated full
+// page context). Falls back to the partial page context when nil.
+- (GeminiConfiguration*)
+    createGeminiConfigurationForActiveWebState:(GeminiStartupState*)startupState
+                                   pageContext:(GeminiPageContext*)pageContext;
 
 // TODO(crbug.com/535579970): Move to private after migration is complete.
 // Applies user preferences (e.g. page content sharing setting) to page context.
@@ -137,6 +138,10 @@ class GeminiContainerMediatorEventHandler;
 // Disconnects raw pointers owned by the mediator and dismisses handlers.
 // Handles all the cleanup that needs to happen before mediator dealloc.
 - (void)disconnect;
+
+// Updates the mediator and provider state with a new `startupState` when the
+// floaty is already invoked.
+- (void)updateWithStartupState:(GeminiStartupState*)startupState;
 
 // Propagates active page context and shared tabs from `sharedTabsDelegate` to
 // the provider.

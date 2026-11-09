@@ -22,14 +22,13 @@ static_library("external_data") {
     "user_cloud_external_data_manager.h",
   ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   deps = [
     "//ash/constants",
     "//base",
     "//chrome/browser/ash/policy/core",
     "//chrome/browser/ash/policy/handlers",
     "//chrome/browser/ash/profiles",
+    "//chrome/browser/policy",
     "//chrome/browser/profiles:profile",
     "//chromeos/ash/components/policy/device_local_account",
     "//chromeos/ash/components/settings",

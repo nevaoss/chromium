@@ -39,6 +39,7 @@
 #include "chrome/browser/gcm/gcm_profile_service_factory.h"
 #include "chrome/browser/gcm/instance_id/instance_id_profile_service_factory.h"
 #include "chrome/browser/net/system_network_context_manager.h"
+#include "chrome/browser/preloading/scoped_prewarm_feature_list.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/profiles/profiles_state.h"
@@ -239,6 +240,11 @@ class SyncTest::ClosedBrowserObserver : public BrowserCollectionObserver {
 };
 #endif
 
+class SyncTest::ScopedPrewarmDisabler {
+  test::ScopedPrewarmFeatureList prewarm_feature_list_{
+      test::ScopedPrewarmFeatureList::PrewarmState::kDisabled};
+};
+
 SyncTest::SyncClientState::SyncClientState() = default;
 SyncTest::SyncClientState::~SyncClientState() = default;
 SyncTest::SyncClientState::SyncClientState(SyncClientState&&) = default;
@@ -254,7 +260,8 @@ SyncTest::SyncTest(TestType test_type)
       test_construction_time_(base::Time::Now()),
       num_clients_(GetNumClients(test_type_)),
       sync_run_loop_timeout_(FROM_HERE, TestTimeouts::action_max_timeout()),
-      previous_profile_(nullptr) {
+      previous_profile_(nullptr),
+      prewarm_disabler_(std::make_unique<ScopedPrewarmDisabler>()) {
   // Any RunLoop timeout will by default result in test failure.
   sync_run_loop_timeout_.SetAddGTestFailureOnTimeout();
 
@@ -518,7 +525,7 @@ std::vector<raw_ptr<Profile, VectorExperimental>> SyncTest::GetAllProfiles() {
     // Profile can be null if it was destroyed earlier (e.g. in
     // OnProfileWillBeDestroyed).
     if (client.profile) {
-      profiles.push_back(client.profile);
+      profiles.push_back(client.profile.get());
     }
   }
   return profiles;
@@ -953,11 +960,18 @@ void SyncTest::TearDownOnMainThread() {
     fake_server_.reset();
   }
 
-  for (const SyncClientState& client : clients_) {
+  for (SyncClientState& client : clients_) {
     Profile* profile = client.profile;
     // Profile could be removed earlier.
     if (profile) {
       profile->RemoveObserver(this);
+
+      // Clear `harness` and `profile` now since `this` is no longer observing
+      // `profile` (so `OnProfileWillBeDestroyed()` will not be called), and
+      // closing the browsers below may destroy `profile` before `clients_` is
+      // cleared.
+      client.harness.reset();
+      client.profile = nullptr;
 
 #if BUILDFLAG(IS_ANDROID)
       // In Android browser tests, the Profile and thus the SyncService does not

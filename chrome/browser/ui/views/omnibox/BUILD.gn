@@ -154,6 +154,7 @@ source_set("impl") {
     "//chrome/browser/ui/webui/top_chrome",
     "//chrome/browser/user_education",
     "//chrome/common:buildflags",
+    "//components/input",
     "//components/lens:features",
     "//components/omnibox/browser",
     "//components/omnibox/common",
@@ -341,6 +342,7 @@ source_set("browser_tests") {
     "//testing/gtest",
     "//ui/events:test_support",
     "//ui/shell_dialogs:test_support",
+    "//ui/views",
   ]
 
   if (use_ozone) {

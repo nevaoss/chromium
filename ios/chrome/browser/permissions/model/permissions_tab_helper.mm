@@ -26,7 +26,6 @@
 ContentSettingsType ContentSettingsTypeForPermission(
     web::Permission permission) {
   switch (permission) {
-    // TODO(crbug.com/552561353): Add support for geolocation permissions.
     case web::PermissionCamera:
       return ContentSettingsType::MEDIASTREAM_CAMERA;
     case web::PermissionMicrophone:
@@ -257,7 +256,7 @@ void PermissionsTabHelper::OnContentSettingChanged(
       continue;
     }
     ContentSetting setting = settings_map->GetContentSetting(url, url, type);
-    if (setting == CONTENT_SETTING_BLOCK) {
+    if (setting != CONTENT_SETTING_ALLOW) {
       // Setting `PermissionStateNotAccessible` maps to
       // `WKMediaCaptureStateNone` on `WKWebView`, which calls
       // `WebPageProxy::stopMediaCapture` and

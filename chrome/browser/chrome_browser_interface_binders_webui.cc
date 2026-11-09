@@ -89,6 +89,7 @@
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
+#include "chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome.mojom.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_ui.h"
 #include "components/search/ntp_features.h"
@@ -465,7 +466,15 @@ void PopulateTrustedChromeWebUIFrameInterfaceBrokers(
 
 #if !BUILDFLAG(IS_ANDROID)
   PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(registry);
+#else
+  PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsAndroid(registry);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(ENABLE_WEBUI_NTP)
+  registry.ForWebUI<NewTabPageThirdPartyUI>()
+      .Add<most_visited::mojom::MostVisitedPageHandlerFactory>()
+      .Add<new_tab_page_third_party::mojom::PageHandlerFactory>();
+#endif  // BUILDFLAG(ENABLE_WEBUI_NTP)
 
   registry.AddGlobal<color_change_listener::mojom::PageHandler>(
       base::BindRepeating(&BindColorChangeListener));

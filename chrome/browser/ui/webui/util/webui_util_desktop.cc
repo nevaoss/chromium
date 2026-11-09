@@ -65,7 +65,7 @@ const std::string_view* GetWebUIMetricsHostname(const GURL& webui_url) {
           {chrome::kChromeUIThemeHost, "Theme"},
           {chrome::kChromeUITopChromeDomain, "TopChrome"},
       });
-  return base::FindOrNull(kWebUIHostnames, webui_url.GetHost());
+  return base::FindOrNull(kWebUIHostnames, webui_url.host());
 }
 
 }  // namespace
@@ -239,9 +239,7 @@ base::flat_map<GURL, int> GetWebUIResourceUrlToCodeCacheMap() {
         kSidePanelReadingListCodeCacheResources, url_to_code_cache_pairs);
 
     // chrome://webui_toolbar.top-chrome
-    if (features::IsWebUIToolbarEnabled() ||
-        base::FeatureList::IsEnabled(
-            features::kWebUIToolbarProcessOverheadExperiment)) {
+    if (features::IsWebUIToolbarEnabled()) {
       AppendWebUIResourceURLToCodeCachePairs(
           content::kChromeUIScheme, chrome::kChromeUIWebUIToolbarHost,
           kWebuiToolbarCodeCacheResources, url_to_code_cache_pairs);

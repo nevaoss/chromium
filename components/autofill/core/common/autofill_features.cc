@@ -859,12 +859,6 @@ BASE_FEATURE(kAutofillGreekRegexes, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillHideSuggestionsOnFocusChange,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Controls whether `AutofillPopupHideHelper` ignores frame resize events
-// when the `WebContents` size is unchanged.
-// TODO(crbug.com/545556982): Remove after confirming there is no regression.
-BASE_FEATURE(kAutofillIgnoreUnchangedFrameResizes,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, corrects missclassification of NAME_LAST as NAME_LAST_SECOND in
 // an absence of NAME_LAST_FIRST.
 // TODO(crbug.com/400995432): Clean-up when launched.
@@ -932,6 +926,12 @@ BASE_FEATURE(kAutofillMoveSmallFormLogicToClient,
 BASE_FEATURE(kAutofillNewSuggestionGeneration,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, only single-field forms can be considered search forms (in
+// addition to matching `kUrlSearchActionRe` on the form's action URL).
+// TODO(crbug.com/566051797): Clean up when launched.
+BASE_FEATURE(kAutofillOnlyConsiderSingleFieldFormsAsSearchForms,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, `IsNormalizedNameVariantOf()` uses a linear-time greedy
 // algorithm instead of an exponential one that generates all name variants.
 // TODO(crbug.com/479905438) Remove once launched.
@@ -979,13 +979,6 @@ BASE_FEATURE(kAutofillPolicyControlledFeatureAutofill,
 // TODO(crbug.com/40178859): Enable this feature.
 BASE_FEATURE(kAutofillPolicyControlledFeatureManualText,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If the feature is enabled, Autofill popups perform additional check to
-// detect if they are obscured by top-level HTML form popups (e.g color picker).
-// If so, Autofill Popup won't be shown.
-// TODO(crbug.com/417052041): Remove when launched.
-BASE_FEATURE(kAutofillPopupCheckHtmlFormPopupOverlap,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If the feature is enabled, before triggering suggestion acceptance, the row
 // view checks that a substantial portion of its content was visible for some

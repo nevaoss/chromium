@@ -20,8 +20,10 @@ source_set("actor") {
     "actor_actions_runner.h",
     "actor_commit_deferring_condition.h",
     "actor_critical_action_logger.h",
+    "actor_enterprise_policy_checker.h",
     "actor_keyed_service.h",
     "actor_keyed_service_factory.h",
+    "actor_keyed_service_proto_wrapper.h",
     "actor_metrics.h",
     "actor_navigation_throttle.h",
     "actor_proto_conversion.h",
@@ -130,8 +132,10 @@ source_set("impl") {
     "actor_actions_runner.cc",
     "actor_commit_deferring_condition.cc",
     "actor_critical_action_logger.cc",
+    "actor_enterprise_policy_checker.cc",
     "actor_keyed_service.cc",
     "actor_keyed_service_factory.cc",
+    "actor_keyed_service_proto_wrapper.cc",
     "actor_metrics.cc",
     "actor_navigation_throttle.cc",
     "actor_proto_conversion.cc",
@@ -264,11 +268,13 @@ source_set("impl") {
     "//components/actor/core:logging",
     "//components/affiliations/core/browser:affiliations",
     "//components/affiliations/core/browser/domain_matching",
+    "//components/autofill/content/browser",
     "//components/autofill/core/browser",
     "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/bookmarks/browser",
     "//components/content_settings/core/common",
     "//components/critical_actions/core/browser",
+    "//components/enterprise/buildflags",
     "//components/favicon/core",
     "//components/feature_engagement/public",
     "//components/history/core/browser",
@@ -301,8 +307,6 @@ source_set("impl") {
     "//ui/gfx/codec",
     "//url",
   ]
-
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 
   if (is_android) {
     deps += [
@@ -356,7 +360,6 @@ source_set("actor_tab_data_impl") {
   deps = [
     ":actor",
     "//base",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/actor/ui:dom_node_geometry",
     "//chrome/browser/ui/tabs:tabs_public",
     "//chrome/common",
@@ -429,6 +432,7 @@ source_set("test_support") {
   deps = [ ":actor" ]
 
   public_deps = [
+    ":impl",
     "//base",
     "//chrome/browser/actor/ui:event_dispatcher",
     "//chrome/browser/actor/ui:test_support",
@@ -444,6 +448,8 @@ source_set("unit_tests") {
     "actor_actions_runner_unittest.cc",
     "actor_commit_deferring_condition_unittest.cc",
     "actor_critical_action_logger_unittest.cc",
+    "actor_enterprise_policy_checker_unittest.cc",
+    "actor_keyed_service_proto_wrapper_unittest.cc",
     "actor_keyed_service_unittest.cc",
     "actor_metrics_unittest.cc",
     "actor_navigation_throttle_unittest.cc",
@@ -487,6 +493,7 @@ source_set("unit_tests") {
     "//chrome/browser/autofill/actor",
     "//chrome/browser/bookmarks",
     "//chrome/browser/critical_actions",
+    "//chrome/browser/glic",
     "//chrome/browser/history",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/optimization_guide:test_support",
@@ -503,6 +510,7 @@ source_set("unit_tests") {
     "//components/history/core/test",
     "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/optimization_guide/proto:optimization_guide_proto_fuzzable",
+    "//components/policy/core/common:test_support",
     "//components/tabs:test_support",
     "//components/ukm:test_support",
     "//testing/gtest",
@@ -548,7 +556,10 @@ source_set("tools_test_support") {
     "//testing/gtest",
   ]
   if (is_android) {
-    deps += [ "//chrome/test:test_support_ui_android" ]
+    deps += [
+      "//chrome/browser/actor/android",
+      "//chrome/test:test_support_ui_android",
+    ]
   } else {
     deps += [ "//chrome/test:test_support_ui" ]
   }
@@ -579,6 +590,7 @@ source_set("browser_tests") {
     "//chrome/browser/affiliations",
     "//chrome/browser/autofill/actor",
     "//chrome/browser/glic",
+    "//chrome/browser/glic/actor",
     "//chrome/browser/glic/actor:browser_tests",
     "//chrome/browser/glic/test_support",
     "//chrome/browser/lookalikes:test_support",
@@ -591,11 +603,6 @@ source_set("browser_tests") {
     "//chrome/test:test_support",
     "//chrome/test/base:chrome_test_utils",
     "//chrome/test/base:testing_browser_process",
-  ]
-  if (!is_android) {
-    deps += [ "//chrome/test/base:test_browser_window" ]
-  }
-  deps += [
     "//components/affiliations/core/browser:test_support",
     "//components/favicon/core/test:test_support",
     "//components/javascript_dialogs",

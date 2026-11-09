@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">Споделяне на тази страница</translation>
 <translation id="230115972905494466">Няма намерени съвместими устройства</translation>
 <translation id="2305798319182970276">Изтрийте историята си с едно докосване на бутон</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> се нуждае от разрешение за достъп до периферните въвеждащи устройства (HID) за този сайт.</translation>
 <translation id="2316129865977710310">Не, благодаря</translation>
 <translation id="232137538351753795">Прекарайте пръст от левия край, за да се върнете назад</translation>
 <translation id="2323763861024343754">Данни от сайтове</translation>
 <translation id="2327445548174191329">От <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Запазване на страницата като…</translation>
 <translation id="2328474416100889417">Всички хора незабавно ще загубят достъп до групата раздели „<ph name="GROUP_NAME" />“ и всички връзки към поканата ще бъдат изключени</translation>
+<translation id="2328773543844041445">Автоматично разгъване на разделите при задържане на курсора на мишката</translation>
 <translation id="2330186936255788117">Още отметки</translation>
 <translation id="2330243730505117832">Долният лист за избор на устройство е затворен.</translation>
 <translation id="2332515770639153015">Функцията за подобрена защита от Безопасно сърфиране е включена</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">Долният лист за включване в Chrome Finds е отворен на пълната височина</translation>
 <translation id="7612619742409846846">Влезли сте в Google като</translation>
 <translation id="7612989789287281429">Влизате в профила си…</translation>
+<translation id="7617512710641355143">Chrome се управлява</translation>
 <translation id="7619072057915878432">Изтеглянето на „<ph name="FILE_NAME" />“ не бе успешно поради грешки в мрежата.</translation>
 <translation id="7626032353295482388">Добре дошли в Chrome</translation>
 <translation id="7628417132421583481">Към Мениджър на пароли</translation>

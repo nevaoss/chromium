@@ -562,7 +562,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
            options.session_allows_drag_and_drop);
 
 #if !BUILDFLAG(IS_ANDROID)
-  auto composebox_config = ntp_composebox::FeatureConfig::Get().config;
+  const auto& composebox_config = ntp_composebox::FeatureConfig::Get().config;
   dict.Set("searchboxShowComposeAnimation",
            profile->GetPrefs()->GetInteger(
                prefs::kNtpComposeButtonShownCountPrefName) <
@@ -1003,29 +1003,6 @@ SearchboxHandler::CreateAutocompleteMatch(
       searchbox::mojom::AutocompleteMatch::New();
   mojom_match->is_hidden = match.ShouldHideBasedOnStarterPack(turl_service);
   mojom_match->allowed_to_be_default_match = match.allowed_to_be_default_match;
-  // Resolve `swap_contents_and_description` here so the UI can always render
-  // `contents` as the primary text and `description` as the secondary text.
-  const bool swap = match.swap_contents_and_description;
-  const std::u16string& primary_text =
-      swap ? match.description : match.contents;
-  const ACMatchClassifications& primary_class =
-      swap ? match.description_class : match.contents_class;
-  const std::u16string& secondary_text =
-      swap ? match.contents : match.description;
-  const ACMatchClassifications& secondary_class =
-      swap ? match.contents_class : match.description_class;
-  mojom_match->contents = primary_text;
-  for (const auto& contents_class : primary_class) {
-    mojom_match->contents_class.push_back(
-        searchbox::mojom::ACMatchClassification::New(contents_class.offset,
-                                                     contents_class.style));
-  }
-  mojom_match->description = secondary_text;
-  for (const auto& description_class : secondary_class) {
-    mojom_match->description_class.push_back(
-        searchbox::mojom::ACMatchClassification::New(description_class.offset,
-                                                     description_class.style));
-  }
   mojom_match->destination_url = match.destination_url;
   mojom_match->suggestion_group_id =
       match.suggestion_group_id.value_or(omnibox::GROUP_INVALID);
@@ -1477,11 +1454,8 @@ void SearchboxHandler::QueryAutocomplete(
   cursor_position = std::min(
       cursor_position, static_cast<uint32_t>(input_with_keyword.length()));
 
-  // Early exit for a new on-focus query if the previous on-focus query is
-  // pending. Note that on-focus == zero suggest. This avoids redundant
-  // restarts.
-  if (!autocomplete_controller()->done() &&
-      autocomplete_controller()->input().IsZeroSuggest() && is_on_focus) {
+  // Early exit if a query is already in progress for on focus inputs.
+  if (!autocomplete_controller()->done() && is_on_focus) {
     return;
   }
 
@@ -1889,7 +1863,7 @@ void SearchboxHandler::ActivateKeyword(
     uint8_t line,
     const GURL& url,
     base::TimeTicks match_selection_timestamp,
-    bool is_mouse_event) {
+    searchbox::mojom::KeywordActivationMethod activation_method) {
   // TODO(b/449785444): Allow embedders other than the Omnibox to activate
   // keyword mode.
   NOTREACHED();

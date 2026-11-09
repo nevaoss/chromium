@@ -228,7 +228,7 @@ try_.orchestrator_builder(
         # crbug.com/40280175
         "chromium_checkout.expand_submodules": 100,
         "luci.buildbucket.run_in_turboci": 100,
-        "luci.buildbucket.run_in_turboci.grpc_client": 2,
+        "luci.buildbucket.run_in_turboci.grpc_client": 50,
     },
     main_list_view = "try",
     use_clang_coverage = True,
@@ -301,7 +301,7 @@ try_.builder(
     ),
     builderless = False,
     cores = 16,
-    os = os.WINDOWS_ANY,
+    os = os.WINDOWS_DEFAULT,
     ssd = True,
     contact_team_email = "chrome-desktop-engprod@google.com",
     cq_settings = try_.cq_settings(
@@ -470,7 +470,7 @@ try_.builder(
     ),
     builderless = False,
     cores = None,
-    os = os.WINDOWS_ANY,
+    os = os.WINDOWS_DEFAULT,
     contact_team_email = "chrome-desktop-engprod@google.com",
     cq_settings = try_.cq_settings(
         # TODO(crbug.com/40847153) Remove once cancelling doesn't wipe
@@ -498,7 +498,7 @@ try_.builder(
     ),
     builderless = True,
     cores = 16,
-    os = os.WINDOWS_10,
+    os = os.WINDOWS_DEFAULT,
     ssd = True,
     contact_team_email = "chrome-desktop-engprod@google.com",
     # The size of the testing pool is limited.

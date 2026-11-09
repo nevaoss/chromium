@@ -1191,10 +1191,6 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, NavigateSuggestions) {
 // via Shift-Delete.
 IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
                        NavigateSuggestionsTab) {
-  FAILS_IN_MODE(Mode::kFull,
-                "Shift-del to delete suggestion doesn't work in full "
-                "(crbug.com/559671477); also behavior on deleting with button "
-                " is different");
   history::HistoryService* history_service =
       HistoryServiceFactory::GetForProfile(this->browser()->GetProfile(),
                                            ServiceAccessType::EXPLICIT_ACCESS);
@@ -1846,6 +1842,38 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, TypeWithMouseDown) {
       WaitTillOmniboxViewText("ww"));
 }
 
+// The sequence of Mouse Down/Mouse Up/Mouse Down/Mouse Up is supposed to do
+// a drag select (word-by-word, but this test isn't this precise).
+// See https://crbug.com/566216533
+IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ClickDrag) {
+#if BUILDFLAG(IS_MAC)
+  // Mac likes to make selections non-directional by default, and this test
+  // has it setting one rather than our code.
+  const bool expect_no_dir = true;
+#else
+  const bool expect_no_dir = false;
+#endif
+
+  RunTestSequence(
+      InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
+      InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
+      HandleAutofocus(), WaitTillOmniboxViewText("about:blank"),
+      WaitTillOmniboxViewSelection("about:blank", gfx::Range(11, 0)),
+      // We need to have a caret active, not a full-blown selection, to
+      // reproduce the bug.
+      InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_END)),
+      WaitTillOmniboxViewSelection("", gfx::Range(11)),
+
+      // Click in the middle, then click there again and drag to the left.
+      // This should select everything.
+      MoveMouseTo(kOmniboxElementId), ClickMouse(),
+      DragMouseTo(kOmniboxElementId, base::BindOnce([](ui::TrackedElement* el) {
+                    return el->GetScreenBounds().left_center();
+                  })),
+      WaitTillOmniboxViewSelection("about:blank", gfx::Range(11, 0),
+                                   View::kEditable, expect_no_dir));
+}
+
 // Test of selecting a word portion of URL with double-click select.
 // This is just a regular double-click. That it's the first word is
 // relevant, since we also need to make sure the selection isn't extended to
@@ -2050,19 +2078,16 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, PasteSanitizesText) {
     writer.WriteText(u"  javascript:javascript:alert(1)\r\nhello world\n");
   }
 
-  ui::Accelerator paste_accel(ui::VKEY_V,
-#if BUILDFLAG(IS_MAC)
-                              ui::EF_COMMAND_DOWN
-#else
-                              ui::EF_CONTROL_DOWN
-#endif
-  );
-
   RunTestSequence(
       InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
-      HandleAutofocus(), WaitTillOmniboxViewText("about:blank"),
+      HandleAutofocus(), WaitTillOmniboxViewFocus(),
+      WaitTillOmniboxViewText("about:blank"),
       WaitTillOmniboxViewSelection("about:blank", gfx::Range(11, 0)),
-      InAnyContext(SendAccelerator(InputWebContents(), paste_accel)),
+      InAnyContext(
+          WithElement(InputWebContents(),
+                      [](ui::TrackedElement* el) {
+                        AsInstrumentedWebContents(el)->web_contents()->Paste();
+                      })),
       WaitTillOmniboxViewText("alert(1) hello world"));
 }
 

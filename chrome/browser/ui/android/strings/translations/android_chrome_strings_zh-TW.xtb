@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">分享這個頁面</translation>
 <translation id="230115972905494466">找不到相容的裝置</translation>
 <translation id="2305798319182970276">輕觸按鈕即可刪除歷史記錄</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> 需要相關權限，才能讓這個網站使用人機介面裝置 (HID)。</translation>
 <translation id="2316129865977710310">不，謝謝</translation>
 <translation id="232137538351753795">從左側邊緣向內滑動即可返回</translation>
 <translation id="2323763861024343754">網站儲存資料量</translation>
 <translation id="2327445548174191329">來自 <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">另存網頁…</translation>
 <translation id="2328474416100889417">所有共用對象都將立即無法存取「<ph name="GROUP_NAME" />」分頁群組，邀請連結也會全部失效</translation>
+<translation id="2328773543844041445">懸停時自動展開分頁</translation>
 <translation id="2330186936255788117">更多書籤</translation>
 <translation id="2330243730505117832">「選擇裝置」已關閉。</translation>
 <translation id="2332515770639153015">已啟用安全瀏覽強化防護功能</translation>
@@ -1591,7 +1593,7 @@
 <translation id="7203150201908454328">已展開</translation>
 <translation id="7207760545532569765">將 <ph name="TAB_COUNT" /> 個分頁還原為新的背景分頁。</translation>
 <translation id="7217781228893594884">系統會在你離開 Chrome 後鎖定無痕分頁</translation>
-<translation id="7221869452894271364">重新載入此網頁</translation>
+<translation id="7221869452894271364">重新載入網頁</translation>
 <translation id="722681077040152344">已取消訂閱 <ph name="COUNT" /> 個網站</translation>
 <translation id="7227218174981371415">{FILE_COUNT,plural, =1{1 項下載作業仍待處理}other{# 項下載作業仍待處理}}</translation>
 <translation id="7237724030342645845">Google 密碼管理工具已停止運作</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">Chrome 推薦功能啟用面板完整顯示</translation>
 <translation id="7612619742409846846">已使用下列帳戶登入 Google：</translation>
 <translation id="7612989789287281429">正在登入…</translation>
+<translation id="7617512710641355143">Chrome 是受管理的應用程式</translation>
 <translation id="7619072057915878432">無法連上網路，因此無法下載 <ph name="FILE_NAME" />。</translation>
 <translation id="7626032353295482388">歡迎使用 Chrome</translation>
 <translation id="7628417132421583481">前往密碼管理工具</translation>

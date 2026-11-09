@@ -565,11 +565,8 @@ class CacheStorageDispatcherHost::CacheImpl
 
     cache->BatchOperation(
         std::move(batch_operations), trace_id, std::move(cb),
-        base::BindOnce(
-            [](mojo::ReportBadMessageCallback bad_message_callback) {
-              std::move(bad_message_callback).Run("CSDH_UNEXPECTED_OPERATION");
-            },
-            host_->cache_receivers_.GetBadMessageCallback()));
+        base::BindOnce(host_->cache_receivers_.GetBadMessageCallback(),
+                       "CSDH_UNEXPECTED_OPERATION"));
   }
 
   // Owns this.
@@ -647,7 +644,7 @@ class CacheStorageDispatcherHost::CacheStorageImpl final
     auto cb = base::BindOnce(
         [](base::TimeTicks start_time, int64_t trace_id,
            blink::mojom::CacheStorage::KeysCallback callback,
-           std::vector<std::u16string> cache_names, CacheStorageError) {
+           std::vector<std::u16string> cache_names) {
           UMA_HISTOGRAM_LONG_TIMES(
               "ServiceWorkerCache.CacheStorage.Browser.Keys",
               base::TimeTicks::Now() - start_time);
@@ -662,8 +659,7 @@ class CacheStorageDispatcherHost::CacheStorageImpl final
 
     // Return error if failed to retrieve bucket from QuotaManager.
     if (!bucket_.has_value()) {
-      std::move(cb).Run(std::vector<std::u16string>(),
-                        CacheStorageError::kErrorStorage);
+      std::move(cb).Run(std::vector<std::u16string>());
       return;
     }
 
@@ -671,8 +667,7 @@ class CacheStorageDispatcherHost::CacheStorageImpl final
         [](int64_t trace_id, content::CacheStorage::EnumerateCachesCallback cb,
            content::CacheStorage* cache_storage) {
           if (!cache_storage) {
-            std::move(cb).Run(std::vector<std::u16string>(),
-                              CacheStorageError::kErrorStorage);
+            std::move(cb).Run(std::vector<std::u16string>());
             return;
           }
 
@@ -1114,7 +1109,7 @@ CacheStorageHandle CacheStorageDispatcherHost::OpenCacheStorage(
   if (!context_ || !OriginCanAccessCacheStorage(storage_key.origin()))
     return CacheStorageHandle();
 
-  scoped_refptr<CacheStorageManager> manager = context_->cache_manager();
+  CacheStorageManager* manager = context_->cache_manager();
   if (!manager)
     return CacheStorageHandle();
 

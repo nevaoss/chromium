@@ -434,6 +434,56 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+                       GuestRespectsInitiallyHidden) {
+  GlicNoWebviewContentsManager hidden_manager(
+      GetProfile(), &service()->enabling(), /*initially_hidden=*/true);
+  ASSERT_TRUE(hidden_manager.guest_contents());
+  EXPECT_EQ(hidden_manager.guest_contents()->GetVisibility(),
+            content::Visibility::HIDDEN);
+
+  GlicNoWebviewContentsManager visible_manager(
+      GetProfile(), &service()->enabling(), /*initially_hidden=*/false);
+  ASSERT_TRUE(visible_manager.guest_contents());
+  EXPECT_EQ(visible_manager.guest_contents()->GetVisibility(),
+            content::Visibility::VISIBLE);
+}
+
+// A guest navigation while attached but hidden must not force the guest
+// visible when it was created hidden.
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
+                       GuestNavigationWhileHiddenKeepsGuestHidden) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  // Wait for a non-empty panel size (populated asynchronously after layout on
+  // Android) so `ApplySizeToGuest()` doesn't early-return before reaching the
+  // visibility update.
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !instance->host().instance().GetPanelSize().IsEmpty(); }));
+  GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
+                                       /*initially_hidden=*/true);
+  ASSERT_TRUE(content::WaitForLoadStop(manager.guest_contents()));
+  manager.AttachToHost(&instance->host());
+  ASSERT_EQ(manager.state(),
+            GlicNoWebviewContentsManager::DisplayState::kAttachedHidden);
+
+  manager.OnGuestNavigated(manager.guest_contents()->GetLastCommittedURL(),
+                           /*is_api_allowed=*/true,
+                           mojom::GuestPageType::kRegular,
+                           /*is_initial_commit=*/true);
+  EXPECT_EQ(manager.guest_contents()->GetVisibility(),
+            content::Visibility::HIDDEN);
+
+  // Showing Glic makes the guest and the newly created overlay visible.
+  manager.SetVisibility(content::Visibility::VISIBLE);
+  ASSERT_EQ(manager.state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
+  EXPECT_EQ(manager.guest_contents()->GetVisibility(),
+            content::Visibility::VISIBLE);
+  ASSERT_TRUE(manager.overlay_contents());
+  EXPECT_EQ(manager.overlay_contents()->GetVisibility(),
+            content::Visibility::VISIBLE);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                        GuestErrorShowsGuestAndReloadsOnShow) {
   GlicNoWebviewContentsManager manager(GetProfile(), &service()->enabling(),
                                        /*initially_hidden=*/false);
@@ -1150,22 +1200,24 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
 
   // Fire timeout on background container.
   manager->loading_timer_for_testing().FireNow();
-  EXPECT_FALSE(manager->guest_contents()->IsLoading());
-  EXPECT_TRUE(manager->ShouldReloadOnShow());
+  ASSERT_OK(RunUntilEqual(
+      [&]() { return warming_pool.HasWarmedContainerForTesting(); }, false));
 
-  // TakeContainer sees ShouldReloadOnShow() == true and discards the timed-out
-  // container.
+  // Failed background container is discarded immediately.
+  EXPECT_FALSE(old_guest);
+  histogram_tester.ExpectBucketCount(
+      "Glic.WarmingPool.WarmedContainerFate",
+      GlicWebContentsWarmingPool::WarmedContainerFate::kLoadError, 1);
+
+  // TakeContainer creates and returns a fresh container and records miss status
+  // as kLoadError.
   std::unique_ptr<GlicWebContentsManager> taken = warming_pool.TakeContainer();
   ASSERT_TRUE(taken);
-  EXPECT_FALSE(old_guest);
   EXPECT_NE(taken->guest_contents(), nullptr);
   EXPECT_FALSE(taken->ShouldReloadOnShow());
   histogram_tester.ExpectBucketCount(
       "Glic.WarmingPool.HitStatus",
-      GlicWebContentsWarmingPool::WarmingPoolStatus::kCrashed, 1);
-  histogram_tester.ExpectBucketCount(
-      "Glic.WarmingPool.WarmedContainerFate",
-      GlicWebContentsWarmingPool::WarmedContainerFate::kCrashed, 1);
+      GlicWebContentsWarmingPool::WarmingPoolStatus::kLoadError, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
@@ -1296,6 +1348,41 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   // The metrics must not be recorded again for subsequent navigations.
   histogram_tester.ExpectTotalCount("Glic.Contents.NavigationCommitTime", 1);
   histogram_tester.ExpectTotalCount("Glic.Contents.LoadCompleteTime", 1);
+}
+
+class GlicNoWebviewSsrOverlayBrowserTest
+    : public GlicNoWebviewOverlayBrowserTest {
+ public:
+  GlicNoWebviewSsrOverlayBrowserTest() {
+    ssr_feature_list_.InitAndEnableFeature(features::kGlicSsr);
+  }
+
+ private:
+  base::test::ScopedFeatureList ssr_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewSsrOverlayBrowserTest,
+                       BypassesLoadingOverlayButShowsErrorPanels) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  auto* manager = GetNoWebviewContentsManager(instance);
+  ASSERT_TRUE(manager);
+
+  // Even while the guest is still loading (/title1.html does not bootstrap the
+  // Glic client), kGlicSsr mounts the guest WebContents directly without
+  // showing the loading overlay.
+  EXPECT_EQ(manager->guest_state().get(),
+            GlicNoWebviewContentsManager::GuestState::kLoading);
+  EXPECT_EQ(manager->state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingGuest);
+  EXPECT_EQ(manager->active_web_contents(), manager->guest_contents());
+  EXPECT_FALSE(manager->GetOverlayStateForTesting());
+
+  // Error overlays still take precedence when an error occurs.
+  InvalidateAccount(GetProfile());
+  ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kSignIn));
+  EXPECT_EQ(manager->state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
+  EXPECT_EQ(manager->active_web_contents(), manager->overlay_contents());
 }
 
 }  // namespace glic

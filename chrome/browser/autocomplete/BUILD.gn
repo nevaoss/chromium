@@ -91,6 +91,7 @@ source_set("impl") {
     "//chrome/browser/preloading/prefetch/search_prefetch",
     "//chrome/browser/profiles",
     "//chrome/browser/profiles:profile_io_data",
+    "//chrome/browser/search",
     "//chrome/browser/search_engines",
     "//chrome/browser/signin",
     "//chrome/browser/sync",
@@ -159,8 +160,6 @@ source_set("impl") {
       "//extensions/browser",
     ]
   }
-
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 }
 
 source_set("aim_eligibility_service") {

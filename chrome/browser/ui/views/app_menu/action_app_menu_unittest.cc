@@ -64,6 +64,7 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
+#include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/user_education/mock_browser_user_education_interface.h"
@@ -86,6 +87,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/actions/actions.h"
+#include "ui/base/accelerators/menu_label_accelerator_util.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/dragdrop/drop_target_event.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
@@ -95,6 +97,7 @@
 #include "ui/events/event.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/strings/grit/ax_strings.h"
+#include "ui/strings/grit/ui_strings.h"
 #include "ui/views/accessibility/ax_update_notifier.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
@@ -104,6 +107,7 @@
 #include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/menu/menu_config.h"
 #include "ui/views/controls/menu/menu_controller.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_runner.h"
@@ -146,6 +150,18 @@ class ActionAppMenuTest : public ActionAppMenuTestBase {
   }
 
  protected:
+  // The fixture's actions have plain text. Sets `action_id`'s text to the
+  // string with mnemonic used in production, and returns its mnemonic.
+  char16_t SetTextWithMnemonic(actions::ActionId action_id, int string_id) {
+    actions::ActionItem* action = actions::ActionManager::Get().FindAction(
+        action_id, browser_actions_->root_action_item());
+    CHECK(action);
+    const std::u16string text = BrowserActions::GetMnemonicTitleText(
+        l10n_util::GetStringUTF16(string_id));
+    action->SetText(text);
+    return ui::GetMnemonic(text);
+  }
+
   std::unique_ptr<views::Widget> widget_;
   raw_ptr<views::MenuButton> button_ = nullptr;
 };
@@ -517,7 +533,7 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenu) {
   ASSERT_NE(empty_item, nullptr);
   EXPECT_EQ(empty_item->GetType(), views::MenuItemView::Type::kEmpty);
   EXPECT_EQ(empty_item->title(),
-            l10n_util::GetStringUTF16(IDS_MENU_EMPTY_SUBMENU));
+            l10n_util::GetStringUTF16(IDS_APP_MENU_EMPTY_SUBMENU));
   EXPECT_FALSE(empty_item->GetEnabled());
 
   // Other bookmarks folder containing child bookmark.
@@ -974,7 +990,7 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
 
   // Find and invoke the New Tab action item. Verify its callback is triggered.
   actions::ActionItem* new_tab_action =
-      actions::ActionManager::Get().FindAction(kActionNewTab);
+      actions::ActionManager::Get().FindAction(kActionNewTab, nullptr);
   ASSERT_TRUE(new_tab_action);
 
   EXPECT_CALL(mock_action_invoked_, Call(kActionNewTab, testing::_, testing::_))
@@ -985,7 +1001,7 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
   // Find and invoke the New Window action item. Verify its callback is
   // triggered.
   actions::ActionItem* new_window_action =
-      actions::ActionManager::Get().FindAction(kActionNewWindow);
+      actions::ActionManager::Get().FindAction(kActionNewWindow, nullptr);
   ASSERT_TRUE(new_window_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -997,7 +1013,8 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
   // Find and invoke the New Incognito Window action item. Verify its callback
   // is triggered.
   actions::ActionItem* incognito_action =
-      actions::ActionManager::Get().FindAction(kActionNewIncognitoWindow);
+      actions::ActionManager::Get().FindAction(kActionNewIncognitoWindow,
+                                               nullptr);
   ASSERT_TRUE(incognito_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -1116,7 +1133,7 @@ TEST_F(ActionAppMenuTest, BlockButtonSyncsEnabledStateWithActionItem) {
 
   // Disable the delegate ActionItem.
   actions::ActionItem* new_tab_action =
-      actions::ActionManager::Get().FindAction(kActionNewTab);
+      actions::ActionManager::Get().FindAction(kActionNewTab, nullptr);
   ASSERT_TRUE(new_tab_action);
   new_tab_action->SetEnabled(false);
 
@@ -1166,7 +1183,7 @@ TEST_F(ActionAppMenuTest, ZoomChildActionsInvocation) {
   EXPECT_TRUE(menu.IsShowing());
 
   actions::ActionItem* minus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomMinus);
+      actions::ActionManager::Get().FindAction(kActionZoomMinus, nullptr);
   ASSERT_TRUE(minus_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -1176,7 +1193,7 @@ TEST_F(ActionAppMenuTest, ZoomChildActionsInvocation) {
   testing::Mock::VerifyAndClearExpectations(&mock_action_invoked_);
 
   actions::ActionItem* plus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomPlus);
+      actions::ActionManager::Get().FindAction(kActionZoomPlus, nullptr);
   ASSERT_TRUE(plus_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -1396,7 +1413,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelUpdatesOnZoomChange) {
 
   // Verify that the label updates when the action item's text changes.
   actions::ActionItem* normal_action =
-      actions::ActionManager::Get().FindAction(kActionZoomNormal);
+      actions::ActionManager::Get().FindAction(kActionZoomNormal, nullptr);
   ASSERT_TRUE(normal_action);
   normal_action->SetText(base::FormatPercent(200));
   EXPECT_EQ(zoom_label->GetText(), base::FormatPercent(200));
@@ -1443,7 +1460,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelAccessibilityAnnouncementOnZoomChange) {
   EXPECT_EQ(zoom_label->GetText(), base::FormatPercent(100));
 
   actions::ActionItem* normal_action =
-      actions::ActionManager::Get().FindAction(kActionZoomNormal);
+      actions::ActionManager::Get().FindAction(kActionZoomNormal, nullptr);
   ASSERT_TRUE(normal_action);
 
   views::test::AXEventCounter counter(views::AXUpdateNotifier::Get());
@@ -1486,7 +1503,7 @@ TEST_F(ActionAppMenuTest, FullscreenActionUpdatesAccessibilityName) {
   // Updating the action's tooltip should propagate to the button's accessible
   // name.
   actions::ActionItem* fullscreen_action =
-      actions::ActionManager::Get().FindAction(kActionFullscreen);
+      actions::ActionManager::Get().FindAction(kActionFullscreen, nullptr);
   ASSERT_TRUE(fullscreen_action);
   fullscreen_action->SetTooltipText(u"Exit full screen");
   EXPECT_EQ(fullscreen_button->GetViewAccessibility().GetCachedName(),
@@ -1530,10 +1547,10 @@ TEST_F(ActionAppMenuTest, ZoomButtonsInkDropAtLimits) {
   ASSERT_TRUE(plus_button);
 
   actions::ActionItem* minus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomMinus);
+      actions::ActionManager::Get().FindAction(kActionZoomMinus, nullptr);
   ASSERT_TRUE(minus_action);
   actions::ActionItem* plus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomPlus);
+      actions::ActionManager::Get().FindAction(kActionZoomPlus, nullptr);
   ASSERT_TRUE(plus_action);
 
   // At 100% zoom (default), both buttons are enabled with ink drop ON.
@@ -2457,6 +2474,72 @@ TEST_F(ActionAppMenuTest, MenuItemSecondaryTextProperty) {
   menu.CloseMenu();
 }
 
+// A row shows its action's text with the mnemonic marker, and keeps it when the
+// action changes.
+TEST_F(ActionAppMenuTest, RowKeepsMnemonicTextWhenActionChanges) {
+  actions::ActionItem* print_action = actions::ActionManager::Get().FindAction(
+      kActionPrint, browser_actions_->root_action_item());
+  ASSERT_NE(print_action, nullptr);
+  print_action->SetText(u"&Print");
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuItemView* print_item = root->GetMenuItemByID(kActionPrint);
+  ASSERT_TRUE(print_item);
+  EXPECT_EQ(print_item->title(), u"&Print");
+
+  print_action->SetEnabled(false);
+
+  EXPECT_FALSE(print_item->GetEnabled());
+  EXPECT_EQ(print_item->title(), u"&Print");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+// A row's text override is kept when its action changes.
+TEST_F(ActionAppMenuTest, RowKeepsTextOverrideWhenActionChanges) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot, browser_actions_->root_action_item());
+  ASSERT_NE(app_menu_root, nullptr);
+  app_menu_root->ResetActionList();
+
+  std::unique_ptr<actions::IndirectActionItem> print_indirect =
+      AppMenuActionItem::CreateIndirect(kActionPrint,
+                                        browser_actions_->root_action_item(),
+                                        {.text_override = u"&Print override"});
+  ASSERT_NE(print_indirect, nullptr);
+  actions::ActionItem* print_action = print_indirect->GetActionItem();
+  ASSERT_NE(print_action, nullptr);
+  app_menu_root->AddChild(std::move(print_indirect));
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuItemView* print_item = root->GetMenuItemByID(kActionPrint);
+  ASSERT_TRUE(print_item);
+  EXPECT_EQ(print_item->title(), u"&Print override");
+
+  print_action->SetText(u"Changed");
+  print_action->SetEnabled(false);
+
+  EXPECT_FALSE(print_item->GetEnabled());
+  EXPECT_EQ(print_item->title(), u"&Print override");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, GlobalErrorNotificationRowStyling) {
   actions::ActionItem* global_error_action =
       actions::ActionManager::Get().FindAction(
@@ -2703,6 +2786,47 @@ TEST_F(ActionAppMenuTest, MenuOpenAndCommandExecutionMetrics) {
   histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction", MENU_ACTION_PRINT,
                                      1);
   histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.Print", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, ManageSkillsMetrics) {
+  actions::ActionItem* skills_and_extensions_action =
+      actions::ActionManager::Get().FindAction(
+          kActionSkillsAndExtensionsSubmenu,
+          browser_actions_->root_action_item());
+  ASSERT_NE(skills_and_extensions_action, nullptr);
+  skills_and_extensions_action->SetVisible(true);
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* skills_and_extensions_item =
+      root->GetMenuItemByID(kActionSkillsAndExtensionsSubmenu);
+  ASSERT_TRUE(skills_and_extensions_item);
+  menu.WillShowMenu(skills_and_extensions_item);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_SHOW_SKILLS_AND_EXTENSIONS, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ShowSkillsAndExtensions", 1);
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionManageSkills, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionManageSkills, /*mouse_event_flags=*/0);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_MANAGE_SKILLS, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.ManageSkills", 1);
   histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
@@ -3491,6 +3615,258 @@ TEST_F(ActionAppMenuTest, RecentTabsByDateHistoryInSidePanel) {
       "WrenchMenu.MenuAction", MENU_ACTION_SHOW_HISTORY_CLUSTER_SIDE_PANEL, 1);
   histogram_tester.ExpectTotalCount(
       "WrenchMenu.TimeToAction.ShowHistoryClustersSidePanel", 1);
+}
+
+#if !BUILDFLAG(IS_CHROMEOS)
+TEST_F(ActionAppMenuTest, PopulatesFooterElementsWithEnterpriseReleaseNotes) {
+  policy::ScopedManagementServiceOverrideForTesting profile_management(
+      policy::ManagementServiceFactory::GetForProfile(profile_.get()),
+      policy::EnterpriseManagementAuthority::DOMAIN_LOCAL);
+
+  actions::ActionItem* release_notes_action =
+      actions::ActionManager::Get().FindAction(
+          kActionChromeEnterpriseReleaseNotes, nullptr);
+  ASSERT_NE(release_notes_action, nullptr);
+  release_notes_action->SetVisible(true);
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_NE(root, nullptr);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_NE(submenu, nullptr);
+  views::MenuItemView* footer_item =
+      submenu->GetMenuItemAt(submenu->GetMenuItems().size() - 1);
+  ASSERT_NE(footer_item, nullptr);
+
+  auto* footer_view =
+      views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
+  ASSERT_NE(footer_view, nullptr);
+  ASSERT_NE(footer_view->bottom_container_for_testing(), nullptr);
+  EXPECT_EQ(footer_view->bottom_container_for_testing()->GetOrientation(),
+            views::BoxLayout::Orientation::kVertical);
+  ASSERT_EQ(footer_view->bottom_container_for_testing()->children().size(), 2u);
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[0]));
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[1]));
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionChromeEnterpriseReleaseNotes, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionChromeEnterpriseReleaseNotes,
+                      /*mouse_event_flags=*/0);
+  histogram_tester.ExpectBucketCount(
+      "WrenchMenu.MenuAction", MENU_ACTION_CHROME_ENTERPRISE_RELEASE_NOTES, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ChromeEnterpriseReleaseNotes", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+TEST_F(ActionAppMenuTest, BlockButtonsRespondToMnemonics) {
+  if (!views::MenuConfig::instance().use_mnemonics) {
+    GTEST_SKIP() << "Mnemonics are not enabled on this platform";
+  }
+
+  auto test_block_mnemonic = [&](char16_t mnemonic,
+                                 actions::ActionId expected_action_id) {
+    base::MockCallback<base::RepeatingClosure> on_menu_closed;
+    ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+    menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+    ASSERT_TRUE(menu.IsShowing());
+
+    views::MenuItemView* root = menu.root_menu_item_for_testing();
+    ASSERT_TRUE(root);
+    views::MenuController* controller = root->GetMenuController();
+    ASSERT_TRUE(controller);
+
+    EXPECT_CALL(mock_action_invoked_,
+                Call(expected_action_id, testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(on_menu_closed, Run()).Times(1);
+
+    ui::KeyEvent key_event(ui::EventType::kKeyPressed, ui::VKEY_UNKNOWN,
+                           ui::EF_NONE);
+    key_event.set_character(mnemonic);
+    controller->OnWillDispatchKeyEvent(&key_event);
+  };
+
+  test_block_mnemonic(SetTextWithMnemonic(kActionNewTab, IDS_NEW_TAB),
+                      kActionNewTab);
+  test_block_mnemonic(SetTextWithMnemonic(kActionNewWindow, IDS_NEW_WINDOW),
+                      kActionNewWindow);
+  test_block_mnemonic(
+      SetTextWithMnemonic(kActionNewIncognitoWindow, IDS_NEW_INCOGNITO_WINDOW),
+      kActionNewIncognitoWindow);
+}
+
+TEST_F(ActionAppMenuTest, FooterButtonsRespondToMnemonics) {
+  if (!views::MenuConfig::instance().use_mnemonics) {
+    GTEST_SKIP() << "Mnemonics are not enabled on this platform";
+  }
+
+  auto open_menu_and_press = [&](ActionAppMenu& menu, char16_t mnemonic) {
+    menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+    ASSERT_TRUE(menu.IsShowing());
+    views::MenuItemView* root = menu.root_menu_item_for_testing();
+    ASSERT_TRUE(root);
+    views::MenuController* controller = root->GetMenuController();
+    ASSERT_TRUE(controller);
+
+    ui::KeyEvent key_event(ui::EventType::kKeyPressed, ui::VKEY_UNKNOWN,
+                           ui::EF_NONE);
+    key_event.set_character(mnemonic);
+    controller->OnWillDispatchKeyEvent(&key_event);
+  };
+
+  auto test_footer_action_mnemonic = [&](char16_t mnemonic,
+                                         actions::ActionId expected_action_id) {
+    base::MockCallback<base::RepeatingClosure> on_menu_closed;
+    ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+    EXPECT_CALL(mock_action_invoked_,
+                Call(expected_action_id, testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(on_menu_closed, Run()).Times(1);
+    open_menu_and_press(menu, mnemonic);
+  };
+
+  test_footer_action_mnemonic(SetTextWithMnemonic(kActionOptions, IDS_SETTINGS),
+                              kActionOptions);
+
+  if (browser_defaults::kShowExitMenuItem) {
+    test_footer_action_mnemonic(SetTextWithMnemonic(kActionExit, IDS_EXIT),
+                                kActionExit);
+  }
+
+  // Branded builds show a Help button that opens a submenu; other builds show
+  // an About button instead.
+  const char16_t help_mnemonic =
+      SetTextWithMnemonic(kActionHelpSubmenu, IDS_HELP_MENU);
+  const char16_t about_mnemonic = SetTextWithMnemonic(kActionAbout, IDS_ABOUT);
+  bool has_help_submenu = false;
+  {
+    base::MockCallback<base::RepeatingClosure> on_menu_closed;
+    ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+    menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+    views::MenuItemView* root = menu.root_menu_item_for_testing();
+    ASSERT_TRUE(root);
+    has_help_submenu = root->GetMenuItemByID(kActionHelpSubmenu);
+    EXPECT_CALL(on_menu_closed, Run()).Times(1);
+    menu.CloseMenu();
+  }
+
+  if (!has_help_submenu) {
+    test_footer_action_mnemonic(about_mnemonic, kActionAbout);
+    return;
+  }
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  open_menu_and_press(menu, help_mnemonic);
+  views::MenuItemView* help_item =
+      menu.root_menu_item_for_testing()->GetMenuItemByID(kActionHelpSubmenu);
+  ASSERT_TRUE(help_item);
+  EXPECT_TRUE(help_item->SubmenuIsShowing());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, UserGeneratedBookmarkTitlesEscapeAmpersands) {
+  BookmarkModelFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkModelFactory::GetDefaultFactory());
+  BookmarkMergedSurfaceServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkMergedSurfaceServiceFactory::GetDefaultFactory());
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile_.get());
+  ASSERT_TRUE(bookmark_model);
+  bookmark_model->LoadEmptyForTest();
+
+  BookmarkMergedSurfaceService* bookmark_service =
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(bookmark_service);
+  bookmark_service->LoadForTesting({});
+
+  const bookmarks::BookmarkNode* bar_node = bookmark_model->bookmark_bar_node();
+  const bookmarks::BookmarkNode* bookmark_node = bookmark_model->AddURL(
+      bar_node, 0, u"A&B Bookmark", GURL("https://www.google.com"));
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* bookmarks_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_item);
+  menu.WillShowMenu(bookmarks_item);
+
+  views::MenuItemView* bookmark_entry = nullptr;
+  for (views::MenuItemView* item :
+       bookmarks_item->GetSubmenu()->GetMenuItems()) {
+    if (item->title() == u"A&&B Bookmark") {
+      bookmark_entry = item;
+      break;
+    }
+  }
+  ASSERT_NE(bookmark_entry, nullptr);
+  EXPECT_EQ(bookmark_entry->GetMnemonic(), 0);
+
+  // Verify BookmarkNodeChanged also escapes ampersands.
+  bookmark_model->SetTitle(bookmark_node, u"C&D Bookmark",
+                           bookmarks::metrics::BookmarkEditSource::kOther);
+  EXPECT_EQ(bookmark_entry->title(), u"C&&D Bookmark");
+  EXPECT_EQ(bookmark_entry->GetMnemonic(), 0);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest,
+       RecentTabsDynamicMenu_UserGeneratedItemsEscapeAmpersands) {
+  RecentTabsDynamicMenu dynamic_menu(&mock_window_interface_);
+  auto parent = actions::ActionItem::Builder().Build();
+
+  RecentTabItem tab_item(RecentTabItem::Type::kTab, u"A&B Tab");
+  RecentTabItem command_item(RecentTabItem::Type::kCommand, u"&Restore");
+  RecentTabItem split_item(RecentTabItem::Type::kSplit, u"X&Y Split");
+  split_item.add_child(
+      RecentTabItem(RecentTabItem::Type::kSplit, u"R&estore split view"));
+
+  dynamic_menu.CreateRecentTabsActionForTesting(
+      parent.get(), {tab_item, command_item, split_item});
+
+  const auto& children = parent->GetChildren().children();
+  ASSERT_EQ(children.size(), 3u);
+  EXPECT_EQ(children[0]->GetActionItem()->GetTextWithMnemonic(), u"A&&B Tab");
+  EXPECT_EQ(children[0]->GetActionItem()->GetText(), u"A&B Tab");
+  EXPECT_EQ(children[1]->GetActionItem()->GetTextWithMnemonic(), u"&Restore");
+  EXPECT_EQ(children[1]->GetActionItem()->GetText(), u"Restore");
+
+  actions::ActionItem* split_action = children[2]->GetActionItem();
+  EXPECT_EQ(split_action->GetTextWithMnemonic(), u"X&&Y Split");
+  EXPECT_EQ(split_action->GetText(), u"X&Y Split");
+  ASSERT_EQ(split_action->GetChildren().children().size(), 1u);
+  EXPECT_EQ(split_action->GetChildren()
+                .children()[0]
+                ->GetActionItem()
+                ->GetTextWithMnemonic(),
+            u"R&estore split view");
+  EXPECT_EQ(
+      split_action->GetChildren().children()[0]->GetActionItem()->GetText(),
+      u"Restore split view");
 }
 
 }  // namespace

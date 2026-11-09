@@ -48,10 +48,9 @@ enum class RasterModeHint {
   kPreferCPU,
 };
 
-class CORE_EXPORT CanvasRenderingContextHost
-    : public CanvasResourceProviderDelegate,
-      public CanvasImageSource,
-      public ImageBitmapSource {
+class CORE_EXPORT CanvasRenderingContextHost : public GarbageCollectedMixin,
+                                               public CanvasImageSource,
+                                               public ImageBitmapSource {
  public:
   enum class HostType {
     kNone,
@@ -117,10 +116,6 @@ class CORE_EXPORT CanvasRenderingContextHost
   int width() const { return Size().width(); }
   int height() const { return Size().height(); }
 
-  // Partial CanvasResourceProvider::Delegate implementation
-  scoped_refptr<const cc::AnimatedImageFrameIndexMap>
-  GetAnimatedImageFrameIndexes(uint32_t id) const override;
-
   virtual void PageVisibilityChanged();
 
   bool IsWebGL() const;
@@ -134,6 +129,7 @@ class CORE_EXPORT CanvasRenderingContextHost
   RasterMode GetRasterModeForCanvas2D() const;
 
   virtual bool IsPageVisible() const = 0;
+  virtual void NotifyGpuContextLost() = 0;
   virtual void SetNeedsCompositingUpdate() = 0;
   virtual void ClearCanvas2DLayerTexture() {}
 

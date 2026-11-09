@@ -179,6 +179,21 @@ public class TabCollectionsTabModelObserversUnitTest {
                             return result;
                         });
 
+        when(mTabCollectionTabModelImplJni.getTabCountForGroup(
+                        eq(TAB_COLLECTION_TAB_MODEL_IMPL_PTR), any()))
+                .thenAnswer(
+                        invocation -> {
+                            Token groupId = invocation.getArgument(1);
+                            if (groupId == null) return 0;
+                            int count = 0;
+                            for (Tab t : mTabs) {
+                                if (groupId.equals(t.getTabGroupId())) {
+                                    count++;
+                                }
+                            }
+                            return count;
+                        });
+
         when(mTabCollectionTabModelImplJni.moveTabGroupTo(
                         eq(TAB_COLLECTION_TAB_MODEL_IMPL_PTR), any(), anyInt()))
                 .thenAnswer(
@@ -834,7 +849,7 @@ public class TabCollectionsTabModelObserversUnitTest {
         verify(mTabGroupObserver).onTabGroupCreated(eq(groupId));
     }
 
-    // willRemoveTabGroup
+    // onTabGroupRemoving
 
     @Test
     public void testOnTabGroupRemoving() {
@@ -850,10 +865,10 @@ public class TabCollectionsTabModelObserversUnitTest {
         reset(mTabGroupObserver);
         mTabModel.closeTabs(
                 TabClosureParams.closeTabs(List.of(tab1, tab2)).allowUndo(false).build());
-        verify(mTabGroupObserver).willRemoveTabGroup(eq(groupId));
+        verify(mTabGroupObserver).onTabGroupRemoving(eq(groupId));
     }
 
-    // didMoveTabGroup
+    // onTabGroupMoved
 
     @Test
     public void testOnTabGroupMoved() {
@@ -871,7 +886,7 @@ public class TabCollectionsTabModelObserversUnitTest {
         reset(mTabGroupObserver);
         mTabModel.moveGroupToIndex(groupId, 1);
         verify(mTabGroupObserver)
-                .didMoveTabGroup(
+                .onTabGroupMoved(
                         eq(groupId), /* tabModelOldIndex= */ eq(0), /* tabModelNewIndex= */ eq(1));
     }
 

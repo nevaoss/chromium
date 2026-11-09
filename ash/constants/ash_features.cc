@@ -280,7 +280,6 @@ BASE_FEATURE(kBocaScreenSharingTeacher, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables or disables sharing student's screen in the Boca app.
 BASE_FEATURE(kBocaScreenSharingStudent, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kCrosSwitcher, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables Camera Cloud Storage for saving photos and videos on Google Drive
 // or OneDrive, controlled by CameraSaveLocation policy.
@@ -427,10 +426,6 @@ BASE_FEATURE(kCopyClientKeysCertsToChaps, base::FEATURE_ENABLED_BY_DEFAULT);
 // Adds location access control to Privacy Hub.
 BASE_FEATURE(kCrosPrivacyHub, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, ChromeOS system services and Chrome-on-ChromeOS will use separate
-// API keys for Geolocation resolution.
-BASE_FEATURE(kCrosSeparateGeoApiKey, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables cros safety service for trust and safety filtering for the text/image
 // output of on-device gen ai models.
 BASE_FEATURE(kCrosSafetyService, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -531,9 +526,6 @@ BASE_FEATURE(kDisplayAlignAssist, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, DriveFS will be used for Drive sync.
 BASE_FEATURE(kDriveFs, "DriveFS", base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables DriveFS' experimental local files mirroring functionality.
-BASE_FEATURE(kDriveFsMirroring, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Carries DriveFS' bulk-pinning experimental parameters.
 BASE_FEATURE(kDriveFsBulkPinningExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -735,9 +727,6 @@ BASE_FEATURE(kFjordOobeImageSwitch, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables the Flex Auto-Enrollment feature on ChromeOS
 BASE_FEATURE(kFlexAutoEnrollment, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables firmware updates from LVFS for ChromeOS Flex.
-BASE_FEATURE(kFlexFirmwareUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls Floating SSO feature which can move cookies between ChromeOS
 // enterprise devices. The feature is also guarded by an enterprise policy. This
@@ -941,24 +930,9 @@ BASE_FEATURE(kHeliumArcvmKiosk, base::FEATURE_DISABLED_BY_DEFAULT);
 // Should stay disabled by default.
 BASE_FEATURE(kHeliumArcvmKioskDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, the Help app will render the Apps List page and entry point.
-BASE_FEATURE(kHelpAppAppsList, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables the logic that auto triggers the install dialog during the web app
 // install flow initiated from the Help App.
 BASE_FEATURE(kHelpAppAutoTriggerInstallDialog,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// If enabled, the home page of the Help App will show a section containing
-// articles about apps.
-BASE_FEATURE(kHelpAppHomePageAppArticles, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables a new onboarding experience in the Help App.
-BASE_FEATURE(kHelpAppOnboardingRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables opening the Help App's What's New page immediately instead of showing
-// a notification to open the help app.
-BASE_FEATURE(kHelpAppOpensInsteadOfReleaseNotesNotification,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables a warning about connecting to hidden WiFi networks.
@@ -1604,9 +1578,6 @@ BASE_FEATURE(kShowLiveCaptionInVideoConferenceTray,
 BASE_FEATURE(kShowSharingUserInLauncherContinueSection,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Shows the spatial audio toggle in audio settings page.
-BASE_FEATURE(kShowSpatialAudioToggle, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Use a single CA cert for the EAP network if CA cert was selected, no
 // fallback.
 BASE_FEATURE(kSingleCaCertVerificationPhase2, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1870,10 +1841,6 @@ BASE_FEATURE(kDeviceMoveConfigSave, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables the DeviceWeeklyScheduledSuspend policy for Managed Guest Sessions.
 BASE_FEATURE(kDeviceWeeklyScheduledSuspendMgs,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enable peripheral notification to notify users when a input device is
-// connected to the user's chromebook for the first time.
-BASE_FEATURE(kPeripheralNotification, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables fwupd developer mode, disabling all firmware authentication checks.
 BASE_FEATURE(kFwupdDeveloperMode, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2215,10 +2182,6 @@ bool IsCrosPrivacyHubLocationEnabled() {
   return base::FeatureList::IsEnabled(kCrosPrivacyHub);
 }
 
-bool IsCrosSeparateGeoApiKeyEnabled() {
-  return base::FeatureList::IsEnabled(kCrosSeparateGeoApiKey);
-}
-
 bool IsCrosSafetyServiceEnabled() {
   return base::FeatureList::IsEnabled(kCrosSafetyService) ||
          IsCoralFeatureEnabled();
@@ -2230,10 +2193,6 @@ bool IsCrossDeviceFeatureSuiteAllowed() {
   }
 
   return base::FeatureList::IsEnabled(kAllowCrossDeviceFeatureSuite);
-}
-
-bool IsCrosSwitcherEnabled() {
-  return base::FeatureList::IsEnabled(kCrosSwitcher);
 }
 
 bool IsDemoModeAppResetWindowContainerEnable() {
@@ -2270,10 +2229,6 @@ bool IsDisplayAlignmentAssistanceEnabled() {
 
 bool IsDoNotDisturbShortcutEnabled() {
   return base::FeatureList::IsEnabled(kDoNotDisturbShortcut);
-}
-
-bool IsDriveFsMirroringEnabled() {
-  return base::FeatureList::IsEnabled(kDriveFsMirroring);
 }
 
 int GetDriveFsBulkPinningQueueSize() {
@@ -2385,11 +2340,6 @@ bool IsFjordOobeImageSwitchEnabled() {
 bool IsFlexAutoEnrollmentEnabled() {
   return switches::IsRevenBranding() &&
          base::FeatureList::IsEnabled(kFlexAutoEnrollment);
-}
-
-bool IsFlexFirmwareUpdateEnabled() {
-  return switches::IsRevenBranding() &&
-         base::FeatureList::IsEnabled(kFlexFirmwareUpdate);
 }
 
 bool IsFloatingSsoAllowed() {
@@ -2736,10 +2686,6 @@ bool IsParentAccessJellyEnabled() {
 
 bool IsPerDeskShelfEnabled() {
   return base::FeatureList::IsEnabled(kPerDeskShelf);
-}
-
-bool IsPeripheralNotificationEnabled() {
-  return base::FeatureList::IsEnabled(kPeripheralNotification);
 }
 
 bool IsPhoneHubMonochromeNotificationIconsEnabled() {

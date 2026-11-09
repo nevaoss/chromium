@@ -6,14 +6,18 @@ package org.chromium.chrome.browser.actor;
 
 import android.content.Intent;
 import android.os.SystemClock;
+import android.text.TextUtils;
 import android.util.Pair;
 
 import androidx.annotation.IntDef;
 
+import org.chromium.base.IntentUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicIntentConstants;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
@@ -38,6 +42,10 @@ public class ActorMetrics implements ActorKeyedService.Observer {
             "Actor.BackgroundActuation.OnTabAdded.Latency.ColdStart";
     public static final String ACTOR_BACKGROUND_ACTUATION_ON_TAB_ADDED_LATENCY_WARM =
             "Actor.BackgroundActuation.OnTabAdded.Latency.WarmStart";
+    public static final String ACTOR_NOTIFICATION_FETCH_CONVERSATION_ID_STATUS =
+            "Actor.Notification.FetchConversationId.Status";
+    public static final String ACTOR_NOTIFICATION_FETCH_TAB_ID_STATUS =
+            "Actor.Notification.FetchTabId.Status";
     public static final String ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES =
             "Actor.Notification.TimeBetweenWorklogUpdates";
     public static final String ACTOR_TASK_STOPPED_REASON_BACKGROUND_ACTUATION =
@@ -45,7 +53,6 @@ public class ActorMetrics implements ActorKeyedService.Observer {
     public static final String ACTOR_TASK_STOPPED_REASON_FOREGROUND =
             "Actor.Task.StoppedReason.Foreground";
     public static final String ACTOR_TASK_STOPPED_REASON_PIP = "Actor.Task.StoppedReason.Pip";
-
     private static final int INVALID_TASK_ID = -1;
     private static final int INVALID_TASK_STATE = -1;
     private static final Set<Intent> sRecordedIntents =
@@ -113,6 +120,42 @@ public class ActorMetrics implements ActorKeyedService.Observer {
     }
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/enums.xml:ActorNotificationPermissionState)
+
+    // LINT.IfChange(ActorFetchConversationIdStatus)
+
+    @IntDef({
+        ActorFetchConversationIdStatus.SUCCESS,
+        ActorFetchConversationIdStatus.NOT_FOUND,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActorFetchConversationIdStatus {
+        int SUCCESS = 0;
+        int NOT_FOUND = 1;
+        int NUM_ENTRIES = 2;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/enums.xml:ActorFetchConversationIdStatus)
+
+    // LINT.IfChange(ActorFetchTabIdStatus)
+
+    @IntDef({
+        ActorFetchTabIdStatus.SUCCESS,
+        ActorFetchTabIdStatus.TAB_NOT_FOUND,
+        ActorFetchTabIdStatus.TAB_CLOSED,
+        ActorFetchTabIdStatus.INVALID_ID,
+        ActorFetchTabIdStatus.TIMEOUT,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActorFetchTabIdStatus {
+        int SUCCESS = 0;
+        int TAB_NOT_FOUND = 1;
+        int TAB_CLOSED = 2;
+        int INVALID_ID = 3;
+        int TIMEOUT = 4;
+        int NUM_ENTRIES = 5;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/actor/enums.xml:ActorFetchTabIdStatus)
 
     @IntDef({
         ActorPauseResumeSource.PIP,
@@ -327,7 +370,28 @@ public class ActorMetrics implements ActorKeyedService.Observer {
     }
 
     /**
-     * Records ActorTaskState metrics from active task or intent.
+     * Records the status of fetching and selecting the target tab ID when an Actor notification is
+     * clicked.
+     */
+    public static void recordNotificationFetchTabIdStatus(@ActorFetchTabIdStatus int status) {
+        RecordHistogram.recordEnumeratedHistogram(
+                ACTOR_NOTIFICATION_FETCH_TAB_ID_STATUS, status, ActorFetchTabIdStatus.NUM_ENTRIES);
+    }
+
+    /**
+     * Records the status of fetching the Glic conversation ID when an Actor notification is
+     * clicked.
+     */
+    public static void recordNotificationFetchConversationIdStatus(
+            @ActorFetchConversationIdStatus int status) {
+        RecordHistogram.recordEnumeratedHistogram(
+                ACTOR_NOTIFICATION_FETCH_CONVERSATION_ID_STATUS,
+                status,
+                ActorFetchConversationIdStatus.NUM_ENTRIES);
+    }
+
+    /**
+     * Records ActorTaskState and conversation ID fetch status metrics from active task or intent.
      *
      * @param intent The intent to inspect.
      * @param profile The current Profile.
@@ -358,6 +422,15 @@ public class ActorMetrics implements ActorKeyedService.Observer {
             sRecordedIntents.add(intent);
             RecordHistogram.recordEnumeratedHistogram(
                     "Actor.Notification.ClickTaskState", state, ActorTaskState.MAX_VALUE + 1);
+            if (ChromeFeatureList.sActorNotificationIntentRouting.isEnabled()) {
+                String conversationId =
+                        IntentUtils.safeGetStringExtra(
+                                intent, GlicIntentConstants.EXTRA_CONVERSATION_ID);
+                recordNotificationFetchConversationIdStatus(
+                        !TextUtils.isEmpty(conversationId)
+                                ? ActorFetchConversationIdStatus.SUCCESS
+                                : ActorFetchConversationIdStatus.NOT_FOUND);
+            }
         }
     }
 

@@ -16,6 +16,7 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
+import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.ui.base.WindowAndroid;
 
@@ -59,19 +60,35 @@ class VerticalTabRailHoverController
      */
     static final long MENU_DISMISS_TIMEOUT_MS = 500;
 
+    /**
+     * How long to wait before applying an unclear hover change:
+     *
+     * <ul>
+     *   <li>After a HOVER_EXIT inside the rail, for a mouse press. Android sends the same
+     *       HOVER_EXIT when the pointer leaves the window straight from the rail and when a mouse
+     *       button is pressed, with the touch ACTION_DOWN following a few milliseconds later.
+     *   <li>Before expanding the collapsed rail, so that moving the pointer quickly across it, e.g.
+     *       from outside the window to the web contents, does not expand then collapse it.
+     * </ul>
+     *
+     * Matches the mouse exit debounce of the desktop vertical tab strip.
+     */
+    static final long HOVER_DEBOUNCE_MS = 100;
+
     private final VerticalTabRailLayout mRailView;
     private final VerticalTabRailCollapseController mCollapseController;
     private final WindowAndroid mWindowAndroid;
     private final BooleanSupplier mIsContextMenuShowingSupplier;
-    // Collapses the rail if no hover event confirmed the pointer over it in time after a context
-    // menu was dismissed. Any pointer event that changes the state cancels this.
-    private final Runnable mMenuDismissTimeout = () -> applyPointerState(PointerState.OUTSIDE);
 
-    // Reused by containsRawPoint() to avoid allocating on every hover event.
-    private final int[] mTempLocation = new int[2];
-
-    // Where the pointer is relative to the rail, as last observed from pointer events.
-    private @PointerState int mPointerState = PointerState.OUTSIDE;
+    // Confirms the recorded pointer state once nothing contradicted it in time: INSIDE expands the
+    // rail, and INSIDE_UNCONFIRMED means the pointer left it. Scheduled by
+    // scheduleConfirmPointerState(), and cancelled by any newly recorded pointer state.
+    private final Runnable mConfirmPointerState =
+            () ->
+                    applyPointerState(
+                            this.mPointerState == PointerState.INSIDE
+                                    ? PointerState.INSIDE
+                                    : PointerState.OUTSIDE);
 
     // Held as a field because SharedPreferences only keeps weak references to its listeners.
     private final OnSharedPreferenceChangeListener mPrefsListener =
@@ -80,6 +97,15 @@ class VerticalTabRailHoverController
                     onExpandOnHoverSettingChanged();
                 }
             };
+
+    // Reused by containsRawPoint() to avoid allocating on every hover event.
+    private final int[] mTempLocation = new int[2];
+
+    // Where the pointer is relative to the rail, as last observed from pointer events.
+    private @PointerState int mPointerState = PointerState.OUTSIDE;
+
+    // Whether an animated rail collapse/expand transition is in progress.
+    private boolean mInTransition;
 
     /**
      * Starts observing the pointer events dispatched to {@code railView}.
@@ -109,7 +135,7 @@ class VerticalTabRailHoverController
     /** Stops observing the rail. */
     @SuppressWarnings("UseSharedPreferencesManagerFromChromeCheck")
     void destroy() {
-        cancelMenuDismissTimeout();
+        cancelConfirmPointerState();
         mRailView.setRailEventListener(null);
         mWindowAndroid.removeActivityStateObserver(this);
         ContextUtils.getAppSharedPreferences()
@@ -132,14 +158,21 @@ class VerticalTabRailHoverController
                 // hover event confirms the pointer over the rail in time, e.g. after a click on the
                 // rail that dismissed the menu. Collapse otherwise, e.g. after a click on a menu
                 // item, or when the pointer left the rail through the menu.
-                cancelMenuDismissTimeout();
-                ThreadUtils.getUiThreadHandler()
-                        .postDelayed(mMenuDismissTimeout, MENU_DISMISS_TIMEOUT_MS);
+                scheduleConfirmPointerState(MENU_DISMISS_TIMEOUT_MS);
                 break;
             default:
                 // INSIDE: the pointer is confirmed over the rail, so the rail stays expanded.
                 break;
         }
+    }
+
+    /**
+     * Sets whether an animated rail collapse/expand transition is in progress.
+     *
+     * @param inTransition True if the rail is actively transitioning.
+     */
+    void setInTransition(boolean inTransition) {
+        mInTransition = inTransition;
     }
 
     // VerticalTabRailLayout.RailEventListener implementation.
@@ -157,22 +190,42 @@ class VerticalTabRailHoverController
             // Only record the position, without expanding the rail:
             // - Over the collapse button, so clicking it triggers a full collapsed-to-expanded
             //   animation instead of cutting an in-flight hover animation short.
+            // - While the rail animates to collapsed. Otherwise, after a click on the collapse
+            //   button, moving the pointer off it towards the web contents expands the rail again,
+            //   then collapses it once the pointer leaves it.
             // - When the activity is not in front, as hover events also reach a window that is
             //   not in front.
-            boolean isOverCollapseButton =
-                    containsRawPoint(mRailView.getCollapseButton(), rawX, rawY);
-            if (isOverCollapseButton || !mWindowAndroid.isTopResumedActivity()) {
+            if (containsRawPoint(mRailView.getCollapseButton(), rawX, rawY)
+                    || isCollapseAnimationRunning()
+                    || !mWindowAndroid.isTopResumedActivity()) {
                 recordPointerState(PointerState.INSIDE);
                 return;
             }
-            // The pointer is confirmed over the rail: expand it.
-            applyPointerState(PointerState.INSIDE);
+            // The pointer is confirmed over the rail. Expand a collapsed rail only once the pointer
+            // stays over it for a while, measured from the first hover event over it, so a quick
+            // pass across it does not expand it. Otherwise apply right away, which also cancels a
+            // pending collapse.
+            if (mCollapseController.getEffectiveRailCollapseState()
+                    == RailCollapseState.COLLAPSED) {
+                if (mPointerState != PointerState.INSIDE
+                        || !ThreadUtils.getUiThreadHandler().hasCallbacks(mConfirmPointerState)) {
+                    recordPointerState(PointerState.INSIDE);
+                    scheduleConfirmPointerState(HOVER_DEBOUNCE_MS);
+                }
+            } else {
+                applyPointerState(PointerState.INSIDE);
+            }
         } else if (action == MotionEvent.ACTION_HOVER_EXIT) {
             if (containsRawPoint(mRailView, rawX, rawY)) {
                 // Hover stopped while the pointer is still within the rail bounds: a mouse button
-                // was pressed, or another window now covers the pointer. Keep the current state
-                // until a later pointer event reveals where the pointer is.
+                // was pressed, another window now covers the pointer, or the pointer left the
+                // window straight from the rail. Keep the current state until a later pointer
+                // event reveals where the pointer is. If no mouse press follows shortly, the
+                // pointer left the window, as no other event would reach the rail then.
                 recordPointerState(PointerState.INSIDE_UNCONFIRMED);
+                if (!mIsContextMenuShowingSupplier.getAsBoolean()) {
+                    scheduleConfirmPointerState(HOVER_DEBOUNCE_MS);
+                }
             } else {
                 applyPointerState(PointerState.OUTSIDE);
             }
@@ -181,14 +234,18 @@ class VerticalTabRailHoverController
 
     @Override
     public void onTouchEventDispatched(MotionEvent event) {
-        if (!isTrackingPointer()) return;
+        if (!isTrackingPointer() || !event.isFromSource(InputDevice.SOURCE_MOUSE)) return;
         // While a mouse button is pressed, Android sends touch events from SOURCE_MOUSE instead of
         // hover events, and keeps sending them to the rail even outside its bounds, e.g. when a
         // press on the rail is dragged over the web contents. Finger touches are ignored.
-        if (event.getActionMasked() != MotionEvent.ACTION_UP
-                || !event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            // A press reaching the rail means the pointer is over it, so the HOVER_EXIT before it
+            // did not mean that the pointer left the window.
+            cancelConfirmPointerState();
             return;
         }
+        if (action != MotionEvent.ACTION_UP) return;
         // A release inside the rail is left to the hover events that follow it.
         if (!containsRawPoint(mRailView, event.getRawX(), event.getRawY())) {
             applyPointerState(PointerState.OUTSIDE);
@@ -203,37 +260,52 @@ class VerticalTabRailHoverController
      * delivered straight to the listener by {@code ViewRootImpl#setDragFocus} and never dispatched,
      * so only the listener observes every action. The container is the rail's only drag listener,
      * so crossing between the rail's margin and one of its lists is not an exit.
+     *
+     * @param event The drag event.
+     * @param isExternalDrag Whether the drag started in another window. Such a drag over the rail
+     *     expands it like a hover, so the user can see where the tab lands.
      */
-    void onDragEvent(DragEvent event) {
+    void onDragEvent(DragEvent event, boolean isExternalDrag) {
         if (!isTrackingPointer()) return;
-        // Hover events are not sent during a system drag and drop, so the rail cannot tell when the
-        // pointer leaves it from hover alone. The position is unconfirmed for the duration of the
-        // drag, unless the rail receives coordinate-bearing drag events (see below).
+        // Hover events are not sent during a system drag and drop. Drag events only record where
+        // the pointer is, so the rail never collapses mid-drag: ACTION_DRAG_ENDED collapses it
+        // unless the drag is released over the rail.
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
+                cancelConfirmPointerState();
                 if (mPointerState == PointerState.INSIDE) {
                     recordPointerState(PointerState.INSIDE_UNCONFIRMED);
                 }
                 break;
             case DragEvent.ACTION_DRAG_LOCATION:
+                // Only delivered while the pointer is over the rail and the rail accepts the drag.
+                // Leaves a pending expansion alone, as recording a state cancels it.
+                if (mPointerState == PointerState.INSIDE) break;
+                recordPointerState(PointerState.INSIDE);
+                // A drag from another window moves over the rail: expand it like a hover. This
+                // skips the top resumed check, as drag events only reach the window under the
+                // pointer, which is not in front while the drag runs. Reuses the hover debounce,
+                // so dragging across the rail does not expand it.
+                if (isExternalDrag) scheduleConfirmPointerState(HOVER_DEBOUNCE_MS);
+                break;
             case DragEvent.ACTION_DROP:
-                // These are only delivered to the rail when the pointer is over it and the rail
-                // accepts the drag, so they confirm the pointer position. A drag that then ends
-                // over the rail (a drop, or ESC) leaves it expanded under the pointer.
+                // Released over the rail, so ACTION_DRAG_ENDED leaves it expanded.
                 if (mPointerState == PointerState.INSIDE_UNCONFIRMED) {
                     recordPointerState(PointerState.INSIDE);
                 }
                 break;
             case DragEvent.ACTION_DRAG_EXITED:
-                // The pointer left the rail. Collapses a hover-expanded rail; a rail the user
-                // expanded is left alone by VerticalTabRailCollapseController. ACTION_DRAG_ENDED
-                // does not collapse a confirmed rail: a drag that ends outside the rail has
-                // already exited it.
-                if (mPointerState != PointerState.OUTSIDE) {
-                    applyPointerState(PointerState.OUTSIDE);
+                // The pointer left the rail or the window. Only recorded, as the tab may come
+                // back. Also cancels a pending expansion.
+                if (mPointerState == PointerState.INSIDE) {
+                    recordPointerState(PointerState.INSIDE_UNCONFIRMED);
                 }
                 break;
             case DragEvent.ACTION_DRAG_ENDED:
+                // Drop any expansion still waiting: the drag is over, and hover events take over.
+                cancelConfirmPointerState();
+                // Released away from the rail: collapse it. Released over it (a drop, or ESC):
+                // leave it.
                 if (mPointerState == PointerState.INSIDE_UNCONFIRMED) {
                     applyPointerState(PointerState.OUTSIDE);
                 }
@@ -252,16 +324,25 @@ class VerticalTabRailHoverController
         applyPointerState(PointerState.OUTSIDE);
     }
 
-    /** Cancels the pending menu dismiss timeout, if any. */
-    private void cancelMenuDismissTimeout() {
-        ThreadUtils.getUiThreadHandler().removeCallbacks(mMenuDismissTimeout);
+    /**
+     * Confirms the recorded pointer state after {@code delayMs}, unless a newer pointer state is
+     * recorded before then. Replaces any pending one.
+     */
+    private void scheduleConfirmPointerState(long delayMs) {
+        cancelConfirmPointerState();
+        ThreadUtils.getUiThreadHandler().postDelayed(mConfirmPointerState, delayMs);
+    }
+
+    /** Cancels the confirmation scheduled by {@link #scheduleConfirmPointerState}, if any. */
+    private void cancelConfirmPointerState() {
+        ThreadUtils.getUiThreadHandler().removeCallbacks(mConfirmPointerState);
     }
 
     /** Records the pointer state without changing the rail. */
     private void recordPointerState(@PointerState int state) {
-        // Recording a confirmed state cancels a pending menu dismiss timeout, so the timeout never
-        // collapses the rail once the position is known.
-        if (state != PointerState.INSIDE_UNCONFIRMED) cancelMenuDismissTimeout();
+        // A newer pointer state supersedes the pending confirmation. mConfirmPointerState relies on
+        // this, as it confirms whatever state is recorded when it runs.
+        cancelConfirmPointerState();
         mPointerState = state;
     }
 
@@ -286,6 +367,13 @@ class VerticalTabRailHoverController
                 && rawX < mTempLocation[0] + view.getWidth()
                 && rawY >= mTempLocation[1]
                 && rawY < mTempLocation[1] + view.getHeight();
+    }
+
+    /** Returns whether the rail is animating to collapsed. */
+    private boolean isCollapseAnimationRunning() {
+        return mInTransition
+                && mCollapseController.getEffectiveRailCollapseState()
+                        == RailCollapseState.COLLAPSED;
     }
 
     /** Returns whether pointer events should drive the rail's expand-on-hover state. */

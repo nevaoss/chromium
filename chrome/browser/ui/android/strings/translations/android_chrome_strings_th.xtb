@@ -322,12 +322,14 @@
 <translation id="2297822946037605517">แชร์หน้าเว็บนี้</translation>
 <translation id="230115972905494466">ไม่พบอุปกรณ์ที่เข้ากันได้</translation>
 <translation id="2305798319182970276">ลบประวัติการเข้าชมด้วยการแตะปุ่ม</translation>
+<translation id="2307420463693979699"><ph name="APP_NAME" /> ต้องการสิทธิ์เข้าถึงอุปกรณ์ที่โต้ตอบกับมนุษย์โดยตรง (HID) สำหรับเว็บไซต์นี้</translation>
 <translation id="2316129865977710310">ไม่เป็นไร</translation>
 <translation id="232137538351753795">ปัดจากขอบด้านซ้ายเพื่อย้อนกลับ</translation>
 <translation id="2323763861024343754">พื้นที่เก็บข้อมูลเว็บไซต์</translation>
 <translation id="2327445548174191329">จาก <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">บันทึกหน้าเป็น…</translation>
 <translation id="2328474416100889417">ทุกคนจะเสียสิทธิ์เข้าถึงกลุ่มแท็บ "<ph name="GROUP_NAME" />" ทันที และระบบจะปิดลิงก์คำเชิญทั้งหมด</translation>
+<translation id="2328773543844041445">ขยายแท็บโดยอัตโนมัติโดยการวางเมาส์เหนือแท็บ</translation>
 <translation id="2330186936255788117">บุ๊กมาร์กเพิ่มเติม</translation>
 <translation id="2330243730505117832">"เลือกอุปกรณ์" ปิดอยู่</translation>
 <translation id="2332515770639153015">Google Safe Browsing พร้อมการปกป้องที่ดียิ่งขึ้นเปิดอยู่</translation>
@@ -1691,6 +1693,7 @@
 <translation id="7608245556672190037">การเลือกรับ Chrome Finds เปิดอยู่ที่ระดับความสูงเต็มหน้าจอ</translation>
 <translation id="7612619742409846846">ลงชื่อเข้าใช้ Google ด้วย</translation>
 <translation id="7612989789287281429">กำลังลงชื่อเข้าใช้…</translation>
+<translation id="7617512710641355143">Chrome ได้รับการจัดการ</translation>
 <translation id="7619072057915878432">การดาวน์โหลด <ph name="FILE_NAME" /> ล้มเหลวเพราะเครือข่ายขัดข้อง</translation>
 <translation id="7626032353295482388">ยินดีต้อนรับสู่ Chrome</translation>
 <translation id="7628417132421583481">ไปที่เครื่องมือจัดการรหัสผ่าน</translation>

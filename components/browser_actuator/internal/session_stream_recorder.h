@@ -15,6 +15,7 @@
 #include <variant>
 #include <vector>
 
+#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
@@ -185,11 +186,6 @@ class SessionStreamRecorderFactory : public TransportHandlerFactory,
   SessionStreamRecorderFactory& operator=(const SessionStreamRecorderFactory&) =
       delete;
 
-  // Narrows a factory obtained from BrowserActuatorService::GetFactory().
-  // Returns nullptr if `factory` is null or is not a recorder factory.
-  static SessionStreamRecorderFactory* FromFactory(
-      TransportHandlerFactory* factory);
-
   // TransportHandlerFactory implementation:
   FactoryId GetFactoryId() const override;
   std::vector<PayloadType> GetSupportedPayloadTypes() const override;
@@ -203,6 +199,12 @@ class SessionStreamRecorderFactory : public TransportHandlerFactory,
   // Exports all tracked sessions' metadata and history as a structured
   // dictionary.
   base::DictValue ExportAllSessionsAsValue() const;
+
+  // Exports the tracked sessions matching `session_ids` (or all sessions if
+  // `session_ids` is nullopt) as a structured dictionary.
+  base::DictValue ExportSessionsAsValue(
+      std::optional<base::span<const std::string>> session_ids =
+          std::nullopt) const;
 
   // Returns every active and retained session, newest session first.
   //
@@ -219,6 +221,10 @@ class SessionStreamRecorderFactory : public TransportHandlerFactory,
   // TODO(b/561566505): Support export as trace file.
   // Exports all tracked sessions' metadata and history as JSON.
   std::string ExportAllSessionsAsJson() const;
+
+  // Exports the tracked sessions matching `session_ids` as JSON.
+  std::string ExportSessionsAsJson(
+      base::span<const std::string> session_ids) const;
 
   // For testing: returns the number of tracked active session recorders.
   size_t GetActiveRecordersCountForTesting() const;

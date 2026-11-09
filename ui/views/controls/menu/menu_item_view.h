@@ -177,6 +177,7 @@ class VIEWS_EXPORT MenuItemView : public View, public LayoutDelegate {
       std::optional<ui::NewBadgeType> badge_type);
 
   // Hides and cancels the menu. This does nothing if the menu is not open.
+  // Must only be called on the root item.
   void Cancel();
 
   // Add an item to the menu at a specified index.  ChildrenChanged() should
@@ -194,6 +195,14 @@ class VIEWS_EXPORT MenuItemView : public View, public LayoutDelegate {
       std::optional<ui::ColorId> submenu_background_color = std::nullopt,
       std::optional<ui::ColorId> foreground_color = std::nullopt,
       std::optional<ui::ColorId> selected_color_id = std::nullopt);
+
+  // Appends `item` to the menu, or inserts it at `index` if specified.
+  template <typename T>
+    requires(std::derived_from<T, MenuItemView>)
+  T* AddMenuItemView(std::unique_ptr<T> item,
+                     std::optional<size_t> index = std::nullopt) {
+    return static_cast<T*>(AddMenuItemViewImpl(std::move(item), index));
+  }
 
   void SetMenuItemBackground(
       std::optional<MenuItemBackground> menu_item_background) {
@@ -418,13 +427,9 @@ class VIEWS_EXPORT MenuItemView : public View, public LayoutDelegate {
   // Returns the trailing horizontal padding after content.
   int GetTrailingPadding() const;
 
-  void set_controller(MenuController* controller) {
-    if (controller) {
-      controller_ = controller->AsWeakPtr();
-    } else {
-      controller_.reset();
-    }
-  }
+  // Sets the controller running this menu. Only valid on the root item; other
+  // items get the controller from the root via GetMenuController().
+  void SetController(MenuController* controller);
   MenuController* GetMenuController();
   const MenuController* GetMenuController() const;
 
@@ -551,6 +556,11 @@ class VIEWS_EXPORT MenuItemView : public View, public LayoutDelegate {
                int command,
                Type type,
                MenuDelegate* delegate);
+
+  MenuItemView* AddMenuItemViewImpl(
+      std::unique_ptr<MenuItemView> item,
+      std::optional<size_t> index,
+      std::optional<ui::ColorId> submenu_background_color = std::nullopt);
 
   const SubmenuView* GetContainingSubmenu() const {
     return parent_menu_item_->GetSubmenu();
@@ -703,7 +713,9 @@ class VIEWS_EXPORT MenuItemView : public View, public LayoutDelegate {
   // as necessary.
   raw_ptr<MenuDelegate> delegate_ = nullptr;
 
-  // The controller for the run operation, or NULL if the menu isn't showing.
+  // The controller for the run operation, or null if the menu isn't showing.
+  // Only set on the root menu item; use GetMenuController() instead of
+  // accessing this directly.
   base::WeakPtr<MenuController> controller_;
 
   // Used to detect when Cancel was invoked.
@@ -846,6 +858,10 @@ class VIEWS_EXPORT MenuItemView : public View, public LayoutDelegate {
 VIEWS_EXPORT extern const ui::ClassProperty<MenuItemView*>* const
     kSubmenuItemKey;
 
+// Property set on a child views::Button inside a container MenuItemView to
+// specify its mnemonic character for keyboard selection in MenuController.
+VIEWS_EXPORT extern const ui::ClassProperty<char16_t>* const kMenuMnemonicKey;
+
 class VIEWS_EXPORT MenuItemActionViewInterface
     : public BaseActionViewInterface {
  public:
@@ -872,6 +888,7 @@ class VIEWS_EXPORT EmptyMenuMenuItem : public MenuItemView {
 
 }  // namespace views
 
+DECLARE_EXPORTED_UI_CLASS_PROPERTY_TYPE(VIEWS_EXPORT, char16_t)
 DECLARE_EXPORTED_UI_CLASS_PROPERTY_TYPE(VIEWS_EXPORT, views::MenuItemView*)
 
 #endif  // UI_VIEWS_CONTROLS_MENU_MENU_ITEM_VIEW_H_

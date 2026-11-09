@@ -1033,7 +1033,7 @@ bool Element::IsFocusableStyle(UpdateBehavior update_behavior) const {
       << *this;
 
   if (LayoutObject* layout_object = GetLayoutObject()) {
-    return layout_object->StyleRef().IsFocusable();
+    return layout_object->Style().IsFocusable();
   }
 
   if (HasDisplayContentsStyle() &&
@@ -1069,8 +1069,7 @@ bool Element::IsFocusableStyle(UpdateBehavior update_behavior) const {
     }
     DCHECK(canvas);
     if (LayoutObject* layout_object = canvas->GetLayoutObject()) {
-      return layout_object->IsCanvas() &&
-             layout_object->StyleRef().IsFocusable();
+      return layout_object->IsCanvas() && layout_object->Style().IsFocusable();
     }
   }
 
@@ -2473,7 +2472,7 @@ int Element::OffsetLeft() {
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                layout_object->OffsetPoint(OffsetParent()).left,
-               layout_object->StyleRef())
+               layout_object->Style())
         .Round();
   }
   return 0;
@@ -2485,7 +2484,7 @@ int Element::OffsetTop() {
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                layout_object->OffsetPoint(OffsetParent()).top,
-               layout_object->StyleRef())
+               layout_object->Style())
         .Round();
   }
   return 0;
@@ -2496,7 +2495,7 @@ int Element::OffsetWidth() {
                                             DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(layout_object->OffsetWidth(),
-                                                   layout_object->StyleRef())
+                                                   layout_object->Style())
         .Round();
   }
   return 0;
@@ -2507,7 +2506,7 @@ int Element::OffsetHeight() {
                                             DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
-               layout_object->OffsetHeight(), layout_object->StyleRef())
+               layout_object->OffsetHeight(), layout_object->Style())
         .Round();
   }
   return 0;
@@ -2561,7 +2560,7 @@ int Element::ClientLeftNoLayout() const {
   if (const auto* layout_object = GetLayoutBox()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                PhysicalClientRect(*layout_object).offset.left,
-               layout_object->StyleRef())
+               layout_object->Style())
         .Round();
   }
   return 0;
@@ -2571,7 +2570,7 @@ int Element::ClientTopNoLayout() const {
   if (const auto* layout_object = GetLayoutBox()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                PhysicalClientRect(*layout_object).offset.top,
-               layout_object->StyleRef())
+               layout_object->Style())
         .Round();
   }
   return 0;
@@ -2665,12 +2664,12 @@ int Element::clientWidth() {
         DCHECK(layout_view->IsScrollContainer());
         return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                    layout_view->OverflowClipRect().Width(),
-                   layout_view->StyleRef())
+                   layout_view->Style())
             .Round();
       }
       return AdjustForAbsoluteZoom::AdjustInt(
           layout_view->GetLayoutSize(kExcludeScrollbars).width(),
-          layout_view->StyleRef());
+          layout_view->Style());
     }
   }
 
@@ -2682,7 +2681,7 @@ int Element::clientWidth() {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                box->IsTable() ? box->StitchedSize().width
                               : PhysicalClientRect(*box).Width(),
-               box->StyleRef())
+               box->Style())
         .Round();
   }
   return 0;
@@ -2708,12 +2707,12 @@ int Element::clientHeight() {
         DCHECK(layout_view->IsScrollContainer());
         return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                    layout_view->OverflowClipRect().Height(),
-                   layout_view->StyleRef())
+                   layout_view->Style())
             .Round();
       }
       return AdjustForAbsoluteZoom::AdjustInt(
           layout_view->GetLayoutSize(kExcludeScrollbars).height(),
-          layout_view->StyleRef());
+          layout_view->Style());
     }
   }
 
@@ -2726,7 +2725,7 @@ int Element::clientHeight() {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
                box->IsTable() ? box->StitchedSize().height
                               : PhysicalClientRect(*box).Height(),
-               box->StyleRef())
+               box->Style())
         .Round();
   }
   return 0;
@@ -2736,7 +2735,7 @@ double Element::currentCSSZoom() {
   GetDocument().UpdateStyleAndLayoutTreeForElement(
       this, DocumentUpdateReason::kComputedStyle);
   if (const auto* layout_object = GetLayoutObject()) {
-    return layout_object->StyleRef().EffectiveZoom() /
+    return layout_object->Style().EffectiveZoom() /
            GetDocument().GetStyleEngine().GetStyleResolver().InitialZoom();
   }
   return 1.0;
@@ -2863,7 +2862,7 @@ void Element::setScrollLeft(double new_left) {
       }
     }
 
-    ScrollOffset end_offset(new_left * box->StyleRef().EffectiveZoom(),
+    ScrollOffset end_offset(new_left * box->Style().EffectiveZoom(),
                             scrollable_area->GetScrollOffset().y());
     std::unique_ptr<cc::SnapSelectionStrategy> strategy =
         cc::SnapSelectionStrategy::CreateForEndPosition(
@@ -2921,7 +2920,7 @@ void Element::setScrollTop(double new_top) {
     }
 
     ScrollOffset end_offset(scrollable_area->GetScrollOffset().x(),
-                            new_top * box->StyleRef().EffectiveZoom());
+                            new_top * box->Style().EffectiveZoom());
     std::unique_ptr<cc::SnapSelectionStrategy> strategy =
         cc::SnapSelectionStrategy::CreateForEndPosition(
             scrollable_area->ScrollOffsetToPosition(end_offset), false, true);
@@ -3104,7 +3103,7 @@ bool Element::ScrollLayoutBoxBy(const ScrollToOptions* scroll_to_options,
 
   gfx::PointF current_position(scrollable_area->ScrollPosition().x(),
                                scrollable_area->ScrollPosition().y());
-  displacement.Scale(box->StyleRef().EffectiveZoom());
+  displacement.Scale(box->Style().EffectiveZoom());
   gfx::PointF new_position = current_position + displacement;
 
   std::unique_ptr<cc::SnapSelectionStrategy> strategy =
@@ -3164,12 +3163,12 @@ bool Element::ScrollLayoutBoxTo(const ScrollToOptions* scroll_to_options,
   if (scroll_to_options->hasLeft()) {
     new_offset.set_x(
         ScrollableArea::NormalizeNonFiniteScroll(scroll_to_options->left()) *
-        box->StyleRef().EffectiveZoom());
+        box->Style().EffectiveZoom());
   }
   if (scroll_to_options->hasTop()) {
     new_offset.set_y(
         ScrollableArea::NormalizeNonFiniteScroll(scroll_to_options->top()) *
-        box->StyleRef().EffectiveZoom());
+        box->Style().EffectiveZoom());
   }
 
   new_offset = SnapScrollOffsetToPhysicalPixels(new_offset);
@@ -3289,7 +3288,7 @@ bool Element::HandleScrollByPageCommand(CommandEventType command) {
   }
 
   ScrollDirectionPhysical physical_direction =
-      GetPhysicalDirectionForCommand(command, box->StyleRef());
+      GetPhysicalDirectionForCommand(command, box->Style());
 
   return scrollable_area->ScrollByPageWithSnap(physical_direction);
 }
@@ -3357,7 +3356,7 @@ Vector<gfx::Rect> Element::OutlineRectsInWidget(
 
   Vector<PhysicalRect> outline_rects = layout_object->OutlineRects(
       nullptr, PhysicalOffset(),
-      layout_object->StyleRef().OutlineRectsShouldIncludeBlockInkOverflow());
+      layout_object->Style().OutlineRectsShouldIncludeBlockInkOverflow());
   for (auto& r : outline_rects) {
     PhysicalRect physical_rect = layout_object->LocalToAbsoluteRect(r);
     gfx::Rect absolute_rect =
@@ -4309,7 +4308,8 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     const auto* slot = ToHTMLSlotElementIfSupportsAssignmentOrNull(*parent);
     const bool is_inactive_fallback_content =
         slot && !slot->AssignedNodesNoRecalc().empty();
-    if (!IsChildOfShadowHost() && !is_inactive_fallback_content) {
+    if (IsPseudoElement() ||
+        (!IsChildOfShadowHost() && !is_inactive_fallback_content)) {
       SetIsInCanvasSubtree(true);
     }
   } else if (!parent && insertion_point.IsDocumentNode()) {
@@ -4369,8 +4369,11 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     return kInsertionDone;
   }
 
-  const AtomicString& id_value = GetIdAttribute();
+  const AtomicString id_value = GetIdAttribute();
   if (!id_value.IsNull()) {
+    // UpdateId() notifies id observers, which can update style and layout.
+    // That can synchronize the lazy style attribute, which can reallocate the
+    // attribute storage, invalidating references from GetIdAttribute().
     UpdateId(scope, g_null_atom, id_value);
   }
 
@@ -4575,6 +4578,11 @@ void Element::DidChangeIsInCanvasSubtree() {
   if (auto* layout_object = GetLayoutObject()) {
     layout_object->SetNeedsPaintPropertyUpdate();
     layout_object->SetSubtreeShouldDoFullPaintInvalidation();
+    if (layout_object->HasLayer()) {
+      To<LayoutBoxModelObject>(layout_object)
+          ->Layer()
+          ->SetFilterOnEffectNodeDirty();
+    }
   }
 }
 
@@ -4671,9 +4679,11 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
 
   SetSavedLayerScrollOffset(ScrollOffset());
 
-  const AtomicString& id_value = GetIdAttribute();
+  const AtomicString id_value = GetIdAttribute();
   if (insertion_point.IsInTreeScope() && GetTreeScope() == document) {
     if (!id_value.IsNull()) {
+      // UpdateId() can invalidate references from GetIdAttribute(). See the
+      // comment in InsertedInto().
       UpdateId(insertion_point.GetTreeScope(), id_value, g_null_atom);
     }
 
@@ -4805,6 +4815,93 @@ void Element::DetachColumnPseudoElements(bool performing_reattach) {
       column->DetachLayoutTree(performing_reattach);
     }
   }
+}
+
+void Element::AttachLayoutPrecedingPseudoElements(AttachContext& context) {
+  if (!HasPseudoElements() || IsDocumentElement()) {
+    return;
+  }
+  AttachPrecedingScrollControlsPseudoElements(context);
+}
+
+void Element::AttachPrecedingPseudoElements(AttachContext& context) {
+  // Both the pseudo-elements and the overscroll area tracker live in rare data.
+  if (!RareData()) {
+    return;
+  }
+  if (!HasPseudoElements()) {
+    // The overscroll area parents are pseudo-elements of other elements (the
+    // overscroll areas tracked by this element), so they must be attached even
+    // if this element has no pseudo-elements of its own.
+    AttachOverscrollPseudoElements(context);
+    return;
+  }
+  AttachDocumentElementPrecedingPseudoElements(context);
+  AttachOverscrollPseudoElements(context);
+  AttachPseudoElement(kPseudoIdScrollMarker, context);
+  AttachPseudoElement(kPseudoIdMarker, context);
+  AttachPseudoElement(kPseudoIdCheckMark, context);
+  AttachPseudoElement(kPseudoIdBefore, context);
+}
+
+void Element::AttachLayoutSucceedingPseudoElements(AttachContext& context) {
+  if (!HasPseudoElements() || IsDocumentElement()) {
+    return;
+  }
+  AttachPseudoElement(kPseudoIdInterestButton, context);
+  AttachSucceedingScrollControlsPseudoElements(context);
+}
+
+void Element::AttachSucceedingPseudoElements(AttachContext& context) {
+  const bool has_pseudo_elements = HasPseudoElements();
+  if (has_pseudo_elements) {
+    AttachPseudoElement(kPseudoIdAfter, context);
+    AttachPseudoElement(kPseudoIdExpandIcon, context);
+    AttachPseudoElement(kPseudoIdPickerIcon, context);
+    AttachDocumentElementSucceedingPseudoElements(context);
+    AttachPseudoElement(kPseudoIdBackdrop, context);
+  }
+  UpdateFirstLetterPseudoElement(StyleUpdatePhase::kAttachLayoutTree);
+  // UpdateFirstLetterPseudoElement() may have just created the ::first-letter
+  // pseudo-element, so HasPseudoElements() must be checked again here if it
+  // was false above.
+  if (has_pseudo_elements || HasPseudoElements()) {
+    AttachPseudoElement(kPseudoIdFirstLetter, context);
+  }
+}
+
+void Element::DetachPrecedingPseudoElements(bool performing_reattach) {
+  // Both the pseudo-elements and the overscroll area tracker live in rare data.
+  if (!RareData()) {
+    return;
+  }
+  if (HasPseudoElements()) {
+    DetachPseudoElement(kPseudoIdScrollMarker, performing_reattach);
+    DetachPseudoElement(kPseudoIdScrollMarkerGroupBefore, performing_reattach);
+    DetachPseudoElement(kPseudoIdMarker, performing_reattach);
+    DetachPseudoElement(kPseudoIdCheckMark, performing_reattach);
+    DetachPseudoElement(kPseudoIdBefore, performing_reattach);
+  }
+  // The overscroll area parents belong to other elements (see
+  // AttachPrecedingPseudoElements()), so detach them regardless.
+  DetachOverscrollPseudoElements(performing_reattach);
+}
+
+void Element::DetachSucceedingPseudoElements(bool performing_reattach) {
+  if (!HasPseudoElements()) {
+    return;
+  }
+  DetachPseudoElement(kPseudoIdAfter, performing_reattach);
+  DetachPseudoElement(kPseudoIdExpandIcon, performing_reattach);
+  DetachPseudoElement(kPseudoIdPickerIcon, performing_reattach);
+  DetachPseudoElement(kPseudoIdInterestButton, performing_reattach);
+  DetachPseudoElement(kPseudoIdScrollButtonBlockStart, performing_reattach);
+  DetachPseudoElement(kPseudoIdScrollButtonInlineStart, performing_reattach);
+  DetachPseudoElement(kPseudoIdScrollButtonInlineEnd, performing_reattach);
+  DetachPseudoElement(kPseudoIdScrollButtonBlockEnd, performing_reattach);
+  DetachPseudoElement(kPseudoIdScrollMarkerGroupAfter, performing_reattach);
+  DetachPseudoElement(kPseudoIdBackdrop, performing_reattach);
+  DetachPseudoElement(kPseudoIdFirstLetter, performing_reattach);
 }
 
 void Element::AttachLayoutTree(AttachContext& context) {
@@ -6082,7 +6179,7 @@ StyleRecalcChange Element::RecalcOwnStyle(
     if (auto* pseudo_element = DynamicTo<PseudoElement>(this)) {
       if (const ComputedStyle* adjusted_style =
               pseudo_element->AdjustedLayoutStyle(
-                  *layout_style, layout_object->Parent()->StyleRef())) {
+                  *layout_style, layout_object->Parent()->Style())) {
         layout_style = adjusted_style;
       }
     } else if (auto* html_element = DynamicTo<HTMLHtmlElement>(this)) {
@@ -6235,8 +6332,10 @@ void Element::RebuildLayoutTree(WhitespaceAttacher& whitespace_attacher) {
       } else {
         child_attacher = &whitespace_attacher;
       }
-      RebuildTransitionLayoutTree(*child_attacher);
-      RebuildPseudoElementLayoutTree(kPseudoIdSkeleton, *child_attacher);
+      if (has_pseudo_elements) {
+        RebuildTransitionLayoutTree(*child_attacher);
+        RebuildPseudoElementLayoutTree(kPseudoIdSkeleton, *child_attacher);
+      }
       RebuildOverscrollAreaLayoutTree(*child_attacher);
       if (has_pseudo_elements) {
         RebuildPseudoElementLayoutTree(kPseudoIdAfter, *child_attacher);
@@ -6389,6 +6488,9 @@ void Element::DetachOverscrollPseudoElements(bool performing_reattach) {
 }
 
 void Element::AttachTransitionPseudoElements(AttachContext& context) {
+  if (!HasPseudoElements()) {
+    return;
+  }
   // For a document transition, the LayoutObject for the ::view-transition
   // pseudo-element is wrapped by the anonymous LayoutViewTransitionRoot,
   // which represents the snapshot containing block.
@@ -6409,6 +6511,9 @@ void Element::AttachTransitionPseudoElements(AttachContext& context) {
 }
 
 void Element::DetachTransitionPseudoElements(bool performing_reattach) {
+  if (!HasPseudoElements()) {
+    return;
+  }
   auto detach_pseudo = [&](PseudoElement* pseudo_element) {
     pseudo_element->DetachLayoutTree(performing_reattach);
   };
@@ -7085,7 +7190,7 @@ void Element::SetTargetedSnapAreaIdsForSnapContainers() {
   std::optional<cc::ElementId> targeted_area_id = std::nullopt;
   const LayoutBox* box = GetLayoutBox();
   while (box) {
-    const ComputedStyle& style = box->StyleRef();
+    const ComputedStyle& style = box->Style();
     // If this is a snap area, associate it with the first snap area we
     // encountered, if any, since the previous snap container.
     if (box->IsScrollContainer() && !style.GetScrollSnapType().is_none) {
@@ -7119,8 +7224,7 @@ void Element::SetTargetedSnapAreaIdsForSnapContainers() {
 void Element::ClearTargetedSnapAreaIdsForSnapContainers() {
   const LayoutBox* box = GetLayoutBox();
   while (box) {
-    if (box->IsScrollContainer() &&
-        !box->StyleRef().GetScrollSnapType().is_none) {
+    if (box->IsScrollContainer() && !box->Style().GetScrollSnapType().is_none) {
       if (auto* scrollable_area = box->GetScrollableArea()) {
         scrollable_area->SetTargetedSnapAreaId(std::nullopt);
       }
@@ -8335,8 +8439,7 @@ void Element::setAttributeNS(const AtomicString& namespace_uri,
 
 void Element::RemoveAttributeInternal(wtf_size_t index,
                                       AttributeModificationReason reason) {
-  MutableAttributeCollection attributes =
-      EnsureUniqueElementData().Attributes();
+  AttributeCollection attributes = GetElementData()->Attributes();
   SECURITY_DCHECK(index < attributes.size());
 
   QualifiedName name = attributes[index].GetName();
@@ -8353,11 +8456,21 @@ void Element::RemoveAttributeInternal(wtf_size_t index,
     }
   }
 
+  MutableAttributeCollection mutable_attributes =
+      EnsureUniqueElementData().Attributes();
   if (Attr* attr_node = AttrIfExists(name)) {
-    DetachAttrNodeFromElementWithValue(attr_node, attributes[index].Value());
+    DetachAttrNodeFromElementWithValue(attr_node, value_being_removed);
   }
 
-  attributes.Remove(index);
+  // WillModifyAttribute() may pause in the debugger and allow script to mutate
+  // attributes, invalidating `index`.
+  if (index >= mutable_attributes.size() ||
+      mutable_attributes[index].GetName() != name) {
+    index = mutable_attributes.FindIndex(name);
+  }
+  if (index != kNotFound) {
+    mutable_attributes.Remove(index);
+  }
 
   if (reason !=
       AttributeModificationReason::kBySynchronizationOfLazyAttribute) {
@@ -9286,7 +9399,7 @@ void Element::SetHasFocusWithinUpToAncestor(bool has_focus_within,
     // focus even if its own HasFocusWithin state has not changed.
     if (element != this && need_snap_container_search) {
       if (const LayoutBox* box = element->GetLayoutBoxForScrolling()) {
-        if (!box->StyleRef().GetScrollSnapType().is_none) {
+        if (!box->Style().GetScrollSnapType().is_none) {
           // TODO(crbug.com/340983092): We should be able to just call
           // LocalFrameView::AddPendingSnapUpdate, but that results in a snap
           // which cancels ongoing scroll animations.
@@ -9386,6 +9499,11 @@ void Element::UpdateToVideoAd() {
   }
 }
 
+void Element::SetIsOverlayPopupAd() {
+  CHECK(IsAdRelated());
+  RareData()->GetDisplayAdElementMonitor()->SetIsOverlayPopupAd();
+}
+
 bool Element::IsAdRelated() const {
   if (const NodeRareData* data = RareData()) {
     return data->GetDisplayAdElementMonitor();
@@ -9397,6 +9515,15 @@ bool Element::IsVideoAd() const {
   if (const NodeRareData* data = RareData()) {
     if (auto* monitor = data->GetDisplayAdElementMonitor()) {
       return monitor->IsVideoAd();
+    }
+  }
+  return false;
+}
+
+bool Element::IsOverlayPopupAd() const {
+  if (const NodeRareData* data = RareData()) {
+    if (const auto* monitor = data->GetDisplayAdElementMonitor()) {
+      return monitor->IsOverlayPopupAd();
     }
   }
   return false;
@@ -10570,7 +10697,7 @@ const ComputedStyle* Element::EnsureOwnComputedStyle(
     LayoutObject* parent_layout_object =
         LayoutTreeBuilderTraversal::ParentLayoutObject(*this);
     if (parent_layout_object) {
-      layout_parent_style = &parent_layout_object->StyleRef();
+      layout_parent_style = &parent_layout_object->Style();
     }
   }
 
@@ -10898,7 +11025,12 @@ void Element::ApplyPendingBackdropPseudoElementUpdate() {
 }
 
 void Element::UpdateFirstLetterPseudoElement(StyleUpdatePhase phase) {
-  if (CanGeneratePseudoElement(kPseudoIdFirstLetter) ||
+  // HasPseudoElementStyle() is a cheap necessary condition for the virtual
+  // CanGeneratePseudoElement(kPseudoIdFirstLetter) call, and is false for the
+  // vast majority of elements.
+  const ComputedStyle* style = GetComputedStyle();
+  if ((style && style->HasPseudoElementStyle(kPseudoIdFirstLetter) &&
+       CanGeneratePseudoElement(kPseudoIdFirstLetter)) ||
       GetPseudoElement(kPseudoIdFirstLetter)) {
     UpdateFirstLetterPseudoElement(
         phase, StyleRecalcContext::FromPseudoElementAncestors(
@@ -11252,7 +11384,9 @@ PseudoElement* Element::GetPseudoElement(
     PseudoId pseudo_id,
     const AtomicString& pseudo_argument) const {
   if (NodeRareData* data = RareData()) {
-    return data->GetPseudoElement(pseudo_id, pseudo_argument);
+    PseudoElement* element = data->GetPseudoElement(pseudo_id, pseudo_argument);
+    DCHECK(!element || HasPseudoElements());
+    return element;
   }
   return nullptr;
 }
@@ -11695,9 +11829,13 @@ bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const {
         return style->HasScrollMarkerGroupAfter();
       }
     }
-    if (!RuntimeEnabledFeatures::OverlayPropertyEnabled() &&
-        pseudo_id == kPseudoIdBackdrop) {
-      return IsInTopLayer();
+    if (pseudo_id == kPseudoIdBackdrop) {
+      if (!IsInTopLayer()) {
+        return false;
+      }
+      if (!RuntimeEnabledFeatures::OverlayPropertyEnabled()) {
+        return true;
+      }
     }
     if (pseudo_id == kPseudoIdOverscrollBackdrop) {
       if (!IsValidOverscrollArea()) {
@@ -13621,8 +13759,7 @@ bool Element::checkVisibility(CheckVisibilityOptions* options) const {
   // display locked at all. This is because, content-visibility: hidden is
   // always checked, so regardless of _why_ we're locked, the answer will be
   // false if we're locked.
-  if (RuntimeEnabledFeatures::CheckVisibilityExtraPropertiesEnabled() &&
-      options->contentVisibilityAuto() &&
+  if (options->contentVisibilityAuto() &&
       DisplayLockUtilities::IsDisplayLockedPreventingPaint(this)) {
     return false;
   }
@@ -13646,9 +13783,7 @@ bool Element::checkVisibility(CheckVisibilityOptions* options) const {
   }
 
   DCHECK(options);
-  if ((options->checkVisibilityCSS() ||
-       (RuntimeEnabledFeatures::CheckVisibilityExtraPropertiesEnabled() &&
-        options->visibilityProperty())) &&
+  if ((options->checkVisibilityCSS() || options->visibilityProperty()) &&
       style->Visibility() != EVisibility::kVisible) {
     return false;
   }
@@ -13666,9 +13801,7 @@ bool Element::checkVisibility(CheckVisibilityOptions* options) const {
       }
 
       // Check for opacity:0
-      if (options->checkOpacity() ||
-          (RuntimeEnabledFeatures::CheckVisibilityExtraPropertiesEnabled() &&
-           options->opacityProperty())) {
+      if (options->checkOpacity() || options->opacityProperty()) {
         if (style = ancestor_element->GetComputedStyle(); style) {
           if (style->Opacity() == 0.f) {
             return false;
@@ -13947,14 +14080,25 @@ ALWAYS_INLINE void Element::SetAttributeInternal(
       DidModifyAttribute(existing_attribute_name, new_value, new_value, reason);
     }
   } else {
-    Attribute& new_attribute = EnsureUniqueElementData().Attributes().at(index);
-    AtomicString existing_attribute_value = std::move(new_attribute.Value());
+    AtomicString existing_attribute_value = existing_attribute.Value();
     if (reason !=
         AttributeModificationReason::kBySynchronizationOfLazyAttribute) {
       WillModifyAttribute(existing_attribute_name, existing_attribute_value,
                           new_value);
     }
-    new_attribute.SetValue(new_value);
+    MutableAttributeCollection mutable_attributes =
+        EnsureUniqueElementData().Attributes();
+    // WillModifyAttribute() may pause in the debugger and allow script to
+    // mutate attributes, invalidating `index`.
+    if (index >= mutable_attributes.size() ||
+        mutable_attributes[index].GetName() != existing_attribute_name) {
+      index = mutable_attributes.FindIndex(existing_attribute_name);
+    }
+    if (index != kNotFound) {
+      mutable_attributes[index].SetValue(new_value);
+    } else {
+      mutable_attributes.Append(existing_attribute_name, new_value);
+    }
     if (reason !=
         AttributeModificationReason::kBySynchronizationOfLazyAttribute) {
       DidModifyAttribute(existing_attribute_name, existing_attribute_value,

@@ -10,14 +10,10 @@ import type {GroupedActionMenuElement} from 'chrome-untrusted://read-anything-si
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {eventToPromise, microtasksFinished} from 'chrome-untrusted://webui-test/test_util.js';
 
-import {assertTestSettingsAreNotDefaultSettings, getItemsInMenu, setupTestEnvironment} from './common.js';
+import {getItemsInMenu, setupTestEnvironment} from './common.js';
 
 suite('GroupedActionMenuElement', () => {
   let menu: GroupedActionMenuElement;
-
-  suiteSetup(() => {
-    assertTestSettingsAreNotDefaultSettings();
-  });
 
   setup(() => {
     setupTestEnvironment();
@@ -105,18 +101,20 @@ suite('GroupedActionMenuElement', () => {
       {
         header: {title: 'Header 1', separator: false},
         items: [
-          {title: 'Item 1', data: 1, selected: true},
+          {title: 'Item 1', data: 1},
           {title: 'Item 2', data: 2},
         ],
         eventName: ToolbarEvent.THEME,
+        selectedValue: 1,
       },
       {
         header: {title: 'Header 2', separator: true},
         items: [
-          {title: 'Item 3', data: 3, selected: true},
+          {title: 'Item 3', data: 3},
           {title: 'Item 4', data: 4},
         ],
         eventName: ToolbarEvent.LINE_SPACING,
+        selectedValue: 3,
       },
     ];
     await microtasksFinished();

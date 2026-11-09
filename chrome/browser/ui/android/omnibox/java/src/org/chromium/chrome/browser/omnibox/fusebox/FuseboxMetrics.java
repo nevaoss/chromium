@@ -15,6 +15,8 @@ import org.chromium.base.metrics.UmaRecorderHolder;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.fusebox.PopupButtonData.PopupButtonType;
+import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
+import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.components.browser_ui.util.ConversionUtils;
 import org.chromium.components.contextual_search.ContextUploadErrorType;
 import org.chromium.components.contextual_search.ContextUploadStatus;
@@ -108,7 +110,9 @@ public class FuseboxMetrics {
         AiModeActivationSource.TOOL_MENU,
         AiModeActivationSource.DEDICATED_BUTTON,
         AiModeActivationSource.NTP_BUTTON,
-        AiModeActivationSource.IMPLICIT
+        AiModeActivationSource.IMPLICIT,
+        AiModeActivationSource.NTP_CREATE_IMAGE_BUTTON,
+        AiModeActivationSource.NTP_GALLERY_BUTTON
     })
     @Retention(RetentionPolicy.SOURCE)
     @Target({ElementType.TYPE_USE})
@@ -118,7 +122,9 @@ public class FuseboxMetrics {
         int DEDICATED_BUTTON = 1;
         int NTP_BUTTON = 2;
         int IMPLICIT = 3;
-        int COUNT = 4;
+        int NTP_CREATE_IMAGE_BUTTON = 4;
+        int NTP_GALLERY_BUTTON = 5;
+        int COUNT = 6;
     }
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:AiModeActivationSource)
@@ -321,6 +327,13 @@ public class FuseboxMetrics {
     static void notifyModelButtonSelected(@ModelMode int modelMode) {
         RecordHistogram.recordEnumeratedHistogram(
                 "Omnibox.MobileFusebox.ModelButtonSelected", modelMode, MODEL_MODE_HISTOGRAM_BOUND);
+    }
+
+    static void notifyPlusMenuShown() {
+        ChromeSharedPreferences.getInstance()
+                .writeLong(
+                        ChromePreferenceKeys.OMNIBOX_FUSEBOX_PLUS_MENU_LAST_OPEN_TIME,
+                        TimeUtils.currentTimeMillis());
     }
 
     static void notifyAttachmentsPopupClosed(boolean itemSelected) {

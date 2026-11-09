@@ -262,15 +262,16 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Variations.FirstRunResult" enum="VariationsFirstRunResult"
-    expires_after="2026-03-22">
+    expires_after="2027-10-01">
   <owner>asvitkine@chromium.org</owner>
   <owner>rkaplow@chromium.org</owner>
   <owner>src/base/metrics/OWNERS</owner>
   <summary>
-    The result of attempting to import an initial variations seed during Android
-    and iOS Chrome first run. Logged from VariationsSeedStore::LoadSeed when
-    seed prefs do not exist. For non-first run launches, this value is expected
-    to be &quot;failed - no first run seed.&quot;
+    The result of attempting to import an initial variations seed during
+    Android, Desktop, and iOS Chrome first run. Logged from
+    VariationsSeedStore::LoadSeed when seed prefs do not exist. For non-first
+    run launches, this value is expected to be &quot;failed - no first run
+    seed.&quot;
 
     Supported for iOS Chrome since M135.
   </summary>
@@ -466,6 +467,29 @@ chromium-metrics-reviews@google.com.
     Counts the number of times the VariationsService is allowed or not allowed
     to make a request due to the ResourceRequestAllowedNotifier. Useful for
     debugging cases where variations seeds may not be getting fetched.
+  </summary>
+</histogram>
+
+<histogram name="Variations.RestrictModeLookupResult"
+    enum="VariationsRestrictModeLookupResult" expires_after="2027-09-26">
+  <owner>caitlinfischer@google.com</owner>
+  <owner>src/base/metrics/OWNERS</owner>
+  <summary>
+    Records the result of looking up a value for the &quot;restrict&quot; URL
+    param of a variations seed request. Recorded once per Android WebView
+    variations seed fetch attempt in builds that provide such a value.
+  </summary>
+</histogram>
+
+<histogram name="Variations.RestrictModeLookupTime" units="ms"
+    expires_after="2027-09-26">
+  <owner>caitlinfischer@google.com</owner>
+  <owner>src/base/metrics/OWNERS</owner>
+  <summary>
+    Records how long it took to look up a value for the &quot;restrict&quot; URL
+    param of a variations seed request, including lookups that timed out or
+    failed. Recorded once per Android WebView variations seed fetch attempt in
+    which the lookup was performed.
   </summary>
 </histogram>
 

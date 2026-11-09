@@ -811,17 +811,20 @@ class GlicWebClientHandler
   }
 
   void OnModeChange(glic::mojom::WebClientMode new_mode) override {
+    LogApiRequest(GlicHostApiRequestId::kOnModeChange);
     glic_service_->metrics()->SetWebClientMode(new_mode);
     host().OnInteractionModeChange(new_mode);
   }
 
   void OnMicrophoneStatusChange(glic::mojom::MicrophoneStatus status) override {
+    LogApiRequest(GlicHostApiRequestId::kOnMicrophoneStatusChange);
     host().OnMicrophoneStatusChanged(status);
   }
 
   void ResizeWidget(const gfx::Size& size,
                     base::TimeDelta duration,
                     ResizeWidgetCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kResizeWindow);
     host().ResizePanel(size, duration, std::move(callback));
   }
 
@@ -1097,6 +1100,7 @@ class GlicWebClientHandler
 
   void SetAudioDucking(bool enabled,
                        SetAudioDuckingCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kSetAudioDucking);
     // NEEDS_ANDROID_IMPL: AudioDucking not in android build.
 #if !BUILDFLAG(IS_ANDROID)
     content::RenderFrameHost* guest_frame = host_->GetGuestMainFrame();
@@ -1114,16 +1118,19 @@ class GlicWebClientHandler
   }
 
   void SetMinimumPanelSize(const gfx::Size& size) override {
+    LogApiRequest(GlicHostApiRequestId::kSetMinimumWidgetSize);
     host().SetMinimumWidgetSize(size);
   }
 
   void EnableDragResize(bool enabled) override {
+    LogApiRequest(GlicHostApiRequestId::kEnableDragResize);
     host().SetDragResizeEnabled(enabled);
   }
 
   void SetMicrophonePermissionState(
       bool enabled,
       SetMicrophonePermissionStateCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kSetMicrophonePermissionState);
     pref_service_->SetBoolean(prefs::kGlicMicrophoneEnabled, enabled);
     if (enabled) {
       base::RecordAction(
@@ -1138,6 +1145,7 @@ class GlicWebClientHandler
   void SetLocationPermissionState(
       bool enabled,
       SetLocationPermissionStateCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kSetLocationPermissionState);
     pref_service_->SetBoolean(prefs::kGlicGeolocationEnabled, enabled);
     if (enabled) {
       base::RecordAction(
@@ -1152,6 +1160,7 @@ class GlicWebClientHandler
   void SetTabContextPermissionState(
       bool enabled,
       SetTabContextPermissionStateCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kSetTabContextPermissionState);
     pref_service_->SetBoolean(prefs::kGlicTabContextEnabled, enabled);
     if (enabled) {
       base::RecordAction(
@@ -1166,6 +1175,7 @@ class GlicWebClientHandler
   void SetClosedCaptioningSetting(
       bool enabled,
       SetClosedCaptioningSettingCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kSetClosedCaptioningSetting);
     pref_service_->SetBoolean(prefs::kGlicClosedCaptioningEnabled, enabled);
     if (enabled) {
       base::RecordAction(
@@ -1180,6 +1190,7 @@ class GlicWebClientHandler
   void SetActuationOnWebSetting(
       bool enabled,
       SetActuationOnWebSettingCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kSetActuationOnWebSetting);
     glic_service_->enabling().SetUserEnabledActuationOnWeb(enabled);
     base::RecordAction(
         enabled ? base::UserMetricsAction("GlicUserEnabledActuationOnWeb")
@@ -1393,11 +1404,13 @@ class GlicWebClientHandler
   }
 
   void OnOptinImpression() override {
+    LogApiRequest(GlicHostApiRequestId::kOnOptinImpression);
     host().instance_metrics().OnOptinImpression();
   }
 
   void OnUserInputSubmitted(mojom::WebClientMode mode,
                             mojom::PromptType prompt_type) override {
+    LogApiRequest(GlicHostApiRequestId::kOnUserInputSubmitted);
     if (base::FeatureList::IsEnabled(
             features::kGlicFixTimeToFirstQueryKillSwitch)) {
       glic_service_->metrics()->OnUserInputSubmitted(mode, prompt_type);
@@ -1412,20 +1425,24 @@ class GlicWebClientHandler
   }
 
   void OnContextUploadStarted() override {
+    LogApiRequest(GlicHostApiRequestId::kOnContextUploadStarted);
     glic_service_->metrics()->OnContextUploadStarted();
   }
 
   void OnContextUploadCompleted() override {
+    LogApiRequest(GlicHostApiRequestId::kOnContextUploadCompleted);
     glic_service_->metrics()->OnContextUploadCompleted();
   }
 
   void OnReaction(mojom::MetricUserInputReactionType reaction_type) override {
+    LogApiRequest(GlicHostApiRequestId::kOnReaction);
     host().instance_metrics().OnReaction(reaction_type);
   }
 
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnResponseStarted() override {
+    LogApiRequest(GlicHostApiRequestId::kOnResponseStarted);
     host().instance_metrics_backwards_compatibility().OnResponseStarted();
     host().instance_metrics().RecordAttachedContextTabCount(
         GetSharingManagerInternal().GetNumPinnedTabs());
@@ -1434,6 +1451,7 @@ class GlicWebClientHandler
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnResponseStopped(mojom::OnResponseStoppedDetailsPtr details) override {
+    LogApiRequest(GlicHostApiRequestId::kOnResponseStopped);
     mojom::ResponseStopCause cause = mojom::ResponseStopCause::kUnknown;
     if (details) {
       cause = details->cause;
@@ -1442,28 +1460,34 @@ class GlicWebClientHandler
   }
 
   void OnSessionTerminated() override {
+    LogApiRequest(GlicHostApiRequestId::kOnSessionTerminated);
     glic_service_->metrics()->OnSessionTerminated();
   }
 
   void OnTurnCompleted(glic::mojom::WebClientModel model,
                        base::TimeDelta duration) override {
+    LogApiRequest(GlicHostApiRequestId::kOnTurnCompleted);
     host().instance_metrics().OnTurnCompleted(model, duration);
   }
 
   void OnResponseRated(bool positive) override {
+    LogApiRequest(GlicHostApiRequestId::kOnResponseRated);
     glic_service_->metrics()->OnResponseRated(positive);
   }
 
   void OnClosedCaptionsShown() override {
+    LogApiRequest(GlicHostApiRequestId::kOnClosedCaptionsShown);
     glic_service_->metrics()->LogClosedCaptionsShown();
   }
 
   void OnActionSubmitted(bool is_retry) override {
+    LogApiRequest(GlicHostApiRequestId::kOnActionSubmitted);
     host().instance_metrics().OnActionSubmitted(is_retry);
   }
 
   void SetSyntheticExperimentState(const std::string& trial_name,
                                    const std::string& group_name) override {
+    LogApiRequest(GlicHostApiRequestId::kSetSyntheticExperimentState);
     g_browser_process->GetFeatures()
         ->glic_synthetic_trial_manager()
         ->SetSyntheticExperimentState(trial_name, group_name);
@@ -1485,6 +1509,7 @@ class GlicWebClientHandler
 
   void GetOsMicrophonePermissionStatus(
       GetOsMicrophonePermissionStatusCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kGetOsMicrophonePermissionStatus);
     std::move(callback).Run(system_permission_settings::IsAllowed(
         ContentSettingsType::MEDIASTREAM_MIC));
   }
@@ -1498,6 +1523,7 @@ class GlicWebClientHandler
   }
 
   void SetOnboardingCompleted() override {
+    LogApiRequest(GlicHostApiRequestId::kSetOnboardingCompleted);
     glic_service_->metrics()->OnTrustFirstOnboardingAccept();
     glic_service_->enabling().SetCompletedFre(prefs::FreStatus::kCompleted);
 

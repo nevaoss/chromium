@@ -37,7 +37,7 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.flags.ChromeFeatures;
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
@@ -689,13 +689,26 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
 
     /**
      * Resolves the icon dimension for Fusebox popup items (24dp for bottom sheet, 20dp for plus
-     * menu).
+     * menu). Carousel tiles use {@link #getFuseboxCarouselIconSize()} instead.
      *
      * @param isBottomSheet Whether the popup is presented as a bottom sheet.
      * @return Icon size in pixels.
      */
     public @Px int getFuseboxPopupIconSize(boolean isBottomSheet) {
         return getFuseboxPopupIconSize(mContext, isBottomSheet);
+    }
+
+    /**
+     * Resolves the icon dimension for Fusebox popup carousel tiles (30dp when popup variations are
+     * enabled, 24dp otherwise).
+     *
+     * @return Icon size in pixels.
+     */
+    public @Px int getFuseboxCarouselIconSize() {
+        return mCache.getDimen(
+                OmniboxFeatures.sOmniboxFuseboxPopupVariations.isEnabled()
+                        ? R.dimen.fusebox_carousel_item_large_icon_size
+                        : R.dimen.fusebox_bottom_sheet_attachment_icon_size);
     }
 
     /**
@@ -764,7 +777,7 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
     /**
      * Resolves the text appearance for the attachments header in the popup.
      *
-     * @param useLarge Whether to use large headline text (carousel) or medium header text.
+     * @param useLarge Whether to use thick headline2 text (carousel) or medium header text.
      */
     public @StyleRes int getPopupAttachmentsHeaderTextRes(boolean useLarge) {
         boolean isIncognito =
@@ -772,7 +785,7 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
         if (!useLarge) {
             return IncognitoColors.getTextMediumThickSecondary(isIncognito);
         }
-        return IncognitoColors.getHeadlinePrimary(isIncognito);
+        return IncognitoColors.getHeadline2ThickPrimary(isIncognito);
     }
 
     /**
@@ -1187,7 +1200,7 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
      * top of the screen in NTP.
      */
     public static @Px int getToolbarSidePaddingForNtp(Context context) {
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.NTP_AURORA)) {
+        if (ChromeFeatures.NtpAurora.isEnabled()) {
             return getToolbarSidePadding(context);
         }
         return context.getResources().getDimensionPixelSize(R.dimen.toolbar_edge_padding_ntp);

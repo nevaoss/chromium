@@ -5,7 +5,7 @@
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
 import type {AppElement, ContentController, LanguageToastElement, LineFocusController, SpeechController, VoiceLanguageController, VoiceNotificationManager} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {LineFocusMovement, LineFocusStyle, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {LineFocusMovement, LineFocusStyle, ReadAloudSettingsChange, ReadAnythingSettingsChange, ToolbarEvent} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertArrayEquals, assertEquals, assertFalse, assertLT, assertNotEquals, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {keyDownOn} from 'chrome-untrusted://webui-test/keyboard_mock_interactions.js';
 import {hasStyle, microtasksFinished, whenCheck} from 'chrome-untrusted://webui-test/test_util.js';
@@ -66,8 +66,7 @@ suite('AppReceivesToolbarChanges', () => {
   }
 
   function emitFont(fontName: string): void {
-    visualBrowserProxy.fontName = fontName;
-    emitEvent(app, ToolbarEvent.FONT);
+    emitEvent(app, ToolbarEvent.FONT, {detail: {data: fontName}});
   }
 
   function emitFontSize(size: number): void {
@@ -76,18 +75,26 @@ suite('AppReceivesToolbarChanges', () => {
   }
 
   function emitLineSpacing(spacingEnumValue: number): void {
-    visualBrowserProxy.onLineSpacingChange(spacingEnumValue);
-    emitEvent(app, ToolbarEvent.LINE_SPACING);
+    emitEvent(
+        app, ToolbarEvent.LINE_SPACING, {detail: {data: spacingEnumValue}});
   }
 
   function emitLetterSpacing(spacingEnumValue: number): void {
-    visualBrowserProxy.onLetterSpacingChange(spacingEnumValue);
-    emitEvent(app, ToolbarEvent.LETTER_SPACING);
+    emitEvent(
+        app, ToolbarEvent.LETTER_SPACING, {detail: {data: spacingEnumValue}});
   }
 
   function emitColorTheme(colorEnumValue: number): void {
-    visualBrowserProxy.onThemeChange(colorEnumValue);
-    emitEvent(app, ToolbarEvent.THEME);
+    emitEvent(app, ToolbarEvent.THEME, {detail: {data: colorEnumValue}});
+  }
+
+  function emitRate(rate: number): void {
+    emitEvent(app, ToolbarEvent.RATE, {detail: {data: rate}});
+  }
+
+  function emitHighlight(granularity: number): void {
+    emitEvent(
+        app, ToolbarEvent.HIGHLIGHT_CHANGE, {detail: {data: granularity}});
   }
 
   function emitPlayPause(): Promise<void> {
@@ -574,19 +581,13 @@ suite('AppReceivesToolbarChanges', () => {
     app.$.container.appendChild(node);
     await emitPlayPause();
 
-    const speechRate1 = 2;
-    audioBrowserProxy.speechRate = speechRate1;
-    emitEvent(app, ToolbarEvent.RATE);
+    emitRate(2);
     assertEquals(2, speech.getCallCount('speak'));
 
-    const speechRate2 = 0.5;
-    audioBrowserProxy.speechRate = speechRate2;
-    emitEvent(app, ToolbarEvent.RATE);
+    emitRate(0.5);
     assertEquals(3, speech.getCallCount('speak'));
 
-    const speechRate3 = 4;
-    audioBrowserProxy.speechRate = speechRate3;
-    emitEvent(app, ToolbarEvent.RATE);
+    emitRate(4);
     assertEquals(4, speech.getCallCount('speak'));
 
     const speechRates =
@@ -675,13 +676,6 @@ suite('AppReceivesToolbarChanges', () => {
           .getPropertyValue('--current-highlight-bg-color');
     }
 
-    function emitHighlight(granularity: number) {
-      audioBrowserProxy.onHighlightGranularityChanged(granularity);
-      emitEvent(app, ToolbarEvent.HIGHLIGHT_CHANGE, {
-        detail: {data: granularity},
-      });
-    }
-
     setup(() => {
       app.updateContent();
     });
@@ -760,6 +754,31 @@ suite('AppReceivesToolbarChanges', () => {
     assertFontsEqual(containerFont(), 'Serif');
   });
 
+  test('restoreSettingsFromPrefs updates toolbar settings', async () => {
+    visualBrowserProxy.letterSpacing = 1;
+    visualBrowserProxy.lineSpacing = 2;
+    visualBrowserProxy.fontName = 'Serif';
+    visualBrowserProxy.colorTheme = visualBrowserProxy.darkTheme;
+    visualBrowserProxy.linksEnabled = false;
+    visualBrowserProxy.imagesEnabled = false;
+    audioBrowserProxy.speechRate = 1.5;
+    audioBrowserProxy.highlightGranularity = audioBrowserProxy.wordHighlighting;
+
+    visualBrowserProxy.restoreSettingsFromPrefs.callListeners();
+    await microtasksFinished();
+
+    const toolbar = app.$.toolbar;
+    assertEquals(1, toolbar.letterSpacing);
+    assertEquals(2, toolbar.lineSpacing);
+    assertEquals('Serif', toolbar.font);
+    assertEquals(visualBrowserProxy.darkTheme, toolbar.theme);
+    assertFalse(toolbar.linksEnabled);
+    assertFalse(toolbar.imagesEnabled);
+    assertEquals(1.5, toolbar.speechRate);
+    assertEquals(
+        audioBrowserProxy.wordHighlighting, toolbar.highlightGranularity);
+  });
+
   suite('on links toggle', () => {
     const linkId = 44;
     const textId = 45;
@@ -780,7 +799,8 @@ suite('AppReceivesToolbarChanges', () => {
       await microtasksFinished();
       assertTrue(contentController.hasContent());
 
-      visualBrowserProxy.linksEnabled = true;
+      // The toggle flips the pref, so start disabled.
+      visualBrowserProxy.linksEnabled = false;
       emitEvent(app, ToolbarEvent.LINKS);
       await microtasksFinished();
 
@@ -795,7 +815,7 @@ suite('AppReceivesToolbarChanges', () => {
       await microtasksFinished();
       assertTrue(contentController.hasContent());
 
-      visualBrowserProxy.linksEnabled = false;
+      visualBrowserProxy.linksEnabled = true;
       emitEvent(app, ToolbarEvent.LINKS);
       await microtasksFinished();
 
@@ -803,16 +823,19 @@ suite('AppReceivesToolbarChanges', () => {
           expectedHtml, app.$.container.innerHTML, app.$.container.innerHTML);
     });
 
-    test('updates toolbar settingsPrefs', async () => {
-      visualBrowserProxy.linksEnabled = false;
-      emitEvent(app, ToolbarEvent.LINKS);
-      await microtasksFinished();
-      assertFalse(app.$.toolbar.settingsPrefs.linksEnabled);
-
+    test('toggles pref, logs, and updates toolbar', async () => {
       visualBrowserProxy.linksEnabled = true;
       emitEvent(app, ToolbarEvent.LINKS);
       await microtasksFinished();
-      assertTrue(app.$.toolbar.settingsPrefs.linksEnabled);
+      assertEquals(1, visualBrowserProxy.getCallCount('onLinksEnabledToggled'));
+      assertEquals(
+          ReadAnythingSettingsChange.LINKS_ENABLED_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertFalse(app.$.toolbar.linksEnabled);
+
+      emitEvent(app, ToolbarEvent.LINKS);
+      await microtasksFinished();
+      assertTrue(app.$.toolbar.linksEnabled);
     });
   });
 
@@ -833,7 +856,8 @@ suite('AppReceivesToolbarChanges', () => {
       await microtasksFinished();
       assertTrue(contentController.hasContent());
 
-      visualBrowserProxy.imagesEnabled = true;
+      // The toggle flips the pref, so start disabled.
+      visualBrowserProxy.imagesEnabled = false;
       const expectedHtmlWithImage = '<div><canvas alt="' + altText +
           '" class="downloaded-image"></canvas>' + textNodeContent + '</div>';
       emitEvent(app, ToolbarEvent.IMAGES);
@@ -850,23 +874,27 @@ suite('AppReceivesToolbarChanges', () => {
       await microtasksFinished();
       assertTrue(contentController.hasContent());
 
-      visualBrowserProxy.imagesEnabled = false;
+      visualBrowserProxy.imagesEnabled = true;
       emitEvent(app, ToolbarEvent.IMAGES);
       await microtasksFinished();
 
       assertEquals(expectedHtml, app.$.container.innerHTML);
     });
 
-    test('updates toolbar settingsPrefs', async () => {
-      visualBrowserProxy.imagesEnabled = false;
-      emitEvent(app, ToolbarEvent.IMAGES);
-      await microtasksFinished();
-      assertFalse(app.$.toolbar.settingsPrefs.imagesEnabled);
-
+    test('toggles pref, logs, and updates toolbar', async () => {
       visualBrowserProxy.imagesEnabled = true;
       emitEvent(app, ToolbarEvent.IMAGES);
       await microtasksFinished();
-      assertTrue(app.$.toolbar.settingsPrefs.imagesEnabled);
+      assertEquals(
+          1, visualBrowserProxy.getCallCount('onImagesEnabledToggled'));
+      assertEquals(
+          ReadAnythingSettingsChange.IMAGES_ENABLED_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertFalse(app.$.toolbar.imagesEnabled);
+
+      emitEvent(app, ToolbarEvent.IMAGES);
+      await microtasksFinished();
+      assertTrue(app.$.toolbar.imagesEnabled);
     });
   });
 
@@ -903,33 +931,115 @@ suite('AppReceivesToolbarChanges', () => {
     });
   });
 
-  test('on speech rate change updates toolbar settingsPrefs', async () => {
-    audioBrowserProxy.speechRate = 1.5;
-    emitEvent(app, ToolbarEvent.RATE);
-    await microtasksFinished();
-    assertEquals(1.5, app.$.toolbar.settingsPrefs.speechRate);
+  suite('settings events write prefs, log, and update toolbar', () => {
+    test('theme', async () => {
+      emitColorTheme(visualBrowserProxy.darkTheme);
+      await microtasksFinished();
 
-    audioBrowserProxy.speechRate = 0.8;
-    emitEvent(app, ToolbarEvent.RATE);
-    await microtasksFinished();
-    assertEquals(0.8, app.$.toolbar.settingsPrefs.speechRate);
-  });
-
-  test('on highlight change updates toolbar settingsPrefs', async () => {
-    emitEvent(app, ToolbarEvent.HIGHLIGHT_CHANGE, {
-      detail: {data: audioBrowserProxy.noHighlighting},
+      assertEquals(
+          visualBrowserProxy.darkTheme,
+          await visualBrowserProxy.whenCalled('onThemeChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.THEME_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals(visualBrowserProxy.darkTheme, app.$.toolbar.theme);
     });
-    await microtasksFinished();
-    assertEquals(
-        audioBrowserProxy.noHighlighting,
-        app.$.toolbar.settingsPrefs.highlightGranularity);
 
-    emitEvent(app, ToolbarEvent.HIGHLIGHT_CHANGE, {
-      detail: {data: audioBrowserProxy.wordHighlighting},
+    test('line spacing', async () => {
+      emitLineSpacing(2);
+      await microtasksFinished();
+
+      assertEquals(
+          2, await visualBrowserProxy.whenCalled('onLineSpacingChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.LINE_HEIGHT_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals(2, app.$.toolbar.lineSpacing);
     });
-    await microtasksFinished();
-    assertEquals(
-        audioBrowserProxy.wordHighlighting,
-        app.$.toolbar.settingsPrefs.highlightGranularity);
+
+    test('letter spacing', async () => {
+      emitLetterSpacing(2);
+      await microtasksFinished();
+
+      assertEquals(
+          2, await visualBrowserProxy.whenCalled('onLetterSpacingChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.LETTER_SPACING_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals(2, app.$.toolbar.letterSpacing);
+    });
+
+    test('font', async () => {
+      emitFont('Andika');
+      await microtasksFinished();
+
+      assertEquals(
+          'Andika', await visualBrowserProxy.whenCalled('onFontChange'));
+      assertEquals(
+          ReadAnythingSettingsChange.FONT_CHANGE,
+          await metrics.whenCalled('recordTextSettingsChange'));
+      assertEquals('Andika', app.$.toolbar.font);
+    });
+
+    test('speech rate', async () => {
+      emitRate(1.5);
+      await microtasksFinished();
+
+      assertEquals(
+          1.5, await audioBrowserProxy.whenCalled('onSpeechRateChange'));
+      assertEquals(
+          ReadAloudSettingsChange.VOICE_SPEED_CHANGE,
+          await metrics.whenCalled('recordSpeechSettingsChange'));
+      // Voice speed is logged by its index in the rate menu.
+      assertEquals(4, await metrics.whenCalled('recordVoiceSpeed'));
+      assertEquals(1.5, app.$.toolbar.speechRate);
+
+      emitRate(0.8);
+      await microtasksFinished();
+      assertEquals(0.8, app.$.toolbar.speechRate);
+    });
+
+    test('highlight granularity', async () => {
+      emitHighlight(audioBrowserProxy.wordHighlighting);
+      await microtasksFinished();
+
+      assertEquals(
+          audioBrowserProxy.wordHighlighting,
+          await audioBrowserProxy.whenCalled('onHighlightGranularityChanged'));
+      assertEquals(
+          ReadAloudSettingsChange.HIGHLIGHT_CHANGE,
+          await metrics.whenCalled('recordSpeechSettingsChange'));
+      assertEquals(
+          audioBrowserProxy.wordHighlighting,
+          await metrics.whenCalled('recordHighlightGranularity'));
+      assertEquals(
+          audioBrowserProxy.wordHighlighting,
+          app.$.toolbar.highlightGranularity);
+
+      emitHighlight(audioBrowserProxy.noHighlighting);
+      await microtasksFinished();
+      assertEquals(
+          audioBrowserProxy.noHighlighting, app.$.toolbar.highlightGranularity);
+    });
+
+    test('presentation', async () => {
+      const immersiveState =
+          visualBrowserProxy.getInImmersiveOverlayPresentationState();
+      emitEvent(
+          app, ToolbarEvent.PRESENTATION_CHANGE,
+          {detail: {data: immersiveState}});
+      await microtasksFinished();
+
+      assertEquals(1, visualBrowserProxy.getCallCount('togglePresentation'));
+      assertEquals(immersiveState, app.$.toolbar.presentationState);
+
+      // Selecting the current state does nothing.
+      emitEvent(
+          app, ToolbarEvent.PRESENTATION_CHANGE,
+          {detail: {data: immersiveState}});
+      await microtasksFinished();
+
+      assertEquals(1, visualBrowserProxy.getCallCount('togglePresentation'));
+    });
   });
 });

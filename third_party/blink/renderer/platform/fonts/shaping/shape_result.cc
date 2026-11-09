@@ -108,6 +108,9 @@ ASSERT_SIZE(ShapeResult, SameSizeAsShapeResult);
 
 wtf_size_t ShapeResultRun::NextSafeToBreakOffset(wtf_size_t offset) const {
   DCHECK_LE(offset, num_characters_);
+  if (glyph_data_.IsCompact()) [[unlikely]] {
+    return offset < glyph_data_.size() ? offset : num_characters_;
+  }
   const auto& glyphs = glyph_data_.NonCompactGlyphs();
   const HarfBuzzRunGlyphData* const begin = glyphs.data();
   const HarfBuzzRunGlyphData* const end = base::to_address(glyphs.end());
@@ -135,6 +138,9 @@ wtf_size_t ShapeResultRun::NextSafeToBreakOffset(wtf_size_t offset) const {
 wtf_size_t ShapeResultRun::PreviousSafeToBreakOffset(wtf_size_t offset) const {
   if (offset >= num_characters_) {
     return num_characters_;
+  }
+  if (glyph_data_.IsCompact()) [[unlikely]] {
+    return offset < glyph_data_.size() ? offset : glyph_data_.size() - 1;
   }
   const auto& glyphs = glyph_data_.NonCompactGlyphs();
   const HarfBuzzRunGlyphData* const begin = glyphs.data();
@@ -227,7 +233,21 @@ float ShapeResultRun::XPositionForOffset(
     wtf_size_t offset,
     AdjustMidCluster adjust_mid_cluster) const {
   DCHECK_LE(offset, num_characters_);
-  const wtf_size_t num_glyphs = glyph_data_.size();
+
+  if (glyph_data_.IsCompact()) [[unlikely]] {
+    const wtf_size_t num_glyphs = glyph_data_.size();
+    CHECK_GT(num_glyphs, 0u);
+    const int64_t advance_raw = glyph_data_.CompactAdvance().RawValue();
+    const wtf_size_t whole =
+        offset < num_glyphs
+            ? offset
+            : (adjust_mid_cluster == AdjustMidCluster::kToEnd ? num_glyphs
+                                                              : num_glyphs - 1);
+    return InlineLayoutUnit::FromRawValue(int64_t{whole} * advance_raw)
+        .ToFloat();
+  }
+  const auto& glyphs = glyph_data_.NonCompactGlyphs();
+  const wtf_size_t num_glyphs = glyphs.size();
 
   // In this context, a glyph sequence is a sequence of glyphs that shares the
   // same character_index and therefore represent the same interval of source
@@ -246,12 +266,12 @@ float ShapeResultRun::XPositionForOffset(
 
   if (IsLtr()) {
     for (wtf_size_t i = 0; i < num_glyphs; ++i) {
-      wtf_size_t current_glyph_char_index = glyph_data_[i].character_index;
+      wtf_size_t current_glyph_char_index = glyphs[i].character_index;
       // If this glyph is still part of the same glyph sequence for the grapheme
       // cluster at character index glyph_sequence_start, add its advance to the
       // glyph_sequence's advance.
       if (glyph_sequence_start == current_glyph_char_index) {
-        glyph_sequence_advance += glyph_data_[i].advance;
+        glyph_sequence_advance += glyphs[i].advance;
         continue;
       }
 
@@ -267,19 +287,19 @@ float ShapeResultRun::XPositionForOffset(
       // last_character in case this is the final iteration of the loop.
       glyph_sequence_end = num_characters_;
       accumulated_position += glyph_sequence_advance;
-      glyph_sequence_advance = glyph_data_[i].advance;
+      glyph_sequence_advance = glyphs[i].advance;
     }
 
   } else {
     glyph_sequence_start = glyph_sequence_end = num_characters_;
 
     for (wtf_size_t i = 0; i < num_glyphs; ++i) {
-      wtf_size_t current_glyph_char_index = glyph_data_[i].character_index;
+      wtf_size_t current_glyph_char_index = glyphs[i].character_index;
       // If this glyph is still part of the same glyph sequence for the grapheme
       // cluster at character index glyph_sequence_start, add its advance to the
       // glyph_sequence's advance.
       if (glyph_sequence_start == current_glyph_char_index) {
-        glyph_sequence_advance += glyph_data_[i].advance;
+        glyph_sequence_advance += glyphs[i].advance;
         continue;
       }
 
@@ -292,7 +312,7 @@ float ShapeResultRun::XPositionForOffset(
       glyph_sequence_end = glyph_sequence_start;
       glyph_sequence_start = current_glyph_char_index;
       accumulated_position += glyph_sequence_advance;
-      glyph_sequence_advance = glyph_data_[i].advance;
+      glyph_sequence_advance = glyphs[i].advance;
     }
 
     // If |offset| precedes every glyph in this run, the leading characters have
@@ -362,11 +382,50 @@ float ShapeResultRun::XPositionForOffset(
 // that space. @break_glyphs controls whether we use grapheme information
 // to break glyphs into grapheme clusters and return character that are a part
 // of a glyph.
+void ShapeResultRun::CharacterIndexForXPositionCompact(
+    float target_x,
+    GlyphIndexResult* result) const {
+  const unsigned num_glyphs = glyph_data_.size();
+  const TextRunLayoutUnit advance = glyph_data_.CompactAdvance();
+  const int64_t advance_raw = advance.RawValue();
+  const float advance_float = advance.ToFloat();
+  // Fixed-point products keep this path constant-time and match glyph
+  // positions. The full-storage path instead sums floats, so materializing a
+  // fractional-advance run can change hit-testing near boundaries, with larger
+  // differences on long runs. We intentionally do not reproduce that drift.
+  const auto position_for_glyph = [advance_raw](unsigned index) {
+    return InlineLayoutUnit::FromRawValue(advance_raw * index).ToFloat();
+  };
+  CHECK_GT(num_glyphs, 0u);
+  unsigned glyph_index = num_glyphs - 1;
+  if (advance_float > 0) {
+    glyph_index = std::min(static_cast<unsigned>(target_x / advance_float),
+                           num_glyphs - 1);
+    // Correct the float estimate against exact fixed-point positions.
+    if (glyph_index && position_for_glyph(glyph_index) > target_x) {
+      --glyph_index;
+    } else if (glyph_index + 1 < num_glyphs &&
+               position_for_glyph(glyph_index + 1) <= target_x) {
+      ++glyph_index;
+    }
+  }
+  result->left_character_index = glyph_index;
+  result->right_character_index = glyph_index + 1;
+  result->origin_x = position_for_glyph(glyph_index);
+  result->advance = advance_float;
+}
+
 void ShapeResultRun::CharacterIndexForXPosition(
     float target_x,
     BreakGlyphsOption break_glyphs,
     GlyphIndexResult* result) const {
   DCHECK(target_x >= 0 && target_x <= width_);
+
+  if (glyph_data_.IsCompact()) [[unlikely]] {
+    CharacterIndexForXPositionCompact(target_x, result);
+    return;
+  }
+  const auto& glyphs = glyph_data_.NonCompactGlyphs();
 
   result->origin_x = 0;
   wtf_size_t glyph_sequence_start = 0;
@@ -378,8 +437,7 @@ void ShapeResultRun::CharacterIndexForXPosition(
     glyph_sequence_start = glyph_sequence_end = num_characters_;
   }
 
-  for (const HarfBuzzRunGlyphData& glyph_data :
-       glyph_data_.NonCompactGlyphs()) {
+  for (const HarfBuzzRunGlyphData& glyph_data : glyphs) {
     wtf_size_t current_glyph_char_index = glyph_data.character_index;
     // If the glyph is part of the same sequence, we just accumulate the
     // advance.

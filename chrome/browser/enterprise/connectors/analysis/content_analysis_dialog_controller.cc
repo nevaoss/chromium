@@ -59,6 +59,33 @@ base::TimeDelta ContentAnalysisDialogController::ShowDialogDelay() {
   return show_dialog_delay_;
 }
 
+// static
+ContentAnalysisDialogController*
+ContentAnalysisDialogController::ShowForCopyJustification(
+    content::WebContents* web_contents,
+    std::unique_ptr<ContentAnalysisDelegateBase> delegate) {
+  CHECK(web_contents, base::NotFatalUntil::M161);
+  CHECK(delegate, base::NotFatalUntil::M161);
+  return new ContentAnalysisDialogController(
+      std::move(delegate), /*is_cloud=*/true, web_contents,
+      DeepScanAccessPoint::COPY, /*files_count=*/0,
+      FinalContentAnalysisResult::WARNING);
+}
+
+// static
+ContentAnalysisDialogControllerBase*
+ContentAnalysisDialogControllerBase::Create(
+    std::unique_ptr<ContentAnalysisDelegateBase> delegate,
+    bool is_cloud,
+    content::WebContents* web_contents,
+    DeepScanAccessPoint access_point,
+    int files_count,
+    FinalContentAnalysisResult final_result) {
+  return new ContentAnalysisDialogController(std::move(delegate), is_cloud,
+                                             web_contents, access_point,
+                                             files_count, final_result);
+}
+
 ContentAnalysisDialogController::ContentAnalysisDialogController(
     std::unique_ptr<ContentAnalysisDelegateBase> delegate,
     bool is_cloud,

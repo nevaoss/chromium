@@ -408,7 +408,7 @@ class SyncTest : public PlatformBrowserTest,
 
     // The profile for this sync client. Owned by ProfileManager. Can be null if
     // destroyed earlier (e.g. in OnProfileWillBeDestroyed).
-    raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile = nullptr;
+    raw_ptr<Profile> profile = nullptr;
     std::unique_ptr<SyncServiceImplHarness> harness;
 #if !BUILDFLAG(IS_ANDROID)
     std::vector<raw_ptr<BrowserWindowInterface, AcrossTasksDanglingUntriaged>>
@@ -430,6 +430,13 @@ class SyncTest : public PlatformBrowserTest,
   std::vector<SyncClientState> clients_;
 
   syncer::DataTypeSet excluded_types_from_check_for_data_type_failures_;
+
+  // Disable DSE Prewarm to avoid spawning background prerender processes on
+  // every tab load in sync integration tests (https://crbug.com/423465927).
+  // Wrapped to avoid introducing `namespace test` in this header, which
+  // conflicts with `using sync_datatype_helper::test` in sync test helpers.
+  class ScopedPrewarmDisabler;
+  std::unique_ptr<ScopedPrewarmDisabler> prewarm_disabler_;
 
 #if !BUILDFLAG(IS_ANDROID)
   // Disable extension install verification.

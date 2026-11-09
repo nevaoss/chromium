@@ -21,7 +21,6 @@
 #include "base/types/expected.h"
 #include "base/types/expected_macros.h"
 #include "base/values.h"
-#include "build/android_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_task.h"
@@ -158,7 +157,10 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
+#include "base/android/jni_android.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection_platform_delegate.h"
 #endif
 
 #if defined(ADDRESS_SANITIZER) || defined(THREAD_SANITIZER) || \
@@ -237,6 +239,7 @@ struct TestParams {
   bool no_webview = false;
   bool skills_v2 = false;
   bool enable_embedded_pdf_bytes_extraction = false;
+  bool enable_ssr = false;
 };
 
 class WithTestParams : public testing::WithParamInterface<TestParams> {
@@ -248,6 +251,11 @@ class WithTestParams : public testing::WithParamInterface<TestParams> {
       enabled_features.push_back(features::kGlicNoWebview);
     } else {
       disabled_features.push_back(features::kGlicNoWebview);
+    }
+    if (GetParam().enable_ssr) {
+      enabled_features.push_back(features::kGlicSsr);
+    } else {
+      disabled_features.push_back(features::kGlicSsr);
     }
     test_param_features_.InitWithFeatures(enabled_features, disabled_features);
   }
@@ -278,6 +286,9 @@ class WithTestParams : public testing::WithParamInterface<TestParams> {
     }
     if (info.param.enable_embedded_pdf_bytes_extraction) {
       result.push_back("EnableEmbeddedPdfBytesExtraction");
+    }
+    if (info.param.enable_ssr) {
+      result.push_back("EnableSsr");
     }
     if (result.empty()) {
       return "Default";
@@ -341,6 +352,7 @@ class GlicApiTest : public GlicApiBrowserTest,
            {features::kGlicUserStatusThrottleInterval.name, "2s"}}},
          {features::kGlicOpenPasswordManagerSettingsPageApi, {}},
          {features::kGlicOpenContactInfoSettingsPageApi, {}},
+         {features::kGlicActor, {}},
          {features::kGlicActorPolicyControlExemption, {}},
          {blink::features::kAIPageContentTrackedElementsIframe, {}}},
         /*disabled_features=*/
@@ -582,6 +594,7 @@ class GlicApiTestWithExperimentalTriggeringScreenshot : public GlicApiTest {
   GlicApiTestWithExperimentalTriggeringScreenshot() {
     feature_list_.InitWithFeaturesAndParameters(
         {{features::kGlicExperimentalTriggeringScreenshot, {}},
+         {features::kGlicActor, {}},
          {features::kGlicActorPolicyControlExemption, {}}},
         {});
   }
@@ -3197,6 +3210,7 @@ class GlicGetHostCapabilityApiTest : public GlicApiBrowserTest,
           {features::kGlicUserStatusThrottleInterval.name, "2s"}}},
         {features::kGlicOpenPasswordManagerSettingsPageApi, {}},
         {features::kGlicOpenContactInfoSettingsPageApi, {}},
+        {features::kGlicActor, {}},
         {features::kGlicActorPolicyControlExemption, {}},
         {blink::features::kAIPageContentTrackedElementsIframe, {}},
     };
@@ -3650,7 +3664,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
   ExecuteJsTest({.params = base::Value(
                      base::DictValue().Set("rpcUrls", std::move(rpc_urls)))});
 
-  auto request_header_matcher = testing::AllOf(
+  auto base_header_matcher = testing::AllOf(
       testing::Contains(testing::Pair(testing::StrCaseEq("x-glic"), "1")),
       testing::Contains(testing::Pair(
           testing::StrCaseEq("x-glic-chrome-channel"),
@@ -3658,8 +3672,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
       testing::Contains(
           testing::Pair(testing::StrCaseEq("x-glic-chrome-version"),
                         version_info::GetVersionNumber())),
-      testing::Contains(testing::Pair(
-          testing::StrCaseEq("x-glic-onboarding-completed"), "true")),
       testing::Not(testing::Contains(
           testing::Key(testing::StrCaseEq("x-glic-onboarding-arm")))));
 
@@ -3674,17 +3686,24 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
     return it == captured_requests.end() ? nullptr : &(*it);
   };
 
-  auto* main_request = find_request(GetGuestURL().GetPath());
-  ASSERT_TRUE(main_request);
-  EXPECT_THAT(main_request->headers, request_header_matcher);
+  auto check_headers = [&](const net::test_server::HttpRequest* request) {
+    ASSERT_TRUE(request);
+    EXPECT_THAT(request->headers, base_header_matcher);
+    if (GetParam().enable_ssr) {
+      EXPECT_THAT(
+          request->headers,
+          testing::Contains(testing::Pair(
+              testing::StrCaseEq("x-glic-onboarding-completed"), "true")));
+    } else {
+      EXPECT_THAT(request->headers,
+                  testing::Not(testing::Contains(testing::Key(
+                      testing::StrCaseEq("x-glic-onboarding-completed")))));
+    }
+  };
 
-  auto* rpc_request = find_request("/fake-rpc");
-  ASSERT_TRUE(rpc_request);
-  EXPECT_THAT(rpc_request->headers, request_header_matcher);
-
-  auto* cross_origin_rpc_request = find_request("/fake-rpc/cors");
-  ASSERT_TRUE(cross_origin_rpc_request);
-  EXPECT_THAT(cross_origin_rpc_request->headers, request_header_matcher);
+  check_headers(find_request(GetGuestURL().GetPath()));
+  check_headers(find_request("/fake-rpc"));
+  check_headers(find_request("/fake-rpc/cors"));
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor,
@@ -3693,18 +3712,14 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor,
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
 
-  auto request_header_matcher = testing::AllOf(
+  auto base_header_matcher = testing::AllOf(
       testing::Contains(testing::Pair(testing::StrCaseEq("x-glic"), "1")),
       testing::Contains(testing::Pair(
           testing::StrCaseEq("x-glic-chrome-channel"),
           testing::AnyOf("unknown", "canary", "dev", "beta", "stable"))),
       testing::Contains(
           testing::Pair(testing::StrCaseEq("x-glic-chrome-version"),
-                        version_info::GetVersionNumber())),
-      testing::Contains(testing::Pair(
-          testing::StrCaseEq("x-glic-onboarding-completed"), "false")),
-      testing::Contains(
-          testing::Pair(testing::StrCaseEq("x-glic-onboarding-arm"), "2")));
+                        version_info::GetVersionNumber())));
 
   const std::vector<net::test_server::HttpRequest> captured_requests =
       requests();
@@ -3719,7 +3734,23 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor,
 
   auto* main_request = find_request(GetGuestURL().GetPath());
   ASSERT_TRUE(main_request);
-  EXPECT_THAT(main_request->headers, request_header_matcher);
+  EXPECT_THAT(main_request->headers, base_header_matcher);
+  if (GetParam().enable_ssr) {
+    EXPECT_THAT(
+        main_request->headers,
+        testing::AllOf(
+            testing::Contains(testing::Pair(
+                testing::StrCaseEq("x-glic-onboarding-completed"), "false")),
+            testing::Contains(testing::Pair(
+                testing::StrCaseEq("x-glic-onboarding-arm"), "2"))));
+  } else {
+    EXPECT_THAT(
+        main_request->headers,
+        testing::AllOf(testing::Not(testing::Contains(testing::Key(
+                           testing::StrCaseEq("x-glic-onboarding-completed")))),
+                       testing::Not(testing::Contains(testing::Key(
+                           testing::StrCaseEq("x-glic-onboarding-arm"))))));
+  }
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testDialogResponseCallOrder) {
@@ -3774,17 +3805,15 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testDialogResponseCallOrder) {
             actor::ActorTask::State::kWaitingOnUser);
 }
 
-// TODO(crbug.com/570150703): Consistently failing on Android Desktop.
-#if BUILDFLAG(IS_DESKTOP_ANDROID)
-#define MAYBE_testPopupOpens DISABLED_testPopupOpens
-#else
-#define MAYBE_testPopupOpens testPopupOpens
-#endif
-IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testPopupOpens) {
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testPopupOpens) {
   ASSERT_OK(OpenGlicForActiveTab());
   EXPECT_EQ(GetPopupCount(), 0);
+  content::TestNavigationObserver observer(GURL("https://www.chromium.org"));
+  observer.WatchExistingWebContents();
+  observer.StartWatchingNewWebContents();
   ExecuteJsTest();
-  ASSERT_OK(RunUntilEqual([&]() { return GetPopupCount(); }, 1));
+  observer.Wait();
+  EXPECT_EQ(GetPopupCount(), 1);
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testWindowOpenOpensTab) {
@@ -3799,13 +3828,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testWindowOpenOpensTab) {
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-// TODO(crbug.com/569660051): Re-enable this test
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_testCtrlClickLinkOpensTab DISABLED_testCtrlClickLinkOpensTab
-#else
-#define MAYBE_testCtrlClickLinkOpensTab testCtrlClickLinkOpensTab
-#endif
-IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testCtrlClickLinkOpensTab) {
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testCtrlClickLinkOpensTab) {
   ASSERT_OK(OpenGlicForActiveTab());
   EXPECT_EQ(GetTabListInterface()->GetTabCount(), 1);
   ExecuteJsTest();
@@ -4968,6 +4991,55 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testStopMicrophone) {
   ContinueJsTest();
 }
 
+#if BUILDFLAG(IS_ANDROID)
+class GlicApiTestWithGlicVoice : public GlicApiTest {
+ public:
+  GlicApiTestWithGlicVoice() {
+    scoped_feature_list_.InitAndEnableFeature(features::kGlicVoice);
+  }
+
+ protected:
+  // Drives the native entry point that Java calls when the browser window
+  // stops being the top resumed activity.
+  void SetBrowserWindowActive(BrowserWindowInterface* browser, bool active) {
+    GlobalBrowserCollectionPlatformDelegate* delegate =
+        GlobalBrowserCollection::GetInstance()->GetPlatformDelegate();
+    JNIEnv* env = base::android::AttachCurrentThread();
+    int64_t browser_ptr = reinterpret_cast<int64_t>(browser);
+    if (active) {
+      delegate->OnBrowserActivated(env, browser_ptr);
+    } else {
+      delegate->OnBrowserDeactivated(env, browser_ptr);
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Leaving Chrome while the bottom sheet is open asks the web client to stop the
+// microphone.
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithGlicVoice,
+                       testStopMicrophoneOnWindowDeactivated) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+  BrowserWindowInterface* browser =
+      GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface();
+  SetBrowserWindowActive(browser, false);
+  ContinueJsTest();
+  SetBrowserWindowActive(browser, true);
+}
+
+// Closing the bottom sheet asks the web client to stop the microphone.
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithGlicVoice,
+                       testStopMicrophoneOnBottomSheetClosed) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+  ASSERT_OK(CloseGlicForTabAndWait(GetTabListInterface()->GetActiveTab()));
+  ContinueJsTest();
+}
+#endif  // BUILDFLAG(IS_ANDROID)
+
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testSetSyntheticExperimentState) {
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
@@ -5228,6 +5300,47 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testUserInputSubmittedPromptType) {
       "Glic.Turn.PromptType", mojom::PromptType::kTypedText, 1));
 }
 
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testTimeToActionable) {
+  GlicHistogramTester histogram_tester;
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  PreventDeletionOnClose(instance);
+  ASSERT_OK(WaitForGlicClient(instance));
+
+  // `test.html` emits `performance.mark('gemini.interactive')` once its input
+  // box is in the DOM, which triggers TimeToActionable once a frame is
+  // presented.
+  ASSERT_OK(histogram_tester.WaitForTotalCount(
+      "Glic.Instance.TimeToActionable.SidePanel", 1));
+
+  // Emitting the mark again or closing and reopening the same guest does not
+  // record a duplicate sample.
+  content::WebContents* guest_contents = instance->host().web_client_contents();
+  ASSERT_TRUE(guest_contents);
+  ASSERT_TRUE(content::ExecJs(guest_contents,
+                              "performance.mark('gemini.interactive');"));
+  ASSERT_OK(CloseGlicForTabAndWait(GetTabListInterface()->GetActiveTab()));
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * reopened_instance,
+                       OpenGlicForActiveTab());
+  EXPECT_EQ(instance, reopened_instance);
+
+  // Reloading the host resets presentation state so the next open records a
+  // new sample.
+  ASSERT_OK(CloseGlicForTabAndWait(GetTabListInterface()->GetActiveTab()));
+  GlicClientConnectionObserver connection_observer(instance);
+  instance->host().Reload();
+  ASSERT_OK(connection_observer.WaitForDisconnected());
+  // Custom user timings are batched by the renderer, so this is checked after
+  // the old document is gone rather than right after the duplicate mark.
+  histogram_tester.ExpectTotalCount("Glic.Instance.TimeToActionable.SidePanel",
+                                    1);
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * post_reload_instance,
+                       OpenGlicForActiveTab());
+  EXPECT_EQ(instance, post_reload_instance);
+  ASSERT_OK(WaitForGlicClient(instance));
+  ASSERT_OK(histogram_tester.WaitForTotalCount(
+      "Glic.Instance.TimeToActionable.SidePanel", 2));
+}
+
 // TODO(crbug.com/441588906): Flaky on multiple platforms.
 IN_PROC_BROWSER_TEST_P(GlicApiTest, DISABLED_testFetchInactiveTabScreenshot) {
   tabs::TabInterface* tab0 = GetTabListInterface()->GetActiveTab();
@@ -5340,9 +5453,25 @@ INSTANTIATE_TEST_SUITE_P(,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 
+#if BUILDFLAG(IS_ANDROID)
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiTestWithGlicVoice,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithRequestMonitor,
-                         DefaultTestParamSet(),
+#if BUILDFLAG(IS_ANDROID)
+                         testing::Values(TestParams{},
+                                         TestParams{.enable_ssr = true}),
+#else
+                         testing::Values(TestParams{},
+                                         TestParams{.enable_ssr = true},
+                                         TestParams{.no_webview = true},
+                                         TestParams{.no_webview = true,
+                                                    .enable_ssr = true}),
+#endif
                          &WithTestParams::PrintTestVariant);
 
 INSTANTIATE_TEST_SUITE_P(

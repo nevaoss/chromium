@@ -159,7 +159,7 @@ import org.chromium.chrome.browser.share.scroll_capture.ScrollCaptureManager;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.signin.WebSigninRedirectCoordinator;
 import org.chromium.chrome.browser.signin.WebSigninRedirectCoordinatorSupplier;
-import org.chromium.chrome.browser.signin.services.WebSigninBridge;
+import org.chromium.chrome.browser.signin.services.WebSigninTrackerBridge;
 import org.chromium.chrome.browser.tab.AccessibilityVisibilityHandler;
 import org.chromium.chrome.browser.tab.AutofillSessionLifetimeController;
 import org.chromium.chrome.browser.tab.CurrentTabObserver;
@@ -429,6 +429,7 @@ public class RootUiCoordinator
     protected final SettableMonotonicObservableSupplier<EdgeToEdgeController>
             mEdgeToEdgeControllerSupplier;
     protected @Nullable Destroyable mEdgeToEdgeBottomChin;
+    protected @Nullable Destroyable mEdgeToEdgeTopScalp;
     protected final @ActivityType int mActivityType;
     protected final Supplier<Boolean> mIsInOverviewModeSupplier;
     private final AppMenuDelegate mAppMenuDelegate;
@@ -479,7 +480,6 @@ public class RootUiCoordinator
     protected @Nullable OpenInAppEntryPoint mOpenInAppEntryPoint;
     protected @Nullable OmniboxChipManager mOmniboxChipManager;
     protected @Nullable ActionRegistry mActionRegistry;
-    protected @Nullable OneshotSupplierImpl<String> mCountrySupplier;
     protected @Nullable BottomBarHostManager mBottomBarHostManager;
     private @Nullable AnchoredDialogCoordinator mAnchoredDialogCoordinator;
 
@@ -864,7 +864,10 @@ public class RootUiCoordinator
                 new BottomControlsStacker(mBrowserControlsManager, mActivity, mWindowAndroid);
         mTopControlsStacker =
                 new TopControlsStacker(
-                        mBrowserControlsManager, getAppBrowserControlsVisibilityDelegate());
+                        mBrowserControlsManager,
+                        getAppBrowserControlsVisibilityDelegate(),
+                        mActivity,
+                        mWindowAndroid);
         mIncognitoStateProvider = new IncognitoStateProvider();
         mBottomUiThemeColorProvider =
                 new BottomUiThemeColorProvider(
@@ -1176,6 +1179,12 @@ public class RootUiCoordinator
 
         if (mEdgeToEdgeBottomChin != null) {
             mEdgeToEdgeBottomChin.destroy();
+            mEdgeToEdgeBottomChin = null;
+        }
+
+        if (mEdgeToEdgeTopScalp != null) {
+            mEdgeToEdgeTopScalp.destroy();
+            mEdgeToEdgeTopScalp = null;
         }
 
         mTopInsetProvider.destroy();
@@ -1784,7 +1793,7 @@ public class RootUiCoordinator
                                     new WebSigninAccountPickerDelegate(
                                             profile,
                                             mTabModelSelectorSupplier.asNonNull().get(),
-                                            new WebSigninBridge.Factory()),
+                                            new WebSigninTrackerBridge.Factory()),
                                     assertNonNull(mDeviceLockActivityLauncherSupplier.get()),
                                     profileSupplier,
                                     getBottomSheetControllerSupplier().asNonNull(),
@@ -2013,6 +2022,18 @@ public class RootUiCoordinator
                     return result != null && result;
                 }
             }
+        } else if (id == R.id.focus_app_menu_button || id == R.id.focus_toolbar) {
+            if (mToolbarManager == null) return false;
+            if (id == R.id.focus_app_menu_button) {
+                View menuButtonView = mToolbarManager.getMenuButtonView();
+                if (menuButtonView != null) {
+                    menuButtonView.requestFocus();
+                    return true;
+                }
+                return false;
+            }
+            mToolbarManager.requestFocus();
+            return true;
         }
         return false;
     }
@@ -2275,7 +2296,6 @@ public class RootUiCoordinator
                             mOmniboxChipManager,
                             mBottomBarHostManager,
                             mActionRegistry,
-                            mCountrySupplier,
                             (preventClose, invocationSource) ->
                                     toggleGlic(preventClose, invocationSource),
                             shouldSuppressTabStripAtStart(),
@@ -2690,6 +2710,7 @@ public class RootUiCoordinator
                 // false positives when initialized solely for top edge-to-edge (e.g. 3-button nav).
                 recordIfMissingNavigationBar();
             }
+            mEdgeToEdgeTopScalp = createEdgeToEdgeTopScalp();
         }
     }
 
@@ -2730,6 +2751,11 @@ public class RootUiCoordinator
 
     /** Create a bottom chin for Edge-to-Edge. */
     protected @Nullable Destroyable createEdgeToEdgeBottomChin() {
+        return null;
+    }
+
+    /** Create a top scalp for Edge-to-Edge. */
+    protected @Nullable Destroyable createEdgeToEdgeTopScalp() {
         return null;
     }
 
@@ -2784,11 +2810,6 @@ public class RootUiCoordinator
         // must not be handed out either.
         if (mActivity == null) return null;
         return mFindToolbarManagerSupplier.get();
-    }
-
-    /** Returns the country {@link OneshotSupplier} for testing. */
-    public @Nullable OneshotSupplier<String> getCountrySupplierForTesting() {
-        return mCountrySupplier;
     }
 
     /**

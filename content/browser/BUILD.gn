@@ -234,6 +234,7 @@ source_set("browser") {
     "//content/public/common:content_descriptor_keys",
     "//content/public/common/zygote:buildflags",
     "//content/services/devtools_media_encoding_service/public/mojom",
+    "//content/services/resource_broker/public/mojom",
     "//crypto",
     "//device/base",
     "//device/bluetooth",
@@ -543,8 +544,8 @@ source_set("browser") {
     "background_fetch/storage/get_metadata_task.h",
     "background_fetch/storage/get_registration_task.cc",
     "background_fetch/storage/get_registration_task.h",
-    "background_fetch/storage/get_request_blob_task.cc",
-    "background_fetch/storage/get_request_blob_task.h",
+    "background_fetch/storage/get_request_body_task.cc",
+    "background_fetch/storage/get_request_body_task.h",
     "background_fetch/storage/image_helpers.cc",
     "background_fetch/storage/image_helpers.h",
     "background_fetch/storage/mark_registration_for_deletion_task.cc",
@@ -1914,6 +1915,8 @@ source_set("browser") {
     "renderer_host/view_transition_opt_in_state.h",
     "renderer_host/visible_time_request_trigger.cc",
     "renderer_host/visible_time_request_trigger.h",
+    "resource_broker/resource_broker_host.cc",
+    "resource_broker/resource_broker_host.h",
     "resource_coordinator_service.cc",
     "sandboxed_opaque_origin_creator.cc",
     "sandboxed_opaque_origin_creator.h",
@@ -2294,8 +2297,8 @@ source_set("browser") {
     "webid/navigation_interceptor.h",
     "webid/network_request_manager.cc",
     "webid/network_request_manager.h",
-    "webid/request.cc",
-    "webid/request.h",
+    "webid/request_handler.cc",
+    "webid/request_handler.h",
     "webid/request_page_data.cc",
     "webid/request_page_data.h",
     "webid/request_service.cc",
@@ -2531,8 +2534,17 @@ source_set("browser") {
     deps += [ "//media/mojo/mojom" ]
   }
 
+  if (enable_mdns) {
+    sources += [
+      "renderer_host/no_op_mdns_responder.cc",
+      "renderer_host/no_op_mdns_responder.h",
+    ]
+  }
+
   if (is_p2p_enabled) {
     sources += [
+      "renderer_host/p2p/no_op_p2p_socket_manager.cc",
+      "renderer_host/p2p/no_op_p2p_socket_manager.h",
       "renderer_host/p2p/socket_dispatcher_host.cc",
       "renderer_host/p2p/socket_dispatcher_host.h",
     ]

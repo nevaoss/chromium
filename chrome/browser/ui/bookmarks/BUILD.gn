@@ -49,8 +49,6 @@ source_set("bookmarks") {
 }
 
 source_set("impl") {
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   sources = [
     "bookmark_bar_controller.cc",
     "bookmark_context_menu_controller.cc",
@@ -75,6 +73,7 @@ source_set("impl") {
     "//chrome/browser:browser_features",
     "//chrome/browser:defaults",
     "//chrome/browser/bookmarks",
+    "//chrome/browser/enterprise/isolated_mode",
     "//chrome/browser/page_load_metrics",
     "//chrome/browser/prefs",
     "//chrome/browser/profiles:profile",

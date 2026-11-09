@@ -69,10 +69,11 @@ import java.util.Set;
             // when a task's activity was previously destroyed (e.g. after a crash).
             task.finishAndRemoveTask();
         }
-        // Lazily record the start time upon the first actual activity launch in the restoration
-        // batch.
+        // Lazily record the start time and notify subclasses upon the first actual activity launch
+        // in the restoration batch.
         if (mRestorationStartTime == 0) {
             mRestorationStartTime = TimeUtils.elapsedRealtimeMillis();
+            onRestorationInitiated();
         }
         Intent intent =
                 MultiWindowUtils.createNewWindowIntent(
@@ -105,15 +106,24 @@ import java.util.Set;
      * #onAllWindowsRestored(long)} once all pending windows have been restored.
      *
      * @param windowId The ID of the window to remove from the pending restoration set.
+     * @return {@code true} if the window was pending restoration and has now been processed; {@code
+     *     false} otherwise.
      */
-    protected void registerRestoration(int windowId) {
+    protected boolean registerRestoration(int windowId) {
         boolean updated = mWindowIdsPendingRestoration.remove(windowId);
         if (updated && mWindowIdsPendingRestoration.isEmpty()) {
             long duration = TimeUtils.elapsedRealtimeMillis() - mRestorationStartTime;
             mRestorationStartTime = 0;
             onAllWindowsRestored(duration);
         }
+        return updated;
     }
+
+    /**
+     * Invoked once right before initiating activity creation for the first window in a restoration
+     * batch.
+     */
+    protected abstract void onRestorationInitiated();
 
     /**
      * Invoked when all windows in {@link #mWindowIdsPendingRestoration} have completed restoration.

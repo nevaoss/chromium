@@ -572,6 +572,16 @@ bool InfoBarInternalsHandler::PerformInfoBarActionInternal(
       return true;
     }
     case InfoBarType::kDevToolsRemoteDebugging: {
+      if (infobars::IsInfoBarMigrated(
+              infobars::InfoBarDelegate::
+                  DEV_TOOLS_REMOTE_DEBUGGING_INFOBAR_DELEGATE)) {
+        if (!browser_infobar_manager) {
+          return false;
+        }
+        return browser_infobar_manager->ShowGlobally(
+            infobars::InfoBarDelegate::
+                DEV_TOOLS_REMOTE_DEBUGGING_INFOBAR_DELEGATE);
+      }
       GlobalConfirmInfoBar::Show(
           std::make_unique<DevToolsRemoteServerInfobarDelegate>());
       return true;
@@ -784,12 +794,20 @@ bool InfoBarInternalsHandler::PerformInfoBarActionInternal(
     }
 #endif
     case InfoBarType::kJsOptimizations: {
-      infobars::ContentInfoBarManager* infobar_manager =
-          infobars::ContentInfoBarManager::FromWebContents(web_contents);
-      if (!infobar_manager) {
-        return false;
+      if (infobars::IsInfoBarMigrated(
+              infobars::InfoBarDelegate::JS_OPTIMIZATIONS_INFOBAR_DELEGATE)) {
+        CHECK(browser_infobar_manager);
+        browser_infobar_manager->Show(
+            active_tab,
+            infobars::InfoBarDelegate::JS_OPTIMIZATIONS_INFOBAR_DELEGATE);
+      } else {
+        infobars::ContentInfoBarManager* infobar_manager =
+            infobars::ContentInfoBarManager::FromWebContents(web_contents);
+        if (!infobar_manager) {
+          return false;
+        }
+        JsOptimizationsInfoBarDelegate::Create(infobar_manager);
       }
-      JsOptimizationsInfoBarDelegate::Create(infobar_manager);
       return true;
     }
 #if BUILDFLAG(IS_MAC)
@@ -1023,8 +1041,19 @@ bool InfoBarInternalsHandler::PerformInfoBarActionInternal(
       return true;
     }
     case InfoBarType::kWebAppBlockedMigration: {
-      web_app::WebAppBlockedMigrationInfoBarDelegate::Create(
-          web_contents, /*on_dismiss_callback=*/base::DoNothing());
+      if (infobars::IsInfoBarMigrated(
+              infobars::InfoBarDelegate::
+                  WEB_APP_BLOCKED_MIGRATION_INFOBAR_DELEGATE)) {
+        if (!browser_infobar_manager) {
+          return false;
+        }
+        browser_infobar_manager->Show(
+            active_tab, infobars::InfoBarDelegate::
+                            WEB_APP_BLOCKED_MIGRATION_INFOBAR_DELEGATE);
+      } else {
+        web_app::WebAppBlockedMigrationInfoBarDelegate::Create(
+            web_contents, /*on_dismiss_callback=*/base::DoNothing());
+      }
       return true;
     }
     case InfoBarType::kWebAuthFlow: {

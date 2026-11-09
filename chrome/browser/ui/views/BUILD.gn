@@ -46,8 +46,6 @@ component("views") {
     "tabs/shared/tab_strip_types.h",
   ]
 
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
-
   defines = [ "CHROME_VIEWS_IMPLEMENTATION" ]
 
   public_deps = [
@@ -117,6 +115,7 @@ source_set("bubble_anchor_util_views_impl") {
     "//chrome/browser/ui/views/toolbar",
     "//chrome/browser/ui/webui",
     "//components/content_settings/core/common:features",
+    "//components/payments/core",
     "//components/tabs:public",
     "//content/public/browser",
     "//ui/base",
@@ -1828,12 +1827,24 @@ source_set("browser_tests") {
 
   if (is_win) {
     sources += [
+      "device_id/pen_id_browsertest_win.cc",
+      "sync/inline_login_ui_browsertest.cc",
       "tab_search_bubble_ui_browsertest.cc",
+
+      # Tooltip accessibility event tests rely on Aura APIs
+      # (EventGenerator, TooltipControllerTestHelper).
+      "tooltip/tooltip_dump_accessibility_events_browsertest.cc",
       "uninstall_view_browsertest.cc",
     ]
     deps += [
       ":uninstall_browser_prompt",
       "//chrome/browser/ui:uninstall_browser_prompt",
+      "//chrome/browser/ui/views/accessibility:dump_accessibility_events_views_browsertest_base",
+      "//chrome/browser/ui/webui/signin:inline_login",
+      "//chrome/browser/ui/webui/signin:login_ui_service",
+      "//chrome/browser/ui/webui/signin:test_support_ui",
+      "//chrome/credential_provider/common:common_constants",
+      "//chrome/test/base:testing_browser_process",
     ]
   }
 
@@ -1942,7 +1953,7 @@ if (!is_chromeos_device) {
       "web_dialog_view_interactive_uitest.cc",
       "webview_interactive_uitest.cc",
     ]
-    deps = []
+    deps = [ "//chrome/browser/ui:accelerator_utils_headers" ]
 
     if (!is_linux) {
       # TODO(port): This times out on desktop Linux.
@@ -1986,7 +1997,6 @@ if (!is_chromeos_device) {
       "//chrome/browser/ui/webui:chrome_web_contents_handler",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
-      "//chrome/test/base:test_browser_window",
       "//components/enterprise/data_controls/content/browser",
       "//components/enterprise/data_controls/core/browser:test_support",
       "//content/test:browsertest_support",
@@ -2016,7 +2026,10 @@ if (!is_chromeos_device) {
     }
 
     if (is_win) {
-      deps += [ "//chrome/browser/ui/views/accessibility:uia_test_support" ]
+      deps += [
+        "//chrome/browser/ui/views/accessibility:uia_test_support",
+        "//ui/aura:test_support",
+      ]
     }
   }
 }

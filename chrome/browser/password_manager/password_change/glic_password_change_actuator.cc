@@ -16,6 +16,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/values.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/actor_proto_conversion.h"
 #include "chrome/browser/actor/execution_engine.h"
 #include "chrome/browser/affiliations/affiliation_service_factory.h"
 #include "chrome/browser/glic/actor/glic_actor_task_manager.h"
@@ -25,7 +26,6 @@
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_passkeys.h"
 #include "chrome/browser/password_manager/chrome_password_manager_client.h"
-#include "chrome/browser/password_manager/password_change/change_password_form_waiter.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -192,14 +192,16 @@ origin_gating::TaskPolicyConfig BuildPasswordChangeContainerConfig(
       /*navigation_sources=*/{},
       /*resources=*/
       {origin_gating::TaskPolicyConfig::Rule::Resource::kSession},
-      /*capabilities=*/
-      {origin_gating::TaskPolicyConfig::Rule::Capability::kAll});
+      /*allowed_tools=*/actor::GetAllActorTools());
 
   for (const auto& origin : allowed_origins) {
     rules.emplace(origin_gating::TaskPolicyConfig::Location(origin), rule);
   }
 
-  return origin_gating::TaskPolicyConfig(std::move(rules));
+  return origin_gating::TaskPolicyConfig(
+      std::move(rules),
+      origin_gating::ClientTool(
+          optimization_guide::proto::RuleMetadata::CAPABILITY_NAVIGATE));
 }
 
 affiliations::FacetURI GetFacetURI(const GURL& url) {
@@ -433,7 +435,8 @@ void GlicPasswordChangeActuator::OnActorTaskStateChanged(
   tabs::TabInterface* actuation_tab =
       tabs::TabInterface::MaybeGetFromContents(actuation_web_contents_.get());
   // Ignore updates coming from other tabs, then we initiated actuation in.
-  if (!actuation_tab || !task.GetTabs().contains(actuation_tab->GetHandle())) {
+  if (!actuation_tab || !task.HasActorSurface(actor::ActorSurfaceHandle::From(
+                            actuation_tab->GetHandle()))) {
     return;
   }
 
@@ -476,9 +479,10 @@ void GlicPasswordChangeActuator::OnActorTaskStateChanged(
 }
 
 void GlicPasswordChangeActuator::OnChangePasswordFormManagerFound(
-    password_manager::PasswordFormManager* form_manager) {
+    ChangePasswordFormWaiter::Result result) {
   form_waiter_.reset();
 
+  password_manager::PasswordFormManager* form_manager = result.form_manager;
   if (!actuation_web_contents_ || !form_manager) {
     CloseGlicSession();
     NotifyStateChanged(

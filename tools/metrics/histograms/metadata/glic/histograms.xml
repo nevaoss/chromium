@@ -583,23 +583,24 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Glic.Contents.LoadCompleteTime" units="ms"
+<histogram name="Glic.Contents.LoadCompleteTime2" units="ms"
     expires_after="2027-03-07">
   <owner>acondor@google.com</owner>
   <owner>harringtond@google.com</owner>
   <summary>
     Measures the time it takes glic contents to load from the time the
-    navigation commits.
+    navigation commits. Recorded once on the initial primary main frame load.
   </summary>
 </histogram>
 
-<histogram name="Glic.Contents.NavigationCommitTime" units="ms"
+<histogram name="Glic.Contents.NavigationCommitTime2" units="ms"
     expires_after="2027-03-07">
   <owner>acondor@google.com</owner>
   <owner>harringtond@google.com</owner>
   <summary>
     Measures the time it takes from the Glic contents creation until the
-    navigation commits.
+    navigation commits. Recorded once on the initial committed primary main
+    frame navigation.
   </summary>
 </histogram>
 
@@ -1026,6 +1027,17 @@ chromium-metrics-reviews@google.com.
     Records the invocation source used to trigger the opening of the glic panel
     that led to the user dismissing the Trust-First Onboarding. Recorded when
     the user dismisses the Trust-First Onboarding.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Fre.Invoked.InvocationSource" enum="GlicInvocationSource"
+    expires_after="2027-06-01">
+  <owner>perrier@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <summary>
+    Records the initial invocation source used to open a Glic instance when the
+    user has not yet consented to the FRE. Recorded when an instance is opened
+    for the first time and the FRE opt-in will be shown.
   </summary>
 </histogram>
 
@@ -1507,8 +1519,8 @@ chromium-metrics-reviews@google.com.
   <summary>
     Measures the time from when a user toggles the Glic panel to be shown until
     the web client signals that it is ready, for panels that were backgrounded
-    or closed before the client finished loading. Recorded each time an inactive
-    {EmbedderType} panel finishes loading.
+    or closed before the client finished loading. Recorded at most once per
+    instance when an inactive {EmbedderType} panel first finishes loading.
   </summary>
   <token key="EmbedderType" variants="EmbedderType"/>
 </histogram>
@@ -1519,8 +1531,8 @@ chromium-metrics-reviews@google.com.
   <owner>perrier@google.com</owner>
   <summary>
     Measures the time from when a user toggles the Glic panel to be shown until
-    the web client signals that it is ready. Recorded each time a {EmbedderType}
-    panel is shown.
+    the web client signals that it is ready. Recorded at most once per instance
+    when a {EmbedderType} panel first finishes loading while visible.
   </summary>
   <token key="EmbedderType" variants="EmbedderType"/>
 </histogram>
@@ -1794,6 +1806,36 @@ chromium-metrics-reviews@google.com.
     Records the time elapsed since the last active Glic instance was active.
     Recorded when Glic is opened and a previous active instance exists.
   </summary>
+</histogram>
+
+<histogram name="Glic.Instance.TimeToActionable.Inactive.{EmbedderType}"
+    units="ms" expires_after="2027-08-11">
+  <owner>birnie@google.com</owner>
+  <owner>bryantchandler@chromium.org</owner>
+  <summary>
+    Measures the time from when a user toggles the Glic panel to be shown until
+    the guest web client emits its actionability performance.mark()
+    (&quot;gemini.interactive&quot;), for panels that were backgrounded before
+    that happened. Recorded at most once per guest document when an inactive
+    {EmbedderType} panel becomes actionable.
+  </summary>
+  <token key="EmbedderType" variants="EmbedderType"/>
+</histogram>
+
+<histogram name="Glic.Instance.TimeToActionable.{EmbedderType}" units="ms"
+    expires_after="2027-08-11">
+  <owner>birnie@google.com</owner>
+  <owner>bryantchandler@chromium.org</owner>
+  <summary>
+    Measures the time from when a user toggles the Glic panel to be shown until
+    the renderer submits a compositor frame after the guest WebContents is shown
+    in the panel and has emitted its actionability performance.mark()
+    (&quot;gemini.interactive&quot;). If that frame is submitted while the panel
+    is briefly hidden, the end time is when the panel is shown again. Recorded
+    at most once per guest document when a {EmbedderType} panel first presents
+    its actionable state.
+  </summary>
+  <token key="EmbedderType" variants="EmbedderType"/>
 </histogram>
 
 <histogram name="Glic.Instance.TimeToDismissWhileLoading.{EmbedderType}"
@@ -2266,11 +2308,11 @@ chromium-metrics-reviews@google.com.
   <owner>perrier@chromium.org</owner>
   <owner>glic+metrics@google.com</owner>
   <summary>
-    Records the onboarding status at the time Glic is invoked. Recorded when
-    Glic is invoked during onboarding. Invoked is defined as a new embedder
-    being shown for a tab or Floaty. Tab switching or focus events are not
-    considered invoking, but daisy chaining, conversation switching, or
-    re-opening on an already bound tab are considered invoking.
+    Records the onboarding status at the time Glic is invoked. Recorded on every
+    Glic invocation, including before and after onboarding completes. Invoked is
+    defined as a new embedder being shown for a tab or Floaty. Tab switching or
+    focus events are not considered invoking, but daisy chaining, conversation
+    switching, or re-opening on an already bound tab are considered invoking.
   </summary>
 </histogram>
 
@@ -2305,6 +2347,17 @@ chromium-metrics-reviews@google.com.
     <variant name="OptIn"/>
     <variant name="UserSubmit"/>
   </token>
+</histogram>
+
+<histogram name="Glic.Onboarding.PromptSubmitted.Status"
+    enum="GlicOnboardingStatus" expires_after="2027-06-01">
+  <owner>perrier@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <summary>
+    Records the onboarding status at the time a prompt is submitted in Glic.
+    Recorded on every prompt submission, including before and after onboarding
+    completes.
+  </summary>
 </histogram>
 
 <histogram name="Glic.Onboarding.WebUiLoadTime.{Visibility}" units="ms"
@@ -2409,6 +2462,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Recorded when a page context fails to get a screenshot. This includes any
     kind of error, including timeout. Measure the time from start.
+  </summary>
+</histogram>
+
+<histogram name="Glic.PageContextFetcher.GetEncodedScreenshot.Status"
+    enum="ScreenshotCaptureStatus" expires_after="2027-04-09">
+  <owner>linnan@chromium.org</owner>
+  <owner>chrome-intelligence-core@google.com</owner>
+  <summary>
+    Records the status (success or failure reason) of a screenshot capture
+    request in PageContextFetcher. Recorded once per screenshot capture request
+    when it completes or fails.
   </summary>
 </histogram>
 
@@ -2698,6 +2762,19 @@ chromium-metrics-reviews@google.com.
     backup. Recorded when {Event}.
   </summary>
   <token key="Event" variants="PanelEvent"/>
+</histogram>
+
+<histogram name="Glic.Preferences.HotkeyCleared" enum="GlicHotkeyCleared"
+    expires_after="2027-02-01">
+  <owner>perrier@chromium.org</owner>
+  <owner>chrome-glic@google.com</owner>
+  <summary>
+    Recorded when a non-empty Glic hotkey is cleared (set to an empty string) in
+    Glic settings. Records the user's default hotkey scope established at
+    migration and their currently active hotkey scope at the time of clearing.
+    Also records DefaultGlobalWithGlobalScope when the user has not been
+    migrated (kGlicHotkeyLocalScope disabled) and the launcher is enabled.
+  </summary>
 </histogram>
 
 <histogram name="Glic.Preferences.HotkeyScopeChange"

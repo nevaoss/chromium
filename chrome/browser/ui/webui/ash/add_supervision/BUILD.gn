@@ -27,6 +27,7 @@ static_library("add_supervision") {
 
   public_deps = [
     ":mojo_bindings",
+    "//ash/constants",
     "//base",
     "//chrome/browser/ui/webui/ash/system_web_dialog",
     "//components/signin/public/identity_manager",
@@ -43,7 +44,6 @@ static_library("add_supervision") {
   deps = [
     "//chrome/app:generated_resources",
     "//chrome/app:generated_resources_grit",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser:resources",
     "//chrome/browser:resources_grit",
     "//chrome/browser/ash/app_list/arc",
@@ -64,10 +64,12 @@ static_library("add_supervision") {
     "//components/application_locale_storage",
     "//components/constrained_window",
     "//components/google/core/common",
+    "//components/services/app_service",
     "//components/services/app_service/public/cpp:app_types",
     "//components/session_manager/core",
     "//components/signin/public/base",
     "//components/supervised_user/core/browser",
+    "//components/sync/base:features",
     "//components/user_manager",
     "//google_apis",
     "//ui/resources:ui_resources_grd",
@@ -82,6 +84,8 @@ source_set("unit_tests") {
   sources = [ "add_supervision_handler_utils_unittest.cc" ]
   deps = [
     "//chrome/browser/ui/webui/ash/add_supervision",
+    "//components/services/app_service",
+    "//components/services/app_service/public/cpp:app_types",
     "//testing/gtest",
   ]
 }

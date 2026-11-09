@@ -15,10 +15,14 @@
 #include "base/sequence_checker.h"
 #include "base/thread_annotations.h"
 #include "base/types/pass_key.h"
+#include "components/origin_gating/core/decision.h"
+#include "components/origin_gating/core/decision_attribution.h"
+#include "components/origin_gating/core/decision_source.h"
+#include "components/origin_gating/core/gateable_event.h"
+#include "components/origin_gating/core/gating_decision.h"
 #include "components/origin_gating/core/origin_gating_cache.h"
 #include "components/origin_gating/core/origin_gating_configuration.h"
 #include "components/origin_gating/core/task_policy_config_slot.h"
-#include "components/origin_gating/core/types.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -88,6 +92,9 @@ class OriginGatingChecker {
       base::WeakPtr<Delegate> delegate,
       OriginGatingConfiguration config);
 
+  OriginGatingChecker(base::PassKey<OriginGatingChecker>,
+                      base::WeakPtr<Delegate> delegate,
+                      OriginGatingConfiguration config);
   OriginGatingChecker(base::PassKey<OriginGatingService>,
                       base::WeakPtr<Delegate> delegate,
                       OriginGatingConfiguration config);
@@ -137,6 +144,9 @@ class OriginGatingChecker {
   }
 
  private:
+  OriginGatingChecker(base::WeakPtr<Delegate> delegate,
+                      OriginGatingConfiguration config);
+
   // Holds various inputs provided by the delegate (and data derived thereof),
   // to avoid needless recomputations.
   struct DelegateInputs {
@@ -233,9 +243,6 @@ class OriginGatingChecker {
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::WeakPtrFactory<OriginGatingChecker> weak_ptr_factory_
       GUARDED_BY_CONTEXT(sequence_checker_){this};
-
-  OriginGatingChecker(base::WeakPtr<Delegate> delegate,
-                      OriginGatingConfiguration config);
 };
 
 }  // namespace origin_gating

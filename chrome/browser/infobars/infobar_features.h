@@ -25,10 +25,13 @@ BASE_DECLARE_FEATURE_PARAM(bool, kMigratedBadFlags);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedCollectedCookies);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedDefaultBrowser);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedDevToolsConfirm);
+BASE_DECLARE_FEATURE_PARAM(bool, kMigratedDevToolsRemoteDebugging);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedDevToolsSharedProcess);
+BASE_DECLARE_FEATURE_PARAM(bool, kMigratedFileAccessDisabled);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedGoogleApiKeys);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedIncognitoConnectability);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedInstallerDownloader);
+BASE_DECLARE_FEATURE_PARAM(bool, kMigratedJsOptimizations);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedKeystonePromotion);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedKnownInterceptionDisclosure);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedLinkCapturing);
@@ -42,8 +45,10 @@ BASE_DECLARE_FEATURE_PARAM(bool, kMigratedLocalTestPolicies);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedThemeInstalled);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedExtensionDevTools);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedSessionRestore);
+BASE_DECLARE_FEATURE_PARAM(bool, kMigratedStartupLaunch);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedTabSharing);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedInstallationError);
+BASE_DECLARE_FEATURE_PARAM(bool, kMigratedWebAppBlockedMigration);
 BASE_DECLARE_FEATURE_PARAM(bool, kMigratedWebAuthFlow);
 
 // Returns true if the centralization framework is enabled and the specified

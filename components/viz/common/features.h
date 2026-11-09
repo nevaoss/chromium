@@ -182,11 +182,16 @@ VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kDisplaySchedulerAsClient);
 
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kRpdqFilterLookupOptimizations);
 
+VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kRenderPassBackingLogicalBounds);
+
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kBypassOutdatedSurfaceActivation);
 
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kRenderNonMergedSurfaceAtBackingScale);
 
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kSoftwareReadbackIntoBlitDestination);
+
+VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kUseSrcOverForFirstQuadInTransparentPass);
 
 VIZ_COMMON_EXPORT int DrawQuadSplitLimit();
 VIZ_COMMON_EXPORT bool IsRenderPassDrawQuadCullingOptimizationEnabled();

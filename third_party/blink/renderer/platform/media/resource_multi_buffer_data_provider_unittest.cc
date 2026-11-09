@@ -28,6 +28,7 @@
 #include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_util.h"
+#include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/platform/web_network_state_notifier.h"
 #include "third_party/blink/public/platform/web_string.h"
@@ -100,8 +101,9 @@ class ResourceMultiBufferDataProviderTest : public testing::Test {
                   media::DataSource::EncodingMode encoding_mode =
                       media::DataSource::EncodingMode::kIdentity) {
     url_ = KURL(url);
-    url_data_ = url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED,
-                                     UrlData::kNormal, encoding_mode);
+    url_data_ =
+        url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED, UrlData::kNormal,
+                             security_origin_, encoding_mode);
     url_data_->set_etag(kEtag);
     DCHECK(url_data_);
     url_data_->OnRedirect(
@@ -235,6 +237,8 @@ class ResourceMultiBufferDataProviderTest : public testing::Test {
   int32_t first_position_;
 
   NiceMock<MockResourceFetchContext> fetch_context_;
+  scoped_refptr<const SecurityOrigin> security_origin_ =
+      SecurityOrigin::CreateUniqueOpaque();
   std::unique_ptr<UrlIndex> url_index_;
   scoped_refptr<UrlData> url_data_;
   scoped_refptr<UrlData> redirected_to_;
@@ -425,12 +429,27 @@ TEST_F(ResourceMultiBufferDataProviderTest, InvalidPartialResponse) {
   loader_->DidReceiveResponse(response);
 }
 
+TEST_F(ResourceMultiBufferDataProviderTest, OpaqueRangeNotSatisfiableFails) {
+  Initialize(kHttpUrl, 0);
+  Start();
+
+  EXPECT_CALL(*this, RedirectCallback(scoped_refptr<UrlData>(nullptr)));
+
+  WebURLResponse response(url_);
+  response.SetHttpStatusCode(416);
+  response.SetType(network::mojom::FetchResponseType::kOpaque);
+  loader_->DidReceiveResponse(response);
+  EXPECT_TRUE(url_data_->is_cors_cross_origin());
+  EXPECT_TRUE(url_data_->multibuffer()->map().empty());
+}
+
 TEST_F(ResourceMultiBufferDataProviderTest, TestRedirects) {
   // Test redirect.
   Initialize(kHttpUrl, 0);
   Start();
   Redirect(kHttpRedirect);
   FullResponse(1024);
+  EXPECT_EQ(url_data_->security_origin(), security_origin_);
   StopWhenLoad();
 }
 
@@ -593,8 +612,8 @@ TEST_F(ResourceMultiBufferDataProviderTest, DestructedUrlIndexStartViaReader) {
   url_index_ = std::make_unique<UrlIndex>(
       &fetch_context_, task_environment_.GetMainThreadTaskRunner());
   url_ = KURL(kHttpUrl);
-  url_data_ =
-      url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED, UrlData::kNormal);
+  url_data_ = url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED,
+                                   UrlData::kNormal, security_origin_);
 
   std::unique_ptr<MultiBufferReader> reader;
   url_data_->OnRedirect(blink::BindOnce(

@@ -60,6 +60,8 @@ namespace extensions {
 
 namespace {
 
+using RegistrationState = ServiceWorkerState::RegistrationState;
+
 // A preference key storing the information about an extension that was
 // activated and has a registered worker based background page.
 const char kPrefServiceWorkerRegistrationInfo[] =
@@ -347,21 +349,17 @@ void ServiceWorkerTaskQueue::AddPendingTask(
   const SequencedContextId context_id = {
       lazy_context_id.extension_id(),
       lazy_context_id.browser_context()->UniqueToken(), *activation_token};
+  ServiceWorkerState* worker_state = GetWorkerState(context_id);
+  CHECK(worker_state, base::NotFatalUntil::M160);
 
-  if (!worker_registered_.contains(context_id)) {
+  if (!worker_state || !worker_state->IsRegistered()) {
     // If the worker hasn't finished registration, wait for it to complete. The
     // worker can't be started until a registration is found for it in the
     // //content layer. `DidRegisterServiceWorker()` will start the worker to
     // run the `task` later.
-    // TODO(crbug.com/40276609): consider moving registration check logic into
-    // `ServiceWorkerState`, since registration could be considered part of
-    // starting.
     AddPendingTaskForContext(std::move(task), context_id);
     return;
   }
-
-  ServiceWorkerState* worker_state = GetWorkerState(context_id);
-  DCHECK(worker_state);
 
   if (worker_state->IsReady()) {
     DispatchTasksImmediately(context_id, base::span_from_ref(task));
@@ -414,8 +412,9 @@ void ServiceWorkerTaskQueue::ActivateExtension(const Extension* extension) {
       context_id,
       std::make_unique<ServiceWorkerState>(
           service_worker_context, ProcessManager::Get(browser_context_)));
+  ServiceWorkerState* worker_state = worker_state_iter->second.get();
   if (inserted) {
-    worker_state_observations_.AddObservation(worker_state_iter->second.get());
+    worker_state_observations_.AddObservation(worker_state);
   }
   pending_tasks_map_.try_emplace(context_id);
 
@@ -429,9 +428,8 @@ void ServiceWorkerTaskQueue::ActivateExtension(const Extension* extension) {
                                          !service_worker_already_registered);
   }
 
-  DCHECK(!worker_registered_.contains(context_id));
   if (service_worker_already_registered) {
-    worker_registered_.insert(context_id);
+    worker_state->SetRegistrationState(RegistrationState::kRegistered);
     VerifyRegistration(service_worker_context, context_id, extension->url());
     return;
   }
@@ -511,6 +509,15 @@ void ServiceWorkerTaskQueue::OnWorkerStartFail(
     DCHECK(!pending_storage_registrations_.contains(context_id.extension_id));
     // We expect `DeactivateExtension` to have cleaned up the start attempts.
     DCHECK(!worker_start_retries_.contains(context_id.token));
+    return;
+  }
+
+  ServiceWorkerState* worker_state = GetWorkerState(context_id);
+  CHECK(worker_state);
+  if (!worker_state->IsRegistered()) {
+    // This start was requested before `DidVerifyRegistration()` found the
+    // registration missing. Leave the tasks queued for the worker to start
+    // once it's registered again.
     return;
   }
 
@@ -599,6 +606,16 @@ void ServiceWorkerTaskQueue::RegisterServiceWorker(
     RegistrationReason reason,
     const SequencedContextId& context_id,
     const Extension& extension) {
+  // Tasks wait for the registration instead of starting the worker. Starts are
+  // only retried for registered workers, so also cancel any start retry.
+  ServiceWorkerState* worker_state = GetWorkerState(context_id);
+  CHECK(worker_state);
+  worker_state->SetRegistrationState(RegistrationState::kRegistering);
+  worker_start_retries_.erase(context_id.token);
+  if (g_test_observer) {
+    g_test_observer->OnWorkerRegistrationStarted(context_id.extension_id);
+  }
+
   // If there is a pending unregistration for this extension, the registration
   // may get aborted by the unregistration and fail with
   // blink::ServiceWorkerStatusCode::kErrorAbort. Avoid this by retrying the
@@ -663,10 +680,10 @@ void ServiceWorkerTaskQueue::DeactivateExtension(const Extension* extension) {
   }
 
   RunAndClearPendingTasksWithNullContext(context_id);
+  const bool worker_previously_registered = worker_state->IsRegistered();
   worker_state_observations_.RemoveObservation(worker_state);
   worker_state_map_.erase(context_id);
   pending_tasks_map_.erase(context_id);
-  bool worker_previously_registered = worker_registered_.erase(context_id);
   // If an extension/worker is unloaded/disabled before the registration
   // callback then we might still have this record to delete.
   worker_registration_retries_.erase(context_id.token);
@@ -793,9 +810,10 @@ void ServiceWorkerTaskQueue::RetryStartWorker(
     return;
   }
 
-  // Starts are only requested for registered workers, and
-  // `OnStorageWipedSync()` cancels retries when it deletes the registration.
-  CHECK(worker_registered_.contains(context_id));
+  // `OnWorkerStartFail()` only retries starts of registered workers, and
+  // `RegisterServiceWorker()` cancels the retries when the worker is
+  // registered again.
+  CHECK(worker_state->IsRegistered());
 
   // If there are no pending tasks, there is no reason to start the worker.
   // This is unlikely as we got here from a failure while trying to run tasks,
@@ -993,7 +1011,7 @@ void ServiceWorkerTaskQueue::DidRegisterServiceWorker(
   }
 
   ServiceWorkerState* worker_state = GetWorkerState(context_id);
-  DCHECK(worker_state);
+  CHECK(worker_state);
 
   if (reason == RegistrationReason::RE_REGISTER_ON_STATE_MISMATCH) {
     base::UmaHistogramBoolean(
@@ -1044,6 +1062,11 @@ void ServiceWorkerTaskQueue::DidRegisterServiceWorker(
       // despite it not being considered an internal failure.
       status_code ==
           blink::ServiceWorkerStatusCode::kErrorScriptEvaluateFailed) {
+    // TODO(crbug.com/529976577): Fail the queued tasks, and register the worker
+    // again when the next task is added, instead of leaving them queued until
+    // the extension is deactivated.
+    worker_state->SetRegistrationState(RegistrationState::kNotRegistered);
+
     std::string msg = base::StringPrintf(
         "Service worker registration failed. Status code: %d",
         static_cast<int>(status_code));
@@ -1063,7 +1086,7 @@ void ServiceWorkerTaskQueue::DidRegisterServiceWorker(
   base::UmaHistogramTimes("Extensions.ServiceWorkerBackground.RegistrationTime",
                           base::Time::Now() - start_time);
 
-  worker_registered_.insert(context_id);
+  worker_state->SetRegistrationState(RegistrationState::kRegistered);
   pending_storage_registrations_.insert_or_assign(
       extension->id(), *GetCurrentActivationToken(extension->id()));
 
@@ -1307,17 +1330,15 @@ void ServiceWorkerTaskQueue::OnStorageWipedSync(
         extension_id, browser_context_->UniqueToken(), activation_token};
 
     // Clear browser-side and persisted registration state.
-    worker_registered_.erase(context_id);
     pending_storage_registrations_.erase(extension_id);
     RemoveRegisteredServiceWorkerInfo(extension_id);
 
-    // Cancel any pending retry timers for this activation.
+    // Cancel any pending registration retries for this activation.
     worker_registration_retries_.erase(activation_token);
     worker_unregistration_wait_retries_.erase(activation_token);
-    worker_start_retries_.erase(activation_token);
 
-    // Reset the worker's runtime state and drop callbacks for any in-flight
-    // pre-wipe start request.
+    // Reset the worker's state and drop callbacks for any in-flight pre-wipe
+    // start request.
     ServiceWorkerState* worker_state = GetWorkerState(context_id);
     CHECK(worker_state);
     worker_state->ResetForStorageWipe();
@@ -1363,8 +1384,6 @@ bool ServiceWorkerTaskQueue::IsWorkerUnregistrationSuccess(
 
 bool ServiceWorkerTaskQueue::IsWorkerRegistered(
     const ExtensionId extension_id) {
-  // TODO(crbug.com/346732739): Key worker_registered_ by extension_id so that
-  // this check isn't necessary anymore.
   std::optional<base::UnguessableToken> activation_token =
       GetCurrentActivationToken(extension_id);
   if (!activation_token) {
@@ -1372,9 +1391,9 @@ bool ServiceWorkerTaskQueue::IsWorkerRegistered(
     // or a worker unregistration has, at least, been sent.
     return false;
   }
-  const SequencedContextId context_id = {
-      extension_id, browser_context_->UniqueToken(), *activation_token};
-  return worker_registered_.contains(context_id);
+  auto [worker_state, _] =
+      GetWorkerStateForActivation(extension_id, *activation_token);
+  return worker_state->IsRegistered();
 }
 
 void ServiceWorkerTaskQueue::AddPendingTaskForContextForTesting(

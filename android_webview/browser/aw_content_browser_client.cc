@@ -67,6 +67,7 @@
 #include "base/i18n/android_locale.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/path_service.h"
@@ -949,9 +950,25 @@ bool AwContentBrowserClient::ShouldOverrideUrlLoading(
                               blink::kSecPurposePrefetchPrerenderHeaderValue);
   }
 
-  return client_bridge->ShouldOverrideUrlLoading(
+  bool result = client_bridge->ShouldOverrideUrlLoading(
       url, has_user_gesture, is_redirect, is_outermost_main_frame,
       request_headers, ignore_navigation);
+
+  // Record histogram when we detect URL loading overrides and content
+  // restriction is enabled for tracking purposes.
+  auto* aw_browser_context =
+      static_cast<AwBrowserContext*>(web_contents->GetBrowserContext());
+  if (base::FeatureList::IsEnabled(
+          android_webview::features::kWebViewContentRestrictionSupport) &&
+      *ignore_navigation && aw_browser_context) {
+    auto* crm_client = aw_browser_context->GetContentRestrictionManagerClient();
+    if (crm_client && crm_client->IsContentRestrictionEnabled()) {
+      base::UmaHistogramEnumeration(
+          "Android.WebView.ContentRestriction.RequestBypassedThrottleReason",
+          ContentRestrictionRequestBypassedThrottleReason::kUrlOverride);
+    }
+  }
+  return result;
 }
 
 bool AwContentBrowserClient::SupportsAvoidUnnecessaryBeforeUnloadCheckSync() {
@@ -1462,6 +1479,17 @@ bool AwContentBrowserClient::OriginSupportsConcreteCrossOriginIsolation(
 
 bool AwContentBrowserClient::IsAndroidAdvancedProtectionEnabled() {
   return AwAdvancedProtectionStatusManagerBridge::IsUnderAdvancedProtection();
+}
+
+bool AwContentBrowserClient::IsClipboardPasteAllowed(
+    content::RenderFrameHost* render_frame_host) {
+  // Require browser-observed recent user interaction, mirroring the first prong
+  // of ChromeContentBrowserClient::IsClipboardPasteAllowed().
+  // WebView intentionally has no CLIPBOARD_READ_WRITE grant flow yet
+  // (crbug.com/1271620), so there is no permission-based prong to mirror.
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(render_frame_host);
+  return web_contents && web_contents->HasRecentInteraction();
 }
 
 }  // namespace android_webview

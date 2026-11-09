@@ -34,7 +34,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/devtools/devtools_ui_bindings.h"
 #include "chrome/browser/devtools/devtools_window.h"
@@ -46,6 +45,7 @@
 #include "components/sessions/core/session_id.h"
 #include "extensions/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
@@ -160,6 +160,13 @@ std::unique_ptr<content::WebContents> CreateWebContents(
   std::unique_ptr<content::WebContents> web_contents =
       content::WebContents::Create(create_params);
   webui::SetBrowserWindowInterface(web_contents.get(), browser_window);
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
+    contextual_tasks::ContextualTasksWebView::ConfigureWebContentsBackground(
+        web_contents.get(), browser_window->GetProfile());
+  }
+#endif
 
   // Create PermissionRequestManager and PermissionRecoverySuccessRateTracker
   // explicitly for this WebContents. The permission bubble will anchor to
@@ -392,6 +399,16 @@ void ContextualTasksSidePanelCoordinator::Show(
   } else if (entry_point ==
              omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_AIO_LINK) {
     entry_source = ContextualTasksPanelController::EntrySource::kAioToCobr;
+  } else if (entry_point == omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_PAGE_CONTEXT_MENU_ASK_GOOGLE ||
+             entry_point == omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_APP_MENU_ASK_GOOGLE ||
+             entry_point == omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON ||
+             entry_point ==
+                 omnibox::ChromeAimEntryPoint::
+                     DESKTOP_CHROME_CHROMNIENT_HOMEWORK_ACTION_CHIP) {
+    entry_source = ContextualTasksPanelController::EntrySource::kAskGoogle;
   } else if (transition_from_tab) {
     entry_source =
         ContextualTasksPanelController::EntrySource::kAiModeLinkClick;
@@ -1466,6 +1483,10 @@ void ContextualTasksSidePanelCoordinator::OnSurfaceStateChanged(
           case EntrySource::kAioToCobr:
             RecordUserActionAndHistogram(
                 "ContextualTasks.SidePanel.UserAction.Close.AioToCobr");
+            break;
+          case EntrySource::kAskGoogle:
+            RecordUserActionAndHistogram(
+                "ContextualTasks.SidePanel.UserAction.Close.AskGoogle");
             break;
           default:
             RecordUserActionAndHistogram(

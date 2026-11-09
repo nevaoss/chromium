@@ -215,8 +215,7 @@ public class TabListCoordinator implements PriceWelcomeMessageProvider, DestroyO
             @Nullable TabSwitcherDragHandler tabSwitcherDragHandler,
             @Nullable UndoBarExplicitTrigger undoBarExplicitTrigger,
             @Nullable SnackbarManager snackbarManager,
-            int allowedSelectionCount,
-            boolean isSingleContextMode) {
+            int allowedSelectionCount) {
         mMode = mode;
         mTabActionState = initialTabActionState;
         mActivity = activity;
@@ -338,9 +337,12 @@ public class TabListCoordinator implements PriceWelcomeMessageProvider, DestroyO
         TabListConfig tabListConfig =
                 new TabListConfig.Builder(layoutType)
                         .setTabUiType(tabUiType)
+                        .setSupportsTabGroups(layoutType != TabListLayoutType.FLAT)
                         .setSupportsMessageCards(isGridMode)
                         .setSupportsShrinkCloseAnimation(isGridMode)
                         .setSupportsTabContextClick(true)
+                        .setRequiresThumbnailUpdateOnDeselect(
+                                layoutType == TabListLayoutType.GROUPED)
                         .setTabClosingSource(tabClosingSource)
                         .build();
 
@@ -364,7 +366,6 @@ public class TabListCoordinator implements PriceWelcomeMessageProvider, DestroyO
                         undoBarExplicitTrigger,
                         snackbarManager,
                         allowedSelectionCount,
-                        isSingleContextMode,
                         onDragStateChangedListener);
 
         try (TraceEvent _ = TraceEvent.scoped("TabListCoordinator.setupRecyclerView")) {
@@ -722,11 +723,11 @@ public class TabListCoordinator implements PriceWelcomeMessageProvider, DestroyO
     }
 
     /**
-     * @see TabListMediator#resetWithListOfTabs(List, boolean)
+     * @see TabListMediator#resetWithListOfTabs(List, List, boolean)
      */
-    boolean resetWithListOfTabs(
+    void resetWithListOfTabs(
             @Nullable List<Tab> tabs, @Nullable List<String> tabGroupSyncIds, boolean quickMode) {
-        return mMediator.resetWithListOfTabs(tabs, tabGroupSyncIds, quickMode);
+        mMediator.resetWithListOfTabs(tabs, tabGroupSyncIds, quickMode);
     }
 
     void softCleanup() {

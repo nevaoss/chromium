@@ -16,6 +16,7 @@ source_set("settings") {
     "browser_lifetime_handler.h",
     "captions_handler.h",
     "custom_home_pages_table_model.h",
+    "device_tab_visibility_handler.h",
     "dictation_handler.h",
     "downloads_handler.h",
     "font_handler.h",
@@ -55,6 +56,7 @@ source_set("settings") {
 
   public_deps = [
     "//base",
+    "//chrome/browser:shell_integration",
     "//chrome/browser/engagement",
     "//chrome/browser/importer",
     "//chrome/browser/net",
@@ -62,6 +64,7 @@ source_set("settings") {
     "//chrome/browser/performance_manager/public/user_tuning",
     "//chrome/browser/permissions/system",
     "//chrome/browser/profile_resetter",
+    "//chrome/browser/profile_resetter:profile_reset_report_proto",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/screen_ai:screen_ai_install_state",
     "//chrome/browser/themes",
@@ -90,6 +93,7 @@ source_set("settings") {
     "//components/soda:constants",
     "//components/sync/service",
     "//components/user_education/webui",
+    "//components/user_manager",
     "//components/wallet/core/browser",
     "//components/webauthn/core/browser:passkey_model",
     "//content/public/browser",
@@ -97,6 +101,7 @@ source_set("settings") {
     "//extensions/common",
     "//ui/base",
     "//ui/shell_dialogs",
+    "//ui/webui/resources/cr_components/help_bubble:mojo_bindings",
     "//url",
   ]
 
@@ -136,8 +141,6 @@ source_set("settings") {
 }
 
 source_set("impl") {
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   sources = [
     "about_handler.cc",
     "accessibility_main_handler.cc",
@@ -145,6 +148,7 @@ source_set("impl") {
     "browser_lifetime_handler.cc",
     "captions_handler.cc",
     "custom_home_pages_table_model.cc",
+    "device_tab_visibility_handler.cc",
     "dictation_handler.cc",
     "downloads_handler.cc",
     "font_handler.cc",
@@ -188,6 +192,7 @@ source_set("impl") {
     "//chrome/app:command_ids",
     "//chrome/app:generated_resources",
     "//chrome/app/vector_icons",
+    "//chrome/browser:browser_features",
     "//chrome/browser:browser_process",
     "//chrome/browser:browser_process_platform_part",
     "//chrome/browser:chrome_content_browser_client",
@@ -222,6 +227,7 @@ source_set("impl") {
     "//chrome/browser/hid",
     "//chrome/browser/history",
     "//chrome/browser/history_embeddings",
+    "//chrome/browser/indigo/resources:indigo_strings",
     "//chrome/browser/lifetime",
     "//chrome/browser/media",
     "//chrome/browser/media/prefs",
@@ -240,6 +246,7 @@ source_set("impl") {
     "//chrome/browser/privacy_sandbox:headers",
     "//chrome/browser/profiles:misc",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/regional_capabilities",
     "//chrome/browser/renderer_context_menu:bubble_models",
     "//chrome/browser/resources/settings:resources_grit",
     "//chrome/browser/resources/settings_shared:resources_grit",
@@ -247,6 +254,7 @@ source_set("impl") {
     "//chrome/browser/search_engines",
     "//chrome/browser/serial",
     "//chrome/browser/signin",
+    "//chrome/browser/skills",
     "//chrome/browser/ssl",
     "//chrome/browser/subresource_filter",
     "//chrome/browser/sync",
@@ -293,6 +301,7 @@ source_set("impl") {
     "//chrome/browser/ui/webui/management",
     "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
     "//chrome/browser/ui/webui/version",
+    "//chrome/browser/universal_optout",
     "//chrome/browser/usb",
     "//chrome/browser/user_education",
     "//chrome/browser/web_applications",
@@ -326,12 +335,16 @@ source_set("impl") {
     "//components/site_engagement/content",
     "//components/skills:features",
     "//components/strings:components_strings",
+    "//components/sync/base:features",
     "//components/sync/protocol",
     "//components/sync/service",
+    "//components/sync_device_info",
+    "//components/sync_sessions",
     "//components/tabs:public",
     "//components/universal_optout",
     "//components/user_manager:common",
     "//components/wallet/core/browser",
+    "//components/wallet/core/common:features",
     "//components/webapps/isolated_web_apps:scheme",
     "//components/webauthn/core/browser:passkey_model",
     "//extensions/browser",
@@ -473,7 +486,6 @@ source_set("browser_tests") {
     "//chrome/browser/ui/toolbar/pinned_toolbar",
     "//chrome/common",
     "//chrome/test:test_support",
-    "//chrome/test/base:test_browser_window",
     "//components/browsing_data/core",
     "//components/country_codes",
     "//components/password_manager/core/browser/actor_login:common",
@@ -522,6 +534,7 @@ if (!is_android) {
   source_set("unit_tests") {
     testonly = true
     sources = [
+      "device_tab_visibility_handler_unittest.cc",
       "dictation_handler_unittest.cc",
       "downloads_handler_unittest.cc",
       "hats_handler_unittest.cc",
@@ -634,6 +647,7 @@ if (!is_android) {
       "//components/regional_capabilities",
       "//components/search_engines",
       "//components/search_engines:test_support",
+      "//components/search_engines/search_engine_choice:switches",
       "//components/services/app_service",
       "//components/signin/core/browser:test_support",
       "//components/signin/public/base",
@@ -643,8 +657,11 @@ if (!is_android) {
       "//components/sync:test_support",
       "//components/sync/base",
       "//components/sync/service",
+      "//components/sync_device_info",
       "//components/sync_preferences",
       "//components/sync_preferences:features",
+      "//components/sync_sessions",
+      "//components/sync_sessions:test_support",
       "//components/tabs:test_support",
       "//components/ukm:test_support",
       "//components/version_info",

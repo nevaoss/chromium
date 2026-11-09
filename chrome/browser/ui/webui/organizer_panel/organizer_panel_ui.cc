@@ -50,7 +50,9 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
   static constexpr webui::LocalizedString kStrings[] = {
       {"clearSearch", IDS_CLEAR_SEARCH},
       {"closeTab", IDS_TAB_SEARCH_CLOSE_TAB},
+      {"closeTabSearch", IDS_ORGANIZER_PANEL_CLOSE_TAB_SEARCH},
       {"createTabGroup", IDS_ORGANIZER_PANEL_CREATE_TAB_GROUP},
+      {"expandAll", IDS_ORGANIZER_PANEL_EXPAND_ALL},
       {"noRecentlyClosedTabs", IDS_ORGANIZER_PANEL_NO_RECENTLY_CLOSED_TABS},
       {"noResults", IDS_ORGANIZER_PANEL_NO_RESULTS},
       {"openTabs", IDS_TAB_SEARCH_OPEN_TABS},
@@ -59,6 +61,7 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
       {"searchTabs", IDS_TAB_SEARCH_SEARCH_TABS},
       {"showAll", IDS_ORGANIZER_PANEL_SHOW_ALL},
       {"showSome", IDS_ORGANIZER_PANEL_SHOW_SOME},
+      {"splitView", IDS_ORGANIZER_PANEL_SPLIT_VIEW},
       {"tabCount", IDS_TAB_SEARCH_TAB_COUNT},
       {"tabGroupMoreOptions", IDS_TAB_GROUP_MORE_OPTIONS},
       {"tabGroups", IDS_ORGANIZER_PANEL_TAB_GROUPS},

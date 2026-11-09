@@ -29,6 +29,19 @@
   "TODO(crbug.com/380755410): Find a way to do this systematically.",
 
   {
+    "prefix": "temporal-input-coarse-pointer",
+    "platforms": ["Android", "Linux"],
+    "bases": [
+      "external/wpt/html/semantics/forms/the-input-element/focus-dynamic-type-change-on-blur.html"
+    ],
+    "args": [
+      "--enable-blink-features=InputMultipleFieldsUIWithPointerChecks",
+      "--blink-settings=availablePointerTypes=2,primaryPointerType=2"
+    ],
+    "owners": ["julio@gitstart.com"],
+    "expires": "never"
+  },
+  {
     "prefix": "ai_tool_use",
     "platforms": ["Linux", "Mac", "Win"],
     "bases": [
@@ -2390,12 +2403,14 @@
       "external/wpt/css/css-overflow/scroll-markers/targeted-column-scroll-marker-selection-002.html",
       "external/wpt/css/css-overflow/scroll-markers/targeted-column-scroll-marker-selection-003.html",
       "external/wpt/css/css-overflow/scroll-markers/targeted-column-scroll-marker-selection-004.html",
+      "external/wpt/css/css-position/overlay/backdrop-outside-top-layer.html",
       "external/wpt/css/css-pseudo/events-on-pseudo-element.tentative.html",
       "external/wpt/fullscreen/api/element-request-fullscreen-namespaces.html",
       "external/wpt/fullscreen/rendering/exit-fullscreen-scroll-to-unscrollable-area-overflow-hidden.html",
       "external/wpt/fullscreen/rendering/exit-fullscreen-scroll-to-unscrollable-area-overflow-x-hidden.html",
       "external/wpt/html/semantics/menu/tentative/menu-elements-default-style.html",
       "external/wpt/html/semantics/menu/tentative/menuitem-activate.html",
+      "external/wpt/html/semantics/menu/tentative/menulist-popover-attribute.html",
       "external/wpt/screen-orientation/lock-sandboxed-iframe.html",
       "external/wpt/shadow-dom/focus-navigation/reading-flow/tentative/carousel-grid-order.html",
       "fullscreen/full-screen-placeholder.html",
@@ -2775,7 +2790,7 @@
       "external/wpt/html/canvas/element/manual/draw-element-image/ink-overflow.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/nested-canvas-scale.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/scale.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/get-element-transform.tentative.html",
+      "external/wpt/html/canvas/element/manual/draw-element-image/canvas-transform-update.tentative.html",
       "wpt_internal/webgl/draw-element-image/webgl-css-transform-on-div.html",
       "wpt_internal/webgl/draw-element-image/webgl-ink-overflow.html",
       "wpt_internal/webgl/draw-element-image/webgl-scaling.html"
@@ -2825,7 +2840,7 @@
       "external/wpt/css/css-ui/caret-shape-block-color-001.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/ink-overflow.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/scale.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/get-element-transform.tentative.html",
+      "external/wpt/html/canvas/element/manual/draw-element-image/canvas-transform-update.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/canvas-transform-get-bounding-client-rect.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/nested-canvas-scale.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/update-element-geometry-get-bounding-client-rect.tentative.html",
@@ -2936,6 +2951,7 @@
       "Win"
     ],
     "bases": [
+      "http/tests/shadowrealm/full-gc-crash.html",
       "http/tests/shadowrealm/webexposed/global-interface-listing-shadow-realm.html"
     ],
     "exclusive_tests": "ALL",
@@ -3487,6 +3503,7 @@
       "inspector-protocol/css/css-get-styles-for-view-transition.js",
       "inspector-protocol/css/css-view-transition-set-style-text.js",
       "inspector-protocol/dom/dom-get-dom-for-view-transition.js",
+      "inspector-protocol/log/console-node-ids.js",
       "printing",
       "synthetic_gestures",
       "transitions",
@@ -3533,6 +3550,7 @@
       "inspector-protocol/css/css-view-transition-set-style-text.js",
       "inspector-protocol/css/css-get-keyframes-for-view-transitions.js",
       "inspector-protocol/dom/dom-get-dom-for-view-transition.js",
+      "inspector-protocol/log/console-node-ids.js",
       "external/wpt/soft-navigation-heuristics/navigation-api-view-transition.tentative.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-001.html",
       "external/wpt/trusted-types/navigate-to-javascript-url-002.html",

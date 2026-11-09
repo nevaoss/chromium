@@ -7,7 +7,9 @@
 #include <memory>
 #include <optional>
 #include <ranges>
+#include <string>
 #include <string_view>
+#include <utility>
 
 #include "base/barrier_closure.h"
 #include "base/base64.h"
@@ -451,7 +453,14 @@ class InterceptionJob : public network::mojom::URLLoaderClient,
       std::move(pending_auth_callback_)
           .Run(/*use_fallback=*/true, std::nullopt);
     }
-    DevToolsURLLoaderInterceptor::UnregisterJob(this);
+    if (!IsCorsPreflight()) {
+      DevToolsURLLoaderInterceptor::UnregisterJob(this);
+    }
+  }
+
+  bool IsCorsPreflight() const {
+    return create_loader_params_->options &
+           network::mojom::kURLLoadOptionAsCorsPreflight;
   }
 
   Response InnerContinueRequest(std::unique_ptr<Modifications> modifications);
@@ -624,6 +633,9 @@ class InterceptionJob : public network::mojom::URLLoaderClient,
   // request paused event contains original headers. Previous headers
   // are used on resume to compute the difference for the network stack.
   std::unique_ptr<net::HttpRequestHeaders> headers_before_redirect_;
+  // The Origin header set by the caller (e.g., CorsURLLoader) for this
+  // redirect hop. Forwarded unchanged in ProcessFollowRedirect().
+  std::optional<std::string> redirect_origin_header_;
 
   // These two are needed to build a Request and are prepared as needed when
   // sending Request for the first time. Both need to be cleared upon redirect.
@@ -813,8 +825,19 @@ void DevToolsURLLoaderFactoryProxy::CreateLoaderAndStart(
 
   GlobalRequestID global_req_id(ToOriginatingProcessIdUnsafe(process_id_),
                                 request_id);
+  // CORS preflights reuse the request ID of the request they precede. On a
+  // redirect, the network service sends the preflight for the new URL while the
+  // original request is still in flight (crbug.com/570354835), so preflights
+  // are exempt from collision handling. This holds even if a renderer sets
+  // kURLLoadOptionAsCorsPreflight itself, which it can on non-network factories
+  // that have no CorsURLLoaderFactory in front: preflight jobs are never
+  // indexed by GlobalRequestID or registered for auth routing, so they cannot
+  // displace or impersonate another job.
+  const bool is_cors_preflight =
+      options & network::mojom::kURLLoadOptionAsCorsPreflight;
   if (InterceptionJob* existing_job =
-          interceptor->FindJobByGlobalId(global_req_id)) {
+          is_cors_preflight ? nullptr
+                            : interceptor->FindJobByGlobalId(global_req_id)) {
     // Genuine child/renderer processes strictly have process IDs >= 1
     // (content::ChildProcessId starts generating IDs at 1). Values <= 0
     // represent browser-initiated contexts (0 for navigations, or -1 for
@@ -1154,7 +1177,11 @@ InterceptionJob::InterceptionJob(
   loader_receiver_.set_disconnect_handler(
       base::BindOnce(&InterceptionJob::Shutdown, base::Unretained(this)));
 
-  DevToolsURLLoaderInterceptor::RegisterJob(this);
+  // An auth challenge for the shared request ID belongs to the request the
+  // preflight precedes, so preflights are kept out of auth routing.
+  if (!IsCorsPreflight()) {
+    DevToolsURLLoaderInterceptor::RegisterJob(this);
+  }
 
   url_chain_.push_back(create_loader_params_->request.url);
 
@@ -1171,7 +1198,12 @@ bool InterceptionJob::StartJobAndMaybeNotify() {
 
   current_id_ =
       base::StringPrintf("interception-job-%d.%d", id_seq_, redirect_count_);
-  interceptor_->AddJob(global_req_id_, current_id_, this);
+  interceptor_->AddJob(current_id_, this);
+  // A preflight shares the request ID of the in-flight request it precedes, so
+  // indexing it would hide that request from collision handling.
+  if (!IsCorsPreflight()) {
+    interceptor_->IndexJobByGlobalId(global_req_id_, this);
+  }
 
   const network::ResourceRequest& request = create_loader_params_->request;
   stages_ = interceptor_->GetInterceptionStages(
@@ -1432,6 +1464,7 @@ Response InterceptionJob::InnerContinueRequest(
   CHECK_EQ(State::kNotStarted, state_, base::NotFatalUntil::M159);
   ApplyModificationsToRequest(std::move(modifications));
   headers_before_redirect_.reset();
+  redirect_origin_header_.reset();
   StartRequest();
   return Response::Success();
 }
@@ -1446,18 +1479,16 @@ void InterceptionJob::ProcessFollowRedirect(
                                         headers_update_params.modified_headers);
   headers_update_params.modified_cors_exempt_headers =
       modified_cors_exempt_headers;
-  // Never report Origin as a client modification. The diff above is taken
-  // against the pre-redirect headers, so the Origin that the browser itself
-  // recomputed for this redirect (in FollowRedirect(), mirroring what the
-  // network service does) shows up here as though the client had set it.
-  // Forwarding it trips the network service's guard against modifying Origin
-  // on redirect and fails the request with net::ERR_INVALID_ARGUMENT, even for
-  // a client that never touched Origin. Dropping it is safe in every case: the
-  // network service recomputes the same value itself, so the request is
-  // unchanged on the wire, and Origin is not a header clients are allowed to
-  // change on a redirect anyway.
+  // Exclude browser-synthesized Origin changes from client modifications to
+  // prevent triggering the network service's invalid-argument redirect check,
+  // but preserve any Origin explicitly supplied by the caller (e.g.,
+  // CorsURLLoader on cross-origin redirect).
   headers_update_params.modified_headers.RemoveHeader(
       net::HttpRequestHeaders::kOrigin);
+  if (redirect_origin_header_) {
+    headers_update_params.modified_headers.SetHeader(
+        net::HttpRequestHeaders::kOrigin, std::move(*redirect_origin_header_));
+  }
   headers_before_redirect_.reset();
   loader_->FollowRedirect(std::move(headers_update_params), std::nullopt);
   state_ = State::kRequestSent;
@@ -1938,7 +1969,7 @@ void InterceptionJob::Shutdown() {
     TRACE_EVENT_END("devtools", GetNamedTrack());
   }
   if (interceptor_)
-    interceptor_->RemoveJob(global_req_id_, current_id_);
+    interceptor_->RemoveJob(global_req_id_, current_id_, this);
   delete this;
 }
 
@@ -1963,6 +1994,8 @@ void InterceptionJob::FollowRedirect(
   // any client changes.
   headers_before_redirect_ = std::make_unique<net::HttpRequestHeaders>(
       create_loader_params_->request.headers);
+  redirect_origin_header_ = headers_update_params.modified_headers.GetHeader(
+      net::HttpRequestHeaders::kOrigin);
   if (headers_override_) {
     // Always revert to the first request in the chain.
     HeadersOverride::Revert(std::move(headers_override_));
@@ -1998,7 +2031,7 @@ void InterceptionJob::FollowRedirect(
     redirected_request_id_ = current_id_;
     // Pretend that each redirect hop is a new request -- this is for
     // compatibilty with URLRequestJob-based interception implementation.
-    interceptor_->RemoveJob(global_req_id_, current_id_);
+    interceptor_->RemoveJob(global_req_id_, current_id_, this);
     redirect_count_++;
     if (StartJobAndMaybeNotify())
       return;
@@ -2010,6 +2043,7 @@ void InterceptionJob::FollowRedirect(
 
   CHECK_EQ(State::kNotStarted, state_, base::NotFatalUntil::M159);
   headers_before_redirect_.reset();
+  redirect_origin_header_.reset();
   StartRequest();
 }
 

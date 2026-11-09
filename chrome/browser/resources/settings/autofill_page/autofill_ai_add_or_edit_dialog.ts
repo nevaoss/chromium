@@ -220,7 +220,8 @@ export class SettingsAutofillAiAddOrEditDialogElement extends
         this.isPublicPass_(this.entityInstance.type) &&
         !this.upsertPassDetails) {
       this.upsertPassDetails =
-          await this.entityDataManager_.getDetailsForUpsertPass();
+          await this.entityDataManager_.getDetailsForUpsertPass(
+              this.entityInstance.type.typeName);
     }
 
     // TODO(crbug.com/407794687): Decide whether the code should show a spinner
@@ -652,6 +653,12 @@ export class SettingsAutofillAiAddOrEditDialogElement extends
     return this.entityInstance.type.supportsWalletStorage;
   }
 
+  protected shouldShowStandaloneWalletIcon_(): boolean {
+    return this.isWalletPassBranding2026Enabled_ &&
+        this.entityInstance!.type.passType ===
+        chrome.autofillPrivate.EntityPassType.PRIVATE_PASS;
+  }
+
   /**
    * Returns true if the value is not empty and it is not made out only of
    * whitespaces.
@@ -778,9 +785,6 @@ export class SettingsAutofillAiAddOrEditDialogElement extends
     this.$.dialog.close();
   }
 }
-
-export type AutofillAiAddOrEditDialogElement =
-    SettingsAutofillAiAddOrEditDialogElement;
 
 declare global {
   interface HTMLElementTagNameMap {

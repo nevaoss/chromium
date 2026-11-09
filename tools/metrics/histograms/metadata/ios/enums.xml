@@ -254,6 +254,29 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_constants.h:IncognitoLockSettingStartupState) -->
 
+<!-- LINT.IfChange(IOSActorBackgroundTaskEndReason) -->
+
+<enum name="IOSActorBackgroundTaskEndReason">
+  <int value="0" label="Actor task stopped successfully"/>
+  <int value="1" label="Actor task stopped internally with failure"/>
+  <int value="2" label="Actor task waiting on user (yielded or paused)"/>
+  <int value="3" label="Expired by system"/>
+  <int value="4" label="Cancelled from the Live Activity by user"/>
+  <int value="5" label="Actor task destroyed while holding the context"/>
+</enum>
+
+<!-- LINT.ThenChange(/ios/chrome/browser/intelligence/actor/metrics/actor_background_task_metrics.h:IOSActorBackgroundTaskEndReason) -->
+
+<!-- LINT.IfChange(IOSActorBackgroundTaskIneligibilityReason) -->
+
+<enum name="IOSActorBackgroundTaskIneligibilityReason">
+  <int value="0" label="Actor backgrounding disabled"/>
+  <int value="1" label="Already holds a live background task context"/>
+  <int value="2" label="Task state does not keep a background task alive"/>
+</enum>
+
+<!-- LINT.ThenChange(/ios/chrome/browser/intelligence/actor/metrics/actor_background_task_metrics.h:IOSActorBackgroundTaskIneligibilityReason) -->
+
 <enum name="IOSAddressValidationOutcome">
   <int value="0" label="Address is valid for Long Press"/>
   <int value="1" label="Address is valid for One Tap"/>
@@ -935,7 +958,7 @@ chromium-metrics-reviews@google.com.
 <!-- LINT.IfChange(IOSGeminiEntryPoint) -->
 
 <enum name="IOSGeminiEntryPoint">
-  <int value="0" label="Promo"/>
+  <int value="0" label="Promo (Deprecated)"/>
   <int value="1" label="Overflow Menu"/>
   <int value="2" label="AI Hub"/>
   <int value="3" label="Omnibox Chip (Skipped AI Hub)"/>
@@ -1125,6 +1148,7 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Dismissed on Consent Screen"/>
   <int value="2" label="Denied OS Mic Permission"/>
   <int value="3" label="Denied Chrome Mic Permission"/>
+  <int value="4" label="Link Clicked on Consent Screen"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h:IOSGeminiLiveFREOutcome) -->
@@ -1231,6 +1255,8 @@ chromium-metrics-reviews@google.com.
   <int value="16" label="AIM Quick Action"/>
   <int value="17" label="Tab Switcher"/>
   <int value="18" label="Plus Button"/>
+  <int value="19" label="Standalone AIM Module"/>
+  <int value="20" label="AIM in Most Visited"/>
 </enum>
 
 <!-- LINT.IfChange(IOSHomeCustomizationBackgroundStyle) -->
@@ -1682,9 +1708,20 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Allowed by saved setting (no prompt)"/>
   <int value="2" label="Denied by saved setting (no prompt)"/>
   <int value="3" label="Blocked by parental controls (no prompt)"/>
+  <int value="4" label="Denied in background (no prompt)"/>
 </enum>
 
 <!-- LINT.ThenChange(//ios/chrome/browser/permissions/model/permissions_metrics.h:IOSPermissionRequestResolution) -->
+
+<!-- LINT.IfChange(IOSPermissionSetting) -->
+
+<enum name="IOSPermissionSetting">
+  <int value="0" label="Allow once"/>
+  <int value="1" label="Always allow"/>
+  <int value="2" label="Never allow"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/permissions/model/permissions_metrics.h:IOSPermissionSetting) -->
 
 <!-- LINT.IfChange(IOSPersistTabContextDeleteDirectoryResult) -->
 
@@ -1818,6 +1855,7 @@ chromium-metrics-reviews@google.com.
   <int value="22" label="Home background customization promo"/>
   <int value="23" label="LevelUp"/>
   <int value="24" label="Ephemeral theme promo"/>
+  <int value="25" label="Smart account switching fullscreen promo"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/promos_manager/model/constants.h:Promo) -->

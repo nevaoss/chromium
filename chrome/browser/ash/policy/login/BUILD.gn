@@ -12,8 +12,6 @@ static_library("login") {
     "wildcard_login_checker.h",
   ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   deps = [
     "//base",
     "//chrome/browser:browser_process",
@@ -49,6 +47,7 @@ static_library("test_support") {
     "//chrome/browser/ash/policy/core:test_support",
     "//chrome/browser/ash/policy/test_support",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/ash/login",
     "//chrome/common",
     "//chrome/test:test_support",
     "//chromeos/ash/components/browser_context_helper",

@@ -17,17 +17,6 @@
 #include "extensions/buildflags/buildflags.h"
 #include "ui/base/ui_base_features.h"
 
-#if !BUILDFLAG(IS_ANDROID)
-namespace {
-
-bool IsProcessOverheadExperimentActive() {
-  return base::FeatureList::IsEnabled(
-      features::kWebUIToolbarProcessOverheadExperiment);
-}
-
-}  // namespace
-#endif  // !BUILDFLAG(IS_ANDROID)
-
 namespace features {
 
 // Enables the migration of browser commands to Action API.
@@ -43,6 +32,10 @@ BASE_FEATURE(kAllowEyeDropperWGCScreenCapture,
 );
 
 BASE_FEATURE(kCtrlTabMru, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Skip the UI update coalescing delay when the favicon arrives after a
+// navigation. Kill switch for crbug.com/554464784.
+BASE_FEATURE(kFastFaviconDisplay, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -81,6 +74,10 @@ BASE_FEATURE(kWebuiRefresh2026, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAppMenuGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables the redesigned Settings 2026 refresh features and search UX.
 BASE_FEATURE(kSettingsRefresh2026, base::FEATURE_DISABLED_BY_DEFAULT);
+// Enables the new chrome://settings search: the native (C++) search backend
+// and the search WebUI that consumes it. Only takes effect when
+// kSettingsRefresh2026 is also enabled.
+BASE_FEATURE(kSettingsSearch2026, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables search in the app Chrome menu.
 BASE_FEATURE(kChroMenuSearch, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,
@@ -130,6 +127,11 @@ bool IsSettingsRefresh2026Enabled() {
   return (base::FeatureList::IsEnabled(kDesktopGlowUp) ||
           base::FeatureList::IsEnabled(kWebuiRefresh2026)) &&
          base::FeatureList::IsEnabled(kSettingsRefresh2026);
+}
+
+bool IsSettingsSearch2026Enabled() {
+  return IsSettingsRefresh2026Enabled() &&
+         base::FeatureList::IsEnabled(kSettingsSearch2026);
 }
 
 bool ShouldUseActionsForBrowserCommands() {
@@ -212,6 +214,12 @@ BASE_FEATURE(kPreloadTopChromeWebUI, base::FEATURE_ENABLED_BY_DEFAULT);
 // An experiment to reduce the number of navigations when preloading WebUIs.
 BASE_FEATURE(kPreloadTopChromeWebUILessNavigations,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Hides the preloaded WebContents once its page is ready to show. A visible
+// preload keeps the shared top-chrome renderer at foreground priority, so that
+// renderer never backgrounds or purges memory while every WebUI is hidden.
+BASE_FEATURE(kPreloadTopChromeWebUIHideWhenReady,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables exiting browser fullscreen (users putting the browser itself into the
 // fullscreen mode via the browser UI or shortcuts) with press-and-hold Esc.
@@ -392,103 +400,88 @@ BASE_FEATURE(kWebUIMediaButton, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebUIGlicButton, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsWebUIReloadButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIReloadButton));
 }
 
 bool IsWebUIHomeButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIHomeButton));
 }
 
 bool IsWebUIBatterySaverButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIBatterySaverButton));
 }
 
 bool IsWebUIAppMenuButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIAppMenuButton));
 }
 
 bool IsWebUIBackForwardButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIBackForwardButton));
 }
 
 bool IsWebUIPinnedToolbarActionsEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIPinnedToolbarActions));
 }
 
 bool IsWebUIExtensionsContainerEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIExtensionsContainer));
 }
 
 bool IsWebUISplitTabsButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUISplitTabsButton));
 }
 
 bool IsWebUIAvatarButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIAvatarButton));
 }
 
 bool IsWebUIMediaButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIMediaButton));
 }
 
 bool IsWebUIGlicButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUIGlicButton));
 }
 
 bool IsWebUIPerformanceInterventionButtonEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(
               features::kWebUIPerformanceInterventionButton));
 }
 
 bool IsWebUILocationBarEnabled() {
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
           base::FeatureList::IsEnabled(features::kWebUILocationBar));
 }
 
 bool IsWebUIToolbarEnabled() {
-  // Checking IsProcessOverheadExperimentActive() and features::kInitialWebUI
-  // first is a minor optimization, since all other methods return false, if the
-  // first is enabled or the second is disabled.
-  return !IsProcessOverheadExperimentActive() &&
-         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+  // Checking features::kInitialWebUI first is a minor optimization, since all
+  // other methods return false if it is disabled.
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          (IsWebUIReloadButtonEnabled() || IsWebUISplitTabsButtonEnabled() ||
           IsWebUIHomeButtonEnabled() || IsWebUILocationBarEnabled() ||
           IsWebUIBackForwardButtonEnabled() ||
@@ -503,7 +496,6 @@ bool IsWebUIToolbarEnabled() {
 bool IsWebUIToolbarFullyEnabled() {
   // The first block is an optimization, and is not needed for correctness.
   return (base::FeatureList::IsEnabled(features::kWebUIToolbar) &&
-          !IsProcessOverheadExperimentActive() &&
           base::FeatureList::IsEnabled(features::kInitialWebUI)) ||
          (IsWebUIReloadButtonEnabled() && IsWebUISplitTabsButtonEnabled() &&
           IsWebUIHomeButtonEnabled() && IsWebUILocationBarEnabled() &&

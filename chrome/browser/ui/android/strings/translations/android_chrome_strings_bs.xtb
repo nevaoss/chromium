@@ -322,12 +322,14 @@ Vaše šifrirane podatke može čitati samo osoba koja ima vaš pristupni izraz.
 <translation id="2297822946037605517">Dijeli ovu stranicu</translation>
 <translation id="230115972905494466">Nije pronađen nijedan kompatibilni uređaj</translation>
 <translation id="2305798319182970276">Izbrišite historiju jednim dodirom na dugme</translation>
+<translation id="2307420463693979699">Aplikaciji <ph name="APP_NAME" /> treba odobrenje za pristup uređajima s ljudskim interfejsom za ovu web lokaciju.</translation>
 <translation id="2316129865977710310">Ne, hvala</translation>
 <translation id="232137538351753795">Prevucite od lijevog ruba da se vratite</translation>
 <translation id="2323763861024343754">Pohrana web lokacije</translation>
 <translation id="2327445548174191329">Izvor: <ph name="DEVICE_NAME" /></translation>
 <translation id="232757965409810352">Pohranjivanje stranice kao…</translation>
 <translation id="2328474416100889417">Svako će odmah izgubiti pristup grupi kartica "<ph name="GROUP_NAME" />", a svi linkovi pozivnice će se isključiti</translation>
+<translation id="2328773543844041445">Automatski proširi kartice prilikom postavljanja pokazivača miša iznad njih</translation>
 <translation id="2330186936255788117">Više oznaka</translation>
 <translation id="2330243730505117832">Zatvorena je donja tabela "Odaberite uređaj".</translation>
 <translation id="2332515770639153015">Poboljšano Sigurno pregledanje je uključeno</translation>
@@ -1691,6 +1693,7 @@ Da promijenite ovu postavku, <ph name="BEGIN_LINK" />izbrišite podatke Chromea 
 <translation id="7608245556672190037">Donja tabela uključivanja Chromeovih pronalazaka je otvorena u punoj visini</translation>
 <translation id="7612619742409846846">Prijavljeni ste na Google kao</translation>
 <translation id="7612989789287281429">Prijavljivanje…</translation>
+<translation id="7617512710641355143">Chromeom se upravlja</translation>
 <translation id="7619072057915878432">Preuzimanje fajla <ph name="FILE_NAME" /> nije uspjelo zbog grešaka na mreži.</translation>
 <translation id="7626032353295482388">Dobro došli u Chrome</translation>
 <translation id="7628417132421583481">Idite na Upravitelj lozinki</translation>

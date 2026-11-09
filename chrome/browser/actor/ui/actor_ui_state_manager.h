@@ -74,14 +74,15 @@ class ActorUiStateManager : public ActorUiStateManagerInterface,
   void OnUiEvent(SyncUiEvent event) override;
 #if !BUILDFLAG(IS_ANDROID)
   void LazyInitTabTracker() override;
+#endif
   base::WeakPtr<ActorNavigationThrottle::Delegate> GetNavigationDelegate()
       override;
-#endif
 
   // ActorNavigationThrottle::Delegate:
   bool MaybeDeferNavigation(tabs::TabInterface* tab,
                             const GURL& url,
                             NavigationConfirmedCallback callback) override;
+  void CancelNavigationConfirmation(tabs::TabInterface* tab) override;
 
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   // Shows toast that notifies user the Actor is working in the background.

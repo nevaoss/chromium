@@ -1305,6 +1305,9 @@ Style notes:
       <message name="IDS_ASH_STATUS_TRAY_ACCESSIBILITY_FACEGAZE" desc="The label used in the accessibility menu of the system tray to toggle on/off the FaceGaze feature.">
         Face control
       </message>
+      <message name="IDS_ASH_STATUS_TRAY_ACCESSIBILITY_HOVER_TEXT" translateable="false" desc="The label used in the accessibility menu of the system tray to toggle on/off the Hover Text feature.">
+        Hover text
+      </message>
       <message name="IDS_ASH_STATUS_TRAY_ACCESSIBILITY_COLOR_CORRECTION" desc="The label used in the accessibility menu of the system tray to toggle on/off the color correction feature.">
         Color correction
       </message>
@@ -8298,20 +8301,6 @@ To shut down the device, press and hold the power button on the device again.
         Settings
       </message>
 
-      <!-- Borealis MOTD -->
-      <message name="IDS_ASH_BOREALIS_MOTD_DISMISS_TEXT" desc="Text on dismiss button in Borealis MOTD. Clicking on it will dismiss the dialog.">
-        Dismiss
-      </message>
-      <message name="IDS_ASH_BOREALIS_MOTD_PLACEHOLDER_TEXT" desc="Placeholder text for Borealis MOTD. Shown if the message of the day is unable to be retrieved from the Static Content Service.">
-        Unable to retrieve Steam for Chromebook news.
-      </message>
-      <message name="IDS_ASH_BOREALIS_MOTD_UNINSTALL_TEXT" desc="Text on button in Borealis MOTD. Clicking on it will trigger uninstallation of the borealis.">
-        Uninstall
-      </message>
-      <message name="IDS_ASH_BOREALIS_MOTD_TITLE_TEXT" desc="Title text for Borealis MOTD. Shown at the top of the dialog.">
-        Steam for Chromebook News
-      </message>
-
       <!-- Kiosk mode (app_mode) -->
       <message name="IDS_KIOSK_APP_ERROR_EXTENSIONS_LOAD_TIMEOUT" desc="Error message used when a kiosk app fails to load force-installed extensions within the time limit.">
         Failed to load extensions within the time limit. Please contact your administrator.
@@ -8779,6 +8768,21 @@ To shut down the device, press and hold the power button on the device again.
       </message>
       <message name="IDS_BOREALIS_APPLICATION_UNINSTALL_CONFIRM_BODY" desc="Confirmation dialog for uninstalling a game.">
           Data associated with this app may be removed from this device
+      </message>
+      <message name="IDS_BOREALIS_DISK_CLEANUP_DIALOG_TITLE" desc="Title for the Borealis disk cleanup confirmation dialog and completion notification.">
+        Steam on Chromebook
+      </message>
+      <message name="IDS_BOREALIS_DISK_CLEANUP_DIALOG_MESSAGE" desc="Message body for the Borealis disk cleanup confirmation dialog prompting the user to reclaim disk space.">
+        You have unused disk space (<ph name="SIZE">$1<ex>10.0 GB</ex></ph>) allocated for deprecated feature "Steam on Chromebook".
+      </message>
+      <message name="IDS_BOREALIS_DISK_CLEANUP_DIALOG_OK_BUTTON" desc="Button label on the Borealis disk cleanup confirmation dialog to proceed with deleting the unused disk image and freeing disk space.">
+        Free disk space
+      </message>
+      <message name="IDS_BOREALIS_DISK_CLEANUP_DIALOG_CANCEL_BUTTON" desc="Button label on the Borealis disk cleanup confirmation dialog to dismiss the dialog for now.">
+        Do it later
+      </message>
+      <message name="IDS_BOREALIS_DISK_CLEANUP_NOTIFICATION_MESSAGE" desc="Message for the notification shown after successfully freeing Borealis disk space.">
+        Freed <ph name="SIZE">$1<ex>10.0 GB</ex></ph> of disk space.
       </message>
 
       <!-- Bruschetta -->

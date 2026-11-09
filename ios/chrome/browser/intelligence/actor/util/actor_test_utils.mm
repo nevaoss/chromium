@@ -7,8 +7,12 @@
 #import <utility>
 
 #import "base/functional/bind.h"
+#import "base/location.h"
+#import "base/run_loop.h"
+#import "base/task/sequenced_task_runner.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
-#import "components/origin_gating/core/types.h"
+#import "components/origin_gating/core/gateable_event.h"
+#import "components/origin_gating/core/gating_decision.h"
 #import "ios/web/public/navigation/navigation_item.h"
 #import "ios/web/public/test/fakes/fake_navigation_context.h"
 #import "ios/web/public/test/fakes/fake_web_state.h"
@@ -209,6 +213,13 @@ bool HasJournalEntryWithDetail(
     std::optional<mojom::JournalEntryType> entry_type) {
   return HasMatchingJournalEntry(journal, event_name, entry_type, detail_key,
                                  detail_value);
+}
+
+void FlushCurrentSequence() {
+  base::RunLoop run_loop;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
 }
 
 }  // namespace actor

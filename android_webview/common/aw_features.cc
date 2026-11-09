@@ -310,6 +310,11 @@ BASE_FEATURE(kWebViewNavigateDrainPrefetch, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kWebViewNonBlockingCookieStoreHandoff,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Kill switch for using the low entropy source provided by the nonembedded
+// WebView service.
+BASE_FEATURE(kWebViewNonembeddedLowEntropySourceKillSwitch,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, opts in WebView to GMSCore's bindService optimizations.
 BASE_FEATURE(kWebViewOptInToGmsBindServiceOptimization,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -330,19 +335,12 @@ BASE_FEATURE(kWebViewPrefetchAheadOfPrerender,
 // Prefetches the native WebView code to memory during startup.
 BASE_FEATURE(kWebViewPrefetchNativeLibrary, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// A parameter to trigger the prefetch from the renderer instead of the browser.
-const base::FeatureParam<bool> kWebViewPrefetchFromRenderer{
-    &kWebViewPrefetchNativeLibrary, "WebViewPrefetchFromRenderer", true};
-
 // This enables to start main resource prefetch request from off the main thread
 // for WebView Prefetch API. See crbug.com/452406598, crbug.com/452389538 for
 // more details. Only takes effect if `kPrefetchOffTheMainThread` is enabled
 // as well.
 BASE_FEATURE(kWebViewPrefetchOffTheMainThread,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Prefetches the native WebView code to memory when renderer is reused.
-BASE_FEATURE(kWebViewPrefetchOnRendererReuse, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, stale `AwPrefetchHandleWrapper`s in `AwPrefetchManagerData` are
 // proactively pruned when new prefetch requests are added or reserved.
@@ -415,14 +413,6 @@ BASE_FEATURE(kWebViewRemoveInstantAppSupport,
 // iff both this feature flag and the content/public kRenderDocument flag is
 // enabled.
 BASE_FEATURE(kWebViewRenderDocument, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Keeps the renderer process alive after the last WebView is destroyed to
-// allow for reuse.
-BASE_FEATURE(kWebViewRendererKeepAlive, base::FEATURE_ENABLED_BY_DEFAULT);
-
-const base::FeatureParam<base::TimeDelta> kWebViewRendererKeepAliveDuration{
-    &kWebViewRendererKeepAlive, "webview_renderer_keep_alive_duration",
-    base::Days(1000)};
 
 // Enables using a single shared gpu::SharedContextState across all
 // OutputSurfaceProviderWebView instances.

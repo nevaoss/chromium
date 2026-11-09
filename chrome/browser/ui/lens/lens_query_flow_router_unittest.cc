@@ -361,6 +361,16 @@ class MockLensOverlayController : public LensOverlayController {
               (override));
 };
 
+class FakeContextualTasksEligibilityManager
+    : public contextual_tasks::ContextualTasksEligibilityManager {
+ public:
+  FakeContextualTasksEligibilityManager()
+      : ContextualTasksEligibilityManager(nullptr, nullptr, nullptr) {}
+  ~FakeContextualTasksEligibilityManager() override = default;
+
+  bool IsSidePanelAvailable() const override { return true; }
+};
+
 class MockContextualTasksUiService
     : public contextual_tasks::ContextualTasksUiService {
  public:
@@ -372,7 +382,7 @@ class MockContextualTasksUiService
             /*contextual_tasks_service=*/nullptr,
             /*identity_manager=*/nullptr,
             /*aim_eligibility_service=*/nullptr,
-            /*eligibility_manager=*/nullptr,
+            std::make_unique<FakeContextualTasksEligibilityManager>(),
             /*cookie_synchronizer=*/nullptr) {}
   ~MockContextualTasksUiService() override = default;
 
@@ -3828,7 +3838,7 @@ TEST_F(LensQueryFlowRouterTest, ShouldFetchActiveTabForInvocationSource) {
       &session_handle));
 
   contextual_search::MockContextualSearchSessionHandle submitted_session_handle;
-  submitted_session_handle.set_submitted_context_tokens(
+  submitted_session_handle.SetSubmittedContextTokens(
       {base::UnguessableToken::Create()});
   EXPECT_FALSE(ShouldFetchActiveTabForInvocationSource(
       lens::LensOverlayInvocationSource::kOmniboxContextualQuery,

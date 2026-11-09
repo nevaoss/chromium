@@ -31,6 +31,7 @@ virtual/global-privacy-control-force/wpt_internal/*
 external/wpt/background-fetch/abort.https.window.html
 external/wpt/background-fetch/cors.https.window.html
 external/wpt/background-fetch/fetch-uploads.https.window.html
+external/wpt/background-fetch/match-request-body.https.window.html
 external/wpt/background-fetch/match.https.window.html
 external/wpt/background-fetch/update-ui.https.window.html
 external/wpt/client-hints/viewport-size/viewport-size-window-different-dimensions.https.html
@@ -41,6 +42,8 @@ external/wpt/css/css-color/composited-filters-under-opacity.html
 external/wpt/css/css-color/deprecated-sameas-010.html
 external/wpt/css/css-color/filters-under-will-change-opacity.html
 external/wpt/css/css-color/system-color-consistency.html
+external/wpt/css/css-color/system-color-hightlights-vs-getSelection-001.html
+external/wpt/css/css-color/system-color-hightlights-vs-getSelection-002.html
 external/wpt/css/css-color/system-color-support.html
 external/wpt/css/css-contain/content-visibility/content-visibility-vs-scrollIntoView-001.html
 external/wpt/css/css-contain/content-visibility/content-visibility-with-top-layer-008.html
@@ -72,14 +75,6 @@ external/wpt/css/css-text/hyphens/hyphens-auto-inline-010.html
 external/wpt/css/css-text/hyphens/hyphens-auto-last-word-001.html
 external/wpt/css/css-text/hyphens/hyphens-character.html
 external/wpt/css/css-text/hyphens/hyphens-punctuation-001.html
-external/wpt/css/css-text/i18n/ja/css-text-line-break-ja-in-loose.html
-external/wpt/css/css-text/i18n/ja/css-text-line-break-ja-pr-normal.html
-external/wpt/css/css-text/i18n/ja/css-text-line-break-ja-pr-strict.html
-external/wpt/css/css-text/i18n/other-lang/css-text-line-break-de-in-loose.html
-external/wpt/css/css-text/i18n/unknown-lang/css-text-line-break-in-loose.html
-external/wpt/css/css-text/i18n/zh/css-text-line-break-zh-in-loose.html
-external/wpt/css/css-text/i18n/zh/css-text-line-break-zh-pr-normal.html
-external/wpt/css/css-text/i18n/zh/css-text-line-break-zh-pr-strict.html
 external/wpt/css/css-text/line-breaking/line-breaking-atomic-022.html
 external/wpt/css/css-text/tab-size/tab-size.html
 external/wpt/css/css-text/text-autospace/text-autospace-first-line-001.html
@@ -242,7 +237,6 @@ external/wpt/html/semantics/forms/form-submission-0/multipart-formdata.window.ht
 external/wpt/html/semantics/forms/form-submission-target/form-target-blank-useractivation-multi-globals.html
 external/wpt/html/semantics/forms/form-submission-target/rel-input-target.html
 external/wpt/html/semantics/forms/the-input-element/focus-dynamic-type-change.html
-external/wpt/html/semantics/forms/the-input-element/focus-dynamic-type-change-on-blur.html
 external/wpt/html/semantics/forms/the-input-element/range-intrinsic-size.html
 external/wpt/html/semantics/forms/the-option-element/dynamic-content-change-rendering.html
 external/wpt/html/semantics/links/links-created-by-a-and-area-elements/target_blank_useractivation*
@@ -599,13 +593,17 @@ virtual/threaded/external/wpt/css/css-backgrounds/table-cell-background-local-00
 virtual/threaded/external/wpt/css/css-view-transitions/*
 virtual/threaded-composited-iframes/external/wpt/is-input-pending/tentative/*
 virtual/threaded-prefer-compositing/external/wpt/css/cssom-view/range-bounding-client-rect-with-display-contents.html
-virtual/threaded-prefer-compositing/external/wpt/css/cssom-view/scrollLeft-of-scroller-with-wider-scrollbar.html
 virtual/threaded-prefer-compositing/external/wpt/css/cssom-view/scrollTop-display-change.html
 virtual/threaded-prefer-compositing/external/wpt/css/cssom-view/smooth-scroll-nonstop.html
 virtual/threaded-preload-scanner/external/wpt/html/semantics/scripting-1/the-script-element/module/dynamic-import/delay-load-event.html
 virtual/threaded-preload-scanner/external/wpt/html/semantics/scripting-1/the-script-element/module/dynamic-import/microtasks/basic.any.html
 virtual/threaded-preload-scanner/external/wpt/html/semantics/scripting-1/the-script-element/moving-between-documents/after-prepare-*
 virtual/threaded-preload-scanner/external/wpt/html/semantics/scripting-1/the-script-element/moving-between-documents/ordering/*
+# Mirrors the non-virtual permissions-policy/bluetooth-* entries above: the
+# Web Bluetooth test API (navigator.bluetooth.test) is only available in
+# content shell.
+virtual/unified-autoplay/external/wpt/permissions-policy/bluetooth-*
+virtual/unified-autoplay/external/wpt/permissions-policy/reporting/bluetooth-*
 virtual/view-transition-mpa-serialization/*
 virtual/view-transition-mpa-serialization/wpt_internal/*
 # https://github.com/web-platform-tests/wpt/issues/48825

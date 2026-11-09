@@ -96,6 +96,8 @@
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/net/proxy_error_utils.h"
+#include "chrome/browser/enterprise/network_header_injection/http_header_injection_proxying_url_loader_factory.h"
+#include "chrome/browser/enterprise/network_header_injection/http_header_injection_utils.h"
 #include "chrome/browser/enterprise/reporting/legacy_tech/legacy_tech_service.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
@@ -469,13 +471,13 @@
 #if BUILDFLAG(IS_WIN)
 #include "base/files/file_util.h"
 #include "base/strings/string_tokenizer.h"
+#include "base/version.h"
 #include "base/win/win_util.h"
 #include "base/win/windows_version.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
 #include "chrome/browser/performance_manager/public/dll_pre_read_policy_win.h"
 #include "chrome/browser/tracing/tracing_features.h"
 #include "chrome/browser/tracing/windows_system_tracing_client_win.h"
-#include "chrome/common/child_module/child_module_helper.h"
 #include "chrome/install_static/install_util.h"
 #include "chrome/installer/util/isolation_support.h"
 #include "chrome/services/util_win/public/mojom/util_win.mojom.h"
@@ -659,11 +661,13 @@
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/enterprise/network_header_injection/http_header_injection_proxying_url_loader_factory.h"
-#include "chrome/browser/enterprise/network_header_injection/http_header_injection_utils.h"
 #include "components/webapps/isolated_web_apps/scheme.h"
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+#include "chrome/browser/enterprise/connectors/analysis/network_request_proxying_url_loader_factory.h"
+#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
 
 #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
 #include "components/captive_portal/content/captive_portal_tab_helper.h"
@@ -1378,18 +1382,18 @@ void MaybeAppendSecureOriginsAllowlistSwitch(base::CommandLine* cmdline) {
 
 #if BUILDFLAG(IS_WIN) && !defined(COMPONENT_BUILD) && \
     !defined(ADDRESS_SANITIZER)
-// Returns the full path to |module_name|. If |module_name| is the renderer DLL
-// and |child_module_version| is present, returns the path to the patched
-// renderer binary for that version. Otherwise, both dev builds (where
-// |module_name| is in the current executable's directory) and proper installs
-// (where |module_name| is in a versioned sub-directory of the current
-// executable's directory) are supported. The identified file is not guaranteed
-// to exist.
-base::FilePath GetModulePath(std::wstring_view module_name,
-                             base::optional_ref<const base::Version>
-                                 child_module_version = std::nullopt) {
-  if (module_name == chrome::kRendererDll && child_module_version.has_value()) {
-    return child_module::GetRendererBinaryPath(*child_module_version);
+// Returns the full path to `module_name`. If `module_name` is the renderer DLL
+// and `child_module` is present, returns the path to the child module's
+// binary. Otherwise, both dev builds (where `module_name` is in the current
+// executable's directory) and proper installs (where `module_name` is in a
+// versioned sub-directory of the current executable's directory) are
+// supported. The identified file is not guaranteed to exist.
+base::FilePath GetModulePath(
+    std::wstring_view module_name,
+    base::optional_ref<const content::ContentBrowserClient::ChildModule>
+        child_module = std::nullopt) {
+  if (module_name == chrome::kRendererDll && child_module.has_value()) {
+    return child_module->path;
   }
 
   base::FilePath exe_dir;
@@ -1740,7 +1744,6 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
       policy::policy_prefs::kBackForwardCacheForWebSocketsAllowed, true);
   registry->RegisterBooleanPref(
       prefs::kServiceWorkerToControlSrcdocIframeEnabled, true);
-  registry->RegisterBooleanPref(prefs::kReduceAcceptLanguageEnabled, true);
   registry->RegisterBooleanPref(policy::policy_prefs::kBuiltInAIAPIsEnabled,
                                 true);
   registry->RegisterBooleanPref(
@@ -3016,10 +3019,6 @@ void AppendExtraCommandLineSwitchesFromPrefs(base::CommandLine* command_line,
         blink::switches::kDisableBackForwardCacheForWebSockets);
   }
 
-  if (!prefs->GetBoolean(prefs::kReduceAcceptLanguageEnabled)) {
-    command_line->AppendSwitch(blink::switches::kDisableReduceAcceptLanguage);
-  }
-
 #if !BUILDFLAG(IS_ANDROID)
   // Enable SharedArrayBuffer on desktop if allowed by Enterprise Policy.
   // TODO(crbug.com/40155376) Remove when migration to COOP+COEP is
@@ -3170,9 +3169,9 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
 #endif
 
 #if BUILDFLAG(IS_WIN)
-    if (auto patch_version = GetChildModuleVersion()) {
+    if (auto child_module = GetChildModule()) {
       command_line->AppendSwitchASCII(switches::kChildModuleVersion,
-                                      patch_version->GetString());
+                                      child_module->version.GetString());
     }
 #endif
 
@@ -3217,6 +3216,8 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
         extensions::switches::kAllowHTTPBackgroundPage,
         extensions::switches::kAllowLegacyExtensionManifests,
+        extensions::switches::
+            kAllowWebUITestInComponentExtensions,  // For tests only.
         extensions::switches::kDisableExtensionsHttpThrottling,
         extensions::switches::kEnableExperimentalExtensionApis,
         extensions::switches::kExtensionsOnChromeURLs,
@@ -3876,11 +3877,10 @@ ChromeContentBrowserClient::GetSystemNetworkContext() {
 
 std::string ChromeContentBrowserClient::GetGeolocationApiKey() {
 #if BUILDFLAG(IS_CHROMEOS)
-  if (ash::features::IsCrosSeparateGeoApiKeyEnabled()) {
-    return google_apis::GetCrosChromeGeoAPIKey();
-  }
-#endif
+  return google_apis::GetCrosChromeGeoAPIKey();
+#else
   return google_apis::GetAPIKey();
+#endif
 }
 
 #if BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
@@ -5459,7 +5459,7 @@ bool ChromeContentBrowserClient::PreSpawnChild(
     sandbox::TargetConfig* config,
     sandbox::mojom::Sandbox sandbox_type,
     ChildSpawnFlags flags,
-    base::optional_ref<const base::Version> child_module_version) {
+    base::optional_ref<const ChildModule> child_module) {
   DCHECK(!config->IsConfigured());
 // Does not work under component build because all the component DLLs would need
 // to be manually added and maintained. Does not work under ASAN build because
@@ -5550,12 +5550,11 @@ bool ChromeContentBrowserClient::PreSpawnChild(
 #else
   const bool use_renderer_dll =
       sandbox_type == sandbox::mojom::Sandbox::kRenderer &&
-      child_module_version.has_value();
+      child_module.has_value();
 #endif
   const auto& extra_dlls = use_renderer_dll ? kRendererDlls : kChildDlls;
   for (const auto* dll : extra_dlls) {
-    result =
-        config->AllowExtraDll(GetModulePath(dll, child_module_version).value());
+    result = config->AllowExtraDll(GetModulePath(dll, child_module).value());
     if (result != sandbox::SBOX_ALL_OK) {
       return false;
     }
@@ -5581,14 +5580,18 @@ bool ChromeContentBrowserClient::PreSpawnChild(
   return true;
 }
 
-std::optional<base::Version>
-ChromeContentBrowserClient::GetChildModuleVersion() {
+std::optional<content::ContentBrowserClient::ChildModule>
+ChromeContentBrowserClient::GetChildModule() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  if (auto* manager =
-          g_browser_process->GetFeatures()->child_module_manager()) {
-    return manager->GetLatestVersion();
+  auto* manager = g_browser_process->GetFeatures()->child_module_manager();
+  if (!manager) {
+    return std::nullopt;
   }
-  return std::nullopt;
+  return manager->GetLatestModule().transform(
+      [](child_module::ChildModuleManager::Module&& module) {
+        return ChildModule{.version = std::move(module.version),
+                           .path = std::move(module.renderer_binary_path)};
+      });
 }
 
 // Note: Only use sparingly to add Chrome specific sandbox functionality here.
@@ -6882,13 +6885,9 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
   }
 #endif
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
   // Install the HTTP Header Injection proxying factory.
   enterprise_custom_headers::HttpHeaderInjectionProxyingURLLoaderFactory::
       MaybeProxyRequest(browser_context, factory_builder);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS)
 
   signin::ProxyingURLLoaderFactory::MaybeProxyRequest(
       frame, type == URLLoaderFactoryType::kNavigation, request_initiator,
@@ -6930,6 +6929,15 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
         frame, factory_builder);
   }
 
+#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+  // Install the proxying factory scanning network requests for the
+  // "OnNetworkRequestEnterpriseConnector" policy. This is done after proxies
+  // that can block or modify requests (e.g. extensions) so that requests are
+  // scanned the way they are sent to the network.
+  enterprise_connectors::NetworkRequestProxyingURLLoaderFactory::
+      MaybeProxyRequest(frame, type, factory_builder);
+#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+
   MaybeSetTargetNetwork(GetBoundNetworkFromRenderFrameHost(frame),
                         factory_builder, is_for_network_service);
 
@@ -6945,8 +6953,6 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
         browser_context, header_client);
   }
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
   // WARNING: This must be the last wrapper in the chain for
   // TrustedURLLoaderHeaderClient. This ensures that our client is the outermost
   // wrapper of `header_client`, allowing us to apply enterprise headers AFTER
@@ -6954,8 +6960,6 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
   // guaranteeing enterprise header injection precedence over extensions.
   enterprise_custom_headers::MaybeWrapTrustedURLLoaderHeaderClient(
       browser_context, header_client);
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS)
 }
 
 std::vector<std::unique_ptr<content::URLLoaderRequestInterceptor>>
@@ -7059,13 +7063,10 @@ ChromeContentBrowserClient::GetWebSocketOptions(
   content::ContentBrowserClient::WebSocketOptions options;
   options.options = network::mojom::kWebSocketOptionNone;
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
   if (frame) {
     enterprise_custom_headers::MaybeCreateWebSocketHeaderClient(
         frame->GetBrowserContext(), &options.header_client);
   }
-#endif
   return options;
 }
 
@@ -8557,7 +8558,8 @@ void ChromeContentBrowserClient::OnKeepaliveRequestStarted(
   const auto timeout = GetKeepaliveTimerTimeout(context);
   keepalive_deadline_ = std::max(keepalive_deadline_, now + timeout);
   if (keepalive_deadline_ > now && !keepalive_timer_.IsRunning()) {
-    if (!KeepAliveRegistry::GetInstance()->IsShuttingDown()) {
+    if (!KeepAliveRegistry::GetInstance()->IsShuttingDown() &&
+        !browser_shutdown::HasShutdownStarted()) {
       DVLOG(1) << "Starting a keepalive timer(" << timeout.InSecondsF()
                << " seconds)";
       keepalive_timer_.Start(
@@ -9033,11 +9035,11 @@ base::FilePath ChromeContentBrowserClient::GetChildProcessPath(int flags) {
     if (no_zygote) {
       if (auto* child_module_manager =
               g_browser_process->GetFeatures()->child_module_manager()) {
-        if (auto patch_version = child_module_manager->GetLatestVersion()) {
+        if (auto latest = child_module_manager->GetLatestModule()) {
           // TODO(crbug.com/558598893): If a dynamic patch updates preloaded
           // assets (such as v8_context_snapshot.bin), resolve them from the
           // patched module directory instead of the browser's DIR_ASSETS.
-          return child_module_manager->GetRendererBinaryPath(*patch_version);
+          return std::move(latest->renderer_binary_path);
         }
       }
     }
@@ -9376,20 +9378,6 @@ bool ChromeContentBrowserClient::IsBlobUrlPartitioningEnabled(
       Profile::FromBrowserContext(browser_context)
           ->GetPrefs()
           ->FindPreference(prefs::kPartitionedBlobUrlUsage);
-
-  if (pref && pref->IsManaged() && pref->GetValue()->is_bool()) {
-    return pref->GetValue()->GetBool();
-  }
-  return true;
-}
-
-bool ChromeContentBrowserClient::ShouldReduceAcceptLanguage(
-    content::BrowserContext* browser_context) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  const PrefService::Preference* pref =
-      Profile::FromBrowserContext(browser_context)
-          ->GetPrefs()
-          ->FindPreference(prefs::kReduceAcceptLanguageEnabled);
 
   if (pref && pref->IsManaged() && pref->GetValue()->is_bool()) {
     return pref->GetValue()->GetBool();

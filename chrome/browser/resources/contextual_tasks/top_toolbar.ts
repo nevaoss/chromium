@@ -111,6 +111,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
       webuiRoundedIconsEnabled_: {type: Boolean},
       permissionDashboardState: {type: Object},
       permissionChipDelegate_: {type: Object},
+      profileAvatarUrl: {type: String},
     };
   }
 
@@ -122,6 +123,10 @@ export class TopToolbarElement extends TopToolbarElementBase {
   accessor isCobrowseEligible: boolean =
       loadTimeData.getBoolean('isCobrowseEligible');
   accessor permissionDashboardState: PermissionDashboardState|null = null;
+  accessor profileAvatarUrl: string =
+      loadTimeData.valueExists('profileAvatarUrl') ?
+      loadTimeData.getString('profileAvatarUrl') :
+      '';
   protected accessor isSidePanelRearchitectureEnabled_: boolean =
       loadTimeData.getBoolean('contextualTasksSidePanelRearchitectureEnabled');
   accessor isUserSignedIn: boolean = true;
@@ -171,6 +176,10 @@ export class TopToolbarElement extends TopToolbarElementBase {
       this.toolbarBrowserProxy_.callbackRouter.setExpandButtonEnabled
           .addListener((enabled: boolean) => {
             this.isExpandButtonEnabled = enabled;
+          }),
+      this.toolbarBrowserProxy_.callbackRouter.setProfileAvatarUrl.addListener(
+          (avatarUrl: string) => {
+            this.profileAvatarUrl = avatarUrl;
           }),
     ];
     window.addEventListener('blur', this.boundOnWindowBlur_);
@@ -260,9 +269,9 @@ export class TopToolbarElement extends TopToolbarElementBase {
         '#overflowMenuButton');
     // Register help bubble only if 'G' logo is being shown.
     if ((this as unknown as HTMLElement)
-            .shadowRoot?.querySelector('.top-toolbar-logo')) {
+            .shadowRoot?.querySelector('.top-toolbar-logo-button')) {
       this.registerHelpBubble(
-          'kContextualTasksSuperGButtonElementId', '.top-toolbar-logo');
+          'kContextualTasksSuperGButtonElementId', '.top-toolbar-logo-button');
     }
   }
   // </if>

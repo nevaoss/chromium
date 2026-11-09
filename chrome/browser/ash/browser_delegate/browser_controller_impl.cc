@@ -31,6 +31,7 @@
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/tab_change_type.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -42,8 +43,12 @@
 #include "components/account_id/account_id.h"
 #include "components/sessions/core/tab_restore_service.h"
 #include "components/sessions/core/tab_restore_service_observer.h"
+#include "components/tabs/public/tab_interface.h"
+#include "third_party/blink/public/mojom/navigation/was_activated_option.mojom.h"
 #include "ui/aura/window.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
+#include "url/origin.h"
 
 namespace {
 
@@ -280,6 +285,27 @@ BrowserDelegate* BrowserControllerImpl::FindWebApp(const AccountId& account_id,
   return browser_delegate;
 }
 
+content::WebContents* BrowserControllerImpl::OpenUrl(
+    const AccountId& account_id,
+    const GURL& url,
+    const OpenUrlParams& params) {
+  Profile* profile = Profile::FromBrowserContext(
+      BrowserContextHelper::Get()->GetBrowserContextByAccountId(account_id));
+  CHECK(profile);
+
+  NavigateParams nav_params(profile, url, params.transition);
+  nav_params.disposition = params.disposition;
+  if (params.user_activation) {
+    nav_params.was_activated = blink::mojom::WasActivatedOption::kYes;
+  }
+  if (params.initiating_origin.has_value()) {
+    nav_params.is_renderer_initiated = true;
+    nav_params.initiator_origin = *params.initiating_origin;
+  }
+  Navigate(&nav_params);
+  return nav_params.navigated_or_inserted_contents.get();
+}
+
 BrowserDelegate* BrowserControllerImpl::NewTabWithPostData(
     const AccountId& account_id,
     const GURL& url,
@@ -492,6 +518,20 @@ void BrowserControllerImpl::OnTabStripModelChanged(
                                           selection.new_contents,
                                           selection_only);
     }
+  }
+}
+
+void BrowserControllerImpl::OnTabChangedAt(tabs::TabInterface* tab,
+                                           TabChangeType change_type) {
+  // Every loading state change is reported synchronously as kLoadingOnly (see
+  // BrowserUiController::ScheduleUIUpdate). kAll is the deferred notification
+  // for tab, title and audio changes, so there is no need to forward it.
+  if (change_type != TabChangeType::kLoadingOnly) {
+    return;
+  }
+  BrowserDelegate* browser = GetDelegate(tab->GetBrowserWindowInterface());
+  for (auto& observer : tab_observers_) {
+    observer.OnTabLoadingStateChanged(browser, tab->GetContents());
   }
 }
 

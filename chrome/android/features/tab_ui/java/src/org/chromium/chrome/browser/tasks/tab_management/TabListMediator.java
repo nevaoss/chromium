@@ -385,7 +385,6 @@ public class TabListMediator implements TabListNotificationHandler {
             mRailCollapseStateSupplier;
     private final @Nullable Callback<@RailCollapseState Integer> mRailCollapseStateObserver;
     private final int mAllowedSelectionCount;
-    private final boolean mIsSingleContextMode;
     private final @TabListLayoutType int mLayoutType;
     private final TabListConfig mTabListConfig;
     private final @Nullable TabUnderlineManager mTabUnderlineManager;
@@ -470,8 +469,7 @@ public class TabListMediator implements TabListNotificationHandler {
                     if (model == null) return;
 
                     boolean wasSelected = model.get(TabProperties.IS_SELECTED);
-                    if (!mIsSingleContextMode
-                            && !wasSelected
+                    if (!wasSelected
                             && mAllowedSelectionCount > 0
                             && getCurrentSelectionCount() >= mAllowedSelectionCount) {
                         showLimitSnackbar();
@@ -561,7 +559,6 @@ public class TabListMediator implements TabListNotificationHandler {
      * @param undoBarExplicitTrigger Interface to explicitly trigger the undo closure snackbar.
      * @param snackbarManager The manager to show snackbars.
      * @param allowedSelectionCount The maximum number of tabs that can be selected at once.
-     * @param isSingleContextMode Whether this mediator runs in a single context mode.
      * @param onDragStateChangedListener Listener for drag state changes.
      */
     public TabListMediator(
@@ -585,7 +582,6 @@ public class TabListMediator implements TabListNotificationHandler {
             @Nullable UndoBarExplicitTrigger undoBarExplicitTrigger,
             @Nullable SnackbarManager snackbarManager,
             int allowedSelectionCount,
-            boolean isSingleContextMode,
             Runnable onDragStateChangedListener) {
         mActivity = activity;
         mModelList = modelList;
@@ -610,7 +606,6 @@ public class TabListMediator implements TabListNotificationHandler {
         mUndoBarExplicitTrigger = undoBarExplicitTrigger;
         mSnackbarManager = snackbarManager;
         mAllowedSelectionCount = allowedSelectionCount;
-        mIsSingleContextMode = isSingleContextMode;
         mMultiSelectHelper =
                 tabListConfig.supportsModifierMultiSelect
                         ? new TabMultiSelectHelper(
@@ -885,6 +880,11 @@ public class TabListMediator implements TabListNotificationHandler {
         return mTrackingTabs;
     }
 
+    /** Returns whether the tab list supports displaying tab groups. */
+    boolean supportsTabGroups() {
+        return mTabListConfig.supportsTabGroups;
+    }
+
     /** Returns whether the tab list supports displaying tab loading state. */
     boolean supportsTabLoadingState() {
         return mTabListConfig.supportsTabLoadingState;
@@ -952,7 +952,7 @@ public class TabListMediator implements TabListNotificationHandler {
             PropertyModel oldModel = mModelList.get(oldIndex).model;
             int lastId = oldModel.get(TAB_ID);
             oldModel.set(TabProperties.IS_SELECTED, false);
-            if (mTabListLayoutDelegate.requiresThumbnailUpdateOnDeselect() && mTrackingTabs) {
+            if (mTabListConfig.requiresThumbnailUpdateOnDeselect && mTrackingTabs) {
                 updateThumbnailFetcher(oldModel, lastId);
             }
         }
@@ -961,7 +961,7 @@ public class TabListMediator implements TabListNotificationHandler {
             PropertyModel newModel = mModelList.get(newIndex).model;
             int newId = newModel.get(TAB_ID);
             newModel.set(TabProperties.IS_SELECTED, true);
-            if (mTabListLayoutDelegate.requiresThumbnailUpdateOnSelect() && mTrackingTabs) {
+            if (mTrackingTabs) {
                 updateThumbnailFetcher(newModel, newId);
             }
         }
@@ -1123,9 +1123,8 @@ public class TabListMediator implements TabListNotificationHandler {
      * @param tabs The list of tabs to be shown.
      * @param tabGroupSyncIds The list of syncIds tied to {@link SavedTabGroup}s to be shown.
      * @param quickMode Whether to skip capturing the selected live tab for the thumbnail.
-     * @return Whether the {@link TabListRecyclerView} can be shown quickly.
      */
-    public boolean resetWithListOfTabs(
+    public void resetWithListOfTabs(
             @Nullable List<Tab> tabs, @Nullable List<String> tabGroupSyncIds, boolean quickMode) {
         mTrackingTabs = tabs != null;
         TabModel tabModel = mCurrentTabModelSupplier.get();
@@ -1140,7 +1139,7 @@ public class TabListMediator implements TabListNotificationHandler {
         }
         // Only update tabs in place if there are no saved tab groups to be shown.
         if (tabGroupSyncIds == null && areTabsUnchanged(tabs)) {
-            if (tabs == null) return true;
+            if (tabs == null) return;
 
             for (int i = 0; i < tabs.size(); i++) {
                 Tab tab = tabs.get(i);
@@ -1152,14 +1151,14 @@ public class TabListMediator implements TabListNotificationHandler {
                 updateTab(index, tab, updateId, quickMode);
             }
             mLastSelectedTabListModelIndex = TabList.INVALID_TAB_INDEX;
-            return true;
+            return;
         }
         mModelList.clear();
         mTabListLayoutDelegate.reset();
         mLastSelectedTabListModelIndex = TabList.INVALID_TAB_INDEX;
 
         if (tabs == null && tabGroupSyncIds == null) {
-            return true;
+            return;
         }
 
         if (tabs != null) {
@@ -1192,8 +1191,6 @@ public class TabListMediator implements TabListNotificationHandler {
                 addSavedTabGroupInfoToModel(savedTabGroup, i);
             }
         }
-
-        return false;
     }
 
     /**
@@ -1289,7 +1286,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
         boolean forceUpdate = model.get(TabProperties.IS_SELECTED) && !quickMode;
         boolean forceUpdateLastSelected =
-                mTabListLayoutDelegate.requiresThumbnailUpdateOnDeselect()
+                mTabListConfig.requiresThumbnailUpdateOnDeselect
                         && index == mLastSelectedTabListModelIndex
                         && !quickMode;
         // TODO(crbug.com/40273706): Fetching thumbnail for group is expensive, we should consider
@@ -1747,7 +1744,7 @@ public class TabListMediator implements TabListNotificationHandler {
      * @param index The UI index in {@link #mModelList} where the card should be inserted.
      */
     void addTabCardToModel(Tab tab, int index) {
-        boolean isTabGroup = isTabInTabGroup(tab) && mTabListLayoutDelegate.supportsTabGroups();
+        boolean isTabGroup = isTabInTabGroup(tab) && mTabListConfig.supportsTabGroups;
         if (isTabGroup) {
             Token tabGroupId = tab.getTabGroupId();
             assumeNonNull(tabGroupId);
@@ -1964,7 +1961,7 @@ public class TabListMediator implements TabListNotificationHandler {
      * @param model The {@link PropertyModel} representing the tab or group card.
      */
     void updateDescriptionString(PropertyModel model) {
-        if (!mTabListLayoutDelegate.supportsTabGroups()) return;
+        if (!mTabListConfig.supportsTabGroups) return;
         TextResolver contentDescriptionResolver =
                 (context) -> {
                     TabModel tabModel = getCurrentTabModelChecked();
@@ -2195,7 +2192,7 @@ public class TabListMediator implements TabListNotificationHandler {
     String getLatestTitleForTabOrGroup(Tab tab, @Nullable PropertyModel model, boolean useDefault) {
         boolean isTabGroup;
         if (model == null) {
-            isTabGroup = mTabListLayoutDelegate.supportsTabGroups() && isTabInTabGroup(tab);
+            isTabGroup = mTabListConfig.supportsTabGroups && isTabInTabGroup(tab);
         } else {
             isTabGroup = TabProperties.isTabGroupHeader(model);
         }
@@ -2420,7 +2417,7 @@ public class TabListMediator implements TabListNotificationHandler {
     void recordPriceAnnotationsEnabledMetrics() {
         if (!mTabListConfig.supportsMessageCards
                 || getCurrentTabModelChecked().isIncognitoBranded()
-                || !mTabListLayoutDelegate.supportsTabGroups()
+                || !mTabListConfig.supportsTabGroups
                 || mOriginalProfile == null
                 || !PriceTrackingFeatures.isPriceAnnotationsEligible(mOriginalProfile)) {
             return;
@@ -2556,7 +2553,7 @@ public class TabListMediator implements TabListNotificationHandler {
     }
 
     private void addObservers(TabModel tabModel, List<Tab> tabs) {
-        boolean supportsTabGroups = mTabListLayoutDelegate.supportsTabGroups();
+        boolean supportsTabGroups = mTabListConfig.supportsTabGroups;
         for (Tab tab : tabs) {
             Token tabGroupId = tab.getTabGroupId();
             // When tab groups are supported, `tabs` only contains one entry per group.
@@ -3030,7 +3027,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
             // Special case in defense of a group not being completely closed. We need to find the
             // group by the tab's old root ID or group token.
-            if (!mTabListLayoutDelegate.supportsTabGroups()) return;
+            if (!mTabListConfig.supportsTabGroups) return;
 
             Token tabGroupId = tab.getTabGroupId();
             int index =
@@ -3178,7 +3175,7 @@ public class TabListMediator implements TabListNotificationHandler {
      */
     void updateTabGroupProperties(
             PropertyModel model, @Nullable Token tabGroupId, @TabGroupColorId int colorId) {
-        if (!mTabListLayoutDelegate.supportsTabGroups() || tabGroupId == null) {
+        if (!mTabListConfig.supportsTabGroups || tabGroupId == null) {
             clearTabGroupProperties(model);
             return;
         }
@@ -3225,6 +3222,27 @@ public class TabListMediator implements TabListNotificationHandler {
         } else {
             provider.setTabGroupId(groupId);
             provider.setTabGroupColorId(colorId);
+        }
+    }
+
+    /**
+     * Updates the UI properties of child tabs when their group color changes.
+     *
+     * @param tabGroupId The ID of the tab group.
+     * @param newColor The new color of the tab group.
+     */
+    void updateColorForChildTabs(Token tabGroupId, @TabGroupColorId int newColor) {
+        EitherGroupId eitherGroupId = EitherGroupId.createLocalId(new LocalTabGroupId(tabGroupId));
+        boolean foundGroup = false;
+        for (int i = 0; i < mModelList.size(); i++) {
+            PropertyModel childModel = mModelList.get(i).model;
+            if (TabProperties.isTabInGroup(childModel)
+                    && tabGroupId.equals(childModel.get(TabProperties.TAB_GROUP_ID))) {
+                updateTabGroupColorViewProvider(eitherGroupId, childModel, newColor);
+                foundGroup = true;
+            } else if (foundGroup) {
+                break;
+            }
         }
     }
 

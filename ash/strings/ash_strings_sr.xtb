@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Опозови</translation>
 <translation id="2086334242442703436">Отворите бирач емоџија</translation>
 <translation id="2089550919269323883">Смернице за предузећа блокирају инсталирање апликације <ph name="VM_NAME" />. Обратите се администратору система за подршку. Кôд грешке је <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Вести о Steam-у за Chromebook</translation>
 <translation id="209965399369889474">Нисте повезани на мрежу</translation>
 <translation id="2107581415810719320"><ph name="BUTTON_NUMBER" />. дугме Друго</translation>
 <translation id="2107914222138020205">USB-C кабл не подржава Thunderbolt. Учинак уређаја ће можда бити ограничен.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">На шта желите да се фокусирате? Притисните Enter да бисте додали задатак.</translation>
 <translation id="229397294990920565">Пренос података преко мобилног оператера се искључује...</translation>
 <translation id="2295777434187870477">Микрофон је укључен. Можете да га искључите померањем прекидача.</translation>
+<translation id="2296880470921996802">ИТ администратор је онемогућио историју привремене меморије</translation>
 <translation id="2302092602801625023">Овим налогом управља Family Link</translation>
 <translation id="2303600792989757991">Укључи/искључи преглед прозора</translation>
 <translation id="2304702218354340897">Желите ли стварно да искључите управљање лицем?</translation>
@@ -1791,7 +1791,6 @@
 <translation id="6127395413317891856">Офлајн сте. Проверите везу и пробајте поново.</translation>
 <translation id="6129953537138746214">Тастер за размак</translation>
 <translation id="6132714462430777655">Желите да прескочите регистрацију за школу?</translation>
-<translation id="6136872094979134163">Преузимање вести о Steam-у за Chromebook није успело.</translation>
 <translation id="6137566720514957455">Отвара налог за уклањање за корисника <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">На шта желите да се фокусирате?</translation>
 <translation id="6141988275892716286">Потврдите преузимање</translation>
@@ -2539,7 +2538,7 @@
 <translation id="8297006494302853456">Слаб</translation>
 <translation id="8301242268274839723">Додирните сензор за отисак прста у доњем левом углу тастатуре. Подаци о отиску прста се безбедно чувају на <ph name="DEVICE_TYPE" /> уређају и увек остају на њему.</translation>
 <translation id="8308637677604853869">Претходни мени</translation>
-<translation id="830868413617744215">Beta</translation>
+<translation id="830868413617744215">Бета</translation>
 <translation id="8314772463905284467">Caps Lock је укључен</translation>
 <translation id="8315514906653279104">Укључује се…</translation>
 <translation id="8331351032546853669">Преузимање је на чекању</translation>

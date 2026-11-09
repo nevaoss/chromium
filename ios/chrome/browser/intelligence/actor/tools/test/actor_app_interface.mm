@@ -19,6 +19,8 @@
 #import "ios/chrome/browser/intelligence/actor/model/actor_service_factory.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_tab_helper.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_control_state.h"
+#import "ios/chrome/browser/intelligence/actor/public/actor_task_intervention_delegate.h"
+#import "ios/chrome/browser/intelligence/actor/test/fake_actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/page_stability_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
@@ -40,6 +42,20 @@ namespace {
 constexpr base::TimeDelta kApcFetchingTimeout = base::Seconds(10);
 
 constexpr autofill::FormRendererId kSimulatedFormRendererId(12345);
+
+// Returns the intervention delegate for tests. Retained statically because
+// both `ActorTask` and `ActorTaskFormFillingHandler` hold a weak reference
+// to the delegate.
+id<ActorTaskInterventionDelegate> GetTestInterventionDelegate() {
+  static FakeActorTaskInterventionDelegate* delegate = []() {
+    FakeActorTaskInterventionDelegate* d =
+        [[FakeActorTaskInterventionDelegate alloc] init];
+    d.autoConfirmInterventions = YES;
+    d.autoSelectFirstSuggestion = YES;
+    return d;
+  }();
+  return delegate;
+}
 
 // Returns the active WebState's main frame AutofillDriverIOS, or nullptr if
 // unavailable.
@@ -101,6 +117,7 @@ autofill::AutofillDriverIOS* GetMainFrameAutofillDriver() {
       actor::TaskSourceInfo(actor::TaskSourceInfo::Client::kTest,
                             /*id=*/std::nullopt),
       /*allow_incognito_web_states=*/false);
+  service->SetTaskInterventionDelegate(task_id, GetTestInterventionDelegate());
 
   std::vector<optimization_guide::proto::Action> actions = {action};
 
@@ -150,6 +167,7 @@ autofill::AutofillDriverIOS* GetMainFrameAutofillDriver() {
       actor::TaskSourceInfo(actor::TaskSourceInfo::Client::kTest,
                             /*id=*/std::nullopt),
       /*allow_incognito_web_states=*/false);
+  service->SetTaskInterventionDelegate(task_id, GetTestInterventionDelegate());
 
   std::vector<optimization_guide::proto::Action> actions;
   actions.reserve(actions_proto.actions_size());

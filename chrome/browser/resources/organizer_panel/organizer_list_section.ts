@@ -136,8 +136,8 @@ export class OrganizerListSectionElement extends CrLitElement implements
       this.updateSectionState_();
     }
 
-    if (changedProperties.has('items') ||
-        changedProperties.has('searchQuery')) {
+    if (changedProperties.has('searchQuery') ||
+        (changedProperties.has('items') && !this.isSearching_())) {
       this.updateFilteredItems_();
     }
 
@@ -196,6 +196,19 @@ export class OrganizerListSectionElement extends CrLitElement implements
       this.filteredSearchQuery_ = query;
       this.filteredItems_ = filteredItems;
     }
+  }
+
+  expand() {
+    if (this.expanded_) {
+      return;
+    }
+    this.expanded_ = true;
+    assert(this.delegate);
+    this.browserProxy_.handler.setSectionExpanded(this.delegate.getId(), true);
+  }
+
+  protected hasContextMenu_(): boolean {
+    return !!this.delegate?.onItemContextMenuClicked;
   }
 
   protected isSearching_(): boolean {

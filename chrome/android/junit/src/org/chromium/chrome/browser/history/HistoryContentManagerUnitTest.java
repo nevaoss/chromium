@@ -32,6 +32,7 @@ import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.BaseRobolectricTestRule;
 import org.chromium.base.test.util.Features;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProviderJni;
 import org.chromium.chrome.browser.signin.services.SigninManager;
@@ -120,6 +121,8 @@ public class HistoryContentManagerUnitTest {
         IdentityServicesProviderJni.setInstanceForTesting(mIdentityServicesProviderJni);
         UserPrefsJni.setInstanceForTesting(mUserPrefsJni);
         PrefChangeRegistrarJni.setInstanceForTesting(mPrefChangeRegistrarJni);
+        // The actor filter consults GlicEnabling; keep it off so no native call is made.
+        GlicEnabling.setEnabledForTesting(false);
 
         mHistoryContentManager =
                 HistoryContentManager.create(
@@ -194,6 +197,7 @@ public class HistoryContentManagerUnitTest {
     @Config(sdk = VERSION_CODES.UPSIDE_DOWN_CAKE)
     @Features.EnableFeatures({
         ChromeFeatureList.APP_SPECIFIC_HISTORY,
+        ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_ACTOR,
         ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN,
         ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DEVICE
     })
@@ -214,6 +218,7 @@ public class HistoryContentManagerUnitTest {
         assertFalse(pageInfoContentManager.showAppFilter());
         assertFalse(pageInfoContentManager.showHostFilter());
         assertFalse(pageInfoContentManager.showClientFilter());
+        assertFalse(pageInfoContentManager.showActorFilter());
         assertFalse(pageInfoContentManager.hasFilterList());
         assertEquals("www.example.com", pageInfoContentManager.getAdapter().getHostNameForTest());
         assertFalse(pageInfoContentManager.getAdapter().hasListHeader());
@@ -233,6 +238,12 @@ public class HistoryContentManagerUnitTest {
                 View.GONE,
                 pageInfoContentManager
                         .getClientFilterForTesting()
+                        .getChipViewForTesting()
+                        .getVisibility());
+        assertEquals(
+                View.GONE,
+                pageInfoContentManager
+                        .getActorFilterForTesting()
                         .getChipViewForTesting()
                         .getVisibility());
     }
