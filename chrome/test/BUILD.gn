@@ -4482,6 +4482,11 @@ if (!is_android && !is_chromeos_device) {
       "//ui/events:events_interactive_ui_tests",
     ]
 
+    # NOTE(neva): enable_print_preview is disabled for webOS/OSE.
+    if (!enable_print_preview) {
+      deps -= [ "//chrome/browser/ui/webui/print_preview:interactive_ui_tests" ]
+    }
+
     if (is_linux) {
       deps += [ "//ui/linux:display_server_utils" ]
     }
@@ -4490,27 +4495,6 @@ if (!is_android && !is_chromeos_device) {
       deps += [ "//chrome/browser/ui/webui/default_browser:pixel_tests" ]
     }
 
-<<<<<<< HEAD
-    # TODO(413315837): Remove this dependency when
-    # c/b/ui/views/privacy_sandbox/privacy_sandbox_dialog_view_interactive_ui_test.cc
-    # gets modularized.
-    deps += [
-      "//chrome/browser/privacy_sandbox:test_support",
-      "//chrome/browser/ui/views/autofill/payments:interactive_ui_tests",
-      "//chrome/browser/ui/views/location_bar:interactive_ui_tests",
-      "//chrome/browser/ui/views/location_bar/cookie_controls:interactive_ui_tests",
-      "//chrome/browser/ui/views/new_tab_footer:interactive_ui_tests",
-      "//chrome/browser/ui/views/tabs/groups:interactive_ui_tests",
-      "//chrome/browser/ui/webui/print_preview:interactive_ui_tests",
-    ]
-
-    # NOTE(neva): enable_print_preview is disabled for webOS/OSE.
-    if (!enable_print_preview) {
-      deps -= [ "//chrome/browser/ui/webui/print_preview:interactive_ui_tests" ]
-    }
-
-=======
->>>>>>> 157.0.8103.0~1
     if (!is_chrome_for_testing) {
       deps += [ "//chrome/browser/search_engine_choice:interactive_ui_tests" ]
     }
