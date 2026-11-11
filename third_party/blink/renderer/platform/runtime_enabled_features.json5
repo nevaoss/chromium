@@ -6338,7 +6338,11 @@
       // fullscreen, unless it has a fullscreen token through capability
       // delegation. https://crbug.com/40052279
       name: "SuppressFullscreenFromUnfocusedView",
-      status: "stable",
+      ///@name USE_NEVA_APPRUNTIME
+      ///@{
+      //TODO(neva): Temporary workaround to fix BVT tests. Need to revise it later.
+      //status: "stable",
+      ///@}
     },
     // 'pointercancel' and boundary leave ('pointerout' and 'pointerleave')
     // events would now fire after a mouse drag start, matching the spec's
