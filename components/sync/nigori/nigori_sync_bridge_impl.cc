@@ -318,6 +318,11 @@ NigoriSyncBridgeImpl::NigoriSyncBridgeImpl(
         PendingLocalNigoriCommit::ForKeystoreInitialization());
   }
 
+  if (state_.NeedsImplicitPassphraseMigration()) {
+    QueuePendingLocalCommit(
+        PendingLocalNigoriCommit::ForImplicitPassphraseMigration());
+  }
+
   if (state_.NeedsGenerateCrossUserSharingKeyPair()) {
     QueuePendingLocalCommit(
         PendingLocalNigoriCommit::
@@ -1033,7 +1038,7 @@ std::unique_ptr<EntityData> NigoriSyncBridgeImpl::GetDataImpl(
     bool success =
         pending_local_commit_queue_.front()->TryApply(state_to_report);
     if (is_for_commit) {
-      CHECK(success, base::NotFatalUntil::M149);
+      CHECK(success);
     } else if (!success) {
       DLOG(ERROR) << "Failed to apply pending local commit for debugging.";
     }

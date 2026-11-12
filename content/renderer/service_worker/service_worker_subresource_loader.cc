@@ -404,9 +404,10 @@ void ServiceWorkerSubresourceLoader::DispatchFetchEvent() {
 
     base::ElapsedTimer router_evaluation_timer;
     response_head_->load_timing.service_worker_router_evaluation_start =
-        base::TimeTicks::Now();
+        router_evaluation_timer.start_time();
     const auto eval_result = EvaluateRouterConditions();
-    router_info->router_evaluation_time = router_evaluation_timer.Elapsed();
+    base::TimeTicks now;
+    router_info->router_evaluation_time = router_evaluation_timer.Elapsed(&now);
     if (eval_result) {  // matched the rule.
       const auto& sources = eval_result->sources;
       auto source_type = sources[0].type;
@@ -420,8 +421,8 @@ void ServiceWorkerSubresourceLoader::DispatchFetchEvent() {
           // Network fallback is requested.
           {
             auto timing = blink::mojom::ServiceWorkerFetchEventTiming::New();
-            timing->dispatch_event_time = base::TimeTicks::Now();
-            timing->respond_with_settled_time = base::TimeTicks::Now();
+            timing->dispatch_event_time = now;
+            timing->respond_with_settled_time = now;
             OnFallback(std::nullopt, std::move(timing), /*errors=*/nullptr);
           }
           return;
@@ -867,6 +868,8 @@ void ServiceWorkerSubresourceLoader::StartResponse(
 
   blink::ServiceWorkerLoaderHelpers::SaveResponseInfo(*response,
                                                       response_head_.get());
+  cache_storage_side_data_writer_ =
+      std::move(response->cache_storage_side_data_writer);
   response_head_->response_start = base::TimeTicks::Now();
   response_head_->load_timing.receive_headers_start = base::TimeTicks::Now();
   response_head_->load_timing.receive_headers_end =
@@ -1003,10 +1006,14 @@ void ServiceWorkerSubresourceLoader::CommitResponseBody(
     }
   }
   ValidateResponseSentToClient();
+  auto head = response_head.Clone();
+  if (response_head_.get() == response_head.get()) {
+    head->cache_storage_side_data_writer =
+        std::move(cache_storage_side_data_writer_);
+  }
   // TODO(kinuko): Fill the ssl_info.
-  url_loader_client_->OnReceiveResponse(response_head.Clone(),
-                                        std::move(response_body),
-                                        std::move(cached_metadata));
+  url_loader_client_->OnReceiveResponse(
+      std::move(head), std::move(response_body), std::move(cached_metadata));
 }
 
 void ServiceWorkerSubresourceLoader::CommitEmptyResponseAndComplete() {

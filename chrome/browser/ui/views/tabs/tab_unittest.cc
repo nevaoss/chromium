@@ -998,6 +998,7 @@ TEST_F(TabTest, TitleTextHasSufficientContrast) {
 TEST_F(TabContentsTest, ShowsAndHidesAlertIndicator) {
   controller_->AddTab(0, TabActive::kInactive, TabPinned::kPinned);
   controller_->AddTab(1, TabActive::kActive);
+  views::test::RunScheduledLayout(tab_strip_);
   Tab* media_tab = tab_strip_->tab_at(0);
 
   // Pinned inactive tab only has an icon.
@@ -1040,6 +1041,7 @@ TEST_F(TabContentsTest, MinHoldDurationTest) {
   base::test::ScopedFeatureList scoped_feature_list_;
 
   controller_->AddTab(0, TabActive::kActive);
+  views::test::RunScheduledLayout(tab_strip_);
   Tab* media_tab = tab_strip_->tab_at(0);
 
   EXPECT_FALSE(showing_alert_indicator(media_tab));
@@ -1071,6 +1073,7 @@ TEST_F(TabContentsTest, 1SecondFadeoutAnimationTest) {
   base::test::ScopedFeatureList scoped_feature_list_;
 
   controller_->AddTab(0, TabActive::kActive);
+  views::test::RunScheduledLayout(tab_strip_);
   Tab* media_tab = tab_strip_->tab_at(0);
 
   EXPECT_FALSE(showing_alert_indicator(media_tab));
@@ -1344,7 +1347,7 @@ TEST_F(TabTest, SingleElementCentering) {
 namespace {
 class SeparatorTestTabSlotController : public FakeTabSlotController {
  public:
-  void SetTabs(std::vector<Tab*> tabs) { tabs_ = std::move(tabs); }
+  void SetTabs(std::vector<raw_ptr<Tab>> tabs) { tabs_ = std::move(tabs); }
 
   Tab* GetAdjacentTab(const Tab* tab, int offset) override {
     auto it = std::find(tabs_.begin(), tabs_.end(), tab);
@@ -1361,7 +1364,7 @@ class SeparatorTestTabSlotController : public FakeTabSlotController {
   int GetTabCount() const override { return static_cast<int>(tabs_.size()); }
 
  private:
-  std::vector<Tab*> tabs_;
+  std::vector<raw_ptr<Tab>> tabs_;
 };
 }  // namespace
 
@@ -1397,6 +1400,8 @@ TEST_F(TabTest, HorizontalSeparators) {
   auto opacities2 = tab2->tab_style_views()->GetSeparatorOpacitiesForTesting();
   EXPECT_EQ(opacities2.left, 1.0f);
   EXPECT_EQ(opacities2.right, 1.0f);
+
+  controller->SetTabs({});
 }
 
 #if BUILDFLAG(IS_MAC)

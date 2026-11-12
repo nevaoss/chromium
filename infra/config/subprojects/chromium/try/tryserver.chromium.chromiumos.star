@@ -83,7 +83,6 @@ try_.builder(
 try_.builder(
     name = "chromeos-amd64-generic-rel",
     branch_selector = branches.selector.CROS_LTS_BRANCHES,
-    description_html = "This is an Ash chrome builder which runs gtests.",
     mirrors = [
         "ci/chromeos-amd64-generic-rel",
         "ci/chromeos-amd64-generic-rel-gtest",
@@ -139,6 +138,7 @@ try_.builder(
     contact_team_email = "chromeos-chrome-build@google.com",
     cq_settings = try_.cq_settings(
         on_default_cq = True,
+        reuse_max_commit_distance = 800 if settings.is_main else None,
     ),
     experiments = {
         # crbug/940930
@@ -154,8 +154,6 @@ try_.builder(
 
 try_.builder(
     name = "chromeos-libfuzzer-asan-rel",
-    # TODO(crbug.com/41492669): Can delete this description when it's
-    # automatically generated.
     executable = "recipe:chromium/fuzz",
     mirrors = ["ci/Libfuzzer Upload Chrome OS ASan"],
     gn_args = gn_args.config(
@@ -267,7 +265,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-chromeos-annotator-rel",
-    description_html = "Runs tests for the Network Traffic Annotation Auditor on ChromeOS, mirroring linux-chromeos-annotator-rel.",
     mirrors = [
         "ci/linux-chromeos-annotator-rel",
     ],

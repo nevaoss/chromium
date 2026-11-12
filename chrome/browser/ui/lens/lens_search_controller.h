@@ -17,10 +17,15 @@
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
 #include "components/tabs/public/tab_interface.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/gfx/geometry/rect.h"
 #include "url/origin.h"
+
+namespace contextual_search {
+class ContextualSearchSessionHandle;
+}  // namespace contextual_search
 
 namespace lens {
 class LensOverlayQueryController;
@@ -130,11 +135,12 @@ class LensSearchController {
   // is fully opened.
   // TODO(crbug.com/403629222): Revisit if it makes sense to pass the
   // destination URL instead of the query text directly.
-  void IssueContextualSearchRequest(
+  virtual void IssueContextualSearchRequest(
       lens::LensOverlayInvocationSource invocation_source,
       const GURL& destination_url,
       omnibox::AutocompleteMatchType match_type,
-      bool is_zero_prefix_suggestion);
+      bool is_zero_prefix_suggestion,
+      bool grant_session_permission);
 
   // If `suppress_contextualization` is true, queries will not be performed with
   // contextualization for the duration of the session. However,
@@ -147,7 +153,30 @@ class LensSearchController {
       std::map<std::string, std::string> additional_query_parameters,
       omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
-      bool suppress_contextualization);
+      bool suppress_contextualization,
+      bool grant_session_permission = false);
+
+  // Starts a zero-state session in the side panel for this tab, creating or
+  // taking the contextual search session handle and updating invocation source.
+  // If `open_lens_overlay` is true, concurrently opens the Lens Overlay.
+  void StartZeroStateSessionInSidePanel(
+      omnibox::ChromeAimEntryPoint entry_point,
+      lens::LensOverlayInvocationSource invocation_source,
+      bool open_lens_overlay = false);
+
+  // Attempts to open a pre-constructed AIM query `url` with `session_handle`
+  // in the side panel for this tab. The active tab context must have already
+  // been uploaded to `session_handle`; to start a query that uploads the active
+  // tab for the caller, use `IssueContextualSearchRequest` or
+  // `IssueTextSearchRequest` instead. Returns true and takes ownership of
+  // `session_handle` if opened in the side panel; returns false and leaves
+  // `session_handle` untouched if the query should not or cannot be opened in
+  // the side panel.
+  [[nodiscard]] virtual bool StartContextualAimQueryInSidePanel(
+      const GURL& url,
+      std::unique_ptr<contextual_search::ContextualSearchSessionHandle>&
+          session_handle,
+      omnibox::ChromeAimEntryPoint aim_entry_point);
 
   // Starts the closing process of the overlay. This is an asynchronous process
   // with the following sequence:
@@ -404,7 +433,8 @@ class LensSearchController {
   // Creates all state necessary to start a Lens session. This method contains
   // shared state that is used no matter the entrypoint.
   void StartLensSession(lens::LensOverlayInvocationSource invocation_source,
-                        bool suppress_contextualization = false);
+                        bool suppress_contextualization = false,
+                        bool grant_session_permission = false);
 
   // Runs the eligibility checks necessary for Lens to open on this tab. If the
   // user has not granted permission to use Lens on this tab, the permission

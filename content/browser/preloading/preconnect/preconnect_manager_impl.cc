@@ -4,9 +4,9 @@
 
 #include "content/browser/preloading/preconnect/preconnect_manager_impl.h"
 
+#include <ranges>
 #include <utility>
 
-#include "base/containers/adapters.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
@@ -197,7 +197,7 @@ void PreconnectManagerImpl::StartPreresolveHosts(
     return;
   }
   // Push jobs in front of the queue due to higher priority.
-  for (const GURL& url : base::Reversed(urls)) {
+  for (const GURL& url : std::views::reverse(urls)) {
     if (!url.SchemeIsHTTPOrHTTPS()) {
       continue;
     }
@@ -330,7 +330,9 @@ void PreconnectManagerImpl::LookupProxyForUrl(
     const content::StoragePartitionConfig* storage_partition_config,
     ProxyLookupClientImpl::ProxyLookupCallback callback) const {
   CHECK(url.DeprecatedGetOriginAsURL() == url, base::NotFatalUntil::M159);
-  CHECK(url.SchemeIsHTTPOrHTTPS(), base::NotFatalUntil::M159);
+  // TODO(crbug.com/571031313): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(url.SchemeIsHTTPOrHTTPS());
 
   auto* network_context = GetNetworkContext(storage_partition_config);
 

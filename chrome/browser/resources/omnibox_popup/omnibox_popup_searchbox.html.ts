@@ -10,13 +10,10 @@ export function getHtml(this: OmniboxPopupSearchboxElement) {
   // clang-format off
   return html`
     <div id="inputWrapper" @focusout="${this.onInputWrapperFocusout}"
-        class="${
-      this.webuiShadowEnabled_ && this.dropdownIsVisible ?
-          'omnibox-shadow-layer' :
-          ''}"
         @keydown="${this.onInputWrapperKeydown}">
       <cr-searchbox-input id="input"
-          exportparts="searchbox-input"
+          exportparts="searchbox-input, mirror"
+          url-emphasis-enabled
           ?dropdown-is-visible="${this.dropdownIsVisible}"
           input-aria-live="${this.inputAriaLive}"
           ?multi-line-enabled="${this.multiLineEnabled}"

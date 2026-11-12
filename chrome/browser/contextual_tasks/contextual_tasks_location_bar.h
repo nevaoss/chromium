@@ -11,6 +11,7 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "chrome/browser/contextual_tasks/location_bar_stub.h"
 #include "chrome/browser/ui/content_settings/content_setting_image_view_delegate.h"
 #include "chrome/browser/ui/views/location_bar/webui_content_setting_image_control.h"
@@ -19,6 +20,7 @@ class BrowserWindowInterface;
 class ChipController;
 class ContentSettingBubbleModelDelegate;
 class PermissionDashboardController;
+class WebUIPermissionDashboard;
 
 namespace bubble_anchor_util {
 struct AnchorConfiguration;
@@ -34,7 +36,6 @@ class TrackedElement;
 
 namespace contextual_tasks {
 
-class ContextualTasksPermissionDashboard;
 class ContextualTasksSidePanelCoordinator;
 
 // Custom LocationBar implementation for the contextual tasks side panel
@@ -54,21 +55,22 @@ class ContextualTasksLocationBar : public LocationBarStub,
       delete;
   ~ContextualTasksLocationBar() override;
 
-  ContextualTasksPermissionDashboard* permission_dashboard() {
+  WebUIPermissionDashboard* permission_dashboard() {
     return permission_dashboard_.get();
   }
-  const ContextualTasksPermissionDashboard* permission_dashboard() const {
+  const WebUIPermissionDashboard* permission_dashboard() const {
     return permission_dashboard_.get();
   }
 
   // LocationBar overrides:
-  // Returns the side panel's active content page, i.e. the page that
-  // permissions apply to. This is swapped whenever the active task changes, so
-  // it is resolved on every call rather than cached.
+  // Returns the `WebContents` hosting the currently active task's guest web
+  // content in the side panel (i.e. the page that permissions apply to).
+  // Updated via `Update()` when the active task changes.
   content::WebContents* GetWebContents() override;
   BrowserWindowInterface* GetBrowser() override;
   bool IsEditingOrEmpty() const override;
   ui::TrackedElement* GetAnchorOrNull() override;
+  ui::ElementContext GetElementContext() const override;
   void InvalidateLayout() override;
   bool IsDrawn() const override;
   bool IsFullscreen() const override;
@@ -78,16 +80,17 @@ class ContextualTasksLocationBar : public LocationBarStub,
   PermissionDashboardController* GetPermissionDashboardController() override;
   void OnChanged() override;
   void UpdateContentSettingsIcons() override;
+  void Update(content::WebContents* contents) override;
 
   // ContentSettingImageViewDelegate overrides:
   bool ShouldHideContentSettingImage() override;
   content::WebContents* GetContentSettingWebContents() override;
   ContentSettingBubbleModelDelegate* GetContentSettingBubbleModelDelegate()
       override;
-
-  // Returns the side panel's WebUI toolbar page, which hosts the chip DOM
-  // elements. This is a different page from `GetWebContents()` and is only used
-  // for `ui::TrackedElement` lookups. Not a LocationBar override.
+  // Returns the `WebContents` of the side panel's WebUI toolbar.
+  // Unlike `GetWebContents()`, this is shared across all tasks
+  // per window and is used for `ui::TrackedElement` anchor lookups.
+  // Not a LocationBar override.
   content::WebContents* GetToolbarWebContents() const;
 
  private:
@@ -99,13 +102,17 @@ class ContextualTasksLocationBar : public LocationBarStub,
   raw_ptr<BrowserWindowInterface> browser_window_;
   base::RepeatingClosure state_changed_callback_;
 
+  // The web contents of the currently active task in the side panel, updated
+  // via `Update()` when switching tasks.
+  base::WeakPtr<content::WebContents> web_contents_;
+
   // Owns the `ContentSettingImageModel`s that drive the indicator chip.
   // Declared before `permission_dashboard_controller_` so that it is destroyed
   // after it: `PermissionDashboardController` retains a raw pointer to the
   // model last passed to its `Update()`.
   WebUIContentSettingImageControl content_setting_image_control_{this};
 
-  std::unique_ptr<ContextualTasksPermissionDashboard> permission_dashboard_;
+  std::unique_ptr<WebUIPermissionDashboard> permission_dashboard_;
   std::unique_ptr<PermissionDashboardController>
       permission_dashboard_controller_;
 };

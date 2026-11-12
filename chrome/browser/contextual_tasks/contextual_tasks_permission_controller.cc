@@ -21,9 +21,9 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/contextual_tasks/contextual_tasks_location_bar.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_permission_chip.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_permission_dashboard.h"
 #include "chrome/browser/ui/location_bar/location_bar_override_data.h"
+#include "chrome/browser/ui/views/permissions/chip/webui_permission_chip.h"
+#include "chrome/browser/ui/views/permissions/chip/webui_permission_dashboard.h"
 #endif
 
 namespace contextual_tasks {
@@ -48,25 +48,15 @@ ContextualTasksPermissionController::~ContextualTasksPermissionController() =
 
 void ContextualTasksPermissionController::RegisterWebContents(
     content::WebContents* web_contents) {
-  if (!web_contents) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!web_contents || !location_bar_) {
     return;
   }
-#if !BUILDFLAG(IS_ANDROID)
-  if (location_bar_) {
-    web_contents->RemoveUserData(
-        location_bar::LocationBarOverrideData::UserDataKey());
-    location_bar::LocationBarOverrideData::CreateForWebContents(
-        web_contents, location_bar_.get());
-  }
+  web_contents->RemoveUserData(
+      location_bar::LocationBarOverrideData::UserDataKey());
+  location_bar::LocationBarOverrideData::CreateForWebContents(
+      web_contents, location_bar_.get());
 #endif
-
-  // Disconnect stale permission observer and if applicable, register
-  // new one based on new web contents.
-  prm_observation_.Reset();
-  if (auto* prm = permissions::PermissionRequestManager::FromWebContents(
-          web_contents)) {
-    prm_observation_.Observe(prm);
-  }
 }
 
 void ContextualTasksPermissionController::UnregisterWebContents(
@@ -86,11 +76,34 @@ void ContextualTasksPermissionController::UnregisterWebContents(
   }
 }
 
+void ContextualTasksPermissionController::Update(
+    content::WebContents* web_contents) {
+  prm_observation_.Reset();
+  if (web_contents) {
+    if (auto* prm = permissions::PermissionRequestManager::FromWebContents(
+            web_contents)) {
+      prm_observation_.Observe(prm);
+    }
+  }
+
+  // Push state to webUI from location bar if it exists.
+  // Otherwise, push from the permission controller.
+#if !BUILDFLAG(IS_ANDROID)
+  if (location_bar_) {
+    location_bar_->Update(web_contents);
+    return;
+  }
+#endif
+  PushStateToWebUI();
+}
+
 toolbar_ui_api::mojom::PermissionDashboardStatePtr
 ContextualTasksPermissionController::GetState() const {
 #if !BUILDFLAG(IS_ANDROID)
   if (location_bar_ && location_bar_->permission_dashboard()) {
-    return location_bar_->permission_dashboard()->GetState();
+    if (auto state = location_bar_->permission_dashboard()->GetState()) {
+      return state;
+    }
   }
 #endif
   // `PermissionDashboardState`'s chip fields are non-nullable, so the "nothing
@@ -162,9 +175,9 @@ void ContextualTasksPermissionController::
 // ============================================================================
 
 #if !BUILDFLAG(IS_ANDROID)
-ContextualTasksPermissionChip* ContextualTasksPermissionController::GetChip(
+WebUIPermissionChip* ContextualTasksPermissionController::GetChip(
     toolbar_ui_api::mojom::LhsChipIdentifier chip_identifier) {
-  ContextualTasksPermissionDashboard* permission_dashboard =
+  WebUIPermissionDashboard* permission_dashboard =
       location_bar_ ? location_bar_->permission_dashboard() : nullptr;
   if (!permission_dashboard) {
     return nullptr;
@@ -184,7 +197,7 @@ void ContextualTasksPermissionController::OnChipClicked(
     toolbar_ui_api::mojom::LhsChipIdentifier chip_identifier,
     bool is_mouse_interaction) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (ContextualTasksPermissionChip* chip = GetChip(chip_identifier)) {
+  if (WebUIPermissionChip* chip = GetChip(chip_identifier)) {
     chip->OnClicked(is_mouse_interaction);
   }
 
@@ -196,7 +209,7 @@ void ContextualTasksPermissionController::OnChipClicked(
 void ContextualTasksPermissionController::OnChipExpandAnimationEnded(
     toolbar_ui_api::mojom::LhsChipIdentifier chip_identifier) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (ContextualTasksPermissionChip* chip = GetChip(chip_identifier)) {
+  if (WebUIPermissionChip* chip = GetChip(chip_identifier)) {
     chip->OnExpandAnimationEnded();
   }
   // No state to push to webUI, so do not push state to webUI here.
@@ -206,7 +219,7 @@ void ContextualTasksPermissionController::OnChipExpandAnimationEnded(
 void ContextualTasksPermissionController::OnChipCollapseAnimationEnded(
     toolbar_ui_api::mojom::LhsChipIdentifier chip_identifier) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (ContextualTasksPermissionChip* chip = GetChip(chip_identifier)) {
+  if (WebUIPermissionChip* chip = GetChip(chip_identifier)) {
     chip->OnCollapseAnimationEnded();
   }
   // No state to push to webUI, so do not push state to webUI here.

@@ -104,7 +104,8 @@ namespace extensions {
 namespace {
 
 #if BUILDFLAG(ENABLE_HANGOUT_SERVICES_EXTENSION)
-BASE_FEATURE(kHangoutsExtensionV3, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHangoutsExtensionV3, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kRemoveHangoutsExtension, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_HANGOUT_SERVICES_EXTENSION)
 
 bool g_enable_background_extensions_during_testing = false;
@@ -186,7 +187,8 @@ std::optional<base::DictValue> LoadManifestOnFileThread(
     const base::FilePath& root_directory,
     const base::FilePath::CharType* manifest_filename,
     bool localize_manifest) {
-  DCHECK(GetExtensionFileTaskRunner()->RunsTasksInCurrentSequence());
+  CHECK(GetExtensionFileTaskRunner()->RunsTasksInCurrentSequence(),
+        base::NotFatalUntil::M161);
   std::string error;
   std::optional<base::DictValue> manifest(
       file_util::LoadManifest(root_directory, manifest_filename, &error));
@@ -512,6 +514,9 @@ std::vector<ExtensionId> ComponentLoader::GetRegisteredComponentExtensionsIds()
 
 #if BUILDFLAG(ENABLE_HANGOUT_SERVICES_EXTENSION)
 void ComponentLoader::AddHangoutServicesExtension() {
+  if (base::FeatureList::IsEnabled(kRemoveHangoutsExtension)) {
+    return;
+  }
   // Finch controlled migration to a v3 Manifest - see crbug.com/326877912.
   if (base::FeatureList::IsEnabled(kHangoutsExtensionV3)) {
     Add(IDR_HANGOUT_SERVICES_MANIFEST_V3,
@@ -681,7 +686,7 @@ void ComponentLoader::AddDefaultComponentExtensions(
 
   AddKeyboardApp();
 #else   // BUILDFLAG(IS_CHROMEOS)
-  DCHECK(!skip_session_components);
+  CHECK(!skip_session_components, base::NotFatalUntil::M161);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   if (!skip_session_components) {
@@ -836,7 +841,7 @@ void ComponentLoader::AddComponentFromDirWithManifestFilename(
     const base::FilePath::CharType* guest_manifest_file_name,
     base::OnceClosure done_cb,
     base::OnceClosure error_cb) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
 
   CHECK(!IsPendingAdd(extension_id));
   pending_extension_ids_.emplace(extension_id);
@@ -862,7 +867,7 @@ void ComponentLoader::FinishAddComponentFromDir(
     base::OnceClosure done_cb,
     base::OnceClosure error_cb,
     std::optional<base::DictValue> manifest) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
 
   // Extension is removed during loading. Skip adding in this case.
   if (!IsPendingAdd(extension_id)) {

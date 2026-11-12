@@ -71,7 +71,6 @@
 <translation id="1110994991967754504"><ph name="PERMISSION_NAME" /> માટે પરવાનગી પસંદ કરો</translation>
 <translation id="1113000785583998331">IBAN સાચવીએ?</translation>
 <translation id="1113869188872983271">&amp;પુનઃક્રમાંકિત કરવું પૂર્વવત્ કરો</translation>
-<translation id="1117709830616495622">Gemini સાથે પર્સનલ ઇન્ટેલિજન્સ દ્વારા સંચાલિત.</translation>
 <translation id="111897705806685148">અન્ય ડિવાઇસમાંથી પાસકીનો ઉપયોગ કરો</translation>
 <translation id="1119009590493440389"><ph name="MANAGE_SYNC_FOCUSED_FRIENDLY_MATCH_TEXT" />, તમે તમારા Google એકાઉન્ટમાં Chromeની કઈ માહિતી સાચવો છો તે મેનેજ કરવા માટે, પહેલાં Tab અને પછી Enter કી દબાવો</translation>
 <translation id="1121990216147052230">મારા માટે કરવાના કાર્યોની સૂચિ બનાવો</translation>
@@ -80,7 +79,6 @@
 <translation id="112840717907525620">પૉલિસી કૅશ મેમરી ઓકે</translation>
 <translation id="1131264053432022307">તમે કૉપિ કરેલી છબી</translation>
 <translation id="1132735979845538847"><ph name="ORIGIN" /> – પૂર્ણ સ્ક્રીન મોડમાંથી બહાર નીકળવા માટે, સૌથી ઉપરથી ખેંચો અને પાછળ જવા માટેનું બટન ટચ કરો</translation>
-<translation id="1133418583142946603">વર્તમાન ટૅબ ઉમેરો</translation>
 <translation id="1138458427267715730">સમગ્ર વેબ પર કોઈપણ સાઇટ પર કિંમતમાં ઘટાડો થાય ત્યારે અલર્ટ મેળવો</translation>
 <translation id="1142713751288681188">પેપરનો પ્રકાર</translation>
 <translation id="1142965388643537393">મુસાફરીની માહિતી</translation>
@@ -213,6 +211,7 @@
 <translation id="1343830902827845050">Chromeમાં સાઇન ઇન કરો</translation>
 <translation id="1346748346194534595">જમણે</translation>
 <translation id="1348779747280417563">નામ કન્ફર્મ કરો</translation>
+<translation id="1353546633704510580">પસંદ કરેલો પ્રદેશ</translation>
 <translation id="1357195169723583938">તાજેતરમાં ડિવાઇસનો ઉપયોગ કોણે કર્યો છે અને ક્યારે</translation>
 <translation id="1358187717814494928">શીટ બનાવો</translation>
 <translation id="1358223345833465883">Chromiumમાં તમારું શોધ એન્જિન</translation>
@@ -281,6 +280,7 @@
 <translation id="1448166547804028941">"<ph name="DATA_CONTROLS_FIRST_KEY_SET" />" કીને સમાન શબ્દકોશમાં "<ph name="DATA_CONTROLS_SECOND_KEY_SET" />" કી તરીકે સેટ કરી શકાતી નથી</translation>
 <translation id="1449251255954293933">Google Walletમાં નિવારણ નંબર સાચવો</translation>
 <translation id="1455413310270022028">ઇરેઝર</translation>
+<translation id="1456749217800922313">ચકાસણી કોડ</translation>
 <translation id="1457992721081300557">{NUM_REVIEWS,plural, =0{0 રિવ્યૂ જુઓ}=1{1 રિવ્યૂ જુઓ}one{તમામ # રિવ્યૂ જુઓ}other{તમામ # રિવ્યૂ જુઓ}}</translation>
 <translation id="1460317464907341501">શું આ ઇમેઇલ ઍડ્રેસની ચકાસણી ઑટોમૅટિક રીતે કરીએ?</translation>
 <translation id="1461041542809785877">પર્ફોર્મન્સ</translation>
@@ -288,7 +288,6 @@
 <translation id="1462951478840426066">તમારા કમ્પ્યુટર પર ફૉન્ટનો ઉપયોગ કરો, જેથી તમે હાઇ ફિડેલિટી કન્ટેન્ટ બનાવી શકો</translation>
 <translation id="1465457928007067810">IBAN તમારા Google એકાઉન્ટમાં સાચવવામાં આવ્યો છે</translation>
 <translation id="1467432559032391204">ડાબું</translation>
-<translation id="1471514598850585811">લૅપટૉપ</translation>
 <translation id="1472675084647422956">વધુ બતાવો</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">લેખન સંબંધિત સહાય મેળવવા માટે 3 કે તેથી વધુ શબ્દો દાખલ કરો</translation>
@@ -302,7 +301,6 @@
 <translation id="1486096554574027028">પાસવર્ડ શોધો</translation>
 <translation id="1492194039220927094">પુશ કરેલી પૉલિસી:</translation>
 <translation id="1495677929897281669">ટૅબ પર પાછા જાઓ</translation>
-<translation id="1496318738909526466">'ઑટોમૅટિક રીતે ભરવાની બહેતર સુવિધા' મેનેજ કરો</translation>
 <translation id="1500286806237135498">કૅમેરા (<ph name="CAMERAS_COUNT" />)</translation>
 <translation id="1504042622576912555">વાંસળી</translation>
 <translation id="1507202001669085618">&lt;p&gt;જો તમે ઑનલાઇન થાઓ એ પહેલાં જ્યાં તમારે સાઇન ઇન કરવું જરૂરી હોય તેવા વાઇ-ફાઇ પોર્ટલનો ઉપયોગ કરી રહ્યા હો, તો તમને આ ભૂલ દેખાશે.&lt;/p&gt;
@@ -352,6 +350,7 @@
 <translation id="1574714699824202614">ચુકવણી પદ્ધતિની ચકાસણી કરી રહ્યાં છીએ</translation>
 <translation id="1576277203042721907">ખરીદીની જાણકારી</translation>
 <translation id="1579189948231786790">તમારી સંસ્થા દ્વારા આ સાઇટને બ્લૉક કરવામાં આવી છે</translation>
+<translation id="1579940597679293608">બધી આઇસોલેટેડ વિન્ડો બંધ કરો</translation>
 <translation id="1581080074034554886">CVC</translation>
 <translation id="1583429793053364125">આ વેબપેજ બતાવતી વખતે કંઈક ખોટું થયું.</translation>
 <translation id="1585306568496579337">"<ph name="EXTENSION_NAME" />" એક્સ્ટેન્શન <ph name="HANDLER_HOSTNAME" /> મારફતે <ph name="PROTOCOL" />ની લિંક ખોલવા માગે છે</translation>
@@ -450,7 +449,6 @@
 <translation id="1734864079702812349">Amex</translation>
 <translation id="1734878702283171397">સિસ્ટમ વ્યવસ્થાપકનો સંપર્ક કરવાનો પ્રયાસ કરો.</translation>
 <translation id="1736163675982669961"><ph name="CARD_NICKNAME" />, <ph name="CARD_NETWORK_NAME" />, <ph name="CARD_LAST_FOUR_DIGITS" />, <ph name="CARD_EXPIRATION" />ના સમયસીમા સમાપ્ત થાય છે</translation>
-<translation id="1736420071277903564">કમ્પ્યુટર</translation>
 <translation id="1739364174357629566">નોન ટ્રાવેલર નંબર અપડેટ કરો</translation>
 <translation id="1740404923954980840">પૂર્ણ સ્ક્રીન મોડમાંથી બહાર નીકળવા માટે, સૌથી ઉપરથી ખેંચો અને પાછળ જવા માટેનું બટન ટચ કરો</translation>
 <translation id="1741474054575634405">લૉયલ્ટિ કાર્ડ મેનેજ કરો...</translation>
@@ -516,6 +514,7 @@
 <translation id="1849438148665368129">ખરીદી <ph name="CHECKOUT_AMOUNT_MAXIMUM" /> કરતાં ઓછી રકમની હોવી જોઈએ</translation>
 <translation id="1853392626017747777">વર્ચ્યુઅલ કાર્ડની નોંધણી બંધ છે</translation>
 <translation id="1854180393107901205">કાસ્ટ કરવાનું રોકો</translation>
+<translation id="1860986945084448084">સર્ટિફિકેટની વિગતો ખોલો</translation>
 <translation id="1863257867908022953">ટ્રે 12</translation>
 <translation id="1863374797460198869">ચૅટ છુપાવેલી છે</translation>
 <translation id="1871208020102129563">પ્રૉક્સી નક્કી કરેલા પ્રૉક્સી સર્વરનો ઉપયોગ કરવા માટે સેટ કરેલી છે, .pac સ્ક્રિપ્ટ URL નથી.</translation>
@@ -643,6 +642,7 @@
 <translation id="2096183846792489672">તમે મુલાકાત લો છો તે પેજના કન્ટેન્ટ અને URLs પર ક્લાઉડમાં ખાનગી સ્પેસમાં પ્રક્રિયા થઈ શકે છે</translation>
 <translation id="209961642949927292">આગલી વખતે વધુ ઝડપથી ચેકઆઉટ કરીએ?</translation>
 <translation id="2099652385553570808">ડાબી બાજુએ ત્રણ સ્ટેપલ લગાવો</translation>
+<translation id="210056520177407132">EU ટ્રસ્ટ માર્ક</translation>
 <translation id="2101225219012730419">વર્ઝન:</translation>
 <translation id="2102134110707549001">સશક્ત પાસવર્ડ સૂચવો…</translation>
 <translation id="2102495993840063010">Android ઍપ્લિકેશનો</translation>
@@ -666,6 +666,7 @@
 <translation id="2127747486437921899">ઇટાલિક</translation>
 <translation id="2130448033692577677">DnsOverHttpsMode પૉલિસી સેટ ન કરી હોવાને કારણે તમે ઉલ્લેખ કરેલા નમૂનાને કદાચ લાગુ કરવામાં આવશે નહીં.</translation>
 <translation id="2130699163006053678">A3x7</translation>
+<translation id="2131006834960167560">'ચુકવણીઓ ઑટોમૅટિક રીતે ભરવાની સુવિધા ચાલુ કરો' બોટમ શીટને સંપૂર્ણ ઊંચાઈએ ખોલવામાં આવી.</translation>
 <translation id="2131511685263818470"><ph name="SEARCH_ENGINE_NAME" />. <ph name="MARKETING_SNIPPET" /></translation>
 <translation id="2132825047782982803">આને કોઈપણ ક્રમમાં બતાવવામાં આવ્યા છે. તમારું ડિફૉલ્ટ શોધ એન્જિન કોઈપણ સમયે બદલી શકો છો.</translation>
 <translation id="2134584557120247184">ફ્લાઇટની ટિકિટ</translation>
@@ -740,6 +741,7 @@
 <translation id="2233745931693710080">કોમ્પેક્ટ ડિસ્ક</translation>
 <translation id="2236949375853147973">મારી ઍક્ટિવિટી</translation>
 <translation id="2239100178324503013">હમણાં મોકલો</translation>
+<translation id="223921069122391343">ઑટોમૅટિક રીતે ભરવાની સુવિધાનો ઉપયોગ કરીને ચેકઆઉટ વખતે તમારી સાચવેલી ઑફર ઉપલબ્ધ થશે. <ph name="BEGIN_LINK" />નિયમો અને શરતો જુઓ<ph name="END_LINK" /></translation>
 <translation id="224130779555573777">નિવારણ નંબર ઉમેરો</translation>
 <translation id="2241693394036365668">ફાઇલ ડાઉનલોડ કરવામાં આવે ત્યારે</translation>
 <translation id="2242389809734574253">IBAN સાચવવાની સુવિધા બંધ કરવામાં આવી.</translation>
@@ -837,8 +839,6 @@
 <translation id="2384307209577226199">એન્ટરપ્રાઇઝ ડિફૉલ્ટ</translation>
 <translation id="2385809941344967209">તમારા Chrome સેટિંગમાંથી Chrome અપડેટ કરો</translation>
 <translation id="2386255080630008482">સર્વરનું પ્રમાણપત્ર રદ કરવામાં આવ્યું છે.</translation>
-<translation id="2387424091060104123">Gemini દ્વારા સૂચિત · <ph name="SRC_LINK" />સૉર્સ જુઓ<ph name="END_SRC_LINK" />
-તમે Chromeમાંથી આ સૂચન કાઢી નાખી શકો છો. તમારો ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં. <ph name="MANAGE_LINK" />ઑટોમૅટિક રીતે ભરવાની બહેતર સુવિધા મેનેજ કરો<ph name="END_MANAGE_LINK" /></translation>
 <translation id="239203817277685015">ઝીણવટપૂર્વકનું પરિણામ</translation>
 <translation id="2392959068659972793">કોઈ કિંમત સેટ નહીં સાથે પૉલિસીઓ બતાવો</translation>
 <translation id="239429038616798445">આ વિતરણ પદ્ધતિ ઉપલબ્ધ નથી. કોઈ ભિન્ન પદ્ધતિ અજમાવો.</translation>
@@ -861,6 +861,7 @@
 <translation id="2436186046335138073"><ph name="HANDLER_HOSTNAME" /> ને બધી <ph name="PROTOCOL" /> લિંક્સ ખોલવાની મંજૂરી આપીએ?</translation>
 <translation id="243815215670139125">આ કાર્ડ તમારા Google એકાઉન્ટમાં સાચવી શકાયું નથી. તેના બદલે તેને આ ડિવાઇસ પર Chromeમાં સાચવવામાં આવ્યું છે.</translation>
 <translation id="2438874542388153331">જમણી બાજુએ ચતુષ્કોણ કાણું પાડો</translation>
+<translation id="2442033148418774391">વધુ સ્માર્ટ ઑટોમૅટિક રીતે ભરવાની સુવિધા, ખાનગી રાખવામાં આવે છે નોટિસ બંધ કરી</translation>
 <translation id="2442865686365739754">Chrome <ph name="BEGIN_EMPHASIS" />આ સાચવશે નહીં<ph name="END_EMPHASIS" />:
           <ph name="BEGIN_LIST" />
             <ph name="LIST_ITEM" />તમારો બ્રાઉઝિંગ ઇતિહાસ
@@ -873,13 +874,13 @@
 <translation id="2451607499823206582">ટ્રૅક કરી રહ્યાં છીએ</translation>
 <translation id="2452837234288608067">તેના માટે મદદ કરી શક્યા નથી. ફરી પ્રયાસ કરો.</translation>
 <translation id="2453045048779611513">તમે શું સાચવી શકો, તે તમારી સંસ્થા નિયંત્રિત કરે છે</translation>
+<translation id="2456490423293803882">વધુ સ્માર્ટ ઑટોમૅટિક રીતે ભરવાની સુવિધા, ખાનગી રાખવામાં આવે છે નોટિસ પૂર્ણ ઊંચાઈએ ખોલવામાં આવી</translation>
 <translation id="2459882793359532780">લાગુ કરેલી બ્રાઉઝર સંબંધિત પૉલિસીઓ (મશીન અને પ્રોફાઇલ સંબંધિત પૉલિસીઓ)</translation>
 <translation id="2461385121573678775">Chrome Enterprise Core ક્લાઉડમાંથી બ્રાઉઝર પૉલિસીઓ ગોઠવવા માટે તમને કેન્દ્રીય ટૂલ આપે છે</translation>
 <translation id="2461822463642141190">વર્તમાન</translation>
 <translation id="2462724976360937186">પ્રમાણન અધિકારી કી ID</translation>
 <translation id="2465688316154986572">સ્ટેપલ લગાવો</translation>
 <translation id="2465914000209955735">Chromeમાં તમે ડાઉનલોડ કરેલી ફાઇલો મેનેજ કરો</translation>
-<translation id="2466682894498377850">તમારા <ph name="DEVICE_NAME" />માંથી મોકલેલું ટૅબ</translation>
 <translation id="2467272921457885625">ડિવાઇસના હાર્ડવેરની વિશિષ્ટતાઓ અને આંકડાઓ, જેમ કે CPU/RAMના ઉપયોગનો ઇતિહાસ</translation>
 <translation id="2467421459221956357">સેન્સરનો ઉપયોગ કરીએ?</translation>
 <translation id="2467694685043708798"><ph name="BEGIN_LINK" />નેટવર્ક ડાયગ્નોસ્ટિક્સ ચલાવી રહ્યાં છે<ph name="END_LINK" /></translation>
@@ -921,7 +922,6 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />આ વિકલ્પો ઑફર કરવા માટે ચેકઆઉટ પેજ પરનું કન્ટેન્ટ Google સાથે શેર કરવામાં આવે છે.<ph name="END_BOLD" /> ચુકવણીના પ્લાન યોગ્યતાને આધીન છે. પછીથી ચુકવણી કરવાના વિકલ્પો છુપાવવા માટે, <ph name="BEGIN_LINK" />ચુકવણી માટેના સેટિંગ<ph name="END_LINK" /> પર જાઓ.</translation>
 <translation id="2526062290525841862">આ ઍપ ચલાવવા માટે, આઇસોલેટેડ વેબ ઍપ ડેવલપર મોડને ફરીથી ચાલુ કરો</translation>
 <translation id="2526280916094749336">તમે Googleની સમગ્ર પ્રોડક્ટ પર સાચવેલા સરનામાનો ઉપયોગ કરી શકો છો. આ સરનામું તમારા Google એકાઉન્ટમાં સાચવવામાં આવશે, <ph name="ACCOUNT" />.</translation>
-<translation id="2526590354069164005">ડેસ્કટૉપ</translation>
 <translation id="2527451058878391043">તમારો CVC તમારા કાર્ડની આગળના ભાગ પર હોય છે. તે તમારા કાર્ડ નંબરની ઉપર જમણી બાજુએ 4-અંકનો કોડ છે.</translation>
 <translation id="2529899080962247600">આ ફીલ્ડમાં <ph name="MAX_ITEMS_LIMIT" /> કરતાં વધારે એન્ટ્રી હોવી જોઈએ નહી. વધારાની તમામ એન્ટ્રી અવગણવામાં આવશે.</translation>
 <translation id="2530042584066815841">માઉસ લૉક અને તેનો ઉપયોગ</translation>
@@ -950,6 +950,7 @@
 <translation id="2556173336856001120"><ph name="USER_GIVEN_NAME" /> • <ph name="DEVICE_NAME" /></translation>
 <translation id="2556876185419854533">&amp;ફેરફાર કરવાનું રદ કરો</translation>
 <translation id="2559566667529177711">મલ્ટિ લેયર</translation>
+<translation id="2561224416042784023">સેટિંગ જુઓ</translation>
 <translation id="2570734079541893434">સેટિંગને મેનેજ કરો</translation>
 <translation id="257136025287118539">તમારા ઍડમિનિસ્ટ્રેટર તમારી ફાઇલોને <ph name="CLOUD_PROVIDER" /> પર ખસેડી રહ્યા છે. એકવાર અપલોડ પૂરું થાય એટલે તમે આ ફાઇલોમાં ફેરફાર કરી શકો છો.</translation>
 <translation id="2571488850200220306">સુરક્ષાની ખાતરી કરવામાં સહાય મળે તે માટે, ડિવાઇસનું OS, બ્રાઉઝરનું વર્ઝન અને કયું સૉફ્ટવેર ઇન્સ્ટૉલ કરેલું છે એ પણ તે જોઈ શકે છે</translation>
@@ -986,7 +987,6 @@
 <translation id="2628025184666666186">આ સર્વર સાબિત કરી શક્યું નથી કે તે <ph name="DOMAIN" /> છે કારણ કે તે એવા સુરક્ષા સર્ટિફિકેટનો ઉપયોગ કરી રહ્યું છે જેનો Chrome અથવા વેબ ટ્રાફિક એન્ક્રિપ્શન માટેની તમારી સિસ્ટમની ગોઠવણી દ્વારા વિશ્વાસ કરવામાં આવતો નથી. આવું કદાચ કોઈ ખોટી ગોઠવણી અથવા કોઈ અટૅક કરનારાએ તમારા કનેક્શનમાં અવરોધ ઊભો કર્યો હોવાને કારણે થયું હોઈ શકે છે.</translation>
 <translation id="2628224721443278970">Microsoft OneDriveમાં સાઇન ઇન કરો</translation>
 <translation id="2631059741268498165">જ્યારે આ ડિવાઇસ બંધ હતું, ત્યારે તમારા ઍડમિનિસ્ટ્રેટરને તે મળ્યું હતું. તે ફરીથી ચાલુ કરવામાં આવ્યું છે અને ઉપયોગ માટે તૈયાર છે.</translation>
-<translation id="2631387782019878060">ચકાસણીનો કોડ: <ph name="OTP" /></translation>
 <translation id="2634124572758952069"><ph name="HOST_NAME" />નું સર્વર IP ઍડ્રેસ ન મળ્યું.</translation>
 <translation id="2635276683026132559">સાઇનિંગ</translation>
 <translation id="2638070510549214427">સલામત તરીકે માર્ક કરો</translation>
@@ -1103,6 +1103,7 @@
 <translation id="2878197950673342043">પોસ્ટર ફોલ્ડ</translation>
 <translation id="2878424575911748999">A1</translation>
 <translation id="2879694782644540289">પાસવર્ડ ભરવા માટે તમારા સ્ક્રીન લૉકનો ઉપયોગ કરો</translation>
+<translation id="2880119244122776372">બિલ્ડ અને કોડ</translation>
 <translation id="2881276955470682203">કાર્ડ સાચવીએ?</translation>
 <translation id="2882280148032777436">નોન ટ્રાવેલર નંબર ડિલીટ કરો</translation>
 <translation id="2882949212241984732">ડબલ-ગેટ ફોલ્ડ</translation>
@@ -1202,6 +1203,7 @@
 <translation id="3041176923638368519">કાર્ડના લાભ સંબંધિત શરતો જુઓ</translation>
 <translation id="3041584414879052436">હમણાં ખરીદો, પછીથી ચુકવો વિકલ્પના જારીકર્તાઓની સૂચિ બંધ છે.</translation>
 <translation id="3041612393474885105">પ્રમાણપત્ર માહિતી</translation>
+<translation id="3041835740069544003">Chrome હવે ફોર્મને સ્માર્ટ રીતે સમજીને વધુ ફોર્મની ભાળ મેળવી શકે છે અને તેને ભરી શકે છે. આમ કરવા માટે, પેજના કન્ટેન્ટ અને URLs પર ક્લાઉડમાં ખાનગી સ્પેસમાં પ્રક્રિયા થઈ શકે છે. સેટિંગમાં મેનેજ કરો.</translation>
 <translation id="3047054686095898948"><ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE_1" />માં તમારી માહિતી સાચવો અને Googleની તમામ પ્રોડક્ટ પર ફોર્મ ભરવા જેવી બાબતો વધુ ઝડપથી કરો. તમે <ph name="ACCOUNT" /> માટે <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE_2" />માં <ph name="BEGIN_LINK" />તમારી માહિતી મેનેજ<ph name="END_LINK" /> કરી શકો છો</translation>
 <translation id="305162504811187366">ટાઇમસ્ટેમ્પ, હોસ્ટ અને ક્લાયન્ટ સત્ર ids સહિત Chrome રીમોટ ડેસ્કટૉપનો ઇતિહાસ</translation>
 <translation id="3052868890529250114">સામાન્ય રીતે તમને સુરક્ષિત રીતે બધી સાઇટ સાથે કનેક્ટ કરવામાં આવે છે, પરંતુ આ વખતે Chrome સુરક્ષિત કનેક્શનનો ઉપયોગ કરી શક્યું નથી. કોઈ હુમલાખોર તમારા નેટવર્ક કનેક્શનમાં છુપાઈને પ્રવેશ કરવાનો અથવા તેમાં ફેરફાર કરવાનો પ્રયાસ કરી રહ્યો હોઈ શકે છે. <ph name="BEGIN_LEARN_MORE_LINK" />આ ચેતવણી વિશે વધુ જાણો<ph name="END_LEARN_MORE_LINK" /></translation>
@@ -1239,7 +1241,6 @@
 <translation id="3109788962812161063">પ્રોફાઇલ મેનેજમેન્ટ</translation>
 <translation id="3112892588078695695">ફોન નંબર: <ph name="PHONE" />.</translation>
 <translation id="3113284927548439113">ત્રીજી પાળી</translation>
-<translation id="3113930177999394798">તમારો બ્રાઉઝિંગ ઇતિહાસ શોધવા માટે @history ટાઇપ કરો, AI દ્વારા સંચાલિત</translation>
 <translation id="3114040155724590991">Android System અપડેટ કરી રહ્યાં છીએ
     તમારી ઍપ ચાલુ થવામાં સામાન્ય કરતાં વધુ સમય લાગી શકે છે.</translation>
 <translation id="3114197119223448048">નવી ઍક્ટિવિટી</translation>
@@ -1277,6 +1278,7 @@
 <translation id="3162559335345991374">તમે ઉપયોગ કરી રહ્યા છો તે વાઇ-ફાઇને તેના લોગિન પેજની મુલાકાત લેવાની જરૂર હોઈ શકે છે.</translation>
 <translation id="316542773973815724">નૅવિગેશન</translation>
 <translation id="316638481603975524">વેબ ઍપ ઇન્સ્ટૉલ કરવા માટે કહી શકે છે</translation>
+<translation id="3166688462674378969">'આઇસોલેટેડ વિન્ડો બંધ કરો' બટન, હાલમાં ખુલ્લી તમામ આઇસોલેટેડ વિન્ડો બંધ કરવા માટે સક્રિય કરો</translation>
 <translation id="3166788340998560642">આગલી વખતે તમે તેનો ઉપયોગ કરશો, ત્યારે Chrome તેને <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" />માં સાચવવાની ઑફર કરશે</translation>
 <translation id="3169472444629675720">Discover</translation>
 <translation id="3176929007561373547">પ્રૉક્સી સર્વર કાર્ય કરી રહ્યું છે તેની ખાતરી કરવા માટે તમારું પ્રૉક્સી સેટિંગ તપાસો
@@ -1305,6 +1307,7 @@
 <translation id="3211727636285361260"><ph name="HANDLER_HOSTNAME" /> મારફતે <ph name="PROTOCOL" /> લિંક ખોલો</translation>
 <translation id="3212468046572043669">ડાઉનલોડ શરૂ થયું. તેને જોવા માટે, સૌથી ઉપરથી ખેંચો અને પાછળ જવા માટેનું બટન ટચ કરો</translation>
 <translation id="3212581601480735796"><ph name="HOSTNAME" /> પરની તમારી પ્રવૃત્તિનું નિરીક્ષણ કરવામાં આવી રહ્યું છે</translation>
+<translation id="3215018171871590528">{NUM_SOURCES,plural, =1{Chrome આ માહિતી સૂચવવાનું બંધ કરશે. તમારો ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં.}one{Chrome આ માહિતી સૂચવવાનું બંધ કરશે. તમારો ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં.}other{Chrome આ માહિતી સૂચવવાનું બંધ કરશે. તમારા ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં.}}</translation>
 <translation id="3215092763954878852">WebAuthnનો ઉપયોગ કરી શક્યાં નથી</translation>
 <translation id="3215311088819828484">પરિણામ અપડેટ કર્યું</translation>
 <translation id="3218181027817787318">સંબંધિત</translation>
@@ -1359,6 +1362,7 @@
 <translation id="3289578402369490638">સમગ્ર વેબ પર અન્ય સ્ટોરમાંથી</translation>
 <translation id="3293642807462928945"><ph name="POLICY_NAME" /> પૉલિસી વિશે વધુ જાણો</translation>
 <translation id="3295444047715739395">Chrome સેટિંગમાં તમારા પાસવર્ડ જુઓ અને તેને મેનેજ કરો</translation>
+<translation id="3296595523896103792">'ચુકવણીઓ ઑટોમૅટિક રીતે ભરવાની સુવિધા ચાલુ કરો' બોટમ શીટ બંધ છે.</translation>
 <translation id="3299098170013242198">પાસવર્ડ ભરવા માટે Windows Hello ચાલુ છે</translation>
 <translation id="3299197721044635447">તમારી સંસ્થાની પૉલિસીઓને કારણે મેનેજ કરેલા Chrome સંદર્ભની બહાર કન્ટેન્ટ પેસ્ટ કરી શકાયું નથી</translation>
 <translation id="3299720788264079132"><ph name="FEATURE_NAME" />નો ઉપયોગ કરવા દરમિયાન કંઈક ખોટું થયું</translation>
@@ -1371,6 +1375,7 @@
 <translation id="3308006649705061278">ઑર્ગેનાઇઝેશનલ યૂનિટ (OU)</translation>
 <translation id="3310946375819654151">Chrome <ph name="APP_NAME" /> પર તમારી સંવેદનશીલ માહિતી ભરવાનો પ્રયાસ કરી રહ્યું છે.</translation>
 <translation id="3312952471765023168">સફળતાપૂર્વક અપલોડ થઈ</translation>
+<translation id="3323135197619890621">શૉપિંગ કરવાનું વધુ સરળ બનાવવા માટે, ઑટોમૅટિક રીતે ભરવાની સુવિધા ચાલુ કરો</translation>
 <translation id="3324687287337751929">4 x 6 ઇંચ</translation>
 <translation id="3325568918769906282">ઉતરતા ક્રમમાં</translation>
 <translation id="3325662270238538525">ફાઇલના નામ, ફાઇલના કન્ટેન્ટની ડિજિટલ ફિંગરપ્રિન્ટ, ડાઉનલોડ સૉર્સ અને મેટાડેટા સહિત ફાઇલનો તાજેતરનો ઍક્સેસ અને ફેરફારો</translation>
@@ -1416,7 +1421,6 @@
 <translation id="3413466783792948876">જો તમે સાર્વજનિક નેટવર્કનો ઉપયોગ કરી રહ્યાં હો, તો પછીથી આ સાઇટની મુલાકાત લેવી સૌથી સલામત રહેશે. તમારા ઘર અથવા ઑફિસના વાઇ-ફાઇ જેવા વિશ્વસનીય નેટવર્ક થકી ઓછું જોખમ રહે છે.</translation>
 <translation id="3414952576877147120">કદ:</translation>
 <translation id="341513675006332771">'Chrome Dino ગેમ રમો' બટન, Chromeમાં Dino Run ગેમ રમવા માટે સક્રિય કરો</translation>
-<translation id="3415471717466570460">તમારી શોધો, શ્રેષ્ઠ મેળ ખાતા પરિણામો અને તેના પેજ કન્ટેન્ટ Googleને મોકલવામાં આવે છે તેમજ માનવ રિવ્યૂઅર દ્વારા જોવામાં આવે એમ બની શકે છે, જેથી આ સુવિધાને બહેતર બનાવી શકાય. આ એક પ્રાયોગિક સુવિધા છે અને તે હંમેશાં સાચી જ હોય, એવું જરૂરી નથી.</translation>
 <translation id="3417390269491141648">મારા આરોગ્ય વીમાના પ્લાનના વિકલ્પોની તુલના કરો અને તેમની વચ્ચેના મુખ્ય તફાવતોનું વિશ્લેષણ કરો</translation>
 <translation id="3421387094817716717">એલિપ્ટિક કર્વ સાર્વજનિક કી</translation>
 <translation id="3422248202833853650">મેમરી ખાલી કરવા માટે અન્ય પ્રોગ્રામથી બહાર નીકળવાનો પ્રયાસ કરો.</translation>
@@ -1455,6 +1459,7 @@
 <translation id="3474392552865647225">'Chromeમાં ફૉન્ટ કસ્ટમાઇઝ કરો' બટન, Chromeમાં ફૉન્ટના કદ અને ટાઇપફેસ કસ્ટમાઇઝ કરવા માટે સક્રિય કરો</translation>
 <translation id="3478033058537426179">ગ્રૂપ મુજબ</translation>
 <translation id="3479552764303398839">હમણાં નહીં</translation>
+<translation id="3481315707647070701">વિઝ્યુઅલાઇઝ કરો અને ફેરફાર કરો</translation>
 <translation id="3484560055331845446">તમે તમારા Google એકાઉન્ટનો ઍક્સેસ ગુમાવી શકો છો. Chrome તમને હમણાં જ તમારો પાસવર્ડ બદલવાનો સુઝાવ આપે છે. તમને સાઇન ઇન કરવા માટે કહેવામાં આવશે.</translation>
 <translation id="3484861421501147767">રિમાઇન્ડર: સાચવેલો પ્રોમો કોડ ઉપલબ્ધ છે</translation>
 <translation id="3485901585646640838">તમારા Google એકાઉન્ટમાં સાચવેલા પાસવર્ડ અને તેના જેવી અન્ય માહિતીનો ઉપયોગ કરવા માટે, તે તમે જ છો તેની ખાતરી કરો</translation>
@@ -1540,6 +1545,7 @@
 <translation id="3614001939154393113">હુમલાખોરો <ph name="BEGIN_BOLD" /><ph name="SITE" /><ph name="END_BOLD" />માંથી તમારી માહિતી (ઉદાહરણ તરીકે, પાસવર્ડ, મેસેજ અથવા ક્રેડિટ કાર્ડ) ચોરવાનો પ્રયાસ કરી રહ્યાં હોઈ શકે છે. <ph name="BEGIN_LEARN_MORE_LINK" />આ ચેતવણી વિશે વધુ જાણો<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="361438452008624280">સૂચિની એન્ટ્રી "<ph name="LANGUAGE_ID" />": અજાણી અથવા અસમર્થિત ભાષા.</translation>
 <translation id="3614934205542186002"><ph name="RUN_CHROME_SAFETY_CHECK_FOCUSED_FRIENDLY_MATCH_TEXT" />, Chrome સેટિંગમાં સલામતી માટે તપાસ ચલાવવા માટે, પહેલાં Tab અને પછી Enter કી દબાવો</translation>
+<translation id="3615354126333642335"><ph name="TEXT" />, <ph name="SUBTEXT" /></translation>
 <translation id="3620865353340165509">આ IBAN Google Walletમાં સાચવી શકાયો નથી. એના બદલે તે આ ડિવાઇસ પર Chromeમાં સાચવવામાં આવ્યો છે. આગલી વખતે તમે આ IBANનો ઉપયોગ કરશો, ત્યારે Chrome તમને ફરીથી પૂછશે.</translation>
 <translation id="3621401353678567613">તમે ટ્રૅક કરતા હો તેવી પ્રોડક્ટ માટે કિંમતમાં ઘટાડા સંબંધિત અલર્ટ મેળવવા માટે, સેટિંગમાં જઈને નોટિફિકેશન ચાલુ કરો.</translation>
 <translation id="362276910939193118">પૂર્ણ ઇતિહાસ બતાવો</translation>
@@ -1596,6 +1602,7 @@
 <translation id="3704162925118123524">તમે ઉપયોગમાં લઈ રહ્યાં છો તે નેટવર્ક માટે, તમારે તેના લૉગ ઇન પેજની મુલાકાત લેવાની જરૂર હોઈ શકે છે.</translation>
 <translation id="3705189812819839667"><ph name="RESULT_OWNER" /> - <ph name="RESULT_PRODUCT_SOURCE" /></translation>
 <translation id="370665806235115550">લોડ કરી રહ્યું છે...</translation>
+<translation id="3708927069677086144">તમારી સંસ્થા માટે જરૂરી છે કે તમે Chromeમાં સાઇન ઇન કરો</translation>
 <translation id="3709599264800900598">તમે કૉપિ કરેલી ટેક્સ્ટ</translation>
 <translation id="3711223220609269738">નવું આઇસોલેટેડ ટૅબ</translation>
 <translation id="3711430313228789376">Chrome બ્રાઉઝર પાસવર્ડ બતાવવાનો પ્રયાસ કરી રહ્યું છે</translation>
@@ -1618,6 +1625,7 @@
 <translation id="3727850735097852673">macOS કીચેન સાથે Google Password Managerનો ઉપયોગ કરવા માટે, Chromeને ફરીથી લૉન્ચ કરો અને કીચેનના ઍક્સેસની મંજૂરી આપો. ફરીથી લૉન્ચ થયા પછી, તમારા ટૅબ ફરીથી ખૂલશે.</translation>
 <translation id="3728173127485570463">પાસવર્ડ ઑટોમૅટિક રીતે ભરવા માટે Chrome બ્રાઉઝરને હવેથી તમારી ફિંગરપ્રિન્ટની જરૂર નથી</translation>
 <translation id="3729811201279509483">મેન્યુઅલી ટૅબ ઉમેરો</translation>
+<translation id="3732370487905329239">ડિલિવરીની અંદાજિત તારીખ</translation>
 <translation id="3736564442532774454">Chrome બ્રાઉઝર <ph name="APP_NAME" /> પર તમારી સંવેદનશીલ માહિતી ભરવાનો પ્રયાસ કરી રહ્યું છે.</translation>
 <translation id="3738166223076830879">તમારા વ્યવસ્થાપક દ્વારા તમારું બ્રાઉઝર મેનેજ કરવામાં આવે છે.</translation>
 <translation id="3739842843727261045">થમ્બ્સ અપ, આ પરિણામો તમને પસંદ આવ્યા એવો પ્રતિસાદ સબમિટ કરે છે</translation>
@@ -1704,6 +1712,7 @@
 <translation id="3865339060090354361"><ph name="CREDIT_CARD_NAME" /> માટેની શરતો અહીં જુઓ</translation>
 <translation id="3869939189466884821">તમારી સ્થાનિક ફાઇલો <ph name="MINUTES" /> મિનિટમાં ડિલીટ થઈ જશે</translation>
 <translation id="3875783148670536197">મને બતાવો કે કેવી રીતે</translation>
+<translation id="3877021395754842994">હાલમાં ખુલ્લી હોય તેવી બધી આઇસોલેટેડ વિન્ડો બંધ કરો</translation>
 <translation id="3877603629930976930">શેર કરશો નહીં</translation>
 <translation id="3878445208930547646">આ સાઇટ પરથી કૉપિ કરવાની મંજૂરી નથી</translation>
 <translation id="3879674895057686427">જે ભાષામાં અનુવાદ કરવો છે તે પસંદ કરો</translation>
@@ -1722,7 +1731,6 @@
 <translation id="3905894480064208252">{0,plural, =1{ફાઇલ ટ્રાન્સફર કરવાથી બ્લૉક કરી છે}one{<ph name="FILE_COUNT" /> ફાઇલ ટ્રાન્સફર કરવાથી બ્લૉક કરી છે}other{<ph name="FILE_COUNT" /> ફાઇલ ટ્રાન્સફર કરવાથી બ્લૉક કરી છે}}</translation>
 <translation id="3906022360148923497">ચુકવણીના ઇન્સ્ટ્રુમેન્ટનું આઇકન</translation>
 <translation id="3906234161316839040">અન્ય ઑર્ડર</translation>
-<translation id="3906954721959377182">ટૅબ્લેટ</translation>
 <translation id="3909695131102177774"><ph name="LABEL" /> <ph name="ERROR" /></translation>
 <translation id="3910231615117880630">શામેલ કરેલા કન્ટેન્ટ વિશે વધુ જાણો</translation>
 <translation id="3920504717067627103">પ્રમાણપત્ર પૉલિસીઓ</translation>
@@ -1733,6 +1741,7 @@
 <translation id="3928806096717999469">ફેરફાર કરો, કોઈ નવી વિન્ડોમાં ખુલે છે</translation>
 <translation id="393417216277380082">મોશન અને લાઇટ સેન્સર</translation>
 <translation id="3937640725563832867">પ્રમાણપત્ર રજૂકર્તા વૈકલ્પિક નામ</translation>
+<translation id="3938243129430544357">ઑટોમૅટિક રીતે ભરવાની સુવિધા વડે સુરક્ષિત રીતે ચેકઆઉટ કરો</translation>
 <translation id="3939773374150895049">CVCને બદલે WebAuthnનો ઉપયોગ કરીએ?</translation>
 <translation id="3941630233824954464">ફરજીયાત પુન:પ્રમાણીકરણ ચાલુ કરો</translation>
 <translation id="3942048175062210325">તમારી ફાઇલોને ફરીથી ખોલવાનો પ્રયાસ કરો</translation>
@@ -1889,7 +1898,6 @@
 <translation id="4179515394835346607"><ph name="ROW_NAME" /> <ph name="ROW_CONTENT" /></translation>
 <translation id="4185037616931963178">નિવારણ નંબર સુરક્ષિત રીતે અપડેટ કરો</translation>
 <translation id="4186035307311647330">કિંમત ટ્રૅક કરવાનું બંધ કરો</translation>
-<translation id="4190446002599583608">AI દ્વારા સંચાલિત ઇતિહાસમાં શોધ સુવિધા</translation>
 <translation id="4191334393248735295">લંબાઈ</translation>
 <translation id="4195459680867822611">'Chrome ટિપ જુઓ' બટન, Chromeની સુવિધાઓ વિશે જાણવા માટે સક્રિય કરો</translation>
 <translation id="4195643157523330669">નવા ટૅબમાં ખોલો</translation>
@@ -1903,6 +1911,7 @@
 <translation id="4209092469652827314">મોટું</translation>
 <translation id="4210602799576081649">ચકાસણી કોડની સમયસીમા સમાપ્ત થઈ ગઈ છે, નવા કોડની વિનંતી કરો</translation>
 <translation id="421066178035138955">વર્ચ્યુઅલ રિયાલિટી ડિવાઇસ અને ડેટાનો ઉપયોગ કરો</translation>
+<translation id="4211023027325848327">EU ક્વૉલિફાઇડ સર્ટિફિકેટ (QWAC) ખોલો</translation>
 <translation id="4214357935346142455">સાઇન-ઇન સ્ક્રીન પ્રોફાઇલ</translation>
 <translation id="4218327733815631046">અંદાજિત લોકેશન રાખો</translation>
 <translation id="4219596572397833317">વધુ સ્માર્ટ રીતે ખરીદી કરવામાં તમારી સહાય માટે કિંમતનો ઇતિહાસ અને તેને સંબંધિત બીજી ઘણી બાબતો જુઓ.</translation>
@@ -1935,7 +1944,6 @@
 <translation id="424063167283213501">નોન ટ્રાવેલર નંબર સાચવો</translation>
 <translation id="4241830393007970744">તમે જેની મુલાકાત લેવાનો પ્રયાસ કર્યો હતો તે સાઇટ પરના અટૅક કરનારા લોકો યુક્તિ અજમાવીને તમને સૉફ્ટવેર ઇન્સ્ટૉલ કરવા કે તમારા પાસવર્ડ, ફોન કે ક્રેડિટ કાર્ડ નંબર જેવી બાબતો જણાવવા છેતરી શકે છે.</translation>
 <translation id="4242380780309416996">એન્વેલોપ (વજનમાં ભારે)</translation>
-<translation id="4242981939686657948">તમારા બ્રાઉઝિંગ ઇતિહાસને શોધવાની એક વધુ શક્તિશાળી રીત માટે, ચાલુ કરો</translation>
 <translation id="4244926541863471678">ફિલ્મ</translation>
 <translation id="42481816218163154">15 મિનિટનું મોર્નિંગ રૂટિન બનાવો, જે મારી સવારને વધુ સરળ બનાવવામાં મદદ કરે. ખાતરી કરો કે તેમાં સજગતા માટેનો વ્યાયામ શામેલ હોય</translation>
 <translation id="4250343410682686342">'હમણાં ખરીદો, પછીથી ચુકવો' ભૂલ બતાવતી સ્ક્રીન સંપૂર્ણ ઊંચાઈએ ખુલી છે.</translation>
@@ -2046,6 +2054,7 @@
 <translation id="4409271659088619928">તમારું શોધ એન્જિન <ph name="DSE" /> છે. જો લાગુ થતી હોય, તો તમારા શોધ ઇતિહાસને ડિલીટ કરવા માટે, તેમની સૂચનાઓ જુઓ.</translation>
 <translation id="4409556632583862731">નવો થ્રેડ</translation>
 <translation id="4410614037742891410">Google Walletમાં ID કાર્ડ સુરક્ષિત રીતે અપડેટ કરો</translation>
+<translation id="441152911646545600"><ph name="CLOSE_ISOLATED_WINDOWS_FOCUSED_FRIENDLY_MATCH_TEXT" />, હાલમાં ખુલ્લી હોય તેવી બધી આઇસોલેટેડ વિન્ડો બંધ કરવા માટે, પહેલાં Tab અને પછી Enter કી દબાવો</translation>
 <translation id="4412074349188076601">આ કન્ફિગ્યુરેશન ઇન્સ્ટૉલ કરવા યોગ્ય તરીકે માર્ક કરેલું છે, પરંતુ આ આર્કિટેક્ચર માટે કોઈ છબી પ્રદાન કરવામાં આવી નથી, તેથી તેને ઇન્સ્ટૉલ કરી શકાશે નહીં.</translation>
 <translation id="4412377069090572315">લોકો શું કહી રહ્યાં છે</translation>
 <translation id="4414515549596849729">કુકી અને સાઇટ ડેટા</translation>
@@ -2057,6 +2066,7 @@
 <translation id="4424024547088906515">આ સર્વર સાબિત કરી શક્યું નથી કે તે <ph name="DOMAIN" /> છે; તેનું સુરક્ષા પ્રમાણપત્ર Chrome દ્વારા વિશ્વસનીય નથી. આ કોઈ ખોટી ગોઠવણીને કારણે થયું હશે અથવા કોઈ હુમલાખોર તમારા કનેક્શનને અટકાવી રહ્યો છે.</translation>
 <translation id="4425137053900958839">જેના પર તમે વિશ્વાસ રાખી શકો એવી Pixની બધી સુવિધાઓ અને સુરક્ષા માણો</translation>
 <translation id="443121186588148776">સિરીઅલ પોર્ટ</translation>
+<translation id="4431928532022419942">Chromeમાંથી કાઢી નાખીએ?</translation>
 <translation id="4432688616882109544"><ph name="HOST_NAME" /> એ તમારું લોગિન પ્રમાણપત્ર સ્વીકાર્યું ન હતું અથવા કદાચ કોઈ એક પ્રદાન કરવામાં આવ્યું નથી.</translation>
 <translation id="4432792777822557199">હવેથી <ph name="SOURCE_LANGUAGE" />માં છે તે પેજનો અનુવાદ <ph name="TARGET_LANGUAGE" />માં થશે</translation>
 <translation id="4433642172056592619">વપરાશકર્તા મશીન મેનેજમેન્ટના આનુષંગિક ન હોવાને કારણે અથવા મશીન મેનેજ કરવામાં આવતું ન હોવાને કારણે આ પૉલિસી ટાળવામાં આવે છે.</translation>
@@ -2143,6 +2153,7 @@
 <translation id="4610279718074907952">આ સાઇટ <ph name="SET_OWNER" /> દ્વારા નિર્ધારિત ગ્રૂપમાં છે, જે તમારી પ્રવૃત્તિ જોઈ શકે છે</translation>
 <translation id="4612631413844865947"><ph name="PAYMENT_APP_ORIGIN" /> મારફતે <ph name="MERCHANT_ORIGIN" /> પર તમારા ઑર્ડર પર પ્રક્રિયા કરતી વખતે ભૂલ આવી હતી.</translation>
 <translation id="4612904677925722054">આ સાઇટમાં વયસ્ક લોકો માટેનું કન્ટેન્ટ હોઈ શકે છે. માતાપિતા અથવા વાલીએ જણાવવું આવશ્યક છે કે જો તમે આ વેબસાઇટની મુલાકાત લો, તો તેમાં કોઈ વાંધો નથી.</translation>
+<translation id="4613873770449493819">URL <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> ડોમેન તરફ નિર્દેશ કરતું હોવું જોઈએ.</translation>
 <translation id="4619564267100705184">આ તમે જ છો તેની ચકાસણી કરો</translation>
 <translation id="4619669610757527494">Google Walletમાં ડ્રાઇવિંગ લાઇસન્સ સાચવો</translation>
 <translation id="4622292761762557753">તેમ છતાં ટ્રાન્સફર કરો</translation>
@@ -2314,8 +2325,10 @@
 <translation id="4885256590493466218">ચેકઆઉટ કરતી વખતે <ph name="CARD_DETAIL" /> વડે ચુકવણી કરો</translation>
 <translation id="4886565443854420066">તમે સેટિંગ બદલો તે પહેલાં Chrome બ્રાઉઝર ચકાસણી કરવા માગે છે કે આ તમે જ છો</translation>
 <translation id="4887406273302438710">Windows Hello વડે પાસવર્ડની સુરક્ષા કરો</translation>
+<translation id="4887435305021446590">Gmail ખોલો</translation>
 <translation id="4887785555357166111">વીડિયો ફ્રેમ સાચવો</translation>
 <translation id="4891425819480327855"><ph name="CLEAR_BROWSING_DATA_FOCUSED_FRIENDLY_MATCH_TEXT" />, Chrome સેટિંગમાં તમારો બ્રાઉઝિંગ ઇતિહાસ, કુકી, કૅશ મેમરી અને બીજું ઘણું ડિલીટ કરવા માટે Tab પછી Enter દબાવો</translation>
+<translation id="4892391379033030113">'આઇસોલેટેડ વિન્ડો ખોલો' બટન, ખાનગી રીતે બ્રાઉઝ કરવા નવી આઇસોલેટેડ વિન્ડો ખોલવા માટે સક્રિય કરો</translation>
 <translation id="4892518386797173871">પાછળ</translation>
 <translation id="4894390983254799375">જેમ કે ડિવાઇસ ID, નામ, OS વર્ઝન અને OS વપરાશકર્તાનું નામ</translation>
 <translation id="4895877746940133817"><ph name="TYPE_1" />, <ph name="TYPE_2" />, <ph name="TYPE_3" /></translation>
@@ -2351,6 +2364,7 @@
 <translation id="4943620199112228840">તમારા માઇક્રોફોનનોઉપયોગ કરો</translation>
 <translation id="4943872375798546930">પરિણામો નથી</translation>
 <translation id="494701040141924538">સમજાઈ ગયું, નોટિસ બંધ કરો</translation>
+<translation id="4951038790614970523">તમે ક્લિપબોર્ડ પર કટ કે કૉપિ કરો છો તે ટેક્સ્ટ વિશ્લેષણ માટે Google Cloud અથવા ત્રીજા પક્ષોને મોકલવામાં આવે છે. ઉદાહરણ તરીકે, તેમને કદાચ સંવેદનશીલ વ્યક્તિગત ડેટા માટે સ્કૅન કરવામાં આવી શકે છે અને કંપનીની પૉલિસીઓના આધારે સ્ટોર કરવામાં આવી શકે છે તથા તમારા ઍડમિનિસ્ટ્રેટર તેને જોઈ શકે છે.</translation>
 <translation id="495170559598752135">ક્રિયાઓ</translation>
 <translation id="4953689047182316270">ઍક્સેસિબિલિટી ઇવેન્ટનો જવાબ આપો</translation>
 <translation id="4954505713046251871">સૂચનો ઑફર કરવા અને આ સુવિધાને બહેતર બનાવવા માટે પેજનું URL તથા કન્ટેન્ટ, Google સાથે શેર કરવામાં આવે છે</translation>
@@ -2493,6 +2507,7 @@
 <translation id="5177076414499237632">આ પેજના સૉર્સ અને વિષય વિશે જાણો</translation>
 <translation id="5179490652562926740">ચુકવણીની ચકાસણીના સેટિંગ સાચવ્યા</translation>
 <translation id="5180662470511508940">કીબોર્ડ લૉક કરવાની મંજૂરી નથી</translation>
+<translation id="5180732217498483224"><ph name="APP_NAME" /> સૉર્સ ખોલો: <ph name="TITLE" /></translation>
 <translation id="5190072300954988691">કૅમેરા અને માઇક્રોફોનની મંજૂરી નથી</translation>
 <translation id="5190835502935405962">બુકમાર્ક બાર</translation>
 <translation id="5191315092027169558">તમારી પ્રોફાઇલ <ph name="DOMAIN" /> દ્વારા મેનેજ કરવામાં આવે છે</translation>
@@ -2584,6 +2599,7 @@
 <translation id="533323551986281710">સંપૂર્ણ સ્ક્રીનમાં જોઈ શકાય એવી રીતે કૉમર્સ બોટમ શીટ ખોલવામાં આવી</translation>
 <translation id="5334013548165032829">વિગતવાર સિસ્ટમ લૉગ</translation>
 <translation id="5340250774223869109">ઍપ્લિકેશન બ્લૉક કરેલી છે</translation>
+<translation id="5342666539242413840">ક્લિપબોર્ડ પર ટેક્સ્ટ કૉપિ કરવામાં આવી છે</translation>
 <translation id="5342693890921195472">મિનિટ પહેલાં</translation>
 <translation id="534295439873310000">NFC ડિવાઇસ</translation>
 <translation id="5344579389779391559">આ પેજ કદાચ તમારી પાસેથી શુલ્ક વસૂલ કરવાનો પ્રયાસ કરી શકે છે</translation>
@@ -2783,7 +2799,6 @@
 <translation id="5649053991847567735">ઑટોમૅટિક રીતે ડાઉનલોડ</translation>
 <translation id="5651323159439184939">ટ્રેક્ટર ફીડ</translation>
 <translation id="5653681867130739344">Google Walletમાં ઓળખ કાર્ડ સુરક્ષિત રીતે અપડેટ કરો</translation>
-<translation id="5653744563415531641">તમારી માહિતી સાચવો અને Googleની તમામ પ્રોડક્ટ પર ફોર્મ ભરવા જેવી બાબતો વધુ ઝડપથી કરો. તમે <ph name="ACCOUNT" /> માટે <ph name="MANAGE_WALLET_SETTINGS_LINK" /> કરી શકો છો.</translation>
 <translation id="5654927323611874862">અપલોડ કરેલા ક્રૅશ રિપોર્ટનું ID:</translation>
 <translation id="5654965123204121933">આ URLમાં બદલવાની આવશ્યક <ph name="SEARCH_TERMS_REPLACEMENT" /> સ્ટ્રિંગ શામેલ નથી: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">ઇમેઇલ</translation>
@@ -2990,6 +3005,7 @@
 <translation id="6025416945513303461"><ph name="TYPE_1" />, <ph name="TYPE_2" />, <ph name="TYPE_3" /> (સમન્વયિત)</translation>
 <translation id="6025471531651464742">ફાઇલો ઉમેરો</translation>
 <translation id="6028591542479806248">મોબાઇલ અને ઇમેઇલ નોટિફિકેશન મેનેજ કરો</translation>
+<translation id="6029805223627823735"><ph name="LAUNCH_ISOLATED_FOCUSED_FRIENDLY_MATCH_TEXT" />, ખાનગી રીતે બ્રાઉઝ કરવા નવી આઇસોલેટેડ વિન્ડો ખોલવા માટે Tab પછી Enter દબાવો</translation>
 <translation id="603068602130820122">જમણી બાજુએ બે સ્ટેપલ લગાવો</translation>
 <translation id="6031824805267965302">તમારા મોશન સેન્સરનો ઉપયોગ કરો</translation>
 <translation id="6032524144326295339">મેઇલબૉક્સ 2</translation>
@@ -3136,6 +3152,7 @@
 <translation id="6263376278284652872"><ph name="DOMAIN" /> બુકમાર્ક</translation>
 <translation id="6264376385120300461">તેમ છતાં ડાઉનલોડ કરો</translation>
 <translation id="6264485186158353794">સુરક્ષા પર પાછા</translation>
+<translation id="6264507470395196064">સુરક્ષિત ગેટવે</translation>
 <translation id="6264636978858465832">Password Managerને વધુ ઍક્સેસની જરૂર છે</translation>
 <translation id="6265794661083428563"><ph name="POLICY_NAME" /> નીતિનું મૂલ્ય કૉપિ કરો</translation>
 <translation id="6271264012613848937">તમારી સંસ્થાની પૉલિસીઓને કારણે તમને <ph name="URL" />ની મુલાકાત લેવાથી બ્લૉક કરવામાં આવ્યા હતા. જો તે અણધાર્યું હોય, તો તમારા ઍડમિનિસ્ટ્રેટરનો સંપર્ક કરો.</translation>
@@ -3163,6 +3180,7 @@
 <translation id="6311410654831092784">કાર્ડ સ્ટોક</translation>
 <translation id="6311642842034740437">આ નામથી ઓળખાતું લોકેશન</translation>
 <translation id="6312113039770857350">વેબપેજ ઉપલબ્ધ નથી</translation>
+<translation id="6313189007657889655">ઑર્ડર ID</translation>
 <translation id="6316110367871394043"><ph name="CLOUD_PROVIDER" /> પર ફાઇલ અપલોડ કરવાની પ્રક્રિયા થોભાવવામાં આવી છે</translation>
 <translation id="63172326633386613">ઍક્સેસિબિલિટી સેટિંગ મેનેજ કરો</translation>
 <translation id="6319672966240656136">આ સાઇટ બ્લૉક થયેલી રહેશે કારણ કે તમે Googleના અદ્યતન સુરક્ષા પ્રોગ્રામ હેઠળ છો. <ph name="BEGIN_LEARN_MORE_LINK" />આ ચેતવણી વિશે વધુ જાણો<ph name="END_LEARN_MORE_LINK" /></translation>
@@ -3232,7 +3250,6 @@
 <translation id="6410264514553301377"><ph name="CREDIT_CARD" /> માટે સમાપ્તિ તારીખ અને CVC દાખલ કરો</translation>
 <translation id="6411107829285739505">A4x8</translation>
 <translation id="6412543105195503444">માતાપિતાની મંજૂરીનો સંવાદ</translation>
-<translation id="6413532517183895572">તમારા Walletના સેટિંગ મેનેજ કરો</translation>
 <translation id="6415778972515849510">Chromium તમારા Google એકાઉન્ટને સુરક્ષિત કરવામાં અને તમારો પાસવર્ડ બદલવામાં તમારી સહાય કરી શકે છે.</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">ખાતરી કરો કે કોઈપણ મહત્ત્વપૂર્ણ વ્યાવસાયિક અથવા વ્યક્તિગત ડેટા બહાર સ્ટોર થયેલો છે.</translation>
@@ -3345,6 +3362,7 @@
 <translation id="6630043285902923878">USB ડિવાઇસ શોધી રહ્યાં છીએ...</translation>
 <translation id="6630388727238334626">'Chrome સેટિંગ મેનેજ કરો' બટન, તમારા Chrome સેટિંગની મુલાકાત લેવા માટે સક્રિય કરો</translation>
 <translation id="663260587451432563">JIS B4</translation>
+<translation id="6634706903707808689">આગળની સાઇટની મુલાકાત લેવા માટે, તમારી સંસ્થાની આવશ્યકતા છે કે તમે તમારા મેનેજ કરેલા Google એકાઉન્ટ વડે સાઇન ઇન કરો.</translation>
 <translation id="6635900375070654124">પ્રમાણકર્તા ડિવાઇસ</translation>
 <translation id="6641852376826221947">તમારી ખરીદી કન્ફર્મ કરો</translation>
 <translation id="6643016212128521049">સાફ કરો</translation>
@@ -3534,6 +3552,7 @@
 <translation id="6957153644870901611">વધુ ફીલ્ડ ઑટોમૅટિક રીતે ભરવા માટે વધુ સારી બનાવેલી ઑટોમૅટિક રીતે ભરવાની સુવિધા ચાલુ કરો</translation>
 <translation id="6957887021205513506">સર્વરનું પ્રમાણપત્ર બનાવટી હોય એવું લાગે છે.</translation>
 <translation id="6958564499836457428">તમારા Google એકાઉન્ટમાં Google પ્રાઇવસી સેટિંગ મેનેજ કરો</translation>
+<translation id="6961161369573226336">Google Password Manager તમારા માટે તમારા Gmail <ph name="EMAIL" />માંથી આ કોડ મેળવી શકે છે. તમે તમારો વિચાર બદલી શકો છો અને <ph name="IDS_AUTOFILL_GMAIL_OTP_OPT_IN_LEARN_MORE_LINK" />.</translation>
 <translation id="6961844873822989059">તમારા ડિવાઇસમાં ઇન્સ્ટૉલ કરેલા ફૉન્ટનો ઉપયોગ કરવાનું પૂછી શકે છે</translation>
 <translation id="6962858948849099922">ખસેડવાનો સમય સમાપ્ત થયો</translation>
 <translation id="6963520811470373926">જગ્યા લઈ રહી છે</translation>
@@ -3611,6 +3630,7 @@
 <translation id="70846382339153529">OpenDocument ટેક્સ્ટ</translation>
 <translation id="7086090958708083563">વપરાશકર્તાએ અપલોડની વિનંતી કરી છે</translation>
 <translation id="7090698782953528257">ગણિતના સમીકરણને વિઝ્યુઅલાઇઝ કરવા અને વક્રનો આકાર જોવા માટે ફંક્શનનો ગ્રાફ બનાવવામાં મારી મદદ કરો</translation>
+<translation id="7092087596499105699">તમારી સંસ્થાની ખાનગી વેબ ઍપ્લિકેશનના ઍક્સેસને સુરક્ષિત રાખવા માટે, તમારા ઍડમિનિસ્ટ્રેટરે સુરક્ષિત ગેટવે કનેક્ટરને ગોઠવ્યું છે. ઍક્સેસની ચકાસણી કરવા માટે, તે તમારી ઑફિસની પ્રોફાઇલના ડેટાનો ઉપયોગ કરી શકે છે.</translation>
 <translation id="7095139009144195559"><ph name="MANAGE_SITE_SETTINGS_FOCUSED_FRIENDLY_MATCH_TEXT" />, ટૅબ દબાવો અને પછી Chrome સેટિંગમાં પરવાનગીઓ અને સમગ્ર સાઇટનો સ્ટોર કરેલો ડેટા મેનેજ કરવા માટે Enter કી દબાવો</translation>
 <translation id="709604659664854823">આજે રાત્રે નજીકની રેસ્ટોરન્ટમાં છેલ્લી ઘડીનું રિઝર્વેશન શોધો</translation>
 <translation id="7096341143397839437">ઇમેઇલ: <ph name="EMAIL" />.</translation>
@@ -3736,12 +3756,12 @@
 <translation id="7308436126008021607">બૅકગ્રાઉન્ડ સિંક</translation>
 <translation id="7310392214323165548">ડિવાઇસ ટૂંક સમયમાં ફરી શરૂ થશે</translation>
 <translation id="7311244614769792472">કોઈ પરિણામ મળ્યું નથી</translation>
-<translation id="7311565174465466858"><ph name="TAB_KEY" /> <ph name="AI_ENGINE_NAME" />ને પૂછવા માટે Tab અને પછી Enter કી દબાવો</translation>
 <translation id="7313107491291103073">તમારી સંસ્થાએ આ સાઇટને ચિહ્નિત કરી છે કારણ કે તે પૉલિસીનું ઉલ્લંઘન કરી શકે છે.</translation>
 <translation id="7315372670898739748">લિંક કરવાનું નિષ્ફળ થયું, પછીથી ફરી પ્રયાસ કરો</translation>
 <translation id="7316521168101843192">ફાઇલને Microsoft OneDriveમાં સાચવી રહ્યાં છીએ</translation>
 <translation id="7319430975418800333">A3</translation>
 <translation id="7320336641823683070">કનેક્શન સહાય</translation>
+<translation id="7328315434053660512">આઇસોલેટેડ વિન્ડો ખોલો</translation>
 <translation id="733354035281974745">ડિવાઇસ સ્થાનિક એકાઉન્ટ ઓવરરાઇડ</translation>
 <translation id="7334320624316649418">&amp;પુનઃક્રમાંકિત કરવું ફરી કરો</translation>
 <translation id="7335157162773372339">તમારા કૅમેરાનો ઉપયોગ કરવાનું પૂછી શકે છે</translation>
@@ -3790,6 +3810,7 @@
 <translation id="7402375256128852434">તાજેતરના ટૅબ ઉમેરો</translation>
 <translation id="7403392780200267761">આ લિંક શેર કરીને, કોઈ QR કોડ બનાવીને, કાસ્ટ કરીને અને વધુ વિકલ્પો વડે આ ટૅબ શેર કરો</translation>
 <translation id="7403591733719184120">તમારું <ph name="DEVICE_NAME" /> મેનેજ કરવામાં આવે છે</translation>
+<translation id="7404785524901232736">{NUM_SOURCES,plural, =1{સૂચન કાઢી નાખ્યું. તમારો ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં.}one{સૂચન કાઢી નાખ્યું. તમારો ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં.}other{સૂચન કાઢી નાખ્યું. તમારા ઑરિજિનલ સૉર્સ ડિલીટ કરવામાં આવશે નહીં.}}</translation>
 <translation id="7405878640835614059"><ph name="ENROLLMENT_DOMAIN" /> દ્વારા વધારાના કાર્યો માટે ઍપ્લિકેશન ઇન્સ્ટૉલ કરવામાં આવી છે. ઍપ્લિકેશન તમારા અમુક ડેટાનો ઍક્સેસ ધરાવે છે.</translation>
 <translation id="740691708085211707">Chromeની ઑટોમૅટિક રીતે ભરવાની સુવિધામાંથી તમારી ઑફિસનું સરનામું કાઢી નાખીએ?</translation>
 <translation id="7407424307057130981">&lt;p&gt;જો તમે તમારા Windows કમ્પ્યુટર પર Superfish સૉફ્ટવેર ધરાવો છો, તો તમને આ ભૂલ દેખાશે.&lt;/p&gt;
@@ -3840,7 +3861,6 @@
 <translation id="7470854469646445678">કૉપિ કરવા માટેનું કારણ આપો (આવશ્યક છે)</translation>
 <translation id="7471007961486718967">ટ્રાન્સફર કરવા માટેનું કારણ આપો (આવશ્યક છે)</translation>
 <translation id="7473033553872550521">તમે સાઇટ માલિકનો સંપર્ક કરીને તેમને HTTPS પર અપગ્રેડ કરવાનું સૂચન પણ કરી શકો છો. <ph name="LEARN_MORE" /></translation>
-<translation id="7473555040328423550">ટૅબ ઉમેરો</translation>
 <translation id="7473891865547856676">ના, આભાર</translation>
 <translation id="7475618719385705713">આ પેજ બ્લૉક કરેલું છે</translation>
 <translation id="7481312909269577407">ફોર્વર્ડ કરો</translation>
@@ -3858,6 +3878,7 @@
 <translation id="7500917112031739411">ગ્રૂપ અનુસાર બતાવો</translation>
 <translation id="7501663406926337752">આગળની સાઇટ તમારી સંસ્થા દ્વારા ચિહ્નિત કરવામાં આવી છે</translation>
 <translation id="7502044688973049724">તમારી માહિતી મેનેજ કરો</translation>
+<translation id="7506748477220312995">સૂચન માટેના સૉર્સ</translation>
 <translation id="7507075214339298899">એન્વલપ #9</translation>
 <translation id="7508255263130623398">પરત થયેલું પૉલિસી ડિવાઇસ id ખાલી છે અથવા વર્તમાન ટોકન સાથે મેળ ખાતું નથી</translation>
 <translation id="7511707705708508147">ચલણ સપોર્ટેડ નથી</translation>
@@ -3866,7 +3887,6 @@
 <translation id="7514365320538308">ડાઉનલોડ કરો</translation>
 <translation id="7515998400212163428">Android</translation>
 <translation id="7516123895971374904">આ વખતે VRને મંજૂરી આપવામાં આવી</translation>
-<translation id="7517198908921983825">Gemini દ્વારા સૂચિત · <ph name="SOURCES" /></translation>
 <translation id="7517414872996418597">એન્વલપ C10</translation>
 <translation id="7518003948725431193">વેબ ઍડ્રેસ માટે કોઈ વેબપેજ મળ્યું નથી: <ph name="URL" /></translation>
 <translation id="7521387064766892559">JavaScript</translation>
@@ -3882,6 +3902,7 @@
 <translation id="753713322968419914">Chromeની ઑટોમૅટિક રીતે ભરવાની સુવિધામાંથી તમારા ઘરનું સરનામું કાઢી નાખીએ?</translation>
 <translation id="753714465667062283">તમારો ફોટો સાચવવા માટે સાઇન ઇન કરો</translation>
 <translation id="7537536606612762813">ફરજિયાત</translation>
+<translation id="7540924742308928499">સામૂહિક રીતે સમસ્યાનું સમાધાન કરો અને સારાંશ આપો</translation>
 <translation id="7543525346216957623">તમારા માતા-પિતાને કહો</translation>
 <translation id="7546409722674205727"><ph name="APP_NAME" /> શરૂ થઈ રહી છે</translation>
 <translation id="7548892272833184391">કનેક્શન ભૂલો સુધારો</translation>
@@ -4008,6 +4029,7 @@
 <translation id="7718626066800460799">સ્કૅન સાચવી શકતા નથી</translation>
 <translation id="772128550427553158">CVC તમારા કાર્ડની આગળના ભાગ પર હોય છે.</translation>
 <translation id="7724603315864178912">કાપો</translation>
+<translation id="7726402116075326231">ખાનગી રીતે બ્રાઉઝ કરવા માટે, નવી આઇસોલેટેડ વિન્ડો ખોલો</translation>
 <translation id="7730057435797792985">સૉર્ટ કરો</translation>
 <translation id="7734285854693414638">Google Formsમાં ઝડપથી કોઈ નવું ફોર્મ બનાવો</translation>
 <translation id="773466115871691567">હંમેશાં પેજનો <ph name="SOURCE_LANGUAGE" />માં અનુવાદ કરો</translation>
@@ -4140,6 +4162,7 @@
 <translation id="7955105108888461311">રૂબરૂ પૂછો</translation>
 <translation id="7956713633345437162">મોબાઇલ બુકમાર્ક</translation>
 <translation id="7961015016161918242">ક્યારેય નહીં</translation>
+<translation id="7961493403319780137">આ સુવિધા વિશે વધુ જાણો - Gmailમાંથી ચકાસણી કોડ ઑટોમૅટિક રીતે ભરવાની સુવિધા</translation>
 <translation id="7962467575542381659">પ્લૅટફૉર્મ મશીન</translation>
 <translation id="796439090588610411">Chrome સપોર્ટેડ સાઇટ પર આ ઇમેઇલ ઍડ્રેસને ઑટોમૅટિક રીતે કન્ફર્મ કરવાનું બંધ કરશે.</translation>
 <translation id="7966803981046576691">જોબ એકાઉન્ટનો પ્રકાર</translation>
@@ -4199,6 +4222,7 @@
 <translation id="8075898834294118863">સાઇટ સેટિંગ મેનેજ કરો</translation>
 <translation id="8076492880354921740">ટૅબ્સ</translation>
 <translation id="8076880883123051368">તમારા Google એકાઉન્ટમાં <ph name="BEGIN_LINK_GMA" />myactivity.google.com<ph name="END_LINK_GMA" /> પર બ્રાઉઝિંગ ઇતિહાસના અન્ય સ્વરૂપો હોઈ શકે છે, જેમ કે તમારી <ph name="BEGIN_LINK_GAA" />Gemini ઍપ ઍક્ટિવિટી<ph name="END_LINK_GAA" /></translation>
+<translation id="8077465698530018904">પસંદ કરેલો પ્રદેશ કાઢી નાખો</translation>
 <translation id="8077669823243888800">એન્વલપ ચાઇનીઝ #8</translation>
 <translation id="8078006011486731853">{0,plural, =1{શું ગોપનીય ફાઇલ અપલોડ કરીએ?}one{શું ગોપનીય ફાઇલ અપલોડ કરીએ?}other{શું ગોપનીય ફાઇલો અપલોડ કરીએ?}}</translation>
 <translation id="8079031581361219619">સાઇટ ફરીથી લોડ કરીએ?</translation>
@@ -4217,6 +4241,7 @@
 <translation id="8099473231501330216">ડિલીટ કરવા માટે કહો</translation>
 <translation id="8103161714697287722">ચુકવણીની પદ્ધતિ</translation>
 <translation id="8103643211515685474">કોઈપણ રીતે પ્રિન્ટ કરો</translation>
+<translation id="8104153649317588511">સૉર્સ શીટ બંધ કરવામાં આવી</translation>
 <translation id="8105368624971345109">બંધ કરો</translation>
 <translation id="810875025413331850">નજીકમાં કોઈ ડિવાઇસ ન મળ્યું.</translation>
 <translation id="8116925261070264013">મ્યૂટ કરેલ</translation>
@@ -4358,7 +4383,6 @@
 <translation id="8350416046273606058">શૉર્ટકટમાં સ્પેસ શામેલ હોઈ શકે નહીં: "<ph name="SHORTCUT_NAME" />"</translation>
 <translation id="8351131234907093545">નોંધ બનાવો</translation>
 <translation id="8352849934814541340">આ ડિવાઇસના ઍડમિનિસ્ટ્રેટર દ્વારા વધારાના કાર્યો માટે ઍપ્લિકેશન ઇન્સ્ટૉલ કરવામાં આવી છે. ઍપ્લિકેશન તમારા અમુક ડેટાનો ઍક્સેસ ધરાવે છે.</translation>
-<translation id="8353273112634584260">Gemini સાથે પર્સનલ ઇન્ટેલિજન્સ દ્વારા સંચાલિત. ઑટોમૅટિક રીતે ભરવાની બહેતર સુવિધાને બહેતર બનાવવા માટે, તમારી વિનંતીઓ, પેજના શીર્ષકો અને URLsનો રિવ્યૂ કરવામાં આવી શકે છે.</translation>
 <translation id="8355270400102541638">સ્થાનિક ક્રૅશ સંદર્ભ:</translation>
 <translation id="8362914115861174987">આ ભાષામાં અનુવાદ કરો</translation>
 <translation id="8363502534493474904">એરપ્લેન મોડ બંધ કરીને</translation>
@@ -4538,7 +4562,6 @@
 <translation id="8699041776323235191">HID ડિવાઇસ</translation>
 <translation id="8699985386408839112">એન્વલપ કાકૂ 1</translation>
 <translation id="8702965365666568344">માઉન્ટિંગ ટેપ</translation>
-<translation id="8703242769654966101">Walletમાં Pix ચાલુ કરો</translation>
 <translation id="8703372953981978786">આ લિંક કામ કરતી નથી</translation>
 <translation id="8703575177326907206"><ph name="DOMAIN" /> સાથેનું તમારું કનેક્શન એન્ક્રિપ્ટેડ નથી.</translation>
 <translation id="8705331520020532516">અનુક્રમ નંબર</translation>
@@ -4705,7 +4728,7 @@
 <translation id="8997023839087525404">સર્વરે એવું પ્રમાણપત્ર પ્રસ્તુત કર્યું કે જે પ્રમાણપત્ર પારદર્શિતા નીતિનો ઉપયોગ કરીને સાર્વજનિક રીતે જાહેર કર્યું ન હતું. આ કેટલાક પ્રમાણપત્રો માટે એ ખાતરી કરવા હેતુ આવશ્યક છે કે તેઓ વિશ્વસનીય છે અને હુમલાખારો સામે રક્ષણ કરે છે.</translation>
 <translation id="9001074447101275817">પ્રૉક્સી <ph name="DOMAIN" />ને વપરાશકર્તાનામ અને પાસવર્ડની જરૂર છે.</translation>
 <translation id="9001963517402879850">કૂદો!</translation>
-<translation id="9003263770394939629">Gemini દ્વારા સૂચિત. સેટિંગમાં જઈને વધુ સારી બનાવેલી ઑટોમૅટિક રીતે ભરવાની સુવિધા મેનેજ કરો.</translation>
+<translation id="9002677862950442746">ચકાસણી કોડ: <ph name="OTP" /></translation>
 <translation id="9003639428623471314">એન્વલપ કાહૂ</translation>
 <translation id="9004367719664099443">VR સત્ર ચાલુ છે</translation>
 <translation id="9005998258318286617">PDF દસ્તાવેજ લોડ કરવામાં નિષ્ફળ થયાં.</translation>
@@ -4724,7 +4747,6 @@
 <translation id="9027531288681624875">પૂર્ણ સ્ક્રીનમાંથી બહાર નીકળવા માટે, |<ph name="ACCELERATOR" />| દબાવી રાખો</translation>
 <translation id="9030785788945687215">Gmail</translation>
 <translation id="9035022520814077154">સુરક્ષા ભૂલ</translation>
-<translation id="9035699147763101514">Gemini સાથે પર્સનલ ઇન્ટેલિજન્સ દ્વારા સંચાલિત. સેટિંગમાં તમારી પસંદગીઓ મેનેજ કરો.</translation>
 <translation id="9035824888276246493">સુરક્ષા કોડ સાચવો</translation>
 <translation id="9036306139374661733">શું માઇક્રોફોનની મંજૂરી આપીએ?</translation>
 <translation id="9036484080057916082">હસ્તાક્ષરિત સર્ટિફિકેટ ટાઇમસ્ટેમ્પની સૂચિ</translation>
@@ -4865,6 +4887,7 @@
 <translation id="949026252328034572"><ph name="MEMBER_COUNT" /> સભ્યો "<ph name="GROUP_NAME" />" ટૅબના ગ્રૂપમાં જોડાયા</translation>
 <translation id="949314938206378263">તમે આ સાઇટની મુલાકાત લેવા કહ્યું. તમારા માતાપિતા Family Linkમાં જવાબ આપી શકે છે.</translation>
 <translation id="949484466204182817">Google Walletમાં નિવારણ નંબર ઉમેરો</translation>
+<translation id="950533895669718124">સેટિંગમાં આ સુવિધા વિશે વધુ જાણો</translation>
 <translation id="950736567201356821">ઉપરની બાજુએ ત્રણ કાણાં પાડો</translation>
 <translation id="950926967802086924">પાસકી • Google Password Manager</translation>
 <translation id="952165179818196872">ઍપ સ્વિચ કર્યા વિના ચુકવણી કરવા માટે <ph name="PROVIDER" /> ઉમેરો</translation>
@@ -4878,7 +4901,6 @@
 <translation id="961930410699694996">આ વખતે લોકેશનને મંજૂરી આપી છે</translation>
 <translation id="962484866189421427">આ કન્ટેન્ટ કદાચ ભ્રામક ઍપ ઇન્સ્ટૉલ કરવાનો પ્રયાસ કરે છે કે જે પોતાની ખોટી ઓળખ આપે છે અથવા તમને ટ્રૅક કરવા માટે ઉપયોગમાં લઈ શકાય તેવો ડેટા મેળવે છે. <ph name="BEGIN_LINK" />તો પણ બતાવો<ph name="END_LINK" /></translation>
 <translation id="963734905955638680">તમારા પ્રદેશના કાયદાના આધારે, Chromium તમને તમારું ડિફૉલ્ટ શોધ એન્જિન પસંદ કરવા માટે કહે છે. આ શોધ એન્જિન તમારા પ્રદેશમાં લોકપ્રિય છે અને તેમને કોઈપણ ક્રમમાં બતાવવામાં આવ્યા છે.</translation>
-<translation id="963837307749850257">બધા વપરાશકર્તાઓ</translation>
 <translation id="963988220224168636">Google Walletમાં નિવારણ નંબર સુરક્ષિત રીતે ઉમેરો</translation>
 <translation id="964050462028070434">પાસવર્ડ અને પાસકી મેનેજ કરો…</translation>
 <translation id="964681140808832181">હા, હું રદ કરવા માગું છું</translation>
@@ -4893,6 +4915,7 @@
 <translation id="98237783946365638">Google Walletમાં ઓળખ કાર્ડ સુરક્ષિત રીતે સાચવો</translation>
 <translation id="983587187183716432"><ph name="AI_ENGINE_NAME" /> બટન, <ph name="AI_ENGINE_NAME" /> પૂછવા માટે Enter દબાવો</translation>
 <translation id="984275831282074731">ચુકવણી પદ્ધતિઓ</translation>
+<translation id="984950103108016064"><ph name="EMAIL" /> તરફથી</translation>
 <translation id="985199708454569384">&lt;p&gt;જો તમારા કમ્પ્યુટર અથવા મોબાઇલ ઉપકરણની તારીખ અને સમય સચોટ નહીં હોય, તો તમને આ ભૂલ દેખાશે.&lt;/p&gt;
     &lt;p&gt;આ ભૂલ સુધારવા માટે, તમારા ઉપકરણની ઘડિયાળ ખોલો. ખાતરી કરો કે સમય અને તારીખ સાચાં છે.&lt;/p&gt;</translation>
 <translation id="987264212798334818">સામાન્ય</translation>

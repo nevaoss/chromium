@@ -18,6 +18,7 @@
 #include "base/strings/string_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#include "net/base/net_errors.h"
 #include "net/http/http_byte_range.h"
 #include "net/http/http_request_headers.h"
 #include "services/network/public/cpp/cors/cors.h"
@@ -148,7 +149,8 @@ void ResourceMultiBufferDataProvider::Start() {
     active_loader_ = url_index->fetch_context()->CreateUrlLoader(options);
     active_loader_->LoadAsynchronously(request, this);
   } else {
-    url_data_->Fail();
+    task_runner_->PostTask(FROM_HERE,
+                           blink::BindOnce(&UrlData::Fail, url_data_));
   }
 }
 
@@ -259,11 +261,18 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
     return;  // "this" may be deleted now.
   }
 
+  // Keep a reference to `url_data_` across `GetByUrl()` and `TryInsert()`. If
+  // `UrlIndex` holds the sole reference to `url_data_` and `TryInsert()`
+  // replaces it with a new `UrlData` for the same key, `url_data_` (which owns
+  // `this` via `multibuffer()`) would otherwise be destroyed before ownership
+  // of `this` is transferred below.
+  scoped_refptr<UrlData> old_url_data(url_data_.get());
   scoped_refptr<UrlData> destination_url_data(url_data_.get());
 
   if (!redirects_to_.IsEmpty()) {
     destination_url_data = url_data_->url_index()->GetByUrl(
-        redirects_to_, cors_mode_, url_data_->cache_lookup_mode());
+        redirects_to_, cors_mode_, url_data_->cache_lookup_mode(),
+        url_data_->security_origin(), url_data_->encoding_mode());
     redirects_to_ = KURL();
   }
 
@@ -289,7 +298,8 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
   bool end_of_file = false;
   bool do_fail = false;
   // We get the response type here because aborting the loader may change it.
-  const auto response_type = response.GetType();
+  const bool is_cors_cross_origin =
+      network::cors::IsCorsCrossOriginResponseType(response.GetType());
   bytes_to_discard_ = 0;
 
   // We make a strong assumption that when we reach here we have either
@@ -319,10 +329,13 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
       // to return.
       destination_url_data->set_length(content_length);
       bytes_to_discard_ = byte_pos();
-    } else if (response.HttpStatusCode() == kHttpRangeNotSatisfiable) {
+    } else if (response.HttpStatusCode() == kHttpRangeNotSatisfiable &&
+               !is_cors_cross_origin) {
       // Unsatisfiable range
       // Really, we should never request a range that doesn't exist, but
-      // if we do, let's handle it in a sane way.
+      // if we do, let's handle it in a sane way. Opaque responses are
+      // excluded so a service-worker-replayed 416 takes the same failure
+      // path as a 206 with a mismatched Content-Range.
       // Note, we can't just call OnDataProviderEvent() here, because
       // url_data_ hasn't been updated to the final destination yet.
       end_of_file = true;
@@ -344,8 +357,7 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
   }
 
   // This is vital for security!
-  destination_url_data->set_is_cors_cross_origin(
-      network::cors::IsCorsCrossOriginResponseType(response_type));
+  destination_url_data->set_is_cors_cross_origin(is_cors_cross_origin);
 
   // Only used for metrics.
   {
@@ -367,9 +379,6 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
   if (destination_url_data != url_data_.get()) {
     // At this point, we've encountered a redirect, or found a better url data
     // instance for the data that we're about to download.
-
-    // First, let's take a ref on the current url data.
-    scoped_refptr<UrlData> old_url_data(url_data_.get());
     destination_url_data->Use();
 
     // Take ownership of ourselves. (From the multibuffer)
@@ -382,7 +391,11 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
     // Call callback to let upstream users know about the transfer.
     // This will merge the data from the two multibuffers and
     // cause clients to start using the new UrlData.
+    auto weak_this = weak_factory_.GetWeakPtr();
     old_url_data->RedirectTo(destination_url_data);
+    if (!weak_this) {
+      return;  // "this" may be deleted now.
+    }
   }
 
   if (do_fail) {
@@ -457,7 +470,7 @@ void ResourceMultiBufferDataProvider::DidReceiveData(
   // Beware, this object might be deleted here.
 }
 
-void ResourceMultiBufferDataProvider::DidDownloadData(uint64_t dataLength) {
+void ResourceMultiBufferDataProvider::DidDownloadData(uint64_t data_length) {
   NOTIMPLEMENTED();
 }
 
@@ -510,6 +523,16 @@ void ResourceMultiBufferDataProvider::DidFail(const WebURLError& error) {
   DVLOG(1) << "didFail: reason=" << error.reason();
   DCHECK(active_loader_.get());
   active_loader_.reset();
+
+  // ORB only blocks cross-origin no-cors responses, which are opaque. Record
+  // this so that the failure is not distinguishable from other opaque
+  // failures (e.g. via error messages exposed by the media element). An ORB
+  // block is also deterministic, so fail immediately rather than retrying.
+  if (error.reason() == net::ERR_BLOCKED_BY_ORB) {
+    url_data_->set_is_cors_cross_origin(true);
+    url_data_->Fail();
+    return;  // "this" may be deleted now.
+  }
 
   if (url_data_->url_index() && retries_ < kMaxRetries && pos_ != 0) {
     retries_++;

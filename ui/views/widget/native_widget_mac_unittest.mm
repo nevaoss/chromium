@@ -96,6 +96,7 @@ class WidgetModalVisibilityObserver : public views::WidgetObserver {
 @interface NativeWidgetMacTestWindow : NativeWidgetMacNSWindow
 @property(readonly, nonatomic) int invalidateShadowCount;
 @property(assign, nonatomic) BOOL fakeOnInactiveSpace;
+@property(assign, nonatomic) BOOL fakeOcclusionStateVisible;
 @property(assign, nonatomic) bool* deallocFlag;
 @end
 
@@ -1167,6 +1168,64 @@ TEST_F(NativeWidgetMacTest, CloseWhileMinimized) {
   EXPECT_FALSE(widget->GetCompositor()->IsVisible());
 
   // Close the widget while minimized and invisible.
+  widget->CloseNow();
+}
+
+// Tests that switching to an inactive space hides the compositor, and
+// that the window becoming visible via occlusion notifications (e.g. during a
+// swipe gesture before the active space finishes changing) wakes up the
+// compositor early and resumes painting.
+TEST_F(NativeWidgetMacTest, CompositorVisibilityOnSpaceChange) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/
+      {features::kNotifyCompositorOfSpaceVisibilityOnMacOs,
+       ::features::kDetectSpaceChangeViaOcclusion},
+      /*disabled_features=*/{});
+
+  NativeWidgetMacTestWindow* test_window;
+  Widget::InitParams init_params =
+      CreateParams(Widget::InitParams::TYPE_WINDOW);
+  init_params.bounds = gfx::Rect(100, 100, 300, 300);
+  Widget* widget =
+      CreateWidgetWithTestWindow(std::move(init_params), &test_window);
+
+  auto* view = widget->GetContentsView()->AddChildView(
+      std::make_unique<PaintCountView>());
+  view->WaitForPaintCount(1);
+  ASSERT_NE(nullptr, widget->GetCompositor());
+  EXPECT_TRUE(widget->GetCompositor()->IsVisible());
+
+  // 1. Move to inactive space -> compositor becomes invisible.
+  test_window.fakeOnInactiveSpace = YES;
+  [NSWorkspace.sharedWorkspace.notificationCenter
+      postNotificationName:NSWorkspaceActiveSpaceDidChangeNotification
+                    object:NSWorkspace.sharedWorkspace];
+  EXPECT_FALSE(widget->GetCompositor()->IsVisible());
+
+  // 2. Window gestures into view during a swipe (occlusion state becomes
+  // visible before the active space transition commits).
+  test_window.fakeOcclusionStateVisible = YES;
+  [NSNotificationCenter.defaultCenter
+      postNotificationName:NSWindowDidChangeOcclusionStateNotification
+                    object:test_window];
+  EXPECT_TRUE(widget->GetCompositor()->IsVisible());
+  view->WaitForPaintCount(2);
+
+  // 3. Reset fake occlusion state, then complete space transition.
+  test_window.fakeOcclusionStateVisible = NO;
+  [NSNotificationCenter.defaultCenter
+      postNotificationName:NSWindowDidChangeOcclusionStateNotification
+                    object:test_window];
+  EXPECT_FALSE(widget->GetCompositor()->IsVisible());
+
+  test_window.fakeOnInactiveSpace = NO;
+  [NSWorkspace.sharedWorkspace.notificationCenter
+      postNotificationName:NSWorkspaceActiveSpaceDidChangeNotification
+                    object:NSWorkspace.sharedWorkspace];
+  EXPECT_TRUE(widget->GetCompositor()->IsVisible());
+  view->WaitForPaintCount(3);
+
   widget->CloseNow();
 }
 
@@ -2636,113 +2695,6 @@ TEST_F(NativeWidgetMacTest, ChangeOpacity) {
   widget->CloseNow();
 }
 
-// Test that hiding and showing a window with kAlphaInsteadOfCATransaction
-// restores the configured opacity when hidden, and triggers opacity fix on
-// subsequent show only when `prevent_stale_content_after_hide` is set.
-TEST_F(NativeWidgetMacTest, HideAndShowOpacityWithAlphaFeature) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(::features::kAlphaInsteadOfCATransaction);
-
-  // Case 1: Window without prevent_stale_content_after_hide (default).
-  // Once the first frame arrives, subsequent hide-then-show does not reset
-  // alpha.
-  {
-    Widget* widget = CreateTopLevelPlatformWidget();
-    NSWindow* ns_window = widget->GetNativeWindow().GetNativeNSWindow();
-
-    widget->SetOpacity(0.7f);
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    // Showing the widget should set alphaValue to 0 until a compositor frame
-    // arrives.
-    widget->Show();
-    EXPECT_FLOAT_EQ(0.0f, [ns_window alphaValue]);
-
-    // Frame arrives, restoring opacity.
-    BridgedNativeWidgetTestApi(widget).SimulateFrameSwap(
-        widget->GetClientAreaBoundsInScreen().size());
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    // Hiding the widget.
-    widget->Hide();
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    // Showing it again does not reset alpha to 0 since
-    // prevent_stale_content_after_hide is false and frame size didn't change.
-    widget->Show();
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    widget->CloseNow();
-  }
-
-  // Case 2: Window with prevent_stale_content_after_hide = true.
-  // Hide-then-show sets alpha to 0 until a new compositor frame arrives.
-  {
-    auto widget = std::make_unique<Widget>();
-    Widget::InitParams params =
-        CreateParams(Widget::InitParams::CLIENT_OWNS_WIDGET,
-                     Widget::InitParams::TYPE_WINDOW);
-    params.prevent_stale_content_after_hide = true;
-    params.native_widget = new TestWindowNativeWidgetMac(widget.get());
-    widget->Init(std::move(params));
-    NSWindow* ns_window = widget->GetNativeWindow().GetNativeNSWindow();
-
-    widget->SetOpacity(0.7f);
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    // Showing the widget should set alphaValue to 0 until a compositor frame
-    // arrives.
-    widget->Show();
-    EXPECT_FLOAT_EQ(0.0f, [ns_window alphaValue]);
-
-    // Initial frame arrives.
-    BridgedNativeWidgetTestApi(widget.get())
-        .SimulateFrameSwap(widget->GetClientAreaBoundsInScreen().size());
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    // Hiding the widget.
-    widget->Hide();
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    // Showing it again sets alphaValue to 0 because
-    // prevent_stale_content_after_hide is true.
-    widget->Show();
-    EXPECT_FLOAT_EQ(0.0f, [ns_window alphaValue]);
-
-    // Fresh frame arrives, restoring opacity.
-    BridgedNativeWidgetTestApi(widget.get())
-        .SimulateFrameSwap(widget->GetClientAreaBoundsInScreen().size());
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    widget->CloseNow();
-  }
-
-  // Case 3: Window hidden before initial frame arrives.
-  {
-    Widget* widget = CreateTopLevelPlatformWidget();
-    NSWindow* ns_window = widget->GetNativeWindow().GetNativeNSWindow();
-
-    widget->SetOpacity(0.7f);
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    widget->Show();
-    EXPECT_FLOAT_EQ(0.0f, [ns_window alphaValue]);
-
-    // Hide before any frame arrives.
-    widget->Hide();
-    EXPECT_FLOAT_EQ(0.0f, [ns_window alphaValue]);
-
-    // Showing it again and receiving a frame restores opacity.
-    widget->Show();
-    EXPECT_FLOAT_EQ(0.0f, [ns_window alphaValue]);
-
-    BridgedNativeWidgetTestApi(widget).SimulateFrameSwap(
-        widget->GetClientAreaBoundsInScreen().size());
-    EXPECT_FLOAT_EQ(0.7f, [ns_window alphaValue]);
-
-    widget->CloseNow();
-  }
-}
 
 // Ensure traversing NSView focus correctly updates the views::FocusManager.
 TEST_F(NativeWidgetMacTest, ChangeFocusOnChangeFirstResponder) {
@@ -3554,6 +3506,7 @@ TEST_F(NativeWidgetMacTest, SizeChangeNotifiedBeforeMoveChange) {
 
 @synthesize invalidateShadowCount = _invalidateShadowCount;
 @synthesize fakeOnInactiveSpace = _fakeOnInactiveSpace;
+@synthesize fakeOcclusionStateVisible = _fakeOcclusionStateVisible;
 @synthesize deallocFlag = _deallocFlag;
 
 - (void)dealloc {
@@ -3570,6 +3523,16 @@ TEST_F(NativeWidgetMacTest, SizeChangeNotifiedBeforeMoveChange) {
 
 - (BOOL)isOnActiveSpace {
   return !_fakeOnInactiveSpace;
+}
+
+- (NSWindowOcclusionState)occlusionState {
+  if (_fakeOcclusionStateVisible) {
+    return [super occlusionState] | NSWindowOcclusionStateVisible;
+  }
+  if (_fakeOnInactiveSpace) {
+    return [super occlusionState] & ~NSWindowOcclusionStateVisible;
+  }
+  return [super occlusionState];
 }
 
 @end

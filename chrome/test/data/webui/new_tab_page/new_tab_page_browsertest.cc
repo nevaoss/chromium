@@ -167,6 +167,10 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, ActionChips) {
   RunTest("new_tab_page/action_chips/action_chips_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(NewTabPageTest, LeftHandSide) {
+  RunTest("new_tab_page/left_hand_side_test.js", "mocha.run()");
+}
+
 using NewTabPageNtpPromoTest = NewTabPageBrowserTest;
 
 IN_PROC_BROWSER_TEST_F(NewTabPageNtpPromoTest, IndividualPromosTest) {
@@ -378,11 +382,6 @@ IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, MAYBE_ActionChips) {
           "runMochaSuite('NewTabPageAppTest ActionChips')");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, ThreadsRail) {
-  RunTest("new_tab_page/app_test.js",
-          "runMochaSuite('NewTabPageAppTest ThreadsRail')");
-}
-
 IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, ReducedMotion) {
   RunTest("new_tab_page/app_test.js",
           "runMochaSuite('NewTabPageAppReducedMotionTest')");
@@ -409,7 +408,13 @@ IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, AutoRemovalToast) {
           "runMochaSuite('NewTabPageAppTest AutoRemovalToast')");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, VoiceSearchCoherence) {
+// TODO(crbug.com/527605085): Flaky timeout on Linux debug builds.
+#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
+#define MAYBE_VoiceSearchCoherence DISABLED_VoiceSearchCoherence
+#else
+#define MAYBE_VoiceSearchCoherence VoiceSearchCoherence
+#endif
+IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, MAYBE_VoiceSearchCoherence) {
   RunTest("new_tab_page/app_test.js",
           "runMochaSuite('NewTabPageAppTest VoiceSearchCoherence')");
 }
@@ -427,6 +432,11 @@ IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, ContextMenuAnimation) {
 IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, EnergyEffectVariant) {
   RunTest("new_tab_page/app_test.js",
           "runMochaSuite('NewTabPageAppTest EnergyEffectVariant')");
+}
+
+IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, LeftHandSide) {
+  RunTest("new_tab_page/app_test.js",
+          "runMochaSuite('NewTabPageAppTest LeftHandSide')");
 }
 
 class NewTabPageModulesMostRelevantTabResumptionModuleTest

@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Қайтару</translation>
 <translation id="2086334242442703436">Эмоджи таңдағышты ашу</translation>
 <translation id="2089550919269323883"><ph name="VM_NAME" /> орнатуға кәсіпорын саясаты бойынша тыйым салынды. Көмек алу үшін жүйе әкімшісіне хабарласыңыз. Қате коды – <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Chromebook-қа арналған Steam жаңалықтары</translation>
 <translation id="209965399369889474">Желіге жалғанбаған.</translation>
 <translation id="2107581415810719320">Басқа <ph name="BUTTON_NUMBER" />-түйме</translation>
 <translation id="2107914222138020205">USB-C кабелі Thunderbolt стандартын қолдамайды. Құрылғының өнімділігі шектелуі мүмкін.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">Не нәрсеге зейін қойғыңыз келеді? Тапсырма қосу үшін Enter пернесін басыңыз.</translation>
 <translation id="229397294990920565">Мобильдік интернет өшірілуде...</translation>
 <translation id="2295777434187870477">Микрофон қосулы. Егер түймені бассаңыз, кіріс дыбыс өшеді.</translation>
+<translation id="2296880470921996802">Буфер тарихын әкімшіңіз өшірді.</translation>
 <translation id="2302092602801625023">Бұл аккаунт Family Link арқылы басқарылады</translation>
 <translation id="2303600792989757991">Терезеде шолу режимін ауыстыру</translation>
 <translation id="2304702218354340897">Бетпен басқару функциясын расымен де өшіру қажет пе?</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">Офлайн саясат құрылғыға орнатылмады.</translation>
 <translation id="3039939407102840004">Стилус батареясының заряды – <ph name="PERCENTAGE" /> пайыз.</translation>
 <translation id="304097922505898963">Перне таңбашалары қолданбасын ашу</translation>
-<translation id="3040982432432547149">Chromebook құрылғысына арналған Steam қолданбасын жақсартуға көмектесіңіз</translation>
 <translation id="304417730895741346">Бекітілген және ашық қолданбалар сөреде орналасқан. Қолданбаны сөреге бекіту үшін қолданбаны тінтуірдің оң жақ түймесімен басыңыз немесе сенсорлық тақтаны екі саусақпен түртіңіз.</translation>
 <translation id="3045670165536837541">Жоғарғы оң жақ маркер таңдалды. жылжыту үшін бағыт пернелерін пайдаланыңыз.</translation>
 <translation id="3046178388369461825">Linux дискісінде өте аз орын қалды</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">Скриншот таңбашасын басыңыз</translation>
 <translation id="3702809606464356667">Терезелер қазіргі жұмыс үстелінен көрсетіліп тұр. Терезелерді барлық жұмыс үстелінен көрсету үшін жоғарыға бағыттауыш пернені басыңыз.</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">Ойын-сауық</translation>
 <translation id="370665806235115550">Жүктеліп жатыр…</translation>
 <translation id="3707093869106077605"><ph name="UNAVAILABLE_DLC_ONE" /> және <ph name="UNAVAILABLE_DLC_TWO" /> қолжетімді емес.</translation>
 <translation id="3708186454126126312">Бұған дейін жалғанғандар</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685">Бұл <ph name="APP_NAME" /> қолданбасының және камера рұқсаты бар барлық қолданба мен веб-сайттың камераны пайдалануына мүмкіндік береді. Веб-бетті жаңарту немесе қолданбаны өшіріп қосу керек болуы мүмкін.</translation>
 <translation id="3826099427150913765">Құпия сөзге ауысу</translation>
 <translation id="383058930331066723">Батареяны үнемдеу режимі қосулы.</translation>
-<translation id="3831226344927851293">Оқулық көрінісінен шығу</translation>
 <translation id="383629559565718788">Пернетақта параметрлерін көрсету</translation>
 <translation id="384082539148746321">Үлгі жойылсын ба?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, одан кейін <ph name="KEY_ONE" /> не <ph name="KEY_TWO" /> не <ph name="KEY_THREE" /> не <ph name="KEY_FOUR" /></translation>
@@ -1079,7 +1076,6 @@
 <translation id="4147911968024186208">Қайталап көруіңізді сұраймыз. Егер бұл қате қайта шықса, қолдау қызметі өкіліне хабарласыңыз.</translation>
 <translation id="4150201353443180367">Дисплей</translation>
 <translation id="4151054805501931758">Портреттік селфиді жақсарту</translation>
-<translation id="4151449637210235443">Бізге соңғы геймплейіңіз туралы айтып беріңіз</translation>
 <translation id="4156293514828496577">Батарея заряды — <ph name="PERCENTAGE" />% (шамамен <ph name="TIME_LEFT" /> қалды).
 Батарея жұмысын ұзарту үшін кейбір функцияларға шектеу қойылды.</translation>
 <translation id="4158003972857765638">Жаңа жұмыс үстелінде реттеу</translation>
@@ -1580,10 +1576,8 @@
 <translation id="5551974246223970793">Беттегі іздеу сұрауына сай келетін келесі нәтижеге өту</translation>
 <translation id="5556459405103347317">Қайта жүктеу</translation>
 <translation id="5558091555391176027">Nearby Share функциясының маңайдағыларға көріну режимін ауыстыру</translation>
-<translation id="5558314826121965174">Шығармашылық</translation>
 <translation id="556042886152191864">Түйме</translation>
 <translation id="5570122939431135380">Жаңа қойындыны жаңа инкогнито терезесінде ашу</translation>
-<translation id="5572632238877308040">Негізгі қолданбалар</translation>
 <translation id="5575528586625653441">Демо тіркеу сұрауына қатысты ақау орын алды.</translation>
 <translation id="557563299383177668">Келесі абзац</translation>
 <translation id="5577082622442191756">Bluetooth функциясын ауыстыру. <ph name="STATE_TEXT" />.</translation>
@@ -1618,7 +1612,6 @@
 <translation id="5667546120811588575">Google Play орнатылуда...</translation>
 <translation id="5669267381087807207">Белсендірілуде</translation>
 <translation id="5671658447180261823"><ph name="SUGGESTION_NAME" /> ұсынысын өшіру</translation>
-<translation id="5672890847723042801">Утилиталар</translation>
 <translation id="5673434351075758678">Параметрлер синхрондалғаннан кейін, "<ph name="FROM_LOCALE" />" тілі "<ph name="TO_LOCALE" />" тіліне өзгертілді.</translation>
 <translation id="5675363643668471212">Сөредегі элемент</translation>
 <translation id="5677022547882470786">Ізделетін аймақты таңдау үшін сүйреңіз немесе бос орын пернесін басыңыз.</translation>
@@ -1793,7 +1786,6 @@
 <translation id="6127395413317891856">Офлайн режимдесіз. Қосылымды тексеріп, әрекетті қайталап көріңіз.</translation>
 <translation id="6129953537138746214">Бос орын</translation>
 <translation id="6132714462430777655">Мектепке тіркелуді өткізіп жіберу керек пе?</translation>
-<translation id="6136872094979134163">Chromebook-қа арналған Steam жаңалықтарын алу мүмкін емес.</translation>
 <translation id="6137566720514957455"><ph name="USER_EMAIL_ADDRESS" /> аккаунтын өшіру диалогтік терезесін ашу</translation>
 <translation id="6141205840878048728">Не нәрсеге зейін қойғыңыз келеді?</translation>
 <translation id="6141988275892716286">Жүктеп алуды растау</translation>
@@ -1873,7 +1865,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, одан кейін <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> не <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">Белгісіз желілер</translation>
 <translation id="6359587239691116345">Соңғы шыққан функцияларды және қауіпсіздікті жақсарту мүмкіндіктерін пайдаланыңыз. Бұл жаңартуды қабылдамасаңыз, құрылғыңыз дұрыс жұмыс істемей, қауіпсіздік пен өнімділікке қатысты ақаулар туындауы мүмкін.</translation>
-<translation id="6362833380917912748">Ендірілген қолданбалармен танысыңыз</translation>
 <translation id="6364386432014869981">Ендірілген сенсорлық тақта қосылған</translation>
 <translation id="6376931439017688372">Bluetooth қосулы</translation>
 <translation id="6378515133128829137">Терезені оңға бекіту</translation>
@@ -2098,7 +2089,6 @@
 <translation id="7014684956566476813">"<ph name="DEVICE_NAME" />" деп аталатын құрылғыға қосылды.</translation>
 <translation id="7015766095477679451">Сағат <ph name="COME_BACK_TIME" /> болғанда, қайта қолданып көріңіз.</translation>
 <translation id="70168403932084660">6-шы жұмыс үстелі</translation>
-<translation id="702252130983202758">Қолданбаларыңыз</translation>
 <translation id="7025533177575372252"><ph name="DEVICE_NAME" /> құрылғысын телефонға жалғаңыз</translation>
 <translation id="7026338066939101231">Кему</translation>
 <translation id="7029307918966275733">Crostini орнатылмаған. Балансты көру үшін Crostini қолданбасын орнатыңыз.</translation>
@@ -2537,7 +2527,6 @@
 <translation id="8277261673056602147">Экрандағы мәтінді ерекшелеу</translation>
 <translation id="8281886186245836920">Өткізіп жіберу</translation>
 <translation id="8282784978194352587">Жарайсыз!</translation>
-<translation id="8287009018010202411">Өнімділік</translation>
 <translation id="828708037801473432">Өшірулі</translation>
 <translation id="8289128870594824098">Диск көлемі</translation>
 <translation id="8297006494302853456">Әлсіз</translation>
@@ -2632,7 +2621,6 @@
 <translation id="8598235756057743477">Қолданбаларды атауы немесе түсі бойынша сұрыптау</translation>
 <translation id="8599864823732014237">Корпоративтік тіркеуді өткізіп жіберу керек пе?</translation>
 <translation id="8609384513243082612">Жаңа қойынды ашу</translation>
-<translation id="861045123704058818">Қолданбалар санат бойынша уақытша реттеледі.</translation>
 <translation id="8612338981637220013">Алдасыз!</translation>
 <translation id="8613164732773110792">Тек кіші әріптерді, цифрларды, астыңғы сызықтарды немесе сызықшаларды пайдалануға болады.</translation>
 <translation id="8614517853887502247"><ph name="APP_1_TITLE" /> және <ph name="APP_2_TITLE" /> хабарландырулары жасырылған, себебі көруден қорғау режимі қосулы тұр.</translation>
@@ -2824,7 +2812,6 @@
 <translation id="9129245940793250979">Артқы түйме</translation>
 <translation id="9133335900048457298">Қорғалған контентті жазу мүмкін емес</translation>
 <translation id="9139720510312328767">Келесі әріпті жою</translation>
-<translation id="9148058034647219655">Шығу</translation>
 <translation id="9151906066336345901">end</translation>
 <translation id="9159421884295554245">Буферден іздеу</translation>
 <translation id="9168436347345867845">Кейін</translation>

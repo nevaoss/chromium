@@ -149,10 +149,6 @@ const Suggestion kSuggestions[] = {
                u"label",
                Suggestion::Icon::kMagic,
                SuggestionType::kComposeResumeNudge),
-    Suggestion(u"Promo_code",
-               u"label",
-               Suggestion::Icon::kGlobe,
-               SuggestionType::kSeePromoCodeDetails),
     Suggestion(u"Remove_this_info",
                u"",
                Suggestion::Icon::kClose,
@@ -542,13 +538,13 @@ IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, FreeformFooter) {
 }
 
 IN_PROC_BROWSER_TEST_F(CreatePopupRowViewTest, AutofillAiSourceAttribution) {
-  Suggestion suggestion(u"Suggested by Gemini · Photos\u00A0[1]",
+  Suggestion suggestion(u"From Gemini and connected apps · Photos\u00A0[1]",
                         SuggestionType::kAutofillAiSourceAttribution);
   suggestion.icon = Suggestion::Icon::kSpark;
   suggestion.payload = Suggestion::AutofillAiPayload(
       autofill::EntityInstance::EntityId("test-guid"),
       {Suggestion::PersonalContextSourceCitation(
-          GURL("https://photos.google.com/test"), gfx::Range(29, 32))});
+          GURL("https://photos.google.com/test"), gfx::Range(40, 43))});
   CreateRowView(std::move(suggestion), /*selected_cell=*/std::nullopt,
                 /*filter_match=*/std::nullopt);
   ShowAndVerifyUi();

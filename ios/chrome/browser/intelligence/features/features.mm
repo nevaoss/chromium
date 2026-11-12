@@ -26,7 +26,6 @@
 #import "ios/chrome/browser/intelligence/actor/tools/utils/actor_tool_utils.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
-#import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/chrome/browser/tabs/model/inactive_tabs/features.h"
 
 BASE_FEATURE(kEnhancedCalendar, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -61,7 +60,7 @@ constexpr std::array<std::string_view, 171> kDefaultEnabledCountries = {
     "za", "zm", "zw"};
 
 // Default enabled locales for PageActionMenu. Locales are
-// matching Bluebird in chrome/browser/glic/public/glic_enabling.cc.
+// matching desktop in chrome/browser/glic/public/glic_enabling.cc.
 // All locales have been converted to lower case with '-' where it's
 // applicable.
 constexpr std::array<std::string_view, 51> kDefaultEnabledLocales = {
@@ -71,6 +70,11 @@ constexpr std::array<std::string_view, 51> kDefaultEnabledLocales = {
     "mr", "ms",     "nl",    "no",    "pl",    "pt-br", "pt-pt", "ro", "ru",
     "sk", "sl",     "sr",    "sv",    "sw",    "ta",    "te",    "th", "tr",
     "uk", "vi",     "zh-cn", "zh-tw", "en-gb", "en-us"};
+
+// Default enabled locales that are iOS-specific. These are not shared with the
+// desktop list as iOS locales have slight differences.
+constexpr std::array<std::string_view, 3> kDefaultEnabledLocalesiOSOnly = {
+    "es-mx", "pt", "nb"};
 
 const char kPageActionMenuDirectEntryPointParam[] =
     "PageActionMenuDirectEntryPoint";
@@ -102,7 +106,8 @@ bool IsPageActionMenuEnabled() {
   bool is_launched_country =
       std::ranges::contains(kDefaultEnabledCountries, country);
   bool is_launched_locale =
-      std::ranges::contains(kDefaultEnabledLocales, normalized_locale);
+      std::ranges::contains(kDefaultEnabledLocales, normalized_locale) ||
+      std::ranges::contains(kDefaultEnabledLocalesiOSOnly, normalized_locale);
 
   if (is_launched_country && is_launched_locale) {
     return true;
@@ -297,42 +302,12 @@ base::TimeDelta GetPersistedContextEffectiveTTL(PrefService* prefs) {
   return std::min(persist_ttl, inactive_tabs_ttl);
 }
 
-BASE_FEATURE(kGeminiNavigationPromo, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsGeminiNavigationPromoEnabled() {
-  if (!IsPageActionMenuEnabled() ||
-      !base::FeatureList::IsEnabled(
-          feature_engagement::kIPHiOSGeminiFullscreenPromoFeature)) {
-    return false;
-  }
-
-  return base::FeatureList::IsEnabled(kGeminiNavigationPromo);
-}
-
-BASE_FEATURE(kZeroStateSuggestions, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kZeroStateSuggestions, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsZeroStateSuggestionsEnabled() {
   if (!IsPageActionMenuEnabled()) {
     return false;
   }
-
-  variations::VariationsService* variations_service =
-      GetApplicationContext()->GetVariationsService();
-  bool is_launched_country =
-      variations_service &&
-      base::EqualsCaseInsensitiveASCII(
-          variations_service->GetStoredPermanentCountry(), "us");
-
-  ApplicationLocaleStorage* locale_storage =
-      GetApplicationContext()->GetApplicationLocaleStorage();
-  bool is_launched_locale =
-      locale_storage && base::EqualsCaseInsensitiveASCII(
-                            locale_storage->GetTag().tag_string(), "en-us");
-
-  if (is_launched_country && is_launched_locale) {
-    return true;
-  }
-
   return base::FeatureList::IsEnabled(kZeroStateSuggestions);
 }
 
@@ -383,11 +358,37 @@ bool IsGeminiEligibilityAblationEnabled() {
 
 BASE_FEATURE(kGeminiLive, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE_PARAM(bool,
+                   kGeminiLiveSkipIntro,
+                   &kGeminiLive,
+                   kGeminiLiveSkipIntroParam,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
+                   kGeminiLiveDisableIPH,
+                   &kGeminiLive,
+                   kGeminiLiveDisableIPHParam,
+                   false);
+
 bool IsGeminiLiveEnabled() {
   if (!IsPageActionMenuEnabled()) {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiLive);
+}
+
+bool ShouldSkipGeminiLiveIntro() {
+  if (!IsGeminiLiveEnabled()) {
+    return false;
+  }
+  return kGeminiLiveSkipIntro.Get();
+}
+
+bool IsGeminiLiveIPHDisabled() {
+  if (!IsGeminiLiveEnabled()) {
+    return false;
+  }
+  return kGeminiLiveDisableIPH.Get();
 }
 
 BASE_FEATURE(kGeminiLiveDormantReasons, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -655,6 +656,16 @@ BASE_FEATURE_PARAM(bool,
                    kGeminiActorBackgroundingParam,
                    true);
 
+const char kGeminiActorBackgroundWebStateKeepAliveHeartbeatIntervalParam[] =
+    "background_web_state_keep_alive_heartbeat_interval";
+
+BASE_FEATURE_PARAM(
+    base::TimeDelta,
+    kGeminiActorBackgroundWebStateKeepAliveHeartbeatInterval,
+    &kGeminiActor,
+    kGeminiActorBackgroundWebStateKeepAliveHeartbeatIntervalParam,
+    base::Milliseconds(400));
+
 bool IsGeminiActorEnabled() {
   if (!IsPageActionMenuEnabled() || !IsActorEnabled() ||
       !IsGeminiClientMigrationEnabled()) {
@@ -668,6 +679,10 @@ bool IsGeminiActorBackgroundingEnabled() {
     return false;
   }
   return kGeminiActorBackgrounding.Get();
+}
+
+base::TimeDelta GetGeminiActorBackgroundWebStateKeepAliveHeartbeatInterval() {
+  return kGeminiActorBackgroundWebStateKeepAliveHeartbeatInterval.Get();
 }
 
 BASE_FEATURE(kGeminiUnaryMigration, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -746,14 +761,6 @@ bool IsAppSwitcherAISummarizationEnabled() {
   return base::FeatureList::IsEnabled(kAppSwitcherAISummarization);
 }
 
-bool IsAppSwitcherAISummarizationTestingExternalURLEnabled() {
-  if (!IsAppSwitcherAISummarizationEnabled()) {
-    return false;
-  }
-  return experimental_flags::
-      IsAppSwitcherAISummarizationTestingExternalURLEnabled();
-}
-
 #pragma mark - Debugging Features
 
 const char kBWGPromoConsentParams[] = "BWGPromoConsentVariations";
@@ -784,6 +791,9 @@ BWGPromoConsentVariations BWGPromoConsentVariationsParam() {
   if (param == 5) {
     return BWGPromoConsentVariations::kSkipNewUserDelay;
   }
+  if (param == 6) {
+    return BWGPromoConsentVariations::kForceLiveFRE;
+  }
   return BWGPromoConsentVariations::kDisabled;
 }
 
@@ -793,6 +803,11 @@ bool ShouldForceBWGPromo() {
   }
   return BWGPromoConsentVariationsParam() ==
          BWGPromoConsentVariations::kForceFRE;
+}
+
+bool ShouldForceGeminiLiveFRE() {
+  return BWGPromoConsentVariationsParam() ==
+         BWGPromoConsentVariations::kForceLiveFRE;
 }
 
 bool ShouldSkipBWGPromoNewUserDelay() {
@@ -818,6 +833,12 @@ BASE_FEATURE(kGeminiQuizzes, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsGeminiQuizzesEnabled() {
   return base::FeatureList::IsEnabled(kGeminiQuizzes);
+}
+
+bool ShouldOpenGeminiQuizzesInNewTab() {
+  return IsGeminiQuizzesEnabled() &&
+         base::GetFieldTrialParamByFeatureAsBool(
+             kGeminiQuizzes, kGeminiQuizzesOpenInNewTabParam, false);
 }
 
 BASE_FEATURE(kGeminiFRERefactor, base::FEATURE_DISABLED_BY_DEFAULT);

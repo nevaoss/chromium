@@ -7,6 +7,7 @@
 
 #include "base/base64.h"
 #include "base/command_line.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
@@ -14,6 +15,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
+#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
@@ -1977,10 +1979,10 @@ IN_PROC_BROWSER_TEST_P(
 
   // Mimic a recovery method being added before or during sign-in, which should
   // be deferred until sign-in completes.
-  base::RunLoop run_loop;
+  base::test::TestFuture<bool> future;
   GetSyncTrustedVaultClient()->AddTrustedRecoveryMethod(
       kDefaultGaiaId, kTestRecoveryMethodPublicKey, kTestMethodTypeHint,
-      run_loop.QuitClosure());
+      future.GetCallback());
 
   ASSERT_TRUE(GetSecurityDomainsServer()->IsRecoverabilityDegraded());
 
@@ -1988,7 +1990,7 @@ IN_PROC_BROWSER_TEST_P(
   ASSERT_TRUE(SetupSync());
 
   // Wait until AddTrustedRecoveryMethod() completes.
-  run_loop.Run();
+  EXPECT_TRUE(future.Get());
 
   EXPECT_TRUE(TrustedVaultRecoverabilityDegradedStateChecker(GetSyncService(0),
                                                              /*degraded=*/false)
@@ -2033,10 +2035,10 @@ IN_PROC_BROWSER_TEST_P(
 
   // Mimic a recovery method being added during a persistent auth error, which
   // should be deferred until the auth error is resolved.
-  base::RunLoop run_loop;
+  base::test::TestFuture<bool> future;
   GetSyncTrustedVaultClient()->AddTrustedRecoveryMethod(
       kDefaultGaiaId, kTestRecoveryMethodPublicKey, kTestMethodTypeHint,
-      run_loop.QuitClosure());
+      future.GetCallback());
 
   // Mimic the auth error state being resolved.
   ASSERT_TRUE(GetSecurityDomainsServer()->IsRecoverabilityDegraded());
@@ -2048,7 +2050,7 @@ IN_PROC_BROWSER_TEST_P(
   ASSERT_FALSE(GetSyncService(0)->GetAuthError().IsPersistentError());
 
   // Wait until AddTrustedRecoveryMethod() completes.
-  run_loop.Run();
+  EXPECT_TRUE(future.Get());
 
   EXPECT_TRUE(TrustedVaultRecoverabilityDegradedStateChecker(GetSyncService(0),
                                                              /*degraded=*/false)
@@ -2209,11 +2211,11 @@ IN_PROC_BROWSER_TEST_P(SingleClientNigoriWithWebApiTest,
                   .Wait());
 
   // Mimic a recovery method being added.
-  base::RunLoop run_loop;
+  base::test::TestFuture<bool> future;
   GetSyncTrustedVaultClient()->AddTrustedRecoveryMethod(
       kDefaultGaiaId, kTestRecoveryMethodPublicKey, kTestMethodTypeHint,
-      run_loop.QuitClosure());
-  run_loop.Run();
+      future.GetCallback());
+  EXPECT_TRUE(future.Get());
 
   // Verify that recovery method was added. Server rejects the request if client
   // didn't send all keys.
@@ -2455,5 +2457,102 @@ IN_PROC_BROWSER_TEST_P(
 }
 
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+class SingleClientNigoriImplicitPassphraseMigrationSyncTest
+    : public SingleClientNigoriSyncTest {
+ public:
+  SingleClientNigoriImplicitPassphraseMigrationSyncTest() {
+    feature_list_.InitAndEnableFeature(
+        syncer::kSyncMigrateFromImplicitPassphrase);
+  }
+  ~SingleClientNigoriImplicitPassphraseMigrationSyncTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    /* no prefix */,
+    SingleClientNigoriImplicitPassphraseMigrationSyncTest,
+    GetSyncTestModes(),
+    testing::PrintToStringParamName());
+
+IN_PROC_BROWSER_TEST_P(SingleClientNigoriImplicitPassphraseMigrationSyncTest,
+                       PRE_ShouldMigrateFromImplicitPassphraseToKeystore) {
+  const KeyParamsForTesting kKeyParams =
+      Pbkdf2PassphraseKeyParamsForTesting("passphrase");
+  sync_pb::NigoriSpecifics specifics;
+  std::unique_ptr<syncer::CryptographerImpl> cryptographer =
+      syncer::CryptographerImpl::FromSingleKeyForTesting(
+          kKeyParams.password, kKeyParams.derivation_params);
+  *specifics.mutable_encryption_keybag() =
+      cryptographer->ExportEncryptedKeyBag();
+  SetNigoriInFakeServer(specifics, GetFakeServer());
+
+  const password_manager::PasswordForm password_form =
+      passwords_helper::CreateTestPasswordForm(0, GetPasswordStoreType());
+  passwords_helper::InjectEncryptedServerPassword(
+      password_form, kKeyParams.password, kKeyParams.derivation_params,
+      GetFakeServer());
+
+  ASSERT_TRUE(SetupSync());
+  ASSERT_TRUE(PassphraseRequiredChecker(GetSyncService(0)).Wait());
+  EXPECT_TRUE(GetSyncService(0)->GetUserSettings()->SetDecryptionPassphrase(
+      kKeyParams.password));
+  EXPECT_TRUE(WaitForPasswordForms({password_form}));
+}
+
+IN_PROC_BROWSER_TEST_P(SingleClientNigoriImplicitPassphraseMigrationSyncTest,
+                       ShouldMigrateFromImplicitPassphraseToKeystore) {
+  ASSERT_TRUE(SetupClients());
+  EXPECT_TRUE(
+      ServerPassphraseTypeChecker(syncer::PassphraseType::kKeystorePassphrase)
+          .Wait());
+  EXPECT_TRUE(PassphraseTypeChecker(GetSyncService(0),
+                                    syncer::PassphraseType::kKeystorePassphrase)
+                  .Wait());
+}
+
+IN_PROC_BROWSER_TEST_P(
+    SingleClientNigoriImplicitPassphraseMigrationSyncTest,
+    PRE_ShouldMigrateFromImplicitPassphraseToCustomPassphrase) {
+  const KeyParamsForTesting kKeyParams =
+      Pbkdf2PassphraseKeyParamsForTesting("passphrase");
+  sync_pb::NigoriSpecifics specifics;
+  std::unique_ptr<syncer::CryptographerImpl> cryptographer =
+      syncer::CryptographerImpl::FromSingleKeyForTesting(
+          kKeyParams.password, kKeyParams.derivation_params);
+  *specifics.mutable_encryption_keybag() =
+      cryptographer->ExportEncryptedKeyBag();
+  specifics.set_encrypt_everything(true);
+  SetNigoriInFakeServer(specifics, GetFakeServer());
+
+  const password_manager::PasswordForm password_form =
+      passwords_helper::CreateTestPasswordForm(0, GetPasswordStoreType());
+  passwords_helper::InjectEncryptedServerPassword(
+      password_form, kKeyParams.password, kKeyParams.derivation_params,
+      GetFakeServer());
+
+  ASSERT_TRUE(SetupSync());
+  ASSERT_TRUE(PassphraseRequiredChecker(GetSyncService(0)).Wait());
+  EXPECT_TRUE(GetSyncService(0)->GetUserSettings()->SetDecryptionPassphrase(
+      kKeyParams.password));
+  EXPECT_TRUE(WaitForPasswordForms({password_form}));
+}
+
+IN_PROC_BROWSER_TEST_P(SingleClientNigoriImplicitPassphraseMigrationSyncTest,
+                       ShouldMigrateFromImplicitPassphraseToCustomPassphrase) {
+  ASSERT_TRUE(SetupClients());
+  EXPECT_TRUE(
+      ServerPassphraseTypeChecker(syncer::PassphraseType::kCustomPassphrase)
+          .Wait());
+  EXPECT_TRUE(PassphraseTypeChecker(GetSyncService(0),
+                                    syncer::PassphraseType::kCustomPassphrase)
+                  .Wait());
+  EXPECT_TRUE(GetSyncService(0)
+                  ->GetUserSettings()
+                  ->GetExplicitPassphraseTime()
+                  .is_null());
+}
 
 }  // namespace

@@ -639,6 +639,7 @@ void AutofillAiPersonalContextAccessManagerImpl::ProcessPrefetchedEntities(
   entities.reserve(parsed_entities.size());
   const EntitySuppressionManager* suppression_manager =
       suppression_observation_.GetSource();
+  size_t suppressed_count = 0;
   for (ParsedEntity& entity : parsed_entities) {
     if (const auto* signal =
             std::get_if<SpiiEntityPresenceSignal>(&entity.instance)) {
@@ -656,9 +657,12 @@ void AutofillAiPersonalContextAccessManagerImpl::ProcessPrefetchedEntities(
     prefetched_proto_cache_.emplace(instance.guid(), std::move(entity.proto));
     if (!suppression_manager || !suppression_manager->IsSuppressed(instance)) {
       entities.push_back(std::move(instance));
+    } else {
+      suppressed_count++;
     }
   }
 
+  LogEntitySuppressionEntitiesFilteredPerPrefetch(suppressed_count);
   NotifyPrefetchStatusObservers(entities);
 }
 
@@ -729,6 +733,10 @@ void AutofillAiPersonalContextAccessManagerImpl::OnEligibilityStateChanged(
   if (!IsPersonalContextEligible(new_state)) {
     WipeCache();
   }
+}
+
+void AutofillAiPersonalContextAccessManagerImpl::OnContextSourceDisabled() {
+  WipeCache();
 }
 
 void AutofillAiPersonalContextAccessManagerImpl::

@@ -2734,16 +2734,21 @@ void CrostiniManager::OnStartTerminaVm(
   InvokeAndErasePendingCallbacks(
       &export_lxd_container_callbacks_, vm_name,
       CrostiniResult::CONTAINER_EXPORT_IMPORT_FAILED_VM_STARTED, 0, 0);
-  InvokeAndErasePendingCallbacks(&disk_image_callbacks_, vm_name,
-                                 CrostiniResult::DISK_IMAGE_FAILED);
   InvokeAndErasePendingCallbacks(
       &import_lxd_container_callbacks_, vm_name,
       CrostiniResult::CONTAINER_EXPORT_IMPORT_FAILED_VM_STARTED);
-  // Same for mappings, no longer valid.
-  EraseCommandUuid(&disk_image_uuid_to_guest_id_, vm_name);
+  if (response->status() !=
+      vm_tools::concierge::VM_STATUS_DISK_OP_IN_PROGRESS) {
+    InvokeAndErasePendingCallbacks(&disk_image_callbacks_, vm_name,
+                                   CrostiniResult::DISK_IMAGE_FAILED);
+    // Same for mappings, no longer valid.
+    EraseCommandUuid(&disk_image_uuid_to_guest_id_, vm_name);
+  }
 
   if (response->status() == vm_tools::concierge::VM_STATUS_FAILURE ||
-      response->status() == vm_tools::concierge::VM_STATUS_UNKNOWN) {
+      response->status() == vm_tools::concierge::VM_STATUS_UNKNOWN ||
+      response->status() ==
+          vm_tools::concierge::VM_STATUS_DISK_OP_IN_PROGRESS) {
     LOG(ERROR) << "Failed to start VM: " << response->failure_reason();
     // If we thought vms and containers were running before, they aren't now.
     running_vms_.erase(vm_name);
@@ -2753,8 +2758,9 @@ void CrostiniManager::OnStartTerminaVm(
 
   // Otherwise, record the vm start and run the callback after the VM
   // starts.
-  CHECK_EQ(response->status(), vm_tools::concierge::VM_STATUS_STARTING,
-           base::NotFatalUntil::M160);
+  // TODO(crbug.com/568430332): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_EQ(response->status(), vm_tools::concierge::VM_STATUS_STARTING);
   bool wait_for_tremplin = running_vms_.find(vm_name) == running_vms_.end();
 
   running_vms_[vm_name] =

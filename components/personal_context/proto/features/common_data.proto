@@ -141,19 +141,39 @@ message SourceReference {
     GmailReference gmail = 1;
     PhotosReference photos = 2;
     DriveFile drive = 3;
+    ChromeHistoryEntry chrome_history_entry = 4;
   }
+}
+
+// Surface-specific URL formats for accessing a Gmail message
+// across desktop and mobile browser/webview environments.
+message MessageUrls {
+  // Desktop web URL linking to the email message in Gmail.
+  string desktop_web_url = 1;
+
+  // Mobile web URL linking to the email message in Gmail.
+  string mobile_web_url = 2;
 }
 
 // Represents a reference to a Gmail message.
 message GmailReference {
-  // URL to the email message.
-  string message_url = 1;
+  // URL to the email message. Deprecated: prefer using message_urls.
+  string message_url = 1 [deprecated = true];
 
   // Subject of the email message.
   string subject = 2;
 
   // Timestamp of the email message.
   DateTime timestamp = 3;
+
+  // URLs for desktop and mobile web environments.
+  MessageUrls message_urls = 4;
+
+  // Gmail storage id.
+  int64 message_id = 5;
+
+  // Gmail thread id.
+  int64 thread_id = 6;
 }
 
 // Represents a reference to a Photos item.
@@ -171,6 +191,16 @@ message DriveFile {
   string name = 1;
   // Drive URL of the file.
   string url = 2;
+}
+
+// Represents a reference to a Chrome history entry.
+message ChromeHistoryEntry {
+  // URL of the visited page.
+  string url = 1;
+  // Title of the visited page.
+  string title = 2;
+  // UTC timestamp of when the page was visited.
+  Timestamp visit_timestamp = 3;
 }
 
 // Represents a completed purchase transaction from a retail merchant.
@@ -376,58 +406,74 @@ message DecryptedEntity {
 }
 
 message DecryptedReference {
-  reserved 2 to 9, 13 to 21, 23 to 47;
+  reserved 1 to 8, 13 to 17, 19 to 47;
 
   oneof reference {
-    DecryptedGmailMessage gmail_message = 1;
-    DecryptedPhotosPhoto photo = 10;
-    DecryptedPhotosVideo video = 11;
-    DecryptedPhotosAlbum photos_album = 12;
-    DecryptedDriveFile drive_file = 22;
+    DecryptedPhotosPhoto photo = 9;
+    DecryptedPhotosVideo video = 10;
+    DecryptedPhotosAlbum photos_album = 11;
+    DecryptedGmailMessage gmail_message = 12;
+    DecryptedDriveFile drive_file = 18;
   }
 }
 
 message DecryptedGmailMessage {
-  reserved 1, 3, 4, 7 to 13;
+  reserved 2 to 9, 13 to 38;
 
   // Subject of the message.
-  string subject = 2;
+  string subject = 1;
 
   // Timestamp of the message.
-  Timestamp timestamp = 5;
+  Timestamp timestamp = 10;
 
-  // URL to the email message.
-  string message_url = 6;
+  // Gmail storage id.
+  int64 message_id = 11;
+
+  // Gmail thread id.
+  int64 thread_id = 12;
+
+  message MessageUrls {
+    // Desktop web URL linking to the email message in Gmail UI in Web in
+    // contrast to Gmail App deeplink UI.
+    string desktop_web_url = 1;
+
+    // Mobile web URL linking to the email message in Gmail UI in Web in
+    // contrast to Gmail App deeplink UI.
+    string mobile_web_url = 2;
+  }
+
+  // URLs for desktop and mobile web environments.
+  MessageUrls message_urls = 39;
 }
 
 message DecryptedPhotosPhoto {
-  reserved 1, 2, 4, 5, 7 to 11;
+  reserved 1, 2, 3, 5, 6, 7, 8, 9, 11;
 
   // Timestamp of the photo.
-  Timestamp timestamp = 3;
+  Timestamp timestamp = 4;
 
   // The deeplink url of the photo.
-  string deeplink_url = 6;
+  string deeplink_url = 10;
 }
 
 message DecryptedPhotosVideo {
-  reserved 1 to 3, 5, 6, 8 to 12;
+  reserved 1 to 3, 5 to 9;
 
   // Timestamp of the video.
   Timestamp timestamp = 4;
 
   // The deeplink url of the video.
-  string deeplink_url = 7;
+  string deeplink_url = 10;
 }
 
 message DecryptedPhotosAlbum {
-  reserved 1, 2, 4 to 8, 10 to 14;
+  reserved 1 to 4, 6, 7 to 11;
 
   // Start timestamp of the album.
-  Timestamp start_time = 3;
+  Timestamp start_time = 5;
 
   // The deeplink url of the album.
-  string deeplink_url = 9;
+  string deeplink_url = 12;
 }
 
 message DecryptedDriveFile {
@@ -527,7 +573,6 @@ enum MemoryDataType {
   MEMORY_DATA_TYPE_SHIPMENT_CARRIER_NAME = 41;
   MEMORY_DATA_TYPE_SHIPMENT_CARRIER_DOMAIN = 42;
   MEMORY_DATA_TYPE_SHIPMENT_ESTIMATED_DELIVERY_DATE = 43;
-  MEMORY_DATA_TYPE_SHIPMENT_SHIP_DATE = 76;
   MEMORY_DATA_TYPE_NATIONAL_ID_CARD_FULL = 44;
   MEMORY_DATA_TYPE_NATIONAL_ID_CARD_NAME = 45;
   MEMORY_DATA_TYPE_NATIONAL_ID_CARD_COUNTRY = 46;
@@ -560,4 +605,8 @@ enum MemoryDataType {
   MEMORY_DATA_TYPE_CREDIT_CARD_SECURITY_CODE = 73;
   MEMORY_DATA_TYPE_CREDIT_CARD_NAME_ON_CARD = 74;
   MEMORY_DATA_TYPE_CREDIT_CARD_NICKNAME = 75;
+  MEMORY_DATA_TYPE_SHIPMENT_SHIP_DATE = 76;
+  MEMORY_DATA_TYPE_LOYALTY_MEMBERSHIP_ID = 77;
+  MEMORY_DATA_TYPE_LOYALTY_MEMBERSHIP_PROGRAM = 78;
+  MEMORY_DATA_TYPE_LOYALTY_MEMBERSHIP_PROVIDER = 79;
 }

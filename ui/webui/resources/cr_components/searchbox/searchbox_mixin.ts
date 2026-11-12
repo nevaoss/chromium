@@ -11,7 +11,7 @@ import type {CrLitElement, PropertyValues} from '//resources/lit/v3_0/lit.rollup
 import {SuggestInventory} from '//resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import {NavigationPredictor} from '//resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import type {AutocompleteMatch, AutocompleteResult, InputKeywordModel, OmniboxPopupSelection, PageCallbackRouter, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {InputMethod, SelectionDirection, SelectionLineState, SelectionStep} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {InputMethod, KeywordActivationMethod, SelectionDirection, SelectionLineState, SelectionStep} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {KeywordModeEntryMethod, KeywordModeManager} from './keyword_mode_manager.js';
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
@@ -173,6 +173,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     controlKeyState: ControlKeyState = ControlKeyState.UP;
 
     private lastIgnoredEnterEvent_: KeyboardEvent|null = null;
+    // The line of the match the backend was last asked to delete, while
+    // waiting for the post-deletion result. Null if no match was selected at
+    // the time. See `shouldPreserveSelectionOnMatchDeletion()`.
+    private pendingDeletionLine_: number|null = null;
     private searchboxEventTracker_: EventTracker = new EventTracker();
     private callbackRouter_: PageCallbackRouter =
         SearchboxBrowserProxy.getInstance().callbackRouter;
@@ -204,9 +208,16 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         this.activeQueryId = -1;
       });
       // When deleting a match, unfreeze `activeQueryId` so post-deletion
-      // results are accepted.
-      this.searchboxEventTracker_.add(this, 'match-remove', () => {
-        this.activeQueryId = this.nextQueryId_ - 1;
+      // results are accepted. The match element sends the deletion request
+      // itself, and its line is the event's detail.
+      this.searchboxEventTracker_.add(this, 'match-remove', (e: Event) => {
+        // Like `OmniboxEditModel::TryDeletingPopupLine()`, only move the
+        // selection to the deleted line if a match was selected.
+        const hasSelectedMatch = this.virtualFocusEnabled ?
+            this.selection.line >= 0 :
+            this.selectedMatchIndex >= 0;
+        this.onMatchDeletionRequested_(
+            hasSelectedMatch ? (e as CustomEvent<number|null>).detail : null);
       });
       // Listen for 'keyup' on window to reliably catch Control key releases
       // even if the user clicks outside the searchbox while holding Control.
@@ -238,13 +249,16 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
 
       const changedPrivateProperties =
           changedProperties as Map<PropertyKey, unknown>;
-      if (changedPrivateProperties.has('selectedMatch')) {
-        this.inputAriaLive = this.computeInputAriaLive_();
-      }
       if (changedPrivateProperties.has('result') ||
           changedPrivateProperties.has('selectedMatchIndex') ||
           changedPrivateProperties.has('selection')) {
         this.selectedMatch = this.computeSelectedMatch_();
+      }
+      // Computed after `selectedMatch` so it isn't one update stale; otherwise
+      // the input stays `aria-live=polite` while previewing the first selected
+      // match and screen readers narrate the preview.
+      if (changedPrivateProperties.has('selectedMatch')) {
+        this.inputAriaLive = this.computeInputAriaLive_();
       }
       if (changedPrivateProperties.has('result') ||
           changedPrivateProperties.has('selectedMatchIndex') ||
@@ -301,12 +315,14 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       // by setting `activeQueryId` to -1.
       this.activeQueryId = -1;
       this.lastQueriedInput = null;
+      this.pendingDeletionLine_ = null;
     }
 
     queryAutocomplete(
         input: string, preventInlineAutocomplete: boolean, isOnFocus: boolean) {
       this.activeQueryId = this.nextQueryId_++;
       this.lastQueriedInput = input;
+      this.pendingDeletionLine_ = null;
 
       preventInlineAutocomplete = preventInlineAutocomplete ||
           this.getInputElement().preventInlineAutocomplete(input);
@@ -329,6 +345,16 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     }
 
     shouldAppendDotComOnCtrlEnter(): boolean {
+      return false;
+    }
+
+    /**
+     * Whether the post-deletion result should keep the selection on the
+     * deleted match's line, clamped to the remaining matches, like
+     * `OmniboxEditModel::TryDeletingPopupLine()`. Otherwise, it's handled like
+     * any other result, which e.g. reselects the default match, if any.
+     */
+    shouldPreserveSelectionOnMatchDeletion(): boolean {
       return false;
     }
 
@@ -417,12 +443,20 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return;
       }
 
+      // The first result accepted after a deletion request is normally the
+      // post-deletion result.
+      const deletedLine = this.pendingDeletionLine_;
+      this.pendingDeletionLine_ = null;
+
       this.result = result;
       const hasMatches = this.hasMatches();
       this.updateDropdownVisibility();
 
+      const lineAfterDeletion = this.getLineAfterMatchDeletion_(deletedLine);
       const firstMatch = hasMatches ? this.result.matches[0] : null;
-      if (firstMatch && firstMatch.allowedToBeDefaultMatch) {
+      if (lineAfterDeletion !== null) {
+        await this.selectLineAfterMatchDeletion_(lineAfterDeletion);
+      } else if (firstMatch && firstMatch.allowedToBeDefaultMatch) {
         // Select the default match and update the input.
         if (this.virtualFocusEnabled) {
           const available = this.getAvailableSelections(this.result);
@@ -443,9 +477,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         }
 
       } else {
-        const index = this.matchIndex;
-        if (this.getInputElement().inputElement.value.trim() && hasMatches &&
-            index >= 0 && index < this.result.matches.length) {
+        const index = hasMatches && this.matchIndex >= 0 ?
+            Math.min(this.matchIndex, this.result.matches.length - 1) :
+            -1;
+        if (this.getInputElement().inputElement.value.trim() && index >= 0) {
           const match = this.result.matches[index]!;
           this.selectedMatch = match;
           if (this.virtualFocusEnabled) {
@@ -472,6 +507,44 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           });
         }
       }
+    }
+
+    /**
+     * Returns the line to select in the post-deletion result, or null to
+     * handle it like any other result. Like
+     * `OmniboxEditModel::TryDeletingPopupLine()`, the selection stays on the
+     * deleted match's line, clamped to the remaining matches.
+     */
+    private getLineAfterMatchDeletion_(deletedLine: number|null): number|null {
+      if (deletedLine === null || deletedLine < 0 || !this.hasMatches() ||
+          !this.shouldPreserveSelectionOnMatchDeletion()) {
+        return null;
+      }
+      const matches = this.result!.matches;
+      const line = Math.min(deletedLine, matches.length - 1);
+      // Selecting the default match like for any other result also restores
+      // its inline autocompletion.
+      return line === 0 && matches[0]!.allowedToBeDefaultMatch ? null : line;
+    }
+
+    /**
+     * Selects the match at `line` and previews it in the input, as if the user
+     * had navigated to it.
+     */
+    private async selectLineAfterMatchDeletion_(line: number) {
+      const selection: OmniboxPopupSelection = {
+        line,
+        state: SelectionLineState.kNormal,
+        actionIndex: 0,
+      };
+      if (this.virtualFocusEnabled) {
+        this.setSelection(selection);
+      } else {
+        await this.getDropdownElement().selectIndex(line);
+      }
+      // Wait for `selectedMatch` to be updated.
+      await this.updateComplete;
+      this.updateInputForSelection(selection, /*key=*/ '');
     }
 
     onInputFocusChanged(e: CustomEvent<{value: string, isOnFocus: boolean}>) {
@@ -674,9 +747,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           SelectionLineState.kFocusedButtonRemoveSuggestion) {
         e.preventDefault();
         if (this.selectedMatch && this.selectedMatch.supportsDeletion) {
-          this.unfreezeActiveQueryId();
-          this.pageHandler().deleteAutocompleteMatch(
-              this.selection.line, this.selectedMatch.destinationUrl);
+          this.deleteMatch_(this.selection.line, this.selectedMatch);
         }
         return true;
       }
@@ -719,13 +790,31 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       return this.handleVirtualFocusEnter(e);
     }
 
-    private updateInputForSelection_(
-        nextSelection: OmniboxPopupSelection, key: string) {
+    updateInputForSelection(nextSelection: OmniboxPopupSelection, key: string) {
+      if (nextSelection.state === SelectionLineState.kFocusedButtonAim ||
+          nextSelection.line === -1) {
+        // The input itself, or a button outside the matches: show the typed
+        // text again, without any inline autocompletion.
+        this.getInputElement().setInput({
+          text: this.lastQueriedInput ?? '',
+          inline: '',
+          moveCursorToEnd: true,
+        });
+        // Follows `setInput()`, as in the WebUI toolbar, so the label is the
+        // last thing screen readers are told about and the value change does
+        // not talk over it.
+        this.getInputElement().setSelectionA11yLabel(
+            this.getSelectionA11yLabel(this.selectedMatch, nextSelection));
+        return;
+      }
+
       if (this.selectedMatch) {
         const newFill = this.computeMatchFillIntoEdit(this.selectedMatch);
         const isKeywordMode = this.keywordModeManager_.isInKeywordMode ||
             nextSelection.state === SelectionLineState.kKeywordMode;
-        const newInline = !isKeywordMode && nextSelection.line === 0 &&
+        const isNormal = nextSelection.state === SelectionLineState.kNormal;
+        const newInline = isNormal && !isKeywordMode &&
+                nextSelection.line === 0 &&
                 this.selectedMatch.allowedToBeDefaultMatch ?
             this.selectedMatch.inlineAutocompletion :
             '';
@@ -739,6 +828,11 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           moveCursorToEnd: newInline.length === 0,
           isMatchPreview: isMatchPreview,
         });
+        // Follows `setInput()`, as in the WebUI toolbar, so the label is the
+        // last thing screen readers are told about and the preview value
+        // change does not talk over it.
+        this.getInputElement().setSelectionA11yLabel(
+            this.getSelectionA11yLabel(this.selectedMatch, nextSelection));
 
         if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'PageDown' ||
             key === 'PageUp') {
@@ -747,13 +841,39 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
               nextSelection.line, this.selectedMatch.destinationUrl,
               NavigationPredictor.kUpOrDownArrowButton);
         }
-      } else if (nextSelection.line === -1) {
-        this.getInputElement().setInput({
-          text: this.lastQueriedInput ?? '',
-          inline: '',
-          moveCursorToEnd: true,
-          isMatchPreview: false,
-        });
+      }
+    }
+
+    /**
+     * Returns the label screen readers narrate for `selection`, where `match`
+     * is the match `selection` resolves to, if any. This is the only narration
+     * of virtual focus selection changes, so elements that can be virtually
+     * focused must not announce themselves too. Subclasses that add virtually
+     * focusable buttons should override this to label them; returning '' makes
+     * screen readers narrate the input instead.
+     */
+    getSelectionA11yLabel(
+        match: AutocompleteMatch|null,
+        selection: OmniboxPopupSelection): string {
+      if (selection.state === SelectionLineState.kFocusedButtonAim) {
+        const button =
+            this.shadowRoot.querySelector('cr-searchbox-compose-button');
+        return button ? (button.a11yLabel || button.labelText) : '';
+      }
+      if (!match || selection.line < 0) {
+        return '';
+      }
+      switch (selection.state) {
+        case SelectionLineState.kNormal:
+          return match.a11yLabel;
+        case SelectionLineState.kKeywordMode:
+          return match.keywordModel?.chipA11y || '';
+        case SelectionLineState.kFocusedButtonAction:
+          return match.actions[selection.actionIndex]?.a11yLabel || '';
+        case SelectionLineState.kFocusedButtonRemoveSuggestion:
+          return match.removeButtonA11yLabel;
+        default:
+          return '';
       }
     }
 
@@ -868,10 +988,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       if (e.key === 'Delete') {
         if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
           if (this.selectedMatch && this.selectedMatch.supportsDeletion) {
-            // Unfreeze `activeQueryId` so post-deletion results are accepted.
-            this.activeQueryId = this.nextQueryId_ - 1;
-            this.pageHandler().deleteAutocompleteMatch(
-                this.selectedMatchIndex, this.selectedMatch.destinationUrl);
+            this.deleteMatch_(this.matchIndex, this.selectedMatch);
             e.preventDefault();
           }
         }
@@ -935,11 +1052,25 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           e.preventDefault();
           this.setSelection(nextSelection);
 
+          // Entering keyword mode via the keyboard must also enter keyword
+          // mode in the browser, like clicking the keyword chip does in
+          // `cr-searchbox-match`; otherwise the browser's keyword state
+          // diverges from the WebUI's. Sent before `updateComplete` so it
+          // precedes the `setPopupSelection()` issued on update.
+          if (nextSelection.state === SelectionLineState.kKeywordMode) {
+            const match = this.result?.matches[nextSelection.line];
+            if (match?.keywordModel) {
+              this.pageHandler().activateKeyword(
+                  nextSelection.line, match.destinationUrl,
+                  mojoTimeTicks(Date.now()), KeywordActivationMethod.kKeyboard);
+            }
+          }
+
           this.getInputElement().focus();
 
           await this.updateComplete;
 
-          this.updateInputForSelection_(nextSelection, e.key);
+          this.updateInputForSelection(nextSelection, e.key);
           return;
         }
       }
@@ -1078,7 +1209,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
       this.setSelection(selection);
       await this.updateComplete;
-      this.updateInputForSelection_(selection, 'click');
+      this.updateInputForSelection(selection, 'click');
       const inputValue = this.getInputElement().getInputValue();
       if (inputValue) {
         this.queryAutocomplete(
@@ -1133,6 +1264,22 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     unfreezeActiveQueryId() {
       this.activeQueryId = this.nextQueryId_ - 1;
     }
+
+    /** Asks the backend to delete `match`, the match at `line`. */
+    private deleteMatch_(line: number, match: AutocompleteMatch) {
+      this.onMatchDeletionRequested_(line);
+      this.pageHandler().deleteAutocompleteMatch(line, match.destinationUrl);
+    }
+
+    /**
+     * Called when the backend is asked to delete the match at `line`, which is
+     * null if the selection shouldn't move to that line afterwards.
+     */
+    private onMatchDeletionRequested_(line: number|null) {
+      // Unfreeze `activeQueryId` so post-deletion results are accepted.
+      this.unfreezeActiveQueryId();
+      this.pendingDeletionLine_ = line;
+    }
   }
 
   return SearchboxMixin;
@@ -1168,6 +1315,8 @@ export interface SearchboxMixinInterface extends
   handleKeyNavigation(e: KeyboardEvent): void;
   handleVirtualFocusEnter(e: KeyboardEvent): boolean;
   handleVirtualFocusSpace(e: KeyboardEvent): boolean;
+  getSelectionA11yLabel(
+      match: AutocompleteMatch|null, selection: OmniboxPopupSelection): string;
   hasMatches(): boolean;
   isAutocompleteResultStale(result: AutocompleteResult): boolean;
   isBackgroundTabNavigation(e: KeyboardEvent|MouseEvent): boolean;
@@ -1197,4 +1346,7 @@ export interface SearchboxMixinInterface extends
       isOnFocus: boolean): void;
   getTabId(): number|null;
   shouldAppendDotComOnCtrlEnter(): boolean;
+  shouldPreserveSelectionOnMatchDeletion(): boolean;
+  updateInputForSelection(nextSelection: OmniboxPopupSelection, key: string):
+      void;
 }

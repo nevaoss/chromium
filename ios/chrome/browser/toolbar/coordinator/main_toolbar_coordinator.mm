@@ -1116,6 +1116,11 @@ inline LayoutStateToolbarPassKey PassKey() {
   [_bottomLocationBarCoordinator updateColorForIPH];
 }
 
+- (void)hideBadgeForType:(LocationBarBadgeType)type {
+  [_topLocationBarCoordinator hideBadgeForType:type];
+  [_bottomLocationBarCoordinator hideBadgeForType:type];
+}
+
 - (void)markDisplayedBadgeAsUnread:(BOOL)read {
   CHECK(IsChromeNextIaEnabled());
   [_topLocationBarCoordinator markDisplayedBadgeAsUnread:read];
@@ -1174,6 +1179,17 @@ inline LayoutStateToolbarPassKey PassKey() {
 }
 
 #pragma mark - ToolbarCommands
+
+- (void)triggerToolbarSlideInAnimation {
+  if (IsChromeNextIaEnabled()) {
+    [_topToolbarViewController triggerToolbarSlideInAnimation];
+    [_bottomToolbarViewController triggerToolbarSlideInAnimation];
+    return;
+  }
+  for (id<ToolbarCommands> coordinator in self.coordinators) {
+    [coordinator triggerToolbarSlideInAnimation];
+  }
+}
 
 - (void)indicateLensOverlayVisible:(BOOL)lensOverlayVisible {
   if (IsChromeNextIaEnabled()) {

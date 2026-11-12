@@ -75,11 +75,18 @@ UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kHasContentUri);
 // Guard changes to use maximum window metrics for gesture navigation detection.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kMaximumWindowForGestureNavDetection);
 
+// Kill switch for compensating captured relative mouse movement for display
+// density by skipping DIP scaling in EventForwarder instead of applying a
+// fixed 2.4x multiplier (crbug.com/567695649).
+// TODO(crbug.com/567695649): Remove once the fix has shipped to stable.
+UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kPointerLockMouseDensityCompensation);
+
 // Scaling multiplier for captured physical mouse movement
 // (crbug.com/490206349).
+// See also crbug.com/567695649 for display density compensation.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kPointerLockMouseScaling);
 inline constexpr base::FeatureParam<double> kPointerLockMouseScalingFactor{
-    &kPointerLockMouseScaling, "factor", 2.4};
+    &kPointerLockMouseScaling, "factor", 1.0};
 
 // Whether to enable the refactor of the smallestScreenWidthDp override.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kRefactorMinWidthContextOverride);
@@ -97,8 +104,8 @@ UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kAndroidUpdateDisplayForContext);
 // Kill switch to turn off new supportKeyabord method
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kSupportKeyboard);
 
-// Enables the new ETC1 encoder (used in tab and back/forward thumbnails).
-UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kUseNewEtc1Encoder);
+// Enables the new Rust ETC1 decoder (used in tab thumbnails).
+UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kUseNewEtc1Decoder);
 
 // Conducts a check to determine if the View is eligible to a Hit. This is a
 // mitigation of when the prerendered view (hidden) somehow receives the touch

@@ -129,12 +129,15 @@ MEDIA_EXPORT extern const char kHardwareVideoDevicePath[];
 
 namespace media {
 
+class AudioParameters;
+
 // All features in alphabetical order. The features should be documented
 // alongside the definition of their values in the .cc file.
 
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAVDColorSpaceChanges);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAomVpxUsePresentationThreadType);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioFocusDuckFlash);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioRendererMixerImmediatePause);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAutoPictureInPictureOnWindowOccluded);
 // Enables showing auto picture-in-picture permission details in page info.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAutoPictureInPicturePageInfoDetails);
@@ -178,7 +181,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kCoarseWallClockTimeSource);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kContextMenuCopyVideoFrame);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kContextMenuSaveVideoFrameAs);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kContextMenuSearchForVideoFrame);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kD3D11VideoDecoderForceSingleTexture);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kD3D11VideoDecoderUseSharedHandle);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDedicatedMediaServiceThread);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDeferAudioFocusUntilAudible);
@@ -209,6 +211,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kHardenUrlProvisionFetcher);
 // config does not provide SPS/PPS. In that case, an IDR alone is not
 // sufficient, SPS+PPS must appear in-band to mark it as a keyframe.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kH264IDRKeyframeRequiresParameterSets);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kH264SkipUnspecifiedNalus);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kHardwareMediaKeyHandling);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kHardwareSecureDecryption);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kHardwareSecureDecryptionAv1);
@@ -275,7 +278,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kOverlayFullscreenVideo);
 // Causes the AVC parser to output Treats H.264 SEI recovery points with a
 // `recovery_frame_cnt=0` as keyframes.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kParseSEIRecoveryPoints);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kPauseBackgroundTimer);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPauseMutedBackgroundAudio);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPictureInPictureMuteControl);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformAudioEncoder);
@@ -289,7 +291,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kRenderMutedAudio);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kResolutionBasedDecoderPriority);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kResumeBackgroundVideo);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kRevokeMediaSourceObjectURLOnAttach);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kRustMpegAudioDataParser);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kSpeakerChangeDetection);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kSpecCompliantCanPlayThrough);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUnifiedAutoplay);
@@ -358,7 +359,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kOpenH264SoftwareEncoder);
 #if BUILDFLAG(ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(
     kAllowClearDolbyVisionInMseWhenPlatformEncryptedDvEnabled);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kAllowClearDolbyVisionViaMFT);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformEncryptedDolbyVision);
 #endif  // BUILDFLAG(ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION)
 
@@ -479,6 +479,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kVaapiIgnoreDriverChecks);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kApplicationAudioCaptureMac);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastMacForceBaselineProfile);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingMacHardwareH264);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kMacAVFoundationPlayback);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMacCatapLoopbackAudioForCast);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSCContentSharingPicker);
 #endif  // BUILDFLAG(IS_MAC)
@@ -571,6 +572,13 @@ MEDIA_EXPORT std::string GetEffectiveAutoplayPolicy(
 
 // Return bitmask of audio formats supported by EDID.
 MEDIA_EXPORT uint32_t GetPassthroughAudioFormats();
+
+// Whether `params` selects the macOS AVFoundation playback backend. This is
+// not a no-argument platform capability: macOS 27 or newer,
+// kMacAVFoundationPlayback, linear or low-latency PCM, and a playback latency
+// tag are all required. False on every other platform.
+MEDIA_EXPORT bool IsMacAVFoundationPlaybackSupported(
+    const AudioParameters& params);
 
 // Returns true if application audio loopback capture is implemented for the
 // current OS.

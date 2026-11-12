@@ -14,8 +14,7 @@ namespace gemini {
 // Logged as IOSGeminiEntryPoint enum for the IOS.Gemini.EntryPoint histogram.
 // LINT.IfChange(EntryPoint)
 enum class EntryPoint {
-  // Gemini was opened directly from a Gemini promo.
-  Promo = 0,
+  // Promo = 0, // Deprecated, no longer used.
   // Gemini was opened directly from the overflow menu.
   OverflowMenu = 1,
   // Gemini was opened from the AI Hub.
@@ -214,7 +213,9 @@ enum class InputType {
   kEditMenuPrompt = 26,
   // Summarization query originating from the App Switcher.
   kAppSwitcherSummarize = 27,
-  kMaxValue = kAppSwitcherSummarize,
+  // Live voice prompt input type.
+  kLivePrompt = 28,
+  kMaxValue = kLivePrompt,
 };
 // LINT.ThenChange(
 //   /ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h:IOSGeminiFirstPromptSubmissionMethod,

@@ -460,8 +460,7 @@ int TransportClientSocketPool::RequestSocketInternal(
     // group. Close idle sockets until we have capacity (or there are none
     // left outside the current group).
     while (idle_socket_count_ > 0) {
-      bool closed = CloseOneIdleSocketExceptInGroup(group);
-      if (!closed) {
+      if (!CloseOneIdleSocketExceptInGroup(group)) {
         break;
       }
       // We want to know if a new allocation could succeed, if not we must
@@ -497,8 +496,10 @@ int TransportClientSocketPool::RequestSocketInternal(
     // If we didn't have any sockets in this group, set a timer for potentially
     // creating a new one.  If the SYN is lost, this backup socket may complete
     // before the slow socket, improving end user latency.
-    if (connect_backup_jobs_enabled_ && group->IsEmpty())
+    if (connect_backup_jobs_enabled_ && group->NumActiveSocketSlots() == 0 &&
+        !group->has_unbound_requests()) {
       group->StartBackupJobTimer(group_id);
+    }
     group->AddJob(std::move(connect_job), preconnecting);
     connecting_socket_count_++;
     return rv;
@@ -521,6 +522,7 @@ int TransportClientSocketPool::RequestSocketInternal(
                     /*time_idle=*/base::TimeDelta(), group, request.net_log());
     }
   }
+  group->DestroyConnectJob(std::move(connect_job));
   if (group->IsEmpty())
     RemoveGroup(group_id);
 
@@ -546,6 +548,7 @@ bool TransportClientSocketPool::AssignIdleSocketToRequest(
       it->socket->NetLog().AddEventWithStringParams(
           NetLogEventType::SOCKET_POOL_CLOSING_SOCKET, "reason",
           net_log_reason_utf8);
+      QueueDestroySocket(std::move(it->socket));
       DecrementIdleCount();
       it = idle_sockets->erase(it);
       continue;
@@ -643,9 +646,7 @@ void TransportClientSocketPool::CancelRequest(const GroupId& group_id,
   CHECK(group_map_.contains(group_id));
   Group* group = GetOrCreateGroup(group_id);
 
-  std::unique_ptr<Request> request = group->FindAndRemoveBoundRequest(handle);
-  if (request) {
-    --connecting_socket_count_;
+  if (group->FindAndRemoveBoundRequest(handle)) {
     UpdateExpandabilityAfterRelease();
     OnAvailableSocketSlot(group_id, group);
     CheckForStalledSocketGroups();
@@ -653,7 +654,7 @@ void TransportClientSocketPool::CancelRequest(const GroupId& group_id,
   }
 
   // Search |unbound_requests_| for matching handle.
-  request = group->FindAndRemoveUnboundRequest(handle);
+  std::unique_ptr<Request> request = group->FindAndRemoveUnboundRequest(handle);
   if (request) {
     request->net_log().AddEvent(NetLogEventType::CANCELLED);
     request->net_log().EndEvent(NetLogEventType::SOCKET_POOL);
@@ -676,6 +677,7 @@ void TransportClientSocketPool::CancelRequest(const GroupId& group_id,
 void TransportClientSocketPool::CloseIdleSockets(
     const char* net_log_reason_utf8) {
   CleanupIdleSockets(true, net_log_reason_utf8);
+  DestroyQueuedSockets();
   DCHECK_EQ(0u, idle_socket_count_);
 }
 
@@ -998,6 +1000,7 @@ void TransportClientSocketPool::CleanupIdleSocketsInGroup(
       idle_socket_it->socket->NetLog().AddEventWithStringParams(
           NetLogEventType::SOCKET_POOL_CLOSING_SOCKET, "reason",
           reason_for_closing_socket);
+      QueueDestroySocket(std::move(idle_socket_it->socket));
       idle_socket_it = group->mutable_idle_sockets()->erase(idle_socket_it);
       DecrementIdleCount();
       UpdateExpandabilityAfterRelease();
@@ -1078,7 +1081,7 @@ void TransportClientSocketPool::ReleaseSocket(
         not_reusable_reason);
     if (group->IsEmpty())
       RemoveGroup(i);
-    socket.reset();
+    QueueDestroySocket(std::move(socket));
   }
 
   CheckForStalledSocketGroups();
@@ -1161,12 +1164,12 @@ void TransportClientSocketPool::OnIPAddressChanged(
 void TransportClientSocketPool::FlushWithError(
     int error,
     const char* net_log_reason_utf8) {
-  CancelAllConnectJobs();
-  CloseIdleSockets(net_log_reason_utf8);
-  CancelAllRequestsWithError(error);
   for (auto& group : group_map_) {
     group.second.IncrementGeneration();
   }
+  CancelAllRequestsWithError(error);
+  CancelAllConnectJobs();
+  CloseIdleSockets(net_log_reason_utf8);
   ResetExpandability();
 }
 
@@ -1176,7 +1179,7 @@ void TransportClientSocketPool::RemoveConnectJob(ConnectJob* job,
   connecting_socket_count_--;
 
   DCHECK(group);
-  group->RemoveUnboundJob(job);
+  group->DestroyConnectJob(group->RemoveUnboundJob(job));
 }
 
 void TransportClientSocketPool::OnAvailableSocketSlot(const GroupId& group_id,
@@ -1264,7 +1267,6 @@ void TransportClientSocketPool::AddIdleSocket(
 void TransportClientSocketPool::CancelAllConnectJobs() {
   for (auto i = group_map_.begin(); i != group_map_.end();) {
     Group* group = &i->second;
-    connecting_socket_count_ -= group->jobs().size();
     group->RemoveAllUnboundJobs();
 
     // Delete group if no longer needed.
@@ -1315,6 +1317,7 @@ bool TransportClientSocketPool::CloseOneIdleSocketExceptInGroup(
     std::list<IdleSocket>* idle_sockets = group->mutable_idle_sockets();
 
     if (!idle_sockets->empty()) {
+      QueueDestroySocket(std::move(idle_sockets->front().socket));
       idle_sockets->pop_front();
       DecrementIdleCount();
       if (group->IsEmpty())
@@ -1355,6 +1358,7 @@ void TransportClientSocketPool::OnConnectJobComplete(Group* group,
                               bound_request->request->socket_tag());
       bound_request->request->net_log().EndEventWithNetErrorCode(
           NetLogEventType::SOCKET_POOL, bound_request->pending_error);
+      group->DestroyConnectJob(std::move(bound_request->connect_job));
       UpdateExpandabilityAfterRelease();
       OnAvailableSocketSlot(group->group_id(), group);
       CheckForStalledSocketGroups();
@@ -1365,6 +1369,7 @@ void TransportClientSocketPool::OnConnectJobComplete(Group* group,
     // the group, and kick off another request. The socket will be discarded.
     if (bound_request->generation != group->generation()) {
       group->InsertUnboundRequest(std::move(bound_request->request));
+      group->DestroyConnectJob(std::move(bound_request->connect_job));
       UpdateExpandabilityAfterRelease();
       OnAvailableSocketSlot(group->group_id(), group);
       CheckForStalledSocketGroups();
@@ -1408,8 +1413,11 @@ void TransportClientSocketPool::OnConnectJobComplete(Group* group,
                                               result);
   InvokeUserCallbackLater(request->handle(), request->release_callback(),
                           result, request->socket_tag());
-  if (!bound_request)
+  if (bound_request) {
+    group->DestroyConnectJob(std::move(bound_request->connect_job));
+  } else {
     RemoveConnectJob(job, group);
+  }
   // If no socket was handed out, there's a new socket slot available.
   if (!request->handle()->socket()) {
     UpdateExpandabilityAfterRelease();
@@ -1491,17 +1499,36 @@ TransportClientSocketPool::RefreshGroup(GroupMap::iterator it,
   CHECK(group);
   CleanupIdleSocketsInGroup(true /* force */, group, now, net_log_reason_utf8);
 
-  connecting_socket_count_ -= group->jobs().size();
-  group->RemoveAllUnboundJobs();
-
-  // Otherwise, prevent reuse of existing sockets.
+  // Prevent reuse of existing sockets.
   group->IncrementGeneration();
+  group->RemoveAllUnboundJobs();
 
   // Delete group if no longer needed.
   if (group->IsEmpty()) {
     return RemoveGroup(it);
   }
   return ++it;
+}
+
+void TransportClientSocketPool::QueueDestroySocket(
+    std::unique_ptr<StreamSocket> socket) {
+  if (GetProxyChain().is_direct()) {
+    return;
+  }
+  if (sockets_queued_for_destruction_.empty()) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&TransportClientSocketPool::DestroyQueuedSockets,
+                       weak_factory_.GetWeakPtr()));
+  }
+  sockets_queued_for_destruction_.emplace_back(std::move(socket));
+}
+
+void TransportClientSocketPool::DestroyQueuedSockets() {
+  // Move into a local vector before destroying elements in case a socket's
+  // destructor reentrantly calls QueueDestroySocket().
+  std::vector<std::unique_ptr<StreamSocket>> sockets =
+      std::move(sockets_queued_for_destruction_);
 }
 
 void TransportClientSocketPool::OnPreconnectConnectJobComplete(
@@ -1579,11 +1606,20 @@ TransportClientSocketPool::Group::~Group() {
   DCHECK(unbound_requests_.empty());
   DCHECK(jobs_.empty());
   DCHECK(bound_requests_.empty());
+  DCHECK_EQ(0u, jobs_being_destroyed_);
 }
 
 void TransportClientSocketPool::Group::OnConnectJobComplete(int result,
                                                             ConnectJob* job) {
   DCHECK_NE(ERR_IO_PENDING, result);
+  // Check if `job` was already removed by RemoveAllUnboundJobs().
+  if (!std::ranges::contains(jobs_, job, &std::unique_ptr<ConnectJob>::get) &&
+      !std::ranges::contains(bound_requests_, job,
+                             [](const BoundRequest& bound_request) {
+                               return bound_request.connect_job.get();
+                             })) {
+    return;
+  }
   client_socket_pool_->OnConnectJobComplete(this, result, job);
 }
 
@@ -1792,6 +1828,14 @@ void TransportClientSocketPool::Group::SanityCheck() const {
 #endif
 }
 
+void TransportClientSocketPool::Group::DestroyConnectJob(
+    std::unique_ptr<ConnectJob> job) {
+  DCHECK(job);
+  ++jobs_being_destroyed_;
+  job.reset();
+  --jobs_being_destroyed_;
+}
+
 void TransportClientSocketPool::Group::RemoveAllUnboundJobs() {
   SanityCheck();
 
@@ -1805,6 +1849,14 @@ void TransportClientSocketPool::Group::RemoveAllUnboundJobs() {
   }
   unassigned_jobs_.clear();
   never_assigned_job_count_ = 0;
+  // Stop backup job timer before destroying jobs in case a destructor
+  // reentrantly starts a new timer.
+  backup_job_timer_.Stop();
+
+  CHECK_GE(client_socket_pool_->connecting_socket_count_, jobs_.size());
+  client_socket_pool_->connecting_socket_count_ -= jobs_.size();
+  JobList jobs_to_destroy = std::move(jobs_);
+  jobs_.clear();
 
   // Diagnostics check for crbug.com/1231248. `Group`s are deleted only on
   // removal from `TransportClientSocketPool::group_map_`, so if this check
@@ -1812,9 +1864,11 @@ void TransportClientSocketPool::Group::RemoveAllUnboundJobs() {
   CHECK(client_socket_pool_->HasGroup(group_id_));
 
   // Delete active jobs.
-  jobs_.clear();
-  // Stop backup job timer.
-  backup_job_timer_.Stop();
+  while (!jobs_to_destroy.empty()) {
+    std::unique_ptr<ConnectJob> job = std::move(jobs_to_destroy.front());
+    jobs_to_destroy.pop_front();
+    DestroyConnectJob(std::move(job));
+  }
 
   SanityCheck();
 }
@@ -1948,18 +2002,20 @@ TransportClientSocketPool::Group::FindAndRemoveBoundRequestForConnectJob(
   return std::nullopt;
 }
 
-std::unique_ptr<TransportClientSocketPool::Request>
-TransportClientSocketPool::Group::FindAndRemoveBoundRequest(
+bool TransportClientSocketPool::Group::FindAndRemoveBoundRequest(
     ClientSocketHandle* client_socket_handle) {
   for (auto bound_pair = bound_requests_.begin();
        bound_pair != bound_requests_.end(); ++bound_pair) {
     if (bound_pair->request->handle() != client_socket_handle)
       continue;
-    std::unique_ptr<Request> request = std::move(bound_pair->request);
+    BoundRequest bound_request = std::move(*bound_pair);
     bound_requests_.erase(bound_pair);
-    return request;
+    CHECK_GT(client_socket_pool_->connecting_socket_count_, 0u);
+    --client_socket_pool_->connecting_socket_count_;
+    DestroyConnectJob(std::move(bound_request.connect_job));
+    return true;
   }
-  return nullptr;
+  return false;
 }
 
 void TransportClientSocketPool::Group::SetPriority(ClientSocketHandle* handle,

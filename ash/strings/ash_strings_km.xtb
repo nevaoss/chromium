@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">ត្រឡប់វិញ</translation>
 <translation id="2086334242442703436">បើកផ្ទាំង​ជ្រើសរើស​រូបអារម្មណ៍</translation>
 <translation id="2089550919269323883">ការដំឡើង <ph name="VM_NAME" /> ត្រូវបាន​ទប់ស្កាត់​ដោយ​គោលការណ៍​សហគ្រាស។ សូម​ទាក់ទង​ទៅអ្នកគ្រប់គ្រងប្រព័ន្ធ​របស់អ្នក ដើម្បី​ទទួលបាន​ជំនួយ។ លេខ​កូដ​បញ្ហាគឺ <ph name="ERROR" />។</translation>
-<translation id="2093792000875799555">ព័ត៌មាន​អំពី Steam សម្រាប់ Chromebook</translation>
 <translation id="209965399369889474">មិនបាន​ភ្ជាប់ទៅ​បណ្ដាញ​ទេ</translation>
 <translation id="2107581415810719320">ប៊ូតុង​ផ្សេងទៀត <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">ខ្សែ USB-C របស់អ្នកមិនអាចប្រើ Thunderbolt បានទេ។ ប្រតិបត្តិការឧបករណ៍អាចត្រូវ​បានដាក់កំហិត។</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">តើអ្នកចង់ផ្ដោតអារម្មណ៍លើអ្វី? ចុច enter ដើម្បី​បញ្ចូលកិច្ចការ។</translation>
 <translation id="229397294990920565">កំពុងបិទទិន្នន័យទូរសព្ទចល័ត...</translation>
 <translation id="2295777434187870477">បានបើកមីក្រូហ្វូន ការបិទ/បើកនឹង​បិទសំឡេងរបស់ឧបករណ៍បញ្ចូលសំឡេង។</translation>
+<translation id="2296880470921996802">ប្រវត្តិ​ឃ្លីបបត​ត្រូវបានបិទ​ដោយ​អ្នកគ្រប់គ្រង​ផ្នែកព័ត៌មានវិទ្យា​របស់អ្នក</translation>
 <translation id="2302092602801625023">គណនីនេះ​ត្រូវបាន​គ្រប់គ្រង​ដោយ Family Link</translation>
 <translation id="2303600792989757991">បិទបើកផ្ទាំងសង្ខេប</translation>
 <translation id="2304702218354340897">តើអ្នក​ប្រាកដទេថា​ចង់បិទ​ការគ្រប់គ្រងដោយប្រើមុខ?</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">មិន​អាច​ដំឡើង​គោលការណ៍សម្រាប់ពេលគ្មានអ៊ីនធឺណិតនៅលើ​ឧបករណ៍​បានទេ។</translation>
 <translation id="3039939407102840004">ថ្មប៊ិកមានកម្រិត <ph name="PERCENTAGE" /> ភាគរយ។</translation>
 <translation id="304097922505898963">បើក​កម្មវិធី​ផ្លូវកាត់​គ្រាប់ចុច</translation>
-<translation id="3040982432432547149">ជួយយើងកែលម្អ Steam សម្រាប់ Chromebook</translation>
 <translation id="304417730895741346">កម្មវិធី​ដែលបើក និង​បានខ្ទាស់​របស់អ្នក​នៅលើធ្នើរ។ ដើម្បី​ខ្ទាស់កម្មវិធី​ទៅធ្នើរ សូមចុចម៉ៅស៍ខាងស្ដាំ​លើកម្មវិធី ឬចុច​ផ្ទាំងប៉ះ​របស់អ្នក​ដោយប្រើ​ម្រាមដៃពីរ។</translation>
 <translation id="3045670165536837541">បាន​ជ្រើសរើស​ដង​ខាងស្ដាំ​ផ្នែក​ខាងលើ ប្រើ​គ្រាប់ចុចព្រួញ​ដើម្បី​ផ្លាស់ទី</translation>
 <translation id="3046178388369461825">ទំហំផ្ទុកក្នុងថាស Linux នៅសល់តិចណាស់</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">ចុច​ផ្លូវកាត់​ថតរូបអេក្រង់</translation>
 <translation id="3702809606464356667">កំពុងបង្ហាញ​វិនដូពី​តុបច្ចុប្បន្ន សូមចុចគ្រាប់ចុច​ព្រួញឡើងលើ ដើម្បីបង្ហាញ​វិនដូ​ពីតុទាំងអស់</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">កម្សាន្ត</translation>
 <translation id="370665806235115550">កំពុងដំណើរការ...</translation>
 <translation id="3707093869106077605">មិនអាច​ប្រើ <ph name="UNAVAILABLE_DLC_ONE" /> និង <ph name="UNAVAILABLE_DLC_TWO" /> បានទេ។</translation>
 <translation id="3708186454126126312">បាន​ភ្ជាប់​ពីមុន​</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685">ការធ្វើ​បែបនេះ​ផ្ដល់​សិទ្ធិចូលប្រើ​កាមេរ៉ា​ដល់ <ph name="APP_NAME" /> ព្រម​ទាំង​គ្រប់កម្មវិធី និង​គេហទំព័រ​ដែលមាន​ការ​អនុញ្ញាត​ឱ្យ​ប្រើ​កាមេរ៉ា។ អ្នកអាចនឹង​ត្រូវផ្ទុក​ទំព័របណ្ដាញ​ឡើងវិញ ឬ​ចាប់ផ្ដើម​កម្មវិធីនេះ​ឡើងវិញ។</translation>
 <translation id="3826099427150913765">ប្ដូរទៅពាក្យសម្ងាត់</translation>
 <translation id="383058930331066723">មុខងារសន្សំថ្ម​ត្រូវបានបើក</translation>
-<translation id="3831226344927851293">ចាកចេញពីទិដ្ឋភាពមេរៀន</translation>
 <translation id="383629559565718788">បង្ហាញ​ការកំណត់​ក្ដារ​ចុច</translation>
 <translation id="384082539148746321">លុប​ទម្រង់​គំរូឬ?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /> បន្ទាប់មក <ph name="KEY_ONE" /> ឬ <ph name="KEY_TWO" /> ឬ <ph name="KEY_THREE" /> ឬ <ph name="KEY_FOUR" /></translation>
@@ -1079,7 +1076,6 @@
 <translation id="4147911968024186208">សូមព្យាយាមម្ដងទៀត។ ប្រសិនបើអ្នក​ជួបបញ្ហានេះម្ដងទៀត សូម​ទាក់ទងតំណាងផ្នែកជំនួយ​។</translation>
 <translation id="4150201353443180367">ការបង្ហាញ</translation>
 <translation id="4151054805501931758">ការកែលម្អ​រូបអ្នកប្រើប្រាស់</translation>
-<translation id="4151449637210235443">សូមប្រាប់យើងអំពីការ​លេង​ហ្គេមរបស់អ្នកក្នុងពេលថ្មីៗនេះ</translation>
 <translation id="4156293514828496577">នៅសល់​ថ្ម <ph name="PERCENTAGE" />% (ប្រហែល <ph name="TIME_LEFT" />)។
 មុខងារ​មួយចំនួន​ត្រូវបាន​ដាក់កំហិត ដើម្បី​បង្កើន​កម្រិតថាមពលថ្ម។</translation>
 <translation id="4158003972857765638">រៀបចំ​នៅក្នុង​តុថ្មី</translation>
@@ -1580,10 +1576,8 @@
 <translation id="5551974246223970793">នៅ​ពេល​ស្វែងរក​​​លើទំព័រ សូម​​ទៅកាន់ខ្លឹមសារដូចគ្នា​បន្ទាប់​​សម្រាប់​ការ​ស្វែងរក</translation>
 <translation id="5556459405103347317">ដំណើរការឡើងវិញ</translation>
 <translation id="5558091555391176027">បិទ/បើក​លទ្ធភាពមើលឃើញខ្ពស់​នៃការចែករំលែកនៅជិត</translation>
-<translation id="5558314826121965174">ភាពច្នៃប្រឌិត</translation>
 <translation id="556042886152191864">ប៊ូតុង</translation>
 <translation id="5570122939431135380">បើក​ផ្ទាំង​ថ្មី​នៅ​ក្នុង​ផ្ទាំងឯកជនថ្មី</translation>
-<translation id="5572632238877308040">សំខាន់</translation>
 <translation id="5575528586625653441">សំណើចុះឈ្មោះ​សាកល្បង​មានបញ្ហា។</translation>
 <translation id="557563299383177668">កថាខណ្ឌបន្ទាប់</translation>
 <translation id="5577082622442191756">បិទ/បើកប៊្លូធូស។ <ph name="STATE_TEXT" />។</translation>
@@ -1618,7 +1612,6 @@
 <translation id="5667546120811588575">កំពុង​រៀបចំ Google Play...</translation>
 <translation id="5669267381087807207">កំពុងធ្វើសកម្មភាព</translation>
 <translation id="5671658447180261823">លុបការ​ណែនាំ <ph name="SUGGESTION_NAME" /></translation>
-<translation id="5672890847723042801">កម្មវិធី​សម្រួលដំណើរការ</translation>
 <translation id="5673434351075758678">ពី "<ph name="FROM_LOCALE" />" ទៅ "<ph name="TO_LOCALE" />" បន្ទាប់ពី​ធ្វើ​សមកាលកម្ម​ការកំណត់​របស់អ្នក។</translation>
 <translation id="5675363643668471212">ធាតុធ្នើរ</translation>
 <translation id="5677022547882470786">អូស ឬ​ចុចដកឃ្លា ដើម្បី​ជ្រើសរើស​កន្លែង​ដែលត្រូវ​ស្វែងរក</translation>
@@ -1793,7 +1786,6 @@
 <translation id="6127395413317891856">អ្នកគ្មានអ៊ីនធឺណិតទេ។ សូមពិនិត្យមើលការតភ្ជាប់របស់អ្នក រួចព្យាយាមម្ដងទៀត។</translation>
 <translation id="6129953537138746214">ដកឃ្លា</translation>
 <translation id="6132714462430777655">រំលង​ការចុះឈ្មោះ​ចូលរៀន​ឬ?</translation>
-<translation id="6136872094979134163">មិនអាច​ទាញយក​ព័ត៌មាន​អំពី Steam សម្រាប់ Chromebook បានទេ។</translation>
 <translation id="6137566720514957455">បើក "ប្រអប់លុប​គណនី" សម្រាប់ <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">តើអ្នកចង់ផ្ដោតអារម្មណ៍លើអ្វី?</translation>
 <translation id="6141988275892716286">បញ្ជាក់​ការទាញយក</translation>
@@ -1873,7 +1865,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" /> បន្ទាប់មក <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> ឬ <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">បណ្ដាញដែលមិនស្គាល់</translation>
 <translation id="6359587239691116345">ទទួលបាន​មុខងារ និងការកែលម្អផ្នែកសុវត្ថិភាពចុងក្រោយបំផុត។ ប្រសិនបើ​អ្នក​បដិសេធ​ការដំឡើងកំណែ​នេះ ឧបករណ៍​របស់អ្នក​ប្រហែលជា​មិន​ដំណើរការ​ត្រឹមត្រូវ​ទៀតទេ ហើយ​អ្នកប្រហែល​ជាជួប​បញ្ហា​ពាក់ព័ន្ធ​នឹងសុវត្ថិភាព និងប្រតិបត្តិការ។</translation>
-<translation id="6362833380917912748">ស្វែងយល់អំពីកម្មវិធីដែលភ្ជាប់មកជាមួយស្រាប់របស់អ្នក</translation>
 <translation id="6364386432014869981">ផ្ទាំងប៉ះ​ដែលភ្ជាប់​មកជាមួយ​ស្រាប់​ត្រូវបានបើក</translation>
 <translation id="6376931439017688372">ប៊្លូធូស​ត្រូវបាន​បើក</translation>
 <translation id="6378515133128829137">ខ្ទាស់​វិនដូ​ទៅ​ស្ដាំ</translation>
@@ -2098,7 +2089,6 @@
 <translation id="7014684956566476813">បានភ្ជាប់ជាមួយ​ឧបករណ៍ដែលមាន​ឈ្មោះថា <ph name="DEVICE_NAME" /></translation>
 <translation id="7015766095477679451">ត្រឡប់​មកវិញ​នៅម៉ោង <ph name="COME_BACK_TIME" />។</translation>
 <translation id="70168403932084660">តុទី 6</translation>
-<translation id="702252130983202758">កម្មវិធី​របស់អ្នក</translation>
 <translation id="7025533177575372252">ភ្ជាប់ <ph name="DEVICE_NAME" /> ជាមួយ​ទូរសព្ទរបស់អ្នក</translation>
 <translation id="7026338066939101231">ការបន្ថយ</translation>
 <translation id="7029307918966275733">Crostini មិនត្រូវបាន​ដំឡើងទេ​។ សូម​ដំឡើង Crostini ដើម្បី​មើល​បញ្ជីឈ្មោះអ្នកបង្កើត។</translation>
@@ -2536,7 +2526,6 @@
 <translation id="8277261673056602147">រំលេចអក្សរនៅលើអេក្រង់របស់អ្នក</translation>
 <translation id="8281886186245836920">រំលង</translation>
 <translation id="8282784978194352587">អ្នកសម្រេចហើយ!</translation>
-<translation id="8287009018010202411">ផលិតភាព</translation>
 <translation id="828708037801473432">បិទ</translation>
 <translation id="8289128870594824098">ទំហំ​ថាស</translation>
 <translation id="8297006494302853456">ខ្សោយ</translation>
@@ -2631,7 +2620,6 @@
 <translation id="8598235756057743477">តម្រៀបកម្មវិធី​របស់អ្នកតាមឈ្មោះ ឬពណ៌</translation>
 <translation id="8599864823732014237">រំលង​ការចុះឈ្មោះ​សហគ្រាស​ឬ?</translation>
 <translation id="8609384513243082612">បើក​ផ្ទាំង​ថ្មី</translation>
-<translation id="861045123704058818">កម្មវិធីត្រូវបានរៀបចំតាមប្រភេទជាបណ្ដោះអាសន្ន</translation>
 <translation id="8612338981637220013">អ្នកសម្រេចទៀតហើយ!</translation>
 <translation id="8613164732773110792">តួអក្សរតូច តួលេខ សញ្ញា (_) ឬសញ្ញា (—) តែប៉ុណ្ណោះ</translation>
 <translation id="8614517853887502247">ការជូនដំណឹងអំពី <ph name="APP_1_TITLE" /> និង <ph name="APP_2_TITLE" /> ត្រូវបានលាក់ ដោយសារ​ការការពារ​ការមើលត្រូវបានបើក</translation>
@@ -2823,7 +2811,6 @@
 <translation id="9129245940793250979">ប៊ូតុងខាងក្រោយ</translation>
 <translation id="9133335900048457298">មិនអាចថតខ្លឹមសារដែលមានការការពារបានទេ</translation>
 <translation id="9139720510312328767">លុប​អក្សរ​បន្ទាប់</translation>
-<translation id="9148058034647219655">ចាកចេញ</translation>
 <translation id="9151906066336345901">end</translation>
 <translation id="9159421884295554245">ស្វែងរក​ក្នុង​ឃ្លីបបត</translation>
 <translation id="9168436347345867845">ធ្វើនៅ​ពេលក្រោយ</translation>

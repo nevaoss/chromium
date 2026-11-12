@@ -7,11 +7,12 @@ import 'chrome://new-tab-page/new_tab_page.js';
 import type {NtpSearchboxElement, SearchboxIconElement, SearchboxMatchElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {BrowserProxyImpl, InputSource, MetricsReporterImpl, SearchboxBrowserProxy, SearchboxOverride} from 'chrome://new-tab-page/new_tab_page.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
-import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createSearchMatchForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageMetricsCallbackRouter} from 'chrome://resources/js/metrics_reporter.mojom-webui.js';
 import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {DriveDisclaimerStatus, RenderType, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SecondaryTextPlacement} from 'chrome://resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {assertIconMaskImageUrl, assertStyle, createClipboardEvent, createUrlMatch, MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searchbox/test_searchbox_browser_proxy.js';
@@ -607,9 +608,10 @@ suite('SearchboxTest', () => {
           createUrlMatch({iconPath: 'page.svg'}),
           createSearchMatchForTesting({
             iconPath: 'clock.svg',
-            imageUrl: 'https://gstatic.com/',
-            imageDominantColor: '#757575',
-            isTwoRowSuggestion: true,
+            suggestTemplate: createSuggestTemplateInfo({
+              secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
+              image: {url: 'https://gstatic.com/', dominantColor: '#757575'},
+            }),
           }),
         ];
         testProxy.callbackRouterRemote.autocompleteResultChanged(
@@ -663,7 +665,7 @@ suite('SearchboxTest', () => {
         assertEquals(
             matchEls[1]!.$.icon.$.image.getAttribute('src'),
             `//image?staticEncode=true&encodeType=webp&url=${
-                encodeURIComponent(matches[1]!.imageUrl)}`);
+                encodeURIComponent(matches[1]!.suggestTemplate.image!.url)}`);
 
         // Mock image finishing loading, which should remove the temporary
         // background color.
@@ -769,9 +771,10 @@ suite('SearchboxTest', () => {
           createSearchMatchForTesting({
             iconUrl: 'https://helloworld.com/search.png',
             iconPath: 'clock.svg',
-            imageUrl: 'https://gstatic.com/',
-            imageDominantColor: '#757575',
-            isTwoRowSuggestion: true,
+            suggestTemplate: createSuggestTemplateInfo({
+              secondaryTextPlacement: SecondaryTextPlacement.kBelowPrimaryText,
+              image: {url: 'https://gstatic.com/', dominantColor: '#757575'},
+            }),
           }),
         ];
         testProxy.callbackRouterRemote.autocompleteResultChanged(
@@ -898,7 +901,8 @@ suite('SearchboxTest', () => {
         iconUrl: 'https://helloworld-2.com/url.png',
         iconPath: fallbackIconPath,
         isEnterpriseSearchAggregatorPeopleType: true,
-        contents: 'helloworld-2.com',
+        suggestTemplate:
+            createSuggestTemplateInfo({primaryText: 'helloworld-2.com'}),
         destinationUrl: 'https://helloworld-2.com/',
         fillIntoEdit: 'https://helloworld-2.com',
       }),

@@ -20,7 +20,6 @@
 #include "chrome/browser/navigation_predictor/navigation_predictor_keyed_service.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_keyed_service_factory.h"
 #include "chrome/browser/predictors/loading_predictor_config.h"
-#include "chrome/browser/predictors/predictors_traffic_annotations.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/common/pref_names.h"
@@ -32,6 +31,7 @@
 #include "net/base/features.h"
 #include "net/base/reconnect_notifier.h"
 #include "net/socket/next_proto.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/network/public/cpp/constants.h"
 
 #if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
@@ -41,6 +41,59 @@
 #endif
 
 namespace {
+
+constexpr net::NetworkTrafficAnnotationTag
+    kSearchEnginePreconnectTrafficAnnotation =
+        net::DefineNetworkTrafficAnnotation("search_engine_preconnect",
+                                            R"(
+    semantics {
+      sender: "Loading Predictor"
+      description:
+        "This request is issued near the start of a navigation to "
+        "speculatively fetch resources that resulting page is predicted to "
+        "request."
+      trigger:
+        "Navigating Chrome (by clicking on a link, bookmark, history item, "
+        "using session restore, etc)."
+      data:
+        "Arbitrary site-controlled data can be included in the URL."
+        "Requests may include cookies."
+      destination: WEBSITE
+      internal {
+        contacts {
+          owners: "//chrome/browser/navigation_predictor/OWNERS"
+        }
+      }
+      user_data {
+        type: SENSITIVE_URL
+        type: WEB_CONTENT
+      }
+      last_reviewed: "2026-09-23"
+    }
+    policy {
+      cookies_allowed: YES
+      cookies_store: "user"
+      setting:
+        "There are a number of ways to prevent this request:"
+        "A) Disable predictive operations under Settings > Performance "
+        "   > Preload pages for faster browsing and searching,"
+        "B) Disable 'Improve search suggestions' under Settings > "
+        "   Sync and Google services > Improve search suggestions"
+      chrome_policy {
+        NetworkPredictionOptions {
+          NetworkPredictionOptions: 2
+        }
+      }
+      chrome_policy {
+        SearchSuggestEnabled {
+          SearchSuggestEnabled: false
+        }
+      }
+    }
+    comments:
+      "This feature can be safely disabled, but enabling it may result in "
+      "faster page loads."
+)");
 
 #if BUILDFLAG(IS_ANDROID)
 const int kDefaultStartupDelayMs = 0;
@@ -78,6 +131,12 @@ base::TimeDelta GetPreconnectInitialRetryInterval() {
   }
   return features::kPreconnectInitialRetryInterval.Get();
 }
+
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+features::DsePrewarmerLifetime GetDsePrewarmerLifetime() {
+  return features::kDeviceBoundSessionsDsePrewarmerMode.Get();
+}
+#endif
 
 }  // namespace
 
@@ -198,16 +257,76 @@ bool SearchEnginePreconnector::SearchEnginePreconnect2Enabled() {
 SearchEnginePreconnector::SearchEnginePreconnector(
     content::BrowserContext* browser_context)
     : browser_context_(browser_context) {
-  DCHECK(ShouldBeEnabledForOffTheRecord() ||
-         !browser_context_->IsOffTheRecord());
+  CHECK(ShouldBeEnabledForOffTheRecord() || !browser_context_->IsOffTheRecord(),
+        base::NotFatalUntil::M161);
 }
 
 SearchEnginePreconnector::~SearchEnginePreconnector() = default;
 
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+bool SearchEnginePreconnector::MaybeCreateDeviceBoundSessionPrewarmer(
+    const GURL& prewarm_url,
+    bool is_startup) {
+  if (!prewarm_url.is_valid() || !prewarm_url.SchemeIs(url::kHttpsScheme) ||
+      !base::FeatureList::IsEnabled(
+          features::kDeviceBoundSessionsDsePrewarmer)) {
+    return false;
+  }
+
+  if (device_bound_session_prewarmer_ &&
+      device_bound_session_prewarmer_->prewarm_url() == prewarm_url) {
+    return true;
+  }
+
+  // TODO(crbug.com/544602735): Implement the
+  // DeviceBoundSessionPrewarmer as a KeyedService.
+  device_bound_session_prewarmer_ =
+      std::make_unique<DeviceBoundSessionPrewarmer>(
+          prewarm_url,
+          base::BindRepeating(
+              [](content::BrowserContext* browser_context) {
+                return browser_context->GetDefaultStoragePartition()
+                    ->GetDeviceBoundSessionManager();
+              },
+              browser_context_),
+          content::GetNetworkConnectionTracker());
+  device_bound_session_prewarmer_->Start(is_startup);
+  return true;
+}
+
+void SearchEnginePreconnector::MaybeCreateStickyDeviceBoundSessionPrewarmer(
+    bool is_startup) {
+  switch (GetDsePrewarmerLifetime()) {
+    case features::DsePrewarmerLifetime::kFollowPreconnector:
+      return;
+    case features::DsePrewarmerLifetime::kStickyRespectingPrefs:
+      // Same settings checks as in `PreconnectDSE()`. They are only applied
+      // at creation time: a later change of these settings doesn't destroy
+      // an existing prewarmer.
+      if (!base::FeatureList::IsEnabled(features::kPreconnectToSearch) ||
+          !Profile::FromBrowserContext(browser_context_)
+               ->GetPrefs()
+               ->GetBoolean(prefs::kSearchSuggestEnabled) ||
+          !IsPreconnectEnabled()) {
+        return;
+      }
+      break;
+    case features::DsePrewarmerLifetime::kSticky:
+      break;
+  }
+  MaybeCreateDeviceBoundSessionPrewarmer(GetDefaultSearchEngineOriginURL(),
+                                         is_startup);
+}
+#endif
+
 void SearchEnginePreconnector::StopPreconnecting() {
   preconnector_started_ = false;
 #if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
-  device_bound_session_prewarmer_.reset();
+  // In sticky modes, the prewarmer is kept when the preconnector is stopped.
+  if (GetDsePrewarmerLifetime() ==
+      features::DsePrewarmerLifetime::kFollowPreconnector) {
+    device_bound_session_prewarmer_.reset();
+  }
 #endif
   timer_.Stop();
 }
@@ -215,6 +334,12 @@ void SearchEnginePreconnector::StopPreconnecting() {
 void SearchEnginePreconnector::StartPreconnecting(bool with_startup_delay) {
   preconnector_started_ = true;
   timer_.Stop();
+
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+  // In sticky modes, the prewarmer doesn't wait for the startup delay.
+  MaybeCreateStickyDeviceBoundSessionPrewarmer(
+      /*is_startup=*/with_startup_delay);
+#endif
 
   if (with_startup_delay) {
     StartPreconnectWithDelay(
@@ -229,12 +354,19 @@ void SearchEnginePreconnector::StartPreconnecting(bool with_startup_delay) {
 }
 
 void SearchEnginePreconnector::PreconnectDSE(bool is_startup) {
-  DCHECK(ShouldBeEnabledForOffTheRecord() ||
-         !browser_context_->IsOffTheRecord());
-  DCHECK(!timer_.IsRunning());
+  CHECK(ShouldBeEnabledForOffTheRecord() || !browser_context_->IsOffTheRecord(),
+        base::NotFatalUntil::M161);
+  CHECK(!timer_.IsRunning(), base::NotFatalUntil::M161);
 #if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
   absl::Cleanup reset_prewarmer = [this] {
-    device_bound_session_prewarmer_.reset();
+    // In sticky modes, the prewarmer is kept when preconnecting is skipped.
+    // It is still rebuilt below when the DSE URL changes to another
+    // preconnect-eligible HTTPS engine; otherwise, the previous DSE's
+    // prewarmer is kept.
+    if (GetDsePrewarmerLifetime() ==
+        features::DsePrewarmerLifetime::kFollowPreconnector) {
+      device_bound_session_prewarmer_.reset();
+    }
   };
 #endif
   if (!base::FeatureList::IsEnabled(features::kPreconnectToSearch)) {
@@ -249,8 +381,8 @@ void SearchEnginePreconnector::PreconnectDSE(bool is_startup) {
   }
 
   GURL preconnect_url = GetDefaultSearchEngineOriginURL();
-  if (preconnect_url.GetScheme() != url::kHttpScheme &&
-      preconnect_url.GetScheme() != url::kHttpsScheme) {
+  if (!preconnect_url.SchemeIs(url::kHttpScheme) &&
+      !preconnect_url.SchemeIs(url::kHttpsScheme)) {
     return;
   }
 
@@ -292,26 +424,8 @@ void SearchEnginePreconnector::PreconnectDSE(bool is_startup) {
                                                kDefaultSkipInBackground) ||
       is_browser_app_likely_in_foreground) {
 #if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
-    if (preconnect_url.SchemeIs(url::kHttpsScheme) &&
-        base::FeatureList::IsEnabled(
-            features::kDeviceBoundSessionsDsePrewarmer)) {
+    if (MaybeCreateDeviceBoundSessionPrewarmer(preconnect_url, is_startup)) {
       std::move(reset_prewarmer).Cancel();
-      // TODO(crbug.com/544602735): Implement the
-      // DeviceBoundSessionPrewarmer as a KeyedService.
-      if (!device_bound_session_prewarmer_ ||
-          device_bound_session_prewarmer_->prewarm_url() != preconnect_url) {
-        device_bound_session_prewarmer_ =
-            std::make_unique<DeviceBoundSessionPrewarmer>(
-                preconnect_url,
-                base::BindRepeating(
-                    [](content::BrowserContext* browser_context) {
-                      return browser_context->GetDefaultStoragePartition()
-                          ->GetDeviceBoundSessionManager();
-                    },
-                    browser_context_),
-                content::GetNetworkConnectionTracker());
-        device_bound_session_prewarmer_->Start(is_startup);
-      }
     }
 #endif
 
@@ -324,7 +438,7 @@ void SearchEnginePreconnector::PreconnectDSE(bool is_startup) {
     // See https://wicg.github.io/connection-allowlists/#threat-model.
     GetPreconnectManager().StartPreconnectUrl(
         preconnect_url, /*allow_credentials=*/true, network_anonymziation_key,
-        predictors::kSearchEnginePreconnectTrafficAnnotation,
+        kSearchEnginePreconnectTrafficAnnotation,
         /*storage_partition_config=*/nullptr,
         network::GetNoOpNetworkRestrictionsId(), std::move(keepalive_config),
         std::move(observer));

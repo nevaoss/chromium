@@ -116,6 +116,8 @@ sk_sp<SkSurface> CreateSkSurfaceWrappingGLTexture(
       dest_color_space, nullptr);
 }
 
+// If the copy is performed, returns true and sets `upload_error` to any GL
+// error reported by the driver during the upload.
 bool CopyPixelsToTexture(
     GLint xoffset,
     GLint yoffset,
@@ -130,7 +132,9 @@ bool CopyPixelsToTexture(
     SharedImageRepresentationFactory* representation_factory,
     SharedContextState* shared_context_state,
     const std::vector<GrBackendSemaphore>& begin_semaphores,
-    std::vector<GrBackendSemaphore>& end_semaphores) {
+    std::vector<GrBackendSemaphore>& end_semaphores,
+    gl::GLApi* gl_api,
+    GLenum& upload_error) {
   // We have implemented CompoundImageBacking::ProduceMemory() which can lead
   // to a performance regression when it's underlying GPU backing holds the
   // latest data. Previously, an unimplemented
@@ -195,7 +199,10 @@ bool CopyPixelsToTexture(
       dest_scoped_access->NeedGraphiteContextSubmit());
 
   if (success && !dest_shared_image->IsCleared()) {
-    dest_shared_image->SetClearedRect(dest_cleared_rect);
+    upload_error = DrainGLErrors(gl_api);
+    if (upload_error == GL_NO_ERROR) {
+      dest_shared_image->SetClearedRect(dest_cleared_rect);
+    }
   }
 
   return true;
@@ -295,13 +302,23 @@ base::expected<void, GLError> CopySharedImageHelper::CopySharedImage(
   bool update_cleared_rect = false;
   gfx::Rect new_cleared_rect;
 
+  // Skia does not report GL errors from uploads, so check for driver errors
+  // before marking an uncleared destination as cleared.
+  const bool check_gl_upload_errors = !dest_shared_image->IsCleared() &&
+                                      shared_context_state_->GrContextIsGL() &&
+                                      !shared_context_state_->context_lost();
+  gl::GLApi* const gl_api =
+      check_gl_upload_errors ? gl::g_current_gl_context : nullptr;
+  DrainGLErrors(gl_api);
+
   // Flush dest surface and submit if necessary before exiting.
   absl::Cleanup cleanup = [&]() {
     bool success =
         shared_context_state_->FlushWriteAccess(dest_scoped_access.get());
     shared_context_state_->SubmitIfNecessary(std::move(end_semaphores),
                                              need_graphite_submit);
-    if (success && update_cleared_rect) {
+    if (success && update_cleared_rect &&
+        DrainGLErrors(gl_api) == GL_NO_ERROR) {
       dest_shared_image->SetClearedRect(new_cleared_rect);
     }
   };
@@ -319,14 +336,20 @@ base::expected<void, GLError> CopySharedImageHelper::CopySharedImage(
 
   // Attempt to upload directly from CPU shared memory to destination texture.
   // Only do this if no scaling is happening.
+  GLenum upload_error = GL_NO_ERROR;
   if (src_width == dst_width && src_height == dst_height &&
-      CopyPixelsToTexture(xoffset, yoffset, x, y, src_width, src_height,
-                          new_cleared_rect, source_mailbox,
-                          dest_shared_image.get(), dest_scoped_access.get(),
-                          representation_factory_, shared_context_state_,
-                          begin_semaphores, end_semaphores)) {
+      CopyPixelsToTexture(
+          xoffset, yoffset, x, y, src_width, src_height, new_cleared_rect,
+          source_mailbox, dest_shared_image.get(), dest_scoped_access.get(),
+          representation_factory_, shared_context_state_, begin_semaphores,
+          end_semaphores, gl_api, upload_error)) {
     // Cancel cleanup as CopyPixelsToTexture already handles it.
     std::move(cleanup).Cancel();
+    if (upload_error != GL_NO_ERROR) {
+      return base::unexpected(
+          GLError(upload_error, "CopySharedImage",
+                  "GL driver reported an error during texture upload"));
+    }
     return base::ok();
   }
 
@@ -479,7 +502,16 @@ base::expected<void, GLError> CopySharedImageHelper::CopySharedImage(
                                            need_graphite_submit);
 
   if (success && update_cleared_rect) {
-    dest_shared_image->SetClearedRect(new_cleared_rect);
+    GLenum error = DrainGLErrors(gl_api);
+    if (error != GL_NO_ERROR) {
+      if (result.has_value()) {
+        result = base::unexpected(
+            GLError(error, "CopySharedImage",
+                    "GL driver reported an error during texture upload"));
+      }
+    } else {
+      dest_shared_image->SetClearedRect(new_cleared_rect);
+    }
   }
   return result;
 }
@@ -609,7 +641,6 @@ namespace {
 // that the src rect is contained within the image.
 bool GraphiteImageReadPixels(GraphiteSharedContext* graphite_shared_context,
                              sk_sp<SkImage> sk_image,
-                             GrSurfaceOrigin src_surface_origin,
                              int src_x,
                              int src_y,
                              const SkImageInfo& dst_info,
@@ -621,23 +652,6 @@ bool GraphiteImageReadPixels(GraphiteSharedContext* graphite_shared_context,
 
   CHECK(graphite_shared_context);
   ReadPixelsContext context;
-
-#if defined(SK_LEGACY_GRAPHITE_READ_PIXELS_BOTTOM_LEFT_BEHAVIOR)
-  // Make the `src_rect` relative to the bottom left origin if needed. This
-  // works around lack of support for bottom-left origin data during readback in
-  // Graphite. Graphite correctly handles bottom-left origins when rendering, so
-  // if asyncRescaleAndReadPixels() were to render `sk_image` for any reason,
-  // this adjustment won't work. But this call isn't scaling and is presumably
-  // for a shared image that has copy-src usage, so it shouldn't happen. This is
-  // also a no-op when the src rect is the entire image, regardless of origin.
-  if (src_surface_origin == kBottomLeft_GrSurfaceOrigin) {
-    src_y = src_image_bounds.height() - src_rect.y() - src_rect.height();
-    src_rect = gfx::Rect(
-        src_rect.x(), src_y, src_rect.width(), src_rect.height());
-    // This adjustment should not change the fact that src_rect is still valid
-    CHECK(src_image_bounds.Contains(src_rect));
-  }
-#endif
 
   // We don't need to insert a recording since asyncRescaleAndReadPixels is a
   // context operation that inserts its own recording internally.
@@ -657,19 +671,9 @@ bool GraphiteImageReadPixels(GraphiteSharedContext* graphite_shared_context,
     return false;
   }
 
-#if defined(SK_LEGACY_GRAPHITE_READ_PIXELS_BOTTOM_LEFT_BEHAVIOR)
-  // Use CopyPlane to flip as Graphite doesn't support bottom left origin
-  // images. Using a negative height causes CopyPlane to flip while copying.
-  // TODO(crbug.com/40269891): Remove this if Graphite performs the flip
-  // once it supports bottom left origin images.
-  const int height = src_surface_origin == kTopLeft_GrSurfaceOrigin
-                         ? dst_info.height()
-                         : -dst_info.height();
-#else
   // Must copy the async results (often a GPU-mapped buffer) to the CPU
   // pixel_address.
   const int height = dst_info.height();
-#endif
   libyuv::CopyPlane(static_cast<const uint8_t*>(context.async_result->data(0)),
                     context.async_result->rowBytes(0),
                     static_cast<uint8_t*>(pixel_address), row_bytes,
@@ -753,8 +757,8 @@ base::expected<void, GLError> CopySharedImageHelper::ReadPixels(
         shared_context_state_->graphite_shared_context();
     success =
         GraphiteImageReadPixels(graphite_shared_context, std::move(sk_image),
-                                source_shared_image->surface_origin(), src_x,
-                                src_y, dst_info, pixel_address, row_bytes);
+                                src_x, src_y, dst_info, pixel_address,
+                                row_bytes);
   }
   if (!success) {
     return base::unexpected(GLError(GL_INVALID_OPERATION, "ReadPixels",

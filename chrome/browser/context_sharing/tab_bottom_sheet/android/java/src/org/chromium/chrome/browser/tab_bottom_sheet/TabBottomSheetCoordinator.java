@@ -96,7 +96,6 @@ public class TabBottomSheetCoordinator {
 
     private boolean mIsShowingTabBottomSheet;
     private boolean mExpectingLayoutChange;
-    private boolean mInitialContainerSizeChanged;
     private boolean mPendingExpansion;
 
     private @Nullable KeyboardVisibilityListener mKeyboardVisibilityListener;
@@ -259,7 +258,7 @@ public class TabBottomSheetCoordinator {
                         return;
                     }
                     updateRoundingEdges();
-                    setToFixedHeightOrFallback();
+                    updateContentHeight();
 
                     boolean isSheetHeightSufficient =
                             mMediator.isSheetHeightSufficient(getDesiredFixedHeight());
@@ -435,7 +434,8 @@ public class TabBottomSheetCoordinator {
                 if (canResizeWebView()) {
                     assert mResizingStrategy != null;
                     mResizingStrategy.onSheetResizingStatusChanged(
-                            state == SheetState.SCROLLING && !mBottomSheetController.isSmallScreen());
+                            state == SheetState.SCROLLING
+                                    && !mBottomSheetController.isSmallScreen());
                 }
 
                 if (state != SheetState.SCROLLING && state != SheetState.NONE) {
@@ -460,16 +460,7 @@ public class TabBottomSheetCoordinator {
                     mBottomSheetController.collapseSheet(/* animate= */ true);
                     mExpectingLayoutChange = false;
                 }
-                if (canResizeWebView()) {
-                    if (mInitialContainerSizeChanged) {
-                        setToFlexibleHeight();
-                    } else {
-                        setToFixedHeightOrFallback();
-                    }
-                    mInitialContainerSizeChanged = true;
-                } else {
-                    setToFixedHeightOrFallback();
-                }
+                updateContentHeight();
                 updateRoundingEdges();
             }
 
@@ -480,16 +471,19 @@ public class TabBottomSheetCoordinator {
                 }
 
                 if (!canResizeWebView()) {
-                    setToFixedHeightOrFallback();
+                    updateContentHeight();
                 }
             }
 
             @Override
             public void onSheetOffsetChanged(float heightFraction, float offsetPx) {
+                if (mSheetContent == null || !mIsShowingTabBottomSheet) {
+                    return;
+                }
+
                 if (mBottomSheetController.getSheetState() == SheetState.SCROLLING) {
                     mMediator.onSheetOffsetChanged(offsetPx);
                     if (canResizeWebView()) {
-                        assert mSheetContent != null;
                         assert mResizingStrategy != null;
                         float peekHeight = mSheetContent.getPeekHeight();
                         float halfRatio = mSheetContent.getHalfHeightRatio();
@@ -578,6 +572,15 @@ public class TabBottomSheetCoordinator {
             }
 
             @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                if (mBottomSheetController.getSheetState() == SheetState.FULL) {
+                    collapseSheet();
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
             public boolean onDoubleTap(MotionEvent e) {
                 collapseSheet();
                 return true;
@@ -650,20 +653,12 @@ public class TabBottomSheetCoordinator {
         return keyboardDelegate.isKeyboardShowing(mCoBrowseViews.getView());
     }
 
-    private void setToFlexibleHeight() {
+    private void updateContentHeight() {
         if (isActivityInactive(mWindowAndroid)) return;
-        mMediator.setToFlexibleHeight();
-    }
-
-    private void setToFixedHeightOrFallback() {
-        if (isActivityInactive(mWindowAndroid)) return;
-        @Px int fixedHeight = getDesiredFixedHeight();
-        mMediator.setToFixedHeight(fixedHeight);
-
-        // In the case the bottom sheet is unable to set to our desired fixed height, fallback to
-        // use of flexible heights.
-        if (canResizeWebView() && mBottomSheetController.getContainerHeight() != fixedHeight) {
-            setToFlexibleHeight();
+        if (canResizeWebView()) {
+            mMediator.setToFlexibleHeight();
+        } else {
+            mMediator.setToFixedHeight(getDesiredFixedHeight());
         }
     }
 

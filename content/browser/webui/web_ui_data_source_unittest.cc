@@ -486,6 +486,38 @@ TEST_F(WebUIDataSourceTest, SetCrossOriginPolicyValues) {
   EXPECT_EQ("same-origin", url_data_source->GetCrossOriginResourcePolicy());
 }
 
+TEST_F(WebUIDataSourceTest, AccessControlAllowOrigin) {
+  URLDataSource* url_data_source = source()->source();
+
+  // Default is empty.
+  EXPECT_EQ("", url_data_source->GetAccessControlAllowOriginForOrigin(
+                    "chrome-untrusted://foo"));
+
+  // Add specific origin.
+  source()->AddAccessControlAllowOrigin(
+      url::Origin::Create(GURL("chrome-untrusted://foo")));
+  EXPECT_EQ("chrome-untrusted://foo",
+            url_data_source->GetAccessControlAllowOriginForOrigin(
+                "chrome-untrusted://foo"));
+  EXPECT_EQ("", url_data_source->GetAccessControlAllowOriginForOrigin(
+                    "chrome-untrusted://bar"));
+
+  // Set allow all origins.
+  source()->SetAllowAllOrigins(true);
+  EXPECT_EQ("*", url_data_source->GetAccessControlAllowOriginForOrigin(
+                     "chrome-untrusted://foo"));
+  EXPECT_EQ("*", url_data_source->GetAccessControlAllowOriginForOrigin(
+                     "chrome-untrusted://bar"));
+
+  // Disabling allow all origins falls back to explicitly added origins.
+  source()->SetAllowAllOrigins(false);
+  EXPECT_EQ("chrome-untrusted://foo",
+            url_data_source->GetAccessControlAllowOriginForOrigin(
+                "chrome-untrusted://foo"));
+  EXPECT_EQ("", url_data_source->GetAccessControlAllowOriginForOrigin(
+                    "chrome-untrusted://bar"));
+}
+
 TEST_F(WebUIDataSourceTest, GetOrigin) {
   CreateDataSource("host");
   EXPECT_EQ(source()->GetOrigin(), url::Origin::Create(GURL("chrome://host")));
@@ -501,10 +533,7 @@ TEST_F(WebUIDataSourceTest, ShouldServiceRequest) {
       chrome_source->ShouldServiceRequest(GURL("chrome://host/"), nullptr, -1));
   EXPECT_FALSE(chrome_source->ShouldServiceRequest(GURL("devtools://host/"),
                                                    nullptr, -1));
-  // TODO(https://crbug.com/562108905): URLDataSource currently allows both
-  // chrome: and chrome-untrusted: requests by default. We should tighten this
-  // to only allow the matching scheme.
-  EXPECT_TRUE(chrome_source->ShouldServiceRequest(
+  EXPECT_FALSE(chrome_source->ShouldServiceRequest(
       GURL("chrome-untrusted://host/"), nullptr, -1));
   EXPECT_FALSE(
       chrome_source->ShouldServiceRequest(GURL("https://host/"), nullptr, -1));
@@ -513,10 +542,8 @@ TEST_F(WebUIDataSourceTest, ShouldServiceRequest) {
   URLDataSource* untrusted_source = source()->source();
   EXPECT_TRUE(untrusted_source->ShouldServiceRequest(
       GURL("chrome-untrusted://host/"), nullptr, -1));
-  // TODO(https://crbug.com/562108905): Tighten this to only allow the matching
-  // scheme.
-  EXPECT_TRUE(untrusted_source->ShouldServiceRequest(GURL("chrome://host/"),
-                                                     nullptr, -1));
+  EXPECT_FALSE(untrusted_source->ShouldServiceRequest(GURL("chrome://host/"),
+                                                      nullptr, -1));
   EXPECT_FALSE(untrusted_source->ShouldServiceRequest(GURL("devtools://host/"),
                                                       nullptr, -1));
   EXPECT_FALSE(untrusted_source->ShouldServiceRequest(GURL("https://host/"),

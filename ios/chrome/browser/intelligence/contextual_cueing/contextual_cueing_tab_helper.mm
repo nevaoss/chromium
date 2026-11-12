@@ -10,7 +10,9 @@
 #import "base/containers/flat_set.h"
 #import "base/functional/bind.h"
 #import "base/metrics/histogram_functions.h"
+#import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
+#import "base/task/sequenced_task_runner.h"
 #import "components/contextual_cueing/contextual_cueing_enums.h"
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/feature_constants.h"
@@ -19,6 +21,7 @@
 #import "components/optimization_guide/core/model_quality/model_quality_log_entry.h"
 #import "components/optimization_guide/core/optimization_guide_util.h"
 #import "components/prefs/pref_service.h"
+#import "components/signin/public/base/consent_level.h"
 #import "components/signin/public/identity_manager/account_capabilities.h"
 #import "components/signin/public/identity_manager/account_info.h"
 #import "components/signin/public/identity_manager/identity_manager.h"
@@ -29,6 +32,7 @@
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
 #import "ios/chrome/browser/intelligence/contextual_cueing/contextual_cue_infobar_delegate.h"
 #import "ios/chrome/browser/intelligence/contextual_cueing/contextual_cueing_cap_tracker_service.h"
 #import "ios/chrome/browser/intelligence/contextual_cueing/contextual_cueing_cap_tracker_service_factory.h"
@@ -38,10 +42,15 @@
 #import "ios/chrome/browser/intelligence/page_classification/features.h"
 #import "ios/chrome/browser/intelligence/page_classification/page_classification_service.h"
 #import "ios/chrome/browser/intelligence/page_classification/page_classification_service_factory.h"
+#import "ios/chrome/browser/location_bar/badge/model/badge_type.h"
+#import "ios/chrome/browser/location_bar/badge/model/location_bar_badge_configuration.h"
+#import "ios/chrome/browser/location_bar/badge/ui/location_bar_badge_constants.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
+#import "ios/chrome/browser/shared/public/commands/location_bar_badge_commands.h"
+#import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
 #import "ios/chrome/browser/sync/model/sync_service_factory.h"
 #import "ios/web/public/browser_state.h"
@@ -49,7 +58,6 @@
 #import "ios/web/public/web_state.h"
 
 namespace contextual_cueing {
-
 ContextualCueingTabHelper::ContextualCueingTabHelper(web::WebState* web_state)
     : web_state_(web_state),
       current_url_(web_state ? web_state->GetLastCommittedURL() : GURL()) {
@@ -68,12 +76,25 @@ ContextualCueingTabHelper::ContextualCueingTabHelper(web::WebState* web_state)
             base::BindRepeating(
                 &ContextualCueingTabHelper::OnSuggestionsPreferenceChanged,
                 base::Unretained(this)));
+        // The consented-users tier depends on this pref, which is cleared on
+        // sign-out and set when the user accepts the Gemini FRE.
+        pref_change_registrar_.Add(
+            prefs::kIOSBwgConsent,
+            base::BindRepeating(
+                &ContextualCueingTabHelper::OnSuggestionsPreferenceChanged,
+                base::Unretained(this)));
       }
 
       GeminiService* gemini_service =
           GeminiServiceFactory::GetForProfile(profile);
       if (gemini_service) {
         gemini_service_observation_.Observe(gemini_service);
+      }
+
+      signin::IdentityManager* identity_manager =
+          IdentityManagerFactory::GetForProfile(profile);
+      if (identity_manager) {
+        identity_manager_observation_.Observe(identity_manager);
       }
     }
   }
@@ -174,12 +195,119 @@ void ContextualCueingTabHelper::RecordCueClicked() {
   DismissFeatureEngagementPromo();
 }
 
+void ContextualCueingTabHelper::SetContextualCueForTesting(
+    optimization_guide::proto::ContextualCue cue) {
+  cue_ = std::move(cue);
+}
+
+void ContextualCueingTabHelper::SetGeminiInvoked(bool is_invoked) {
+  if (is_gemini_invoked_ == is_invoked) {
+    return;
+  }
+  is_gemini_invoked_ = is_invoked;
+  if (!is_invoked || !cue_.has_value()) {
+    return;
+  }
+  // Tapping the cue itself invokes Gemini, potentially synchronously from
+  // within the infobar's `Accept()` or the badge tap handler. Invalidating
+  // synchronously would destroy the infobar delegate mid-call and drop
+  // `active_category_type_` before `RecordCueClicked()` runs, so defer it.
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&ContextualCueingTabHelper::InvalidateCue,
+                                weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ContextualCueingTabHelper::SetLocationBarBadgeCommandsHandler(
+    id<LocationBarBadgeCommands> handler) {
+  location_bar_badge_handler_ = handler;
+}
+
+void ContextualCueingTabHelper::SetGeminiHandler(id<GeminiCommands> handler) {
+  gemini_handler_ = handler;
+}
+
+NSString* ContextualCueingTabHelper::GetContextualCuePrompt() const {
+  if (!cue_.has_value()) {
+    return nil;
+  }
+  return base::SysUTF8ToNSString(cue_->gemini_in_chrome_surface().prompt());
+}
+
 bool ContextualCueingTabHelper::ShowContextualCueInfobar(
     id<GeminiCommands> gemini_handler) {
   if (!web_state_) {
     return false;
   }
-  return ContextualCueInfobarDelegate::Create(web_state_, gemini_handler);
+  id<GeminiCommands> handler =
+      gemini_handler ? gemini_handler : gemini_handler_;
+  return ContextualCueInfobarDelegate::Create(web_state_, handler);
+}
+
+bool ContextualCueingTabHelper::ShowContextualCueChip(
+    id<LocationBarBadgeCommands> badge_handler) {
+  if (!web_state_ || !cue_.has_value()) {
+    return false;
+  }
+
+  id<LocationBarBadgeCommands> handler =
+      badge_handler ? badge_handler : location_bar_badge_handler_;
+  if (!handler) {
+    return false;
+  }
+
+  // The server proto separates the cue into different fields depending on the
+  // presentation format (e.g. `anchored_message_cue.action_text` for short
+  // button/chip actions, `suggested_cuj` for CUJ descriptions, and
+  // `anchored_message_text` for banner messages). For the omnibox chip, prefer
+  // the concise action verb if available, falling back to the suggested CUJ
+  // text.
+  std::string action_text_str;
+  if (cue_->has_anchored_message_cue() &&
+      !cue_->anchored_message_cue().action_text().empty()) {
+    action_text_str = cue_->anchored_message_cue().action_text();
+  } else if (!cue_->suggested_cuj().empty()) {
+    action_text_str = cue_->suggested_cuj();
+  }
+  NSString* action_text = base::SysUTF8ToNSString(action_text_str);
+  UIImage* icon = SymbolWithPointSize(SymbolSparkles, kBadgeSymbolPointSize);
+
+  LocationBarBadgeConfiguration* config = [[LocationBarBadgeConfiguration alloc]
+       initWithBadgeType:LocationBarBadgeType::kGeminiContextualCueChip
+      accessibilityLabel:action_text
+              badgeImage:icon];
+  config.badgeText = action_text;
+  config.shouldHideBadgeAfterChipCollapse = YES;
+
+  [handler updateBadgeConfig:config];
+  RecordCueShown();
+  return true;
+}
+
+bool ContextualCueingTabHelper::PresentContextualCue() {
+  if (!cue_.has_value() || !cue_ui_type_.has_value() || has_presented_cue_) {
+    return false;
+  }
+  // `SetGeminiInvoked()` defers `InvalidateCue()` to a posted task, so a
+  // stored cue may still exist if the tab becomes visible before it runs. The
+  // user is already engaged with Gemini, so drop the cue instead of showing it.
+  if (is_gemini_invoked_) {
+    RecordContextualCueingDecision(ContextualCueingDecision::kSidePanelShowing);
+    InvalidateCue();
+    return false;
+  }
+  bool presented = false;
+  switch (*cue_ui_type_) {
+    case ContextualCueUiType::kMessage:
+      presented = ShowContextualCueInfobar();
+      break;
+    case ContextualCueUiType::kOmniboxChip:
+      presented = ShowContextualCueChip();
+      break;
+  }
+  if (presented) {
+    has_presented_cue_ = true;
+  }
+  return presented;
 }
 
 #pragma mark - web::WebStateObserver
@@ -237,6 +365,10 @@ void ContextualCueingTabHelper::WasShown(web::WebState* web_state) {
   if (!IsGeminiSuggestionsSettingEnabled()) {
     return;
   }
+  if (cue_.has_value() && !has_presented_cue_) {
+    PresentContextualCue();
+    return;
+  }
   if (!categories_.has_value() && web_state_ && web_state_->IsVisible() &&
       !web_state_->IsLoading() &&
       web_state_->GetLastCommittedURL().is_valid()) {
@@ -252,6 +384,7 @@ void ContextualCueingTabHelper::WebStateDestroyed(web::WebState* web_state) {
   CancelClassification();
   pref_change_registrar_.Reset();
   gemini_service_observation_.Reset();
+  identity_manager_observation_.Reset();
   web_state_observation_.Reset();
   web_state_ = nullptr;
 }
@@ -268,17 +401,20 @@ void ContextualCueingTabHelper::CancelClassification() {
 
   InvalidateCue();
 
+  // By using `GetForProfileIfExists`, it avoids initializing services when
+  // cancelling: if they don't exist yet, there is no work to cancel, and
+  // creating them here would unnecessarily load heavy models/services.
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(web_state_->GetBrowserState());
   CHECK(profile);
   OnDevicePageClassificationService* on_device_page_classification_service =
-      OnDevicePageClassificationServiceFactory::GetForProfile(profile);
+      OnDevicePageClassificationServiceFactory::GetForProfileIfExists(profile);
   if (on_device_page_classification_service) {
     on_device_page_classification_service->CancelClassification(web_state_);
   }
 
   PageClassificationService* page_classification_service =
-      PageClassificationServiceFactory::GetForProfile(profile);
+      PageClassificationServiceFactory::GetForProfileIfExists(profile);
   if (page_classification_service) {
     page_classification_service->CancelClassification(web_state_);
   }
@@ -299,12 +435,14 @@ void ContextualCueingTabHelper::StartClassification() {
   CHECK(IsGeminiSuggestionsSettingEnabled());
 
   if (!IsIgnoreContextualCueingThresholdsEnabled()) {
-    if (!IsUserEligibleForGemini(profile)) {
+    if (!IsUserEligibleForContextualCues(profile)) {
       RecordContextualCueingDecision(ContextualCueingDecision::kUserIneligible);
       return;
     }
 
-    if (!IsHistorySyncEnabled(profile)) {
+    // Signed-out users cannot enable history sync; they only reach this point
+    // through the "all users" tier, which exempts them from the requirement.
+    if (IsUserSignedIn(profile) && !IsHistorySyncEnabled(profile)) {
       RecordContextualCueingDecision(ContextualCueingDecision::kHistorySyncOff);
       return;
     }
@@ -432,7 +570,7 @@ void ContextualCueingTabHelper::ProcessClassificationResult(
     return;
   }
   if (!IsIgnoreContextualCueingThresholdsEnabled() &&
-      !IsUserEligibleForGemini(profile)) {
+      !IsUserEligibleForContextualCues(profile)) {
     RecordContextualCueingDecision(ContextualCueingDecision::kUserIneligible);
     return;
   }
@@ -466,6 +604,12 @@ void ContextualCueingTabHelper::ProcessClassificationResult(
     active_category_type_ = evaluation_result.top_category->category_type;
   }
 
+  // Skips cue generation while Gemini is invoked.
+  if (is_gemini_invoked_) {
+    RecordContextualCueingDecision(ContextualCueingDecision::kSidePanelShowing);
+    return;
+  }
+
   if (IsGeminiContextualSuggestionsCuesServerModelExecutionEnabled()) {
     InitiateModelExecutionRequest(expected_url);
   }
@@ -494,6 +638,8 @@ void ContextualCueingTabHelper::InitiateModelExecutionRequest(
   request.mutable_active_tab_page_context()->set_url(expected_url.spec());
   request.mutable_active_tab_page_context()->set_title(
       base::UTF16ToUTF8(web_state_->GetTitle()));
+  request.add_supported_surfaces(
+      optimization_guide::proto::CONTEXTUAL_CUEING_SURFACE_GEMINI_IN_CHROME);
 
   if (delegate_) {
     base::flat_set<GURL> seen_urls;
@@ -535,6 +681,15 @@ void ContextualCueingTabHelper::OnModelExecutionResponseReceived(
 
   log_entry_ = std::move(log_entry);
 
+  // Gemini may have been invoked while model execution was in flight. The user
+  // is already engaged with Gemini, so drop the response instead of storing a
+  // cue in `cue_` that can never be shown.
+  if (is_gemini_invoked_) {
+    RecordContextualCueingDecision(ContextualCueingDecision::kSidePanelShowing);
+    NotifyContextualCueReceived(std::nullopt);
+    return;
+  }
+
   if (!result.response.has_value()) {
     NotifyContextualCueReceived(std::nullopt);
     return;
@@ -553,10 +708,11 @@ void ContextualCueingTabHelper::OnModelExecutionResponseReceived(
   // The proto defines `fulfillment_surface` as a `oneof` to support different
   // surfaces (and future additions). Validate that the surface is populated
   // and set to Gemini in Chrome (GiC), as it is currently the only fulfillment
-  // surface supported on iOS.
+  // surface supported on iOS, and that it contains a valid prepopulated prompt.
   if (cue.fulfillment_surface_case() !=
           optimization_guide::proto::ContextualCue::kGeminiInChromeSurface ||
-      !cue.has_gemini_in_chrome_surface()) {
+      !cue.has_gemini_in_chrome_surface() ||
+      cue.gemini_in_chrome_surface().prompt().empty()) {
     NotifyContextualCueReceived(std::nullopt);
     return;
   }
@@ -584,6 +740,7 @@ void ContextualCueingTabHelper::OnModelExecutionResponseReceived(
 void ContextualCueingTabHelper::NotifyContextualCueReceived(
     std::optional<optimization_guide::proto::ContextualCue> cue) {
   cue_ = std::move(cue);
+  has_presented_cue_ = false;
   if (cue_.has_value()) {
     ContextualCueingCapTrackerService* cap_service = GetCapTrackerService();
     if (cap_service && active_category_type_.has_value()) {
@@ -598,15 +755,24 @@ void ContextualCueingTabHelper::NotifyContextualCueReceived(
   for (Observer& observer : observers_) {
     observer.OnContextualCueReceived(this, cue_);
   }
+  if (cue_.has_value() && web_state_ && web_state_->IsVisible()) {
+    PresentContextualCue();
+  }
 }
 
 void ContextualCueingTabHelper::InvalidateCue() {
   active_category_type_.reset();
+  has_presented_cue_ = false;
+  DismissFeatureEngagementPromo();
+  if (!cue_.has_value()) {
+    return;
+  }
   if (web_state_) {
     ContextualCueInfobarDelegate::Remove(web_state_);
   }
-  if (!cue_.has_value()) {
-    return;
+  if (location_bar_badge_handler_) {
+    [location_bar_badge_handler_
+        hideBadgeForType:LocationBarBadgeType::kGeminiContextualCueChip];
   }
   cue_.reset();
   cue_ui_type_.reset();
@@ -625,9 +791,34 @@ bool ContextualCueingTabHelper::IsHistorySyncEnabled(ProfileIOS* profile) {
       syncer::UserSelectableType::kHistory);
 }
 
+bool ContextualCueingTabHelper::IsUserSignedIn(ProfileIOS* profile) {
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+  return identity_manager &&
+         identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin);
+}
+
 bool ContextualCueingTabHelper::IsUserEligibleForGemini(ProfileIOS* profile) {
   GeminiService* gemini_service = GeminiServiceFactory::GetForProfile(profile);
   return gemini_service && gemini_service->IsProfileEligibleForGemini();
+}
+
+bool ContextualCueingTabHelper::IsUserEligibleForContextualCues(
+    ProfileIOS* profile) {
+  PrefService* prefs = profile->GetPrefs();
+  if (!IsUserSignedIn(profile)) {
+    // Signed-out users can never be eligible for Gemini itself, so only the
+    // enterprise policies and the "all users" tier apply to them.
+    return gemini::GeminiAllowedByPolicy(prefs) && kShowCuesToAllUsers.Get();
+  }
+  if (!IsUserEligibleForGemini(profile)) {
+    return false;
+  }
+  if (kShowCuesToSignedInUsers.Get() || kShowCuesToAllUsers.Get()) {
+    return true;
+  }
+  return gemini::DidUserConsentToGemini(prefs) &&
+         kShowCuesToConsentedUsers.Get();
 }
 
 ContextualCueingCapTrackerService*
@@ -662,6 +853,18 @@ void ContextualCueingTabHelper::OnGeminiEligibilityChanged() {
   OnSuggestionsPreferenceChanged();
 }
 
+#pragma mark - signin::IdentityManager::Observer
+
+void ContextualCueingTabHelper::OnPrimaryAccountChanged(
+    const signin::PrimaryAccountChangeEvent& event_details) {
+  OnSuggestionsPreferenceChanged();
+}
+
+void ContextualCueingTabHelper::OnIdentityManagerShutdown(
+    signin::IdentityManager* identity_manager) {
+  identity_manager_observation_.Reset();
+}
+
 #pragma mark - Private
 
 bool ContextualCueingTabHelper::IsGeminiSuggestionsSettingEnabled() const {
@@ -686,8 +889,8 @@ void ContextualCueingTabHelper::OnSuggestionsPreferenceChanged() {
     return;
   }
 
-  bool is_eligible =
-      IsGeminiSuggestionsSettingEnabled() && IsUserEligibleForGemini(profile);
+  bool is_eligible = IsGeminiSuggestionsSettingEnabled() &&
+                     IsUserEligibleForContextualCues(profile);
   if (!is_eligible) {
     CancelClassification();
     categories_.reset();

@@ -948,7 +948,9 @@ Status ReadObjectStores(
       std::string_view slice(it->Key());
       bool ok = ObjectStoreMetaDataKey::Decode(&slice, &meta_data_key) &&
                 slice.empty();
-      CHECK(ok, base::NotFatalUntil::M158);
+      // TODO(crbug.com/565537403): CHECK-exclusion: Convert to a CHECK once we
+      // are confident it won't be triggered.
+      DCHECK(ok);
       if (!ok || meta_data_key.MetaDataType() != ObjectStoreMetaDataKey::NAME) {
         INTERNAL_CONSISTENCY_ERROR(GET_OBJECT_STORES);
         // Possible stale metadata, but don't fail the load.
@@ -3751,7 +3753,11 @@ bool IndexKeyCursorImpl::LoadCurrentRow(Status* s) {
   }
 
   current_key_ = index_data_key.DecodeUserKey();
-  CHECK(current_key_.IsValid(), base::NotFatalUntil::M158);
+  if (!current_key_.IsValid()) {
+    INTERNAL_READ_ERROR(LOAD_CURRENT_ROW);
+    *s = InternalInconsistencyStatus();
+    return false;
+  }
 
   slice = std::string_view(iterator_->Value());
   int64_t index_data_version;
@@ -3870,7 +3876,9 @@ bool IndexCursorImpl::LoadCurrentRow(Status* s) {
   }
 
   current_key_ = index_data_key.DecodeUserKey();
-  CHECK(current_key_.IsValid(), base::NotFatalUntil::M158);
+  // TODO(crbug.com/567850654): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(current_key_.IsValid());
 
   slice = std::string_view(iterator_->Value());
   int64_t index_data_version;
@@ -4185,7 +4193,9 @@ Status BackingStore::MigrateToV5(LevelDBWriteBatch* write_batch) {
 
 Status BackingStore::Transaction::HandleBlobPreTransaction() {
   CHECK(backing_store_, base::NotFatalUntil::M159);
-  CHECK(blobs_to_write_.empty(), base::NotFatalUntil::M159);
+  // TODO(crbug.com/569883940): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(blobs_to_write_.empty());
 
   if (backing_store_->in_memory()) {
     return Status::OK();
@@ -4625,7 +4635,7 @@ bool BackingStore::Transaction::WriteNewBlobs(BlobWriteCallback callback) {
                             storage::mojom::WriteBlobToFileResult::kSuccess);
                       },
                       weak_ptr_factory_.GetWeakPtr(),
-                      base::Unretained(&entry),
+                      base::UnsafeDanglingUntriaged(&entry),
                       write_result_callback));
           break;
         }

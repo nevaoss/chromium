@@ -127,6 +127,10 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
               (override));
   MOCK_METHOD(bool, IsUrlForPrimaryAccount, (const GURL& url), (override));
   MOCK_METHOD(bool, IsSignedInToBrowserWithValidCredentials, (), (override));
+  MOCK_METHOD(bool,
+              IsSignedInForWebContentsOnInit,
+              (content::WebContents * web_contents),
+              (override));
   MOCK_METHOD(void,
               LoadUrlInWebContents,
               (const GURL& url,
@@ -139,7 +143,8 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
                BrowserWindowInterface* browser),
               (override));
 
-  bool IsWebContentsInSidePanel(content::WebContents* web_contents) override {
+  bool IsWebContentsInSidePanel(
+      content::WebContents* web_contents) const override {
     if (is_web_contents_in_side_panel_override_.has_value()) {
       return *is_web_contents_in_side_panel_override_;
     }
@@ -152,11 +157,13 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
   }
 
   using ContextualTasksUiService::HandleCitationClick;
+  using ContextualTasksUiService::HandleLensNavigation;
   using ContextualTasksUiService::HandleNavigationImpl;
   using ContextualTasksUiService::HandleSidePanelExternalNavigation;
   using ContextualTasksUiService::IsAllowedSidePanelUrl;
   using ContextualTasksUiService::IsWebContentsInSidePanel;
   using ContextualTasksUiService::ShouldHandleCitationClick;
+  using ContextualTasksUiService::ShouldHandleLensNavigation;
   using ContextualTasksUiService::ShouldHandleSidePanelExternalNavigation;
   bool HandleNavigationImpl(
       content::OpenURLParams url_params,

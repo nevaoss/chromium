@@ -22,7 +22,10 @@
 
 #include "third_party/blink/renderer/core/xml/xslt_processor.h"
 
+#include <array>
+
 #include "base/command_line.h"
+#include "base/containers/span.h"
 #include "base/notreached.h"
 #include "third_party/blink/public/common/features_generated.h"
 #include "third_party/blink/public/common/switches.h"
@@ -50,6 +53,7 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
+#include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
@@ -169,10 +173,9 @@ namespace {
 // The banner lives in the transformed document, whose stylesheets are not
 // under our control, so everything is styled inline.
 constexpr char kBannerStyle[] =
-    "display: block; background-color: #d9534f; color: white; "
-    "padding: 12px 44px; margin-bottom: 20px; font-size: 16px; "
-    "font-weight: bold; text-align: center; font-family: sans-serif; "
-    "position: relative; z-index: 2147483647; line-height: normal;";
+    "background-color: #d9534f; color: white; padding: 12px 44px; font-size: "
+    "16px; font-weight: bold; text-align: center; font-family: sans-serif; "
+    "line-height: normal; bottom: auto; width: auto; border: none;";
 constexpr char kLinkStyle[] = "color: white; text-decoration: underline;";
 constexpr char kCloseButtonStyle[] =
     "position: absolute; top: 6px; right: 8px; background: transparent; "
@@ -283,21 +286,28 @@ struct BannerLink {
   String text;
 };
 
-// Appends `message` to `banner`, replacing its "$1" and "$2" placeholders with
-// links to `link1` and `link2` respectively. The placeholders are expanded into
-// elements rather than substituted as text, so the message is split here rather
-// than by Locale::QueryString(). A translation may place the placeholders in
-// any order, or leave one out.
+// Appends `message` to `banner`, replacing its "$1", "$2", ... placeholders
+// with links to the corresponding entries of `links`. The placeholders are
+// expanded into elements rather than substituted as text, so the message is
+// split here rather than by Locale::QueryString(). A translation may place the
+// placeholders in any order, or leave some out.
 static void AppendLocalizedBannerText(Document& document,
                                       ContainerNode* banner_container,
                                       const String& message,
-                                      const BannerLink& link1,
-                                      const BannerLink& link2) {
+                                      base::span<const BannerLink> links) {
+  static constexpr std::array<const char*, 2> kPlaceholders = {"$1", "$2"};
+  CHECK_LE(links.size(), kPlaceholders.size());
   wtf_size_t text_start = 0;
-  for (int i = 0; i < 2; ++i) {
-    wtf_size_t position1 = message.find("$1", text_start);
-    wtf_size_t position2 = message.find("$2", text_start);
-    wtf_size_t position = std::min(position1, position2);
+  while (true) {
+    wtf_size_t position = String::npos;
+    size_t link_index = 0;
+    for (size_t i = 0; i < links.size(); ++i) {
+      wtf_size_t found = message.find(kPlaceholders[i], text_start);
+      if (found < position) {
+        position = found;
+        link_index = i;
+      }
+    }
     if (position == String::npos) {
       break;
     }
@@ -305,7 +315,7 @@ static void AppendLocalizedBannerText(Document& document,
       banner_container->appendChild(document.createTextNode(
           message.substr(text_start, position - text_start)));
     }
-    const BannerLink& link = position == position1 ? link1 : link2;
+    const BannerLink& link = links[link_index];
     banner_container->appendChild(
         CreateBannerLink(document, link.href, link.text));
     text_start = position + 2;
@@ -346,9 +356,8 @@ static void AppendDismissControls(Document& document,
   close_button->setAttribute(html_names::kAriaLabelAttr, AtomicString("Close"));
   close_button->setAttribute(html_names::kTitleAttr, AtomicString("Close"));
   // Content attributes survive cloning; addEventListener() listeners do not.
-  // This keeps the close button working when a page clones the banner, e.g.
-  // via importNode() on a transformToDocument() result. Note that this will not
-  // pass CSP/trusted types, so it's not a perfect solution.
+  // This keeps the close button working when a page clones the banner. Note
+  // that this will not pass CSP/trusted types, so it's not a perfect solution.
   close_button->setAttribute(html_names::kOnclickAttr,
                              AtomicString("this.getRootNode().host.remove();"));
   // U+00D7 MULTIPLICATION SIGN.
@@ -369,12 +378,13 @@ static void CreateAndAppendBanner(Document& document, Callback build_banner) {
     return;
   }
 
-  Element* banner = document.CreateRawElement(
+  auto* banner = To<HTMLElement>(document.CreateRawElement(
       QualifiedName(g_null_atom, AtomicString("xslt-warning-banner"),
                     html_names::xhtmlNamespaceURI),
-      CreateElementFlags::ByCreateElement());
+      CreateElementFlags::ByCreateElement()));
   banner->SetCustomElementState(CustomElementState::kUndefined);
   banner->setAttribute(html_names::kStyleAttr, AtomicString(kBannerStyle));
+  banner->setAttribute(html_names::kPopoverAttr, AtomicString("manual"));
   ShadowRoot& shadow_root = banner->AttachShadowRootInternal(
       ShadowRootMode::kOpen, FocusDelegation::kNone, SlotAssignmentMode::kNamed,
       CustomElementRegistryAssignment::Inherit(),
@@ -383,6 +393,8 @@ static void CreateAndAppendBanner(Document& document, Callback build_banner) {
   build_banner(&shadow_root);
   AppendDismissControls(document, &shadow_root, banner);
   target->insertBefore(banner, target->firstChild());
+  banner->ShowPopoverInternal(/*invoker=*/nullptr,
+                              /*exception_state=*/nullptr);
 }
 
 constexpr char kXhtmlNamespace[] = "http://www.w3.org/1999/xhtml";
@@ -471,6 +483,7 @@ static const Settings* SettingsForBanner(ExecutionContext* context) {
 
 static void InjectXSLTWarningBanner(bool is_cap_alert_xslt,
                                     bool source_has_polyfill_script,
+                                    bool source_has_origin_trial,
                                     Document& document) {
   ExecutionContext* context = document.GetExecutionContext();
   if (!RuntimeEnabledFeatures::GenerateXSLTWarningBannerEnabled(context)) {
@@ -487,8 +500,9 @@ static void InjectXSLTWarningBanner(bool is_cap_alert_xslt,
           blink::switches::kXSLTEnabledPolicy) == "true") {
     return;
   }
-  if (context &&
-      context->FeatureEnabled(mojom::blink::OriginTrialFeature::kXSLT)) {
+  if (source_has_origin_trial ||
+      (context &&
+       context->FeatureEnabled(mojom::blink::OriginTrialFeature::kXSLT))) {
     return;
   }
   if (source_has_polyfill_script || ContextHasPolyfillGlobal(context)) {
@@ -499,23 +513,36 @@ static void InjectXSLTWarningBanner(bool is_cap_alert_xslt,
       "https://chromewebstore.google.com/search/XSLT%20Polyfill",
       locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_EXTENSION_LINK)};
   if (is_cap_alert_xslt) {
-    const BannerLink removal_link = {
-        "https://chromestatus.com/feature/4709671889534976",
-        locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_CAP_ALERT_REMOVAL_LINK)};
+    const std::array<BannerLink, 2> links = {{
+        {"https://chromestatus.com/feature/4709671889534976",
+         locale.QueryString(
+             IDS_XSLT_DEPRECATION_BANNER_CAP_ALERT_REMOVAL_LINK)},
+        extension_link,
+    }};
+    // "alert-hub" is the name of the site, so it is not translated.
+    const std::array<BannerLink, 1> alert_hub_links = {{
+        {"https://www.alert-hub.org/chrome-xsl-deprecation",
+         String("alert-hub")},
+    }};
     String message =
         locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_CAP_ALERT_TEXT);
+    String alert_hub_message =
+        locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_CAP_ALERT_HUB_TEXT);
     CreateAndAppendBanner(document, [&](ContainerNode* banner) {
-      AppendLocalizedBannerText(document, banner, message, removal_link,
-                                extension_link);
+      AppendLocalizedBannerText(document, banner, message, links);
+      banner->appendChild(document.createTextNode(" "));
+      AppendLocalizedBannerText(document, banner, alert_hub_message,
+                                alert_hub_links);
     });
   } else {
-    const BannerLink removal_link = {
-        "https://chromestatus.com/feature/4709671889534976",
-        locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_REMOVAL_LINK)};
+    const std::array<BannerLink, 2> links = {{
+        {"https://chromestatus.com/feature/4709671889534976",
+         locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_REMOVAL_LINK)},
+        extension_link,
+    }};
     String message = locale.QueryString(IDS_XSLT_DEPRECATION_BANNER_TEXT);
     CreateAndAppendBanner(document, [&](ContainerNode* banner) {
-      AppendLocalizedBannerText(document, banner, message, removal_link,
-                                extension_link);
+      AppendLocalizedBannerText(document, banner, message, links);
     });
   }
 }
@@ -548,9 +575,17 @@ Document* XSLTProcessor::CreateDocumentFromSource(
   // Sites that have deployed an XSLT polyfill don't need the banner. This must
   // be computed before CommitNavigation() below, which detaches the source
   // document. CAP alerts are intentionally not scanned: they always get their
-  // own banner.
-  bool source_has_polyfill_script = !owner_document->IsCAPAlert() &&
+  // own banner. The banner is only shown for processing-instruction-based
+  // transforms (those with a frame), not for transformToDocument().
+  bool source_has_polyfill_script = frame && !owner_document->IsCAPAlert() &&
                                     SourceHasPolyfillScript(*owner_document);
+  // The transformed document is committed from a static response, so it does
+  // not inherit an origin trial enabled on the source document (e.g. via an
+  // Origin-Trial header). Check the source document before it is detached.
+  ExecutionContext* owner_context = owner_document->GetExecutionContext();
+  bool source_has_origin_trial =
+      frame && owner_context &&
+      owner_context->FeatureEnabled(mojom::blink::OriginTrialFeature::kXSLT);
 
   String mime_type = source_mime_type;
   // Force text/plain to be parsed as XHTML. This was added without explanation
@@ -577,7 +612,7 @@ Document* XSLTProcessor::CreateDocumentFromSource(
     Document* new_doc = frame->GetDocument();
     if (new_doc) {
       InjectXSLTWarningBanner(is_cap_alert_xslt, source_has_polyfill_script,
-                              *new_doc);
+                              source_has_origin_trial, *new_doc);
     }
     return new_doc;
   }
@@ -602,8 +637,6 @@ Document* XSLTProcessor::CreateDocumentFromSource(
         StrCat({"Document encoding not valid: ", source_encoding})));
   }
   document->SetContent(document_source);
-  InjectXSLTWarningBanner(is_cap_alert_xslt, source_has_polyfill_script,
-                          *document);
   return document;
 }
 

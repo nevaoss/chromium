@@ -248,6 +248,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ShortcutsAutoRemovalToast) {
           "runMochaSuite('ShortcutsAutoRemovalToast');");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ShortcutsReorder) {
+  RunTest("cr_components/most_visited_test.js",
+          "runMochaSuite('ShortcutsReorder');");
+}
+
 IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, NonEditable) {
   RunTest("cr_components/most_visited_test.js",
           "runMochaSuite('NonEditable');");
@@ -303,15 +308,9 @@ IN_PROC_BROWSER_TEST_F(CrComponentsPreloadingTest, Preloading) {
 class CrComponentsComposeboxTest : public WebUIMochaBrowserTest {
  protected:
   CrComponentsComposeboxTest() {
-    // kContextualTasksWebUiVoiceSearchDesktopAndroid is disabled so that the
-    // voice search tests exercise the default recognizer path; desktop Android
-    // bots count as a large form factor and would otherwise use the Android
-    // speech recognition path.
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{contextual_tasks::kContextualTasks},
-        /*disabled_features=*/{
-            lens::features::kLensSendRawFileMediaTypes,
-            contextual_tasks::kContextualTasksWebUiVoiceSearchDesktopAndroid});
+        /*disabled_features=*/{lens::features::kLensSendRawFileMediaTypes});
 
     set_test_loader_host(chrome::kChromeUIContextualTasksHost);
   }
@@ -348,8 +347,9 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
           "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, RecordingWave) {
-  RunTest("cr_components/composebox/recording_wave_test.js", "mocha.run()");
+typedef WebUIMochaBrowserTest CrComponentsSearchTest;
+IN_PROC_BROWSER_TEST_F(CrComponentsSearchTest, RecordingWave) {
+  RunTest("cr_components/search/recording_wave_test.js", "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, LensSearch) {
@@ -455,6 +455,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxMixin) {
   RunTest("cr_components/composebox/composebox_mixin_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxAimButton) {
+  RunTest("cr_components/composebox/composebox_aim_button_test.js",
+          "runMochaSuite('ComposeboxAimButtonTest')");
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 class CrComponentsWithPixelOutputTest : public WebUIMochaBrowserTest {
  public:
@@ -469,7 +474,13 @@ class CrComponentsWithPixelOutputTest : public WebUIMochaBrowserTest {
   }
 };
 
-IN_PROC_BROWSER_TEST_F(CrComponentsWithPixelOutputTest, CrLottie) {
+// TODO(crbug.com/568716335): Re-enable this test once fixed.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_CrLottie DISABLED_CrLottie
+#else
+#define MAYBE_CrLottie CrLottie
+#endif
+IN_PROC_BROWSER_TEST_F(CrComponentsWithPixelOutputTest, MAYBE_CrLottie) {
   RunTest("cr_components/cr_lottie/cr_lottie_test.js", "mocha.run()");
 }
 #endif  // !BUILDFLAG(IS_ANDROID)

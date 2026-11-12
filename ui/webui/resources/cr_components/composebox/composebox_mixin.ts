@@ -16,12 +16,12 @@ import {hasKeyModifiers} from '//resources/js/util.js';
 import type {CrLitElement, PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {InputSource, QueryActionOverride, SuggestInventory} from '//resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo, SmartComposeStats, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {DriveDisclaimerStatus, DriveUploadError, InputMethod, SuggestStyle} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {DriveDisclaimerStatus, DriveUploadError, InputMethod, SuggestStyle, TabAttachmentSource} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {BigBuffer} from '//resources/mojo/mojo/public/mojom/base/big_buffer.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
-import {ComposeboxFile, ComposeboxFileValidationError, ComposeboxInputModel, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, isContextUploadStatusTerminal, isValidTabId, mapOriginToMojoSource, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordToolModeSelection, recordToolModeShown, recordUserAction, TabSuggestionsState, TabUploadOrigin} from './common.js';
+import {ComposeboxFile, ComposeboxFileValidationError, ComposeboxInputModel, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, isContextUploadStatusTerminal, isValidTabId, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordToolModeSelection, recordToolModeShown, recordUserAction, TabSuggestionsState} from './common.js';
 import type {BrowserFileUpload, ComposeboxFuseboxActionRequest, ComposeboxState, ContextualUpload, DriveUpload, TabUpload} from './common.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
@@ -164,6 +164,7 @@ export const ComposeboxEmbedderMixin =
             closeOnEscape: {type: Boolean},
             composeboxNoFlickerSuggestionsFix: {type: Boolean},
             composeboxSkillsEnabled: {type: Boolean},
+            unselectMatchOnTabExit: {type: Boolean},
             queryZpsOnLoad: {type: Boolean},
             showFileCarousel: {
               reflect: true,
@@ -297,6 +298,8 @@ export const ComposeboxEmbedderMixin =
         accessor composeboxNoFlickerSuggestionsFix: boolean = false;
         accessor composeboxSkillsEnabled: boolean =
             getLoadTimeBoolean('composeboxSkillsEnabled', false);
+        accessor unselectMatchOnTabExit: boolean =
+            getLoadTimeBoolean('composeboxUnselectMatchOnTabExit', false);
         accessor contextMenuEnabled: boolean =
             loadTimeData.getBoolean('composeboxShowContextMenu');
         accessor errorMessage: string = '';
@@ -378,7 +381,7 @@ export const ComposeboxEmbedderMixin =
           shownLength: 0,
         };
         accessor state: ComposeboxState|null = null;
-        accessor suggestInventory: SuggestInventory|null = null;
+        suggestInventory: SuggestInventory|null = null;
         accessor submitEnabled: boolean = false;
         accessor tabSuggestions: TabInfo[] = [];
         accessor tabSuggestionsState: TabSuggestionsState =
@@ -399,9 +402,17 @@ export const ComposeboxEmbedderMixin =
         lensSendRawFileMediaTypesEnabled: boolean =
             loadTimeData.getBoolean('lensSendRawFileMediaTypesEnabled');
 
+        // One sentinel per in-flight request that may attach a delayed tab:
+        // an `addTabContext()` call, or `updateState()` awaiting
+        // `getInputState()`. Cleared wholesale by
+        // `resetDelayedTabContextRequests_()` to cancel them.
+        private pendingDelayedTabRequests_: Set<object> = new Set();
         private smartComposeAnnounceTimeout_: number|null = null;
         private updateStateComplete_: Promise<void> = Promise.resolve();
         private userInputGeneration_: number = 0;
+        // <if expr="not is_android">
+        private smartTabSharingUpdateGeneration_: number = 0;
+        // </if>
 
         get inputModel(): ComposeboxInputModel {
           return new ComposeboxInputModel({
@@ -452,6 +463,7 @@ export const ComposeboxEmbedderMixin =
           const listenerId =
               ComposeboxProxyImpl.getInstance().observeSmartTabSharingActive(
                   (active: boolean) => {
+                    this.smartTabSharingUpdateGeneration_++;
                     this.smartTabSharingActive = active;
                     if (this.smartTabSharingVisible && !active) {
                       this.addedTabsIds = this.automaticActiveTab?.tabId ?
@@ -509,11 +521,6 @@ export const ComposeboxEmbedderMixin =
           this.eventTracker.removeAll();
         }
 
-        override firstUpdated(changedProperties: PropertyValues<this>) {
-          super.firstUpdated(changedProperties);
-          this.setupInputListener_();
-        }
-
         private setupInputListener_() {
           const inputElem = this.getInputElement()?.inputElement;
           if (inputElem) {
@@ -554,11 +561,15 @@ export const ComposeboxEmbedderMixin =
           // <if expr="not is_android">
           if (changedPrivateProperties.has('smartTabSharingVisible')) {
             if (this.smartTabSharingVisible) {
+              const generation = ++this.smartTabSharingUpdateGeneration_;
               ComposeboxProxyImpl.getInstance().getSmartTabSharingActive().then(
                   ({active}) => {
-                    this.smartTabSharingActive = active;
+                    if (generation === this.smartTabSharingUpdateGeneration_) {
+                      this.smartTabSharingActive = active;
+                    }
                   });
             } else {
+              this.smartTabSharingUpdateGeneration_++;
               this.smartTabSharingActive = false;
             }
           }
@@ -573,7 +584,8 @@ export const ComposeboxEmbedderMixin =
           if (changedPrivateProperties.has('input') ||
               changedPrivateProperties.has('result') ||
               changedPrivateProperties.has('attachedContext') ||
-              changedPrivateProperties.has('errorMessage')) {
+              changedPrivateProperties.has('errorMessage') ||
+              changedPrivateProperties.has('smartTabSharingActive')) {
             this.showFileCarousel = this.tabFaviconChipsToCoinsEnabled ?
                 this.getFilteredCarouselFiles().length > 0 :
                 this.attachedContext.size > 0;
@@ -639,6 +651,11 @@ export const ComposeboxEmbedderMixin =
             this.voiceSearchCoherenceEnabled =
                 this.computeVoiceSearchCoherenceEnabled();
           }
+        }
+
+        override firstUpdated(changedProperties: PropertyValues<this>) {
+          super.firstUpdated(changedProperties);
+          this.setupInputListener_();
         }
 
         override updated(changedProperties: PropertyValues<this>) {
@@ -755,6 +772,27 @@ export const ComposeboxEmbedderMixin =
           return false;
         }
 
+        // Embedders return true to keep a delayed tab unsubmittable until the
+        // backend's snapshot exists (`kProcessing`), see crbug.com/552185361.
+        shouldWaitForDelayedTabContext(): boolean {
+          return false;
+        }
+
+        // Synchronous submit guard; `canSubmitFilesAndInput` lags a render
+        // cycle and is not consulted on suggestion clicks at all.
+        private hasPendingDelayedTabContext_(): boolean {
+          return this.shouldWaitForDelayedTabContext() &&
+              (this.pendingDelayedTabRequests_.size > 0 ||
+               Array.from(this.pendingUploads)
+                   .some(
+                       token => this.attachedContext.get(token)?.delayUpload));
+        }
+
+        private resetDelayedTabContextRequests_() {
+          this.pendingDelayedTabRequests_.clear();
+          this.requestUpdate();
+        }
+
         // =====================================================================
         // Common event handlers
         // =====================================================================
@@ -766,41 +804,57 @@ export const ComposeboxEmbedderMixin =
         // rather than inside composebox: Omnibox Everywhere.
         // Receives events from the inner voice search component.
         onVoicePermissionChanged(e: CustomEvent<VoicePermissionPromptState>) {
+          const voiceSearchElement =
+              this.shadowRoot?.querySelector<ComposeboxVoiceSearchElement>(
+                  '#voiceSearch');
+          const audioAnimation =
+              this.shadowRoot?.querySelector<SearchAnimatedGlowElement>(
+                  '#animatedSearchElement');
+
           if (e.detail.isOpened) {
-            // Only for when the permission prompt is showing, fire a resize
-            // event if the permission prompt has a height and width.
+            // Update composebox height/width defaults to be larger
+            // for permission prompt showing.
+            if (voiceSearchElement) {
+              voiceSearchElement.classList.add(PERMISSION_PROMPT_CSS_CLASS);
+              if (e.detail.height > 0 && e.detail.width > 0) {
+                voiceSearchElement.style.setProperty(
+                    '--cr_composebox_minimum_height', `${e.detail.height}px`);
+                voiceSearchElement.style.setProperty(
+                    '--cr_composebox_minimum_width', `${e.detail.width}px`);
+              }
+            }
+
+            // Fire a resize event for the composebox if the permission prompt
+            // has a height and width. This acts as the non-default height and
+            // width of the composebox, otherwise the default width/height
+            // above are used.
             if (e.detail.height > 0 && e.detail.width > 0) {
               this.fire('voice-permission-prompt-changed', e.detail);
             }
             // Not listening if no permission granted. Needed to turn off
             // animation.
             this.isListening = false;
+
+            // Hide the audio wave animation.
+            if (audioAnimation) {
+              audioAnimation.classList.add(PERMISSION_PROMPT_CSS_CLASS);
+            }
           } else {
             // Listening is set as `true` if permission is granted.
             this.isListening =
                 this.inVoiceSearchMode && !this.hasVoiceSearchError;
             this.fire('voice-permission-prompt-changed', e.detail);
-          }
 
-          const audioAnimation =
-              this.shadowRoot?.querySelector<SearchAnimatedGlowElement>(
-                  '#animatedSearchElement');
-          if (audioAnimation) {
-            if (e.detail.isOpened) {  // Permission prompt opened.
-              audioAnimation.classList.add(PERMISSION_PROMPT_CSS_CLASS);
-            } else {  // Permission prompt closed.
+            if (audioAnimation) {
               audioAnimation.classList.remove(PERMISSION_PROMPT_CSS_CLASS);
             }
-          }
 
-          const voiceSearchElement =
-              this.shadowRoot?.querySelector<ComposeboxVoiceSearchElement>(
-                  '#voiceSearch');
-          if (voiceSearchElement) {
-            if (e.detail.isOpened) {  // Permission prompt opened.
-              voiceSearchElement.classList.add(PERMISSION_PROMPT_CSS_CLASS);
-            } else {  // Permission prompt closed.
+            if (voiceSearchElement) {
               voiceSearchElement.classList.remove(PERMISSION_PROMPT_CSS_CLASS);
+              voiceSearchElement.style.removeProperty(
+                  '--cr_composebox_minimum_height');
+              voiceSearchElement.style.removeProperty(
+                  '--cr_composebox_minimum_width');
             }
           }
         }
@@ -841,7 +895,10 @@ export const ComposeboxEmbedderMixin =
         }
 
         private onMatchPreAccept_(e: CustomEvent<{match: AutocompleteMatch}>) {
-          this.maybeHandleSuggestionFuseboxAction_(e.detail.match, e);
+          if (!this.maybeHandleSuggestionFuseboxAction_(e.detail.match, e) &&
+              this.hasPendingDelayedTabContext_()) {
+            e.preventDefault();
+          }
         }
 
         onMatchClick(e: CustomEvent<{
@@ -910,6 +967,7 @@ export const ComposeboxEmbedderMixin =
             return;
           }
 
+          this.maybeCarryOverPreviousMatches(result);
           this.result = result;
 
           const hasMatches = this.result.matches.length > 0;
@@ -941,23 +999,53 @@ export const ComposeboxEmbedderMixin =
             this.getDropdownElement().unselect();
           }
 
-          // Populate the smart compose suggestion.
-          const nextHint = this.result.smartComposeInlineHint?.trim() ?
-              this.result.smartComposeInlineHint :
-              '';
-          if (this.smartComposeInlineHint !== nextHint) {
-            this.smartComposeInlineHint = nextHint;
-          }
+          // Smart compose hints should only be updated from the async response.
+          // This prevents the hint flicker from an empty smart compose response
+          // in the synchronous pass.
+          if (this.haveReceivedSynchronousAutocompleteResponse) {
+            // Populate the smart compose suggestion.
+            const nextHint = this.result.smartComposeInlineHint?.trim() ?
+                this.result.smartComposeInlineHint :
+                '';
+            if (this.smartComposeInlineHint !== nextHint) {
+              this.smartComposeInlineHint = nextHint;
+            }
 
-          // Smart compose stats are incremented on every response from the
-          // server.
-          if (this.smartComposeInlineHint) {
-            this.smartComposeStats.shownCount++;
-            this.smartComposeStats.shownLength +=
-                this.smartComposeInlineHint.length;
+            // Smart compose stats are incremented on every response from the
+            // server.
+            if (this.smartComposeInlineHint) {
+              this.smartComposeStats.shownCount++;
+              this.smartComposeStats.shownLength +=
+                  this.smartComposeInlineHint.length;
+            }
           }
 
           this.haveReceivedSynchronousAutocompleteResponse = true;
+        }
+
+        // TODO(crbug.com/460888279): This is a temporary, merge safe fix.
+        // Ideally, the ACController is not sending multiple responses for a
+        // single query, especially when the matches is empty. Remove this logic
+        // once a long term fix is found.
+        maybeCarryOverPreviousMatches(result: AutocompleteResult) {
+          if (!this.composeboxNoFlickerSuggestionsFix ||
+              !this.showTypedSuggest ||
+              this.haveReceivedSynchronousAutocompleteResponse) {
+            return;
+          }
+          // The first autocomplete response for ZPS contains no matches, since
+          // composebox doesn't support ZPS from local providers (ex. history
+          // suggestion). Similarly, since composebox doesn't support local
+          // providers, typed suggest first response returns a single verbatim
+          // match, which doesn't show in the dropdown. To prevent closing the
+          // dropdown before the actual response from the suggest server is
+          // received, add the previous non-verbatim matches to this first
+          // response.
+          if (this.result && this.result.matches.length > 0 &&
+              result.matches.length <= 1) {
+            result.matches.push(...this.result.matches.filter(
+                match => match.type !== 'search-what-you-typed'));
+          }
         }
 
         onContextualInputStatusChanged(
@@ -974,9 +1062,23 @@ export const ComposeboxEmbedderMixin =
               isContextUploadStatusTerminal(status)) {
             this.earlyTerminalUploads.set(token, status);
           }
-          if (this.attachedContext.get(token)?.delayUpload &&
-              !isContextUploadStatusTerminal(status)) {
+          // `kProcessing` means the delayed-tab snapshot is in memory. If the
+          // token is not mapped yet, park it for the `addTabContext()` reply.
+          if (this.shouldWaitForDelayedTabContext() &&
+              this.pendingDelayedTabRequests_.size > 0 &&
+              (!existing || existing.isGhost) &&
+              status === ContextUploadStatus.kProcessing &&
+              !this.earlyTerminalUploads.has(token)) {
+            this.earlyTerminalUploads.set(token, status);
+          }
+          if (existing?.delayUpload && !isContextUploadStatusTerminal(status)) {
             if (status === ContextUploadStatus.kProcessing) {
+              // Nothing is uploading before submit, so the snapshot being
+              // ready is the terminal state for a delayed tab here.
+              if (this.shouldWaitForDelayedTabContext()) {
+                this.updateFileStatus(
+                    token, ContextUploadStatus.kUploadSuccessful, null);
+              }
               this.queryAutocomplete(/* clearMatches= */ true);
             }
             return;
@@ -1032,12 +1134,6 @@ export const ComposeboxEmbedderMixin =
                 this.showDropdown = false;
               }
             }
-
-            // Query autocomplete to get contextual suggestions for tabs.
-            if (status === ContextUploadStatus.kProcessing &&
-                file.type.includes('tab')) {
-              this.queryAutocomplete(/* clearMatches= */ true);
-            }
           }
         }
 
@@ -1055,7 +1151,23 @@ export const ComposeboxEmbedderMixin =
             }
           }
           this.input = newInput;
-          this.queryAutocomplete(/* clearMatches= */ false);
+
+          // `clearMatches` is true if input is empty stop any in progress
+          // providers before requerying for on-focus (zero-suggest) inputs. The
+          // searchbox doesn't allow zero-suggest requests to be made while the
+          // ACController is not done.
+          if (this.composeboxNoFlickerSuggestionsFix) {
+            // If the composebox no flickering fix is enabled, stop the
+            // ACController from querying for suggestions when the input is
+            // empty, but don't clear the matches so the dropdown doesn't close.
+            if (this.input === '') {
+              this.getSearchboxHandler().stopAutocomplete(
+                  /*clearResult=*/ true);
+            }
+            this.queryAutocomplete(/* clearMatches= */ false);
+          } else {
+            this.queryAutocomplete(/* clearMatches= */ this.input === '');
+          }
         }
 
         onClearSmartCompose() {
@@ -1132,7 +1244,13 @@ export const ComposeboxEmbedderMixin =
             return;
           }
 
-          if (this.hasMatches() && this.dropdownNeeded && !hasKeyModifiers(e)) {
+          if (!this.hasMatches() || !this.dropdownNeeded) {
+            return;
+          }
+
+          if (this.unselectMatchOnTabExit) {
+            this.getDropdownElement().unselectOnTabExit(e);
+          } else if (!hasKeyModifiers(e)) {
             // If focus goes past the last match, unselect the last match.
             if (this.selectedMatchIndex === this.result!.matches.length - 1) {
               if (this.selectedMatch!.supportsDeletion) {
@@ -1299,7 +1417,6 @@ export const ComposeboxEmbedderMixin =
           // Server is not notified of these changes; side effects are local.
           this.getSearchboxHandler().setActiveToolMode(newTool, isSetByAim);
 
-          this.queryAutocomplete(/* clearMatches= */ true);
           this.updateInputPlaceholder();
         }
 
@@ -1346,6 +1463,7 @@ export const ComposeboxEmbedderMixin =
         onSmartTabSharingActiveChanged(_e: CustomEvent<{active: boolean}>) {
           // <if expr="not is_android">
           const active = _e.detail.active;
+          this.smartTabSharingUpdateGeneration_++;
           this.smartTabSharingActive = active;
           ComposeboxProxyImpl.getInstance().setSmartTabSharingActive(active);
           if (!active) {
@@ -1429,7 +1547,7 @@ export const ComposeboxEmbedderMixin =
           title: string,
           url: Url,
           delayUpload: boolean,
-          origin: TabUploadOrigin,
+          origin: TabAttachmentSource,
         }>) {
           if (!this.browserTabContextAdded) {
             recordContextualElementClickedMetric(
@@ -1445,7 +1563,7 @@ export const ComposeboxEmbedderMixin =
           });
           await this.updateComplete;
           // Only keep menu open if it was from menu and not recent tab.
-          if (e.detail.origin === TabUploadOrigin.CONTEXT_MENU) {
+          if (e.detail.origin === TabAttachmentSource.kContextMenu) {
             this.keepMenuOpenForMultiSelection();
           }
         }
@@ -1456,8 +1574,7 @@ export const ComposeboxEmbedderMixin =
 
         shouldShowSuggestionActivityLink(): boolean {
           const showActivityLink = this.result && this.showDropdown &&
-              this.result.matches.some(
-                  (match) => match.isNoncannedAimSuggestion);
+              this.result.showAimActivityLink;
           this.fire('show-suggestion-activity-link', showActivityLink);
           return !!showActivityLink;
         }
@@ -1476,11 +1593,38 @@ export const ComposeboxEmbedderMixin =
             tabUpload: TabUpload, _replaceAutoActiveTabToken: boolean = false,
             onBeforeUpdateFiles?: (attachment: ComposeboxFile) =>
                 void): Promise<ComposeboxFile|null> {
+          if (tabUpload.origin !== TabAttachmentSource.kAutoActive) {
+            this.clearAutocompleteMatches();
+          }
+          const waitForSnapshot =
+              tabUpload.delayUpload && this.shouldWaitForDelayedTabContext();
+          const pendingRequest = waitForSnapshot ? {} : null;
+          if (pendingRequest) {
+            this.pendingDelayedTabRequests_.add(pendingRequest);
+            this.requestUpdate();
+          }
           try {
             const token = await this.getSearchboxHandler().addTabContext(
                 tabUpload.tabId, tabUpload.delayUpload,
-                mapOriginToMojoSource(tabUpload.origin));
+                tabUpload.origin ?? TabAttachmentSource.kOther);
             if (!token) {
+              return null;
+            }
+            const snapshotReady = this.earlyTerminalUploads.get(token) ===
+                ContextUploadStatus.kProcessing;
+            if (snapshotReady) {
+              this.earlyTerminalUploads.delete(token);
+            }
+            // The composebox was closed or cleared while the call was in
+            // flight: drop the tab on both ends rather than resurrecting it.
+            if (pendingRequest &&
+                !this.pendingDelayedTabRequests_.has(pendingRequest)) {
+              this.earlyTerminalUploads.delete(token);
+              if (this.attachedContext.delete(token)) {
+                this.attachedContext = new Map(this.attachedContext);
+              }
+              this.getSearchboxHandler().deleteContext(
+                  token, /*fromAutoSuggestedChip=*/ false);
               return null;
             }
             // A terminal status may have arrived while this async
@@ -1504,15 +1648,10 @@ export const ComposeboxEmbedderMixin =
               }
               return null;
             }
-            // `createFromTab` optimistically reports `kUploadSuccessful`, which
-            // is only true when nothing is actually being uploaded: either the
-            // upload was delayed, or it already finished while this async
-            // `addTabContext` call was in flight. Otherwise, the
-            // upload has just started, and saying so here is what keeps the
-            // submit button disabled, since `fileUploadsComplete` is derived
-            // from these statuses.
-            const uploadInFlight =
-                !tabUpload.delayUpload && earlyStatus === null;
+            // A tab shows as in flight while its upload runs, or, for a
+            // delayed tab on a waiting embedder, until its snapshot is ready.
+            const uploadInFlight = earlyStatus === null &&
+                (!tabUpload.delayUpload || (waitForSnapshot && !snapshotReady));
             const attachment = ComposeboxFile.createFromTab(
                 token, tabUpload.tabId, tabUpload.title, tabUpload.url, {
                   supportsUnimodal: true,
@@ -1535,15 +1674,29 @@ export const ComposeboxEmbedderMixin =
               ...this.addedTabsIds.entries(),
               [tabUpload.tabId, attachment.uuid],
             ]);
+            // The early `kProcessing` was skipped above with no file to
+            // attach it to; fetch the contextual suggestions it would have.
+            if (waitForSnapshot && snapshotReady && earlyStatus === null) {
+              this.queryAutocomplete(/* clearMatches= */ true);
+            }
             this.focusInput();
             return attachment;
           } catch (e) {
+            if (pendingRequest &&
+                !this.pendingDelayedTabRequests_.has(pendingRequest)) {
+              return null;
+            }
             const err = e as ContextUploadErrorType;
             if (FILE_VALIDATION_ERRORS_MAP.has(err)) {
               this.errorMessage =
                   this.i18n(FILE_VALIDATION_ERRORS_MAP.get(err)!);
             }
             return null;
+          } finally {
+            if (pendingRequest) {
+              this.pendingDelayedTabRequests_.delete(pendingRequest);
+              this.requestUpdate();
+            }
           }
         }
 
@@ -1656,16 +1809,36 @@ export const ComposeboxEmbedderMixin =
               ?.click();
         }
 
-        async updateState(state: ComposeboxState) {
+        async updateState(state: Partial<ComposeboxState>) {
           if (!this.inputState) {
-            const inputStateResponse =
-                await this.getSearchboxHandler().getInputState();
-            // Check if a newer updateState is running and we can quit.
-            if (state !== this.state) {
-              return;
+            // Block submission across the `getInputState()` await when the
+            // state carries delayed tabs; their own guards start only below.
+            const pendingRequest = this.shouldWaitForDelayedTabContext() &&
+                    (state.files ||
+                     []).some(file => 'tabId' in file && file.delayUpload) ?
+                {} :
+                null;
+            if (pendingRequest) {
+              this.pendingDelayedTabRequests_.add(pendingRequest);
+              this.requestUpdate();
             }
-            if (inputStateResponse) {
-              this.inputState = inputStateResponse.state;
+            try {
+              const inputStateResponse =
+                  await this.getSearchboxHandler().getInputState();
+              // Check if a newer updateState is running and we can quit.
+              if (state !== this.state ||
+                  (pendingRequest &&
+                   !this.pendingDelayedTabRequests_.has(pendingRequest))) {
+                return;
+              }
+              if (inputStateResponse) {
+                this.inputState = inputStateResponse.state;
+              }
+            } finally {
+              if (pendingRequest) {
+                this.pendingDelayedTabRequests_.delete(pendingRequest);
+                this.requestUpdate();
+              }
             }
           }
 
@@ -1681,7 +1854,9 @@ export const ComposeboxEmbedderMixin =
             this.input = text;
             this.lastQueriedInput = text;
           }
-          if (this.showZps && files.length === 0) {
+          const isToolChanging = mode !== ToolMode.kUnspecified &&
+              mode !== this.inputState?.activeTool;
+          if (this.showZps && files.length === 0 && !isToolChanging) {
             this.queryAutocomplete(/* clearMatches= */ false);
           }
           if (files.length > 0 || state.error !== undefined) {
@@ -1689,7 +1864,7 @@ export const ComposeboxEmbedderMixin =
             const driveUploads: DriveUpload[] = [];
             for (const file of files) {
               if ('tabId' in file) {
-                if (file.origin === TabUploadOrigin.CONTEXT_MENU) {
+                if (file.origin === TabAttachmentSource.kContextMenu) {
                   this.keepMenuOpenForMultiSelection();
                 }
                 this.addTabContextHandleCallback(
@@ -1868,12 +2043,15 @@ export const ComposeboxEmbedderMixin =
 
         onCancelClick() {
           if (this.hasContent()) {
-            this.resetModes();
+            const hadActiveTool = !!this.inputState &&
+                this.inputState.activeTool !== ToolMode.kUnspecified;
             this.clearAllInputs(
                 /* querySubmitted= */ false,
                 /* shouldBlockAutoSuggestedTabs= */ true);
             this.focusInput();
-            this.queryAutocomplete(/* clearMatches= */ true);
+            if (!hadActiveTool) {
+              this.queryAutocomplete(/* clearMatches= */ true);
+            }
 
             if (!this.disableCaretColorAnimation) {
               this.getInputElement().resetCaret();
@@ -1883,19 +2061,45 @@ export const ComposeboxEmbedderMixin =
           }
         }
 
-        onSubmitFocusin(_e: FocusEvent) {
+        onSubmitFocusin() {
           // Matches should always be greater than 0 due to verbatim match.
           if (this.input && !this.selectedMatch) {
             this.selectFirstMatch();
           }
         }
 
-        onSubmitClick(e: MouseEvent) {
+        onSubmitClick(e: MouseEvent|KeyboardEvent) {
+          if (this.hasPendingDelayedTabContext_()) {
+            return;
+          }
           if (this.hasFiles() ||
               this.inputState?.activeTool !== ToolMode.kUnspecified) {
             this.getPageHandler().notifyComposeboxQuerySubmittedWithContext();
           }
           this.submitQuery(e);
+        }
+
+        // Only SEND depends on whether the query can be submitted, so EXIT
+        // is never disabled by an empty or invalid query.
+        isAimButtonDisabled(): boolean {
+          return this.submitEnabled && !this.canSubmitFilesAndInput;
+        }
+
+        onAimButtonFocusin() {
+          if (this.submitEnabled) {
+            this.onSubmitFocusin();
+          }
+        }
+
+        onAimButtonClick(e: CustomEvent<KeyboardEvent|MouseEvent>) {
+          if (!this.submitEnabled) {
+            // Closes the composebox directly. `onCancelClick()` is not reused
+            // because with an active tool it clears the inputs instead of
+            // closing.
+            this.closeComposebox();
+            return;
+          }
+          this.onSubmitClick(e.detail);
         }
 
         // =====================================================================
@@ -2004,6 +2208,7 @@ export const ComposeboxEmbedderMixin =
 
         clearAllInputs(
             querySubmitted: boolean, shouldBlockAutoSuggestedTabs: boolean) {
+          this.resetDelayedTabContextRequests_();
           this.clearInput();
           this.getInputElement().resetHeight();
           // Let `querySubmit` handle clearing files if the tool mode is a tool
@@ -2011,7 +2216,7 @@ export const ComposeboxEmbedderMixin =
           // clearing, clear input here.
           if (!querySubmitted || this.clearAllInputsWhenSubmittingQuery) {
             this.resetModes();
-            if (this.shouldResetRestoredTabs()) {
+            if (this.shouldResetRestoredTabs(querySubmitted)) {
               this.resetRestoredTabs();
             }
           }
@@ -2158,10 +2363,10 @@ export const ComposeboxEmbedderMixin =
 
         // If context management flag is on, do not delete persisted
         // (restored) tabs unless the source is Omnibox or
-        // clearAllInputsWhenSubmittingQuery is set.
-        shouldResetRestoredTabs(): boolean {
+        // clearAllInputsWhenSubmittingQuery is set on query submission.
+        shouldResetRestoredTabs(querySubmitted: boolean = false): boolean {
           return this.composeboxSource === 'Omnibox' ||
-              this.clearAllInputsWhenSubmittingQuery ||
+              (querySubmitted && this.clearAllInputsWhenSubmittingQuery) ||
               !this.contextManagementInComposeboxEnabled;
         }
 
@@ -2198,6 +2403,7 @@ export const ComposeboxEmbedderMixin =
         }
 
         closeComposebox() {
+          this.resetDelayedTabContextRequests_();
           this.resetModes();
           this.getSearchboxHandler().clearFiles(
               /*shouldBlockAutoSuggestedTabs=*/ false);
@@ -2208,19 +2414,23 @@ export const ComposeboxEmbedderMixin =
 
         handleEscapeKeyLogic() {
           if (!this.closeOnEscape && this.hasContent()) {
-            this.resetModes();
+            const hadActiveTool = !!this.inputState &&
+                this.inputState.activeTool !== ToolMode.kUnspecified;
             this.clearAllInputs(
                 /* querySubmitted= */ false,
                 /* shouldBlockAutoSuggestedTabs= */ false);
             this.focusInput();
-            this.queryAutocomplete(/* clearMatches= */ true);
+            if (!hadActiveTool) {
+              this.queryAutocomplete(/* clearMatches= */ true);
+            }
           } else {
             this.closeComposebox();
           }
         }
 
         submitQuery(e?: KeyboardEvent|MouseEvent) {
-          if (!this.canSubmitFilesAndInput || !this.hasValidQuery()) {
+          if (this.hasPendingDelayedTabContext_() ||
+              !this.canSubmitFilesAndInput || !this.hasValidQuery()) {
             return;
           }
           // Submissions do not need a mouse or keyboard event to be submitted.
@@ -2389,6 +2599,10 @@ export const ComposeboxEmbedderMixin =
           return this.inputModel.hasFiles();
         }
 
+        hasMultipleFiles(): boolean {
+          return this.inputModel.hasMultipleFiles();
+        }
+
         resetSmartComposeStats() {
           this.smartComposeStats = {
             enabled: loadTimeData.getBoolean('composeboxSmartComposeEnabled'),
@@ -2438,13 +2652,32 @@ export const ComposeboxEmbedderMixin =
          * handover.
          */
         resetSession() {
+          // <if expr="not is_android">
+          const wasSubmitting = this.submitting;
+          // </if>
           this.submitting = false;
           this.clearAllInputs(
               /* querySubmitted= */ false,
               /* shouldBlockAutoSuggestedTabs= */ false);
           this.clearAutocompleteMatches();
-          this.resetModes();
           this.resetToolsAndModels();
+          // <if expr="not is_android">
+          // Smart tab sharing choices are per session, but the browser-side
+          // state outlives the page's session (e.g. a warm popup), so ask the
+          // browser to forget it and adopt the resulting default. Avoid
+          // resetting if the session was reset as part of a query submission
+          // (e.g. opening in a new tab via Ctrl+Enter), because the browser
+          // is still contextualizing the query with the submitted STS state.
+          if (this.smartTabSharingVisible && !wasSubmitting) {
+            const generation = ++this.smartTabSharingUpdateGeneration_;
+            ComposeboxProxyImpl.getInstance().resetSmartTabSharing().then(
+                ({active}) => {
+                  if (generation === this.smartTabSharingUpdateGeneration_) {
+                    this.smartTabSharingActive = active;
+                  }
+                });
+          }
+          // </if>
         }
 
         computeSubmitEnabled(): boolean {
@@ -2462,6 +2695,11 @@ export const ComposeboxEmbedderMixin =
          * as still uploading until its status reaches a terminal one.
          */
         computeFileUploadsComplete(): boolean {
+          // An in-flight delayed `addTabContext()` has no file yet to carry
+          // a non-terminal status, so it is counted here explicitly.
+          if (this.pendingDelayedTabRequests_.size > 0) {
+            return false;
+          }
           for (const file of this.attachedContext.values()) {
             if (!isContextUploadStatusTerminal(file.status)) {
               return false;
@@ -2485,12 +2723,12 @@ export const ComposeboxEmbedderMixin =
           const composeboxFiles: Map<UnguessableToken, ComposeboxFile> =
               new Map();
           for (const file of files) {
-            const fileBuffer = await file.arrayBuffer();
-            const bigBuffer: BigBuffer = {
-              bytes: Array.from(new Uint8Array(fileBuffer)),
-            };
             let token: UnguessableToken;
             try {
+              const fileBuffer = await file.arrayBuffer();
+              const bigBuffer: BigBuffer = {
+                bytes: Array.from(new Uint8Array(fileBuffer)),
+              };
               token = await this.getSearchboxHandler().addFileContext(
                   {
                     fileName: file.name,
@@ -2502,11 +2740,10 @@ export const ComposeboxEmbedderMixin =
                   },
                   bigBuffer);
             } catch (e) {
-              const err = e as ContextUploadErrorType;
-              if (FILE_VALIDATION_ERRORS_MAP.has(err)) {
-                this.errorMessage =
-                    this.i18n(FILE_VALIDATION_ERRORS_MAP.get(err)!);
-              }
+              const errorKey =
+                  FILE_VALIDATION_ERRORS_MAP.get(e as ContextUploadErrorType) ??
+                  'composeboxFileUploadFailed';
+              this.errorMessage = this.i18n(errorKey);
               continue;
             }
 
@@ -2524,12 +2761,17 @@ export const ComposeboxEmbedderMixin =
             const announcer = getAnnouncerInstance();
             announcer.announce(this.i18n('composeboxFileUploadStartedText'));
           }
-          this.attachedContext = new Map([
-            ...this.attachedContext.entries(),
-            ...composeboxFiles.entries(),
-          ]);
-          this.recordFileValidationMetric(ComposeboxFileValidationError.NONE);
-          this.focusInput();
+          // `composeboxFiles.size` is 0 when all files failed in the try/catch
+          // block above, so `ComposeboxFileValidationError.NONE` is not
+          // recorded.
+          if (composeboxFiles.size > 0) {
+            this.attachedContext = new Map([
+              ...this.attachedContext.entries(),
+              ...composeboxFiles.entries(),
+            ]);
+            this.recordFileValidationMetric(ComposeboxFileValidationError.NONE);
+            this.focusInput();
+          }
         }
 
         addFileContextFromBrowser(
@@ -2748,10 +2990,11 @@ export const ComposeboxEmbedderMixin =
             token: UnguessableToken, status: ContextUploadStatus,
             errorType: ContextUploadErrorType|
             null): {file: ComposeboxFile|null, errorMessage: string|null} {
-          const errorMessage =
-              this.getErrorMessageForUploadStatus(status, errorType);
+          let errorMessage = null;
           let file = this.attachedContext.get(token) ?? null;
           if (file) {
+            errorMessage =
+                this.getErrorMessageForUploadStatus(status, errorType);
             if (isContextUploadStatusTerminal(status) &&
                 status !== ContextUploadStatus.kUploadSuccessful) {
               if (file.objectUrl && file.objectUrl.startsWith('blob:')) {
@@ -2941,6 +3184,12 @@ export const ComposeboxEmbedderMixin =
         onVoiceSearchFinalResult(e: CustomEvent<string>) {
           e.stopPropagation();
           this.voiceSearchEndCleanup();
+          // Keep the transcript but do not submit while a delayed tab is
+          // still being snapshotted; the user resubmits once it settles.
+          if (this.hasPendingDelayedTabContext_()) {
+            this.input = e.detail;
+            return;
+          }
           // For contextual tasks composebox voice metrics.
           // TODO(crbug.com/466412331): Don't only fire this for composebox,
           // this should be recorded for all.
@@ -3021,7 +3270,17 @@ export const ComposeboxEmbedderMixin =
 
         // Returns all attached tabs in composebox.
         getSharedTabs(): TabInfo[] {
-          return this.inputModel.getSharedTabs();
+          // Shared tabs are built from attached files, which carry the upload
+          // state; also pull the live page loading state from the latest tab
+          // suggestions.
+          const suggestions =
+              new Map(this.tabSuggestions.map(tab => [tab.tabId, tab]));
+          return this.inputModel.getSharedTabs().map(
+              tab => ({
+                ...tab,
+                isLoading: tab.isLoading ||
+                    (suggestions.get(tab.tabId)?.isLoading ?? false),
+              }));
         }
 
         hasTabs(): boolean {
@@ -3062,8 +3321,12 @@ export const ComposeboxEmbedderMixin =
         }
 
         computeShowDropdown() {
-          // Don't show dropdown if there's multiple files.
-          if (this.attachedContext.size > 1) {
+          // TODO(crbug.com/568429302): Avoid querying autocomplete when
+          // multiple files are attached or Smart Tab Sharing is active, rather
+          // than querying autocomplete and hiding the dropdown.
+          // Don't show dropdown if there's multiple files or Smart Tab Sharing
+          // is active (since relevant tabs will be attached on submit).
+          if (this.hasMultipleFiles()) {
             return false;
           }
 
@@ -3199,6 +3462,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   transcript: string;
   uploadButtonDisabled: boolean;
   composeboxNoFlickerSuggestionsFix: boolean;
+  unselectMatchOnTabExit: boolean;
   searchboxListenerIds: number[];
   showTypedSuggest: boolean;
   tabFaviconChipsToCoinsEnabled: boolean;
@@ -3242,6 +3506,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   getLensButtonElement(): HTMLElement|null;
   getFileInputsElement(): ComposeboxFileInputsElement|null;
   shouldHandleSuggestionFuseboxActions(): boolean;
+  shouldWaitForDelayedTabContext(): boolean;
   addTabContextHandleCallback(
       tabUpload: TabUpload, replaceAutoActiveTabToken?: boolean,
       onBeforeUpdateFiles?: (attachment: ComposeboxFile) => void):
@@ -3263,7 +3528,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
     title: string,
     url: Url,
     delayUpload: boolean,
-    origin: TabUploadOrigin,
+    origin: TabAttachmentSource,
   }>): void;
   onContextMenuClosed(): Promise<void>;
   keepMenuOpenForMultiSelection(): Promise<void>;
@@ -3291,6 +3556,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   onMatchFocusin(e: CustomEvent<{index: number}>): void;
   onInputStateChanged(inputState: InputState): void;
   onAutocompleteResultChanged(_result: AutocompleteResult): void;
+  maybeCarryOverPreviousMatches(result: AutocompleteResult): void;
   onContextualInputStatusChanged(
       token: UnguessableToken, status: ContextUploadStatus,
       errorType: ContextUploadErrorType|null): void;
@@ -3312,8 +3578,11 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   onFileChange(e: CustomEvent<{files: FileList}>): void;
   onPaste(event: ClipboardEvent): void;
   onCancelClick(): void;
-  onSubmitFocusin(e: FocusEvent): void;
-  onSubmitClick(e: MouseEvent): void;
+  onSubmitFocusin(): void;
+  onSubmitClick(e: MouseEvent|KeyboardEvent): void;
+  isAimButtonDisabled(): boolean;
+  onAimButtonFocusin(): void;
+  onAimButtonClick(e: CustomEvent<KeyboardEvent|MouseEvent>): void;
   onDeleteFile(
       e: CustomEvent<{uuid: UnguessableToken, fromUserAction?: boolean}>): void;
 
@@ -3332,7 +3601,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   isMimeTypeAllowed(mimeType: string, allowedTypes: string[]): boolean;
   getInputType(type: string): InputType;
   resetModes(): void;
-  shouldResetRestoredTabs(): boolean;
+  shouldResetRestoredTabs(querySubmitted?: boolean): boolean;
   resetRestoredTabs(): void;
   setDefaultModel(): void;
   resetToolsAndModels(): void;
@@ -3342,6 +3611,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   selectFirstMatch(): void;
   readonly inputModel: ComposeboxInputModel;
   hasFiles(): boolean;
+  hasMultipleFiles(): boolean;
   hasTabs(): boolean;
   hasNonTabFiles(): boolean;
   resetSmartComposeStats(): void;
@@ -3378,4 +3648,5 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   shouldDisableFileInputs(): boolean;
   computeCancelButtonTitle(): string;
   computeVoiceSearchCoherenceEnabled(): boolean;
+  updateState(state: Partial<ComposeboxState>): Promise<void>;
 }

@@ -4,6 +4,7 @@
 
 module contextual_tasks.mojom;
 
+import "components/omnibox/browser/searchbox.mojom";
 import "mojo/public/mojom/base/uuid.mojom";
 import "mojo/public/mojom/base/unguessable_token.mojom";
 import "mojo/public/mojom/base/proto_wrapper.mojom";
@@ -27,38 +28,6 @@ struct ContextualTaskId {
 
 struct ContextualWindowId {
   mojo_base.mojom.UnguessableToken value;
-};
-
-
-// Represents the the visual information needed to display a single context row
-// of a tab where title and url will be displayed in the sources menu.
-struct TabContext {
-  url.mojom.Url url;
-  string title;
-  int32 tab_id;
-  bool has_chrome_tab_data;
-};
-
-// Represents the the visual information needed to display a single context row
-// of an image in the sources menu.
-struct ImageContext {
-  url.mojom.Url url;
-  string title;
-};
-
-// Represents the the visual information needed to display a single context row
-// of a file in the sources menu.
-struct FileContext {
-  url.mojom.Url url;
-  string title;
-};
-
-// Union representing different types (tabs, files and images) of context
-// information.
-union ContextInfo {
-  TabContext tab;
-  ImageContext image;
-  FileContext file;
 };
 
 // Struct representing max width, margin bottom/left,
@@ -117,13 +86,6 @@ interface PageHandler {
   // Set the title of the active thread.
   SetThreadTitle(string title);
 
-  // Closes the side panel if it's open.
-  CloseSidePanel();
-
-  // Invoked when the user clicks Thread History button to show the full list
-  // of threads from history. In response, the backend will send a
-  // OPEN_THREADS_VIEW message to search to open the thread history natively.
-  ShowThreadHistory();
 
   // Returns whether the WebUI is being shown in a tab. If false, the UI is
   // shown in the side panel.
@@ -139,24 +101,6 @@ interface PageHandler {
 
   // Opens the Ask G help page in a new tab.
   OpenAskGHelpUi();
-
-  // Moves the contents of the side panel to a new tab.
-  MoveTaskUiToNewTab();
-
-  // Called when a tab in the sources menu is clicked. This will first attempt
-  // to switch to a tab matching both the provided `tab_id` and `url`. If no
-  // such tab is found, it will then try to switch to a tab matching only the
-  // `url`. If still no matching tab is found, a new foreground tab will be
-  // opened with the provided `url`.
-  OnTabClickedFromSourcesMenu(int32 tab_id, url.mojom.Url url);
-
-  // Called when a file in the sources menu is clicked. The file associated with
-  // the `url` will be opened in a new tab in the current browser window.
-  OnFileClickedFromSourcesMenu(url.mojom.Url url);
-
-  // Called when an image in the sources menu is clicked. The image will be
-  // opened in a new tab in the current browser window.
-  OnImageClickedFromSourcesMenu(url.mojom.Url url);
 
   // Called by the WebUI when a 'message' event is received from
   // the <webview> guest. The 'message' is expected to be a serialized
@@ -177,12 +121,6 @@ interface PageHandler {
   // dismissed.
   AskGTooltipDismissed();
 
-  // Called when the user clicks the 'Reopen tabs' button which will be
-  // displayed when user revisits an expired thread. Tabs which were added
-  // to context may or may not be opened in new tabs depending upon what
-  // option user selects.
-  ReopenTabs();
-
   // Called when the user opens the composebox contextual action menu dialog.
   OnContextMenuOpened();
 
@@ -201,23 +139,6 @@ interface PageHandler {
 
   // Requests the browser to close a tracked window.
   CloseWindow(ContextualWindowId window_id);
-
-  // Triggers the pinning promo IPH if eligible.
-  MaybeTriggerPinningPromo();
-
-  // Triggers the display of the native PageInfo bubble.
-  // `is_pointer_interaction` is true if the bubble was opened via a pointer
-  // interaction (mouse, touch, etc.) rather than a keyboard interaction. This
-  // is necessary because the backend uses this context to decide whether to run
-  // pointer-specific rapid-reopen suppression shielding.
-  ShowPageInfoBubble(bool is_pointer_interaction);
-
-  // Called when the user presses the pointer down on the PageInfo button.
-  // This is used for bubble reopening suppression.
-  OnLogoPointerDown();
-
-  // Requests the browser to load a new thread URL in the guest WebContents.
-  CreateNewThread();
 };
 
 // WebUI-side handler for requests from the browser.
@@ -262,11 +183,6 @@ interface Page {
   // starts.
   OnCookieSyncCompleted();
 
-  // Called by the browser process (C++) when the context associated with the
-  // task is updated (e.g. tabs, files or images added/removed). This is used
-  // for updating the icon shown on the sources menu entry point.
-  OnContextUpdated(array<ContextInfo> context);
-
   // Called by the browser process (C++) when the AIM server sends a HideInput
   // command to hide the compose box.
   HideInput();
@@ -304,9 +220,6 @@ interface Page {
   // is in NLM mode.
   SetInNlm(bool in_nlm);
 
-  // Called by the browser process (C++) to notify the UI if the current page
-  // is an AI page or not.
-  OnAiPageStatusChanged(bool is_ai_page);
 
   // Called by the browser process (C++) when the Lens overlay is shown/hidden.
   // This also passes whether the overlay hint text should be shown for the
@@ -335,14 +248,6 @@ interface Page {
   // Called by the browser process (C++) to unlock/enable the input in the
   // WebUI.
   UnlockInput();
-
-  // Called by the browser process (C++) to show or hide the reopen tabs
-  // section.
-  SetShowReopenTabs(bool show);
-
-  // Called by the browser process (C++) to notify the UI whether the expand
-  // button should be enabled.
-  SetExpandButtonEnabled(bool enabled);
 
   // Called by the browser process to turn on smart tab sharing in the WebUI.
   TurnOnSmartTabSharing();
@@ -454,4 +359,11 @@ interface ExtensionPage {
   // iframe is already mounted, allowing the chip to update its preview
   // thumbnail in-place without unmounting/remounting.
   OnLensCropUpdated(url.mojom.Url data_uri);
+
+  // Called by the browser process (C++, ContextualTasksExtensionHandler)
+  // when the session's tab context state updates, providing the combined
+  // list of attached and restored tabs along with the IDs of tabs that
+  // have already been submitted or restored.
+  OnTabContextUpdated(array<searchbox.mojom.TabInfo> tabs,
+                      array<int32> submitted_tab_ids);
 };

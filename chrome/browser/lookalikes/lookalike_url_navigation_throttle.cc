@@ -85,7 +85,7 @@ bool IsLookalikeUrl(Profile* profile,
                     LookalikeUrlMatchType* match_type,
                     GURL* suggested_url,
                     base::TimeDelta* get_domain_info_duration) {
-  DCHECK(get_domain_info_duration->is_zero());
+  CHECK(get_domain_info_duration->is_zero(), base::NotFatalUntil::M161);
   LookalikeUrlService::LookalikeUrlCheckResult result =
       LookalikeUrlServiceFactory::GetForProfile(profile)->CheckUrlForLookalikes(
           url, engaged_sites,
@@ -343,8 +343,9 @@ LookalikeUrlNavigationThrottle::CheckAndMaybeShowInterstitial(
     return content::NavigationThrottle::CANCEL;
   }
 
-  lookalikes::RecordUMAFromMatchType(match_type,
-                                     profile_->IsIncognitoProfile());
+  lookalikes::RecordUMAFromMatchType(
+      match_type, profile_->IsIncognitoProfile(),
+      profile_->IsEnterpriseIsolatedModeProfile());
 
   // Punycode interstitial doesn't have a target site, so safe_domain isn't
   // valid.
@@ -383,8 +384,9 @@ ThrottleCheckResult LookalikeUrlNavigationThrottle::PerformChecks(
       navigation_handle()
           ->GetRedirectChain()[navigation_handle()->GetRedirectChain().size() -
                                1];
-  DCHECK(last_url_in_redirect_chain == navigation_handle()->GetURL() ||
-         !navigation_handle()->GetBaseURLForDataURL().is_empty());
+  CHECK(last_url_in_redirect_chain == navigation_handle()->GetURL() ||
+            !navigation_handle()->GetBaseURLForDataURL().is_empty(),
+        base::NotFatalUntil::M161);
 
   // Check for two lookalikes -- at the beginning and end of the redirect chain.
   const GURL& first_url = navigation_handle()->GetRedirectChain()[0];
@@ -512,11 +514,13 @@ ThrottleCheckResult LookalikeUrlNavigationThrottle::PerformChecks(
   // or last_url depending on the value of `first_is_lookalike`.
 
   // Always record UMA for any heuristic match.
-  DCHECK_NE(LookalikeUrlMatchType::kNone, match_type);
-  DCHECK(action_type == LookalikeActionType::kRecordMetrics ||
-         action_type == LookalikeActionType::kShowSafetyTip);
-  lookalikes::RecordUMAFromMatchType(match_type,
-                                     profile_->IsIncognitoProfile());
+  CHECK_NE(LookalikeUrlMatchType::kNone, match_type, base::NotFatalUntil::M161);
+  CHECK(action_type == LookalikeActionType::kRecordMetrics ||
+            action_type == LookalikeActionType::kShowSafetyTip,
+        base::NotFatalUntil::M161);
+  lookalikes::RecordUMAFromMatchType(
+      match_type, profile_->IsIncognitoProfile(),
+      profile_->IsEnterpriseIsolatedModeProfile());
   RecordPerformCheckLatenciesForAllowedNavigation(
       perform_checks_start, is_lookalike_url_duration,
       total_get_domain_info_duration);

@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Notification;
+import android.app.PictureInPictureParams;
 import android.content.Intent;
 import android.content.ServiceConnection;
 
@@ -30,6 +31,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadows.ShadowApplication;
 
@@ -41,7 +43,6 @@ import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicIntentConstants;
-import org.chromium.chrome.browser.init.AsyncInitializationActivity;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileManager;
@@ -64,17 +65,21 @@ public class ActorForegroundServiceControllerImplTest {
     @Mock private ActorForegroundServiceImpl.LocalBinder mBinder;
     @Mock private Notification mNotification;
     @Mock private ActorTask mActorTask;
-    @Mock private AsyncInitializationActivity mChromeActivity;
-    @Mock private SettingsActivity mSettingsActivity;
     @Mock private TabModelSelector mTabModelSelector;
     @Mock private Tab mTab;
+    @Mock private ActorTask.Natives mActorTaskJni;
+    @Mock private Profile mProfile;
 
     private ActorForegroundServiceControllerImpl mController;
+    // Not created: production only checks its type and Activity state, and reads
+    // getWindowAndroid(), which is irrelevant since TabModelSelectorSupplier is overridden.
+    private TestAsyncInitializationActivity mChromeActivity;
     private ShadowApplication mShadowApplication;
 
     @Before
     public void setUp() {
         mController = new ActorForegroundServiceControllerImpl();
+        mChromeActivity = Robolectric.buildActivity(TestAsyncInitializationActivity.class).get();
         mShadowApplication = shadowOf(RuntimeEnvironment.getApplication());
         when(mBinder.getService()).thenReturn(mServiceImpl);
         ApplicationStatus.destroyForJUnitTests();
@@ -183,6 +188,22 @@ public class ActorForegroundServiceControllerImplTest {
         mController.setBackgroundManagerForTesting(null);
         mController.onMessageTriggerTaskStopped("test_context_id");
         verify(mMockBackgroundManager, never()).cleanupContext("test_context_id");
+    }
+
+    @Test
+    public void testHasBackgroundSessionForTask_DelegatesToBackgroundManager() {
+        mController.setBackgroundManagerForTesting(mMockBackgroundManager);
+        when(mMockBackgroundManager.hasBackgroundSessionForTask(123)).thenReturn(true);
+
+        assertTrue(mController.hasBackgroundSessionForTask(123));
+        verify(mMockBackgroundManager).hasBackgroundSessionForTask(123);
+    }
+
+    @Test
+    public void testHasBackgroundSessionForTask_NullBackgroundManager() {
+        mController.setBackgroundManagerForTesting(null);
+
+        assertFalse(mController.hasBackgroundSessionForTask(123));
     }
 
     @Test
@@ -351,9 +372,12 @@ public class ActorForegroundServiceControllerImplTest {
     @Test
     public void testIsActivityVisibleForTabs_NoSilenceWhenInPiP() {
         ApplicationStatus.onStateChangeForTesting(mChromeActivity, ActivityState.CREATED);
-        when(mChromeActivity.isInPictureInPictureMode()).thenReturn(true);
+        assertTrue(mController.isActivityVisibleForTabs(Collections.emptySet()));
 
-        assertFalse(mController.isActivityVisibleForTabs(Collections.singleton(123)));
+        mChromeActivity.enterPictureInPictureMode(new PictureInPictureParams.Builder().build());
+        assertTrue(mChromeActivity.isInPictureInPictureMode());
+
+        assertFalse(mController.isActivityVisibleForTabs(Collections.emptySet()));
     }
 
     @Test
@@ -366,7 +390,8 @@ public class ActorForegroundServiceControllerImplTest {
 
     @Test
     public void testIsActivityVisibleForTabs_SettingsActivity_NotVisible() {
-        ApplicationStatus.onStateChangeForTesting(mSettingsActivity, ActivityState.CREATED);
+        SettingsActivity settingsActivity = Robolectric.buildActivity(SettingsActivity.class).get();
+        ApplicationStatus.onStateChangeForTesting(settingsActivity, ActivityState.CREATED);
         assertFalse(mController.isActivityVisibleForTabs(Collections.singleton(123)));
     }
 
@@ -374,18 +399,24 @@ public class ActorForegroundServiceControllerImplTest {
     public void testIsActivityVisibleForTabs_NoSilenceWhenActivityFinishing() {
         ApplicationStatus.onStateChangeForTesting(mChromeActivity, ActivityState.CREATED);
         ApplicationStatus.onStateChangeForTesting(mChromeActivity, ActivityState.RESUMED);
-        when(mChromeActivity.isFinishing()).thenReturn(true);
+        assertTrue(mController.isActivityVisibleForTabs(Collections.emptySet()));
 
-        assertFalse(mController.isActivityVisibleForTabs(Collections.singleton(123)));
+        mChromeActivity.finish();
+        assertTrue(mChromeActivity.isFinishing());
+
+        assertFalse(mController.isActivityVisibleForTabs(Collections.emptySet()));
     }
 
     @Test
     public void testIsActivityVisibleForTabs_NoSilenceWhenActivityDestroyed() {
         ApplicationStatus.onStateChangeForTesting(mChromeActivity, ActivityState.CREATED);
         ApplicationStatus.onStateChangeForTesting(mChromeActivity, ActivityState.RESUMED);
-        when(mChromeActivity.isDestroyed()).thenReturn(true);
+        assertTrue(mController.isActivityVisibleForTabs(Collections.emptySet()));
 
-        assertFalse(mController.isActivityVisibleForTabs(Collections.singleton(123)));
+        mChromeActivity.setDestroyedForTesting(true);
+        assertTrue(mChromeActivity.isDestroyed());
+
+        assertFalse(mController.isActivityVisibleForTabs(Collections.emptySet()));
     }
 
     @Test
@@ -466,19 +497,27 @@ public class ActorForegroundServiceControllerImplTest {
 
     @Test
     public void testActorTask_getTargetTabId() {
-        ActorTask task = mock(ActorTask.class);
-        when(task.getTargetTabId()).thenCallRealMethod();
+        long nativeTaskPtr = 123L;
+        ActorTaskJni.setInstanceForTesting(mActorTaskJni);
+        ActorTask task = new ActorTask(nativeTaskPtr, 1, "Task", mProfile, null);
 
-        when(task.getLastActuatedTabId()).thenReturn(789);
-        when(task.getTabs()).thenReturn(Collections.singleton(456));
+        when(mActorTaskJni.getLastActuatedTabId(nativeTaskPtr)).thenReturn(789);
+        when(mActorTaskJni.getTabs(nativeTaskPtr)).thenReturn(new int[] {456});
         assertEquals(789, task.getTargetTabId());
 
         // Fall back to any associated tab when last actuated tab ID is invalid.
-        when(task.getLastActuatedTabId()).thenReturn(Tab.INVALID_TAB_ID);
+        when(mActorTaskJni.getLastActuatedTabId(nativeTaskPtr)).thenReturn(Tab.INVALID_TAB_ID);
         assertEquals(456, task.getTargetTabId());
 
-        when(task.getTabs()).thenReturn(Collections.emptySet());
+        when(mActorTaskJni.getTabs(nativeTaskPtr)).thenReturn(new int[0]);
         assertEquals(Tab.INVALID_TAB_ID, task.getTargetTabId());
+
+        // Fallback tab ID is preserved after native destruction while getLastActuatedTabId()
+        // still returns Tab.INVALID_TAB_ID.
+        when(mActorTaskJni.getTabs(nativeTaskPtr)).thenReturn(new int[] {456});
+        task.clearNativePtr();
+        assertEquals(Tab.INVALID_TAB_ID, task.getLastActuatedTabId());
+        assertEquals(456, task.getTargetTabId());
     }
 
     public ServiceConnection getServiceConnectionForTesting() {

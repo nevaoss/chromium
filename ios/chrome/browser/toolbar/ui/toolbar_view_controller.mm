@@ -54,6 +54,7 @@
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ios/chrome/grit/ios_strings.h"
+#import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
 
 namespace {
@@ -78,6 +79,10 @@ constexpr CGFloat kButtonMinScale = 0.37;
 
 // Duration of standard toolbar transition animations (fade, scale).
 constexpr CGFloat kAnimationDuration = 0.2;
+
+// Duration of the toolbar slide-in animation.
+const base::TimeDelta kToolbarSlideInAnimationDuration =
+    base::Milliseconds(500);
 
 // Margin between the location bar and the tab group indicator view.
 constexpr CGFloat kLocationBarToTabGroupMargin = 6;
@@ -572,8 +577,8 @@ CGFloat ButtonAlphaForProgress(CGFloat progress) {
                    withAction:@selector(sizeClassDidChange)];
 
   [self registerForTraitChanges:
-            @[ UITraitUserInterfaceStyle.class, NewTabPageTrait.class ]
-                     withAction:@selector(userInterfaceStyleDidChange)];
+            @[ NewTabPageTrait.class, NewTabPageImageBackgroundTrait.class ]
+                     withAction:@selector(updateBackgroundColors)];
 }
 
 - (void)viewSafeAreaInsetsDidChange {
@@ -892,6 +897,32 @@ CGFloat ButtonAlphaForProgress(CGFloat progress) {
       completion:^(BOOL finished) {
         [weakSelf showBannerPromoCompletionBlock];
       }];
+}
+
+- (void)triggerToolbarSlideInAnimation {
+  // Toolbar slide-in animations are disabled on iPads.
+  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+    return;
+  }
+
+  UIView* view = self.view;
+  CGFloat toolbarHeight = view.frame.size.height;
+  view.transform = CGAffineTransformMakeTranslation(
+      0, _topPosition ? -toolbarHeight : toolbarHeight);
+  auto animations = ^{
+    [UIView addKeyframeWithRelativeStartTime:0
+                            relativeDuration:1
+                                  animations:^{
+                                    view.transform = CGAffineTransformIdentity;
+                                  }];
+  };
+
+  [UIView
+      animateKeyframesWithDuration:kToolbarSlideInAnimationDuration.InSecondsF()
+                             delay:0
+                           options:UIViewAnimationCurveEaseInOut
+                        animations:animations
+                        completion:nil];
 }
 
 - (void)hideBannerPromo {
@@ -1401,10 +1432,13 @@ CGFloat ButtonAlphaForProgress(CGFloat progress) {
       // In light mode, matches the default light blue NTP background
       // color to prevent the white pinned omnibox from blending into a white
       // toolbar. In dark mode, matches standard `kBackgroundColor`.
-      if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        return [UIColor colorNamed:kBackgroundColor];
-      }
-      return [UIColor colorNamed:kNTPBackgroundColor];
+      return [UIColor colorWithDynamicProvider:^UIColor*(
+                          UITraitCollection* traitCollection) {
+        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+          return [UIColor colorNamed:kBackgroundColor];
+        }
+        return [UIColor colorNamed:kNTPBackgroundColor];
+      }];
     }
   }
   return [UIColor colorNamed:kBackgroundColor];
@@ -2435,11 +2469,6 @@ CGFloat ButtonAlphaForProgress(CGFloat progress) {
   }
 }
 
-// Handles user interface style trait collection changes.
-- (void)userInterfaceStyleDidChange {
-  [self updateBackgroundColors];
-}
-
 // Safely updates a layout guide by either referencing `view` or unreferencing
 // it if `hide` is YES and the guide is currently owned by `view`.
 - (void)updateGuide:(GuideName*)guide withView:(UIView*)view hide:(BOOL)hide {
@@ -2466,7 +2495,11 @@ CGFloat ButtonAlphaForProgress(CGFloat progress) {
   [self updateGuide:kForwardButtonGuide
            withView:_forwardButton
                hide:hideToolbar];
-  [self updateGuide:kShareButtonGuide withView:_shareButton hide:hideToolbar];
+  // The toolbar share button is only visible in compact height; in regular
+  // height, the location bar steady view owns `kShareButtonGuide`.
+  BOOL hideShare =
+      hideToolbar || !IsCompactHeight(self) || _shareButton.forceHidden;
+  [self updateGuide:kShareButtonGuide withView:_shareButton hide:hideShare];
 
   // The assistant button is hidden in non Regular-Regular size classes, but the
   // toolbar button's visibility handler may run after this, so
@@ -2486,10 +2519,13 @@ CGFloat ButtonAlphaForProgress(CGFloat progress) {
   if (!_hasOmnibox || !self.view.window) {
     return;
   }
-  if (self.layoutState.appBarPosition == AppBarPosition::kNone) {
-    [self.layoutGuideCenter referenceView:_tabGridButton
-                                underName:kTabSwitcherGuide];
-  }
+  BOOL hideTabSwitcher =
+      [self shouldHideToolbar] ||
+      self.layoutState.appBarPosition != AppBarPosition::kNone ||
+      !IsRegularXRegularSizeClass(self) || _tabGridButton.forceHidden;
+  [self updateGuide:kTabSwitcherGuide
+           withView:_tabGridButton
+               hide:hideTabSwitcher];
 }
 
 @end

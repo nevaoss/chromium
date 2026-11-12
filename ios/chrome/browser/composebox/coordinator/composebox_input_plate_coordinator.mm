@@ -98,6 +98,7 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     ComposeboxEntrypoint entrypoint) {
   switch (entrypoint) {
     case ComposeboxEntrypoint::kNTPAIMButton:
+    case ComposeboxEntrypoint::kNTPImageGenerationButton:
     case ComposeboxEntrypoint::kNTPPlusButton:
       return contextual_search::ContextualSearchSource::kNewTabPage;
     case ComposeboxEntrypoint::kNTPFakebox:
@@ -357,8 +358,7 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)hideComposeboxMenu {
   if (IsComposeboxPlusButtonBottomSheet()) {
-    [_menuCoorinator stop];
-    _menuCoorinator = nil;
+    [_menuCoorinator dismissMenu];
   } else {
     [_viewController dismissContextMenu];
   }
@@ -440,7 +440,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)composeboxViewControllerDidCompleteInitialPresentation:
     (ComposeboxInputPlateViewController*)composeboxViewController {
-  if (_entrypoint == ComposeboxEntrypoint::kNTPPlusButton) {
+  if (_entrypoint == ComposeboxEntrypoint::kNTPPlusButton &&
+      !(IsPlusButtonMenuInFakeboxEnabled())) {
     [composeboxViewController showMultimodalMenu];
   }
 }
@@ -482,19 +483,12 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)composeboxViewControllerDidTapPlusButton:
             (ComposeboxInputPlateViewController*)composeboxViewController
-                                withUIInputState:
-                                    (ComposeboxUIInputState*)state {
-  if (IsComposeboxPlusButtonBottomSheet()) {
-    _menuCoorinator = [[ComposeboxMenuCoordinator alloc]
-        initWithBaseViewController:_viewController
-                           browser:self.browser
-            preselectedAttachments:_mediator.currentAttachmentSelection
-                        inputState:state
-                   metricsRecorder:_metricsRecorder
-                        entrypoint:_entrypoint];
-    _menuCoorinator.inputPlateDelegate = self;
-    _menuCoorinator.delegate = self;
-    [_menuCoorinator start];
+                                withUIInputState:(ComposeboxUIInputState*)state
+                                          button:(UIButton*)button {
+  if (_entrypoint == ComposeboxEntrypoint::kCobrowse ||
+      IsComposeboxPlusButtonBottomSheet()) {
+    [self createMenuCoordinatorForInputState:state];
+    [_menuCoorinator presentBottomSheetMenu];
 
     // Hide the input plate when the bottom sheet modal is open.
     if (_entrypoint == ComposeboxEntrypoint::kCobrowse) {
@@ -582,6 +576,15 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   NOTREACHED();
 }
 
+- (UIMenu*)composeboxViewControllerPlusButtonMenu:
+    (ComposeboxInputPlateViewController*)composeboxViewController {
+  if (!_menuCoorinator) {
+    ComposeboxUIInputState* state = [_mediator currentUIInputState];
+    [self createMenuCoordinatorForInputState:state];
+  }
+  return [_menuCoorinator createMenu];
+}
+
 - (BOOL)tabExistsOnCurrentProfile:(TabInfo*)tabInfo {
   if (self.profile != tabInfo.profile) {
     return NO;
@@ -628,6 +631,15 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)showSnackbarForItemUploadDidFail {
   [self showUnableToAddAttachmentSnackbarError];
+}
+
+- (void)inputStateManagerDidUpdateUIState {
+  // Don't recreate the coordinator if it's presenting the bottom sheet.
+  if (_menuCoorinator.presentingBottomSheet) {
+    return;
+  }
+  ComposeboxUIInputState* state = [_mediator currentUIInputState];
+  [self createMenuCoordinatorForInputState:state];
 }
 
 #pragma mark - LocationBarURLLoader
@@ -773,6 +785,23 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   }
   _snackbarPresenter =
       [[ComposeboxSnackbarPresenter alloc] initWithBrowser:self.browser];
+}
+
+// Creates a new menu coordinator for the given input state.
+- (void)createMenuCoordinatorForInputState:(ComposeboxUIInputState*)state {
+  if (_menuCoorinator) {
+    [_menuCoorinator stop];
+  }
+  _menuCoorinator = [[ComposeboxMenuCoordinator alloc]
+      initWithBaseViewController:_viewController
+                         browser:self.browser
+          preselectedAttachments:_mediator.currentAttachmentSelection
+                      inputState:state
+                 metricsRecorder:_metricsRecorder
+                      entrypoint:_entrypoint];
+  _menuCoorinator.inputPlateDelegate = self;
+  _menuCoorinator.delegate = self;
+  [_menuCoorinator start];
 }
 
 #pragma mark - ComposeboxPickerPresenterDelegate
@@ -963,8 +992,9 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 }
 
 - (void)composeboxMenuCoordinator:(ComposeboxMenuCoordinator*)coordinator
-      didRemoveTabWithServerToken:(const base::UnguessableToken&)serverToken {
-  [_mediator removeSharedTabWithServerToken:serverToken];
+    didRemoveTabWithInputItemIdentifier:
+        (const base::UnguessableToken&)inputItemIdentifier {
+  [_mediator removeSharedTabWithInputItemIdentifier:inputItemIdentifier];
 }
 
 - (ComposeboxUIInputState*)currentUIInputStateForMenuCoordinator:

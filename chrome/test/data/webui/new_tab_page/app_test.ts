@@ -10,7 +10,7 @@ import type {ActionChipsPageRemote, CustomizeButtonsDocumentRemote, FuseboxActio
 import {$$, BackgroundManager, BrowserCommandProxy, CONTEXTUAL_ENTRYPOINT_ELEMENT_ID, CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID, CustomizeButtonsDocumentCallbackRouter, CustomizeButtonsHandlerRemote, CustomizeButtonsProxy, CustomizeChromeSection, CustomizeDialogPage, GlifAnimationState, NewTabPageProxy, NtpCustomizeChromeEntryPoint, NtpElement, SearchboxBrowserProxy, SidePanelOpenTrigger, VoiceAction, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import type {AppElement, CustomizeButtonsElement, NtpSearchboxElement, PageRemote} from 'chrome://new-tab-page/new_tab_page.js';
 import {NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.js';
-import {ComposeboxFile, TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
+import {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ContextUploadStatus, ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ComposeboxVoiceSearchElement} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
@@ -23,7 +23,7 @@ import {isMac} from 'chrome://resources/js/platform.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
-import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
@@ -86,6 +86,8 @@ suite('NewTabPageAppTest', () => {
     handler.setPromiseResolveFor('getModulesIdNames', {data: []});
     handler.setPromiseResolveFor('getModulesOrder', {data: []});
     handler.setPromiseResolveFor(
+        'getModulesEligibleForRemoval', {moduleIds: []});
+    handler.setPromiseResolveFor(
         'canShowRealboxContextMenuAnimation', {canShow: false});
     windowProxy.setResultMapperFor(
         'matchMedia', (query: string) => ({
@@ -144,8 +146,10 @@ suite('NewTabPageAppTest', () => {
     app = document.createElement('ntp-app');
     document.body.appendChild(app);
     await microtasksFinished();
-
-    customizeButtons = app.$.customizeButtons;
+    const buttons = app.shadowRoot.querySelector<CustomizeButtonsElement>(
+        '#customizeButtons');
+    assertTrue(!!buttons);
+    customizeButtons = buttons;
   });
 
   async function recreateApp() {
@@ -335,7 +339,7 @@ suite('NewTabPageAppTest', () => {
       spacer.style.width = '100%';
       spacer.style.height = '10000px';
       spacer.style.flexShrink = '0';
-      $$(app, '#content')!.append(spacer);
+      $$(app, '#rhsContent')!.append(spacer);
 
       // Simulates a vertical scroll.
       const scrollY = async (y: number) => {
@@ -773,7 +777,7 @@ suite('NewTabPageAppTest', () => {
     });
 
     ([
-      ['#content', NtpElement.BACKGROUND],
+      ['#rhsContent', NtpElement.BACKGROUND],
       ['ntp-logo', NtpElement.LOGO],
       ['ntp-searchbox', NtpElement.REALBOX],
       ['cr-most-visited', NtpElement.MOST_VISITED],
@@ -1354,7 +1358,7 @@ suite('NewTabPageAppTest', () => {
       await callbackRouterRemote.$.flushForTesting();
 
       const blockedElements = app.shadowRoot.querySelectorAll<HTMLElement>(
-          '#content > :not(#logo):not(#searchboxContainer)');
+          '#rhsContent > :not(#logo):not(#searchboxContainer)');
       assertTrue(blockedElements.length > 0);
       blockedElements.forEach(el => {
         assertFalse(el.hasAttribute('inert'));
@@ -1437,7 +1441,9 @@ suite('NewTabPageAppTest', () => {
           app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox');
       assertTrue(!!composebox);
       // 1. Setup: Simulate input content.
-      const input = composebox.getInputElement().$.input;
+      const input =
+          composebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+              '#input')!;
       if ('value' in input) {
         (input as HTMLTextAreaElement).value = 'test input';
       }
@@ -2749,6 +2755,20 @@ suite('NewTabPageAppTest', () => {
       });
     });
 
+    function getUndoToast(): CrToastElement {
+      const undoToast =
+          app.shadowRoot.querySelector<CrToastElement>('#undoToast');
+      assertTrue(!!undoToast);
+      return undoToast;
+    }
+
+    function getUndoToastMessage(): HTMLElement {
+      const undoToastMessage =
+          app.shadowRoot.querySelector<HTMLElement>('#undoToastMessage');
+      assertTrue(!!undoToastMessage);
+      return undoToastMessage;
+    }
+
     test('displays single toast', async () => {
       // Arrange.
       const modules = app.shadowRoot.querySelector('ntp-modules');
@@ -2760,8 +2780,8 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert.
-      assertTrue(app.$.undoToast.open);
-      assertEquals('Module removed', app.$.undoToastMessage.textContent.trim());
+      assertTrue(getUndoToast().open);
+      assertEquals('Module removed', getUndoToastMessage().textContent.trim());
     });
 
     test('queues multiple toasts', async () => {
@@ -2783,8 +2803,8 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert.
-      assertTrue(app.$.undoToast.open);
-      assertEquals('Modules hidden', app.$.undoToastMessage.textContent.trim());
+      assertTrue(getUndoToast().open);
+      assertEquals('Modules hidden', getUndoToastMessage().textContent.trim());
 
       // Act - clicking undo on the first toast.
       let undoButton = app.shadowRoot.querySelector<HTMLElement>('#undoButton');
@@ -2793,9 +2813,9 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert.
-      assertTrue(app.$.undoToast.open);
+      assertTrue(getUndoToast().open);
       assertEquals(
-          'Shortcuts hidden', app.$.undoToastMessage.textContent.trim());
+          'Shortcuts hidden', getUndoToastMessage().textContent.trim());
 
       // Act - clicking undo on the second toast.
       undoButton = app.shadowRoot.querySelector<HTMLElement>('#undoButton');
@@ -2804,7 +2824,7 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert.
-      assertFalse(app.$.undoToast.open);
+      assertFalse(getUndoToast().open);
     });
 
     test('toast with null undo callback', async () => {
@@ -2826,8 +2846,8 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert.
-      assertTrue(app.$.undoToast.open);
-      assertEquals('Module removed', app.$.undoToastMessage.textContent.trim());
+      assertTrue(getUndoToast().open);
+      assertEquals('Module removed', getUndoToastMessage().textContent.trim());
 
       // Act - clicking undo on the first toast does not crash.
       let undoButton = app.shadowRoot.querySelector<HTMLElement>('#undoButton');
@@ -2836,9 +2856,9 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert.
-      assertTrue(app.$.undoToast.open);
+      assertTrue(getUndoToast().open);
       assertEquals(
-          'Shortcuts hidden', app.$.undoToastMessage.textContent.trim());
+          'Shortcuts hidden', getUndoToastMessage().textContent.trim());
 
       // Act - clicking undo on the second toast.
       undoButton = app.shadowRoot.querySelector<HTMLElement>('#undoButton');
@@ -2847,7 +2867,7 @@ suite('NewTabPageAppTest', () => {
       await microtasksFinished();
 
       // Assert - no crash and toast closed.
-      assertFalse(app.$.undoToast.open);
+      assertFalse(getUndoToast().open);
     });
   });
 
@@ -2907,14 +2927,16 @@ suite('NewTabPageAppTest', () => {
           const composebox =
               app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox');
           assertTrue(!!composebox);
-          composebox.getInputElement().$.input.dispatchEvent(
-              new FocusEvent('focus'));
+          composebox.getInputElement()
+              .shadowRoot.querySelector<HTMLElement>('#input')!.dispatchEvent(
+                  new FocusEvent('focus'));
           await microtasksFinished();
 
           assertFalse(scrim.hidden);
 
-          composebox.getInputElement().$.input.dispatchEvent(
-              new FocusEvent('focusout', {relatedTarget: scrim}));
+          composebox.getInputElement()
+              .shadowRoot.querySelector<HTMLElement>('#input')!.dispatchEvent(
+                  new FocusEvent('focusout', {relatedTarget: scrim}));
           await microtasksFinished();
           scrim.click();
           await microtasksFinished();
@@ -3158,7 +3180,7 @@ suite('NewTabPageAppTest', () => {
                 url: 'https://example.com/test',
                 title: 'Test Title',
                 delayUpload: true,
-                origin: TabUploadOrigin.ACTION_CHIP,
+                origin: TabAttachmentSource.kActionChip,
               }],
               fuseboxAction: action,
             };
@@ -3468,7 +3490,7 @@ suite('NewTabPageAppTest', () => {
           button.click();
           await microtasksFinished();
 
-          assertTrue(!!app.$.composebox);
+          assertTrue(!!app.shadowRoot.querySelector('#composebox'));
           assertEquals(1, searchboxHandler.getCallCount('setActiveModelMode'));
           assertEquals(
               ModelMode.kGeminiPro,
@@ -3511,7 +3533,7 @@ suite('NewTabPageAppTest', () => {
                   url: 'https://example.com/test',
                   title: 'Test Title',
                   delayUpload: true,
-                  origin: TabUploadOrigin.ACTION_CHIP,
+                  origin: TabAttachmentSource.kActionChip,
                 }],
                 fuseboxAction: action,
               },
@@ -3701,70 +3723,24 @@ suite('NewTabPageAppTest', () => {
         });
   });
 
-  suite('ThreadsRail', () => {
+  suite('LeftHandSide', () => {
     async function setThreadsRailEnabled(enabled: boolean) {
       loadTimeData.overrideValues({enableThreadsRail: enabled});
-      document.body.innerHTML = window.trustedTypes!.emptyHTML;
-      app = document.createElement('ntp-app');
-      document.body.appendChild(app);
-      await microtasksFinished();
+      await recreateApp();
     }
 
-    test('threads rail is not visible when feature disabled', async () => {
+    test('LHS is not rendered when feature disabled', async () => {
       await setThreadsRailEnabled(false);
-      const searchbox = $$(app, '#searchbox');
-      assertTrue(!!searchbox);
-      searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {text: '', files: []},
-      }));
-      await microtasksFinished();
 
-      const threadsRail = app.shadowRoot.querySelector('cr-threads-rail');
-      assertFalse(!!threadsRail);
+      assertFalse(!!$$(app, 'cr-left-hand-side'));
     });
 
-    test('threads rail is visible when feature enabled', async () => {
+    test('LHS is rendered when feature enabled', async () => {
       await setThreadsRailEnabled(true);
-      const searchbox = $$(app, '#searchbox');
-      assertTrue(!!searchbox);
-      searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {text: '', files: []},
-      }));
-      await microtasksFinished();
 
-      const threadsRail = app.shadowRoot.querySelector('cr-threads-rail');
-      assertTrue(!!threadsRail);
-    });
-
-    test('records impression metric when threads rail is shown', async () => {
-      await setThreadsRailEnabled(true);
-      // Act: Open composebox to show threads rail.
-      ($$(app, '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {text: '', files: []},
-      })));
-      await microtasksFinished();
-
-      // Assert: Verify impression metric is recorded.
-      assertEquals(1, metrics.count('NewTabPage.ThreadsRail.Shown', true));
-    });
-
-    test('clicking threads rail records click', async () => {
-      await setThreadsRailEnabled(true);
-      // Arrange: Open composebox.
-      ($$(app, '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {text: '', files: []},
-      })));
-      await microtasksFinished();
-
-      const threadsRail = app.shadowRoot.querySelector('cr-threads-rail');
-      assertTrue(!!threadsRail);
-
-      // Act.
-      threadsRail.click();
-
-      // Assert.
-      assertEquals(
-          1, metrics.count('NewTabPage.Click', NtpElement.THREADS_RAIL));
+      const leftHandSide = $$(app, 'cr-left-hand-side');
+      assertTrue(!!leftHandSide);
+      assertEquals('forcedLhs', leftHandSide.id);
     });
   });
 
@@ -4800,6 +4776,9 @@ suite('NewTabPageAppTest', () => {
         vsClass.activeRecognition_ = null;
         vsClass.pendingStartInstance_ = null;
       }
+
+      // Use desktop speech recognition unless a test opts into Android's.
+      loadTimeData.overrideValues({androidSpeechRecognition: false});
     });
 
     teardown(() => {
@@ -4873,6 +4852,107 @@ suite('NewTabPageAppTest', () => {
           assertEquals(
               'chrome://new-tab-page/search?q=test+query&gs_ivs=1&sourceid=chrome',
               navigatedUrl);
+        });
+
+    test(
+        'clicking submit before any speech closes voice search and returns ' +
+            'to the realbox',
+        async () => {
+          loadTimeData.overrideValues({
+            voiceSearchCoherenceAnySearchboxExperimentEnabled: true,
+          });
+          await recreateApp();
+          metrics = fakeMetricsPrivate();
+
+          // Open voice search dialog.
+          const searchbox = $$(app, '#searchbox');
+          assertTrue(!!searchbox);
+          searchbox.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+              '#voiceSearchDialog');
+          assertTrue(!!dialog);
+          assertTrue(dialog.open);
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+
+          // Click the submit button without saying anything.
+          const submitButton =
+              voiceSearch.shadowRoot.querySelector('cr-composebox-submit');
+          assertTrue(!!submitButton);
+          assertFalse(submitButton.disabled);
+          $$<HTMLElement>(submitButton, '#submitContainer')!.click();
+          await microtasksFinished();
+
+          // Voice search is closed, nothing is searched and the realbox is
+          // showing again.
+          assertFalse(mockSpeechRecognition.voiceSearchInProgress);
+          assertFalse(dialog.open);
+          assertFalse(!!app.shadowRoot.querySelector('#voiceSearchDialog'));
+          assertEquals(0, windowProxy.getCallCount('navigate'));
+          assertEquals(
+              1,
+              metrics.count(
+                  'VoiceSearch.Action.NTP_REALBOX', 11 /* CANCELED_BY_USER */));
+        });
+
+    test(
+        'keeps listening when Android speech recognition ends after an ' +
+            'utterance',
+        async () => {
+          loadTimeData.overrideValues({
+            googleBaseUrl: 'chrome://new-tab-page/',
+            voiceSearchCoherenceAnySearchboxExperimentEnabled: true,
+            voiceSearchCoherenceRealboxAutoEndpointEnabled: false,
+            androidSpeechRecognition: true,
+          });
+          await recreateApp();
+
+          // Open voice search dialog.
+          const searchbox = $$(app, '#searchbox');
+          assertTrue(!!searchbox);
+          searchbox.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          assertTrue(voiceSearch.androidContinuousRecognitionEnabled);
+
+          // Simulate speech recognition result (user speaks).
+          mockSpeechRecognition.onresult!
+              (createResults('test query', /*isFinal=*/ true));
+          await microtasksFinished();
+
+          // Android's recognizer ends its session after every utterance.
+          mockSpeechRecognition.voiceSearchInProgress = false;
+          mockSpeechRecognition.onend!();
+          await microtasksFinished();
+
+          // Like on desktop, voice search keeps listening instead of
+          // submitting right away.
+          assertTrue(mockSpeechRecognition.voiceSearchInProgress);
+          assertEquals(0, windowProxy.getCallCount('navigate'));
+          assertTrue(!!app.shadowRoot.querySelector('#voiceSearchDialog'));
+
+          // The user keeps speaking, then submits.
+          mockSpeechRecognition.onresult!
+              (createResults('tomorrow', /*isFinal=*/ true));
+          await voiceSearch.updateComplete;
+          const submitButton =
+              voiceSearch.shadowRoot.querySelector('#submitButton');
+          assertTrue(!!submitButton);
+          submitButton.dispatchEvent(new CustomEvent('submit-click'));
+          await microtasksFinished();
+
+          // Both utterances are submitted.
+          assertEquals(1, windowProxy.getCallCount('navigate'));
+          assertEquals(
+              'chrome://new-tab-page/search?q=test+query+tomorrow&gs_ivs=1&sourceid=chrome',
+              windowProxy.getArgs('navigate')[0]);
         });
 
     test(
@@ -4953,6 +5033,8 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!voiceSearch);
           await voiceSearch.updateComplete;
           assertFalse(voiceSearch.dynamicTimeoutEnabled);
+          // Only enabled where voice search uses Android's speech recognizer.
+          assertFalse(voiceSearch.androidContinuousRecognitionEnabled);
           assertTrue(voiceSearch.autosubmitEnabled);
           assertEquals(3000, voiceSearch.idleTimeout);
           assertEquals(10000, voiceSearch.manualSubmitIdleTimeout);

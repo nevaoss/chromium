@@ -122,7 +122,7 @@ class FacilitatedPaymentsPaymentMethodsMediator implements SnackbarController {
     static final String PIX_BANK_ACCOUNT_TRANSACTION_LIMIT = "500";
     static final int STRIKE_THRESHOLD_FOR_HARD_DECLINE = 2;
     static final String DEFAULT_PIX_ACCOUNT_LINKING_VIDEO_URL =
-            "https://support.google.com/wallet/answer/14616353?hl=en";
+            "https://www.youtube.com/watch?v=zXMuvna_X4c";
 
     // This histogram name should be in sync with the one in
     // components/facilitated_payments/core/metrics/facilitated_payments_metrics.cc:LogPixFopSelected.
@@ -140,6 +140,10 @@ class FacilitatedPaymentsPaymentMethodsMediator implements SnackbarController {
     // components/facilitated_payments/core/metrics/facilitated_payments_metrics.cc:LogNonCardPaymentMethodsFopSelected.
     static final String PAYMENT_LINK_FOP_SELECTOR_TYPES_USER_ACTION_HISTOGRAM =
             "FacilitatedPayments.{PaymentLinkFopSelectorTypes}.FopSelector.UserAction";
+
+    @VisibleForTesting
+    static final String PIX_ACCOUNT_LINKING_VIDEO_LINK_CLICKED_HISTOGRAM =
+            "FacilitatedPayments.Pix.AccountLinking.VideoLinkClicked";
 
     private Context mContext;
     private PropertyModel mModel;
@@ -408,6 +412,7 @@ class FacilitatedPaymentsPaymentMethodsMediator implements SnackbarController {
                                 videoUrl = DEFAULT_PIX_ACCOUNT_LINKING_VIDEO_URL;
                             }
                             openUrl(videoUrl);
+                            recordHistogramOnVideoLinkClicked();
                         });
         // Prevent the bottom sheet from closing during page navigations.
         mModel.set(SURVIVES_NAVIGATION, true);
@@ -785,6 +790,11 @@ class FacilitatedPaymentsPaymentMethodsMediator implements SnackbarController {
                 histogramName,
                 PaymentLinkFopSelectorAction.TURN_OFF_PAYMENT_PROMPT_LINK_CLICKED,
                 PaymentLinkFopSelectorAction.MAX_VALUE + 1);
+    }
+
+    private void recordHistogramOnVideoLinkClicked() {
+        RecordHistogram.recordBooleanHistogram(
+                PIX_ACCOUNT_LINKING_VIDEO_LINK_CLICKED_HISTOGRAM, true);
     }
 
     private String getEwalletFopSelectorUserActionHistogram(List<Ewallet> ewallets) {

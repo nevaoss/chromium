@@ -6,6 +6,8 @@
 
 #include <android/bitmap.h>
 
+#include <algorithm>
+#include <array>
 #include <limits>
 #include <utility>
 
@@ -1265,7 +1267,7 @@ void RenderWidgetHostViewAndroid::LostFocusInternal() {
 }
 
 bool RenderWidgetHostViewAndroid::HasFocus() {
-  return view_.HasFocus();
+  return has_focus_for_testing_.value_or(view_.HasFocus());
 }
 
 bool RenderWidgetHostViewAndroid::IsSurfaceAvailableForCopy() {
@@ -2049,12 +2051,13 @@ bool RenderWidgetHostViewAndroid::HasFallbackSurface() const {
   return delegated_frame_host_->HasFallbackSurface();
 }
 
-void RenderWidgetHostViewAndroid::CopyFromSurface(
+void RenderWidgetHostViewAndroid::CopyFromSurfaceImpl(
     const gfx::Rect& src_subrect,
     const gfx::Size& output_size,
+    bool is_copy_request_secure,
     base::TimeDelta timeout,
     base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
-  TRACE_EVENT0("cc", "RenderWidgetHostViewAndroid::CopyFromSurface");
+  TRACE_EVENT0("cc", "RenderWidgetHostViewAndroid::CopyFromSurfaceImpl");
   if (!IsSurfaceAvailableForCopy()) {
     std::move(callback).Run(viz::CopyOutputBitmapWithMetadata());
     return;
@@ -2066,18 +2069,19 @@ void RenderWidgetHostViewAndroid::CopyFromSurface(
   }
 
   delegated_frame_host_->CopyFromCompositingSurface(
-      src_subrect, output_size, timeout,
+      src_subrect, output_size, /*capture_exact_surface_id=*/false,
+      is_copy_request_secure, timeout,
       base::BindOnce(
           [](base::OnceCallback<void(const content::CopyFromSurfaceResult&)>
                  callback,
              const base::expected<viz::CopyOutputBitmapWithMetadata,
                                   viz::CopyOutputResult::Error>& result) {
             TRACE_EVENT0(
-                "cc", "RenderWidgetHostViewAndroid::CopyFromSurface finished");
+                "cc",
+                "RenderWidgetHostViewAndroid::CopyFromSurfaceImpl finished");
             std::move(callback).Run(ToCopyFromSurfaceResult(result));
           },
-          std::move(callback)),
-      /*capture_exact_surface_id=*/false);
+          std::move(callback)));
 }
 
 ui::FilteredGestureProvider*
@@ -2709,6 +2713,9 @@ void RenderWidgetHostViewAndroid::ProcessAckedTouchEvent(
     const input::TouchEventWithLatencyInfo& touch,
     blink::mojom::InputEventResultState ack_result) {
   TRACE_EVENT0("input", "RenderWidgetHostViewAndroid::ProcessAckedTouchEvent");
+  if (destroy_pending()) {
+    return;
+  }
   input::ScopedInputDispatchPin pin(this);
   input_helper_->ProcessAckedTouchEvent(touch, ack_result);
 }
@@ -2758,13 +2765,6 @@ blink::mojom::PointerLockResult RenderWidgetHostViewAndroid::LockPointer(
     return blink::mojom::PointerLockResult::kWrongDocument;
   }
 
-  // ExclusiveAccessManager handles the pointer lock toast.
-  if (!base::FeatureList::IsEnabled(features::kEnableExclusiveAccessManager)) {
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_RenderWidgetHostViewImpl_showPointerLockToast(
-        env, GetJavaObject(), window_android->GetJavaObject());
-  }
-
   return blink::mojom::PointerLockResult::kSuccess;
 }
 
@@ -2806,12 +2806,6 @@ void RenderWidgetHostViewAndroid::UnlockPointer() {
 
   window_android->ReleasePointerLock(view_);
 
-  // ExclusiveAccessManager handles the pointer lock toast.
-  if (!base::FeatureList::IsEnabled(features::kEnableExclusiveAccessManager)) {
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_RenderWidgetHostViewImpl_hidePointerLockToast(env, GetJavaObject());
-  }
-
   host()->LostPointerLock();
 }
 
@@ -2819,23 +2813,46 @@ void RenderWidgetHostViewAndroid::OnPointerLockRelease() {
   host()->LostPointerLock();
 }
 
-bool RenderWidgetHostViewAndroid::LockKeyboard(
-    std::optional<base::flat_set<ui::DomCode>> codes) {
-  if (keyboard_locked_) {
+// static
+bool RenderWidgetHostViewAndroid::ShouldCaptureSystemKeys(
+    const std::optional<base::flat_set<ui::DomCode>>& codes) {
+  if (!codes) {
     return true;
   }
+  static constexpr auto kModifierCodes = std::to_array<ui::DomCode>({
+      ui::DomCode::ALT_LEFT,
+      ui::DomCode::ALT_RIGHT,
+      ui::DomCode::CONTROL_LEFT,
+      ui::DomCode::CONTROL_RIGHT,
+      ui::DomCode::META_LEFT,
+      ui::DomCode::META_RIGHT,
+  });
+  return std::ranges::any_of(kModifierCodes, [&codes](ui::DomCode code) {
+    return codes->contains(code);
+  });
+}
 
+bool RenderWidgetHostViewAndroid::LockKeyboard(
+    std::optional<base::flat_set<ui::DomCode>> codes) {
+  // This may be called while already locked, e.g. when the page calls lock()
+  // again with a different set of keys, so the OS capture state and the locked
+  // keys are always updated. If this fails, the window attributes are left
+  // unchanged, so the previous lock state (if any) remains accurate.
   ui::WindowAndroid* window_android = view_.GetWindowAndroid();
   if (!window_android) {
     return false;
   }
 
-  if (!window_android->SetHasKeyboardCapture(true)) {
+  // SetHasKeyboardCapture() returns false without changing window state when
+  // the platform lacks the keyboard capture API (SDK < 36.1) or there is no
+  // Activity window, even when disabling capture. Failing here keeps keyboard
+  // lock unsupported on those Android versions.
+  if (!window_android->SetHasKeyboardCapture(ShouldCaptureSystemKeys(codes))) {
     return false;
   }
 
   keyboard_locked_ = true;
-  locked_keyboard_keys_ = codes;
+  locked_keyboard_keys_ = std::move(codes);
   return true;
 }
 
@@ -2953,6 +2970,9 @@ void RenderWidgetHostViewAndroid::SendMouseWheelEvent(
 
 void RenderWidgetHostViewAndroid::SendGestureEvent(
     const blink::WebGestureEvent& event) {
+  if (destroy_pending()) {
+    return;
+  }
   input::ScopedInputDispatchPin pin(this);
   // Sending a gesture that may trigger overscroll should resume the effect.
   if (overscroll_controller_)

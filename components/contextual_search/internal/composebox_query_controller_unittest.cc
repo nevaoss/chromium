@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/base64url.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/protobuf_matchers.h"
@@ -1568,6 +1569,7 @@ TEST_F(ComposeboxQueryControllerTest, UploadImageFileRequestSuccess) {
                 .phase_latencies_metadata()
                 .phase_size(),
             1);
+  // The logged encoded size should describe the image payload being uploaded.
   EXPECT_EQ(controller()
                 .last_sent_file_upload_request()
                 ->client_logs()
@@ -1575,7 +1577,14 @@ TEST_F(ComposeboxQueryControllerTest, UploadImageFileRequestSuccess) {
                 .phase(0)
                 .image_encode_data()
                 .encoded_image_size_bytes(),
-            360);
+            base::checked_cast<int64_t>(
+                controller()
+                    .last_sent_file_upload_request()
+                    ->objects_request()
+                    .image_data()
+                    .payload()
+                    .image_bytes()
+                    .size()));
   EXPECT_EQ(controller()
                 .last_sent_file_upload_request()
                 ->objects_request()
@@ -2856,7 +2865,7 @@ TEST_F(ComposeboxQueryControllerTest,
                 .media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
   // Validate that the file upload request and the viewport upload request have
-  // different request ids.
+  // different request id UUIDs but the same context_id.
   EXPECT_NE(file_upload_request->objects_request()
                 .request_context()
                 .request_id()
@@ -2865,6 +2874,14 @@ TEST_F(ComposeboxQueryControllerTest,
                 .request_context()
                 .request_id()
                 .uuid());
+  EXPECT_EQ(file_upload_request->objects_request()
+                .request_context()
+                .request_id()
+                .context_id(),
+            viewport_upload_request->objects_request()
+                .request_context()
+                .request_id()
+                .context_id());
 
   // Act: Create the destination URL for the query.
   std::unique_ptr<CreateSearchUrlRequestInfo> search_url_request_info =
@@ -2889,19 +2906,28 @@ TEST_F(ComposeboxQueryControllerTest,
           .request_context()
           .request_id()
           .uuid();
-  auto viewport_file_request_id_from_cinpts =
-      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 0 : 1)
-          .request_id();
-  auto pdf_file_request_id_from_cinpts =
-      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 1 : 0)
-          .request_id();
+  const auto& viewport_contextual_input_from_cinpts =
+      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 0 : 1);
+  const auto& pdf_contextual_input_from_cinpts =
+      contextual_inputs.inputs(viewport_contextual_input_is_first_file ? 1 : 0);
 
   // Check that the media types are different and match the expected media
   // types.
-  EXPECT_EQ(viewport_file_request_id_from_cinpts.media_type(),
+  EXPECT_EQ(viewport_contextual_input_from_cinpts.request_id().media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE);
-  EXPECT_EQ(pdf_file_request_id_from_cinpts.media_type(),
+  EXPECT_EQ(pdf_contextual_input_from_cinpts.request_id().media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_PDF);
+
+  // Check that the request_ids in cinpts have different UUIDs and the same
+  // context_id.
+  EXPECT_NE(viewport_contextual_input_from_cinpts.request_id().uuid(),
+            pdf_contextual_input_from_cinpts.request_id().uuid());
+  EXPECT_EQ(viewport_contextual_input_from_cinpts.request_id().context_id(),
+            pdf_contextual_input_from_cinpts.request_id().context_id());
+
+  // Check that is_viewport_image is set only on the viewport contextual input.
+  EXPECT_TRUE(viewport_contextual_input_from_cinpts.is_viewport_image());
+  EXPECT_FALSE(pdf_contextual_input_from_cinpts.is_viewport_image());
 }
 
 TEST_F(ComposeboxQueryControllerTest, CreateSearchUrlWithInvocationSource) {
@@ -8227,6 +8253,96 @@ TEST_F(ComposeboxQueryControllerTest,
             lens::ContentData::CONTENT_TYPE_PDF);
 }
 
+#if !BUILDFLAG(IS_IOS)
+TEST_F(ComposeboxQueryControllerTest,
+       UploadPdfFileRequest_ChunkingEnabled_WithViewport) {
+  identity_test_env()->MakePrimaryAccountAvailable(
+      kTestUser, signin::ConsentLevel::kSignin);
+  identity_test_env()->SetAutomaticIssueOfAccessTokens(true);
+
+  CreateController(
+      /*send_lns_surface=*/false,
+      /*suppress_lns_surface_param_if_no_image=*/true,
+      /*enable_viewport_images=*/true,
+      /*use_separate_request_ids_for_viewport_images=*/true,
+      /*enable_cluster_info_ttl=*/false,
+      /*prioritize_suggestions_for_the_first_attached_document=*/false,
+      /*attach_page_title_and_url_to_suggest_requests=*/false,
+      /*enable_send_vit_for_single_context_next_queries=*/true,
+      /*enable_send_raw_file_media_types=*/false,
+      /*enable_only_send_aai_for_modality_chips=*/true,
+      /*enable_send_contextual_input_upload_type=*/false,
+      /*send_contextual_input_upload_type_in_search_url=*/true,
+      /*send_contextual_input_upload_type_in_aim_request=*/true,
+      /*exclude_raw_and_drive_files=*/true,
+      /*enable_contextual_tasks_upload_chunking=*/true);
+  controller().InitializeIfNeeded();
+
+  size_t chunk_size = lens::features::GetLensOverlayChunkSizeBytes();
+  std::vector<uint8_t> large_pdf(chunk_size + 100, 'a');
+
+  const base::UnguessableToken file_token = base::UnguessableToken::Create();
+  auto input_data = std::make_unique<lens::ContextualInputData>();
+  input_data->primary_content_type = lens::MimeType::kPdf;
+  input_data->page_url = GURL("https://www.test.com");
+  input_data->page_title = "Test Page";
+  input_data->pdf_current_page = 1;
+  input_data->context_input = std::vector<lens::ContextualInput>();
+  input_data->context_input->push_back(
+      lens::ContextualInput(large_pdf, lens::MimeType::kPdf));
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+  input_data->viewport_screenshot = bitmap;
+  lens::ImageEncodingOptions image_options{.max_size = 1000000,
+                                           .max_height = 1000,
+                                           .max_width = 1000,
+                                           .compression_quality = 30};
+
+  controller().StartFileUploadFlow(file_token, std::move(input_data),
+                                   image_options);
+
+  WaitForClusterInfo();
+  WaitForFileUpload(file_token, lens::MimeType::kPdf);
+
+  // Both the 2 PDF chunks AND both ObjectsRequests (viewport + final PDF
+  // payload) must have completed before kUploadSuccessful was emitted.
+  EXPECT_EQ(controller().num_chunk_upload_requests_sent(), 2);
+  EXPECT_EQ(controller().num_file_upload_requests_sent(), 2);
+
+  std::optional<lens::LensOverlayServerRequest> file_upload_request;
+  std::optional<lens::LensOverlayServerRequest> viewport_upload_request;
+  if (controller()
+          .recent_sent_upload_request(0)
+          ->objects_request()
+          .has_image_data()) {
+    viewport_upload_request = controller().recent_sent_upload_request(0);
+    file_upload_request = controller().recent_sent_upload_request(1);
+  } else {
+    file_upload_request = controller().recent_sent_upload_request(0);
+    viewport_upload_request = controller().recent_sent_upload_request(1);
+  }
+
+  ASSERT_TRUE(viewport_upload_request.has_value());
+  ASSERT_TRUE(file_upload_request.has_value());
+  EXPECT_TRUE(viewport_upload_request->objects_request().has_image_data());
+  EXPECT_TRUE(file_upload_request->objects_request()
+                  .payload()
+                  .content()
+                  .content_data(0)
+                  .stored_chunk_options()
+                  .read_stored_chunks());
+  EXPECT_EQ(file_upload_request->objects_request()
+                .payload()
+                .content()
+                .content_data(0)
+                .stored_chunk_options()
+                .total_stored_chunks(),
+            2);
+}
+#endif  // !BUILDFLAG(IS_IOS)
+
 TEST_F(ComposeboxQueryControllerTest,
        UploadPdfRawFileRequest_CompressesPdfAndSetsContentType) {
   CreateController(
@@ -8301,6 +8417,12 @@ TEST_F(ComposeboxQueryControllerTest,
 
   controller().SetAuthUserIndex(3);
 
+  lens::LensOverlayServerResponse fake_upload_response;
+  fake_upload_response.mutable_objects_response()
+      ->mutable_text()
+      ->set_content_language("en");
+  controller().set_fake_file_upload_response(fake_upload_response);
+
   std::vector<std::optional<size_t>> received_indices;
   controller().set_get_auth_headers_callback_for_testing(
       base::BindLambdaForTesting(
@@ -8321,6 +8443,13 @@ TEST_F(ComposeboxQueryControllerTest,
   for (const auto& idx : received_indices) {
     EXPECT_EQ(idx, std::make_optional<size_t>(3));
   }
+
+  const auto* file_info = controller().GetFileInfoForTesting(file_token);
+  ASSERT_TRUE(file_info);
+  ASSERT_EQ(file_info->response_bodies.size(), 1u);
+  lens::LensOverlayServerResponse parsed_response;
+  EXPECT_TRUE(parsed_response.ParseFromString(file_info->response_bodies[0]));
+  EXPECT_EQ(parsed_response.objects_response().text().content_language(), "en");
 }
 
 TEST_F(ComposeboxQueryControllerTest, ClusterInfoMetricsRecordedOnSuccess) {

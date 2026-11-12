@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Angre</translation>
 <translation id="2086334242442703436">Åpne emojivelgeren</translation>
 <translation id="2089550919269323883">Installering av <ph name="VM_NAME" /> er blokkert av bedriftsregler. Kontakt systemadministratoren din for å få hjelp. Feilkoden er <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Nyheter om Steam for Chromebook</translation>
 <translation id="209965399369889474">Ikke koblet til nettverket</translation>
 <translation id="2107581415810719320">Annen knapp <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">USB-C-kabelen din støtter ikke Thunderbolt. Enhetens ytelse kan være begrenset.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">Hva vil du fokusere på? Trykk på Enter for å legge til gjøremålet.</translation>
 <translation id="229397294990920565">Mobildata slås av …</translation>
 <translation id="2295777434187870477">Mikrofonen er på. Hvis du slår den av, kuttes lyden for innenheten.</translation>
+<translation id="2296880470921996802">IT-administratoren din har deaktivert utklippstavleloggen</translation>
 <translation id="2302092602801625023">Denne kontoen er administrert av Family Link</translation>
 <translation id="2303600792989757991">Vis eller skjul vindusoversikten</translation>
 <translation id="2304702218354340897">Er du sikker på at du vil slå av ansiktskontroll?</translation>
@@ -685,7 +685,6 @@ Ellers blir den innebygde styreflaten slått på igjen om <ph name="TIMEOUT_SECO
 <translation id="3039491566278747710">Kunne ikke installere regelen for bruk uten nett på enheten.</translation>
 <translation id="3039939407102840004">Pekepennen har <ph name="PERCENTAGE" /> prosent batteri.</translation>
 <translation id="304097922505898963">Åpne Hurtigtaster-appen</translation>
-<translation id="3040982432432547149">Hjelp oss med å forbedre Steam for Chromebook</translation>
 <translation id="304417730895741346">De festede og åpne appene dine er på hyllen. For å feste en app på hyllen, høyreklikk på appen eller trykk på styreflaten med to fingre.</translation>
 <translation id="3045670165536837541">Du har valgt håndtaket øverst til høyre – bruk piltastene for å flytte det</translation>
 <translation id="3046178388369461825">Linux har kritisk lite lagringsplass.</translation>
@@ -929,7 +928,6 @@ Koble enheten til strøm.</translation>
 <translation id="3697991387880191195">Trykk på snarveien for skjermbilder</translation>
 <translation id="3702809606464356667">Viser vinduer fra det nåværende skrivebordet. Trykk på oppoverpiltasten for å vise vinduer fra alle skrivebord</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">Underholdning</translation>
 <translation id="370665806235115550">Laster inn ...</translation>
 <translation id="3707093869106077605"><ph name="UNAVAILABLE_DLC_ONE" /> og <ph name="UNAVAILABLE_DLC_TWO" /> er ikke tilgjengelige.</translation>
 <translation id="3708186454126126312">Tidligere tilkoblet</translation>
@@ -976,7 +974,6 @@ Koble enheten til strøm.</translation>
 <translation id="3824784079442479685">Dette gir <ph name="APP_NAME" /> og alle apper og nettsteder som har kameratillatelsen, tilgang til kameraet. Det kan hende du må laste inn nettsiden på nytt eller starte appen på nytt.</translation>
 <translation id="3826099427150913765">Bytt til passord</translation>
 <translation id="383058930331066723">Batterisparing er på</translation>
-<translation id="3831226344927851293">Avslutt veiledningsvisningen</translation>
 <translation id="383629559565718788">Vis tastaturinnstillinger</translation>
 <translation id="384082539148746321">Vil du slette malen?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, deretter <ph name="KEY_ONE" /> eller <ph name="KEY_TWO" /> eller <ph name="KEY_THREE" /> eller <ph name="KEY_FOUR" /></translation>
@@ -1079,7 +1076,6 @@ Koble enheten til strøm.</translation>
 <translation id="4147911968024186208">Prøv på nytt. Hvis du ser denne feilen igjen, kan du kontakte brukerstøtterepresentanten din.</translation>
 <translation id="4150201353443180367">Skjerm</translation>
 <translation id="4151054805501931758">Portrettretusjering</translation>
-<translation id="4151449637210235443">Fortell oss hva du synes om gameplayet i spillet du nettopp spilte</translation>
 <translation id="4156293514828496577"><ph name="PERCENTAGE" /> % batteri gjenstår (ca. <ph name="TIME_LEFT" />).
 Noen funksjoner er begrenset for å forlenge batterilevetiden.</translation>
 <translation id="4158003972857765638">Organiser på et nytt skrivebord</translation>
@@ -1580,10 +1576,8 @@ Ingen enheter er tilkoblet.</translation>
 <translation id="5551974246223970793">Gå til neste søketreff når du søker på en side</translation>
 <translation id="5556459405103347317">Last inn på nytt</translation>
 <translation id="5558091555391176027">Slå av/på høy synlighet for nærdeling</translation>
-<translation id="5558314826121965174">Kreativitet</translation>
 <translation id="556042886152191864">Knapp</translation>
 <translation id="5570122939431135380">Åpne en ny fane i et nytt inkognitovindu</translation>
-<translation id="5572632238877308040">Nødvendigheter</translation>
 <translation id="5575528586625653441">Det oppsto et problem med en forespørsel om demoregistrering.</translation>
 <translation id="557563299383177668">Neste avsnitt</translation>
 <translation id="5577082622442191756">Slå av/på Bluetooth. <ph name="STATE_TEXT" />.</translation>
@@ -1618,7 +1612,6 @@ Ingen enheter er tilkoblet.</translation>
 <translation id="5667546120811588575">Konfigurerer Google Play …</translation>
 <translation id="5669267381087807207">Aktiverer</translation>
 <translation id="5671658447180261823">Fjerner forslaget <ph name="SUGGESTION_NAME" /></translation>
-<translation id="5672890847723042801">Systemverktøy</translation>
 <translation id="5673434351075758678">Fra «<ph name="FROM_LOCALE" />» til «<ph name="TO_LOCALE" />» etter at innstillingene dine ble synkronisert.</translation>
 <translation id="5675363643668471212">Hylleelement</translation>
 <translation id="5677022547882470786">Dra eller trykk på mellomromstasten for å velge området du vil søke i</translation>
@@ -1793,7 +1786,6 @@ Ingen enheter er tilkoblet.</translation>
 <translation id="6127395413317891856">Du er uten nett. Kontroller tilkoblingen, og prøv igjen.</translation>
 <translation id="6129953537138746214">Mellomrom</translation>
 <translation id="6132714462430777655">Vil du hoppe over skoleregistreringen?</translation>
-<translation id="6136872094979134163">Kan ikke hente nyheter om Steam for Chromebook.</translation>
 <translation id="6137566720514957455">Åpne dialogboksen for fjerning av <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">Hva vil du fokusere på?</translation>
 <translation id="6141988275892716286">Bekreft nedlastingen</translation>
@@ -1873,7 +1865,6 @@ Ingen enheter er tilkoblet.</translation>
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, deretter <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> eller <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">Ukjente nettverk</translation>
 <translation id="6359587239691116345">Få de nyeste funksjonene og sikkerhetsforbedringene. Hvis du avviser denne oppdateringen, kan det hende at enheten slutter å fungere som den skal, og du kan oppleve sikkerhets- og ytelsesproblemer.</translation>
-<translation id="6362833380917912748">Bli kjent med de innebygde appene</translation>
 <translation id="6364386432014869981">Den innebygde styreflaten er slått på</translation>
 <translation id="6376931439017688372">Bluetooth er på</translation>
 <translation id="6378515133128829137">Fest vinduet til høyre</translation>
@@ -2098,7 +2089,6 @@ Nylig installert</translation>
 <translation id="7014684956566476813">Koblet til enheten <ph name="DEVICE_NAME" /></translation>
 <translation id="7015766095477679451">Kom tilbake <ph name="COME_BACK_TIME" />.</translation>
 <translation id="70168403932084660">Skrivebord 6</translation>
-<translation id="702252130983202758">Appene dine</translation>
 <translation id="7025533177575372252">Koble <ph name="DEVICE_NAME" /> til telefonen</translation>
 <translation id="7026338066939101231">Reduser</translation>
 <translation id="7029307918966275733">Crostini er ikke installert. Installer Crostini for å se anerkjennelser.</translation>
@@ -2537,7 +2527,6 @@ For å slå av enheten, trykk og hold på av/på-knappen på enheten igjen.</tra
 <translation id="8277261673056602147">Marker tekst på skjermen</translation>
 <translation id="8281886186245836920">Hopp over</translation>
 <translation id="8282784978194352587">Du klarte det!</translation>
-<translation id="8287009018010202411">Produktivitet</translation>
 <translation id="828708037801473432">Av</translation>
 <translation id="8289128870594824098">Diskstørrelse</translation>
 <translation id="8297006494302853456">Svakt</translation>
@@ -2632,7 +2621,6 @@ For å slå av enheten, trykk og hold på av/på-knappen på enheten igjen.</tra
 <translation id="8598235756057743477">Sorter apper etter navn eller farge</translation>
 <translation id="8599864823732014237">Vil du hoppe over bedriftsregistrering?</translation>
 <translation id="8609384513243082612">Åpne en ny fane</translation>
-<translation id="861045123704058818">Appene er organisert etter kategori inntil videre</translation>
 <translation id="8612338981637220013">Dette går unna!</translation>
 <translation id="8613164732773110792">Kun små bokstaver, tall, understrek og bindestrek</translation>
 <translation id="8614517853887502247">Varsler fra <ph name="APP_1_TITLE" /> og <ph name="APP_2_TITLE" /> er skjult fordi visningsbeskyttelse er på</translation>
@@ -2824,7 +2812,6 @@ For å slå av enheten, trykk og hold på av/på-knappen på enheten igjen.</tra
 <translation id="9129245940793250979">Bakre knapp</translation>
 <translation id="9133335900048457298">Kan ikke ta opp beskyttet innhold</translation>
 <translation id="9139720510312328767">Slett neste bokstav</translation>
-<translation id="9148058034647219655">Avslutt</translation>
 <translation id="9151906066336345901">end</translation>
 <translation id="9159421884295554245">Søk på utklippstavlen</translation>
 <translation id="9168436347345867845">Gjør det senere</translation>

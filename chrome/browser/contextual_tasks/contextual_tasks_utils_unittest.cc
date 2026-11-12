@@ -10,6 +10,9 @@
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/aim_message_poster.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_actions.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -20,8 +23,10 @@
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_search/mock_contextual_search_context_controller.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
+#include "components/contextual_search/pref_names.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/test/browser_task_environment.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -329,6 +334,41 @@ TEST_F(ContextualTasksUtilsTest,
   EXPECT_TRUE(IsTabSharingEligible(profile_.get()));
 }
 
+TEST_F(ContextualTasksUtilsTest, CanShareTabContext_NullProfile) {
+  EXPECT_FALSE(CanShareTabContext(nullptr));
+}
+
+TEST_F(ContextualTasksUtilsTest,
+       CanShareTabContext_ForceEntryPointEligibility) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kContextualTasksForceEntryPointEligibility);
+  EXPECT_TRUE(CanShareTabContext(profile_.get()));
+
+  profile_->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kDisabled));
+  EXPECT_FALSE(CanShareTabContext(profile_.get()));
+}
+
+TEST_F(ContextualTasksUtilsTest, CreateImageEncodingOptions) {
+  lens::ImageEncodingOptions options = CreateImageEncodingOptions();
+  EXPECT_GT(options.max_size, 0);
+  EXPECT_GT(options.max_height, 0);
+  EXPECT_GT(options.max_width, 0);
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextualTasksUtilsTest, RemoveTabUnderline_ClosedTabDoesNotCrash) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kContextManagementInComposebox);
+  // Passing an unmapped/closed tab ID and browser window interface should
+  // safely resolve without crashing.
+  RemoveTabUnderline(999999, browser_window_.get());
+  RemoveTabUnderline(999999, nullptr);
+}
+#endif
+
 TEST_F(ContextualTasksUtilsTest, ShouldUseDarkMode_NullProfile) {
   EXPECT_FALSE(ShouldUseDarkMode(nullptr));
   EXPECT_FALSE(ShouldUseDarkMode(nullptr, GURL()));
@@ -390,6 +430,202 @@ TEST_F(ContextualTasksUtilsTest,
   EXPECT_EQ(request_info->file_tokens[1], token2);
   EXPECT_EQ(request_info->file_tokens[2], token3);
   EXPECT_EQ(request_info->file_tokens[3], overlay_token);
+}
+
+class MockContextualTasksEligibilityManager
+    : public ContextualTasksEligibilityManager {
+ public:
+  MockContextualTasksEligibilityManager()
+      : ContextualTasksEligibilityManager(nullptr, nullptr, nullptr) {}
+  ~MockContextualTasksEligibilityManager() override = default;
+
+  MOCK_METHOD(bool, IsSidePanelAvailable, (), (const, override));
+};
+
+std::unique_ptr<KeyedService> BuildMockUiService(
+    ContextualTasksEligibilityManager* eligibility_manager,
+    content::BrowserContext* context) {
+  auto mock = std::make_unique<testing::NiceMock<MockContextualTasksUiService>>(
+      Profile::FromBrowserContext(context), nullptr, nullptr, nullptr, nullptr,
+      nullptr);
+  ON_CALL(*mock, GetEligibilityManager())
+      .WillByDefault(testing::Return(eligibility_manager));
+  return mock;
+}
+
+void SetUpServices(
+    Profile* profile,
+    MockContextualTasksEligibilityManager* mock_eligibility_manager,
+    testing::NiceMock<MockAimEligibilityService>** mock_aim_service_out) {
+  ContextualTasksUiServiceFactory::GetInstance()->SetTestingFactory(
+      profile,
+      base::BindRepeating(&BuildMockUiService, mock_eligibility_manager));
+
+  AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
+      profile,
+      base::BindRepeating(
+          [](testing::NiceMock<MockAimEligibilityService>** mock_out,
+             content::BrowserContext* context)
+              -> std::unique_ptr<KeyedService> {
+            auto mock =
+                std::make_unique<testing::NiceMock<MockAimEligibilityService>>(
+                    *Profile::FromBrowserContext(context)->GetPrefs(), nullptr,
+                    nullptr, nullptr);
+            *mock_out = mock.get();
+            return mock;
+          },
+          mock_aim_service_out));
+  AimEligibilityServiceFactory::GetForProfile(profile);
+}
+
+TEST_F(ContextualTasksUtilsTest,
+       AreContextualTasksUpdatedEntryPointsEnabled_FeatureDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(kContextualTasksUpdatedEntryPoints);
+
+  testing::NiceMock<MockContextualTasksEligibilityManager>
+      mock_eligibility_manager;
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(true));
+
+  testing::NiceMock<MockAimEligibilityService>* mock_aim_service = nullptr;
+  SetUpServices(profile_.get(), &mock_eligibility_manager, &mock_aim_service);
+  ASSERT_TRUE(mock_aim_service);
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(profile_.get()));
+}
+
+TEST_F(ContextualTasksUtilsTest,
+       AreContextualTasksUpdatedEntryPointsEnabled_NullProfileOrNullServices) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kContextualTasksUpdatedEntryPoints);
+
+  // Null profile returns false.
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(nullptr));
+
+  // Profile without UiService or AimService returns false.
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(profile_.get()));
+}
+
+TEST_F(ContextualTasksUtilsTest,
+       AreContextualTasksUpdatedEntryPointsEnabled_SidePanelAndAimEligibility) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kContextualTasksUpdatedEntryPoints);
+
+  testing::NiceMock<MockContextualTasksEligibilityManager>
+      mock_eligibility_manager;
+  testing::NiceMock<MockAimEligibilityService>* mock_aim_service = nullptr;
+  SetUpServices(profile_.get(), &mock_eligibility_manager, &mock_aim_service);
+  ASSERT_TRUE(mock_aim_service);
+
+  // Both ineligible -> false.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(false));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(false));
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(profile_.get()));
+
+  // Side panel available but Aim ineligible -> false.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(false));
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(profile_.get()));
+
+  // Side panel unavailable but Aim eligible -> false.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(false));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(profile_.get()));
+
+  // Both eligible -> true.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+  EXPECT_TRUE(AreContextualTasksUpdatedEntryPointsEnabled(profile_.get()));
+}
+
+TEST_F(ContextualTasksUtilsTest,
+       AreContextualTasksUpdatedEntryPointsEnabled_IncognitoProfile) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kContextualTasksUpdatedEntryPoints);
+
+  TestingProfile::Builder otr_builder;
+  Profile* otr_profile = otr_builder.BuildIncognito(profile_.get());
+
+  testing::NiceMock<MockContextualTasksEligibilityManager>
+      mock_eligibility_manager;
+  testing::NiceMock<MockAimEligibilityService>* mock_aim_service = nullptr;
+  SetUpServices(otr_profile, &mock_eligibility_manager, &mock_aim_service);
+  ASSERT_TRUE(mock_aim_service);
+
+  // When both side panel and AIM are eligible in incognito, returns true.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+  EXPECT_TRUE(AreContextualTasksUpdatedEntryPointsEnabled(otr_profile));
+
+  // When AIM is ineligible in incognito, returns false.
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(false));
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(otr_profile));
+
+  // When side panel is unavailable in incognito, returns false.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(false));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+  EXPECT_FALSE(AreContextualTasksUpdatedEntryPointsEnabled(otr_profile));
+}
+
+TEST_F(ContextualTasksUtilsTest,
+       ContextMenuParamHelpers_GatedOnSidePanelAndAimEligibility) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      /*enabled_features=*/
+      {{kContextualTasksUpdatedEntryPoints,
+        {{"ContextualTasksContextMenuShowAskGoogle", "true"},
+         {"ContextualTasksContextMenuSubmenu", "true"},
+         {"ContextualTasksContextMenuRouteAskGoogleToOmnibox", "true"}}}},
+      /*disabled_features=*/{});
+
+  testing::NiceMock<MockContextualTasksEligibilityManager>
+      mock_eligibility_manager;
+  testing::NiceMock<MockAimEligibilityService>* mock_aim_service = nullptr;
+  SetUpServices(profile_.get(), &mock_eligibility_manager, &mock_aim_service);
+  ASSERT_TRUE(mock_aim_service);
+
+  // When either is unavailable, all param helpers return false despite params
+  // being true.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(false));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+  EXPECT_FALSE(ShouldShowAskGoogleContextMenu(profile_.get()));
+  EXPECT_FALSE(ShouldUseContextualTasksContextMenuSubmenu(profile_.get()));
+  EXPECT_FALSE(ShouldRouteAskGoogleToOmnibox(profile_.get()));
+
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(false));
+  EXPECT_FALSE(ShouldShowAskGoogleContextMenu(profile_.get()));
+  EXPECT_FALSE(ShouldUseContextualTasksContextMenuSubmenu(profile_.get()));
+  EXPECT_FALSE(ShouldRouteAskGoogleToOmnibox(profile_.get()));
+
+  // When both are available, param helpers return true.
+  ON_CALL(mock_eligibility_manager, IsSidePanelAvailable())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*mock_aim_service, IsAimEligible())
+      .WillByDefault(testing::Return(true));
+  EXPECT_TRUE(ShouldShowAskGoogleContextMenu(profile_.get()));
+  EXPECT_TRUE(ShouldUseContextualTasksContextMenuSubmenu(profile_.get()));
+  EXPECT_TRUE(ShouldRouteAskGoogleToOmnibox(profile_.get()));
 }
 
 }  // namespace

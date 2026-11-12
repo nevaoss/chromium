@@ -82,7 +82,7 @@ void CheckValidResource(const GURL& resource_url,
 #else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
             resource_url_is_chrome_or_chrome_untrusted ||
-            blink::CommonSchemeRegistry::IsExtensionScheme(
+            blink::CommonSchemeRegistry::IsCodeCacheAllowedScheme(
                 resource_url.GetScheme()),
         base::NotFatalUntil::M159);
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -146,7 +146,7 @@ void CheckValidContext(const GURL& origin_lock,
   CHECK(origin_lock.is_empty() ||
             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
               origin_lock_is_chrome_or_chrome_untrusted ||
-              blink::CommonSchemeRegistry::IsExtensionScheme(
+              blink::CommonSchemeRegistry::IsCodeCacheAllowedScheme(
                   origin_lock.GetScheme())) &&
              !url::Origin::Create(origin_lock).opaque()),
         base::NotFatalUntil::M159);
@@ -963,7 +963,9 @@ void GeneratedCodeCache::OpenCompleteForRead(
     small_buffer = op->small_buffer();
     large_buffer = op->large_buffer();
     CHECK_EQ(small_size, small_buffer->size(), base::NotFatalUntil::M159);
-    CHECK_EQ(large_size, large_buffer->size(), base::NotFatalUntil::M159);
+    // TODO(crbug.com/570916426): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK_EQ(large_size, large_buffer->size());
   }
 
   // Read the small data first.
@@ -1033,7 +1035,9 @@ void GeneratedCodeCache::ReadComplete(PendingOperation* op) {
                            &data_size);
       if (data_size <= kInlineDataLimit) {
         // Small data. Copy the data from the small buffer.
-        CHECK_EQ(0, op->large_buffer()->size(), base::NotFatalUntil::M159);
+        // TODO(crbug.com/571306917): CHECK-exclusion: Convert to a CHECK once
+        // we are confident it won't be triggered.
+        DCHECK_EQ(0, op->large_buffer()->size());
         mojo_base::BigBuffer data(
             op->small_buffer()->span().subspan(kHeaderSizeInBytes, data_size));
         op->RunReadCallback(this, response_time, std::move(data));

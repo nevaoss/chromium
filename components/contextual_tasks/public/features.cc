@@ -47,6 +47,10 @@ BASE_FEATURE(kContextualTasksSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables updated entry points for contextual tasks.
+BASE_FEATURE(kContextualTasksUpdatedEntryPoints,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables extra OAuth scopes for contextual tasks.
 BASE_FEATURE(kContextualTasksExtraOauthScopes,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -83,10 +87,6 @@ BASE_FEATURE(kContextualTasksContextSmartTabSharingDefaultOnAvailability,
 
 // Enables integration with the server side context library.
 BASE_FEATURE(kContextualTasksContextLibrary, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the script tools execution pipeline, including tab ID injection and
-// transient task overlays.
-BASE_FEATURE(kContextualTasksScriptTools, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables quality logging for relevant context determination for contextual
 // tasks.
@@ -193,7 +193,55 @@ BASE_FEATURE(kContextualTasksUploadChunking, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksWebUiVoiceSearchDesktopAndroid,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kABASearchJourneys, base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<base::TimeDelta> kABASearchJourneysTtl(
+    &kABASearchJourneys,
+    "aba_search_journeys_ttl",
+    base::Minutes(30));
+
+const base::FeatureParam<size_t> kABASearchJourneysMaxRingBufferSize(
+    &kABASearchJourneys,
+    "aba_search_journeys_max_ring_buffer_size",
+    10);
+
+const base::FeatureParam<size_t> kABASearchJourneysMinQueryMatchLength(
+    &kABASearchJourneys,
+    "aba_search_journeys_min_query_match_length",
+    5);
+
+bool IsABASearchJourneysEnabled() {
+  return base::FeatureList::IsEnabled(kABASearchJourneys);
+}
+
+base::TimeDelta GetABASearchJourneysTtl() {
+  if (!IsABASearchJourneysEnabled()) {
+    return base::TimeDelta();
+  }
+  return kABASearchJourneysTtl.Get();
+}
+
+size_t GetABASearchJourneysMaxRingBufferSize() {
+  if (!IsABASearchJourneysEnabled()) {
+    return 0;
+  }
+  return kABASearchJourneysMaxRingBufferSize.Get();
+}
+
+size_t GetABASearchJourneysMinQueryMatchLength() {
+  if (!IsABASearchJourneysEnabled()) {
+    return 0;
+  }
+  return kABASearchJourneysMinQueryMatchLength.Get();
+}
+
 BASE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualSearchContextualCuesHandleEdu,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualSearchContextualCuesHandleShopping,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksRearchitecture, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -215,7 +263,7 @@ bool GetIsContextualTasksNonBlockingUrlNavigationEnabled() {
 }
 
 BASE_FEATURE(kAllowSignedOutUserInDesktopAndroid,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAllowSignedOutUserInDesktopAndroidEnabled() {
 #if BUILDFLAG(IS_ANDROID)
@@ -598,6 +646,22 @@ const base::FeatureParam<bool> kContextualTasksEnableNativeZeroStateSuggestions(
     "ContextualTasksEnableNativeZeroStateSuggestions",
     true);
 
+const base::FeatureParam<bool> kContextualTasksContextMenuShowAskGoogle(
+    &kContextualTasksUpdatedEntryPoints,
+    "ContextualTasksContextMenuShowAskGoogle",
+    false);
+
+const base::FeatureParam<bool>
+    kContextualTasksContextMenuRouteAskGoogleToOmnibox(
+        &kContextualTasksUpdatedEntryPoints,
+        "ContextualTasksContextMenuRouteAskGoogleToOmnibox",
+        false);
+
+const base::FeatureParam<bool> kContextualTasksContextMenuSubmenu(
+    &kContextualTasksUpdatedEntryPoints,
+    "ContextualTasksContextMenuSubmenu",
+    false);
+
 // The URL parameter name to check for NLM mode.
 const base::FeatureParam<std::string> kContextualTasksNlmUrlParam{
     &kContextualTasksCustomNlmUi, "ContextualTasksNlmUrlParam", "ajid"};
@@ -943,6 +1007,11 @@ const char kContextualTasksContextName[] = "Contextual Tasks Context";
 const char kContextualTasksContextDescription[] =
     "Enables relevant context determination for contextual tasks.";
 
+const char kContextualTasksContextMultiTurnTabRelevanceName[] =
+    "Contextual Tasks Context Multi-Turn Tab Relevance";
+const char kContextualTasksContextMultiTurnTabRelevanceDescription[] =
+    "Enables multi-turn tab relevance model for contextual tasks.";
+
 const char kContextualTasksSearchQueryName[] = "Contextual Tasks Search Query";
 const char kContextualTasksSearchQueryDescription[] =
     "Enables forwarding the search query parameter 'q' in contextual tasks.";
@@ -1004,6 +1073,10 @@ const char kContextualTasksEphemeralBrandedEntryPointName[] =
     "Contextual Tasks Ephemeral Branded Entry Point";
 const char kContextualTasksEphemeralBrandedEntryPointDescription[] =
     "Enables the ephemeral branded entry point for contextual tasks.";
+const char kContextualTasksUpdatedEntryPointsName[] =
+    "Contextual Tasks Updated Entry Points";
+const char kContextualTasksUpdatedEntryPointsDescription[] =
+    "Enables updated entry points for contextual tasks.";
 const char kContextualTasksSidePanelRearchitectureName[] =
     "Contextual Tasks Side Panel Rearchitecture";
 const char kContextualTasksSidePanelRearchitectureDescription[] =
@@ -1033,6 +1106,16 @@ const char kContextualTasksEphemeralButtonContextMenuName[] =
 const char kContextualTasksEphemeralButtonContextMenuDescription[] =
     "Enables a context menu on the ephemeral contextual tasks toolbar button "
     "to remove it from the toolbar.";
+
+const char kABASearchJourneysName[] = "ABA Search Journeys";
+const char kABASearchJourneysDescription[] =
+    "Enables offering to reopen a search answer in the Contextual Tasks side "
+    "panel.";
+
+const char kAllowSignedOutUserInDesktopAndroidName[] =
+    "Contextual Tasks Allow Signed-Out User In Desktop Android";
+const char kAllowSignedOutUserInDesktopAndroidDescription[] =
+    "Allows signed-out users to use side panel cobrowse on Desktop Android.";
 
 }  // namespace flag_descriptions
 

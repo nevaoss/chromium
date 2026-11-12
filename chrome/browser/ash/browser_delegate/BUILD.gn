@@ -22,12 +22,12 @@ static_library("impl") {
 
   deps = [
     "//ash",
-    "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/ash/boca/on_task",
     "//chrome/browser/ash/profiles",
     "//chrome/browser/devtools",
     "//chrome/browser/lifetime",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/sessions",
     "//chrome/browser/ui:browser_command_controller",
     "//chrome/browser/ui:browser_commands",
     "//chrome/browser/ui:browser_init_state",
@@ -50,7 +50,9 @@ static_library("impl") {
     "//chrome/browser/web_applications",
     "//chrome/common:chrome_features",
     "//chromeos/ash/components/browser_context_helper",
+    "//components/sessions",
     "//components/sessions:session_id",
+    "//third_party/blink/public/mojom:mojom_platform",
     "//ui/aura",
     "//ui/base",
   ]

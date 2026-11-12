@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">실행취소</translation>
 <translation id="2086334242442703436">그림 이모티콘 선택 도구 열기</translation>
 <translation id="2089550919269323883">기업 정책에 의해 <ph name="VM_NAME" /> 설치가 차단되었습니다. 시스템 관리자에게 문의하여 지원을 받으세요. 오류 코드는 <ph name="ERROR" />입니다.</translation>
-<translation id="2093792000875799555">Chromebook용 Steam 뉴스</translation>
 <translation id="209965399369889474">네트워크에 연결되어 있지 않음</translation>
 <translation id="2107581415810719320">기타 버튼 <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">사용 중인 USB-C 케이블은 Thunderbolt를 지원하지 않습니다. 기기 성능이 제한될 수 있습니다.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">무엇에 집중하고 싶으신가요? 할 일을 추가하려면 Enter 키를 누르세요.</translation>
 <translation id="229397294990920565">모바일 데이터를 사용 중지하는 중입니다.</translation>
 <translation id="2295777434187870477">마이크가 켜져 있으며 전환하면 음소거됩니다.</translation>
+<translation id="2296880470921996802">IT 관리자가 클립보드 기록을 사용 중지했습니다.</translation>
 <translation id="2302092602801625023">Family Link에서 관리되는 계정입니다.</translation>
 <translation id="2303600792989757991">창 전환 개요</translation>
 <translation id="2304702218354340897">페이스 컨트롤을 사용 중지하시겠습니까?</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">기기에 오프라인 정책을 설치하지 못했습니다.</translation>
 <translation id="3039939407102840004">스타일러스 배터리 잔량이 <ph name="PERCENTAGE" />%입니다.</translation>
 <translation id="304097922505898963">단축키 앱 열기</translation>
-<translation id="3040982432432547149">Chromebook용 Steam 개선에 동참해 주세요</translation>
 <translation id="304417730895741346">앱 표시줄에서 고정된 앱과 열려 있는 앱을 확인할 수 있습니다. 앱 표시줄에 앱을 고정하려면 앱을 마우스 오른쪽 버튼으로 클릭하거나 두 손가락으로 터치패드를 탭합니다.</translation>
 <translation id="3045670165536837541">선택된 오른쪽 상단 핸들, 화살표 키를 사용하여 이동</translation>
 <translation id="3046178388369461825">Linux 디스크 공간이 매우 부족함</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">스크린샷 단축키 누르기</translation>
 <translation id="3702809606464356667">현재 데스크의 창을 표시합니다. 모든 데스크의 창을 표시하려면 위쪽 화살표 키를 누르세요</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">엔터테인먼트</translation>
 <translation id="370665806235115550">로드 중...</translation>
 <translation id="3707093869106077605"><ph name="UNAVAILABLE_DLC_ONE" /> 및 <ph name="UNAVAILABLE_DLC_TWO" /> 기능을 사용할 수 없습니다.</translation>
 <translation id="3708186454126126312">이전에 연결된 기기</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685">카메라 액세스 권한이 있는 <ph name="APP_NAME" /> 앱을 포함한 모든 앱과 웹사이트에서 카메라에 액세스할 수 있게 됩니다. 웹페이지를 새로고침하거나 앱을 다시 시작해야 할 수도 있습니다.</translation>
 <translation id="3826099427150913765">비밀번호로 전환</translation>
 <translation id="383058930331066723">절전 모드 사용</translation>
-<translation id="3831226344927851293">튜토리얼 보기 종료</translation>
 <translation id="383629559565718788">키보드 설정 표시</translation>
 <translation id="384082539148746321">템플릿을 삭제할까요?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /> 키를 누른 상태에서 <ph name="KEY_ONE" /> 또는 <ph name="KEY_TWO" /> 또는 <ph name="KEY_THREE" /> 또는 <ph name="KEY_FOUR" /></translation>
@@ -1079,7 +1076,6 @@
 <translation id="4147911968024186208">다시 시도해 주세요. 이 오류가 다시 표시되면 지원 담당자에게 문의하시기 바랍니다.</translation>
 <translation id="4150201353443180367">디스플레이</translation>
 <translation id="4151054805501931758">인물 보정</translation>
-<translation id="4151449637210235443">최근 게임플레이에 관해 알려주세요.</translation>
 <translation id="4156293514828496577">배터리가 <ph name="PERCENTAGE" />% 남았습니다(약 <ph name="TIME_LEFT" />).
 배터리 수명을 늘리기 위해 일부 기능이 제한됩니다.</translation>
 <translation id="4158003972857765638">새 데스크에서 정리</translation>
@@ -1580,10 +1576,8 @@
 <translation id="5551974246223970793">페이지를 검색할 때 다음 일치 항목으로 이동</translation>
 <translation id="5556459405103347317">새로고침</translation>
 <translation id="5558091555391176027">Nearby Share 모든 기기에 공개 설정 전환</translation>
-<translation id="5558314826121965174">창의성</translation>
 <translation id="556042886152191864">버튼</translation>
 <translation id="5570122939431135380">새 시크릿 창에서 새 탭 열기</translation>
-<translation id="5572632238877308040">기본</translation>
 <translation id="5575528586625653441">데모 등록 요청에 문제가 발생했습니다.</translation>
 <translation id="557563299383177668">다음 단락</translation>
 <translation id="5577082622442191756">블루투스를 전환합니다. <ph name="STATE_TEXT" />.</translation>
@@ -1618,7 +1612,6 @@
 <translation id="5667546120811588575">Google Play 설정 중...</translation>
 <translation id="5669267381087807207">활성화 중</translation>
 <translation id="5671658447180261823"><ph name="SUGGESTION_NAME" /> 추천 검색어를 삭제합니다.</translation>
-<translation id="5672890847723042801">유틸리티</translation>
 <translation id="5673434351075758678">설정 동기화 후 ‘<ph name="FROM_LOCALE" />’에서 ‘<ph name="TO_LOCALE" />’(으)로 변경합니다.</translation>
 <translation id="5675363643668471212">앱 표시줄 항목</translation>
 <translation id="5677022547882470786">드래그하거나 스페이스바를 눌러 검색할 영역을 선택하세요.</translation>
@@ -1793,7 +1786,6 @@
 <translation id="6127395413317891856">오프라인 상태입니다. 연결 상태를 확인한 후 다시 시도하세요.</translation>
 <translation id="6129953537138746214">Space</translation>
 <translation id="6132714462430777655">학교 등록을 건너뛸까요?</translation>
-<translation id="6136872094979134163">Chromebook용 Steam 뉴스를 가져올 수 없습니다.</translation>
 <translation id="6137566720514957455"><ph name="USER_EMAIL_ADDRESS" /> 삭제 대화상자 열기</translation>
 <translation id="6141205840878048728">무엇에 집중하고 싶으신가요?</translation>
 <translation id="6141988275892716286">다운로드 확인</translation>
@@ -1873,7 +1865,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" /> 키를 누른 후 <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> 또는 <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">알 수 없는 네트워크</translation>
 <translation id="6359587239691116345">최신 기능과 보안 개선 사항을 받습니다. 이 업데이트를 거부하면 기기가 더 이상 제대로 작동하지 않을 수 있으며 보안 및 성능 문제가 발생할 수 있습니다.</translation>
-<translation id="6362833380917912748">기본 내장 앱 알아보기</translation>
 <translation id="6364386432014869981">내장 터치패드가 켜짐</translation>
 <translation id="6376931439017688372">블루투스 사용 중</translation>
 <translation id="6378515133128829137">오른쪽에 창 고정</translation>
@@ -2098,7 +2089,6 @@
 <translation id="7014684956566476813">이름이 <ph name="DEVICE_NAME" />인 기기에 연결됨</translation>
 <translation id="7015766095477679451"><ph name="COME_BACK_TIME" />에 다시 사용해 주세요.</translation>
 <translation id="70168403932084660">데스크 6</translation>
-<translation id="702252130983202758">내 앱</translation>
 <translation id="7025533177575372252">휴대전화와 <ph name="DEVICE_NAME" /> 연결</translation>
 <translation id="7026338066939101231">줄이기</translation>
 <translation id="7029307918966275733">Crostini가 설치되지 않았습니다. 크레딧을 확인하려면 Crostini를 설치하세요.</translation>
@@ -2537,7 +2527,6 @@
 <translation id="8277261673056602147">화면에서 텍스트 강조표시</translation>
 <translation id="8281886186245836920">건너뛰기</translation>
 <translation id="8282784978194352587">축하합니다.</translation>
-<translation id="8287009018010202411">생산성</translation>
 <translation id="828708037801473432">사용 안함</translation>
 <translation id="8289128870594824098">디스크 크기</translation>
 <translation id="8297006494302853456">약함</translation>
@@ -2632,7 +2621,6 @@
 <translation id="8598235756057743477">이름 또는 색상별로 앱 정렬</translation>
 <translation id="8599864823732014237">엔터프라이즈 등록을 건너뛰시겠습니까?</translation>
 <translation id="8609384513243082612">새 탭 열기</translation>
-<translation id="861045123704058818">일시적으로 앱이 카테고리별로 정리됩니다.</translation>
 <translation id="8612338981637220013">잘하고 계십니다.</translation>
 <translation id="8613164732773110792">소문자, 숫자, 밑줄 및 대시만 사용할 수 있습니다.</translation>
 <translation id="8614517853887502247">사생활 보호가 켜져 있으므로 <ph name="APP_1_TITLE" /> 및 <ph name="APP_2_TITLE" /> 알림이 숨겨집니다.</translation>
@@ -2824,7 +2812,6 @@
 <translation id="9129245940793250979">후면 버튼</translation>
 <translation id="9133335900048457298">보호된 콘텐츠는 녹화할 수 없음</translation>
 <translation id="9139720510312328767">다음 문자 삭제</translation>
-<translation id="9148058034647219655">나가기</translation>
 <translation id="9151906066336345901">End</translation>
 <translation id="9159421884295554245">클립보드 검색</translation>
 <translation id="9168436347345867845">나중에</translation>

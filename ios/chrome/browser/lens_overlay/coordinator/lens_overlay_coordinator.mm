@@ -33,6 +33,7 @@
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_overflow_menu_delegate.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_overflow_menu_factory.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_pan_tracker.h"
+#import "ios/chrome/browser/lens_overlay/model/lens_overlay_presentation_type.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_snapshot_controller.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_tab_helper.h"
 #import "ios/chrome/browser/lens_overlay/model/snapshot_cover_view_controller.h"
@@ -91,6 +92,7 @@
 #import "ios/public/provider/chrome/browser/lens/lens_image_source.h"
 #import "ios/public/provider/chrome/browser/lens/lens_overlay_api.h"
 #import "ios/public/provider/chrome/browser/lens/lens_overlay_result.h"
+#import "ios/web/public/navigation/referrer.h"
 #import "ios/web/public/web_state.h"
 #import "ui/base/device_form_factor.h"
 #import "url/gurl.h"
@@ -912,12 +914,6 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
 
 - (NSDirectionalEdgeInsets)lensOverlayContainerPresenterInsetsForPresentation:
     (LensOverlayContainerPresenter*)containerPresenter {
-  // LVF on iPad has no top toolbar, so postcapture should match the LVF frame
-  // and be presented fullscreen.
-  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET &&
-      lens::IsLVFEntrypoint(_entrypoint)) {
-    return NSDirectionalEdgeInsetsZero;
-  }
   return self.presentationEnvironment.presentationInsetsForLensOverlay;
 }
 
@@ -1281,8 +1277,11 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
 // Opens a given URL in a new tab.
 - (void)openURLInNewTab:(GURL)URL {
   OpenNewTabCommand* command =
-      [OpenNewTabCommand commandWithURLFromChrome:URL
-                                      inIncognito:self.isOffTheRecord];
+      [[OpenNewTabCommand alloc] initWithURL:URL
+                                    referrer:web::Referrer()
+                                 inIncognito:self.isOffTheRecord
+                                inBackground:NO
+                                    appendTo:OpenPosition::kLastTab];
 
   [HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands)
       openURLInNewTab:command];
@@ -1585,17 +1584,13 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
 // Creates or updates the initial visible area layout guide, to ensure that it
 // takes into account the AppBar when it overlaps the browser.
 - (void)updateInitialVisibleAreaLayoutGuide {
-  if (!IsChromeNextIaEnabled() || !IsFullscreenRefactoringEnabled()) {
-    return;
-  }
-
-  if (!_containerViewController) {
+  if (!_containerViewController || !_selectionViewController) {
     return;
   }
 
   if (!_initialVisibleAreaLayoutGuide) {
     _initialVisibleAreaLayoutGuide = [[UILayoutGuide alloc] init];
-    [_containerViewController.view
+    [_selectionViewController.view
         addLayoutGuide:_initialVisibleAreaLayoutGuide];
   }
 
@@ -1603,15 +1598,21 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
     [NSLayoutConstraint deactivateConstraints:_initialVisibleAreaConstraints];
   }
 
-  NSLayoutYAxisAnchor* bottomAnchor =
-      _containerViewController.view.bottomAnchor;
-
+  BOOL snapToAppBarAllowed =
+      IsChromeNextIaEnabled() && IsFullscreenRefactoringEnabled();
+  BOOL usesSidePanel =
+      lens::ResultPagePresentationFor(self.baseViewController) ==
+      lens::ResultPagePresentationType::kSidePanel;
   BOOL appBarAtBottom =
       self.browser->GetSceneState().layoutState.appBarPosition ==
       AppBarPosition::kBottom;
-  BOOL viewInWindow = _containerViewController.view.window != nil;
+  BOOL viewInWindow = _selectionViewController.view.window != nil;
+  BOOL shouldSnapToAppBar =
+      snapToAppBarAllowed && appBarAtBottom && viewInWindow && !usesSidePanel;
 
-  if (appBarAtBottom && viewInWindow) {
+  NSLayoutYAxisAnchor* bottomAnchor =
+      _selectionViewController.view.bottomAnchor;
+  if (shouldSnapToAppBar) {
     LayoutGuideCenter* layoutGuideCenter =
         LayoutGuideCenterForBrowser(self.browser);
     UIView* appBarView =
@@ -1623,11 +1624,11 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
 
   _initialVisibleAreaConstraints = @[
     [_initialVisibleAreaLayoutGuide.topAnchor
-        constraintEqualToAnchor:_containerViewController.view.topAnchor],
+        constraintEqualToAnchor:_selectionViewController.view.topAnchor],
     [_initialVisibleAreaLayoutGuide.leadingAnchor
-        constraintEqualToAnchor:_containerViewController.view.leadingAnchor],
+        constraintEqualToAnchor:_selectionViewController.view.leadingAnchor],
     [_initialVisibleAreaLayoutGuide.trailingAnchor
-        constraintEqualToAnchor:_containerViewController.view.trailingAnchor],
+        constraintEqualToAnchor:_selectionViewController.view.trailingAnchor],
     [_initialVisibleAreaLayoutGuide.bottomAnchor
         constraintEqualToAnchor:bottomAnchor],
   ];
@@ -1635,9 +1636,11 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
   [NSLayoutConstraint activateConstraints:_initialVisibleAreaConstraints];
 
   // Only update selection VC's visible area layout guide if results bottom
-  // sheet is not currently visible.
-  if (!self.isResultsBottomSheetCreated ||
-      !_resultsPagePresenter.isResultPageVisible) {
+  // sheet is not currently visible or if it's a side panel.
+  BOOL bottomSheetNotVisible = !self.isResultsBottomSheetCreated ||
+                               !_resultsPagePresenter.isResultPageVisible;
+  BOOL shouldUpdateLayourGuide = usesSidePanel || bottomSheetNotVisible;
+  if (shouldUpdateLayourGuide) {
     _selectionViewController.visibleAreaLayoutGuide =
         _initialVisibleAreaLayoutGuide;
   }

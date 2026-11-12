@@ -11,11 +11,13 @@
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/containers/span.h"
+#include "base/feature_list.h"
 #include "base/functional/callback.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "components/personal_context/core/network/personal_context_manager.h"
+#include "components/personal_context/core/personal_context_features.h"
 #include "components/personal_context/core/personal_context_key_manager.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
@@ -82,12 +84,29 @@ std::optional<proto::SourceReference> ToChromeSourceReference(
     case proto::DecryptedReference::kGmailMessage: {
       const proto::DecryptedGmailMessage& gmail_msg =
           decrypted_ref.gmail_message();
-      if (!IsSpecified(gmail_msg.message_url())) {
+      const bool has_desktop_web_url =
+          IsSpecified(gmail_msg.message_urls().desktop_web_url());
+      const bool has_mobile_web_url =
+          IsSpecified(gmail_msg.message_urls().mobile_web_url());
+      if (!has_desktop_web_url && !has_mobile_web_url) {
         return std::nullopt;
       }
       proto::SourceReference source_ref;
       proto::GmailReference* gmail = source_ref.mutable_gmail();
-      gmail->set_message_url(gmail_msg.message_url());
+      if (has_desktop_web_url) {
+        gmail->mutable_message_urls()->set_desktop_web_url(
+            gmail_msg.message_urls().desktop_web_url());
+      }
+      if (has_mobile_web_url) {
+        gmail->mutable_message_urls()->set_mobile_web_url(
+            gmail_msg.message_urls().mobile_web_url());
+      }
+      if (gmail_msg.message_id() != 0) {
+        gmail->set_message_id(gmail_msg.message_id());
+      }
+      if (gmail_msg.thread_id() != 0) {
+        gmail->set_thread_id(gmail_msg.thread_id());
+      }
       if (IsSpecified(gmail_msg.subject())) {
         gmail->set_subject(gmail_msg.subject());
       }
@@ -240,18 +259,24 @@ PersonalContextServiceImpl::PersonalContextServiceImpl(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     signin::IdentityManager* identity_manager,
     PrefService* pref_service,
-    syncer::DeviceInfoSyncService* device_info_sync_service)
+    syncer::DeviceInfoSyncService* device_info_sync_service,
+    PersonalContextEligibilityService* eligibility_service)
     : personal_context_manager_(std::make_unique<PersonalContextManager>(
           std::move(url_loader_factory),
-          identity_manager)),
-      key_manager_(pref_service ? std::make_unique<PersonalContextKeyManager>(
-                                      pref_service,
-                                      device_info_sync_service)
-                                : nullptr) {}
+          identity_manager)) {
+  if (base::FeatureList::IsEnabled(
+          features::kPersonalContextHandleEncryptedPayloads)) {
+    key_manager_ = pref_service ? std::make_unique<PersonalContextKeyManager>(
+                                      pref_service, device_info_sync_service,
+                                      eligibility_service)
+                                : nullptr;
+  }
+}
 
 PersonalContextServiceImpl::~PersonalContextServiceImpl() = default;
 
 void PersonalContextServiceImpl::Shutdown() {
+  key_manager_.reset();
   personal_context_manager_->Shutdown();
 }
 

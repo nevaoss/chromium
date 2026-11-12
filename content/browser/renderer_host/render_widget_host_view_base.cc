@@ -6,6 +6,7 @@
 
 #include <optional>
 
+#include "base/auto_reset.h"
 #include "base/check.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -200,6 +201,7 @@ void RenderWidgetHostViewBase::CopyMainAndPopupFromSurface(
     const gfx::Rect& src_subrect,
     const gfx::Size& dst_size,
     float scale_factor,
+    bool is_copy_request_secure,
     base::TimeDelta timeout,
     base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
   if (!main_host || !main_frame_host) {
@@ -213,7 +215,7 @@ void RenderWidgetHostViewBase::CopyMainAndPopupFromSurface(
 
 #if BUILDFLAG(IS_ANDROID)
   NOTREACHED()
-      << "RenderWidgetHostViewAndroid::CopyFromSurface calls "
+      << "RenderWidgetHostViewAndroid::CopyFromSurfaceImpl calls "
          "DelegatedFrameHostAndroid::CopyFromCompositingSurface directly, "
          "and popups are not supported.";
 #else
@@ -230,7 +232,8 @@ void RenderWidgetHostViewBase::CopyMainAndPopupFromSurface(
   if (!has_popup && !unbounded_window) {
     // No popup or unbounded window - just call CopyFromCompositingSurface
     // once.
-    main_frame_host->CopyFromCompositingSurface(src_subrect, dst_size, timeout,
+    main_frame_host->CopyFromCompositingSurface(src_subrect, dst_size,
+                                                is_copy_request_secure, timeout,
                                                 std::move(callback));
     return;
   }
@@ -262,7 +265,7 @@ void RenderWidgetHostViewBase::CopyMainAndPopupFromSurface(
          base::WeakPtr<RenderWidgetHostImpl> popup_host,
          base::WeakPtr<DelegatedFrameHost> popup_frame_host,
          const gfx::Rect src_subrect, const gfx::Size dst_size,
-         base::TimeDelta timeout,
+         bool is_copy_request_secure, base::TimeDelta timeout,
          const content::CopyFromSurfaceResult& main_result) {
         RenderWidgetHostViewBase* main_view =
             main_host
@@ -315,7 +318,8 @@ void RenderWidgetHostViewBase::CopyMainAndPopupFromSurface(
           CHECK(has_popup);
           gfx::Rect popup_subrect(src_subrect - offset);
           popup_frame_host->CopyFromCompositingSurface(
-              popup_subrect, dst_size, timeout, std::move(popup_done_callback));
+              popup_subrect, dst_size, is_copy_request_secure, timeout,
+              std::move(popup_done_callback));
           return;
         } else {
           CHECK(unbounded_window);
@@ -323,23 +327,45 @@ void RenderWidgetHostViewBase::CopyMainAndPopupFromSurface(
               base::FeatureList::IsEnabled(blink::features::kUnboundedElement),
               base::NotFatalUntil::M158);
           gfx::Rect popup_subrect(src_subrect - offset);
+          // TODO(crbug.com/390329792): Plumb `is_copy_request_secure` to
+          // `UnboundedSurfaceWindow::CopyFromSurface` if needed.
           unbounded_window->CopyFromSurface(popup_subrect, dst_size, timeout,
                                             std::move(popup_done_callback));
           return;
         }
       },
       std::move(callback), offset_physical, has_popup, main_host, popup_host,
-      popup_frame_host, src_subrect, dst_size, timeout);
+      popup_frame_host, src_subrect, dst_size, is_copy_request_secure, timeout);
 
   // Request the main image (happens first).
   main_frame_host->CopyFromCompositingSurface(
-      src_subrect, dst_size, timeout, std::move(main_image_done_callback));
+      src_subrect, dst_size, is_copy_request_secure, timeout,
+      std::move(main_image_done_callback));
 #endif
 }
 
 void RenderWidgetHostViewBase::CopyFromSurface(
     const gfx::Rect& src_rect,
     const gfx::Size& output_size,
+    base::TimeDelta timeout,
+    base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
+  CopyFromSurfaceImpl(src_rect, output_size, /*is_copy_request_secure=*/false,
+                      timeout, std::move(callback));
+}
+
+void RenderWidgetHostViewBase::CopyFromSurfaceSecure(
+    const gfx::Rect& src_rect,
+    const gfx::Size& output_size,
+    base::TimeDelta timeout,
+    base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
+  CopyFromSurfaceImpl(src_rect, output_size, /*is_copy_request_secure=*/true,
+                      timeout, std::move(callback));
+}
+
+void RenderWidgetHostViewBase::CopyFromSurfaceImpl(
+    const gfx::Rect& src_rect,
+    const gfx::Size& output_size,
+    bool is_copy_request_secure,
     base::TimeDelta timeout,
     base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
   NOTIMPLEMENTED_LOG_ONCE();
@@ -436,6 +462,11 @@ bool RenderWidgetHostViewBase::
   return false;
 }
 
+void RenderWidgetHostViewBase::SetHasFocusForTesting(
+    std::optional<bool> has_focus) {
+  has_focus_for_testing_ = has_focus;
+}
+
 bool RenderWidgetHostViewBase::CanBePointerLocked() {
   return HasFocus();
 }
@@ -510,6 +541,11 @@ ui::AXTreeID RenderWidgetHostViewBase::AccessibilityGetParentAXTreeID() {
 
 bool RenderWidgetHostViewBase::ShouldInitiateStylusWriting() {
   return false;
+}
+
+std::optional<gfx::Vector2dF>
+RenderWidgetHostViewBase::GetStylusHandwritingPixelsPerInch() {
+  return std::nullopt;
 }
 
 bool RenderWidgetHostViewBase::RequestRepaintOnNewSurface() {
@@ -790,7 +826,17 @@ void RenderWidgetHostViewBase::ProcessMouseWheelEvent(
     NOTREACHED();
   }
 
-  host()->ForwardWheelEventWithLatencyInfo(event, latency);
+  blink::WebMouseWheelEvent wheel_event = event;
+  if (wheel_event.phase == blink::WebMouseWheelEvent::kPhaseNone &&
+      wheel_event.momentum_phase == blink::WebMouseWheelEvent::kPhaseNone) {
+    if (MouseWheelPhaseHandler* phase_handler = GetMouseWheelPhaseHandler()) {
+      phase_handler->AddPhaseIfNeededAndScheduleEndEvent(
+          wheel_event, /*should_route_event=*/false,
+          /*is_fling_capable=*/false);
+    }
+  }
+
+  host()->ForwardWheelEventWithLatencyInfo(wheel_event, latency);
 }
 
 void RenderWidgetHostViewBase::ProcessTouchEvent(
@@ -847,30 +893,41 @@ void RenderWidgetHostViewBase::DestroyOrDefer() {
     return;
   }
   destroy_pending_ = true;
-  if (is_frame_sink_id_owner_ && host() && host()->GetInputEventRouter()) {
-    host()->GetInputEventRouter()->RemoveFrameSinkIdOwner(GetFrameSinkId());
-  }
-  if (IsPointerLocked()) {
-    UnlockPointer();
-  }
+  {
+    // Observers notified below can synchronously dispatch input to `this`,
+    // taking and releasing an `input::ScopedInputDispatchPin`. Prevent that
+    // release from calling `DestroyImpl()` while teardown is still on the
+    // stack; the decision is made below once teardown has completed.
+    base::AutoReset<bool> in_destroy_or_defer(&in_destroy_or_defer_, true);
+    // Release pointer lock first. While locked, the router targets mouse and
+    // wheel events at the pointer lock view regardless of hit testing, so
+    // events generated by RemoveFrameSinkIdOwner()'s touch ack flush would
+    // otherwise still be routed to `this`.
+    if (IsPointerLocked()) {
+      UnlockPointer();
+    }
+    if (is_frame_sink_id_owner_ && host() && host()->GetInputEventRouter()) {
+      host()->GetInputEventRouter()->RemoveFrameSinkIdOwner(GetFrameSinkId());
+    }
 #if BUILDFLAG(IS_WIN)
-  if (StylusHandwritingControllerWin::IsHandwritingAPIAvailable()) {
-    StylusHandwritingControllerWin::GetInstance()->OnHandwritingViewDestroyed(
-        this);
-  }
+    if (StylusHandwritingControllerWin::IsHandwritingAPIAvailable()) {
+      StylusHandwritingControllerWin::GetInstance()->OnHandwritingViewDestroyed(
+          this);
+    }
 #endif  // BUILDFLAG(IS_WIN)
-  OnDestroyOrDefer();
-  NotifyObserversAboutShutdown();
-  CleanUpHostObservers();
-  if (unbounded_surface_window_) {
-    DestroyUnboundedSurface(unbounded_surface_window_->GetWeakPtr());
+    OnDestroyOrDefer();
+    NotifyObserversAboutShutdown();
+    CleanUpHostObservers();
+    if (unbounded_surface_window_) {
+      DestroyUnboundedSurface(unbounded_surface_window_->GetWeakPtr());
+    }
+    if (text_input_manager_) {
+      text_input_manager_->Unregister(this);
+      text_input_manager_ = nullptr;
+    }
+    host_ = nullptr;
+    weak_factory_.InvalidateWeakPtrs();
   }
-  if (text_input_manager_) {
-    text_input_manager_->Unregister(this);
-    text_input_manager_ = nullptr;
-  }
-  host_ = nullptr;
-  weak_factory_.InvalidateWeakPtrs();
   if (pin_count_ > 0) {
     return;
   }
@@ -884,7 +941,9 @@ void RenderWidgetHostViewBase::PinForInputDispatch() {
 void RenderWidgetHostViewBase::UnpinForInputDispatch() {
   CHECK(pin_count_ > 0);
   pin_count_--;
-  if (pin_count_ == 0 && destroy_pending_) {
+  // While `DestroyOrDefer()` is on the stack it owns the decision to call
+  // `DestroyImpl()`.
+  if (pin_count_ == 0 && destroy_pending_ && !in_destroy_or_defer_) {
     DestroyImpl();
   }
 }

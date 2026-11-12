@@ -262,7 +262,9 @@ bool BtmDatabaseMigrator::MigrateSchemaVersionFrom5To6() {
       "PRIMARY KEY (`key`)"
     ")";
   // clang-format on
-  CHECK(db_->IsSQLValid(kCreateConfigTableSql), base::NotFatalUntil::M158);
+  // TODO(crbug.com/570393056): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kCreateConfigTableSql));
 
   if (!db_->Execute(kCreateConfigTableSql)) {
     return false;
@@ -328,8 +330,9 @@ bool BtmDatabaseMigrator::MigrateSchemaVersionFrom8To9() {
   static constexpr char kRenameFirstUserInteractionTimeSql[] =
       "ALTER TABLE bounces RENAME COLUMN first_user_interaction_time TO "
       "first_user_activation_time";
-  CHECK(db_->IsSQLValid(kRenameFirstUserInteractionTimeSql),
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/567900949): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kRenameFirstUserInteractionTimeSql));
   if (!db_->Execute(kRenameFirstUserInteractionTimeSql)) {
     return false;
   }

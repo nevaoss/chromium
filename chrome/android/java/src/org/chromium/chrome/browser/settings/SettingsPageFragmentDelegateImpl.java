@@ -472,6 +472,19 @@ public class SettingsPageFragmentDelegateImpl
 
     @Override
     public void destroySettings() {
+        // TODO(crbug.com/566898692): Replace this workaround with a proper fix.
+        // When the tab is detached from the activity, e.g. by TabReparentingController before a
+        // theme change or fold/unfold recreates the activity, TabImpl freezes and destroys this
+        // page *before* the activity saves its instance state. Keep the host fragment in the
+        // FragmentManager so that its state (including the open detail page) is saved, restored
+        // and adopted by the new SettingsPage once the tab is re-attached. Snapshot the per-tab
+        // UI state now, because the objects that provide it are destroyed below.
+        boolean keepHostFragment = mSettingsHostFragment != null && mTab.isDetachedFromActivity();
+        Bundle savedStateSnapshot = new Bundle();
+        if (keepHostFragment) {
+            onSaveInstanceState(savedStateSnapshot);
+        }
+
         assert mActivity instanceof ActivityLifecycleDispatcherProvider;
         ((ActivityLifecycleDispatcherProvider) mActivity).getLifecycleDispatcher().unregister(this);
 
@@ -536,7 +549,11 @@ public class SettingsPageFragmentDelegateImpl
             // destroy the shared host fragment or clear its callbacks.
             boolean isAdoptedByNewPage =
                     isUrlNavEnabled && mTab.getNativePage() instanceof SettingsPage;
-            if (!isAdoptedByNewPage) {
+            if (keepHostFragment) {
+                mSettingsHostFragment.setSaveInstanceStateCallback(
+                        outState -> outState.putAll(savedStateSnapshot));
+                mSettingsHostFragment.setSearchOpenSupplier(null);
+            } else if (!isAdoptedByNewPage) {
                 mSettingsHostFragment.setSaveInstanceStateCallback(null);
                 mSettingsHostFragment.setSearchOpenSupplier(null);
                 if (isUrlNavEnabled) {
@@ -720,7 +737,7 @@ public class SettingsPageFragmentDelegateImpl
                         mToolbar,
                         this::isTwoColumnSettingsVisible,
                         multiColumnSettings,
-                        containmentHelper.getItemDecorations(),
+                        containmentHelper,
                         mProfile,
                         this::updateFirstVisibleTitle,
                         mModalDialogSupplier,
@@ -832,7 +849,8 @@ public class SettingsPageFragmentDelegateImpl
                 return BackPressResult.SUCCESS;
             }
             // When Url Navigation is enabled, the back press should not close the sliding
-            // pane, instead the back press should route to the Chrome navigation stack.
+            // pane, instead the back press should route to the Chrome navigation stack (see
+            // shouldNavigateUpOnBack()).
             // This keeps the UI in-sync with the Url, while keep compatibility with the
             // old navigation stack (e.g., still used for search results)
             if (!ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
@@ -849,7 +867,33 @@ public class SettingsPageFragmentDelegateImpl
                 return BackPressResult.SUCCESS;
             }
         }
+        if (shouldNavigateUpOnBack()) {
+            assumeNonNull(mSettingsNavigationDelegate).navigateUp();
+            return BackPressResult.SUCCESS;
+        }
         return BackPressResult.FAILURE;
+    }
+
+    /**
+     * Returns whether a back press navigates up within settings rather than going back in the tab's
+     * history.
+     *
+     * <p>With URL navigation, this is the case on a subpage in single-column layout, i.e. whenever
+     * the toolbar shows a back button, which presses back. A subpage may have been opened directly
+     * from outside settings, e.g. "Edit homepage" on the NTP, and going back in the tab's history
+     * would then leave settings for the NTP rather than return to main settings, which is what the
+     * user expects from a subpage that slid in over main settings. Elsewhere, e.g. in two-column
+     * layout where main settings stays on screen, back presses go back in the tab's history.
+     */
+    private boolean shouldNavigateUpOnBack() {
+        if (!ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()
+                || mSettingsNavigationDelegate == null) {
+            return false;
+        }
+        MultiColumnSettings multiColumnSettings = getMultiColumnSettings();
+        return multiColumnSettings != null
+                && !multiColumnSettings.isTwoColumn()
+                && multiColumnSettings.isLayoutOpen();
     }
 
     private void updateBackPressState() {
@@ -868,6 +912,8 @@ public class SettingsPageFragmentDelegateImpl
                     if (slidingPane != null && slidingPane.isSlideable() && slidingPane.isOpen()) {
                         canHandle = true;
                     }
+                } else {
+                    canHandle = shouldNavigateUpOnBack();
                 }
             } else if (mSettingsHostFragment != null
                     && mSettingsHostFragment.isAttachedToActivity()) {

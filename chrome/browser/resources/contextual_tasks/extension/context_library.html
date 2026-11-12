@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Opts this document into responsive iframe sizing so the embedder can
+       size the frame to the favicon group's natural dimensions. Must appear
+       in <head> (before <body> exists) or Blink ignores it. This context
+       library html non-Lit file serves Lit context_library.html.ts
+       component.
+  -->
+  <meta name="responsive-embedded-sizing" content="allow-origins=*">
+  <title>Context Library</title>
+  <style>
+    html,
+    body {
+      align-items: center;
+      background-color: transparent;
+      color-scheme: light dark;
+      display: flex;
+      height: 100%;
+      justify-content: center;
+      margin: 0;
+      overflow: hidden;
+      padding: 0;
+      user-select: none;
+      width: max-content;
+    }
+  </style>
+</head>
+<body>
+  <context-library></context-library>
+  <script type="module" src="context_library.js"></script>
+  <script type="module" src="post_message_entrypoint.js"></script>
+</body>
+</html>

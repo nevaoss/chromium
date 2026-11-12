@@ -111,6 +111,17 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   static base::DictValue GetWebUIDataSourceDict(Profile* profile,
                                                 WebUIDataSourceOptions options);
 
+  // Computes URL emphasis metadata for the given `text`.
+  // Based on `OmniboxView::UpdateTextStyle()` (for URL component parsing and
+  // deemphasis mode determination) and `OmniboxViewViews::UpdateSchemeStyle()`
+  // (for security-related scheme styling when `include_security_style` is
+  // true).
+  static searchbox::mojom::UrlEmphasisPtr ComputeUrlEmphasis(
+      const std::u16string& text,
+      bool text_is_url,
+      bool include_security_style,
+      const OmniboxClient* client);
+
   // Maps all icons returned from either `AutocompleteMatch::GetVectorIcon()` or
   // `OmniboxAction::GetIconImage()` to svg resource strings.
   virtual std::string AutocompleteIconToResourceName(
@@ -175,10 +186,11 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
       const GURL& url,
       omnibox::mojom::NavigationPredictor navigation_predictor) override;
   void DeleteAutocompleteMatch(uint8_t line, const GURL& url) override;
-  void ActivateKeyword(uint8_t line,
-                       const GURL& url,
-                       base::TimeTicks match_selection_timestamp,
-                       bool is_mouse_event) override;
+  void ActivateKeyword(
+      uint8_t line,
+      const GURL& url,
+      base::TimeTicks match_selection_timestamp,
+      searchbox::mojom::KeywordActivationMethod activation_method) override;
   void ExecuteAction(uint8_t line,
                      uint8_t action_index,
                      const GURL& url,
@@ -238,6 +250,7 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void SetSmartTabSharingActive(bool active) override;
   void GetSmartTabSharingActive(
       GetSmartTabSharingActiveCallback callback) override;
+  void ResetSmartTabSharing(ResetSmartTabSharingCallback callback) override;
 #endif
   void DismissFre(searchbox::mojom::FreStage stage) override {}
   void ShowHotkeyDropdown(const gfx::Rect& anchor_bounds,
@@ -361,10 +374,17 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
       searchbox::mojom::AutocompleteMatch* mojom_match) const;
   std::optional<searchbox::mojom::AutocompleteMatchPtr> CreateAutocompleteMatch(
       const AutocompleteMatch& match,
-      size_t line,
       bookmarks::BookmarkModel* bookmark_model,
       const omnibox::GroupConfigMap& suggestion_groups_map,
       const TemplateURLService* turl_service) const;
+  // Populates the screen reader labels of `mojom_match`, which was created
+  // from the match at `line` in `result`. Uses the same logic as the omnibox
+  // edit model so all omnibox UIs announce the same text.
+  void PopulateAccessibilityLabels(
+      const AutocompleteResult& result,
+      size_t line,
+      const TemplateURLService* turl_service,
+      searchbox::mojom::AutocompleteMatch* mojom_match) const;
   virtual WindowOpenDisposition ComputeWindowOpenDisposition(
       uint8_t mouse_button,
       bool alt_key,

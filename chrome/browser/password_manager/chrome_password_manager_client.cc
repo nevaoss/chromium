@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "base/check_deref.h"
@@ -53,6 +54,9 @@
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
+#include "chrome/browser/ui/hats/hats_service.h"
+#include "chrome/browser/ui/hats/hats_service_factory.h"
+#include "chrome/browser/ui/hats/survey_config.h"
 #include "chrome/browser/ui/passwords/password_cross_domain_confirmation_popup_controller_impl.h"
 #include "chrome/browser/ui/passwords/password_generation_popup_controller_impl.h"
 #include "chrome/browser/ui/passwords/passwords_client_ui_delegate.h"
@@ -76,6 +80,7 @@
 #include "components/browsing_data/content/browsing_data_helper.h"
 #include "components/critical_actions/core/browser/critical_action_service.h"
 #include "components/critical_actions/core/browser/features.h"
+#include "components/device_reauth/device_auth_availability_checker.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/no_state_prefetch/browser/no_state_prefetch_contents.h"
@@ -186,9 +191,6 @@
 #include "chrome/browser/password_manager/factories/password_counter_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
-#include "chrome/browser/ui/hats/hats_service.h"
-#include "chrome/browser/ui/hats/hats_service_factory.h"
-#include "chrome/browser/ui/hats/survey_config.h"
 #include "components/password_manager/core/browser/password_counter.h"
 #include "components/policy/core/common/features.h"
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -380,9 +382,8 @@ bool ChromePasswordManagerClient::IsAutoSignInEnabled() const {
                                  PasswordManagerSetting::kAutoSignIn);
 }
 
-void ChromePasswordManagerClient::TriggerUserPerceptionOfPasswordManagerSurvey(
-    const std::string& filling_assistance) {
-#if !BUILDFLAG(IS_ANDROID)
+void ChromePasswordManagerClient::TriggerPersonalizationAndTrustSurvey(
+    std::string_view filling_assistance) {
   if (filling_assistance.empty()) {
     return;
   }
@@ -394,10 +395,10 @@ void ChromePasswordManagerClient::TriggerUserPerceptionOfPasswordManagerSurvey(
   }
 
   hats_service->LaunchDelayedSurveyForWebContents(
-      kHatsSurveyTriggerAutofillPasswordUserPerception, web_contents(),
-      /*timeout_ms=*/5000, /*product_specific_bits_data=*/
-      {}, {{"Filling assistance", filling_assistance}});
-#endif
+      kHatsSurveyTriggerAutofillPersonalizationAndTrustPasswordFilled,
+      web_contents(),
+      /*timeout_ms=*/5000, /*product_specific_bits_data=*/{},
+      {{"Filling assistance", std::string(filling_assistance)}});
 }
 
 bool ChromePasswordManagerClient::PromptUserToSaveOrUpdatePassword(
@@ -760,41 +761,22 @@ void ChromePasswordManagerClient::ContinueShowKeyboardReplacingSurface(
 #endif
 
 bool ChromePasswordManagerClient::IsReauthBeforeFillingRequired(
-    device_reauth::DeviceAuthenticator* authenticator) {
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
-  if (!GetLocalStatePrefs() || !GetPrefs() || !authenticator) {
-    return false;
-  }
-  return GetPasswordFeatureManager()
-      ->IsBiometricAuthenticationBeforeFillingEnabled();
-#elif BUILDFLAG(IS_ANDROID)
-  if (base::android::device_info::is_automotive()) {
-    CHECK(authenticator);
-    return true;
-  }
-  if (!authenticator || !GetPrefs()) {
-    return false;
-  }
+    device_reauth::DeviceAuthAvailabilityChecker* checker) {
+  return IsReauthBeforeFillingRequiredImpl(checker);
+}
 
-  device_reauth::BiometricStatus biometric_status =
-      authenticator->GetBiometricAvailabilityStatus();
-  base::UmaHistogramBoolean(
-      "PasswordManager.BiometricAuthPwdFillAndroid."
-      "CanAuthenticateWithBiometricOrScreenLock",
-      biometric_status != device_reauth::BiometricStatus::kUnavailable);
-  switch (biometric_status) {
-    case device_reauth::BiometricStatus::kBiometricsAvailable:
-    case device_reauth::BiometricStatus::kOnlyLskfAvailable:
-      return base::FeatureList::IsEnabled(
-                 password_manager::features::kBiometricTouchToFill) &&
-             GetPrefs()->GetBoolean(password_manager::prefs::
-                                        kBiometricAuthenticationBeforeFilling);
-    case device_reauth::BiometricStatus::kUnavailable:
-      return false;
-  }
+bool ChromePasswordManagerClient::IsReauthBeforeFillingRequiredLegacy(
+    device_reauth::DeviceAuthenticator* authenticator) {
+  return IsReauthBeforeFillingRequiredImpl(authenticator);
+}
+
+std::unique_ptr<device_reauth::DeviceAuthAvailabilityChecker>
+ChromePasswordManagerClient::GetDeviceAuthAvailabilityChecker() {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
+    BUILDFLAG(IS_CHROMEOS)
+  return ChromeDeviceAuthenticatorFactory::CreateAvailabilityChecker();
 #else
-  return false;
+  return nullptr;
 #endif
 }
 
@@ -1664,7 +1646,7 @@ void ChromePasswordManagerClient::AutomaticGenerationAvailable(
 
   if (!ui_data.generation_rejected) {
     ShowPasswordGenerationPopup(PasswordGenerationType::kAutomatic, driver,
-                                ui_data);
+                                ui_data, /*is_manually_triggered=*/false);
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 }
@@ -2038,6 +2020,46 @@ void ChromePasswordManagerClient::OnNonFedCmFederatedLogin() {
   OnNonPasswordLoginDetected();
 }
 
+template <typename T>
+bool ChromePasswordManagerClient::IsReauthBeforeFillingRequiredImpl(
+    T* availability_provider) {
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+  if (!GetLocalStatePrefs() || !GetPrefs() || !availability_provider) {
+    return false;
+  }
+  return GetPasswordFeatureManager()
+      ->IsBiometricAuthenticationBeforeFillingEnabled();
+#elif BUILDFLAG(IS_ANDROID)
+  if (base::android::device_info::is_automotive()) {
+    CHECK(availability_provider);
+    return true;
+  }
+  if (!availability_provider || !GetPrefs()) {
+    return false;
+  }
+
+  device_reauth::BiometricStatus biometric_status =
+      availability_provider->GetBiometricAvailabilityStatus();
+  base::UmaHistogramBoolean(
+      "PasswordManager.BiometricAuthPwdFillAndroid."
+      "CanAuthenticateWithBiometricOrScreenLock",
+      biometric_status != device_reauth::BiometricStatus::kUnavailable);
+  switch (biometric_status) {
+    case device_reauth::BiometricStatus::kBiometricsAvailable:
+    case device_reauth::BiometricStatus::kOnlyLskfAvailable:
+      return base::FeatureList::IsEnabled(
+                 password_manager::features::kBiometricTouchToFill) &&
+             GetPrefs()->GetBoolean(password_manager::prefs::
+                                        kBiometricAuthenticationBeforeFilling);
+    case device_reauth::BiometricStatus::kUnavailable:
+      return false;
+  }
+#else
+  return false;
+#endif
+}
+
 void ChromePasswordManagerClient::OnNonPasswordLoginDetected() {
   // If the login flow happens in the popup window, the owner of the
   // window needs to handle the notification because the window usually gets
@@ -2253,7 +2275,8 @@ void ChromePasswordManagerClient::GenerationResultAvailable(
   password_generation_controller->ShowManualGenerationDialog(driver.get(),
                                                              ui_data.value());
 #else
-  ShowPasswordGenerationPopup(type, driver.get(), *ui_data);
+  ShowPasswordGenerationPopup(type, driver.get(), *ui_data,
+                              /*is_manually_triggered=*/true);
 #endif
 }
 
@@ -2262,7 +2285,8 @@ void ChromePasswordManagerClient::GenerationResultAvailable(
 void ChromePasswordManagerClient::ShowPasswordGenerationPopup(
     PasswordGenerationType type,
     password_manager::ContentPasswordManagerDriver* driver,
-    const autofill::password_generation::PasswordGenerationUIData& ui_data) {
+    const autofill::password_generation::PasswordGenerationUIData& ui_data,
+    bool is_manually_triggered) {
   gfx::RectF element_bounds_in_top_frame_space =
       TransformToRootCoordinates(*driver->render_frame_host(), ui_data.bounds);
 
@@ -2278,7 +2302,8 @@ void ChromePasswordManagerClient::ShowPasswordGenerationPopup(
       driver->render_frame_host());
 
   popup_controller_->GeneratePasswordValue(type);
-  popup_controller_->Show(PasswordGenerationPopupController::kOfferGeneration);
+  popup_controller_->Show(PasswordGenerationPopupController::kOfferGeneration,
+                          is_manually_triggered);
 
   driver->SetSuggestionAvailability(
       ui_data.generation_element_id,

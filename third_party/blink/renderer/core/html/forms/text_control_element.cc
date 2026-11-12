@@ -1070,7 +1070,7 @@ bool TextControlElement::IsPlaceholderBreakElement(const Node* node) {
 void TextControlElement::AdjustPlaceholderBreakElement() {
   HTMLElement* inner_editor = InnerEditorElement();
   if (inner_editor->GetLayoutObject() &&
-      inner_editor->GetLayoutObject()->StyleRef().ShouldCollapseBreaks()) {
+      inner_editor->GetLayoutObject()->Style().ShouldCollapseBreaks()) {
     return;
   }
   Node* last_child = inner_editor->lastChild();
@@ -1376,6 +1376,14 @@ void TextControlElement::SetAutofillValue(const String& value,
            TextFieldEventBehavior::kDispatchInputAndChangeEvent,
            TextControlSetValueSelection::kSetSelectionToEnd,
            value.empty() ? WebAutofillState::kNotFilled : autofill_state);
+}
+
+void TextControlElement::SetAutofillState(WebAutofillState autofill_state) {
+  if (autofill_state == WebAutofillState::kNotFilled &&
+      !SuggestedValue().empty()) {
+    SetSuggestedValue(String());
+  }
+  HTMLFormControlElementWithState::SetAutofillState(autofill_state);
 }
 
 void TextControlElement::SetSuggestedValue(const String& value) {

@@ -5,8 +5,8 @@
 #include "chrome/browser/payments/secure_payment_confirmation_browsertest.h"
 #include "components/autofill/core/browser/test_utils/test_event_waiter.h"
 #include "components/payments/content/secure_payment_confirmation_app.h"
-#include "components/payments/content/web_payments_web_data_service.h"
 #include "components/payments/core/secure_payment_confirmation_credential.h"
+#include "components/payments/core/web_payments_web_data_service.h"
 #include "components/webdata_services/web_data_service_wrapper_factory.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
@@ -310,9 +310,10 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationOptOutTest,
   WaitForObservedEvent();
   test_controller()->ClickOptOut();
 
-  histogram_tester.ExpectUniqueSample("SecurePaymentRequest.Fallback.Outcome",
-                                      SecurePaymentRequestOutcome::kOptOut,
-                                      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.SecurePaymentConfirmation.Fallback.Outcome",
+      SecurePaymentRequestOutcome::kOptOut,
+      /*expected_bucket_count=*/1);
 }
 
 class SecurePaymentConfirmationOptOutDisabledTest

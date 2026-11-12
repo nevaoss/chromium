@@ -12,6 +12,7 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/html/track/text_track_cue.h"
 #include "third_party/blink/renderer/core/html/track/vtt/vtt_cue.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/wtf/pod_interval_tree.h"
@@ -30,7 +31,7 @@ class TextTrackCueList;
 // become stale pointers.
 using CueIntervalTree = PodIntervalTree<double, TextTrackCue*>;
 typedef CueIntervalTree::IntervalType CueInterval;
-typedef Vector<CueInterval> CueList;
+using CueList = HeapVector<Member<TextTrackCue>>;
 
 // This class manages the timeline and rendering updates of cues associated
 // with TextTracks. Owned by a HTMLMediaElement.
@@ -60,6 +61,7 @@ class CORE_EXPORT CueTimeline final : public GarbageCollected<CueTimeline> {
   void AddCue(TextTrack*, TextTrackCue*);
   void RemoveCues(TextTrack*, const TextTrackCueList*);
   void RemoveCue(TextTrack*, TextTrackCue*);
+  void WillChangeCue(TextTrack*, TextTrackCue*);
   void HideCues(TextTrack*, const TextTrackCueList*);
 
   const CueList& CurrentlyActiveCues() const { return currently_active_cues_; }
@@ -86,7 +88,8 @@ class CORE_EXPORT CueTimeline final : public GarbageCollected<CueTimeline> {
   HTMLMediaElement& MediaElement() const { return *media_element_; }
 
   void AddCueInternal(TextTrackCue*);
-  void RemoveCueInternal(TextTrackCue*);
+  // Detaches `cue` from the timeline and returns true if it was active.
+  bool RemoveCueInternal(TextTrackCue*);
   void TimeMarchesOn();
   void UpdateActiveCuePastAndFutureNodes();
 

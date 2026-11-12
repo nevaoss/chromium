@@ -8,7 +8,6 @@
 
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
-#include "base/feature_list.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -36,7 +35,6 @@
 #include "chrome/browser/ui/safety_hub/safety_hub_prefs.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toolbar/toolbar_pref_names.h"
-#include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/api/settings_private.h"
 #include "chrome/common/pref_names.h"
 #include "components/autofill/core/common/autofill_prefs.h"
@@ -111,6 +109,8 @@
 #include "chromeos/ash/experiences/arc/arc_prefs.h"
 #include "chromeos/components/quick_answers/public/cpp/quick_answers_prefs.h"
 #include "components/account_manager_core/pref_names.h"
+#include "components/session_manager/core/session.h"
+#include "components/session_manager/core/session_manager.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "ui/events/ash/pref_names.h"
@@ -145,7 +145,8 @@ const base::Value* GetRestrictedCrosSettingValueForChildUser(
     const std::string& pref_name) {
   // Make sure that profile belongs to a child and the preference is
   // pre-set.
-  DCHECK(IsRestrictedCrosSettingForChildUser(profile, pref_name));
+  CHECK(IsRestrictedCrosSettingForChildUser(profile, pref_name),
+        base::NotFatalUntil::M161);
 
   return ash::CrosSettings::Get()
       ->supervised_user_cros_settings_provider()
@@ -271,11 +272,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
         // BUILDFLAG(IS_CHROMEOS)
   (*s_allowlist)[payments::kCanMakePaymentEnabled] =
       settings_api::PrefType::kBoolean;
-  if (base::FeatureList::IsEnabled(
-          features::kGlicActorAutofillOneTimePassword)) {
-    (*s_allowlist)[autofill::prefs::kAutofillGmailOtpFillingEnabled] =
-        settings_api::PrefType::kBoolean;
-  }
+  (*s_allowlist)[autofill::prefs::kAutofillGmailOtpFillingEnabled] =
+      settings_api::PrefType::kBoolean;
   (*s_allowlist)[bookmarks::prefs::kShowBookmarkBar] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[bookmarks::prefs::kBookmarkBarVisibilityState] =
@@ -629,6 +627,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[browsing_data::prefs::kDeleteSiteSettings] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[browsing_data::prefs::kDeleteHostedAppsData] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[browsing_data::prefs::kDeleteSkills] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[browsing_data::prefs::kDeleteTimePeriod] =
       settings_api::PrefType::kNumber;
@@ -1516,10 +1516,10 @@ std::optional<settings_api::PrefObject> PrefsUtil::GetPref(
   if (IsPrefPrimaryUserControlled(name)) {
     pref_object->controlled_by = settings_api::ControlledBy::kPrimaryUser;
     pref_object->enforcement = settings_api::Enforcement::kEnforced;
-    pref_object->controlled_by_name = user_manager::UserManager::Get()
-                                          ->GetPrimaryUser()
-                                          ->GetAccountId()
-                                          .GetUserEmail();
+    pref_object->controlled_by_name =
+        CHECK_DEREF(session_manager::SessionManager::Get()->GetPrimarySession())
+            .account_id()
+            .GetUserEmail();
     return pref_object;
   }
 #endif
@@ -1772,11 +1772,13 @@ bool PrefsUtil::IsPrefPrimaryUserControlled(const std::string& pref_name) {
   // it should have "primary user controlled" attribute.
   if (pref_name == ash::prefs::kUserTimezone ||
       pref_name == ash::kSystemTimezone) {
-    user_manager::UserManager* user_manager = user_manager::UserManager::Get();
     const user_manager::User* user =
         ash::ProfileHelper::Get()->GetUserByProfile(profile_);
-    if (user && user->GetAccountId() !=
-                    user_manager->GetPrimaryUser()->GetAccountId()) {
+    if (user &&
+        user->GetAccountId() !=
+            CHECK_DEREF(
+                session_manager::SessionManager::Get()->GetPrimarySession())
+                .account_id()) {
       return true;
     }
   }

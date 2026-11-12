@@ -605,7 +605,15 @@ void OmniboxViewViews::SetFocus(bool is_user_initiated) {
     RequestFocus();
   }
 
-  if (omnibox_already_focused) {
+  // Re-focusing the already focused omnibox exits keyword mode, e.g. when the
+  // user presses Ctrl+L while in keyword mode. Once the full WebUI omnibox is
+  // ready, `LocationBarView::FocusLocation()` no longer reaches here, but
+  // `LocationBarView::OnFocus()` does for `FocusManager` driven focus changes,
+  // including restoring focus when the browser window is reactivated while the
+  // WebUI popup held focus, e.g. by clicking on the page to blur the omnibox.
+  // Like `OnFocus()` for the native textfield, those must preserve keyword
+  // mode.
+  if (omnibox_already_focused && !is_full_webui_ready) {
     controller()->edit_model()->ClearKeyword();
   }
 
@@ -1198,6 +1206,12 @@ void OmniboxViewViews::ClearAccessibilityLabel() {
 void OmniboxViewViews::SetAccessibilityLabel(const std::u16string& display_text,
                                              const AutocompleteMatch& match,
                                              bool notify_text_changed) {
+  if (IsSuggestionNarrationOwnedByWebUIPopup()) {
+    // The full WebUI popup narrates selections itself; also narrating here
+    // (especially the macOS announcement below) interrupts it.
+    ClearAccessibilityLabel();
+    return;
+  }
   friendly_suggestion_text_ = ComputeFriendlySuggestionTextForAccessibility(
       display_text, match, friendly_suggestion_text_prefix_length_);
   UpdateAccessibleValue();
@@ -1585,7 +1599,11 @@ void OmniboxViewViews::OnMouseReleased(const ui::MouseEvent& event) {
     // clobbers partial drag or double-click word selections made during mouse
     // interactions.
     if (location_bar_view_) {
-      location_bar_view_->OpenOmniboxPopup(/*query_zps=*/true);
+      // A left-click focuses the omnibox and opens the suggestions dropdown. A
+      // right-click should focus the omnibox and select its text without
+      // showing suggestions, since the context menu follows this release.
+      location_bar_view_->OpenOmniboxPopup(
+          /*query_zps=*/event.IsOnlyLeftMouseButton());
 
       // Transfer selection to the full webui popup (necessary when the popup
       // is already open and double-click events are forwarded).

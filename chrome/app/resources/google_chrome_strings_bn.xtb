@@ -28,6 +28,8 @@
 <translation id="1194807384646768652">এই ধরনের ফাইল সাধারণত ডাউনলোড করা হয় না এবং এটি বিপজ্জনক হতে পারে, তাই Chrome এই ডাউনলোডটি ব্লক করে দিয়েছে</translation>
 <translation id="1197860368385086056">পরেরবার আপনার <ph name="DEVICE_TYPE" />-এ Chrome খোলার পর, আপনি প্রাইস ট্র্যাকিং অ্যালার্ট চালু করার প্রম্পট দেখতে পাবেন।</translation>
 <translation id="1203500561924088507">ইনস্টল করার জন্য ধন্যবাদ। <ph name="BUNDLE_NAME" /> ব্যবহার করার আগে আপনাকে অবশ্যই ব্রাউজার রিস্টার্ট করতে হবে।</translation>
+<translation id="122321322139970942">একটি <ph name="IMPORTANT_UPDATE" /> বাকি আছে। আপনার ব্রাউজিং সুরক্ষিত রাখতে, পরের বার আপনি <ph name="IDLE_DURATION" /> ইনঅ্যাক্টিভ থাকলে Chrome আপডেট হবে।</translation>
+<translation id="1226003169284463347">আপনার সব ডিভাইসে বুকমার্ক ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="1278833599417554002">&amp;Chrome আপডেট করতে আবার লঞ্চ করুন</translation>
 <translation id="1289911795790071537">Chrome-এর মাধ্যমে সার্চ খুলুন</translation>
 <translation id="1290883685122687410">সেট-আপ সংক্রান্ত সমস্যা: <ph name="METAINSTALLER_EXIT_CODE" />। <ph name="WINDOWS_ERROR" /></translation>
@@ -120,6 +122,7 @@
 <translation id="2096213354152647998">আপনি সম্প্রতি ভিজিট করেননি। Chrome <ph name="PERMISSION" /> সম্পর্কিত অনুমতি সরিয়ে দিয়েছে।</translation>
 <translation id="2106831557840787829"><ph name="BEGIN_LINK_LINUX_OSS" />Linux ডেভেলপমেন্ট এনভায়রনমেন্ট<ph name="END_LINK_LINUX_OSS" />-এর ক্ষেত্রে যেমন করা হয়েছে, তেমনভাবে অতিরিক্ত <ph name="BEGIN_LINK_CROS_OSS" />ওপেন সোর্স সফ্টওয়্যার<ph name="END_LINK_CROS_OSS" />-এর মাধ্যমে ChromeOS Flex তৈরি করা সম্ভব হয়েছে।</translation>
 <translation id="2108778574543343055">অ্যাপের জন্য ব্যাকগ্রাউন্ডে চলা Chrome বন্ধ করুন</translation>
+<translation id="2111985952714409792">আপনার সব ডিভাইসে এক্সটেনশন ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="2120620239521071941">এটি এই ডিভাইস থেকে <ph name="ITEMS_COUNT" />টি আইটেম মুছে দেবে। আপনার ডেটা পরে পুনরুদ্ধার করার জন্য, Chrome-এ <ph name="USER_EMAIL" /> হিসেবে সাইন-ইন করুন।</translation>
 <translation id="2121284319307530122">&amp;Chrome আপডেট করতে আবার লঞ্চ করুন</translation>
 <translation id="2123055963409958220"><ph name="BEGIN_LINK" />বর্তমান সেটিংস<ph name="END_LINK" />-এর রিপোর্ট করে Chrome-কে আরও ভাল করে তুলতে সাহায্য করুন</translation>
@@ -146,6 +149,7 @@
 <translation id="2307973900865360088">'ডক'-এ রাখুন</translation>
 <translation id="2309047409763057870">এটা Google Chrome-এর সেকেন্ডারি ইনস্টলেশন এবং একে আপনার ডিফল্ট ব্রাউজার করা যাবে না।</translation>
 <translation id="2345992953227471816">Chrome এইসব আইটেমে ম্যালওয়্যার আছে বলে খুঁজে পেয়েছে:</translation>
+<translation id="2358140144860869442">আপনার সব ডিভাইসে পড়ার তালিকা ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="2359808026110333948">চালিয়ে যান</translation>
 <translation id="2403703063067034158">স্টার্টআপ সম্পর্কিত সমস্যা: বর্তমানে অন্য কোনও কিছুর সেট-আপের প্রসেস চলছে, পরে আবার চেষ্টা করুন।</translation>
 <translation id="2409816192575564775">{NUM_DEVICES,plural, =0{১টি HID ডিভাইস এক বা একাধিক Chrome এক্সটেনশনের মাধ্যমে অ্যাক্সেস করা হচ্ছিল}=1{১টি HID ডিভাইস এক বা একাধিক Chrome এক্সটেনশনের মাধ্যমে অ্যাক্সেস করা হচ্ছে}one{#টি HID ডিভাইস এক বা একাধিক Chrome এক্সটেনশনের মাধ্যমে অ্যাক্সেস করা হচ্ছে}other{#টি HID ডিভাইস এক বা একাধিক Chrome এক্সটেনশনের মাধ্যমে অ্যাক্সেস করা হচ্ছে}}</translation>
@@ -174,6 +178,7 @@
 <translation id="2645435784669275700">ChromeOS</translation>
 <translation id="2649768380733403658">আপনার ব্রাউজারে সবচেয়ে নিরাপদ সেটিংস নিশ্চিত করতে Chrome তা নিয়মিত চেক করে। আপনাকে কোনও কিছু পর্যালোচনা করতে হবে কিনা তা আমরা আপনাকে জানাব।</translation>
 <translation id="2652691236519827073">নতুন Chrome ট্যাবে লিঙ্ক খুলুন</translation>
+<translation id="2661616016316841783"><ph name="DEVICE" /> থেকে আপনার এক্সটেনশন ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="2665296953892887393">Google-এ <ph name="UMA_LINK" /> এবং ক্র্যাশ রিপোর্ট পাঠিয়ে Google Chrome-কে আরও ভাল করতে সাহায্য করুন৷</translation>
 <translation id="2668094785979141847">Google Lens ছেড়ে বেরিয়ে আসতে ক্লিক করুন</translation>
 <translation id="2674238339205910678">আপনার অ্যাকাউন্টের সাইন-ইন করার বিবরণ পুরানো হয়ে যাওয়ার কারণে ChromeOS Flex আপনার Google অ্যাকাউন্টে Chrome ডেটা সেভ করতে পারেনি</translation>
@@ -196,6 +201,7 @@
 <translation id="2857540653560290388">Chrome লঞ্চ করা হচ্ছে...</translation>
 <translation id="286025080868315611">Chrome কেন কিছু ডাউনলোড ব্লক করে তা জানুন</translation>
 <translation id="2861074815332034794">Chrome আপডেট হচ্ছে (<ph name="PROGRESS_PERCENT" />)</translation>
+<translation id="2869959624320573933">Chrome-এ সাইন-ইন করুন</translation>
 <translation id="2875053229394024379">আপনার Google অ্যাকাউন্ট দিয়ে Chrome-এ সাইন-ইন করলে, Gemini-র সাথে Chrome প্রোফাইল ব্যবহার করতে পারবেন। <ph name="BEGIN_LINK" />Chrome-এ কীভাবে সাইন-ইন করতে হয় তা জানুন<ph name="END_LINK" /></translation>
 <translation id="2876628302275096482"><ph name="BEGIN_LINK" />Chrome কীভাবে আপনার ডেটা ব্যক্তিগত রাখে<ph name="END_LINK" /> সেই সম্পর্কে আরও জানুন</translation>
 <translation id="2885378588091291677">কার্য পরিচালক</translation>
@@ -245,6 +251,7 @@
 <translation id="3242486428260808857">আপনার <ph name="DEVICE_TYPE" />-এ Chrome অ্যাপ ব্যবহার করে অনলাইন শপিংয়ের সবচেয়ে বেশি সুবিধা পান</translation>
 <translation id="3245429137663807393">আপনি Chrome ব্যবহারের রিপোর্ট শেয়ার করলেও, আপনার দেখা URL তার মধ্যে অন্তর্ভুক্ত থাকে</translation>
 <translation id="3249558306861350254">আপনার Windows সেটিংসে <ph name="BEGIN_BOLD" />ডিফল্ট হিসেবে সেট করুন<ph name="END_BOLD" /> বিকল্পে ক্লিক করুন।</translation>
+<translation id="3258706751219502154"><ph name="DEVICE" /> থেকে আপনার বুকমার্ক ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="3259748324892322072">Chrome অ্যাপ ডাউনলোড করুন</translation>
 <translation id="3282568296779691940">Chrome-এ সাইন-ইন করুন</translation>
 <translation id="3286538390144397061">এখন পুর্নসূচনা করবেন</translation>
@@ -295,6 +302,7 @@
 <translation id="3795971588916395511">Google ChromeOS</translation>
 <translation id="3809772425479558446">Google Chrome-এর Windows 10 বা আরও উন্নত ভার্সন প্রয়োজন।</translation>
 <translation id="3810973564298564668">পরিচালনা করুন</translation>
+<translation id="383455301564000773">Windows 11-এ আপগ্রেড করছেন? OneDrive-এ Chrome ডাউনলোড করুন যাতে আপনি প্রথম দিন থেকেই তৈরি থাকতে পারেন।</translation>
 <translation id="383928141529488001">ব্লুটুথ ডিভাইসগুলি এক্সপ্লোর করতে 
  Google Chrome-কে ব্লুটুথের অ্যাক্সেস দিতে হবে। <ph name="IDS_SERIAL_DEVICE_CHOOSER_AUTHORIZE_BLUETOOTH_LINK" /></translation>
 <translation id="3846683726093018685">**সামারি তৈরি করা:** ৩০টি শব্দের মধ্যে একটি মাত্র বাক্য লিখুন এবং স্ক্রিনশটে প্রাথমিক সাবজেক্ট ও কন্টেন্টের উদ্দেশ্য বর্ণনা করুন।
@@ -322,7 +330,6 @@
 <translation id="4050175100176540509">গুরুত্বপূর্ণ নিরাপত্তা উন্নতি এবং নতুন বৈশিষ্ট্যগুলি সর্বশেষ ভার্সনে উপলভ্য।</translation>
 <translation id="4053720452172726777">Google Chrome কাস্টমাইজ ও নিয়ন্ত্রণ করুন</translation>
 <translation id="408393047846373801">নিজের সব ডিভাইসে পাসওয়ার্ড ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন। সাইন-ইন করার পরে, আপনার Google অ্যাকাউন্টে এই পাসওয়ার্ড সেভ করা হবে।</translation>
-<translation id="409936259433005390">শীঘ্রই Windows 11-এ আপগ্রেড করতে চলেছেন? One Drive-এ Chrome ইনস্টলার ডাউনলোড করুন যাতে আপনি প্রথম দিন থেকেই তৈরি থাকতে পারেন।</translation>
 <translation id="4102173024714616627">এক্সটেনশন হল অ্যাড-অন যার মাধ্যমে আপনি Chrome কাস্টমাইজ করতে পারবেন। গুছিয়ে কাজ করা থেকে দৈনন্দিন টাস্ক সহজ করে তোলা, এক্সটেনশনের সাহায্যে আপনি Chrome-কে নিজের পছন্দমতো করে তুলতে পারবেন।</translation>
 <translation id="4110895483821904099">আপনার নতুন Chrome প্রোফাইল সেট আপ করুন</translation>
 <translation id="4111566860456076004">এই এক্সটেনশন কোথা থেকে এসেছে তা Chrome যাচাই করতে পারে না এবং এটি নিরাপদ নাও হতে পারে। Chrome থেকে এটি সরান যাতে ব্যক্তিগত তথ্য সহ আপনার ভিজিট করা সাইটের ডেটা এটি আর দেখতে না পায় এবং তা পরিবর্তন করতে না পারে।</translation>
@@ -344,6 +351,7 @@
 <translation id="4280647692742956593">যেকোনও জায়গা থেকে নতুন ট্যাব গ্রুপ খুলতে বা তৈরি করতে, আপনার ফোনে Chrome ডাউনলোড করুন।</translation>
 <translation id="4281844954008187215">পরিষেবার শর্তাদি</translation>
 <translation id="430327780270213103">Chrome টুলবারে অ্যাক্সেস সংক্রান্ত অনুরোধ দেখাতে এক্সটেনশনকে অনুমতি দিন</translation>
+<translation id="4312908933392839680">আপনার সব ডিভাইসে সেভ করা তথ্য ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="4326552909330437744">{NUM_TABS,plural, =1{আপনার ব্রাউজারের গতি কমিয়ে দেয় এমন ট্যাব পজ করার জন্য Chrome সাজেস্ট করে}one{আপনার ব্রাউজারের গতি কমিয়ে দেয় এমন ট্যাব পজ করার জন্য Chrome সাজেস্ট করে}other{আপনার ব্রাউজারের গতি কমিয়ে দেয় এমন ট্যাবগুলি পজ করার জন্য Chromium সাজেস্ট করে}}</translation>
 <translation id="4328355335528187361">Google Chrome ডেভেলপার (mDNS-In)</translation>
 <translation id="4329315893554541805">পছন্দমতো সুবিধা ও অন্যান্য ফিচার ব্যবহার করতে ওয়েব ও অ্যাপ অ্যাক্টিভিটি ও লিঙ্ক করা Google পরিষেবায় Chrome যোগ করে নিন</translation>
@@ -491,12 +499,12 @@
 <translation id="5899008323405946573">ফোনে Chrome অ্যাপের মাধ্যমে Google-এর সেরা সব AI টুল ব্যবহার করুন</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> - নেটওয়ার্ক সাইন-ইন</translation>
 <translation id="5924017743176219022">ইন্টারনেটের সাথে কানেক্ট করা হচ্ছে...</translation>
-<translation id="5925596746603389877">Chrome ইনস্টলার ডাউনলোড করুন</translation>
 <translation id="5940385492829620908">আপনার ওয়েব, বুকমার্ক এবং Chrome-এর অন্যান্য জিনিস এখানে রয়েছে৷</translation>
 <translation id="5941711191222866238">ছোট করুন</translation>
 <translation id="5941830788786076944">Google Chrome-কে ডিফল্ট ব্রাউজার করুন</translation>
 <translation id="5947104538377036631">Chrome-এর শর্টকার্ট</translation>
 <translation id="5960071705175224773">অজানা কোনও অ্যাপ আপনার সেটিংস পরিবর্তন করেছে</translation>
+<translation id="5960404530854194706">আপনি দূরে থাকাকালীন Chrome আপডেট হবে</translation>
 <translation id="5980111191913430208">অজানা সোর্স থেকে এক্সটেনশন, অ্যাপ এবং থিম আপনার ডিভাইসের ক্ষতি করতে পারে। Chrome শুধুমাত্র <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> থেকে সেগুলি ইনস্টল করার সাজেশন দেয়</translation>
 <translation id="6003112304606738118">ডাউনলোড হচ্ছে... <ph name="HOURS" /> ঘণ্টা বাকি আছে</translation>
 <translation id="6008161919456049856">পাসওয়ার্ড, পেমেন্ট পদ্ধতি এবং ঠিকানা যা আপনার Google অ্যাকাউন্টে সেভ করে রেখেছেন সেগুলি এই ডিভাইস থেকে সরিয়ে দেওয়া হবে। Chrome-এ সেগুলি পুনরায় ব্যবহার করতে, আবার সাইন-ইন করুন।</translation>
@@ -511,7 +519,9 @@
 <translation id="6046028983725193307">সিস্টেম অডিও শেয়ার করতে, সিস্টেম সেটিংস খুলুন এবং Chrome-এর জন্য 'শুধুমাত্র সিস্টেম অডিও রেকর্ডিং' বিকল্পে অনুমতি দিন। আপনাকে তারপরে Chrome আবার চালু করতে হবে।</translation>
 <translation id="6069027071882229820">ছবি হিসেবে কপি করুন</translation>
 <translation id="6070348360322141662">অতিরিক্ত নিরাপত্তার জন্য, Google Chrome আপনার ডেটা এনক্রিপ্ট করবে</translation>
+<translation id="6071642418303142778"><ph name="DEVICE" /> থেকে আপনার পাসওয়ার্ড ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="6075300983329039771">আপনার সংস্থা, <ph name="MANAGER" />-এর প্রয়োজন অনুযায়ী, আপনাকে Chrome-এ সাইন-ইন করতে হবে</translation>
+<translation id="6077365059401096066"><ph name="DEVICE" /> থেকে আপনার পড়ার তালিকা ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="6113794647360055231">Chrome আরও ভাল হয়ে উঠেছে</translation>
 <translation id="6116004140911290070">Chrome-এ স্কিল চালু করুন</translation>
 <translation id="6116252277240876590">Chrome-এ মেনু, সেটিংস, অ্যালার্ট ও অন্যান্য টেক্সট দেখানোর জন্য এই ভাষা ব্যবহার করা হবে</translation>
@@ -551,6 +561,7 @@
 <translation id="6360449101159168105">Chrome যাতে দ্রুত কাজ করে সেই জন্য এই ট্যাব বন্ধ থাকাকালীন মেমরি খালি করা হয়েছে। এই সাইটটি অ্যাক্টিভ রাখার বিকল্প সব সময় বেছে নিতে পারবেন।</translation>
 <translation id="6362984640667950211"><ph name="EXISTING_USER" /> আগেই সাইন-ইন করেছেন। আপনার ব্রাউজিংয়ের ডেটা আলাদা রাখতে, নিজের Chrome প্রোফাইলে <ph name="USER_EMAIL_ADDRESS" /> হিসেবে সাইন-ইন করুন। এছাড়াও, আপনার সব ডিভাইসে পড়ার তালিকা ও আরও অনেক কিছু পাবেন।</translation>
 <translation id="6388799252195623474">এই বিষয়ে আমাকে সাহায্য করো</translation>
+<translation id="6401458660421980302">এই ট্যাবটিকে অন্য ডিভাইসে পাঠাতে, সেখানে Chrome-এ সাইন-ইন করুন</translation>
 <translation id="6412673304250309937">Chrome-এ স্টোর করা নিরাপদ নয় এমন সাইটের তালিকা থেকে সাইটগুলির ইউআরএল পরীক্ষা করে দেখে। যদি কোনও সাইট আপনার পাসওয়ার্ড চুরি করার চেষ্টা করে বা আপনি কোনও ক্ষতিকারক ফাইল ডাউনলোড করলে, Safe Browsing-এ Chrome পৃষ্ঠার কিছু কন্টেন্ট সহ ইউআরএলও হয়ত পাঠাতে পারে।</translation>
 <translation id="6417690341895039567">{COUNT,plural, =1{Chrome ১ মিনিট ধরে ব্যবহার না করলে, আপনার সংস্থা অটোমেটিক এটি বন্ধ করে দেয়। ব্রাউজ করা ডেটা মুছে ফেলা হয়। এর মধ্যে ইতিহাস, অটোফিল এবং ডাউনলোড সংক্রান্ত ডেটা থাকতে পারে।}one{Chrome # মিনিট ধরে ব্যবহার না করলে, আপনার সংস্থা অটোমেটিক এটি বন্ধ করে দেয়। ব্রাউজ করা ডেটা মুছে ফেলা হয়। এর মধ্যে ইতিহাস, অটোফিল এবং ডাউনলোড সংক্রান্ত ডেটা থাকতে পারে।}other{Chrome # মিনিট ধরে ব্যবহার না করলে, আপনার সংস্থা অটোমেটিক এটি বন্ধ করে দেয়। ব্রাউজ করা ডেটা মুছে ফেলা হয়। এর মধ্যে ইতিহাস, অটোফিল এবং ডাউনলোড সংক্রান্ত ডেটা থাকতে পারে।}}</translation>
 <translation id="6418662306461808273">বর্তমান Chrome প্রোফাইলে পাল্টাতে চান?</translation>
@@ -577,8 +588,10 @@
 <translation id="6556755379298048869">কীবোর্ড শর্টকাট ব্যবহার করে সার্চ করুন।</translation>
 <translation id="6585124893636629274">Chrome-এ Gemini বন্ধ করুন</translation>
 <translation id="659498884637196217">এই ডিভাইসে Google পাসওয়ার্ড ম্যানেজারে</translation>
+<translation id="660312897435669152">Chrome আপডেট করতে হবে</translation>
 <translation id="6612152958212564387">আপনি Google-এ ব্যবহারের পরিসংখ্যান ও ক্র্যাশ রিপোর্ট পাঠাচ্ছেন না। <ph name="BEGIN_LINK" />ম্যানেজ করুন<ph name="END_LINK" /></translation>
 <translation id="6613949864921837107">Chrome-কে ডিফল্ট ব্রাউজার হিসেবে সেট করে আপনার সব ডিভাইস জুড়ে পাসওয়ার্ড, বুকমার্ক ও ইতিহাস সিঙ্ক করে রাখুন।</translation>
+<translation id="6621391692573306628">এই ট্যাবটিকে অন্য ডিভাইসে পাঠাতে, উভয় ডিভাইসেই Chrome-এ সাইন-ইন করুন</translation>
 <translation id="6631524303639368205">আপনি যেখান থেকে শেষ করেছিলেন সেখান থেকেই চালিয়ে যান: আপনার শেষ সেশন থেকে Chrome আপনার ট্যাব ফিরিয়ে এনেছে। আপনি এখানে এটি বন্ধ করতে পারবেন</translation>
 <translation id="6632012506031284914">Chrome ব্যবহার করে সার্চ করতে।</translation>
 <translation id="6632473616050862500">অতিরিক্ত <ph name="BEGIN_LINK_CROS_OSS" />ওপেন সোর্স সফ্টওয়্যার<ph name="END_LINK_CROS_OSS" />-এর মাধ্যমে ChromeOS Flex তৈরি করা সম্ভব হয়েছে।</translation>
@@ -709,6 +722,7 @@
 <translation id="7804947029129221742">Chrome-এর বাইরে থেকে আপনার সার্চ ইঞ্জিন পরিবর্তন করা হয়েছে। আপনাকে সুরক্ষিত রাখতে, Chrome এটি আসল ডিফল্টে রিসেট করেছে। <ph name="LEARN_MORE_LINK" /></translation>
 <translation id="7808348361785373670">Chrome থেকে সরান...</translation>
 <translation id="7827099906024714326">Chrome আপনার পরিচয় যাচাই করে নেওয়ার পর আপনি Google অ্যাকাউন্টে কিছু ডেটা সেভ করতে ও সবকটি ডিভাইসে তা ব্যবহার করতে পারবেন। আপনি এখনই সাইন-আউট করলে, এই ডেটা মুছে যাবে।</translation>
+<translation id="7829850924999627855"><ph name="DEVICE" /> থেকে আপনার সেভ করা তথ্য ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন</translation>
 <translation id="7832314606810669113">আপনার সব ডিভাইসে বুকমার্কে ও আরও অনেক কিছু পেতে, Chrome-এ সাইন-ইন করুন। সাইন-ইন করার পরে, আপনার Google অ্যাকাউন্টে এই বুকমার্ক সেভ করা হবে।</translation>
 <translation id="7845233973568007926">ইনস্টল করার জন্য ধন্যবাদ। <ph name="BUNDLE_NAME" /> ব্যবহার করার আগে আপনাকে অবশ্যই কম্পিউটার রিস্টার্ট করতে হবে।</translation>
 <translation id="7847170235260850604">Windows চালু হলেই Chrome চালু করুন</translation>
@@ -764,6 +778,7 @@
 <translation id="8260086374035800939">Chrome-এ Gemini খোলা থাকলে, নতুন ট্যাব তৈরি করার সময় সাইড প্যানেল খোলা থাকে</translation>
 <translation id="8267953129876836456">আপনার পর্যালোচনার জন্য Chrome কিছু সুরক্ষা সম্পর্কিত সাজেশন খুঁজে পেয়েছে</translation>
 <translation id="8286862437124483331">Google Chrome পাসওয়ার্ডগুলি দেখানোর চেষ্টা করছে। এটির অনুমতি দিতে আপনার Windows পাসওয়ার্ড টাইপ করুন।</translation>
+<translation id="8291415872436043161">Chrome ডাউনলোড করুন</translation>
 <translation id="829923460755755423">Google Password Manager-এ শর্টকাট যোগ করুন</translation>
 <translation id="8313851650939857356">স্টার্টআপ সম্পর্কিত এরর: <ph name="STARTUP_ERROR" />।</translation>
 <translation id="8321888067342493336">ছবি হিসেবে সেভ করুন</translation>

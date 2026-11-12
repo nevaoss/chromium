@@ -16,6 +16,8 @@ enum class EntryPoint;
 enum class FloatyUpdateSource;
 }  // namespace gemini
 
+class GURL;
+
 @class GeminiStartupState;
 
 // Commands relating to the Gemini flow.
@@ -26,10 +28,6 @@ enum class FloatyUpdateSource;
 
 // Dismiss the Gemini flow with a completion block.
 - (void)dismissGeminiFlowWithCompletion:(ProceduralBlock)completion;
-
-// Attempts to display the automatic Gemini promo depending on whether the
-// active web state is eligible. If the page is ineligible, does nothing.
-- (void)showGeminiPromoIfPageIsEligible;
 
 // Handles hiding the Gemini floaty from an update `source`. When in a hidden
 // state, the floaty still persists in memory and needs to be properly cleaned
@@ -46,10 +44,6 @@ enum class FloatyUpdateSource;
 
 // Updates the Gemini floaty with a trait collection change.
 - (void)updateFloatyWithTraitCollection:(UITraitCollection*)traitCollection;
-
-// Starts the Gemini First Run Experience flow with a completion block.
-- (void)startGeminiFirstRunWithCompletion:(void (^)(BOOL success))completion
-                           fromEntryPoint:(gemini::EntryPoint)entryPoint;
 
 // Starts the Gemini Live First Run Experience flow.
 - (void)startGeminiLiveFirstRunWithBaseViewController:
@@ -82,6 +76,9 @@ enum class FloatyUpdateSource;
 
 // Minimizes the Gemini UI if currently invoked.
 - (void)minimizeGeminiIfInvoked;
+
+// Presents `URL` in a modal web view over the Gemini surface.
+- (void)showGeminiWebModalForURL:(const GURL&)URL;
 
 @end
 

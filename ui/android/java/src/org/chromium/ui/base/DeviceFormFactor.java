@@ -72,6 +72,16 @@ public class DeviceFormFactor {
     public static final String PHONE_OR_TABLET = "PhoneOrTablet";
 
     /**
+     * Automotive form factor.
+     *
+     * <p>As identified by <code>DeviceInfo.isAutomotive() == true</code>. Use with <code>
+     * DisableIf.Device</code> to temporarily disable a test on automotive (reference a bug). For
+     * tests that are never relevant on automotive, use <code>
+     * Restriction(DeviceRestriction.RESTRICTION_TYPE_NON_AUTO)</code> instead.
+     */
+    public static final String AUTOMOTIVE = "Auto";
+
+    /**
      * Minimum screen size in dp to be considered a tablet. Matches the value used by res/
      * directories. E.g.: res/values-sw600dp/values.xml
      */
@@ -81,7 +91,7 @@ public class DeviceFormFactor {
     /** Matches the value set in res/values-sw600dp/values.xml */
     @VisibleForTesting public static final int SCREEN_BUCKET_TABLET = 2;
 
-    /** Matches the value set in res/values-sw720dp/values.xml */
+    /** Matches the value set in res/values-sw1200dp/values.xml */
     private static final int SCREEN_BUCKET_LARGE_TABLET = 3;
 
     /** See {@link #setIsTabletForTesting(boolean)}. */
@@ -143,7 +153,7 @@ public class DeviceFormFactor {
     /**
      * @return Whether the display associated with the given context is large enough to be
      *     considered a large tablet and will thus load large-tablet-specific resources (those in
-     *     the config -sw720). Not affected by Android N multi-window, but can change for external
+     *     the config -sw1200). Not affected by Android N multi-window, but can change for external
      *     displays. E.g. http://developer.samsung.com/samsung-dex/testing
      */
     public static boolean isNonMultiDisplayContextOnLargeTablet(Context context) {
@@ -152,9 +162,10 @@ public class DeviceFormFactor {
 
     /**
      * Detect the screen width bucket by loading the min_screen_width_bucket value (Android will
-     * select the value from the correct directory; values, *-sw600dp, *-sw720dp). We can't use any
+     * select the value from the correct directory; values, *-sw600dp, *-sw1200dp). We can't use any
      * shortcuts here since there are several devices that are phone or tablet, but load each
      * others' resources (see https://crbug.com/850096 and https://crbug.com/669974 for more info).
+     *
      * @param context An Android context to read resources from.
      * @return The screen width bucket the device is in (see constants at the top of this class).
      */

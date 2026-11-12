@@ -778,8 +778,6 @@ std::string AimEligibilityService::RequestSourceToString(RequestSource source) {
       return "RefreshTokenError";
     case RequestSource::kOAuthFallbackCookieChange:
       return "OAuthFallbackCookieChange";
-    case RequestSource::kLocaleChange:
-      return "LocaleChange";
   }
 }
 
@@ -866,9 +864,10 @@ void AimEligibilityService::OnAccountsInCookieUpdated(
       base::FeatureList::IsEnabled(
           omnibox::kAimEligibilityServiceIdentityImprovements) &&
       omnibox::kAimIdentityRefreshOnCookieChanges.Get();
-  // Refresh on cookie changes if the primary account is not valid (i.e. no
-  // OAuth token is available).
-  bool should_refresh_on_cookie_changes = !HasValidPrimaryAccount();
+  // Refresh on cookie changes if OAuth is disabled or the primary account is
+  // not valid (i.e. no OAuth token is available).
+  bool should_refresh_on_cookie_changes =
+      !omnibox::kAimIdentityOauthEnabled.Get() || !HasValidPrimaryAccount();
   if (refresh_on_cookie_changes_enabled && should_refresh_on_cookie_changes) {
     ScheduleServerEligibilityRequestIfNeeded(
         RequestSource::kOAuthFallbackCookieChange);

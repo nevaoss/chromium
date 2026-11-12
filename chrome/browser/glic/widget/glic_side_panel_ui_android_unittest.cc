@@ -5,13 +5,17 @@
 #include "chrome/browser/glic/widget/glic_side_panel_ui_android.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
+#include "chrome/browser/glic/android/glic_helper_android.h"
+#include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/service/glic_ui_embedder.h"
@@ -20,16 +24,22 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/metrics/profile_metrics_service.h"
+#include "components/prefs/pref_service.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "content/public/browser/media_stream_request.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/drop_data.h"
 #include "content/public/test/browser_task_environment.h"
+#include "content/public/test/mock_permission_manager.h"
+#include "content/public/test/test_renderer_host.h"
+#include "content/public/test/web_contents_tester.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/mediastream/media_stream_request.h"
 #include "third_party/blink/public/common/page/drag_operation.h"
 #include "third_party/blink/public/mojom/mediastream/media_stream.mojom.h"
+#include "ui/android/view_android.h"
+#include "ui/android/window_android.h"
 #include "ui/base/base_window.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
 #include "ui/gfx/geometry/rect.h"
@@ -38,6 +48,26 @@
 
 namespace glic {
 namespace {
+
+// Records StopMicrophone() requests instead of forwarding them to a web client.
+class FakeHost : public Host {
+ public:
+  explicit FakeHost(Profile* profile)
+      : Host(profile,
+             /*sharing_manager_provider=*/nullptr,
+             /*glic_instance=*/nullptr,
+             /*instance_delegate=*/nullptr) {}
+
+  void StopMicrophone(base::OnceClosure done) override {
+    ++stop_microphone_count_;
+    std::move(done).Run();
+  }
+
+  int stop_microphone_count() const { return stop_microphone_count_; }
+
+ private:
+  int stop_microphone_count_ = 0;
+};
 
 class FakeGlicUiEmbedderDelegate : public GlicUiEmbedder::Delegate {
  public:
@@ -136,6 +166,44 @@ class FakeBaseWindow : public ui::BaseWindow {
   bool active_ = true;
 };
 
+class FakeMicPermissionUi : public MicPermissionUi {
+ public:
+  void ShowMicPermissionDialog(
+      ui::WindowAndroid* window_android,
+      base::OnceCallback<void(bool)> callback) override {
+    ++dialog_count_;
+    std::move(callback).Run(dialog_result_);
+  }
+  bool HasMicOsPermission(ui::WindowAndroid* window_android) override {
+    return has_os_permission_;
+  }
+  void RequestMicOsPermission(
+      ui::WindowAndroid* window_android,
+      base::OnceCallback<void(bool)> callback) override {
+    ++os_prompt_count_;
+    std::move(callback).Run(os_prompt_result_);
+  }
+  void ShowMicDisabledSnackbar(ui::WindowAndroid* window_android) override {
+    ++snackbar_count_;
+  }
+
+  void set_dialog_result(bool allowed) { dialog_result_ = allowed; }
+  void set_has_os_permission(bool granted) { has_os_permission_ = granted; }
+  void set_os_prompt_result(bool granted) { os_prompt_result_ = granted; }
+
+  int dialog_count() const { return dialog_count_; }
+  int os_prompt_count() const { return os_prompt_count_; }
+  int snackbar_count() const { return snackbar_count_; }
+
+ private:
+  bool dialog_result_ = true;
+  bool has_os_permission_ = true;
+  bool os_prompt_result_ = true;
+  int dialog_count_ = 0;
+  int os_prompt_count_ = 0;
+  int snackbar_count_ = 0;
+};
+
 content::MediaStreamRequest MakeAudioRequest() {
   return content::MediaStreamRequest(
       /*render_process_id=*/0, /*render_frame_id=*/0, /*page_request_id=*/0,
@@ -153,7 +221,7 @@ content::MediaStreamRequest MakeAudioRequest() {
 class GlicSidePanelUiAndroidTest : public testing::Test {
  public:
   GlicSidePanelUiAndroidTest()
-      : host_(&profile_, nullptr, nullptr, nullptr),
+      : host_(&profile_),
         delegate_(host_),
         instance_metrics_(&profile_metrics_service_, &profile_) {
     ON_CALL(browser_window_, GetWindow())
@@ -162,6 +230,7 @@ class GlicSidePanelUiAndroidTest : public testing::Test {
   ~GlicSidePanelUiAndroidTest() override = default;
 
   TestingProfile* profile() { return &profile_; }
+  FakeHost& host() { return host_; }
   FakeGlicUiEmbedderDelegate& delegate() { return delegate_; }
   GlicInstanceMetrics& instance_metrics() { return instance_metrics_; }
   base::WeakPtr<tabs::TabInterface> tab() {
@@ -179,14 +248,27 @@ class GlicSidePanelUiAndroidTest : public testing::Test {
         .WillByDefault(testing::Return(&browser_window_));
   }
 
+  std::unique_ptr<content::WebContents> CreateWebContentsWithWindow() {
+    if (!window_android_) {
+      window_android_ = ui::WindowAndroid::CreateForTesting();
+    }
+    auto web_contents =
+        content::WebContentsTester::CreateTestWebContents(&profile_, nullptr);
+    window_android_->get()->AddChild(web_contents->GetNativeView());
+    return web_contents;
+  }
+
   FakeBaseWindow& window() { return window_; }
   MockBrowserWindowInterface& browser_window() { return browser_window_; }
 
  private:
   content::BrowserTaskEnvironment task_environment_;
+  content::RenderViewHostTestEnabler rvh_test_enabler_;
+  std::unique_ptr<ui::WindowAndroid::ScopedWindowAndroidForTesting>
+      window_android_;
   TestingProfile profile_;
   metrics::ProfileMetricsService profile_metrics_service_;
-  Host host_;
+  FakeHost host_;
   FakeGlicUiEmbedderDelegate delegate_;
   GlicInstanceMetrics instance_metrics_;
   FakeBaseWindow window_;
@@ -383,10 +465,24 @@ TEST_F(GlicSidePanelUiAndroidTest,
   EXPECT_THAT(delegate().activation_changes(), testing::ElementsAre(false));
 }
 
+// Leaving Chrome (e.g. for an incoming call) must ask the web client to stop
+// listening, since voice input is foreground only.
+TEST_F(GlicSidePanelUiAndroidTest, WindowDeactivatedStopsMicrophone) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  AttachBrowserWindowToTab();
+  GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
+                                instance_metrics());
+
+  side_panel_ui.OnBrowserDeactivated(&browser_window());
+
+  EXPECT_EQ(1, host().stop_microphone_count());
+}
+
 // A permission prompt takes focus away from the browser window, so the panel
 // must not be reported as deactivated while one is showing.
 TEST_F(GlicSidePanelUiAndroidTest,
        WindowDeactivatedDuringPermissionRequestIsSuppressed) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
   AttachBrowserWindowToTab();
   GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
                                 instance_metrics());
@@ -396,6 +492,8 @@ TEST_F(GlicSidePanelUiAndroidTest,
   side_panel_ui.OnBrowserDeactivated(&browser_window());
 
   EXPECT_TRUE(delegate().activation_changes().empty());
+  // The prompt is how the user turns the microphone on, so it must not stop it.
+  EXPECT_EQ(0, host().stop_microphone_count());
 }
 
 // Deactivation suppressed by the prompt must be delivered once the user
@@ -426,6 +524,7 @@ TEST_F(GlicSidePanelUiAndroidTest,
 // came back to the foreground.
 TEST_F(GlicSidePanelUiAndroidTest,
        SuppressedDeactivationDeliveredAfterSystemPromptCompletes) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
   AttachBrowserWindowToTab();
   GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
                                 instance_metrics());
@@ -443,6 +542,10 @@ TEST_F(GlicSidePanelUiAndroidTest,
       blink::mojom::MediaStreamRequestResult::OK, /*ui=*/nullptr);
 
   EXPECT_THAT(delegate().activation_changes(), testing::ElementsAre(false));
+  // Activation can lag the end of the OS prompt, so the catch-up does not stop
+  // the microphone the user just granted. Page visibility covers a real
+  // backgrounding.
+  EXPECT_EQ(0, host().stop_microphone_count());
 }
 
 // If the window is active again once the prompt is gone, the suppressed
@@ -471,6 +574,7 @@ TEST_F(GlicSidePanelUiAndroidTest,
 // Another window losing focus says nothing about the window hosting the panel.
 TEST_F(GlicSidePanelUiAndroidTest,
        DeactivationOfUnrelatedBrowserWindowIgnored) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
   AttachBrowserWindowToTab();
   GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
                                 instance_metrics());
@@ -480,6 +584,265 @@ TEST_F(GlicSidePanelUiAndroidTest,
   side_panel_ui.OnBrowserDeactivated(&other_browser_window);
 
   EXPECT_TRUE(delegate().activation_changes().empty());
+  EXPECT_EQ(0, host().stop_microphone_count());
+}
+
+// Every way the sheet stops being fully shown (closed, peeked, or hidden by a
+// tab switch) must stop the microphone.
+TEST_F(GlicSidePanelUiAndroidTest, PanelHiddenStopsMicrophone) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  for (auto state : {GlicSidePanelCoordinator::State::kClosed,
+                     GlicSidePanelCoordinator::State::kPeek,
+                     GlicSidePanelCoordinator::State::kBackgrounded}) {
+    GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
+                                  instance_metrics());
+    int count_before = host().stop_microphone_count();
+
+    side_panel_ui.SidePanelStateChanged(state);
+
+    EXPECT_EQ(count_before + 1, host().stop_microphone_count())
+        << "state=" << static_cast<int>(state);
+  }
+}
+
+TEST_F(GlicSidePanelUiAndroidTest, PanelShownDoesNotStopMicrophone) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
+                                instance_metrics());
+
+  side_panel_ui.SidePanelStateChanged(GlicSidePanelCoordinator::State::kShown);
+
+  EXPECT_EQ(0, host().stop_microphone_count());
+}
+
+// With GlicVoice disabled, neither leaving Chrome nor hiding the sheet asks the
+// web client to stop the microphone.
+TEST_F(GlicSidePanelUiAndroidTest, GlicVoiceDisabledDoesNotStopMicrophone) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kGlicVoice);
+  AttachBrowserWindowToTab();
+  {
+    GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
+                                  instance_metrics());
+    side_panel_ui.OnBrowserDeactivated(&browser_window());
+    EXPECT_THAT(delegate().activation_changes(), testing::Contains(false));
+  }
+  for (auto state : {GlicSidePanelCoordinator::State::kClosed,
+                     GlicSidePanelCoordinator::State::kPeek,
+                     GlicSidePanelCoordinator::State::kBackgrounded}) {
+    GlicSidePanelUi side_panel_ui(profile(), tab(), delegate(),
+                                  instance_metrics());
+    side_panel_ui.SidePanelStateChanged(state);
+  }
+
+  EXPECT_EQ(0, host().stop_microphone_count());
+}
+
+// If the panel went away while the OS prompt was up, the request fails without
+// being forwarded.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicOsPermissionResultRejectsWhenWebContentsGone) {
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+  side_panel_ui.is_requesting_media_permission_ = true;
+
+  MediaResponseRecorder recorder;
+  side_panel_ui.OnMicOsPermissionResult(
+      /*web_contents=*/nullptr, MakeAudioRequest(), recorder.GetCallback(),
+      /*granted=*/true);
+
+  EXPECT_TRUE(recorder.responded());
+  EXPECT_EQ(
+      blink::mojom::MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN_OTHER,
+      recorder.result());
+  EXPECT_FALSE(side_panel_ui.is_requesting_media_permission_);
+}
+
+// When the Glic microphone setting is off and Android has already granted the
+// mic, Chrome's dialog is shown and accepting it skips the Android prompt.
+//
+// The hop through MediaCaptureDevicesDispatcher cannot complete in a unit test,
+// so the dispatcher's reply and pref update are tested separately in
+// MicPermissionDialogAcceptedAndSystemGrantedUpdatesMicPref.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicPermissionDialogAcceptedWhenMicSettingDisabledSkipsOsPrompt) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
+
+  FakeMicPermissionUi mic_permission_ui;
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+  side_panel_ui.SetMicPermissionUiForTesting(&mic_permission_ui);
+
+  auto web_contents = CreateWebContentsWithWindow();
+  MediaResponseRecorder recorder;
+  side_panel_ui.RequestMediaAccessPermission(
+      web_contents.get(), MakeAudioRequest(), recorder.GetCallback());
+
+  EXPECT_EQ(1, mic_permission_ui.dialog_count());
+  EXPECT_EQ(0, mic_permission_ui.os_prompt_count());
+}
+
+// Granting microphone access when GlicVoice is enabled and the setting is off
+// updates the Glic microphone pref to true and records the user action once.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicPermissionDialogAcceptedAndSystemGrantedUpdatesMicPref) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
+  base::UserActionTester user_action_tester;
+
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+  side_panel_ui.is_requesting_media_permission_ = true;
+
+  MediaResponseRecorder recorder;
+  side_panel_ui.OnMediaAccessPermissionResult(
+      /*web_contents=*/nullptr,
+      blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE,
+      recorder.GetCallback(), blink::mojom::StreamDevicesSet(),
+      blink::mojom::MediaStreamRequestResult::OK, /*ui=*/nullptr);
+
+  EXPECT_TRUE(recorder.responded());
+  EXPECT_EQ(blink::mojom::MediaStreamRequestResult::OK, recorder.result());
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(prefs::kGlicMicrophoneEnabled));
+  EXPECT_EQ(
+      1, user_action_tester.GetActionCount("GlicMicrophonePermissionEnabled"));
+
+  // Subsequent grants when the setting is already enabled do not re-record the
+  // action.
+  MediaResponseRecorder second_recorder;
+  side_panel_ui.OnMediaAccessPermissionResult(
+      /*web_contents=*/nullptr,
+      blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE,
+      second_recorder.GetCallback(), blink::mojom::StreamDevicesSet(),
+      blink::mojom::MediaStreamRequestResult::OK, /*ui=*/nullptr);
+  EXPECT_EQ(
+      1, user_action_tester.GetActionCount("GlicMicrophonePermissionEnabled"));
+}
+
+// Declining Chrome's dialog when the Glic microphone setting is off rejects the
+// request without prompting the OS or enabling the setting.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicSettingDisabledDialogDeclinedRejectsWithoutEnablingMic) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
+
+  FakeMicPermissionUi mic_permission_ui;
+  mic_permission_ui.set_dialog_result(false);
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+  side_panel_ui.SetMicPermissionUiForTesting(&mic_permission_ui);
+
+  auto web_contents = CreateWebContentsWithWindow();
+  MediaResponseRecorder recorder;
+  side_panel_ui.RequestMediaAccessPermission(
+      web_contents.get(), MakeAudioRequest(), recorder.GetCallback());
+
+  EXPECT_EQ(1, mic_permission_ui.dialog_count());
+  EXPECT_EQ(0, mic_permission_ui.os_prompt_count());
+  EXPECT_TRUE(recorder.responded());
+  EXPECT_EQ(blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
+            recorder.result());
+  EXPECT_FALSE(
+      profile()->GetPrefs()->GetBoolean(prefs::kGlicMicrophoneEnabled));
+}
+
+// When the Glic microphone setting is off and the dialog cannot be shown (e.g.
+// no WindowAndroid), the request is rejected rather than forwarded to the
+// system check.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicSettingDisabledRejectsWhenDialogCannotBeShown) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
+
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+
+  MediaResponseRecorder recorder;
+  side_panel_ui.RequestMediaAccessPermission(
+      /*web_contents=*/nullptr, MakeAudioRequest(), recorder.GetCallback());
+
+  EXPECT_TRUE(recorder.responded());
+  EXPECT_EQ(blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
+            recorder.result());
+  EXPECT_FALSE(
+      profile()->GetPrefs()->GetBoolean(prefs::kGlicMicrophoneEnabled));
+}
+
+// When both the Glic microphone setting and the Android permission are enabled,
+// no dialog or OS prompt is shown.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicSettingEnabledWithOsPermissionSkipsDialog) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, true);
+
+  FakeMicPermissionUi mic_permission_ui;
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+  side_panel_ui.SetMicPermissionUiForTesting(&mic_permission_ui);
+
+  auto web_contents = CreateWebContentsWithWindow();
+  MediaResponseRecorder recorder;
+  side_panel_ui.RequestMediaAccessPermission(
+      web_contents.get(), MakeAudioRequest(), recorder.GetCallback());
+
+  EXPECT_EQ(0, mic_permission_ui.dialog_count());
+  EXPECT_EQ(0, mic_permission_ui.os_prompt_count());
+}
+
+// Denying the OS permission prompt leaves the Glic microphone pref false.
+TEST_F(GlicSidePanelUiAndroidTest,
+       MicPermissionDialogAcceptedButSystemDeniedDoesNotUpdateMicPref) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
+
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+  side_panel_ui.is_requesting_media_permission_ = true;
+
+  MediaResponseRecorder recorder;
+  side_panel_ui.OnMediaAccessPermissionResult(
+      /*web_contents=*/nullptr,
+      blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE,
+      recorder.GetCallback(), blink::mojom::StreamDevicesSet(),
+      blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
+      /*ui=*/nullptr);
+
+  EXPECT_TRUE(recorder.responded());
+  EXPECT_EQ(blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
+            recorder.result());
+  EXPECT_FALSE(
+      profile()->GetPrefs()->GetBoolean(prefs::kGlicMicrophoneEnabled));
+}
+
+// CheckMediaAccessPermission returns false for audio capture when the Glic
+// microphone setting is off, and passes through when it is on.
+TEST_F(GlicSidePanelUiAndroidTest, CheckMediaAccessPermissionChecksMicSetting) {
+  base::test::ScopedFeatureList feature_list{features::kGlicVoice};
+  auto permission_manager =
+      std::make_unique<testing::NiceMock<content::MockPermissionManager>>();
+  ON_CALL(*permission_manager, GetPermissionResultForCurrentDocument)
+      .WillByDefault(testing::Return(
+          content::PermissionResult(blink::mojom::PermissionStatus::GRANTED)));
+  profile()->SetPermissionControllerDelegate(std::move(permission_manager));
+
+  auto web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile(), nullptr);
+  const GURL kUrl("https://example.com");
+  content::WebContentsTester::For(web_contents.get())->NavigateAndCommit(kUrl);
+
+  GlicSidePanelUi side_panel_ui(profile(), base::WeakPtr<tabs::TabInterface>(),
+                                delegate(), instance_metrics());
+
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
+  EXPECT_FALSE(side_panel_ui.CheckMediaAccessPermission(
+      web_contents->GetPrimaryMainFrame(), url::Origin::Create(kUrl),
+      blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE));
+
+  profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, true);
+  EXPECT_TRUE(side_panel_ui.CheckMediaAccessPermission(
+      web_contents->GetPrimaryMainFrame(), url::Origin::Create(kUrl),
+      blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE));
 }
 
 }  // namespace glic

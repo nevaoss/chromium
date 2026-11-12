@@ -23,7 +23,6 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips_metrics.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips_mojo_test_utils.h"
@@ -790,6 +789,9 @@ TEST(ActionChipGeneratorTest, SteadyStateWithNewEndpoint) {
                                       ActionChipsRequestStatus::kSuccess, 1);
   histogram_tester.ExpectUniqueSample("NewTabPage.ActionChips.SuggestionCount",
                                       3, 1);
+  histogram_tester.ExpectTotalCount("NewTabPage.ActionChips.RequestLatency", 1);
+  histogram_tester.ExpectTotalCount(
+      "NewTabPage.ActionChips.RequestLatency.Success", 1);
 }
 
 TEST(ActionChipGeneratorTest, SteadyStateWithNewEndpointAndNoTab) {
@@ -913,6 +915,9 @@ TEST(ActionChipGeneratorTest, NewEndpointFailureFallsBackToStaticChips) {
   histogram_tester.ExpectUniqueSample(
       "NewTabPage.ActionChips.RequestStatus.NetworkError",
       std::abs(net::ERR_TIMED_OUT), 1);
+  histogram_tester.ExpectTotalCount("NewTabPage.ActionChips.RequestLatency", 1);
+  histogram_tester.ExpectTotalCount(
+      "NewTabPage.ActionChips.RequestLatency.NetworkError", 1);
 }
 
 TEST(ActionChipGeneratorTest,

@@ -9,18 +9,21 @@ import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import '//resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
 import '//resources/cr_elements/icons.html.js';
 import './favicon_group.js';
-import './reopen_tabs.js';
 import './sources_menu.js';
 import './overflow_menu.js';
 // <if expr="not is_android">
 import '/shared/permission_dashboard.js';
 
-import type {PermissionDashboardState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
+import type {PermissionChipDelegate} from '/shared/permission_chip_delegate.js';
+import type {LhsChipIdentifier, PermissionDashboardState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
+
+import type {InitialState} from './contextual_tasks_toolbar.mojom-webui.js';
 // </if>
 
 // <if expr="is_android">
 type PermissionDashboardState = any;
+type PermissionChipDelegate = any;
 // </if>
 
 import type {CrLazyRenderLitElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
@@ -28,10 +31,7 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 
-import type {ContextInfo} from './contextual_tasks.mojom-webui.js';
-import type {BrowserProxy} from './contextual_tasks_browser_proxy.js';
-import {BrowserProxyImpl} from './contextual_tasks_browser_proxy.js';
-import type {ToolbarBrowserProxy} from './contextual_tasks_toolbar_browser_proxy.js';
+import type {ContextInfo} from './contextual_tasks_toolbar.mojom-webui.js';
 import {ToolbarBrowserProxyImpl} from './contextual_tasks_toolbar_browser_proxy.js';
 import type {OverflowMenuElement} from './overflow_menu.js';
 import type {SourcesMenuElement} from './sources_menu.js';
@@ -88,7 +88,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
       },
       title: {type: String},
       hideOverflowMenuButton_: {type: Boolean},
-      showReopenTabs_: {type: Boolean},
       isExpandButtonEnabled: {type: Boolean},
       isPinButtonEnabled: {type: Boolean},
       isPinned: {type: Boolean},
@@ -98,7 +97,6 @@ export class TopToolbarElement extends TopToolbarElementBase {
         reflect: true,
       },
       isCobrowseEligible: {type: Boolean},
-      isHandshakeComplete: {type: Boolean},
       isUserSignedIn: {type: Boolean},
       onboardingTooltipShowing: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayout_: {type: Boolean},
@@ -112,6 +110,8 @@ export class TopToolbarElement extends TopToolbarElementBase {
       },
       webuiRoundedIconsEnabled_: {type: Boolean},
       permissionDashboardState: {type: Object},
+      permissionChipDelegate_: {type: Object},
+      profileAvatarUrl: {type: String},
     };
   }
 
@@ -122,19 +122,24 @@ export class TopToolbarElement extends TopToolbarElementBase {
   accessor isAimEligible: boolean = loadTimeData.getBoolean('isAimEligible');
   accessor isCobrowseEligible: boolean =
       loadTimeData.getBoolean('isCobrowseEligible');
-  accessor isHandshakeComplete: boolean = false;
   accessor permissionDashboardState: PermissionDashboardState|null = null;
+  accessor profileAvatarUrl: string =
+      loadTimeData.valueExists('profileAvatarUrl') ?
+      loadTimeData.getString('profileAvatarUrl') :
+      '';
   protected accessor isSidePanelRearchitectureEnabled_: boolean =
       loadTimeData.getBoolean('contextualTasksSidePanelRearchitectureEnabled');
   accessor isUserSignedIn: boolean = true;
   accessor enableOpenInNewTabButton: boolean = false;
-  accessor showReopenTabs_: boolean = false;
   accessor onboardingTooltipShowing: boolean = false;
-  private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
-  private toolbarBrowserProxy_: ToolbarBrowserProxy =
+  protected accessor permissionChipDelegate_: PermissionChipDelegate|null =
+      null;
+  private toolbarBrowserProxy_: ToolbarBrowserProxyImpl =
       ToolbarBrowserProxyImpl.getInstance();
-  private listenerIds_: number[] = [];
   private toolbarListenerIds_: number[] = [];
+  // <if expr="not is_android">
+  private sidePanelToolbarListenerIds_: number[] = [];
+  // </if>
   protected accessor isExpandButtonEnabled: boolean =
       loadTimeData.getBoolean('expandButtonEnabled');
   accessor isPinButtonEnabled: boolean =
@@ -159,39 +164,90 @@ export class TopToolbarElement extends TopToolbarElementBase {
 
   override connectedCallback() {
     super.connectedCallback();
-    const callbackRouter = this.browserProxy_.callbackRouter;
-    this.listenerIds_ = [
-      callbackRouter.onContextUpdated.addListener(contextInfos => {
-        this.contextInfos = contextInfos;
-      }),
-      callbackRouter.setShowReopenTabs.addListener(show => {
-        this.showReopenTabs_ = show;
-      }),
-      callbackRouter.setExpandButtonEnabled.addListener((enabled: boolean) => {
-        this.isExpandButtonEnabled = enabled;
-      }),
-      callbackRouter.onHandshakeComplete.addListener(() => {
-        this.isHandshakeComplete = true;
-      }),
-    ];
     this.toolbarListenerIds_ = [
       this.toolbarBrowserProxy_.callbackRouter.onSidePanelPinStateChanged
           .addListener((isPinned: boolean) => {
             this.isPinned = isPinned;
           }),
+      this.toolbarBrowserProxy_.callbackRouter.onContextUpdated.addListener(
+          (contextInfos: ContextInfo[]) => {
+            this.contextInfos = contextInfos;
+          }),
+      this.toolbarBrowserProxy_.callbackRouter.setExpandButtonEnabled
+          .addListener((enabled: boolean) => {
+            this.isExpandButtonEnabled = enabled;
+          }),
+      this.toolbarBrowserProxy_.callbackRouter.setProfileAvatarUrl.addListener(
+          (avatarUrl: string) => {
+            this.profileAvatarUrl = avatarUrl;
+          }),
     ];
     window.addEventListener('blur', this.boundOnWindowBlur_);
+
+    // <if expr="not is_android">
+    const toolbarUiService = this.toolbarBrowserProxy_.toolbarUiService;
+    const toolbarUiObserverCallbackRouter =
+        this.toolbarBrowserProxy_.toolbarUiObserverCallbackRouter;
+    this.sidePanelToolbarListenerIds_ = [
+      toolbarUiObserverCallbackRouter.onPermissionDashboardStateChanged
+          .addListener((state: PermissionDashboardState) => {
+            this.permissionDashboardState = state;
+          }),
+    ];
+
+    toolbarUiService.getInitialState().then((response: InitialState) => {
+      if (!this.isConnected) {
+        return;
+      }
+      if (response) {
+        if (response.updateStream) {
+          toolbarUiObserverCallbackRouter.$.bindHandle(
+              response.updateStream.handle);
+        }
+        if (response.state !== undefined) {
+          this.permissionDashboardState = response.state;
+        }
+      }
+    }, () => {});
+
+    this.permissionChipDelegate_ = {
+      onChipClicked: (id: LhsChipIdentifier, isPointer: boolean) => {
+        toolbarUiService.onChipClicked(id, isPointer);
+      },
+      onChipPointerEntered: (id: LhsChipIdentifier) => {
+        toolbarUiService.onChipPointerEntered(id);
+      },
+      onChipPointerExited: (id: LhsChipIdentifier) => {
+        toolbarUiService.onChipPointerExited(id);
+      },
+      onChipMousePressed: (id: LhsChipIdentifier, _isMiddleClick?: boolean) => {
+        toolbarUiService.onChipMousePressed(id);
+      },
+      onChipExpandAnimationEnded: (id: LhsChipIdentifier) => {
+        toolbarUiService.onChipExpandAnimationEnded(id);
+      },
+      onChipCollapseAnimationEnded: (id: LhsChipIdentifier) => {
+        toolbarUiService.onChipCollapseAnimationEnded(id);
+      },
+    };
+    // </if>
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.listenerIds_.forEach(
-        id => this.browserProxy_.callbackRouter.removeListener(id));
-    this.listenerIds_ = [];
     this.toolbarListenerIds_.forEach(
         id => this.toolbarBrowserProxy_.callbackRouter.removeListener(id));
     this.toolbarListenerIds_ = [];
     window.removeEventListener('blur', this.boundOnWindowBlur_);
+
+    // <if expr="not is_android">
+    const toolbarUiObserverCallbackRouter =
+        this.toolbarBrowserProxy_.toolbarUiObserverCallbackRouter;
+    this.sidePanelToolbarListenerIds_.forEach(
+        id => toolbarUiObserverCallbackRouter.removeListener(id));
+    this.sidePanelToolbarListenerIds_ = [];
+    toolbarUiObserverCallbackRouter.$.close();
+    // </if>
   }
 
   // Dismisses any open menu when the side panel loses focus. Clicks outside of
@@ -213,9 +269,9 @@ export class TopToolbarElement extends TopToolbarElementBase {
         '#overflowMenuButton');
     // Register help bubble only if 'G' logo is being shown.
     if ((this as unknown as HTMLElement)
-            .shadowRoot?.querySelector('.top-toolbar-logo')) {
+            .shadowRoot?.querySelector('.top-toolbar-logo-button')) {
       this.registerHelpBubble(
-          'kContextualTasksSuperGButtonElementId', '.top-toolbar-logo');
+          'kContextualTasksSuperGButtonElementId', '.top-toolbar-logo-button');
     }
   }
   // </if>
@@ -227,13 +283,10 @@ export class TopToolbarElement extends TopToolbarElementBase {
         changedProperties.has('onboardingTooltipShowing')) {
       this.hideOverflowMenuButton_ =
           this.isAiPage && this.hideOverflowMenuOnAiPageEnabled_;
-      if (changedProperties.has('isAiPage') && !this.isAiPage) {
-        this.isHandshakeComplete = false;
-      }
       // <if expr="not is_android">
       if (this.isAiPage) {
         if (!this.onboardingTooltipShowing) {
-          this.browserProxy_.handler.maybeTriggerPinningPromo();
+          this.toolbarBrowserProxy_.handler.maybeTriggerPinningPromo();
         }
       }
       // </if>
@@ -258,7 +311,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
 
   protected onCloseButtonClick_() {
     recordAction('ContextualTasks.WebUI.UserAction.CloseSidePanel');
-    this.browserProxy_.handler.closeSidePanel();
+    this.toolbarBrowserProxy_.handler.closeSidePanel();
   }
 
   protected onNewThreadClick_() {
@@ -267,7 +320,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
 
   protected onThreadHistoryClick_() {
     recordAction('ContextualTasks.WebUI.UserAction.OpenThreadHistory');
-    this.browserProxy_.handler.showThreadHistory();
+    this.toolbarBrowserProxy_.handler.showThreadHistory();
   }
 
   protected onOverflowMenuButtonClick_(e: Event) {
@@ -286,22 +339,15 @@ export class TopToolbarElement extends TopToolbarElementBase {
 
   protected onOpenInNewTabClick_() {
     recordAction('ContextualTasks.WebUI.UserAction.OpenInNewTab');
-    this.browserProxy_.handler.moveTaskUiToNewTab();
+    this.toolbarBrowserProxy_.handler.moveTaskUiToNewTab();
   }
 
-  protected onReopenTabsReopenClick_() {
-    this.browserProxy_.handler.reopenTabs();
-  }
-
-  protected onReopenTabsDismissClick_() {
-    this.showReopenTabs_ = false;
-  }
 
   protected onLogoPointerdown_() {
     if (!this.isSidePanelRearchitectureEnabled_) {
       return;
     }
-    this.browserProxy_.handler.onLogoPointerDown();
+    this.toolbarBrowserProxy_.handler.onLogoPointerDown();
   }
 
   protected onLogoClick_(e: Event) {
@@ -311,7 +357,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
     // Keyboard synthetic clicks generate PointerEvents with an empty
     // pointerType in WebUI, whereas natural pointer clicks have a valid
     // pointerType (e.g., 'mouse', 'touch', 'pen').
-    this.browserProxy_.handler.showPageInfoBubble(
+    this.toolbarBrowserProxy_.handler.showPageInfoBubble(
         e instanceof PointerEvent && e.pointerType !== '');
   }
 }

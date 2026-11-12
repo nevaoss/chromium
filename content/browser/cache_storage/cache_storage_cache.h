@@ -9,17 +9,18 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "base/containers/id_map.h"
+#include "base/containers/unique_ptr_adapters.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
-#include "base/task/sequenced_task_runner.h"
 #include "components/services/storage/public/cpp/buckets/bucket_locator.h"
 #include "components/services/storage/public/cpp/quota_error_or.h"
 #include "components/services/storage/public/mojom/cache_storage_control.mojom.h"
@@ -29,9 +30,12 @@
 #include "content/browser/cache_storage/cache_storage_scheduler_types.h"
 #include "content/browser/cache_storage/scoped_writable_entry.h"
 #include "content/common/content_export.h"
+#include "mojo/public/cpp/base/big_buffer.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/completion_once_callback.h"
 #include "net/base/io_buffer.h"
 #include "net/disk_cache/disk_cache.h"
+#include "services/network/public/mojom/cache_storage_side_data_writer.mojom.h"
 #include "third_party/blink/public/mojom/cache_storage/cache_storage.mojom.h"
 #include "third_party/blink/public/mojom/quota/quota_types.mojom.h"
 
@@ -103,7 +107,6 @@ class CONTENT_EXPORT CacheStorageCache {
       storage::mojom::CacheStorageOwner owner,
       const std::u16string& cache_name,
       CacheStorage* cache_storage,
-      scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
       scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
       scoped_refptr<BlobStorageContextWrapper> blob_storage_context);
   static std::unique_ptr<CacheStorageCache> CreatePersistentCache(
@@ -112,7 +115,6 @@ class CONTENT_EXPORT CacheStorageCache {
       const std::u16string& cache_name,
       CacheStorage* cache_storage,
       const base::FilePath& path,
-      scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
       scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
       scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
       int64_t cache_size,
@@ -133,19 +135,6 @@ class CONTENT_EXPORT CacheStorageCache {
                 blink::mojom::CacheQueryOptionsPtr match_options,
                 int64_t trace_id,
                 ResponsesCallback callback);
-
-  // Writes the side data (ex: V8 code cache) for the specified cache entry.
-  // If it doesn't exist, or the |expected_response_time| differs from the
-  // entry's, blink::mojom::CacheStorageError::kErrorNotFound is returned.
-  // Note: This "side data" is same meaning as "metadata" in HTTPCache. We use
-  // "metadata" in cache_storage.proto for the pair of headers of a request and
-  // a response. To avoid the confusion we use "side data" here.
-  void WriteSideData(ErrorCallback callback,
-                     const GURL& url,
-                     base::Time expected_response_time,
-                     int64_t trace_id,
-                     scoped_refptr<net::IOBuffer> buffer,
-                     int buf_len);
 
   // Runs given batch operations. This corresponds to the Batch Cache Operations
   // algorithm in the spec.
@@ -182,7 +171,8 @@ class CONTENT_EXPORT CacheStorageCache {
             RequestsCallback callback);
 
   // Closes the backend. Future operations that require the backend
-  // will exit early. Close should only be called once per CacheStorageCache.
+  // will exit early, even while the close is pending. Close should only be
+  // called once per CacheStorageCache.
   void Close(base::OnceClosure callback);
 
   // The size of the cache's contents.  The callback reports the padded
@@ -265,6 +255,10 @@ class CONTENT_EXPORT CacheStorageCache {
     return static_cast<CacheStorageCache*>(handle.value());
   }
 
+  // Destroys any active SideDataWriters matching `url`, or all active
+  // SideDataWriters if `url` is `std::nullopt`.
+  void InvalidateSideDataWriters(std::optional<GURL> url = std::nullopt);
+
  private:
   // QueryCache types:
   enum QueryCacheFlags {
@@ -305,7 +299,6 @@ class CONTENT_EXPORT CacheStorageCache {
       const std::u16string& cache_name,
       const base::FilePath& path,
       CacheStorage* cache_storage,
-      scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
       scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
       scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
       int64_t cache_size,
@@ -379,60 +372,68 @@ class CONTENT_EXPORT CacheStorageCache {
                      const proto::CacheMetadata& metadata,
                      WriteMetadataCallback callback);
 
+  class SideDataWriter;
+
+  // Creates a SideDataWriter bound to a new Mojo pipe that allows writing
+  // side data (e.g. V8 code cache) for the given entry.
+  mojo::PendingRemote<network::mojom::CacheStorageSideDataWriter>
+  CreateSideDataWriter(const GURL& url, base::Time expected_response_time);
+
+  // Destroys `writer` after its Mojo pipe has disconnected.
+  void SideDataWriterDisconnected(SideDataWriter* writer);
+
+  // Writes the side data (ex: V8 code cache) for the specified cache entry.
+  // Does nothing if the entry doesn't exist or the `expected_response_time`
+  // differs from the entry's.
+  // Note: This "side data" is same meaning as "metadata" in HTTPCache. We use
+  // "metadata" in cache_storage.proto for the pair of headers of a request and
+  // a response. To avoid the confusion we use "side data" here.
+  void WriteSideData(CacheStorageCacheHandle cache_handle,
+                     GURL url,
+                     base::Time expected_response_time,
+                     int64_t trace_id,
+                     mojo_base::BigBuffer data);
+
   // WriteSideData callbacks
   void WriteSideDataDidGetBucketSpaceRemaining(
-      ErrorCallback callback,
+      CacheStorageCacheHandle cache_handle,
       const GURL& url,
       base::Time expected_response_time,
       int64_t trace_id,
-      scoped_refptr<net::IOBuffer> buffer,
-      int buf_len,
+      mojo_base::BigBuffer data,
       storage::QuotaErrorOr<int64_t> space_remaining);
 
-  void WriteSideDataImpl(ErrorCallback callback,
+  void WriteSideDataImpl(base::OnceClosure callback,
                          const GURL& url,
                          base::Time expected_response_time,
                          int64_t trace_id,
-                         scoped_refptr<net::IOBuffer> buffer,
-                         int buf_len);
-  void WriteSideDataDidGetUsageAndQuota(
-      ErrorCallback callback,
-      const GURL& url,
-      base::Time expected_response_time,
-      int64_t trace_id,
-      scoped_refptr<net::IOBuffer> buffer,
-      int buf_len,
-      blink::mojom::QuotaStatusCode status_code,
-      int64_t usage,
-      int64_t quota);
-  void WriteSideDataDidOpenEntry(ErrorCallback callback,
+                         mojo_base::BigBuffer data);
+  void WriteSideDataDidOpenEntry(base::OnceClosure callback,
                                  base::Time expected_response_time,
                                  int64_t trace_id,
-                                 scoped_refptr<net::IOBuffer> buffer,
-                                 int buf_len,
+                                 mojo_base::BigBuffer data,
                                  disk_cache::EntryResult result);
   void WriteSideDataDidReadMetaData(
-      ErrorCallback callback,
+      base::OnceClosure callback,
       base::Time expected_response_time,
       int64_t trace_id,
-      scoped_refptr<net::IOBuffer> buffer,
-      int buf_len,
+      mojo_base::BigBuffer data,
       ScopedWritableEntry entry,
       std::unique_ptr<proto::CacheMetadata> headers);
   void WriteSideDataDidWrite(
-      ErrorCallback callback,
+      base::OnceClosure callback,
       ScopedWritableEntry entry,
       int expected_bytes,
       std::unique_ptr<content::proto::CacheMetadata> metadata,
       int64_t trace_id,
       int rv);
-  void WriteSideDataDidWriteMetadata(ErrorCallback callback,
+  void WriteSideDataDidWriteMetadata(base::OnceClosure callback,
                                      ScopedWritableEntry entry,
                                      int64_t padding,
                                      int64_t side_data_padding,
                                      int expected_bytes,
                                      int rv);
-  void WriteSideDataComplete(ErrorCallback callback,
+  void WriteSideDataComplete(base::OnceClosure callback,
                              ScopedWritableEntry entry,
                              int64_t padding,
                              int64_t side_data_padding,
@@ -460,6 +461,11 @@ class CONTENT_EXPORT CacheStorageCache {
                           int rv);
   void PutWriteBlobToCache(std::unique_ptr<PutContext> put_context,
                            int disk_cache_body_index);
+  void PutDidWriteSideDataToCache(std::unique_ptr<PutContext> put_context,
+                                  int disk_cache_body_index,
+                                  ScopedWritableEntry entry,
+                                  base::ByteSize expected_bytes,
+                                  int rv);
   void PutDidWriteBlobToCache(std::unique_ptr<PutContext> put_context,
                               BlobToDiskCacheIDMap::KeyType blob_to_cache_key,
                               int disk_cache_body_index,
@@ -513,6 +519,10 @@ class CONTENT_EXPORT CacheStorageCache {
       int64_t trace_id,
       blink::mojom::CacheStorageError error,
       std::unique_ptr<QueryCacheResults> query_cache_results);
+
+  bool IsClosingOrClosed() const {
+    return close_requested_ || backend_state_ == BACKEND_CLOSED;
+  }
 
   void CloseImpl(base::OnceClosure callback);
 
@@ -602,11 +612,14 @@ class CONTENT_EXPORT CacheStorageCache {
   // as long this cache object is also referenced.
   CacheStorageHandle cache_storage_handle_;
 
-  const scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner_;
   const scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy_;
   BackendState backend_state_ = BACKEND_UNINITIALIZED;
   std::unique_ptr<CacheStorageScheduler> scheduler_;
   bool initializing_ = false;
+  // Reject new operations once closing is requested. Keep this separate from
+  // backend_state_ so previously scheduled operations can use the open backend
+  // until the close operation runs.
+  bool close_requested_ = false;
   // The actual cache size (not including padding).
   int64_t cache_size_;
   int64_t cache_padding_ = 0;
@@ -619,6 +632,10 @@ class CONTENT_EXPORT CacheStorageCache {
 
   // Owns the elements of the list
   BlobToDiskCacheIDMap active_blob_to_disk_cache_writers_;
+
+  // Owns active side data writer capabilities handed out to renderers.
+  std::set<std::unique_ptr<SideDataWriter>, base::UniquePtrComparator>
+      side_data_writers_;
 
   // Whether or not to store data in disk or memory.
   const bool memory_only_;

@@ -6,6 +6,7 @@ module searchbox.mojom;
 
 import "components/omnibox/browser/fusebox_action.mojom";
 import "components/omnibox/browser/omnibox.mojom";
+import "components/omnibox/browser/suggest_template_info.mojom";
 import "components/omnibox/composebox/composebox_query.mojom";
 import "mojo/public/mojom/base/big_buffer.mojom";
 import "mojo/public/mojom/base/string16.mojom";
@@ -13,7 +14,46 @@ import "mojo/public/mojom/base/time.mojom";
 import "mojo/public/mojom/base/unguessable_token.mojom";
 import "ui/base/mojom/window_open_disposition.mojom";
 import "ui/gfx/geometry/mojom/geometry.mojom";
+import "ui/gfx/range/mojom/range.mojom";
 import "url/mojom/url.mojom";
+
+// LINT.IfChange(UrlDeemphasisMode)
+// The mode of URL component deemphasis to apply, matching
+// `OmniboxView::UpdateTextStyle()`.
+enum UrlDeemphasisMode {
+  kEverything,
+  kAllButScheme,
+  kAllButHost,
+  kNothing,
+};
+// LINT.ThenChange(//chrome/browser/ui/omnibox/omnibox_view.cc:DemphasizeComponents)
+
+// URL component emphasis for a specific string (e.g. the omnibox input text,
+// or the text an `AutocompleteMatch` displays in the input), matching
+// `OmniboxView::UpdateTextStyle()`.
+struct UrlEmphasis {
+  // Whether the string should be styled as a URL. If false, nothing is
+  // deemphasized and the ranges below are unset.
+  bool text_is_url;
+  UrlDeemphasisMode deemphasis_mode;
+  // Half-open [start, end) ranges of the scheme and host components within
+  // the string this emphasis was computed for. Offsets are in UTF-16 code
+  // units, not UTF-8 bytes: the browser computes them on a
+  // `std::u16string`, which matches JS string indexing (e.g.
+  // `String.prototype.substring()`), so non-ASCII text (including surrogate
+  // pairs) lines up on both sides. The ranges are only meaningful for that
+  // exact string.
+  //
+  // A range is unset if the component isn't present in the string (e.g.
+  // "example.com" has no scheme). For view-source: and blob: URLs, the
+  // ranges refer to the inner URL's components, so `scheme_range` does not
+  // necessarily start at 0.
+  gfx.mojom.Range? scheme_range;
+  gfx.mojom.Range? host_range;
+  // Security styling for the scheme component (e.g. for cert errors).
+  bool scheme_strike_through = false;
+  bool scheme_dangerous = false;
+};
 
 // See components/omnibox/browser/autocomplete_match.h.
 struct ACMatchClassification {
@@ -37,6 +77,17 @@ enum KeywordType {
   kChip,
   kInKeyword,
   kInstant,
+};
+
+// How the user entered keyword mode. Maps to the keyword mode entry method
+// used for logging in `OmniboxEditModel`.
+enum KeywordActivationMethod {
+  // A mouse click, e.g. on the keyword chip.
+  kClick,
+  // A touch tap, e.g. on the keyword chip.
+  kTap,
+  // A keyboard key, e.g. Tab, that moved the selection into keyword mode.
+  kKeyboard,
 };
 
 struct InputKeywordModel {
@@ -75,10 +126,6 @@ struct AutocompleteMatch {
   mojo_base.mojom.String16 a11y_label;
   bool allowed_to_be_default_match;
   array<Action> actions;
-  mojo_base.mojom.String16 contents;
-  array<ACMatchClassification> contents_class;
-  mojo_base.mojom.String16 description;
-  array<ACMatchClassification> description_class;
   url.mojom.Url destination_url;
   mojo_base.mojom.String16 inline_autocompletion;
   mojo_base.mojom.String16 fill_into_edit;
@@ -88,20 +135,11 @@ struct AutocompleteMatch {
   // The url for the suggestion icon. |icon_url| is an external url or
   // a data URI.
   url.mojom.Url icon_url;
-  // Used to paint a placeholder while fetching |image_url|. These two fields
-  // are valid for entity suggestions only. Entity suggestions have a |type| of
-  // 'search-suggest-entity'.
-  string image_dominant_color;
-  // The image url for entity suggestions. |image_url| is an external url or
-  // a data URI.
-  string image_url;
   // Used to determine if the match is a contextual suggestion.
   bool is_contextual_suggestion;
-  // Used to determine if the match is a non-canned AI suggestion.
-  bool is_noncanned_aim_suggestion;
-  // Used to determine if the match should be rendered in a two-row layout
-  // (e.g. calculator, entity images, people search).
-  bool is_two_row_suggestion;
+  // Presentation template for this match. Populated for every match, including
+  // matches without a server-provided SuggestTemplateInfo.
+  suggest_template_info.mojom.SuggestTemplateInfo suggest_template;
   // Result of AutocompleteMatch::IsSearchType().
   bool is_search_type;
   // Used to determine if the match is an enterprise search aggregator people
@@ -109,7 +147,6 @@ struct AutocompleteMatch {
   bool is_enterprise_search_aggregator_people_type;
   string type;  // Result of omnibox::AutocompleteMatchTypeToString().
   mojo_base.mojom.String16 remove_button_a11y_label;
-  bool swap_contents_and_description;
   // Whether to show the description for a contextual match.
   bool show_contextual_description;
   // ID of the group the suggestion belongs to. 0 if it does not belong to any.
@@ -127,6 +164,10 @@ struct AutocompleteMatch {
   fusebox_action.mojom.FuseboxAction? fusebox_action;
   // Style of this suggestion match as reported in SuggestTemplateInfo.
   SuggestStyle suggest_style = SuggestStyle.kUnspecified;
+  // Precomputed URL emphasis for the text this match shows in the input:
+  // `fill_into_edit`, or, for an inline-autocompleted default match, the
+  // user's input text followed by `inline_autocompletion`.
+  UrlEmphasis? url_emphasis;
 };
 
 // Information about a suggested tab in the WebUI.
@@ -143,6 +184,9 @@ struct TabInfo {
   bool show_in_previous_tab_chip;
   // The time the tab was last active.
   mojo_base.mojom.TimeTicks last_active;
+  // Whether the tab is currently loading, matching the tab strip's loading
+  // indicator.
+  bool is_loading;
 };
 
 // Represents a file attachment whose upload was started browser-side (currently
@@ -291,6 +335,9 @@ struct AutocompleteResult {
   map<int32, SuggestionGroup> suggestion_groups_map;
   array<AutocompleteMatch> matches;
   mojo_base.mojom.String16? smart_compose_inline_hint;
+  // Whether to show the AIM suggestion activity link below the matches. True
+  // when any match is a non-canned AIM suggestion.
+  bool show_aim_activity_link;
 };
 
 enum SelectionLineState {
@@ -303,6 +350,7 @@ enum SelectionLineState {
   kCtrlEnter = 7,
   kFocusedButtonVoiceSearch = 8,
   kFocusedButtonLensSearch = 9,
+  kFocusedButtonContextualChip = 10,
 };
 
 // See components/omnibox/browser/omnibox_popup_selection.h
@@ -462,13 +510,17 @@ interface PageHandler {
   // it is deletable. |url| is used to confirm the match |line| selection.
   DeleteAutocompleteMatch(uint8 line, url.mojom.Url url);
 
-  // Activate a keyword. `match_selection_timestamp` is the number of
+  // Activate a keyword, i.e. enter keyword mode for the keyword of the match at
+  // `line`. Called whenever the WebUI enters keyword mode, whether via the
+  // keyword chip or keyboard navigation, so that the browser-side keyword state
+  // stays in sync with the WebUI. `match_selection_timestamp` is the number of
   // microseconds since Jan. 1, 1970 (ECMAScript epoch). `url` is only used to
-  // confirm the match `line` selection. `is_mouse_event` is used for logging.
+  // confirm the match `line` selection. `activation_method` is used for
+  // logging.
   ActivateKeyword(uint8 line,
                   url.mojom.Url url,
                   mojo_base.mojom.TimeTicks match_selection_timestamp,
-                  bool is_mouse_event);
+                  KeywordActivationMethod activation_method);
 
   // Executes the Pedal Action. `match_selection_timestamp` is the number of
   // microseconds since Jan. 1, 1970 (ECMAScript epoch). `url` is only used to
@@ -625,6 +677,15 @@ interface PageHandler {
   // Called to retrieve the current Smart Tab Sharing state.
   [EnableIfNot=is_android]
   GetSmartTabSharingActive() => (bool active);
+
+  // Called when the page resets its session without submitting. Forgets any
+  // Smart Tab Sharing choice made in the current session so the next session
+  // starts from the default state (e.g. the default-on pref). Unlike
+  // SetSmartTabSharingActive(), this is not a user action: it records no
+  // toggle metrics and does not clear attached context. Replies with the
+  // resulting effective state.
+  [EnableIfNot=is_android]
+  ResetSmartTabSharing() => (bool active);
 
   // Dispatched when an FRE stage is dismissed.
   DismissFre(FreStage stage);

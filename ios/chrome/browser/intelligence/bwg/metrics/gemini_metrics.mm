@@ -292,6 +292,11 @@ void RecordLiveFREOutcome(IOSGeminiLiveFREOutcome outcome) {
   base::UmaHistogramEnumeration(kGeminiLiveFREOutcomeHistogram, outcome);
 }
 
+void RecordLiveFREConsentLinkClick() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiLiveFREConsentLinkClick"));
+}
+
 void RecordLiveButtonTapped() {
   base::RecordAction(base::UserMetricsAction("MobileGeminiLiveButtonTapped"));
 }
@@ -655,14 +660,19 @@ void RecordURLOpened() {
   base::RecordAction(base::UserMetricsAction("MobileGeminiURLOpened"));
 }
 
+void RecordGeminiImmersiveLearningCardWebModalOpened() {
+  base::RecordAction(base::UserMetricsAction(
+      "MobileGeminiImmersiveLearningCardWebModalOpened"));
+}
+
+void RecordGeminiWebModalNavigatedToNewTab() {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiWebModalNavigatedToNewTab"));
+}
+
 void RecordGeminiEntryPointClick(gemini::EntryPoint entry_point,
                                  bool is_fre_flow) {
-  if (entry_point == gemini::EntryPoint::Promo) {
-    base::RecordAction(
-        base::UserMetricsAction("MobileGeminiEntryPointAutomatic"));
-  } else {
-    base::RecordAction(base::UserMetricsAction("MobileGeminiEntryPointTapped"));
-  }
+  base::RecordAction(base::UserMetricsAction("MobileGeminiEntryPointTapped"));
   base::UmaHistogramEnumeration(kEntryPointHistogram, entry_point);
   if (is_fre_flow) {
     base::UmaHistogramEnumeration(kFirstRunEntryPointHistogram, entry_point);

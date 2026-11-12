@@ -52,10 +52,12 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/test/browser_task_environment.h"
+#include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/features_generated.h"
+#include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
 #include "ui/webui/webui_allowlist.h"
 #include "url/gurl.h"
@@ -86,6 +88,14 @@
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 #include "components/safe_browsing/content/common/file_type_policies_test_util.h"
+#endif
+
+#if BUILDFLAG(SAFE_BROWSING_DOWNLOAD_PROTECTION)
+#include "chrome/browser/safe_browsing/download_protection/download_protection_service.h"
+#include "chrome/browser/safe_browsing/services_delegate.h"
+#include "chrome/browser/safe_browsing/test_safe_browsing_service.h"
+#include "chrome/test/base/testing_browser_process.h"
+#include "content/public/browser/file_system_access_write_item.h"
 #endif
 
 using content::BrowserContext;
@@ -3914,6 +3924,159 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
   EXPECT_EQ(future.Get(), PermissionRequestOutcome::kRequestAborted);
   web_contents_->SetDelegate(nullptr);
 }
+
+// Verifies that `RequestPermission()` requested from a cross-origin child
+// iframe evaluates the embedding frame hierarchy and returns
+// `PermissionRequestOutcome::kThirdPartyContext`, even when the grant holds an
+// active `PermissionStatus::GRANTED` status.
+TEST_F(ChromeFileSystemAccessPermissionContextTest,
+       RequestPermission_ThirdPartyIframe_AlreadyGranted_Blocked) {
+  // Navigates the main frame to `kTestOrigin` to obtain an active write grant.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin.GetURL());
+  auto grant = permission_context()->GetWritePermissionGrant(
+      kTestOrigin, kTestPathInfo, HandleType::kFile, AccessTrigger::kSave);
+  ASSERT_EQ(grant->GetStatus(), PermissionStatus::GRANTED);
+
+  // Navigates the top-level main frame to `kTestOrigin2` and embeds
+  // `kTestOrigin` inside a cross-origin child iframe.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin2.GetURL());
+  content::RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
+      ->InitializeRenderFrameIfNeeded();
+  content::RenderFrameHost* child_rfh =
+      content::RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
+          ->AppendChild("child_iframe");
+  auto child_simulator = content::NavigationSimulator::CreateRendererInitiated(
+      kTestOrigin.GetURL(), child_rfh);
+  child_simulator->Commit();
+  child_rfh = child_simulator->GetFinalRenderFrameHost();
+
+  ASSERT_EQ(child_rfh->GetLastCommittedOrigin(), kTestOrigin);
+  ASSERT_EQ(child_rfh->GetMainFrame()->GetLastCommittedOrigin(), kTestOrigin2);
+  ASSERT_NE(child_rfh->GetLastCommittedOrigin(),
+            child_rfh->GetMainFrame()->GetLastCommittedOrigin());
+
+  // Simulates user activation and requests permission from the third-party
+  // child frame.
+  content::RenderFrameHostTester::For(child_rfh)->SimulateUserActivation();
+
+  base::test::TestFuture<PermissionRequestOutcome> future;
+  grant->RequestPermission(child_rfh->GetGlobalId(),
+                           UserActivationState::kRequired,
+                           future.GetCallback());
+
+  // In an unfixed state, `PermissionGrantImpl::RequestPermission()` checks
+  // whether `GetActivePermissionStatus()` differs from `PermissionStatus::ASK`
+  // before evaluating whether `embedding_origin` differs from `origin_`.
+  // When the status is already `PermissionStatus::GRANTED`, it early-returns
+  // `PermissionRequestOutcome::kRequestAborted`, bypassing the third-party
+  // block.
+  EXPECT_EQ(future.Get(), PermissionRequestOutcome::kThirdPartyContext);
+}
+
+// Verifies that `RequestPermission()` requested from a cross-origin child
+// iframe evaluates the embedding frame hierarchy and returns
+// `PermissionRequestOutcome::kThirdPartyContext`, even when the origin holds
+// persistent permissions.
+TEST_F(ChromeFileSystemAccessPermissionContextTest,
+       RequestPermission_ThirdPartyIframe_PersistentPermission_Blocked) {
+  // Navigates the top-level main frame to `kTestOrigin2`.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin2.GetURL());
+
+  // Creates a cross-origin child iframe and navigates it to `kTestOrigin`.
+  content::RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
+      ->InitializeRenderFrameIfNeeded();
+  content::RenderFrameHost* child_rfh =
+      content::RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
+          ->AppendChild("child_iframe");
+  auto child_simulator = content::NavigationSimulator::CreateRendererInitiated(
+      kTestOrigin.GetURL(), child_rfh);
+  child_simulator->Commit();
+  child_rfh = child_simulator->GetFinalRenderFrameHost();
+
+  ASSERT_EQ(child_rfh->GetLastCommittedOrigin(), kTestOrigin);
+  ASSERT_EQ(child_rfh->GetMainFrame()->GetLastCommittedOrigin(), kTestOrigin2);
+  ASSERT_NE(child_rfh->GetLastCommittedOrigin(),
+            child_rfh->GetMainFrame()->GetLastCommittedOrigin());
+
+  // Configures persistent permissions for `kTestOrigin` and persists write
+  // permission.
+  permission_context()->SetOriginHasExtendedPermissionForTesting(kTestOrigin);
+  permission_context()->GetWritePermissionGrant(
+      kTestOrigin, kTestPathInfo, HandleType::kFile, AccessTrigger::kSave);
+
+  // Obtains a write grant with `AccessTrigger::kOpen` (simulating
+  // deserialization from IndexedDB).
+  auto grant = permission_context()->GetWritePermissionGrant(
+      kTestOrigin, kTestPathInfo, HandleType::kFile, AccessTrigger::kOpen);
+
+  // Simulates user activation and requests permission from the third-party
+  // child frame.
+  content::RenderFrameHostTester::For(child_rfh)->SimulateUserActivation();
+
+  base::test::TestFuture<PermissionRequestOutcome> future;
+  grant->RequestPermission(child_rfh->GetGlobalId(),
+                           UserActivationState::kRequired,
+                           future.GetCallback());
+
+  // In an unfixed state, `PermissionGrantImpl::RequestPermission()` evaluates
+  // `CanAutoGrantViaPersistentPermission()` before checking whether
+  // `embedding_origin` differs from `origin_`. It early-returns
+  // `PermissionRequestOutcome::kGrantedByPersistentPermission` and upgrades the
+  // status to `PermissionStatus::GRANTED`, bypassing the third-party block.
+  EXPECT_EQ(future.Get(), PermissionRequestOutcome::kThirdPartyContext);
+}
+
+// Verifies that `RequestPermission()` requested from a nested third-party
+// iframe (A -> B -> A) evaluates the third-party context and returns
+// `PermissionRequestOutcome::kThirdPartyContext`, even when the embedding
+// top-level origin matches the iframe's origin.
+TEST_F(ChromeFileSystemAccessPermissionContextTest,
+       RequestPermission_NestedThirdPartyIframe_Blocked) {
+  // Navigates the top-level main frame to `kTestOrigin`.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin.GetURL());
+  content::RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
+      ->InitializeRenderFrameIfNeeded();
+
+  // Appends a child iframe and navigates it to `kTestOrigin2`.
+  content::RenderFrameHost* child_rfh =
+      content::RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
+          ->AppendChild("child_iframe");
+  auto child_simulator = content::NavigationSimulator::CreateRendererInitiated(
+      kTestOrigin2.GetURL(), child_rfh);
+  child_simulator->Commit();
+  child_rfh = child_simulator->GetFinalRenderFrameHost();
+
+  // Appends a grandchild iframe and navigates it to `kTestOrigin`.
+  content::RenderFrameHost* grandchild_rfh =
+      content::RenderFrameHostTester::For(child_rfh)->AppendChild(
+          "grandchild_iframe");
+  auto grandchild_simulator =
+      content::NavigationSimulator::CreateRendererInitiated(
+          kTestOrigin.GetURL(), grandchild_rfh);
+  grandchild_simulator->Commit();
+  grandchild_rfh = grandchild_simulator->GetFinalRenderFrameHost();
+
+  ASSERT_EQ(grandchild_rfh->GetLastCommittedOrigin(), kTestOrigin);
+  ASSERT_EQ(grandchild_rfh->GetMainFrame()->GetLastCommittedOrigin(),
+            kTestOrigin);
+  EXPECT_TRUE(grandchild_rfh->GetStorageKey().IsThirdPartyContext());
+
+  auto grant = permission_context()->GetWritePermissionGrant(
+      kTestOrigin, kTestPathInfo, HandleType::kFile, AccessTrigger::kOpen);
+
+  // Simulates user activation and requests permission from the nested iframe.
+  content::RenderFrameHostTester::For(grandchild_rfh)->SimulateUserActivation();
+
+  base::test::TestFuture<PermissionRequestOutcome> future;
+  grant->RequestPermission(grandchild_rfh->GetGlobalId(),
+                           UserActivationState::kRequired,
+                           future.GetCallback());
+  EXPECT_EQ(future.Get(), PermissionRequestOutcome::kThirdPartyContext);
+}
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 TEST_F(ChromeFileSystemAccessPermissionContextTest,
@@ -3935,6 +4098,10 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
   EXPECT_FALSE(permission_context()->HasExtendedPermissionForTesting(
       kTestOrigin, kTestPathInfo, HandleType::kFile, GrantType::kWrite));
 
+  // Align the main frame's committed origin with the grant so that the request
+  // is evaluated as a first-party caller.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin2.GetURL());
   auto grant2 = permission_context()->GetWritePermissionGrant(
       kTestOrigin2, kTestPathInfo, HandleType::kFile, AccessTrigger::kOpen);
 
@@ -3984,6 +4151,10 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
   EXPECT_FALSE(permission_context()->HasExtendedPermissionForTesting(
       kTestOrigin, kTestPathInfo, HandleType::kFile, GrantType::kWrite));
 
+  // Align the main frame's committed origin with `grant2` so that the request
+  // is evaluated as a first-party caller.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin2.GetURL());
   base::test::TestFuture<PermissionRequestOutcome> future2;
   grant2->RequestPermission(frame_id(), UserActivationState::kRequired,
                             future2.GetCallback());
@@ -3998,6 +4169,9 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
   SetContentSettingValueForOrigin(kTestOrigin,
                                   ContentSettingsType::FILE_SYSTEM_WRITE_GUARD,
                                   CONTENT_SETTING_ASK);
+  // Recommit `kTestOrigin` so that the main frame matches `grant`.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin.GetURL());
   grant = permission_context()->GetWritePermissionGrant(
       kTestOrigin, kTestPathInfo, HandleType::kFile, AccessTrigger::kOpen);
   grant2 = permission_context()->GetWritePermissionGrant(
@@ -4011,6 +4185,9 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
   EXPECT_FALSE(permission_context()->HasExtendedPermissionForTesting(
       kTestOrigin, kTestPathInfo, HandleType::kFile, GrantType::kWrite));
 
+  // Recommit `kTestOrigin2` so that the main frame matches `grant2`.
+  content::WebContentsTester::For(web_contents())
+      ->NavigateAndCommit(kTestOrigin2.GetURL());
   base::test::TestFuture<PermissionRequestOutcome> future4;
   grant2->RequestPermission(frame_id(), UserActivationState::kRequired,
                             future4.GetCallback());
@@ -4789,15 +4966,16 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
           ->GetStatus(),
       PermissionStatus::GRANTED);
 
-  // 1. Revoke the read permission for the file path by calling NotifyEntryRemoved.
-  // This adds the path to downgraded_read_paths.
+  // 1. Revoke the read permission for the file path by calling
+  // NotifyEntryRemoved. This adds the path to downgraded_read_paths.
   permission_context()->NotifyEntryRemoved(kTestOrigin, file_path_info);
 
   // Verify the path is added to downgraded_read_paths.
   EXPECT_TRUE(permission_context()->IsPathInDowngradedReadPathsForTesting(
       kTestOrigin, file_path_info.path));
 
-  // 2. Revoke all active grants for the origin. This should clear downgraded_read_paths.
+  // 2. Revoke all active grants for the origin. This should clear
+  // downgraded_read_paths.
   permission_context()->RevokeActiveGrantsForTesting(kTestOrigin);
 
   // Verify the path is removed from downgraded_read_paths.
@@ -4835,8 +5013,8 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
           ->GetStatus(),
       PermissionStatus::GRANTED);
 
-  // 1. Revoke the read permission for the file paths by calling NotifyEntryRemoved.
-  // This adds the paths to downgraded_read_paths.
+  // 1. Revoke the read permission for the file paths by calling
+  // NotifyEntryRemoved. This adds the paths to downgraded_read_paths.
   permission_context()->NotifyEntryRemoved(kTestOrigin, file_path_info1);
   permission_context()->NotifyEntryRemoved(kTestOrigin, file_path_info2);
 
@@ -4880,15 +5058,16 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
           ->GetStatus(),
       PermissionStatus::GRANTED);
 
-  // 1. Revoke the read permission for the file path by calling NotifyEntryRemoved.
-  // This adds the path to downgraded_read_paths.
+  // 1. Revoke the read permission for the file path by calling
+  // NotifyEntryRemoved. This adds the path to downgraded_read_paths.
   permission_context()->NotifyEntryRemoved(kTestOrigin, file_path_info);
 
   // Verify the path is added to downgraded_read_paths.
   EXPECT_TRUE(permission_context()->IsPathInDowngradedReadPathsForTesting(
       kTestOrigin, file_path_info.path));
 
-  // 2. Revoke all active grants. This should clear downgraded_read_paths for all origins.
+  // 2. Revoke all active grants. This should clear downgraded_read_paths for
+  // all origins.
   permission_context()->RevokeAllActiveGrants();
 
   // Verify the path is removed from downgraded_read_paths.
@@ -5369,3 +5548,138 @@ TEST_F(ChromeFileSystemAccessPermissionContextTest,
       SensitiveDirectoryResult::kAllowed);
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(SAFE_BROWSING_DOWNLOAD_PROTECTION)
+namespace {
+
+class MockDownloadProtectionService
+    : public safe_browsing::DownloadProtectionService {
+ public:
+  explicit MockDownloadProtectionService(
+      safe_browsing::SafeBrowsingServiceImpl* sb_service)
+      : safe_browsing::DownloadProtectionService(sb_service) {
+    SetEnabled(true);
+  }
+
+  MOCK_METHOD(void,
+              CheckFileSystemAccessWrite,
+              (std::unique_ptr<content::FileSystemAccessWriteItem> item,
+               safe_browsing::CheckDownloadCallback callback),
+              (override));
+};
+
+class SafeBrowsingServiceWithMockDownloadProtection
+    : public safe_browsing::TestSafeBrowsingService {
+ public:
+  SafeBrowsingServiceWithMockDownloadProtection() {
+    services_delegate_ =
+        safe_browsing::ServicesDelegate::CreateForTest(this, this);
+  }
+
+  MockDownloadProtectionService* mock_download_protection_service() const {
+    return mock_download_protection_service_;
+  }
+
+  void ShutDown() {
+    mock_download_protection_service_ = nullptr;
+    safe_browsing::TestSafeBrowsingService::ShutDown();
+  }
+
+ protected:
+  ~SafeBrowsingServiceWithMockDownloadProtection() override = default;
+
+  bool CanCreateDownloadProtectionService() override { return true; }
+
+  safe_browsing::DownloadProtectionService* CreateDownloadProtectionService()
+      override {
+    auto* service = new MockDownloadProtectionService(this);
+    mock_download_protection_service_ = service;
+    return service;
+  }
+
+ private:
+  raw_ptr<MockDownloadProtectionService> mock_download_protection_service_ =
+      nullptr;
+};
+
+}  // namespace
+
+// Regression test for b/503201581.
+// Verifies that when the initiating RenderProcessHost is already destroyed
+// (e.g. popup teardown during close), PerformAfterWriteChecks still populates
+// item->browser_context from the permission context's profile and runs the
+// Safe Browsing download check instead of failing open with UNKNOWN.
+TEST_F(ChromeFileSystemAccessPermissionContextTest,
+       PerformAfterWriteChecks_MissingRenderProcessHost) {
+  auto sb_service =
+      base::MakeRefCounted<SafeBrowsingServiceWithMockDownloadProtection>();
+  TestingBrowserProcess::GetGlobal()->SetSafeBrowsingService(sb_service.get());
+  sb_service->Initialize();
+  ASSERT_TRUE(sb_service->mock_download_protection_service());
+
+  auto item = std::make_unique<content::FileSystemAccessWriteItem>();
+  item->target_file_path = temp_dir_.GetPath().AppendASCII("test.exe");
+  item->full_path = temp_dir_.GetPath().AppendASCII("test.exe.crswap");
+  item->sha256_hash = "hash";
+  item->size = 100;
+  item->frame_url = GURL("https://example.com/popup");
+  // Use a non-existent child process ID so RenderProcessHost::FromID returns
+  // nullptr, simulating popup renderer teardown.
+  const content::GlobalRenderFrameHostId kDeadFrameId(999999, 999999);
+  item->initiating_frame_id = kDeadFrameId;
+
+  EXPECT_CALL(*sb_service->mock_download_protection_service(),
+              CheckFileSystemAccessWrite(testing::_, testing::_))
+      .WillOnce([&](std::unique_ptr<content::FileSystemAccessWriteItem> item,
+                    safe_browsing::CheckDownloadCallback callback) {
+        EXPECT_EQ(item->browser_context, profile());
+        std::move(callback).Run(safe_browsing::DownloadCheckResult::DANGEROUS);
+      });
+
+  base::test::TestFuture<
+      ChromeFileSystemAccessPermissionContext::AfterWriteCheckResult>
+      future;
+  permission_context()->PerformAfterWriteChecks(std::move(item), kDeadFrameId,
+                                                future.GetCallback());
+
+  EXPECT_EQ(
+      future.Get(),
+      ChromeFileSystemAccessPermissionContext::AfterWriteCheckResult::kBlock);
+
+  sb_service->ShutDown();
+  TestingBrowserProcess::GetGlobal()->SetSafeBrowsingService(nullptr);
+}
+
+TEST_F(ChromeFileSystemAccessPermissionContextTest,
+       PerformAfterWriteChecks_DestroyedPermissionContextFailsClosed) {
+  auto sb_service =
+      base::MakeRefCounted<SafeBrowsingServiceWithMockDownloadProtection>();
+  TestingBrowserProcess::GetGlobal()->SetSafeBrowsingService(sb_service.get());
+  sb_service->Initialize();
+  ASSERT_TRUE(sb_service->mock_download_protection_service());
+
+  auto temp_permission_context =
+      std::make_unique<ChromeFileSystemAccessPermissionContext>(profile());
+
+  auto item = std::make_unique<content::FileSystemAccessWriteItem>();
+  item->target_file_path = temp_dir_.GetPath().AppendASCII("test.exe");
+  item->full_path = temp_dir_.GetPath().AppendASCII("test.exe.crswap");
+  const content::GlobalRenderFrameHostId kDeadFrameId(999999, 999999);
+
+  base::test::TestFuture<
+      ChromeFileSystemAccessPermissionContext::AfterWriteCheckResult>
+      future;
+  temp_permission_context->PerformAfterWriteChecks(
+      std::move(item), kDeadFrameId, future.GetCallback());
+
+  // Destroy the permission context before the posted UI thread task runs.
+  temp_permission_context.reset();
+
+  EXPECT_EQ(
+      future.Get(),
+      ChromeFileSystemAccessPermissionContext::AfterWriteCheckResult::kBlock);
+
+  sb_service->ShutDown();
+  TestingBrowserProcess::GetGlobal()->SetSafeBrowsingService(nullptr);
+}
+#endif  // BUILDFLAG(SAFE_BROWSING_DOWNLOAD_PROTECTION)

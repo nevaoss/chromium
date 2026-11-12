@@ -14,6 +14,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/lens/core/mojom/lens.mojom.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
@@ -53,6 +54,22 @@ bool IsVisualSelectionType(lens::LensOverlaySelectionType selection_type) {
          selection_type == lens::TAP_ON_REGION_GLEAM ||
          selection_type == lens::TAP_ON_OBJECT ||
          selection_type == lens::INJECTED_IMAGE;
+}
+
+bool IsSelectedRegionOnlyInvocationSource(
+    Profile* profile,
+    std::optional<lens::LensOverlayInvocationSource> invocation_source) {
+  if (invocation_source ==
+      lens::LensOverlayInvocationSource::kOmniboxPopupButton) {
+    return true;
+  }
+  if (contextual_tasks::AreContextualTasksUpdatedEntryPointsEnabled(profile)) {
+    return invocation_source ==
+               lens::LensOverlayInvocationSource::kContentAreaContextMenuPage ||
+           invocation_source == lens::LensOverlayInvocationSource::kAppMenu ||
+           invocation_source == lens::LensOverlayInvocationSource::kToolbar;
+  }
+  return false;
 }
 
 std::vector<lens::ContextualInput> ConvertPageContentToContextualInput(
@@ -208,11 +225,12 @@ void LensQueryFlowRouter::StartQueryFlow(
     if (!GetContextualSearchSessionHandle()) {
       pending_session_handle_ = CreateContextualSearchSessionHandle();
       pending_session_handle_->NotifySessionStarted();
-      // Add observer to listen for context upload status changes. This is only
-      // needed when a new session handle is created as part of this flow as
-      // the response is not used by the overlay otherwise.
+    }
+    if (auto* session_handle = GetContextualSearchSessionHandle();
+        session_handle && session_handle->GetController()) {
+      // Add observer to listen for context upload status changes.
       context_upload_status_observation_.Observe(
-          GetContextualSearchSessionHandle()->GetController());
+          session_handle->GetController());
     }
 
     initial_context_params_ = InitialContextParams{
@@ -228,8 +246,8 @@ void LensQueryFlowRouter::StartQueryFlow(
         .invocation_time = invocation_time,
     };
 
-    if (lens_search_controller_->invocation_source() ==
-        lens::LensOverlayInvocationSource::kOmniboxPopupButton) {
+    if (IsSelectedRegionOnlyInvocationSource(
+            profile(), lens_search_controller_->invocation_source())) {
       context_upload_mode_ = ContextUploadMode::kSelectedRegionOnly;
       // For region-only uploads, page context is not uploaded, but page context
       // eligibility is evaluated to ensure protected pages are blocked.
@@ -984,8 +1002,8 @@ bool LensQueryFlowRouter::ShouldPopulateFullPageContext() const {
   // if the invocation source is one where page context is blocked.
   if (context_upload_mode_ == ContextUploadMode::kSelectedRegionOnly ||
       (lens_search_controller_ &&
-       lens_search_controller_->invocation_source() ==
-           lens::LensOverlayInvocationSource::kOmniboxPopupButton)) {
+       IsSelectedRegionOnlyInvocationSource(
+           profile(), lens_search_controller_->invocation_source()))) {
     return false;
   }
   const bool can_add_page_content_to_query =

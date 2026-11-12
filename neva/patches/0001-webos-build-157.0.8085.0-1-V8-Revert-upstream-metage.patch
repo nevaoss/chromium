@@ -1,0 +1,72 @@
+From a5a0b214b1ec6c9d6c472c7b25ca7ebda2beb337 Mon Sep 17 00:00:00 2001
+From: "denis.bechin" <denis.bechin@lge.com>
+Date: Wed, 28 Oct 2026 19:43:24 +0300
+Subject: [PATCH][webos][build] 157.0.8085.0~1: V8: Revert upstream metagen changes
+
+After the V8 CL
+https://chromium-review.googlesource.com/c/v8/v8/+/8495895 (rolled in
+the upstream CL https://crrev.com/c/8501405) where GN flag query runs in
+a temporary output directory, our V8 metagen tool patch does't apply.
+This change reverted to investigate the issue later.
+
+Issue: NEVA-11511
+---
+diff --git a/tools/metagen/compile_flags.py b/tools/metagen/compile_flags.py
+index d7c469d6f49..cb971b77f80 100644
+--- a/tools/metagen/compile_flags.py
++++ b/tools/metagen/compile_flags.py
+@@ -172,6 +172,43 @@ def get_compile_args_from_gn_desc(build_dir: str, target_label: str,
+   if not gn:
+     raise RuntimeError(
+         "[metagen] gn not found under <source-root>/buildtools or on PATH.")
++  # TODO(neva): Partial revert of
++  # https://chromium-review.googlesource.com/c/v8/v8/+/8495895. Remove this
++  # temporary workaround after webOS build failure is investigated and fixed.
++  out_rel = os.path.relpath(os.path.abspath(build_dir), source_root)
++  try:
++    # -q ("don't print output on success") keeps stdout to the JSON alone.
++    # Without it gn prepends any build-file warning to the document -- an
++    # arm_float_abi that no declare_args() claims on the arm64 bots, say --
++    # and the parse below fails. A gn that actually fails still reports.
++    proc = subprocess.run(
++        [gn, "desc", "-q", out_rel, target_label, "--format=json"],
++        cwd=source_root,
++        capture_output=True,
++        text=True,
++        check=True,
++    )
++  except FileNotFoundError:
++    raise RuntimeError(f"[metagen] gn binary not found: {gn}")
++  except subprocess.CalledProcessError as e:
++    # Most often the target is not in the graph for this toolchain, which gn
++    # reports by exiting non-zero -- or, for a toolchain-qualified label it
++    # cannot resolve, by crashing.
++    raise RuntimeError(f"[metagen] `gn desc {out_rel} {target_label}` failed "
++                       f"(exit {e.returncode}). Has `gn gen` run there, and "
++                       f"is the target part of that toolchain's build?\n"
++                       f"{(e.stderr or '').strip()}")
++  try:
++    desc = json.loads(proc.stdout)
++  except json.JSONDecodeError as e:
++    raise RuntimeError(f"[metagen] `gn desc` output was not valid JSON: {e}")
++  if not isinstance(desc, dict) or not desc:
++    raise RuntimeError(
++        f"[metagen] `gn desc` returned no target for {target_label}.")
++  # Single-target query: the sole value maps the (toolchain-qualified)
++  # label to its resolved fields.
++  fields = next(iter(desc.values()))
++  '''
+   # GN evaluates build files during `desc`. Some Chromium build scripts write
+   # into the output directory, so querying the active directory during a build
+   # can race with other actions reading those files.
+@@ -235,6 +272,7 @@ def get_compile_args_from_gn_desc(build_dir: str, target_label: str,
+         key: [restore_build_path(value) for value in fields.get(key) or []]
+         for key in ("defines", "include_dirs", "cflags", "cflags_cc")
+     }
++  '''
+
+   flags: list[str] = [f"-D{d}" for d in fields.get("defines") or []]
+   for inc in fields.get("include_dirs") or []:
+--
+2.55.0
+

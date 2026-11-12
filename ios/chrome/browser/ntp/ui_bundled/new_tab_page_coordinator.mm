@@ -40,6 +40,8 @@
 #import "ios/chrome/app/profile/profile_init_stage.h"
 #import "ios/chrome/app/profile/profile_state.h"
 #import "ios/chrome/app/profile/profile_state_observer.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios_factory.h"
 #import "ios/chrome/browser/aim/model/ios_chrome_aim_eligibility_service_factory.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator.h"
 #import "ios/chrome/browser/authentication/account_menu/coordinator/account_menu_coordinator_delegate.h"
@@ -50,6 +52,9 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_utils.h"
 #import "ios/chrome/browser/bubble/ui_bundled/bubble_view_controller_presenter.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_availability.h"
+#import "ios/chrome/browser/composebox/menu/coordinator/composebox_menu_coordinator.h"
+#import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
+#import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_coordinator.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_delegate.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_mediator.h"
@@ -73,10 +78,12 @@
 #import "ios/chrome/browser/history/model/history_service_factory.h"
 #import "ios/chrome/browser/home_customization/coordinator/home_customization_coordinator.h"
 #import "ios/chrome/browser/home_customization/coordinator/home_customization_delegate.h"
+#import "ios/chrome/browser/home_customization/model/home_background_customization_service.h"
+#import "ios/chrome/browser/home_customization/model/home_background_customization_service_factory.h"
 #import "ios/chrome/browser/home_customization/utils/home_customization_constants.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
+#import "ios/chrome/browser/menu/public/menu_histograms.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
-#import "ios/chrome/browser/menu/ui_bundled/menu_histograms.h"
 #import "ios/chrome/browser/metrics/model/activity_reporter.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
@@ -177,6 +184,8 @@
 #import "services/network/public/cpp/shared_url_loader_factory.h"
 #import "ui/base/l10n/l10n_util_mac.h"
 
+using ntp_tiles::AimButtonRefactorArm;
+
 @interface NewTabPageCoordinator () <AccountMenuCoordinatorDelegate,
                                      AuthenticationServiceObserving,
                                      ContentSuggestionsDelegate,
@@ -218,6 +227,11 @@
 
   BubbleViewControllerPresenter* _fakeboxLensIconBubblePresenter;
   BubbleViewControllerPresenter* _aimBubblePresenter;
+  BubbleViewControllerPresenter* _customizationButtonBubblePresenter;
+
+  // Whether to present the customization button IPH bubble when the
+  // customization menu is dismissed.
+  BOOL _presentCustomizationButtonBubbleOnDismiss;
 }
 
 // Coordinator for the ContentSuggestions.
@@ -329,6 +343,8 @@
   // The Safari data import used by the content suggestions.
   SafariDataImportExportCoordinator* _safariDataImportExportCoordinator;
   ActivityReporterWithIncognito* _activityReporter;
+  // The coordinator showing the multimodal composebox menu.
+  ComposeboxMenuCoordinator* _composeboxMenuCoordinator;
 }
 
 @synthesize baseViewController = _baseViewController;
@@ -387,8 +403,8 @@
   [self initializeServices];
   [self initializeNTPComponents];
 
-  [self configureHeaderView];
   [self configureNTPMediator];
+  [self configureHeaderView];
   if ([self.NTPMediator isFeedHeaderVisible]) {
     [self configureFeedAndHeader];
   }
@@ -467,6 +483,8 @@
   [_tabGroupIndicatorCoordinator stop];
   _tabGroupIndicatorCoordinator = nil;
 
+  [self stopMenuCoordinator];
+
   [self.contentSuggestionsCoordinator stop];
   self.contentSuggestionsCoordinator = nil;
   self.headerView = nil;
@@ -525,6 +543,9 @@
 
   [_aimBubblePresenter dismissAnimated:NO];
   _aimBubblePresenter = nil;
+
+  [_customizationButtonBubblePresenter dismissAnimated:NO];
+  _customizationButtonBubblePresenter = nil;
 
   _identityManager = nullptr;
 
@@ -705,6 +726,7 @@
   [self stopAccountMenuCoordinator];
   [self stopSigninCoordinator];
   [self dismissCustomizationMenu];
+  [self dismissMultimodalActionsMenu];
 }
 
 - (void)setBlueDotVisible:(BOOL)visible {
@@ -795,6 +817,10 @@
     self.NTPViewController.headerView = self.headerView;
     self.NTPViewController.mutator = self.NTPMediator;
   }
+
+  if (IsPlusButtonInFakeboxEnabled()) {
+    [self createMenuCoordinator];
+  }
 }
 
 #pragma mark - Configurators
@@ -850,8 +876,14 @@
         _searchEngineLogoMediator.view;
     _searchEngineLogoMediator.consumer = self.NTPRedesignViewController;
   } else {
-    headerView.searchEngineLogoView = _searchEngineLogoMediator.view;
     _searchEngineLogoMediator.consumer = headerView;
+    headerView.searchEngineLogoView = _searchEngineLogoMediator.view;
+  }
+
+  if (!IsComposeboxPlusButtonBottomSheet() &&
+      IsPlusButtonMenuInFakeboxEnabled()) {
+    UIMenu* menu = [_composeboxMenuCoordinator createMenu];
+    [headerView setPlusButtonMenu:menu];
   }
 }
 
@@ -878,6 +910,12 @@
     ChromeAccountManagerService* accountManagerService =
         ChromeAccountManagerServiceFactory::GetForProfile(profile);
 
+    AimEligibilityService* aimEligibilityService =
+        ntp_tiles::GetAimButtonRefactorArm() ==
+                ntp_tiles::AimButtonRefactorArm::kAimAsMvt
+            ? _aimEligibilityService
+            : nil;
+
     _mostVisitedTilesMediator = [[MostVisitedTilesMediator alloc]
         initWithMostVisitedSite:std::move(mostVisitedFactory)
                  historyService:historyService
@@ -888,7 +926,8 @@
                                     self.browser)
           accountManagerService:accountManagerService
               engagementTracker:engagementTracker
-              layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)];
+              layoutGuideCenter:LayoutGuideCenterForBrowser(self.browser)
+          aimEligibilityService:aimEligibilityService];
     _mostVisitedTilesMediator.contentSuggestionsDelegate =
         self.contentSuggestionsCoordinator.delegate;
     _mostVisitedTilesMediator.actionFactory = [[BrowserActionFactory alloc]
@@ -950,6 +989,8 @@
       self.contentSuggestionsCoordinator.viewController;
   NTPViewController.NTPShortcutsHandler = self;
   NTPViewController.feedVisible = [self isFeedVisible];
+  NTPViewController.feedTopSectionVisible =
+      self.feedTopSectionCoordinator.feedTopSectionVisible;
   NTPViewController.feedTopSectionViewController =
       self.feedTopSectionCoordinator.viewController;
   NTPViewController.feedWrapperViewController = self.feedWrapperViewController;
@@ -967,6 +1008,8 @@
     self.NTPRedesignViewController.NTPContentDelegate = self;
     self.NTPRedesignViewController.headerCommandsHandler = self;
     self.NTPRedesignViewController.feedViewController = self.feedViewController;
+    self.NTPRedesignViewController.feedTopSectionVisible =
+        self.feedTopSectionCoordinator.feedTopSectionVisible;
     self.NTPRedesignViewController.feedTopSectionViewController =
         self.feedTopSectionCoordinator.viewController;
     self.NTPRedesignViewController.magicStackViewController =
@@ -1131,8 +1174,8 @@
                                          continuationProvider:
                                              DoNothingContinuationProvider()];
     _signinCoordinator.signinCompletion =
-        ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
-          id<SystemIdentity> completionIdentity) {
+        ^(SigninCoordinator* coordinator,
+          SigninCoordinatorResultOrIdentity result) {
           [weakSelf showSigninCommandDidFinishWithCoordinator:coordinator];
         };
     [_signinCoordinator start];
@@ -1183,6 +1226,11 @@
   [popupMenuHandler showToolsMenuPopup];
 }
 
+// Dismisses the multimodal menu.
+- (void)dismissMultimodalActionsMenu {
+  [_composeboxMenuCoordinator dismissMenu];
+}
+
 #pragma mark - SigninPromoViewMediatorDelegate
 
 // This also belongs to #pragma mark - SigninPromoViewMediatorDelegate
@@ -1198,21 +1246,21 @@
       // because the part that check the coordinator value is in the
       // `addSigninCompletion:` below, and so not integrated in the completion
       // function yet.
-      completion(nil, SigninCoordinatorResultInterrupted, nil);
+      completion(nil, base::unexpected(SigninCoordinatorResultInterrupted));
     }
     return;
   } else if (_signinCoordinator) {
     // There may be a signin-coordinator being presented. Due to uncertainty,
     // let’s close the current sign-in coordinator and start the new one.
     _signinCoordinator.signinCompletion(
-        _signinCoordinator, SigninCoordinatorResultInterrupted, nil);
+        _signinCoordinator,
+        base::unexpected(SigninCoordinatorResultInterrupted));
     // The signin-completion should have unset the sign-in coordinator.
     CHECK(!_signinCoordinator);
   }
   __weak __typeof(self) weakSelf = self;
   [command addSigninCompletion:^(SigninCoordinator* coordinator,
-                                 SigninCoordinatorResult result,
-                                 id<SystemIdentity>) {
+                                 SigninCoordinatorResultOrIdentity result) {
     [weakSelf showSigninCommandDidFinishWithCoordinator:coordinator];
   }];
   _signinCoordinator =
@@ -1282,15 +1330,22 @@
 #pragma mark - ContentSuggestionsDelegate
 
 - (void)contentSuggestionsWasUpdated {
-  if (!IsNTPRedesignEnabled()) {
-    // Force a layout to make sure the frame height is successfully updated,
-    // before updating height above the feed.
-    UIView* contentSuggestionsView =
-        self.NTPViewController.contentSuggestionsViewController.view;
-    [contentSuggestionsView setNeedsLayout];
-    [contentSuggestionsView layoutIfNeeded];
-    [self.NTPViewController updateHeightAboveFeed];
+  if (IsNTPRedesignEnabled()) {
+    return;
   }
+  UIView* contentSuggestionsView =
+      self.NTPViewController.contentSuggestionsViewController.view;
+  if (!contentSuggestionsView.superview ||
+      self.NTPViewController.view.bounds.size.width <= 0) {
+    return;
+  }
+  // Force a layout on the superview so `contentSuggestionsView` and its
+  // subviews are laid out and `contentSuggestionsView.frame` reflects the
+  // updated height before updating the height above the feed.
+  [contentSuggestionsView setNeedsLayout];
+  [contentSuggestionsView.superview setNeedsLayout];
+  [contentSuggestionsView.superview layoutIfNeeded];
+  [self.NTPViewController updateHeightAboveFeed];
 }
 
 - (void)shareURL:(const GURL&)URL
@@ -1325,8 +1380,14 @@
                            animated:NO];
 }
 
-- (void)openMainCustomizationMenu {
+- (void)openMainCustomizationMenuWithIconBubbleOnDismiss:
+            (BOOL)withIconBubbleOnDismiss
+                                          scrollToBottom:(BOOL)scrollToBottom {
+  _presentCustomizationButtonBubbleOnDismiss = withIconBubbleOnDismiss;
   [self openCustomizationMenuAtPage:CustomizationMenuPage::kMain animated:YES];
+  if (scrollToBottom) {
+    [_customizationCoordinator scrollMainPageToBottom];
+  }
 }
 
 - (void)openSafariDataImport {
@@ -1338,6 +1399,16 @@
   _safariDataImportExportCoordinator.delegate = self;
   [self.NTPMediator markSafariDataImportSetupListItemAsComplete];
   [_safariDataImportExportCoordinator start];
+}
+
+- (void)openNTPBackgroundPhotoPicker {
+  UIViewController* baseVC = [self activeViewController];
+  _customizationCoordinator = [[HomeCustomizationCoordinator alloc]
+      initWithBaseViewController:baseVC
+                         browser:self.browser];
+  _customizationCoordinator.delegate = self;
+  [_customizationCoordinator start];
+  [_customizationCoordinator presentPhotoPicker];
 }
 
 #pragma mark - FeedSignInPromoDelegate
@@ -1415,8 +1486,8 @@
                                       DoNothingContinuationProvider()];
   }
   _signinCoordinator.signinCompletion =
-      ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
-        id<SystemIdentity> completionIdentity) {
+      ^(SigninCoordinator* coordinator,
+        SigninCoordinatorResultOrIdentity result) {
         [weakSelf showSigninCommandDidFinishWithCoordinator:coordinator];
       };
   [_signinCoordinator start];
@@ -1538,6 +1609,14 @@
   }
 }
 
+- (void)feedTopSectionDidUpdateVisibility:(BOOL)visible {
+  if (IsNTPRedesignEnabled()) {
+    self.NTPRedesignViewController.feedTopSectionVisible = visible;
+  } else {
+    self.NTPViewController.feedTopSectionVisible = visible;
+  }
+}
+
 - (BOOL)isSignInAllowed {
   return self.authService->SigninEnabled();
 }
@@ -1583,6 +1662,21 @@
   RecordHomeAction(IOSHomeActionType::kMostVisitedTile, [self isStartSurface]);
 }
 
+- (void)aimInMostVisitedOpened {
+  if (ntp_tiles::GetAimButtonRefactorArm() ==
+      ntp_tiles::AimButtonRefactorArm::kAimAsMvt) {
+    RecordHomeAction(IOSHomeActionType::kAimInMostVisited,
+                     [self isStartSurface]);
+    [self.NTPMetricsRecorder recordAIMButtonTapped];
+  }
+}
+
+- (void)standaloneAIMModuleOpened {
+  RecordHomeAction(IOSHomeActionType::kStandaloneAIMModule,
+                   [self isStartSurface]);
+  [self.NTPMetricsRecorder recordAIMButtonTapped];
+}
+
 - (void)shortcutTileOpened {
   RecordMagicStackClick(ContentSuggestionsModuleType::kShortcuts,
                         [self isStartSurface]);
@@ -1613,7 +1707,6 @@
   RecordMagicStackClick(ContentSuggestionsModuleType::kTips,
                         [self isStartSurface]);
   RecordHomeAction(IOSHomeActionType::kTips, [self isStartSurface]);
-  [self dismissCustomizationMenu];
 }
 
 - (void)shopCardOpened {
@@ -1817,8 +1910,12 @@
 
 // Opens the AIM web page.
 - (void)openAIMWeb {
-  GURL URL = GetUrlForAim(self.templateURLService,
-                          /*query_start_time=*/base::Time::Now());
+  AIModeButtonServiceIOS* service =
+      AIModeButtonServiceIOSFactory::GetForProfile(self.profile);
+  if (!service) {
+    return;
+  }
+  GURL URL = service->GetUrl();
   OpenNewTabCommand* command = [OpenNewTabCommand commandWithURLFromChrome:URL];
   command.extraHeaders =
       web_navigation_util::VariationHeadersForURL(URL, /*is_incognito=*/false);
@@ -1863,7 +1960,7 @@
 // coordinator is stopped.
 - (void)showSigninCommandDidFinishWithCoordinator:
     (SigninCoordinator*)coordinator {
-  CHECK_EQ(_signinCoordinator, coordinator, base::NotFatalUntil::M151);
+  CHECK_EQ(_signinCoordinator, coordinator);
   [self stopSigninCoordinator];
 }
 
@@ -1913,6 +2010,8 @@
       self.feedHeaderViewController = nil;
     }
     self.NTPRedesignViewController.feedViewController = self.feedViewController;
+    self.NTPRedesignViewController.feedTopSectionVisible =
+        self.feedTopSectionCoordinator.feedTopSectionVisible;
     self.NTPRedesignViewController.feedTopSectionViewController =
         self.feedTopSectionCoordinator.viewController;
     [self updateFeedLayout];
@@ -1978,6 +2077,22 @@
   feedTopSectionCoordinator.NTPDelegate = self;
   [feedTopSectionCoordinator start];
   return feedTopSectionCoordinator;
+}
+
+// Creates the Composebox menu coordinator for the plus button.
+- (void)createMenuCoordinator {
+  [_composeboxMenuCoordinator stop];
+  _composeboxMenuCoordinator = [[ComposeboxMenuCoordinator alloc]
+      initWithBaseViewController:self.baseViewController
+                         browser:self.browser
+                      entrypoint:ComposeboxEntrypoint::kNTPFakebox];
+  [_composeboxMenuCoordinator start];
+}
+
+// Stops and clears the menu coordinator.
+- (void)stopMenuCoordinator {
+  [_composeboxMenuCoordinator stop];
+  _composeboxMenuCoordinator = nil;
 }
 
 // Private setter for the `webState` property.
@@ -2112,6 +2227,19 @@
   }
 }
 
+// Applies and stores the cached ephemeral theme if no custom background or
+// color theme is currently set (or if an ephemeral theme is already active).
+- (void)maybeApplyEphemeralTheme {
+  if (!self.profile || !IsNTPEphemeralThemeEnabled()) {
+    return;
+  }
+  HomeBackgroundCustomizationService* backgroundCustomizationService =
+      HomeBackgroundCustomizationServiceFactory::GetForProfile(self.profile);
+  if (backgroundCustomizationService) {
+    backgroundCustomizationService->MaybeApplyEphemeralTheme();
+  }
+}
+
 // Returns the current customization state represnting the visibility of NTP
 // components.
 - (IOSNTPImpressionCustomizationState)currentCustomizationState {
@@ -2209,18 +2337,68 @@
   _aimBubblePresenter = presenter;
 }
 
-// Returns `YES` if conditions to focus on Composebox are met.
-- (BOOL)canFocusComposebox {
+// Returns `YES` if conditions to focus on Composebox for AI Mode are met.
+- (BOOL)canFocusComposeboxForAIM {
   if (!_aimEligibilityService->IsFuseboxEligible()) {
     return NO;
   }
 
-  if (ntp_tiles::GetAimButtonRefactorArm() !=
-      ntp_tiles::AimButtonRefactorArm::kFocusComposeboxAimQuickAction) {
-    return NO;
+  switch (ntp_tiles::GetAimButtonRefactorArm()) {
+    case AimButtonRefactorArm::kAimAsMvt:
+    case AimButtonRefactorArm::kAimAsModule:
+    case AimButtonRefactorArm::kNoChips:
+    case AimButtonRefactorArm::kDisabled:
+      return NO;
+    case AimButtonRefactorArm::kAttachImageQuickAction:
+    case AimButtonRefactorArm::kImageGenerationQuickAction:
+    case AimButtonRefactorArm::kFocusComposeboxAimQuickAction:
+      return YES;
   }
+}
 
-  return YES;
+// Scrolls the NTP to the top if needed and presents the Home customization
+// menu button IPH bubble.
+- (void)presentCustomizationButtonBubble {
+  if (!self.isScrolledToTop) {
+    __weak __typeof(self) weakSelf = self;
+    [UIView animateWithDuration:kMaterialDuration1
+        animations:^{
+          [weakSelf setContentOffsetToTop];
+        }
+        completion:^(BOOL finished) {
+          [weakSelf presentCustomizationButtonBubbleNow];
+        }];
+    return;
+  }
+  [self presentCustomizationButtonBubbleNow];
+}
+
+// Presents the Home customization menu button IPH bubble without checking
+// scroll position.
+- (void)presentCustomizationButtonBubbleNow {
+  NSString* text =
+      l10n_util::GetNSString(IDS_IOS_MAGIC_STACK_TIP_NTP_THEME_IPH);
+  UIView* menuButton = [LayoutGuideCenterForBrowser(self.browser)
+      referencedViewUnderName:kFeedIPHNamedGuide];
+  if (!menuButton) {
+    return;
+  }
+  CGPoint anchorPoint =
+      [menuButton.superview convertPoint:menuButton.frame.origin toView:nil];
+  anchorPoint.x += menuButton.frame.size.width / 2;
+  anchorPoint.y += menuButton.frame.size.height;
+  BubbleViewControllerPresenter* presenter =
+      [[BubbleViewControllerPresenter alloc]
+          initDefaultBubbleWithText:text
+                     arrowDirection:BubbleArrowDirectionUp
+                          alignment:BubbleAlignmentTopOrLeading
+                  dismissalCallback:nil];
+  UIViewController* activeVC = [self activeViewController];
+  if (![presenter canPresentInView:activeVC.view anchorPoint:anchorPoint]) {
+    return;
+  }
+  [presenter presentInViewController:activeVC anchorPoint:anchorPoint];
+  _customizationButtonBubblePresenter = presenter;
 }
 
 #pragma mark - HomeCustomizationDelegate
@@ -2245,6 +2423,11 @@
         IDS_IOS_HOME_BACKGROUND_CUSTOMIZATION_USER_UPLOAD_NOT_SYNCED_SNACKBAR);
     SnackbarMessage* message = [[SnackbarMessage alloc] initWithTitle:title];
     [snackbarHandler showSnackbarMessageOverBrowserToolbar:message];
+  }
+
+  if (_presentCustomizationButtonBubbleOnDismiss) {
+    _presentCustomizationButtonBubbleOnDismiss = NO;
+    [self presentCustomizationButtonBubble];
   }
 }
 
@@ -2271,7 +2454,7 @@
   RecordHomeAction(IOSHomeActionType::kQuickActionAIM, [self isStartSurface]);
   [self.NTPMetricsRecorder recordAIMButtonTapped];
 
-  if ([self canFocusComposebox] &&
+  if ([self canFocusComposeboxForAIM] &&
       MaybeShowComposebox(self.browser, ComposeboxEntrypoint::kNTPAIMButton)) {
     return;
   }
@@ -2282,13 +2465,25 @@
 - (void)openAIMImageGeneration {
   CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
            ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction);
-  // TODO(crbug.com/549020046): Implement this method and add metrics recording
-  // hooks.
+
+  // TODO(crbug.com/549020046): Add metrics recording hooks.
+  if (![self canFocusComposeboxForAIM]) {
+    return;
+  }
+
+  ComposeboxFocusParams* params = [[ComposeboxFocusParams alloc]
+      initWithEntrypoint:ComposeboxEntrypoint::kNTPImageGenerationButton
+                   query:nil
+                toolMode:ComposeboxMode::kImageGeneration
+               modelMode:ComposeboxModelOption::kNone
+          attachmentList:nil];
+  ShowComposebox(self.browser, params);
 }
 
 - (void)openAIMAttachImage {
-  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
-           ntp_tiles::AimButtonRefactorArm::kAttachImageQuickAction);
+  AimButtonRefactorArm arm = ntp_tiles::GetAimButtonRefactorArm();
+  CHECK(arm == AimButtonRefactorArm::kImageGenerationQuickAction ||
+        arm == AimButtonRefactorArm::kAttachImageQuickAction);
   // TODO(crbug.com/549020046): Implement this method and add metrics recording
   // hooks.
 }
@@ -2337,8 +2532,21 @@
   if (!_aimEligibilityService->IsFuseboxEligible()) {
     [self openAIMWeb];
   }
-  [HandlerForProtocol(self.browser->GetCommandDispatcher(),
-                      BrowserCoordinatorCommands) showMultimodalActionsMenu];
+
+  if (IsComposeboxPlusButtonBottomSheet()) {
+    [_composeboxMenuCoordinator presentBottomSheetMenu];
+  } else {
+    id<BrowserCoordinatorCommands> browserCoordinatorHandler =
+        HandlerForProtocol(self.browser->GetCommandDispatcher(),
+                           BrowserCoordinatorCommands);
+    [browserCoordinatorHandler
+        showComposeboxFromEntrypoint:ComposeboxEntrypoint::kNTPPlusButton
+                           withQuery:nil];
+  }
+}
+
+- (void)didOpenContextualMultimodalActionsMenu {
+  [_composeboxMenuCoordinator recordAttachmentsMenuOpen];
 }
 
 #pragma mark - TabGridStateObserving
@@ -2365,7 +2573,9 @@
 }
 
 - (void)showHomeBackgroundCustomizationPromoWithUIHandler:
-    (id<PromosManagerUIHandler>)uiHandler {
+            (id<PromosManagerUIHandler>)uiHandler
+                                shouldAlertFETOfDismissal:
+                                    (BOOL)shouldAlertFETOfDismissal {
   // The promo includes an in-product help bubble for the menu button itself.
   if (self.browser) {
     [HandlerForProtocol(self.browser->GetCommandDispatcher(), HelpCommands)
@@ -2374,9 +2584,10 @@
   }
 
   if (_customizationCoordinator) {
-    // Make sure to alert the coordinator that user education is active, so it
+    // Make sure to alert the coordinator if user education is active, so it
     // can alert the Feature Engagement Tracker on dismissal.
-    _customizationCoordinator.openedForUserEducation = YES;
+    _customizationCoordinator.openedForUserEducation =
+        shouldAlertFETOfDismissal;
     _customizationCoordinator.promosManagerUIHandler = uiHandler;
     return;
   }
@@ -2387,10 +2598,14 @@
   [self.NTPMetricsRecorder recordHomeCustomizationMenuOpenedFromEntrypoint:
                                HomeCustomizationEntrypoint::kPromo];
 
+  // Apply and store the cached ephemeral theme if no custom background or
+  // color theme is currently set.
+  [self maybeApplyEphemeralTheme];
+
   [self openCustomizationMenuAtPage:CustomizationMenuPage::kMain animated:YES];
-  // Make sure to alert the coordinator that user education is active, so it can
+  // Make sure to alert the coordinator if user education is active, so it can
   // alert the Feature Engagement Tracker on dismissal.
-  _customizationCoordinator.openedForUserEducation = YES;
+  _customizationCoordinator.openedForUserEducation = shouldAlertFETOfDismissal;
   _customizationCoordinator.promosManagerUIHandler = uiHandler;
 }
 

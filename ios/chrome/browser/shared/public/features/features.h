@@ -59,6 +59,9 @@ BASE_DECLARE_FEATURE(kEnableLensInNTP);
 // Feature flag to enable the Lens "Search copied image" omnibox entrypoint.
 BASE_DECLARE_FEATURE(kEnableLensInOmniboxCopiedImage);
 
+// Feature flag to enable the Lens View Finder Unified experience
+BASE_DECLARE_FEATURE(kEnableLensViewFinderUnifiedExperience);
+
 // Whether to enable loading AIM in the lens result page.
 BASE_DECLARE_FEATURE(kLensLoadAIMInLensResultPage);
 
@@ -165,16 +168,6 @@ BASE_DECLARE_FEATURE(kDisableLensCamera);
 
 // Feature flag to enable Lens on iPad.
 BASE_DECLARE_FEATURE(kEnableLensOnIPad);
-
-// Feature param for kEnableLensOnIPad presentation style.
-inline constexpr char kEnableLensOnIPadPresentationStyleParam[] =
-    "presentation-style";
-inline constexpr char kEnableLensOnIPadPresentationStyleSidePanel[] =
-    "side-panel";
-inline constexpr char kEnableLensOnIPadPresentationStyleBottomSheet[] =
-    "bottom-sheet";
-inline constexpr char kEnableLensOnIPadPresentationStyleWideBottomSheet[] =
-    "wide-bottom-sheet";
 
 // Feature flag that allows the Auto-deletion feature to clear all downloaded
 // files scheduled for deletion on every application startup, regardless of when
@@ -316,8 +309,12 @@ bool IsLiquidGlassEffectEnabled();
 // foreground inactive state after opening an external app.
 BASE_DECLARE_FEATURE(kInactiveNavigationAfterAppLaunchKillSwitch);
 
+// Returns whether the current device is an iPhone Duo device.
+bool IsDuoDevice();
+
 // Convenience method for determining if Pinned Tabs is enabled.
-// The Pinned Tabs feature is fully enabled on iPhone and disabled on iPad.
+// The Pinned Tabs feature is fully enabled on standard iPhone and disabled
+// on iPad and iPhone Duo.
 bool IsPinnedTabsEnabled();
 
 // Feature flag for caching the ios module ranker.
@@ -674,6 +671,12 @@ BASE_DECLARE_FEATURE(kComposeboxPlusButtonBottomSheet);
 // Returns true if the ComposeboxPlusButtonBottomSheet feature is enabled.
 bool IsComposeboxPlusButtonBottomSheet();
 
+// Enables the ComposeboxPlusButtonLargeCarousel feature.
+BASE_DECLARE_FEATURE(kComposeboxPlusButtonLargeCarousel);
+
+// Returns true if the ComposeboxPlusButtonLargeCarousel feature is enabled.
+bool IsComposeboxPlusButtonLargeCarousel();
+
 // Enables the ChromeNextIa feature.
 BASE_DECLARE_FEATURE(kChromeNextIa);
 
@@ -841,6 +844,24 @@ bool IsPlusButtonInFakeboxEnabled();
 // Returns true if the plus button contextual menu in NTP fakebox is enabled
 bool IsPlusButtonMenuInFakeboxEnabled();
 
+// Enables the submenu with more options in the plus menu.
+BASE_DECLARE_FEATURE(kPlusButtonMenuMoreOptionsSubmenu);
+
+// Returns true if the submenu groupping is enabled in the plus menu.
+bool IsPlusButtonMenuMoreOptionsSubmenu();
+
+// Enables the string updates in the plus button menu.
+BASE_DECLARE_FEATURE(kPlusButtonMenuStringUpdates);
+
+// Returns true if the string updates in the plus button menu.
+bool IsPlusButtonMenuStringUpdatesEnabled();
+
+// Enables the string updates in the plus button menu.
+BASE_DECLARE_FEATURE(kPlusButtonMenuVerticalListView);
+
+// Returns true if the vertical list view is enabled in the plus button menu.
+bool IsPlusButtonMenuVerticalListView();
+
 // Enables the `AssistantAimMinimizedState` feature.
 BASE_DECLARE_FEATURE(kAssistantAimMinimizedState);
 
@@ -874,12 +895,19 @@ BASE_DECLARE_FEATURE(kIdentityAwareness);
 // Returns true if the IdentityAwareness feature is enabled.
 bool IsIdentityAwarenessEnabled();
 
-// Finch experiment flag to display a ring around the avatar for users with an
-// AI subscription.
+// Finch experiment flag to display a ring around the avatar in the NTP and
+// account menu for users with an AI subscription.
 BASE_DECLARE_FEATURE(kAiSubscriptionAvatarRingIOS);
+
+// Finch experiment flag to display a ring around the avatar in the overflow
+// menu, settings and manage accounts for users with an AI subscription.
+BASE_DECLARE_FEATURE(kAiSubscriptionAvatarRingFollowupIOS);
 
 // Returns true if the AiSubscriptionAvatarRingIOS feature is enabled.
 bool IsAiSubscriptionAvatarRingIOSEnabled();
+
+// Returns true if the AiSubscriptionAvatarRingFollowupIOS feature is enabled.
+bool IsAiSubscriptionAvatarRingFollowupIOSEnabled();
 
 // Feature flag to enable the Infobar Banner Revamp (UI Refactor of the
 // Infobar/Banner Component).
@@ -954,7 +982,7 @@ BASE_DECLARE_FEATURE(kAimHistoryThreadsManagement);
 // Returns true if the AimHistoryThreadsManagement feature is enabled.
 bool IsAimHistoryThreadsManagementEnabled();
 
-// Enables TalkToChrome prototype.
+// Enables the TTC prototype.
 BASE_DECLARE_FEATURE(kTTCEnabled);
 
 // Returns true if the TTCEnabled feature is enabled.
@@ -968,5 +996,30 @@ BASE_DECLARE_FEATURE(kAimCobrowseWebSelectionSearch);
 
 // Returns true if the AimCobrowseWebSelectionSearch feature is enabled.
 bool IsAimCobrowseWebSelectionSearchEnabled();
+
+// Enables a long-press menu on the AppBar assistant button letting the user
+// choose which entry point the button shows.
+BASE_DECLARE_FEATURE(kAppBarAssistantCustomization);
+
+// Returns true if the AppBarAssistantCustomization feature is enabled.
+bool IsAppBarAssistantCustomizationEnabled();
+
+// Enables the LightAppBar feature.
+BASE_DECLARE_FEATURE(kLightAppBar);
+
+// Returns true if the LightAppBar feature is enabled.
+bool IsLightAppBarEnabled();
+
+// Enables the AssistantAimThreads feature.
+BASE_DECLARE_FEATURE(kAssistantAimThreads);
+
+// Returns true if the AssistantAimThreads feature is enabled.
+bool IsAssistantAimThreadsEnabled();
+
+// Enables the `kVoiceSearchEvolutionPhase1` feature.
+BASE_DECLARE_FEATURE(kVoiceSearchEvolutionPhase1);
+
+// Returns true if the `kVoiceSearchEvolutionPhase1` feature is enabled.
+bool IsVoiceSearchEvolutionPhase1Enabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

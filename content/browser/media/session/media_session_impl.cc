@@ -301,6 +301,12 @@ void MediaSessionImpl::RenderFrameDeleted(RenderFrameHost* rfh) {
 
 void MediaSessionImpl::PrimaryPageChanged(content::Page& page) {
   last_auto_picture_in_picture_info_.reset();
+
+  // Source icons are the primary page's favicons, so sync them with the new
+  // primary page, like Initialize() does. Waiting for DidUpdateFaviconURL() is
+  // not enough: pages without favicons (e.g. WebUIs) never call it, and pages
+  // restored from the back/forward cache don't call it again.
+  SetSourceIconsFromFavicons(web_contents()->GetFaviconURLs());
 }
 
 void MediaSessionImpl::DidFinishNavigation(
@@ -783,7 +789,9 @@ void MediaSessionImpl::Stop(SuspendType suspend_type) {
   if (audio_focus_state_ != State::SUSPENDED)
     OnSuspendInternal(suspend_type, State::SUSPENDED);
 
-  CHECK(audio_focus_state_ == State::SUSPENDED, base::NotFatalUntil::M160);
+  // TODO(crbug.com/563861408): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(audio_focus_state_ == State::SUSPENDED);
   normal_players_.clear();
 
   AbandonSystemAudioFocusIfNeeded();

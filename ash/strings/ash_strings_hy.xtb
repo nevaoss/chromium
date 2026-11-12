@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Հետարկել</translation>
 <translation id="2086334242442703436">Բացել էմոջիների ընտրիչը</translation>
 <translation id="2089550919269323883"><ph name="VM_NAME" />-ի տեղադրումն արգելափակված է կազմակերպության կանոններով։ Աջակցման համար դիմեք համակարգի ադմինիստրատորին։ Սխալի կոդ՝ <ph name="ERROR" />։</translation>
-<translation id="2093792000875799555">Steam Chromebook-ի համար․ նորություններ</translation>
 <translation id="209965399369889474">Սարքը միացած չէ ցանցին</translation>
 <translation id="2107581415810719320">Այլ կոճակ <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">USB-C մալուխը չի աջակցում Thunderbolt միջերես։ Սարքի աշխատանքի արդյունավետությունը կարող է սահմանափակվել։</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">Ինչի՞ վրա եք ուզում կենտրոնանալ։ Սեղմեք Enter՝ առաջադրանքն ավելացնելու համար։</translation>
 <translation id="229397294990920565">Բջջային ինտերնետն անջատվում է…</translation>
 <translation id="2295777434187870477">Խոսափողը միացված է։ Անջատելու համար սեղմեք այս կոճակը։</translation>
+<translation id="2296880470921996802">Ձեր ՏՏ ադմինիստրատորն անջատել է սեղմատախտակի պատմությունը</translation>
 <translation id="2302092602801625023">Այս հաշիվը կառավարվում է Family Link-ի կողմից</translation>
 <translation id="2303600792989757991">Փոխարկել պատուհանի համատեսքը</translation>
 <translation id="2304702218354340897">Իսկապե՞ս ուզում եք անջատել դեմքով կառավարումը</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">Չհաջողվեց սարքում կիրառել անցանց ռեժիմում աշխատանքի քաղաքականությունը:</translation>
 <translation id="3039939407102840004">Ստիլուսի մարտկոցի լիցքը՝ <ph name="PERCENTAGE" /> տոկոս։</translation>
 <translation id="304097922505898963">Բացել «Ստեղնաշարային դյուրանցումներ» հավելվածը</translation>
-<translation id="3040982432432547149">Օգնեք մեզ բարելավել Steam-ը Chromebook-ի համար</translation>
 <translation id="304417730895741346">Ձեր կողմից ամրացված և բացված հավելվածները դարակում են։ Դարակում հավելված ամրացնելու համար հավելվածի վրա սեղմեք մկնիկի աջ կոճակը կամ երկու մատով հպեք հպահարթակին։</translation>
 <translation id="3045670165536837541">Ընտրված է վերևի աջ կողմի բռնիչը, տեղաշարժելու համար օգտագործեք սլաքների ստեղները</translation>
 <translation id="3046178388369461825">Լինուքսի սկավառակում տարածքը շատ քիչ է։</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">Սեղմեք սքրինշոթ անելու դյուրանցման վրա</translation>
 <translation id="3702809606464356667">Ցուցադրվում են պատուհաններ ընթացիկ աշխատասեղանից։ Սեղմեք վեր սլաքի ստեղնը՝ բոլոր աշխատասեղանների պատուհանները ցուցադրելու համար։</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">Ժամանց</translation>
 <translation id="370665806235115550">Բեռնում…</translation>
 <translation id="3707093869106077605">«<ph name="UNAVAILABLE_DLC_ONE" />» և «<ph name="UNAVAILABLE_DLC_TWO" />» գործառույթները հասանելի չեն։</translation>
 <translation id="3708186454126126312">Նախկինում միացված սարքեր</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685">Սա հասանելի է դարձնում տեսախցիկը <ph name="APP_NAME" /> հավելվածին, ինչպես նաև բոլոր հավելվածներին և կայքերին, որոնք ունեն տեսախցիկի օգտագործման թույլտվություն։ Հնարավոր է՝ անհրաժեշտ լինի թարմացնել վեբ էջը կամ վերագործարկել հավելվածը։</translation>
 <translation id="3826099427150913765">Անցնել գաղտնաբառով նույնականացմանը</translation>
 <translation id="383058930331066723">Մարտկոցի տնտեսման ռեժիմը միացված է</translation>
-<translation id="3831226344927851293">Դուրս գալ ուղեցույցի ռեժիմից</translation>
 <translation id="383629559565718788">Ցուցադրել ստեղնաշարի կարգավորումները</translation>
 <translation id="384082539148746321">Ջնջե՞լ ձևանմուշը</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, ապա՝ <ph name="KEY_ONE" /> կամ <ph name="KEY_TWO" />, կամ <ph name="KEY_THREE" />, կամ <ph name="KEY_FOUR" /></translation>
@@ -1080,7 +1077,6 @@
 <translation id="4147911968024186208">Խնդրում ենք նորից փորձել։ Եթե խնդիրը չլուծվի, կապվեք աջակցման կենտրոնի մասնագետների հետ:</translation>
 <translation id="4150201353443180367">Էկրան</translation>
 <translation id="4151054805501931758">Դիմանկարի ռետուշ</translation>
-<translation id="4151449637210235443">Պատմեք մեզ խաղային ձեր վերջին փորձառության մասին</translation>
 <translation id="4156293514828496577">Մարտկոցի լիցքը՝ <ph name="PERCENTAGE" />%։ (մոտ <ph name="TIME_LEFT" />)։
 Որոշ գործառույթներ սահմանափակվել են՝ մարտկոցի աշխատաժամանակը երկարացնելու համար։</translation>
 <translation id="4158003972857765638">Դասավորել նոր աշխատասեղանին</translation>
@@ -1581,10 +1577,8 @@
 <translation id="5551974246223970793">Անցնել էջի որոնման հաջորդ արդյունքին</translation>
 <translation id="5556459405103347317">Վերաբեռնել</translation>
 <translation id="5558091555391176027">Միացնել/անջատել «Փոխանակում մոտակա սարքերի հետ» գործառույթի բարձր տեսանելիությունը</translation>
-<translation id="5558314826121965174">Ստեղծարարություն</translation>
 <translation id="556042886152191864">Կոճակ</translation>
 <translation id="5570122939431135380">Բացել նոր ներդիր նոր ինկոգնիտո պատուհանում</translation>
-<translation id="5572632238877308040">Կարևոր</translation>
 <translation id="5575528586625653441">Դեմո ռեժիմի գրանցման հարցումն անվավեր է։</translation>
 <translation id="557563299383177668">Հաջորդ պարբերությունը</translation>
 <translation id="5577082622442191756">Միացնել/անջատել Bluetooth-ը։ <ph name="STATE_TEXT" />։</translation>
@@ -1619,7 +1613,6 @@
 <translation id="5667546120811588575">Google Play-ի կարգավորում...</translation>
 <translation id="5669267381087807207">Ակտիվացում</translation>
 <translation id="5671658447180261823">Հեռացնել «<ph name="SUGGESTION_NAME" />» առաջարկը</translation>
-<translation id="5672890847723042801">Կոմունալ ծառայություններ</translation>
 <translation id="5673434351075758678">Կարգավորումների համաժամացման արդյունքում լեզուն փոխվել է: Ընթացիկ լեզուն՝ <ph name="TO_LOCALE" /> (նախկինում՝ <ph name="FROM_LOCALE" />):</translation>
 <translation id="5675363643668471212">Դարակի տարր</translation>
 <translation id="5677022547882470786">Որոնման հատվածն ընտրելու համար քաշեք նշորդը կամ սեղմեք բացատի ստեղնը</translation>
@@ -1795,7 +1788,6 @@
 <translation id="6127395413317891856">Դուք միացած չեք համացանցին։ Ստուգեք կապը և նորից փորձեք:</translation>
 <translation id="6129953537138746214">Բացատ</translation>
 <translation id="6132714462430777655">Բաց թողնե՞լ գրանցումն ուսումնական հաստատության հաշվում</translation>
-<translation id="6136872094979134163">Չհաջողվեց առբերել «Steam Chromebook-ի համար» տարբերակի նորությունները</translation>
 <translation id="6137566720514957455">Բացել <ph name="USER_EMAIL_ADDRESS" /> հաշվի հեռացման երկխոսության պատուհանը</translation>
 <translation id="6141205840878048728">Ինչի՞ վրա եք ուզում կենտրոնանալ</translation>
 <translation id="6141988275892716286">Հաստատեք ներբեռնումը</translation>
@@ -1875,7 +1867,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, ապա՝ <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" />, ապա <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">Անհայտ ցանցեր</translation>
 <translation id="6359587239691116345">Օգտվեք վերջին գործառույթներից և բարելավված անվտանգությունից։ Եթե չընդունեք այս թարմացումը, հնարավոր է՝ ձեր սարքն այլևս չաշխատի պատշաճ կերպով, և ձեզ մոտ կարող են առաջանալ անվտանգության և արդյունավետության խնդիրներ։</translation>
-<translation id="6362833380917912748">Ծանոթացեք ձեր ներկառուցված հավելվածներին</translation>
 <translation id="6364386432014869981">Ներկառուցված հպահարթակը միացված է</translation>
 <translation id="6376931439017688372">Bluetooth-ը միացված է</translation>
 <translation id="6378515133128829137">Ամրացնել պատուհանը աջ կողմում</translation>
@@ -2100,7 +2091,6 @@
 <translation id="7014684956566476813">Կապ է հաստատվել «<ph name="DEVICE_NAME" />» սարքի հետ</translation>
 <translation id="7015766095477679451">Վերադարձեք <ph name="COME_BACK_TIME" />։</translation>
 <translation id="70168403932084660">Աշխատասեղան 6</translation>
-<translation id="702252130983202758">Իմ հավելվածները</translation>
 <translation id="7025533177575372252">Կապեք ձեր <ph name="DEVICE_NAME" /> սարքը ձեր հեռախոսի հետ</translation>
 <translation id="7026338066939101231">Նվազեցնել</translation>
 <translation id="7029307918966275733">Crostini-ն տեղադրված չէ։ Տեղադրեք Crostini-ն՝ բոնուսները տեսնելու համար։</translation>
@@ -2539,7 +2529,6 @@
 <translation id="8277261673056602147">Ընդգծեք տեքստը էկրանին</translation>
 <translation id="8281886186245836920">Բաց թողնել</translation>
 <translation id="8282784978194352587">Շնորհավորո՛ւմ ենք։</translation>
-<translation id="8287009018010202411">Արդյունավետ աշխատանք</translation>
 <translation id="828708037801473432">Անջատված է</translation>
 <translation id="8289128870594824098">Սկավառակի չափը</translation>
 <translation id="8297006494302853456">Թույլ</translation>
@@ -2634,7 +2623,6 @@
 <translation id="8598235756057743477">Դասավորեք ձեր հավելվածներն ըստ անվանման կամ գույնի</translation>
 <translation id="8599864823732014237">Բաց թողնե՞լ կազմակերպության գրանցումը</translation>
 <translation id="8609384513243082612">Բացել նոր ներդիր</translation>
-<translation id="861045123704058818">Հավելվածները ժամանակավորապես դասավորված են ըստ կատեգորիայի</translation>
 <translation id="8612338981637220013">Բրա՛վո։</translation>
 <translation id="8613164732773110792">Միայն փոքրատառեր, թվեր, ընդգծման նշաններ և գծիկներ</translation>
 <translation id="8614517853887502247"><ph name="APP_1_TITLE" /> և <ph name="APP_2_TITLE" /> հավելվածների ծանուցումները թաքցված են, քանի որ միացված է ապահով դիտումը։</translation>
@@ -2826,7 +2814,6 @@
 <translation id="9129245940793250979">Հետևի կոճակ</translation>
 <translation id="9133335900048457298">Հնարավոր չէ տեսագրել պաշտպանված բովանդակությունը</translation>
 <translation id="9139720510312328767">Ջնջել հաջորդ տառը</translation>
-<translation id="9148058034647219655">Ելնել</translation>
 <translation id="9151906066336345901">end</translation>
 <translation id="9159421884295554245">Որոնեք Սեղմատախտակում</translation>
 <translation id="9168436347345867845">Ավելի ուշ</translation>

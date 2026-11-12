@@ -12,7 +12,7 @@
 
 #include "base/base64url.h"
 #include "base/check_deref.h"
-#include "base/compiler_specific.h"
+#include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/memory/raw_ptr_exclusion.h"
@@ -96,6 +96,7 @@
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_header.h"
+#include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
 #include "chrome/browser/ui/webui/feedback/feedback_dialog.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/extensions/api/pdf_viewer_private.h"
@@ -107,6 +108,7 @@
 #include "components/blocked_content/popup_blocker_tab_helper.h"
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/enterprise/browser/enterprise_switches.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_features.h"
 #include "components/lens/lens_overlay_dismissal_source.h"
@@ -131,6 +133,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/media_session.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/page_navigator.h"
 #include "content/public/browser/render_frame_host.h"
@@ -169,6 +172,7 @@
 #include "ui/events/base_event_utils.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/test/test_event.h"
+#include "ui/gfx/skia_util.h"
 #include "ui/shell_dialogs/fake_select_file_dialog.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
@@ -709,6 +713,10 @@ class LensOverlayControllerBrowserTest : public InProcessBrowserTest {
   void SetUp() override {
     ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
     SetupFeatureList();
+#if !BUILDFLAG(IS_CHROMEOS)
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+        switches::kEnableChromeBrowserCloudManagement);
+#endif
     policy_provider_.SetDefaultReturns(
         /*is_initialization_complete_return=*/true,
         /*is_first_policy_load_complete_return=*/true);
@@ -1519,10 +1527,8 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
       static_cast<lens::TestLensOverlayQueryController*>(
           GetLensOverlayQueryController());
   EXPECT_TRUE(fake_query_controller->last_queried_region_bytes());
-  UNSAFE_TODO(EXPECT_TRUE(
-      memcmp(fake_query_controller->last_queried_region_bytes()->getPixels(),
-             initial_bitmap.getPixels(),
-             initial_bitmap.computeByteSize()) == 0));
+  EXPECT_TRUE(gfx::BitmapsAreEqual(
+      *fake_query_controller->last_queried_region_bytes(), initial_bitmap));
   EXPECT_EQ(fake_query_controller->last_queried_region_bytes()->width(), 100);
   EXPECT_EQ(fake_query_controller->last_queried_region_bytes()->height(), 100);
   EXPECT_EQ(fake_query_controller->last_lens_selection_type(),
@@ -4597,10 +4603,8 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_FALSE(controller->get_selected_text_for_region());
   EXPECT_EQ(fake_query_controller->last_queried_region(), kTestRegion);
   EXPECT_TRUE(fake_query_controller->last_queried_region_bytes());
-  UNSAFE_TODO(EXPECT_TRUE(
-      memcmp(fake_query_controller->last_queried_region_bytes()->getPixels(),
-             initial_bitmap.getPixels(),
-             initial_bitmap.computeByteSize()) == 0));
+  EXPECT_TRUE(gfx::BitmapsAreEqual(
+      *fake_query_controller->last_queried_region_bytes(), initial_bitmap));
   EXPECT_EQ(fake_query_controller->last_queried_region_bytes()->width(), 100);
   EXPECT_EQ(fake_query_controller->last_queried_region_bytes()->height(), 100);
   EXPECT_EQ(fake_query_controller->last_queried_text(), "green");
@@ -4618,10 +4622,8 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_FALSE(controller->get_selected_text_for_region());
   EXPECT_EQ(fake_query_controller->last_queried_region(), kTestRegion);
   EXPECT_TRUE(fake_query_controller->last_queried_region_bytes());
-  UNSAFE_TODO(EXPECT_TRUE(
-      memcmp(fake_query_controller->last_queried_region_bytes()->getPixels(),
-             initial_bitmap.getPixels(),
-             initial_bitmap.computeByteSize()) == 0));
+  EXPECT_TRUE(gfx::BitmapsAreEqual(
+      *fake_query_controller->last_queried_region_bytes(), initial_bitmap));
   EXPECT_EQ(fake_query_controller->last_queried_region_bytes()->width(), 100);
   EXPECT_EQ(fake_query_controller->last_queried_region_bytes()->height(), 100);
   EXPECT_TRUE(fake_query_controller->last_queried_text().empty());
@@ -5312,6 +5314,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerEntrypointsBrowserTest,
       .WillByDefault(testing::Return(false));
 
   WaitForPaint();
+  WaitForInitialWebUIToolbar(browser());
 
   // State should start in off.
   auto* controller = GetLensOverlayController();
@@ -8890,6 +8893,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerContextualFeaturesDisabledTest,
 IN_PROC_BROWSER_TEST_F(LensOverlayControllerContextualFeaturesDisabledTest,
                        PreselectionToastOmniboxFocusState) {
   WaitForPaint();
+  WaitForInitialWebUIToolbar(browser());
 
   // State should start in off.
   auto* controller = GetLensOverlayController();
@@ -8907,6 +8911,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerContextualFeaturesDisabledTest,
   ASSERT_TRUE(fake_controller);
   fake_controller->FlushForTesting();
   ASSERT_TRUE(content::WaitForLoadStop(GetOverlayWebContents()));
+  WaitForOverlayScreenshotRendered();
 
   // Preselection toast should be visible when the overlay is showing and is in
   // the kOverlay state.
@@ -10703,6 +10708,68 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerNonBlockingPrivacyNoticeBrowserTest,
       lens::LensOverlayNonBlockingPrivacyNoticeUserAction::kDismissed, 1);
 }
 
+IN_PROC_BROWSER_TEST_F(LensOverlayControllerNonBlockingPrivacyNoticeBrowserTest,
+                       ContextualTasksComposebox_HidesPrivacyNotice) {
+  WaitForPaint();
+
+  base::HistogramTester histogram_tester;
+
+  auto* controller = GetLensOverlayController();
+  EXPECT_EQ(controller->state(), State::kOff);
+
+  auto* prefs = browser()->GetProfile()->GetPrefs();
+  EXPECT_FALSE(
+      prefs->GetBoolean(lens::prefs::kLensSharingPageScreenshotEnabled));
+  EXPECT_FALSE(prefs->GetBoolean(lens::prefs::kLensSharingPageContentEnabled));
+
+  // Open the overlay from the Contextual Tasks composebox Lens button.
+  OpenLensOverlay(LensOverlayInvocationSource::kContextualTasksComposebox);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->state() == State::kOverlay; }));
+
+  EXPECT_TRUE(controller->ShouldHideNonBlockingPrivacyNotice());
+
+  content::WebContents* overlay_web_contents = GetOverlayWebContents();
+  ASSERT_NE(overlay_web_contents, nullptr);
+  EXPECT_TRUE(content::WaitForLoadStop(overlay_web_contents));
+
+  // Verify the privacy notice is disabled in the WebUI and impression count is
+  // not incremented.
+  EXPECT_EQ(false, content::EvalJs(overlay_web_contents,
+                                   "document.querySelector('lens-overlay-app')."
+                                   "isPrivacyNoticeVisible"));
+  EXPECT_EQ(false, content::EvalJs(overlay_web_contents,
+                                   "document.querySelector('lens-overlay-app')."
+                                   "hasPermissionsForSession"));
+  EXPECT_EQ(true,
+            content::EvalJs(overlay_web_contents,
+                            "document.querySelector('lens-overlay-app')."
+                            "shadowRoot.querySelector('#privacyNotice') === "
+                            "null"));
+  EXPECT_EQ(0,
+            prefs->GetInteger(
+                lens::prefs::kLensOverlayNonBlockingPrivacyNoticeShownCount));
+  histogram_tester.ExpectTotalCount(
+      "Lens.Overlay.NonBlockingPrivacyNotice.ToBeShown", 0);
+
+  // Interacting with the overlay should still grant session permissions without
+  // recording privacy notice acceptance metrics.
+  controller->IssueLensRegionRequestForTesting(kTestRegion->Clone(),
+                                               /*is_click=*/false);
+  auto* fake_query_controller =
+      static_cast<lens::TestLensOverlayQueryController*>(
+          GetLensOverlayQueryController());
+  EXPECT_TRUE(fake_query_controller->HasPermissionForSession());
+  EXPECT_FALSE(
+      prefs->GetBoolean(lens::prefs::kLensSharingPageScreenshotEnabled));
+  EXPECT_FALSE(prefs->GetBoolean(lens::prefs::kLensSharingPageContentEnabled));
+
+  CloseOverlayAndWaitForOff(controller,
+                            LensOverlayDismissalSource::kOverlayCloseButton);
+  histogram_tester.ExpectTotalCount(
+      "Lens.Overlay.NonBlockingPrivacyNotice.Accepted", 0);
+}
+
 class LensOverlayControllerPrivacyNoticeFeatureDisabledBrowserTest
     : public LensOverlayControllerBrowserTest {
  public:
@@ -10797,4 +10864,250 @@ IN_PROC_BROWSER_TEST_F(
 
   histogram_tester.ExpectTotalCount(
       "Lens.Overlay.NonBlockingPrivacyNotice.Accepted", 0);
+}
+
+IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest, MediaPauseResume) {
+  WaitForPaint(kDocumentWithImage);
+  auto* controller = GetLensOverlayController();
+  content::WebContents* tab_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  // Create and play audio.
+  std::string media_url = embedded_test_server()->GetURL(kAudioFile).spec();
+  ASSERT_TRUE(content::ExecJs(tab_contents, content::JsReplace(R"(
+      const m = document.createElement('audio');
+      m.src = $1;
+      m.id = 'test_media';
+      m.loop = true;
+      document.body.appendChild(m);
+      new Promise((resolve, reject) => {
+        m.onplaying = () => resolve();
+        m.onerror = () => reject('Media error: ' + m.error.code);
+        m.play().catch(reject);
+        setTimeout(() => reject('Play timeout'), 5000);
+      });
+  )",
+                                                               media_url)));
+
+  // Wait for the media to start playing and for MediaSession to observe it.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    auto* media_session = content::MediaSession::GetIfExists(tab_contents);
+    if (!media_session) {
+      return false;
+    }
+    auto info = media_session->GetMediaSessionInfoSync();
+    return info &&
+           info->playback_state ==
+               media_session::mojom::MediaPlaybackState::kPlaying &&
+           content::EvalJs(
+               tab_contents,
+               "document.getElementById('test_media').paused == false")
+               .ExtractBool();
+  }));
+
+  // Opening the overlay from the video context menu entrypoint with a pending
+  // region (which also opens the results side panel) should suspend the media.
+  SkBitmap initial_bitmap = CreateNonEmptyBitmap(100, 100);
+  OpenLensOverlayWithPendingRegion(
+      LensOverlayInvocationSource::kContentAreaContextMenuVideo,
+      kTestRegion->Clone(), initial_bitmap);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return IsLensResultsSidePanelShowing(); }));
+
+  // Media should be paused while the overlay is showing.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(tab_contents,
+                           "document.getElementById('test_media').paused")
+        .ExtractBool();
+  }));
+
+  // Switching to another tab while the overlay is open should background the
+  // overlay without resuming media playback on the original tab.
+  int active_controller_tab_index =
+      browser()->GetTabStripModel()->active_index();
+  WaitForPaint(kDocumentWithNamedElement,
+               WindowOpenDisposition::NEW_FOREGROUND_TAB,
+               ui_test_utils::BROWSER_TEST_WAIT_FOR_TAB |
+                   ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->state() == State::kBackground; }));
+  content::MediaSession::FlushObserversForTesting(tab_contents);
+  EXPECT_TRUE(content::EvalJs(tab_contents,
+                              "document.getElementById('test_media').paused")
+                  .ExtractBool());
+
+  // Switching back to the original tab should restore the overlay and keep
+  // media paused.
+  browser()->GetTabStripModel()->ActivateTabAt(active_controller_tab_index);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->state() == State::kOverlay; }));
+  content::MediaSession::FlushObserversForTesting(tab_contents);
+  EXPECT_TRUE(content::EvalJs(tab_contents,
+                              "document.getElementById('test_media').paused")
+                  .ExtractBool());
+
+  // Hiding the overlay (while keeping the side panel open) should resume media
+  // on the live page.
+  GetLensSearchController()->HideOverlay(
+      lens::LensOverlayDismissalSource::kOverlayCloseButton);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->state() == State::kHidden; }));
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(
+               tab_contents,
+               "document.getElementById('test_media').paused == false")
+        .ExtractBool();
+  }));
+
+  // Close the session, then start a new video search and verify closing the
+  // entire Lens session directly also resumes the media.
+  CloseOverlayAndWaitForOff(controller,
+                            LensOverlayDismissalSource::kOverlayCloseButton);
+  OpenLensOverlayWithPendingRegion(
+      LensOverlayInvocationSource::kContentAreaContextMenuVideo,
+      kTestRegion->Clone(), initial_bitmap);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return IsLensResultsSidePanelShowing(); }));
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(tab_contents,
+                           "document.getElementById('test_media').paused")
+        .ExtractBool();
+  }));
+
+  CloseOverlayAndWaitForOff(controller,
+                            LensOverlayDismissalSource::kOverlayCloseButton);
+
+  // Media should be playing again.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(
+               tab_contents,
+               "document.getElementById('test_media').paused == false")
+        .ExtractBool();
+  }));
+}
+
+IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
+                       MediaNotPausedForNonVideoEntrypoint) {
+  WaitForPaint(kDocumentWithImage);
+  auto* controller = GetLensOverlayController();
+  content::WebContents* tab_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  // Create and play audio.
+  std::string media_url = embedded_test_server()->GetURL(kAudioFile).spec();
+  ASSERT_TRUE(content::ExecJs(tab_contents, content::JsReplace(R"(
+      const m = document.createElement('audio');
+      m.src = $1;
+      m.id = 'test_media';
+      m.loop = true;
+      document.body.appendChild(m);
+      new Promise((resolve, reject) => {
+        m.onplaying = () => resolve();
+        m.onerror = () => reject('Media error: ' + m.error.code);
+        m.play().catch(reject);
+        setTimeout(() => reject('Play timeout'), 5000);
+      });
+  )",
+                                                               media_url)));
+
+  // Wait for the media to start playing and for MediaSession to observe it.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    auto* media_session = content::MediaSession::GetIfExists(tab_contents);
+    if (!media_session) {
+      return false;
+    }
+    auto info = media_session->GetMediaSessionInfoSync();
+    return info &&
+           info->playback_state ==
+               media_session::mojom::MediaPlaybackState::kPlaying &&
+           content::EvalJs(
+               tab_contents,
+               "document.getElementById('test_media').paused == false")
+               .ExtractBool();
+  }));
+
+  // Opening the overlay from a non-video entrypoint (e.g. the app menu) should
+  // not suspend active media playback.
+  OpenLensOverlay(LensOverlayInvocationSource::kAppMenu);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->state() == State::kOverlay; }));
+
+  content::MediaSession::FlushObserversForTesting(tab_contents);
+  auto* media_session = content::MediaSession::GetIfExists(tab_contents);
+  ASSERT_NE(media_session, nullptr);
+  EXPECT_EQ(media_session->GetMediaSessionInfoSync()->playback_state,
+            media_session::mojom::MediaPlaybackState::kPlaying);
+  EXPECT_FALSE(content::EvalJs(tab_contents,
+                               "document.getElementById('test_media').paused")
+                   .ExtractBool());
+
+  CloseOverlayAndWaitForOff(controller,
+                            LensOverlayDismissalSource::kOverlayCloseButton);
+}
+
+IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest, MediaStayPaused) {
+  WaitForPaint(kDocumentWithImage);
+  auto* controller = GetLensOverlayController();
+  content::WebContents* tab_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  // Create and play audio, then pause it manually.
+  std::string media_url = embedded_test_server()->GetURL(kAudioFile).spec();
+  ASSERT_TRUE(content::ExecJs(tab_contents, content::JsReplace(R"(
+      const m = document.createElement('audio');
+      m.src = $1;
+      m.id = 'test_media';
+      m.loop = true;
+      document.body.appendChild(m);
+      new Promise((resolve, reject) => {
+        m.onplaying = () => {
+          m.pause();
+          resolve();
+        };
+        m.onerror = () => reject('Media error: ' + m.error.code);
+        m.play().catch(reject);
+        setTimeout(() => reject('Play timeout'), 5000);
+      });
+  )",
+                                                               media_url)));
+
+  // Wait for the media to be paused and for MediaSession to observe kPaused.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    auto* media_session = content::MediaSession::GetIfExists(tab_contents);
+    if (!media_session) {
+      return false;
+    }
+    auto info = media_session->GetMediaSessionInfoSync();
+    return info &&
+           info->playback_state ==
+               media_session::mojom::MediaPlaybackState::kPaused &&
+           content::EvalJs(
+               tab_contents,
+               "document.getElementById('test_media').paused == true")
+               .ExtractBool();
+  }));
+
+  // Opening the overlay from the video context menu entrypoint.
+  SkBitmap initial_bitmap = CreateNonEmptyBitmap(100, 100);
+  OpenLensOverlayWithPendingRegion(
+      LensOverlayInvocationSource::kContentAreaContextMenuVideo,
+      kTestRegion->Clone(), initial_bitmap);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return IsLensResultsSidePanelShowing(); }));
+
+  // Closing the overlay.
+  CloseOverlayAndWaitForOff(controller,
+                            LensOverlayDismissalSource::kOverlayCloseButton);
+
+  // Media should STILL be paused because it was paused manually before the
+  // overlay. Flush MediaSession observers to ensure no asynchronous Resume IPC
+  // was dispatched.
+  content::MediaSession::FlushObserversForTesting(tab_contents);
+  auto* media_session = content::MediaSession::GetIfExists(tab_contents);
+  ASSERT_NE(media_session, nullptr);
+  EXPECT_EQ(media_session->GetMediaSessionInfoSync()->playback_state,
+            media_session::mojom::MediaPlaybackState::kPaused);
+  EXPECT_TRUE(content::EvalJs(tab_contents,
+                              "document.getElementById('test_media').paused")
+                  .ExtractBool());
 }

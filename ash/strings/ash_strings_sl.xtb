@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Razveljavi</translation>
 <translation id="2086334242442703436">Odpiranje izbirnika emodžijev</translation>
 <translation id="2089550919269323883">Nameščanje aplikacije <ph name="VM_NAME" /> blokira pravilnik podjetja. Za podporo se obrnite na skrbnika sistema. Koda napake je <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Novice o aplikaciji Steam za Chromebook</translation>
 <translation id="209965399369889474">Ni povezave z omrežjem</translation>
 <translation id="2107581415810719320">Drug gumb <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">Kabel USB-C ne podpira protokola Thunderbolt. Delovanje naprave bo morda omejeno.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">Na kaj se želite osredotočiti? Pritisnite tipko Enter, če želite dodati opravilo.</translation>
 <translation id="229397294990920565">Prenos podatkov v mobilnem omrežju se izklaplja …</translation>
 <translation id="2295777434187870477">Mikrofon je vklopljen; če ga preklopite, bo izklopljen vhodni zvok.</translation>
+<translation id="2296880470921996802">Skrbnik za IT je onemogočil zgodovino odložišča</translation>
 <translation id="2302092602801625023">Ta račun upravlja Family Link</translation>
 <translation id="2303600792989757991">Preklop pregleda okna</translation>
 <translation id="2304702218354340897">Ali ste prepričani, da želite izklopiti upravljanje z obrazom?</translation>
@@ -685,7 +685,6 @@ V nasprotnem primeru bo vgrajena sledilna ploščica znova omogočena čez <ph n
 <translation id="3039491566278747710">Namestitev pravilnika za način brez povezave v napravi ni uspela.</translation>
 <translation id="3039939407102840004">Raven napolnjenosti baterije pisala je <ph name="PERCENTAGE" /> %.</translation>
 <translation id="304097922505898963">Odpiranje aplikacije za bližnjične tipke</translation>
-<translation id="3040982432432547149">Pomagajte nam izboljšati aplikacijo Steam za Chromebook</translation>
 <translation id="304417730895741346">Pripete in odprte aplikacije so na polici. Če želite aplikacijo pripeti na polico, z desnim gumbom kliknite aplikacijo ali se dotaknite sledilne ploščice z dvema prstoma.</translation>
 <translation id="3045670165536837541">Izbrana zgornja desna ročica, uporabite puščične tipke za premikanje</translation>
 <translation id="3046178388369461825">Na disku z Linuxom kritično primanjkuje prostora</translation>
@@ -929,7 +928,6 @@ Priklopite napravo v vir napajanja.</translation>
 <translation id="3697991387880191195">Pritisnite bližnjico za ustvarjanje posnetka zaslona</translation>
 <translation id="3702809606464356667">Prikaz oken s trenutnega namizja, pritisnite tipko s puščico gor, če želite prikazati okna z vseh namizij</translation>
 <translation id="3705722231355495246">–</translation>
-<translation id="3706423975342040244">Razvedrilo</translation>
 <translation id="370665806235115550">Nalaganje ...</translation>
 <translation id="3707093869106077605"><ph name="UNAVAILABLE_DLC_ONE" /> in <ph name="UNAVAILABLE_DLC_TWO" /> nista na voljo.</translation>
 <translation id="3708186454126126312">Predhodno povezane naprave</translation>
@@ -976,7 +974,6 @@ Priklopite napravo v vir napajanja.</translation>
 <translation id="3824784079442479685">To omogoča dostop do kamere za aplikacijo <ph name="APP_NAME" /> in vse aplikacije ter spletna mesta z dovoljenjem za kamero. Morda boste morali osvežiti spletno stran ali znova zagnati aplikacijo.</translation>
 <translation id="3826099427150913765">Preklopi na geslo</translation>
 <translation id="383058930331066723">Način varčevanja z energijo baterije je vklopljen</translation>
-<translation id="3831226344927851293">Izhod iz pogleda vadnice</translation>
 <translation id="383629559565718788">Prikaz nastavitev tipkovnice</translation>
 <translation id="384082539148746321">Želite izbrisati predlogo?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, nato <ph name="KEY_ONE" /> ali <ph name="KEY_TWO" /> ali <ph name="KEY_THREE" /> ali <ph name="KEY_FOUR" /></translation>
@@ -1082,7 +1079,6 @@ Priklopite napravo v vir napajanja.</translation>
 <translation id="4147911968024186208">Poskusite znova. Če se ta napaka spet prikaže, se obrnite na zastopnika za podporo.</translation>
 <translation id="4150201353443180367">Prikaz</translation>
 <translation id="4151054805501931758">Izboljšanje portreta</translation>
-<translation id="4151449637210235443">Povejte nam, kako je potekalo nedavno igranje igre</translation>
 <translation id="4156293514828496577">Še <ph name="PERCENTAGE" /> % baterije (približno <ph name="TIME_LEFT" />).
 Nekatere funkcije so omejene za podaljšanje časa delovanja baterije.</translation>
 <translation id="4158003972857765638">Organiziranje na novem namizju</translation>
@@ -1583,10 +1579,8 @@ Nobena naprava ni povezana.</translation>
 <translation id="5551974246223970793">Preklop na naslednje ujemanje za iskanje pri iskanju na strani</translation>
 <translation id="5556459405103347317">Znova naloži</translation>
 <translation id="5558091555391176027">Preklop visoke vidnosti deljenja v bližini</translation>
-<translation id="5558314826121965174">Ustvarjalnost</translation>
 <translation id="556042886152191864">Gumb</translation>
 <translation id="5570122939431135380">Odpiranje novega zavihka v novem anonimnem oknu</translation>
-<translation id="5572632238877308040">Nepogrešljivo</translation>
 <translation id="5575528586625653441">Prišlo je do težave z zahtevo za registracijo predstavitve.</translation>
 <translation id="557563299383177668">Naslednji odstavek</translation>
 <translation id="5577082622442191756">Preklop Bluetootha. <ph name="STATE_TEXT" />.</translation>
@@ -1621,7 +1615,6 @@ Nobena naprava ni povezana.</translation>
 <translation id="5667546120811588575">Nastavljanje Googla Play ...</translation>
 <translation id="5669267381087807207">Aktiviranje</translation>
 <translation id="5671658447180261823">Odstrani predlog <ph name="SUGGESTION_NAME" /></translation>
-<translation id="5672890847723042801">Orodja</translation>
 <translation id="5673434351075758678">Iz jezika »<ph name="FROM_LOCALE" />« v jezik »<ph name="TO_LOCALE" />« po sinhronizaciji nastavitev.</translation>
 <translation id="5675363643668471212">Element na polici</translation>
 <translation id="5677022547882470786">Povlecite ali pritisnite preslednico, če želite izbrati območje iskanja</translation>
@@ -1799,7 +1792,6 @@ Nobena naprava ni povezana.</translation>
 <translation id="6127395413317891856">Nimate vzpostavljene povezave. Preverite povezavo in poskusite znova.</translation>
 <translation id="6129953537138746214">Preslednica</translation>
 <translation id="6132714462430777655">Želite preskočiti vpis v šolo?</translation>
-<translation id="6136872094979134163">Ni mogoče pridobiti novic o aplikaciji Steam za Chromebook.</translation>
 <translation id="6137566720514957455">Odpri pogovorno okno za odstranjevanje za <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">Na kaj se želite osredotočiti?</translation>
 <translation id="6141988275892716286">Potrdi prenos</translation>
@@ -1879,7 +1871,6 @@ Nobena naprava ni povezana.</translation>
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, nato <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> ali <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">Neznana omrežja</translation>
 <translation id="6359587239691116345">Zagotovite si najnovejše funkcije in varnostne izboljšave. Če zavrnete to posodobitev, naprava morda ne bo več delovala pravilno in boste morda naleteli na varnostne težave in težave z zmogljivostjo.</translation>
-<translation id="6362833380917912748">Spoznajte vgrajene aplikacije</translation>
 <translation id="6364386432014869981">Vgrajena sledilna ploščica je vklopljena</translation>
 <translation id="6376931439017688372">Bluetooth je vklopljen</translation>
 <translation id="6378515133128829137">Pripenjanje okna na desno</translation>
@@ -2104,7 +2095,6 @@ Nova namestitev</translation>
 <translation id="7014684956566476813">Vzpostavljena je povezava z napravo <ph name="DEVICE_NAME" /></translation>
 <translation id="7015766095477679451">Vrnite se ob <ph name="COME_BACK_TIME" />.</translation>
 <translation id="70168403932084660">Namizje 6</translation>
-<translation id="702252130983202758">Vaše aplikacije</translation>
 <translation id="7025533177575372252">Povežite napravo <ph name="DEVICE_NAME" /> s telefonom</translation>
 <translation id="7026338066939101231">Pomanjšava</translation>
 <translation id="7029307918966275733">Crostini ni nameščen. Namestite ga, če si želite ogledati datoteko z ustvarjalci.</translation>
@@ -2543,7 +2533,6 @@ Nova namestitev</translation>
 <translation id="8277261673056602147">Označevanje besedila na zaslonu</translation>
 <translation id="8281886186245836920">Preskoči</translation>
 <translation id="8282784978194352587">Uspelo vam je!</translation>
-<translation id="8287009018010202411">Storilnost</translation>
 <translation id="828708037801473432">Izklopljeno</translation>
 <translation id="8289128870594824098">Velikost diska</translation>
 <translation id="8297006494302853456">Šibek</translation>
@@ -2638,7 +2627,6 @@ Nova namestitev</translation>
 <translation id="8598235756057743477">Razvrstitev aplikacij po imenu ali barvi</translation>
 <translation id="8599864823732014237">Želite preskočiti včlanitev v podjetje?</translation>
 <translation id="8609384513243082612">Odpiranje novega zavihka</translation>
-<translation id="861045123704058818">Aplikacije so začasno razvrščene glede na kategorijo</translation>
 <translation id="8612338981637220013">Odlično vam gre!</translation>
 <translation id="8613164732773110792">Samo majhni znaki, števke, podčrtaji ali pomišljaji</translation>
 <translation id="8614517853887502247">Obvestili aplikacij <ph name="APP_1_TITLE" /> in <ph name="APP_2_TITLE" /> sta skriti zaradi vklopljene zaščite pred ogledovanjem.</translation>
@@ -2830,7 +2818,6 @@ Nova namestitev</translation>
 <translation id="9129245940793250979">Guma na zadnji strani</translation>
 <translation id="9133335900048457298">Zaščitene vsebine ni mogoče posneti</translation>
 <translation id="9139720510312328767">Izbris naslednje črke</translation>
-<translation id="9148058034647219655">Zapri</translation>
 <translation id="9151906066336345901">tipka end</translation>
 <translation id="9159421884295554245">Iskanje v odložišču</translation>
 <translation id="9168436347345867845">Pozneje</translation>

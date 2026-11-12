@@ -8,6 +8,7 @@ import("//third_party/jni_zero/jni_zero.gni")
 android_library("java") {
   sources = [
     "java/src/org/chromium/chrome/browser/actor/ActorBroadcastReceiver.java",
+    "java/src/org/chromium/chrome/browser/actor/ActorExternalTriggerSnackbarController.java",
     "java/src/org/chromium/chrome/browser/actor/ActorForegroundServiceController.java",
     "java/src/org/chromium/chrome/browser/actor/ActorForegroundServiceManager.java",
     "java/src/org/chromium/chrome/browser/actor/ActorKeyedService.java",
@@ -85,6 +86,7 @@ android_library("java") {
     "//components/browser_ui/notifications/android:utils_java",
     "//components/browser_ui/styles/android:java_resources",
     "//components/browser_ui/widget/android:java",
+    "//components/omnibox/common:features_java",
     "//components/saved_tab_groups/public:java",
     "//content/public/android:content_java",
     "//third_party/android_deps:material_design_java",
@@ -168,6 +170,7 @@ android_resources("java_resources") {
 
 robolectric_library("junit") {
   sources = [
+    "java/src/org/chromium/chrome/browser/actor/ActorExternalTriggerSnackbarControllerTest.java",
     "java/src/org/chromium/chrome/browser/actor/ActorForegroundServiceManagerTest.java",
     "java/src/org/chromium/chrome/browser/actor/ActorMetricsTest.java",
     "java/src/org/chromium/chrome/browser/actor/ActorNotificationFactoryTest.java",
@@ -215,6 +218,7 @@ robolectric_library("junit") {
     "//chrome/browser/ui/android/theme:java",
     "//chrome/browser/ui/messages/android:java",
     "//chrome/browser/ui/side_ui/public:java",
+    "//chrome/test/android:chrome_java_unit_test_support",
     "//components/browser_ui/bottomsheet/android:java",
     "//components/browser_ui/notifications/android:java",
     "//components/browser_ui/notifications/android:test_support_java",
@@ -223,6 +227,7 @@ robolectric_library("junit") {
     "//components/browser_ui/styles/android:java_resources",
     "//components/browser_ui/theme/android:java_resources",
     "//components/browser_ui/widget/android:java",
+    "//components/omnibox/common:features_java",
     "//components/saved_tab_groups/public:java",
     "//content/public/android:content_full_java",
     "//content/public/android:content_main_dex_java",

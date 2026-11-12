@@ -19,6 +19,7 @@ BASE_DECLARE_FEATURE(kContextualTasks);
 BASE_DECLARE_FEATURE(kContextualTasksPrivateApiNoAnimation);
 BASE_DECLARE_FEATURE(kContextualTasksSidePanel);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
+BASE_DECLARE_FEATURE(kContextualTasksUpdatedEntryPoints);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
@@ -31,7 +32,6 @@ BASE_DECLARE_FEATURE(
     kContextualTasksContextSmartTabSharingDefaultOnAvailability);
 BASE_DECLARE_FEATURE(kContextualTasksContextLibrary);
 BASE_DECLARE_FEATURE(kContextualTasksContextLogging);
-BASE_DECLARE_FEATURE(kContextualTasksScriptTools);
 BASE_DECLARE_FEATURE(kContextualTasksShowOnboardingTooltip);
 
 // Bypasses the dismissed cap for contextual tasks tooltips.
@@ -163,7 +163,24 @@ BASE_DECLARE_FEATURE(kAllowSignedOutUserInDesktopAndroid);
 // Desktop Android.
 bool IsAllowSignedOutUserInDesktopAndroidEnabled();
 
+// When enabled, tracks cross-tab ABA search journeys (Tab A -> Search in Tab B
+// -> Return to Tab A) to trigger an in-product help promo for Contextual Tasks.
+BASE_DECLARE_FEATURE(kABASearchJourneys);
+
+extern const base::FeatureParam<base::TimeDelta> kABASearchJourneysTtl;
+extern const base::FeatureParam<size_t> kABASearchJourneysMaxRingBufferSize;
+extern const base::FeatureParam<size_t> kABASearchJourneysMinQueryMatchLength;
+
+bool IsABASearchJourneysEnabled();
+
+base::TimeDelta GetABASearchJourneysTtl();
+size_t GetABASearchJourneysMaxRingBufferSize();
+size_t GetABASearchJourneysMinQueryMatchLength();
+
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
+
+BASE_DECLARE_FEATURE(kContextualSearchContextualCuesHandleEdu);
+BASE_DECLARE_FEATURE(kContextualSearchContextualCuesHandleShopping);
 
 enum class OverflowMenuItems {
   kAllItems,
@@ -308,6 +325,17 @@ BASE_DECLARE_FEATURE_PARAM(bool,
 
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
+
+// Controls whether the "Ask Google..." context menu item is shown.
+extern const base::FeatureParam<bool> kContextualTasksContextMenuShowAskGoogle;
+
+// Controls whether "Ask Google..." entrypoints are routed to the omnibox.
+extern const base::FeatureParam<bool>
+    kContextualTasksContextMenuRouteAskGoogleToOmnibox;
+
+// Controls whether the contextual tasks context menu items are grouped into a
+// submenu.
+extern const base::FeatureParam<bool> kContextualTasksContextMenuSubmenu;
 
 // Whether the context menu is enabled for Nextbox.
 extern bool GetIsContextualTasksNextboxContextMenuEnabled();
@@ -533,6 +561,8 @@ extern const char kContextualTasksContextLibraryName[];
 extern const char kContextualTasksContextLibraryDescription[];
 extern const char kContextualTasksContextName[];
 extern const char kContextualTasksContextDescription[];
+extern const char kContextualTasksContextMultiTurnTabRelevanceName[];
+extern const char kContextualTasksContextMultiTurnTabRelevanceDescription[];
 extern const char kContextualTasksSearchQueryName[];
 extern const char kContextualTasksSearchQueryDescription[];
 extern const char kContextualTasksSuggestionsEnabledName[];
@@ -556,6 +586,8 @@ extern const char kContextualTasksRearchitectureName[];
 extern const char kContextualTasksRearchitectureDescription[];
 extern const char kContextualTasksEphemeralBrandedEntryPointName[];
 extern const char kContextualTasksEphemeralBrandedEntryPointDescription[];
+extern const char kContextualTasksUpdatedEntryPointsName[];
+extern const char kContextualTasksUpdatedEntryPointsDescription[];
 extern const char kContextualTasksSidePanelRearchitectureName[];
 extern const char kContextualTasksSidePanelRearchitectureDescription[];
 extern const char kContextualTasksClobberActiveTabName[];
@@ -566,6 +598,10 @@ extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[];
 extern const char kContextualTasksEphemeralButtonContextMenuName[];
 extern const char kContextualTasksEphemeralButtonContextMenuDescription[];
+extern const char kABASearchJourneysName[];
+extern const char kABASearchJourneysDescription[];
+extern const char kAllowSignedOutUserInDesktopAndroidName[];
+extern const char kAllowSignedOutUserInDesktopAndroidDescription[];
 
 }  // namespace flag_descriptions
 

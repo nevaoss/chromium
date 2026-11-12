@@ -268,8 +268,6 @@ AutocompleteMatch::AutocompleteMatch(const AutocompleteMatch& match)
       image_dominant_color(match.image_dominant_color),
       image_url(match.image_url),
       icon_url(match.icon_url),
-      entity_id(match.entity_id),
-      website_uri(match.website_uri),
       document_type(match.document_type),
       enterprise_search_aggregator_type(
           match.enterprise_search_aggregator_type),
@@ -282,7 +280,6 @@ AutocompleteMatch::AutocompleteMatch(const AutocompleteMatch& match)
       description_class_for_shortcuts(match.description_class_for_shortcuts),
       suggestion_group_id(match.suggestion_group_id),
       swap_contents_and_description(match.swap_contents_and_description),
-      answer_template(match.answer_template),
       suggest_template(match.suggest_template),
       transition(match.transition),
       type(match.type),
@@ -345,8 +342,6 @@ AutocompleteMatch& AutocompleteMatch::operator=(
   image_dominant_color = std::move(match.image_dominant_color);
   image_url = std::move(match.image_url);
   icon_url = std::move(match.icon_url);
-  entity_id = std::move(match.entity_id);
-  website_uri = std::move(match.website_uri);
   document_type = std::move(match.document_type);
   enterprise_search_aggregator_type =
       std::move(match.enterprise_search_aggregator_type);
@@ -361,7 +356,6 @@ AutocompleteMatch& AutocompleteMatch::operator=(
   suggestion_group_id = std::move(match.suggestion_group_id);
   swap_contents_and_description =
       std::move(match.swap_contents_and_description);
-  answer_template = std::move(match.answer_template);
   suggest_template = std::move(match.suggest_template);
   transition = std::move(match.transition);
   type = std::move(match.type);
@@ -427,8 +421,6 @@ AutocompleteMatch& AutocompleteMatch::operator=(
   image_dominant_color = match.image_dominant_color;
   image_url = match.image_url;
   icon_url = match.icon_url;
-  entity_id = match.entity_id;
-  website_uri = match.website_uri;
   document_type = match.document_type;
   enterprise_search_aggregator_type = match.enterprise_search_aggregator_type;
   tail_suggest_common_prefix = match.tail_suggest_common_prefix;
@@ -440,7 +432,6 @@ AutocompleteMatch& AutocompleteMatch::operator=(
   description_class_for_shortcuts = match.description_class_for_shortcuts;
   suggestion_group_id = match.suggestion_group_id;
   swap_contents_and_description = match.swap_contents_and_description;
-  answer_template = match.answer_template;
   suggest_template = match.suggest_template;
   transition = match.transition;
   type = match.type;
@@ -761,8 +752,8 @@ bool AutocompleteMatch::BetterDuplicate(const AutocompleteMatch& match1,
     }
   }
 
-  // Prefer entity and answer matches over non-entity & non-answer matches, if
-  // they have the same `fill_into_edit` value.
+  // Prefer entity matches over non-entity matches, if they have the same
+  // `fill_into_edit` value.
   if (match1.fill_into_edit == match2.fill_into_edit) {
     bool rich1 =
         match1.type == omnibox::AutocompleteMatchType::kSearchSuggestEntity;
@@ -1747,8 +1738,8 @@ bool AutocompleteMatch::IsMlScoringEligible() const {
     return false;
   }
 
-  // Do not apply ML scoring to calculator or answer suggestions as the ML model
-  // currently doesn't provide accurate scores for suggestions that have a low
+  // Do not apply ML scoring to calculator suggestions as the ML model currently
+  // doesn't provide accurate scores for suggestions that have a low
   // click-through rate.
   if (type == omnibox::AutocompleteMatchType::kCalculator) {
     return false;
@@ -1969,8 +1960,6 @@ size_t AutocompleteMatch::EstimateMemoryUsage() const {
   res += base::trace_event::EstimateMemoryUsage(image_dominant_color);
   res += base::trace_event::EstimateMemoryUsage(image_url);
   res += base::trace_event::EstimateMemoryUsage(icon_url);
-  res += base::trace_event::EstimateMemoryUsage(entity_id);
-  res += base::trace_event::EstimateMemoryUsage(website_uri);
   res += base::trace_event::EstimateMemoryUsage(tail_suggest_common_prefix);
   res += base::trace_event::EstimateMemoryUsage(contents);
   res += base::trace_event::EstimateMemoryUsage(contents_class);

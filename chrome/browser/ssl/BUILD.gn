@@ -27,6 +27,7 @@ source_set("ssl") {
     "secure_origin_prefs_observer.h",
     "security_state_event_observer.h",
     "ssl_client_certificate_selector.h",
+    "ssl_config_overlay.h",
     "ssl_config_service_manager.h",
     "ssl_error_controller_client.h",
     "stateful_ssl_host_state_delegate_factory.h",
@@ -81,10 +82,6 @@ source_set("ssl") {
     ]
     public_deps += [ "//ui/views" ]
   }
-
-  if (is_chromeos) {
-    public += [ "ssl_config_overlay.h" ]
-  }
 }
 
 source_set("impl") {
@@ -108,16 +105,14 @@ source_set("impl") {
     "secure_origin_policy_handler.cc",
     "secure_origin_prefs_observer.cc",
     "security_state_event_observer.cc",
+    "ssl_config_overlay.cc",
     "ssl_config_service_manager.cc",
     "ssl_error_controller_client.cc",
     "stateful_ssl_host_state_delegate_factory.cc",
     "typed_navigation_upgrade_throttle.cc",
   ]
 
-  public_deps = [
-    ":ssl",
-    "//chrome/browser:browser_public_dependencies",
-  ]
+  public_deps = [ ":ssl" ]
 
   deps = [
     "//chrome/browser:browser_process",
@@ -160,6 +155,7 @@ source_set("impl") {
     ]
     deps += [
       "//chrome/android:chrome_jni_headers",
+      "//chrome/browser/android:resource_mapper",
       "//chrome/browser/android:tabs_public",
       "//chrome/browser/ssl/android:jni_headers",
     ]
@@ -182,7 +178,6 @@ source_set("impl") {
   }
 
   if (is_chromeos) {
-    sources += [ "ssl_config_overlay.cc" ]
     deps += [
       "//chrome/browser/ash/policy/core",
       "//chrome/browser/ash/profiles",
@@ -212,6 +207,7 @@ source_set("test_support") {
   ]
 
   deps = [
+    "//chrome/browser/net",
     "//components/security_state/content",
     "//mojo/public/cpp/bindings",
     "//services/network/public/mojom",
@@ -221,6 +217,7 @@ source_set("test_support") {
   if (!is_android) {
     public += [ "ssl_browsertest_base.h" ]
     sources += [ "ssl_browsertest_base.cc" ]
+    public_deps += [ "//chrome/browser/preloading:test_support" ]
     deps += [
       ":ssl",
       "//chrome/browser/interstitials:test_support",
@@ -265,6 +262,7 @@ source_set("unit_tests") {
   sources = [
     "daily_navigation_counter_unittest.cc",
     "https_first_mode_settings_tracker_unittest.cc",
+    "ssl_config_overlay_unittest.cc",
     "ssl_config_service_manager_unittest.cc",
   ]
 
@@ -291,10 +289,6 @@ source_set("unit_tests") {
   if (is_android) {
     sources += [ "known_interception_disclosure_message_delegate_unittest.cc" ]
     deps += [ "//components/messages/android:test_support" ]
-  }
-
-  if (is_chromeos) {
-    sources += [ "ssl_config_overlay_unittest.cc" ]
   }
 }
 
@@ -326,6 +320,7 @@ if (!is_android) {
       "//chrome/browser/captive_portal",
       "//chrome/browser/interstitials:idn_test_support",
       "//chrome/browser/interstitials:test_support",
+      "//chrome/browser/net",
       "//chrome/browser/policy:test_support",
       "//chrome/browser/preloading/prerender",
       "//chrome/browser/ui:browser_commands",

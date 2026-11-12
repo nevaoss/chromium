@@ -5,6 +5,8 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_WEB_VIEW_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_WEB_VIEW_H_
 
+#include <optional>
+
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -12,6 +14,7 @@
 #include "content/public/browser/media_stream_request.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
 #include "ui/views/controls/webview/webview.h"
@@ -30,6 +33,7 @@ struct OpenURLParams;
 }  // namespace content
 
 class BrowserWindowInterface;
+class Profile;
 
 namespace input {
 struct NativeWebKeyboardEvent;
@@ -42,6 +46,7 @@ class WebContentsModalDialogHost;
 namespace contextual_tasks {
 
 class ContextualTasksGhostLoaderView;
+class ContextualTasksUIBase;
 
 class ContextualTasksWebView
     : public views::View,
@@ -51,7 +56,18 @@ class ContextualTasksWebView
   METADATA_HEADER(ContextualTasksWebView, views::View)
 
  public:
-  explicit ContextualTasksWebView(BrowserWindowInterface* browser_window);
+  // Configures a transparent base background and the theme-appropriate
+  // preferred color scheme on `wc` for hosting in the Contextual Tasks side
+  // panel, allowing the side panel's solid background to show through before
+  // page styles load without triggering Blink's #121212 dark color-adjust
+  // fallback.
+  static void ConfigureWebContentsBackground(content::WebContents* wc,
+                                             Profile* profile);
+
+  explicit ContextualTasksWebView(
+      BrowserWindowInterface* browser_window,
+      content::WebContents* toolbar_web_contents = nullptr,
+      content::WebContents* ghost_loader_web_contents = nullptr);
   ~ContextualTasksWebView() override;
 
   base::WeakPtr<ContextualTasksWebView> GetWeakPtr();
@@ -86,6 +102,7 @@ class ContextualTasksWebView
   void RunFileChooser(content::RenderFrameHost* render_frame_host,
                       scoped_refptr<content::FileSelectListener> listener,
                       const blink::mojom::FileChooserParams& params) override;
+  std::optional<gfx::Rect> GetWindowBoundsInScreen() override;
 
   // content::WebContentsObserver:
   void DidStartNavigation(
@@ -122,6 +139,18 @@ class ContextualTasksWebView
   // happen when the contents is detached from the side panel.
   void DetachWebContentsModalDialogManager(content::WebContents* web_contents);
 
+  // Returns whether the task associated with the current WebContents is waiting
+  // for its initial thread URL to be generated.
+  bool IsTaskWaitingForUrl() const;
+
+  // Returns the toolbar WebUI controller, or nullptr if unavailable.
+  ContextualTasksUIBase* GetToolbarUI() const;
+
+  // Synchronizes the toolbar WebUI's AI page status, thread title, and profile
+  // indicator with `wc`.
+  void UpdateToolbarStateFromWebContents(content::WebContents* wc,
+                                         bool use_last_committed_url = false);
+
   // The browser window interface associated with this view.
   raw_ptr<BrowserWindowInterface> browser_window_ = nullptr;
 
@@ -134,6 +163,14 @@ class ContextualTasksWebView
 
   // The placeholder ghost loader view overlaying the content WebView.
   raw_ptr<ContextualTasksGhostLoaderView> ghost_loader_view_ = nullptr;
+
+  // Whether this view created and owns the toolbar / ghost loader WebContents.
+  bool owns_toolbar_web_contents_ = false;
+  bool owns_ghost_loader_web_contents_ = false;
+
+  // Whether the next DidStopLoading() corresponds to an initial or aborted
+  // about:blank navigation that should not dismiss the ghost loader.
+  bool ignore_next_stop_loading_for_about_blank_ = false;
 
   // A handler to handle unhandled keyboard messages coming back from the
   // renderer process.

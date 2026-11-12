@@ -7,7 +7,7 @@ import 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {SearchboxBrowserProxy} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import type {OmniboxComposeboxElement} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
 import {ComposeboxProxyImpl} from 'chrome://omnibox-popup.top-chrome/omnibox_popup.js';
-import {ComposeboxFile, TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
+import {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
@@ -766,7 +766,7 @@ suite('OmniboxComposeboxTest', () => {
       title: 'Tab 101',
       url: 'https://tab101.com',
       delayUpload: false,
-      origin: TabUploadOrigin.OTHER,
+      origin: TabAttachmentSource.kOther,
     };
 
     await omniboxComposebox.addTabContextHandleCallback(tabUpload);
@@ -796,7 +796,7 @@ suite('OmniboxComposeboxTest', () => {
           title: 'Tab 102',
           url: 'https://tab102.com',
           delayUpload: false,
-          origin: TabUploadOrigin.OTHER,
+          origin: TabAttachmentSource.kOther,
         });
         await omniboxComposebox.updateComplete;
         await microtasksFinished();
@@ -823,7 +823,7 @@ suite('OmniboxComposeboxTest', () => {
           title: 'Tab 103',
           url: 'https://tab103.com',
           delayUpload: false,
-          origin: TabUploadOrigin.OTHER,
+          origin: TabAttachmentSource.kOther,
         });
         await omniboxComposebox.updateComplete;
         await microtasksFinished();
@@ -843,7 +843,7 @@ suite('OmniboxComposeboxTest', () => {
       title: 'Tab 101',
       url: 'https://tab101.com',
       delayUpload: false,
-      origin: TabUploadOrigin.OTHER,
+      origin: TabAttachmentSource.kOther,
     };
     // Mock i18n for the error key.
     omniboxComposebox.i18n = (key: string) => {
@@ -1494,15 +1494,12 @@ suite('OmniboxComposeboxTest', () => {
 
   test('suggestion activity link triggers navigation', async () => {
     // Mock results to show the link.
-    const matches = [
-      createSearchMatchForTesting({
-        isNoncannedAimSuggestion: true,
-      }),
-    ];
+    const matches = [createSearchMatchForTesting()];
     testProxy.page.autocompleteResultChanged(
         createAutocompleteResultForTesting({
           queryId: omniboxComposebox.activeQueryId,
           matches: matches,
+          showAimActivityLink: true,
         }));
     await testProxy.page.$.flushForTesting();
     await microtasksFinished();
@@ -1541,15 +1538,12 @@ suite('OmniboxComposeboxTest', () => {
   test(
       'suggestion activity link hidden when suggestions are non canned',
       async () => {
-        const matches = [
-          createSearchMatchForTesting({
-            isNoncannedAimSuggestion: false,
-          }),
-        ];
+        const matches = [createSearchMatchForTesting()];
         testProxy.page.autocompleteResultChanged(
             createAutocompleteResultForTesting({
               queryId: omniboxComposebox.activeQueryId,
               matches: matches,
+              showAimActivityLink: false,
             }));
         await testProxy.page.$.flushForTesting();
         await microtasksFinished();
@@ -2690,11 +2684,47 @@ suite('OmniboxComposeboxTest', () => {
 
           // In error:
           voiceSearch.isPermissionPromptOpen = false;
-          (voiceSearch as unknown as {errorMessage_: string}).errorMessage_ = 'Voice error';
+          omniboxComposebox.isListening = false;
+          (voiceSearch as unknown as {errorMessage_: string}).errorMessage_ =
+              'Voice error';
+          await omniboxComposebox.updateComplete;
           await voiceSearch.updateComplete;
           assertNotEquals(
               'absolute',
               window.getComputedStyle(voiceSearchContainer).position);
+        });
+
+    test(
+        'maintains full container width in voice search and error states',
+        async () => {
+          document.body.style.width = '600px';
+          omniboxComposebox.showVoiceSearch = true;
+          await omniboxComposebox.updateComplete;
+
+          assertEquals(
+              'block', window.getComputedStyle(omniboxComposebox).display);
+          assertEquals(600, omniboxComposebox.getBoundingClientRect().width);
+
+          const voiceSearch = omniboxComposebox.shadowRoot.querySelector(
+              'cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+
+          // Enter voice search mode (#composebox becomes display: none).
+          omniboxComposebox.inVoiceSearchMode = true;
+          omniboxComposebox.isListening = true;
+          await omniboxComposebox.updateComplete;
+          await voiceSearch.updateComplete;
+          assertEquals(600, omniboxComposebox.getBoundingClientRect().width);
+
+          // Transition to voice search error state after permission prompt.
+          omniboxComposebox.isListening = false;
+          (voiceSearch as unknown as {errorMessage_: string}).errorMessage_ =
+              'Voice error';
+          await omniboxComposebox.updateComplete;
+          await voiceSearch.updateComplete;
+          assertEquals(600, omniboxComposebox.getBoundingClientRect().width);
+
+          document.body.style.width = '';
         });
   });
 

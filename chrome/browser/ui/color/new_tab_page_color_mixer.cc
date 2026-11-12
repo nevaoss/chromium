@@ -31,9 +31,12 @@ constexpr SkColor kColorSysSurface_Light = SkColorSetRGB(0xFF, 0xFF, 0xFF);
 constexpr SkColor kColorGemSysColorPrimary_Light =
     SkColorSetRGB(0x0B, 0x57, 0xD0);
 constexpr SkColor kColorSysStateHoverOnSubtle_Light = SkColorSetARGB(0x0F, 0x1F, 0x1F, 0x1F);
+constexpr SkColor kColorSysStateRippleNeutralOnSubtle_Light =
+    SkColorSetARGB(0x14, 0x1F, 0x1F, 0x1F);
 constexpr SkColor kColorSysTonalOutline_Light = SkColorSetRGB(0xA8, 0xC7, 0xFA);
 constexpr SkColor kColorSysPrimary_Light = SkColorSetRGB(0x0B, 0x57, 0xD0);
 
+constexpr SkColor kColorSysOnSurface_Light = SkColorSetRGB(0x1F, 0x1F, 0x1F);
 constexpr SkColor kColorSysOnSurfaceSubtle_Light =
     SkColorSetRGB(0x47, 0x47, 0x47);
 
@@ -303,6 +306,8 @@ void AddSearchboxColors(ui::ColorMixer& mixer, const ui::ColorProviderKey& key) 
       dark_mode ? SkColorSetRGB(0xE6, 0xE8, 0xF0)
                 : SkColorSetRGB(0x0A, 0x0A, 0x0A)};
   mixer[kColorComposeboxFontLight] = {SkColorSetRGB(0x1F, 0x1F, 0x1F)};
+  mixer[kColorComposeboxGhostCardBackground] = {
+      kColorSysStateRippleNeutralOnSubtle_Light};
   mixer[kColorComposeboxCancelButton] = {
       dark_mode ? SkColorSetRGB(0xAD, 0xAF, 0xB8)
                 : SkColorSetRGB(0x0A, 0x0A, 0x0A)};
@@ -371,6 +376,9 @@ void AddSearchboxColors(ui::ColorMixer& mixer, const ui::ColorProviderKey& key) 
   mixer[kColorComposeboxErrorScrimButtonText] = {ui::kColorSysOnPrimary};
   mixer[kColorComposeboxErrorScrimForeground] = {ui::kColorSysInverseSurface};
   mixer[kColorComposeboxLink] = {gfx::kGoogleBlue700};
+  mixer[kColorComposeboxAimChipHoverBackground] = {
+      kColorSysStateHoverOnSubtle_Light};
+  mixer[kColorComposeboxAimChipHoverText] = {kColorSysOnSurface_Light};
 
   mixer[kColorSearchboxAnswerIconBackground] = {
       SkColorSetRGB(0xD3, 0xE3, 0xFD)};
@@ -496,7 +504,7 @@ void AddNewTabPageColorMixer(ui::ColorProvider* provider,
   mixer[kColorNewTabFooterLogoBackground] = {SK_ColorWHITE};
 
   /* NewTabPageThreadsRail */
-  mixer[kColorNewTabPageThreadsRailBackground] = {kColorToolbar};
+  mixer[kColorNewTabPageThreadsRailBackground] = {ui::kColorSysBaseContainer};
   mixer[kColorNewTabPageThreadsRailIconButton] = {ui::kColorSysOnSurfaceSubtle};
 }
 

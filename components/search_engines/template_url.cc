@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -15,7 +16,6 @@
 #include "base/base64url.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
-#include "base/containers/adapters.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/feature_list.h"
 #include "base/format_macros.h"
@@ -29,6 +29,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/memory_usage_estimator.h"
@@ -43,9 +44,9 @@
 #include "components/search_engines/search_engines_switches.h"
 #include "components/search_engines/search_terms_data.h"
 #include "components/search_engines/template_url_data.h"
-#include "components/search_engines/template_url_service.h"
 #include "components/search_engines/template_url_data_util.h"
 #include "components/search_engines/template_url_prepopulate_data.h"
+#include "components/search_engines/template_url_service.h"
 #include "components/search_engines/template_url_starter_pack_data.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/sync/base/features.h"
@@ -250,6 +251,87 @@ bool IsPolicySearchEngineBetterThanNonPolicyEngine(
   // user.
   return (!keyword.empty() && keyword[0] == u'@') ||
          other_engine->safe_for_autoreplace();
+}
+
+// Truncates `encoded_query` to at most `max_length` characters while ensuring
+// that percent-escape sequences (%XX) and multi-byte UTF-8 character sequences
+// are not cut mid-sequence.
+//
+// Truncation is done on the encoded value rather than the unencoded value
+// because the purpose of the truncation is to manage how much space the value
+// uses in the resulting URL, which may be limited to some total length. If we
+// truncated the pre-encoded value, the space taken in the resulting URL would
+// be variable, depending on what was encoded.
+std::string TruncateEncodedQuery(std::string_view encoded_query,
+                                 size_t max_length) {
+  if (encoded_query.length() <= max_length) {
+    return std::string(encoded_query);
+  }
+
+  std::string truncated(encoded_query.substr(0, max_length));
+
+  // Avoid cutting in the middle of a %XX escape sequence.
+  if (!truncated.empty() && truncated.back() == '%') {
+    truncated.pop_back();
+  } else if (truncated.length() >= 2 &&
+             truncated[truncated.length() - 2] == '%' &&
+             base::IsHexDigit(truncated.back())) {
+    truncated.erase(truncated.length() - 2);
+  }
+
+  // Avoid cutting in the middle of a multi-byte UTF-8 sequence. All non-ASCII
+  // bytes are escaped as %XX (>= 0x80, first hex digit >= '8'). A UTF-8
+  // character is at most 4 bytes, so at most 3 incomplete trailing bytes
+  // could be left by truncation. Trim at most 3 trailing non-ASCII %XX tokens.
+  auto is_non_ascii_escape = [](const std::string& s) {
+    return s.length() >= 3 && s[s.length() - 3] == '%' &&
+           base::IsHexDigit(s[s.length() - 2]) &&
+           base::IsHexDigit(s[s.length() - 1]) &&
+           (base::HexDigitToInt(s[s.length() - 2]) >= 8);
+  };
+
+  for (int i = 0;
+       i < 3 && is_non_ascii_escape(truncated) &&
+       !base::IsStringUTF8(base::UnescapeBinaryURLComponent(truncated));
+       ++i) {
+    truncated.erase(truncated.length() - 3);
+  }
+
+  return truncated;
+}
+
+bool IsCryptographicOrLocalhost(const GURL& url) {
+  return url.is_valid() &&
+         (url.SchemeIsCryptographic() || net::IsLocalhost(url));
+}
+
+// Computes the result for TemplateURL::IsTrustedGoogleEngine().
+bool ComputeIsTrustedGoogleEngine(const TemplateURL& template_url,
+                                  const SearchTermsData& search_terms_data) {
+  if (template_url.GetEngineType(search_terms_data) != SEARCH_ENGINE_GOOGLE) {
+    return false;
+  }
+
+  // Prepopulated engines are built into Chromium and cannot be hijacked or
+  // spoofed by OpenSearch auto-discovery.
+  if (template_url.prepopulate_id() != 0) {
+    return true;
+  }
+
+  if (!IsCryptographicOrLocalhost(
+          template_url.GenerateSearchURL(search_terms_data))) {
+    return false;
+  }
+
+  if (template_url.suggestions_url().empty()) {
+    return true;
+  }
+
+  const GURL suggest_url =
+      template_url.GenerateSuggestionURL(search_terms_data);
+  return IsCryptographicOrLocalhost(suggest_url) &&
+         search_engine_utils::GetEngineType(suggest_url) ==
+             SEARCH_ENGINE_GOOGLE;
 }
 
 }  // namespace
@@ -1105,6 +1187,8 @@ std::string TemplateURLRef::HandleReplacements(
     const SearchTermsData& search_terms_data,
     PostContent* post_content) const {
   TRACE_EVENT0("omnibox", "TemplateURLRef::HandleReplacement");
+  search_terms_args.is_oq_truncated.reset();
+  search_terms_args.is_q_truncated.reset();
   if (replacements_.empty()) {
     if (!post_params_.empty()) {
       EncodeFormData(post_params_, post_content);
@@ -1136,7 +1220,7 @@ std::string TemplateURLRef::HandleReplacements(
 
   // replacements_ is ordered in ascending order, as such we need to iterate
   // from the back.
-  for (const Replacement& replacement : base::Reversed(replacements_)) {
+  for (const Replacement& replacement : std::views::reverse(replacements_)) {
     switch (replacement.type) {
       case ENCODING:
         HandleReplacement(std::string(), input_encoding, replacement, &url);
@@ -1327,8 +1411,19 @@ std::string TemplateURLRef::HandleReplacements(
         DCHECK(!replacement.is_post_param);
         if (search_terms_args.accepted_suggestion >= 0 ||
             search_terms_args.searchbox_stats.ByteSizeLong() > 0) {
-          HandleReplacement("oq", base::UTF16ToUTF8(encoded_original_query),
-                            replacement, &url);
+          std::string original_query =
+              base::UTF16ToUTF8(encoded_original_query);
+          if (base::FeatureList::IsEnabled(omnibox::kTruncateSearchUrlOq)) {
+            const int max_length = omnibox::kTruncateSearchUrlOqLength.Get();
+            bool truncated = false;
+            if (max_length >= 0) {
+              const size_t original_length = original_query.length();
+              original_query = TruncateEncodedQuery(original_query, max_length);
+              truncated = original_query.length() < original_length;
+            }
+            search_terms_args.is_oq_truncated = truncated;
+          }
+          HandleReplacement("oq", original_query, replacement, &url);
         }
         break;
 
@@ -1550,10 +1645,24 @@ std::string TemplateURLRef::HandleReplacements(
                           &url);
         break;
 
-      case SEARCH_TERMS:
-        HandleReplacement(std::string(), base::UTF16ToUTF8(encoded_terms),
-                          replacement, &url);
+      case SEARCH_TERMS: {
+        std::string terms = base::UTF16ToUTF8(encoded_terms);
+        if (base::FeatureList::IsEnabled(omnibox::kTruncateSearchUrlQ) &&
+            (HasGoogleBaseURLs(search_terms_data) ||
+             google_util::IsGoogleHostname(GetHost(search_terms_data),
+                                           google_util::DISALLOW_SUBDOMAIN))) {
+          const int max_length = omnibox::kTruncateSearchUrlQLength.Get();
+          bool truncated = false;
+          if (max_length >= 0) {
+            const size_t original_length = terms.length();
+            terms = TruncateEncodedQuery(terms, max_length);
+            truncated = terms.length() < original_length;
+          }
+          search_terms_args.is_q_truncated = truncated;
+        }
+        HandleReplacement(std::string(), terms, replacement, &url);
         break;
+      }
 
       case GOOGLE_IMAGE_THUMBNAIL:
         HandleReplacement(std::string(),
@@ -2070,6 +2179,15 @@ SearchEngineType TemplateURL::GetEngineType(
   return engine_type_;
 }
 
+bool TemplateURL::IsTrustedGoogleEngine(
+    const SearchTermsData& search_terms_data) const {
+  if (!is_trusted_google_engine_.has_value()) {
+    is_trusted_google_engine_ =
+        ComputeIsTrustedGoogleEngine(*this, search_terms_data);
+  }
+  return *is_trusted_google_engine_;
+}
+
 BuiltinEngineType TemplateURL::GetBuiltinEngineType() const {
   if (data().prepopulate_id != 0) {
     return KEYWORD_MODE_PREPOPULATED_ENGINE;
@@ -2319,6 +2437,7 @@ void TemplateURL::SetURL(const std::string& url) {
   active_data().SetURL(url);
 
   engine_type_ = SEARCH_ENGINE_UNKNOWN;
+  is_trusted_google_engine_.reset();
   url_ref().InvalidateCachedValues();
 }
 
@@ -2348,6 +2467,8 @@ void TemplateURL::ResetKeywordIfNecessary(
 }
 
 void TemplateURL::InvalidateCachedValues() const {
+  engine_type_ = SEARCH_ENGINE_UNKNOWN;
+  is_trusted_google_engine_.reset();
   for (const TemplateURLRef& ref : url_refs_) {
     ref.InvalidateCachedValues();
   }

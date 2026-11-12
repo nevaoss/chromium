@@ -4,12 +4,15 @@
 
 #include "extensions/browser/mime_handler/mime_handler_registry.h"
 
-#include "base/containers/span.h"
+#include <vector>
+
 #include "base/feature_list.h"
 #include "base/json/values_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/values_test_util.h"
 #include "base/time/time.h"
+#include "base/values.h"
 #include "components/version_info/channel.h"
 #include "extensions/browser/extension_pref_names.h"
 #include "extensions/browser/extension_prefs.h"
@@ -21,7 +24,7 @@
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_features.h"
 #include "extensions/common/features/feature_channel.h"
-#include "extensions/common/manifest_handlers/mime_types_handler.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace extensions {
@@ -48,15 +51,19 @@ class MimeHandlerRegistryTest : public ExtensionsTest {
     ASSERT_TRUE(registry());
   }
 
-  // Builds an extension with dict-format mime_types_handler.
+  // Builds an extension with dict-format mime_types_handler. `extra_entry`
+  // adds keys to the MIME type's entry next to "handler_url".
   scoped_refptr<const Extension> CreateMimeHandlerExtension(
       const std::string& name,
       const std::string& mime_type,
-      const std::string& handler_url) {
-    std::string json = base::StringPrintf(
-        R"("mime_types_handler": {"%s": {"handler_url": "%s"}})",
-        mime_type.c_str(), handler_url.c_str());
-    return ExtensionBuilder(name).AddJSON(json).Build();
+      const std::string& handler_url,
+      base::DictValue extra_entry = base::DictValue()) {
+    extra_entry.Set("handler_url", handler_url);
+    return ExtensionBuilder(name)
+        .SetManifestKey(
+            "mime_types_handler",
+            base::DictValue().Set(mime_type, std::move(extra_entry)))
+        .Build();
   }
 
   // Builds an allowlisted dict-format mime handler whose extension ID is
@@ -100,7 +107,7 @@ class MimeHandlerRegistryTest : public ExtensionsTest {
   // Returns the highest-precedence candidate for `mime_type`, or an empty
   // id when the registry holds none.
   ExtensionId GetHandlerForMimeType(const std::string& mime_type) {
-    base::span<const ExtensionId> handlers =
+    const std::vector<ExtensionId> handlers =
         registry()->GetHandlersForMimeType(mime_type);
     return handlers.empty() ? ExtensionId() : handlers.front();
   }
@@ -226,7 +233,7 @@ TEST_F(MimeHandlerRegistryTest, GetHandlersByMimeTypeReturnsAllTypes) {
 }
 
 TEST_F(MimeHandlerRegistryTest, GetHandlersForMimeTypeIsOrdered) {
-  // Exercise all three precedence rules in one ordered span:
+  // Exercise all three precedence rules in one ordered list:
   //   * public_new and public_old are public handlers; public beats
   //     allowlisted, and newest-install-time wins among public.
   //   * qoffice and pdf are both allowlisted; qoffice has a higher
@@ -253,7 +260,7 @@ TEST_F(MimeHandlerRegistryTest, GetHandlersForMimeTypeIsOrdered) {
   LoadExtension(public_old.get());
   LoadExtension(public_new.get());
 
-  base::span<const ExtensionId> candidates =
+  const std::vector<ExtensionId> candidates =
       registry()->GetHandlersForMimeType(kPdfMimeType);
   ASSERT_EQ(candidates.size(), 4u);
   EXPECT_EQ(candidates[0], public_new->id());
@@ -267,8 +274,7 @@ TEST_F(MimeHandlerRegistryTest, MultipleMimeTypesWithOverlap) {
 
   // Allowlisted QuickOffice extension registers for BOTH application/pdf
   // and application/msword via a dict-format manifest. Allowlisted
-  // extensions bypass `GetPublicAllowedMIMETypeList()`, so msword is
-  // accepted.
+  // extensions may claim unsupported MIME types, so msword is accepted.
   auto allowlisted =
       ExtensionBuilder("AllowlistedMulti")
           .SetID(extension_misc::kQuickOfficeExtensionId)
@@ -287,13 +293,13 @@ TEST_F(MimeHandlerRegistryTest, MultipleMimeTypesWithOverlap) {
   // msword: only the allowlisted extension registers for it.
   EXPECT_EQ(allowlisted->id(), GetHandlerForMimeType(kDocMimeType));
 
-  base::span<const ExtensionId> pdf_candidates =
+  const std::vector<ExtensionId> pdf_candidates =
       registry()->GetHandlersForMimeType(kPdfMimeType);
   ASSERT_EQ(pdf_candidates.size(), 2u);
   EXPECT_EQ(pdf_candidates[0], public_pdf->id());
   EXPECT_EQ(pdf_candidates[1], allowlisted->id());
 
-  base::span<const ExtensionId> doc_candidates =
+  const std::vector<ExtensionId> doc_candidates =
       registry()->GetHandlersForMimeType(kDocMimeType);
   ASSERT_EQ(doc_candidates.size(), 1u);
   EXPECT_EQ(doc_candidates[0], allowlisted->id());
@@ -398,6 +404,27 @@ TEST_F(MimeHandlerRegistryTest, EnabledByDefaultUntilDisabled) {
   EXPECT_EQ(ext->id(), GetHandlerForMimeType(kPdfMimeType));
 }
 
+TEST_F(MimeHandlerRegistryTest, ManifestEnabledFalseStartsDisabled) {
+  auto ext =
+      CreateMimeHandlerExtension("PDF Handler", kPdfMimeType, kViewerUrl,
+                                 base::DictValue().Set("enabled", false));
+  LoadExtension(ext.get());
+
+  EXPECT_TRUE(GetHandlerForMimeType(kPdfMimeType).empty());
+  EXPECT_FALSE(registry()->IsEnabledForMimeType(ext->id(), kPdfMimeType));
+
+  registry()->SetEnabledForMimeType(ext->id(), kPdfMimeType, true);
+  EXPECT_EQ(ext->id(), GetHandlerForMimeType(kPdfMimeType));
+  EXPECT_TRUE(registry()->IsEnabledForMimeType(ext->id(), kPdfMimeType));
+
+  // The PDF handler should stay enabled after the extension is loaded again,
+  // because the stored choice wins over the manifest.
+  UnloadExtension(ext.get());
+  LoadExtension(ext.get());
+  EXPECT_EQ(ext->id(), GetHandlerForMimeType(kPdfMimeType));
+  EXPECT_TRUE(registry()->IsEnabledForMimeType(ext->id(), kPdfMimeType));
+}
+
 TEST_F(MimeHandlerRegistryTest, DisableRollsBackToPreviouslyInstalledHandler) {
   // Precedence for public handlers is "newest GetFirstInstallTime
   // wins". Disabling the newer handler must roll the active handler
@@ -420,35 +447,56 @@ TEST_F(MimeHandlerRegistryTest, DisableRollsBackToPreviouslyInstalledHandler) {
   EXPECT_EQ(ext_new->id(), GetHandlerForMimeType(kPdfMimeType));
 }
 
-TEST_F(MimeHandlerRegistryTest, SetEnabledForUnclaimedMimeTypeDoesNotRegister) {
-  constexpr char kPngMimeType[] = "image/png";
-  // Anchor on the actual invariant: `kPngMimeType` is not in the public
-  // allowed MIME types, so no non-allowlisted extension's manifest can
-  // claim it (the parser drops unsupported entries with an install
-  // warning). If this list ever grows to include `image/png`, pick a
-  // different MIME type for this test.
-  ASSERT_TRUE(
-      std::ranges::find(MimeTypesHandler::GetPublicAllowedMIMETypeList(),
-                        kPngMimeType) ==
-      MimeTypesHandler::GetPublicAllowedMIMETypeList().end());
+// MIME handler choices saved by an older Chrome version should still apply
+// after the upgrade.
+TEST_F(MimeHandlerRegistryTest, MigratesMimeHandlerEnabledToOptions) {
+  const ExtensionId malformed_id =
+      CreateMimeHandlerExtension("Malformed", kPdfMimeType, kViewerUrl)->id();
+  const ExtensionId migrated_id =
+      CreateMimeHandlerExtension("Migrated", kPdfMimeType, kViewerUrl)->id();
+  ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context());
+  prefs->UpdateExtensionPref(
+      malformed_id, "mime_handler_enabled",
+      base::test::ParseJson(R"({"application/pdf": "not a bool"})"));
+  prefs->UpdateExtensionPref(migrated_id, "mime_handler_enabled",
+                             base::test::ParseJson(R"({"application/pdf": false,
+                                "application/vnd.ms-excel": true})"));
 
+  // The legacy prefs were written after the fixture created its registry, so
+  // create a new registry to migrate them, as on the next browser start.
+  MimeHandlerRegistry restarted_registry(browser_context());
+
+  EXPECT_FALSE(prefs->ReadPrefAsDict(malformed_id, "mime_handler_options"));
+  // A '.' in a MIME type is not expected to split it into nested keys.
+  EXPECT_THAT(prefs->ReadPrefAsDict(migrated_id, "mime_handler_options"),
+              testing::Pointee(base::test::IsJson(
+                  R"({"application/pdf": {"enabled": false},
+                      "application/vnd.ms-excel": {"enabled": true}})")));
+  for (const ExtensionId& id : {malformed_id, migrated_id}) {
+    EXPECT_FALSE(prefs->ReadPrefAsDict(id, "mime_handler_enabled"));
+  }
+}
+
+TEST_F(MimeHandlerRegistryTest, ChoicesForSeveralMimeTypesSurviveReload) {
+  // A '.' in a MIME type is not expected to split the stored choice into
+  // nested keys.
+  constexpr char kDottedMimeType[] = "application/vnd.ms-excel";
   auto ext =
-      CreateMimeHandlerExtension("PDF Handler", kPdfMimeType, kViewerUrl);
+      ExtensionBuilder("AllowlistedMulti")
+          .SetID(extension_misc::kQuickOfficeExtensionId)
+          .AddJSON(R"("mime_types_handler": {)"
+                   R"("application/pdf": {"handler_url": "q.html"},)"
+                   R"("application/vnd.ms-excel": {"handler_url": "q.html"}})")
+          .Build();
   LoadExtension(ext.get());
 
-  // Sanity: extension is the active handler for the MIME type it claims,
-  // and `image/png` has no registered handler.
-  ASSERT_EQ(ext->id(), GetHandlerForMimeType(kPdfMimeType));
-  ASSERT_TRUE(registry()->GetHandlersForMimeType(kPngMimeType).empty());
+  registry()->SetEnabledForMimeType(ext->id(), kPdfMimeType, false);
+  registry()->SetEnabledForMimeType(ext->id(), kDottedMimeType, false);
+  UnloadExtension(ext.get());
+  LoadExtension(ext.get());
 
-  // Call for a MIME type the manifest does not claim. The pref write
-  // happens unconditionally, but the in-memory registry must not gain
-  // an entry for `image/png`.
-  registry()->SetEnabledForMimeType(ext->id(), kPngMimeType, true);
-
-  EXPECT_TRUE(registry()->IsEnabledForMimeType(ext->id(), kPngMimeType));
-  EXPECT_TRUE(registry()->GetHandlersForMimeType(kPngMimeType).empty());
-  EXPECT_EQ(registry()->GetHandlersByMimeType().count(kPngMimeType), 0u);
+  EXPECT_TRUE(GetHandlerForMimeType(kPdfMimeType).empty());
+  EXPECT_TRUE(GetHandlerForMimeType(kDottedMimeType).empty());
 }
 
 }  // namespace

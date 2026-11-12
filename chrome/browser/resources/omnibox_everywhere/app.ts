@@ -11,10 +11,8 @@ import '//resources/cr_components/composebox/composebox_voice_search.js';
 import '//resources/cr_components/most_visited/most_visited.js';
 import '//resources/cr_components/search/animated_glow.js';
 
-import {TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxState} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxVoiceSearchElement, VoicePermissionPromptState} from '//resources/cr_components/composebox/composebox_voice_search.js';
-import type {MostVisitedElement} from '//resources/cr_components/most_visited/most_visited.js';
 import {browserProxyFactory} from '//resources/cr_components/most_visited/most_visited.mojom-webui.js';
 import type {MostVisitedInfo} from '//resources/cr_components/most_visited/most_visited.mojom-webui.js';
 import type {SearchAnimatedGlowElement} from '//resources/cr_components/search/animated_glow.js';
@@ -23,7 +21,8 @@ import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {getDeepActiveElement} from '//resources/js/util.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import {FreStage} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
+import {FreStage, TabAttachmentSource} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {FreState, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ModelMode, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 
@@ -50,13 +49,6 @@ export interface OmniboxEverywhereAppElement {
   $: {
     content: HTMLElement,
     dialogAnchor: HTMLElement,
-    searchbox: OmniboxEverywhereOmniboxElement,
-    composebox: OmniboxEverywhereComposeboxElement,
-    mostVisited: MostVisitedElement,
-    voiceSearchDialog: HTMLDialogElement,
-    voiceSearchCardContainer: HTMLElement,
-    voiceSearchGlow: SearchAnimatedGlowElement,
-    voiceSearch: ComposeboxVoiceSearchElement,
   };
 }
 
@@ -119,6 +111,21 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
         reflect: true,
         attribute: 'small-loomnibox',
       },
+      dynamicSizing_: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'dynamic-sizing',
+      },
+      dynamicSizingWidth_: {
+        type: Number,
+        reflect: true,
+        attribute: 'dynamic-sizing-width',
+      },
+      smallFont_: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'small-font',
+      },
       hideTitle_: {type: Boolean},
       freStage_: {type: Number},
       hotkeyTokens_: {type: Array},
@@ -164,6 +171,11 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
       loadTimeData.getBoolean('omniboxEverywhereMostVisitedEnabled');
   protected accessor smallLoomnibox_: boolean =
       loadTimeData.getBoolean('smallLoomnibox');
+  protected accessor dynamicSizing_: boolean =
+      loadTimeData.getBoolean('dynamicSizing');
+  protected accessor dynamicSizingWidth_: number =
+      loadTimeData.getInteger('dynamicSizingWidth');
+  protected accessor smallFont_: boolean = loadTimeData.getBoolean('smallFont');
   protected accessor hideTitle_: boolean =
       loadTimeData.getBoolean('omniboxEverywhereMostVisitedHideTitle');
   protected accessor hasMostVisitedTiles_: boolean = false;
@@ -208,6 +220,15 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
     this.removeListeners_();
   }
 
+  override willUpdate(changedProperties: PropertyValues<this>) {
+    super.willUpdate(changedProperties);
+    if (this.dynamicSizing_) {
+      // In persistent mode, rest in the small 480px state (5 MVT tiles) when
+      // inactive, and expand both the searchbox and MVT row when focused.
+      this.smallLoomnibox_ = this.isPersistentMode_ && !this.isActive_;
+    }
+  }
+
   private setupListeners_() {
     const onOpenComposebox = (initialState: ComposeboxInitialState|null) => {
       const state: Partial<ComposeboxState> = {};
@@ -217,7 +238,7 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
           state.files = [{
             ...initialState.tab,
             delayUpload: false,
-            origin: TabUploadOrigin.CONTEXT_MENU,
+            origin: TabAttachmentSource.kContextMenu,
           }];
         }
         if (initialState.fileToken && initialState.fileInfo) {
@@ -424,6 +445,13 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
     return this.freStage_ === FreStage.kShortcutSetupChin ?
         FreChinMode.SHORTCUT_SETUP :
         FreChinMode.SHORTCUT_REMINDER;
+  }
+
+  protected getMaxMostVisitedTiles_(): number {
+    if (this.smallLoomnibox_) {
+      return 5;
+    }
+    return (this.dynamicSizing_ && this.dynamicSizingWidth_ === 600) ? 6 : 7;
   }
 
   private setIsComposebox_(isComposebox: boolean) {
@@ -755,7 +783,9 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
     }
 
     if (this.isComposeboxMode_) {
-      const composebox = this.$.composebox;
+      const composebox =
+          this.shadowRoot.querySelector<OmniboxEverywhereComposeboxElement>(
+              '#composebox');
       if (composebox) {
         composebox.setInputText(trimmedQuery);
         if (submit) {
@@ -770,7 +800,9 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
         }
       }
     } else {
-      const searchbox = this.$.searchbox;
+      const searchbox =
+          this.shadowRoot.querySelector<OmniboxEverywhereOmniboxElement>(
+              '#searchbox');
       if (searchbox) {
         searchbox.setInputText(trimmedQuery);
         if (submit) {

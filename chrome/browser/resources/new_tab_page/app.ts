@@ -5,14 +5,13 @@
 import './logo.js';
 import './ntp_composebox.js';
 import './ntp_searchbox.js';
+import './left_hand_side.js';
 import '/strings.m.js';
 import 'chrome://new-tab-page/shared/customize_buttons/customize_buttons.js';
-import 'chrome://resources/cr_components/composebox/threads_rail.js';
 import 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import 'chrome://resources/cr_components/search/animated_glow.js';
 
 import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
-import type {CustomizeButtonsElement} from 'chrome://new-tab-page/shared/customize_buttons/customize_buttons.js';
 import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 import {GlifAnimationState} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxState} from 'chrome://resources/cr_components/composebox/common.js';
@@ -134,6 +133,7 @@ const VOICE_MANUAL_SUBMIT_IDLE_TIMEOUT_MS = 10000;
 const COMPOSEBOX_INERT_ALLOWLIST = [
   '#logo',
   '#searchboxContainer',
+  '#voiceSearchDialog',
 ];
 
 export const CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID =
@@ -175,14 +175,9 @@ const AppElementBase = HelpBubbleMixinLit(CrLitElement);
 
 export interface AppElement {
   $: {
-    customizeButtons: CustomizeButtonsElement,
     oneGoogleBarClipPath: HTMLElement,
     logo: LogoElement,
     searchbox: NtpSearchboxElement,
-    composebox: NtpComposeboxElement,
-    undoToast: CrToastElement,
-    undoToastMessage: HTMLElement,
-    voiceSearchDialog: HTMLDialogElement,
   };
 }
 
@@ -250,6 +245,7 @@ export class AppElement extends AppElementBase {
           {type: Boolean},
       voiceSearchCoherenceRealboxAutoEndpointEnabled_: {type: Boolean},
       voiceSearchCoherenceRealboxHelperTextEnabled_: {type: Boolean},
+      androidSpeechRecognition_: {type: Boolean},
 
       voiceSearchTranscript_: {type: String},
       voiceSearchReceivedSpeech_: {type: Boolean},
@@ -290,6 +286,7 @@ export class AppElement extends AppElementBase {
       logoEnabled_: {type: Boolean},
       oneGoogleBarEnabled_: {type: Boolean},
       shortcutsEnabled_: {type: Boolean},
+      shortcutsReorderEnabled_: {type: Boolean},
       modulesEnabled_: {type: Boolean},
 
       browserPromoType_: {type: String},
@@ -409,6 +406,10 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('voiceSearchCoherenceRealboxAutoEndpointEnabled');
   protected accessor voiceSearchCoherenceRealboxHelperTextEnabled_: boolean =
       loadTimeData.getBoolean('voiceSearchCoherenceRealboxHelperTextEnabled');
+  // `true` only on Android, where voice search uses Android's speech recognizer
+  // (see new_tab_page_ui.cc).
+  protected accessor androidSpeechRecognition_: boolean =
+      loadTimeData.getBoolean('androidSpeechRecognition');
 
   protected accessor voiceSearchTranscript_: string = '';
   protected accessor voiceSearchReceivedSpeech_: boolean = false;
@@ -443,6 +444,8 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('oneGoogleBarEnabled');
   protected accessor shortcutsEnabled_: boolean =
       loadTimeData.getBoolean('shortcutsEnabled');
+  protected accessor shortcutsReorderEnabled_: boolean =
+      loadTimeData.getBoolean('ntpShortcutsReorderEnabled');
   protected accessor modulesEnabled_: boolean =
       loadTimeData.getBoolean('modulesEnabled');
   protected accessor browserPromoType_: string =
@@ -861,11 +864,6 @@ export class AppElement extends AppElementBase {
         changedPrivateProperties.has('theme_') ||
         changedPrivateProperties.has('showComposebox_')) {
       this.updateOneGoogleBarAppearance_();
-    }
-
-    if (changedPrivateProperties.has('showComposebox_') &&
-        this.showComposebox_ && this.enableThreadsRail_) {
-      recordBoolean('NewTabPage.ThreadsRail.Shown', true);
     }
 
     if (changedPrivateProperties.has('showVoiceSearchOverlay_') &&
@@ -1632,7 +1630,7 @@ export class AppElement extends AppElementBase {
       }
     }
 
-    if (e.composedPath() && e.composedPath()[0] === $$(this, '#content')) {
+    if (e.composedPath()[0] === $$(this, '#rhsContent')) {
       recordClick(NtpElement.BACKGROUND);
       return;
     }
@@ -1653,7 +1651,7 @@ export class AppElement extends AppElementBase {
         case $$(this, '#modules'):
           recordClick(NtpElement.MODULE);
           return;
-        case $$(this, '#threadsRail'):
+        case $$(this, 'cr-left-hand-side'):
           recordClick(NtpElement.THREADS_RAIL);
           return;
         default:
@@ -1829,14 +1827,16 @@ export class AppElement extends AppElementBase {
       return;
     }
 
-    if (this.$.undoToast.open) {
+    const undoToast =
+        this.shadowRoot.querySelector<CrToastElement>('#undoToast')!;
+    if (undoToast.open) {
       return;
     }
 
     const undoToastContext = this.pendingUndoToasts_.shift()!;
     this.undoToastCallback_ = undoToastContext.undo;
     this.undoToastMessage_ = undoToastContext.message;
-    this.$.undoToast.show();
+    undoToast.show();
   }
 
   /**
@@ -1845,7 +1845,7 @@ export class AppElement extends AppElementBase {
    * toast (if any).
    */
   protected onUndoButtonClick_() {
-    this.$.undoToast.hide();
+    this.shadowRoot.querySelector<CrToastElement>('#undoToast')!.hide();
     this.undoToastCallback_?.();
     this.undoToastCallback_ = null;
     this.undoToastMessage_ = null;
@@ -1856,7 +1856,7 @@ export class AppElement extends AppElementBase {
     const notSelector =
         COMPOSEBOX_INERT_ALLOWLIST.map(s => `:not(${s})`).join('');
     const blockedElements = this.shadowRoot.querySelectorAll<HTMLElement>(
-        `#content > ${notSelector}`);
+        `#rhsContent > ${notSelector}`);
     blockedElements.forEach(element => {
       if (this.showComposebox_) {
         element.setAttribute('inert', '');

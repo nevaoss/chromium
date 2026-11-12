@@ -466,7 +466,6 @@ void SignalFormSubmissionIfEligibleForSaving(PasswordFormManager* manager,
 
 #endif
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 bool HasManuallyFilledFields(const PasswordForm& form) {
   return std::ranges::any_of(
       form.form_data.fields(), [&](const autofill::FormFieldData& field) {
@@ -474,7 +473,6 @@ bool HasManuallyFilledFields(const PasswordForm& form) {
                autofill::FieldPropertiesFlags::kAutofilledOnUserTrigger;
       });
 }
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 void RecordProvisionalSaveFailure(
     password_manager::PasswordManagerClient* client,
@@ -1196,7 +1194,7 @@ PasswordFormManager* PasswordManager::CreateFormManager(
       /*metrics_recorder=*/nullptr);
   // Process model and server predictions in case they've already arrived.
   if (auto model_form_predictions = classifier_model_predictions_.find(
-          std::make_pair(&driver, form.renderer_id()));
+          std::make_pair(driver.GetId(), form.renderer_id()));
       model_form_predictions != classifier_model_predictions_.end()) {
     manager->ProcessModelPredictions(model_form_predictions->second);
   }
@@ -1645,9 +1643,7 @@ void PasswordManager::OnLoginSuccessful() {
   const PasswordForm* submitted_form = submitted_manager->GetSubmittedForm();
   CHECK(submitted_form);
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   MaybeTriggerHatsSurvey(*submitted_manager);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
   // User might fill several login flows during their user journey. For example,
   // Forgot Password Flow followed by sign-in flow. To not suggest usernames
@@ -1788,9 +1784,7 @@ void PasswordManager::OnLoginFailed(PasswordManagerDriver* driver,
   CHECK(submitted_manager);
   submitted_manager->GetMetricsRecorder()->LogSubmitFailed();
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   MaybeTriggerHatsSurvey(*submitted_manager);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   HandleFailedLoginDetectionForPasswordChange(client_, driver,
                                               *submitted_manager);
 
@@ -1886,10 +1880,10 @@ void PasswordManager::ProcessClassificationModelPredictions(
   RecordMetricsForModelPredictions(field_predictions,
                                    client_->GetUkmSourceId());
 
-  // A combination of driver and form renderer id allow to identify fields
+  // A combination of driver id and form renderer id allow to identify fields
   // uniquely, so only the renderer ids need to be kept (not global ids).
   auto& predictions_for_form = classifier_model_predictions_[std::make_pair(
-      driver, form.renderer_id())] =
+      CHECK_DEREF(driver).GetId(), form.renderer_id())] =
       KeyPredictionsByRendererIds(field_predictions);
 
   if (auto logger = password_manager_util::GetLoggerIfAvailable(client_)) {
@@ -2079,19 +2073,17 @@ bool PasswordManager::IsFormManagerPendingPasswordUpdate() const {
          owned_submitted_form_manager_->IsPasswordUpdate();
 }
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 void PasswordManager::MaybeTriggerHatsSurvey(
     PasswordFormManager& form_manager) {
   const PasswordForm* submitted_form = form_manager.GetSubmittedForm();
   if (submitted_form && HasManuallyFilledFields(*submitted_form) &&
       base::FeatureList::IsEnabled(
-          features::kAutofillPasswordUserPerceptionSurvey)) {
-    client_->TriggerUserPerceptionOfPasswordManagerSurvey(
+          features::kAutofillPersonalizationAndTrustPasswordSurvey)) {
+    client_->TriggerPersonalizationAndTrustSurvey(
         form_manager.GetMetricsRecorder()
-            ->FillingAssinstanceToHatsInProductDataString());
+            ->FillingAssistanceToHatsInProductDataString());
   }
 }
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_IOS)
 bool PasswordManager::DetectPotentialSubmission(

@@ -11,14 +11,14 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {MetricsReporterImpl} from '//resources/js/metrics_reporter/metrics_reporter.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import {KeywordType} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {KeywordType, UrlDeemphasisMode} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter, UrlEmphasis} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
 import type {SearchboxIconElement} from './searchbox_icon.js';
 import {getCss} from './searchbox_input.css.js';
 import {getHtml} from './searchbox_input.html.js';
-import {afterNextPaint, markOnce} from './utils.js';
+import {afterNextPaint, announce, markOnce} from './utils.js';
 
 // Register --placeholder-opacity as type <number> so that we can animate it.
 CSS.registerProperty({
@@ -47,8 +47,8 @@ const SearchboxInputElementBase = I18nMixinLit(CrLitElement);
 
 export interface SearchboxInputElement {
   $: {
-    input: HTMLInputElement|HTMLTextAreaElement,
     icon: SearchboxIconElement,
+    selectionAnnouncement: HTMLElement,
   };
 }
 
@@ -89,6 +89,8 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
       inputKeywordModel: {type: Object},
       inputHasMatches: {type: Boolean},
       allowFilePaste: {type: Boolean},
+      urlEmphasisEnabled: {type: Boolean, reflect: true},
+      urlEmphasis: {type: Object},
     };
   }
 
@@ -107,6 +109,8 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   accessor inputKeywordModel: InputKeywordModel|null = null;
   accessor inputHasMatches: boolean = false;
   accessor allowFilePaste: boolean = false;
+  accessor urlEmphasisEnabled: boolean = false;
+  accessor urlEmphasis: UrlEmphasis|null = null;
 
   private callbackRouter_: PageCallbackRouter;
   private inputTextChangedListenerId_: number|null = null;
@@ -116,6 +120,11 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   private pastedInInput_: boolean = false;
   private resizeObserver_: ResizeObserver|null = null;
   private onDocumentSelectionChangeBound_ = () => this.updateEllipsisState_();
+  // Bumped by each `setSelectionA11yLabel()` call, so that a deferred
+  // notification can tell whether it has been superseded.
+  private selectionA11yLabelGeneration_: number = 0;
+  // Whether a selection label's notification is deferred and still pending.
+  private selectionA11yLabelPending_: boolean = false;
 
   constructor() {
     super();
@@ -157,47 +166,78 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     this.setupResizeObserver_();
   }
 
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+
+    if (changedProperties.has('selectedMatch') ||
+        changedProperties.has('urlEmphasisEnabled') ||
+        changedProperties.has('urlEmphasis')) {
+      this.updateMirror_();
+    }
+  }
+
   private setupResizeObserver_() {
     if (!this.resizeObserver_) {
       this.resizeObserver_ = new ResizeObserver(() => {
         this.updateEllipsisState_();
       });
     }
-    if (this.$.input) {
-      this.resizeObserver_.observe(this.$.input);
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    if (input) {
+      this.resizeObserver_.observe(input);
     }
   }
 
   get inputElement(): HTMLInputElement|HTMLTextAreaElement {
-    assert(this.$.input);
-    return this.$.input;
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    assert(input);
+    return input;
   }
 
   override focus() {
-    assert(this.$.input);
-    this.$.input.focus();
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    assert(input);
+    input.focus();
   }
 
   override blur() {
-    assert(this.$.input);
-    this.$.input.blur();
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    assert(input);
+    input.blur();
   }
 
   select() {
-    assert(this.$.input);
-    this.$.input.select();
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    assert(input);
+    input.select();
   }
 
   setSelectionRange(
       start: number|null, end: number|null,
       direction?: 'forward'|'backward'|'none') {
-    assert(this.$.input);
-    this.$.input.setSelectionRange(start, end, direction);
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    assert(input);
+    input.setSelectionRange(start, end, direction);
   }
 
   getInputValue(): string {
-    assert(this.$.input);
-    return this.$.input.value;
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    assert(input);
+    return input.value;
   }
 
   setInputText(text: string) {
@@ -220,20 +260,64 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     return this.lastInput_;
   }
 
+  /**
+   * While a selection is active, the input's value previews it. Screen readers
+   * narrate that value change, drowning out the selection's own announcement.
+   * Like the WebUI toolbar's readonly omnibox, this distracts them from the
+   * input by pointing aria-activedescendant at an offscreen element, then
+   * notifies the label, so that is all they narrate. The distraction has no
+   * role of its own, so screen reader focus stays on the input. This is the
+   * only narration of selection changes, so callers must not announce the
+   * label by other means too. Pass an empty string to narrate the input itself
+   * again, e.g. when the user edits.
+   */
+  setSelectionA11yLabel(label: string) {
+    const input = this.inputElement;
+    const distraction = this.$.selectionAnnouncement;
+    const wasDistracted = input.ariaActiveDescendantElement === distraction;
+    distraction.textContent = label;
+    input.ariaActiveDescendantElement = label ? distraction : null;
+    const generation = ++this.selectionA11yLabelGeneration_;
+    if (!label) {
+      this.selectionA11yLabelPending_ = false;
+      return;
+    }
+    if (wasDistracted && !this.selectionA11yLabelPending_) {
+      announce(this, label);
+      return;
+    }
+    // Pointing aria-activedescendant at the distraction is reported to screen
+    // readers as a focus change. Notify once that has gone out with the next
+    // accessibility tree update, so that whatever they make of the focus
+    // change, the label is what they narrate last.
+    this.selectionA11yLabelPending_ = true;
+    afterNextPaint(() => {
+      if (generation !== this.selectionA11yLabelGeneration_) {
+        return;  // Superseded by a newer label, or cancelled by an edit.
+      }
+      this.selectionA11yLabelPending_ = false;
+      announce(this, label);
+    });
+  }
+
   isMultiline(): boolean {
-    if (!this.$.input) {
+    const input = this.shadowRoot.querySelector<HTMLElement>('#input');
+    if (!input) {
       return false;
     }
     if (this.forceSingleLine_) {
       return false;
     }
     return this.multiLineEnabled &&
-        this.$.input.scrollHeight > MULTILINE_INPUT_HEIGHT_THRESHOLD;
+        input.scrollHeight > MULTILINE_INPUT_HEIGHT_THRESHOLD;
   }
 
   preventInlineAutocomplete(input: string) {
+    const inputEl =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
     const caretNotAtEnd =
-        this.$.input ? this.$.input.selectionStart !== input.length : false;
+        inputEl ? inputEl.selectionStart !== input.length : false;
     return this.isDeletingInput_ || this.pastedInInput_ || caretNotAtEnd;
   }
 
@@ -254,6 +338,7 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   protected onInputBlur_() {
+    this.setSelectionA11yLabel('');
     this.updateEllipsisState_();
   }
 
@@ -266,10 +351,12 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   private onInputCutCopy_(e: ClipboardEvent) {
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input')!;
     // Only handle cut/copy when input has content and it's all selected.
-    if (!this.$.input.value || this.$.input.selectionStart !== 0 ||
-        this.$.input.selectionEnd !== this.$.input.value.length ||
-        !this.inputHasMatches) {
+    if (!input.value || input.selectionStart !== 0 ||
+        input.selectionEnd !== input.value.length || !this.inputHasMatches) {
       return;
     }
 
@@ -288,12 +375,17 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   protected onInputInput_(e: InputEvent) {
-    const inputValue = this.$.input.value;
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input')!;
+    const inputValue = input.value;
     const lastInputValue = this.lastInput_.text + this.lastInput_.inline;
     if (lastInputValue === inputValue) {
       return;
     }
 
+    // The user is editing, so narrate the input itself.
+    this.setSelectionA11yLabel('');
     this.updateInput_({text: inputValue, inline: ''});
     // Record a user timing mark if the input has content.
     if (inputValue.length > 0 &&
@@ -331,15 +423,23 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   protected onInputKeydown_(e: KeyboardEvent) {
+    // The user is moving the caret, so narrate the input itself.
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      this.setSelectionA11yLabel('');
+    }
+
     // Ignore this event during IME composition or if the input does not have
     // inline autocompletion.
     if (e.isComposing || !this.lastInput_.inline) {
       return;
     }
 
-    const inputValue = this.$.input.value;
-    const inputSelection = inputValue.substring(
-        this.$.input.selectionStart!, this.$.input.selectionEnd!);
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input')!;
+    const inputValue = input.value;
+    const inputSelection =
+        inputValue.substring(input.selectionStart!, input.selectionEnd!);
     const lastInputValue = this.lastInput_.text + this.lastInput_.inline;
     // If the current input state (its value and selection) matches its last
     // state (text and inline autocompletion) and the user types the next
@@ -386,10 +486,12 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
       return;
     }
 
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input')!;
     // User is tabbing into the input element.
     this.fire(
-        'input-focus-changed',
-        {value: this.$.input.value, isOnFocus: !this.$.input.value});
+        'input-focus-changed', {value: input.value, isOnFocus: !input.value});
   }
 
   protected onInputMousedown_(e: MouseEvent|null) {
@@ -397,9 +499,13 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     if (e && e.button !== 0) {
       return;
     }
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input')!;
+    // The user is placing the caret, so narrate the input itself.
+    this.setSelectionA11yLabel('');
     this.fire(
-        'input-focus-changed',
-        {value: this.$.input.value, isOnFocus: !this.$.input.value});
+        'input-focus-changed', {value: input.value, isOnFocus: !input.value});
   }
 
   protected onInputPaste_(e: ClipboardEvent) {
@@ -442,29 +548,181 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
         !inlineDiffers && !update.moveCursorToEnd && !isMatchPreview;
     let needsSelectionUpdate = !preserveSelection;
 
-    const oldSelectionStart = this.$.input?.selectionStart || null;
-    const oldSelectionEnd = this.$.input?.selectionEnd || null;
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
+    const oldSelectionStart = input?.selectionStart || null;
+    const oldSelectionEnd = input?.selectionEnd || null;
 
-    if (this.$.input && newInputValue !== this.$.input.value) {
-      this.$.input.value = newInputValue;
+    if (input && newInputValue !== input.value) {
+      input.value = newInputValue;
       needsSelectionUpdate = true;  // Setting .value blows away selection.
     }
 
-    if (this.$.input && newInputValue.trim() && needsSelectionUpdate) {
+    if (input && newInputValue.trim() && needsSelectionUpdate) {
       // If the cursor is to be moved to the end (implies selection should not
       // be preserved), set the selection start to same as the selection end.
-      this.$.input.selectionStart = preserveSelection ? oldSelectionStart :
-          (update.moveCursorToEnd || isMatchPreview)  ? newInputValue.length :
-                                                        newInput.text.length;
-      this.$.input.selectionEnd =
+      input.selectionStart = preserveSelection       ? oldSelectionStart :
+          (update.moveCursorToEnd || isMatchPreview) ? newInputValue.length :
+                                                       newInput.text.length;
+      input.selectionEnd =
           preserveSelection ? oldSelectionEnd : newInputValue.length;
+
+      // Programmatic value and selection updates do not automatically scroll
+      // the input element. Explicitly scroll to the end when the caret is
+      // placed at the end of the input.
+      if (this.multiLineEnabled) {
+        input.scrollTop = input.scrollHeight;
+      } else if (
+          input.selectionStart === newInputValue.length &&
+          input.selectionEnd === newInputValue.length) {
+        input.scrollLeft = input.scrollWidth;
+      }
     }
 
     this.isDeletingInput_ = update.isDeletingInput ??
         (lastInputValue.length > newInputValue.length &&
          lastInputValue.startsWith(newInputValue));
+    if (newInputValue !== lastInputValue) {
+      this.urlEmphasis = null;
+    }
     this.lastInput_ = newInput;
     this.updateEllipsisState_();
+    this.updateMirror_();
+  }
+
+  /**
+   * Updates the #mirror DOM overlay with styled spans to mirror the text in
+   * <input> while applying URL component emphasis matching
+   * OmniboxViewViews::EmphasizeURLComponents().
+   */
+  private updateMirror_() {
+    if (!this.urlEmphasisEnabled) {
+      return;
+    }
+
+    const mirror = this.shadowRoot?.getElementById('mirror');
+    if (!mirror) {
+      return;
+    }
+
+    mirror.textContent = '';
+    // Combine user-entered text with inline autocomplete.
+    const fullText = this.lastInput_.text + this.lastInput_.inline;
+    if (!fullText) {
+      mirror.dir = '';
+      this.inputElement.dir = '';
+      return;
+    }
+
+    const emphasis = this.urlEmphasis;
+    const textIsUrl = emphasis?.textIsUrl ?? false;
+    const deemphasisMode =
+        emphasis?.deemphasisMode ?? UrlDeemphasisMode.kNothing;
+    const schemeRange = emphasis?.schemeRange;
+    const hostRange = emphasis?.hostRange;
+    const hasScheme = !!schemeRange && schemeRange.end > schemeRange.start;
+    const hasHost = !!hostRange && hostRange.end > hostRange.start;
+    const schemeStrikeThrough = emphasis?.schemeStrikeThrough ?? false;
+    const schemeDangerous = emphasis?.schemeDangerous ?? false;
+
+    // Set directionality matching C++
+    // `OmniboxViewViews::EmphasizeURLComponents()`
+    // (`DIRECTIONALITY_AS_URL` for URLs, `DIRECTIONALITY_FROM_TEXT` for
+    // queries).
+    const dir = textIsUrl ? 'ltr' : 'auto';
+    mirror.dir = dir;
+    this.inputElement.dir = dir;
+
+    // Helper to create and append text spans to the #mirror container.
+    // Returns the created span, or null if `content` is empty.
+    const createSpan =
+        (content: string, emphasize: boolean): HTMLSpanElement|null => {
+          if (!content) {
+            return null;
+          }
+          const span = document.createElement('span');
+          span.textContent = content;
+          if (!emphasize) {
+            span.classList.add('dimmed');
+          }
+          mirror.appendChild(span);
+          return span;
+        };
+
+    if (textIsUrl) {
+      // The scheme does not necessarily start at 0: for view-source: and blob:
+      // URLs, `AutocompleteInput::ParseForEmphasizeComponents()` returns the
+      // range of the inner URL's scheme (e.g. "https" in
+      // "view-source:https://example.com"), leaving a prefix before it.
+      const schemeStart = hasScheme ? schemeRange.start : 0;
+      const schemeEnd = hasScheme ? schemeRange.end : 0;
+      const hostStart = hasHost ? hostRange.start : schemeEnd;
+      const hostEnd = hasHost ? hostRange.end : hostStart;
+
+      // Decompose URL into components: prefix, scheme, separator, host, and
+      // path.
+      const prefix = fullText.substring(0, schemeStart);
+      const scheme = fullText.substring(schemeStart, schemeEnd);
+      const separator = fullText.substring(schemeEnd, hostStart);
+      const host = fullText.substring(hostStart, hostEnd);
+      const path = fullText.substring(hostEnd);
+
+      // Partition text into spans based on the computed `UrlDeemphasisMode`,
+      // matching C++ `OmniboxView::UpdateTextStyle()`: all text gets the base
+      // emphasis, then the scheme or host is re-emphasized depending on mode.
+      const emphasizeBase = deemphasisMode === UrlDeemphasisMode.kNothing;
+      const emphasizeScheme =
+          emphasizeBase || deemphasisMode === UrlDeemphasisMode.kAllButScheme;
+      const emphasizeHost =
+          emphasizeBase || deemphasisMode === UrlDeemphasisMode.kAllButHost;
+
+      createSpan(prefix, emphasizeBase);
+      const schemeSpan = createSpan(scheme, emphasizeScheme);
+      createSpan(separator, emphasizeBase);
+      createSpan(host, emphasizeHost);
+      createSpan(path, emphasizeBase);
+
+      // Emphasize the scheme for security UI display purposes (if necessary),
+      // matching `OmniboxView::UpdateTextStyle()` and
+      // `OmniboxViewViews::UpdateSchemeStyle()`.
+      if (schemeSpan && (schemeStrikeThrough || schemeDangerous)) {
+        this.updateSchemeStyle_(
+            schemeSpan, schemeStrikeThrough, schemeDangerous);
+      }
+    } else {
+      // Normal search queries (non-URL text) render as a single undimmed span.
+      createSpan(fullText, /*emphasize=*/ true);
+    }
+
+    // Synchronize horizontal scroll position between <input> and #mirror for
+    // long text.
+    mirror.scrollLeft = this.inputElement.scrollLeft;
+  }
+
+  /**
+   * Emphasizes the scheme component for security UI display purposes
+   * (e.g. cert errors), matching OmniboxViewViews::UpdateSchemeStyle().
+   */
+  private updateSchemeStyle_(
+      schemeSpan: HTMLElement, isStrikeThrough: boolean, isDangerous: boolean) {
+    schemeSpan.classList.remove('dimmed');
+    if (isStrikeThrough) {
+      schemeSpan.classList.add('strikethrough');
+    }
+    if (isDangerous) {
+      schemeSpan.classList.add('dangerous');
+    }
+  }
+
+  protected onInputScroll_() {
+    if (!this.urlEmphasisEnabled) {
+      return;
+    }
+    const mirror = this.shadowRoot?.getElementById('mirror');
+    if (mirror) {
+      mirror.scrollLeft = this.inputElement.scrollLeft;
+    }
   }
 
   private updateEllipsisState_() {
@@ -473,8 +731,11 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
       return;
     }
 
+    const input =
+        this.shadowRoot.querySelector<HTMLInputElement|HTMLTextAreaElement>(
+            '#input');
     // Abort early if the searchbox input does not have focus or is missing.
-    if (this.shadowRoot?.activeElement !== this.$.input || !this.$.input) {
+    if (this.shadowRoot?.activeElement !== input || !input) {
       this.showEllipsis_ = false;
       return;
     }
@@ -484,27 +745,27 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     // (from the end of user-typed text to the end of input), confirming
     // the user hasn't moved the cursor or edited the selection.
     const hasInlineSelection =
-        this.$.input.selectionStart === this.lastInput_.text.length &&
-        this.$.input.selectionEnd === this.$.input.value.length &&
-        this.$.input.selectionStart !== this.$.input.selectionEnd;
+        input.selectionStart === this.lastInput_.text.length &&
+        input.selectionEnd === input.value.length &&
+        input.selectionStart !== input.selectionEnd;
 
     if (hasInlineAutocomplete && !hasInlineSelection) {
-      this.lastInput_ = {text: this.$.input.value, inline: ''};
+      this.lastInput_ = {text: input.value, inline: ''};
       this.forceSingleLine_ = false;
     } else if (
         // If the user clicks into or moves the cursor within preview text,
         // exit forced single-line mode so they can edit normally.
         !hasInlineAutocomplete && this.forceSingleLine_ &&
-        (this.$.input.selectionStart !== this.lastInput_.text.length ||
-         this.$.input.selectionEnd !== this.lastInput_.text.length)) {
+        (input.selectionStart !== this.lastInput_.text.length ||
+         input.selectionEnd !== this.lastInput_.text.length)) {
       this.forceSingleLine_ = false;
     }
 
     this.hasInlineSelection_ = hasInlineSelection;
     // Only force a reflow if the preconditions for showing the ellipsis are
     // met.
-    this.showEllipsis_ = this.forceSingleLine_ &&
-        this.$.input.scrollWidth > this.$.input.clientWidth;
+    this.showEllipsis_ =
+        this.forceSingleLine_ && input.scrollWidth > input.clientWidth;
   }
 
   protected computePlaceholderText_(): string {

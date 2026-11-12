@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_PAGE_HANDLER_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_PAGE_HANDLER_H_
 
-#include <memory>
 #include <vector>
 
 #include "base/callback_list.h"
@@ -26,19 +25,10 @@ class Uuid;
 
 namespace lens {
 class ClientToAimMessage;
-class ExecuteActions;
 class InjectInput;
 class InputPlateParametersRequest;
 class UpdateThreadContextLibrary;
 }
-
-namespace actor {
-class ActorActionsRunner;
-}  // namespace actor
-
-namespace optimization_guide::proto {
-class ActionsResult;
-}  // namespace optimization_guide::proto
 
 namespace contextual_tasks {
 class ContextualTasksService;
@@ -72,22 +62,15 @@ class ContextualTasksPageHandler
                           IsPendingErrorPageCallback callback) override;
   void IsEmbeddedPageErrorDocument(
       IsEmbeddedPageErrorDocumentCallback callback) override;
-  void CloseSidePanel() override;
-  void ShowThreadHistory() override;
   void IsShownInTab(IsShownInTabCallback callback) override;
   void OpenOnboardingHelpUi() override;
   void OpenAskGHelpUi() override;
-  void MoveTaskUiToNewTab() override;
-  void OnTabClickedFromSourcesMenu(int32_t tab_id, const GURL& url) override;
-  void OnFileClickedFromSourcesMenu(const GURL& url) override;
-  void OnImageClickedFromSourcesMenu(const GURL& url) override;
   void OnWebviewMessage(const std::vector<uint8_t>& message) override;
   void GetCommonSearchParams(bool is_dark_mode,
                              bool is_side_panel,
                              GetCommonSearchParamsCallback callback) override;
   void OnboardingTooltipDismissed() override;
   void AskGTooltipDismissed() override;
-  void ReopenTabs() override;
   void OnContextMenuOpened() override;
   void NotifySmartTabSharingTryItIphResult(bool accepted) override;
   void NotifySmartTabSharingDefaultOnIphResult(bool accepted) override;
@@ -97,10 +80,6 @@ class ContextualTasksPageHandler
       const contextual_tasks::ContextualWindowId& window_id) override;
   void CloseWindow(
       const contextual_tasks::ContextualWindowId& window_id) override;
-  void MaybeTriggerPinningPromo() override;
-  void ShowPageInfoBubble(bool is_pointer_interaction) override;
-  void OnLogoPointerDown() override;
-  void CreateNewThread() override;
   void PostAimMessage(const lens::ClientToAimMessage& message);
 
   // contextual_tasks::ContextualTasksService::Observer:
@@ -111,10 +90,6 @@ class ContextualTasksPageHandler
       const contextual_tasks::ContextualTask& task,
       contextual_tasks::ContextualTasksService::TriggerSource source) override;
 
-  actor::ActorActionsRunner* actions_runner_for_testing() const {
-    return actions_runner_.get();
-  }
-
  private:
   void OnCookieSyncCompleted();
   void UpdateContextForTask(const base::Uuid& task_id);
@@ -122,10 +97,6 @@ class ContextualTasksPageHandler
       const lens::UpdateThreadContextLibrary& message);
   void OnReceivedInjectInput(const lens::InjectInput& inject_input);
   void OnReceivedRemoveInjectedInput(const std::string& id);
-  void OnReceivedExecuteActions(const lens::ExecuteActions& execute_actions);
-  void OnActionsComplete();
-  void SendActionsResult(
-      const optimization_guide::proto::ActionsResult& result);
 
   mojo::Receiver<contextual_tasks::mojom::PageHandler> receiver_;
   raw_ptr<contextual_tasks::ContextualTasksUIInterface> web_ui_controller_;
@@ -136,10 +107,6 @@ class ContextualTasksPageHandler
   base::ScopedObservation<contextual_tasks::ContextualTasksService,
                           contextual_tasks::ContextualTasksService::Observer>
       contextual_tasks_service_observation_{this};
-
-  std::unique_ptr<actor::ActorActionsRunner> actions_runner_;
-
-  SEQUENCE_CHECKER(sequence_checker_);
 
   base::WeakPtrFactory<ContextualTasksPageHandler> weak_ptr_factory_{this};
 };

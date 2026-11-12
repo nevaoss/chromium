@@ -69,7 +69,8 @@ class ContextualTasksPanelController {
     kLensOverlay = 1,
     kAiModeLinkClick = 2,
     kAioToCobr = 3,
-    kMaxValue = kAioToCobr,
+    kAskGoogle = 4,
+    kMaxValue = kAskGoogle,
   };
 
   // Returns the entry source of the currently active panel.
@@ -146,6 +147,9 @@ class ContextualTasksPanelController {
 
   // Static.
   static ContextualTasksPanelController* From(BrowserWindowInterface* browser);
+  // Returns whether the given WebContents is hosted within the Contextual Tasks
+  // side panel.
+  static bool IsWebContentsInPanel(content::WebContents* web_contents);
 };
 
 }  // namespace contextual_tasks

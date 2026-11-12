@@ -7,7 +7,6 @@
 #import <Foundation/Foundation.h>
 
 #import <memory>
-#import <string_view>
 
 #import "base/apple/foundation_util.h"
 #import "base/cancelable_callback.h"
@@ -26,6 +25,7 @@
 #import "components/image_fetcher/core/image_fetcher.h"
 #import "components/image_fetcher/core/image_fetcher_service.h"
 #import "components/image_fetcher/core/request_metadata.h"
+#import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/pref_names.h"
 #import "components/omnibox/browser/aim_eligibility_service.h"
 #import "components/omnibox/browser/omnibox_pref_names.h"
@@ -41,6 +41,7 @@
 #import "components/strings/grit/components_strings.h"
 #import "components/subscription_eligibility/objc/subscription_eligibility_observer_bridge.h"
 #import "components/subscription_eligibility/subscription_eligibility_service.h"
+#import "ios/chrome/browser/aim/model/ai_mode_button_service_ios.h"
 #import "ios/chrome/browser/browser_view/model/browser_view_visibility_notifier_browser_agent.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_mediator.h"
 #import "ios/chrome/browser/content_suggestions/ui/user_account_image_update_delegate.h"
@@ -65,7 +66,6 @@
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_constants.h"
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_recorder.h"
 #import "ios/chrome/browser/ntp/shared/metrics/new_tab_page_metrics_constants.h"
-#import "ios/chrome/browser/ntp/ui_bundled/ai_mode_button_service_ios.h"
 #import "ios/chrome/browser/ntp/ui_bundled/feed_control_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/feed_wrapper_view_controller.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
@@ -109,7 +109,9 @@
 #import "ios/web/public/navigation/referrer.h"
 #import "ios/web/public/web_state.h"
 #import "skia/ext/skia_utils_ios.h"
-#import "ui/base/device_form_factor.h"
+#import "third_party/omnibox_proto/searchbox_config.pb.h"
+#import "third_party/omnibox_proto/tool_config.pb.h"
+#import "third_party/omnibox_proto/tool_mode.pb.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
 
@@ -132,9 +134,6 @@ enum class IOSNTPNewBadgeShownResult {
   // kNotShownButtonPressed = 2,  // Obsolete in M140
   kMaxValue = kShown,
 };
-
-// The point size of the entry point's symbol.
-const CGFloat kIconPointSize = 18.0;
 
 // The holdback period to wait after FRE completion before showing new badges
 // on the homepage.
@@ -296,6 +295,32 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   pref_service->SetBoolean(prefs::kIosImageFetcherShouldClearCache, false);
 }
 
+// Returns whether AIM image generation is allowed.
+BOOL IsAimImageGenerationAllowed(
+    const AimEligibilityService* aim_eligibility_service) {
+  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
+           ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction);
+  if (!aim_eligibility_service || !aim_eligibility_service->IsAimEligible() ||
+      !aim_eligibility_service->IsServerEligibilityEnabled()) {
+    return NO;
+  }
+
+  const omnibox::SearchboxConfig* config =
+      aim_eligibility_service->GetSearchboxConfig();
+
+  if (!config) {
+    return NO;
+  }
+
+  for (const auto& tool_config : config->tool_configs()) {
+    if (tool_config.tool() == omnibox::ToolMode::TOOL_MODE_IMAGE_GEN) {
+      return YES;
+    }
+  }
+
+  return NO;
+}
+
 }  // namespace
 
 @interface NewTabPageMediator () <BooleanObserver,
@@ -325,9 +350,9 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   // AIM eligibility service.
   raw_ptr<AimEligibilityService> _aimEligibilityService;
   // Service vending the AI Mode button configuration.
-  AIModeButtonServiceIOS* _aiModeButtonServiceIOS;
-  // AIM eligibility subscription.
-  base::CallbackListSubscription _aimEligibilitySubscription;
+  raw_ptr<AIModeButtonServiceIOS> _aiModeButtonServiceIOS;
+  // AI Mode button state change subscription.
+  base::CallbackListSubscription _aiModeButtonStateSubscription;
   // Whether AIM is currently allowed.
   BOOL _isAIMAllowed;
   // Listen for default search engine changes.
@@ -476,10 +501,10 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
     _tracker = tracker;
     _aimEligibilityService = aimEligibilityService;
     _aiModeButtonServiceIOS = aiModeButtonServiceIOS;
-    if (_aimEligibilityService) {
+    if (_aiModeButtonServiceIOS) {
       __weak __typeof(self) weakSelf = self;
-      _aimEligibilitySubscription =
-          _aimEligibilityService->RegisterEligibilityChangedCallback(
+      _aiModeButtonStateSubscription =
+          _aiModeButtonServiceIOS->RegisterStateChangedCallback(
               base::BindRepeating(^(void) {
                 [weakSelf updateAIMAvailability];
               }));
@@ -592,8 +617,8 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
     // The DSE icon might have already been fetched. In this case, no updated
     // will be delivered. Therefore we should query the cache, as the icon store
     // might have already been updated.
-    UIImage* fetchedIcon =
-        self.placeholderService->GetDefaultSearchEngineIcon(kIconPointSize);
+    UIImage* fetchedIcon = self.placeholderService->GetDefaultSearchEngineIcon(
+        PlaceholderService::IconSize::k18pt);
     if (fetchedIcon) {
       [self.headerConsumer setDefaultSearchEngineImage:fetchedIcon];
     }
@@ -616,6 +641,9 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
       std::make_unique<HomeBackgroundCustomizationServiceObserverBridge>(
           _backgroundCustomizationService, self);
   [self updateAIMAvailability];
+  if (_aiModeButtonServiceIOS) {
+    _aiModeButtonServiceIOS->RecordEntrypointShown(_isAIMAllowed);
+  }
   _mediatorSetUp = YES;
 }
 
@@ -638,9 +666,9 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   _syncService = nullptr;
   _regionalCapabilitiesService = nullptr;
   _identityManager = nullptr;
-  _aimEligibilitySubscription = {};
+  _aiModeButtonStateSubscription = {};
   _aimEligibilityService = nullptr;
-  _aiModeButtonServiceIOS = nil;
+  _aiModeButtonServiceIOS = nullptr;
   _isAIMAllowed = NO;
   self.feedControlDelegate = nil;
   _backgroundCustomizationServiceObserverBridge = nullptr;
@@ -757,7 +785,8 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   __weak __typeof(self) weakSelf = self;
   if (self.placeholderService) {
     self.placeholderService->FetchDefaultSearchEngineIcon(
-        kIconPointSize, base::BindRepeating(^(UIImage* image) {
+        PlaceholderService::IconSize::k18pt,
+        base::BindRepeating(^(UIImage* image) {
           [weakSelf.headerConsumer setDefaultSearchEngineImage:image];
         }));
   }
@@ -831,7 +860,6 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   [traitAccessor setObjectForNewTabPageTrait:[NewTabPageTrait defaultValue]];
 
   UIColor* tintColor = image ? UIColor.whiteColor : nil;
-  [self.logoMediator setOverrideLogoPath:nil darkLogoPath:nil];
   [self.logoMediator setLogoTintColor:tintColor];
 
   if (self.webState) {
@@ -855,24 +883,35 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
 - (void)updateAIMAvailability {
   BOOL aimAllowed = NO;
   BOOL fuseboxEligible = NO;
+  if (_aiModeButtonServiceIOS) {
+    aimAllowed = _aiModeButtonServiceIOS->IsButtonAvailable();
+  }
   if (_aimEligibilityService) {
-    const BOOL allowedOnDevice =
-        ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE ||
-        IsAIMNTPEntrypointTabletEnabled();
-    aimAllowed = _aimEligibilityService->IsAimEligible() && allowedOnDevice;
     fuseboxEligible = _aimEligibilityService->IsFuseboxEligible();
   }
 
   [self.consumer setAIMAllowed:aimAllowed];
   [self.headerConsumer setAIMAllowed:aimAllowed];
   [self.headerConsumer setFuseboxEligible:fuseboxEligible];
-  [self.consumer setAIMTitle:_aiModeButtonServiceIOS.title
-                        icon:_aiModeButtonServiceIOS.icon];
+  if (ntp_tiles::GetAimButtonRefactorArm() ==
+      ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction) {
+    [self.consumer setAIMImageGenerationAllowed:IsAimImageGenerationAllowed(
+                                                    _aimEligibilityService)];
+  }
+  if (_aiModeButtonServiceIOS) {
+    [self.consumer
+               setAIMTitle:_aiModeButtonServiceIOS->GetTitle()
+                      icon:_aiModeButtonServiceIOS->GetIcon()
+        accessibilityLabel:_aiModeButtonServiceIOS->GetAccessibilityLabel()];
+  }
 
   if (aimAllowed == _isAIMAllowed) {
     return;
   }
   _isAIMAllowed = aimAllowed;
+  if (_mediatorSetUp && _aiModeButtonServiceIOS) {
+    _aiModeButtonServiceIOS->RecordEntrypointShown(aimAllowed);
+  }
   // Only update the modules if the mediator has already been set up.
   if (IsAIMEligibilityRefreshNTPModulesEnabled() && _mediatorSetUp) {
     [self.NTPContentDelegate updateModuleVisibility];
@@ -1012,7 +1051,6 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
                     lightModeColorProvider:nil
                      darkModeColorProvider:nil];
   [self.consumer setBackgroundImage:nil framingCoordinates:nil];
-  [self.logoMediator setOverrideLogoPath:nil darkLogoPath:nil];
 
   std::optional<sync_pb::UserColorTheme> colorTheme =
       _backgroundCustomizationService->GetCurrentColorTheme();
@@ -1045,15 +1083,9 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
         }
       }
       [self.consumer
-          setAnimatedBackgroundPath:
-              [self ephemeralThemePathForKey:kEphemeralThemeAnimationPathKey]
+          setAnimatedBackgroundPath:[self ephemeralThemeAnimatedBackgroundPath]
              lightModeColorProvider:lightModeColorProvider
               darkModeColorProvider:darkModeColorProvider];
-      [self.logoMediator
-          setOverrideLogoPath:[self ephemeralThemePathForKey:
-                                        kEphemeralThemeGoogleLogoLightPathKey]
-                 darkLogoPath:[self ephemeralThemePathForKey:
-                                        kEphemeralThemeGoogleLogoDarkPathKey]];
     }
     if (initialLoad) {
       base::UmaHistogramEnumeration(
@@ -1074,15 +1106,16 @@ void CleanupImageFetcherCacheIfNeeded(PrefService* pref_service,
   }
 }
 
-// Returns the local file path for the given ephemeral theme preference `key`,
-// or nil if unavailable.
-- (NSString*)ephemeralThemePathForKey:(std::string_view)key {
+// Returns the local file path for the ephemeral theme animated background from
+// preferences, or nil if unavailable.
+- (NSString*)ephemeralThemeAnimatedBackgroundPath {
   if (!_prefService || !IsNTPEphemeralThemeEnabled()) {
     return nil;
   }
   const base::DictValue& themeData =
       _prefService->GetDict(prefs::kIosNtpEphemeralThemeData);
-  const std::string* path = themeData.FindString(key);
+  const std::string* path =
+      themeData.FindString(kEphemeralThemeAnimationPathKey);
   if (!path || path->empty()) {
     return nil;
   }

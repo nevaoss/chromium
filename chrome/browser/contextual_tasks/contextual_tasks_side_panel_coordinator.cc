@@ -34,7 +34,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/devtools/devtools_ui_bindings.h"
 #include "chrome/browser/devtools/devtools_window.h"
@@ -46,6 +45,7 @@
 #include "components/sessions/core/session_id.h"
 #include "extensions/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/contextual_tasks/contextual_tasks_web_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
@@ -76,6 +76,7 @@
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/feature_engagement/public/tracker.h"
 #include "components/lens/lens_overlay_dismissal_source.h"
+#include "components/permissions/permission_recovery_success_rate_tracker.h"
 #include "components/permissions/permission_request_manager.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -153,30 +154,26 @@ std::string GetContextualTasksArmShortName() {
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 std::unique_ptr<content::WebContents> CreateWebContents(
-    BrowserWindowInterface* browser_window,
-    GURL url) {
+    BrowserWindowInterface* browser_window) {
   content::WebContents::CreateParams create_params(
       browser_window->GetProfile());
   std::unique_ptr<content::WebContents> web_contents =
       content::WebContents::Create(create_params);
   webui::SetBrowserWindowInterface(web_contents.get(), browser_window);
 
-  // Apply required side panel URL changes to the url being loaded into the
-  // WebContents. This is important since loading begins before the WebContents
-  // is attached to a side panel and therefore the navigation handler won't
-  // trigger.
+#if !BUILDFLAG(IS_ANDROID)
   if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
-    url = contextual_tasks::ContextualTasksUiService::
-        AddRequiredSidePanelUrlChanges(url, web_contents.get());
+    contextual_tasks::ContextualTasksWebView::ConfigureWebContentsBackground(
+        web_contents.get(), browser_window->GetProfile());
   }
-  web_contents->GetController().LoadURL(url, content::Referrer(),
-                                        ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
-                                        std::string());
+#endif
 
-  // Create PermissionRequestManager explicitly for this WebContents.
-  // The permission bubble will anchor to the browser window via
-  // BrowserWindowInterface.
+  // Create PermissionRequestManager and PermissionRecoverySuccessRateTracker
+  // explicitly for this WebContents. The permission bubble will anchor to
+  // the browser window via BrowserWindowInterface.
   permissions::PermissionRequestManager::CreateForWebContents(
+      web_contents.get());
+  permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents(
       web_contents.get());
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -333,6 +330,29 @@ ContextualTasksPanelController* ContextualTasksPanelController::From(
       window->GetUnownedUserDataHost());
 }
 
+// static
+bool ContextualTasksPanelController::IsWebContentsInPanel(
+    content::WebContents* web_contents) {
+  if (!web_contents) {
+    return false;
+  }
+  BrowserWindowInterface* browser =
+      webui::GetBrowserWindowInterface(web_contents);
+  if (!browser) {
+    return false;
+  }
+  auto* controller = From(browser);
+  if (!controller) {
+    return false;
+  }
+  for (auto* wc : controller->GetPanelWebContentsList()) {
+    if (wc == web_contents) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void ContextualTasksSidePanelCoordinator::RecordTimeToFirstContentfulPaint(
     content::WebContents* web_contents) {
   if (!web_contents) {
@@ -379,6 +399,16 @@ void ContextualTasksSidePanelCoordinator::Show(
   } else if (entry_point ==
              omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_AIO_LINK) {
     entry_source = ContextualTasksPanelController::EntrySource::kAioToCobr;
+  } else if (entry_point == omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_PAGE_CONTEXT_MENU_ASK_GOOGLE ||
+             entry_point == omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_APP_MENU_ASK_GOOGLE ||
+             entry_point == omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON ||
+             entry_point ==
+                 omnibox::ChromeAimEntryPoint::
+                     DESKTOP_CHROME_CHROMNIENT_HOMEWORK_ACTION_CHIP) {
+    entry_source = ContextualTasksPanelController::EntrySource::kAskGoogle;
   } else if (transition_from_tab) {
     entry_source =
         ContextualTasksPanelController::EntrySource::kAiModeLinkClick;
@@ -832,14 +862,6 @@ void ContextualTasksSidePanelCoordinator::OnTabAdded(TabListInterface& tab_list,
 
   content::WebContents* content = tab->GetContents();
 
-  // Background tabs opened via hotkey commands (e.g. Ctrl+Click, middle-click)
-  // or context menus should not inherit task association from the opener,
-  // unless clobbering is enabled.
-  if (!contextual_tasks::IsContextualTasksClobberActiveTabEnabled() &&
-      tab_list.GetActiveTab() != tab) {
-    return;
-  }
-
   // If the new tab is already associated with a task, do nothing.
   if (contextual_tasks_service_->GetContextualTaskForTab(
           sessions::SessionTabHelper::IdForTab(content))) {
@@ -1026,12 +1048,25 @@ bool ContextualTasksSidePanelCoordinator::UpdateWebContentsForActiveTab() {
   }
 
   content::WebContents* web_contents = GetPanelWebContentsForActiveTab();
-  if (web_contents) {
-    contextual_tasks_panel_host_->SetWebContents(web_contents);
-  }
 
   bool contents_changed = prev_web_contents != web_contents;
   if (contents_changed) {
+    // The toolbar UI itself and location bar class are shared across tasks.
+    // Update the single location bar and permission controller to point to
+    // `web_contents` (OR clear the toolbar if `web_contents` is null) and push
+    // the updated state to the WebUI. This must run before `SetWebContents()`
+    // to have the correct web contents, as `SetWebContents()`
+    // synchronously marks `web_contents` visible and may trigger
+    // `PermissionRequestManager` to query `location_bar_->GetWebContents()`.
+    if (permission_controller_) {
+      permission_controller_->Update(web_contents);
+    }
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+    if (extensions_container_) {
+      extensions_container_->SetWebContents(web_contents);
+    }
+#endif
+    contextual_tasks_panel_host_->SetWebContents(web_contents);
     NotifyExpandToFullTabStateChanged();
   }
 
@@ -1135,24 +1170,41 @@ void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents(
     ui_service->SetInitialEntryPointForTask(task_id, entry_point);
     GURL url;
     if (IsContextualTasksSidePanelRearchitectureEnabled()) {
-      url = ui_service->GetInitialUrlForTask(task_id).value_or(
-          GURL("about:blank"));
+      if (std::optional<GURL> initial_url =
+              ui_service->GetInitialUrlForTask(task_id)) {
+        url = *initial_url;
+      } else if (ui_service->IsTaskWaitingForUrl(task_id)) {
+        url = GURL("about:blank");
+      } else {
+        url = ui_service->GetDefaultAiPageUrlForTask(task_id);
+      }
     } else {
       url = ui_service->GetContextualTaskUrlForTask(task_id);
     }
     std::unique_ptr<content::WebContents> wc =
-        CreateWebContents(browser_window_, url);
+        CreateWebContents(browser_window_);
+    content::WebContents* web_contents = wc.get();
     if (IsContextualTasksSidePanelRearchitectureEnabled()) {
       UpdateContextualSearchWebContentsHelperForTask(
           contextual_search_service_, browser_window_,
-          contextual_tasks_service_, this, wc.get(), task_id);
+          contextual_tasks_service_, this, web_contents, task_id);
+      // Apply required side panel URL params before the initial load, as the
+      // `WebContents` is not attached to a side panel yet.
+      url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+          url, web_contents);
     }
+    // Insert into `task_id_to_web_contents_cache_` before calling `LoadURL()`
+    // so that `IsWebContentsInPanel()` returns true during the initial
+    // navigation check.
     task_id_to_web_contents_cache_[task_id] =
         std::make_unique<WebContentsCacheItem>(
             std::move(wc), /*is_open=*/true,
             base::BindOnce(&ContextualTasksSidePanelCoordinator::
                                RecordTimeToFirstContentfulPaint,
                            weak_ptr_factory_.GetWeakPtr()));
+    web_contents->GetController().LoadURL(url, content::Referrer(),
+                                          ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
+                                          std::string());
   }
 }
 
@@ -1163,14 +1215,20 @@ void ContextualTasksSidePanelCoordinator::CreateCachedWebContentsForTesting(
   CHECK(!task_id_to_web_contents_cache_.contains(task_id));
 
   if (auto* ui_service = GetUiService()) {
+    std::unique_ptr<content::WebContents> wc =
+        CreateWebContents(browser_window_);
+    content::WebContents* web_contents = wc.get();
+    // Cache before `LoadURL()` so `IsWebContentsInPanel()` returns true on the
+    // initial load.
     task_id_to_web_contents_cache_[task_id] =
         std::make_unique<WebContentsCacheItem>(
-            CreateWebContents(browser_window_,
-                              ui_service->GetContextualTaskUrlForTask(task_id)),
-            is_open,
+            std::move(wc), is_open,
             base::BindOnce(&ContextualTasksSidePanelCoordinator::
                                RecordTimeToFirstContentfulPaint,
                            weak_ptr_factory_.GetWeakPtr()));
+    web_contents->GetController().LoadURL(
+        ui_service->GetContextualTaskUrlForTask(task_id), content::Referrer(),
+        ui::PAGE_TRANSITION_AUTO_TOPLEVEL, std::string());
   }
 }
 
@@ -1232,6 +1290,14 @@ void ContextualTasksSidePanelCoordinator::MaybeDetachWebContents(
     content::WebContents* web_contents) {
   if (web_contents == GetActiveWebContents()) {
     contextual_tasks_panel_host_->SetWebContents(nullptr);
+    if (permission_controller_) {
+      permission_controller_->Update(nullptr);
+    }
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+    if (extensions_container_) {
+      extensions_container_->SetWebContents(nullptr);
+    }
+#endif
   }
 }
 
@@ -1418,6 +1484,10 @@ void ContextualTasksSidePanelCoordinator::OnSurfaceStateChanged(
             RecordUserActionAndHistogram(
                 "ContextualTasks.SidePanel.UserAction.Close.AioToCobr");
             break;
+          case EntrySource::kAskGoogle:
+            RecordUserActionAndHistogram(
+                "ContextualTasks.SidePanel.UserAction.Close.AskGoogle");
+            break;
           default:
             RecordUserActionAndHistogram(
                 "ContextualTasks.SidePanel.UserAction.Close.Other");
@@ -1568,6 +1638,7 @@ void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
   PageInfoBubbleSpecification::Builder builder(
       specification_anchor, browser_view->GetWidget()->GetNativeWindow(),
       contents, contents->GetVisibleURL());
+  builder.SetSurface(PageInfo::Surface::kContextualTasks);
   // The panel's WebContents is not a tab, so page info's default lookup
   // (BrowserCollection::FindBrowserWithTab()) cannot resolve a browser for it.
   // Supply the hosting browser window instead; without it, actions such as

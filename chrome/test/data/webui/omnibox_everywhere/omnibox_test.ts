@@ -488,6 +488,77 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertFalse(
             !!testOmnibox.shadowRoot.querySelector('#lensSearchButton'));
       });
+
+  test(
+      'pasted files do not open composebox when AI Mode is unavailable',
+      async () => {
+        testProxy.page.updateAimPopupEligibility(false);
+        await microtasksFinished();
+
+        let openComposeboxCalled = false;
+        omnibox.addEventListener('open-composebox', () => {
+          openComposeboxCalled = true;
+        });
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(
+            new File(['foo'], 'foo.png', {type: 'image/png'}));
+        const input = omnibox.shadowRoot.querySelector('#input')!;
+        input.dispatchEvent(new CustomEvent('searchbox-input-files-pasted', {
+          detail: {files: dataTransfer.files},
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        assertFalse(openComposeboxCalled);
+      });
+
+  test(
+      'dropped files do not open composebox when AI Mode is unavailable',
+      async () => {
+        testProxy.page.updateAimPopupEligibility(false);
+        await microtasksFinished();
+
+        let openComposeboxCalled = false;
+        omnibox.addEventListener('open-composebox', () => {
+          openComposeboxCalled = true;
+        });
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(
+            new File(['foo'], 'foo.png', {type: 'image/png'}));
+        omnibox.addDroppedFiles(dataTransfer.files);
+        await microtasksFinished();
+
+        assertFalse(openComposeboxCalled);
+      });
+
+  test('allow-file-paste follows AI Mode eligibility', async () => {
+    assertTrue(omnibox.$.input.allowFilePaste);
+
+    testProxy.page.updateAimPopupEligibility(false);
+    await microtasksFinished();
+    assertFalse(omnibox.$.input.allowFilePaste);
+
+    testProxy.page.updateAimPopupEligibility(true);
+    await microtasksFinished();
+    assertTrue(omnibox.$.input.allowFilePaste);
+  });
+
+  test(
+      'allow-file-paste is off when AI Mode is unavailable at load',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({isFuseboxEnabled: false});
+        const testOmnibox =
+            document.createElement('omnibox-everywhere-omnibox');
+        document.body.appendChild(testOmnibox);
+        await microtasksFinished();
+
+        assertFalse(testOmnibox.$.input.allowFilePaste);
+      });
+
   test('dropdownIsVisible preserves bottomControls', async () => {
     const bottomControls =
         omnibox.shadowRoot.querySelector<HTMLElement>('#bottomControls');
@@ -553,6 +624,8 @@ suite('OmniboxEverywhereOmniboxTest', () => {
     const bottomControlsStyle = window.getComputedStyle(bottomControls);
     assertEquals('4px', bottomControlsStyle.paddingTop);
     assertEquals('12px', bottomControlsStyle.paddingBottom);
+    assertEquals('12px', bottomControlsStyle.paddingInlineStart);
+    assertEquals('16px', bottomControlsStyle.paddingInlineEnd);
 
     const composeButton =
         omnibox.shadowRoot.querySelector<HTMLElement>('#composeButton');
@@ -1544,6 +1617,30 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     assertFalse(args[3]);
     assertEquals(null, composebox.result);
   });
+
+  test('aligns plus button and submit button in bottomControls', async () => {
+    const bottomControls =
+        composebox.shadowRoot.querySelector<HTMLElement>('#bottomControls');
+    assertTrue(!!bottomControls);
+    const entrypoint =
+        composebox.shadowRoot.querySelector<HTMLElement>('#contextEntrypoint');
+    assertTrue(!!entrypoint);
+
+    assertEquals(
+        '12px', window.getComputedStyle(bottomControls).paddingInlineStart);
+    assertEquals(
+        '16px', window.getComputedStyle(bottomControls).paddingInlineEnd);
+    assertEquals('0px', window.getComputedStyle(entrypoint).marginInlineStart);
+    assertEquals('0px', window.getComputedStyle(entrypoint).paddingInlineStart);
+
+    composebox.searchboxNextEnabled = true;
+    composebox.setInputText('test query');
+    await microtasksFinished();
+
+    assertTrue(!!composebox.shadowRoot.querySelector('cr-composebox-submit'));
+    assertEquals(
+        '12px', window.getComputedStyle(bottomControls).paddingInlineEnd);
+  });
 });
 
 declare global {
@@ -1587,6 +1684,9 @@ suite('OmniboxEverywhereAppTest', () => {
       profileEmail: 'test@example.com',
       omniboxEverywhereProfilePickerEnabled: false,
       smallLoomnibox: true,
+      dynamicSizing: false,
+      dynamicSizingWidth: 680,
+      smallFont: false,
       isPersistentMode: true,
       omniboxEverywhereMostVisitedHideTitle: true,
       initialFreStage: 0,
@@ -2389,6 +2489,89 @@ suite('OmniboxEverywhereAppTest', () => {
   });
 
   test(
+      'dynamicSizing in persistent mode updates max-tiles based on state',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          dynamicSizing: true,
+          isPersistentMode: true,
+          initialFreStage: 0,
+        });
+        const dynamicApp = document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(dynamicApp);
+        await microtasksFinished();
+
+        const mv = dynamicApp.shadowRoot.querySelector('cr-most-visited')!;
+        assertTrue(!!mv);
+
+        // Deactivate window to enter resting state in persistent mode.
+        window.dispatchEvent(new Event('blur'));
+        await microtasksFinished();
+        assertEquals('5', mv.getAttribute('max-tiles'));
+
+        // Focus window (active state) expands to 7 tiles.
+        window.dispatchEvent(new Event('focus'));
+        await microtasksFinished();
+        assertEquals('7', mv.getAttribute('max-tiles'));
+
+        // Blur window again.
+        window.dispatchEvent(new Event('blur'));
+        await microtasksFinished();
+        assertEquals('5', mv.getAttribute('max-tiles'));
+      });
+
+  test(
+      'dynamicSizing in ephemeral mode always uses expanded max-tiles',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          dynamicSizing: true,
+          dynamicSizingWidth: 680,
+          isPersistentMode: false,
+          initialFreStage: 0,
+        });
+        const ephemeralApp = document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(ephemeralApp);
+        await microtasksFinished();
+
+        const mv = ephemeralApp.shadowRoot.querySelector('cr-most-visited')!;
+        assertTrue(!!mv);
+        assertEquals('7', mv.getAttribute('max-tiles'));
+      });
+
+  test(
+      'dynamicSizing with 600px width updates max-tiles between 5 and 6',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          dynamicSizing: true,
+          dynamicSizingWidth: 600,
+          isPersistentMode: true,
+          initialFreStage: 0,
+        });
+        const dynamicApp600 = document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(dynamicApp600);
+        await microtasksFinished();
+
+        assertEquals('600', dynamicApp600.getAttribute('dynamic-sizing-width'));
+        const mv = dynamicApp600.shadowRoot.querySelector('cr-most-visited')!;
+        assertTrue(!!mv);
+
+        // Resting state uses 5 tiles.
+        window.dispatchEvent(new Event('blur'));
+        await microtasksFinished();
+        assertEquals('5', mv.getAttribute('max-tiles'));
+
+        // Active state in 600px variant expands to 6 tiles.
+        window.dispatchEvent(new Event('focus'));
+        await microtasksFinished();
+        assertEquals('6', mv.getAttribute('max-tiles'));
+      });
+
+  test(
       'most visited tiles hide-title reflects hideTitle_ property',
       async () => {
         document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -3064,6 +3247,25 @@ suite('OmniboxEverywhereAppTest', () => {
 suite('OmniboxEverywhereProfileIconTest', () => {
   let profileIcon: OmniboxEverywhereProfileIconElement;
   let testProxy: TestSearchboxBrowserProxy;
+  let addedUnboundedStubs = false;
+
+  setup(() => {
+    if (!('showUnboundedElement' in HTMLElement.prototype)) {
+      addedUnboundedStubs = true;
+      Object.assign(HTMLElement.prototype, {
+        showUnboundedElement() {},
+        hideUnboundedElement() {},
+      });
+    }
+  });
+
+  teardown(() => {
+    if (addedUnboundedStubs) {
+      Reflect.deleteProperty(HTMLElement.prototype, 'showUnboundedElement');
+      Reflect.deleteProperty(HTMLElement.prototype, 'hideUnboundedElement');
+      addedUnboundedStubs = false;
+    }
+  });
 
   async function createProfileIcon(profilePickerEnabled: boolean) {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -3072,6 +3274,7 @@ suite('OmniboxEverywhereProfileIconTest', () => {
       profileName: 'Test Profile',
       profileEmail: 'test@example.com',
       profileTooltipHeader: 'Chrome profile',
+      switchProfileLabel: 'Switch Profile',
       omniboxEverywhereProfilePickerEnabled: profilePickerEnabled,
       isEnterpriseProfile: false,
     });
@@ -3141,6 +3344,99 @@ suite('OmniboxEverywhereProfileIconTest', () => {
         profileIcon.shadowRoot.querySelector<HTMLElement>('#enterpriseBadge');
     assertTrue(!!enterpriseBadge);
   });
+
+  test(
+      'opens profile menu in unbounded mode and switches profile', async () => {
+        await createProfileIcon(true);
+        const container = profileIcon.$.profileContainer;
+
+        container.click();
+        await microtasksFinished();
+
+        assertTrue(profileIcon.$.profileMenu.open);
+        assertTrue(
+            profileIcon.$.profileMenu.getDialog().hasAttribute('unbounded'));
+
+        const switchButton =
+            profileIcon.shadowRoot.querySelector<HTMLButtonElement>(
+                '.profile-card-switch-button');
+        assertTrue(!!switchButton);
+
+        switchButton.click();
+        await microtasksFinished();
+
+        assertFalse(profileIcon.$.profileMenu.open);
+        assertEquals(1, testProxy.handler.getCallCount('openProfilePicker'));
+      });
+
+  test('clicking profile icon again closes open profile menu', async () => {
+    await createProfileIcon(true);
+    const container = profileIcon.$.profileContainer;
+
+    container.click();
+    await microtasksFinished();
+    assertTrue(profileIcon.$.profileMenu.open);
+
+    container.click();
+    await microtasksFinished();
+    assertFalse(profileIcon.$.profileMenu.open);
+  });
+
+  test('closes profile menu when document becomes hidden', async () => {
+    await createProfileIcon(true);
+    const container = profileIcon.$.profileContainer;
+
+    container.click();
+    await microtasksFinished();
+    assertTrue(profileIcon.$.profileMenu.open);
+
+    Object.defineProperty(
+        document, 'hidden', {value: true, configurable: true});
+    try {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await microtasksFinished();
+      assertFalse(profileIcon.$.profileMenu.open);
+    } finally {
+      Object.defineProperty(
+          document, 'hidden', {value: false, configurable: true});
+    }
+  });
+
+  test(
+      'does not open profile menu if disconnected while awaiting setUnbounded',
+      async () => {
+        await createProfileIcon(true);
+        const container = profileIcon.$.profileContainer;
+
+        container.click();
+        profileIcon.remove();
+        await microtasksFinished();
+
+        assertFalse(profileIcon.$.profileMenu.open);
+      });
+
+  test(
+      'clicking profile icon keeps dropdown open and opens profile menu',
+      async () => {
+        loadTimeData.overrideValues(
+            {omniboxEverywhereProfilePickerEnabled: true});
+        const omnibox = document.createElement('omnibox-everywhere-omnibox');
+        document.body.appendChild(omnibox);
+        await microtasksFinished();
+
+        omnibox.dropdownIsVisible = true;
+        const embeddedIcon = omnibox.$.profileIcon;
+        const container = embeddedIcon.$.profileContainer;
+
+        container.click();
+        await microtasksFinished();
+
+        assertTrue(omnibox.dropdownIsVisible);
+        assertTrue(embeddedIcon.$.profileMenu.open);
+
+        embeddedIcon.$.profileMenu.close();
+        omnibox.remove();
+      });
 });
 
 suite('OmniboxEverywhereContextMenuTest', () => {
@@ -3167,6 +3463,9 @@ suite('OmniboxEverywhereContextMenuTest', () => {
       profileEmail: 'test@example.com',
       omniboxEverywhereProfilePickerEnabled: false,
       searchboxLayoutMode: 'TallBottomContext',
+      dynamicSizing: false,
+      dynamicSizingWidth: 680,
+      smallFont: false,
       isPersistentMode: true,
     });
     testProxy = new TestSearchboxBrowserProxy();
@@ -3239,6 +3538,7 @@ suite('OmniboxEverywhereContextMenuTest', () => {
             url: 'https://example.com',
             showInCurrentTabChip: false,
             showInPreviousTabChip: false,
+            isLoading: false,
             lastActive: {internalValue: 0n},
           },
           fileToken: null,

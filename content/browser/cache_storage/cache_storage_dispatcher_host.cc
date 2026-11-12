@@ -565,33 +565,8 @@ class CacheStorageDispatcherHost::CacheImpl
 
     cache->BatchOperation(
         std::move(batch_operations), trace_id, std::move(cb),
-        base::BindOnce(
-            [](mojo::ReportBadMessageCallback bad_message_callback) {
-              std::move(bad_message_callback).Run("CSDH_UNEXPECTED_OPERATION");
-            },
-            host_->cache_receivers_.GetBadMessageCallback()));
-  }
-
-  void WriteSideData(const GURL& url,
-                     base::Time expected_response_time,
-                     mojo_base::BigBuffer data,
-                     int64_t trace_id,
-                     WriteSideDataCallback callback) override {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    TRACE_EVENT("CacheStorage",
-                "CacheStorageDispatchHost::CacheImpl::WriteSideData",
-                perfetto::Flow::Global(trace_id), "url", url.spec());
-
-    content::CacheStorageCache* cache = cache_handle_.value();
-    if (!cache) {
-      std::move(callback).Run(CacheStorageError::kErrorNotFound);
-      return;
-    }
-
-    auto buf = base::MakeRefCounted<net::VectorIOBuffer>(data);
-
-    cache->WriteSideData(std::move(callback), url, expected_response_time,
-                         trace_id, std::move(buf), data.size());
+        base::BindOnce(host_->cache_receivers_.GetBadMessageCallback(),
+                       "CSDH_UNEXPECTED_OPERATION"));
   }
 
   // Owns this.
@@ -1134,7 +1109,7 @@ CacheStorageHandle CacheStorageDispatcherHost::OpenCacheStorage(
   if (!context_ || !OriginCanAccessCacheStorage(storage_key.origin()))
     return CacheStorageHandle();
 
-  scoped_refptr<CacheStorageManager> manager = context_->cache_manager();
+  CacheStorageManager* manager = context_->cache_manager();
   if (!manager)
     return CacheStorageHandle();
 

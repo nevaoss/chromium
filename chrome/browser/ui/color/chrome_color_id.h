@@ -307,7 +307,9 @@
   E_CPONLY(kColorNewTabButtonInkDropFrameInactive) \
   E_CPONLY(kColorTabStripComboButtonSeparator) \
   E_CPONLY(kColorTabStripControlButtonInkDrop) \
+  E_CPONLY(kColorTabStripControlButtonInkDropFrameInactive) \
   E_CPONLY(kColorTabStripControlButtonInkDropRipple) \
+  E_CPONLY(kColorTabStripControlButtonInkDropRippleFrameInactive) \
   E_CPONLY(kColorTabStripScrollButtonBackground) \
   E_CPONLY(kColorTabStripScrollButtonIcon) \
   /* New tab button colors for ChromeRefresh.*/ \
@@ -346,6 +348,7 @@
   E_CPONLY(kColorComposeboxFileChipSpinner) \
   E_CPONLY(kColorComposeboxFont) \
   E_CPONLY(kColorComposeboxFontLight) \
+  E_CPONLY(kColorComposeboxGhostCardBackground) \
   E_CPONLY(kColorComposeboxCancelButton) \
   E_CPONLY(kColorComposeboxCancelButtonLight) \
   E_CPONLY(kColorComposeboxErrorScrimBackground) \
@@ -383,6 +386,8 @@
   E_CPONLY(kColorComposeboxLink) \
   E_CPONLY(kColorComposeboxToolChipBackground) \
   E_CPONLY(kColorComposeboxVoiceButtonHoverBackground) \
+  E_CPONLY(kColorComposeboxAimChipHoverBackground) \
+  E_CPONLY(kColorComposeboxAimChipHoverText) \
   E_CPONLY(kColorNewTabPageCommonInputPlaceholder) \
   E_CPONLY(kColorNewTabPageControlBackgroundHovered) \
   E_CPONLY(kColorNewTabPageControlBackgroundSelected) \

@@ -1327,7 +1327,8 @@ download::DownloadItem* DownloadManagerImpl::CreateDownloadItem(
     bool opened,
     base::Time last_access_time,
     bool transient,
-    const std::vector<download::DownloadItem::ReceivedSlice>& received_slices) {
+    const std::vector<download::DownloadItem::ReceivedSlice>& received_slices,
+    const base::FilePath& display_name) {
   // Retrieve the in-progress download if it exists. Notice that this also
   // removes it from |in_progress_downloads_|.
   auto in_progress_download = RetrieveInProgressDownload(id);
@@ -1376,7 +1377,10 @@ download::DownloadItem* DownloadManagerImpl::CreateDownloadItem(
 #if BUILDFLAG(IS_ANDROID)
   if (target_path.IsContentUri()) {
     base::FilePath android_display_name =
-        in_progress_manager_->GetDownloadDisplayName(target_path);
+        base::FeatureList::IsEnabled(
+            download::features::kRetrieveDisplayNamesForHistoryDownloads)
+            ? display_name
+            : in_progress_manager_->GetDownloadDisplayName(target_path);
     if (!android_display_name.empty())
       item->SetDisplayName(android_display_name);
     else
@@ -1689,8 +1693,9 @@ void DownloadManagerImpl::BeginResourceDownloadOnChecksComplete(
   } else if (rfh && params->url().SchemeIs(content::kChromeUIScheme)) {
     pending_url_loader_factory =
         std::make_unique<network::WrapperPendingSharedURLLoaderFactory>(
-            CreateWebUIURLLoaderFactory(rfh, params->url().GetScheme(),
-                                        base::flat_set<std::string>()));
+            CreateWebUIURLLoaderFactoryWithoutOriginLock(
+                WebUIURLLoaderFactoryPasskey::GetPassKey(), rfh,
+                params->url().GetScheme(), base::flat_set<std::string>()));
   } else if (rfh && params->url().SchemeIsFileSystem()) {
     StoragePartitionImpl* storage_partition = GetStoragePartitionForConfig(
         browser_context_, storage_partition_config);

@@ -39,6 +39,7 @@
 #include "ui/base/mojom/menu_source_type.mojom-shared.h"
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/win/event_creation_utils.h"
 #include "ui/base/win/hwnd_metrics.h"
 #include "ui/base/win/win_cursor.h"
@@ -314,11 +315,13 @@ void DesktopWindowTreeHostWin::Init(const Widget::InitParams& params) {
 
 void DesktopWindowTreeHostWin::OnNativeWidgetCreated(
     const Widget::InitParams& params) {
-  // The cursor is not necessarily visible when the root window is created.
-  aura::client::CursorClient* cursor_client =
-      aura::client::GetCursorClient(window());
-  if (cursor_client) {
-    is_cursor_visible_ = cursor_client->IsCursorVisible();
+  if (!base::FeatureList::IsEnabled(::features::kHideCursorWhileTyping)) {
+    // The cursor is not necessarily visible when the root window is created.
+    aura::client::CursorClient* cursor_client =
+        aura::client::GetCursorClient(window());
+    if (cursor_client) {
+      is_cursor_visible_ = cursor_client->IsCursorVisible();
+    }
   }
 
   window()->SetProperty(kContentWindowForRootWindow,
@@ -656,9 +659,22 @@ Widget::MoveLoopResult DesktopWindowTreeHostWin::RunMoveLoop(
     Widget::MoveLoopEscapeBehavior escape_behavior) {
   const bool hide_on_escape =
       escape_behavior == Widget::MoveLoopEscapeBehavior::kHide;
-  return message_handler_->RunMoveLoop(drag_offset, hide_on_escape)
-             ? Widget::MoveLoopResult::kSuccessful
-             : Widget::MoveLoopResult::kCanceled;
+
+  // The move loop can destroy `this` before it returns (e.g. reverting a tab
+  // drag closes the window from inside the loop).
+  auto weak_this = GetWeakPtr();
+  const bool moved = message_handler_->RunMoveLoop(drag_offset, hide_on_escape);
+
+  // The loop swallows the WM_LBUTTONUP that ends the drag, so Aura never
+  // dispatches the matching release and mouse_pressed_handler_ stays latched
+  // onto the dragged window, starving its descendants of mouse events. If the
+  // host died with the loop, the latch died with it.
+  if (weak_this && dispatcher()) {
+    dispatcher()->OnHostLostMouseGrab();
+  }
+
+  return moved ? Widget::MoveLoopResult::kSuccessful
+               : Widget::MoveLoopResult::kCanceled;
 }
 
 void DesktopWindowTreeHostWin::EndMoveLoop() {
@@ -889,6 +905,16 @@ void DesktopWindowTreeHostWin::SetCursorNative(gfx::NativeCursor cursor) {
 }
 
 void DesktopWindowTreeHostWin::OnCursorVisibilityChangedNative(bool show) {
+  if (base::FeatureList::IsEnabled(::features::kHideCursorWhileTyping)) {
+    // Cursor visibility is handled by setting the platform cursor to
+    // ui::mojom::CursorType::kNone in
+    // DesktopNativeCursorManager::SetVisibility. Avoid calling ::ShowCursor()
+    // here because it modifies the Win32 thread-global cursor display counter,
+    // which causes same-thread native dialogs (e.g. file pickers, print
+    // dialogs) to inherit a hidden cursor.
+    return;
+  }
+
   if (is_cursor_visible_ == show) {
     return;
   }
@@ -1166,6 +1192,16 @@ bool DesktopWindowTreeHostWin::HandleAppCommand(int command) {
 }
 
 void DesktopWindowTreeHostWin::HandleCancelMode() {
+  // Windows sends WM_CANCELMODE when a modal dialog or message box is
+  // displayed (e.g. Open/Save File, Print, MessageBox) to cancel modes such as
+  // mouse capture. Restore cursor visibility here so that native dialogs do not
+  // inherit a hidden cursor.
+  if (base::FeatureList::IsEnabled(::features::kHideCursorWhileTyping)) {
+    if (aura::client::CursorClient* cursor_client =
+            aura::client::GetCursorClient(window())) {
+      cursor_client->ShowCursor();
+    }
+  }
   dispatcher()->DispatchCancelModeEvent();
 }
 
@@ -1204,7 +1240,9 @@ void DesktopWindowTreeHostWin::HandleDestroying() {
     return;
   }
   called_handle_destroying_ = true;
-  drag_drop_client_->OnNativeWidgetDestroying(GetHWND());
+  if (drag_drop_client_) {
+    drag_drop_client_->OnNativeWidgetDestroying(GetHWND());
+  }
   if (native_widget_delegate_) {
     native_widget_delegate_->OnNativeWidgetDestroying();
   }

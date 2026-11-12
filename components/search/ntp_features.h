@@ -39,6 +39,7 @@ BASE_DECLARE_FEATURE(kEnergyEffect);
 BASE_DECLARE_FEATURE(kEnergyEffectAnimation);
 BASE_DECLARE_FEATURE(kRealboxCr23Theming);
 BASE_DECLARE_FEATURE(kRealboxMatchOmniboxTheme);
+BASE_DECLARE_FEATURE(kRealboxVirtualFocusNavigation);
 BASE_DECLARE_FEATURE(kNtpAlphaBackgroundCollections);
 BASE_DECLARE_FEATURE(kNtpAnimatedCaret);
 BASE_DECLARE_FEATURE(kNtpBackgroundImageErrorDetection);
@@ -66,6 +67,7 @@ BASE_DECLARE_FEATURE(kNtpOutlookCalendarModule);
 BASE_DECLARE_FEATURE(kNtpOneGoogleBar);
 BASE_DECLARE_FEATURE(kNtpScaledActionChips);
 BASE_DECLARE_FEATURE(kNtpScaledActionChipsSmall);
+BASE_DECLARE_FEATURE(kNtpActionChipsSuggestTimeout);
 BASE_DECLARE_FEATURE(kNtpSharepointModule);
 enum class NtpSharepointModuleDataType {
   kTrendingInsights,
@@ -103,6 +105,7 @@ BASE_DECLARE_FEATURE(kNtpSimplificationBookmarkBar);
 BASE_DECLARE_FEATURE(kBookmarkBarUpdatesForTesting);
 BASE_DECLARE_FEATURE(kNtpThreadsRail);
 BASE_DECLARE_FEATURE(kNtpEnableInstantApiAndroid);
+BASE_DECLARE_FEATURE(kNtpShortcutsReorder);
 
 // Parameter for controlling the luminosity difference for NTP elements on light
 // backgrounds.
@@ -285,6 +288,10 @@ extern const base::FeatureParam<bool> kNtpScaledActionChipsSmallInTestMode;
 // Used for local testing.
 extern const base::FeatureParam<bool> kNtpScaledActionChipsShowFallback;
 
+// Parameter determining the timeout for action chips suggestions requests.
+extern const base::FeatureParam<base::TimeDelta>
+    kNtpActionChipsSuggestTimeoutParam;
+
 // Parameter determining the minimum amount of time that must pass before
 // shortcuts staleness counters will be incremented.
 extern const base::FeatureParam<base::TimeDelta>
@@ -311,6 +318,11 @@ extern const base::FeatureParam<int> kBookmarkBarCountThreshold;
 // are updated.
 extern const base::FeatureParam<base::TimeDelta>
     kBookmarkBarMinStalenessTimeInterval;
+
+// Parameter determining whether the Threads Rail is shown in hybrid mode: the
+// folded state is rendered natively by Chrome, while the expanded state is
+// rendered by GWS.
+extern const base::FeatureParam<bool> kNtpThreadsRailHybridParam;
 
 // Returns the timeout after which the load of a module should be aborted.
 base::TimeDelta GetModulesLoadTimeout();

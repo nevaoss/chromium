@@ -168,6 +168,7 @@ interface SetUpTestOptions {
   singleRow: boolean;
   reflowOnOverflow: boolean;
   expandableTilesEnabled: boolean;
+  shortcutsReorderEnabled: boolean;
   maxTilesInCollapsedState: number;
   maxShortcutsInExpandedState: number;
   maxMostVisitedTilesInExpandedState: number;
@@ -182,6 +183,7 @@ function setUpTest(providedOptions: Partial<SetUpTestOptions> = {}) {
     singleRow: false,
     reflowOnOverflow: false,
     expandableTilesEnabled: false,
+    shortcutsReorderEnabled: false,
     maxTilesInCollapsedState: 6,
     maxShortcutsInExpandedState: 10,
     maxMostVisitedTilesInExpandedState: 8,
@@ -201,6 +203,9 @@ function setUpTest(providedOptions: Partial<SetUpTestOptions> = {}) {
   mostVisited.reflowOnOverflow = options.reflowOnOverflow;
   if (options.expandableTilesEnabled) {
     mostVisited.setAttribute('expandable-tiles-enabled', '');
+  }
+  if (options.shortcutsReorderEnabled) {
+    mostVisited.setAttribute('shortcuts-reorder-enabled', '');
   }
   mostVisited.setAttribute(
       'max-tiles-in-collapsed-state',
@@ -2308,6 +2313,55 @@ suite('EnterpriseShortcuts', () => {
   });
 });
 
+suite('ShortcutsReorder', () => {
+  [false, true].forEach(shortcutsReorderEnabled => {
+    test(
+        `reorder menu option rendered when shortcutsReorderEnabled=${
+            shortcutsReorderEnabled}`,
+        async () => {
+          document.body.innerHTML = window.trustedTypes!.emptyHTML;
+          await setUpTest({shortcutsReorderEnabled});
+          await addTiles(1);
+          const tile = queryTiles()[0]!;
+          const actionMenuButton =
+              tile.querySelector<HTMLElement>('#actionMenuButton')!;
+          assertFalse(mostVisited.$.actionMenu.open);
+          actionMenuButton.click();
+          assertTrue(mostVisited.$.actionMenu.open);
+          const reorderButton =
+              $$<HTMLElement>(mostVisited, '#actionMenuReorder');
+          if (shortcutsReorderEnabled) {
+            assertTrue(!!reorderButton);
+          } else {
+            assertFalse(!!reorderButton);
+          }
+        });
+  });
+
+  test('tile properties change when reorder mode is enabled', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    await setUpTest({shortcutsReorderEnabled: true});
+    await addTiles(1);
+    const tile = queryTiles()[0]!;
+    const tileLink = tile.querySelector<HTMLAnchorElement>('a')!;
+    // In default mode, the aria-label is just the title.
+    const title = tileLink.getAttribute('aria-label')!;
+
+    // Open the action menu and enter reorder mode.
+    tile.querySelector<HTMLElement>('#actionMenuButton')!.click();
+    await microtasksFinished();
+    $$<HTMLElement>(mostVisited, '#actionMenuReorder').click();
+    await microtasksFinished();
+
+    // The aria-label should change when in reorder mode.
+    const reorderA11yLabel = tileLink.getAttribute('aria-label')!;
+    assertNotEquals(title, reorderA11yLabel);
+    assertTrue(reorderA11yLabel.includes('arrow keys'));
+    assertEquals('', tileLink.getAttribute('href'));
+    assertEquals(tileLink, mostVisited.shadowRoot?.activeElement);
+  });
+});
+
 suite('ShortcutsAutoRemovalToast', () => {
   setup(async () => {
     await setUpTest();
@@ -2411,17 +2465,53 @@ suite('NonEditable', () => {
     titleElements.forEach(el => assertTrue(el.hidden));
   });
 
-  test('maxTiles limits total tiles in single row', async () => {
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    await setUpTest({
-      nonEditable: true,
-      hideTitle: true,
-      singleRow: true,
-      maxTiles: 7,
-    });
-    await addTiles(10, /*customLinksEnabled=*/ false);
-    const tiles = queryTiles();
-    assertEquals(7, tiles.length);
-    tiles.forEach(el => assertFalse(el.hidden));
+  test(
+      'maxTiles limits total tiles in single row and updates dynamically',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        await setUpTest({
+          nonEditable: true,
+          hideTitle: true,
+          singleRow: true,
+          maxTiles: 7,
+        });
+        await addTiles(10, /*customLinksEnabled=*/ false);
+        let tiles = queryTiles();
+        assertEquals(7, tiles.length);
+        tiles.forEach(el => assertFalse(el.hidden));
+
+        // Verify dynamically changing maxTiles updates rendered tiles.
+        mostVisited.maxTiles = 5;
+        await microtasksFinished();
+        tiles = queryTiles();
+        assertEquals(5, tiles.length);
+        tiles.forEach(el => assertFalse(el.hidden));
+      });
+
+  [false, true].forEach(hideTitle => {
+    test(
+        `focused tile link highlights circular tile icon, hideTitle=${
+            hideTitle}`,
+        async () => {
+          document.body.innerHTML = window.trustedTypes!.emptyHTML;
+          await setUpTest({
+            nonEditable: true,
+            hideTitle,
+          });
+          mostVisited.style.setProperty(
+              '--most-visited-focus-shadow', 'rgb(26, 115, 232) 0px 0px 0px 2px');
+          document.documentElement.classList.add('focus-outline-visible');
+          await addTiles(1, /*customLinksEnabled=*/ false);
+          const tile = queryTiles()[0]!;
+          const tileLink = tile.querySelector<HTMLElement>('a')!;
+          const tileIcon = tile.querySelector<HTMLElement>('.tile-icon')!;
+
+          tileLink.focus();
+          assertEquals('none', getComputedStyle(tileLink).boxShadow);
+          assertEquals(
+              'rgb(26, 115, 232) 0px 0px 0px 2px',
+              getComputedStyle(tileIcon).boxShadow);
+        });
   });
+
 });

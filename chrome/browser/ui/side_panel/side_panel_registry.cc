@@ -111,8 +111,6 @@ bool SidePanelRegistry::Deregister(const SidePanelEntry::Key& key) {
     active_entry_.reset();
   }
 
-// TODO(crbug.com/489780669): Temporarily disabled until a coordinator is made.
-#if !BUILDFLAG(IS_ANDROID)
   const bool for_tab = get_scope_type() == SidePanelEntryScope::ScopeType::kTab;
   // A tab-scoped registry's tab may be detached from any window (e.g. while
   // being dragged between windows), in which case there is no side panel UI to
@@ -128,14 +126,14 @@ bool SidePanelRegistry::Deregister(const SidePanelEntry::Key& key) {
     if (auto* const side_panel_ui =
             SidePanelUI::From(browser_window_interface)) {
       // If the entry with the same key and scope is showing, synchronously
-      // close.
-      if (side_panel_ui->IsSidePanelEntryShowing(key, for_tab)) {
+      // close. A tab-scoped entry only shows for the active tab.
+      if (side_panel_ui->IsSidePanelEntryShowing(key, for_tab) &&
+          (!for_tab || GetTabInterface().IsActivated())) {
         side_panel_ui->Close(SidePanelEntryHideReason::kSidePanelClosed,
                              /*suppress_animations=*/true);
       }
     }
   }
-#endif
 
   auto it = std::find_if(entries_.begin(), entries_.end(),
                          base::MatchesUniquePtr(entry));

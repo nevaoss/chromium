@@ -22,6 +22,7 @@
 #include "content/public/test/web_contents_tester.h"
 #include "extensions/browser/api_test_utils.h"
 #include "extensions/browser/api_unittest.h"
+#include "extensions/browser/extension_registry.h"
 #include "extensions/browser/mime_handler/generic_mime_handler_stream_delegate.h"
 #include "extensions/browser/mime_handler/mime_handler_stream_delegate.h"
 #include "extensions/browser/mime_handler/mime_handler_stream_manager.h"
@@ -47,10 +48,17 @@ constexpr char kPdfMimeType[] = "application/pdf";
 constexpr char kOriginalUrl[] = "https://example.com/foo.pdf";
 constexpr char kStreamUrl[] = "stream://pdf";
 constexpr char kHandlerPage[] = "handler.html";
+constexpr char kUnhandledPngMimeTypeError[] =
+    "This extension does not handle MIME type 'image/png'.";
 constexpr char kCustomHeaderName[] = "X-Custom";
 constexpr char kCustomHeaderValue[] = "bar";
 constexpr char kCoepHeaderName[] = "Cross-Origin-Embedder-Policy";
 constexpr char kCoepHeaderValue[] = "require-corp";
+constexpr char kContentDispositionHeaderName[] = "Content-Disposition";
+constexpr char kContentDispositionHeaderValue[] =
+    "inline; filename=\"doc.pdf\"";
+constexpr char kAcceptRangesHeaderName[] = "Accept-Ranges";
+constexpr char kAcceptRangesHeaderValue[] = "bytes";
 constexpr char kOtherExtensionId[] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 constexpr int kTabId = 42;
 
@@ -127,9 +135,27 @@ ClaimedStreamSetup CreateAndSetUpClaimedStream(
   return result;
 }
 
+scoped_refptr<const Extension> BuildExtensionWithMimeTypesHandler(
+    const std::string& name,
+    std::string_view mime_type) {
+  return ExtensionBuilder(name)
+      .SetManifestKey(
+          "mime_types_handler",
+          base::DictValue().Set(
+              mime_type, base::DictValue().Set("handler_url", kHandlerPage)))
+      .Build();
+}
+
 }  // namespace
 
-using MimeHandlerApiTest = ApiUnitTest;
+class MimeHandlerApiTest : public ApiUnitTest {
+ protected:
+  void SetRegisteredExtension(scoped_refptr<const Extension> extension) {
+    set_extension(extension);
+    // API functions run only for enabled extensions.
+    ExtensionRegistry::Get(browser_context())->AddEnabled(extension);
+  }
+};
 
 // Called without any render frame host bound to the function: the function
 // cannot know which extension context is calling it.
@@ -178,12 +204,15 @@ TEST_F(MimeHandlerApiTest, GetStreamInfoSuccess) {
 }
 
 // A generic (third-party) handler sees only the CORS-safelisted response
-// header names through getStreamInfo().
+// header names, plus Content-Disposition and Accept-Ranges, through
+// getStreamInfo().
 TEST_F(MimeHandlerApiTest, GetStreamInfoFiltersHeadersForGenericHandler) {
   ClaimedStreamSetup setup = CreateAndSetUpClaimedStream(
       browser_context(), extension()->id(),
       CreatePdfResponseHeadWithExtraHeaders(
-          {{kCoepHeaderName, kCoepHeaderValue}}),
+          {{kCoepHeaderName, kCoepHeaderValue},
+           {kContentDispositionHeaderName, kContentDispositionHeaderValue},
+           {kAcceptRangesHeaderName, kAcceptRangesHeaderValue}}),
       std::make_unique<mime_handler::GenericMimeHandlerStreamDelegate>());
 
   auto function = base::MakeRefCounted<MimeHandlerGetStreamInfoFunction>();
@@ -199,6 +228,10 @@ TEST_F(MimeHandlerApiTest, GetStreamInfoFiltersHeadersForGenericHandler) {
       result->GetDict().FindDict("responseHeaders");
   ASSERT_TRUE(headers);
   EXPECT_TRUE(headers->FindString("Content-Type"));
+  EXPECT_THAT(headers->FindString(kContentDispositionHeaderName),
+              testing::Pointee(std::string(kContentDispositionHeaderValue)));
+  EXPECT_THAT(headers->FindString(kAcceptRangesHeaderName),
+              testing::Pointee(std::string(kAcceptRangesHeaderValue)));
   EXPECT_FALSE(headers->FindString(kCoepHeaderName));
 }
 
@@ -306,7 +339,7 @@ TEST_F(MimeHandlerApiTest, AbortAndFallbackRejectsBuiltInExtension) {
       MimeTypesHandler::GetMIMETypeAllowlist();
   ASSERT_FALSE(allowlist.empty());
 
-  set_extension(
+  SetRegisteredExtension(
       ExtensionBuilder("Built-in MIME handler").SetID(allowlist[0]).Build());
 
   auto function = base::MakeRefCounted<
@@ -318,30 +351,123 @@ TEST_F(MimeHandlerApiTest, AbortAndFallbackRejectsBuiltInExtension) {
       error);
 }
 
-TEST_F(MimeHandlerApiTest, GetMimeHandlerOptionsDefaultsToEnabled) {
-  // With no prior setMimeHandlerOptions call, getMimeHandlerOptions
-  // must return enabled=true by default.
-  auto function =
-      base::MakeRefCounted<MimeHandlerGetMimeHandlerOptionsFunction>();
-  std::optional<base::Value> result =
-      RunFunctionAndReturnValue(function.get(), R"(["application/pdf"])");
-  ASSERT_TRUE(result.has_value());
-  EXPECT_THAT(*result, base::test::IsJson(R"({"enabled": true})"));
+TEST_F(MimeHandlerApiTest, GetMimeHandlerOptionsReportsManifestDefault) {
+  struct {
+    const char* name;
+    base::DictValue entry;
+    bool expected_enabled;
+  } kTestCases[] = {
+      {"Entry without enabled key",
+       base::DictValue().Set("handler_url", kHandlerPage), true},
+      {"Entry with enabled true",
+       base::DictValue().Set("handler_url", kHandlerPage).Set("enabled", true),
+       true},
+      {"Entry with enabled false",
+       base::DictValue().Set("handler_url", kHandlerPage).Set("enabled", false),
+       false},
+  };
+
+  for (auto& test_case : kTestCases) {
+    SCOPED_TRACE(test_case.name);
+    SetRegisteredExtension(
+        ExtensionBuilder(test_case.name)
+            .SetManifestKey(
+                "mime_types_handler",
+                base::DictValue().Set(kPdfMimeType, std::move(test_case.entry)))
+            .Build());
+
+    auto function =
+        base::MakeRefCounted<MimeHandlerGetMimeHandlerOptionsFunction>();
+    std::optional<base::Value> result =
+        RunFunctionAndReturnValue(function.get(), R"(["application/pdf"])");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_THAT(result.value(), base::test::IsJson(base::DictValue().Set(
+                                    "enabled", test_case.expected_enabled)));
+  }
 }
 
 TEST_F(MimeHandlerApiTest, SetThenGetMimeHandlerOptionsRoundTrip) {
-  // Persist enabled=false via setMimeHandlerOptions.
-  auto set_function =
-      base::MakeRefCounted<MimeHandlerSetMimeHandlerOptionsFunction>();
-  RunFunction(set_function.get(), R"(["application/pdf", {"enabled": false}])");
+  struct {
+    const char* name;
+    base::DictValue entry;
+    bool enabled_to_set;
+  } kTestCases[] = {
+      {"Disable over manifest default",
+       base::DictValue().Set("handler_url", kHandlerPage), false},
+      {"Disable over manifest enabled true",
+       base::DictValue().Set("handler_url", kHandlerPage).Set("enabled", true),
+       false},
+      {"Enable over manifest enabled false",
+       base::DictValue().Set("handler_url", kHandlerPage).Set("enabled", false),
+       true},
+  };
 
-  // Read it back via getMimeHandlerOptions and verify the value survived.
-  auto get_function =
+  for (auto& test_case : kTestCases) {
+    SCOPED_TRACE(test_case.name);
+    SetRegisteredExtension(
+        ExtensionBuilder(test_case.name)
+            .SetManifestKey(
+                "mime_types_handler",
+                base::DictValue().Set(kPdfMimeType, std::move(test_case.entry)))
+            .Build());
+    const base::DictValue options =
+        base::DictValue().Set("enabled", test_case.enabled_to_set);
+
+    auto set_function =
+        base::MakeRefCounted<MimeHandlerSetMimeHandlerOptionsFunction>();
+    RunFunction(set_function.get(),
+                base::ListValue().Append(kPdfMimeType).Append(options.Clone()));
+
+    auto get_function =
+        base::MakeRefCounted<MimeHandlerGetMimeHandlerOptionsFunction>();
+    std::optional<base::Value> result =
+        RunFunctionAndReturnValue(get_function.get(), R"(["application/pdf"])");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_THAT(result.value(), base::test::IsJson(options));
+  }
+}
+
+TEST_F(MimeHandlerApiTest,
+       SetAndGetMimeHandlerOptionsAcceptOnlyHandledMimeTypes) {
+  SetRegisteredExtension(
+      BuildExtensionWithMimeTypesHandler("PDF handler", kPdfMimeType));
+
+  auto set_handled_function =
+      base::MakeRefCounted<MimeHandlerSetMimeHandlerOptionsFunction>();
+  RunFunction(set_handled_function.get(),
+              R"(["application/pdf", {"enabled": false}])");
+  auto set_unhandled_function =
+      base::MakeRefCounted<MimeHandlerSetMimeHandlerOptionsFunction>();
+  EXPECT_EQ(kUnhandledPngMimeTypeError,
+            RunFunctionAndReturnError(set_unhandled_function.get(),
+                                      R"(["image/png", {"enabled": false}])"));
+
+  auto get_handled_function =
       base::MakeRefCounted<MimeHandlerGetMimeHandlerOptionsFunction>();
-  std::optional<base::Value> result =
-      RunFunctionAndReturnValue(get_function.get(), R"(["application/pdf"])");
-  ASSERT_TRUE(result.has_value());
-  EXPECT_THAT(*result, base::test::IsJson(R"({"enabled": false})"));
+  std::optional<base::Value> handled_result = RunFunctionAndReturnValue(
+      get_handled_function.get(), R"(["application/pdf"])");
+  ASSERT_TRUE(handled_result.has_value());
+  EXPECT_THAT(handled_result.value(),
+              base::test::IsJson(R"({"enabled": false})"));
+  auto get_unhandled_function =
+      base::MakeRefCounted<MimeHandlerGetMimeHandlerOptionsFunction>();
+  EXPECT_EQ(kUnhandledPngMimeTypeError,
+            RunFunctionAndReturnError(get_unhandled_function.get(),
+                                      R"(["image/png"])"));
+}
+
+// A generic handler cannot handle image/png, so this manifest parses to no
+// MIME handler at all.
+TEST_F(MimeHandlerApiTest,
+       SetMimeHandlerOptionsRejectsExtensionWithoutHandler) {
+  SetRegisteredExtension(
+      BuildExtensionWithMimeTypesHandler("PNG handler", "image/png"));
+
+  auto function =
+      base::MakeRefCounted<MimeHandlerSetMimeHandlerOptionsFunction>();
+  EXPECT_EQ(kUnhandledPngMimeTypeError,
+            RunFunctionAndReturnError(function.get(),
+                                      R"(["image/png", {"enabled": true}])"));
 }
 
 }  // namespace extensions

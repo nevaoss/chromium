@@ -71,8 +71,10 @@ def branch_configs():
 
 try_.presubmit_builder(
     name = "branch-config-verifier",
+    description_html = "Checks that branch configs can be generated and validated with lucicfg across branch configurations.",
     executable = "recipe:branch_configuration/tester",
     cq_settings = try_.cq_settings(
+        disable_reuse = False,
         location_filters = ["infra/config/.+"],
     ),
     # TODO: crbug.com/383375912 - If the checkout can be sped up, switch back to
@@ -87,6 +89,7 @@ try_.presubmit_builder(
 
 try_.presubmit_builder(
     name = "reclient-config-deployment-verifier",
+    description_html = "Checks that reclient configs can be fetched from CIPD and verified for existence.",
     executable = "recipe:reclient_config_deploy_check/tester",
     cq_settings = try_.cq_settings(
         location_filters = [
@@ -117,6 +120,7 @@ try_.presubmit_builder(
     description_html = "checks that builder configs in properties files match the recipe-side configs",
     executable = "recipe:chromium/builder_config_verifier",
     cq_settings = try_.cq_settings(
+        disable_reuse = False,
         location_filters = ["infra/config/generated/builders[^/]+/[^/]+/properties\\.json"],
     ),
     properties = {
@@ -129,6 +133,7 @@ try_.presubmit_builder(
     description_html = "checks that target configs specified in starlark match those specified in //testing/buildbot",
     executable = "recipe:chromium/targets_config_verifier",
     cq_settings = try_.cq_settings(
+        disable_reuse = False,
         location_filters = ["infra/config/generated/builders/[^/]+/[^/]+/targets/.+\\.json"],
     ),
     # TODO: crbug.com/383375912 - If the checkout can be sped up, switch back to
@@ -146,6 +151,7 @@ try_.presubmit_builder(
     executable = "recipe:chromium/targets_config_verifier",
     contact_team_email = "chrome-dev-infra@google.com",
     cq_settings = try_.cq_settings(
+        disable_reuse = False,
         location_filters = ["infra/config/generated/builders-dev/[^/]+/[^/]+/targets/.+\\.json"],
     ),
     # TODO: crbug.com/383375912 - If the checkout can be sped up, switch back to
@@ -163,6 +169,7 @@ try_.presubmit_builder(
     executable = "recipe:chromium/gn_args_verifier",
     contact_team_email = "chrome-browser-infra-team@google.com",
     cq_settings = try_.cq_settings(
+        disable_reuse = False,
         location_filters = ["infra/config/generated/builders/[^/]+/[^/]+/gn-args\\.json"],
     ),
     # TODO: crbug.com/383375912 - If the checkout can be sped up, switch back to
@@ -199,6 +206,7 @@ try_.presubmit_builder(
 
 try_.presubmit_builder(
     name = "win-presubmit",
+    description_html = "Runs basic presubmit checks on Windows machines.",
     executable = "recipe:presubmit",
     builderless = True,
     os = os.WINDOWS_DEFAULT,

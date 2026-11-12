@@ -405,6 +405,17 @@ class ContextualTasksUiService : public KeyedService {
   // credentials (aka, an OAuth token can be obtained).
   virtual bool IsSignedInToBrowserWithValidCredentials();
 
+  // Returns whether the user was signed in with valid credentials when the
+  // ContextualTasksUI for `web_contents` was initialized, falling back to
+  // `IsSignedInToBrowserWithValidCredentials()` if no ContextualTasksUI is
+  // attached.
+  virtual bool IsSignedInForWebContentsOnInit(
+      content::WebContents* web_contents);
+
+  // Shows the OAuth error dialog for the given `web_contents`.
+  virtual void ShowOauthErrorDialogForWebContents(
+      base::WeakPtr<content::WebContents> web_contents);
+
   // Return whether the cookie jar contains the primary account.
   virtual bool CookieJarContainsPrimaryAccount();
 
@@ -462,6 +473,11 @@ class ContextualTasksUiService : public KeyedService {
                          const blink::mojom::WindowFeatures& window_features,
                          BrowserWindowInterface* browser) {
     OpenUrl(url_params, window_features, browser);
+  }
+
+  bool ShouldShowOauthErrorDialogForTesting(
+      content::WebContents* web_contents) {
+    return ShouldShowOauthErrorDialog(web_contents);
   }
 
   // Applies required side panel URL modifications (e.g. forced host override,
@@ -543,7 +559,8 @@ class ContextualTasksUiService : public KeyedService {
 
   // Returns whether the given WebContents is currently hosted within the side
   // panel.
-  virtual bool IsWebContentsInSidePanel(content::WebContents* web_contents);
+  virtual bool IsWebContentsInSidePanel(
+      content::WebContents* web_contents) const;
 
   // Returns whether the URL is allowed to navigate and commit within the side
   // panel (e.g. Google AI URL, valid Google Search results page, Google
@@ -560,6 +577,22 @@ class ContextualTasksUiService : public KeyedService {
   // existing tabs matching the citation URL using text fragments, or clobbers
   // the active tab / opens a new adjacent tab.
   virtual bool HandleCitationClick(
+      content::OpenURLParams url_params,
+      content::WebContents* source_contents,
+      tabs::TabInterface* tab,
+      const blink::mojom::WindowFeatures& window_features);
+
+  // Returns whether the given navigation should be treated as a Chromnient or
+  // Lens search results navigation within the side panel.
+  virtual bool ShouldHandleLensNavigation(
+      const GURL& url,
+      content::WebContents* source_contents);
+
+  // Handles a Chromnient or Lens search results navigation originating in the
+  // side panel. Preserves valid search results query refinements within the
+  // side panel while dispatching external search results and unsupported search
+  // modes (e.g. shopping) to the main browser tab strip.
+  virtual bool HandleLensNavigation(
       content::OpenURLParams url_params,
       content::WebContents* source_contents,
       tabs::TabInterface* tab,
@@ -660,9 +693,9 @@ class ContextualTasksUiService : public KeyedService {
   void OnOAuthTokenReceived(GoogleServiceAuthError error,
                             signin::AccessTokenInfo access_token_info);
 
-  // Shows the OAuth error dialog for the given `web_contents`.
-  void ShowOauthErrorDialogForWebContents(
-      base::WeakPtr<content::WebContents> web_contents);
+  // Returns whether an OAuth error dialog should be shown for the given
+  // `web_contents`.
+  bool ShouldShowOauthErrorDialog(content::WebContents* web_contents);
 
   // Runs all pending access token callbacks with the provided token.
   void RunPendingAccessTokenCallbacks(const std::string& token);
@@ -775,33 +808,49 @@ class ContextualTasksUiService : public KeyedService {
   base::CallbackListSubscription eligibility_subscription_;
   bool is_eligible_ = false;
 
-  // Map a task's ID to the URL that was used to create it, if it exists. This
-  // is primarily used in init flows where the contextual tasks UI is
-  // intercepting a query from some other surface like the omnibox. The entry
-  // in this map is removed once the UI is loaded with the correct thread.
-  std::map<base::Uuid, GURL> task_id_to_creation_url_;
+  struct TaskState {
+    TaskState();
+    TaskState(const TaskState&) = delete;
+    TaskState& operator=(const TaskState&) = delete;
+    ~TaskState();
 
-  // Map a task's ID to the initial Magi State Token (mstk) used to create it.
-  // This is used to identify and reuse tasks when launched again with the same
-  // initial token, even after the task's active thread turn ID has changed.
-  std::map<base::Uuid, std::string> task_id_to_initial_mstk_;
+    // The URL that was used to create the task, if it exists. Cleared once
+    // the UI is loaded with the correct thread.
+    std::optional<GURL> creation_url;
 
-  // Map a task's ID to the entry point that was used to open it. This is used
-  // to populate the aep param for GetInitialUrlForTask.
+    // The initial Magi State Token (mstk) used to create the task.
+    std::string initial_mstk;
+
+    // The entry point that was used to open the task.
+    omnibox::ChromeAimEntryPoint entry_point_override =
+        omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT;
+
+    // Source trigger if this task should show the error page on load.
+    std::optional<contextual_search::ContextualSearchSource>
+        pending_error_page_source;
+
+    // Whether the task is waiting for a URL to be generated, and an optional
+    // callback to run when the URL becomes available.
+    bool waiting_for_url = false;
+    base::OnceCallback<void(const GURL&)> pending_url_callback;
+
+    // Pending session handle stored before calling Show() to prevent a race
+    // condition where the NavigationThrottle runs before
+    // InitializeTaskInSidePanel() has a chance to associate the handle with
+    // the WebContents.
+    std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+        pending_session_handle;
+
+    // Whether the task was explicitly initiated to open in the side panel.
+    // Used to verify that pending navigations for ineligible users are destined
+    // for the side panel.
+    bool is_side_panel_task = false;
+  };
+
+  // Per-task UI state keyed by task ID.
   // TODO(crbug.com/480176325): Clean the contents of the map when tasks
   // are cleaned up.
-  std::map<base::Uuid, omnibox::ChromeAimEntryPoint>
-      task_id_to_entry_point_override_;
-
-  // Map of tasks that should show the error page on load to the source trigger.
-  std::map<base::Uuid, contextual_search::ContextualSearchSource>
-      pending_error_page_tasks_;
-
-  // Map of tasks that are waiting for a URL to be generated. The value is a
-  // callback to be run when the URL becomes available, or null if no callback
-  // has been added yet.
-  std::map<base::Uuid, base::OnceCallback<void(const GURL&)>>
-      tasks_waiting_for_url_;
+  std::map<base::Uuid, TaskState> task_states_;
 
   // Manager for window trackers. Class responsible for creating and destroying
   // trackers and matching them to URLs and WebContents.
@@ -811,14 +860,6 @@ class ContextualTasksUiService : public KeyedService {
   // safely inject the transcribed query back into the correct WebUI panel.
   base::WeakPtr<content::WebContents>
       web_contents_for_outstanding_voice_request_;
-
-  // Map of task IDs to pending session handles. Storing handles here before
-  // calling Show() prevents a race condition where the NavigationThrottle
-  // runs before InitializeTaskInSidePanel() has a chance to associate the
-  // handle with the WebContents.
-  std::map<base::Uuid,
-           std::unique_ptr<contextual_search::ContextualSearchSessionHandle>>
-      pending_session_handles_;
 
   base::WeakPtrFactory<ContextualTasksUiService> weak_ptr_factory_{this};
 };

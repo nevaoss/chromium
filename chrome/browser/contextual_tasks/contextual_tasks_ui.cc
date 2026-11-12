@@ -113,11 +113,13 @@
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_query_flow_router.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_chip_view.h"
 #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_layout_css_helper.h"
 #include "chrome/grit/webui_toolbar_shared_resources.h"
 #include "chrome/grit/webui_toolbar_shared_resources_map.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/omnibox/browser/searchbox.mojom-forward.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/resource/resource_scale_factor.h"
@@ -399,8 +401,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   std::optional<lens::LensOverlayInvocationSource> invocation_source;
   if (auto* browser = GetBrowser()) {
     if (auto* active_tab = browser->GetActiveTabInterface()) {
-      if (auto* controller = LensSearchController::FromTabWebContents(
-              active_tab->GetContents())) {
+      if (auto* controller = LensSearchController::From(active_tab)) {
         invocation_source = controller->invocation_source();
       }
     }
@@ -419,6 +420,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   // mid-session, avoiding a jarring user experience.
   is_contextual_tasks_eligible_on_init_ =
       contextual_tasks::EntryPointEligibilityManager::IsEligible(profile);
+  is_signed_in_on_page_load_ =
+      ui_service_ && ui_service_->IsSignedInToBrowserWithValidCredentials();
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   auto bindings = web_ui->GetBindings();
@@ -633,7 +636,8 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
            contextual_tasks::
                GetContextualTasksAskGTooltipSessionImpressionCap());
   dict.Set("askGCoBrowseEnabled", omnibox::kAskGCoBrowse.Get());
-  dict.Set("clearAllInputsWhenSubmittingQuery", true);
+  dict.Set("clearAllInputsWhenSubmittingQuery",
+           ShouldClearAllInputsOnSubmit(std::nullopt));
   dict.Set("contextualTasksSidePanelRearchitectureEnabled",
            contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled());
 
@@ -824,6 +828,9 @@ void ContextualTasksUI::CreatePageHandler(
     PushTaskDetailsToPage(task_id_, url,
                           /*replace_navigation_entry=*/true);
   }
+  if (GetThreadTitle().has_value()) {
+    page_->SetThreadTitle(*GetThreadTitle());
+  }
   OnInitComplete();
 }
 
@@ -886,13 +893,13 @@ void ContextualTasksUI::SetThreadId(std::optional<std::string> id) {
 }
 
 const std::optional<std::string>& ContextualTasksUI::GetThreadTitle() {
-  return thread_title_;
+  return ContextualTasksUIBase::GetThreadTitle();
 }
 
 void ContextualTasksUI::SetThreadTitle(std::optional<std::string> title) {
-  thread_title_ = title;
+  ContextualTasksUIBase::SetThreadTitle(std::move(title));
   if (page_) {
-    page_->SetThreadTitle(thread_title_.value_or(std::string()));
+    page_->SetThreadTitle(GetThreadTitle().value_or(std::string()));
   }
 }
 
@@ -920,8 +927,10 @@ bool ContextualTasksUI::IsCoBrowseOmniboxAction() const {
 }
 
 void ContextualTasksUI::SetIsAiPage(bool is_ai_page) {
-  if (page_) {
-    page_->OnAiPageStatusChanged(is_ai_page);
+  ContextualTasksUIBase::SetIsAiPage(is_ai_page);
+
+  if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
   }
 
   // When AI page is first loaded, close the Lens overlay if it's open,
@@ -1015,12 +1024,7 @@ content::WebContents* ContextualTasksUI::GetWebUIWebContents() {
 }
 
 void ContextualTasksUI::CloseSidePanel() {
-  auto* controller = GetPanelController();
-  if (!controller) {
-    return;
-  }
-
-  controller->Close();
+  ContextualTasksUIBase::CloseSidePanel();
 }
 
 void ContextualTasksUI::BindInterface(
@@ -1201,6 +1205,68 @@ void ContextualTasksUI::MoveTaskUiToNewTab() {
 
   ui_service_->MoveTaskUiToNewTab(task_id_.value(), browser,
                                   GetInnerFrameUrl());
+}
+
+void ContextualTasksUI::ShowThreadHistory() {
+  if (page_handler_) {
+    lens::ClientToAimMessage message;
+    message.mutable_open_threads_view()->mutable_payload();
+    PostAimMessage(message);
+    return;
+  }
+  ContextualTasksUIBase::ShowThreadHistory();
+}
+
+void ContextualTasksUI::MaybeTriggerPinningPromo() {
+#if BUILDFLAG(IS_ANDROID)
+  return;
+#else
+  auto* panel_controller = GetPanelController();
+  if (!panel_controller || !panel_controller->IsPanelOpenForContextualTask()) {
+    return;
+  }
+
+  Profile* profile = GetProfile();
+  if (!profile) {
+    return;
+  }
+
+  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() ||
+      base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksHideMenuOnAiPage)) {
+    return;
+  }
+
+  // 1. Verify we are still in AI Mode.
+  bool is_ai_page = ui_service_ && ui_service_->IsAiUrl(GetInnerFrameUrl());
+  if (!is_ai_page) {
+    return;
+  }
+
+  // 2. Verify the button is not already pinned.
+  bool is_pinned = contextual_tasks::GetEffectivePinState(profile);
+  if (is_pinned) {
+    return;
+  }
+
+  // 3. Verify we have reached the session count threshold after onboarding
+  // tooltip was dismissed.
+  int post_onboarding_sessions = profile->GetPrefs()->GetInteger(
+      contextual_tasks::kContextualTasksSessionCountPostOnboarding);
+  if (post_onboarding_sessions <
+      contextual_tasks::GetContextualTasksNumSessionsBeforeRequestPinPromo()) {
+    return;
+  }
+
+  // 4. Attempt to show the IPH!
+  BrowserWindowInterface* browser_window = GetBrowser();
+  if (!browser_window) {
+    return;
+  }
+  BrowserUserEducationInterface::From(browser_window)
+      ->MaybeShowFeaturePromo(
+          feature_engagement::kIPHSidePanelContextualTasksPinnableFeature);
+#endif
 }
 
 void ContextualTasksUI::PostAimMessage(
@@ -1398,6 +1464,7 @@ void ContextualTasksUI::OnSidePanelStateChanged() {
   if (page_) {
     page_->OnSidePanelStateChanged();
   }
+  NotifySidePanelStateChanged();
 
   lens::ClientToAimMessage message;
   auto* display_mode_msg = message.mutable_set_cobrowsing_display_mode();
@@ -1656,6 +1723,10 @@ ContextualTasksUI::GetPageRemote() {
   return page_;
 }
 
+contextual_tasks_toolbar::mojom::Page*
+ContextualTasksUI::GetToolbarPageRemote() {
+  return ContextualTasksUIBase::GetToolbarPageRemote();
+}
 
 ContextualTasksUI::FrameNavObserver::FrameNavObserver(
     content::WebContents* web_contents,
@@ -1885,25 +1956,36 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     // threads while we were in a bad state,  so we must create a NEW task to
     // avoid leaking context.
     bool pending_task_title_mismatch =
-        is_pending_task && current_title.has_value() &&
-        !current_title.value().empty() && !query_value.empty() &&
-        current_title.value() != query_value;
+        !navigation_handle->IsSameDocument() && is_pending_task &&
+        current_title.has_value() && !current_title.value().empty() &&
+        !query_value.empty() && current_title.value() != query_value;
 
     // We have no thread ID and no pending task, so this is a fresh start.
     bool is_new_conversation = !webui_thread_id && !is_pending_task;
 
-    // Did we switch from one active thread to another, i.e. we had a thread ID,
-    // but the URL has a different one.
-    bool is_thread_switch =
-        webui_thread_id && webui_thread_id.value() != url_thread_id;
+    // A user-initiated same-document navigation to a thread while the task is
+    // still pending is the user selecting a different thread (e.g. from
+    // history) rather than the server attaching a thread ID to the pending
+    // task, which happens without a user gesture.
+    bool is_pending_task_thread_selection =
+        is_pending_task && navigation_handle->IsSameDocument() &&
+        navigation_handle->HasUserGesture();
 
-    // A same-document navigation with an updated thread ID for the same query
-    // represents an in-place server thread ID resolution (e.g. client mtid to
-    // canonical server mtid) rather than a switch between distinct threads.
-    bool is_in_place_thread_update =
-        is_thread_switch && navigation_handle->IsSameDocument() &&
-        current_title.has_value() && !query_value.empty() &&
-        current_title.value() == query_value;
+    // Did we switch from one active thread to another, i.e. we had a thread ID,
+    // but the URL has a different one, or the user selected a thread while the
+    // current task was still pending.
+    bool is_thread_switch =
+        (webui_thread_id && webui_thread_id.value() != url_thread_id) ||
+        is_pending_task_thread_selection;
+
+    // A same-document navigation with an updated thread ID that was not
+    // initiated by the user represents an in-place server thread ID
+    // resolution (e.g. client mtid to canonical server mtid) rather than a
+    // switch between distinct threads. A user-initiated same-document
+    // navigation (e.g. selecting a thread from history) is a thread switch.
+    bool is_in_place_thread_update = is_thread_switch &&
+                                     navigation_handle->IsSameDocument() &&
+                                     !navigation_handle->HasUserGesture();
 
     bool has_reusable_task =
         base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
@@ -2071,8 +2153,9 @@ void ContextualTasksUI::OnTaskChanged() {
 
 void ContextualTasksUI::UpdateExpandButtonEnabled(bool enabled) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (page_) {
-    page_->SetExpandButtonEnabled(enabled);
+  if (contextual_tasks_toolbar::mojom::Page* toolbar_page =
+          GetToolbarPageRemote()) {
+    toolbar_page->SetExpandButtonEnabled(enabled);
   }
 #endif
 }
@@ -2176,6 +2259,8 @@ void ContextualTasksUI::UpdateZoom() {
 
 void ContextualTasksUI::WebUIPrimaryPageChanged(content::Page& page) {
   ui::MojoWebUIController::WebUIPrimaryPageChanged(page);
+  is_signed_in_on_page_load_ =
+      ui_service_ && ui_service_->IsSignedInToBrowserWithValidCredentials();
   // Update zoom when WebUI is loaded.
   UpdateZoom();
 }

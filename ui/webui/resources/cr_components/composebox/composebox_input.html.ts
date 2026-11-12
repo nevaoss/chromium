@@ -31,7 +31,10 @@ export function getHtml(this: ComposeboxInputElement) {
               @input="${this.onInputInput_}"
               @focusin="${this.onInputFocusin_}"
               @focus="${this.onInputFocus_}"
-              @blur="${this.onInputBlur_}"></div>
+              @blur="${this.onInputBlur_}"
+              @copy="${this.onInputCopy_}"
+              @cut="${this.onInputCut_}"
+              @paste="${this.onInputPaste_}"></div>
           ` : html`
             <textarea
               aria-expanded="${this.showDropdown}" aria-controls="matches"
@@ -63,6 +66,7 @@ export function getHtml(this: ComposeboxInputElement) {
       <!-- A seperate container is needed for the submit button so the
       expand/collapse animation can be applied without affecting the submit
       button enabled/disabled state. -->
+      ${!this.hideCancel ? html`
       <div id="cancelContainer" class="icon-fade" part="cancel">
         <cr-icon-button
             class="action-icon icon-clear"
@@ -72,7 +76,7 @@ export function getHtml(this: ComposeboxInputElement) {
             @click="${this.onCancelClick_}"
             ?disabled="${this.isCollapsible && !this.submitEnabled}">
         </cr-icon-button>
-      </div>
+      </div>` : ''}
 <!--_html_template_end_-->`;
   // clang-format on
 }

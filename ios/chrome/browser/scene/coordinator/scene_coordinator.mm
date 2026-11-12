@@ -5,7 +5,6 @@
 #import "ios/chrome/browser/scene/coordinator/scene_coordinator.h"
 
 #import "base/cancelable_callback.h"
-#import "base/ios/ios_util.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/metrics/histogram_macros.h"
 #import "base/metrics/user_metrics.h"
@@ -59,6 +58,7 @@
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_container_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_entry_flow_coordinator.h"
+#import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_web_modal_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/first_run/coordinator/gemini_first_run_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
@@ -196,6 +196,7 @@ inline LayoutStateScenePassKey PassKey() {
 }  // namespace
 
 @interface SceneCoordinator () <AccountMenuCoordinatorDelegate,
+                                GeminiWebModalCoordinatorDelegate,
                                 HistoryCoordinatorDelegate,
                                 IncognitoInterstitialCoordinatorDelegate,
                                 ManagedProfileCreationCoordinatorDelegate,
@@ -239,8 +240,11 @@ inline LayoutStateScenePassKey PassKey() {
   SafariDataImportMainCoordinator* _safariDataImportCoordinator;
   // The coordinators for Gemini related logic.
   GeminiContainerCoordinator* _geminiContainerCoordinator;
-  GeminiFirstRunCoordinator* _geminiFirstRunCoordinator;
+  // TODO(crbug.com/560114059): Move Live first run coordinator to Gemini
+  // container coordinator.
+  GeminiFirstRunCoordinator* _geminiLiveFirstRunCoordinator;
   GeminiEntryFlowCoordinator* _geminiEntryFlowCoordinator;
+  GeminiWebModalCoordinator* _geminiWebModalCoordinator;
   // Coordinator for display of the Password Checkup.
   PasswordCheckupCoordinator* _passwordCheckupCoordinator;
   // Coordinator for display of Password Settings.
@@ -410,10 +414,12 @@ inline LayoutStateScenePassKey PassKey() {
   [self hideGuidedTourNTPStep];
   [_geminiContainerCoordinator stop];
   _geminiContainerCoordinator = nil;
-  [_geminiFirstRunCoordinator stopWithCompletion:nil];
-  _geminiFirstRunCoordinator = nil;
+  [_geminiLiveFirstRunCoordinator stopWithCompletion:nil];
+  _geminiLiveFirstRunCoordinator = nil;
   [_geminiEntryFlowCoordinator stop];
   _geminiEntryFlowCoordinator = nil;
+  [_geminiWebModalCoordinator stop];
+  _geminiWebModalCoordinator = nil;
 
   _incognitoBrowser = nullptr;
 }
@@ -592,12 +598,10 @@ inline LayoutStateScenePassKey PassKey() {
       _regularBrowser->GetCommandDispatcher(), BookmarksCommands);
   [bookmarksHandler dismissBookmarkModalControllerAnimated:NO];
 
-  __weak __typeof(self) weakSelf = self;
   id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
       self.currentBrowser->GetCommandDispatcher(), BrowserCoordinatorCommands);
   ProceduralBlock closePresentedViewsCompletion = ^{
     ProceduralBlock finalCompletion = ^{
-      CHECK(!weakSelf.sceneState.signinInProgress, base::NotFatalUntil::M160);
       if (completion) {
         completion();
       }
@@ -614,8 +618,6 @@ inline LayoutStateScenePassKey PassKey() {
   [self closePresentedViews:NO completion:closePresentedViewsCompletion];
 
   if (dismissGemini) {
-    [_geminiEntryFlowCoordinator stop];
-    _geminiEntryFlowCoordinator = nil;
     id<GeminiCommands> geminiHandler = HandlerForProtocol(
         _regularBrowser->GetCommandDispatcher(), GeminiCommands);
     [geminiHandler dismissGeminiFlowWithCompletion:nil];
@@ -640,13 +642,6 @@ inline LayoutStateScenePassKey PassKey() {
   [self startPasswordCheckupCoordinator:referrer];
   [_passwordCheckupCoordinator showPasswordIssuesWithWarningType:warningType];
   [self presentSettingsFromViewController:self.activeViewController];
-}
-
-- (void)maybeShowSettingsFromViewController {
-  if (self.sceneState.signinInProgress) {
-    return;
-  }
-  [self showSettingsFromViewController:nil];
 }
 
 - (void)showSettingsFromViewController:(UIViewController*)baseViewController {
@@ -724,7 +719,6 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)showPriceTrackingNotificationsSettings {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     __weak SceneCoordinator* weakSelf = self;
     [self closePresentedViews:NO
@@ -777,6 +771,13 @@ inline LayoutStateScenePassKey PassKey() {
   _historyCoordinator.loadStrategy = UrlLoadStrategy::NORMAL;
   _historyCoordinator.delegate = self;
   [_historyCoordinator start];
+}
+
+- (void)showAssistantWithNewSession {
+  [self closeAssistant];
+  // Close any active gemini session.
+  [self dismissGeminiFlowWithCompletion:nil];
+  [self showAssistant];
 }
 
 - (void)showAssistant {
@@ -1043,10 +1044,10 @@ inline LayoutStateScenePassKey PassKey() {
   }
   // Copy the URL so it can be safely captured in the block.
   GURL copiedURL = URL;
-  [self startSigninCoordinatorWithCompletion:^(SigninCoordinator* coordinator,
-                                               SigninCoordinatorResult result,
-                                               id<SystemIdentity> identity) {
-    if (result == SigninCoordinatorResultSuccess && regularBrowser) {
+  [self startSigninCoordinatorWithCompletion:^(
+            SigninCoordinator* coordinator,
+            SigninCoordinatorResultOrIdentity result) {
+    if (result.has_value() && regularBrowser) {
       UrlLoadingBrowserAgent::FromBrowser(regularBrowser.get())
           ->Load(UrlLoadParams::InCurrentTab(copiedURL));
     }
@@ -1092,7 +1093,7 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)openNewWindowWithActivity:(NSUserActivity*)userActivity {
-  if (!base::ios::IsMultipleScenesSupported()) {
+  if (!self.sceneState.multipleScenesAvailable) {
     return;  // silent no-op.
   }
 
@@ -1101,27 +1102,13 @@ inline LayoutStateScenePassKey PassKey() {
     return;
   }
 
-  UIWindowSceneActivationRequestOptions* options =
-      [[UIWindowSceneActivationRequestOptions alloc] init];
-  options.requestingScene = self.sceneState.scene;
-  if (@available(iOS 26.0, *)) {
-    // For iOS26 windowing, ensure the new window doesn't fully overlap the
-    // prior window.
-    options.placement = [UIWindowSceneProminentPlacement prominentPlacement];
-  }
-
-  AttachProfileNameToActivity(userActivity, profile->GetProfileName());
-  PrefService* prefs = profile->GetPrefs();
-  if (IsIncognitoModeForced(prefs)) {
-    userActivity = AdaptUserActivityToIncognito(userActivity, true);
-  } else if (IsIncognitoModeDisabled(prefs)) {
-    userActivity = AdaptUserActivityToIncognito(userActivity, false);
-  }
-
+  UIWindowSceneActivationConfiguration* config =
+      CreateWindowSceneActivationConfiguration(userActivity, profile,
+                                               self.sceneState.scene);
   [UIApplication.sharedApplication
       requestSceneSessionActivation:nil /* make a new scene */
-                       userActivity:userActivity
-                            options:options
+                       userActivity:config.userActivity
+                            options:config.options
                        errorHandler:nil];
 }
 
@@ -1299,7 +1286,6 @@ inline LayoutStateScenePassKey PassKey() {
                                ![self isTabAvailableToPresentViewController])) {
     return;
   }
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
 
   if (self.currentBrowser->type() == Browser::Type::kIncognito) {
     // This can occur if the URL ended up loading while the user switched to
@@ -1349,9 +1335,22 @@ inline LayoutStateScenePassKey PassKey() {
                         completion:nil];
 }
 
-- (void)showSuggestionsFromGemini {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
+- (void)showGeminiContextualCueSettings {
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showGeminiContextualCueSettings];
+    return;
+  }
 
+  _settingsNavigationController = [SettingsNavigationController
+      BWGContextualCueControllerForBrowser:_regularBrowser.get()
+                                  delegate:self];
+
+  [self.activeViewController presentViewController:_settingsNavigationController
+                                          animated:YES
+                                        completion:nil];
+}
+
+- (void)showSuggestionsFromGemini {
   if (self.sceneState.isUIBlocked) {
     // This could occur due to race condition with multiple windows and
     // simultaneous taps. See crbug.com/368310663.
@@ -1389,7 +1388,6 @@ inline LayoutStateScenePassKey PassKey() {
 // TODO(crbug.com/41352590) : Do not pass baseViewController through dispatcher.
 - (void)showGoogleServicesSettingsFromViewController:
     (UIViewController*)baseViewController {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (!baseViewController) {
     baseViewController = self.activeViewController;
   }
@@ -1414,7 +1412,6 @@ inline LayoutStateScenePassKey PassKey() {
 // The user must be signed-in and sign-in must be enabled.
 - (void)showSyncSettingsFromViewController:
     (UIViewController*)baseViewController {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showSyncSettingsFromViewController:baseViewController];
@@ -1441,7 +1438,6 @@ inline LayoutStateScenePassKey PassKey() {
             (UIViewController*)baseViewController
                                           completion:
                                               (ProceduralBlock)completion {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showSyncPassphraseSettingsFromViewController:baseViewController];
@@ -1503,7 +1499,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showIdentityDocsWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showIdentityDocsWithReferrer:referrer];
     return;
@@ -1520,7 +1515,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showTravelWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showTravelWithReferrer:referrer];
     return;
@@ -1537,7 +1531,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 - (void)showShoppingWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showShoppingWithReferrer:referrer];
     return;
@@ -1625,7 +1618,6 @@ inline LayoutStateScenePassKey PassKey() {
 // TODO(crbug.com/41352590) : Do not pass baseViewController through dispatcher.
 - (void)showProfileSettingsFromViewController:
     (UIViewController*)baseViewController {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showProfileSettingsFromViewController:baseViewController];
@@ -1641,7 +1633,6 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)showCreditCardSettings {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     [_settingsNavigationController showCreditCardSettings];
     return;
@@ -1897,6 +1888,15 @@ inline LayoutStateScenePassKey PassKey() {
   [self stopPasswordSettingsCoordinator];
 }
 
+#pragma mark - GeminiWebModalCoordinatorDelegate
+
+- (void)geminiWebModalCoordinatorDidDismiss:
+    (GeminiWebModalCoordinator*)coordinator {
+  CHECK_EQ(_geminiWebModalCoordinator, coordinator);
+  [_geminiWebModalCoordinator stop];
+  _geminiWebModalCoordinator = nil;
+}
+
 #pragma mark - HistoryCoordinatorDelegate
 
 - (void)closeHistoryWithCompletion:(ProceduralBlock)completion {
@@ -2046,7 +2046,7 @@ inline LayoutStateScenePassKey PassKey() {
         // because the part that check the coordinator value is in the
         // `signinCompletedWithCoordinator:...` below, and so not integrated in
         // the completion function yet.
-        completion(nil, SigninCoordinatorResultDisabled, nil);
+        completion(nil, base::unexpected(SigninCoordinatorResultDisabled));
       }
       [self stopSigninCoordinatorAnimated:NO];
       id<PolicyChangeCommands> handler =
@@ -2081,7 +2081,7 @@ inline LayoutStateScenePassKey PassKey() {
       // because the part that check the coordinator value is in the
       // `signinCompletedWithCoordinator:...` below, and so not integrated in
       // the completion function yet.
-      completion(nil, SigninCoordinatorResultInterrupted, nil);
+      completion(nil, base::unexpected(SigninCoordinatorResultInterrupted));
     }
     _signinCoordinator = nil;
     RecordIfNeededSigninFullscreenPromoEvent(
@@ -2092,11 +2092,10 @@ inline LayoutStateScenePassKey PassKey() {
 
   __weak __typeof(self) weakSelf = self;
   _signinCoordinator.signinCompletion =
-      ^(SigninCoordinator* coordinator, SigninCoordinatorResult result,
-        id<SystemIdentity> identity) {
+      ^(SigninCoordinator* coordinator,
+        SigninCoordinatorResultOrIdentity result) {
         [weakSelf signinCompletedWithCoordinator:coordinator
                                           result:result
-                                        identity:identity
                                       completion:completion];
       };
 
@@ -2119,14 +2118,13 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Called when the sign-in coordinator finishes.
 - (void)signinCompletedWithCoordinator:(SigninCoordinator*)coordinator
-                                result:(SigninCoordinatorResult)result
-                              identity:(id<SystemIdentity>)identity
+                                result:(SigninCoordinatorResultOrIdentity)result
                             completion:(SigninCoordinatorCompletionCallback)
                                            completion {
-  CHECK_EQ(coordinator, _signinCoordinator, base::NotFatalUntil::M151);
+  CHECK_EQ(coordinator, _signinCoordinator);
 
   if (completion) {
-    completion(coordinator, result, identity);
+    completion(coordinator, result);
   }
   [self stopSigninCoordinatorAnimated:YES];
 }
@@ -2142,7 +2140,6 @@ inline LayoutStateScenePassKey PassKey() {
     // dispatched command.
     baseViewController = self.activeViewController;
   }
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
 
   if (_settingsNavigationController) {
     [_settingsNavigationController
@@ -2168,7 +2165,6 @@ inline LayoutStateScenePassKey PassKey() {
     // dispatched command.
     baseViewController = self.activeViewController;
   }
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
 
   if (_settingsNavigationController) {
     [_settingsNavigationController
@@ -2187,8 +2183,6 @@ inline LayoutStateScenePassKey PassKey() {
 // Shows the Autofill and Passwords settings in the settings UI.
 - (void)showAutofillAndPasswordsSettingsAfterModalDismissWithReferrer:
     (autofill::autofill_metrics::AutofillSettingsReferrer)referrer {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
   if (_settingsNavigationController) {
     [_settingsNavigationController
         showAutofillAndPasswordsSettingsWithReferrer:referrer];
@@ -2205,8 +2199,6 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Shows the Autofill settings in the settings UI.
 - (void)showAutofillSettingsAfterModalDismiss {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
   if (_settingsNavigationController) {
     [_settingsNavigationController showAutofillSettings];
     return;
@@ -2226,8 +2218,6 @@ inline LayoutStateScenePassKey PassKey() {
 // Shows the Autofill settings in the settings UI from an Autofill notice (no
 // back button).
 - (void)showAutofillSettingsFromNoticeAfterModalDismiss {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
   if (_settingsNavigationController) {
     [_settingsNavigationController showAutofillSettingsFromNotice];
     return;
@@ -2318,7 +2308,6 @@ inline LayoutStateScenePassKey PassKey() {
                                    timeout:(base::TimeDelta)timeout
                                 completion:
                                     (UserFeedbackDataCallback)completion {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
   if (_settingsNavigationController) {
     return;
   }
@@ -2480,7 +2469,7 @@ inline LayoutStateScenePassKey PassKey() {
   CHECK(signinCompletion);
   // The `signinCoordinator` must be nil here, because `_signinCoordinator`
   // was set to `nil` above.
-  signinCompletion(nil, SigninCoordinatorResultInterrupted, nil);
+  signinCompletion(nil, base::unexpected(SigninCoordinatorResultInterrupted));
 }
 
 // Shows the settings navigation controller.
@@ -2691,10 +2680,16 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)dismissGeminiFlowWithCompletion:(ProceduralBlock)completion {
+  if (_geminiEntryFlowCoordinator) {
+    [_geminiEntryFlowCoordinator stop];
+    _geminiEntryFlowCoordinator = nil;
+    return;
+  }
+
   // If the user is still in the FRE, dismiss it.
-  if (_geminiFirstRunCoordinator) {
-    [_geminiFirstRunCoordinator stopWithCompletion:completion];
-    _geminiFirstRunCoordinator = nil;
+  if (_geminiLiveFirstRunCoordinator) {
+    [_geminiLiveFirstRunCoordinator stopWithCompletion:completion];
+    _geminiLiveFirstRunCoordinator = nil;
     return;
   }
 
@@ -2737,51 +2732,6 @@ inline LayoutStateScenePassKey PassKey() {
   geminiBrowserAgent->UpdateForTraitCollection(traitCollection);
 }
 
-- (void)showGeminiPromoIfPageIsEligible {
-  if (!_regularBrowser) {
-    return;
-  }
-  web::WebState* activeWebState =
-      _regularBrowser->GetWebStateList()->GetActiveWebState();
-  if (gemini::IsGeminiAvailable(gemini::EntryPoint::Promo, self.profile,
-                                activeWebState)
-          .enabled) {
-    [self startGeminiFlowWithStartupState:
-              [[GeminiStartupState alloc]
-                  initWithEntryPoint:gemini::EntryPoint::Promo]];
-  }
-}
-
-- (void)startGeminiFirstRunWithCompletion:(void (^)(BOOL success))completion
-                           fromEntryPoint:(gemini::EntryPoint)entryPoint {
-  __weak SceneCoordinator* weakSelf = self;
-  void (^completionWrapper)(BOOL) =
-      [self geminiCompletionWrapperForCompletion:completion];
-
-  ProceduralBlock startCoordinatorBlock = ^{
-    [weakSelf startGeminiFirstRunCoordinatorWithCompletion:completionWrapper
-                                            fromEntryPoint:entryPoint];
-  };
-
-  [self stopGeminiFirstRunCoordinatorAndStartBlock:startCoordinatorBlock];
-}
-
-- (void)startGeminiFirstRunCoordinatorWithCompletion:
-            (void (^)(BOOL success))completion
-                                      fromEntryPoint:
-                                          (gemini::EntryPoint)entryPoint {
-  UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
-                                             ? _viewController
-                                             : self.activeViewController;
-  _geminiFirstRunCoordinator = [[GeminiFirstRunCoordinator alloc]
-      initWithBaseViewController:baseViewController
-                         browser:_regularBrowser.get()
-                  fromEntryPoint:entryPoint
-                    firstRunType:GeminiFirstRunType::kNewUser
-               completionHandler:completion];
-  [_geminiFirstRunCoordinator start];
-}
-
 - (void)startGeminiLiveFirstRunWithBaseViewController:
             (UIViewController*)baseViewController
                                            completion:(void (^)(BOOL success))
@@ -2798,7 +2748,7 @@ inline LayoutStateScenePassKey PassKey() {
                                                           completionWrapper];
   };
 
-  [self stopGeminiFirstRunCoordinatorAndStartBlock:startCoordinatorBlock];
+  [self stopGeminiLiveFirstRunCoordinatorAndStartBlock:startCoordinatorBlock];
 }
 
 - (void)showGeminiLiveMicrophoneAlertWithBaseViewController:
@@ -2875,6 +2825,23 @@ inline LayoutStateScenePassKey PassKey() {
   }
 }
 
+- (void)showGeminiWebModalForURL:(const GURL&)URL {
+  CHECK(IsPageActionMenuEnabled());
+  if (_geminiWebModalCoordinator) {
+    return;
+  }
+
+  UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
+                                             ? _viewController
+                                             : self.activeViewController;
+  _geminiWebModalCoordinator = [[GeminiWebModalCoordinator alloc]
+      initWithBaseViewController:baseViewController
+                         browser:_regularBrowser.get()
+                             URL:URL];
+  _geminiWebModalCoordinator.delegate = self;
+  [_geminiWebModalCoordinator start];
+}
+
 #pragma mark - Helper methods for Gemini entry flow
 
 // Called when the Gemini container coordinator is dismissed.
@@ -2905,19 +2872,19 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Starts the Gemini session directly via the browser agent.
 - (void)startGeminiSessionWithStartupState:(GeminiStartupState*)startupState {
+  // Close any active assistant aim session.
+  [self closeAssistant];
+
   UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
                                              ? _viewController
                                              : self.activeViewController;
   if (IsIOSGeminiBottomSheetMigrationEnabled()) {
-    // TODO(crbug.com/522834015): Start the First Run coordinator if needed.
-    if (_geminiContainerCoordinator) {
-      return;
+    if (!_geminiContainerCoordinator) {
+      _geminiContainerCoordinator = [[GeminiContainerCoordinator alloc]
+          initWithBaseViewController:baseViewController
+                             browser:_regularBrowser.get()];
     }
-
-    _geminiContainerCoordinator = [[GeminiContainerCoordinator alloc]
-        initWithBaseViewController:baseViewController
-                           browser:_regularBrowser.get()
-                      startupState:startupState];
+    _geminiContainerCoordinator.startupState = startupState;
     [_geminiContainerCoordinator start];
     return;
   }
@@ -2932,18 +2899,20 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 // Stops the existing first run coordinator (if any) and runs `startBlock`.
-- (void)stopGeminiFirstRunCoordinatorAndStartBlock:(ProceduralBlock)startBlock {
-  if (_geminiFirstRunCoordinator) {
-    GeminiFirstRunCoordinator* coordinatorToStop = _geminiFirstRunCoordinator;
-    _geminiFirstRunCoordinator = nil;
+- (void)stopGeminiLiveFirstRunCoordinatorAndStartBlock:
+    (ProceduralBlock)startBlock {
+  if (_geminiLiveFirstRunCoordinator) {
+    GeminiFirstRunCoordinator* coordinatorToStop =
+        _geminiLiveFirstRunCoordinator;
+    _geminiLiveFirstRunCoordinator = nil;
     [coordinatorToStop stopWithCompletion:startBlock];
   } else {
     startBlock();
   }
 }
 
-// Returns a completion block wrapper that resets `_geminiFirstRunCoordinator`
-// when executed.
+// Returns a completion block wrapper that resets
+// `_geminiLiveFirstRunCoordinator` when executed.
 - (void (^)(BOOL))geminiCompletionWrapperForCompletion:
     (void (^)(BOOL))completion {
   __weak SceneCoordinator* weakSelf = self;
@@ -2953,7 +2922,7 @@ inline LayoutStateScenePassKey PassKey() {
     }
     SceneCoordinator* strongSelf = weakSelf;
     if (strongSelf) {
-      strongSelf->_geminiFirstRunCoordinator = nil;
+      strongSelf->_geminiLiveFirstRunCoordinator = nil;
     }
   };
 }
@@ -2971,13 +2940,13 @@ inline LayoutStateScenePassKey PassKey() {
   if (geminiBrowserAgent) {
     entryPoint = geminiBrowserAgent->GetEntryPoint();
   }
-  _geminiFirstRunCoordinator = [[GeminiFirstRunCoordinator alloc]
+  _geminiLiveFirstRunCoordinator = [[GeminiFirstRunCoordinator alloc]
       initWithBaseViewController:baseViewController
                          browser:_regularBrowser.get()
                   fromEntryPoint:entryPoint
                     firstRunType:GeminiFirstRunType::kLive
                completionHandler:completion];
-  [_geminiFirstRunCoordinator start];
+  [_geminiLiveFirstRunCoordinator start];
 }
 
 @end

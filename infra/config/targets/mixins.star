@@ -530,6 +530,13 @@ targets.mixin(
 # Choose virtual_device_large spec for more ram. This mixin works on emulators
 # only.
 targets.mixin(
+    name = "fuchsia-arm64-large-device-spec",
+    args = [
+        "--device-spec=arm64-emu-large",
+    ],
+)
+
+targets.mixin(
     name = "fuchsia-large-device-spec",
     args = [
         "--device-spec=x64-emu-large",
@@ -1381,7 +1388,7 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "display_server": "x11",
-            "gpu": "10de:2184-595.91.07",
+            "gpu": "10de:2184-595.104.02",
             "os": "Ubuntu-24.04",
             "pool": "chromium.tests.gpu",
         },
@@ -1401,12 +1408,12 @@ targets.mixin(
 )
 
 targets.mixin(
-    name = "linux_nvidia_rtx_4070_super_stable",
+    name = "linux_nvidia_rtx_4070_super_wayland_stable",
     swarming = targets.swarming(
         dimensions = {
-            "display_server": "x11",
-            "gpu": "10de:2783-580.95.05",
-            "os": "Ubuntu-24.04",
+            "display_server": "wayland",
+            "gpu": "10de:2783-595.91.07",
+            "os": "Ubuntu-26.04",
             "pool": "chromium.tests.gpu",
         },
     ),
@@ -1445,7 +1452,7 @@ targets.mixin(
             "os": "Mac-26",
         },
         optional_dimensions = {
-            30: {
+            180: {
                 "cpu": "Apple_(Virtual)",
             },
         },
@@ -1774,7 +1781,7 @@ targets.mixin(
             targets.cipd_package(
                 package = "infra/tools/mac_toolchain/${platform}",
                 location = ".",
-                revision = "git_revision:ed58ac9443fe1754e84d596bdaf9961cbaa6e85b",
+                revision = "git_revision:bc2eb815d4eb1d66007cc1f19dcbe57f59a76b2d",
             ),
         ],
     ),
@@ -1898,7 +1905,9 @@ targets.mixin(
         # Uncommenting this argument will bypass all interactions with Skia
         # Gold in any tests that use it. This is meant as a temporary
         # emergency stop in case of a Gold outage that's affecting the bots.
-        # "--bypass-skia-gold-functionality",
+        # TODO(crbug.com/568399534): Can comment this out again if/when
+        # it's safe to do so.
+        "--bypass-skia-gold-functionality",
     ],
     precommit_args = [
         "--gerrit-issue=${patch_issue}",
@@ -2354,12 +2363,12 @@ targets.mixin(
     name = "xcode_27_1",
     args = [
         "--xcode-build-version",
-        "27a9269",
+        "27a9275",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27a9269",
+                name = "xcode_ios_27a9275",
                 path = "Xcode.app",
             ),
         ],
@@ -2370,12 +2379,12 @@ targets.mixin(
     name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "27b5019j",
+        "27b5028f",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27b5019j",
+                name = "xcode_ios_27b5028f",
                 path = "Xcode.app",
             ),
         ],

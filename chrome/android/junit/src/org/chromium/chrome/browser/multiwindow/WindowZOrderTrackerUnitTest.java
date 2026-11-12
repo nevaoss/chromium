@@ -23,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.robolectric.Robolectric;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.ActivityState;
@@ -42,19 +43,21 @@ public class WindowZOrderTrackerUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Mock private Runnable mCallback;
-    @Mock private Activity mActivity1;
-    @Mock private Activity mActivity2;
     @Mock private ActivityWindowAndroid mWindowAndroid1;
     @Mock private ActivityWindowAndroid mWindowAndroid2;
     @Mock private DisplayAndroid mDisplay1;
     @Mock private DisplayAndroid mDisplay2;
 
+    private Activity mActivity1;
+    private Activity mActivity2;
     private WindowZOrderTracker mTracker;
     private static final int DISPLAY_ID_1 = 1;
     private static final int DISPLAY_ID_2 = 2;
 
     @Before
     public void setUp() {
+        mActivity1 = Robolectric.buildActivity(Activity.class).get();
+        mActivity2 = Robolectric.buildActivity(Activity.class).get();
         mTracker = new WindowZOrderTracker(mCallback);
 
         when(mWindowAndroid1.getActivity()).thenReturn(new WeakReference<>(mActivity1));
@@ -285,7 +288,7 @@ public class WindowZOrderTrackerUnitTest {
 
     @Test
     public void testPeriodicMetrics() {
-        Activity activity3 = mock(Activity.class);
+        Activity activity3 = Robolectric.buildActivity(Activity.class).get();
         ActivityWindowAndroid window3 = mock(ActivityWindowAndroid.class);
         when(window3.getActivity()).thenReturn(new WeakReference<>(activity3));
         when(window3.getDisplay()).thenReturn(mDisplay1);
@@ -330,5 +333,46 @@ public class WindowZOrderTrackerUnitTest {
         ShadowLooper.idleMainLooper(5, TimeUnit.MINUTES);
 
         histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testOnActivityResumedRunsCallbackWithoutInvertingZOrder() {
+        when(mWindowAndroid2.getDisplay()).thenReturn(mDisplay1);
+        mTracker.track(mWindowAndroid1); // index 1 (top)
+        mTracker.track(mWindowAndroid2); // index 0 (bottom)
+
+        ArgumentCaptor<WindowAndroid.ActivityStateObserver> captor =
+                ArgumentCaptor.forClass(WindowAndroid.ActivityStateObserver.class);
+        verify(mWindowAndroid2, atLeastOnce()).addActivityStateObserver(captor.capture());
+        captor.getValue().onActivityResumed();
+
+        List<ActivityWindowAndroid> display1Windows = mTracker.getWindowZOrder().get(DISPLAY_ID_1);
+        assertEquals(mWindowAndroid2, display1Windows.get(0));
+        assertEquals(mWindowAndroid1, display1Windows.get(1));
+        verify(mCallback).run();
+    }
+
+    @Test
+    public void testOnActivityPausedRunsCallback() {
+        mTracker.track(mWindowAndroid1);
+
+        ArgumentCaptor<WindowAndroid.ActivityStateObserver> captor =
+                ArgumentCaptor.forClass(WindowAndroid.ActivityStateObserver.class);
+        verify(mWindowAndroid1, atLeastOnce()).addActivityStateObserver(captor.capture());
+        captor.getValue().onActivityPaused();
+
+        verify(mCallback).run();
+    }
+
+    @Test
+    public void testOnActivityStoppedRunsCallback() {
+        mTracker.track(mWindowAndroid1);
+
+        ArgumentCaptor<WindowAndroid.ActivityStateObserver> captor =
+                ArgumentCaptor.forClass(WindowAndroid.ActivityStateObserver.class);
+        verify(mWindowAndroid1, atLeastOnce()).addActivityStateObserver(captor.capture());
+        captor.getValue().onActivityStopped();
+
+        verify(mCallback).run();
     }
 }

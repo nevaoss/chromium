@@ -5,6 +5,7 @@
 #include "storage/browser/blob/blob_storage_context.h"
 
 #include <inttypes.h>
+
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -20,6 +21,8 @@
 #include "base/memory/raw_ptr.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/numerics/safe_math.h"
+#include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/task_runner.h"
@@ -107,11 +110,9 @@ std::unique_ptr<BlobDataHandle> BlobStorageContext::AddFinishedBlob(
 std::unique_ptr<BlobDataHandle> BlobStorageContext::AddFinishedBlob(
     const std::string& uuid,
     const std::string& content_type,
-    const std::string& content_disposition,
     std::vector<scoped_refptr<ShareableBlobDataItem>> items) {
   TRACE_EVENT0("Blob", "Context::AddFinishedBlobFromItems");
-  BlobEntry* entry =
-      registry_.CreateEntry(uuid, content_type, content_disposition);
+  BlobEntry* entry = registry_.CreateEntry(uuid, content_type);
   for (const auto& item : items) {
     DCHECK_EQ(item->state(), ShareableBlobDataItem::POPULATED_WITH_QUOTA);
     DCHECK_NE(BlobDataItem::Type::kBytesDescription, item->item()->type());
@@ -128,12 +129,10 @@ std::unique_ptr<BlobDataHandle> BlobStorageContext::AddFinishedBlob(
 std::unique_ptr<BlobDataHandle> BlobStorageContext::AddBrokenBlob(
     const std::string& uuid,
     const std::string& content_type,
-    const std::string& content_disposition,
     BlobStatus reason) {
   DCHECK(!registry_.HasEntry(uuid));
   DCHECK(BlobStatusIsError(reason));
-  BlobEntry* entry =
-      registry_.CreateEntry(uuid, content_type, content_disposition);
+  BlobEntry* entry = registry_.CreateEntry(uuid, content_type);
   entry->set_status(reason);
   FinishBuilding(entry);
   return CreateHandle(uuid, entry);
@@ -142,12 +141,10 @@ std::unique_ptr<BlobDataHandle> BlobStorageContext::AddBrokenBlob(
 std::unique_ptr<BlobDataHandle> BlobStorageContext::AddFutureBlob(
     const std::string& uuid,
     const std::string& content_type,
-    const std::string& content_disposition,
     BuildAbortedCallback build_aborted_callback) {
   DCHECK(!registry_.HasEntry(uuid));
 
-  BlobEntry* entry =
-      registry_.CreateEntry(uuid, content_type, content_disposition);
+  BlobEntry* entry = registry_.CreateEntry(uuid, content_type);
   entry->set_size(blink::BlobUtils::kUnknownSize);
   entry->set_status(BlobStatus::PENDING_CONSTRUCTION);
   entry->set_building_state(std::make_unique<BlobEntry::BuildingState>(
@@ -174,8 +171,8 @@ std::unique_ptr<BlobDataHandle> BlobStorageContext::BuildBlob(
     TransportAllowedCallback transport_allowed_callback) {
   DCHECK(!registry_.HasEntry(content->uuid_));
 
-  BlobEntry* entry = registry_.CreateEntry(
-      content->uuid(), content->content_type_, content->content_disposition_);
+  BlobEntry* entry =
+      registry_.CreateEntry(content->uuid(), content->content_type_);
 
   return BuildBlobInternal(entry, std::move(content),
                            std::move(transport_allowed_callback));
@@ -417,8 +414,8 @@ std::unique_ptr<BlobDataSnapshot> BlobStorageContext::CreateSnapshot(
   if (entry->status() != BlobStatus::DONE)
     return result;
 
-  std::unique_ptr<BlobDataSnapshot> snapshot(new BlobDataSnapshot(
-      uuid, entry->content_type(), entry->content_disposition()));
+  std::unique_ptr<BlobDataSnapshot> snapshot(
+      new BlobDataSnapshot(uuid, entry->content_type()));
   snapshot->items_.reserve(entry->items().size());
   for (const auto& shareable_item : entry->items()) {
     snapshot->items_.push_back(shareable_item->item());
@@ -461,8 +458,8 @@ std::unique_ptr<BlobDataHandle> BlobStorageContext::CreateHandle(
     const std::string& uuid,
     BlobEntry* entry) {
   return base::WrapUnique(new BlobDataHandle(
-      uuid, entry->content_type_, entry->content_disposition_, entry->size_,
-      this, base::SingleThreadTaskRunner::GetCurrentDefault().get()));
+      uuid, entry->content_type_, entry->size_, this,
+      base::SingleThreadTaskRunner::GetCurrentDefault().get()));
 }
 
 void BlobStorageContext::NotifyTransportCompleteInternal(BlobEntry* entry) {
@@ -665,6 +662,20 @@ bool BlobStorageContext::OnMemoryDump(
   mad->AddScalar("blob_count",
                  base::trace_event::MemoryAllocatorDump::kUnitsObjects,
                  blob_count());
+  // Emit per-creator memory usage as scalar attributes. Perfetto's
+  // GraphProcessor::AggregateNumericsRecursively automatically aggregates these
+  // scalar entries into the parent "site_storage/blob_storage" dump node.
+  for (const auto& [creator_identity, bytes] :
+       memory_controller().memory_usage_by_creator_identity()) {
+    CHECK(bytes.is_positive());
+    std::string_view creator_label =
+        (!creator_identity || creator_identity->as_string().empty())
+            ? "Unknown Creator"
+            : std::string_view(creator_identity->as_string());
+    mad->AddScalar(base::StrCat({"creator_identity:", creator_label}).c_str(),
+                   base::trace_event::MemoryAllocatorDump::kUnitsBytes,
+                   bytes.InBytes());
+  }
   if (system_allocator_name)
     pmd->AddSuballocation(mad->guid(), system_allocator_name);
   return true;
@@ -683,22 +694,6 @@ void BlobStorageContext::RegisterFromDataItem(
   if (!item->content_type.empty())
     builder->set_content_type(item->content_type);
   builder->AppendMojoDataItem(std::move(item));
-  std::unique_ptr<BlobDataHandle> handle = AddFinishedBlob(std::move(builder));
-  BlobImpl::Create(std::move(handle), std::move(blob));
-}
-
-void BlobStorageContext::RegisterFromMemory(
-    mojo::PendingReceiver<::blink::mojom::Blob> blob,
-    const std::string& uuid,
-    mojo_base::BigBuffer data) {
-  if (registry_.HasEntry(uuid)) {
-    receivers_.ReportBadMessage("duplicate uuid");
-    return;
-  }
-
-  std::unique_ptr<BlobDataBuilder> builder =
-      std::make_unique<BlobDataBuilder>(uuid);
-  builder->AppendData(data);
   std::unique_ptr<BlobDataHandle> handle = AddFinishedBlob(std::move(builder));
   BlobImpl::Create(std::move(handle), std::move(blob));
 }

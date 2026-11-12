@@ -73,6 +73,7 @@ BASE_DECLARE_FEATURE(kWebUIOmniboxDisableCaretColorAnimation);
 BASE_DECLARE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation);
 BASE_DECLARE_FEATURE(kWebUIOmniboxFullPopupDoubleClick);
 BASE_DECLARE_FEATURE(kOmniboxEverywhere);
+BASE_DECLARE_FEATURE(kOmniboxEverywhereScreenshotNewWindow);
 BASE_DECLARE_FEATURE(kWebUIOmniboxPopupDebug);
 BASE_DECLARE_FEATURE(kWebUIOmniboxPopupSelectionControl);
 // Caret animation for omnibox
@@ -108,6 +109,14 @@ extern const base::FeatureParam<bool> kShowContextMenu;
 extern const base::FeatureParam<bool> kOmniboxEverywhereMostVisitedParam;
 // Controls whether small Loomnibox (480px width) is enabled.
 extern const base::FeatureParam<bool> kOmniboxEverywhereSmallLoomniboxParam;
+// Controls whether dynamic sizing is enabled for OmniboxEverywhere.
+extern const base::FeatureParam<bool> kOmniboxEverywhereDynamicSizingParam;
+// Controls the expanded content width (680 or 600) when DynamicSizing is
+// enabled.
+extern const base::FeatureParam<int> kOmniboxEverywhereDynamicSizingWidthParam;
+// Controls whether small (14px) font size is enabled for OmniboxEverywhere.
+extern const base::FeatureParam<bool> kOmniboxEverywhereSmallFontParam;
+
 // Controls showing titles under most visited tiles in OmniboxEverywhere.
 extern const base::FeatureParam<bool>
     kOmniboxEverywhereMostVisitedShowTitleParam;
@@ -178,6 +187,12 @@ bool ShouldAimEvictOnHide();
 // eligibility.
 bool IsAimPopupEnabled(Profile* profile);
 bool ShouldShowAimContextMenuOption(Profile* profile);
+
+// Returns true if a location bar for `profile` should create its AI Mode popup
+// presenter now. Returns false when the feature is off, or while the profile is
+// not eligible; in the latter case callers should check again when
+// `AimEligibilityService` reports an eligibility change.
+bool ShouldCreateAimPopupPresenter(Profile* profile);
 
 // Returns true if the Omnibox Everywhere feature is eligible for the given
 // `profile`. This checks the base::Feature flag, that the profile is valid and

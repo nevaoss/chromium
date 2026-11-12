@@ -6,13 +6,9 @@ import 'chrome://contextual-tasks/app.js';
 
 import type {ContextualTasksAppElement} from 'chrome://contextual-tasks/app.js';
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
-/* clang-format off */
 import {ComposeboxFile, GlifAnimationState} from 'chrome://resources/cr_components/composebox/common.js';
-// <if expr="not is_android">
-import {TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
-// </if>
-/* clang-format on */
 import {PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import type {ComposeboxDropdownElement} from 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 import {SubmitButtonIconType} from 'chrome://resources/cr_components/composebox/composebox_mixin.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import {InputType, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
@@ -21,10 +17,15 @@ import {VoiceSearchAction, VoiceSearchQuerySource} from 'chrome://resources/cr_c
 import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState, VoiceSearchState} from 'chrome://resources/cr_components/search/constants.js';
-import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteMatch, createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+/* clang-format off */
 import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+// <if expr="not is_android">
+import {TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+// </if>
+/* clang-format on */
 import type {AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -632,7 +633,9 @@ suite('ContextualTasksComposeboxTest', () => {
 
   test('typing clears suggestInventory', async () => {
     const innerComposebox = contextualTasksApp.$.composebox.$.composebox;
-    const inputElement = innerComposebox.getInputElement().$.input;
+    const inputElement =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!;
 
     // Set some non-default suggest inventory.
     innerComposebox.suggestInventory = SuggestInventory.kTravel;
@@ -676,7 +679,9 @@ suite('ContextualTasksComposeboxTest', () => {
   // Test that the Tab key correctly synchronizes the selected index.
   test('TabFocusSyncsSelectedIndex', async () => {
     const contextualComposebox = contextualTasksApp.$.composebox;
-    const dropdown = contextualComposebox.$.contextualTasksSuggestionsContainer;
+    const dropdown = contextualComposebox.shadowRoot
+                         .querySelector<ComposeboxDropdownElement>(
+                             '#contextualTasksSuggestionsContainer')!;
 
     // Simulate focus moving to the first match (index 0) via Tab key.
     dropdown.fire('match-focusin', {index: 0});
@@ -690,13 +695,18 @@ suite('ContextualTasksComposeboxTest', () => {
 
   test('TabFocusPopulatesTextAndEnterSubmits', async () => {
     const contextualComposebox = contextualTasksApp.$.composebox;
-    const dropdown = contextualComposebox.$.contextualTasksSuggestionsContainer;
+    const dropdown = contextualComposebox.shadowRoot
+                         .querySelector<ComposeboxDropdownElement>(
+                             '#contextualTasksSuggestionsContainer')!;
     const innerComposebox = contextualComposebox.$.composebox;
 
     // Setup mock zero-state results.
     const matches = [
-      createAutocompleteMatch(
-          {contents: 'focus match', destinationUrl: 'https://test.com'}),
+      createAutocompleteMatch({
+        suggestTemplate:
+            createSuggestTemplateInfo({primaryText: 'focus match'}),
+        destinationUrl: 'https://test.com',
+      }),
     ];
     contextualComposebox.zeroStateSuggestionsForTesting =
         createAutocompleteResultForTesting({
@@ -1000,6 +1010,7 @@ suite('ContextualTasksComposeboxTest', () => {
       lastActive: {internalValue: BigInt(100)},
       showInCurrentTabChip: true,
       showInPreviousTabChip: false,
+      isLoading: false,
     };
     searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(tabInfo, null);
     await searchboxCallbackRouterRemote.$.flushForTesting();
@@ -1074,6 +1085,7 @@ suite('ContextualTasksComposeboxTest', () => {
       lastActive: {internalValue: BigInt(100)},
       showInCurrentTabChip: true,
       showInPreviousTabChip: false,
+      isLoading: false,
     };
     innerComposebox.aimThreadRestoredTabs = [restoredTab];
 
@@ -1101,6 +1113,7 @@ suite('ContextualTasksComposeboxTest', () => {
       lastActive: {internalValue: BigInt(200)},
       showInCurrentTabChip: true,
       showInPreviousTabChip: false,
+      isLoading: false,
     };
     searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(newTab, null);
     await searchboxCallbackRouterRemote.$.flushForTesting();
@@ -1120,6 +1133,7 @@ suite('ContextualTasksComposeboxTest', () => {
       lastActive: {internalValue: BigInt(100)},
       showInCurrentTabChip: true,
       showInPreviousTabChip: false,
+      isLoading: false,
     };
     searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(tabInfo, null);
     await searchboxCallbackRouterRemote.$.flushForTesting();
@@ -1167,6 +1181,7 @@ suite('ContextualTasksComposeboxTest', () => {
       lastActive: {internalValue: BigInt(100)},
       showInCurrentTabChip: true,
       showInPreviousTabChip: false,
+      isLoading: false,
     };
     searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(autoTab, null);
     await searchboxCallbackRouterRemote.$.flushForTesting();
@@ -1182,6 +1197,7 @@ suite('ContextualTasksComposeboxTest', () => {
         lastActive: {internalValue: BigInt(50)},
         showInCurrentTabChip: false,
         showInPreviousTabChip: false,
+        isLoading: false,
       },
       {
         tabId: 3,
@@ -1190,6 +1206,7 @@ suite('ContextualTasksComposeboxTest', () => {
         lastActive: {internalValue: BigInt(25)},
         showInCurrentTabChip: false,
         showInPreviousTabChip: false,
+        isLoading: false,
       },
     ];
     await innerComposebox.updateComplete;
@@ -1218,6 +1235,7 @@ suite('ContextualTasksComposeboxTest', () => {
       lastActive: {internalValue: BigInt(100)},
       showInCurrentTabChip: false,
       showInPreviousTabChip: false,
+      isLoading: false,
     };
     searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(tabInfo, null);
     await searchboxCallbackRouterRemote.$.flushForTesting();
@@ -1234,6 +1252,7 @@ suite('ContextualTasksComposeboxTest', () => {
       url: 'https://example.com/1',
       showInCurrentTabChip: true,
       showInPreviousTabChip: false,
+      isLoading: false,
       lastActive: {internalValue: BigInt(1)},
     };
 
@@ -1500,7 +1519,9 @@ suite('ContextualTasksComposeboxForkBasicInputTest', () => {
 
   test('EnterKeyOnEmptyInputDoesNotAddNewLineOrSubmit', async () => {
     const {innerComposebox} = parts;
-    const inputElement = innerComposebox.getInputElement().$.input;
+    const inputElement =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!;
     const keydownDiv =
         innerComposebox.shadowRoot.querySelector<HTMLElement>('#composebox');
     assertTrue(keydownDiv !== null);
@@ -1519,8 +1540,13 @@ suite('ContextualTasksComposeboxForkBasicInputTest', () => {
 
   test('cancel button click clears input without submitting', async () => {
     const {innerComposebox} = parts;
-    const inputElement = innerComposebox.getInputElement().$.input;
-    const cancelIcon = innerComposebox.getInputElement().$.cancelIcon;
+    const inputElement =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!;
+    const cancelIcon =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#cancelIcon');
+    assertTrue(!!cancelIcon);
 
     // Type text so the composebox has content; with content present,
     // cancel clears the input instead of closing the composebox.
@@ -1546,7 +1572,9 @@ suite('ContextualTasksComposeboxForkBasicInputTest', () => {
 
   test('lens overlay showing updates placeholder', async () => {
     const {wrapper, innerComposebox} = parts;
-    const inputElement = innerComposebox.getInputElement().$.input;
+    const inputElement =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!;
 
     // Initially false, placeholder override should be empty.
     assertFalse(wrapper.isOverlayOpenForAimVisualSearch);
@@ -1629,7 +1657,10 @@ suite('ContextualTasksComposeboxForkBasicInputTest', () => {
     let queryAutocompleteCallCount = 0;
 
     wrapper.isZeroState = true;
-    simulateUserInput(innerComposebox.getInputElement().$.input, '');
+    simulateUserInput(
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!,
+        '');
 
     innerComposebox.clearAutocompleteMatches = () => {
       clearAutocompleteMatchesCallCount++;
@@ -1795,7 +1826,9 @@ suite('ContextualTasksComposeboxForkDropdownTest', () => {
   test('fires result-changed for an accepted autocomplete result', async () => {
     mockTimer.install();
     const {innerComposebox} = parts;
-    const inputElement = innerComposebox.getInputElement().$.input;
+    const inputElement =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!;
     const testQuery = 'test';
 
     simulateUserInput(inputElement, testQuery);
@@ -1823,7 +1856,9 @@ suite('ContextualTasksComposeboxForkDropdownTest', () => {
       async () => {
         mockTimer.install();
         const {innerComposebox} = parts;
-        const inputElement = innerComposebox.getInputElement().$.input;
+        const inputElement =
+            innerComposebox.getInputElement()
+                .shadowRoot.querySelector<HTMLElement>('#input')!;
 
         simulateUserInput(inputElement, 'test');
         mockTimer.tick(300);
@@ -1862,9 +1897,10 @@ suite('ContextualTasksComposeboxForkDropdownTest', () => {
               queryId: parts.innerComposebox.activeQueryId,
               input: '',
               matches: [
-                createAutocompleteMatch({isNoncannedAimSuggestion: true}),
+                createAutocompleteMatch(),
                 createAutocompleteMatch(),
               ],
+              showAimActivityLink: true,
             }));
         await searchboxCallbackRouterRemote.$.flushForTesting();
         await innerComposebox.updateComplete;
@@ -1886,9 +1922,10 @@ suite('ContextualTasksComposeboxForkDropdownTest', () => {
           queryId: parts.innerComposebox.activeQueryId,
           input: '',
           matches: [
-            createAutocompleteMatch({isNoncannedAimSuggestion: true}),
+            createAutocompleteMatch(),
             createAutocompleteMatch(),
           ],
+          showAimActivityLink: true,
         }));
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await innerComposebox.updateComplete;
@@ -1918,7 +1955,9 @@ suite('ContextualTasksComposeboxForkDropdownTest', () => {
   test('selecting a match populates the composebox', async () => {
     mockTimer.install();
     const {innerComposebox} = parts;
-    const inputElement = innerComposebox.getInputElement().$.input;
+    const inputElement =
+        innerComposebox.getInputElement().shadowRoot.querySelector<HTMLElement>(
+            '#input')!;
     const testQuery = 'test';
 
     simulateUserInput(inputElement, testQuery);
@@ -1954,7 +1993,9 @@ suite('ContextualTasksComposeboxForkDropdownTest', () => {
         mockTimer.install();
         const TEST_QUERY = 'test query';
         const {app, innerComposebox} = parts;
-        const inputElement = innerComposebox.getInputElement().$.input;
+        const inputElement =
+            innerComposebox.getInputElement()
+                .shadowRoot.querySelector<HTMLElement>('#input')!;
         assertTrue(isVisible(inputElement));
 
         simulateUserInput(inputElement, TEST_QUERY);
@@ -2006,6 +2047,9 @@ suite('ContextualTasksComposeboxForkContextMenuTest', () => {
       ComposeboxPageHandlerRemote;
   let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>&
       SearchboxPageHandlerRemote;
+  // <if expr="not is_android">
+  let searchboxCallbackRouterRemote: SearchboxPageRemote;
+  // </if>
   let parts: CtComposeboxAppParts;
 
   // The inner element initializes `smartTabSharingVisible` based on
@@ -2074,7 +2118,14 @@ suite('ContextualTasksComposeboxForkContextMenuTest', () => {
     mockSearchboxPageHandler.setResultFor(
         'getInputState', Promise.resolve({state: new MockInputState()}));
     const searchboxCallbackRouter = new SearchboxPageCallbackRouter();
+    // The remote is only needed by the desktop-only tests below.
+    // <if expr="is_android">
     searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
+    // </if>
+    // <if expr="not is_android">
+    searchboxCallbackRouterRemote =
+        searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
+    // </if>
     ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
         mockComposeboxPageHandler, mockSearchboxPageHandler,
         searchboxCallbackRouter));
@@ -2270,7 +2321,7 @@ suite('ContextualTasksComposeboxForkContextMenuTest', () => {
       // `new URL()`.
       url: 'https://example.com/',
       delayUpload: false,
-      origin: TabUploadOrigin.CURRENT_TAB_CHIP,
+      origin: TabAttachmentSource.kCurrentTabChip,
     });
     await mockSearchboxPageHandler.whenCalled('addTabContext');
     await microtasksFinished();
@@ -2282,6 +2333,92 @@ suite('ContextualTasksComposeboxForkContextMenuTest', () => {
     assertEquals(true, activeArg);
     await microtasksFinished();
     assertEquals(0, innerComposebox.attachedContext.size);
+  });
+
+  // The overlapping favicon coins are separated by a 2px border that must be
+  // painted in the color of the surface they sit on, so the gap reads as
+  // background rather than a light outline.
+  test('favicon coin border matches the entrypoint surface', async () => {
+    loadTimeData.overrideValues({
+      tabFaviconChipsToCoinsEnabled: true,
+      energyEffectEnabled: true,
+    });
+    await mountApp(/*smartTabSharingVisible=*/ false);
+    const {app, wrapper, innerComposebox} = parts;
+    const entrypointAndMenu = getEntrypointAndMenu();
+
+    // The wrapper only settles out of tool mode once the browser has sent an
+    // input state, and the entrypoint pill is transparent while in tool mode.
+    searchboxCallbackRouterRemote.onInputStateChanged(new MockInputState());
+    await searchboxCallbackRouterRemote.$.flushForTesting();
+
+    // Attach two tabs through the real chain so the coins render inside the
+    // entrypoint button.
+    for (const id of [1, 2]) {
+      mockSearchboxPageHandler.resetResolver('addTabContext');
+      // Each attachment is keyed by its token, so use a distinct one per tab.
+      mockSearchboxPageHandler.setResultFor(
+          'addTabContext',
+          Promise.resolve({high: BigInt(id), low: BigInt(id)}));
+      entrypointAndMenu.fire('add-tab-context', {
+        id,
+        title: `Shared tab ${id}`,
+        url: `https://example${id}.com/`,
+        delayUpload: false,
+        origin: TabAttachmentSource.kCurrentTabChip,
+      });
+      await mockSearchboxPageHandler.whenCalled('addTabContext');
+    }
+
+    async function settleChain() {
+      await microtasksFinished();
+      await app.updateComplete;
+      await wrapper.updateComplete;
+      await innerComposebox.updateComplete;
+      await entrypointAndMenu.updateComplete;
+    }
+    await settleChain();
+    assertEquals(2, innerComposebox.attachedContext.size);
+    assertFalse(
+        wrapper.hasAttribute('in-tool-mode_'),
+        'the entrypoint pill is only painted outside of tool mode');
+
+    const entrypointButton = entrypointAndMenu.shadowRoot.querySelector(
+        'cr-composebox-contextual-entrypoint-button');
+    assertTrue(!!entrypointButton);
+    await entrypointButton.updateComplete;
+    const entrypoint =
+        entrypointButton.shadowRoot.querySelector<HTMLElement>('#entrypoint');
+    assertTrue(!!entrypoint);
+    const faviconGroup =
+        entrypointButton.shadowRoot.querySelector('composebox-favicon-group');
+    assertTrue(!!faviconGroup, 'favicon coins should render for shared tabs');
+    await faviconGroup.updateComplete;
+    const coins =
+        faviconGroup.shadowRoot.querySelectorAll<HTMLElement>('.favicon-item');
+    assertEquals(2, coins.length);
+
+    function assertCoinBordersMatchSurface(label: string, pill: HTMLElement) {
+      const surface = window.getComputedStyle(pill).backgroundColor;
+      assertNotEquals(
+          'rgba(0, 0, 0, 0)', surface,
+          `${label}: entrypoint pill should have an opaque background`);
+      for (const coin of coins) {
+        const style = window.getComputedStyle(coin);
+        assertEquals('2px', style.borderTopWidth, `${label}: border width`);
+        assertEquals(
+            surface, style.borderTopColor,
+            `${label}: coin border should match the entrypoint surface`);
+      }
+    }
+
+    app.toggleAttribute('dark-mode_', false);
+    await settleChain();
+    assertCoinBordersMatchSurface('light', entrypoint);
+
+    app.toggleAttribute('dark-mode_', true);
+    await settleChain();
+    assertCoinBordersMatchSurface('dark', entrypoint);
   });
   // </if>
 });
@@ -3451,7 +3588,8 @@ function createVoiceResults(transcripts: string[]): SpeechRecognitionEvent {
                   assertTrue(submitButton.part.contains('voice-submit-button'));
                   assertEquals(
                       SubmitButtonIconType.UPWARD, submitButton.iconType);
-                  assertTrue(submitButton.disabled);
+                  // Active even before any speech has been recognized.
+                  assertFalse(submitButton.disabled);
                   assertEquals(
                       '0',
                       window.getComputedStyle(submitButton)

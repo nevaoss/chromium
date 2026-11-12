@@ -18,6 +18,7 @@
 #import "base/test/test_future.h"
 #import "components/enterprise/browser/controller/fake_browser_dm_token_storage.h"
 #import "components/enterprise/common/proto/connectors.pb.h"
+#import "components/enterprise/connectors/core/cloud_content_scanning/binary_upload_service.h"
 #import "components/enterprise/connectors/core/cloud_content_scanning/clipboard_request_handler.h"
 #import "components/enterprise/connectors/core/cloud_content_scanning/common.h"
 #import "components/enterprise/connectors/core/common.h"
@@ -31,6 +32,7 @@
 #import "components/signin/public/identity_manager/identity_test_utils.h"
 #import "components/strings/grit/components_strings.h"
 #import "components/sync_preferences/testing_pref_service_syncable.h"
+#import "ios/chrome/browser/enterprise/cloud_content_scanning/model/paste_protection_metrics.h"
 #import "ios/chrome/browser/enterprise/cloud_content_scanning/test/test_clipboard_request_handler_ios.h"
 #import "ios/chrome/browser/enterprise/common/test/mock_reporting_event_router.h"
 #import "ios/chrome/browser/enterprise/connectors/reporting/ios_realtime_reporting_client.h"
@@ -1494,6 +1496,9 @@ TEST_F(DataControlsTabHelperTest,
   base::test::TestFuture<bool> consecutive_paste;
   tab_helper()->ShouldAllowPaste(consecutive_paste.GetCallback());
   EXPECT_FALSE(consecutive_paste.Get());
+  histogram_tester_.ExpectUniqueSample(
+      kIOSPasteProtectionScanTriggeredConsecutivePasteBlockedHistogram, true,
+      1);
 
   // Simulate user bypass.
   std::move(handler->_callback).Run(true);
@@ -1654,6 +1659,43 @@ TEST_F(DataControlsTabHelperTest,
       base::BindRepeating(
           &enterprise_connectors::CreateTestClipboardRequestHandlerIOS,
           enterprise_connectors::TriggeredRule::ACTION_UNSPECIFIED));
+
+  base::test::TestFuture<bool> future;
+  tab_helper()->ShouldAllowPaste(future.GetCallback());
+
+  EXPECT_TRUE(future.Get());
+
+  enterprise_connectors::ClipboardRequestHandler::ResetFactoryForTesting();
+}
+
+// Test that pasting an image larger than `kMaxUploadSizeBytes` is allowed
+// directly without scanning when a content analysis bulk data entry rule is
+// set.
+TEST_F(DataControlsTabHelperTest,
+       ShouldAllowPaste_BulkDataEntry_LargeImageAllowedDirectly) {
+  feature_list_.InitAndEnableFeature(
+      enterprise_connectors::kEnableBulkDataEntryConnectorIOS);
+  SetBulkDataEntryRule();
+
+  web_state_->SetCurrentURL(GURL(kAllowedUrl));
+
+  // Set pasteboard image size exceeding `kMaxUploadSizeBytes` (50 MB).
+  EXPECT_TRUE(WaitForPasteboardContentChanged(base::BindOnce(^{
+    UIPasteboard.generalPasteboard.items = @[ @{
+      UTTypePNG.identifier : [NSMutableData
+          dataWithLength:enterprise_connectors::BinaryUploadService::
+                             kMaxUploadSizeBytes +
+                         1]
+    } ];
+  })));
+
+  // Set up the mock clipboard request handler factory to return BLOCK if a scan
+  // is triggered. Since the image exceeds the upload size limit, it is skipped
+  // and no scan is performed, so the paste should be allowed directly.
+  enterprise_connectors::ClipboardRequestHandler::SetFactoryForTesting(
+      base::BindRepeating(
+          &enterprise_connectors::CreateTestClipboardRequestHandlerIOS,
+          enterprise_connectors::TriggeredRule::BLOCK));
 
   base::test::TestFuture<bool> future;
   tab_helper()->ShouldAllowPaste(future.GetCallback());
@@ -1898,6 +1940,10 @@ TEST_F(DataControlsTabHelperTest,
   // Wait for the scan to finish. The paste should be blocked because the event
   // became stale.
   EXPECT_FALSE(future.Get());
+
+  histogram_tester_.ExpectUniqueSample(
+      kIOSPasteProtectionScanTriggeredPasteInvalidatedHistogram,
+      EnterprisePasteProtectionInvalidatedType::kPasteboardChanged, 1);
 
   enterprise_connectors::ClipboardRequestHandler::ResetFactoryForTesting();
 }
@@ -2172,6 +2218,10 @@ TEST_F(DataControlsTabHelperTest,
   EXPECT_FALSE(future.Get());
   EXPECT_EQ(queue->size(), 0UL);
 
+  histogram_tester_.ExpectUniqueSample(
+      kIOSPasteProtectionScanTriggeredPasteInvalidatedHistogram,
+      EnterprisePasteProtectionInvalidatedType::kInvalidTabState, 1);
+
   enterprise_connectors::ClipboardRequestHandler::ResetFactoryForTesting();
 }
 
@@ -2263,6 +2313,10 @@ TEST_F(DataControlsTabHelperTest,
   // ongoing paste.
   EXPECT_FALSE(future.Get());
 
+  histogram_tester_.ExpectUniqueSample(
+      kIOSPasteProtectionScanTriggeredPasteInvalidatedHistogram,
+      EnterprisePasteProtectionInvalidatedType::kSpinningOverlayInterrupted, 1);
+
   enterprise_connectors::ClipboardRequestHandler::ResetFactoryForTesting();
 }
 
@@ -2310,6 +2364,10 @@ TEST_F(DataControlsTabHelperTest,
   EXPECT_FALSE(future.Get());
   EXPECT_EQ(queue->size(), 0UL);
 
+  histogram_tester_.ExpectUniqueSample(
+      kIOSPasteProtectionScanTriggeredPasteInvalidatedHistogram,
+      EnterprisePasteProtectionInvalidatedType::kInvalidTabState, 1);
+
   enterprise_connectors::ClipboardRequestHandler::ResetFactoryForTesting();
 }
 
@@ -2356,6 +2414,10 @@ TEST_F(DataControlsTabHelperTest,
   // The paste should be blocked because the paste event became stale.
   EXPECT_FALSE(future.Get());
   EXPECT_EQ(queue->size(), 0UL);
+
+  histogram_tester_.ExpectUniqueSample(
+      kIOSPasteProtectionScanTriggeredPasteInvalidatedHistogram,
+      EnterprisePasteProtectionInvalidatedType::kPasteboardChanged, 1);
 
   enterprise_connectors::ClipboardRequestHandler::ResetFactoryForTesting();
 }

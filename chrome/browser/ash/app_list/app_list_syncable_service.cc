@@ -50,6 +50,7 @@
 #include "chrome/browser/ash/extensions/default_app_order.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/sync/glue/sync_start_util.h"
 #include "chromeos/ash/components/file_manager/app_id.h"
 #include "components/app_constants/constants.h"
 #include "components/pref_registry/pref_registry_syncable.h"
@@ -1683,7 +1684,9 @@ AppListSyncableService::SyncItem* AppListSyncableService::CreateSyncItem(
     const std::string& item_id,
     sync_pb::AppListSpecifics::AppListItemType item_type,
     bool is_new) {
-  CHECK(!sync_items_.contains(item_id), base::NotFatalUntil::M160);
+  // TODO(crbug.com/570370927): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!sync_items_.contains(item_id));
   sync_items_[item_id] = std::make_unique<SyncItem>(item_id, item_type, is_new);
 
   // In case we have pending attributes to apply, process it asynchronously.
@@ -1904,7 +1907,9 @@ bool AppListSyncableService::UpdateSyncItemFromAppItem(
   }
 
   if (sync_item->is_system_folder != app_item->is_system_folder()) {
-    CHECK(!sync_item->is_system_folder, base::NotFatalUntil::M160);
+    // TODO(crbug.com/569773784): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(!sync_item->is_system_folder);
     sync_item->is_system_folder = app_item->is_system_folder();
     // Do not mark the item as changed - the persistent value is not expected to
     // be persisted to local state, nor synced. Also, it's expected to be set as

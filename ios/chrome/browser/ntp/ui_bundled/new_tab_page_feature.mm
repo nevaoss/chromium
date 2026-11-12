@@ -75,30 +75,6 @@ BASE_FEATURE_PARAM(std::string,
                    "");
 
 BASE_FEATURE_PARAM(std::string,
-                   kNewTabPageEphemeralThemeAnimationPromoUrlParam,
-                   &kNewTabPageEphemeralTheme,
-                   "animation-promo-url",
-                   "");
-
-BASE_FEATURE_PARAM(std::string,
-                   kNewTabPageEphemeralThemeAnimationPromoColorMappingParam,
-                   &kNewTabPageEphemeralTheme,
-                   "animation-promo-colormapping",
-                   "");
-
-BASE_FEATURE_PARAM(std::string,
-                   kNewTabPageEphemeralThemeGoogleLogoLightUrlParam,
-                   &kNewTabPageEphemeralTheme,
-                   "google-logo-light-url",
-                   "");
-
-BASE_FEATURE_PARAM(std::string,
-                   kNewTabPageEphemeralThemeGoogleLogoDarkUrlParam,
-                   &kNewTabPageEphemeralTheme,
-                   "google-logo-dark-url",
-                   "");
-
-BASE_FEATURE_PARAM(std::string,
                    kNewTabPageEphemeralThemeSeedColorParam,
                    &kNewTabPageEphemeralTheme,
                    "seed-color",

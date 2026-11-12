@@ -57,6 +57,11 @@
   white-space: nowrap;
 }
 
+permission-dashboard {
+  flex-shrink: 0;
+  margin-inline-end: 8px;
+}
+
 .top-toolbar-logo-container {
   flex: 0;
   height: 18px;
@@ -71,8 +76,8 @@
   flex: 0 0 auto;
   height: auto;
   justify-content: center;
+  margin: 0;
   margin-inline-end: 12px;
-  margin-right: 0;
   width: auto;
 }
 
@@ -101,8 +106,8 @@
 }
 
 :host([dark-mode]) .top-toolbar-logo-button.clickable {
-  background: var(--toolbar-background-color, #292a2d);
-  box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.6);
+  background: var(--toolbar-background-color, #22242a);
+  box-shadow: 0 0 6px 0 rgba(255, 255, 255, 0.25);
 }
 
 .top-toolbar-logo-button.clickable:focus-visible {
@@ -132,6 +137,7 @@
 }
 
 .top-toolbar-action-buttons {
+  align-items: center;
   flex: 0;
   display: flex;
   flex-direction: row;
@@ -162,4 +168,25 @@ cr-icon-button[hidden] {
 
 #overflowMenuButton.active {
   background-color: var(--cr-active-background-color);
+}
+
+.profile-indicator {
+  align-items: center;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  height: 32px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 32px;
+}
+
+.profile-avatar-img {
+  border-radius: 50%;
+  display: block;
+  height: 20px;
+  object-fit: cover;
+  width: 20px;
 }

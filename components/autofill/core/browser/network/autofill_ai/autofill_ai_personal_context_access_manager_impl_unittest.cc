@@ -384,6 +384,8 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest, PrefetchContextSuccess) {
                   HasAttributeWithValue(AttributeTypeName::kOrderId, u"12345"),
                   HasAttributeWithValue(AttributeTypeName::kOrderMerchantName,
                                         u"Amazon"))));
+  histogram_tester().ExpectUniqueSample(
+      "Autofill.Ai.Suppression.EntitiesFilteredPerPrefetch", 0, 1);
 }
 
 // Tests that PrefetchContext ignores entity types in the response that were
@@ -1189,6 +1191,28 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest, WipeStateOnDisablement) {
   EXPECT_FALSE(access_manager().IsTypePrefetched(kPassportType));
 }
 
+// Tests that when OnContextSourceDisabled is called, all cached state is wiped.
+TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
+       WipeStateOnContextSourceDisabled) {
+  EntityInstance::EntityId passport_guid = PrefetchMaskedPassportAndGetGuid();
+  EntityInstance passport_unmasked =
+      test::GetPassportEntityInstance(
+          {.record_type = EntityInstance::RecordType::kPersonalContext})
+          .CopyWithNewEntityId(passport_guid);
+  test_api(access_manager()).CacheUnmaskedSpiiEntity(passport_unmasked);
+
+  ASSERT_TRUE(access_manager().IsTypePrefetched(kPassportType));
+  ASSERT_TRUE(access_manager().ServerHasSpiiPresenceSignal(kPassportType));
+  ASSERT_EQ(GetUnmaskedSpiiEntitySync(passport_guid), passport_unmasked);
+
+  EXPECT_CALL(mock_observer(), OnMaskedEntityTypeEvicted(_, kPassportType));
+  access_manager().OnContextSourceDisabled();
+
+  EXPECT_FALSE(access_manager().IsTypePrefetched(kPassportType));
+  EXPECT_FALSE(access_manager().ServerHasSpiiPresenceSignal(kPassportType));
+  EXPECT_EQ(GetUnmaskedSpiiEntitySync(passport_guid), std::nullopt);
+}
+
 // Tests that a pending request blocks subsequent requests for the same type.
 TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
        PendingRequestBlocksSubsequent) {
@@ -1600,6 +1624,9 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
                          AttributeTypeName::kOrderId, u"ORD2")))));
 
   PrefetchContextSync({kOrderType}, {}, response);
+
+  histogram_tester().ExpectUniqueSample(
+      "Autofill.Ai.Suppression.EntitiesFilteredPerPrefetch", 1, 1);
 }
 
 // Tests that suppressing an entity evicts cached masked entities and re-emits
@@ -2405,8 +2432,10 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
       CreateOrderProto({.id = u"INVALID_URL_SOURCE",
                         .date = u"2025-06-01",
                         .merchant_name = u"Store"});
-  invalid_url_order.add_source_references()->mutable_gmail()->set_message_url(
-      "invalid_url");
+  personal_context::proto::GmailReference* invalid_gmail =
+      invalid_url_order.add_source_references()->mutable_gmail();
+  invalid_gmail->mutable_message_urls()->set_desktop_web_url("invalid_url");
+  invalid_gmail->mutable_message_urls()->set_mobile_web_url("invalid_url");
   *response.add_entities() = std::move(invalid_url_order);
 
   // 4. Order with a valid Gmail source reference -> kValid
@@ -2416,7 +2445,10 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
                         .merchant_name = u"Store"});
   personal_context::proto::GmailReference* valid_gmail =
       valid_order.add_source_references()->mutable_gmail();
-  valid_gmail->set_message_url("https://mail.google.com/mail/u/0/#inbox/123");
+  valid_gmail->mutable_message_urls()->set_desktop_web_url(
+      "https://mail.google.com/mail/#inbox/123");
+  valid_gmail->mutable_message_urls()->set_mobile_web_url(
+      "https://mail.google.com/mail/mu/mp/#cv/Inbox/123");
   valid_gmail->set_subject("Order Confirmation");
   *response.add_entities() = std::move(valid_order);
 

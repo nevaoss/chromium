@@ -75,6 +75,7 @@ try_.builder(
 try_.builder(
     name = "fuchsia-binary-size",
     branch_selector = branches.selector.FUCHSIA_BRANCHES,
+    description_html = "Measures Fuchsia ARM64 binary size impact of CLs.",
     executable = "recipe:binary_size_fuchsia_trybot",
     gn_args = gn_args.config(
         configs = [
@@ -135,6 +136,7 @@ try_.builder(
 
 try_.builder(
     name = "fuchsia-deterministic-dbg",
+    description_html = "Verifies that Fuchsia x64 debug builds are deterministic.",
     executable = "recipe:swarming/deterministic_build",
     gn_args = gn_args.config(
         configs = [
@@ -226,6 +228,7 @@ try_.orchestrator_builder(
     coverage_test_types = ["unit", "overall"],
     cq_settings = try_.cq_settings(
         on_default_cq = True,
+        reuse_max_commit_distance = 800 if settings.is_main else None,
     ),
     experiments = {
         # go/nplus1shardsproposal

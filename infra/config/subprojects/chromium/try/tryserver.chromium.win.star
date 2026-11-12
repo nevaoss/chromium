@@ -68,7 +68,6 @@ try_.builder(
 
 try_.builder(
     name = "win-annotator-rel",
-    description_html = "Runs tests for the Network Traffic Annotation Auditor on Windows, mirroring win-annotator-rel.",
     mirrors = ["ci/win-annotator-rel"],
     gn_args = gn_args.config(
         configs = [
@@ -229,6 +228,7 @@ try_.orchestrator_builder(
         # crbug.com/40280175
         "chromium_checkout.expand_submodules": 100,
         "luci.buildbucket.run_in_turboci": 100,
+        "luci.buildbucket.run_in_turboci.grpc_client": 50,
     },
     main_list_view = "try",
     use_clang_coverage = True,
@@ -301,7 +301,7 @@ try_.builder(
     ),
     builderless = False,
     cores = 16,
-    os = os.WINDOWS_ANY,
+    os = os.WINDOWS_DEFAULT,
     ssd = True,
     contact_team_email = "chrome-desktop-engprod@google.com",
     cq_settings = try_.cq_settings(
@@ -354,6 +354,7 @@ try_.builder(
 
 try_.builder(
     name = "win_upload_clang",
+    description_html = "Builds and uploads Clang toolchain packages for Windows.",
     executable = "recipe:chromium_toolchain/package_clang",
     builderless = False,
     cores = 32,
@@ -364,6 +365,7 @@ try_.builder(
 
 try_.builder(
     name = "win_upload_rust",
+    description_html = "Builds and uploads Rust toolchain packages for Windows.",
     executable = "recipe:chromium_toolchain/package_rust",
     builderless = False,
     cores = 32,
@@ -387,7 +389,6 @@ try_.builder(
 
 try_.builder(
     name = "win11-rel",
-    description_html = "This builder run tests for Windows 11 release build.",
     mirrors = [
         "ci/Win x64 Builder",
         "ci/Win11 Tests x64",
@@ -420,9 +421,6 @@ try_.builder(
 try_.builder(
     name = "win-arm64-rel",
     branch_selector = branches.selector.WINDOWS_BRANCHES,
-    description_html = (
-        "This builder run tests for Windows ARM64 release build."
-    ),
     mirrors = [
         "ci/win-arm64-rel",
         "ci/win11-arm64-rel-tests",
@@ -472,7 +470,7 @@ try_.builder(
     ),
     builderless = False,
     cores = None,
-    os = os.WINDOWS_ANY,
+    os = os.WINDOWS_DEFAULT,
     contact_team_email = "chrome-desktop-engprod@google.com",
     cq_settings = try_.cq_settings(
         # TODO(crbug.com/40847153) Remove once cancelling doesn't wipe
@@ -489,7 +487,6 @@ try_.builder(
 
 try_.builder(
     name = "win-arm64-dbg",
-    description_html = "This builder run tests for Windows ARM64 debug build.",
     mirrors = [
         "ci/win-arm64-dbg",
         "ci/win11-arm64-dbg-tests",
@@ -501,7 +498,7 @@ try_.builder(
     ),
     builderless = True,
     cores = 16,
-    os = os.WINDOWS_10,
+    os = os.WINDOWS_DEFAULT,
     ssd = True,
     contact_team_email = "chrome-desktop-engprod@google.com",
     # The size of the testing pool is limited.
@@ -631,7 +628,6 @@ shared_gpu.try_.win_optional_builder(
 
 try_.builder(
     name = "win-separate-renderer-rel",
-    description_html = "Runs separate renderer tests on Windows, mirroring win-separate-renderer-fyi-rel.",
     mirrors = [
         "ci/win-separate-renderer-fyi-rel",
     ],

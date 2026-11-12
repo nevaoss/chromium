@@ -29,6 +29,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/task/thread_pool.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -67,6 +68,7 @@
 #include "storage/browser/blob/blob_storage_context.h"
 #include "storage/browser/quota/quota_client_type.h"
 #include "storage/browser/quota/quota_manager_proxy.h"
+#include "storage/browser/test/blob_test_utils.h"
 #include "storage/browser/test/fake_blob.h"
 #include "storage/browser/test/mock_quota_manager_proxy.h"
 #include "storage/browser/test/mock_special_storage_policy.h"
@@ -164,9 +166,7 @@ class DelayedBlob : public storage::FakeBlob {
 class CallbackScheduler : public CacheStorageScheduler {
  public:
   explicit CallbackScheduler(base::OnceClosure callback)
-      : CacheStorageScheduler(
-            CacheStorageSchedulerClient::kCache,
-            base::SingleThreadTaskRunner::GetCurrentDefault()),
+      : CacheStorageScheduler(CacheStorageSchedulerClient::kCache),
         callback_(std::move(callback)) {}
 
  protected:
@@ -405,16 +405,14 @@ class CacheStorageManagerTest : public testing::Test {
         bucket_locator2_,
         GetOrCreateBucket(storage_key2_, storage::kDefaultBucketName));
 
-    cache_manager_ = CacheStorageManager::Create(
+    cache_manager_ = std::make_unique<CacheStorageManager>(
         temp_dir_path, base::SingleThreadTaskRunner::GetCurrentDefault(),
-        base::SingleThreadTaskRunner::GetCurrentDefault(), quota_manager_proxy_,
-        blob_storage_context_, nullptr);
+        quota_manager_proxy_, blob_storage_context_, nullptr);
   }
 
   void RecreateStorageManager() {
     DCHECK(cache_manager_);
-    auto* legacy_manager =
-        static_cast<CacheStorageManager*>(cache_manager_.get());
+    CacheStorageManager* legacy_manager = cache_manager_.get();
     cache_manager_ = CacheStorageManager::CreateForTesting(legacy_manager);
   }
 
@@ -653,7 +651,8 @@ class CacheStorageManagerTest : public testing::Test {
     blob->uuid = blob_uuid;
     blob->size = request->url.spec().size();
     auto& str = request->url.spec();
-    blob_storage_context_->context()->RegisterFromMemory(
+    storage::RegisterBlobWithContents(
+        *blob_storage_context_->context(),
         blob->blob.InitWithNewPipeAndPassReceiver(), blob_uuid,
         base::as_byte_span(str));
 
@@ -685,9 +684,10 @@ class CacheStorageManagerTest : public testing::Test {
         net::HttpRequestHeaders::kGetMethod, std::move(blob),
         blink::mojom::ServiceWorkerResponseError::kUnknown, base::Time(),
         /*cache_storage_cache_name=*/std::string(),
+        /*cache_storage_side_data_writer=*/mojo::NullRemote(),
         /*cors_exposed_header_names=*/std::vector<std::string>(),
         /*side_data_blob=*/nullptr,
-        /*side_data_blob_for_cache_put=*/nullptr,
+        /*side_data_for_cache_put=*/std::nullopt,
         network::mojom::ParsedHeaders::New(), net::HttpConnectionInfo::kUNKNOWN,
         /*alpn_negotiated_protocol=*/"unknown",
         /*was_fetched_via_spdy=*/false, /*has_range_requested=*/false,
@@ -867,7 +867,7 @@ class CacheStorageManagerTest : public testing::Test {
   scoped_refptr<storage::MockSpecialStoragePolicy> quota_policy_;
   scoped_refptr<storage::MockQuotaManager> mock_quota_manager_;
   scoped_refptr<MockCacheStorageQuotaManagerProxy> quota_manager_proxy_;
-  scoped_refptr<CacheStorageManager> cache_manager_;
+  std::unique_ptr<CacheStorageManager> cache_manager_;
 
   CacheStorageCacheHandle callback_cache_handle_;
   int callback_bool_ = false;
@@ -1147,6 +1147,30 @@ TEST_P(CacheStorageManagerTestP, StorageMatchEntryExists) {
       CachePut(callback_cache_handle_.value(), GURL("http://example.com/foo")));
   EXPECT_TRUE(
       StorageMatch(bucket_locator1_, u"foo", GURL("http://example.com/foo")));
+}
+
+TEST_P(CacheStorageManagerTestP, StorageMatchPopulatesSideDataWriterRemote) {
+  EXPECT_TRUE(Open(bucket_locator1_, u"foo"));
+  EXPECT_TRUE(
+      CachePut(callback_cache_handle_.value(), GURL("http://example.com/foo")));
+  EXPECT_TRUE(
+      StorageMatch(bucket_locator1_, u"foo", GURL("http://example.com/foo")));
+  ASSERT_TRUE(callback_cache_handle_response_);
+  EXPECT_TRUE(callback_cache_handle_response_->cache_storage_side_data_writer
+                  .is_valid());
+}
+
+TEST_P(CacheStorageManagerTestP, StorageMatchAllPopulatesSideDataWriterRemote) {
+  const std::string kBucketName = "custom-bucket";
+  ASSERT_OK_AND_ASSIGN(auto bucket_locator,
+                       GetOrCreateBucket(storage_key1_, kBucketName));
+  EXPECT_TRUE(Open(bucket_locator, u"foo"));
+  EXPECT_TRUE(
+      CachePut(callback_cache_handle_.value(), GURL("http://example.com/foo")));
+  EXPECT_TRUE(StorageMatchAll(bucket_locator, GURL("http://example.com/foo")));
+  ASSERT_TRUE(callback_cache_handle_response_);
+  EXPECT_TRUE(callback_cache_handle_response_->cache_storage_side_data_writer
+                  .is_valid());
 }
 
 TEST_P(CacheStorageManagerTestP, StorageMatchNoEntry) {
@@ -2759,7 +2783,8 @@ class CacheStorageQuotaClientTest : public CacheStorageManagerTest {
   void SetUp() override {
     CacheStorageManagerTest::SetUp();
     quota_client_ = std::make_unique<CacheStorageQuotaClient>(
-        cache_manager_, storage::mojom::CacheStorageOwner::kCacheAPI);
+        cache_manager_->GetWeakPtr(),
+        storage::mojom::CacheStorageOwner::kCacheAPI);
   }
 
   void QuotaUsageCallback(base::RunLoop* run_loop, int64_t usage) {
@@ -2894,7 +2919,8 @@ TEST_F(CacheStorageQuotaClientDiskOnlyTest, QuotaDeleteUnloadedKeyData) {
   // Create a new CacheStorageManager that hasn't yet loaded the origin.
   RecreateStorageManager();
   quota_client_ = std::make_unique<CacheStorageQuotaClient>(
-      cache_manager_, storage::mojom::CacheStorageOwner::kCacheAPI);
+      cache_manager_->GetWeakPtr(),
+      storage::mojom::CacheStorageOwner::kCacheAPI);
 
   EXPECT_TRUE(QuotaDeleteBucketData(bucket_locator1_));
   EXPECT_EQ(0, QuotaGetBucketUsage(bucket_locator1_));

@@ -111,6 +111,9 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration);
 // Returns whether the bottom omnibox steady state feature is enabled.
 - (BOOL)isBottomOmniboxAvailable;
 
+// Returns whether the Pinned Tabs feature is enabled.
+- (BOOL)isPinnedTabsEnabled;
+
 // Returns whether the current layout is showing the bottom omnibox.
 - (BOOL)isCurrentLayoutBottomOmnibox;
 
@@ -896,9 +899,14 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration);
 // Returns whether Chrome Next is enabled.
 - (BOOL)isChromeNextEnabled;
 
+// Returns whether Next Old Design is enabled.
+- (BOOL)isNextOldDesignEnabled;
+
 // Returns whether overflow menu refactoring on the NTP is enabled.
 - (BOOL)isOverflowMenuNTPRefactorEnabled;
 
+// Returns whether Aim Cobrowse Web Selection Search is enabled.
+- (BOOL)isAimCobrowseWebSelectionSearchEnabled;
 
 // Returns YES if the view with `accessibilityID` or any of its ancestors is
 // animating.

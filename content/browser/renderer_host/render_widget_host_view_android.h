@@ -14,6 +14,7 @@
 
 #include "base/android/jni_android.h"
 #include "base/callback_list.h"
+#include "base/containers/flat_set.h"
 #include "base/containers/queue.h"
 #include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
@@ -117,6 +118,17 @@ class CONTENT_EXPORT RenderWidgetHostViewAndroid
   static RenderWidgetHostViewAndroid* FromRenderWidgetHostView(
       RenderWidgetHostView* view);
 
+  // Returns whether a keyboard lock request for `codes` (std::nullopt means
+  // all keys) needs OS-level keyboard capture. Android keyboard capture is
+  // all-or-nothing: while enabled, capturable system shortcuts such as Alt+Tab
+  // and Meta+<key> are routed to the window instead of the system. Those
+  // shortcuts are generally Alt/Ctrl/Meta chords (or Meta alone), so, like
+  // Windows' ModifierKeyboardHookWin, OS capture is only requested when the
+  // page locks all keys or one of those modifiers. Other locked keys are
+  // handled in-browser via `skip_if_unhandled`.
+  static bool ShouldCaptureSystemKeys(
+      const std::optional<base::flat_set<ui::DomCode>>& codes);
+
   // Note: The tree of `gfx::NativeView` might not match the tree of
   // `cc::slim::Layer`.
   RenderWidgetHostViewAndroid(RenderWidgetHostImpl* widget,
@@ -175,12 +187,6 @@ class CONTENT_EXPORT RenderWidgetHostViewAndroid
   void SetInsets(const gfx::Insets& insets) override;
   gfx::Size GetCompositorViewportPixelSize() override;
   bool IsSurfaceAvailableForCopy() override;
-  void CopyFromSurface(
-      const gfx::Rect& src_rect,
-      const gfx::Size& output_size,
-      base::TimeDelta timeout,
-      base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback)
-      override;
   ui::FilteredGestureProvider* GetFilteredGestureProviderForTesting() override;
   // Identical to `CopyFromSurface()`, except that this method issues the
   // `viz::CopyOutputRequest` against the exact `viz::Surface` currently
@@ -514,6 +520,13 @@ class CONTENT_EXPORT RenderWidgetHostViewAndroid
   void UpdateFrameSinkIdRegistration() override;
   void UpdateBackgroundColor() override;
   bool HasFallbackSurface() const override;
+  void CopyFromSurfaceImpl(
+      const gfx::Rect& src_rect,
+      const gfx::Size& output_size,
+      bool is_copy_request_secure,
+      base::TimeDelta timeout,
+      base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback)
+      override;
   std::optional<DisplayFeature> GetDisplayFeature() override;
   void DisableDisplayFeatureOverrideForEmulation() override;
   void OverrideDisplayFeatureForEmulation(

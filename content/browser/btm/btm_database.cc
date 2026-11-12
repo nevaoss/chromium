@@ -299,7 +299,6 @@ sql::InitStatus BtmDatabase::Init() {
 
 void BtmDatabase::LogDatabaseMetrics() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  base::TimeTicks start_time = base::TimeTicks::Now();
 
   std::optional<int64_t> db_size = base::GetFileSize(db_path_);
   if (db_size.has_value()) {
@@ -309,9 +308,6 @@ void BtmDatabase::LogDatabaseMetrics() {
 
   base::UmaHistogramCounts10000("Privacy.DIPS.DatabaseEntryCount",
                                 GetEntryCount(BtmDatabaseTable::kBounces));
-
-  base::UmaHistogramTimes("Privacy.DIPS.DatabaseHealthMetricsTime",
-                          base::TimeTicks::Now() - start_time);
 }
 
 bool BtmDatabase::CheckDBInit() {
@@ -365,7 +361,9 @@ bool BtmDatabase::Write(const std::string& site,
       "last_web_authn_assertion_time"
     ") VALUES(?,?,?,?,?,?,?)";
   // clang-format on
-  CHECK(db_->IsSQLValid(kWriteSql), base::NotFatalUntil::M158);
+  // TODO(crbug.com/570577047): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kWriteSql));
 
   SCOPED_UMA_HISTOGRAM_TIMER("Privacy.DIPS.Database.Operation.WriteTime");
 
@@ -438,7 +436,9 @@ std::optional<StateValue> BtmDatabase::Read(const std::string& site) {
     FROM bounces
     WHERE site=?
   )SQL";
-  CHECK(db_->IsSQLValid(kReadSql), base::NotFatalUntil::M158);
+  // TODO(570577090): CHECK-exclusion: Convert to a CHECK once we are confident
+  // it won't be triggered.
+  DCHECK(db_->IsSQLValid(kReadSql));
 
   SCOPED_UMA_HISTOGRAM_TIMER("Privacy.DIPS.Database.Operation.ReadTime");
 
@@ -626,7 +626,9 @@ std::set<std::string> BtmDatabase::FilterSites(
   const std::string kReadSql = absl::StrFormat(
       kReadSqlFmt,
       base::JoinString(std::vector<std::string_view>(sites.size(), "?"), ","));
-  CHECK(db_->IsSQLValid(kReadSql), base::NotFatalUntil::M158);
+  // TODO(crbug.com/570257021): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kReadSql));
 
   std::string histogram_name;
   switch (filter) {
@@ -701,8 +703,9 @@ size_t BtmDatabase::ClearExpiredRows() {
     ")<?";
   // clang-format on
 
-  CHECK(db_->IsSQLValid(kClearAllExpiredBouncesTableSql),
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/564966486): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kClearAllExpiredBouncesTableSql));
   sql::Statement bounces_statement(
       db_->GetCachedStatement(SQL_FROM_HERE, kClearAllExpiredBouncesTableSql));
   bounces_statement.BindTime(
@@ -884,7 +887,9 @@ bool BtmDatabase::ClearTimestamps(const base::Time& delete_begin,
             "WHERE first_web_authn_assertion_time>=? AND "
                   "last_web_authn_assertion_time<=?";
     // clang-format on
-    CHECK(db_->IsSQLValid(kClearWaaSql), base::NotFatalUntil::M158);
+    // TODO(crbug.com/568606044): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(db_->IsSQLValid(kClearWaaSql));
 
     sql::Statement s_clear_waa(
         db_->GetCachedStatement(SQL_FROM_HERE, kClearWaaSql));
@@ -1301,7 +1306,9 @@ bool BtmDatabase::SetConfigValue(std::string_view key, int64_t value) {
 
   static constexpr char kInsertValueSql[] =
       "INSERT OR REPLACE INTO config(key,int_value) VALUES(?,?)";
-  CHECK(db_->IsSQLValid(kInsertValueSql), base::NotFatalUntil::M158);
+  // TODO(566054600): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kInsertValueSql));
   sql::Statement statement(
       db_->GetCachedStatement(SQL_FROM_HERE, kInsertValueSql));
   statement.BindString(0, key);

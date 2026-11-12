@@ -70,6 +70,8 @@ constexpr base::TimeDelta kLongPressTimeDuration = base::Milliseconds(400);
 
 // Revamp container stack constants.
 const CGFloat kRevampContainerStackSpacing = 12.0;
+const CGFloat kRevampIconContainerSize = 36.0;
+const CGFloat kRevampContainerTrailingPadding = 12.0;
 
 // Revamp labels stack constants.
 const CGFloat kRevampLabelsStackViewVerticalSpacing = 3.0;
@@ -77,6 +79,9 @@ const CGFloat kRevampLabelsStackViewVerticalSpacing = 3.0;
 // Revamp button constants.
 const CGFloat kHeightCornerRadiusThreshold = 90.0;
 const CGFloat kButtonMaxWidthMultiplier = 0.40;
+const CGFloat kRevampButtonVerticalPadding = 10.0;
+const CGFloat kRevampButtonMinimumScaleFactor = 0.8;
+const CGFloat kRevampButtonFontSize = 15.0;
 }  // namespace
 
 @interface InfobarBannerViewController () <UIGestureRecognizerDelegate>
@@ -359,16 +364,15 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
       CGSizeMake(0.0, kInfobarBannerRevampContainerShadowYOffset);
   viewLayer.shadowRadius = kInfobarBannerRevampContainerShadowRadius;
   viewLayer.shadowOpacity = kInfobarBannerRevampContainerShadowOpacity;
-  [self.traitCollection performAsCurrentTraitCollection:^{
-    viewLayer.shadowColor = [UIColor colorNamed:kToolbarShadowColor].CGColor;
-  }];
+  viewLayer.shadowColor = [UIColor blackColor].CGColor;
 
   // Icon setup.
   UIView* iconContainerView = [self configureIconContainer];
 
   // Labels setup.
   UIFont* headlineFont =
-      [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+      [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline
+          compatibleWithTraitCollection:self.view.traitCollection];
   UILabel* titleLabel = [[UILabel alloc] init];
   titleLabel.text = self.titleText;
   titleLabel.font = headlineFont;
@@ -385,7 +389,8 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
   UILabel* subTitleLabel = [[UILabel alloc] init];
   subTitleLabel.text = self.subtitleText;
   subTitleLabel.font =
-      [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+      [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote
+          compatibleWithTraitCollection:self.view.traitCollection];
   subTitleLabel.adjustsFontForContentSizeCategory = YES;
   subTitleLabel.textColor = [UIColor colorNamed:kTextSecondaryColor];
   subTitleLabel.numberOfLines = _subtitleNumberOfLines;
@@ -422,26 +427,51 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
 
   // Button setup.
   UIButton* actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  actionButton.maximumContentSizeCategory =
+      UIContentSizeCategoryExtraExtraLarge;
   UIButtonConfiguration* buttonConfig =
       [UIButtonConfiguration filledButtonConfiguration];
   buttonConfig.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
   buttonConfig.baseBackgroundColor = [UIColor colorNamed:kBlueColor];
   buttonConfig.baseForegroundColor = [UIColor colorNamed:kSolidButtonTextColor];
   buttonConfig.contentInsets = NSDirectionalEdgeInsetsMake(
-      0, kInfobarBannerRevampButtonHorizontalPadding, 0,
+      kRevampButtonVerticalPadding, kInfobarBannerRevampButtonHorizontalPadding,
+      kRevampButtonVerticalPadding,
       kInfobarBannerRevampButtonHorizontalPadding);
-  NSDictionary<NSAttributedStringKey, id>* titleAttributes =
-      @{NSFontAttributeName : headlineFont};
-  buttonConfig.attributedTitle =
-      [[NSAttributedString alloc] initWithString:self.buttonText ?: @""
-                                      attributes:titleAttributes];
+  buttonConfig.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+  buttonConfig.title = self.buttonText ?: @"";
+  __weak __typeof(actionButton) weakButton = actionButton;
+  buttonConfig.titleTextAttributesTransformer =
+      ^NSDictionary<NSAttributedStringKey, id>*(
+          NSDictionary<NSAttributedStringKey, id>* incoming) {
+    NSMutableDictionary<NSAttributedStringKey, id>* outgoing =
+        [incoming mutableCopy];
+    UITraitCollection* traitCollection =
+        weakButton.traitCollection
+            ?: [UITraitCollection currentTraitCollection];
+    UIFont* baseFont = [UIFont systemFontOfSize:kRevampButtonFontSize
+                                         weight:UIFontWeightSemibold];
+    outgoing[NSFontAttributeName] =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                        scaledFontForFont:baseFont
+            compatibleWithTraitCollection:traitCollection];
+    NSMutableParagraphStyle* paragraphStyle =
+        [[NSMutableParagraphStyle alloc] init];
+    paragraphStyle.alignment = NSTextAlignmentCenter;
+    outgoing[NSParagraphStyleAttributeName] = paragraphStyle;
+    return outgoing;
+  };
+  actionButton.configurationUpdateHandler = ^(UIButton* button) {
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = kRevampButtonMinimumScaleFactor;
+    button.titleLabel.numberOfLines = 2;
+    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    button.titleLabel.textAlignment = NSTextAlignmentCenter;
+    button.titleLabel.isAccessibilityElement = NO;
+  };
   actionButton.configuration = buttonConfig;
 
-  actionButton.titleLabel.adjustsFontForContentSizeCategory = YES;
-  actionButton.titleLabel.adjustsFontSizeToFitWidth = YES;
-  actionButton.titleLabel.numberOfLines = 2;
-  actionButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-  actionButton.titleLabel.isAccessibilityElement = NO;
   actionButton.accessibilityIdentifier = kInfobarBannerAcceptButtonIdentifier;
   actionButton.accessibilityLabel = self.buttonText;
   actionButton.pointerInteractionEnabled = YES;
@@ -454,6 +484,9 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
   [actionButton
       setContentCompressionResistancePriority:UILayoutPriorityRequired
                                       forAxis:UILayoutConstraintAxisHorizontal];
+  [actionButton
+      setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                      forAxis:UILayoutConstraintAxisVertical];
 
   CALayer* buttonLayer = actionButton.layer;
   buttonLayer.shadowOffset =
@@ -507,7 +540,7 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
                        constant:kInfobarBannerRevampHorizontalEdgePadding],
     [containerStack.trailingAnchor
         constraintEqualToAnchor:self.view.trailingAnchor
-                       constant:-kInfobarBannerRevampHorizontalEdgePadding],
+                       constant:-kRevampContainerTrailingPadding],
     [containerStack.topAnchor constraintEqualToAnchor:self.view.topAnchor],
     [containerStack.bottomAnchor
         constraintEqualToAnchor:self.view.bottomAnchor],
@@ -516,8 +549,15 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
                                 (2 * kInfobarBannerRevampVerticalPadding)],
     [actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:
                                    kInfobarBannerRevampMinimumTapTargetSize],
-    [actionButton.heightAnchor constraintLessThanOrEqualToConstant:
-                                   kInfobarBannerRevampButtonMaxHeight],
+    [actionButton.topAnchor
+        constraintGreaterThanOrEqualToAnchor:containerStack.topAnchor
+                                    constant:
+                                        kInfobarBannerRevampMinimumButtonVerticalBreathingRoom],
+    [actionButton.bottomAnchor
+        constraintLessThanOrEqualToAnchor:containerStack.bottomAnchor
+                                 constant:
+                                     -
+                                     kInfobarBannerRevampMinimumButtonVerticalBreathingRoom],
     [actionButton.widthAnchor
         constraintLessThanOrEqualToAnchor:self.view.widthAnchor
                                multiplier:kButtonMaxWidthMultiplier],
@@ -591,17 +631,9 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
   _buttonText = buttonText;
   if (self.infobarButton.configuration) {
     UIButtonConfiguration* configuration = self.infobarButton.configuration;
-    NSDictionary* titleAttributes =
-        configuration.attributedTitle.length
-            ? [configuration.attributedTitle attributesAtIndex:0
-                                                effectiveRange:nil]
-            : nil;
-    configuration.attributedTitle =
-        [[NSAttributedString alloc] initWithString:_buttonText ?: @""
-                                        attributes:titleAttributes];
+    configuration.title = _buttonText ?: @"";
     self.infobarButton.configuration = configuration;
     self.infobarButton.accessibilityLabel = _buttonText;
-    self.infobarButton.titleLabel.isAccessibilityElement = NO;
   } else {
     [self.infobarButton setTitle:_buttonText forState:UIControlStateNormal];
   }
@@ -643,7 +675,6 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
   }
   if (self.iconImage) {
     if (IsInfobarBannerRevampEnabled()) {
-      self.useIconBackgroundTint = NO;
       return [self configureRevampedIconImageContainer];
     }
     return [self configureIconImageContainer];
@@ -812,13 +843,22 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
   [iconContainerView addSubview:iconImageView];
   iconContainerView.translatesAutoresizingMaskIntoConstraints = NO;
 
+  CGFloat containerSize = kInfobarBannerRevampIconSize;
+  if (self.useIconBackgroundTint) {
+    containerSize = kRevampIconContainerSize;
+    iconContainerView.layer.cornerRadius = containerSize / 2.0;
+    iconContainerView.backgroundColor =
+        self.iconBackgroundColor ? self.iconBackgroundColor
+                                 : [UIColor colorNamed:kBlueHaloColor];
+  }
+
   [NSLayoutConstraint activateConstraints:@[
     [iconImageView.widthAnchor
         constraintEqualToConstant:kInfobarBannerRevampIconSize],
     [iconImageView.heightAnchor
         constraintEqualToConstant:kInfobarBannerRevampIconSize],
-    [iconContainerView.widthAnchor
-        constraintEqualToAnchor:iconImageView.widthAnchor],
+    [iconContainerView.widthAnchor constraintEqualToConstant:containerSize],
+    [iconContainerView.heightAnchor constraintEqualToConstant:containerSize],
   ]];
   AddSameCenterConstraints(iconContainerView, iconImageView);
 
@@ -1020,11 +1060,12 @@ const CGFloat kButtonMaxWidthMultiplier = 0.40;
   if ([self.traitCollection
           hasDifferentColorAppearanceComparedToTraitCollection:
               previousTraitCollection]) {
-    self.view.layer.shadowColor =
-        [UIColor colorNamed:kToolbarShadowColor].CGColor;
     if (IsInfobarBannerRevampEnabled()) {
       self.infobarButton.layer.shadowColor =
           [UIColor colorNamed:kBlueColor].CGColor;
+    } else {
+      self.view.layer.shadowColor =
+          [UIColor colorNamed:kToolbarShadowColor].CGColor;
     }
   }
 }

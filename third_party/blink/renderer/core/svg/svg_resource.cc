@@ -40,8 +40,10 @@ void SVGResource::AddClient(SVGResourceClient& client) {
   auto& entry = clients_.insert(&client, ClientEntry()).stored_value->value;
   entry.count++;
   entry.cached_cycle_check = kNeedCheck;
-  if (LayoutSVGResourceContainer* container = ResourceContainerNoCycleCheck())
+  if (LayoutSVGResourceContainer* container =
+          ResourceContainerNoCycleCheck(Usage::kElement)) {
     container->ClearInvalidationMask();
+  }
 }
 
 void SVGResource::RemoveClient(SVGResourceClient& client) {
@@ -53,8 +55,10 @@ void SVGResource::RemoveClient(SVGResourceClient& client) {
   clients_.erase(it);
   // The last instance of |client| was removed. Clear its entry in
   // resource's cache.
-  if (LayoutSVGResourceContainer* container = ResourceContainerNoCycleCheck())
+  if (LayoutSVGResourceContainer* container =
+          ResourceContainerNoCycleCheck(Usage::kElement)) {
     container->RemoveClientFromCache(client);
+  }
 }
 
 class SVGResource::ImageResourceObserverWrapper
@@ -123,64 +127,94 @@ void SVGResource::NotifyContentChanged() {
     client->ResourceContentChanged(this);
 }
 
-Element* SVGResource::Target() const {
-  UpdateContentLifecycleForUse();
-  return target_.Get();
-}
-
-LayoutSVGResourceContainer* SVGResource::ResourceContainerNoCycleCheck() const {
-  Element* target = Target();
-  if (!target) {
+LayoutSVGResourceContainer* SVGResource::ResourceContainerNoCycleCheck(
+    Usage usage) const {
+  if (!target_) {
     return nullptr;
   }
-  return DynamicTo<LayoutSVGResourceContainer>(target->GetLayoutObject());
+  if (usage == Usage::kContent) {
+    UpdateContentLifecycleForUse();
+  }
+  return DynamicTo<LayoutSVGResourceContainer>(target_->GetLayoutObject());
+}
+
+LayoutSVGResourceContainer* SVGResource::ResourceContainerForCycleCheck()
+    const {
+  if (auto* container = ResourceContainerNoCycleCheck(Usage::kContent)) {
+    // Clear the invalidation mask when performing the cycle-check so that it
+    // doesn't block any future invalidations from invalidating the cycle-cache.
+    //
+    // This makes calls to ClearInvalidationMask() from painting code
+    // redundant.
+    container->ClearInvalidationMask();
+    return container;
+  }
+  return nullptr;
 }
 
 LayoutSVGResourceContainer* SVGResource::ResourceContainer(
     SVGResourceClient& client) const {
-  auto it = clients_.find(&client);
-  if (it == clients_.end())
+  if (!clients_.Contains(&client)) {
     return nullptr;
-  auto* container = ResourceContainerNoCycleCheck();
-  if (!container)
-    return nullptr;
-  ClientEntry& entry = it->value;
-  if (entry.cached_cycle_check == kNeedCheck) {
-    entry.cached_cycle_check = kPerformingCheck;
-    bool has_cycle = container->FindCycle();
-    DCHECK_EQ(entry.cached_cycle_check, kPerformingCheck);
-    entry.cached_cycle_check = has_cycle ? kHasCycle : kNoCycle;
   }
-  if (entry.cached_cycle_check == kHasCycle)
+  auto* container = ResourceContainerForCycleCheck();
+  if (!container) {
     return nullptr;
-  DCHECK_EQ(entry.cached_cycle_check, kNoCycle);
+  }
+  // ResourceContainerForCycleCheck() can perform a lifecycle update which
+  // allocates memory and triggers a GC that invalidates iterators.
+  auto it = clients_.find(&client);
+  CHECK(it != clients_.end());
+  if (it->value.cached_cycle_check == kNeedCheck) {
+    it->value.cached_cycle_check = kPerformingCheck;
+    bool has_cycle = container->FindCycle();
+    // FindCycle() can modify clients_ and invalidate the iterator
+    it = clients_.find(&client);
+    CHECK(it != clients_.end());
+    DCHECK_EQ(it->value.cached_cycle_check, kPerformingCheck);
+    it->value.cached_cycle_check = has_cycle ? kHasCycle : kNoCycle;
+  }
+  if (it->value.cached_cycle_check == kHasCycle) {
+    return nullptr;
+  }
+  DCHECK_EQ(it->value.cached_cycle_check, kNoCycle);
   return container;
 }
 
 bool SVGResource::FindCycle(SVGResourceClient& client) const {
+  if (!clients_.Contains(&client)) {
+    return false;
+  }
+  auto* container = ResourceContainerForCycleCheck();
+  if (!container) {
+    return false;
+  }
+  // ResourceContainerForCycleCheck() can perform a lifecycle update which
+  // allocates memory and triggers a GC that invalidates iterators.
   auto it = clients_.find(&client);
-  if (it == clients_.end())
-    return false;
-  auto* container = ResourceContainerNoCycleCheck();
-  if (!container)
-    return false;
-  ClientEntry& entry = it->value;
-  switch (entry.cached_cycle_check) {
+  CHECK(it != clients_.end());
+  switch (it->value.cached_cycle_check) {
     case kNeedCheck: {
-      entry.cached_cycle_check = kPerformingCheck;
+      it->value.cached_cycle_check = kPerformingCheck;
       bool has_cycle = container->FindCycle();
-      DCHECK_EQ(entry.cached_cycle_check, kPerformingCheck);
+      // FindCycle() can modify clients_ and invalidate the iterator
+      it = clients_.find(&client);
+      CHECK(it != clients_.end());
+      DCHECK_EQ(it->value.cached_cycle_check, kPerformingCheck);
       // Update our cached state based on the result of FindCycle(), but don't
       // signal a cycle since ResourceContainer() will consider the resource
       // invalid if one is present, thus we break the cycle at this resource.
-      entry.cached_cycle_check = has_cycle ? kHasCycle : kNoCycle;
+      it->value.cached_cycle_check = has_cycle ? kHasCycle : kNoCycle;
       return false;
     }
     case kNoCycle: {
-      entry.cached_cycle_check = kPerformingCheck;
+      it->value.cached_cycle_check = kPerformingCheck;
       bool has_cycle = container->FindCycle();
-      DCHECK_EQ(entry.cached_cycle_check, kPerformingCheck);
-      entry.cached_cycle_check = kNoCycle;
+      // FindCycle() can modify clients_ and invalidate the iterator
+      it = clients_.find(&client);
+      CHECK(it != clients_.end());
+      DCHECK_EQ(it->value.cached_cycle_check, kPerformingCheck);
+      it->value.cached_cycle_check = kNoCycle;
       return has_cycle;
     }
     case kPerformingCheck:
@@ -221,9 +255,10 @@ void LocalSVGResource::TargetChanged(const AtomicString& id) {
     return;
   // Clear out caches on the old resource, and then notify clients about the
   // change.
-  LayoutSVGResourceContainer* old_resource = ResourceContainerNoCycleCheck();
-  if (old_resource)
+  if (LayoutSVGResourceContainer* old_resource =
+          ResourceContainerNoCycleCheck(Usage::kElement)) {
     old_resource->RemoveAllClientsFromCache();
+  }
   target_ = new_target;
   NotifyContentChanged();
 }

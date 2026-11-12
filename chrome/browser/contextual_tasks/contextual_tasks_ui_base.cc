@@ -4,7 +4,9 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_base.h"
 
+#include "base/strings/strcat.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_permission_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
@@ -15,6 +17,8 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_avatar_icon_util.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
@@ -25,11 +29,16 @@
 #include "chrome/grit/contextual_tasks_resources.h"
 #include "chrome/grit/contextual_tasks_resources_map.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/contextual_tasks/public/account_utils.h"
+#include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/common/composebox_features.h"
+#include "components/signin/public/identity_manager/account_info.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_controller.h"
@@ -37,6 +46,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "mojo/public/mojom/base/error.mojom.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
@@ -49,6 +59,9 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/grit/contextual_tasks_extension_resources.h"
 #include "chrome/grit/contextual_tasks_extension_resources_map.h"
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h"
+#endif
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -77,6 +90,23 @@ void OpenUrlWithDisposition(Profile* profile,
   params.disposition = disposition;
   params.browser = browser;
   Navigate(&params);
+}
+
+GURL GetProfileAvatarUrl(Profile* profile, const GURL& url) {
+  if (auto* identity_manager = IdentityManagerFactory::GetForProfile(profile)) {
+    std::optional<gaia::ListedAccount> account =
+        contextual_tasks::GetAccountFromCookieJar(identity_manager, url);
+    if (account.has_value() && !account->signed_out && account->valid) {
+      AccountInfo extended_info =
+          identity_manager->FindExtendedAccountInfoByGaiaId(account->gaia_id);
+      if (!extended_info.IsEmpty() &&
+          extended_info.GetAvatarImage().has_value()) {
+        return GURL(webui::GetBitmapDataUrl(
+            extended_info.GetAvatarImage()->AsBitmap()));
+      }
+    }
+  }
+  return GURL(profiles::GetPlaceholderAvatarIconUrl());
 }
 
 }  // namespace
@@ -138,6 +168,14 @@ ContextualTasksPanelController* ContextualTasksUIBase::GetPanelController() {
   return ContextualTasksPanelController::From(browser);
 }
 
+contextual_tasks::ContextualTasksUiService*
+ContextualTasksUIBase::GetUiService() {
+  Profile* profile = GetProfile();
+  return profile
+             ? ContextualTasksUiServiceFactory::GetForBrowserContext(profile)
+             : nullptr;
+}
+
 content::WebUIDataSource* ContextualTasksUIBase::RegisterWebUIDataSource(
     Profile* profile) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
@@ -151,6 +189,10 @@ content::WebUIDataSource* ContextualTasksUIBase::RegisterWebUIDataSource(
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::MediaSrc,
       "media-src blob: data: 'self';");
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::TrustedTypes,
+      base::StrCat(
+          {webui::kDefaultTrustedTypesPolicies, " composebox-input;"}));
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   source->AddResourcePaths(kGuestViewSharedResources);
@@ -235,6 +277,9 @@ base::DictValue ContextualTasksUIBase::GetContextualTasksLoadTimeData(
   dict.Set(
       "contextManagementInComposeboxEnabled",
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
+  dict.Set(
+      "composeboxSkillsEnabled",
+      base::FeatureList::IsEnabled(omnibox::kComposeboxSkillsContextualTasks));
   dict.Set("webuiRoundedIconsEnabled", features::IsWebUIRoundedIconsEnabled());
 
   AimEligibilityService* aim_eligibility_service =
@@ -243,10 +288,11 @@ base::DictValue ContextualTasksUIBase::GetContextualTasksLoadTimeData(
       aim_eligibility_service && aim_eligibility_service->IsAimEligible();
   dict.Set("isAimEligible", is_aim_eligible);
 
-  dict.Set("darkMode", false);
+  dict.Set("darkMode", contextual_tasks::ShouldUseDarkMode(profile));
   dict.Set("isAiPage", false);
   dict.Set("isSignedIn", false);
   dict.Set("expandButtonEnabled", false);
+  dict.Set("profileAvatarUrl", GetProfileAvatarUrl(profile, GURL()).spec());
 
   return dict;
 }
@@ -273,6 +319,14 @@ void ContextualTasksUIBase::CreatePageHandler(
     }
   }
 #endif
+  if (IsAiPage()) {
+    NotifyAiPageStatusChanged(true);
+  }
+  if (GetThreadTitle().has_value() && toolbar_page_) {
+    toolbar_page_->SetThreadTitle(*GetThreadTitle());
+  }
+
+  UpdateProfileIndicator();
 }
 
 void ContextualTasksUIBase::PinSidePanel() {
@@ -340,6 +394,27 @@ void ContextualTasksUIBase::OpenFeedbackUi() {
   }
 }
 
+void ContextualTasksUIBase::MoveTaskUiToNewTab() {
+  // Base implementation is a no-op; overridden by ContextualTasksUI.
+}
+
+void ContextualTasksUIBase::ShowThreadHistory() {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+  lens::ClientToAimMessage message;
+  message.mutable_open_threads_view()->mutable_payload();
+
+  if (auto* panel_controller = GetPanelController()) {
+    if (auto* active_contents = panel_controller->GetActiveWebContents()) {
+      if (auto* extension_handler =
+              ContextualTasksExtensionHandler::FromWebContents(
+                  active_contents)) {
+        extension_handler->PostAimMessage(message);
+      }
+    }
+  }
+#endif
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 void ContextualTasksUIBase::OnActionsChanged() {
   if (auto* toolbar_page = GetToolbarPageRemote()) {
@@ -350,6 +425,95 @@ void ContextualTasksUIBase::OnActionsChanged() {
   }
 }
 #endif
+
+void ContextualTasksUIBase::OnTabClickedFromSourcesMenu(int32_t tab_id,
+                                                        const GURL& url) {
+  auto* ui_service = GetUiService();
+  if (ui_service) {
+    ui_service->OnTabClickedFromSourcesMenu(tab_id, url, GetBrowser());
+  }
+}
+
+void ContextualTasksUIBase::OnFileClickedFromSourcesMenu(const GURL& url) {
+  auto* ui_service = GetUiService();
+  if (ui_service) {
+    ui_service->OnFileClickedFromSourcesMenu(url, GetBrowser());
+  }
+}
+
+void ContextualTasksUIBase::OnImageClickedFromSourcesMenu(const GURL& url) {
+  auto* ui_service = GetUiService();
+  if (ui_service) {
+    ui_service->OnImageClickedFromSourcesMenu(url, GetBrowser());
+  }
+}
+
+void ContextualTasksUIBase::CloseSidePanel() {
+  auto* controller = GetPanelController();
+  if (!controller) {
+    return;
+  }
+  controller->Close();
+}
+
+void ContextualTasksUIBase::ShowPageInfoBubble(bool is_pointer_interaction) {
+  auto* controller = GetPanelController();
+  if (!controller) {
+    return;
+  }
+  controller->ShowPageInfoBubble(is_pointer_interaction);
+}
+
+void ContextualTasksUIBase::OnLogoPointerDown() {
+  auto* controller = GetPanelController();
+  if (!controller) {
+    return;
+  }
+  controller->OnLogoPointerDown();
+}
+
+void ContextualTasksUIBase::CreateNewThread() {
+  auto* panel_controller = GetPanelController();
+  if (!panel_controller) {
+    return;
+  }
+  content::WebContents* target_contents =
+      panel_controller->GetActiveWebContents();
+  if (!target_contents) {
+    return;
+  }
+
+  std::optional<base::Uuid> task_id;
+  if (auto current_task = panel_controller->GetCurrentTask()) {
+    task_id = current_task->GetTaskId();
+  } else if (auto* helper = ContextualSearchWebContentsHelper::FromWebContents(
+                 target_contents)) {
+    task_id = helper->task_id();
+  }
+
+  auto* ui_service = GetUiService();
+  if (!ui_service) {
+    return;
+  }
+
+  GURL url = task_id.has_value()
+                 ? ui_service->GetDefaultAiPageUrlForTask(task_id.value())
+                 : ui_service->GetDefaultAiPageUrl();
+  url = ui_service->AddRequiredSidePanelUrlChanges(url, target_contents);
+
+  content::NavigationController::LoadURLParams params(url);
+  params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+  target_contents->GetController().LoadURLWithParams(params);
+
+  SetThreadTitle(std::nullopt);
+}
+
+void ContextualTasksUIBase::MaybeTriggerPinningPromo() {
+  // TODO(b/560292506): The AI-Mode precondition uses
+  // ui_service_->IsAiUrl(web_ui_controller_->GetInnerFrameUrl()).
+  // GetInnerFrameUrl() is webview-specific and has no panel-controller
+  // equivalent, so the precondition cannot be evaluated post-rearchitecture.
+}
 
 void ContextualTasksUIBase::BindInterface(
     mojo::PendingReceiver<contextual_tasks_toolbar::mojom::PageHandlerFactory>
@@ -439,6 +603,28 @@ void ContextualTasksUIBase::NotifyPermissionDashboardStateChanged(
   }
 }
 
+void ContextualTasksUIBase::SetIsAiPage(bool is_ai_page) {
+  is_ai_page_ = is_ai_page;
+  NotifyAiPageStatusChanged(is_ai_page);
+}
+
+const std::optional<std::string>& ContextualTasksUIBase::GetThreadTitle() {
+  return thread_title_;
+}
+
+void ContextualTasksUIBase::SetThreadTitle(std::optional<std::string> title) {
+  thread_title_ = std::move(title);
+  if (auto* toolbar_page = GetToolbarPageRemote()) {
+    toolbar_page->SetThreadTitle(thread_title_.value_or(std::string()));
+  }
+}
+
+void ContextualTasksUIBase::NotifySidePanelStateChanged() {
+  if (auto* toolbar_page = GetToolbarPageRemote()) {
+    toolbar_page->OnSidePanelStateChanged();
+  }
+}
+
 void ContextualTasksUIBase::GetInitialState(GetInitialStateCallback callback) {
   auto* controller = GetActiveController();
   if (!controller) {
@@ -496,5 +682,27 @@ void ContextualTasksUIBase::OnChipPointerEntered(
 
 void ContextualTasksUIBase::OnChipPointerExited(
     toolbar_ui_api::mojom::LhsChipIdentifier identifier) {}
+
+void ContextualTasksUIBase::NotifyAiPageStatusChanged(bool is_ai_page) {
+  if (auto* toolbar_page = GetToolbarPageRemote()) {
+    toolbar_page->OnAiPageStatusChanged(is_ai_page);
+  }
+}
+
+void ContextualTasksUIBase::UpdateProfileIndicator() {
+  GURL active_url;
+  if (auto* panel = GetPanelController()) {
+    if (auto* contents = panel->GetActiveWebContents()) {
+      active_url = contents->GetVisibleURL();
+    }
+  }
+  UpdateProfileIndicator(active_url);
+}
+
+void ContextualTasksUIBase::UpdateProfileIndicator(const GURL& url) {
+  if (auto* toolbar_page = GetToolbarPageRemote()) {
+    toolbar_page->SetProfileAvatarUrl(GetProfileAvatarUrl(GetProfile(), url));
+  }
+}
 
 }  // namespace contextual_tasks

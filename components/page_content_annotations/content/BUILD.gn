@@ -43,9 +43,11 @@ source_set("content") {
     "//components/paint_preview/common",
     "//components/paint_preview/common/mojom",
     "//components/paint_preview/public",
+    "//components/tabs:public",
     "//components/viz/common",
     "//content/public/browser",
     "//skia",
+    "//ui/base/unowned_user_data",
     "//ui/gfx/geometry",
     "//url",
   ]
@@ -63,9 +65,14 @@ source_set("content") {
   ]
 
   if (enable_pdf) {
+    sources += [
+      "pdf_content_fetcher.cc",
+      "pdf_content_fetcher.h",
+    ]
+    public_deps += [ "//pdf/mojom" ]
     deps += [
       "//components/pdf/browser",
-      "//pdf/mojom",
+      "//mojo/public/cpp/bindings",
     ]
   }
 }
@@ -139,13 +146,19 @@ source_set("unit_tests") {
     "//components/page_content_annotations/core:features",
     "//components/passage_embeddings/core:passage_embeddings_types",
     "//components/passage_embeddings/core:test_support",
+    "//components/pdf/common:constants",
     "//components/ukm:test_support",
     "//content/test:test_support",
     "//pdf:buildflags",
     "//testing/gmock",
     "//testing/gtest",
+    "//ui/base",
   ]
   if (enable_pdf) {
-    deps += [ "//components/pdf/browser" ]
+    deps += [
+      "//components/pdf/browser",
+      "//mojo/public/cpp/bindings",
+      "//pdf/mojom",
+    ]
   }
 }

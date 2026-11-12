@@ -37,6 +37,7 @@
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/ssl_config.mojom.h"
 #include "url/url_canon.h"
+#include "url/url_canon_stdstring.h"
 
 #if BUILDFLAG(CHROME_ROOT_STORE_SUPPORTED)
 #include "net/cert/internal/trust_store_chrome.h"
@@ -194,7 +195,7 @@ void SSLConfigServiceManager::RegisterPrefs(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kEncryptedClientHelloEnabled, true);
   // The following two prefs for SSL compliance policies are used here as
   // local_state prefs, but the same pref names are also used as Profile prefs
-  // in certain Profiles. Their value is only used if managed.
+  // in every Profile. Their value is only used if managed.
   registry->RegisterStringPref(prefs::kPreferSlowKexAlgorithms, std::string());
   registry->RegisterStringPref(prefs::kPreferSlowCiphers, std::string());
 }

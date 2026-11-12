@@ -7,11 +7,11 @@
 #include "base/test/bind.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_location_bar.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_permission_chip.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_permission_dashboard.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/location_bar/location_bar_override_data.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_chip_theme.h"
+#include "chrome/browser/ui/views/permissions/chip/webui_permission_chip.h"
+#include "chrome/browser/ui/views/permissions/chip/webui_permission_dashboard.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "components/permissions/permission_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -33,6 +33,7 @@ class ContextualTasksPermissionControllerTest
     controller_ = std::make_unique<ContextualTasksPermissionController>(
         &mock_browser_window_);
     controller_->RegisterWebContents(web_contents());
+    controller_->Update(web_contents());
   }
 
   void TearDown() override {
@@ -56,6 +57,7 @@ TEST_F(ContextualTasksPermissionControllerTest,
   ASSERT_TRUE(location_bar);
   EXPECT_EQ(location_bar::GetLocationBarForWebContents(web_contents()),
             location_bar);
+  EXPECT_EQ(location_bar->GetWebContents(), web_contents());
 
   std::unique_ptr<content::WebContents> second_web_contents =
       CreateTestWebContents();
@@ -64,6 +66,15 @@ TEST_F(ContextualTasksPermissionControllerTest,
       location_bar::GetLocationBarForWebContents(second_web_contents.get()),
       location_bar);
 
+  // Switching active task updates the single location bar's WebContents.
+  controller()->Update(second_web_contents.get());
+  EXPECT_EQ(location_bar->GetWebContents(), second_web_contents.get());
+
+  // Passing nullptr clears the active WebContents on the location bar.
+  controller()->Update(nullptr);
+  EXPECT_EQ(location_bar->GetWebContents(), nullptr);
+
+  // Unregistering removes the override.
   controller()->UnregisterWebContents(second_web_contents.get());
   EXPECT_EQ(
       location_bar::GetLocationBarForWebContents(second_web_contents.get()),
@@ -83,8 +94,7 @@ TEST_F(ContextualTasksPermissionControllerTest, GetStateReflectsChipChanges) {
   ASSERT_TRUE(dashboard);
   dashboard->SetVisible(true);
 
-  auto* request_chip =
-      static_cast<ContextualTasksPermissionChip*>(dashboard->GetRequestChip());
+  auto* request_chip = dashboard->request_chip();
   const gfx::VectorIcon& icon =
       features::IsRoundedIconsEnabled() ? kPhotoCameraIcon : kCameraOldIcon;
   request_chip->SetVisible(true);
@@ -117,8 +127,7 @@ TEST_F(ContextualTasksPermissionControllerTest, GetStateReflectsChipChanges) {
 TEST_F(ContextualTasksPermissionControllerTest, ForwardsChipInteractions) {
   auto* dashboard =
       controller()->GetLocationBarForTesting()->permission_dashboard();
-  auto* request_chip =
-      static_cast<ContextualTasksPermissionChip*>(dashboard->GetRequestChip());
+  auto* request_chip = dashboard->request_chip();
 
   request_chip->SetVisible(true);
   request_chip->AnimateExpand(base::Milliseconds(350));

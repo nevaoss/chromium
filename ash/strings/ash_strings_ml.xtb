@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">പഴയപടിയാക്കുക</translation>
 <translation id="2086334242442703436">ഇമോജി പിക്കർ തുറക്കുക</translation>
 <translation id="2089550919269323883"><ph name="VM_NAME" /> ഇൻസ്റ്റാൾ ചെയ്യുന്നത്, എന്റർപ്രൈസ് നയം ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു. പിന്തുണയ്‌ക്ക് നിങ്ങളുടെ സിസ്റ്റം അഡ്‌മിനെ ബന്ധപ്പെടുക. പിശക് കോഡ് <ph name="ERROR" /> ആണ്.</translation>
-<translation id="2093792000875799555">Chromebook-നുള്ള Steam സംബന്ധിച്ച വാർത്ത</translation>
 <translation id="209965399369889474">നെറ്റ്‌വർക്കിൽ കണക്‌റ്റ് ചെയ്‌തിട്ടില്ല</translation>
 <translation id="2107581415810719320">മറ്റ് ബട്ടൺ <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">നിങ്ങളുടെ USB-C കേബിൾ, Thunderbolt-നെ പിന്തുണയ്ക്കുന്നില്ല. ഉപകരണ പ്രകടനം പരിമിതപ്പെട്ടേക്കാം.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">ഏത് കാര്യത്തിൽ ഫോക്കസ് ചെയ്യാനാണ് നിങ്ങൾ ആഗ്രഹിക്കുന്നത്? ടാസ്‌ക് ചേർക്കാൻ 'Enter' അമർത്തുക.</translation>
 <translation id="229397294990920565">മൊബൈൽ ഡാറ്റ ഓഫാക്കുന്നു...</translation>
 <translation id="2295777434187870477">മൈക്ക് ഓണാണ്, മാറ്റുന്നത് ഇൻപുട്ടിനെ മ്യൂട്ട് ചെയ്യും.</translation>
+<translation id="2296880470921996802">ക്ലിപ്പ്ബോർഡ് ചരിത്രം നിങ്ങളുടെ ഐടി അഡ്‌മിൻ പ്രവർത്തനരഹിതമാക്കി</translation>
 <translation id="2302092602801625023">ഈ അക്കൗണ്ട് Family Link ഉപയോഗിച്ച് മാനേജ് ചെയ്യുന്നു</translation>
 <translation id="2303600792989757991">വിൻഡോ ചുരുക്കവിവരണം ടോഗിൾ ചെയ്യുക</translation>
 <translation id="2304702218354340897">ഫെയ്സ് കൺട്രോൾ ഓഫ് ചെയ്യണമെന്ന് നിങ്ങൾക്ക് തീർച്ചയാണോ?</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">ഉപകരണത്തിൽ ഓഫ്‌ലൈൻ നയം ഇൻസ്‌റ്റാൾ ചെയ്യാനായില്ല.</translation>
 <translation id="3039939407102840004">സ്റ്റൈലസ് ബാറ്ററി <ph name="PERCENTAGE" /> ശതമാനത്തിലാണ്.</translation>
 <translation id="304097922505898963">Key Shortcuts ആപ്പ് തുറക്കുക</translation>
-<translation id="3040982432432547149">Chromebook-നുള്ള Steam മെച്ചപ്പെടുത്താൻ ഞങ്ങളെ സഹായിക്കൂ</translation>
 <translation id="304417730895741346">നിങ്ങളുടെ പിൻ ചെയ്‌തതും തുറന്നതുമായ ആപ്പുകൾ ഷെൽഫിലാണ്. ഷെൽഫിലേക്ക് ഒരു ആപ്പ് പിൻ ചെയ്യാൻ, ആപ്പിൽ വലത്-ക്ലിക്ക് ചെയ്യുക അല്ലെങ്കിൽ രണ്ട് വിരലുകൾ ഉപയോഗിച്ച് നിങ്ങളുടെ ടച്ച്പാഡിൽ ടാപ്പ് ചെയ്യുക.</translation>
 <translation id="3045670165536837541">മുകളിൽ വലതുവശത്തുള്ള ഹാൻഡിൽ തിരഞ്ഞെടുത്തു, നീക്കാൻ അമ്പടയാള കീകൾ ഉപയോഗിക്കുക</translation>
 <translation id="3046178388369461825">Linux ഡിസ്‌ക് ഇടം വളരെ കുറവാണ്</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">സ്ക്രീൻഷോട്ട് കുറുക്കുവഴി അമർത്തുക</translation>
 <translation id="3702809606464356667">നിലവിലെ ഡെസ്ക്കിൽ നിന്നുള്ള വിൻഡോകൾ കാണിക്കുന്നു, എല്ലാ ഡെസ്‌ക്കിലും നിന്നുള്ള വിൻഡോകൾ കാണിക്കാൻ മുകളിലേയ്ക്കുള്ള അമ്പടയാള കീ അമർത്തുക</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">വിനോദം</translation>
 <translation id="370665806235115550">ലോഡ്ചെയ്യുന്നു...</translation>
 <translation id="3707093869106077605"><ph name="UNAVAILABLE_DLC_ONE" />, <ph name="UNAVAILABLE_DLC_TWO" /> എന്നിവ ലഭ്യമല്ല.</translation>
 <translation id="3708186454126126312">മുമ്പ് കണക്റ്റ് ചെയ്തവ</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685"><ph name="APP_NAME" /> എന്നതിനും ക്യാമറ ആക്‌സസ് ചെയ്യാൻ അനുമതിയുള്ള മുഴുവൻ ആപ്പുകൾക്കും വെബ്സൈറ്റുകൾക്കും ഇത് ക്യാമറയിലേക്ക് ആക്‌സസ് അനുവദിക്കുന്നു. നിങ്ങൾക്ക് വെബ് പേജ് റീഫ്രഷ് ചെയ്യേണ്ടതായോ ആപ്പ് റീസ്റ്റാർട്ട് ചെയ്യേണ്ടതായോ വന്നേക്കാം.</translation>
 <translation id="3826099427150913765">പാസ്‌വേഡിലേക്ക് മാറുക</translation>
 <translation id="383058930331066723">ബാറ്ററി സേവർ മോഡ് ഓണാണ്</translation>
-<translation id="3831226344927851293">ട്യൂട്ടോറിയൽ കാഴ്‌ചയിൽ നിന്ന് പുറത്ത് കടക്കുക</translation>
 <translation id="383629559565718788">കീബോഡ് ക്രമീകരണം കാണിക്കുക</translation>
 <translation id="384082539148746321">ടെം‌പ്ലേറ്റ് ഇല്ലാതാക്കണോ?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, തുടർന്ന് <ph name="KEY_ONE" /> അല്ലെങ്കിൽ <ph name="KEY_TWO" /> അല്ലെങ്കിൽ <ph name="KEY_THREE" /> അല്ലെങ്കിൽ <ph name="KEY_FOUR" /></translation>
@@ -1079,7 +1076,6 @@
 <translation id="4147911968024186208">വീണ്ടും ശ്രമിക്കുക. ഈ പിശക് വീണ്ടും കാണുകയാണെങ്കിൽ, നിങ്ങളുടെ പിന്തുണാ പ്രതിനിധിയെ ബന്ധപ്പെടുക.</translation>
 <translation id="4150201353443180367">ഡിസ്‌പ്ലേ</translation>
 <translation id="4151054805501931758">പോർട്രെയ്റ്റ് ടച്ച് അപ്പ്</translation>
-<translation id="4151449637210235443">നിങ്ങളുടെ അടുത്തിടെയുള്ള ഗെയിംപ്ലേയെക്കുറിച്ച് ഞങ്ങളോട് പറയുക</translation>
 <translation id="4156293514828496577"><ph name="PERCENTAGE" />% ബാറ്ററി ചാർജ് ശേഷിക്കുന്നു (ഏകദേശം <ph name="TIME_LEFT" />).
 ബാറ്ററി ലൈഫ് വർദ്ധിപ്പിക്കുന്നതിന് ചില ഫീച്ചറുകൾ നിയന്ത്രിച്ചിരിക്കുന്നു.</translation>
 <translation id="4158003972857765638">പുതിയ ഡെസ്‌ക്കിൽ ഓർഗനൈസ് ചെയ്യുക</translation>
@@ -1580,10 +1576,8 @@
 <translation id="5551974246223970793">ഒരു പേജ് തിരയുമ്പോൾ, തിരയാൻ അടുത്ത പൊരുത്തത്തിലേക്ക് പോകുക</translation>
 <translation id="5556459405103347317">വീണ്ടും ലോഡ് ചെയ്യുക</translation>
 <translation id="5558091555391176027">സമീപമുള്ള പങ്കിടലിന്റെ ഉയർന്ന ദൃശ്യപരത മാറ്റുക</translation>
-<translation id="5558314826121965174">ക്രിയേറ്റിവിറ്റി</translation>
 <translation id="556042886152191864">ബട്ടൺ</translation>
 <translation id="5570122939431135380">പുതിയ അദൃശ്യ വിൻഡോയിൽ പുതിയ ടാബ് തുറക്കുക</translation>
-<translation id="5572632238877308040">ആവശ്യമായവ</translation>
 <translation id="5575528586625653441">ഡെമോ രജിസ്‌ട്രേഷൻ അഭ്യർത്ഥനയിൽ ഒരു പ്രശ്‌നം സംഭവിച്ചു.</translation>
 <translation id="557563299383177668">അടുത്ത ഖണ്ഡിക</translation>
 <translation id="5577082622442191756">Bluetooth മാറ്റുക. <ph name="STATE_TEXT" />.</translation>
@@ -1618,7 +1612,6 @@
 <translation id="5667546120811588575">Google Play സജ്ജമാക്കുന്നു...</translation>
 <translation id="5669267381087807207">സജീവമാക്കുന്നു</translation>
 <translation id="5671658447180261823"><ph name="SUGGESTION_NAME" /> നിർദ്ദേശം നീക്കം ചെയ്യുക</translation>
-<translation id="5672890847723042801">യൂട്ടിലിറ്റികൾ</translation>
 <translation id="5673434351075758678">നിങ്ങളുടെ ക്രമീകരണം സമന്വയിപ്പിച്ചതിന് ശേഷം, "<ph name="FROM_LOCALE" />" എന്നതിൽ നിന്ന്"<ph name="TO_LOCALE" />" എന്നതിലേക്ക്.</translation>
 <translation id="5675363643668471212">ഷെൽഫ് ഇനം</translation>
 <translation id="5677022547882470786">തിരയുന്നതിനായി ഒരു ഏരിയ തിരഞ്ഞെടുക്കാൻ വലിച്ചിടുക അല്ലെങ്കിൽ Space അമർത്തുക</translation>
@@ -1793,7 +1786,6 @@
 <translation id="6127395413317891856">നിങ്ങൾ ഓഫ്‌ലൈനാണ്. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.</translation>
 <translation id="6129953537138746214">സ്‌പെയ്‌സ്</translation>
 <translation id="6132714462430777655">സ്‌കൂൾ എൻറോൾമെന്റ് ഒഴിവാക്കണോ?</translation>
-<translation id="6136872094979134163">Chromebook-നുള്ള Steam സംബന്ധിച്ച വാർത്ത വീണ്ടെടുക്കാനാകുന്നില്ല.</translation>
 <translation id="6137566720514957455"><ph name="USER_EMAIL_ADDRESS" /> -നുള്ള ഡയലോഗ് നീക്കം ചെയ്യുക തുറക്കുക</translation>
 <translation id="6141205840878048728">ഏത് കാര്യത്തിൽ ഫോക്കസ് ചെയ്യാനാണ് നിങ്ങൾ ആഗ്രഹിക്കുന്നത്?</translation>
 <translation id="6141988275892716286">ഡൗൺലോഡ് സ്ഥിരീകരിക്കുക</translation>
@@ -1873,7 +1865,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, തുടർന്ന് <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> അല്ലെങ്കിൽ <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">അജ്ഞാതമായ നെറ്റ്‌വർക്കുകൾ</translation>
 <translation id="6359587239691116345">ഏറ്റവും പുതിയ ഫീച്ചറുകളും സുരക്ഷാ മെച്ചപ്പെടുത്തലുകളും നേടുക. ഈ അപ്ഡേറ്റ് നിങ്ങൾ നിരസിക്കുകയാണെങ്കിൽ, ഉപകരണം ഇനി ശരിയായി പ്രവർത്തിച്ചേക്കില്ല, സുരക്ഷയും പ്രകടനവുമായി ബന്ധപ്പെട്ട പ്രശ്നങ്ങൾ നിങ്ങൾ നേരിട്ടേക്കാം.</translation>
-<translation id="6362833380917912748">നിങ്ങളുടെ ബിൽറ്റ്-ഇൻ ആപ്പുകളെ കുറിച്ച് അറിയുക</translation>
 <translation id="6364386432014869981">ബിൽറ്റ്-ഇൻ ടച്ച്പാഡ് ഓണാക്കി</translation>
 <translation id="6376931439017688372">Bluetooth ഓണാണ്</translation>
 <translation id="6378515133128829137">വിൻഡോ വലതുഭാഗത്ത് പിൻ ചെയ്യുക</translation>
@@ -2098,7 +2089,6 @@
 <translation id="7014684956566476813"><ph name="DEVICE_NAME" /> എന്ന് പേരുള്ള ഉപകരണത്തിലേക്ക് കണക്റ്റ് ചെയ്തിരിക്കുന്നു</translation>
 <translation id="7015766095477679451"><ph name="COME_BACK_TIME" />-ന് തിരികെ വരിക.</translation>
 <translation id="70168403932084660">ഡെസ്ക് 6</translation>
-<translation id="702252130983202758">നിങ്ങളുടെ ആപ്പുകൾ</translation>
 <translation id="7025533177575372252">നിങ്ങളുടെ ഫോണുമായി <ph name="DEVICE_NAME" /> കണക്‌റ്റ് ചെയ്യുക</translation>
 <translation id="7026338066939101231">കുറയ്‌ക്കുക</translation>
 <translation id="7029307918966275733">Crostini ഇൻസ്‌റ്റാൾ ചെയ്‌തിട്ടില്ല. ക്രെഡിറ്റുകൾ കാണാൻ Crostini ഇൻസ്‌റ്റാൾ ചെയ്യുക.</translation>
@@ -2538,7 +2528,6 @@
 <translation id="8277261673056602147">നിങ്ങളുടെ സ്ക്രീനിലെ ടെക്സ്റ്റ് ഹൈലൈറ്റ് ചെയ്യുക</translation>
 <translation id="8281886186245836920">ഉപേക്ഷിക്കുക</translation>
 <translation id="8282784978194352587">നിങ്ങൾ പൂർത്തിയാക്കി!</translation>
-<translation id="8287009018010202411">ഉൽപ്പാദനക്ഷമത</translation>
 <translation id="828708037801473432">ഓഫാണ്</translation>
 <translation id="8289128870594824098">ഡിസ്ക്കിന്റെ വലുപ്പം</translation>
 <translation id="8297006494302853456">ദുര്‍ബലം</translation>
@@ -2633,7 +2622,6 @@
 <translation id="8598235756057743477">പേരോ നിറമോ അനുസരിച്ച് ആപ്പുകൾ അടുക്കുക</translation>
 <translation id="8599864823732014237">എന്റർപ്രൈസ് എൻറോൾമെന്റ് ഒഴിവാക്കണോ?</translation>
 <translation id="8609384513243082612">പുതിയ ടാബ് തുറക്കുക</translation>
-<translation id="861045123704058818">ആപ്പുകൾ താൽക്കാലികമായി വിഭാഗം അനുസരിച്ച് ഓർഗനൈസ് ചെയ്തിരിക്കുന്നു</translation>
 <translation id="8612338981637220013">തുടർച്ചയായി ജയം നേടി!</translation>
 <translation id="8613164732773110792">ചെറിയ അക്ഷരങ്ങൾ, അക്കങ്ങൾ, അണ്ടർസ്കോറുകൾ, അല്ലെങ്കിൽ ഡാഷുകൾ മാത്രം</translation>
 <translation id="8614517853887502247">'കാണുന്നതിൽ നിന്നുള്ള പരിരക്ഷ' ഓണായതിനാൽ <ph name="APP_1_TITLE" />, <ph name="APP_2_TITLE" /> അറിയിപ്പുകൾ മറച്ചിരിക്കുന്നു</translation>
@@ -2825,7 +2813,6 @@
 <translation id="9129245940793250979">പിൻഭാഗത്തെ ബട്ടൺ</translation>
 <translation id="9133335900048457298">പരിരക്ഷിത ഉള്ളടക്കം റെക്കോർഡ് ചെയ്യാനാകില്ല</translation>
 <translation id="9139720510312328767">അടുത്ത അക്ഷരം ഇല്ലാതാക്കുക</translation>
-<translation id="9148058034647219655">പുറത്തുകടക്കുക</translation>
 <translation id="9151906066336345901">end</translation>
 <translation id="9159421884295554245">ക്ലിപ്പ്‌ബോർഡ് തിരയുക</translation>
 <translation id="9168436347345867845">ഇത് പിന്നീട് ചെയ്യുക</translation>

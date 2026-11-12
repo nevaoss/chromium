@@ -23,6 +23,7 @@
 #include "components/search/search.h"
 #include "components/search_engines/search_engines_test_environment.h"
 #include "components/search_engines/template_url_service.h"
+#include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/variations/pref_names.h"
 #include "components/variations/scoped_variations_ids_provider.h"
 #include "net/base/url_util.h"
@@ -66,11 +67,12 @@ class MockAimEligibilityServiceForInterception : public AimEligibilityService {
       PrefService& pref_service,
       TemplateURLService* template_url_service,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      Configuration configuration = {})
+      Configuration configuration = {},
+      signin::IdentityManager* identity_manager = nullptr)
       : AimEligibilityService(pref_service,
                               template_url_service,
                               std::move(url_loader_factory),
-                              nullptr,
+                              identity_manager,
                               "en-US",
                               std::move(configuration)) {}
   ~MockAimEligibilityServiceForInterception() override = default;
@@ -108,12 +110,14 @@ class AimEligibilityServiceTest : public testing::Test {
   }
 
   void CreateService(
-      const AimEligibilityService::Configuration& configuration = {}) {
+      const AimEligibilityService::Configuration& configuration = {},
+      signin::IdentityManager* identity_manager = nullptr) {
     aim_eligibility_service_ =
         std::make_unique<MockAimEligibilityServiceForInterception>(
             search_engines_test_environment_.pref_service(),
             search_engines_test_environment_.template_url_service(),
-            test_url_loader_factory_.GetSafeWeakWrapper(), configuration);
+            test_url_loader_factory_.GetSafeWeakWrapper(), configuration,
+            identity_manager);
   }
 
   void TearDown() override { aim_eligibility_service_ = nullptr; }
@@ -125,6 +129,7 @@ class AimEligibilityServiceTest : public testing::Test {
       variations::VariationsIdsProvider::Mode::kUseSignedInState};
   search_engines::SearchEnginesTestEnvironment search_engines_test_environment_;
   network::TestURLLoaderFactory test_url_loader_factory_;
+  signin::IdentityTestEnvironment identity_test_env_{&test_url_loader_factory_};
   std::unique_ptr<MockAimEligibilityServiceForInterception>
       aim_eligibility_service_;
 };
@@ -999,27 +1004,34 @@ TEST_F(AimEligibilityServiceTest, LogsFuseboxEligibilityHistogram) {
       1);
 }
 
-TEST_F(AimEligibilityServiceTest, FetchEligibilityWithLocaleChange) {
-  base::HistogramTester histogram_tester;
-  omnibox::AimEligibilityResponse response;
-  response.set_is_eligible(true);
-
+TEST_F(AimEligibilityServiceTest,
+       RefreshesOnCookieChangeWhenOAuthDisabledAndPrimaryAccountValid) {
+  identity_test_env_.SetCookieAccounts({});
   test_url_loader_factory_.pending_requests()->clear();
-  aim_eligibility_service_->FetchEligibility(
-      AimEligibilityService::RequestSource::kLocaleChange);
+
+  CreateService(AimEligibilityService::Configuration{},
+                identity_test_env_.identity_manager());
+  task_environment_.FastForwardBy(
+      omnibox::kAimEligibilityServiceDebounceDelay.Get());
 
   ASSERT_EQ(test_url_loader_factory_.NumPending(), 1);
-  const network::ResourceRequest& request =
-      test_url_loader_factory_.GetPendingRequest(0)->request;
-
-  std::string response_string;
-  response.SerializeToString(&response_string);
+  omnibox::AimEligibilityResponse startup_response;
+  startup_response.set_is_eligible(true);
+  std::string startup_response_str;
+  startup_response.SerializeToString(&startup_response_str);
   test_url_loader_factory_.SimulateResponseForPendingRequest(
-      request.url.spec(), response_string, net::HTTP_OK);
+      test_url_loader_factory_.GetPendingRequest(0)->request.url.spec(),
+      startup_response_str, net::HTTP_OK);
 
-  histogram_tester.ExpectUniqueSample(
-      "Omnibox.AimEligibility.EligibilityResponse.LocaleChange.is_eligible",
-      true, 1);
-  histogram_tester.ExpectUniqueSample(
-      "Omnibox.AimEligibility.EligibilityResponse.is_eligible", true, 1);
+  AccountInfo account_info = identity_test_env_.MakePrimaryAccountAvailable(
+      "test@gmail.com", signin::ConsentLevel::kSignin);
+  task_environment_.FastForwardBy(
+      omnibox::kAimEligibilityServiceDebounceDelay.Get());
+  EXPECT_EQ(test_url_loader_factory_.NumPending(), 0);
+
+  identity_test_env_.SetCookieAccounts(
+      {{std::string(account_info.GetEmail()), account_info.GetGaiaId()}});
+  task_environment_.FastForwardBy(
+      omnibox::kAimEligibilityServiceDebounceDelay.Get());
+  EXPECT_EQ(test_url_loader_factory_.NumPending(), 1);
 }

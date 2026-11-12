@@ -11,11 +11,13 @@
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
+#include "third_party/lens_server_proto/search_communication.pb.h"
 #include "url/gurl.h"
 
 namespace {
 const contextual_search::FileInfo* GetFileInfoFromContext(
     int64_t context_id,
+    const GURL& url,
     const std::vector<contextual_search::FileInfo>& contexts) {
   for (auto& file_info : contexts) {
     // TODO(nyquist): Remove this cast when we roll in the new request ID proto.
@@ -24,15 +26,26 @@ const contextual_search::FileInfo* GetFileInfoFromContext(
       return &file_info;
     }
   }
+  if (url.is_valid()) {
+    for (const auto& file_info : contexts) {
+      if (file_info.tab_url.has_value() && file_info.tab_url.value() == url) {
+        return &file_info;
+      }
+    }
+  }
   return nullptr;
 }
-}  // namespace
 
-namespace contextual_tasks {
-
-std::vector<UrlResource> ConvertAiModeContextToUrlResources(
-    const lens::UpdateThreadContextLibrary& message,
+// Shared implementation for lens::UpdateThreadContextLibrary (AIM protocol) and
+// lens::SearchToClientMessage::UpdateThreadContextLibrary (Search in Chrome
+// protocol), which have identical field layouts.
+template <typename UpdateThreadContextLibraryT>
+std::vector<contextual_tasks::UrlResource> ConvertImpl(
+    const UpdateThreadContextLibraryT& message,
     const std::vector<contextual_search::FileInfo>& local_contexts) {
+  using contextual_tasks::ResourceType;
+  using contextual_tasks::UrlResource;
+
   std::vector<UrlResource> result;
   // Iterate through the contexts in the message and attempt to find matching
   // local file info (e.g. tab URL) to build the UrlResource list.
@@ -60,8 +73,8 @@ std::vector<UrlResource> ConvertAiModeContextToUrlResources(
     url_resource->has_chrome_tab_data = context.has_chrome_tab_data();
 
     if (url_resource) {
-      const contextual_search::FileInfo* file_info =
-          GetFileInfoFromContext(context.context_id(), local_contexts);
+      const contextual_search::FileInfo* file_info = GetFileInfoFromContext(
+          context.context_id(), url_resource->url, local_contexts);
       if (file_info) {
         // Tab-derived inputs (e.g. Lens overlay selections) may be returned as
         // an Image by the server. Preserve the underlying tab's webpage URL
@@ -96,6 +109,28 @@ std::vector<UrlResource> ConvertAiModeContextToUrlResources(
     }
   }
   return result;
+}
+}  // namespace
+
+namespace contextual_tasks {
+
+// Chrome-driven (controlled) cobrowsing communication:
+// `AimToClientMessage.update_thread_context_library`
+// (aim_communication.proto). The message type is top-level in that proto, so
+// it is `lens::UpdateThreadContextLibrary` rather than a nested type.
+std::vector<UrlResource> ConvertAiModeContextToUrlResources(
+    const lens::UpdateThreadContextLibrary& message,
+    const std::vector<contextual_search::FileInfo>& local_contexts) {
+  return ConvertImpl(message, local_contexts);
+}
+
+// AIM-search-driven (controlled) cobrowsing communication:
+// `SearchToClientMessage.update_thread_context_library`
+// (search_communication.proto).
+std::vector<UrlResource> ConvertAiModeContextToUrlResources(
+    const lens::SearchToClientMessage::UpdateThreadContextLibrary& message,
+    const std::vector<contextual_search::FileInfo>& local_contexts) {
+  return ConvertImpl(message, local_contexts);
 }
 
 }  // namespace contextual_tasks

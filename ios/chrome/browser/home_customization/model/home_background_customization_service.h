@@ -24,6 +24,7 @@
 #import "components/prefs/pref_change_registrar.h"
 #import "components/sync/protocol/theme_ios_specifics.pb.h"
 #import "components/sync/protocol/theme_types.pb.h"
+#import "ios/chrome/browser/home_customization/model/ephemeral_theme_data_manager.h"
 #import "ios/chrome/browser/home_customization/model/home_background_data.h"
 #import "ios/chrome/browser/home_customization/model/home_background_image_service.h"
 #import "ios/chrome/browser/home_customization/model/theme_syncable_service_ios.h"
@@ -37,13 +38,8 @@ class PrefService;
 class PromosManager;
 class UserUploadedImageManager;
 
-namespace image_fetcher {
-class ImageDataFetcher;
-}  // namespace image_fetcher
-
 namespace network {
 class SharedURLLoaderFactory;
-class SimpleURLLoader;
 }  // namespace network
 
 namespace syncer {
@@ -140,36 +136,6 @@ bool operator==(const sync_pb::ThemeIosSpecifics& lhs,
                 const sync_pb::ThemeIosSpecifics& rhs);
 }  // namespace sync_pb
 
-// Preference dictionary keys, subdirectory name, and filenames for
-// `prefs::kIosNtpEphemeralThemeData`.
-inline constexpr std::string_view kEphemeralThemeAnimationPathKey =
-    "animation_path";
-inline constexpr std::string_view kEphemeralThemeAnimationColorMappingKey =
-    "animation_colormapping";
-inline constexpr std::string_view kEphemeralThemeAnimationPromoPathKey =
-    "animation_promo_path";
-inline constexpr std::string_view kEphemeralThemeAnimationPromoColorMappingKey =
-    "animation_promo_colormapping";
-inline constexpr std::string_view kEphemeralThemeGoogleLogoLightPathKey =
-    "google_logo_light_path";
-inline constexpr std::string_view kEphemeralThemeGoogleLogoDarkPathKey =
-    "google_logo_dark_path";
-inline constexpr std::string_view kEphemeralThemeSeedColorKey = "seed_color";
-inline constexpr std::string_view kEphemeralThemeVersionKey = "version";
-inline constexpr std::string_view kPreEphemeralThemeBackgroundStyleKey =
-    "pre_ephemeral_background_style";
-
-inline constexpr std::string_view kEphemeralThemeDirectoryName =
-    "ephemeral_theme";
-inline constexpr std::string_view kEphemeralThemeAnimationFileName =
-    "ephemeral_animation.json";
-inline constexpr std::string_view kEphemeralThemePromoAnimationFileName =
-    "ephemeral_promo.json";
-inline constexpr std::string_view kEphemeralThemeGoogleLogoLightFileName =
-    "ephemeral_google_logo_light.png";
-inline constexpr std::string_view kEphemeralThemeGoogleLogoDarkFileName =
-    "ephemeral_google_logo_dark.png";
-
 // Service for allowing customization of the Home surface background.
 class HomeBackgroundCustomizationService
     : public KeyedService,
@@ -254,6 +220,10 @@ class HomeBackgroundCustomizationService
   void SetCurrentEphemeralTheme(
       SkColor color,
       sync_pb::UserColorTheme::BrowserColorVariant color_variant);
+
+  // Applies and stores the cached ephemeral theme if no custom background or
+  // color theme is currently set (or if an ephemeral theme is already active).
+  void MaybeApplyEphemeralTheme();
 
   // Returns whether the ephemeral theme is currently active.
   bool IsCurrentEphemeralTheme() const;
@@ -341,14 +311,6 @@ class HomeBackgroundCustomizationService
   void ClearCachedUserUploadedBackground(
       const RecentlyUsedBackground& recent_background);
 
-  // Metadata for a single ephemeral theme asset to download and persist.
-  struct EphemeralThemeAsset {
-    GURL url;
-    std::string_view file_name;
-    std::string_view pref_key;
-    bool is_image = false;
-  };
-
   // Returns the `HomeCustomizationBackgroundStyle` corresponding to the
   // currently active background.
   HomeCustomizationBackgroundStyle GetCurrentBackgroundStyle();
@@ -362,32 +324,13 @@ class HomeBackgroundCustomizationService
   // clears `prefs::kIosNtpEphemeralThemeData`.
   void CleanupEphemeralThemeData();
 
-  // Evaluates Finch parameters and fetches the ephemeral theme data (main
-  // animation JSON, promo animation JSON, light Google logo, and dark Google
-  // logo) sequentially if not already cached in prefs.
+  // Evaluates Finch parameters and fetches the ephemeral theme data in parallel
+  // via `ephemeral_theme_data_manager_` if not already cached in prefs.
   void MaybeFetchEphemeralThemeData();
 
-  // Downloads the next asset in `pending_assets`, or persists `theme_dict` to
-  // `prefs::kIosNtpEphemeralThemeData` and registers the promo once all assets
-  // have been saved.
-  void FetchNextEphemeralThemeAsset(
-      std::vector<EphemeralThemeAsset> pending_assets,
-      base::DictValue theme_dict);
-
-  // Handles completion of downloading the current asset in `pending_assets` and
-  // writes `data` to disk.
-  void OnEphemeralThemeAssetDownloaded(
-      std::vector<EphemeralThemeAsset> pending_assets,
-      base::DictValue theme_dict,
-      std::string data);
-
-  // Handles completion of writing the current asset in `pending_assets` to disk
-  // at `file_path` and advances to the next asset.
-  void OnEphemeralThemeAssetSavedToDisk(
-      std::vector<EphemeralThemeAsset> pending_assets,
-      base::DictValue theme_dict,
-      const base::FilePath& file_path,
-      bool success);
+  // Registers the ephemeral theme promo with `promos_manager_` once all
+  // ephemeral theme assets have been downloaded and saved.
+  void OnEphemeralThemeDataFetched();
 
   sync_pb::ThemeIosSpecifics current_theme_;
 
@@ -406,18 +349,9 @@ class HomeBackgroundCustomizationService
   // Service used to load lists of recently used images.
   raw_ptr<HomeBackgroundImageService> home_background_image_service_ = nullptr;
 
-  // URL loader factory for network requests.
-  scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
-
-  // Active URL loader for downloading the ephemeral theme animations.
-  std::unique_ptr<network::SimpleURLLoader> ephemeral_promo_url_loader_;
-
-  // Image fetcher for downloading the ephemeral theme Google logo images.
-  std::unique_ptr<image_fetcher::ImageDataFetcher>
-      ephemeral_theme_image_fetcher_;
-
-  // Profile state directory path on disk.
-  base::FilePath state_path_;
+  // Manager responsible for downloading, persisting, and cleaning up ephemeral
+  // theme data (`prefs::kIosNtpEphemeralThemeData`).
+  std::unique_ptr<EphemeralThemeDataManager> ephemeral_theme_data_manager_;
 
   // Promos manager used to register the ephemeral theme promo.
   raw_ptr<PromosManager> promos_manager_ = nullptr;

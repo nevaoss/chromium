@@ -55,7 +55,7 @@ suite('OverflowMenuTest', () => {
     assertFalse(openInNewTabButton.disabled);
 
     openInNewTabButton.click();
-    await proxy.handler.whenCalled('moveTaskUiToNewTab');
+    await toolbarProxy.handler.whenCalled('moveTaskUiToNewTab');
 
     overflowMenu.enableOpenInNewTabButton = false;
     await microtasksFinished();
@@ -97,7 +97,7 @@ suite('OverflowMenuTest', () => {
       assertTrue(!!threadHistoryButton);
 
       threadHistoryButton.click();
-      await proxy.handler.whenCalled('showThreadHistory');
+      await toolbarProxy.handler.whenCalled('showThreadHistory');
     });
 
     test('handles my activity click', async () => {
@@ -184,27 +184,10 @@ suite('OverflowMenuTest', () => {
         webuiRoundedIconsEnabled: false,
       });
       overflowMenu = document.createElement('contextual-tasks-overflow-menu');
-      overflowMenu.isHandshakeComplete = true;
       overflowMenu.isAimEligible = true;
       document.body.appendChild(overflowMenu);
       await microtasksFinished();
     });
-
-    test('hides pin button when handshake is not complete', async () => {
-      overflowMenu.isHandshakeComplete = false;
-      await microtasksFinished();
-
-      let pinButton =
-          overflowMenu.shadowRoot.querySelector<HTMLElement>('#pinButton');
-      assertFalse(!!pinButton);
-
-      overflowMenu.isHandshakeComplete = true;
-      await microtasksFinished();
-      pinButton =
-          overflowMenu.shadowRoot.querySelector<HTMLElement>('#pinButton');
-      assertTrue(!!pinButton);
-    });
-
 
     test('hides pin button when not on AI page', async () => {
       overflowMenu.isAiPage = false;
@@ -213,6 +196,16 @@ suite('OverflowMenuTest', () => {
       const pinButton =
           overflowMenu.shadowRoot.querySelector<HTMLElement>('#pinButton');
       assertFalse(!!pinButton);
+    });
+
+    test('updates isAiPage on callback', async () => {
+      overflowMenu.isAiPage = false;
+      await microtasksFinished();
+
+      toolbarProxy.callbackRouterRemote.onAiPageStatusChanged(true);
+      await microtasksFinished();
+
+      assertTrue(overflowMenu.isAiPage);
     });
 
     test('hides pin button when pin button is not enabled', async () => {
@@ -341,7 +334,7 @@ suite('OverflowMenuTest', () => {
       assertTrue(!!threadHistoryButton);
 
       threadHistoryButton.click();
-      await proxy.handler.whenCalled('showThreadHistory');
+      await toolbarProxy.handler.whenCalled('showThreadHistory');
     });
 
     test('handles help click', async () => {

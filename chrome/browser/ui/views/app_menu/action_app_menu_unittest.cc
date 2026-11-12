@@ -41,6 +41,7 @@
 #include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
 #include "chrome/browser/ui/safety_hub/safe_browsing_result.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_util.h"
+#include "chrome/browser/ui/side_panel/mock_side_panel_ui.h"
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/tabs/features.h"
@@ -53,6 +54,7 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_block_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_chip_view.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_drag_and_drop_delegate.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
@@ -62,6 +64,7 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
+#include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/user_education/mock_browser_user_education_interface.h"
@@ -84,10 +87,17 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/actions/actions.h"
+#include "ui/base/accelerators/menu_label_accelerator_util.h"
+#include "ui/base/dragdrop/drag_drop_types.h"
+#include "ui/base/dragdrop/drop_target_event.h"
+#include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
+#include "ui/base/dragdrop/os_exchange_data.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/compositor/layer_tree_owner.h"
 #include "ui/events/event.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/strings/grit/ax_strings.h"
+#include "ui/strings/grit/ui_strings.h"
 #include "ui/views/accessibility/ax_update_notifier.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
@@ -97,11 +107,15 @@
 #include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/menu/menu_config.h"
+#include "ui/views/controls/menu/menu_controller.h"
 #include "ui/views/controls/menu/menu_item_view.h"
+#include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/menu_separator.h"
 #include "ui/views/controls/menu/submenu_view.h"
 #include "ui/views/controls/separator.h"
 #include "ui/views/controls/textfield/textfield.h"
+#include "ui/views/style/platform_style.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/style/typography_provider.h"
 #include "ui/views/test/ax_event_counter.h"
@@ -136,6 +150,18 @@ class ActionAppMenuTest : public ActionAppMenuTestBase {
   }
 
  protected:
+  // The fixture's actions have plain text. Sets `action_id`'s text to the
+  // string with mnemonic used in production, and returns its mnemonic.
+  char16_t SetTextWithMnemonic(actions::ActionId action_id, int string_id) {
+    actions::ActionItem* action = actions::ActionManager::Get().FindAction(
+        action_id, browser_actions_->root_action_item());
+    CHECK(action);
+    const std::u16string text = BrowserActions::GetMnemonicTitleText(
+        l10n_util::GetStringUTF16(string_id));
+    action->SetText(text);
+    return ui::GetMnemonic(text);
+  }
+
   std::unique_ptr<views::Widget> widget_;
   raw_ptr<views::MenuButton> button_ = nullptr;
 };
@@ -147,7 +173,7 @@ TEST_F(ActionAppMenuTest, RunAndCloseMenu) {
 
   EXPECT_FALSE(menu.IsShowing());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
@@ -155,12 +181,48 @@ TEST_F(ActionAppMenuTest, RunAndCloseMenu) {
   EXPECT_FALSE(menu.IsShowing());
 }
 
+// On Windows, opening the menu from the keyboard selects the first item.
+// This verifies that, in that case, RunMenu() forwards the keyboard run flags.
+TEST_F(ActionAppMenuTest, KeyboardOpenSelectsFirstItemWhereSupported) {
+  ActionAppMenu menu(&mock_window_interface_, base::DoNothing());
+  menu.RunMenu(button_->button_controller(),
+               views::MenuRunner::SHOULD_SHOW_MNEMONICS |
+                   views::MenuRunner::INVOKED_FROM_KEYBOARD);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuController* controller = root->GetMenuController();
+  ASSERT_TRUE(controller);
+  views::MenuItemView* selected = controller->GetSelectedMenuItem();
+  ASSERT_TRUE(selected);
+  if (views::PlatformStyle::kAutoSelectFirstMenuItemFromKeyboard) {
+    // A top-level item is selected, not just the root.
+    EXPECT_EQ(selected->GetParentMenuItem(), root);
+  } else {
+    EXPECT_EQ(selected, root);
+  }
+}
+
+// Opening the menu with the mouse doesn't select any item.
+TEST_F(ActionAppMenuTest, MouseOpenDoesNotSelectItem) {
+  ActionAppMenu menu(&mock_window_interface_, base::DoNothing());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuController* controller = root->GetMenuController();
+  ASSERT_TRUE(controller);
+  EXPECT_EQ(controller->GetSelectedMenuItem(), root);
+}
+
 TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -235,6 +297,33 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->top_radius, 0);
   EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->bottom_radius, 12);
 
+  // Check vertical padding on multi-row cards: above the first standard-height
+  // row and below the last row. Expanded and middle rows get none.
+  views::MenuItemView* more_tools_item =
+      root->GetMenuItemByID(kActionDeveloperSubmenu);
+  ASSERT_TRUE(more_tools_item);
+  ASSERT_TRUE(more_tools_item->GetMenuItemBackground().has_value());
+  const int card_padding = ChromeLayoutProvider::Get()->GetDistanceMetric(
+      DISTANCE_ACTION_APP_MENU_CONTAINER_VERTICAL_PADDING);
+#if !BUILDFLAG(IS_CHROMEOS)
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->bottom_padding, 0);
+#endif
+  EXPECT_EQ(password_item->GetMenuItemBackground()->top_padding, card_padding);
+  EXPECT_EQ(password_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(downloads_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(downloads_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->bottom_padding,
+            card_padding);
+  EXPECT_EQ(zoom_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(zoom_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(print_item->GetMenuItemBackground()->top_padding, card_padding);
+  EXPECT_EQ(print_item->GetMenuItemBackground()->bottom_padding, 0);
+  EXPECT_EQ(more_tools_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(more_tools_item->GetMenuItemBackground()->bottom_padding,
+            card_padding);
+
   // Standard items (32dp row height): (32 - 16) / 2 = 8dp.
 #if !BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(profile_item->GetTopMargin(), 12);
@@ -251,7 +340,7 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   // Check hover selection color matching subtle state.
 #if !BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(profile_item->GetSelectedColorId(),
-            ui::kColorSysStateHoverOnSubtle);
+            ui::kColorAppMenuRowBackgroundHovered);
   EXPECT_EQ(menu.GetLabelFontList(profile_item->GetCommand()),
             &views::TypographyProvider::Get().GetFont(
                 views::style::CONTEXT_MENU, views::style::STYLE_BODY_3_MEDIUM));
@@ -276,9 +365,11 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   EXPECT_EQ(item_separator->GetColorId(), ui::kColorMenuBackground);
 #endif
   EXPECT_EQ(password_item->GetSelectedColorId(),
-            ui::kColorSysStateHoverOnSubtle);
-  EXPECT_EQ(print_item->GetSelectedColorId(), ui::kColorSysStateHoverOnSubtle);
-  EXPECT_EQ(zoom_item->GetSelectedColorId(), ui::kColorSysStateHoverOnSubtle);
+            ui::kColorAppMenuRowBackgroundHovered);
+  EXPECT_EQ(print_item->GetSelectedColorId(),
+            ui::kColorAppMenuRowBackgroundHovered);
+  EXPECT_EQ(zoom_item->GetSelectedColorId(),
+            ui::kColorAppMenuRowBackgroundHovered);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -289,7 +380,7 @@ TEST_F(ActionAppMenuTest, PopulatesRecentTabsSubmenu) {
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -308,7 +399,7 @@ TEST_F(ActionAppMenuTest, PassesClickDisposition) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   views::MenuItemView* root = menu.root_menu_item_for_testing();
   ASSERT_TRUE(root);
 
@@ -375,7 +466,7 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenu) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -430,18 +521,19 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenu) {
   }
   ASSERT_NE(child_item, nullptr);
 
-  // Empty folder containing disabled "(empty)" placeholder item.
+  // Empty folder is a submenu that populates a kEmpty MenuItemView when its
+  // empty menu state is updated.
   ASSERT_NE(empty_folder_item, nullptr);
   EXPECT_TRUE(empty_folder_item->HasSubmenu());
-  views::MenuItemView* empty_item = nullptr;
-  for (views::MenuItemView* item :
-       empty_folder_item->GetSubmenu()->GetMenuItems()) {
-    if (item->title() == l10n_util::GetStringUTF16(IDS_MENU_EMPTY_SUBMENU)) {
-      empty_item = item;
-      break;
-    }
-  }
+  EXPECT_TRUE(empty_folder_item->GetSubmenu()->GetMenuItems().empty());
+  empty_folder_item->ChildrenChanged();
+  ASSERT_EQ(empty_folder_item->GetSubmenu()->children().size(), 1u);
+  auto* empty_item = views::AsViewClass<views::MenuItemView>(
+      empty_folder_item->GetSubmenu()->children().front());
   ASSERT_NE(empty_item, nullptr);
+  EXPECT_EQ(empty_item->GetType(), views::MenuItemView::Type::kEmpty);
+  EXPECT_EQ(empty_item->title(),
+            l10n_util::GetStringUTF16(IDS_APP_MENU_EMPTY_SUBMENU));
   EXPECT_FALSE(empty_item->GetEnabled());
 
   // Other bookmarks folder containing child bookmark.
@@ -531,7 +623,7 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenuWithManagedFolder) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -586,7 +678,7 @@ TEST_F(ActionAppMenuTest, BookmarkBarSubmenuCheckItems) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -663,7 +755,7 @@ TEST_F(ActionAppMenuTest, PopulatesTabGroupsSubmenu) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -763,7 +855,7 @@ TEST_F(ActionAppMenuTest, PopulatesStaticSubmenus) {
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -796,7 +888,7 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtons) {
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -826,7 +918,7 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtons) {
   }
   ASSERT_TRUE(incognito_label);
   EXPECT_EQ(incognito_label->GetText(),
-            l10n_util::GetStringUTF16(IDS_INCOGNITO));
+            l10n_util::GetStringUTF16(IDS_APP_MENU_INCOGNITO));
   EXPECT_EQ(incognito_button->GetViewAccessibility().GetCachedName(),
             BrowserActions::GetCleanTitleAndTooltipText(
                 l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_WINDOW)));
@@ -858,7 +950,7 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtonsIncognito) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -898,7 +990,7 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
 
   // Find and invoke the New Tab action item. Verify its callback is triggered.
   actions::ActionItem* new_tab_action =
-      actions::ActionManager::Get().FindAction(kActionNewTab);
+      actions::ActionManager::Get().FindAction(kActionNewTab, nullptr);
   ASSERT_TRUE(new_tab_action);
 
   EXPECT_CALL(mock_action_invoked_, Call(kActionNewTab, testing::_, testing::_))
@@ -909,7 +1001,7 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
   // Find and invoke the New Window action item. Verify its callback is
   // triggered.
   actions::ActionItem* new_window_action =
-      actions::ActionManager::Get().FindAction(kActionNewWindow);
+      actions::ActionManager::Get().FindAction(kActionNewWindow, nullptr);
   ASSERT_TRUE(new_window_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -921,7 +1013,8 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
   // Find and invoke the New Incognito Window action item. Verify its callback
   // is triggered.
   actions::ActionItem* incognito_action =
-      actions::ActionManager::Get().FindAction(kActionNewIncognitoWindow);
+      actions::ActionManager::Get().FindAction(kActionNewIncognitoWindow,
+                                               nullptr);
   ASSERT_TRUE(incognito_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -936,7 +1029,7 @@ TEST_F(ActionAppMenuTest, BlockButtonClickExecutesActionAfterMenuClosed) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -972,7 +1065,7 @@ TEST_F(ActionAppMenuTest, FooterButtonClickExecutesActionAfterMenuClosed) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1023,7 +1116,7 @@ TEST_F(ActionAppMenuTest, BlockButtonSyncsEnabledStateWithActionItem) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   views::MenuItemView* root = menu.root_menu_item_for_testing();
   ASSERT_TRUE(root);
 
@@ -1040,7 +1133,7 @@ TEST_F(ActionAppMenuTest, BlockButtonSyncsEnabledStateWithActionItem) {
 
   // Disable the delegate ActionItem.
   actions::ActionItem* new_tab_action =
-      actions::ActionManager::Get().FindAction(kActionNewTab);
+      actions::ActionManager::Get().FindAction(kActionNewTab, nullptr);
   ASSERT_TRUE(new_tab_action);
   new_tab_action->SetEnabled(false);
 
@@ -1058,7 +1151,7 @@ TEST_F(ActionAppMenuTest, ZoomMenuRowCreationAndChildren) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1086,11 +1179,11 @@ TEST_F(ActionAppMenuTest, ZoomChildActionsInvocation) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   actions::ActionItem* minus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomMinus);
+      actions::ActionManager::Get().FindAction(kActionZoomMinus, nullptr);
   ASSERT_TRUE(minus_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -1100,7 +1193,7 @@ TEST_F(ActionAppMenuTest, ZoomChildActionsInvocation) {
   testing::Mock::VerifyAndClearExpectations(&mock_action_invoked_);
 
   actions::ActionItem* plus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomPlus);
+      actions::ActionManager::Get().FindAction(kActionZoomPlus, nullptr);
   ASSERT_TRUE(plus_action);
 
   EXPECT_CALL(mock_action_invoked_,
@@ -1116,7 +1209,7 @@ TEST_F(ActionAppMenuTest, ColorTokensValidInDarkMode) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1150,7 +1243,7 @@ TEST_F(ActionAppMenuTest, PopulatesFooterElements) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1219,7 +1312,7 @@ TEST_F(ActionAppMenuTest, PopulatesFooterElementsWithManagedAction) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1300,7 +1393,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelUpdatesOnZoomChange) {
       .WillRepeatedly(testing::Return(web_contents.get()));
 
   ActionAppMenu menu(&mock_window_interface_, base::DoNothing());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* const root = menu.root_menu_item_for_testing();
@@ -1320,7 +1413,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelUpdatesOnZoomChange) {
 
   // Verify that the label updates when the action item's text changes.
   actions::ActionItem* normal_action =
-      actions::ActionManager::Get().FindAction(kActionZoomNormal);
+      actions::ActionManager::Get().FindAction(kActionZoomNormal, nullptr);
   ASSERT_TRUE(normal_action);
   normal_action->SetText(base::FormatPercent(200));
   EXPECT_EQ(zoom_label->GetText(), base::FormatPercent(200));
@@ -1349,7 +1442,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelAccessibilityAnnouncementOnZoomChange) {
       .WillRepeatedly(testing::Return(web_contents.get()));
 
   ActionAppMenu menu(&mock_window_interface_, base::DoNothing());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   views::MenuItemView* const root = menu.root_menu_item_for_testing();
@@ -1367,7 +1460,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelAccessibilityAnnouncementOnZoomChange) {
   EXPECT_EQ(zoom_label->GetText(), base::FormatPercent(100));
 
   actions::ActionItem* normal_action =
-      actions::ActionManager::Get().FindAction(kActionZoomNormal);
+      actions::ActionManager::Get().FindAction(kActionZoomNormal, nullptr);
   ASSERT_TRUE(normal_action);
 
   views::test::AXEventCounter counter(views::AXUpdateNotifier::Get());
@@ -1388,7 +1481,7 @@ TEST_F(ActionAppMenuTest, ZoomLabelAccessibilityAnnouncementOnZoomChange) {
 TEST_F(ActionAppMenuTest, FullscreenActionUpdatesAccessibilityName) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* const root = menu.root_menu_item_for_testing();
@@ -1410,7 +1503,7 @@ TEST_F(ActionAppMenuTest, FullscreenActionUpdatesAccessibilityName) {
   // Updating the action's tooltip should propagate to the button's accessible
   // name.
   actions::ActionItem* fullscreen_action =
-      actions::ActionManager::Get().FindAction(kActionFullscreen);
+      actions::ActionManager::Get().FindAction(kActionFullscreen, nullptr);
   ASSERT_TRUE(fullscreen_action);
   fullscreen_action->SetTooltipText(u"Exit full screen");
   EXPECT_EQ(fullscreen_button->GetViewAccessibility().GetCachedName(),
@@ -1435,7 +1528,7 @@ TEST_F(ActionAppMenuTest, ZoomButtonsInkDropAtLimits) {
       .WillRepeatedly(testing::Return(web_contents.get()));
 
   ActionAppMenu menu(&mock_window_interface_, base::DoNothing());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* const root = menu.root_menu_item_for_testing();
@@ -1454,10 +1547,10 @@ TEST_F(ActionAppMenuTest, ZoomButtonsInkDropAtLimits) {
   ASSERT_TRUE(plus_button);
 
   actions::ActionItem* minus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomMinus);
+      actions::ActionManager::Get().FindAction(kActionZoomMinus, nullptr);
   ASSERT_TRUE(minus_action);
   actions::ActionItem* plus_action =
-      actions::ActionManager::Get().FindAction(kActionZoomPlus);
+      actions::ActionManager::Get().FindAction(kActionZoomPlus, nullptr);
   ASSERT_TRUE(plus_action);
 
   // At 100% zoom (default), both buttons are enabled with ink drop ON.
@@ -1494,7 +1587,7 @@ TEST_F(ActionAppMenuTest, SearchBarDisabledByDefault) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   EXPECT_EQ(menu.search_bar_for_testing(), nullptr);
@@ -1503,14 +1596,22 @@ TEST_F(ActionAppMenuTest, SearchBarDisabledByDefault) {
   menu.CloseMenu();
 }
 
-TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kChroMenuSearch);
+class ActionAppMenuWithSearchTest : public ActionAppMenuTest {
+ public:
+  ActionAppMenuWithSearchTest() {
+    feature_list_.InitAndEnableFeature(features::kChroMenuSearch);
+  }
+  ~ActionAppMenuWithSearchTest() override = default;
 
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+TEST_F(ActionAppMenuWithSearchTest, SearchBarEnabledWithFeatureFlag) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   AppMenuSearchBarView* search_bar = menu.search_bar_for_testing();
@@ -1568,7 +1669,7 @@ TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
   // Verify empty border with insets and background is transparent.
   ASSERT_NE(search_bar->GetBorder(), nullptr);
   int icon_size =
-      provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE);
+      provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE);
   int icon_padding = 12;
   int icon_text_spacing =
       provider->GetDistanceMetric(DISTANCE_RELATED_CONTROL_HORIZONTAL_SMALL);
@@ -1621,12 +1722,90 @@ TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
   menu.CloseMenu();
 }
 
+TEST_F(ActionAppMenuWithSearchTest,
+       ClearItemsBelowSearchBarPreservesSearchBar) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_TRUE(submenu);
+
+  AppMenuSearchBarView* search_bar = menu.search_bar_for_testing();
+  ASSERT_NE(search_bar, nullptr);
+  views::MenuItemView* search_item = submenu->GetMenuItemAt(0);
+  ASSERT_NE(search_item, nullptr);
+  ASSERT_GT(submenu->GetMenuItems().size(), 1u);
+  ASSERT_NE(menu.GetLabelFontList(kActionPrint), nullptr);
+
+  menu.ClearItemsBelowSearchBarForTesting();
+  root->ChildrenChanged();
+
+  // The search bar row is the same view object, not a rebuilt copy, and it is
+  // the only one left.
+  ASSERT_EQ(submenu->GetMenuItems().size(), 1u);
+  EXPECT_EQ(submenu->GetMenuItemAt(0), search_item);
+  EXPECT_EQ(menu.search_bar_for_testing(), search_bar);
+  ASSERT_EQ(search_item->children().size(), 1u);
+  EXPECT_EQ(search_item->children()[0], search_bar);
+  // The removed rows' command mappings are gone too.
+  EXPECT_EQ(menu.GetLabelFontList(kActionPrint), nullptr);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuWithSearchTest, ClearItemsBelowSearchBarKeepsNotification) {
+  if (!browser_defaults::kShowUpgradeMenuItem) {
+    GTEST_SKIP() << "Upgrade menu item is not supported on this platform.";
+  }
+
+  actions::ActionItem* upgrade_action =
+      actions::ActionManager::Get().FindAction(
+          kActionUpgradeDialog, browser_actions_->root_action_item());
+  ASSERT_NE(upgrade_action, nullptr);
+  upgrade_action->SetVisible(true);
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_TRUE(submenu);
+
+  views::MenuItemView* upgrade_item =
+      root->GetMenuItemByID(kActionUpgradeDialog);
+  ASSERT_NE(upgrade_item, nullptr);
+  ASSERT_NE(menu.GetLabelFontList(kActionUpgradeDialog), nullptr);
+
+  menu.ClearItemsBelowSearchBarForTesting();
+  root->ChildrenChanged();
+
+  // The notification row above the search bar stays, along with its command
+  // mapping. Nothing is left below the search bar row.
+  EXPECT_EQ(root->GetMenuItemByID(kActionUpgradeDialog), upgrade_item);
+  EXPECT_NE(menu.GetLabelFontList(kActionUpgradeDialog), nullptr);
+  EXPECT_EQ(submenu->children().back(),
+            menu.search_bar_for_testing()->parent());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, PopupAndComponentLayoutInsets) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1705,7 +1884,7 @@ TEST_F(ActionAppMenuTest, HeaderAndMenuItemBorderLayout) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1820,7 +1999,7 @@ TEST_F(ActionAppMenuTest, BlockSectionAndMenuHostWidth) {
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1865,7 +2044,7 @@ TEST_F(ActionAppMenuTest, BlockSectionAndMenuHostWidth) {
 TEST_F(ActionAppMenuTest, MaxWidthForMenu) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1890,6 +2069,8 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
           kActionUpgradeDialog, browser_actions_->root_action_item());
   ASSERT_NE(upgrade_action, nullptr);
   upgrade_action->SetVisible(true);
+  upgrade_action->SetImage(ui::ImageModel::FromVectorIcon(
+      kRocketLaunchIcon, ui::kColorMenuIconOnEmphasizedBackground));
 
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
@@ -1906,7 +2087,7 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
       AppMenuActionItem::kMinorTextKey,
       std::make_unique<std::u16string>(u"Restart to update"));
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -1917,6 +2098,9 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
   ASSERT_TRUE(upgrade_item);
   EXPECT_TRUE(upgrade_item->GetVisible());
   EXPECT_EQ(upgrade_item->title(), u"Update Chrome");
+  EXPECT_EQ(upgrade_item->GetIcon().Size(), gfx::Size(18, 18));
+  EXPECT_EQ(upgrade_item->GetTopMargin(), 9);
+  EXPECT_EQ(upgrade_item->GetBottomMargin(), 9);
   AppMenuMinorTextView* minor_text_view = nullptr;
   for (views::View* child : upgrade_item->children()) {
     if (auto* candidate = views::AsViewClass<AppMenuMinorTextView>(child)) {
@@ -1988,7 +2172,7 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationWithoutMinorText) {
   upgrade_indirect_item->SetProperty(AppMenuActionItem::kMinorTextKey,
                                      std::make_unique<std::u16string>());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2009,7 +2193,7 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationHiddenWhenInvisible) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2039,10 +2223,16 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationHiddenWhenInvisible) {
 #endif
 
 TEST_F(ActionAppMenuTest, MenuItemVerticalMarginExpandedHeight) {
+  actions::ActionItem* global_error_action =
+      actions::ActionManager::Get().FindAction(
+          kActionGlobalError, browser_actions_->root_action_item());
+  ASSERT_NE(global_error_action, nullptr);
+  global_error_action->SetVisible(true);
+
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2051,13 +2241,27 @@ TEST_F(ActionAppMenuTest, MenuItemVerticalMarginExpandedHeight) {
   const auto* provider = ChromeLayoutProvider::Get();
   const int expected_normal_margin =
       (provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT) -
-       provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE)) /
+       provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE)) /
+      2;
+  const int expected_notification_margin =
+      (provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_MEDIUM_ITEM_HEIGHT) -
+       provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_NOTIFICATION_ICON_SIZE)) /
       2;
   const int expected_expanded_margin =
       (provider->GetDistanceMetric(
            DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT) -
-       provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE)) /
+       provider->GetDistanceMetric(
+           DISTANCE_ACTION_APP_MENU_DEFAULT_ICON_SIZE)) /
       2;
+
+  views::MenuItemView* global_error_item =
+      root->GetMenuItemByID(kActionGlobalError);
+  ASSERT_TRUE(global_error_item);
+  EXPECT_EQ(global_error_item->GetTopMargin(), expected_notification_margin);
+  EXPECT_EQ(global_error_item->GetBottomMargin(), expected_notification_margin);
 
   views::MenuItemView* zoom_item = root->GetMenuItemByID(kActionZoomSubmenu);
   ASSERT_TRUE(zoom_item);
@@ -2083,7 +2287,7 @@ TEST_F(ActionAppMenuTest, DefaultBrowserNotificationRowStyling) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2131,7 +2335,7 @@ TEST_F(ActionAppMenuTest, DefaultBrowserNotificationHiddenWhenInvisible) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2167,13 +2371,17 @@ TEST_F(ActionAppMenuTest, MenuItemNewBadgeProperty) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  actions::ActionItem* print_action = actions::ActionManager::Get().FindAction(
-      kActionPrint, browser_actions_->root_action_item());
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot, browser_actions_->root_action_item());
+  ASSERT_NE(app_menu_root, nullptr);
+
+  actions::BaseAction* print_action =
+      FindBaseAction(app_menu_root, kActionPrint);
   ASSERT_NE(print_action, nullptr);
   print_action->SetProperty(AppMenuActionItem::kNewBadgeFeatureKey,
                             &tabs::kVerticalTabsNewBadge);
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2213,7 +2421,7 @@ TEST_F(ActionAppMenuTest, MenuItemIsAlertedProperty) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2232,6 +2440,106 @@ TEST_F(ActionAppMenuTest, MenuItemIsAlertedProperty) {
   menu.CloseMenu();
 }
 
+TEST_F(ActionAppMenuTest, MenuItemSecondaryTextProperty) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot, browser_actions_->root_action_item());
+  ASSERT_NE(app_menu_root, nullptr);
+  app_menu_root->ResetActionList();
+
+  std::unique_ptr<actions::IndirectActionItem> print_indirect =
+      AppMenuActionItem::CreateIndirect(
+          kActionPrint, browser_actions_->root_action_item(),
+          {.secondary_text = u"Print secondary text"});
+  ASSERT_NE(print_indirect, nullptr);
+  const std::u16string* secondary_text =
+      print_indirect->GetProperty(AppMenuActionItem::kSecondaryTextKey);
+  ASSERT_NE(secondary_text, nullptr);
+  EXPECT_EQ(*secondary_text, u"Print secondary text");
+  app_menu_root->AddChild(std::move(print_indirect));
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* print_item = root->GetMenuItemByID(kActionPrint);
+  ASSERT_TRUE(print_item);
+  EXPECT_EQ(print_item->secondary_title(), u"Print secondary text");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+// A row shows its action's text with the mnemonic marker, and keeps it when the
+// action changes.
+TEST_F(ActionAppMenuTest, RowKeepsMnemonicTextWhenActionChanges) {
+  actions::ActionItem* print_action = actions::ActionManager::Get().FindAction(
+      kActionPrint, browser_actions_->root_action_item());
+  ASSERT_NE(print_action, nullptr);
+  print_action->SetText(u"&Print");
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuItemView* print_item = root->GetMenuItemByID(kActionPrint);
+  ASSERT_TRUE(print_item);
+  EXPECT_EQ(print_item->title(), u"&Print");
+
+  print_action->SetEnabled(false);
+
+  EXPECT_FALSE(print_item->GetEnabled());
+  EXPECT_EQ(print_item->title(), u"&Print");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+// A row's text override is kept when its action changes.
+TEST_F(ActionAppMenuTest, RowKeepsTextOverrideWhenActionChanges) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot, browser_actions_->root_action_item());
+  ASSERT_NE(app_menu_root, nullptr);
+  app_menu_root->ResetActionList();
+
+  std::unique_ptr<actions::IndirectActionItem> print_indirect =
+      AppMenuActionItem::CreateIndirect(kActionPrint,
+                                        browser_actions_->root_action_item(),
+                                        {.text_override = u"&Print override"});
+  ASSERT_NE(print_indirect, nullptr);
+  actions::ActionItem* print_action = print_indirect->GetActionItem();
+  ASSERT_NE(print_action, nullptr);
+  app_menu_root->AddChild(std::move(print_indirect));
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuItemView* print_item = root->GetMenuItemByID(kActionPrint);
+  ASSERT_TRUE(print_item);
+  EXPECT_EQ(print_item->title(), u"&Print override");
+
+  print_action->SetText(u"Changed");
+  print_action->SetEnabled(false);
+
+  EXPECT_FALSE(print_item->GetEnabled());
+  EXPECT_EQ(print_item->title(), u"&Print override");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, GlobalErrorNotificationRowStyling) {
   actions::ActionItem* global_error_action =
       actions::ActionManager::Get().FindAction(
@@ -2243,7 +2551,7 @@ TEST_F(ActionAppMenuTest, GlobalErrorNotificationRowStyling) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
 
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   EXPECT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2320,7 +2628,7 @@ TEST_F(ActionAppMenuTest,
 
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
   ASSERT_TRUE(root);
@@ -2359,7 +2667,7 @@ TEST_F(ActionAppMenuTest, GlobalErrorPrioritizedOverDefaultBrowser) {
 
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
   ASSERT_TRUE(root);
@@ -2400,7 +2708,7 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
 
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
   ASSERT_TRUE(root);
@@ -2413,6 +2721,8 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
   ASSERT_TRUE(upgrade_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_radius, 12);
   EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_radius, 12);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_padding, 0);
 
   views::MenuItemView* global_error_item =
       root->GetMenuItemByID(kActionGlobalError);
@@ -2420,6 +2730,8 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
   ASSERT_TRUE(global_error_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 12);
   EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 12);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_padding, 0);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_padding, 0);
 
   ASSERT_GE(submenu->children().size(), 3u);
   EXPECT_EQ(submenu->children()[0], upgrade_item);
@@ -2440,7 +2752,7 @@ TEST_F(ActionAppMenuTest, MenuOpenAndCommandExecutionMetrics) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   EXPECT_EQ(user_action_tester.GetActionCount("ShowAppMenu"), 1);
@@ -2480,12 +2792,53 @@ TEST_F(ActionAppMenuTest, MenuOpenAndCommandExecutionMetrics) {
   menu.CloseMenu();
 }
 
+TEST_F(ActionAppMenuTest, ManageSkillsMetrics) {
+  actions::ActionItem* skills_and_extensions_action =
+      actions::ActionManager::Get().FindAction(
+          kActionSkillsAndExtensionsSubmenu,
+          browser_actions_->root_action_item());
+  ASSERT_NE(skills_and_extensions_action, nullptr);
+  skills_and_extensions_action->SetVisible(true);
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* skills_and_extensions_item =
+      root->GetMenuItemByID(kActionSkillsAndExtensionsSubmenu);
+  ASSERT_TRUE(skills_and_extensions_item);
+  menu.WillShowMenu(skills_and_extensions_item);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_SHOW_SKILLS_AND_EXTENSIONS, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ShowSkillsAndExtensions", 1);
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionManageSkills, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionManageSkills, /*mouse_event_flags=*/0);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_MANAGE_SKILLS, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.ManageSkills", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, ZoomAndBlockButtonMetrics) {
   base::HistogramTester histogram_tester;
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2559,7 +2912,7 @@ TEST_F(ActionAppMenuTest, SafetyHubNotificationMetrics) {
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   histogram_tester.ExpectUniqueSample(
@@ -2647,10 +3000,11 @@ TEST_F(ActionAppMenuTest, RecentTabsDynamicMenuMetrics) {
 
 TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
   base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
 
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
-  menu.RunMenu(button_->button_controller());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
   ASSERT_TRUE(menu.IsShowing());
 
   views::MenuItemView* root = menu.root_menu_item_for_testing();
@@ -2669,6 +3023,11 @@ TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
                 "TabGroups_SavedTabGroups_"
                 "CreateNewGroupTriggeredFromTabGroupsAppMenu"),
             1);
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_CREATE_NEW_TAB_GROUP, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.CreateNewTabGroup",
+                                    1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
 
   actions::ActionInvocationContext captured_context;
   EXPECT_CALL(mock_action_invoked_,
@@ -2689,10 +3048,11 @@ TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
   menu.CloseMenu();
 }
 
-TEST_F(ActionAppMenuTest, TabsFromOtherDevicesAndSendTabToSelfMetrics) {
+TEST_F(ActionAppMenuTest, SendTabToSelfMetrics) {
   base::HistogramTester histogram_tester;
 
-  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  ActionAppMenuManager menu_manager(&mock_window_interface_,
+                                    &mock_drag_and_drop_host_);
   menu_manager.CreateMenuHierarchy();
 
   // TargetDeviceCount should not be logged when the menu hierarchy is
@@ -2700,17 +3060,813 @@ TEST_F(ActionAppMenuTest, TabsFromOtherDevicesAndSendTabToSelfMetrics) {
   histogram_tester.ExpectTotalCount(
       "Sharing.SendTabToSelf.TargetDeviceCount.ShareMenu", 0);
   menu_manager.OnMenuClosed();
+}
 
-  // Logging kActionSidePanelShowTabsFromOtherDevices should record
-  // WrenchMenu.TimeToAction without hitting NOTREACHED().
+class MockAppMenuDragAndDropDelegate : public AppMenuDragAndDropDelegate {
+ public:
+  MOCK_METHOD(bool,
+              GetDropFormats,
+              (actions::BaseAction*, int*, std::set<ui::ClipboardFormatType>*),
+              (override));
+  MOCK_METHOD(bool, AreDropTypesRequired, (actions::BaseAction*), (override));
+  MOCK_METHOD(bool,
+              CanDrop,
+              (actions::BaseAction*, const ui::OSExchangeData&),
+              (override));
+  MOCK_METHOD(ui::mojom::DragOperation,
+              GetDropOperation,
+              (actions::BaseAction*,
+               const ui::DropTargetEvent&,
+               views::MenuDelegate::DropPosition*),
+              (override));
+  MOCK_METHOD(views::View::DropCallback,
+              GetDropCallback,
+              (actions::BaseAction*,
+               views::MenuDelegate::DropPosition,
+               const ui::DropTargetEvent&),
+              (override));
+  MOCK_METHOD(bool, CanDrag, (actions::BaseAction*), (override));
+  MOCK_METHOD(void,
+              WriteDragData,
+              (actions::BaseAction*, ui::OSExchangeData*),
+              (override));
+  MOCK_METHOD(int, GetDragOperations, (actions::BaseAction*), (override));
+};
+
+TEST_F(ActionAppMenuTest, DragAndDropDelegateForwarding) {
+  testing::StrictMock<MockAppMenuDragAndDropDelegate> mock_delegate;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot,
+      BrowserActions::From(&mock_window_interface_)->root_action_item());
+  ASSERT_TRUE(app_menu_root);
+
+  auto submenu_action = actions::ActionItem::Builder()
+                            .SetText(u"Test DnD Submenu")
+                            .SetProperty(AppMenuActionItem::kIsSubmenuKey, true)
+                            .SetPopulateChildrenCallback(base::DoNothing())
+                            .Build();
+  submenu_action->SetProperty(
+      AppMenuActionItem::kDragAndDropDelegateKey,
+      static_cast<AppMenuDragAndDropDelegate*>(&mock_delegate));
+
+  auto* item_a_action = submenu_action->AddChild(
+      actions::ActionItem::Builder().SetText(u"Item A").Build());
+  app_menu_root->AddChild(std::move(submenu_action));
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* submenu_item = nullptr;
+  for (views::MenuItemView* item : root->GetSubmenu()->GetMenuItems()) {
+    if (item->title() == u"Test DnD Submenu") {
+      submenu_item = item;
+      break;
+    }
+  }
+  ASSERT_TRUE(submenu_item);
+  ASSERT_TRUE(submenu_item->HasSubmenu());
+  menu.WillShowMenu(submenu_item);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 1u);
+  views::MenuItemView* item_a_view =
+      submenu_item->GetSubmenu()->GetMenuItemAt(0);
+  EXPECT_EQ(item_a_view->title(), u"Item A");
+
+  // Verify drag-and-drop calls on child MenuItemView route to mock_delegate
+  // with item_a_action.
+  int formats = 0;
+  std::set<ui::ClipboardFormatType> format_types;
+  EXPECT_CALL(mock_delegate,
+              GetDropFormats(item_a_action, &formats, &format_types))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.GetDropFormats(item_a_view, &formats, &format_types));
+
+  EXPECT_CALL(mock_delegate, AreDropTypesRequired(item_a_action))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.AreDropTypesRequired(item_a_view));
+
+  ui::OSExchangeData data;
+  EXPECT_CALL(mock_delegate, CanDrop(item_a_action, testing::_))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.CanDrop(item_a_view, data));
+
+  ui::DropTargetEvent drop_event(data, gfx::PointF(), gfx::PointF(),
+                                 ui::DragDropTypes::DRAG_MOVE);
+  views::MenuDelegate::DropPosition position =
+      views::MenuDelegate::DropPosition::kBefore;
+  EXPECT_CALL(mock_delegate,
+              GetDropOperation(item_a_action, testing::_, &position))
+      .WillOnce(testing::Return(ui::mojom::DragOperation::kMove));
+  EXPECT_EQ(menu.GetDropOperation(item_a_view, drop_event, &position),
+            ui::mojom::DragOperation::kMove);
+
+  bool drop_callback_ran = false;
+  EXPECT_CALL(mock_delegate,
+              GetDropCallback(item_a_action, position, testing::_))
+      .WillOnce(testing::Return(base::BindLambdaForTesting(
+          [&](const ui::DropTargetEvent&, ui::mojom::DragOperation& output_op,
+              std::unique_ptr<ui::LayerTreeOwner>) {
+            drop_callback_ran = true;
+            output_op = ui::mojom::DragOperation::kMove;
+          })));
+  views::View::DropCallback cb =
+      menu.GetDropCallback(item_a_view, position, drop_event);
+  ui::mojom::DragOperation output_op = ui::mojom::DragOperation::kNone;
+  std::move(cb).Run(drop_event, output_op, nullptr);
+  EXPECT_TRUE(drop_callback_ran);
+  EXPECT_EQ(output_op, ui::mojom::DragOperation::kMove);
+
+  EXPECT_CALL(mock_delegate, CanDrag(item_a_action))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(menu.CanDrag(item_a_view));
+
+  EXPECT_CALL(mock_delegate, WriteDragData(item_a_action, &data));
+  menu.WriteDragData(item_a_view, &data);
+
+  EXPECT_CALL(mock_delegate, GetDragOperations(item_a_action))
+      .WillOnce(testing::Return(ui::DragDropTypes::DRAG_MOVE));
+  EXPECT_EQ(menu.GetDragOperations(item_a_view), ui::DragDropTypes::DRAG_MOVE);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, UpdateMenuItem) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  actions::ActionItem* app_menu_root = actions::ActionManager::Get().FindAction(
+      kActionAppMenuRoot,
+      BrowserActions::From(&mock_window_interface_)->root_action_item());
+  ASSERT_TRUE(app_menu_root);
+
+  bool item_a_invoked = false;
+  bool item_b_invoked = false;
+  actions::BaseAction* item_a_action = nullptr;
+  auto submenu_action = actions::ActionItem::Builder()
+                            .SetText(u"Test Update Submenu")
+                            .SetProperty(AppMenuActionItem::kIsSubmenuKey, true)
+                            .Build();
+  item_a_action = submenu_action->AddChild(
+      actions::ActionItem::Builder()
+          .SetText(u"Item A")
+          .SetInvokeActionCallback(base::BindLambdaForTesting(
+              [&](actions::ActionItem*, actions::ActionInvocationContext) {
+                item_a_invoked = true;
+              }))
+          .Build());
+  actions::BaseAction* submenu_action_ptr =
+      app_menu_root->AddChild(std::move(submenu_action));
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* submenu_item = nullptr;
+  for (views::MenuItemView* item : root->GetSubmenu()->GetMenuItems()) {
+    if (item->title() == u"Test Update Submenu") {
+      submenu_item = item;
+      break;
+    }
+  }
+  ASSERT_TRUE(submenu_item);
+  ASSERT_TRUE(submenu_item->HasSubmenu());
+  menu.WillShowMenu(submenu_item);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 1u);
+
+  // Add Item B after Item A.
+  actions::BaseAction* item_b_action = submenu_action_ptr->AddChild(
+      actions::ActionItem::Builder()
+          .SetText(u"Item B")
+          .SetInvokeActionCallback(base::BindLambdaForTesting(
+              [&](actions::ActionItem*, actions::ActionInvocationContext) {
+                item_b_invoked = true;
+              }))
+          .Build());
+  menu.UpdateMenuItem(item_b_action, submenu_action_ptr, item_a_action);
+
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 2u);
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(0)->title(), u"Item A");
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(1)->title(), u"Item B");
+
+  // Move Item B before Item A.
+  menu.UpdateMenuItem(item_b_action, submenu_action_ptr,
+                      /*insert_after=*/nullptr);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 2u);
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(0)->title(), u"Item B");
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(1)->title(), u"Item A");
+
+  menu.ExecuteCommand(
+      submenu_item->GetSubmenu()->GetMenuItemAt(0)->GetCommand(), ui::EF_NONE);
+  EXPECT_TRUE(item_b_invoked);
+  menu.ExecuteCommand(
+      submenu_item->GetSubmenu()->GetMenuItemAt(1)->GetCommand(), ui::EF_NONE);
+  EXPECT_TRUE(item_a_invoked);
+
+  // Remove Item B.
+  menu.UpdateMenuItem(item_b_action, /*target_parent_action=*/nullptr);
+  ASSERT_EQ(submenu_item->GetSubmenu()->GetMenuItems().size(), 1u);
+  EXPECT_EQ(submenu_item->GetSubmenu()->GetMenuItemAt(0)->title(), u"Item A");
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, BookmarksDynamicMenuUpdatesOnModelChange) {
+  BookmarkModelFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkModelFactory::GetDefaultFactory());
+  BookmarkMergedSurfaceServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkMergedSurfaceServiceFactory::GetDefaultFactory());
+
+  bookmarks::BookmarkModel* model =
+      BookmarkModelFactory::GetForBrowserContext(profile_.get());
+  ASSERT_TRUE(model);
+  model->LoadEmptyForTest();
+
+  BookmarkMergedSurfaceService* bookmark_service =
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(bookmark_service);
+  bookmark_service->LoadForTesting({});
+
+  const bookmarks::BookmarkNode* first_node =
+      model->AddURL(model->bookmark_bar_node(), 0, u"First Bookmark",
+                    GURL("https://first.com"));
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* bookmarks_submenu_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_submenu_item);
+  menu.WillShowMenu(bookmarks_submenu_item);
+
+  auto find_item_by_title =
+      [](views::MenuItemView* parent,
+         const std::u16string& title) -> views::MenuItemView* {
+    for (views::MenuItemView* item : parent->GetSubmenu()->GetMenuItems()) {
+      if (item->title() == title) {
+        return item;
+      }
+    }
+    return nullptr;
+  };
+
+  EXPECT_TRUE(find_item_by_title(bookmarks_submenu_item, u"First Bookmark"));
+  EXPECT_FALSE(find_item_by_title(bookmarks_submenu_item, u"Second Bookmark"));
+
+  // Add a second bookmark while the menu is open.
+  const bookmarks::BookmarkNode* second_node =
+      model->AddURL(model->bookmark_bar_node(), 1, u"Second Bookmark",
+                    GURL("https://second.com"));
+
+  views::MenuItemView* first_item =
+      find_item_by_title(bookmarks_submenu_item, u"First Bookmark");
+  views::MenuItemView* second_item =
+      find_item_by_title(bookmarks_submenu_item, u"Second Bookmark");
+  ASSERT_TRUE(first_item);
+  ASSERT_TRUE(second_item);
+  EXPECT_LT(bookmarks_submenu_item->GetSubmenu()->GetIndexOf(first_item),
+            bookmarks_submenu_item->GetSubmenu()->GetIndexOf(second_item));
+
+  // Move Second Bookmark before First Bookmark.
+  model->Move(second_node, model->bookmark_bar_node(), 0);
+  first_item = find_item_by_title(bookmarks_submenu_item, u"First Bookmark");
+  second_item = find_item_by_title(bookmarks_submenu_item, u"Second Bookmark");
+  ASSERT_TRUE(first_item);
+  ASSERT_TRUE(second_item);
+  EXPECT_LT(bookmarks_submenu_item->GetSubmenu()->GetIndexOf(second_item),
+            bookmarks_submenu_item->GetSubmenu()->GetIndexOf(first_item));
+
+  // Rename First Bookmark.
+  model->SetTitle(first_node, u"Renamed First Bookmark",
+                  bookmarks::metrics::BookmarkEditSource::kOther);
+  EXPECT_FALSE(find_item_by_title(bookmarks_submenu_item, u"First Bookmark"));
+  EXPECT_TRUE(
+      find_item_by_title(bookmarks_submenu_item, u"Renamed First Bookmark"));
+
+  // Remove Second Bookmark.
+  model->Remove(second_node, bookmarks::metrics::BookmarkEditSource::kOther,
+                FROM_HERE);
+  EXPECT_FALSE(find_item_by_title(bookmarks_submenu_item, u"Second Bookmark"));
+  EXPECT_TRUE(
+      find_item_by_title(bookmarks_submenu_item, u"Renamed First Bookmark"));
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, BookmarksDynamicMenuDragAndDrop) {
+  BookmarkModelFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkModelFactory::GetDefaultFactory());
+  BookmarkMergedSurfaceServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkMergedSurfaceServiceFactory::GetDefaultFactory());
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile_.get());
+  ASSERT_TRUE(bookmark_model);
+  bookmark_model->LoadEmptyForTest();
+
+  BookmarkMergedSurfaceService* bookmark_service =
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(bookmark_service);
+  bookmark_service->LoadForTesting({});
+
+  const bookmarks::BookmarkNode* bar_node = bookmark_model->bookmark_bar_node();
+  const bookmarks::BookmarkNode* node_a = bookmark_model->AddURL(
+      bar_node, 0, u"Bookmark A", GURL("https://a.example.com"));
+  const bookmarks::BookmarkNode* node_b = bookmark_model->AddURL(
+      bar_node, 1, u"Bookmark B", GURL("https://b.example.com"));
+  const bookmarks::BookmarkNode* folder_c =
+      bookmark_model->AddFolder(bar_node, 2, u"Folder C");
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  views::MenuItemView* bookmarks_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_item);
+  menu.WillShowMenu(bookmarks_item);
+
+  // Static items inside the Bookmarks submenu cannot be dragged or dropped on.
+  views::MenuItemView* bookmark_this_tab =
+      root->GetMenuItemByID(kActionBookmarkThisTab);
+  ASSERT_TRUE(bookmark_this_tab);
+  EXPECT_FALSE(menu.CanDrag(bookmark_this_tab));
+
+  auto find_item = [](views::MenuItemView* parent,
+                      const std::u16string& title) -> views::MenuItemView* {
+    if (!parent || !parent->HasSubmenu()) {
+      return nullptr;
+    }
+    for (views::MenuItemView* item : parent->GetSubmenu()->GetMenuItems()) {
+      if (item->title() == title) {
+        return item;
+      }
+    }
+    return nullptr;
+  };
+
+  views::MenuItemView* item_a = find_item(bookmarks_item, u"Bookmark A");
+  views::MenuItemView* item_b = find_item(bookmarks_item, u"Bookmark B");
+  ASSERT_TRUE(item_a);
+  ASSERT_TRUE(item_b);
+
+  // Drag Bookmark B before Bookmark A.
+  ASSERT_TRUE(menu.CanDrag(item_b));
+  EXPECT_NE(menu.GetDragOperations(item_b), ui::DragDropTypes::DRAG_NONE);
+
+  ui::OSExchangeData drag_data;
+  menu.WriteDragData(item_b, &drag_data);
+
+  int formats = 0;
+  std::set<ui::ClipboardFormatType> format_types;
+  EXPECT_TRUE(menu.GetDropFormats(bookmarks_item, &formats, &format_types));
+  EXPECT_TRUE(menu.AreDropTypesRequired(bookmarks_item));
+  ASSERT_TRUE(menu.CanDrop(bookmarks_item, drag_data));
+
+  ui::DropTargetEvent target_event(drag_data, gfx::PointF(), gfx::PointF(),
+                                   ui::DragDropTypes::DRAG_MOVE);
+  views::MenuDelegate::DropPosition drop_position =
+      views::MenuDelegate::DropPosition::kBefore;
+  EXPECT_EQ(menu.GetDropOperation(item_a, target_event, &drop_position),
+            ui::mojom::DragOperation::kMove);
+
+  views::View::DropCallback drop_cb =
+      menu.GetDropCallback(item_a, drop_position, target_event);
+  ui::mojom::DragOperation output_drag_op = ui::mojom::DragOperation::kNone;
+  std::move(drop_cb).Run(target_event, output_drag_op,
+                         /*drag_image_layer_owner=*/nullptr);
+  EXPECT_EQ(output_drag_op, ui::mojom::DragOperation::kMove);
+
+  EXPECT_EQ(bar_node->children()[0].get(), node_b);
+  EXPECT_EQ(bar_node->children()[1].get(), node_a);
+
+  // Verify the Bookmarks submenu repopulated in place with Bookmark B before
+  // Bookmark A, while preserving static items.
+  EXPECT_NE(root->GetMenuItemByID(kActionBookmarkThisTab), nullptr);
+  views::MenuItemView* updated_b = find_item(bookmarks_item, u"Bookmark B");
+  views::MenuItemView* updated_a = find_item(bookmarks_item, u"Bookmark A");
+  views::MenuItemView* updated_c = find_item(bookmarks_item, u"Folder C");
+  ASSERT_TRUE(updated_b);
+  ASSERT_TRUE(updated_a);
+  ASSERT_TRUE(updated_c);
+  EXPECT_LT(bookmarks_item->GetSubmenu()->GetIndexOf(updated_b),
+            bookmarks_item->GetSubmenu()->GetIndexOf(updated_a));
+
+  // Drop Bookmark A onto Folder C.
+  ui::OSExchangeData drag_data_a;
+  menu.WriteDragData(updated_a, &drag_data_a);
+  ASSERT_TRUE(menu.CanDrop(bookmarks_item, drag_data_a));
+
+  ui::DropTargetEvent target_event_c(drag_data_a, gfx::PointF(), gfx::PointF(),
+                                     ui::DragDropTypes::DRAG_MOVE);
+  views::MenuDelegate::DropPosition drop_on =
+      views::MenuDelegate::DropPosition::kOn;
+  EXPECT_EQ(menu.GetDropOperation(updated_c, target_event_c, &drop_on),
+            ui::mojom::DragOperation::kMove);
+  views::View::DropCallback drop_cb_c =
+      menu.GetDropCallback(updated_c, drop_on, target_event_c);
+  output_drag_op = ui::mojom::DragOperation::kNone;
+  std::move(drop_cb_c).Run(target_event_c, output_drag_op,
+                           /*drag_image_layer_owner=*/nullptr);
+  EXPECT_EQ(output_drag_op, ui::mojom::DragOperation::kMove);
+  ASSERT_EQ(folder_c->children().size(), 1u);
+  EXPECT_EQ(folder_c->children()[0].get(), node_a);
+
+  views::MenuItemView* repopulated_c = find_item(bookmarks_item, u"Folder C");
+  ASSERT_TRUE(repopulated_c);
+  views::MenuItemView* a_in_c = find_item(repopulated_c, u"Bookmark A");
+  ASSERT_TRUE(a_in_c);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, AppMenuSearchQueryPopulatesResults) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(features::kChroMenuSearch,
+                                                  {{"query", "New Tab"}});
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  AppMenuSearchBarView* search_bar = menu.search_bar_for_testing();
+  ASSERT_TRUE(search_bar);
+  EXPECT_EQ(search_bar->GetText(), u"New Tab");
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  // Search results should be populated with New Tab.
+  views::MenuItemView* new_tab_item = root->GetMenuItemByID(kActionNewTab);
+  ASSERT_TRUE(new_tab_item);
+  EXPECT_EQ(new_tab_item->title(), u"New Tab");
+
+  // Clicking/executing the search result item should invoke the action.
+  EXPECT_CALL(mock_action_invoked_, Call(kActionNewTab, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(new_tab_item->GetCommand(), ui::EF_NONE);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+  EXPECT_FALSE(menu.IsShowing());
+  EXPECT_EQ(menu.search_controller_for_testing(), nullptr);
+}
+
+TEST_F(ActionAppMenuTest, AppMenuSearchQueryNoResults) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kChroMenuSearch, {{"query", "NonExistentQuery"}});
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  AppMenuSearchBarView* search_bar = menu.search_bar_for_testing();
+  ASSERT_TRUE(search_bar);
+  EXPECT_EQ(search_bar->GetText(), u"NonExistentQuery");
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  // Should have "No results found" disabled item.
+  EXPECT_EQ(root->GetSubmenu()->GetMenuItems().size(), 2u);
+  views::MenuItemView* no_results_item = root->GetSubmenu()->GetMenuItemAt(1);
+  EXPECT_EQ(no_results_item->title(),
+            l10n_util::GetStringUTF16(IDS_SEARCH_NO_RESULTS));
+  EXPECT_FALSE(no_results_item->GetEnabled());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+  EXPECT_FALSE(menu.IsShowing());
+}
+
+TEST_F(ActionAppMenuTest, AppMenuSearchQueryShortQueryShowsNormalMenu) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(features::kChroMenuSearch,
+                                                  {{"query", "N"}});
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  AppMenuSearchBarView* search_bar = menu.search_bar_for_testing();
+  ASSERT_TRUE(search_bar);
+  EXPECT_EQ(search_bar->GetText(), u"N");
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  // The regular menu hierarchy should be present.
+  EXPECT_TRUE(root->GetMenuItemByID(kActionPasswordsAndAutofillSubmenu));
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+  EXPECT_FALSE(menu.IsShowing());
+}
+
+TEST_F(ActionAppMenuTest, RecentTabsByDateHistoryInSidePanel) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(features::kByDateHistoryInSidePanel);
+
+  testing::NiceMock<MockSidePanelUI> mock_side_panel_ui(
+      mock_window_interface_.GetUnownedUserDataHost());
+
+  RecentTabsDynamicMenu dynamic_menu(&mock_window_interface_);
+  auto parent = actions::ActionItem::Builder().Build();
+  dynamic_menu.BuildRecentTabsActions(parent.get());
+
+  const auto& children = parent->GetChildren().children();
+  ASSERT_GE(children.size(), 2u);
+  EXPECT_EQ(children[0]->GetActionItem()->GetActionId(), kActionShowHistory);
+  EXPECT_EQ(children[1]->GetActionItem()->GetActionId(),
+            kActionSidePanelShowHistory);
+  EXPECT_EQ(children[1]->GetActionItem()->GetText(),
+            l10n_util::GetStringUTF16(IDS_HISTORY_SHOW_SIDE_PANEL));
+
+  base::HistogramTester histogram_tester;
   ActionAppMenuMetrics metrics;
   metrics.OnMenuOpened();
-  auto tabs_from_other_devices =
-      actions::ActionItem::Builder()
-          .SetActionId(kActionSidePanelShowTabsFromOtherDevices)
-          .Build();
-  metrics.LogMenuAction(tabs_from_other_devices.get());
+  metrics.LogMenuAction(children[1].get());
+  histogram_tester.ExpectBucketCount(
+      "WrenchMenu.MenuAction", MENU_ACTION_SHOW_HISTORY_CLUSTER_SIDE_PANEL, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ShowHistoryClustersSidePanel", 1);
+}
+
+#if !BUILDFLAG(IS_CHROMEOS)
+TEST_F(ActionAppMenuTest, PopulatesFooterElementsWithEnterpriseReleaseNotes) {
+  policy::ScopedManagementServiceOverrideForTesting profile_management(
+      policy::ManagementServiceFactory::GetForProfile(profile_.get()),
+      policy::EnterpriseManagementAuthority::DOMAIN_LOCAL);
+
+  actions::ActionItem* release_notes_action =
+      actions::ActionManager::Get().FindAction(
+          kActionChromeEnterpriseReleaseNotes, nullptr);
+  ASSERT_NE(release_notes_action, nullptr);
+  release_notes_action->SetVisible(true);
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_NE(root, nullptr);
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_NE(submenu, nullptr);
+  views::MenuItemView* footer_item =
+      submenu->GetMenuItemAt(submenu->GetMenuItems().size() - 1);
+  ASSERT_NE(footer_item, nullptr);
+
+  auto* footer_view =
+      views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
+  ASSERT_NE(footer_view, nullptr);
+  ASSERT_NE(footer_view->bottom_container_for_testing(), nullptr);
+  EXPECT_EQ(footer_view->bottom_container_for_testing()->GetOrientation(),
+            views::BoxLayout::Orientation::kVertical);
+  ASSERT_EQ(footer_view->bottom_container_for_testing()->children().size(), 2u);
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[0]));
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[1]));
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionChromeEnterpriseReleaseNotes, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionChromeEnterpriseReleaseNotes,
+                      /*mouse_event_flags=*/0);
+  histogram_tester.ExpectBucketCount(
+      "WrenchMenu.MenuAction", MENU_ACTION_CHROME_ENTERPRISE_RELEASE_NOTES, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ChromeEnterpriseReleaseNotes", 1);
   histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+TEST_F(ActionAppMenuTest, BlockButtonsRespondToMnemonics) {
+  if (!views::MenuConfig::instance().use_mnemonics) {
+    GTEST_SKIP() << "Mnemonics are not enabled on this platform";
+  }
+
+  auto test_block_mnemonic = [&](char16_t mnemonic,
+                                 actions::ActionId expected_action_id) {
+    base::MockCallback<base::RepeatingClosure> on_menu_closed;
+    ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+    menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+    ASSERT_TRUE(menu.IsShowing());
+
+    views::MenuItemView* root = menu.root_menu_item_for_testing();
+    ASSERT_TRUE(root);
+    views::MenuController* controller = root->GetMenuController();
+    ASSERT_TRUE(controller);
+
+    EXPECT_CALL(mock_action_invoked_,
+                Call(expected_action_id, testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(on_menu_closed, Run()).Times(1);
+
+    ui::KeyEvent key_event(ui::EventType::kKeyPressed, ui::VKEY_UNKNOWN,
+                           ui::EF_NONE);
+    key_event.set_character(mnemonic);
+    controller->OnWillDispatchKeyEvent(&key_event);
+  };
+
+  test_block_mnemonic(SetTextWithMnemonic(kActionNewTab, IDS_NEW_TAB),
+                      kActionNewTab);
+  test_block_mnemonic(SetTextWithMnemonic(kActionNewWindow, IDS_NEW_WINDOW),
+                      kActionNewWindow);
+  test_block_mnemonic(
+      SetTextWithMnemonic(kActionNewIncognitoWindow, IDS_NEW_INCOGNITO_WINDOW),
+      kActionNewIncognitoWindow);
+}
+
+TEST_F(ActionAppMenuTest, FooterButtonsRespondToMnemonics) {
+  if (!views::MenuConfig::instance().use_mnemonics) {
+    GTEST_SKIP() << "Mnemonics are not enabled on this platform";
+  }
+
+  auto open_menu_and_press = [&](ActionAppMenu& menu, char16_t mnemonic) {
+    menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+    ASSERT_TRUE(menu.IsShowing());
+    views::MenuItemView* root = menu.root_menu_item_for_testing();
+    ASSERT_TRUE(root);
+    views::MenuController* controller = root->GetMenuController();
+    ASSERT_TRUE(controller);
+
+    ui::KeyEvent key_event(ui::EventType::kKeyPressed, ui::VKEY_UNKNOWN,
+                           ui::EF_NONE);
+    key_event.set_character(mnemonic);
+    controller->OnWillDispatchKeyEvent(&key_event);
+  };
+
+  auto test_footer_action_mnemonic = [&](char16_t mnemonic,
+                                         actions::ActionId expected_action_id) {
+    base::MockCallback<base::RepeatingClosure> on_menu_closed;
+    ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+    EXPECT_CALL(mock_action_invoked_,
+                Call(expected_action_id, testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(on_menu_closed, Run()).Times(1);
+    open_menu_and_press(menu, mnemonic);
+  };
+
+  test_footer_action_mnemonic(SetTextWithMnemonic(kActionOptions, IDS_SETTINGS),
+                              kActionOptions);
+
+  if (browser_defaults::kShowExitMenuItem) {
+    test_footer_action_mnemonic(SetTextWithMnemonic(kActionExit, IDS_EXIT),
+                                kActionExit);
+  }
+
+  // Branded builds show a Help button that opens a submenu; other builds show
+  // an About button instead.
+  const char16_t help_mnemonic =
+      SetTextWithMnemonic(kActionHelpSubmenu, IDS_HELP_MENU);
+  const char16_t about_mnemonic = SetTextWithMnemonic(kActionAbout, IDS_ABOUT);
+  bool has_help_submenu = false;
+  {
+    base::MockCallback<base::RepeatingClosure> on_menu_closed;
+    ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+    menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+    views::MenuItemView* root = menu.root_menu_item_for_testing();
+    ASSERT_TRUE(root);
+    has_help_submenu = root->GetMenuItemByID(kActionHelpSubmenu);
+    EXPECT_CALL(on_menu_closed, Run()).Times(1);
+    menu.CloseMenu();
+  }
+
+  if (!has_help_submenu) {
+    test_footer_action_mnemonic(about_mnemonic, kActionAbout);
+    return;
+  }
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  open_menu_and_press(menu, help_mnemonic);
+  views::MenuItemView* help_item =
+      menu.root_menu_item_for_testing()->GetMenuItemByID(kActionHelpSubmenu);
+  ASSERT_TRUE(help_item);
+  EXPECT_TRUE(help_item->SubmenuIsShowing());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, UserGeneratedBookmarkTitlesEscapeAmpersands) {
+  BookmarkModelFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkModelFactory::GetDefaultFactory());
+  BookmarkMergedSurfaceServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BookmarkMergedSurfaceServiceFactory::GetDefaultFactory());
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile_.get());
+  ASSERT_TRUE(bookmark_model);
+  bookmark_model->LoadEmptyForTest();
+
+  BookmarkMergedSurfaceService* bookmark_service =
+      BookmarkMergedSurfaceServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(bookmark_service);
+  bookmark_service->LoadForTesting({});
+
+  const bookmarks::BookmarkNode* bar_node = bookmark_model->bookmark_bar_node();
+  const bookmarks::BookmarkNode* bookmark_node = bookmark_model->AddURL(
+      bar_node, 0, u"A&B Bookmark", GURL("https://www.google.com"));
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller(), views::MenuRunner::NO_FLAGS);
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* bookmarks_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_item);
+  menu.WillShowMenu(bookmarks_item);
+
+  views::MenuItemView* bookmark_entry = nullptr;
+  for (views::MenuItemView* item :
+       bookmarks_item->GetSubmenu()->GetMenuItems()) {
+    if (item->title() == u"A&&B Bookmark") {
+      bookmark_entry = item;
+      break;
+    }
+  }
+  ASSERT_NE(bookmark_entry, nullptr);
+  EXPECT_EQ(bookmark_entry->GetMnemonic(), 0);
+
+  // Verify BookmarkNodeChanged also escapes ampersands.
+  bookmark_model->SetTitle(bookmark_node, u"C&D Bookmark",
+                           bookmarks::metrics::BookmarkEditSource::kOther);
+  EXPECT_EQ(bookmark_entry->title(), u"C&&D Bookmark");
+  EXPECT_EQ(bookmark_entry->GetMnemonic(), 0);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest,
+       RecentTabsDynamicMenu_UserGeneratedItemsEscapeAmpersands) {
+  RecentTabsDynamicMenu dynamic_menu(&mock_window_interface_);
+  auto parent = actions::ActionItem::Builder().Build();
+
+  RecentTabItem tab_item(RecentTabItem::Type::kTab, u"A&B Tab");
+  RecentTabItem command_item(RecentTabItem::Type::kCommand, u"&Restore");
+  RecentTabItem split_item(RecentTabItem::Type::kSplit, u"X&Y Split");
+  split_item.add_child(
+      RecentTabItem(RecentTabItem::Type::kSplit, u"R&estore split view"));
+
+  dynamic_menu.CreateRecentTabsActionForTesting(
+      parent.get(), {tab_item, command_item, split_item});
+
+  const auto& children = parent->GetChildren().children();
+  ASSERT_EQ(children.size(), 3u);
+  EXPECT_EQ(children[0]->GetActionItem()->GetTextWithMnemonic(), u"A&&B Tab");
+  EXPECT_EQ(children[0]->GetActionItem()->GetText(), u"A&B Tab");
+  EXPECT_EQ(children[1]->GetActionItem()->GetTextWithMnemonic(), u"&Restore");
+  EXPECT_EQ(children[1]->GetActionItem()->GetText(), u"Restore");
+
+  actions::ActionItem* split_action = children[2]->GetActionItem();
+  EXPECT_EQ(split_action->GetTextWithMnemonic(), u"X&&Y Split");
+  EXPECT_EQ(split_action->GetText(), u"X&Y Split");
+  ASSERT_EQ(split_action->GetChildren().children().size(), 1u);
+  EXPECT_EQ(split_action->GetChildren()
+                .children()[0]
+                ->GetActionItem()
+                ->GetTextWithMnemonic(),
+            u"R&estore split view");
+  EXPECT_EQ(
+      split_action->GetChildren().children()[0]->GetActionItem()->GetText(),
+      u"Restore split view");
 }
 
 }  // namespace

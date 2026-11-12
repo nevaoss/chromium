@@ -142,11 +142,46 @@ function toError(webkitError: string): VoiceSearchError {
   }
 }
 
-export interface ComposeboxVoiceSearchElement {
-  $: {
-    input: HTMLInputElement,
-    closeButton: HTMLElement,
-  };
+// Recognitions that this component aborted itself (to submit, cancel, time
+// out, disconnect, or hand the microphone to another instance). This is used
+// to ignore Chrome's duplicate echo of the component's abort calls, as Chrome
+// answers abort() on a live session with an 'aborted' error event. Keyed by
+// recognition because the echo goes to the recognition's owner, which is not
+// always the caller (see start()).
+const selfAbortedRecognitions = new WeakSet<SpeechRecognition>();
+
+function abortRecognition(recognition: SpeechRecognition) {
+  selfAbortedRecognitions.add(recognition);
+  recognition.abort();
+}
+
+/**
+ * Maximum number of times in a row that Android speech recognition is
+ * restarted without receiving any result in between (see
+ * `androidContinuousRecognitionEnabled`). Needed to avoid restarting
+ * constantly (an infinite loop) if the recognizer keeps ending right away.
+ */
+const MAX_ANDROID_RESTARTS_WITHOUT_RESULT: number = 5;
+
+// Scripts that are written without spaces between words.
+const NO_SPACE_SCRIPTS =
+    ['Han', 'Hiragana', 'Katakana', 'Thai', 'Lao', 'Khmer', 'Myanmar']
+        .map(script => `\\p{Script=${script}}`)
+        .join('');
+const NO_SPACE_SCRIPT_END = new RegExp(`[${NO_SPACE_SCRIPTS}]$`, 'u');
+const NO_SPACE_SCRIPT_START = new RegExp(`^[${NO_SPACE_SCRIPTS}]`, 'u');
+
+/**
+ * Joins the transcripts of two consecutive speech recognition sessions. Adds a
+ * space in between, unless there already is whitespace at the boundary or the
+ * boundary is in a script that is written without spaces (e.g. Chinese).
+ */
+function joinTranscripts(previous: string, next: string): string {
+  if (!previous || !next || /\s$/.test(previous) || /^\s/.test(next) ||
+      NO_SPACE_SCRIPT_END.test(previous) || NO_SPACE_SCRIPT_START.test(next)) {
+    return previous + next;
+  }
+  return `${previous} ${next}`;
 }
 
 const ComposeboxVoiceSearchElementBase = I18nMixinLit(CrLitElement);
@@ -235,6 +270,12 @@ export class ComposeboxVoiceSearchElement extends
        */
       manualSubmitIdleTimeout: {type: Number},
       /**
+       * When enabled, recognition is restarted, so that like on desktop the
+       * idle timeout or the user decides when voice search ends. Ignored if
+       * `dynamicTimeoutEnabled` is set.
+       */
+      androidContinuousRecognitionEnabled: {type: Boolean},
+      /**
        * Whether voice search was activated by a keyboard shortcut.
        */
       activatedByKeyboard: {type: Boolean},
@@ -249,6 +290,7 @@ export class ComposeboxVoiceSearchElement extends
       null;
 
   accessor activatedByKeyboard: boolean = false;
+  accessor androidContinuousRecognitionEnabled: boolean = false;
   accessor audioWaveEnabled: boolean = false;
   accessor autosubmitEnabled: boolean = false;
   accessor detailedError: VoiceSearchError|null = null;
@@ -289,6 +331,13 @@ export class ComposeboxVoiceSearchElement extends
   // cumulative result snapshots.
   private readonly androidSpeechRecognition_: boolean =
       getLoadTimeBoolean('androidSpeechRecognition', false);
+  // The transcript recognized before the latest Android recognition restart
+  // (see `androidContinuousRecognitionEnabled`).
+  private androidPreviousTranscript_: string = '';
+  // How many times in a row Android recognition was restarted without any
+  // result. Needed to avoid restarting constantly (an infinite loop) if the
+  // recognizer keeps ending right away.
+  private androidRestartsWithoutResult_: number = 0;
   private blurTimeoutId_: number|null = null;
   private listenerIds_: number[] = [];
   private pageHandler_: PageHandlerRemote =
@@ -309,9 +358,21 @@ export class ComposeboxVoiceSearchElement extends
     this.voiceRecognition_.onaudiostart = this.onAudioStart_.bind(this);
     this.voiceRecognition_.onspeechstart = this.onSpeechStart_.bind(this);
     this.voiceRecognition_.onerror = (e) => {
-      this.onError_(toError(e.error));
+      const error = toError(e.error);
+      if (error === VoiceSearchError.NO_SPEECH &&
+          this.isAndroidContinuousRecognition_()) {
+        // Android ends its session with this error when it hears no speech for
+        // a while. Like for any other session end, `onEnd_()` then decides
+        // whether voice search keeps listening.
+        return;
+      }
+      this.onError_(error);
     };
     this.voiceRecognition_.onnomatch = () => {
+      if (this.isAndroidContinuousRecognition_()) {
+        // Same as for no-speech, when Android hears no recognizable speech.
+        return;
+      }
       this.onError_(VoiceSearchError.NO_MATCH);
     };
   }
@@ -334,7 +395,7 @@ export class ComposeboxVoiceSearchElement extends
     if (ComposeboxVoiceSearchElement.pendingStartInstance_ === this) {
       ComposeboxVoiceSearchElement.pendingStartInstance_ = null;
     }
-    this.voiceRecognition_.abort();
+    abortRecognition(this.voiceRecognition_);
     super.disconnectedCallback();
   }
 
@@ -379,13 +440,17 @@ export class ComposeboxVoiceSearchElement extends
     }
     if (ComposeboxVoiceSearchElement.activeRecognition_ !== null) {
       ComposeboxVoiceSearchElement.pendingStartInstance_ = this;
-      ComposeboxVoiceSearchElement.activeRecognition_.abort();
+      abortRecognition(ComposeboxVoiceSearchElement.activeRecognition_);
       return;
     }
-    this.errorMessage_ = '';
+    this.resetState_();
     // If continuous is false, then speech webkit determines when to end, and
     // there is no manual set timeout.
     this.voiceRecognition_.continuous = !this.dynamicTimeoutEnabled;
+    // Any earlier session of this recognition has ended by now (onEnd_ clears
+    // activeRecognition_, and Chrome sends 'end' after the 'aborted' echo), so
+    // aborts from here on are not ours.
+    selfAbortedRecognitions.delete(this.voiceRecognition_);
     this.voiceRecognition_.start();
     ComposeboxVoiceSearchElement.activeRecognition_ = this.voiceRecognition_;
     this.state_ = State.STARTED;
@@ -540,6 +605,12 @@ export class ComposeboxVoiceSearchElement extends
     e.preventDefault();
     e.stopPropagation();
 
+    if (!this.transcript_) {
+      // Nothing has been recognized yet, so there is nothing to submit. Exit
+      // voice search and return to the searchbox, the same as closing it.
+      this.onCloseClick_();
+      return;
+    }
     this.onFinalResult_(this.transcript_, /*forceSubmit=*/ true);
   }
 
@@ -556,15 +627,25 @@ export class ComposeboxVoiceSearchElement extends
       return;
     }
     this.onError_(VoiceSearchError.NO_SPEECH);
-    this.voiceRecognition_.abort();
+    abortRecognition(this.voiceRecognition_);
   }
 
   private onAudioStart_() {
+    if (this.state_ >= State.AUDIO_RECEIVED) {
+      // Audio capture already started, e.g. before Android recognition got
+      // restarted, so this is not user activity.
+      return;
+    }
     this.resetIdleTimer_();
     this.state_ = State.AUDIO_RECEIVED;
   }
 
   private onSpeechStart_() {
+    if (this.state_ >= State.SPEECH_RECEIVED) {
+      // Speech was already received, e.g. before Android recognition got
+      // restarted. Only results reset the idle timer from here on.
+      return;
+    }
     this.resetIdleTimer_();
     this.state_ = State.SPEECH_RECEIVED;
     this.fire('speech-received');
@@ -613,9 +694,18 @@ export class ComposeboxVoiceSearchElement extends
       const latestResultList = results[results.length - 1]!;
       const latestResult = latestResultList[0];
       assert(latestResult);
-      this.transcript_ = latestResult.transcript;
+      // After a restart, the session only reports what was said since then.
+      this.transcript_ = joinTranscripts(
+          this.androidPreviousTranscript_, latestResult.transcript);
+      this.androidRestartsWithoutResult_ = 0;
       this.processSpeechTranscript_(
           latestResult.transcript, latestResult.confidence, /*append=*/ false);
+      // `processSpeechTranscript_()` only puts the current session's transcript
+      // in `finalResult_` if it's confident (partial results go in
+      // `interimResult_`). Like earlier phrases on desktop, what previous
+      // sessions recognized counts as final either way.
+      this.finalResult_ =
+          joinTranscripts(this.androidPreviousTranscript_, this.finalResult_);
     } else {
       // Process interim results based on confidence.
       for (let j = 0; j < results.length; j++) {
@@ -636,9 +726,14 @@ export class ComposeboxVoiceSearchElement extends
     // timespan has passed, the timeout callback will submit the query.
     this.resetIdleTimer_();
 
-    // Force-stop long queries if queryLengthLimit is not undefined.
+    // Force-stop long queries if queryLengthLimit is not undefined. When
+    // Android recognition gets restarted, everything recognized since voice
+    // search started counts, including what earlier sessions recognized.
+    const queryLength = this.isAndroidContinuousRecognition_() ?
+        this.transcript_.length :
+        this.interimResult_.length;
     if (this.queryLengthLimit !== undefined &&
-        this.interimResult_.length > this.queryLengthLimit) {
+        queryLength > this.queryLengthLimit) {
       this.onFinalResult_(this.transcript_);
     }
   }
@@ -652,6 +747,17 @@ export class ComposeboxVoiceSearchElement extends
       const pending = ComposeboxVoiceSearchElement.pendingStartInstance_;
       ComposeboxVoiceSearchElement.pendingStartInstance_ = null;
       pending.start();
+      return;
+    }
+
+    // The Android recognizer session ended on its own while voice search is
+    // still listening (see `androidContinuousRecognitionEnabled`), so start a
+    // new one. Not once voice search is removed or while the page is hidden,
+    // as Blink aborts recognition on Android then.
+    if (this.isAndroidContinuousRecognition_() && this.isConnected &&
+        !document.hidden && this.state_ >= State.AUDIO_RECEIVED &&
+        this.state_ <= State.RESULT_RECEIVED) {
+      this.restartAndroidRecognition_();
       return;
     }
 
@@ -673,8 +779,11 @@ export class ComposeboxVoiceSearchElement extends
       case State.SPEECH_RECEIVED:
       case State.RESULT_RECEIVED:
         // On Android, 'SpeechRecognitionImpl' always fires 'onEnd' when the
-        // utterance finishes. Submit immediately if a transcript is present.
-        if (this.androidSpeechRecognition_ && this.transcript_) {
+        // utterance finishes. Submit immediately if a transcript is present,
+        // unless recognition is meant to continue like on desktop (see
+        // `androidContinuousRecognitionEnabled`).
+        if (this.androidSpeechRecognition_ &&
+            !this.isAndroidContinuousRecognition_() && this.transcript_) {
           this.onFinalResult_(this.transcript_, /*forceSubmit=*/ true);
           return;
         }
@@ -692,6 +801,36 @@ export class ComposeboxVoiceSearchElement extends
         this.onError_(VoiceSearchError.OTHER);
         return;
     }
+  }
+
+  // Whether Android speech recognition is restarted when its session ends on
+  // its own (see `androidContinuousRecognitionEnabled`).
+  private isAndroidContinuousRecognition_(): boolean {
+    return this.androidSpeechRecognition_ &&
+        this.androidContinuousRecognitionEnabled && !this.dynamicTimeoutEnabled;
+  }
+
+  // Starts a new Android recognizer session that continues the current voice
+  // search. Keeps the state and the idle timer as is, so that like on desktop,
+  // the idle timeout or the user decides when voice search ends.
+  private restartAndroidRecognition_() {
+    if (this.androidRestartsWithoutResult_ >=
+        MAX_ANDROID_RESTARTS_WITHOUT_RESULT) {
+      // The recognizer keeps ending without recognizing anything. Stop
+      // restarting it and end voice search with an error, without submitting.
+      this.onError_(VoiceSearchError.NO_SPEECH);
+      return;
+    }
+    this.androidRestartsWithoutResult_++;
+    this.androidPreviousTranscript_ = this.transcript_;
+    try {
+      this.voiceRecognition_.start();
+    } catch {
+      // Voice search can't keep listening without a recognizer session.
+      this.onError_(VoiceSearchError.OTHER);
+      return;
+    }
+    ComposeboxVoiceSearchElement.activeRecognition_ = this.voiceRecognition_;
   }
 
   private recordMetric_(
@@ -762,6 +901,14 @@ export class ComposeboxVoiceSearchElement extends
   }
 
   private onError_(error: VoiceSearchError) {
+    // Not a real abort: this component aborted the recognition itself while
+    // ending the session normally, e.g. after a query submission or a user
+    // cancellation (see `selfAbortedRecognitions`). An idle timeout with no
+    // transcript has already been recorded as NO_SPEECH by onIdleTimeout_().
+    if (error === VoiceSearchError.ABORTED &&
+        selfAbortedRecognitions.has(this.voiceRecognition_)) {
+      return;
+    }
     if (this.state_ === State.ERROR_RECEIVED && this.error_ === error) {
       return;
     }
@@ -857,7 +1004,7 @@ export class ComposeboxVoiceSearchElement extends
 
   protected voiceModeEndCleanup_() {
     this.removeOutsideListeners_();
-    this.voiceRecognition_.abort();
+    abortRecognition(this.voiceRecognition_);
     this.resetState_();
   }
 
@@ -910,6 +1057,8 @@ export class ComposeboxVoiceSearchElement extends
     this.detailedError = null;
     this.hasMultilineTranscript = false;
     this.transcriptLines = 1;
+    this.androidPreviousTranscript_ = '';
+    this.androidRestartsWithoutResult_ = 0;
     WindowProxy.getInstance().clearTimeout(this.timerId_);
     this.timerId_ = null;
   }

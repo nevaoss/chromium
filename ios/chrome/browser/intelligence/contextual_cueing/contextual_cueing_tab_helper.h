@@ -21,6 +21,7 @@
 #import "components/optimization_guide/proto/features/contextual_cueing.pb.h"
 #import "components/page_content_annotations/core/page_content_annotation_type.h"
 #import "components/prefs/pref_change_registrar.h"
+#import "components/signin/public/identity_manager/identity_manager.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/contextual_cueing/contextual_cueing_evaluator.h"
 #import "ios/chrome/browser/intelligence/page_classification/page_classification_service.h"
@@ -30,6 +31,7 @@
 
 class ProfileIOS;
 @protocol GeminiCommands;
+@protocol LocationBarBadgeCommands;
 
 namespace feature_engagement {
 class Tracker;
@@ -51,7 +53,8 @@ class ContextualCueingCapTrackerService;
 class ContextualCueingTabHelper
     : public web::WebStateObserver,
       public web::WebStateUserData<ContextualCueingTabHelper>,
-      public GeminiService::Observer {
+      public GeminiService::Observer,
+      public signin::IdentityManager::Observer {
  public:
   struct BackgroundTabContext {
     GURL url;
@@ -121,21 +124,47 @@ class ContextualCueingTabHelper
   std::optional<page_content_annotations::CategoryType> GetActiveCategoryType()
       const;
 
+  // Sets the location bar badge commands handler.
+  void SetLocationBarBadgeCommandsHandler(id<LocationBarBadgeCommands> handler);
+
+  // Sets the Gemini commands handler.
+  void SetGeminiHandler(id<GeminiCommands> handler);
+
+  // Returns the prepopulated prompt for the active contextual cue, or nil if
+  // no cue or prompt is available.
+  NSString* GetContextualCuePrompt() const;
+
   // Shows the contextual cue infobar banner for the current cue. Returns true
   // if presentation succeeded or was queued.
   bool ShowContextualCueInfobar(id<GeminiCommands> gemini_handler = nil);
+
+  // Shows the contextual cue omnibox chip for the current cue. Returns true
+  // if presentation succeeded or was queued.
+  bool ShowContextualCueChip(id<LocationBarBadgeCommands> badge_handler = nil);
 
   // Records that a contextual cue was shown to the user. Must only be called
   // once per cue presentation. Returns true if the cue is allowed to be shown.
   // Returns false if the Feature Engagement Tracker rejected the promo, in
   // which case the cue is invalidated and callers MUST hide the chip.
-  [[nodiscard]] bool RecordCueShown();
+  bool RecordCueShown();
 
   // Records that a contextual cue was explicitly dismissed by the user.
   void RecordCueDismissed();
 
   // Records that a contextual cue was clicked by the user.
   void RecordCueClicked();
+
+  // Sets the contextual cue directly for testing purposes.
+  void SetContextualCueForTesting(optimization_guide::proto::ContextualCue cue);
+
+  // Sets whether Gemini (Helios) is currently invoked in the window hosting
+  // this tab. Driven by `ContextualCueingBrowserAgent`. While invoked, no new
+  // cues are requested or presented, and a cue already on screen is dismissed.
+  void SetGeminiInvoked(bool is_invoked);
+
+  // Returns whether Gemini (Helios) is currently invoked in the window hosting
+  // this tab, as last set by `SetGeminiInvoked()`.
+  bool is_gemini_invoked() const { return is_gemini_invoked_; }
 
   // web::WebStateObserver:
   void DidFinishNavigation(web::WebState* web_state,
@@ -149,6 +178,12 @@ class ContextualCueingTabHelper
 
   // GeminiService::Observer:
   void OnGeminiEligibilityChanged() override;
+
+  // signin::IdentityManager::Observer:
+  void OnPrimaryAccountChanged(
+      const signin::PrimaryAccountChangeEvent& event_details) override;
+  void OnIdentityManagerShutdown(
+      signin::IdentityManager* identity_manager) override;
 
  private:
   friend class web::WebStateUserData<ContextualCueingTabHelper>;
@@ -196,6 +231,10 @@ class ContextualCueingTabHelper
   void NotifyContextualCueReceived(
       std::optional<optimization_guide::proto::ContextualCue> cue);
 
+  // Automatically presents the current contextual cue on the appropriate UI
+  // surface (infobar or omnibox chip). Returns true if presentation succeeded.
+  bool PresentContextualCue();
+
   // Clears `cue_` and notifies observers that the cue is no longer valid. No-op
   // if there is no cue.
   void InvalidateCue();
@@ -203,13 +242,24 @@ class ContextualCueingTabHelper
   // Checks if history sync is enabled.
   bool IsHistorySyncEnabled(ProfileIOS* profile);
 
+  // Checks if `profile` has a signed-in primary account.
+  bool IsUserSignedIn(ProfileIOS* profile);
+
   // Checks if the user is eligible for Gemini.
   bool IsUserEligibleForGemini(ProfileIOS* profile);
+
+  // Checks if the user belongs to an enabled audience tier for contextual cues
+  // (`kShowCuesToConsentedUsers`, `kShowCuesToSignedInUsers`,
+  // `kShowCuesToAllUsers`). Signed-in users must additionally be eligible for
+  // Gemini; signed-out users are only allowed by the "all users" tier and must
+  // not be blocked by enterprise policy.
+  bool IsUserEligibleForContextualCues(ProfileIOS* profile);
 
   // Checks if the user has enabled Gemini suggestions in settings.
   bool IsGeminiSuggestionsSettingEnabled() const;
 
-  // Callback invoked when Gemini suggestions setting or policies change.
+  // Callback invoked when the Gemini suggestions setting, the Gemini consent,
+  // sign-in state, or policies change.
   void OnSuggestionsPreferenceChanged();
 
   // Returns the CapTrackerService for the associated profile, or nullptr.
@@ -230,6 +280,9 @@ class ContextualCueingTabHelper
   PrefChangeRegistrar pref_change_registrar_;
   base::ScopedObservation<GeminiService, GeminiService::Observer>
       gemini_service_observation_{this};
+  base::ScopedObservation<signin::IdentityManager,
+                          signin::IdentityManager::Observer>
+      identity_manager_observation_{this};
 
   // Runs `feature_engagement::Tracker::Dismissed` when the contextual cue chip
   // stops showing (or on tab helper destruction). Empty when not active.
@@ -242,12 +295,20 @@ class ContextualCueingTabHelper
   std::optional<PageClassificationResult> page_classification_result_;
   // The top eligible category type determined for the current page.
   std::optional<page_content_annotations::CategoryType> active_category_type_;
-  // The contextual cue proto payload returned from server model execution,
-  // containing UI labels and the prompt.
+  // TODO(crbug.com/559227915): Replace
+  // `optimization_guide::proto::ContextualCue` with a dedicated model struct
+  // holding only the validated fields required for UI presentation and cap
+  // tracking. The contextual cue proto payload returned from server model
+  // execution, containing UI labels and the prompt.
   std::optional<optimization_guide::proto::ContextualCue> cue_;
   // The UI surface (`kMessage` or `kOmniboxChip`) selected for `cue_`.
   std::optional<ContextualCueUiType> cue_ui_type_;
+  // Whether `cue_` has already been presented on a UI surface.
+  bool has_presented_cue_ = false;
   bool is_model_execution_in_flight_ = false;
+  // Whether Gemini (Helios) is invoked in the hosting window, as last reported
+  // by `ContextualCueingBrowserAgent` through `SetGeminiInvoked()`.
+  bool is_gemini_invoked_ = false;
 
   std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry_;
 
@@ -255,6 +316,11 @@ class ContextualCueingTabHelper
 
   base::ScopedObservation<web::WebState, web::WebStateObserver>
       web_state_observation_{this};
+
+  // Handler for dispatching location bar badge commands.
+  id<LocationBarBadgeCommands> location_bar_badge_handler_ = nil;
+  // Handler for dispatching Gemini commands.
+  id<GeminiCommands> gemini_handler_ = nil;
 
   base::WeakPtrFactory<ContextualCueingTabHelper> weak_ptr_factory_{this};
 };

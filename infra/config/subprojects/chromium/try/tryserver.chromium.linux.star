@@ -143,7 +143,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-annotator-rel",
-    description_html = "Runs tests for the Network Traffic Annotation Auditor on Linux, mirroring linux-annotator-rel.",
     mirrors = ["ci/linux-annotator-rel"],
     gn_args = gn_args.config(
         configs = [
@@ -380,10 +379,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-surface-embed-rel",
-    description_html = (
-        "Runs web_tests and wpt_tests using surface embed " +
-        "against complete desktop Chrome browser."
-    ),
     mirrors = ["ci/linux-surface-embed-rel"],
     gn_args = "ci/linux-surface-embed-rel",
     contact_team_email = "chrome-webium-product-eng@google.com",
@@ -828,6 +823,7 @@ try_.builder(
 
 try_.builder(
     name = "linux_chromium_clobber_deterministic",
+    description_html = "Verifies that Linux x64 release builds are deterministic.",
     executable = "recipe:swarming/deterministic_build",
     gn_args = gn_args.config(
         configs = [
@@ -1047,6 +1043,7 @@ try_.builder(
 
 try_.builder(
     name = "linux_upload_clang",
+    description_html = "Builds and uploads Clang toolchain packages for Linux x64.",
     executable = "recipe:chromium_toolchain/package_clang",
     gn_args = gn_args.config(
         configs = [
@@ -1061,6 +1058,7 @@ try_.builder(
     execution_timeout = 5 * time.hour,
     notifies = ["chrome-rust-toolchain"],
     properties = {
+        "disable_tbi": True,
         "$build/chromium_toolchain": {
             "toolchain": "CLANG",
             "trusted_build_instance": "lexan-release-infra-linux-prod",
@@ -1074,6 +1072,7 @@ try_.builder(
 
 try_.builder(
     name = "linux_upload_rust",
+    description_html = "Builds and uploads Rust toolchain packages for Linux x64.",
     executable = "recipe:chromium_toolchain/package_rust",
     builderless = True,
     cores = 32,
@@ -1104,7 +1103,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-no-initial-webui-rel",
-    description_html = "Mirror of Linux No Initial WebUI CI builder",
     mirrors = [
         "ci/Linux Builder",
         "ci/linux-no-initial-webui-rel",
@@ -1133,6 +1131,7 @@ try_.builder(
 
 try_.builder(
     name = "tricium-metrics-analysis",
+    description_html = "Runs Tricium metrics analysis on modified JSON and XML files.",
     executable = "recipe:tricium_metrics",
     cq_settings = try_.cq_settings(
         custom_cq_run_modes = [cq.MODE_NEW_PATCHSET_RUN],
@@ -1146,6 +1145,7 @@ try_.builder(
 
 try_.builder(
     name = "tricium-oilpan-analysis",
+    description_html = "Runs Tricium Oilpan static analysis on modified C/C++ files.",
     executable = "recipe:tricium_oilpan",
     cq_settings = try_.cq_settings(
         custom_cq_run_modes = [cq.MODE_NEW_PATCHSET_RUN],
@@ -1293,7 +1293,6 @@ try_.builder(
 
 try_.builder(
     name = "linux-separate-renderer-rel",
-    description_html = "Runs separate renderer tests on Linux, mirroring linux-separate-renderer-fyi-rel.",
     mirrors = [
         "ci/linux-separate-renderer-fyi-rel",
     ],

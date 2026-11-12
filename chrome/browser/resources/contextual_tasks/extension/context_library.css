@@ -1,0 +1,32 @@
+/* Copyright 2026 The Chromium Authors
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file. */
+
+/* #css_wrapper_metadata_start
+ * #type=style-lit
+ * #css_wrapper_metadata_end */
+
+/* Shrink-wraps the content so the document reports a natural size to the
+ * embedder via responsive-embedded-sizing. Avoid width/height: 100% here. */
+:host {
+  align-items: center;
+  display: inline-flex;
+  height: 100%;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: max-content;
+}
+
+#faviconGroup {
+  --composebox-favicon-border-color:
+      var(--color-override-favicons-border, rgb(240, 242, 245));
+  --composebox-favicon-skeleton-color:
+      var(--color-override-favicon-skeleton, var(--color-sys-surface-variant,
+          var(--cr-fallback-color-surface-variant, #e1e3e1)));
+}
+
+:host([dark-mode]) #faviconGroup {
+  --composebox-favicon-border-color:
+      var(--color-override-favicons-border, rgb(78, 80, 89));
+}

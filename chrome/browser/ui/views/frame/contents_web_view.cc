@@ -28,6 +28,10 @@
 #include "ui/wm/core/window_util.h"
 #endif
 
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/actor/actor_util.h"  // nogncheck
+#endif
+
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(ContentsWebView,
                                       kContentsWebViewElementId);
 
@@ -76,7 +80,8 @@ void ContentsWebView::SetBackgroundRadii(const gfx::RoundedCornersF& radii) {
   background_layer->SetIsFastRoundedCorner(true);
 }
 
-void ContentsWebView::SetIsAnimatingBounds(bool is_animating) {
+void ContentsWebView::SetIsAnimatingBounds(bool is_animating,
+                                           bool is_origin_changing) {
   if (is_animating_bounds_ == is_animating) {
     return;
   }
@@ -88,7 +93,7 @@ void ContentsWebView::SetIsAnimatingBounds(bool is_animating) {
       status_bubble_->Hide();
     }
 
-    if (use_default_deadline_when_animating_) {
+    if (use_default_deadline_when_animating_ && is_origin_changing) {
       // Update the render widget host view to set to use default deadline when
       // animating. This is a best effort synchronization between browser and
       // web contents.
@@ -174,13 +179,23 @@ void ContentsWebView::DidGetUserInteraction(const blink::WebInputEvent& event) {
   // If the user interacts with the web contents, ensure it is activated.
   // This handles cases where the native window does not receive a focus
   // event, such as when a permission prompt is open in another split view.
-  if (event.GetType() == blink::WebInputEvent::Type::kMouseDown ||
-      event.GetType() == blink::WebInputEvent::Type::kTouchStart) {
-    // RequestFocus() ensures the container view receives focus,
-    // which is sufficient to update the browser UI.
-    if (!HasFocus()) {
-      RequestFocus();
-    }
+  if (event.GetType() != blink::WebInputEvent::Type::kMouseDown &&
+      event.GetType() != blink::WebInputEvent::Type::kTouchStart) {
+    return;
+  }
+
+  // Clicks simulated by the actor must not steal focus or activate the window.
+  // This isn't perfect: there are some edge cases, such as short-lived tasks
+  // (less than a few seconds), where user input is not blocked, so real clicks
+  // skip this too.
+  if (actor::HaveActiveTaskForContents(web_contents())) {
+    return;
+  }
+
+  // RequestFocus() ensures the container view receives focus,
+  // which is sufficient to update the browser UI.
+  if (!HasFocus()) {
+    RequestFocus();
   }
 }
 #endif

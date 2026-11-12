@@ -102,6 +102,10 @@ BASE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation, DISABLED);
 BASE_FEATURE(kWebUIOmniboxFullPopupDoubleClick, ENABLED);
 // If enabled, enables OmniboxEverywhere popup triggered by shortcut.
 BASE_FEATURE(kOmniboxEverywhere, DISABLED);
+// If enabled, submitting a query with screenshots attached in Omnibox
+// Everywhere opens the result in a new 800x600 browser window aligned with the
+// Omnibox Everywhere popup.
+BASE_FEATURE(kOmniboxEverywhereScreenshotNewWindow, ENABLED);
 // Controls multiline searchbox support in OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereMultilineParam{
     &kOmniboxEverywhere, "Multiline", true};
@@ -113,13 +117,24 @@ const base::FeatureParam<bool>
 // Controls showing the profile picker menu on profile avatar click in
 // OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereProfilePickerParam{
-    &kOmniboxEverywhere, "ProfilePicker", false};
+    &kOmniboxEverywhere, "ProfilePicker", true};
 // Controls showing most visited tiles in OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereMostVisitedParam{
     &kOmniboxEverywhere, "MostVisited", true};
 // Controls whether small Loomnibox (480px width) is enabled.
 const base::FeatureParam<bool> kOmniboxEverywhereSmallLoomniboxParam{
-    &kOmniboxEverywhere, "smallLoomnibox", true};
+    &kOmniboxEverywhere, "smallLoomnibox", false};
+// Controls whether dynamic sizing is enabled for OmniboxEverywhere.
+const base::FeatureParam<bool> kOmniboxEverywhereDynamicSizingParam{
+    &kOmniboxEverywhere, "DynamicSizing", true};
+// Controls the expanded content width (680 or 600) when DynamicSizing is
+// enabled.
+const base::FeatureParam<int> kOmniboxEverywhereDynamicSizingWidthParam{
+    &kOmniboxEverywhere, "DynamicSizingWidth", 680};
+// Controls whether small (14px) font size is enabled for OmniboxEverywhere.
+const base::FeatureParam<bool> kOmniboxEverywhereSmallFontParam{
+    &kOmniboxEverywhere, "SmallFont", true};
+
 // Controls showing titles under most visited tiles in OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereMostVisitedShowTitleParam{
     &kOmniboxEverywhere, "MostVisitedShowTitle", true};
@@ -329,6 +344,16 @@ bool IsAimPopupEnabled(Profile* profile) {
   auto* aim_service = AimEligibilityServiceFactory::GetForProfile(profile);
   return aim_service && aim_service->IsAimEligible() &&
          aim_service->IsFuseboxEligible();
+}
+
+bool ShouldCreateAimPopupPresenter(Profile* profile) {
+  if (!IsAimPopupFeatureEnabled()) {
+    return false;
+  }
+  if (!base::FeatureList::IsEnabled(kOmniboxAimPopupRequireEligibility)) {
+    return true;
+  }
+  return IsAimPopupEnabled(profile);
 }
 
 bool IsOmniboxEverywhereEligible(Profile* profile) {

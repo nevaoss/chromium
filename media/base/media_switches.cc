@@ -16,6 +16,7 @@
 #include "build/chromecast_buildflags.h"
 #include "gpu/config/gpu_driver_bug_workarounds.h"
 #include "gpu/config/gpu_finch_features.h"
+#include "media/base/audio_parameters.h"
 #include "media/media_buildflags.h"
 #include "ui/gl/gl_features.h"
 #include "ui/gl/gl_utils.h"
@@ -373,6 +374,12 @@ BASE_FEATURE(kAudioFocusDuckFlash,
 #endif
 );
 
+// Immediately pauses AudioRendererMixer's underlying output sink when all
+// inputs are removed on explicit player pauses instead of waiting for the
+// 10-second mixer pause delay.
+BASE_FEATURE(kAudioRendererMixerImmediatePause,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Allows the AutoPictureInPictureTabHelper to automatically enter
 // picture-in-picture when a webpage is occluded by another window.
 BASE_FEATURE(kAutoPictureInPictureOnWindowOccluded,
@@ -467,11 +474,11 @@ BASE_FEATURE(kCdmHostVerification, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Elevates the CDM service process' priority to improve media playback
 // performance.
-BASE_FEATURE(kCdmProcessPriorityElevation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCdmProcessPriorityElevation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Elevates the CDM service process' main thread priority to improve media
 // playback performance.
-BASE_FEATURE(kCdmThreadPriorityElevation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCdmThreadPriorityElevation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Safety switch to allow us to revert to the previous behavior of using the
 // cached bounds when the permission prompt is visible. If this feature is
@@ -494,14 +501,8 @@ BASE_FEATURE(kContextMenuSaveVideoFrameAs, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables the "Search Video Frame with <Search Provider>" context menu item.
 BASE_FEATURE(kContextMenuSearchForVideoFrame, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Forces D3DVideoDecoder to use one decoder texture per picture buffer.
-// Owner: media-gpu-team@chromium.org
-// Expiry: When no longer needed for decode texture selection experiments.
-BASE_FEATURE(kD3D11VideoDecoderForceSingleTexture,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kD3D11VideoDecoderUseSharedHandle,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Runs the media service in the GPU process on a dedicated thread.
 BASE_FEATURE(kDedicatedMediaServiceThread,
@@ -603,8 +604,7 @@ BASE_FEATURE(kFeatureManagementLiveTranslateCrOS,
 
 // Controls whether FFmpegDemuxer attaches the HDR metadata carried by ITU-T
 // T.35 timed metadata tracks to the video tracks that reference them.
-BASE_FEATURE(kFFmpegDemuxerIT35MetadataTrack,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFFmpegDemuxerIT35MetadataTrack, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Forces software video encoders to be used for low resolutions.
 // Enabled-by-default, except for Android where SW encoder for H26x and AV1 are
@@ -648,6 +648,17 @@ BASE_FEATURE(kGlobalVaapiLock, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kH264IDRKeyframeRequiresParameterSets,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Skips H.264 NAL units with the unspecified nal_unit_type 31 during Annex B
+// conversion, to work around platform decoders that fail on them.
+// TODO(b/567236166): Remove once the cros-codecs fix has rolled out.
+BASE_FEATURE(kH264SkipUnspecifiedNalus,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
+
 // Enables handling of hardware media keys for controlling media.
 BASE_FEATURE(kHardwareMediaKeyHandling,
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -674,7 +685,7 @@ BASE_FEATURE(kHardwareSecureDecryption, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables hardware secure AV1 decoding if supported by the hardware
 // and the OS Content Decryption Module (CDM).
-BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Allows automatically disabling hardware secure Content Decryption Module
 // (CDM) after failures or crashes to fallback to software secure CDMs. If this
@@ -873,12 +884,6 @@ BASE_FEATURE(kOverlayFullscreenVideo,
 // recovery point with `recovery_frame_cnt=0` has been found.
 BASE_FEATURE(kParseSEIRecoveryPoints, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// We plan to remove the background pause timer feature from WebMediaPlayerImpl.
-// We received reports that suggest that this feature's codepath hasn't been
-// exercised for a long time. This is a finch killswitch to rollback to the
-// previous behavior if we find any problems while disabling this feature.
-BASE_FEATURE(kPauseBackgroundTimer, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kPauseMutedBackgroundAudio,
 #if BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT
@@ -956,9 +961,6 @@ BASE_FEATURE(kResumeBackgroundVideo,
 // for starting attachment to HTMLME.
 BASE_FEATURE(kRevokeMediaSourceObjectURLOnAttach,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables Rust version of MPEG parser (MP3/ADTS). Remove after M152 stable.
-BASE_FEATURE(kRustMpegAudioDataParser, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable the Speaker Change Detection feature, which inserts a line break when
 // the Speech On-Device API (SODA) detects a speaker change.
@@ -1193,10 +1195,6 @@ BASE_FEATURE(kOpenH264SoftwareEncoder, base::FEATURE_ENABLED_BY_DEFAULT);
 // Vision is allowed.
 BASE_FEATURE(kAllowClearDolbyVisionInMseWhenPlatformEncryptedDvEnabled,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables clear Dolby Vision playback through a pure MFT processor in the GPU
-// process, working together with the D3D11 video decoder.
-BASE_FEATURE(kAllowClearDolbyVisionViaMFT, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION is enabled at build time, allow
 // the support of encrypted Dolby Vision. Have no effect when
@@ -1529,6 +1527,13 @@ BASE_FEATURE(kCastMacForceBaselineProfile, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether hardware H264 is default enabled on macOS.
 BASE_FEATURE(kCastStreamingMacHardwareH264, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Use AVFoundation instead of AUHAL for PCM playback output on macOS 27+.
+// AudioManagerMac selects this backend only when the feature is enabled, the
+// format is linear or low-latency PCM, and the latency tag is playback. Stereo
+// and multichannel layouts both qualify. macOS can then spatialize playback for
+// compatible AirPods (Off, Fixed, Head Tracking).
+BASE_FEATURE(kMacAVFoundationPlayback, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables system audio loopback capture using the macOS CoreAudio tap API for
 // Cast.
@@ -2038,4 +2043,19 @@ int GetAecDelayNumFilters() {
 }
 
 #endif  // BUILDFLAG(SYSTEM_LOOPBACK_AS_AEC_REFERENCE)
+
+bool IsMacAVFoundationPlaybackSupported(const AudioParameters& params) {
+#if BUILDFLAG(IS_MAC)
+  if (__builtin_available(macOS 27, *)) {
+    const bool pcm =
+        params.IsValid() &&
+        (params.format() == AudioParameters::AUDIO_PCM_LOW_LATENCY ||
+         params.format() == AudioParameters::AUDIO_PCM_LINEAR);
+    return pcm && base::FeatureList::IsEnabled(kMacAVFoundationPlayback) &&
+           params.latency_tag() == AudioLatency::Type::kPlayback;
+  }
+#endif
+  return false;
+}
+
 }  // namespace media

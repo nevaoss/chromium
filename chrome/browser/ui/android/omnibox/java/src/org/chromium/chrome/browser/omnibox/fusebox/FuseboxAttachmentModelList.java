@@ -18,11 +18,12 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge.ContextUploadObserver;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
+import org.chromium.chrome.browser.tab.utilities.TabLoadingService;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.contextual_search.ContextUploadErrorType;
 import org.chromium.components.contextual_search.ContextUploadStatus;
-import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.ui.modelutil.ListObservable.ListObserver;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
@@ -43,12 +44,10 @@ import java.util.function.Predicate;
 public class FuseboxAttachmentModelList
         implements ContextUploadObserver, Iterable<FuseboxAttachment> {
 
+    /** The maximum number of attachments that can be attached at once. */
+    public static final int MAX_ATTACHMENTS = 10;
+
     private final ModelList mModelList = new ModelList();
-
-    public static int getMaxAttachments() {
-        return OmniboxFeatures.sMultiattachmentFusebox.getValue() ? 10 : 1;
-    }
-
     private final Set<Integer> mAttachedTabIds = new ArraySet<>();
     private final ObserverList<FuseboxAttachmentChangeListener> mAttachmentChangeListeners =
             new ObserverList<>();
@@ -399,6 +398,7 @@ public class FuseboxAttachmentModelList
                 mModelList.update(index, pendingAttachment);
                 FuseboxMetrics.notifyAttachmentSucceeded(
                         pendingAttachment.startTime, pendingAttachment.buttonType);
+                maybeRecordTabAttachmentEffectiveDuration(pendingAttachment);
                 break;
         }
 
@@ -410,6 +410,21 @@ public class FuseboxAttachmentModelList
         for (var listener : mAttachmentChangeListeners) {
             listener.onAttachmentUploadStatusChanged();
         }
+    }
+
+    /**
+     * Records the end-to-end preparation latency for a tab attached via the tab picker, covering
+     * any on-demand load in the picker and the subsequent upload.
+     *
+     * @param attachment The attachment whose upload just completed successfully.
+     */
+    private void maybeRecordTabAttachmentEffectiveDuration(FuseboxAttachment attachment) {
+        if (attachment.buttonType != FuseboxAttachmentButtonType.TAB_PICKER) return;
+
+        long loadDurationMs =
+                TabLoadingService.getInstance().getAndClearLoadDuration(attachment.getTabId());
+        FuseboxMetrics.recordTabAttachmentEffectiveDuration(
+                attachment.startTime, loadDurationMs, attachment.isPartOfMultiTabSelection());
     }
 
     private @Nullable FuseboxAttachment findAttachmentWithToken(String token) {
@@ -429,7 +444,7 @@ public class FuseboxAttachmentModelList
      * if needed.
      */
     public int getRemainingAttachments() {
-        return getMaxAttachments() - size();
+        return MAX_ATTACHMENTS - size();
     }
 
     private void notifyAttachmentUploadFailed() {

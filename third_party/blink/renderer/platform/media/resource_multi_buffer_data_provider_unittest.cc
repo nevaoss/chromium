@@ -28,6 +28,7 @@
 #include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_util.h"
+#include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/platform/web_network_state_notifier.h"
 #include "third_party/blink/public/platform/web_string.h"
@@ -100,8 +101,9 @@ class ResourceMultiBufferDataProviderTest : public testing::Test {
                   media::DataSource::EncodingMode encoding_mode =
                       media::DataSource::EncodingMode::kIdentity) {
     url_ = KURL(url);
-    url_data_ = url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED,
-                                     UrlData::kNormal, encoding_mode);
+    url_data_ =
+        url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED, UrlData::kNormal,
+                             security_origin_, encoding_mode);
     url_data_->set_etag(kEtag);
     DCHECK(url_data_);
     url_data_->OnRedirect(
@@ -235,6 +237,8 @@ class ResourceMultiBufferDataProviderTest : public testing::Test {
   int32_t first_position_;
 
   NiceMock<MockResourceFetchContext> fetch_context_;
+  scoped_refptr<const SecurityOrigin> security_origin_ =
+      SecurityOrigin::CreateUniqueOpaque();
   std::unique_ptr<UrlIndex> url_index_;
   scoped_refptr<UrlData> url_data_;
   scoped_refptr<UrlData> redirected_to_;
@@ -298,6 +302,52 @@ TEST_F(ResourceMultiBufferDataProviderTest, DestructedUrlIndexDidFail) {
   url_index_.reset();
   EXPECT_CALL(*this, RedirectCallback(testing::IsNull()));
   loader_->DidFail(WebURLError(net::ERR_ABORTED, url_));
+}
+
+// An ORB-blocked response is a cross-origin no-cors response, so the data must
+// be marked as cross-origin to avoid leaking information about it.
+TEST_F(ResourceMultiBufferDataProviderTest, DidFailBlockedByOrbIsCrossOrigin) {
+  Initialize(kHttpUrl, 0);
+  Start();
+  scoped_refptr<UrlData> url_data = url_data_;
+  EXPECT_CALL(*this, RedirectCallback(testing::IsNull()));
+  loader_->DidFail(WebURLError(net::ERR_BLOCKED_BY_ORB, url_));
+  EXPECT_TRUE(url_data->is_cors_cross_origin());
+}
+
+TEST_F(ResourceMultiBufferDataProviderTest, DidFailOtherErrorNotCrossOrigin) {
+  Initialize(kHttpUrl, 0);
+  Start();
+  scoped_refptr<UrlData> url_data = url_data_;
+  EXPECT_CALL(*this, RedirectCallback(testing::IsNull()));
+  loader_->DidFail(WebURLError(net::ERR_FAILED, url_));
+  EXPECT_FALSE(url_data->is_cors_cross_origin());
+}
+
+// An ORB block is deterministic, so it must fail immediately rather than being
+// retried, even at a non-zero position where transient failures are retried.
+TEST_F(ResourceMultiBufferDataProviderTest, DidFailBlockedByOrbDoesNotRetry) {
+  Initialize(kHttpUrl, 100);
+  // Exactly one loader must be created: the initial one. A retry would create
+  // a second one. The default action from the fixture's ON_CALL applies.
+  EXPECT_CALL(fetch_context_, CreateUrlLoader(_)).Times(1);
+  Start();
+  scoped_refptr<UrlData> url_data = url_data_;
+  EXPECT_CALL(*this, RedirectCallback(testing::IsNull()));
+  loader_->DidFail(WebURLError(net::ERR_BLOCKED_BY_ORB, url_));
+  EXPECT_TRUE(url_data->is_cors_cross_origin());
+  task_environment_.FastForwardUntilNoTasksRemain();
+}
+
+// Transient errors at a non-zero position are still retried.
+TEST_F(ResourceMultiBufferDataProviderTest, DidFailOtherErrorRetries) {
+  Initialize(kHttpUrl, 100);
+  // The initial loader plus one retry.
+  EXPECT_CALL(fetch_context_, CreateUrlLoader(_)).Times(2);
+  Start();
+  EXPECT_CALL(*this, RedirectCallback(_)).Times(0);
+  loader_->DidFail(WebURLError(net::ERR_FAILED, url_));
+  task_environment_.FastForwardUntilNoTasksRemain();
 }
 
 TEST_F(ResourceMultiBufferDataProviderTest, DestructedUrlIndexDidFinish) {
@@ -379,12 +429,27 @@ TEST_F(ResourceMultiBufferDataProviderTest, InvalidPartialResponse) {
   loader_->DidReceiveResponse(response);
 }
 
+TEST_F(ResourceMultiBufferDataProviderTest, OpaqueRangeNotSatisfiableFails) {
+  Initialize(kHttpUrl, 0);
+  Start();
+
+  EXPECT_CALL(*this, RedirectCallback(scoped_refptr<UrlData>(nullptr)));
+
+  WebURLResponse response(url_);
+  response.SetHttpStatusCode(416);
+  response.SetType(network::mojom::FetchResponseType::kOpaque);
+  loader_->DidReceiveResponse(response);
+  EXPECT_TRUE(url_data_->is_cors_cross_origin());
+  EXPECT_TRUE(url_data_->multibuffer()->map().empty());
+}
+
 TEST_F(ResourceMultiBufferDataProviderTest, TestRedirects) {
   // Test redirect.
   Initialize(kHttpUrl, 0);
   Start();
   Redirect(kHttpRedirect);
   FullResponse(1024);
+  EXPECT_EQ(url_data_->security_origin(), security_origin_);
   StopWhenLoad();
 }
 
@@ -430,7 +495,7 @@ TEST_F(ResourceMultiBufferDataProviderTest, NoCrossOriginMediaLeaks) {
   ASSERT_TRUE(loader_->WillFollowRedirect(url_b, response_b));
   task_environment_.FastForwardUntilNoTasksRemain();
 
-  auto SetUrlDataAndCreateReader =
+  auto set_url_data_and_create_reader =
       [&](const scoped_refptr<UrlData>& new_url_data) {
         reader.reset();
         url_data_ = new_url_data;
@@ -438,7 +503,7 @@ TEST_F(ResourceMultiBufferDataProviderTest, NoCrossOriginMediaLeaks) {
       };
 
   EXPECT_CALL(*this, RedirectCallback(_))
-      .WillRepeatedly(SetUrlDataAndCreateReader);
+      .WillRepeatedly(set_url_data_and_create_reader);
   loader_->DidReceiveResponse(response_b);
   ASSERT_TRUE(loader_);
   task_environment_.FastForwardUntilNoTasksRemain();
@@ -488,6 +553,96 @@ TEST_F(ResourceMultiBufferDataProviderTest, AllowGzip) {
 
   Start();
   StopWhenLoad();
+}
+
+TEST_F(ResourceMultiBufferDataProviderTest,
+       PruneEmptiesUrlDataDuringDidReceiveData) {
+  Initialize(kHttpUrl, 0);
+  url_data_->Use();
+  Start();
+  PartialResponse(0, 100, 1024);
+
+  // Drop the test's reference so `url_index_` holds the sole reference to
+  // `UrlData`. Since there is no active `MultiBufferReader`, `GlobalLRU` max
+  // size is 0 and blocks are unpinned. Receiving a full block will cause
+  // `OnDataProviderEvent` to prune all blocks and invoke `UrlData::OnEmpty()`,
+  // which must not destroy `UrlData` / `MultiBuffer` while still on the stack.
+  ResourceMultiBufferDataProvider* loader = loader_.ExtractAsDangling();
+  url_data_ = nullptr;
+
+  std::string data_str(1, 'a');
+  loader->DidReceiveData(data_str);
+}
+
+TEST_F(ResourceMultiBufferDataProviderTest,
+       RedirectToSameUrlReplacesUrlDataInUrlIndex) {
+  Initialize(kHttpUrl, 0);
+  Start();
+  PartialResponse(0, 100, 1024);
+
+  // Drop the test's reference so `url_index_` holds the sole reference to
+  // `UrlData`.
+  ResourceMultiBufferDataProvider* loader = loader_.ExtractAsDangling();
+  url_data_ = nullptr;
+
+  // Redirect to the same URL with a no-cache response so `url_data_->Valid()`
+  // becomes false. In `DidReceiveResponse()`, `GetByUrl()` creates a new
+  // `UrlData` for the same key and `TryInsert()` replaces the old `UrlData` in
+  // `url_index_`, which must not destroy `url_data_` and `loader` before
+  // `loader` is migrated to the new `UrlData`.
+  WebURLResponse redirect_response(url_);
+  redirect_response.SetHttpHeaderField(WebString::FromUtf8("Cache-Control"),
+                                       WebString::FromUtf8("no-cache"));
+  EXPECT_CALL(*this, RedirectCallback(_))
+      .WillOnce(Invoke(this, &ResourceMultiBufferDataProviderTest::SetUrlData));
+  ASSERT_TRUE(loader->WillFollowRedirect(WebURL(url_), redirect_response));
+
+  WebURLResponse response(url_);
+  response.SetHttpHeaderField(WebString::FromUtf8("Content-Range"),
+                              WebString::FromUtf8("bytes 0-100/1024"));
+  response.SetExpectedContentLength(101);
+  response.SetHttpHeaderField(WebString::FromUtf8("Accept-Ranges"),
+                              WebString::FromUtf8("bytes"));
+  response.SetHttpStatusCode(kHttpPartialContent);
+  loader->DidReceiveResponse(response);
+  EXPECT_TRUE(url_data_);
+}
+
+TEST_F(ResourceMultiBufferDataProviderTest, DestructedUrlIndexStartViaReader) {
+  url_index_ = std::make_unique<UrlIndex>(
+      &fetch_context_, task_environment_.GetMainThreadTaskRunner());
+  url_ = KURL(kHttpUrl);
+  url_data_ = url_index_->GetByUrl(url_, UrlData::CORS_UNSPECIFIED,
+                                   UrlData::kNormal, security_origin_);
+
+  std::unique_ptr<MultiBufferReader> reader;
+  url_data_->OnRedirect(blink::BindOnce(
+      [](std::unique_ptr<MultiBufferReader>* reader_ptr,
+         const scoped_refptr<UrlData>& destination) {
+        EXPECT_FALSE(destination);
+        reader_ptr->reset();
+      },
+      Unretained(&reader)));
+
+  url_index_.reset();
+
+  // Creating a reader and calling SetPreload() invokes
+  // MultiBufferReader::UpdateInternalState() -> MultiBuffer::AddReader() ->
+  // ResourceMultiBuffer::CreateWriter() ->
+  // ResourceMultiBufferDataProvider::Start(). When `url_index_` is already
+  // destroyed, `Start()` must not synchronously run `url_data_->Fail()` and
+  // destroy `reader` while `AddReader()` and `UpdateInternalState()` are still
+  // on the stack.
+  reader = std::make_unique<MultiBufferReader>(
+      url_data_->multibuffer(), 0, 1024 * 1024,
+      /*is_client_audio_element=*/false, base::DoNothing(),
+      task_environment_.GetMainThreadTaskRunner());
+  reader->SetPinRange(0, 1024 * 1024);
+  reader->SetPreload(kDataSize, kDataSize);
+  ASSERT_TRUE(reader);
+
+  task_environment_.FastForwardUntilNoTasksRemain();
+  EXPECT_FALSE(reader);
 }
 
 }  // namespace blink

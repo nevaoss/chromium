@@ -26,10 +26,11 @@ struct AVCDecoderConfigurationRecord;
 class MEDIA_EXPORT AVC {
  public:
   // Converts a NALU stream where the header is `length_size` bytes - either 1,
-  // 2, or 4 bytes. `codec` determines which NALU pattern is dropped for being a
-  // dummy NALU (H264: type == 0 // HEVC: length < 2). `buffer` is the stream,
-  // and `subsamples` contains a set of byte ranges for clear and cypher bytes
-  // which might have to get updated if any NALUs need to be dropped.
+  // 2, or 4 bytes. `codec` determines which NALUs are dropped: dummy NALUs
+  // (H264: 1-byte type 0; HEVC: length < 2) and H264 unspecified type-31
+  // NALUs. `buffer` is the stream, and `subsamples` contains a set of byte
+  // ranges for clear and cypher bytes which might have to get updated if any
+  // NALUs need to be dropped.
   static bool ConvertFrameToAnnexB(size_t length_size,
                                    VideoCodec codec,
                                    std::vector<uint8_t>* buffer,
@@ -65,11 +66,21 @@ class MEDIA_EXPORT AVC {
       const std::vector<SubsampleEntry>& subsamples,
       bool allow_bare_idr = true);
 
-  // Given a `buffer` and `subsamples` information and `pts` pointer into the
-  // `buffer` finds the index of the subsample `ptr` is pointing into.
-  static int FindSubsampleIndex(const std::vector<uint8_t>& buffer,
-                                base::span<const SubsampleEntry> subsamples,
-                                const uint8_t* ptr);
+  // Returns the index of the entry in `subsamples` that contains `byte_offset`
+  // (a 0-based byte offset from the start of the frame buffer), determined by
+  // summing `clear_bytes + cypher_bytes` across entries until the cumulative
+  // size exceeds `byte_offset`. `byte_offset` must be less than the total byte
+  // count covered by `subsamples`. Returns 0 if `subsamples` is empty.
+  static int FindSubsampleIndexForTesting(
+      base::span<const SubsampleEntry> subsamples,
+      size_t byte_offset);
+
+  // Inserts `param_sets` into `buffer` at `byte_offset`, updating `subsamples`
+  // (if non-empty) to account for the newly inserted clear bytes.
+  static void InsertParamSetsIntoBuffer(std::vector<uint8_t>* buffer,
+                                        std::vector<SubsampleEntry>* subsamples,
+                                        base::span<const uint8_t> param_sets,
+                                        size_t byte_offset);
 
   // Convert a `buffer` from AVC bitstream to Annex-B bitstream by replacing
   // 4-byte NALU length to 4-byte NALU start code.

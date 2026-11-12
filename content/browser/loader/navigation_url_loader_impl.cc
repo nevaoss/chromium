@@ -710,7 +710,8 @@ void NavigationURLLoaderImpl::Start() {
           url_loader_factory::Create(
               ContentBrowserClient::URLLoaderFactoryType::kNavigation,
               url_loader_factory::TerminalParams::ForNonNetwork(
-                  CreateWebUIURLLoaderFactory(
+                  CreateWebUIURLLoaderFactoryWithoutOriginLock(
+                      WebUIURLLoaderFactoryPasskey::GetPassKey(),
                       frame_tree_node->current_frame_host(), scheme, {}),
                   network::mojom::kBrowserProcessId),
               url_loader_factory::ContentClientParams(
@@ -2067,8 +2068,6 @@ void NavigationURLLoaderImpl::ParseHeaders(
   // - Network
   // - ServiceWorker
   // - WebUI
-  base::UmaHistogramBoolean("Navigation.URLLoader.InMainPath",
-                            static_cast<bool>(head->parsed_headers));
   if (head->parsed_headers) {
 #ifndef NDEBUG
     // In debug mode, force reparsing the headers and check that they match.

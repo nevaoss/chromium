@@ -105,17 +105,21 @@ const CGFloat kHeaderIconSizeMultiplier = 0.55;
 }
 
 - (void)didTapPrimaryButton {
-  RecordFirstRunConsentAction(IOSGeminiFirstRunAction::kAccept);
   if (self.firstRunType == GeminiFirstRunType::kLive) {
     [self.mutator didConsentToLiveGemini];
   } else {
+    RecordFirstRunConsentAction(IOSGeminiFirstRunAction::kAccept);
     [self.mutator didConsentGemini];
   }
 }
 
 - (void)didTapSecondaryButton {
-  RecordFirstRunConsentAction(IOSGeminiFirstRunAction::kDismiss);
-  [self.mutator didRefuseGeminiConsent];
+  if (self.firstRunType == GeminiFirstRunType::kLive) {
+    [self.mutator didRefuseLiveOnboarding];
+  } else {
+    RecordFirstRunConsentAction(IOSGeminiFirstRunAction::kDismiss);
+    [self.mutator didRefuseGeminiConsent];
+  }
 }
 
 #pragma mark - Private

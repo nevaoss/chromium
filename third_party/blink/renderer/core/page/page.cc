@@ -528,6 +528,12 @@ void Page::TakePropertiesForLocalMainFrameSwap(Page* old_page) {
   // renderer-side opener is only set during construction and might be stale.
   // When we create the new page, we get the latest opener frame token, so the
   // new page's opener should be the most up-to-date opener.
+
+  // Transfer user agent page scale constraints (such as initial scale set by
+  // the embedder) to the new Page so that scale settings persist across main
+  // frame swaps.
+  SetUserAgentPageScaleConstraints(
+      old_page->GetPageScaleConstraintsSet().UserAgentConstraints());
 }
 
 LocalFrame* Page::DeprecatedLocalMainFrame() const {
@@ -586,17 +592,8 @@ void Page::ForcedColorsChanged() {
 }
 
 void Page::PlatformColorsChanged() {
-  for (const Page* page : AllPages()) {
-    for (Frame* frame = page->MainFrame(); frame;
-         frame = frame->Tree().TraverseNext()) {
-      if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
-        if (Document* document = local_frame->GetDocument()) {
-          document->PlatformColorsChanged();
-        }
-        if (LayoutView* view = local_frame->ContentLayoutObject())
-          view->InvalidatePaintForViewAndDescendants();
-      }
-    }
+  for (Page* page : AllPages()) {
+    page->InvalidatePlatformColors();
   }
 }
 
@@ -1220,7 +1217,8 @@ void Page::SettingsChanged(ChangeType change_type) {
       break;
     }
     case ChangeType::kForcedColors: {
-      ForcedColorsChanged();
+      InvalidatePlatformColors();
+      InvalidateColorScheme();
       break;
     }
     case ChangeType::kAcceptLanguages:
@@ -1243,6 +1241,20 @@ void Page::InvalidateColorScheme() {
         if (auto* preferences = NavigatorPreferences::preferences(*navigator)) {
           preferences->PreferenceMaybeChanged();
         }
+      }
+    }
+  }
+}
+
+void Page::InvalidatePlatformColors() {
+  for (Frame* frame = MainFrame(); frame;
+       frame = frame->Tree().TraverseNext()) {
+    if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
+      if (Document* document = local_frame->GetDocument()) {
+        document->PlatformColorsChanged();
+      }
+      if (LayoutView* view = local_frame->ContentLayoutObject()) {
+        view->InvalidatePaintForViewAndDescendants();
       }
     }
   }

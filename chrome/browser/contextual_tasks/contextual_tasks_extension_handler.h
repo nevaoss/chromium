@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_
 
-#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -43,6 +42,7 @@ struct InputState;
 namespace contextual_search {
 class ContextualSearchSessionHandle;
 class InputStateModel;
+struct TabContextState;
 }  // namespace contextual_search
 
 namespace content {
@@ -50,10 +50,14 @@ class WebContents;
 }  // namespace content
 
 namespace lens {
-class AddedContext;
 class ClientToSearchMessage;
 }  // namespace lens
 
+namespace contextual_tasks {
+class ContextualTasksWebContentsUserData;
+}  // namespace contextual_tasks
+
+class BrowserWindowInterface;
 class LensSearchController;
 class ContextualTasksExtensionHandler
     : public content::DocumentUserData<ContextualTasksExtensionHandler>,
@@ -63,13 +67,16 @@ class ContextualTasksExtensionHandler
       public composebox::mojom::PageHandler,
       public searchbox::mojom::PageHandler,
       public contextual_tasks::AimMessagePoster,
-      public PermissionPromptObserver::Observer,
-      public contextual_tasks::ContextualTasksUiService::Observer {
+      public PermissionPromptObserver::Observer {
  public:
   ~ContextualTasksExtensionHandler() override;
 
-  // contextual_tasks::ContextualTasksUiService::Observer:
-  void OnLensOverlayStateChanged(bool is_showing) override;
+  // Returns the bound ContextualTasksExtensionHandler associated with the
+  // extension document in `web_contents`, or nullptr if not found or unbound.
+  static ContextualTasksExtensionHandler* FromWebContents(
+      content::WebContents* web_contents);
+
+  void OnLensOverlayStateChanged(bool is_showing);
 
   // PermissionPromptObserver::Observer:
   void OnPermissionPromptChanged(bool is_showing,
@@ -77,9 +84,6 @@ class ContextualTasksExtensionHandler
 
   // contextual_tasks::AimMessagePoster:
   void PostAimMessage(const lens::ClientToAimMessage& message) override;
-
-  // Sends a search communication message to the extension page.
-  void PostSearchMessage(const lens::ClientToSearchMessage& message);
 
   void BindContextualTasksFactory(
       mojo::PendingReceiver<
@@ -182,10 +186,11 @@ class ContextualTasksExtensionHandler
       const GURL& url,
       omnibox::mojom::NavigationPredictor navigation_predictor) override;
   void DeleteAutocompleteMatch(uint8_t line, const GURL& url) override;
-  void ActivateKeyword(uint8_t line,
-                       const GURL& url,
-                       base::TimeTicks match_selection_timestamp,
-                       bool is_mouse_event) override;
+  void ActivateKeyword(
+      uint8_t line,
+      const GURL& url,
+      base::TimeTicks match_selection_timestamp,
+      searchbox::mojom::KeywordActivationMethod activation_method) override;
   void ExecuteAction(uint8_t line,
                      uint8_t action_index,
                      const GURL& url,
@@ -202,6 +207,7 @@ class ContextualTasksExtensionHandler
   void WaitForTabFaviconLoad(int32_t tab_id,
                              WaitForTabFaviconLoadCallback callback) override;
   void GetInputState(GetInputStateCallback callback) override;
+  void ResetSmartTabSharing(ResetSmartTabSharingCallback callback) override;
   void NotifySessionStarted() override;
   void NotifySessionAbandoned() override;
   void AddFileContext(searchbox::mojom::SelectedFileInfoPtr file_info,
@@ -242,15 +248,35 @@ class ContextualTasksExtensionHandler
   explicit ContextualTasksExtensionHandler(content::RenderFrameHost* rfh);
   DOCUMENT_USER_DATA_KEY_DECL();
 
+  contextual_tasks::ContextualTasksWebContentsUserData*
+  GetOrCreateWebContentsUserData() const;
   BrowserWindowInterface* GetBrowserWindowInterface() const;
+  bool IsEmbeddedInSidePanel() const;
 
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle();
-  std::optional<int64_t> GetActiveTabContextId();
   std::optional<base::UnguessableToken> GetLensOverlayToken();
 #if !BUILDFLAG(IS_ANDROID)
   LensSearchController* GetLensSearchController() const;
 #endif
+
+  void InitializeInputStateModel();
+  void OnInputStateChanged(const omnibox::InputState& state);
+  base::WeakPtr<contextual_search::InputStateModel>
+  GetOrCreateInputStateModel();
+  // Updates the tab context subscription callback if there is a new session.
+  // Otherwise, return early.
+  void MaybeRefreshTabContextSubscription(
+      contextual_search::ContextualSearchSessionHandle* session_handle);
+  // Sends tab context state as a tab list (of attached and restored tabs)
+  // to the extension page. Duplicates are skipped.
+  void SendTabContextToExtensionPage(
+      const contextual_search::TabContextState& state);
+  void OnLensThumbnailCreated(const std::string& thumbnail_uri);
+  void RecordTimeToHandshakeComplete();
+  void SendSearchMessageToBoundPage(const lens::ClientToSearchMessage& message);
+  void OnHandshakeComplete();
+  void OnLensCropUpdated(const GURL& data_uri);
 
   mojo::Receiver<contextual_tasks::mojom::ExtensionPageHandlerFactory>
       contextual_tasks_factory_receiver_{this};
@@ -266,33 +292,19 @@ class ContextualTasksExtensionHandler
 
   mojo::Remote<searchbox::mojom::Page> searchbox_page_;
 
-  void InitializeInputStateModel();
-  void OnInputStateChanged(const omnibox::InputState& state);
-  base::WeakPtr<contextual_search::InputStateModel>
-  GetOrCreateInputStateModel();
-  bool IsPrimarySearchMessageSender() const;
-  void OnLensThumbnailCreated(const std::string& thumbnail_uri);
-  void RecordTimeToHandshakeComplete();
-  void HandleOnSubmitQueryRequest();
-  std::optional<lens::AddedContext> GetLensAddedContext();
-
   base::WeakPtr<contextual_search::InputStateModel> input_state_model_;
   base::CallbackListSubscription input_state_subscription_;
+  base::WeakPtr<contextual_search::ContextualSearchSessionHandle>
+      subscribed_session_handle_;
+  base::CallbackListSubscription tab_context_subscription_;
 
   base::ScopedObservation<PermissionPromptObserver,
                           PermissionPromptObserver::Observer>
       permission_prompt_observation_{this};
-  base::ScopedObservation<contextual_tasks::ContextualTasksUiService,
-                          contextual_tasks::ContextualTasksUiService::Observer>
-      ui_service_observation_{this};
 
-  std::optional<base::Uuid> task_id_;
   omnibox::ToolMode active_tool_ = omnibox::TOOL_MODE_UNSPECIFIED;
   omnibox::ModelMode active_model_ = omnibox::MODEL_MODE_UNSPECIFIED;
-  base::TimeTicks last_handled_submit_interaction_time_{};
 
-  bool is_lens_crop_mounted_ = false;
-  std::string last_lens_crop_data_uri_;
   base::WeakPtrFactory<ContextualTasksExtensionHandler> weak_ptr_factory_{this};
 };
 

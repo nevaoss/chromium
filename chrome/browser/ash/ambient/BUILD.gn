@@ -10,13 +10,10 @@ static_library("ambient") {
     "ambient_client_impl.h",
   ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   deps = [
     "//ash/constants",
     "//ash/public/cpp",
     "//base",
-    "//chrome/browser/ash/profiles",
     "//chrome/browser/profiles:profile",
     "//chromeos/ash/components/browser_context_helper",
     "//chromeos/ash/components/channel",
@@ -24,6 +21,7 @@ static_library("ambient") {
     "//chromeos/ash/components/signin:identity_manager_provider",
     "//components/account_id",
     "//components/prefs",
+    "//components/session_manager/core",
     "//components/signin/public/identity_manager",
     "//components/user_manager",
     "//components/version_info:channel",
@@ -75,10 +73,10 @@ source_set("browser_tests") {
     "//chrome/browser/ash/ownership",
     "//chrome/browser/ash/policy/core:test_support",
     "//chrome/browser/ash/policy/test_support",
-    "//chrome/browser/ash/profiles",
     "//chrome/browser/profiles:profile",
     "//chrome/common",
     "//chrome/test:test_support_ui",
+    "//chromeos/ash/components/browser_context_helper",
     "//chromeos/ash/components/dbus/session_manager",
     "//chromeos/ash/components/policy/device_policy:test_support",
     "//components/ownership",

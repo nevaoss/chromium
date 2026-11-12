@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Опозови</translation>
 <translation id="2086334242442703436">Отворите бирач емоџија</translation>
 <translation id="2089550919269323883">Смернице за предузећа блокирају инсталирање апликације <ph name="VM_NAME" />. Обратите се администратору система за подршку. Кôд грешке је <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Вести о Steam-у за Chromebook</translation>
 <translation id="209965399369889474">Нисте повезани на мрежу</translation>
 <translation id="2107581415810719320"><ph name="BUTTON_NUMBER" />. дугме Друго</translation>
 <translation id="2107914222138020205">USB-C кабл не подржава Thunderbolt. Учинак уређаја ће можда бити ограничен.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">На шта желите да се фокусирате? Притисните Enter да бисте додали задатак.</translation>
 <translation id="229397294990920565">Пренос података преко мобилног оператера се искључује...</translation>
 <translation id="2295777434187870477">Микрофон је укључен. Можете да га искључите померањем прекидача.</translation>
+<translation id="2296880470921996802">ИТ администратор је онемогућио историју привремене меморије</translation>
 <translation id="2302092602801625023">Овим налогом управља Family Link</translation>
 <translation id="2303600792989757991">Укључи/искључи преглед прозора</translation>
 <translation id="2304702218354340897">Желите ли стварно да искључите управљање лицем?</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">Инсталирање офлајн смерница на уређају није успело.</translation>
 <translation id="3039939407102840004">Батерија писаљке је на <ph name="PERCENTAGE" /> посто.</translation>
 <translation id="304097922505898963">Отвори апликацију Тастерске пречице</translation>
-<translation id="3040982432432547149">Помозите нам да побољшамо Steam за Chromebook</translation>
 <translation id="304417730895741346">Закачене и отворене апликације налазе се на полици. Да бисте закачили апликацију за полицу, кликните десним тастером на њу или додирните тачпед са два прста.</translation>
 <translation id="3045670165536837541">Изабрали сте горњи десни маркер, користите тастере са стрелицама за померање</translation>
 <translation id="3046178388369461825">Простор на диску за Linux је изузетно мали</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">Притисните пречицу за снимак екрана</translation>
 <translation id="3702809606464356667">Приказују се прозори са актуелне радне површине. Притисните тастер са стрелицом нагоре да би се приказивали прозори са свих радних површина.</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">Забава</translation>
 <translation id="370665806235115550">Учитава се...</translation>
 <translation id="3707093869106077605">Функције <ph name="UNAVAILABLE_DLC_ONE" /> и <ph name="UNAVAILABLE_DLC_TWO" /> нису доступне</translation>
 <translation id="3708186454126126312">Претходно повезани</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685">Ово омогућава приступ камери за апликацију <ph name="APP_NAME" />, као и све апликације и веб-сајтове са дозволом за камеру. Можда ћете морати да освежите веб-страницу или рестартујете апликацију.</translation>
 <translation id="3826099427150913765">Пређи на лозинку</translation>
 <translation id="383058930331066723">Режим уштеде батерије је укључен</translation>
-<translation id="3831226344927851293">Изађите из приказа водича</translation>
 <translation id="383629559565718788">Прегледајте подешавања тастатуре</translation>
 <translation id="384082539148746321">Желите да избришете шаблон?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, па <ph name="KEY_ONE" />, <ph name="KEY_TWO" />, <ph name="KEY_THREE" /> или <ph name="KEY_FOUR" /></translation>
@@ -1082,7 +1079,6 @@
 <translation id="4147911968024186208">Пробајте поново. Ако се ова грешка поново прикаже, контактирајте представника подршке.</translation>
 <translation id="4150201353443180367">Екран</translation>
 <translation id="4151054805501931758">Дотеривање портрета</translation>
-<translation id="4151449637210235443">Поделите са нама утиске о недавној игри</translation>
 <translation id="4156293514828496577">Преостало је још <ph name="PERCENTAGE" />% батерије (око <ph name="TIME_LEFT" />).
 Неке функције су ограничене да би се продужило трајање батерије.</translation>
 <translation id="4158003972857765638">Организујте на новој радној површини</translation>
@@ -1583,10 +1579,8 @@
 <translation id="5551974246223970793">При претраживању странице иди на следеће подударање за претрагу</translation>
 <translation id="5556459405103347317">Учитај поново</translation>
 <translation id="5558091555391176027">Укључите или искључите велику видљивост Дељења у близини</translation>
-<translation id="5558314826121965174">Креативност</translation>
 <translation id="556042886152191864">Дугме</translation>
 <translation id="5570122939431135380">Отвори нову картицу у новом прозору без архивирања</translation>
-<translation id="5572632238877308040">Основне апликације</translation>
 <translation id="5575528586625653441">Дошло је до проблема са захтевом за регистрацију за режим демонстрације.</translation>
 <translation id="557563299383177668">Следећи пасус</translation>
 <translation id="5577082622442191756">Укључите/искључите Bluetooth. <ph name="STATE_TEXT" />.</translation>
@@ -1621,7 +1615,6 @@
 <translation id="5667546120811588575">Google Play се подешава…</translation>
 <translation id="5669267381087807207">Активирање</translation>
 <translation id="5671658447180261823">Уклони предлог <ph name="SUGGESTION_NAME" /></translation>
-<translation id="5672890847723042801">Услужне апликације</translation>
 <translation id="5673434351075758678">Са језика „<ph name="FROM_LOCALE" />“ на „<ph name="TO_LOCALE" />“ после синхронизације уређаја.</translation>
 <translation id="5675363643668471212">Ставка на полици</translation>
 <translation id="5677022547882470786">Превуците или притисните тастер за размак да бисте изабрали област за претрагу</translation>
@@ -1798,7 +1791,6 @@
 <translation id="6127395413317891856">Офлајн сте. Проверите везу и пробајте поново.</translation>
 <translation id="6129953537138746214">Тастер за размак</translation>
 <translation id="6132714462430777655">Желите да прескочите регистрацију за школу?</translation>
-<translation id="6136872094979134163">Преузимање вести о Steam-у за Chromebook није успело.</translation>
 <translation id="6137566720514957455">Отвара налог за уклањање за корисника <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">На шта желите да се фокусирате?</translation>
 <translation id="6141988275892716286">Потврдите преузимање</translation>
@@ -1878,7 +1870,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, па <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> или <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">Непознате мреже</translation>
 <translation id="6359587239691116345">Добијајте најновије функције и безбедносна побољшања. Ако одбијете ово ажурирање, уређај можда више неће радити како треба, а ви можете да имате проблема са безбедношћу и перформансама.</translation>
-<translation id="6362833380917912748">Упознајте уграђене апликације</translation>
 <translation id="6364386432014869981">Уграђени тачпед је укључен</translation>
 <translation id="6376931439017688372">Bluetooth је укључен</translation>
 <translation id="6378515133128829137">Закачи прозор надесно</translation>
@@ -2103,7 +2094,6 @@
 <translation id="7014684956566476813">Повезани сте са уређајем под називом <ph name="DEVICE_NAME" /></translation>
 <translation id="7015766095477679451">Вратите се у <ph name="COME_BACK_TIME" />.</translation>
 <translation id="70168403932084660">Радна површина 6</translation>
-<translation id="702252130983202758">Апликације</translation>
 <translation id="7025533177575372252">Повежите <ph name="DEVICE_NAME" /> са телефоном</translation>
 <translation id="7026338066939101231">Смањење</translation>
 <translation id="7029307918966275733">Crostini није инсталиран. Инсталирајте Crostini да бисте видели импресум.</translation>
@@ -2543,13 +2533,12 @@
 <translation id="8277261673056602147">Истакните текст на екрану</translation>
 <translation id="8281886186245836920">Прескочи</translation>
 <translation id="8282784978194352587">Успели сте!</translation>
-<translation id="8287009018010202411">Продуктивност</translation>
 <translation id="828708037801473432">Искључено</translation>
 <translation id="8289128870594824098">Величина диска</translation>
 <translation id="8297006494302853456">Слаб</translation>
 <translation id="8301242268274839723">Додирните сензор за отисак прста у доњем левом углу тастатуре. Подаци о отиску прста се безбедно чувају на <ph name="DEVICE_TYPE" /> уређају и увек остају на њему.</translation>
 <translation id="8308637677604853869">Претходни мени</translation>
-<translation id="830868413617744215">Beta</translation>
+<translation id="830868413617744215">Бета</translation>
 <translation id="8314772463905284467">Caps Lock је укључен</translation>
 <translation id="8315514906653279104">Укључује се…</translation>
 <translation id="8331351032546853669">Преузимање је на чекању</translation>
@@ -2638,7 +2627,6 @@
 <translation id="8598235756057743477">Сортирајте апликације према називу или боји</translation>
 <translation id="8599864823732014237">Желите да прескочите регистрацију за предузећа?</translation>
 <translation id="8609384513243082612">Отворите нову картицу</translation>
-<translation id="861045123704058818">Апликације су привремено организоване према категорији</translation>
 <translation id="8612338981637220013">Не стајете!</translation>
 <translation id="8613164732773110792">Само мала слова, цифре, доње црте или црте</translation>
 <translation id="8614517853887502247">Обавештења апликација <ph name="APP_1_TITLE" /> и <ph name="APP_2_TITLE" /> су скривена јер је заштита од прегледа укључена</translation>
@@ -2830,7 +2818,6 @@
 <translation id="9129245940793250979">Задње дугме</translation>
 <translation id="9133335900048457298">Снимање заштићеног садржаја није успело</translation>
 <translation id="9139720510312328767">Избриши следеће слово</translation>
-<translation id="9148058034647219655">Изађи</translation>
 <translation id="9151906066336345901">end</translation>
 <translation id="9159421884295554245">Претражите привремену меморију</translation>
 <translation id="9168436347345867845">Урадићу то касније</translation>

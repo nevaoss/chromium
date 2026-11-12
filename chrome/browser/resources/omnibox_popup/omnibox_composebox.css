@@ -13,6 +13,8 @@
 
 :host {
   --composebox-cancel-button-top: var(--cr-composebox-cancel-button-top, 12px);
+  --color-composebox-ghost-card-background:
+      var(--color-sys-state-ripple-neutral-on-subtle);
   --cr-composebox-grid-min-item-width: 100px;
   --cr-composebox-grid-padding-bottom: 10px;
   --cr-composebox-grid-row-gap: 16px;
@@ -30,6 +32,14 @@
   --text-input-max-height: 190px;
   --fade-duration: 100ms;
   --cr-composebox-submit-container-size: 40px;
+  /* When voice search error shows, #composebox and
+   * search-animated-glow's #fullContainerOverlay are hidden (display: none),
+   * and cr-composebox-voice-search is position: static (e.g. in voice search
+   * error state). This makes this container in control of the width.
+   * Make sure it is 100% instead of 337px default width from composebox.css.
+   */
+  --cr-composebox-width: 100%;
+  display: block;
 }
 
 #composebox {

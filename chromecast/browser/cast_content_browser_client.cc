@@ -410,7 +410,9 @@ void CastContentBrowserClient::AppendExtraCommandLineSwitches(
         switches::kCastAppBackgroundColor,
         switches::kForceMediaResolutionHeight,
         switches::kForceMediaResolutionWidth,
-        network::switches::kUnsafelyTreatInsecureOriginAsSecure};
+        network::switches::kUnsafelyTreatInsecureOriginAsSecure,
+        switches::kCastAssetsDir,
+        switches::kHomeEnvOverride};
     command_line->CopySwitchesFrom(*browser_command_line, kForwardSwitches);
   } else if (process_type == switches::kUtilityProcess) {
     if (browser_command_line->HasSwitch(switches::kAudioOutputChannels)) {
@@ -727,6 +729,14 @@ bool CastContentBrowserClient::ShouldEnableStrictSiteIsolation() {
   return false;
 }
 
+bool CastContentBrowserClient::ShouldIsolateErrorPage(bool in_main_frame) {
+  // Isolating subframe error pages requires out-of-process iframes, which Cast
+  // avoids by not enabling strict site isolation (see above) on its
+  // memory-constrained devices. Hence, only isolate main frame error pages,
+  // which don't require out-of-process iframes.
+  return in_main_frame;
+}
+
 scoped_refptr<net::X509Certificate> CastContentBrowserClient::DeviceCert() {
   return nullptr;
 }
@@ -794,8 +804,9 @@ void CastContentBrowserClient::RegisterNonNetworkSubresourceURLLoaderFactories(
 
   factories->emplace(
       kChromeResourceScheme,
-      content::CreateWebUIURLLoaderFactory(
-          frame_host, kChromeResourceScheme,
+      content::CreateWebUIURLLoaderFactoryWithoutOriginLock(
+          content::WebUIURLLoaderFactoryPasskey::GetPassKey(), frame_host,
+          kChromeResourceScheme,
           /*allowed_webui_hosts=*/base::flat_set<std::string>()));
 }
 

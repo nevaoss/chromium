@@ -373,7 +373,6 @@
 <translation id="2079545284768500474">تراجع</translation>
 <translation id="2086334242442703436">فتح "أداة اختيار رموز الإيموجي"</translation>
 <translation id="2089550919269323883">تحظر سياسة المؤسسة تثبيت "<ph name="VM_NAME" />". يُرجى التواصل مع مشرف النظام للحصول على المساعدة. رمز الخطأ هو <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">‏أخبار "Steam لأجهزة Chromebook"</translation>
 <translation id="209965399369889474">لا يتوفّر اتصال بالشبكة</translation>
 <translation id="2107581415810719320">الزر الآخر "<ph name="BUTTON_NUMBER" />"</translation>
 <translation id="2107914222138020205">‏لا يتوافق الكابل المزوّد بمنفذ USB-C مع جهاز Thunderbolt. وقد يصبح أداء الجهاز محدودًا.</translation>
@@ -423,6 +422,7 @@
 <translation id="2293443480080733021">‏ما الذي تريد التركيز عليه؟ اضغط على مفتاح Enter لإضافة المهمة.</translation>
 <translation id="229397294990920565">جارٍ إيقاف بيانات الجوّال...</translation>
 <translation id="2295777434187870477">الميكروفون مفعّل، وسيؤدي التبديل إلى كتم صوته.</translation>
+<translation id="2296880470921996802">أوقَف مشرف تكنولوجيا المعلومات سجلّ الحافظة</translation>
 <translation id="2302092602801625023">‏تتم إدارة هذا الحساب من خلال Family Link</translation>
 <translation id="2303600792989757991">نظرة عامة لنافذة التبديل</translation>
 <translation id="2304702218354340897">هل تريد فعلًا إيقاف ميزة "التحكّم بالوجه"؟</translation>
@@ -684,7 +684,6 @@
 <translation id="3039491566278747710">تعذّر تثبيت السياسة بلا إنترنت على الجهاز.</translation>
 <translation id="3039939407102840004">مستوى شحن بطارية قلم الشاشة <ph name="PERCENTAGE" /> في المئة.</translation>
 <translation id="304097922505898963">فتح تطبيق "اختصارات لوحة المفاتيح"</translation>
-<translation id="3040982432432547149">‏المساعدة في تحسين تطبيق Steam على أجهزة Chromebook</translation>
 <translation id="304417730895741346">تطبيقاتك المثبَّتة والمفتوحة معروضة هنا على الرف. لتثبيت تطبيق في الرف، انقر بزر الماوس الأيمن عليه أو انقر بإصبعين على لوحة اللمس.</translation>
 <translation id="3045670165536837541">المقبض المحدَّد في أعلى اليسار، ويمكن استخدام مفاتيح الأسهم لتحريكه</translation>
 <translation id="3046178388369461825">‏مساحة القرص في Linux منخفضة للغاية</translation>
@@ -926,7 +925,6 @@
 <translation id="3697991387880191195">الضغط على اختصار أخذ لقطة الشاشة</translation>
 <translation id="3702809606464356667">يتم الآن عرض النوافذ المفتوحة في سطح المكتب الحالي، ويمكنك الضغط على مفتاح السهم المتّجه للأعلى لعرض النوافذ المفتوحة في جميع أسطح المكتب.</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">الترفيه</translation>
 <translation id="370665806235115550">جارٍ التحميل...</translation>
 <translation id="3707093869106077605">ميزتا "<ph name="UNAVAILABLE_DLC_ONE" />" و"<ph name="UNAVAILABLE_DLC_TWO" />" غير متوفّرتَين.</translation>
 <translation id="3708186454126126312">الأجهزة المتصلة سابقًا</translation>
@@ -974,7 +972,6 @@
 <translation id="3824784079442479685">يتيح هذا الإجراء إمكانية الوصول إلى الكاميرا لتطبيق "<ph name="APP_NAME" />" ولجميع التطبيقات والمواقع الإلكترونية التي لديها هذا الإذن. قد تحتاج إلى إعادة تحميل صفحة الويب أو إعادة تشغيل التطبيق.</translation>
 <translation id="3826099427150913765">التبديل إلى كلمة المرور</translation>
 <translation id="383058930331066723">وضع "توفير شحن البطارية" مفعَّل.</translation>
-<translation id="3831226344927851293">الخروج من عرض الدليل التوجيهي</translation>
 <translation id="383629559565718788">عرض إعدادات لوحة المفاتيح</translation>
 <translation id="384082539148746321">هل تريد حذف النموذج؟</translation>
 <translation id="3844627820291068572">‏‫‎<ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />، ثم <ph name="KEY_ONE" /> أو <ph name="KEY_TWO" /> أو <ph name="KEY_THREE" /> أو <ph name="KEY_FOUR" /></translation>
@@ -1081,7 +1078,6 @@
 <translation id="4147911968024186208">يُرجى إعادة المحاولة. وإذا ظهر هذا الخطأ مرة أخرى، يُرجى التواصل مع ممثِّل الدعم.</translation>
 <translation id="4150201353443180367">عرض</translation>
 <translation id="4151054805501931758">تحسين صورة الوجه</translation>
-<translation id="4151449637210235443">أخبِرنا عن تجربتك مع اللّعب في الفترة الأخيرة.</translation>
 <translation id="4156293514828496577">‏يتبقّى ‎<ph name="PERCENTAGE" />% من شحن البطارية (حوالي <ph name="TIME_LEFT" />).
 لإطالة عمر البطارية، تم حصر وظائف بعض الميزات.</translation>
 <translation id="4158003972857765638">تنظيم الملفات في سطح مكتب جديد</translation>
@@ -1582,10 +1578,8 @@
 <translation id="5551974246223970793">الانتقال إلى النتيجة المطابِقة التالية عند البحث في صفحة</translation>
 <translation id="5556459405103347317">إعادة التحميل</translation>
 <translation id="5558091555391176027">إيقاف/تفعيل وضع الظهور لجميع الأجهزة القريبة لميزة "المشاركة عن قرب"</translation>
-<translation id="5558314826121965174">تطبيقات الإبداع</translation>
 <translation id="556042886152191864">زر</translation>
 <translation id="5570122939431135380">فتح علامة تبويب جديدة في نافذة تصفُّح متخفٍ جديدة</translation>
-<translation id="5572632238877308040">التطبيقات الأساسية</translation>
 <translation id="5575528586625653441">حدثت مشكلة في طلب التسجيل التجريبي.</translation>
 <translation id="557563299383177668">الفقرة التالية</translation>
 <translation id="5577082622442191756">إيقاف/تفعيل البلوتوث: <ph name="STATE_TEXT" /></translation>
@@ -1620,7 +1614,6 @@
 <translation id="5667546120811588575">‏جارٍ إعداد Google Play...</translation>
 <translation id="5669267381087807207">تفعيل</translation>
 <translation id="5671658447180261823">إزالة الاقتراح <ph name="SUGGESTION_NAME" /></translation>
-<translation id="5672890847723042801">تطبيقات الخدمات</translation>
 <translation id="5673434351075758678">من "<ph name="FROM_LOCALE" />" إلى "<ph name="TO_LOCALE" />" بعد مزامنة الإعدادات.</translation>
 <translation id="5675363643668471212">عنصر الرف</translation>
 <translation id="5677022547882470786">عليك السحب أو الضغط على مفتاح المسافة لتحديد منطقة للبحث فيها</translation>
@@ -1799,7 +1792,6 @@
 <translation id="6127395413317891856">جهازك غير متصل بالإنترنت. يُرجى التحقّق من الاتصال والمحاولة مجددًا.</translation>
 <translation id="6129953537138746214">مسافة</translation>
 <translation id="6132714462430777655">هل تريد تخطي تسجيل الجهاز ضمن المؤسسة التعليمية؟</translation>
-<translation id="6136872094979134163">‏تعذّر استرجاع أخبار "Steam لأجهزة Chromebook".</translation>
 <translation id="6137566720514957455">فتح مربع الحوار لإزالة الحساب <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">ما الذي تريد التركيز عليه؟</translation>
 <translation id="6141988275892716286">تأكيد التنزيل</translation>
@@ -1879,7 +1871,6 @@
 <translation id="6348449481487610270">‏‫‎<ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" /> ثم ‎<ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> أو <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">الشبكات غير المعروفة</translation>
 <translation id="6359587239691116345">يُرجى الحصول على أحدث الميزات وتحسينات الأمان. في حال رفض هذا التحديث، من المحتمل أن يتوقف جهازك عن العمل بشكل صحيح وقد تواجه مشاكل تتعلّق بالأمان والأداء.</translation>
-<translation id="6362833380917912748">التعرُّف على التطبيقات المدمَجة</translation>
 <translation id="6364386432014869981">لوحة اللمس المُدمَجة مفعَّلة</translation>
 <translation id="6376931439017688372">تم تفعيل البلوتوث</translation>
 <translation id="6378515133128829137">تثبيت النافذة على اليسار</translation>
@@ -2104,7 +2095,6 @@
 <translation id="7014684956566476813">تم الربط بالجهاز الذي يحمل الاسم <ph name="DEVICE_NAME" />.</translation>
 <translation id="7015766095477679451">يمكنك العودة لاستخدام الجهاز في <ph name="COME_BACK_TIME" />.</translation>
 <translation id="70168403932084660">سطح المكتب 6</translation>
-<translation id="702252130983202758">تطبيقاتك</translation>
 <translation id="7025533177575372252">يمكنك ربط الجهاز <ph name="DEVICE_NAME" /> بهاتفك</translation>
 <translation id="7026338066939101231">تناقص</translation>
 <translation id="7029307918966275733">‏نظام التشغيل Crostini غير مثبّت. يُرجى تثبيت نظام التشغيل Crostini لعرض أسماء المساهمين.</translation>
@@ -2544,13 +2534,12 @@
 <translation id="8277261673056602147">تمييز النص على الشاشة</translation>
 <translation id="8281886186245836920">التخطّي</translation>
 <translation id="8282784978194352587">أنجزت كل المطلوب!</translation>
-<translation id="8287009018010202411">تطبيقات الإنتاجية</translation>
 <translation id="828708037801473432">غير مُفعَّلة</translation>
 <translation id="8289128870594824098">حجم القرص</translation>
 <translation id="8297006494302853456">ضعيفة</translation>
 <translation id="8301242268274839723">المِس أداة استشعار بصمة الإصبع في أسفل يسار لوحة المفاتيح. يتم تخزين بيانات بصمة الإصبع بشكل آمن وتظلّ محفوظة على جهاز <ph name="DEVICE_TYPE" /> فقط.</translation>
 <translation id="8308637677604853869">القائمة السابقة</translation>
-<translation id="830868413617744215">تجريبي</translation>
+<translation id="830868413617744215">إصدار تجريبي</translation>
 <translation id="8314772463905284467">‏مفتاح Caps Lock قيد التفعيل</translation>
 <translation id="8315514906653279104">جارٍ تفعيل نقطة الاتصال…</translation>
 <translation id="8331351032546853669">بانتظار التنزيل</translation>
@@ -2639,7 +2628,6 @@
 <translation id="8598235756057743477">ترتيب التطبيقات حسب الاسم أو اللون</translation>
 <translation id="8599864823732014237">هل تريد تخطي التسجيل في المؤسسة؟</translation>
 <translation id="8609384513243082612">فتح علامة تبويب جديدة</translation>
-<translation id="861045123704058818">يتم تنظيم التطبيقات حسب الفئة مؤقتًا</translation>
 <translation id="8612338981637220013">رائع!</translation>
 <translation id="8613164732773110792">أحرف صغيرة أو أرقام أو شرطات سفلية أو شرطات فقط</translation>
 <translation id="8614517853887502247">‏تم حجب إشعارات التطبيقين <ph name="APP_1_TITLE" /> و<ph name="APP_2_TITLE" /> بسبب تفعيل ميزة Viewing Protection.</translation>
@@ -2831,7 +2819,6 @@
 <translation id="9129245940793250979">الزرّ الخلفي</translation>
 <translation id="9133335900048457298">لا يمكن تسجيل المحتوى المحمي</translation>
 <translation id="9139720510312328767">حذف الحرف التالي</translation>
-<translation id="9148058034647219655">إنهاء</translation>
 <translation id="9151906066336345901">‏مفتاح End</translation>
 <translation id="9159421884295554245">البحث في "الحافظة"</translation>
 <translation id="9168436347345867845">تنفيذ ذلك لاحقًا</translation>

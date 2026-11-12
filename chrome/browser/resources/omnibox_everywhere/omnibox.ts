@@ -12,7 +12,6 @@ import './profile_icon.js';
 
 import {recordContextAdditionMethod} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxState, ContextualUpload} from '//resources/cr_components/composebox/common.js';
-import type {ComposeboxFileInputsElement} from '//resources/cr_components/composebox/composebox_file_inputs.js';
 import {HelpBubbleMixinLit} from '//resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
 import {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
@@ -23,7 +22,7 @@ import type {SearchboxDropdownElement} from '//resources/cr_components/searchbox
 import type {SearchboxInputElement} from '//resources/cr_components/searchbox/searchbox_input.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import {SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
-import type {AutocompleteResult, OmniboxPopupSelection, SelectionDirection, SelectionStep} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
+import type {AutocompleteMatch, AutocompleteResult, OmniboxPopupSelection, SelectionDirection, SelectionStep} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {SearchboxSelectionMixin, SelectionLineState} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mixin_lit.js';
@@ -38,6 +37,7 @@ import type {InputState} from '//resources/mojo/components/omnibox/composebox/co
 import {OmniboxEverywhereBrowserProxyImpl} from './browser_proxy.js';
 import {getCss} from './omnibox.css.js';
 import {getHtml} from './omnibox.html.js';
+import type {OmniboxEverywhereProfileIconElement} from './profile_icon.js';
 
 
 export interface OmniboxEverywhereOmniboxElement {
@@ -45,7 +45,7 @@ export interface OmniboxEverywhereOmniboxElement {
     input: SearchboxInputElement,
     inputWrapper: HTMLElement,
     matches: SearchboxDropdownElement,
-    fileInputs: ComposeboxFileInputsElement,
+    profileIcon: OmniboxEverywhereProfileIconElement,
   };
 }
 
@@ -421,6 +421,18 @@ export class OmniboxEverywhereOmniboxElement extends
     return available;
   }
 
+  override getSelectionA11yLabel(
+      match: AutocompleteMatch|null, selection: OmniboxPopupSelection): string {
+    switch (selection.state) {
+      case SelectionLineState.kFocusedButtonVoiceSearch:
+        return this.i18n('voiceSearchButtonLabel');
+      case SelectionLineState.kFocusedButtonLensSearch:
+        return this.i18n('lensSearchButtonLabel');
+      default:
+        return super.getSelectionA11yLabel(match, selection);
+    }
+  }
+
   override handleVirtualFocusEnter(e: KeyboardEvent): boolean {
     if (this.isVoiceSearchVirtualFocused_()) {
       e.preventDefault();
@@ -519,10 +531,16 @@ export class OmniboxEverywhereOmniboxElement extends
     this.processFiles_(e.detail.files, ComposeboxContextAddedMethod.COPY_PASTE);
   }
 
+  // Files are attached as AI Mode context, so they can only be added when AI
+  // Mode is available and policy allows sharing context with search.
+  protected canAddFileContext_(): boolean {
+    return this.fileContextEnabled_ && this.isFuseboxEnabled;
+  }
+
   protected processFiles_(
       files: FileList|null,
       contextAdditionMethod: ComposeboxContextAddedMethod) {
-    if (!files || files.length === 0) {
+    if (!files || files.length === 0 || !this.canAddFileContext_()) {
       return;
     }
     recordContextAdditionMethod(contextAdditionMethod, 'OmniboxEverywhere');
@@ -604,7 +622,7 @@ export class OmniboxEverywhereOmniboxElement extends
   }
 
   override onInputWrapperFocusout(e: FocusEvent) {
-    if (this.isContextMenuOpen) {
+    if (this.isContextMenuOpen || this.$.profileIcon.isMenuOpen) {
       return;
     }
     super.onInputWrapperFocusout(e);

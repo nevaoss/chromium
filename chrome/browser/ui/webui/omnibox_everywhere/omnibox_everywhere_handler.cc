@@ -256,7 +256,9 @@ void OmniboxEverywhereHandler::OnDriveUploadClicked(
     OnDriveUploadClickedCallback callback) {
   // Notify the service that the Google Drive picker is being opened so it can
   // suppress auto-dismissal of the standalone Omnibox Everywhere widget.
-  service_->OnDrivePickerOpened();
+  if (service_) {
+    service_->OnDrivePickerOpened();
+  }
 
   // Since the Omnibox Everywhere widget is a standalone popup without a native
   // embedding browser window, we must dynamically associate the WebContents
@@ -303,7 +305,9 @@ void OmniboxEverywhereHandler::CleanupDrivePicker() {
   // Notify the service that the Drive picker has closed (either via success,
   // cancel, or error) so that the widget can regain focus and restore standard
   // auto-dismissal.
-  service_->OnDrivePickerClosed();
+  if (service_) {
+    service_->OnDrivePickerClosed();
+  }
 }
 
 void OmniboxEverywhereHandler::SubmitQuery(const std::string& query_text,
@@ -370,9 +374,9 @@ void OmniboxEverywhereHandler::ActivateKeyword(
     uint8_t line,
     const GURL& url,
     base::TimeTicks match_selection_timestamp,
-    bool is_mouse_event) {
+    searchbox::mojom::KeywordActivationMethod activation_method) {
   // OmniboxEverywhere does not make use of OmniboxEditModel. Keyword mode is
-  // handled directly by the frontend SearchboxMixin via `onKeywordClick`.
+  // handled directly by the frontend SearchboxMixin.
 }
 
 void OmniboxEverywhereHandler::OnAiModeEligibilityOrPrefChanged() {
@@ -388,7 +392,7 @@ void OmniboxEverywhereHandler::OpenUrl(
     base::OnceCallback<void(content::NavigationHandle&)>
         navigation_handle_callback) {
   if (service_) {
-    service_->OpenUrl(url, disposition, ui::PAGE_TRANSITION_LINK,
+    service_->OpenUrl(url, disposition, ui::PAGE_TRANSITION_GENERATED,
                       std::move(navigation_handle_callback));
   }
 }
@@ -527,8 +531,10 @@ void OmniboxEverywhereHandler::PushProfileInfo() {
     return;
   }
 
-  gfx::Image icon =
-      profiles::GetSizedAvatarIcon(entry->GetAvatarIcon(), 48, 48);
+  gfx::Image icon = profiles::GetSizedAvatarIcon(
+      entry->GetAvatarIcon(OmniboxEverywhereUI::kProfileAvatarSizePx),
+      OmniboxEverywhereUI::kProfileAvatarSizePx,
+      OmniboxEverywhereUI::kProfileAvatarSizePx);
   std::string profile_avatar_url = webui::GetBitmapDataUrl(icon.AsBitmap());
 
   std::u16string gaia_name = entry->GetGAIAName();
@@ -541,6 +547,16 @@ void OmniboxEverywhereHandler::PushProfileInfo() {
   page()->UpdateProfileInfo(GURL(profile_avatar_url),
                             base::UTF16ToUTF8(display_name),
                             base::UTF16ToUTF8(entry->GetUserName()));
+}
+
+void OmniboxEverywhereHandler::AddFileContextToPage(
+    const base::UnguessableToken& token,
+    searchbox::mojom::SelectedFileInfoPtr file_info) {
+  if (auto* omnibox_everywhere_ui =
+          OmniboxContextMenuController::GetOmniboxEverywhereUI(web_contents_)) {
+    omnibox_everywhere_ui->AddScreenshotContextToken(token);
+  }
+  ContextualSearchboxHandler::AddFileContextToPage(token, std::move(file_info));
 }
 
 void OmniboxEverywhereHandler::AddFileContextFromBrowser(

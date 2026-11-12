@@ -66,6 +66,11 @@ BASE_FEATURE(kRealboxCr23Theming,
              "NtpRealboxCr23Theming",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, the NTP realbox uses virtual focus for keyboard navigation,
+// allowing users to tab through suggestions and their actions while DOM focus
+// stays on the input.
+BASE_FEATURE(kRealboxVirtualFocusNavigation, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, alpha NTP backgrounds will show in Customize Chrome.
 // This is a development switch. Keep indefinitely.
 BASE_FEATURE(kNtpAlphaBackgroundCollections, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -190,6 +195,10 @@ BASE_FEATURE(kNtpScaledActionChips, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, scaled merchandising action chips will be in a smaller format.
 BASE_FEATURE(kNtpScaledActionChipsSmall, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, sets a custom timeout for action chips suggestions requests.
+// This is a kill switch. Keep indefinitely.
+BASE_FEATURE(kNtpActionChipsSuggestTimeout, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, sharepoint module will be shown.
 BASE_FEATURE(kNtpSharepointModule,
@@ -333,6 +342,9 @@ BASE_FEATURE(kNtpThreadsRail, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, will enable Instant API for Android devices.
 BASE_FEATURE(kNtpEnableInstantApiAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, shortcuts will have a reorder entrypoint.
+BASE_FEATURE(kNtpShortcutsReorder, base::FEATURE_DISABLED_BY_DEFAULT);
+
 const char kNtpModuleIgnoredCriteriaThreshold[] =
     "NtpModuleIgnoredCriteriaThreshold";
 const char kNtpModuleIgnoredHaTSDelayTimeParam[] =
@@ -428,6 +440,10 @@ const base::FeatureParam<bool> kNtpScaledActionChipsShowFallback(
     &ntp_features::kNtpScaledActionChips,
     "kNtpScaledActionChipsShowFallback",
     false);
+const base::FeatureParam<base::TimeDelta> kNtpActionChipsSuggestTimeoutParam(
+    &ntp_features::kNtpActionChipsSuggestTimeout,
+    "ActionChipsSuggestTimeout",
+    base::Seconds(2));
 
 const base::FeatureParam<int> kNtpCustomizeChromeAutoShownMaxCount(
     &ntp_features::kNtpCustomizeChromeAutoOpen,
@@ -568,6 +584,9 @@ const base::FeatureParam<base::TimeDelta> kBookmarkBarMinStalenessTimeInterval(
     &ntp_features::kNtpSimplificationBookmarkBar,
     "BookmarkBarMinStalenessTimeInterval",
     base::Days(1));
+
+const base::FeatureParam<bool> kNtpThreadsRailHybridParam{
+    &ntp_features::kNtpThreadsRail, "NtpThreadsRailHybridParam", false};
 
 base::TimeDelta GetModulesLoadTimeout() {
   std::string param_value = base::GetFieldTrialParamValueByFeature(

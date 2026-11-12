@@ -134,14 +134,12 @@ class CacheStorage::CacheLoader {
       base::OnceCallback<void(std::unique_ptr<CacheStorageIndex>)>;
 
   CacheLoader(base::SequencedTaskRunner* cache_task_runner,
-              scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
               scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
               scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
               CacheStorage* cache_storage,
               const storage::BucketLocator& bucket_locator,
               storage::mojom::CacheStorageOwner owner)
       : cache_task_runner_(cache_task_runner),
-        scheduler_task_runner_(std::move(scheduler_task_runner)),
         quota_manager_proxy_(std::move(quota_manager_proxy)),
         blob_storage_context_(std::move(blob_storage_context)),
         cache_storage_(cache_storage),
@@ -186,7 +184,6 @@ class CacheStorage::CacheLoader {
 
  protected:
   const scoped_refptr<base::SequencedTaskRunner> cache_task_runner_;
-  const scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner_;
 
   // Owned by CacheStorage which owns this. This is guaranteed to outlive
   // CacheLoader, but we store a reference to keep it alive for callbacks.
@@ -208,14 +205,12 @@ class CacheStorage::CacheLoader {
 class CacheStorage::MemoryLoader : public CacheStorage::CacheLoader {
  public:
   MemoryLoader(base::SequencedTaskRunner* cache_task_runner,
-               scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
                scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
                scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
                CacheStorage* cache_storage,
                const storage::BucketLocator& bucket_locator,
                storage::mojom::CacheStorageOwner owner)
       : CacheLoader(cache_task_runner,
-                    std::move(scheduler_task_runner),
                     std::move(quota_manager_proxy),
                     std::move(blob_storage_context),
                     cache_storage,
@@ -228,7 +223,7 @@ class CacheStorage::MemoryLoader : public CacheStorage::CacheLoader {
       int64_t cache_padding) override {
     return CacheStorageCache::CreateMemoryCache(
         bucket_locator_, owner_, cache_name, cache_storage_,
-        scheduler_task_runner_, quota_manager_proxy_, blob_storage_context_);
+        quota_manager_proxy_, blob_storage_context_);
   }
 
   void PrepareNewCacheDestination(const std::u16string& cache_name,
@@ -277,14 +272,12 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
   SimpleCacheLoader(
       const base::FilePath& directory_path,
       base::SequencedTaskRunner* cache_task_runner,
-      scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
       scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
       scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
       CacheStorage* cache_storage,
       const storage::BucketLocator& bucket_locator,
       storage::mojom::CacheStorageOwner owner)
       : CacheLoader(cache_task_runner,
-                    std::move(scheduler_task_runner),
                     std::move(quota_manager_proxy),
                     std::move(blob_storage_context),
                     cache_storage,
@@ -297,15 +290,15 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
       int64_t cache_size,
       int64_t cache_padding) override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    CHECK(cache_name_to_cache_dir_.contains(cache_name),
-          base::NotFatalUntil::M158);
+    // TODO(crbug.com/567709524): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(cache_name_to_cache_dir_.contains(cache_name));
 
     std::string cache_dir = cache_name_to_cache_dir_[cache_name];
     base::FilePath cache_path = directory_path_.AppendASCII(cache_dir);
     return CacheStorageCache::CreatePersistentCache(
         bucket_locator_, owner_, cache_name, cache_storage_, cache_path,
-        scheduler_task_runner_, quota_manager_proxy_, blob_storage_context_,
-        cache_size, cache_padding);
+        quota_manager_proxy_, blob_storage_context_, cache_size, cache_padding);
   }
 
   void PrepareNewCacheDestination(const std::u16string& cache_name,
@@ -401,8 +394,9 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
     protobuf_index.set_bucket_is_default(bucket_locator_.is_default);
 
     for (const auto& cache_metadata : index.ordered_cache_metadata()) {
-      CHECK(cache_name_to_cache_dir_.contains(cache_metadata.name),
-            base::NotFatalUntil::M158);
+      // TODO(crbug.com/565483779): CHECK-exclusion: Convert to a CHECK once we
+      // are confident it won't be triggered.
+      DCHECK(cache_name_to_cache_dir_.contains(cache_metadata.name));
 
       proto::CacheStorageIndex::Cache* index_cache = protobuf_index.add_cache();
       index_cache->set_name(base::UTF16ToUTF8(cache_metadata.name));
@@ -663,7 +657,6 @@ CacheStorage::CacheStorage(
     const base::FilePath& path,
     bool memory_only,
     base::SequencedTaskRunner* cache_task_runner,
-    scoped_refptr<base::SequencedTaskRunner> scheduler_task_runner,
     scoped_refptr<storage::QuotaManagerProxy> quota_manager_proxy,
     scoped_refptr<BlobStorageContextWrapper> blob_storage_context,
     CacheStorageManager* cache_storage_manager,
@@ -671,9 +664,8 @@ CacheStorage::CacheStorage(
     storage::mojom::CacheStorageOwner owner)
     : bucket_locator_(bucket_locator),
       memory_only_(memory_only),
-      scheduler_(
-          new CacheStorageScheduler(CacheStorageSchedulerClient::kStorage,
-                                    scheduler_task_runner)),
+      scheduler_(std::make_unique<CacheStorageScheduler>(
+          CacheStorageSchedulerClient::kStorage)),
       directory_path_(path),
       cache_task_runner_(cache_task_runner),
       quota_manager_proxy_(std::move(quota_manager_proxy)),
@@ -682,15 +674,13 @@ CacheStorage::CacheStorage(
       cache_storage_manager_(cache_storage_manager) {
   if (memory_only) {
     cache_loader_ = base::WrapUnique<CacheLoader>(
-        new MemoryLoader(cache_task_runner_.get(),
-                         std::move(scheduler_task_runner), quota_manager_proxy_,
+        new MemoryLoader(cache_task_runner_.get(), quota_manager_proxy_,
                          blob_storage_context_, this, bucket_locator_, owner));
     return;
   }
 
   cache_loader_ = base::WrapUnique<CacheLoader>(new SimpleCacheLoader(
-      directory_path_, cache_task_runner_.get(),
-      std::move(scheduler_task_runner), quota_manager_proxy_,
+      directory_path_, cache_task_runner_.get(), quota_manager_proxy_,
       blob_storage_context_, this, bucket_locator_, owner));
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1216,6 +1206,7 @@ void CacheStorage::DeleteCacheDidWriteIndex(
   }
 
   cache_index_->FinalizeDoomedCache();
+  impl->InvalidateSideDataWriters();
 
   auto map_iter = cache_map_.find(impl->cache_name());
   CHECK(map_iter != cache_map_.end());
@@ -1327,7 +1318,9 @@ void CacheStorage::MatchAllCachesImpl(
   size_t idx = 0;
   for (const auto& cache_metadata : cache_index_->ordered_cache_metadata()) {
     CacheStorageCacheHandle cache_handle = GetLoadedCache(cache_metadata.name);
-    CHECK(cache_handle.value(), base::NotFatalUntil::M158);
+    // TODO(crbug.com/567223150): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(cache_handle.value());
 
     CacheStorageCache* cache_ptr = cache_handle.value();
     cache_ptr->Match(
@@ -1407,7 +1400,9 @@ CacheStorageCacheHandle CacheStorage::GetLoadedCache(
   if (!cache) {
     const CacheStorageIndex::CacheMetadata* metadata =
         cache_index_->GetMetadata(cache_name);
-    CHECK(metadata, base::NotFatalUntil::M158);
+    // TODO(crbug.com/568292495): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK(metadata);
     std::unique_ptr<CacheStorageCache> new_cache = cache_loader_->CreateCache(
         cache_name, metadata->size, metadata->padding);
     CacheStorageCache* cache_ptr = new_cache.get();

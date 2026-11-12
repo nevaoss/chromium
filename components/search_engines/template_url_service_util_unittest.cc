@@ -25,6 +25,7 @@
 #include "components/regional_capabilities/regional_capabilities_prefs.h"
 #include "components/regional_capabilities/regional_capabilities_service.h"
 #include "components/regional_capabilities/regional_capabilities_switches.h"
+#include "components/search_engines/keyword_table.h"
 #include "components/search_engines/keyword_web_data_service.h"
 #include "components/search_engines/search_engine_choice/search_engine_choice_service.h"
 #include "components/search_engines/search_engines_pref_names.h"
@@ -96,30 +97,42 @@ TEST(TemplateURLServiceUtilTest, RemoveDuplicatePrepopulateIDs) {
   // will test a different heuristic of RemoveDuplicatePrepopulateIDs.
   // Ignored set - These should be left alone as they do not have valid
   // prepopulate IDs.
-  local_turls.push_back(CreatePrepopulateTemplateURL(0, "winner1", 4));
-  local_turls.push_back(CreatePrepopulateTemplateURL(0, "winner2", 5));
-  local_turls.push_back(CreatePrepopulateTemplateURL(0, "winner3", 6));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(0, "winner1", TemplateURLID(4)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(0, "winner2", TemplateURLID(5)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(0, "winner3", TemplateURLID(6)));
   size_t num_non_prepopulated_urls = local_turls.size();
 
   // Keyword match set - Prefer the one that matches the keyword of the
   // prepopulate ID.
-  local_turls.push_back(CreatePrepopulateTemplateURL(1, "loser1", 7));
-  local_turls.push_back(CreatePrepopulateTemplateURL(1, "loser2", 8));
-  local_turls.push_back(CreatePrepopulateTemplateURL(1, "winner4", 9));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(1, "loser1", TemplateURLID(7)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(1, "loser2", TemplateURLID(8)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(1, "winner4", TemplateURLID(9)));
 
   // Default set - Prefer the default search engine over all other criteria.
   // The last one is the default. It will be passed as the
   // default_search_provider parameter to RemoveDuplicatePrepopulateIDs.
-  local_turls.push_back(CreatePrepopulateTemplateURL(2, "loser3", 10));
-  local_turls.push_back(CreatePrepopulateTemplateURL(2, "xxx", 11));
-  local_turls.push_back(CreatePrepopulateTemplateURL(2, "winner5", 12));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(2, "loser3", TemplateURLID(10)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(2, "xxx", TemplateURLID(11)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(2, "winner5", TemplateURLID(12)));
   TemplateURL* default_turl = local_turls.back().get();
 
   // ID set - Prefer the lowest TemplateURLID if the keywords don't match and if
   // none are the default.
-  local_turls.push_back(CreatePrepopulateTemplateURL(3, "winner6", 13));
-  local_turls.push_back(CreatePrepopulateTemplateURL(3, "loser5", 14));
-  local_turls.push_back(CreatePrepopulateTemplateURL(3, "loser6", 15));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(3, "winner6", TemplateURLID(13)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(3, "loser5", TemplateURLID(14)));
+  local_turls.push_back(
+      CreatePrepopulateTemplateURL(3, "loser6", TemplateURLID(15)));
 
   RemoveDuplicatePrepopulateIDs(nullptr, prepopulated_turls, default_turl,
                                 &local_turls, SearchTermsData(), nullptr);
@@ -149,7 +162,7 @@ TEST_F(TemplateURLServiceUtilWithEnvTest,
 
   // Start with single search engine created from Play API data.
   local_turls.push_back(CreatePrepopulateTemplateURL(
-      0, "play", 1, RegulatoryExtensionType::kAndroidEEA));
+      0, "play", TemplateURLID(1), RegulatoryExtensionType::kAndroidEEA));
 
   // Test that prepopulated search engine with matching keyword is merged with
   // Play API search engine. Search URL should come from Play API search engine.
@@ -411,6 +424,9 @@ class TemplateURLServiceUtilLoadTest : public testing::Test {
     // struct as input to set the database's initial state.
     size_t keyword_engines_count = 0;
 
+    // Prepopulated engines migration state stored in the database.
+    KeywordTable::PrepopulatedEngineMigrationSet migration_state;
+
     // Formatter method for Google Test.
     friend std::ostream& operator<<(std::ostream& out,
                                     const KeywordTestMetadata& m) {
@@ -420,13 +436,14 @@ class TemplateURLServiceUtilLoadTest : public testing::Test {
                                m.country->GetForTesting().Serialize())
                          : "<null>")
                  << ", keyword_engines_count=" << m.keyword_engines_count
-                 << "}";
+                 << ", migration_state=" << m.migration_state.ToString() << "}";
     }
 
     // Needed to be able to use EXPECT_EQ with this struct.
     bool operator==(const KeywordTestMetadata& rhs) const {
       return data_version == rhs.data_version && country == rhs.country &&
-             keyword_engines_count == rhs.keyword_engines_count;
+             keyword_engines_count == rhs.keyword_engines_count &&
+             migration_state == rhs.migration_state;
     }
   };
 
@@ -504,6 +521,8 @@ class TemplateURLServiceUtilLoadTest : public testing::Test {
     WDKeywordsResult::Metadata resource_metadata;
     resource_metadata.builtin_keyword_data_version = initial_state.data_version;
     resource_metadata.builtin_keyword_country = initial_state.country;
+    resource_metadata.prepopulated_engines_migration_state =
+        initial_state.migration_state;
     CallGetSearchProvidersUsingLoadedEngines(&template_urls, resource_metadata,
                                              os_crypt_.get());
     size_t keyword_engines_count =
@@ -514,6 +533,8 @@ class TemplateURLServiceUtilLoadTest : public testing::Test {
         .data_version = resource_metadata.builtin_keyword_data_version,
         .country = resource_metadata.builtin_keyword_country,
         .keyword_engines_count = keyword_engines_count,
+        .migration_state =
+            resource_metadata.prepopulated_engines_migration_state,
     };
   }
 
@@ -623,6 +644,46 @@ TEST_F(TemplateURLServiceUtilLoadTest,
   output = SimulateFromDatabaseState(
       {.data_version = kCurrentDataVersion + 1, .country = kOtherEeaCountryId});
   EXPECT_EQ(output, kNoUpdate);
+}
+
+TEST_F(TemplateURLServiceUtilLoadTest,
+       GetSearchProvidersUsingLoadedEngines_MigrationRollback) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{},
+      /*disabled_features=*/{switches::kPrepopulatedEnginesMigration,
+                             switches::kPrepopulatedEnginesShadowVariants});
+  regional_capabilities_service().SetCacheForTesting(
+      kRawNonEeaCountryId, regional_capabilities::GetSettingsForProgram(
+                               regional_capabilities::Program::kDefault));
+
+  const KeywordTable::PrepopulatedEngineMigrationSet kMigrationApplied(
+      {KeywordTable::PrepopulatedEngineMigration::kMigration});
+
+  // The database claims that a migration was applied while the associated
+  // feature is disabled. The regular update runs, refreshing the engines and
+  // recording the metadata with the migration state cleared.
+  auto output =
+      SimulateFromDatabaseState({.data_version = kCurrentDataVersion,
+                                 .country = kNonEeaCountryId,
+                                 .migration_state = kMigrationApplied});
+  EXPECT_EQ(output, (KeywordTestMetadata{.data_version = kCurrentDataVersion,
+                                         .country = kNonEeaCountryId,
+                                         .keyword_engines_count = 5u}));
+
+  // Same when the engines needed to be refreshed anyway.
+  output = SimulateFromDatabaseState({.data_version = kCurrentDataVersion - 1,
+                                      .country = kNonEeaCountryId,
+                                      .migration_state = kMigrationApplied});
+  EXPECT_EQ(output, (KeywordTestMetadata{.data_version = kCurrentDataVersion,
+                                         .country = kNonEeaCountryId,
+                                         .keyword_engines_count = 5u}));
+
+  // Data version downgrades are still suppressed, rollback or not.
+  output = SimulateFromDatabaseState({.data_version = kCurrentDataVersion + 1,
+                                      .country = kNonEeaCountryId,
+                                      .migration_state = kMigrationApplied});
+  EXPECT_EQ(output, KeywordTestMetadata{});
 }
 
 }  // namespace

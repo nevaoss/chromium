@@ -72,12 +72,8 @@ BASE_FEATURE(kSecurePaymentConfirmationStoreCredentialsInOS,
 #endif
 );
 
-
-BASE_FEATURE(kPaymentRequestUseRendererUrlLoader,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kPaymentRequestRejectTooSmallWindows,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPaymentHandlerDialogUseInitiatorInUrlLoad,
 #if BUILDFLAG(IS_ANDROID)
@@ -93,13 +89,13 @@ BASE_FEATURE(kPaymentHandlerHtmlHeadThemeColor,
 BASE_FEATURE(kPaymentRequestMandatoryPaymentAppUi,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kPaymentHandlerCameraAccess, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kPaymentHandlerCameraAccessUx, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSPCLocaleValidation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kThreeDSecureTelemetry, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kThreeDSecureTelemetryForIos, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPaymentHandlerModalDialogHost, base::FEATURE_ENABLED_BY_DEFAULT);
 

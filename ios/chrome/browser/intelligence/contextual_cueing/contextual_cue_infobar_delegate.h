@@ -23,9 +23,8 @@ namespace contextual_cueing {
 
 // Configuration data for presenting a contextual cue infobar banner.
 struct ContextualCueInfobarConfig {
+  // Title text displayed in the infobar banner.
   std::u16string title;
-  // Subtitle / message text displayed in the infobar banner body.
-  std::u16string message;
   // Label for the action button.
   std::u16string button_text;
   // Prepopulated prompt sent to Gemini on action button click.
@@ -62,7 +61,6 @@ class ContextualCueInfobarDelegate : public ConfirmInfoBarDelegate {
   int GetButtons() const override;
   std::u16string GetButtonLabel(InfoBarButton button) const override;
   ui::ImageModel GetIcon() const override;
-  bool UseIconBackgroundTint() const override;
   bool Accept() override;
   void InfoBarDismissed() override;
   bool ShouldExpire(const NavigationDetails& details) const override;

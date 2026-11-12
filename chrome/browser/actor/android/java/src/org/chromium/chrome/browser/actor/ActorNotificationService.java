@@ -8,10 +8,12 @@ import android.app.Notification;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ResettersForTesting;
+import org.chromium.base.TimeUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -22,7 +24,9 @@ import org.chromium.components.browser_ui.notifications.BaseNotificationManagerP
 import org.chromium.components.browser_ui.notifications.NotificationWrapper;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,7 +47,9 @@ public class ActorNotificationService {
     private final Map<Integer, ActorTask> mTaskCache = new HashMap<>();
     private final Map<Integer, NotificationWrapper> mNotificationCache = new HashMap<>();
     private final Map<Integer, Integer> mTaskStates = new HashMap<>();
-    private final Map<Integer, Runnable> mDemoteRunnables = new HashMap<>();
+    private final Map<Integer, Long> mLastWorklogUpdateTimes = new HashMap<>();
+    // Insertion-ordered so that the oldest pending demotion is promoted first.
+    private final Map<Integer, Runnable> mDemoteRunnables = new LinkedHashMap<>();
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final BaseNotificationManagerProxy mNotificationManager;
     private final ActorKeyedService mKeyedService;
@@ -65,6 +71,37 @@ public class ActorNotificationService {
 
     public boolean hasPendingDemotions() {
         return !mDemoteRunnables.isEmpty();
+    }
+
+    /** Returns the IDs of the tasks whose live notification is still awaiting demotion. */
+    Set<Integer> getPendingDemotionTaskIds() {
+        return mDemoteRunnables.keySet();
+    }
+
+    /**
+     * Reposts a cached notification as a regular notification. Used when the foreground service
+     * releases a notification that was removed along with the foreground state.
+     *
+     * @param taskId The ID of the task whose notification should be reposted.
+     */
+    public void repostNotification(int taskId) {
+        NotificationWrapper wrapper = mNotificationCache.get(taskId);
+        if (wrapper != null) {
+            mNotificationManager.notify(wrapper);
+        }
+    }
+
+    /**
+     * Demotes a task's live notification ahead of its scheduled demotion. Used when the
+     * notification is no longer pinned to the foreground service and therefore cannot stay live.
+     *
+     * @param taskId The ID of the task to demote.
+     */
+    void demoteNow(int taskId) {
+        Runnable runnable = mDemoteRunnables.get(taskId);
+        if (runnable == null) return;
+        mHandler.removeCallbacks(runnable);
+        demoteToNonLiveNotification(taskId, /* notifyManager= */ false);
     }
 
     /**
@@ -95,6 +132,9 @@ public class ActorNotificationService {
     public void updateNotificationForTask(
             int taskId, @ActorTaskState int newState, boolean isSilent, boolean isWarning) {
         cancelDemoteRunnable(taskId);
+        if (!ActorUtils.isRunningState(newState)) {
+            mLastWorklogUpdateTimes.remove(taskId);
+        }
         NotificationWrapper old = mNotificationCache.get(taskId);
         NotificationWrapper current =
                 getOrBuildNotificationWrapper(taskId, newState, isSilent, isWarning);
@@ -128,6 +168,10 @@ public class ActorNotificationService {
 
     @VisibleForTesting
     void demoteToNonLiveNotification(int taskId) {
+        demoteToNonLiveNotification(taskId, /* notifyManager= */ true);
+    }
+
+    private void demoteToNonLiveNotification(int taskId, boolean notifyManager) {
         if (mDemoteRunnables.remove(taskId) == null) {
             return;
         }
@@ -135,6 +179,17 @@ public class ActorNotificationService {
         Integer state = mTaskStates.get(taskId);
         if (task == null || state == null || !ActorUtils.isCompletedState(state)) {
             return;
+        }
+
+        // Remove the live notification from the cache before notifying the manager so that if
+        // maybeStopServiceNow() tears down the service, repostNotification() does not repost it
+        // before we post the demoted replacement below.
+        mNotificationCache.remove(taskId);
+        if (notifyManager) {
+            ActorForegroundServiceManager manager = ActorForegroundServiceManager.getInstance();
+            if (manager != null) {
+                manager.maybeStopServiceNow();
+            }
         }
 
         NotificationWrapper nonLiveWrapper =
@@ -145,12 +200,6 @@ public class ActorNotificationService {
                         /* isWarning= */ false,
                         /* isLive= */ false);
         mNotificationCache.put(taskId, nonLiveWrapper);
-
-        ActorForegroundServiceManager manager = ActorForegroundServiceManager.getInstance();
-        if (manager != null) {
-            manager.maybeStopServiceNow();
-        }
-
         mNotificationManager.notify(nonLiveWrapper);
     }
 
@@ -177,6 +226,14 @@ public class ActorNotificationService {
                         task, state, /* isSilent= */ true, /* isWarning= */ false);
         mNotificationCache.put(taskId, current);
         mNotificationManager.notify(current);
+
+        if (ActorUtils.isRunningState(state) && !TextUtils.isEmpty(task.getCurrentActionName())) {
+            long now = TimeUtils.elapsedRealtimeMillis();
+            Long lastTime = mLastWorklogUpdateTimes.put(taskId, now);
+            if (lastTime != null) {
+                ActorMetrics.recordTimeBetweenWorklogUpdates(now - lastTime);
+            }
+        }
     }
 
     /**
@@ -310,6 +367,7 @@ public class ActorNotificationService {
         mDemoteRunnables.clear();
         mNotificationCache.clear();
         mTaskStates.clear();
+        mLastWorklogUpdateTimes.clear();
         mTaskCache.clear();
     }
 
@@ -317,6 +375,7 @@ public class ActorNotificationService {
         cancelDemoteRunnable(taskId);
         mNotificationCache.remove(taskId);
         mTaskStates.remove(taskId);
+        mLastWorklogUpdateTimes.remove(taskId);
         mTaskCache.remove(taskId);
     }
 

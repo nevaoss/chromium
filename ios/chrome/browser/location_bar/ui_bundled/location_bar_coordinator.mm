@@ -35,6 +35,8 @@
 #import "ios/chrome/browser/badges/ui_bundled/incognito_badge_view_controller.h"
 #import "ios/chrome/browser/badges/ui_bundled/incognito_badge_view_visibility_delegate.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_availability.h"
+#import "ios/chrome/browser/composebox/menu/coordinator/composebox_menu_coordinator.h"
+#import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/contextual_panel/entrypoint/coordinator/contextual_panel_entrypoint_coordinator.h"
 #import "ios/chrome/browser/contextual_panel/entrypoint/coordinator/contextual_panel_entrypoint_coordinator_delegate.h"
 #import "ios/chrome/browser/contextual_panel/entrypoint/ui/contextual_panel_entrypoint_visibility_delegate.h"
@@ -76,7 +78,6 @@
 #import "ios/chrome/browser/omnibox/ui/omnibox_text_field_ios.h"
 #import "ios/chrome/browser/overlays/model/public/overlay_presenter.h"
 #import "ios/chrome/browser/reader_mode/coordinator/reader_mode_chip_coordinator.h"
-#import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_web_state_utils.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
 #import "ios/chrome/browser/send_tab_to_self/model/send_tab_to_self_util.h"
@@ -207,6 +208,10 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
 
 // Handler for URL drag interactions.
 @property(nonatomic, strong) URLDragDropHandler* dragDropHandler;
+
+// The coordinator showing the multimodal composebox menu.
+@property(nonatomic, strong)
+    ComposeboxMenuCoordinator* composeboxMenuCoordinator;
 @end
 
 @implementation LocationBarCoordinator
@@ -374,6 +379,13 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
         FullscreenController::FromBrowser(self.browser), self.viewController);
   }
 
+  [self createMenuCoordinator];
+  if (!IsComposeboxPlusButtonBottomSheet() &&
+      IsPlusButtonMenuInFakeboxEnabled()) {
+    UIMenu* menu = [self.composeboxMenuCoordinator createMenu];
+    [self.viewController setPlusButtonMenu:menu];
+  }
+
   AutocompleteBrowserAgent* autocompleteBrowserAgent =
       AutocompleteBrowserAgent::FromBrowser(self.browser);
   if (autocompleteBrowserAgent) {
@@ -398,6 +410,9 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   [self.browser->GetCommandDispatcher()
       stopDispatchingToTarget:self.viewController
                                   .pageActionMenuEntryPointHandler];
+
+  [_composeboxMenuCoordinator stop];
+  _composeboxMenuCoordinator = nil;
 
   if (IsPageActionMenuEnabled() || IsProactiveSuggestionsFrameworkEnabled() ||
       IsLocationBarBadgeMigrationEnabled()) {
@@ -575,6 +590,10 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   [self.viewController setCustomLeadingViewType:type];
 }
 
+- (void)dismissOmniboxMultimodalActionsMenu {
+  [_composeboxMenuCoordinator dismissMenu];
+}
+
 - (void)cancelOmniboxEdit {
   CHECK(!IsComposeboxIOSEnabled());
   [self cancelOmniboxEditWithCompletion:nil];
@@ -683,6 +702,21 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
       self.viewController);
 }
 
+- (void)locationBarDidTapPlusButton {
+  if (IsComposeboxPlusButtonBottomSheet()) {
+    [_composeboxMenuCoordinator presentBottomSheetMenu];
+  } else if (IsPlusButtonMenuInFakeboxEnabled()) {
+    [_composeboxMenuCoordinator recordAttachmentsMenuOpen];
+  } else {
+    id<BrowserCoordinatorCommands> browserCoordinatorHandler =
+        HandlerForProtocol(self.browser->GetCommandDispatcher(),
+                           BrowserCoordinatorCommands);
+    [browserCoordinatorHandler
+        showComposeboxFromEntrypoint:ComposeboxEntrypoint::kNTPPlusButton
+                           withQuery:nil];
+  }
+}
+
 - (void)searchCopiedImage {
   __weak LocationBarCoordinator* weakSelf = self;
   ClipboardRecentContent::GetInstance()->GetRecentImageFromClipboard(
@@ -773,6 +807,10 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
 - (void)setBadgeCustomLeadingViewType:(CustomLeadingViewType)type {
   CHECK(IsChromeNextIaEnabled());
   [self.viewController setCustomLeadingViewType:type];
+}
+
+- (void)hideBadgeForType:(LocationBarBadgeType)type {
+  [self.locationBarBadgeCoordinator hideBadgeForType:type];
 }
 
 - (void)togglePageActionMenuEntryPointHighlight:(BOOL)highlight {
@@ -1106,6 +1144,16 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
                                                                GURL(), service);
   UrlLoadParams params = UrlLoadParams::InCurrentTab(webParams);
   UrlLoadingBrowserAgent::FromBrowser(self.browser)->Load(params);
+}
+
+// Creates the Composebox menu coordinator for the plus button.
+- (void)createMenuCoordinator {
+  [_composeboxMenuCoordinator stop];
+  _composeboxMenuCoordinator = [[ComposeboxMenuCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                      entrypoint:ComposeboxEntrypoint::kNTPFakebox];
+  [_composeboxMenuCoordinator start];
 }
 
 @end

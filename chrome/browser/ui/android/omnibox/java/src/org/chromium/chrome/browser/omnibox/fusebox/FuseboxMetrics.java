@@ -5,15 +5,18 @@
 package org.chromium.chrome.browser.omnibox.fusebox;
 
 import android.annotation.SuppressLint;
-import android.os.SystemClock;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
 
+import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.UmaRecorderHolder;
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.fusebox.PopupButtonData.PopupButtonType;
+import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
+import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.components.browser_ui.util.ConversionUtils;
 import org.chromium.components.contextual_search.ContextUploadErrorType;
 import org.chromium.components.contextual_search.ContextUploadStatus;
@@ -51,6 +54,10 @@ public class FuseboxMetrics {
     /* package */ static final String ATTACHMENT_C2PA_DETECTED_HISTOGRAM =
             "Lens.Composebox.ImageUpload.Java.C2paDetected";
 
+    @VisibleForTesting
+    /* package */ static final String TAB_ATTACHMENT_EFFECTIVE_DURATION_HISTOGRAM =
+            "Omnibox.MobileFusebox.TabAttachment.EffectiveDuration";
+
     private static final String TOKEN_SEPARATOR = ".";
 
     @VisibleForTesting /* package */
@@ -64,6 +71,12 @@ public class FuseboxMetrics {
     @VisibleForTesting
     /* package */ static final String REANCHOR_VIEWS_DURATION_HISTOGRAM =
             "Android.Omnibox.MobileFusebox.ReanchorViews.Duration";
+
+    private static final String PICKER_OUTCOME_HISTOGRAM = "Omnibox.MobileFusebox.PickerOutcome";
+    private static final String DRIVE_DOCUMENT_TYPE_HISTOGRAM =
+            "Omnibox.MobileFusebox.Drive.DocumentType";
+    private static final String ATTACHMENT_TYPE_AT_SUBMISSION_HISTOGRAM =
+            "Omnibox.MobileFusebox.AttachmentTypeAtSubmission";
 
     // LINT.IfChange(ToolMode)
     @VisibleForTesting /* package */ static final int TOOL_MODE_HISTOGRAM_BOUND = 13;
@@ -97,7 +110,9 @@ public class FuseboxMetrics {
         AiModeActivationSource.TOOL_MENU,
         AiModeActivationSource.DEDICATED_BUTTON,
         AiModeActivationSource.NTP_BUTTON,
-        AiModeActivationSource.IMPLICIT
+        AiModeActivationSource.IMPLICIT,
+        AiModeActivationSource.NTP_CREATE_IMAGE_BUTTON,
+        AiModeActivationSource.NTP_GALLERY_BUTTON
     })
     @Retention(RetentionPolicy.SOURCE)
     @Target({ElementType.TYPE_USE})
@@ -107,7 +122,9 @@ public class FuseboxMetrics {
         int DEDICATED_BUTTON = 1;
         int NTP_BUTTON = 2;
         int IMPLICIT = 3;
-        int COUNT = 4;
+        int NTP_CREATE_IMAGE_BUTTON = 4;
+        int NTP_GALLERY_BUTTON = 5;
+        int COUNT = 6;
     }
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:AiModeActivationSource)
@@ -160,6 +177,54 @@ public class FuseboxMetrics {
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:FuseboxAttachmentSizeLimitCheck)
 
+    // LINT.IfChange(MobileFuseboxPickerOutcome)
+    @IntDef({
+        MobileFuseboxPickerOutcome.ATTACHMENT_ADDED,
+        MobileFuseboxPickerOutcome.MANUAL_USER_EXIT,
+        MobileFuseboxPickerOutcome.PERMISSION_DENIED,
+        MobileFuseboxPickerOutcome.LOCAL_ERROR,
+        MobileFuseboxPickerOutcome.COUNT
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @Target({ElementType.TYPE_USE})
+    @NullMarked
+    public @interface MobileFuseboxPickerOutcome {
+        int ATTACHMENT_ADDED = 0;
+        int MANUAL_USER_EXIT = 1;
+        int PERMISSION_DENIED = 2;
+        int LOCAL_ERROR = 3;
+        int COUNT = 4;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:MobileFuseboxPickerOutcome)
+
+    // LINT.IfChange(MobileFuseboxDriveDocumentType)
+    @IntDef({
+        DriveDocumentType.OTHER,
+        DriveDocumentType.DOCS,
+        DriveDocumentType.SHEETS,
+        DriveDocumentType.SLIDES,
+        DriveDocumentType.PDF,
+        DriveDocumentType.IMAGE,
+        DriveDocumentType.VIDEO,
+        DriveDocumentType.COUNT
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @Target({ElementType.TYPE_USE})
+    @NullMarked
+    public @interface DriveDocumentType {
+        int OTHER = 0;
+        int DOCS = 1;
+        int SHEETS = 2;
+        int SLIDES = 3;
+        int PDF = 4;
+        int IMAGE = 5;
+        int VIDEO = 6;
+        int COUNT = 7;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:MobileFuseboxDriveDocumentType)
+
     private boolean mSessionStarted;
     private boolean mAttachmentsPopupButtonUsedInSession;
     private boolean mAccordionExpandedInSession;
@@ -182,7 +247,7 @@ public class FuseboxMetrics {
 
     static void recordReanchorViewsDuration(long startTime) {
         RecordHistogram.recordTimesHistogram(
-                REANCHOR_VIEWS_DURATION_HISTOGRAM, SystemClock.elapsedRealtime() - startTime);
+                REANCHOR_VIEWS_DURATION_HISTOGRAM, TimeUtils.elapsedRealtimeMillis() - startTime);
     }
 
     static void notifyAttachmentSizeLimitCheck(@FuseboxAttachmentSizeLimitCheck int result) {
@@ -264,6 +329,18 @@ public class FuseboxMetrics {
                 "Omnibox.MobileFusebox.ModelButtonSelected", modelMode, MODEL_MODE_HISTOGRAM_BOUND);
     }
 
+    static void notifyPlusMenuShown() {
+        ChromeSharedPreferences.getInstance()
+                .writeLong(
+                        ChromePreferenceKeys.OMNIBOX_FUSEBOX_PLUS_MENU_LAST_OPEN_TIME,
+                        TimeUtils.currentTimeMillis());
+    }
+
+    static void notifyAttachmentsPopupClosed(boolean itemSelected) {
+        RecordHistogram.recordBooleanHistogram(
+                "Omnibox.MobileFusebox.AttachmentsPopupItemSelected", itemSelected);
+    }
+
     void notifyOmniboxSessionStarted() {
         mSessionStarted = true;
     }
@@ -271,8 +348,14 @@ public class FuseboxMetrics {
     void notifyOmniboxSessionEnded(
             boolean userDidNavigate,
             @AutocompleteRequestType int autocompleteRequestType,
-            @ModelMode int modelMode) {
+            @ModelMode int modelMode,
+            @Nullable FuseboxAttachmentModelList modelList) {
         if (!mSessionStarted) return;
+        if (userDidNavigate && modelList != null) {
+            for (FuseboxAttachment attachment : modelList) {
+                recordAttachmentTypeAtSubmission(attachment.buttonType);
+            }
+        }
         RecordHistogram.recordBooleanHistogram(
                 "Omnibox.MobileFusebox.AttachmentsPopupButtonClickedInSession",
                 mAttachmentsPopupButtonUsedInSession);
@@ -325,6 +408,24 @@ public class FuseboxMetrics {
 
     static void notifyAttachmentSucceeded(long startTime, @FuseboxAttachmentButtonType int type) {
         notifyAttachmentTime(startTime, type, SUCCEEDED_HISTOGRAM);
+    }
+
+    /**
+     * Records the effective duration required to prepare and attach a tab from the Tab Picker.
+     *
+     * @param attachStartTimeMs The timestamp when attachment preparation began.
+     * @param loadDurationMs The duration the tab spent loading on demand prior to attachment, or 0
+     *     if the tab was already loaded.
+     * @param isPartOfMultiTabSelection Whether the tab was one of several newly attached by one tab
+     *     picker selection.
+     */
+    static void recordTabAttachmentEffectiveDuration(
+            long attachStartTimeMs, long loadDurationMs, boolean isPartOfMultiTabSelection) {
+        long attachDurationMs = TimeUtils.elapsedRealtimeMillis() - attachStartTimeMs;
+        String suffix = isPartOfMultiTabSelection ? ".MultipleTabs" : ".SingleTab";
+        RecordHistogram.recordMediumTimesHistogram(
+                TAB_ATTACHMENT_EFFECTIVE_DURATION_HISTOGRAM + suffix,
+                loadDurationMs + attachDurationMs);
     }
 
     static void notifyFileAttachmentSize(long sizeInBytes, @MimeTypeUtils.Type int fileType) {
@@ -410,7 +511,7 @@ public class FuseboxMetrics {
 
     private static void notifyAttachmentTime(
             long startTime, @FuseboxAttachmentButtonType int type, String genericHistogram) {
-        long duration = SystemClock.elapsedRealtime() - startTime;
+        long duration = TimeUtils.elapsedRealtimeMillis() - startTime;
         RecordHistogram.recordMediumTimesHistogram(genericHistogram, duration);
         String typeHistogram = typeScopedHistogram(genericHistogram, type);
         RecordHistogram.recordMediumTimesHistogram(typeHistogram, duration);
@@ -441,5 +542,26 @@ public class FuseboxMetrics {
         return FILE_ATTACHMENT_SIZE_HISTOGRAM
                 + TOKEN_SEPARATOR
                 + getHistogramExtensionForMimeType(fileType);
+    }
+
+    static void recordDrivePickerOutcome(@MobileFuseboxPickerOutcome int outcome) {
+        RecordHistogram.recordEnumeratedHistogram(
+                PICKER_OUTCOME_HISTOGRAM, outcome, MobileFuseboxPickerOutcome.COUNT);
+        RecordHistogram.recordEnumeratedHistogram(
+                PICKER_OUTCOME_HISTOGRAM + TOKEN_SEPARATOR + "Drive",
+                outcome,
+                MobileFuseboxPickerOutcome.COUNT);
+    }
+
+    static void recordDriveDocumentType(@Nullable String mimeType, @Nullable String fileName) {
+        RecordHistogram.recordEnumeratedHistogram(
+                DRIVE_DOCUMENT_TYPE_HISTOGRAM,
+                DriveIconUtils.getDriveDocumentType(mimeType, fileName),
+                DriveDocumentType.COUNT);
+    }
+
+    static void recordAttachmentTypeAtSubmission(@FuseboxAttachmentButtonType int type) {
+        RecordHistogram.recordEnumeratedHistogram(
+                ATTACHMENT_TYPE_AT_SUBMISSION_HISTOGRAM, type, FuseboxAttachmentButtonType.COUNT);
     }
 }

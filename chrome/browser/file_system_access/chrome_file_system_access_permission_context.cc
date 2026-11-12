@@ -211,10 +211,11 @@ void ShowFileSystemAccessRestrictedDirectoryDialogOnUIThread(
     content::GlobalRenderFrameHostId frame_id,
     const url::Origin& origin,
     HandleType handle_type,
+    AccessTrigger access_trigger,
     base::OnceCallback<
         void(ChromeFileSystemAccessPermissionContext::SensitiveEntryResult)>
         callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(frame_id);
   if (!rfh || !rfh->IsActive()) {
     // Requested from a no longer valid RenderFrameHost.
@@ -233,7 +234,7 @@ void ShowFileSystemAccessRestrictedDirectoryDialogOnUIThread(
   }
 
   ShowFileSystemAccessRestrictedDirectoryDialog(
-      origin, handle_type, std::move(callback), web_contents);
+      origin, handle_type, access_trigger, std::move(callback), web_contents);
 }
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
@@ -244,7 +245,7 @@ void ShowFileSystemAccessDangerousFileDialogOnUIThread(
     base::OnceCallback<
         void(ChromeFileSystemAccessPermissionContext::SensitiveEntryResult)>
         callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
   content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(frame_id);
   if (!rfh || !rfh->IsActive()) {
     // Requested from a no longer valid RenderFrameHost.
@@ -613,8 +614,8 @@ bool ShouldBlockAccessToPath(
         extra_rules,
     ChromeFileSystemAccessPermissionContext::BlockPathRules block_path_rules,
     base::FilePath profile_path) {
-  DCHECK(!path.empty());
-  DCHECK(path.IsAbsolute());
+  CHECK(!path.empty(), base::NotFatalUntil::M161);
+  CHECK(path.IsAbsolute(), base::NotFatalUntil::M161);
 
   path = NormalizeFilePathForBlocklist(path, should_normalize_file_path);
   profile_path =
@@ -764,10 +765,11 @@ bool IsPathOrDescendantIgnoreCase(
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 void DoSafeBrowsingCheckOnUIThread(
+    base::WeakPtr<ChromeFileSystemAccessPermissionContext> permission_context,
     content::GlobalRenderFrameHostId frame_id,
     std::unique_ptr<content::FileSystemAccessWriteItem> item,
     safe_browsing::CheckDownloadCallback callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
 #if BUILDFLAG(SAFE_BROWSING_DOWNLOAD_PROTECTION)
   safe_browsing::SafeBrowsingService* sb_service =
       g_browser_process->safe_browsing_service();
@@ -778,20 +780,25 @@ void DoSafeBrowsingCheckOnUIThread(
   }
 
   if (!item->browser_context) {
-    content::RenderProcessHost* rph =
-        content::RenderProcessHost::FromID(frame_id.child_id);
-    if (!rph) {
-      std::move(callback).Run(safe_browsing::DownloadCheckResult::UNKNOWN);
+    if (permission_context) {
+      item->browser_context = permission_context->profile();
+    } else if (content::RenderProcessHost* rph =
+                   content::RenderProcessHost::FromID(frame_id.child_id)) {
+      item->browser_context = rph->GetBrowserContext();
+    }
+    if (!item->browser_context) {
+      std::move(callback).Run(
+          safe_browsing::DownloadCheckResult::BLOCKED_SCAN_FAILED);
       return;
     }
-    item->browser_context = rph->GetBrowserContext();
   }
 
   if (!item->web_contents) {
     content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(frame_id);
     if (rfh) {
-      DCHECK_NE(rfh->GetLifecycleState(),
-                content::RenderFrameHost::LifecycleState::kPrerendering);
+      CHECK_NE(rfh->GetLifecycleState(),
+               content::RenderFrameHost::LifecycleState::kPrerendering,
+               base::NotFatalUntil::M161);
       item->web_contents =
           content::WebContents::FromRenderFrameHost(rfh)->GetWeakPtr();
     }
@@ -938,12 +945,55 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
     return path_info_.display_name;
   }
 
+  // Validates that the requesting frame is authorized to access the File System
+  // Access API before checking or granting permissions.
+  //
+  // Returns a failure outcome if `rfh` is null, embedded within a fenced frame,
+  // or executing in a cross-origin or third-party context. Returns base::ok()
+  // when the frame context is authorized.
+  base::expected<void, PermissionRequestOutcome> ValidateRequestingFrame(
+      content::RenderFrameHost* rfh) {
+    if (!rfh) {
+      return base::unexpected(PermissionRequestOutcome::kInvalidFrame);
+    }
+
+    // Fenced frames must not access local file system data or prompt the user.
+    if (rfh->IsNestedWithinFencedFrame()) {
+      return base::unexpected(PermissionRequestOutcome::kInvalidFrame);
+    }
+
+    // Reject third-party iframes and partitioned contexts before checking
+    // existing grants. This prevents cross-origin frames from inheriting or
+    // upgrading permissions granted to the top-level origin.
+    url::Origin embedding_origin = url::Origin::Create(
+        permissions::PermissionUtil::GetLastCommittedOriginAsURL(
+            rfh->GetMainFrame()));
+    if (embedding_origin != origin_ ||
+        rfh->GetStorageKey().IsThirdPartyContext()) {
+      return base::unexpected(PermissionRequestOutcome::kThirdPartyContext);
+    }
+
+    return base::ok();
+  }
+
   void RequestPermission(
       content::GlobalRenderFrameHostId frame_id,
       UserActivationState user_activation_state,
       base::OnceCallback<void(PermissionRequestOutcome)> callback) override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     scoped_refptr<PermissionGrantImpl> self(this);
+
+    content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(frame_id);
+
+    // Validate the security context of the calling frame before evaluating
+    // grants. Cross-origin frames must be rejected even if the target origin
+    // already holds an active or persisted grant.
+    if (auto validation_result = ValidateRequestingFrame(rfh);
+        !validation_result.has_value()) {
+      RunCallbackAndRecordPermissionRequestOutcome(std::move(callback),
+                                                   validation_result.error());
+      return;
+    }
 
     // Check if a permission request has already been processed previously. This
     // check is done first because we don't want to reset the status of a
@@ -1010,24 +1060,9 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
       return;
     }
 
-    // Otherwise, perform checks and ask the user for permission.
-
-    content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(frame_id);
-    if (!rfh) {
-      // Requested from a no longer valid RenderFrameHost.
-      RunCallbackAndRecordPermissionRequestOutcome(
-          std::move(callback), PermissionRequestOutcome::kInvalidFrame);
-      return;
-    }
-
-    // Don't show request permission UI for an inactive RenderFrameHost as the
-    // page might not distinguish properly between user denying the permission
-    // and automatic rejection, leading to an inconsistent UX once the page
-    // becomes active again.
-    // - If this is called when RenderFrameHost is in BackForwardCache, evict
-    //   the document from the cache.
-    // - If this is called when RenderFrameHost is in prerendering, cancel
-    //   prerendering.
+    // Verify prerequisites for prompting the user. Inactive documents in
+    // BackForwardCache or prerendering cannot present dialogs; evict or cancel
+    // them to prevent inconsistent UI state.
     if (rfh->IsInactiveAndDisallowActivation(
             content::DisallowActivationReasonId::
                 kFileSystemAccessPermissionRequest)) {
@@ -1035,13 +1070,8 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
           std::move(callback), PermissionRequestOutcome::kInvalidFrame);
       return;
     }
-    // We don't allow file system access from fenced frames.
-    if (rfh->IsNestedWithinFencedFrame()) {
-      RunCallbackAndRecordPermissionRequestOutcome(
-          std::move(callback), PermissionRequestOutcome::kInvalidFrame);
-      return;
-    }
 
+    // Prevent background permission dialog spam by requiring a user gesture.
     if (user_activation_state == UserActivationState::kRequired &&
         !rfh->HasTransientUserActivation()) {
       // No permission prompts without user activation.
@@ -1056,16 +1086,6 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
       // Requested from a worker, or a no longer existing tab.
       RunCallbackAndRecordPermissionRequestOutcome(
           std::move(callback), PermissionRequestOutcome::kInvalidFrame);
-      return;
-    }
-
-    url::Origin embedding_origin = url::Origin::Create(
-        permissions::PermissionUtil::GetLastCommittedOriginAsURL(
-            rfh->GetMainFrame()));
-    if (embedding_origin != origin_) {
-      // Third party iframes are not allowed to request more permissions.
-      RunCallbackAndRecordPermissionRequestOutcome(
-          std::move(callback), PermissionRequestOutcome::kThirdPartyContext);
       return;
     }
 
@@ -1284,7 +1304,7 @@ class ChromeFileSystemAccessPermissionContext::PermissionGrantImpl
       const content::PathInfo& old_path,
       const content::PathInfo& new_path,
       bool allow_overwrite) {
-    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M161);
     auto old_path_it =
         std::ranges::find_if(grants, [&old_path](const auto& entry) {
           return entry.first == old_path.path;
@@ -2155,7 +2175,7 @@ std::string ChromeFileSystemAccessPermissionContext::GetKeyForObject(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   const auto optional_path =
       base::ValueToFilePath(object.Find(kPermissionPathKey));
-  DCHECK(optional_path);
+  CHECK(optional_path, base::NotFatalUntil::M161);
   return std::string(PathAsPermissionKey(optional_path.value()));
 }
 
@@ -2187,7 +2207,7 @@ std::u16string ChromeFileSystemAccessPermissionContext::GetObjectDisplayName(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   const auto optional_path =
       base::ValueToFilePath(object.Find(kPermissionPathKey));
-  DCHECK(optional_path);
+  CHECK(optional_path, base::NotFatalUntil::M161);
   return optional_path->LossyDisplayName();
 }
 
@@ -2214,7 +2234,7 @@ ChromeFileSystemAccessPermissionContext::GetGrantedPaths(
     const url::Origin& origin) {
   return base::ToVector(GetGrantedObjects(origin), [](const auto& object) {
     const auto* path = object->value.Find(kPermissionPathKey);
-    DCHECK(path);
+    CHECK(path, base::NotFatalUntil::M161);
     return base::ValueToFilePath(path).value();
   });
 }
@@ -2454,7 +2474,8 @@ void ChromeFileSystemAccessPermissionContext::PerformAfterWriteChecks(
   content::GetUIThreadTaskRunner({})->PostTask(
       FROM_HERE,
       base::BindOnce(
-          &DoSafeBrowsingCheckOnUIThread, frame_id, std::move(item),
+          &DoSafeBrowsingCheckOnUIThread, weak_factory_.GetWeakPtr(), frame_id,
+          std::move(item),
           base::BindOnce(
               [](scoped_refptr<base::TaskRunner> task_runner,
                  base::OnceCallback<void(AfterWriteCheckResult result)>
@@ -2559,7 +2580,7 @@ void ChromeFileSystemAccessPermissionContext::DidCheckPathAgainstBlocklist(
     content::GetUIThreadTaskRunner({})->PostTask(
         FROM_HERE,
         base::BindOnce(&ShowFileSystemAccessRestrictedDirectoryDialogOnUIThread,
-                       frame_id, origin, handle_type,
+                       frame_id, origin, handle_type, access_trigger,
                        std::move(result_callback)));
     return;
   }
@@ -2635,7 +2656,7 @@ void ChromeFileSystemAccessPermissionContext::MaybeEvictEntries(
 
   for (const auto& entry : oldest_entries) {
     bool did_remove_entry = dict.Remove(entry.second);
-    DCHECK(did_remove_entry);
+    CHECK(did_remove_entry, base::NotFatalUntil::M161);
   }
 }
 
@@ -3786,7 +3807,7 @@ bool ChromeFileSystemAccessPermissionContext::OriginHasExtendedPermission(
            WebAppInstallStatus::kInstalled;
   }
   // No cached value for web app install status. Retrieve the install status.
-  DCHECK(profile());
+  CHECK(profile(), base::NotFatalUntil::M161);
   auto* web_app_provider = web_app::WebAppProvider::GetForWebApps(
       Profile::FromBrowserContext(profile()));
   if (!web_app_provider) {
@@ -3936,7 +3957,8 @@ void ChromeFileSystemAccessPermissionContext::PermissionGrantDestroyed(
   // be granted but won't be visible in any UI because the permission context
   // isn't tracking them anymore.
   if (grant_it == grants.end()) {
-    DCHECK_EQ(PermissionStatus::DENIED, grant->GetActivePermissionStatus());
+    CHECK_EQ(PermissionStatus::DENIED, grant->GetActivePermissionStatus(),
+             base::NotFatalUntil::M161);
     return;
   }
 

@@ -6,12 +6,12 @@
 
 #include <algorithm>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <utility>
 
 #include "base/auto_reset.h"
 #include "base/check_op.h"
-#include "base/containers/adapters.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/i18n/rtl.h"
@@ -1151,7 +1151,12 @@ void Widget::Hide() {
   }
   auto weak_this = GetWeakPtr();
   native_widget_->Hide();
-  CHECK(weak_this);
+  // Visibility change observers may destroy this widget during Hide(), e.g.
+  // when hiding a window re-entrantly hides and destroys this widget. See
+  // crbug.com/564588980.
+  if (!weak_this) {
+    return;
+  }
   internal::AnyWidgetObserverSingleton::GetInstance()->OnAnyWidgetHidden(this);
 }
 
@@ -1380,6 +1385,9 @@ void Widget::EnableInputEventActivationProtection(
   }
 
   if (input_event_activation_protection_enabled_) {
+    CHECK(!custom_protector)
+        << "Cannot set a custom InputEventActivationProtector after input "
+           "protection has already been enabled on the Widget.";
     return;
   }
 
@@ -2598,7 +2606,7 @@ bool Widget::ShouldDescendIntoChildForEventHandlingDeprecated(
     return true;
   }
 
-  for (View* view : base::Reversed(views_with_layers)) {
+  for (View* view : std::views::reverse(views_with_layers)) {
     // Skip views that don't process events.
     if (!view->GetCanProcessEventsWithinSubtree()) {
       continue;

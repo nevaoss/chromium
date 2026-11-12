@@ -35,6 +35,10 @@ BASE_FEATURE(kComposeboxPersistentAimButtonWithX,
 BASE_FEATURE(kComposeboxRealboxOutsideClick, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSuggestRequestSendsMultifileCgiParam,
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kComposeboxUnselectMatchOnTabExit,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kComposeboxPersonalizedHintText,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kKeepMenuOpenOnTabSelectForRealbox(
     &kContextManagementInComposebox,
     "KeepMenuOpenOnTabSelectForRealboxComposebox",
@@ -49,7 +53,7 @@ const base::FeatureParam<bool>
 const base::FeatureParam<bool> kContextManagementInComposeboxTooltips(
     &kContextManagementInComposebox,
     "enable_context_menu_tooltips",
-    false);
+    true);
 
 const base::FeatureParam<int> kContextMenuAnimationDailyLimit(
     &kContextMenuAnimationLimiting,

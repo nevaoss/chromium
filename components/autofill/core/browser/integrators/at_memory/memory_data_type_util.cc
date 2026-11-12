@@ -25,6 +25,7 @@
 #include "components/autofill/core/browser/data_model/data_model_util.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/filling/field_filling_util.h"
+#include "components/autofill/core/browser/network/autofill_ai/personal_context_conversion_util.h"
 #include "components/autofill/core/browser/suggestions/payments/payments_suggestion_generator_util.h"
 #include "components/personal_context/proto/features/at_memory.pb.h"
 #include "components/personal_context/proto/features/common_data.pb.h"
@@ -100,12 +101,7 @@ std::optional<std::u16string> FormatShortDate(
   }
   DateInfo date_info;
   date_info.SetDate(DateToIsoString(year, month, day), u"YYYY-MM-DD");
-  std::optional<std::u16string> pattern =
-      data_util::LocalizePattern(u"MMM d", app_locale);
-  if (!pattern) {
-    return std::nullopt;
-  }
-  std::u16string formatted = date_info.GetIcuDate(*pattern, app_locale);
+  std::u16string formatted = date_info.GetIcuDate(app_locale);
   return formatted.empty() ? std::nullopt
                            : std::make_optional(std::move(formatted));
 }
@@ -115,10 +111,12 @@ std::optional<std::u16string> FormatShortDate(
 std::u16string FormatTimeOfDay(base::Time time, std::string_view app_locale) {
   if (std::optional<base::i18n::LanguageTag> tag =
           base::i18n::GetLanguageTagFromString(app_locale)) {
-    return base::i18n::IcuBridge::GetInstance().date_time_formatter().Format(
-        time, *tag,
-        base::i18n::datetime_options::T::Short().with_time_precision(
-            base::i18n::DateTimeFormatterOptions::TimePrecision::kMinute));
+    return base::i18n::IcuBridge::GetInstance()
+        .date_time_formatter(*tag)
+        .Format(
+            time,
+            base::i18n::datetime_options::T::Short().with_time_precision(
+                base::i18n::DateTimeFormatterOptions::TimePrecision::kMinute));
   }
   return base::TimeFormatTimeOfDay(time);
 }
@@ -261,6 +259,9 @@ bool IsSpiiMemoryDataType(MemoryDataType type) {
     case MemoryDataType::kShipmentCarrierName:
     case MemoryDataType::kShipmentCarrierDomain:
     case MemoryDataType::kShipmentEstimatedDeliveryDate:
+    case MemoryDataType::kLoyaltyMembershipId:
+    case MemoryDataType::kLoyaltyMembershipProgram:
+    case MemoryDataType::kLoyaltyMembershipProvider:
     case MemoryDataType::kUnknown:
       return false;
   }
@@ -345,6 +346,9 @@ std::u16string ObfuscateSpiiValue(MemoryDataType type,
     case MemoryDataType::kShipmentCarrierName:
     case MemoryDataType::kShipmentCarrierDomain:
     case MemoryDataType::kShipmentEstimatedDeliveryDate:
+    case MemoryDataType::kLoyaltyMembershipId:
+    case MemoryDataType::kLoyaltyMembershipProgram:
+    case MemoryDataType::kLoyaltyMembershipProvider:
     case MemoryDataType::kUnknown:
       NOTREACHED();
   }
@@ -449,6 +453,12 @@ std::u16string GetMemoryDataTypeNameForI18n(MemoryDataType type) {
       return u"Name on card";
     case MemoryDataType::kCreditCardNickname:
       return u"Card Nickname";
+    case MemoryDataType::kLoyaltyMembershipId:
+      return u"Membership ID";
+    case MemoryDataType::kLoyaltyMembershipProgram:
+      return u"Membership program";
+    case MemoryDataType::kLoyaltyMembershipProvider:
+      return u"Membership provider";
     // Special handling for types that are present in `MemoryDataType` but do
     // not have a corresponding AutofillAi `AttributeType`.
     case MemoryDataType::kFlightReservationArrivalDate:
@@ -657,6 +667,12 @@ std::string_view MemoryDataTypeToStringView(MemoryDataType type) {
       return "CreditCardNameOnCard";
     case MemoryDataType::kCreditCardNickname:
       return "CreditCardNickname";
+    case MemoryDataType::kLoyaltyMembershipId:
+      return "LoyaltyMembershipId";
+    case MemoryDataType::kLoyaltyMembershipProgram:
+      return "LoyaltyMembershipProgram";
+    case MemoryDataType::kLoyaltyMembershipProvider:
+      return "LoyaltyMembershipProvider";
   }
   NOTREACHED();
 }
@@ -819,6 +835,12 @@ MemoryDataType ToMemoryDataType(
       return MemoryDataType::kCreditCardNameOnCard;
     case ProtoType::MEMORY_DATA_TYPE_CREDIT_CARD_NICKNAME:
       return MemoryDataType::kCreditCardNickname;
+    case ProtoType::MEMORY_DATA_TYPE_LOYALTY_MEMBERSHIP_ID:
+      return MemoryDataType::kLoyaltyMembershipId;
+    case ProtoType::MEMORY_DATA_TYPE_LOYALTY_MEMBERSHIP_PROGRAM:
+      return MemoryDataType::kLoyaltyMembershipProgram;
+    case ProtoType::MEMORY_DATA_TYPE_LOYALTY_MEMBERSHIP_PROVIDER:
+      return MemoryDataType::kLoyaltyMembershipProvider;
   }
   return MemoryDataType::kUnknown;
 }
@@ -829,11 +851,11 @@ std::vector<MemoryEntrySource> ExtractSources(
   for (const personal_context::proto::SourceReference& proto_source :
        proto_result.sources()) {
     if (proto_source.has_gmail()) {
-      std::string_view message_url = proto_source.gmail().message_url();
+      GURL message_url = GetGmailSourceUrl(proto_source.gmail());
       sources.emplace_back(MemoryEntrySourceType::kGmail,
-                           message_url.empty()
+                           message_url.is_empty()
                                ? std::nullopt
-                               : std::make_optional<std::string>(message_url));
+                               : std::make_optional(message_url.spec()));
     } else if (proto_source.has_photos()) {
       std::string_view photos_url = proto_source.photos().photos_url();
       sources.emplace_back(MemoryEntrySourceType::kPhotos,
@@ -915,30 +937,6 @@ std::vector<MemorySearchResult> ExtractRemoteResults(
   return remote_results;
 }
 
-AttributeType GetPrimaryAttributeType(EntityType entity_type) {
-  switch (entity_type.name()) {
-    case EntityTypeName::kVehicle:
-      return AttributeType(AttributeTypeName::kVehiclePlateNumber);
-    case EntityTypeName::kPassport:
-      return AttributeType(AttributeTypeName::kPassportNumber);
-    case EntityTypeName::kDriversLicense:
-      return AttributeType(AttributeTypeName::kDriversLicenseNumber);
-    case EntityTypeName::kOrder:
-      return AttributeType(AttributeTypeName::kOrderId);
-    case EntityTypeName::kNationalIdCard:
-      return AttributeType(AttributeTypeName::kNationalIdCardNumber);
-    case EntityTypeName::kKnownTravelerNumber:
-      return AttributeType(AttributeTypeName::kKnownTravelerNumberNumber);
-    case EntityTypeName::kRedressNumber:
-      return AttributeType(AttributeTypeName::kRedressNumberNumber);
-    case EntityTypeName::kFlightReservation:
-      return AttributeType(AttributeTypeName::kFlightReservationFlightNumber);
-    case EntityTypeName::kShipment:
-      return AttributeType(AttributeTypeName::kShipmentTrackingNumber);
-  }
-  NOTREACHED();
-}
-
 std::u16string FormatMemoryDataTypeLabelValue(
     MemoryDataType type,
     std::u16string_view value,
@@ -1014,6 +1012,9 @@ std::u16string FormatMemoryDataTypeLabelValue(
     case MemoryDataType::kShipmentCarrierName:
     case MemoryDataType::kShipmentCarrierDomain:
     case MemoryDataType::kShipmentEstimatedDeliveryDate:
+    case MemoryDataType::kLoyaltyMembershipId:
+    case MemoryDataType::kLoyaltyMembershipProgram:
+    case MemoryDataType::kLoyaltyMembershipProvider:
     case MemoryDataType::kUnknown:
       return std::u16string(value);
   }
@@ -1052,6 +1053,12 @@ std::optional<FieldType> ToFieldType(MemoryDataType type) {
       return CREDIT_CARD_VERIFICATION_CODE;
     case MemoryDataType::kCreditCardNameOnCard:
       return CREDIT_CARD_NAME_FULL;
+    case MemoryDataType::kLoyaltyMembershipId:
+      return LOYALTY_MEMBERSHIP_ID;
+    case MemoryDataType::kLoyaltyMembershipProgram:
+      return LOYALTY_MEMBERSHIP_PROGRAM;
+    case MemoryDataType::kLoyaltyMembershipProvider:
+      return LOYALTY_MEMBERSHIP_PROVIDER;
     case MemoryDataType::kUnknown:
     case MemoryDataType::kIbanNickname:
     case MemoryDataType::kVehicleMake:
@@ -1184,6 +1191,9 @@ std::optional<AttributeType> ToAttributeType(MemoryDataType type) {
     case MemoryDataType::kCreditCardSecurityCode:
     case MemoryDataType::kCreditCardNameOnCard:
     case MemoryDataType::kCreditCardNickname:
+    case MemoryDataType::kLoyaltyMembershipId:
+    case MemoryDataType::kLoyaltyMembershipProgram:
+    case MemoryDataType::kLoyaltyMembershipProvider:
       return std::nullopt;
   }
   NOTREACHED();
@@ -1282,6 +1292,11 @@ MemoryDataTypeCategory GetMemoryDataTypeCategory(MemoryDataType type) {
     case MemoryDataType::kShipmentEstimatedDeliveryDate:
     case MemoryDataType::kShipmentShippedDate:
       return MemoryDataTypeCategory::kShipment;
+
+    case MemoryDataType::kLoyaltyMembershipId:
+    case MemoryDataType::kLoyaltyMembershipProgram:
+    case MemoryDataType::kLoyaltyMembershipProvider:
+      return MemoryDataTypeCategory::kLoyaltyCard;
   }
   NOTREACHED();
 }
@@ -1309,6 +1324,7 @@ std::optional<EntityType> ToEntityType(MemoryDataType type) {
     case MemoryDataTypeCategory::kContactInfo:
     case MemoryDataTypeCategory::kCreditCard:
     case MemoryDataTypeCategory::kIban:
+    case MemoryDataTypeCategory::kLoyaltyCard:
     case MemoryDataTypeCategory::kUnknown:
       return std::nullopt;
   }
@@ -1337,6 +1353,9 @@ ToAutofillPolicyDataCategory(MemoryDataType type) {
     case MemoryDataType::kCreditCardSecurityCode:
     case MemoryDataType::kCreditCardNameOnCard:
     case MemoryDataType::kCreditCardNickname:
+    case MemoryDataType::kLoyaltyMembershipId:
+    case MemoryDataType::kLoyaltyMembershipProgram:
+    case MemoryDataType::kLoyaltyMembershipProvider:
       return AutofillClient::AutofillPolicyDataCategory::kPayments;
 
     case MemoryDataType::kPassportName:
@@ -1423,6 +1442,10 @@ std::optional<Suggestion> CreateManageSuggestion(MemoryDataType type) {
       return create_suggestion(SuggestionType::kManageIban,
                                IDS_AUTOFILL_MANAGE_PAYMENT_METHODS);
 
+    case MemoryDataTypeCategory::kLoyaltyCard:
+      return create_suggestion(SuggestionType::kManageLoyaltyCard,
+                               IDS_AUTOFILL_MANAGE_LOYALTY_CARDS);
+
     case MemoryDataTypeCategory::kPassport:
     case MemoryDataTypeCategory::kDriversLicense:
     case MemoryDataTypeCategory::kNationalIdCard:
@@ -1457,6 +1480,10 @@ Suggestion::Icon GetSuggestionIcon(MemoryDataType type, bool is_autofill_only) {
     case MemoryDataTypeCategory::kIban:
       return is_autofill_only ? Suggestion::Icon::kCardGenericVector
                               : Suggestion::Icon::kCardGenericSpark;
+    case MemoryDataTypeCategory::kLoyaltyCard:
+      // TODO(crbug.com/566940947): Add spark icon for loyalty cards.
+      return is_autofill_only ? Suggestion::Icon::kLoyaltyPrograms
+                              : Suggestion::Icon::kTextSpark;
     case MemoryDataTypeCategory::kVehicle:
       return is_autofill_only ? Suggestion::Icon::kVehicle
                               : Suggestion::Icon::kVehicleSpark;

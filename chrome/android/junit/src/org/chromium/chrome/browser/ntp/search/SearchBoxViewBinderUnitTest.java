@@ -160,6 +160,18 @@ public class SearchBoxViewBinderUnitTest {
     }
 
     @Test
+    public void testSetSearchText_RepeatedClearAfterDirectEdit() {
+        mSearchBoxLayout.mHintTextView.setText("pasted 1");
+        mPropertyModel.set(SearchBoxProperties.SEARCH_TEXT, "");
+        assertEquals("", mSearchBoxLayout.mHintTextView.getText().toString());
+
+        // Simulate a second paste directly into the EditText without updating PropertyModel.
+        mSearchBoxLayout.mHintTextView.setText("pasted 2");
+        mPropertyModel.set(SearchBoxProperties.SEARCH_TEXT, "");
+        assertEquals("", mSearchBoxLayout.mHintTextView.getText().toString());
+    }
+
+    @Test
     public void testSetPlusButtonVisibility() {
         mPropertyModel.set(SearchBoxProperties.PLUS_BUTTON_VISIBILITY, true);
         assertEquals(View.VISIBLE, mSearchBoxLayout.mPlusButton.getVisibility());
@@ -202,5 +214,30 @@ public class SearchBoxViewBinderUnitTest {
 
         mPropertyModel.set(SearchBoxProperties.SEARCH_BOX_CLICK_CALLBACK, null);
         assertTrue(mSearchBoxLayout.mHintTextView.isFocusable());
+    }
+
+    @Test
+    public void testSetHintTextAlpha() {
+        mPropertyModel.set(SearchBoxProperties.HINT_TEXT_ALPHA, 0.5f);
+        assertEquals(0.5f, mSearchBoxLayout.mHintTextView.getAlpha(), 0.001f);
+
+        mPropertyModel.set(SearchBoxProperties.HINT_TEXT_ALPHA, 1.0f);
+        assertEquals(1.0f, mSearchBoxLayout.mHintTextView.getAlpha(), 0.001f);
+    }
+
+    @Test
+    public void testSetPlusButtonRotation() {
+        mPropertyModel.set(SearchBoxProperties.PLUS_BUTTON_ROTATION, 180f);
+        assertEquals(180f, mSearchBoxLayout.mPlusButton.getRotation(), 0.001f);
+
+        mPropertyModel.set(SearchBoxProperties.PLUS_BUTTON_ROTATION, 360f);
+        assertEquals(360f, mSearchBoxLayout.mPlusButton.getRotation(), 0.001f);
+    }
+
+    @Test
+    public void testSetPlusButtonTint() {
+        ColorStateList tint = ColorStateList.valueOf(Color.RED);
+        mPropertyModel.set(SearchBoxProperties.PLUS_BUTTON_TINT, tint);
+        assertEquals(tint, ImageViewCompat.getImageTintList(mSearchBoxLayout.mPlusButton));
     }
 }

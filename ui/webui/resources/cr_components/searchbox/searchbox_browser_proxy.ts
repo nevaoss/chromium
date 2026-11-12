@@ -15,6 +15,8 @@
 import {SuggestStyle} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {Action, AutocompleteMatch, AutocompleteResult, InputKeywordModel, MatchKeywordModel, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {KeywordType, PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SecondaryTextPlacement} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
+import type {SuggestTemplateInfo} from '//resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 
 export function createAutocompleteMatch(
     modifiers: Partial<AutocompleteMatch> = {}): AutocompleteMatch {
@@ -25,30 +27,37 @@ export function createAutocompleteMatch(
     allowedToBeDefaultMatch: false,
     isSearchType: false,
     isEnterpriseSearchAggregatorPeopleType: false,
-    swapContentsAndDescription: false,
     showContextualDescription: false,
     supportsDeletion: false,
     suggestionGroupId: -1,
-    contents: '',
-    contentsClass: [{offset: 0, style: 0}],
-    description: '',
-    descriptionClass: [{offset: 0, style: 0}],
     destinationUrl: '',
     inlineAutocompletion: '',
     fillIntoEdit: '',
     iconPath: '',
     iconUrl: '',
-    imageDominantColor: '',
-    imageUrl: '',
     isContextualSuggestion: false,
-    isNoncannedAimSuggestion: false,
     removeButtonA11yLabel: '',
     type: '',
-    isTwoRowSuggestion: false,
     tailSuggestCommonPrefix: null,
     keywordModel: null,
     fuseboxAction: null,
     suggestStyle: SuggestStyle.kUnspecified,
+    suggestTemplate: createSuggestTemplateInfo(),
+    urlEmphasis: null,
+  };
+
+  return Object.assign(base, modifiers);
+}
+
+export function createSuggestTemplateInfo(
+    modifiers: Partial<SuggestTemplateInfo> = {}): SuggestTemplateInfo {
+  const base: SuggestTemplateInfo = {
+    primaryText: '',
+    primaryTextClass: [{offset: 0, style: 0}],
+    secondaryText: '',
+    secondaryTextClass: [{offset: 0, style: 0}],
+    secondaryTextPlacement: SecondaryTextPlacement.kUnspecified,
+    image: null,
   };
 
   return Object.assign(base, modifiers);
@@ -62,6 +71,7 @@ export function createAutocompleteResultForTesting(
     matches: [],
     suggestionGroupsMap: {},
     smartComposeInlineHint: null,
+    showAimActivityLink: false,
     sequenceId: 0,
   };
 
@@ -72,13 +82,14 @@ export function createSearchMatchForTesting(
     modifiers: Partial<AutocompleteMatch> = {}): AutocompleteMatch {
   const base = createAutocompleteMatch({
     isSearchType: true,
-    contents: 'hello world',
-    contentsClass: [{offset: 0, style: 0}],
-    description: 'Google search',
-    descriptionClass: [{offset: 0, style: 4}],
     destinationUrl: 'https://www.google.com/search?q=hello+world',
     fillIntoEdit: 'hello world',
     type: 'search-what-you-typed',
+    suggestTemplate: createSuggestTemplateInfo({
+      primaryText: 'hello world',
+      secondaryText: 'Google search',
+      secondaryTextClass: [{offset: 0, style: 4}],
+    }),
   });
 
   return Object.assign(base, modifiers);

@@ -12,8 +12,8 @@
 
 #include "base/compiler_specific.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/advanced_memory_safety_checks.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/sanitized_object.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
@@ -85,7 +85,7 @@ inline constexpr char kOmniboxGeminiHeader[] = "X-Omnibox-Gemini";
 class AutocompleteController : public AutocompleteProviderListener,
                                public base::trace_event::MemoryDumpProvider {
   // TODO(crbug.com/449894891): Remove this macro once it gets fixed.
-  ADVANCED_MEMORY_SAFETY_CHECKS();
+  SANITIZED_OBJECT();
 
  public:
   // Describes an autocomplete pass.
@@ -343,6 +343,9 @@ class AutocompleteController : public AutocompleteProviderListener,
   FRIEND_TEST_ALL_PREFIXES(
       AutocompleteControllerTest,
       UpdateKeywordDescriptions_StaticContextualSearchSuggestion);
+  FRIEND_TEST_ALL_PREFIXES(
+      AutocompleteControllerTest,
+      UpdateKeywordDescriptions_ContextualSearchSidePanelDescription);
   FRIEND_TEST_ALL_PREFIXES(AutocompleteControllerTest,
                            FilterMatchesForInstantKeywordWithBareAt);
   FRIEND_TEST_ALL_PREFIXES(AutocompleteControllerTest,
@@ -477,11 +480,6 @@ class AutocompleteController : public AutocompleteProviderListener,
   // `notify_changed_debouncer_`.
   void CancelNotifyChangedRequest();
 
-  // Returns whether `UpdateResult()` should defer calling
-  // `RequestNotifyChanged()` while waiting for asynchronous providers to
-  // complete.
-  bool ShouldDeferNotifyChanged(UpdateType update_type) const;
-
   // Returns which of the providers that should run are done.
   enum class ProviderDoneState {
     kNotDone,
@@ -615,13 +613,6 @@ class AutocompleteController : public AutocompleteProviderListener,
   // been 2 delayed calls, the 1st having changed the default, the latter not,
   // `NotifyChanged()` couldn't know of the former.
   bool notify_changed_default_match_ = false;
-
-  // True if `UpdateResult()` deferred calling `RequestNotifyChanged()`.
-  // This is used to debounce sync results while async results are pending
-  // to avoid UI flicker.
-  // If the query times out (`AutocompleteStopReason::kInactivity`), `Stop()`
-  // will flush the deferred notification.
-  bool has_deferred_notify_changed_ = false;
 
   // Represents the reason of the last `UpdateResult()` call.
   UpdateType last_update_type_ = UpdateType::kNone;

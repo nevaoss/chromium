@@ -98,6 +98,11 @@ BASE_DECLARE_FEATURE(kPerformanceInterventionNotificationStringImprovements);
 // The version string that is used on the performance detection dialog.
 BASE_DECLARE_FEATURE_PARAM(int, kNotificationStringVersion);
 
+// When enabled, activates a MemoryCoordinatorPolicy while Memory Saver Mode is
+// active that scales down stateful MemoryConsumer limits based on the
+// configured MemorySaverModeAggressiveness level.
+BASE_DECLARE_FEATURE(kMemorySaverMemoryCoordinatorPolicy);
+
 #endif
 
 // When enabled, LevelDBSiteDataStore uses BEST_EFFORT priority for its task
@@ -120,7 +125,17 @@ extern const base::FeatureParam<bool> kRenderedOutOfViewIsNotVisible;
 
 extern const base::FeatureParam<bool> kRendererHighInitialPriority;
 
+// Boosts the priority of loading pages: kUserBlocking in the active tab, and
+// kUserVisible in background tabs. Original version, which boosts every
+// background load. Kept only for diagnostics (e.g. comparing with V2 when
+// investigating reports), to be removed when kPMLoadingPageVoterV2 launches.
+// Takes precedence over kPMLoadingPageVoterV2 when both are enabled.
 BASE_DECLARE_FEATURE(kPMLoadingPageVoter);
+
+// Same as kPMLoadingPageVoter, but only boosts background loads that are user-
+// or browser-initiated (see PageNode::IsUserOrBrowserInitiatedLoad()), and
+// also boosts loads in the kLoadingTimedOut state.
+BASE_DECLARE_FEATURE(kPMLoadingPageVoterV2);
 
 // Whether tabs are discarded under high memory pressure.
 BASE_DECLARE_FEATURE(kUrgentPageDiscarding);
@@ -269,6 +284,11 @@ BASE_DECLARE_FEATURE(kGlicActuationPriorityVoter);
 // page is deprioritized for being hidden, so it loads slowly, so it is never
 // shown (crbug.com/549552319).
 BASE_DECLARE_FEATURE(kPMWithheldFromViewVoter);
+
+// When enabled, registers SidePanelLoadingVoter, which ensures side panel
+// contents load at high priority even when not visible. Expected to be
+// superseded by kPMWithheldFromViewVoter (crbug.com/549552319).
+BASE_DECLARE_FEATURE(kPMSidePanelLoadingVoter);
 
 // When enabled, ignores kMediaQueryChange favicon updates (e.g.
 // prefers-color-scheme toggles) when determining whether a background tab

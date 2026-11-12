@@ -21,6 +21,7 @@ import android.view.View;
 import androidx.annotation.VisibleForTesting;
 import androidx.fragment.app.FragmentActivity;
 
+import org.chromium.base.ResettersForTesting;
 import org.chromium.base.lifetime.Destroyable;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
@@ -617,16 +618,20 @@ public class NativePageFactory {
             Tab tab,
             @Nullable PdfInfo pdfInfo,
             BrowserControlsManager browserControlsManager,
-            TabModelSelector tabModelSelector,
+            @Nullable TabModelSelector tabModelSelector,
             Activity activity) {
         // Only pdf native page is supported on custom tab.
         if (url == null || pdfInfo == null) {
             return null;
         }
         NativePage page;
-        if (candidatePage != null && url.equals(candidatePage.getUrl())) {
+        // A frozen page has no view, so it must never be reused. See crbug.com/568278676.
+        if (candidatePage != null
+                && !candidatePage.isFrozen()
+                && url.equals(candidatePage.getUrl())) {
             page = candidatePage;
         } else {
+            assert tabModelSelector != null;
             page =
                     buildPdfPage(
                             url,
@@ -765,7 +770,8 @@ public class NativePageFactory {
         }
     }
 
-    public static void setPdfPageForTesting(NativePage pdfPage) {
+    public static void setPdfPageForTesting(@Nullable NativePage pdfPage) {
         sTestPage = pdfPage;
+        ResettersForTesting.register(() -> sTestPage = null);
     }
 }

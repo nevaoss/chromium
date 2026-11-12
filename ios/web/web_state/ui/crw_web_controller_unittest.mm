@@ -50,6 +50,7 @@
 #import "ios/web/test/test_url_constants.h"
 #import "ios/web/test/web_test_with_web_controller.h"
 #import "ios/web/test/wk_web_view_crash_utils.h"
+#import "ios/web/web_state/crw_web_view.h"
 #import "ios/web/web_state/ui/crw_content_view.h"
 #import "ios/web/web_state/ui/crw_web_controller.h"
 #import "ios/web/web_state/ui/crw_web_controller_container_view.h"
@@ -65,6 +66,7 @@
 #import "third_party/ocmock/OCMock/OCMock.h"
 #import "third_party/ocmock/gtest_support.h"
 #import "third_party/ocmock/ocmock_extensions.h"
+#import "ui/base/device_form_factor.h"
 #import "url/scheme_host_port.h"
 
 @interface CRWWebController (Testing)
@@ -103,9 +105,9 @@ using base::test::ios::kWaitForJSCompletionTimeout;
 using base::test::ios::kWaitForPageLoadTimeout;
 using base::test::ios::WaitUntilConditionOrTimeout;
 
-// Subclass of WKWebView to check that the observers are removed when the web
+// Subclass of `CRWWebView` to check that the observers are removed when the web
 // state is destroyed.
-@interface CRWFakeWKWebViewObserverCount : WKWebView
+@interface CRWFakeWKWebViewObserverCount : CRWWebView
 
 // Array storing the different key paths observed.
 @property(nonatomic, strong) NSMutableArray<NSString*>* keyPaths;
@@ -214,7 +216,7 @@ class CRWWebControllerTest : public WebTestWithWebController {
 
   // Creates WebView mock.
   UIView* CreateMockWebView(CRWFakeBackForwardList* wk_list) {
-    WKWebView* result = [OCMockObject mockForClass:[WKWebView class]];
+    CRWWebView* result = [OCMockObject mockForClass:[CRWWebView class]];
 
     OCMStub([result backForwardList]).andReturn(wk_list);
     // This uses `andDo` rather than `andReturn` since the URL it returns needs
@@ -259,6 +261,7 @@ class CRWWebControllerTest : public WebTestWithWebController {
             [invocation setReturnValue:&mock_web_view_obscured_content_insets_];
           });
     }
+    OCMStub([result setShouldSuppressInputViews:NO]);
     OCMStub([result isLoading]);
     OCMStub([result stopLoading]);
     OCMStub([result removeFromSuperview]);
@@ -357,6 +360,37 @@ TEST_F(CRWWebControllerTest, UnsetObscuredContentInsetsPreservesWebViewInsets) {
     EXPECT_TRUE(UIEdgeInsetsEqualToEdgeInsets(
         external_insets, web_controller().obscuredContentInsets));
   }
+}
+
+// Tests `shouldSuppressInputViews` default value, toggling this property, and
+// propagating the state when creating a new web view.
+TEST_F(CRWWebControllerTest, SetShouldSuppressInputViews) {
+  // TODO(crbug.com/556733164): Add iPad support.
+  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+    GTEST_SKIP();
+  }
+  EXPECT_FALSE(web_controller().shouldSuppressInputViews);
+
+  OCMExpect([mock_web_view_ setShouldSuppressInputViews:YES]);
+  web_controller().shouldSuppressInputViews = YES;
+  EXPECT_TRUE(web_controller().shouldSuppressInputViews);
+  EXPECT_OCMOCK_VERIFY(mock_web_view_);
+
+  [web_controller() removeWebView];
+  EXPECT_TRUE(web_controller().shouldSuppressInputViews);
+
+  CRWWebView* created_web_view = base::apple::ObjCCastStrict<CRWWebView>(
+      [web_controller() ensureWebViewCreated]);
+  ASSERT_TRUE(created_web_view);
+  EXPECT_TRUE(created_web_view.shouldSuppressInputViews);
+
+  web_controller().shouldSuppressInputViews = NO;
+  EXPECT_FALSE(web_controller().shouldSuppressInputViews);
+  EXPECT_FALSE(created_web_view.shouldSuppressInputViews);
+
+  web_controller().shouldSuppressInputViews = YES;
+  EXPECT_TRUE(web_controller().shouldSuppressInputViews);
+  EXPECT_TRUE(created_web_view.shouldSuppressInputViews);
 }
 
 // Tests that a web view is created after calling -[ensureWebViewCreated] and
@@ -1991,6 +2025,77 @@ TEST_F(CRWWebControllerPolicyDeciderTest,
   EXPECT_EQ(GURL(kRedirectURL), allowed_failing_url);
 }
 
+// Tests that a committed NavigationItem with an app-specific VirtualURL but a
+// non-app-specific actual URL (such as `about://newtab/` with virtual URL
+// `chrome://newtab/`) does not grant privileges to navigate to app-specific
+// WebUI URLs via renderer-initiated navigations.
+TEST_F(
+    CRWWebControllerPolicyDeciderTest,
+    NonAppSpecificURLWithAppSpecificVirtualURLDoesNotGrantAppSpecificNavigation) {
+  WKNavigation* navigation =
+      static_cast<WKNavigation*>([[NSObject alloc] init]);
+  SetWebViewURL(@"about://newtab/");
+  [navigation_delegate_ webView:mock_web_view_
+      didStartProvisionalNavigation:navigation];
+  [fake_wk_list_ setCurrentURL:@"about://newtab/"];
+  [navigation_delegate_ webView:mock_web_view_ didCommitNavigation:navigation];
+  [navigation_delegate_ webView:mock_web_view_ didFinishNavigation:navigation];
+
+  NavigationItem* last_committed =
+      web_state()->GetNavigationManager()->GetLastCommittedItem();
+  ASSERT_TRUE(last_committed);
+  last_committed->SetVirtualURL(GURL(kTestAppSpecificURL));
+  EXPECT_EQ(GURL("about://newtab/"), last_committed->GetURL());
+  EXPECT_EQ(GURL(kTestAppSpecificURL), last_committed->GetVirtualURL());
+
+  NSURL* app_url = [NSURL URLWithString:@(kTestAppSpecificURL)];
+  NSMutableURLRequest* app_request =
+      [NSMutableURLRequest requestWithURL:app_url];
+  app_request.mainDocumentURL = [NSURL URLWithString:@"about://newtab/"];
+
+  FakeWKFrameInfo* main_frame = [[FakeWKFrameInfo alloc] init];
+  main_frame.mainFrame = YES;
+  main_frame.webView = mock_web_view_;
+
+  CRWFakeWKNavigationAction* action = [[CRWFakeWKNavigationAction alloc] init];
+  action.request = app_request;
+  action.navigationType = WKNavigationTypeLinkActivated;
+  action.targetFrame = (WKFrameInfo*)main_frame;
+
+  // Because the committed actual URL (`about://newtab/`) is not app-specific,
+  // a renderer-initiated navigation to an app-specific URL must be cancelled.
+  __block bool callback_called = false;
+  [navigation_delegate_ webView:mock_web_view_
+      decidePolicyForNavigationAction:action
+                          preferences:[[WKWebpagePreferences alloc] init]
+                      decisionHandler:^(WKNavigationActionPolicy policy,
+                                        WKWebpagePreferences* ignored) {
+                        EXPECT_EQ(policy, WKNavigationActionPolicyCancel);
+                        callback_called = true;
+                      }];
+  ASSERT_TRUE(WaitUntilConditionOrTimeout(kWaitForPageLoadTimeout, ^{
+    return callback_called;
+  }));
+  EXPECT_FALSE(WebStateImpl::FromWebState(web_state())->HasWebUI());
+
+  // When both the actual URL and VirtualURL of the committed item are
+  // app-specific, the renderer-initiated navigation is allowed.
+  last_committed->SetURL(GURL(kTestAppSpecificURL));
+  app_request.mainDocumentURL = app_url;
+  callback_called = false;
+  [navigation_delegate_ webView:mock_web_view_
+      decidePolicyForNavigationAction:action
+                          preferences:[[WKWebpagePreferences alloc] init]
+                      decisionHandler:^(WKNavigationActionPolicy policy,
+                                        WKWebpagePreferences* ignored) {
+                        EXPECT_EQ(policy, WKNavigationActionPolicyAllow);
+                        callback_called = true;
+                      }];
+  ASSERT_TRUE(WaitUntilConditionOrTimeout(kWaitForPageLoadTimeout, ^{
+    return callback_called;
+  }));
+}
+
 // Test fixture for window.open tests.
 class WindowOpenByDomTest : public WebTestWithWebController {
  protected:
@@ -2247,7 +2352,7 @@ class CRWWebControllerWebProcessTest : public WebTestWithWebController {
     [web_controller() injectWebViewContentView:webViewContentView];
 
     // This test intentionally crashes the render process.
-    SetIgnoreRenderProcessCrashesDuringTesting(true);
+    StopObservingWebStatesForRenderProcessGone();
   }
   WKWebView* web_view_;
 };

@@ -281,7 +281,7 @@ OmniboxContextMenuController::OmniboxContextMenuController(
       input_state_ = contextual_searchbox_handler_ptr->input_state_model()
                          ->GetInputState();
       input_state_subscription_ =
-          contextual_searchbox_handler_ptr->input_state_model()->subscribe(
+          contextual_searchbox_handler_ptr->input_state_model()->Subscribe(
               base::BindRepeating(
                   &OmniboxContextMenuController::OnInputStateChanged,
                   weak_ptr_factory_.GetWeakPtr()));
@@ -460,6 +460,11 @@ void OmniboxContextMenuController::AddRecentTabItems() {
     // If Smart Tab Sharing is enabled but NOT active, put the toggle at the
     // top of the submenu.
     if (is_smart_tab_sharing_enabled) {
+      const bool show_headers = omnibox::kShowContextMenuHeaders.Get();
+      if (show_headers) {
+        shared_tabs_menu_model_->AddTitleWithStringId(
+            IDS_STS_MEGAPLUS_AUTOMATICALLY_ADD_TABS_HEADER);
+      }
       shared_tabs_menu_model_->AddItem(IDC_OMNIBOX_CONTEXT_SMART_TAB_SHARING,
                                        GetSmartTabSharingMegaplusMenuLabel());
       shared_tabs_menu_model_->SetIconForCommandId(
@@ -468,6 +473,10 @@ void OmniboxContextMenuController::AddRecentTabItems() {
               kScreensaverAutoIcon, ui::kColorMenuIcon,
               ui::SimpleMenuModel::kDefaultIconSize));
       shared_tabs_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
+      if (show_headers) {
+        shared_tabs_menu_model_->AddTitleWithStringId(
+            IDS_STS_MEGAPLUS_MANUALLY_ADD_TABS_HEADER);
+      }
       first_tab_index = shared_tabs_menu_model_->GetItemCount();
     }
   } else {
@@ -765,8 +774,8 @@ OmniboxContextMenuController::GetRecentTabs() const {
   }
 
   // Sort tabs by most recently active, up to `max_suggestions`
-  // number of tabs. Checked (selected) tabs are first; ties broken by most
-  // recent.
+  // number of tabs. Checked (selected) tabs are first, followed by the active
+  // tab, with remaining ties broken by most recent.
   std::optional<size_t> max_suggestions = GetMaxTabSuggestions();
   // Max tab suggestions allowed is infinite if nullopt is returned,
   // so use current number of tabs; otherwise, limit sorted tabs to
@@ -779,6 +788,9 @@ OmniboxContextMenuController::GetRecentTabs() const {
                        const OmniboxContextMenuController::TabInfo& b) {
                       if (a.is_checked != b.is_checked) {
                         return a.is_checked > b.is_checked;
+                      }
+                      if (a.is_active_tab != b.is_active_tab) {
+                        return a.is_active_tab > b.is_active_tab;
                       }
                       return a.last_active > b.last_active;
                     });
@@ -887,7 +899,7 @@ void OmniboxContextMenuController::OnGetInputState(
     if (contextual_searchbox_handler &&
         contextual_searchbox_handler->input_state_model()) {
       input_state_subscription_ =
-          contextual_searchbox_handler->input_state_model()->subscribe(
+          contextual_searchbox_handler->input_state_model()->Subscribe(
               base::BindRepeating(
                   &OmniboxContextMenuController::OnInputStateChanged,
                   weak_ptr_factory_.GetWeakPtr()));
@@ -1664,6 +1676,17 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
           base::UmaHistogramBoolean(
               "ContextualSearch.AddTabsFlyout.TabSelected.Omnibox", true);
         }
+        bool has_active_tab =
+            std::any_of(tabs.begin(), tabs.end(),
+                        [](const auto& tab) { return tab.is_active_tab; });
+        if (has_active_tab) {
+          base::UmaHistogramBoolean(
+              "ContextualSearch.TabPicker.SelectedTabIsActive.Omnibox",
+              tab_info.is_active_tab);
+        }
+        base::UmaHistogramExactLinear(
+            "ContextualSearch.TabPicker.SelectedTabPosition.Omnibox",
+            std::min(tab_index_in_menu, 20), 21);
         AddTabContext(tab_info);
       }
     }

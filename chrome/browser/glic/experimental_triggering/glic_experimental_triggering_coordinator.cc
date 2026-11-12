@@ -12,6 +12,7 @@
 
 #include "base/atomic_sequence_num.h"
 #include "base/check.h"
+#include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -97,6 +98,11 @@ GlicInvokeOptions CreateInvokeOptions(
     if (!trigger_req.initial_prompt.empty()) {
       options.prompts.push_back(trigger_req.initial_prompt);
     }
+    auto et_payload = mojom::ExperimentalTriggeringPayload::New();
+    et_payload->payment_metadata = trigger_req.payment_metadata;
+    options.source_or_payload =
+        mojom::InvocationPayload::NewExperimentalTriggering(
+            std::move(et_payload));
   } else if (std::holds_alternative<ContinueActuationRequest>(
                  request.payload)) {
     options.feature_mode = mojom::FeatureMode::kActuation;
@@ -609,8 +615,20 @@ class ExperimentalTriggeringUpdatesHandler
     SubscribeForTriggeringUpdates(std::move(instance));
   }
 
-  void OnInvokeError(GlicInvokeError error) {
+  void OnInvokeSuccess(int invoke_id) { pending_invoke_ids_.erase(invoke_id); }
+
+  void OnInvokeError(int invoke_id, GlicInvokeError error) {
+    pending_invoke_ids_.erase(invoke_id);
     if (error == GlicInvokeError::kSuperseded) {
+      // Handlers are shared per context id, so a continuation request invokes
+      // on the same handler that owns the in-flight invocation it supersedes.
+      // If another invocation started by this handler is still in flight, it
+      // is the one that superseded this invocation and is now responsible for
+      // this handler, so it must not be torn down.
+      if (!pending_invoke_ids_.empty()) {
+        return;
+      }
+      // Superseded by some other (non experimental triggering) invocation.
       outcome_recorded_ = true;
       CleanupAsync();
       return;
@@ -772,9 +790,14 @@ class ExperimentalTriggeringUpdatesHandler
     options.on_client_connected =
         base::BindOnce(&ExperimentalTriggeringUpdatesHandler::OnClientConnected,
                        weak_ptr_factory_.GetWeakPtr());
+    const int invoke_id = next_invoke_id_++;
+    pending_invoke_ids_.insert(invoke_id);
+    options.on_success =
+        base::BindOnce(&ExperimentalTriggeringUpdatesHandler::OnInvokeSuccess,
+                       weak_ptr_factory_.GetWeakPtr(), invoke_id);
     options.on_error =
         base::BindOnce(&ExperimentalTriggeringUpdatesHandler::OnInvokeError,
-                       weak_ptr_factory_.GetWeakPtr());
+                       weak_ptr_factory_.GetWeakPtr(), invoke_id);
 
     auto response = CreateResponseMessage(
         context_id_, TaskUpdate::State::kStarting, std::nullopt, "",
@@ -784,7 +807,13 @@ class ExperimentalTriggeringUpdatesHandler
 
     GlicInvokeWithAutoSubmitOptions auto_submit_options;
 #if BUILDFLAG(IS_ANDROID)
-    if (prepared_tab) {
+    // TODO(b/568925496): Follow up to remove platform ifdefs across
+    // experimental triggering.
+    // The background check runs only once when Glic is invoked. Handling Chrome
+    // moving from foreground to background mid-task would require observing
+    // ApplicationStatusListener and dynamically updating offscreen rendering.
+    const bool is_chrome_in_background = coordinator_->IsChromeInBackground();
+    if (prepared_tab && is_chrome_in_background) {
       auto_submit_options.show_panel = false;
     }
 #endif
@@ -1452,6 +1481,10 @@ class ExperimentalTriggeringUpdatesHandler
   bool first_response_received_ = false;
   bool outcome_recorded_ = false;
   bool is_cleaning_up_ = false;
+  // Ids of invocations started by this handler that have neither succeeded nor
+  // failed yet.
+  base::flat_set<int> pending_invoke_ids_;
+  int next_invoke_id_ = 0;
   base::TimeTicks task_start_time_;
   base::TimeTicks turn_start_time_;
 
@@ -1488,6 +1521,14 @@ tabs::TabInterface* GlicExperimentalTriggeringCoordinator::GetActiveTab()
     const {
   BrowserWindowInterface* browser = GetBrowserWindow();
   return browser ? TabListInterface::From(browser)->GetActiveTab() : nullptr;
+}
+
+bool GlicExperimentalTriggeringCoordinator::IsChromeInBackground() const {
+#if BUILDFLAG(IS_ANDROID)
+  return !base::android::ApplicationStatusListener::HasVisibleActivities();
+#else
+  return false;
+#endif
 }
 
 std::optional<ExperimentalTriggeringResponse>
@@ -1594,7 +1635,7 @@ GlicExperimentalTriggeringCoordinator::GetCapabilities(
       syncer::DeviceInfo::GlicExperimentalTriggeringState::kUnavailable) {
     return {};
   }
-  base::flat_set<std::string> capabilities;
+  base::flat_set<std::string> capabilities = {kGlicCapabilityStructuredYields};
   if (base::FeatureList::IsEnabled(
           features::kGlicExperimentalTriggeringScreenshot)) {
     capabilities.insert(kGlicCapabilityScreenshot);

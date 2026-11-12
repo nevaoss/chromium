@@ -273,7 +273,6 @@ void URLLoader::Context::Start(
     CHECK(!code_cache_host);
 
     loader_options |= network::mojom::kURLLoadOptionSynchronous;
-    request->load_flags |= net::LOAD_IGNORE_LIMITS;
 
     mojo::PendingRemote<mojom::blink::BlobRegistry> download_to_blob_registry;
     if (download_to_blob) {
@@ -367,6 +366,8 @@ void URLLoader::Context::OnReceivedResponse(
 
   WebURLResponse response = WebURLResponse::Create(
       url_, *head, has_devtools_request_id_, request_id_);
+  response.SetCacheStorageSideDataWriter(
+      std::move(head->cache_storage_side_data_writer));
   client_->DidReceiveResponse(response, std::move(body),
                               std::move(cached_metadata));
 }
@@ -503,6 +504,8 @@ void URLLoader::LoadSynchronously(
   response =
       WebURLResponse::Create(final_url, *sync_load_response.head,
                              has_devtools_request_id, context_->request_id());
+  response.SetCacheStorageSideDataWriter(
+      std::move(sync_load_response.head->cache_storage_side_data_writer));
   encoded_data_length = sync_load_response.head->encoded_data_length;
   encoded_body_length =
       sync_load_response.head->encoded_body_length

@@ -123,7 +123,6 @@ ci/Libfuzzer Upload Mac ASan
 ci/Libfuzzer Upload Windows ASan
 ci/Libfuzzer Upload iOS Catalyst Debug
 ci/Linux ASan LSan Builder
-ci/Linux ASan LSan Tests (1)
 ci/Linux Builder
 ci/Linux Builder (Wayland)
 ci/Linux Builder (dbg)
@@ -141,7 +140,6 @@ ci/Linux FYI Release (AMD RX 5500 XT)
 ci/Linux FYI Release (AMD RX 7600)
 ci/Linux FYI Release (Intel UHD 630)
 ci/Linux FYI Release (Intel UHD 770)
-ci/Linux FYI Release (NVIDIA RTX 4070 Super)
 ci/Linux FYI Release (NVIDIA)
 ci/Linux MSan Builder
 ci/Linux MSan Tests
@@ -153,6 +151,7 @@ ci/Linux Tests (dbg)(1)
 ci/Linux UBSan Builder
 ci/Linux UBSan Tests
 ci/Linux Wayland FYI Release (AMD)
+ci/Linux Wayland FYI Release (NVIDIA RTX 4070 Super)
 ci/Mac ASAN Release
 ci/Mac ASAN Release Media
 ci/Mac ASan 64 Builder
@@ -333,8 +332,6 @@ ci/fuchsia-x64-cast-receiver-dbg
 ci/fuchsia-x64-cast-receiver-rel
 ci/fuchsia-x64-perf-cast-receiver-rel
 ci/ios-angle-arm64-builder
-ci/ios-angle-builder
-ci/ios-angle-intel
 ci/ios-angle-m2
 ci/ios-asan
 ci/ios-catalyst
@@ -543,10 +540,10 @@ try/gpu-fyi-try-linux-intel-rel
 try/gpu-fyi-try-linux-intel-uhd770-rel
 try/gpu-fyi-try-linux-nvidia-exp
 try/gpu-fyi-try-linux-nvidia-rel
-try/gpu-fyi-try-linux-nvidia-rtx-4070-super-rel
 try/gpu-fyi-try-linux-nvidia-rtx-5080-exp
 try/gpu-fyi-try-linux-nvidia-tsn
 try/gpu-fyi-try-linux-wayland-amd-rel
+try/gpu-fyi-try-linux-wayland-nvidia-rtx-4070-super-rel
 try/gpu-fyi-try-mac-amd-retina-555x-rel
 try/gpu-fyi-try-mac-amd-retina-dbg
 try/gpu-fyi-try-mac-amd-retina-exp
@@ -584,7 +581,6 @@ try/gpu-try-linux-nvidia-rel
 try/gpu-try-mac-amd-retina-dbg
 try/gpu-try-mac-intel-dbg
 try/gpu-try-win-nvidia-dbg
-try/ios-angle-try-intel
 try/ios-angle-try-m2
 try/ios-asan
 try/ios-catalyst

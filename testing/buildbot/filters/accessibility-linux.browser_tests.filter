@@ -30,7 +30,7 @@
 -AutocompleteTest.SubmitSimpleValue_Disabled_DoesNotSave
 
 # Flaky on Linux: crbug.com/483918492
--AutoPictureInPictureTabHelperBrowserTest.PromptResultRecorded_VideoConferencingAllowOnce
+-All/AutoPictureInPictureDocumentPipBackendBrowserTest.PromptResultRecorded_VideoConferencingAllowOnce/*
 
 # Flaky on most bots: crbug.com/475126748
 -BookmarksTest.List
@@ -240,9 +240,6 @@
 # Flaky at least on Linux: crbug.com/502373073
 -PasswordGenerationInteractiveTest.PopupShownManuallyAndPasswordErased
 -PasswordGenerationInteractiveTest.PopupShownAndPasswordSelected
-
-# Times out on Linux accessibility: crbug.com/546479367
--PKIMetadataComponentChromeRootStoreMtcMetadataTest.Revocation*
 
 # Flaky: crbug.com/546808320
 -CrComponentsSearchboxTest.SearchboxIconTest

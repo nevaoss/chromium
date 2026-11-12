@@ -12,6 +12,14 @@ namespace prefs {
 inline constexpr char kAddressBarSettingsNewBadgeShownCount[] =
     "ios.address_bar_settings_new_badge_shown_count";
 
+// Integer storing the `AppBarAssistantButtonPreferredState` chosen by the user
+// in the AppBar assistant button menu. The assistant button only shows this
+// state when its entry point is available. `kDefault`, or any value outside of
+// the enum range, means that the user didn't make any choice. Per-profile and
+// not synced.
+inline constexpr char kAppBarAssistantButtonPreferredState[] =
+    "ios.app_bar.assistant_button_preferred_state";
+
 // The application locale.
 inline constexpr char kApplicationLocale[] = "intl.app_locale";
 
@@ -35,8 +43,9 @@ inline constexpr char kBrowserLockdownModeEnabled[] =
 // (serverID) and creation timestamp.
 inline constexpr char kBwgSessionMap[] = "ios.bwg.session_map";
 
-// Map of scene session IDs to AIM thread IDs. The presence of a thread ID
-// indicates if a cobrowse session is active.
+// Map of scene session IDs to sub-dictionaries containing the AIM search query
+// (`q`), thread ID (`mtid`), and turn ID (`mstk`). The presence of a non-empty
+// `mtid` and `mstk` indicates that a cobrowse session is active.
 inline constexpr char kCobrowseSessionActiveMap[] =
     "ios.cobrowse.session_active_map";
 
@@ -232,6 +241,11 @@ inline constexpr char kIosDefaultBrowserBlueDotPromoFirstDisplay[] =
 // presented.
 inline constexpr char kIosDefaultBrowserPromoLastAction[] =
     "ios.default_browser_promo.last_action";
+
+// The last Default Browser promo surface where the user tapped the primary
+// action button ("Open Settings").
+inline constexpr char kIosDefaultBrowserPromoLastActionSurface[] =
+    "ios.default_browser_promo.last_action_surface";
 
 // The time when the DiscoverFeed was last refreshed while the feed was visible
 // to the user.
@@ -964,6 +978,25 @@ inline constexpr char kSceneSessionIdentifierMap[] =
 // Identifier of the last SceneState connected.
 inline constexpr char kLastConnectedSceneIdentifier[] =
     "ios.multiwindow.last_connect_scene_identifier";
+
+// Timestamp tracking the last time the geolocation system settings prompt was
+// displayed when iOS app-level location authorization is denied. Stored in
+// LocalState since iOS location permission is an app-level setting shared
+// across all profiles.
+inline constexpr char kIosGeolocationSystemPromptLastShownTime[] =
+    "ios.geolocation.system_prompt_last_shown_time";
+
+// Earliest time at which device authorization keys may be silently fetched
+// again (at startup or sign-in) for the primary account, after failed fetches.
+// Cleared once a fetch succeeds and whenever the primary account changes.
+inline constexpr char kDeviceAuthorizationStartupFetchNextTime[] =
+    "ios.device_authorization.startup_fetch_next_time";
+
+// Current backoff after failed silent fetches of device authorization keys for
+// the primary account. Cleared along with
+// `kDeviceAuthorizationStartupFetchNextTime`.
+inline constexpr char kDeviceAuthorizationStartupFetchBackoff[] =
+    "ios.device_authorization.startup_fetch_backoff";
 
 }  // namespace prefs
 

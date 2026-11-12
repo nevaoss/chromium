@@ -1511,6 +1511,8 @@ void NavigateToDataURLAndCheckForTerminationDisabler(
   EXPECT_EQ(expect_unload || expect_beforeunload || expect_pagehide ||
                 expect_visibilitychange,
             shell->web_contents()->NeedToFireBeforeUnloadOrUnloadEvents());
+  EXPECT_EQ(expect_beforeunload,
+            shell->web_contents()->NeedToFireBeforeUnload());
   EXPECT_EQ(expect_unload,
             rfh->GetSuddenTerminationDisablerState(
                 blink::mojom::SuddenTerminationDisablerType::kUnloadHandler));
@@ -2563,7 +2565,6 @@ void DownloadImageTestInternal(Shell* shell,
       .WillByDefault(
           InvokeWithoutArgs(loop_runner.get(), &MessageLoopRunner::Quit));
 
-  ASSERT_TRUE(NavigateToURL(shell, GURL("about:blank")));
   shell->web_contents()->DownloadImage(
       image_url, false, gfx::Size(), 1024, false,
       base::BindOnce(&DownloadImageObserver::OnFinishDownloadImage,
@@ -2608,26 +2609,26 @@ void ExpectSingleValidImageCallback(base::OnceClosure quit_closure,
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest, DownloadImage_HttpImage) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/single_face.jpg");
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   DownloadImageTestInternal(shell(), kImageUrl, 200, 1);
 }
 
-// Disabled due to flakiness: https://crbug.com/1124349.
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
-                       DISABLED_DownloadImage_Deny_FileImage) {
+                       DownloadImage_Deny_FileImage) {
   ASSERT_TRUE(embedded_test_server()->Start());
-  shell()->LoadURL(embedded_test_server()->GetURL("/simple_page.html"));
+  ASSERT_TRUE(NavigateToURL(
+      shell(), embedded_test_server()->GetURL("/simple_page.html")));
 
   const GURL kImageUrl = GetTestUrl("", "single_face.jpg");
   DownloadImageTestInternal(shell(), kImageUrl, 0, 0);
 }
 
-// Disabled due to flakiness: https://crbug.com/1124349.
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
-                       DISABLED_DownloadImage_Allow_FileImage) {
-  shell()->LoadURL(GetTestUrl("", "simple_page.html"));
+                       DownloadImage_Allow_FileImage) {
+  ASSERT_TRUE(NavigateToURL(shell(), GetTestUrl("", "simple_page.html")));
 
   const GURL kImageUrl = GetTestUrl("", "image.jpg");
-  DownloadImageTestInternal(shell(), kImageUrl, 0, 0);
+  DownloadImageTestInternal(shell(), kImageUrl, 200, 0);
 }
 
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest, DownloadImage_NoValidImage) {
@@ -2646,12 +2647,14 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest, DownloadImage_DataImage) {
   const GURL kImageUrl = GURL(
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHE"
       "lEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==");
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   DownloadImageTestInternal(shell(), kImageUrl, 0, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_InvalidDataImage) {
   const GURL kImageUrl = GURL("data:image/png;invalid");
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   DownloadImageTestInternal(shell(), kImageUrl, 0, 0);
 }
 
@@ -2659,6 +2662,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest, DownloadImage_DataImageSVG) {
   const GURL kImageUrl(
       "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' "
       "width='64' height='64'></svg>");
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   DownloadImageTestInternal(shell(), kImageUrl, 0, 1);
 }
 
@@ -6390,7 +6394,8 @@ class SurfaceEmbedConnectorWebContentsBrowserTest
     return base::WrapUnique(new SurfaceEmbedConnectorImpl(
         child_web_contents, parent_web_contents,
         parent_web_contents->GetPrimaryMainFrame(),
-        &surface_embed_connector_delegate_));
+        &surface_embed_connector_delegate_,
+        SurfaceEmbedConnector::PinchGestureMode::kDelegateToParentWebContents));
   }
 
   void ExpectRegisteredViews(
@@ -9866,6 +9871,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
@@ -9948,6 +9954,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
@@ -10004,6 +10011,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
@@ -10080,6 +10088,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   EXPECT_EQ(opener_contents,
             popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
 
+  opener_contents->GetRenderWidgetHostView()->SetHasFocusForTesting(true);
   FullscreenWebContentsObserver observer(
       opener_contents, opener_contents->GetPrimaryMainFrame());
   EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),

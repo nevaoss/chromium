@@ -372,7 +372,6 @@
 <translation id="2079545284768500474">Отмена</translation>
 <translation id="2086334242442703436">Открыть окно выбора эмодзи</translation>
 <translation id="2089550919269323883">Установка <ph name="VM_NAME" /> невозможна из-за корпоративных правил. Обратитесь за помощью к системному администратору. Код ошибки: <ph name="ERROR" />.</translation>
-<translation id="2093792000875799555">Новости Steam для Chromebook</translation>
 <translation id="209965399369889474">Нет подключения к сети</translation>
 <translation id="2107581415810719320">Другая кнопка <ph name="BUTTON_NUMBER" /></translation>
 <translation id="2107914222138020205">Кабель USB-C не поддерживает интерфейс Thunderbolt. Производительность устройства может быть ограничена.</translation>
@@ -422,6 +421,7 @@
 <translation id="2293443480080733021">На чем вы хотите сфокусироваться? Нажмите Ввод, чтобы добавить задачу.</translation>
 <translation id="229397294990920565">Отключение мобильного Интернета…</translation>
 <translation id="2295777434187870477">Микрофон включен. Нажмите, чтобы отключить его.</translation>
+<translation id="2296880470921996802">История буфера обмена отключена системным администратором.</translation>
 <translation id="2302092602801625023">Аккаунт находится под управлением Family Link</translation>
 <translation id="2303600792989757991">Переключить режим обзора</translation>
 <translation id="2304702218354340897">Вы уверены, что хотите отключить управление мимикой?</translation>
@@ -685,7 +685,6 @@
 <translation id="3039491566278747710">Не удалось применить к устройству политику работы в офлайн-режиме.</translation>
 <translation id="3039939407102840004">Заряд батареи стилуса составляет <ph name="PERCENTAGE" /> процентов.</translation>
 <translation id="304097922505898963">Открыть приложение "Сочетания клавиш"</translation>
-<translation id="3040982432432547149">Помогите нам улучшить Steam для Chromebook</translation>
 <translation id="304417730895741346">Открытые приложения находятся на панели запуска. Там их можно закрепить. Для этого нажмите на приложение правой кнопкой мыши или коснитесь двумя пальцами сенсорной панели.</translation>
 <translation id="3045670165536837541">Выбран маркер правого верхнего угла. Чтобы двигать его, используйте клавиши со стрелками.</translation>
 <translation id="3046178388369461825">На диске Linux почти нет места</translation>
@@ -929,7 +928,6 @@
 <translation id="3697991387880191195">Воспользуйтесь быстрой командой для создания скриншота</translation>
 <translation id="3702809606464356667">Показаны окна текущего рабочего стола. Чтобы показать окна со всех рабочих столов, нажмите на стрелку вверх.</translation>
 <translation id="3705722231355495246">-</translation>
-<translation id="3706423975342040244">Развлечения</translation>
 <translation id="370665806235115550">Загрузка...</translation>
 <translation id="3707093869106077605"><ph name="UNAVAILABLE_DLC_ONE" /> и <ph name="UNAVAILABLE_DLC_TWO" /> недоступны.</translation>
 <translation id="3708186454126126312">Ранее подключенные устройства</translation>
@@ -976,7 +974,6 @@
 <translation id="3824784079442479685">Доступ к камере получит приложение "<ph name="APP_NAME" />", а также все приложения и сайты с разрешением "Камера". Возможно, потребуется обновить веб-страницу или перезапустить приложение.</translation>
 <translation id="3826099427150913765">Войти с помощью пароля</translation>
 <translation id="383058930331066723">Включен режим энергосбережения</translation>
-<translation id="3831226344927851293">Выйти из руководства</translation>
 <translation id="383629559565718788">Показать настройки клавиатуры</translation>
 <translation id="384082539148746321">Удалить шаблон?</translation>
 <translation id="3844627820291068572"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" />, затем <ph name="KEY_ONE" />, <ph name="KEY_TWO" />, <ph name="KEY_THREE" /> или <ph name="KEY_FOUR" /></translation>
@@ -1082,7 +1079,6 @@
 <translation id="4147911968024186208">Повторите попытку. Если сообщение об ошибке появится снова, свяжитесь со службой поддержки.</translation>
 <translation id="4150201353443180367">Экран</translation>
 <translation id="4151054805501931758">Ретушь лица</translation>
-<translation id="4151449637210235443">Расскажите о недавнем геймплее.</translation>
 <translation id="4156293514828496577">Уровень заряда батареи: <ph name="PERCENTAGE" /> %. Приблизительное оставшееся время работы: <ph name="TIME_LEFT" />.
 Чтобы увеличить это время, использование некоторых функций было ограничено.</translation>
 <translation id="4158003972857765638">Открыть на новом рабочем столе</translation>
@@ -1583,10 +1579,8 @@
 <translation id="5551974246223970793">Перейти к следующему результату поиска по странице</translation>
 <translation id="5556459405103347317">Перезагрузить</translation>
 <translation id="5558091555391176027">Включить или отключить широкий доступ для Обмена с окружением</translation>
-<translation id="5558314826121965174">Творчество</translation>
 <translation id="556042886152191864">Кнопка</translation>
 <translation id="5570122939431135380">Открыть вкладку в новом окне в режиме инкогнито</translation>
-<translation id="5572632238877308040">Основное</translation>
 <translation id="5575528586625653441">Возникла проблема с запросом на регистрацию демонстрационного режима.</translation>
 <translation id="557563299383177668">Следующий абзац</translation>
 <translation id="5577082622442191756">Включить или отключить Bluetooth. <ph name="STATE_TEXT" />.</translation>
@@ -1621,7 +1615,6 @@
 <translation id="5667546120811588575">Настройка Google Play…</translation>
 <translation id="5669267381087807207">Активация</translation>
 <translation id="5671658447180261823">Удалить подсказку "<ph name="SUGGESTION_NAME" />"</translation>
-<translation id="5672890847723042801">Утилиты</translation>
 <translation id="5673434351075758678">В результате синхронизации настроек язык изменен. Теперь используется <ph name="TO_LOCALE" />, а не <ph name="FROM_LOCALE" />.</translation>
 <translation id="5675363643668471212">Объект на панели запуска</translation>
 <translation id="5677022547882470786">Чтобы выбрать область поиска, перетащите курсор или нажмите Пробел.</translation>
@@ -1799,7 +1792,6 @@
 <translation id="6127395413317891856">Нет интернета. Проверьте подключение и повторите попытку.</translation>
 <translation id="6129953537138746214">Пробел</translation>
 <translation id="6132714462430777655">Пропустить регистрацию в учебном заведении?</translation>
-<translation id="6136872094979134163">Не удалось получить новости Steam для Chromebook.</translation>
 <translation id="6137566720514957455">Открыть диалоговое окно удаления аккаунта <ph name="USER_EMAIL_ADDRESS" /></translation>
 <translation id="6141205840878048728">На чем вы хотите сфокусироваться?</translation>
 <translation id="6141988275892716286">Подтвердите скачивание</translation>
@@ -1879,7 +1871,6 @@
 <translation id="6348449481487610270"><ph name="MODIFIER_ONE" /><ph name="MODIFIER_TWO" /><ph name="KEY_ONE" />, затем <ph name="MODIFIER_THREE" /><ph name="KEY_TWO" /> или <ph name="KEY_THREE" /></translation>
 <translation id="6352082849089527770">Неизвестные сети</translation>
 <translation id="6359587239691116345">Получите доступ к новым функциям и улучшениям безопасности. Если вы откажетесь от этого обновления, могут возникнуть сбои в работе устройства, а также проблемы с безопасностью и производительностью.</translation>
-<translation id="6362833380917912748">Узнайте о встроенных приложениях</translation>
 <translation id="6364386432014869981">Встроенная сенсорная панель включена</translation>
 <translation id="6376931439017688372">Bluetooth включен</translation>
 <translation id="6378515133128829137">Закрепить окно справа</translation>
@@ -2104,7 +2095,6 @@
 <translation id="7014684956566476813">Установлено подключение к устройству "<ph name="DEVICE_NAME" />"</translation>
 <translation id="7015766095477679451">Увидимся снова в <ph name="COME_BACK_TIME" />.</translation>
 <translation id="70168403932084660">Рабочий стол 6</translation>
-<translation id="702252130983202758">Мои приложения</translation>
 <translation id="7025533177575372252">Подключите <ph name="DEVICE_NAME" /> к своему телефону</translation>
 <translation id="7026338066939101231">Уменьшить</translation>
 <translation id="7029307918966275733">Установка Crostini не была выполнена. Чтобы посмотреть список участников, установите Crostini.</translation>
@@ -2543,13 +2533,12 @@
 <translation id="8277261673056602147">Выделите текст на экране</translation>
 <translation id="8281886186245836920">Пропустить</translation>
 <translation id="8282784978194352587">Получилось!</translation>
-<translation id="8287009018010202411">Работа</translation>
 <translation id="828708037801473432">Отключено</translation>
 <translation id="8289128870594824098">Размер диска</translation>
 <translation id="8297006494302853456">Слабый</translation>
 <translation id="8301242268274839723">Приложите палец к сканеру отпечатков в левом нижнем углу клавиатуры. Данные отпечатков пальцев надежно защищены и хранятся только на устройстве <ph name="DEVICE_TYPE" />.</translation>
 <translation id="8308637677604853869">Предыдущее меню</translation>
-<translation id="830868413617744215">Бета</translation>
+<translation id="830868413617744215">Бета-версия</translation>
 <translation id="8314772463905284467">Включен режим Caps Lock</translation>
 <translation id="8315514906653279104">Включение…</translation>
 <translation id="8331351032546853669">Ожидание скачивания</translation>
@@ -2638,7 +2627,6 @@
 <translation id="8598235756057743477">Упорядочить приложения по названию или цвету</translation>
 <translation id="8599864823732014237">Пропустить корпоративную регистрацию?</translation>
 <translation id="8609384513243082612">Открыть новую вкладку</translation>
-<translation id="861045123704058818">Приложения отсортированы по категориям временно.</translation>
 <translation id="8612338981637220013">Вам всё по плечу!</translation>
 <translation id="8613164732773110792">Можно использовать только строчные буквы, цифры, символы подчеркивания и тире.</translation>
 <translation id="8614517853887502247">Уведомления "<ph name="APP_1_TITLE" />" и "<ph name="APP_2_TITLE" />" скрыты, потому что включен режим безопасного просмотра.</translation>
@@ -2830,7 +2818,6 @@
 <translation id="9129245940793250979">Задняя кнопка</translation>
 <translation id="9133335900048457298">Не удается записать видео с экрана из-за защищенного контента</translation>
 <translation id="9139720510312328767">Удалить следующую букву</translation>
-<translation id="9148058034647219655">Выйти</translation>
 <translation id="9151906066336345901">End</translation>
 <translation id="9159421884295554245">Искать в буфере обмена</translation>
 <translation id="9168436347345867845">Позже</translation>

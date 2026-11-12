@@ -18,15 +18,15 @@ import '//resources/cr_components/localized_link/localized_link.js';
 import '//resources/cr_components/search/animated_glow.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 
-import type {SearchAnimatedGlowElement} from '//resources/cr_components/search/animated_glow.js';
 import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {TabAttachmentSource} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteResult, FileAttachment, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SearchContext, TabAttachment, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 
-import {ComposeboxFile, GlifAnimationState, mapMojoSourceToOrigin, mapUploadErrorToProcessFilesError, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordUserAction, TabUploadOrigin} from './common.js';
+import {ComposeboxFile, GlifAnimationState, mapUploadErrorToProcessFilesError, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordUserAction} from './common.js';
 import type {TabUpload} from './common.js';
 import {getCss} from './composebox.css.js';
 import {getHtml} from './composebox.html.js';
@@ -40,7 +40,6 @@ import type {ContextUploadErrorType} from './composebox_query.mojom-webui.js';
 import {ContextUploadStatus, ToolMode} from './composebox_query.mojom-webui.js';
 import type {ContextualEntrypointAndMenuElement} from './contextual_entrypoint_and_menu.js';
 import type {ContextualEntrypointButtonElement} from './contextual_entrypoint_button.js';
-import type {ErrorScrimElement} from './error_scrim.js';
 import type {ComposeboxFileCarouselElement} from './file_carousel.js';
 
 export {SubmitButtonIconType, VoiceSearchAction};
@@ -59,11 +58,8 @@ export interface ComposeboxElement {
   $: {
     composeboxInput: ComposeboxInputElement,
     composebox: HTMLElement,
-    carousel: ComposeboxFileCarouselElement,
     fileInputs: ComposeboxFileInputsElement,
     matches: ComposeboxDropdownElement,
-    errorScrim: ErrorScrimElement,
-    animatedSearchElement: SearchAnimatedGlowElement,
   };
 }
 
@@ -584,7 +580,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
             title: tab.title,
             url: tab.url,
             delayUpload: !askGAndPageAction,
-            origin: TabUploadOrigin.AUTO_ACTIVE,
+            origin: TabAttachmentSource.kAutoActive,
           } as TabUpload,
           /*replaceAutoActiveTabToken=*/ true);
 
@@ -769,6 +765,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       return;
     }
 
+    this.maybeCarryOverPreviousMatches(result);
     this.result = result;
     /* Indicates when suggestion results have changed so that zero state
      * suggestion results in contextual tasks composebox can update accordingly.
@@ -798,19 +795,25 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       this.$.matches.unselect();
     }
 
-    // Populate the smart compose suggestion.
-    const nextHint = this.result.smartComposeInlineHint?.trim() ?
-        this.result.smartComposeInlineHint :
-        '';
-    if (this.smartComposeInlineHint !== nextHint) {
-      this.smartComposeInlineHint = nextHint;
-    }
+    // Smart compose hints should only be updated from the async response.
+    // This prevents the hint flicker from an empty smart compose response
+    // in the synchronous pass.
+    if (this.haveReceivedSynchronousAutocompleteResponse) {
+      // Populate the smart compose suggestion.
+      const nextHint = this.result.smartComposeInlineHint?.trim() ?
+          this.result.smartComposeInlineHint :
+          '';
+      if (this.smartComposeInlineHint !== nextHint) {
+        this.smartComposeInlineHint = nextHint;
+      }
 
-    // Smart compose stats are incremented on every response from the
-    // server.
-    if (this.smartComposeInlineHint) {
-      this.smartComposeStats.shownCount++;
-      this.smartComposeStats.shownLength += this.smartComposeInlineHint.length;
+      // Smart compose stats are incremented on every response from the
+      // server.
+      if (this.smartComposeInlineHint) {
+        this.smartComposeStats.shownCount++;
+        this.smartComposeStats.shownLength +=
+            this.smartComposeInlineHint.length;
+      }
     }
 
     this.haveReceivedSynchronousAutocompleteResponse = true;
@@ -866,7 +869,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       title: tabAttachment.title,
       url: tabAttachment.url,
       delayUpload: /*delay_upload=*/ false,
-      origin: mapMojoSourceToOrigin(tabAttachment.source),
+      origin: tabAttachment.source,
     } as TabUpload);
   }
 

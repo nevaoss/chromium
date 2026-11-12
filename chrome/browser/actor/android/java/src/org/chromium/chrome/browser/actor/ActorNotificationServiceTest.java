@@ -14,11 +14,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 
@@ -32,28 +35,38 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.shadows.ShadowSystemClock;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.actor.ui.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
+import org.chromium.chrome.browser.notifications.NotificationIntentInterceptor;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.browser_ui.notifications.BaseNotificationManagerProxyFactory;
 import org.chromium.components.browser_ui.notifications.MockNotificationManagerProxy;
 import org.chromium.components.browser_ui.notifications.NotificationWrapper;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Unit tests for {@link ActorNotificationService}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@Config(shadows = {ShadowSystemClock.class})
 @EnableFeatures(ChromeFeatureList.ACTOR_LIVE_NOTIFICATION)
 public class ActorNotificationServiceTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Mock private ActorKeyedService mKeyedService;
     @Mock private ActorTask mTask;
+    @Mock private ActorTask.Natives mActorTaskJni;
     @Mock private ActorForegroundServiceController mServiceController;
 
     private ActorNotificationService mNotificationService;
@@ -84,6 +97,7 @@ public class ActorNotificationServiceTest {
     public void tearDown() {
         mNotificationService.clearAll();
         ActorForegroundServiceManager.resetInstanceForTesting();
+        ActorTaskJni.setInstanceForTesting(null);
     }
 
     @Test
@@ -1021,8 +1035,7 @@ public class ActorNotificationServiceTest {
                 taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
         assertEquals(1, mMockNotificationManager.getMutationCountAndDecrement());
 
-        java.util.concurrent.atomic.AtomicBoolean notifiedDuringMaybeStop =
-                new java.util.concurrent.atomic.AtomicBoolean(false);
+        AtomicBoolean notifiedDuringMaybeStop = new AtomicBoolean(false);
         doAnswer(
                         invocation -> {
                             // At the moment maybeStopServiceNow is called, nonLiveWrapper
@@ -1055,6 +1068,34 @@ public class ActorNotificationServiceTest {
         assertNotNull(demoted);
         assertFalse(
                 "After demotion, notification should not request promoted ongoing",
+                demoted.extras.getBoolean(ActorNotificationFactory.EXTRA_REQUEST_PROMOTED_ONGOING));
+    }
+
+    @Test
+    public void testDemoteNow_DoesNotCallMaybeStopServiceNow() {
+        int taskId = 1;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.FINISHED);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        ActorForegroundServiceManager fgsManager = mock(ActorForegroundServiceManager.class);
+        ActorForegroundServiceManager.setInstanceForTesting(fgsManager);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        mNotificationService.demoteNow(taskId);
+
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId));
+        verify(fgsManager, never()).maybeStopServiceNow();
+        Notification demoted =
+                mNotificationService.getCachedNotification(
+                        taskId, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted);
+        assertFalse(
+                "After demoteNow, notification should not request promoted ongoing",
                 demoted.extras.getBoolean(ActorNotificationFactory.EXTRA_REQUEST_PROMOTED_ONGOING));
     }
 
@@ -1199,5 +1240,358 @@ public class ActorNotificationServiceTest {
                 "A late step progress update must not revive a finished task's notification",
                 0,
                 mMockNotificationManager.getMutationCountAndDecrement());
+    }
+
+    @Test
+    public void testCreatedToActingTransition_RebuildsNotification() {
+        int taskId = 55;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+        when(mServiceController.createTrustedBringTabToFrontIntent(mTask)).thenReturn(new Intent());
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.CREATED, /* isSilent= */ false, /* isWarning= */ false);
+        // Each buildNotification calls createTrustedBringTabToFrontIntent twice (content + action).
+        verify(mServiceController, org.mockito.Mockito.times(2))
+                .createTrustedBringTabToFrontIntent(mTask);
+
+        // Transitioning from CREATED to ACTING must rebuild the notification so its PendingIntent
+        // extras pick up the newly provisioned target tab ID and Glic conversation ID.
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+        verify(mServiceController, org.mockito.Mockito.times(4))
+                .createTrustedBringTabToFrontIntent(mTask);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ACTOR_STEP_PROGRESS_NOTIFICATION)
+    public void testTimeBetweenWorklogUpdates_SingleTask() {
+        int taskId = 100;
+        String histogram = ActorMetrics.ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+
+        // First worklog update: establishes baseline, no period recorded.
+        when(mTask.getCurrentActionName()).thenReturn("Step 1");
+        var watcher1 = HistogramWatcher.newBuilder().expectNoRecords(histogram).build();
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher1.assertExpected();
+
+        // Second worklog update after 1500ms.
+        ShadowSystemClock.advanceBy(1500, TimeUnit.MILLISECONDS);
+        when(mTask.getCurrentActionName()).thenReturn("Step 2");
+        var watcher2 = HistogramWatcher.newSingleRecordWatcher(histogram, 1500);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher2.assertExpected();
+
+        // Third worklog update after 2500ms.
+        ShadowSystemClock.advanceBy(2500, TimeUnit.MILLISECONDS);
+        when(mTask.getCurrentActionName()).thenReturn("Step 3");
+        var watcher3 = HistogramWatcher.newSingleRecordWatcher(histogram, 2500);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher3.assertExpected();
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ACTOR_STEP_PROGRESS_NOTIFICATION)
+    public void testTimeBetweenWorklogUpdates_MultipleTasks_Independent() {
+        int taskId1 = 1;
+        int taskId2 = 2;
+        String histogram = ActorMetrics.ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES;
+
+        ActorTask task1 = mock(ActorTask.class);
+        when(task1.getId()).thenReturn(taskId1);
+        when(task1.getTitle()).thenReturn("Task 1");
+        when(task1.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId1)).thenReturn(task1);
+
+        ActorTask task2 = mock(ActorTask.class);
+        when(task2.getId()).thenReturn(taskId2);
+        when(task2.getTitle()).thenReturn("Task 2");
+        when(task2.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId2)).thenReturn(task2);
+
+        mNotificationService.updateNotificationForTask(
+                taskId1, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+        mNotificationService.updateNotificationForTask(
+                taskId2, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+
+        // Task 1 initial update at t=0.
+        when(task1.getCurrentActionName()).thenReturn("Task 1 Step 1");
+        mNotificationService.updateNotificationForStepProgress(taskId1);
+
+        // Advance 500ms -> t=500.
+        ShadowSystemClock.advanceBy(500, TimeUnit.MILLISECONDS);
+        // Task 2 initial update at t=500.
+        when(task2.getCurrentActionName()).thenReturn("Task 2 Step 1");
+        mNotificationService.updateNotificationForStepProgress(taskId2);
+
+        // Advance 1000ms -> t=1500.
+        ShadowSystemClock.advanceBy(1000, TimeUnit.MILLISECONDS);
+        // Task 1 second update: interval = 1500 - 0 = 1500ms.
+        when(task1.getCurrentActionName()).thenReturn("Task 1 Step 2");
+        var watcher1 = HistogramWatcher.newSingleRecordWatcher(histogram, 1500);
+        mNotificationService.updateNotificationForStepProgress(taskId1);
+        watcher1.assertExpected();
+
+        // Advance 1200ms -> t=2700.
+        ShadowSystemClock.advanceBy(1200, TimeUnit.MILLISECONDS);
+        // Task 2 second update: interval = 2700 - 500 = 2200ms.
+        when(task2.getCurrentActionName()).thenReturn("Task 2 Step 2");
+        var watcher2 = HistogramWatcher.newSingleRecordWatcher(histogram, 2200);
+        mNotificationService.updateNotificationForStepProgress(taskId2);
+        watcher2.assertExpected();
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ACTOR_STEP_PROGRESS_NOTIFICATION)
+    public void testTimeBetweenWorklogUpdates_TaskCompletion_ResetsTracking() {
+        int taskId = 42;
+        String histogram = ActorMetrics.ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+        when(mTask.getCurrentActionName()).thenReturn("Step 1");
+        mNotificationService.updateNotificationForStepProgress(taskId);
+
+        ShadowSystemClock.advanceBy(1000, TimeUnit.MILLISECONDS);
+        when(mTask.getCurrentActionName()).thenReturn("Step 2");
+        var watcher1 = HistogramWatcher.newSingleRecordWatcher(histogram, 1000);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher1.assertExpected();
+
+        // Task completes: resets tracking for this task ID.
+        when(mTask.getState()).thenReturn(ActorTaskState.FINISHED);
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+
+        // Advance clock and simulate task restarting or a new task with the same ID.
+        ShadowSystemClock.advanceBy(5000, TimeUnit.MILLISECONDS);
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+
+        // First update on the new task should establish a new baseline (no records emitted).
+        when(mTask.getCurrentActionName()).thenReturn("New Task Step 1");
+        var watcher2 = HistogramWatcher.newBuilder().expectNoRecords(histogram).build();
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher2.assertExpected();
+
+        // Subsequent update should record interval relative to the new task baseline.
+        ShadowSystemClock.advanceBy(800, TimeUnit.MILLISECONDS);
+        when(mTask.getCurrentActionName()).thenReturn("New Task Step 2");
+        var watcher3 = HistogramWatcher.newSingleRecordWatcher(histogram, 800);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher3.assertExpected();
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ACTOR_STEP_PROGRESS_NOTIFICATION)
+    public void testTimeBetweenWorklogUpdates_Pause_ResetsTracking() {
+        int taskId = 55;
+        String histogram = ActorMetrics.ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+        when(mTask.getCurrentActionName()).thenReturn("Step 1");
+        mNotificationService.updateNotificationForStepProgress(taskId);
+
+        ShadowSystemClock.advanceBy(1200, TimeUnit.MILLISECONDS);
+        when(mTask.getCurrentActionName()).thenReturn("Step 2");
+        var watcher1 = HistogramWatcher.newSingleRecordWatcher(histogram, 1200);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher1.assertExpected();
+
+        // User pauses the task.
+        when(mTask.getState()).thenReturn(ActorTaskState.PAUSED_BY_USER);
+        mNotificationService.updateNotificationForTask(
+                taskId,
+                ActorTaskState.PAUSED_BY_USER,
+                /* isSilent= */ false,
+                /* isWarning= */ false);
+        ShadowSystemClock.advanceBy(10000, TimeUnit.MILLISECONDS);
+
+        // Task resumes acting.
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+
+        // First worklog after resuming should establish a new baseline (no record).
+        when(mTask.getCurrentActionName()).thenReturn("Step 3");
+        var watcher2 = HistogramWatcher.newBuilder().expectNoRecords(histogram).build();
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher2.assertExpected();
+
+        // Subsequent update records interval from resume baseline.
+        ShadowSystemClock.advanceBy(900, TimeUnit.MILLISECONDS);
+        when(mTask.getCurrentActionName()).thenReturn("Step 4");
+        var watcher3 = HistogramWatcher.newSingleRecordWatcher(histogram, 900);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher3.assertExpected();
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.ACTOR_STEP_PROGRESS_NOTIFICATION)
+    public void testTimeBetweenWorklogUpdates_FeatureDisabled_DoesNotRecord() {
+        int taskId = 66;
+        String histogram = ActorMetrics.ACTOR_NOTIFICATION_TIME_BETWEEN_WORKLOG_UPDATES;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ false, /* isWarning= */ false);
+
+        var watcher = HistogramWatcher.newBuilder().expectNoRecords(histogram).build();
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        ShadowSystemClock.advanceBy(1500, TimeUnit.MILLISECONDS);
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        watcher.assertExpected();
+    }
+
+    @Test
+    public void testDemotion_AfterClearNativePtr_PreservesTabIdOnPendingIntent() {
+        long nativeTaskPtr = 1234L;
+        int taskId = 50;
+        int expectedTabId = 99;
+        ActorTaskJni.setInstanceForTesting(mActorTaskJni);
+        when(mActorTaskJni.getState(nativeTaskPtr)).thenReturn(ActorTaskState.FINISHED);
+        when(mActorTaskJni.getLastActuatedTabId(nativeTaskPtr)).thenReturn(expectedTabId);
+
+        ActorTask realTask =
+                new ActorTask(
+                        nativeTaskPtr, taskId, "Test Task", mock(Profile.class), "conv-id-50");
+        when(mKeyedService.getTask(taskId)).thenReturn(realTask);
+        when(mServiceController.createTrustedBringTabToFrontIntent(any()))
+                .thenAnswer(
+                        invocation -> {
+                            ActorTask task = invocation.getArgument(0);
+                            Intent intent = new Intent("BRING_TAB_TO_FRONT_ACTION");
+                            intent.putExtra(
+                                    IntentHandler.BRING_TAB_TO_FRONT_EXTRA, task.getTargetTabId());
+                            intent.putExtra(
+                                    NotificationConstants.EXTRA_ACTOR_TASK_STATE, task.getState());
+                            return intent;
+                        });
+
+        // Post terminal live notification while native task is still alive.
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        // Native ActorTask is destroyed on the next UI message-loop tick after task completion.
+        realTask.clearNativePtr();
+        when(mKeyedService.getTask(taskId)).thenReturn(null);
+
+        assertEquals(expectedTabId, realTask.getLastActuatedTabId());
+        assertEquals(expectedTabId, realTask.getTargetTabId());
+        assertEquals(ActorTaskState.FINISHED, realTask.getState());
+
+        // Advance looper to fire demotion runnable after native task destruction.
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        Notification demoted =
+                mNotificationService.getCachedNotification(
+                        taskId, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted);
+        assertNotNull(demoted.contentIntent);
+
+        Intent demotedIntent = shadowOf(demoted.contentIntent).getSavedIntent();
+        if (NotificationIntentInterceptor.INTENT_ACTION.equals(demotedIntent.getAction())) {
+            PendingIntent wrappedPendingIntent =
+                    NotificationIntentInterceptor.getPendingIntentForTesting(demotedIntent);
+            demotedIntent = shadowOf(wrappedPendingIntent).getSavedIntent();
+        }
+        assertEquals(
+                "Demoted notification PendingIntent must preserve the last actuated tab ID",
+                expectedTabId,
+                demotedIntent.getIntExtra(
+                        IntentHandler.BRING_TAB_TO_FRONT_EXTRA, Tab.INVALID_TAB_ID));
+        assertEquals(
+                ActorTaskState.FINISHED,
+                demotedIntent.getIntExtra(
+                        NotificationConstants.EXTRA_ACTOR_TASK_STATE, ActorTaskState.CREATED));
+    }
+
+    @Test
+    public void testDemotion_AfterClearNativePtr_PreservesFallbackTabIdOnPendingIntent() {
+        long nativeTaskPtr = 1234L;
+        int taskId = 51;
+        int expectedFallbackTabId = 77;
+        ActorTaskJni.setInstanceForTesting(mActorTaskJni);
+        when(mActorTaskJni.getState(nativeTaskPtr)).thenReturn(ActorTaskState.FINISHED);
+        when(mActorTaskJni.getLastActuatedTabId(nativeTaskPtr)).thenReturn(Tab.INVALID_TAB_ID);
+        when(mActorTaskJni.getTabs(nativeTaskPtr)).thenReturn(new int[] {expectedFallbackTabId});
+
+        ActorTask realTask =
+                new ActorTask(
+                        nativeTaskPtr, taskId, "Test Task", mock(Profile.class), "conv-id-51");
+        when(mKeyedService.getTask(taskId)).thenReturn(realTask);
+        when(mServiceController.createTrustedBringTabToFrontIntent(any()))
+                .thenAnswer(
+                        invocation -> {
+                            ActorTask task = invocation.getArgument(0);
+                            Intent intent = new Intent("BRING_TAB_TO_FRONT_ACTION");
+                            intent.putExtra(
+                                    IntentHandler.BRING_TAB_TO_FRONT_EXTRA, task.getTargetTabId());
+                            intent.putExtra(
+                                    NotificationConstants.EXTRA_ACTOR_TASK_STATE, task.getState());
+                            return intent;
+                        });
+
+        // Post terminal live notification while native task is still alive.
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        // Native ActorTask is destroyed on the next UI message-loop tick after task completion.
+        realTask.clearNativePtr();
+        when(mKeyedService.getTask(taskId)).thenReturn(null);
+
+        assertEquals(Tab.INVALID_TAB_ID, realTask.getLastActuatedTabId());
+        assertEquals(expectedFallbackTabId, realTask.getTargetTabId());
+        assertEquals(ActorTaskState.FINISHED, realTask.getState());
+
+        // Advance looper to fire demotion runnable after native task destruction.
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        Notification demoted =
+                mNotificationService.getCachedNotification(
+                        taskId, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted);
+        assertNotNull(demoted.contentIntent);
+
+        Intent demotedIntent = shadowOf(demoted.contentIntent).getSavedIntent();
+        if (NotificationIntentInterceptor.INTENT_ACTION.equals(demotedIntent.getAction())) {
+            PendingIntent wrappedPendingIntent =
+                    NotificationIntentInterceptor.getPendingIntentForTesting(demotedIntent);
+            demotedIntent = shadowOf(wrappedPendingIntent).getSavedIntent();
+        }
+        assertEquals(
+                "Demoted notification PendingIntent must preserve the fallback tab ID",
+                expectedFallbackTabId,
+                demotedIntent.getIntExtra(
+                        IntentHandler.BRING_TAB_TO_FRONT_EXTRA, Tab.INVALID_TAB_ID));
+        assertEquals(
+                ActorTaskState.FINISHED,
+                demotedIntent.getIntExtra(
+                        NotificationConstants.EXTRA_ACTOR_TASK_STATE, ActorTaskState.CREATED));
     }
 }

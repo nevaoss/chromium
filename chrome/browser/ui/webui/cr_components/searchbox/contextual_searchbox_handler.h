@@ -271,6 +271,9 @@ class ContextualSearchboxHandler
   void GetSmartTabSharingActive(
       searchbox::mojom::PageHandler::GetSmartTabSharingActiveCallback callback)
       override;
+  void ResetSmartTabSharing(
+      searchbox::mojom::PageHandler::ResetSmartTabSharingCallback callback)
+      override;
 #endif
 
   // Returns the list of selected tab IDs that should be transferred.
@@ -353,14 +356,6 @@ class ContextualSearchboxHandler
 
   void set_screenshare_delegate_for_testing(
       ContextualSearchboxScreenshareController::Delegate* screenshare_delegate);
-
-#if !BUILDFLAG(IS_ANDROID)
-  bool ShouldOpenInLensSidePanelForTesting(
-      content::WebContents* active_web_contents,
-      contextual_search::ContextualSearchSessionHandle* session_handle) {
-    return ShouldOpenInLensSidePanel(active_web_contents, session_handle);
-  }
-#endif
 
   // Map of context tokens (frontend) to tab IDs (backend);
   // used for determining which tabs to underline based on frontend changes, and
@@ -449,13 +444,6 @@ class ContextualSearchboxHandler
   void RecordTabAddedMetric(tabs::TabInterface* const tab,
                             bool is_tab_suggestion_chip);
 
-#if !BUILDFLAG(IS_ANDROID)
-  // Returns true if the query should be opened in the Lens side panel.
-  bool ShouldOpenInLensSidePanel(
-      content::WebContents* active_web_contents,
-      contextual_search::ContextualSearchSessionHandle* session_handle);
-#endif
-
   virtual void InitializeInputStateModel();
 
   // Returns true if the user/profile is eligible for tab sharing (cobrowse)
@@ -541,6 +529,14 @@ class ContextualSearchboxHandler
   void UpdateAllTabNavigationObservers();
   void OnAnyTabNavigated(content::WebContents* web_contents);
 
+  // Observes tabs last reported to the page as loading, so the page can be
+  // told to refresh when they finish (see `TabInfo.is_loading`).
+  class TabLoadStopObserver;
+  void UpdateTabLoadStopObservers(
+      const std::vector<searchbox::mojom::TabInfoPtr>& tab_infos);
+  void OnTabStoppedLoading();
+
+  std::vector<std::unique_ptr<TabLoadStopObserver>> tab_load_stop_observers_;
   raw_ptr<contextual_tasks::ContextualTasksContextService>
       contextual_tasks_context_service_;
 

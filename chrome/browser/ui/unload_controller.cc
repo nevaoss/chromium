@@ -258,11 +258,41 @@ void UnloadController::BeforeUnloadFired(content::WebContents* web_contents,
   *proceed_to_fire_unload = BeforeUnloadFired(web_contents, proceed);
 }
 
-bool UnloadController::CanCloseContents(content::WebContents* contents) {
+void UnloadController::CloseContents(content::WebContents* contents) {
   // Don't try to close the tab when the whole browser is being closed, since
   // that avoids the fast shutdown path where we just kill all the renderers.
   if (is_attempting_to_close_browser()) {
     ClearUnloadState(contents, true);
+  }
+  if (CanCloseContents(contents)) {
+    chrome::CloseWebContents(browser_, contents, true);
+  }
+}
+
+bool UnloadController::CanCloseContents(content::WebContents* contents) const {
+  // In kIdle, kRunningBeforeUnloadForShutdown, and kBeforeUnloadConfirmed,
+  // HandleBeforeClose() has not started closing this window
+  // (RunBeforeUnloadForShutdown only runs beforeunload confirmation and never
+  // calls ClosePage()), so any CanCloseContents() call is for an individual tab
+  // close (e.g. window.close() or Cmd+W) and can proceed if the tab is
+  // closable.
+  //
+  // Once HandleBeforeClose() starts closing this window
+  // (kRunningBeforeUnloadForWindowClose, kRunningUnload, kUnloadCompleted),
+  // return false before inspecting `contents` (which `ClearUnloadState()` in
+  // `CloseContents()` may have already detached and destroyed via
+  // `OnWindowClosing()` -> `CloseAllTabs()`). Keeping all tabs in TabStripModel
+  // until `OnWindowClosing()` ensures `TabRestoreService` records the full
+  // window and closes all tabs together via `TabStripModel::CloseAllTabs()`.
+  switch (state_) {
+    case State::kIdle:
+    case State::kRunningBeforeUnloadForShutdown:
+    case State::kBeforeUnloadConfirmed:
+      break;
+    case State::kRunningBeforeUnloadForWindowClose:
+    case State::kRunningUnload:
+    case State::kUnloadCompleted:
+      return false;
   }
 
   if (!web_app::IsTabClosable(
@@ -280,30 +310,7 @@ bool UnloadController::CanCloseContents(content::WebContents* contents) {
   }
 #endif
 
-  // In kIdle, kRunningBeforeUnloadForShutdown, and kBeforeUnloadConfirmed,
-  // HandleBeforeClose() has not started closing this window
-  // (RunBeforeUnloadForShutdown only runs beforeunload confirmation and never
-  // calls ClosePage()), so any CanCloseContents() call is for an individual tab
-  // close (e.g. window.close() or Cmd+W) and must return true.
-  //
-  // Once HandleBeforeClose() starts closing this window
-  // (kRunningBeforeUnloadForWindowClose, kRunningUnload, kUnloadCompleted),
-  // return false so tabs are not detached from TabStripModel one by one (note
-  // that ClearUnloadState() above may also transition from kRunningUnload back
-  // to kRunningBeforeUnloadForWindowClose if another tab added a beforeunload
-  // listener while closing). Keeping all tabs in TabStripModel ensures
-  // OnWindowClosing() records the full window in TabRestoreService and closes
-  // all tabs together via TabStripModel::CloseAllTabs().
-  switch (state_) {
-    case State::kIdle:
-    case State::kRunningBeforeUnloadForShutdown:
-    case State::kBeforeUnloadConfirmed:
-      return true;
-    case State::kRunningBeforeUnloadForWindowClose:
-    case State::kRunningUnload:
-    case State::kUnloadCompleted:
-      return false;
-  }
+  return true;
 }
 
 bool UnloadController::ShouldRunUnloadEventsHelper(
@@ -646,7 +653,21 @@ void UnloadController::TransitionTo(State new_state) {
       CHECK(state_ == State::kIdle ||
             state_ == State::kRunningBeforeUnloadForShutdown ||
             state_ == State::kBeforeUnloadConfirmed ||
-            state_ == State::kRunningBeforeUnloadForWindowClose);
+            state_ == State::kRunningBeforeUnloadForWindowClose ||
+            state_ == State::kUnloadCompleted);
+      // kUnloadCompleted -> kIdle can happen when the last tab is closed
+      // without going through the window close flow (e.g. Ctrl+W): the window
+      // close triggered by Browser::TabStripEmpty() shows the in-progress
+      // download warning (HandleBeforeClose()), and TabStripEmpty() below then
+      // moves state_ to kUnloadCompleted while the warning is still open. If
+      // the user cancels the warning, the window has not been closed, so it
+      // must become usable again (see crbug.com/570186027).
+      // TODO(crbug.com/570223950): Show the in-progress download warning
+      // before the last tab is closed (like beforeunload, from TabStripModel)
+      // so that a window close can no longer be cancelled after
+      // TabStripEmpty(). Then kUnloadCompleted can be terminal again and this
+      // transition removed.
+      CHECK(state_ != State::kUnloadCompleted || !is_delete_scheduled_);
       CHECK(tabs_needing_before_unload_fired_.empty());
       CHECK(tabs_needing_unload_fired_.empty());
       CHECK(on_close_confirmed_.is_null());
@@ -1069,12 +1090,16 @@ void UnloadController::InProgressDownloadResponse(bool cancel_downloads) {
   cancel_download_confirmation_state_ =
       CancelDownloadConfirmationState::kNotPrompted;
 
+  // Cancel the window close first so that `state_` is no longer
+  // kUnloadCompleted when the downloads tab below is added; otherwise tab
+  // strip observers may skip this browser because it is still attempting to
+  // close.
+  std::move(warn_before_closing_callback_)
+      .Run(WarnBeforeClosingResult::kDoNotClose);
+
   // Show the download page so the user can figure-out what downloads are still
   // in-progress.
   chrome::ShowDownloads(browser_);
-
-  std::move(warn_before_closing_callback_)
-      .Run(WarnBeforeClosingResult::kDoNotClose);
 }
 
 void UnloadController::FinishWarnBeforeClosing(WarnBeforeClosingResult result) {

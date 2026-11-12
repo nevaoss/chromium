@@ -4,22 +4,32 @@
 
 #include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h"
 
+#include <tuple>
+#include <vector>
+
+#include "base/strings/strcat.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
+#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
+#include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
@@ -30,18 +40,31 @@
 #include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_web_ui.h"
+#include "content/public/test/web_contents_observer_test_utils.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display_switches.h"
 #include "ui/views/interaction/element_tracker_views.h"
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/signin/chrome_signin_client_test_util.h"
+#include "chrome/browser/ui/signin/promos/bubble_signin_promo_signin_button_view.h"
 #include "chrome/browser/ui/views/search_ai_mode/signin_promo_view.h"
+#include "chrome/common/url_constants.h"
+#include "ui/base/interaction/element_tracker.h"
+#include "ui/events/event.h"
+#include "ui/events/types/event_type.h"
+#include "ui/views/controls/button/button.h"
+#include "ui/views/test/button_test_api.h"
+#include "ui/views/view_utils.h"
 #endif
 
 class TestSearchboxHandler : public ContextualSearchboxHandler {
@@ -109,6 +132,26 @@ class ContextualSearchboxHandlerBrowserTest : public InProcessBrowserTest {
   }
 
   void TearDownOnMainThread() override { handler_.reset(); }
+
+  // Creates a popup WebContents with OmniboxPopupWebContentsHelper attached,
+  // simulating the AIM / Full WebUI Omnibox popup.
+  std::unique_ptr<content::WebContents> CreateAimPopupWebContents() {
+    std::unique_ptr<content::WebContents> popup_web_contents =
+        content::WebContents::Create(
+            content::WebContents::CreateParams(browser()->GetProfile()));
+    webui::SetBrowserWindowInterface(popup_web_contents.get(), browser());
+    OmniboxPopupWebContentsHelper::CreateForWebContents(
+        popup_web_contents.get());
+    OmniboxController* omnibox_controller =
+        BrowserWindow::FromBrowser(browser())
+            ->GetLocationBar()
+            ->GetOmniboxController();
+    OmniboxPopupWebContentsHelper::FromWebContents(popup_web_contents.get())
+        ->set_omnibox_controller(omnibox_controller);
+    omnibox_controller->popup_state_manager()->SetPopupState(
+        OmniboxPopupState::kAim);
+    return popup_web_contents;
+  }
 };
 
 IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
@@ -262,6 +305,45 @@ class ContextualSearchboxHandlerDriveSigninPromoBrowserTest
          {switches::kEnableSearchAIModeSigninPromo, {}}},
         {});
   }
+
+  void SetUpInProcessBrowserTestFixture() override {
+    ContextualSearchboxHandlerBrowserTest::SetUpInProcessBrowserTestFixture();
+    url_loader_factory_helper_.SetUp();
+  }
+
+ protected:
+  void TriggerDriveSigninPromoAndClickSignInButton() {
+    ui::ElementContext context =
+        BrowserView::GetBrowserViewForBrowser(browser())->GetElementContext();
+    base::RunLoop button_ready_loop;
+    auto subscription =
+        ui::ElementTracker::GetElementTracker()->AddCustomEventCallback(
+            kBubbleSignInPromoSignInButtonHasCallback, context,
+            base::BindLambdaForTesting(
+                [&](ui::TrackedElement*) { button_ready_loop.Quit(); }));
+
+    base::test::TestFuture<searchbox::mojom::DriveUploadResponsePtr> future;
+    handler_->OnDriveUploadClicked(future.GetCallback());
+    EXPECT_TRUE(future.Wait());
+
+    auto* promo_view = views::AsViewClass<ComposeboxDriveSignInPromoView>(
+        views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+            kComposeboxDriveSignInPromoViewId, context));
+    ASSERT_NE(promo_view, nullptr);
+    promo_view->set_close_on_deactivate(false);
+    button_ready_loop.Run();
+
+    auto* sign_in_button = views::AsViewClass<views::Button>(
+        promo_view->GetInitiallyFocusedView());
+    ASSERT_NE(sign_in_button, nullptr);
+
+    ui::MouseEvent press_event(
+        ui::EventType::kMousePressed, gfx::Point(), gfx::Point(),
+        base::TimeTicks(), ui::EF_LEFT_MOUSE_BUTTON, ui::EF_LEFT_MOUSE_BUTTON);
+    views::test::ButtonTestApi(sign_in_button).NotifyClick(press_event);
+  }
+
+  ChromeSigninClientWithURLLoaderHelper url_loader_factory_helper_;
 };
 
 IN_PROC_BROWSER_TEST_F(
@@ -315,6 +397,173 @@ IN_PROC_BROWSER_TEST_F(
           BrowserView::GetBrowserViewForBrowser(browser())
               ->GetElementContext());
   EXPECT_NE(promo_view, nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualSearchboxHandlerDriveSigninPromoBrowserTest,
+    OnDriveUploadClicked_FromOmniboxPopup_ClosesPopupAndShowsPromo) {
+  // Enable context sharing in prefs.
+  browser()->GetProfile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  std::unique_ptr<content::WebContents> popup_web_contents =
+      CreateAimPopupWebContents();
+  OmniboxController* omnibox_controller = BrowserWindow::FromBrowser(browser())
+                                              ->GetLocationBar()
+                                              ->GetOmniboxController();
+  ASSERT_EQ(omnibox_controller->popup_state_manager()->popup_state(),
+            OmniboxPopupState::kAim);
+
+  testing::NiceMock<MockSearchboxPage> popup_page;
+  auto popup_handler = std::make_unique<TestSearchboxHandler>(
+      mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+      popup_page.BindAndGetRemote(), browser()->GetProfile(),
+      popup_web_contents.get(),
+      base::BindLambdaForTesting([&]() { return session_handle_.get(); }));
+
+  base::test::TestFuture<searchbox::mojom::DriveUploadResponsePtr> future;
+  popup_handler->OnDriveUploadClicked(future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+
+  // The omnibox popup should be closed so it doesn't cover or steal activation
+  // from the Drive sign-in promo bubble.
+  EXPECT_EQ(omnibox_controller->popup_state_manager()->popup_state(),
+            OmniboxPopupState::kNone);
+
+  views::View* promo_view =
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          kComposeboxDriveSignInPromoViewId,
+          BrowserView::GetBrowserViewForBrowser(browser())
+              ->GetElementContext());
+  EXPECT_NE(promo_view, nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualSearchboxHandlerDriveSigninPromoBrowserTest,
+    OnDriveUploadClicked_OnNtp_ReusesSingleTabAndRedirectsToNtp) {
+  browser()->GetProfile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(),
+                                           chrome::ChromeUINewTabURLAsGURL()));
+  ASSERT_EQ(1, browser()->GetTabStripModel()->count());
+
+  TriggerDriveSigninPromoAndClickSignInButton();
+
+  // Clicking "Sign in to Chrome" on an NTP overwrites the existing NTP tab
+  // in-place (ShowTabOverwritingNTP) rather than opening a 2nd tab.
+  EXPECT_EQ(1, browser()->GetTabStripModel()->count());
+
+  // Simulate completing sign-in from the promo access point. The single tab
+  // redirects back to chrome://newtab/.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
+  signin::MakeAccountAvailable(
+      identity_manager,
+      signin::AccountAvailabilityOptionsBuilder()
+          .AsPrimary(signin::ConsentLevel::kSignin)
+          .WithAccessPoint(signin_metrics::AccessPoint::
+                               kComposeboxDriveContextMenuOptionBubble)
+          .Build("user@gmail.com"));
+
+  EXPECT_EQ(1, browser()->GetTabStripModel()->count());
+  EXPECT_TRUE(content::WaitForLoadStop(
+      browser()->GetTabStripModel()->GetActiveWebContents()));
+  EXPECT_EQ(
+      chrome::ChromeUINewTabURLAsGURL(),
+      browser()->GetTabStripModel()->GetActiveWebContents()->GetVisibleURL());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualSearchboxHandlerDriveSigninPromoBrowserTest,
+    OnDriveUploadClicked_OnWebpage_OpensNewTabWithNtpRedirect) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  browser()->GetProfile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  // Open a foreground webpage tab so the active tab WebContents differs from
+  // `handler_`'s initial WebContents (which is now hidden, similar to the
+  // Omnibox popup WebContents when triggered from a webpage).
+  const GURL webpage_url = embedded_test_server()->GetURL("/empty.html");
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), webpage_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  ASSERT_EQ(2, browser()->GetTabStripModel()->count());
+
+  TriggerDriveSigninPromoAndClickSignInButton();
+
+  // Clicking the promo button from a non-NTP webpage opens a dedicated sign-in
+  // tab, which ComposeboxDriveSignInPromoDelegate redirects to chrome://newtab/
+  // once Gaia sign-in completes (even after navigating past the initial
+  // signin_url, which sets DiceTabHelper::IsChromeSigninPage() to false).
+  EXPECT_EQ(3, browser()->GetTabStripModel()->count());
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
+  signin::MakeAccountAvailable(
+      identity_manager,
+      signin::AccountAvailabilityOptionsBuilder()
+          .AsPrimary(signin::ConsentLevel::kSignin)
+          .WithAccessPoint(signin_metrics::AccessPoint::
+                               kComposeboxDriveContextMenuOptionBubble)
+          .Build("user@gmail.com"));
+
+  EXPECT_EQ(
+      chrome::ChromeUINewTabURLAsGURL(),
+      browser()->GetTabStripModel()->GetActiveWebContents()->GetVisibleURL());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualSearchboxHandlerDriveSigninPromoBrowserTest,
+    OnDriveUploadClicked_WebOnlySignedInOnWebpage_StaysOnWebpage) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  browser()->GetProfile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  // Set up an account signed into the web only (no Chrome primary account).
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
+  AccountInfo account_info = signin::MakeAccountAvailable(
+      identity_manager,
+      signin::AccountAvailabilityOptionsBuilder(
+          url_loader_factory_helper_.test_url_loader_factory())
+          .WithCookie()
+          .Build("webonly@gmail.com"));
+  signin::SimulateSuccessfulFetchOfAccountInfo(
+      identity_manager, account_info.GetAccountId(),
+      std::string(account_info.GetEmail()), account_info.GetGaiaId(),
+      /*hosted_domain=*/"", "Full Name", "Given", "en-US",
+      /*picture_url=*/"");
+  ASSERT_FALSE(
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+
+  const GURL webpage_url = embedded_test_server()->GetURL("/empty.html");
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), webpage_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  ASSERT_EQ(2, browser()->GetTabStripModel()->count());
+
+  TriggerDriveSigninPromoAndClickSignInButton();
+
+  // Clicking "Continue as <Name>" signs the user into Chrome without opening a
+  // new tab and stays on the current webpage.
+  EXPECT_TRUE(
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+  EXPECT_EQ(2, browser()->GetTabStripModel()->count());
+  EXPECT_EQ(
+      webpage_url,
+      browser()->GetTabStripModel()->GetActiveWebContents()->GetVisibleURL());
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
@@ -397,3 +646,79 @@ IN_PROC_BROWSER_TEST_F(WebuiOmniboxHandlerBrowserTest,
   EXPECT_EQ(result.error(),
             contextual_search::ContextUploadErrorType::kBrowserProcessingError);
 }
+
+// Submits a query from a simulated omnibox AI Mode popup. Parameters: voice
+// input, ContextualTasks enabled.
+class ContextualSearchboxHandlerOmniboxPopupSubmitTest
+    : public ContextualSearchboxHandlerBrowserTest,
+      public testing::WithParamInterface<std::tuple<bool, bool>> {
+ public:
+  ContextualSearchboxHandlerOmniboxPopupSubmitTest() {
+    std::vector<base::test::FeatureRefAndParams> enabled_features = {
+        {contextual_tasks::kContextualTasksContext,
+         {{"ContextualTasksContextSmartTabSharing", "true"}}},
+        {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}}};
+    std::vector<base::test::FeatureRef> disabled_features;
+    if (contextual_tasks_enabled()) {
+      enabled_features.push_back({contextual_tasks::kContextualTasks, {}});
+    } else {
+      disabled_features = {contextual_tasks::kContextualTasks,
+                           contextual_tasks::kContextualTasksSidePanel};
+    }
+    scoped_feature_list_.Reset();
+    scoped_feature_list_.InitWithFeaturesAndParameters(enabled_features,
+                                                       disabled_features);
+  }
+
+ protected:
+  bool is_voice_search() const { return std::get<0>(GetParam()); }
+  bool contextual_tasks_enabled() const { return std::get<1>(GetParam()); }
+};
+
+IN_PROC_BROWSER_TEST_P(ContextualSearchboxHandlerOmniboxPopupSubmitTest,
+                       NavigatesActiveTabWithGeneratedTransition) {
+  search_test_utils::WaitForTemplateURLServiceToLoad(
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile()));
+
+  std::unique_ptr<content::WebContents> popup_web_contents =
+      CreateAimPopupWebContents();
+
+  testing::NiceMock<MockSearchboxPage> popup_page;
+  auto popup_handler = std::make_unique<TestSearchboxHandler>(
+      mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+      popup_page.BindAndGetRemote(), browser()->GetProfile(),
+      popup_web_contents.get(),
+      base::BindLambdaForTesting([&]() { return session_handle_.get(); }));
+
+  // Read the transition at start, before throttles can cancel or reissue the
+  // navigation.
+  base::test::TestFuture<ui::PageTransition> transition_future;
+  content::NavigationStartObserver observer(
+      browser()->GetTabStripModel()->GetActiveWebContents(),
+      base::BindLambdaForTesting([&](content::NavigationHandle* handle) {
+        if (handle->IsInPrimaryMainFrame() && !transition_future.IsReady()) {
+          transition_future.SetValue(handle->GetPageTransition());
+        }
+      }));
+  popup_handler->SubmitQuery("test query", /*mouse_button=*/0,
+                             /*alt_key=*/false, /*ctrl_key=*/false,
+                             /*meta_key=*/false, /*shift_key=*/false,
+                             is_voice_search());
+
+  // Omnibox searches use GENERATED. The actor leave confirmation does not
+  // cover LINK navigations.
+  const ui::PageTransition transition = transition_future.Get();
+  EXPECT_TRUE(
+      ui::PageTransitionCoreTypeIs(transition, ui::PAGE_TRANSITION_GENERATED))
+      << ui::PageTransitionGetCoreTransitionString(transition);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ContextualSearchboxHandlerOmniboxPopupSubmitTest,
+    testing::Combine(testing::Bool(), testing::Bool()),
+    [](const testing::TestParamInfo<std::tuple<bool, bool>>& info) {
+      return base::StrCat({std::get<0>(info.param) ? "Voice" : "Typed",
+                           std::get<1>(info.param) ? "_ContextualTasksOn"
+                                                   : "_ContextualTasksOff"});
+    });

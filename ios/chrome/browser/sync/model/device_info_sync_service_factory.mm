@@ -29,6 +29,7 @@
 #import "components/sync_device_info/device_info_sync_service_impl.h"
 #import "components/sync_device_info/local_device_info_provider_impl.h"
 #import "google_apis/gaia/gaia_id.h"
+#import "ios/chrome/browser/personal_context/model/ios_personal_context_eligibility_service_factory.h"
 #import "ios/chrome/browser/push_notification/model/push_notification_client_id.h"
 #import "ios/chrome/browser/push_notification/model/push_notification_service.h"
 #import "ios/chrome/browser/push_notification/model/push_notification_settings_util.h"
@@ -49,10 +50,14 @@ class DeviceInfoSyncClient : public syncer::DeviceInfoSyncClient {
   DeviceInfoSyncClient(
       PrefService* prefs,
       syncer::SyncInvalidationsService* sync_invalidations_service,
-      signin::IdentityManager* identity_manager)
+      signin::IdentityManager* identity_manager,
+      personal_context::PersonalContextEligibilityService*
+          personal_context_eligibility_service)
       : prefs_(prefs),
         sync_invalidations_service_(sync_invalidations_service),
-        identity_manager_(identity_manager) {}
+        identity_manager_(identity_manager),
+        personal_context_eligibility_service_(
+            personal_context_eligibility_service) {}
   ~DeviceInfoSyncClient() override = default;
 
   // syncer::DeviceInfoSyncClient:
@@ -175,50 +180,22 @@ class DeviceInfoSyncClient : public syncer::DeviceInfoSyncClient {
   }
 
   // syncer::DeviceInfoSyncClient:
-  std::optional<syncer::DeviceInfo::PersonalContextInfo>
+  syncer::DeviceInfo::PersonalContextInfo::StatusOrInfo
   GetLocalPersonalContextInfo() const override {
-    if (!base::FeatureList::IsEnabled(
-            personal_context::features::
-                kPersonalContextHandleEncryptedPayloads)) {
-      return std::nullopt;
-    }
-    std::vector<uint8_t> public_key =
-        personal_context::PersonalContextKeyManager::
-            GetOrCreateLocalPublicKeyBytes(prefs_);
-    if (public_key.empty()) {
-      return std::nullopt;
-    }
-    return syncer::DeviceInfo::PersonalContextInfo{
-        .serialized_tink_keyset = std::move(public_key)};
+    return personal_context::PersonalContextKeyManager::
+        GetLocalPersonalContextInfo(prefs_,
+                                    personal_context_eligibility_service_);
   }
 
  private:
   const raw_ptr<PrefService> prefs_;
   const raw_ptr<syncer::SyncInvalidationsService> sync_invalidations_service_;
   const raw_ptr<signin::IdentityManager> identity_manager_;
+  const raw_ptr<personal_context::PersonalContextEligibilityService>
+      personal_context_eligibility_service_;
 };
 
 }  // namespace
-
-// static
-syncer::DeviceInfoSyncService* DeviceInfoSyncServiceFactory::GetForProfile(
-    ProfileIOS* profile) {
-  return GetInstance()->GetServiceForProfileAs<syncer::DeviceInfoSyncService>(
-      profile, /*create=*/true);
-}
-
-// static
-syncer::DeviceInfoSyncService*
-DeviceInfoSyncServiceFactory::GetForProfileIfExists(ProfileIOS* profile) {
-  return GetInstance()->GetServiceForProfileAs<syncer::DeviceInfoSyncService>(
-      profile, /*create=*/false);
-}
-
-// static
-DeviceInfoSyncServiceFactory* DeviceInfoSyncServiceFactory::GetInstance() {
-  static base::NoDestructor<DeviceInfoSyncServiceFactory> instance;
-  return instance.get();
-}
 
 // static
 void DeviceInfoSyncServiceFactory::GetAllDeviceInfoTrackers(
@@ -236,14 +213,14 @@ void DeviceInfoSyncServiceFactory::GetAllDeviceInfoTrackers(
   }
 }
 
-DeviceInfoSyncServiceFactory::DeviceInfoSyncServiceFactory()
-    : ProfileKeyedServiceFactoryIOS("DeviceInfoSyncService") {
+DeviceInfoSyncServiceFactory::DeviceInfoSyncServiceFactory(PassKey key)
+    : TypedProfileKeyedServiceFactoryIOS(std::move(key),
+                                         "DeviceInfoSyncService") {
   DependsOn(DataTypeStoreServiceFactory::GetInstance());
   DependsOn(SyncInvalidationsServiceFactory::GetInstance());
   DependsOn(IdentityManagerFactory::GetInstance());
+  DependsOn(IOSPersonalContextEligibilityServiceFactory::GetInstance());
 }
-
-DeviceInfoSyncServiceFactory::~DeviceInfoSyncServiceFactory() {}
 
 std::unique_ptr<KeyedService>
 DeviceInfoSyncServiceFactory::BuildServiceInstanceFor(
@@ -252,8 +229,12 @@ DeviceInfoSyncServiceFactory::BuildServiceInstanceFor(
       SyncInvalidationsServiceFactory::GetForProfile(profile);
   signin::IdentityManager* const identity_manager =
       IdentityManagerFactory::GetForProfile(profile);
+  personal_context::PersonalContextEligibilityService* const
+      personal_context_eligibility_service =
+          IOSPersonalContextEligibilityServiceFactory::GetForProfile(profile);
   auto device_info_sync_client = std::make_unique<DeviceInfoSyncClient>(
-      profile->GetPrefs(), sync_invalidations_service, identity_manager);
+      profile->GetPrefs(), sync_invalidations_service, identity_manager,
+      personal_context_eligibility_service);
   auto local_device_info_provider =
       std::make_unique<syncer::LocalDeviceInfoProviderImpl>(
           ::GetChannel(), ::GetVersionString(), device_info_sync_client.get());

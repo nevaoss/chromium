@@ -337,7 +337,7 @@ void ServiceWorkerMainResourceLoader::StartRequest(
 
     base::ElapsedTimer router_evaluation_timer;
     response_head_->load_timing.service_worker_router_evaluation_start =
-        base::TimeTicks::Now();
+        router_evaluation_timer.start_time();
     auto eval_result = active_worker->router_evaluator()->Evaluate(
         resource_request_, running_status);
     router_info->router_evaluation_time = router_evaluation_timer.Elapsed();
@@ -724,9 +724,14 @@ void ServiceWorkerMainResourceLoader::CommitResponseBody(
     }
   }
 
-  url_loader_client_->OnReceiveResponse(response_head.Clone(),
-                                        std::move(response_body),
-                                        std::move(cached_metadata));
+  auto head = response_head.Clone();
+  if (response_head_.get() == response_head.get()) {
+    head->cache_storage_side_data_writer =
+        std::move(cache_storage_side_data_writer_);
+  }
+
+  url_loader_client_->OnReceiveResponse(
+      std::move(head), std::move(response_body), std::move(cached_metadata));
 }
 
 void ServiceWorkerMainResourceLoader::CommitEmptyResponseAndComplete() {
@@ -1151,6 +1156,12 @@ bool ServiceWorkerMainResourceLoader::MaybeStartSyntheticNetworkRequest(
         SyntheticResponseEligibility::kNotEligibleByReload);
     return false;
   }
+  if (resource_request_.load_flags & net::LOAD_SKIP_CACHE_VALIDATION) {
+    // Back/forward history navigations and tab restores set
+    // `net::LOAD_SKIP_CACHE_VALIDATION` to prefer cached content without
+    // revalidation. Synthetic response must not intercept these navigations.
+    return false;
+  }
 
   // Check if an embedder-level interceptor (like Search Prefetch) wants to
   // handle this request.
@@ -1347,6 +1358,8 @@ void ServiceWorkerMainResourceLoader::StartResponse(
 
   blink::ServiceWorkerLoaderHelpers::SaveResponseInfo(*response,
                                                       response_head_.get());
+  cache_storage_side_data_writer_ =
+      std::move(response->cache_storage_side_data_writer);
 
   response_head_->did_service_worker_navigation_preload =
       dispatched_preload_type() == DispatchedPreloadType::kNavigationPreload;

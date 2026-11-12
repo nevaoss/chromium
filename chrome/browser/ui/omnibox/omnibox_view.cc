@@ -302,12 +302,14 @@ void OmniboxView::UpdateTextStyle(
     return;
   }
 
+  // LINT.IfChange(DemphasizeComponents)
   enum DemphasizeComponents {
     kEverything,
     kAllButScheme,
     kAllButHost,
     kNothing,
   } deemphasize = kNothing;
+  // LINT.ThenChange(//components/omnibox/browser/searchbox.mojom:UrlDeemphasisMode)
 
   url::Component scheme;
   url::Component host;
@@ -363,6 +365,11 @@ void OmniboxView::UpdateTextStyle(
       scheme_range.IsValid()) {
     UpdateSchemeStyle(scheme_range);
   }
+}
+
+bool OmniboxView::IsSuggestionNarrationOwnedByWebUIPopup() const {
+  return controller()->popup_state_manager()->popup_state() ==
+         OmniboxPopupState::kFull;
 }
 
 std::u16string OmniboxView::ComputeFriendlySuggestionTextForAccessibility(

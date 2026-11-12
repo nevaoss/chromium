@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/lens/lens_overlay_interactive_test_base.h"
 
+#include "base/base64.h"
 #include "base/functional/bind.h"
 #include "base/test/run_until.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
@@ -34,9 +35,39 @@
 #include "components/lens/lens_overlay_permission_utils.h"
 #include "components/prefs/pref_service.h"
 #include "components/search_engines/template_url_service.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/web_contents.h"
+#include "content/public/test/browser_test_utils.h"
+#include "content/public/test/hit_test_region_observer.h"
 #include "media/base/media_switches.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "third_party/blink/public/common/input/web_input_event.h"
+#include "third_party/blink/public/common/input/web_mouse_event.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/views/controls/webview/webview.h"
 #include "ui/views/focus/focus_manager.h"
+
+namespace {
+
+// Simulates a left-button drag from `from` to `to` in `web_contents`, with
+// both points in the coordinates of its view. The events are queued to the
+// renderer in order; callers should wait for the drag's effect.
+void SimulateLeftClickDrag(content::WebContents* web_contents,
+                           const gfx::Point& from,
+                           const gfx::Point& to) {
+  content::WaitForHitTestData(web_contents->GetPrimaryMainFrame());
+  content::SimulateMouseEvent(web_contents,
+                              blink::WebInputEvent::Type::kMouseDown,
+                              blink::WebMouseEvent::Button::kLeft, from);
+  content::SimulateMouseEvent(web_contents,
+                              blink::WebInputEvent::Type::kMouseMove,
+                              blink::WebMouseEvent::Button::kLeft, to);
+  content::SimulateMouseEvent(web_contents,
+                              blink::WebInputEvent::Type::kMouseUp,
+                              blink::WebMouseEvent::Button::kLeft, to);
+}
+
+}  // namespace
 
 TestingAimEligibilityService::TestingAimEligibilityService(
     bool is_aim_eligible,
@@ -49,7 +80,19 @@ TestingAimEligibilityService::TestingAimEligibilityService(
                                   /*identity_manager=*/nullptr,
                                   /*configuration=*/{}),
       is_aim_eligible_(is_aim_eligible),
-      is_cobrowse_eligible_(is_cobrowse_eligible) {}
+      is_cobrowse_eligible_(is_cobrowse_eligible) {
+  omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(is_aim_eligible);
+  response.add_interception_allowed_hosts("www.google.com");
+  response.add_interception_allowed_hosts("www.g.ai");
+  response.add_interception_allowed_paths("/search");
+  auto* rule = response.add_aim_detection_url_rule();
+  auto* param = rule->add_required_params();
+  param->set_key("udm");
+  param->set_value("50");
+  SetEligibilityResponseForDebugging(
+      base::Base64Encode(response.SerializeAsString()));
+}
 
 TestingAimEligibilityService::~TestingAimEligibilityService() = default;
 
@@ -84,7 +127,10 @@ TestingContextualTasksUiService::TestingContextualTasksUiService(
           contextual_tasks_service,
           identity_manager,
           aim_eligibility_service,
-          /*eligibility_manager=*/nullptr,
+          std::make_unique<contextual_tasks::ContextualTasksEligibilityManager>(
+              profile->GetPrefs(),
+              identity_manager,
+              aim_eligibility_service),
           std::move(cookie_synchronizer)) {}
 
 TestingContextualTasksUiService::~TestingContextualTasksUiService() = default;
@@ -292,11 +338,6 @@ LensOverlayInteractiveTestBase::OpenLensOverlayWithRegionSearch(
       "body",
   };
 
-  const DeepQuery kPathToRegionSelection{
-      "lens-overlay-app",
-      "lens-selection-overlay",
-      "#regionSelectionLayer",
-  };
   return Steps(
       InAnyContext(
           InstrumentTab(tab_id), NavigateWebContents(tab_id, url),
@@ -307,6 +348,21 @@ LensOverlayInteractiveTestBase::OpenLensOverlayWithRegionSearch(
           PressButton(kToolbarAppMenuButtonElementId),
           WaitForShow(AppMenuModel::kShowLensOverlay),
           SelectMenuItem(AppMenuModel::kShowLensOverlay)),
+      SelectRegionInLensOverlay(overlay_id, std::move(target_point),
+                                tab_id_int));
+}
+
+ui::test::InteractiveTestApi::MultiStep
+LensOverlayInteractiveTestBase::SelectRegionInLensOverlay(
+    ui::ElementIdentifier overlay_id,
+    base::OnceCallback<gfx::Point()> target_point,
+    int tab_id_int) {
+  const DeepQuery kPathToRegionSelection{
+      "lens-overlay-app",
+      "lens-selection-overlay",
+      "#regionSelectionLayer",
+  };
+  return Steps(
       InAnyContext(
           InstrumentNonTabWebView(overlay_id,
                                   LensOverlayController::kOverlayId),
@@ -331,7 +387,23 @@ LensOverlayInteractiveTestBase::OpenLensOverlayWithRegionSearch(
                     )"),
                     WaitForScreenshotRendered(overlay_id),
                     EnsurePresent(overlay_id, kPathToRegionSelection),
-                    MoveMouseTo(LensOverlayController::kOverlayId),
-                    DragMouseTo(std::move(target_point)),
+                    // Send the drag straight to the overlay renderer instead
+                    // of using OS-level input. On Windows, ui_controls waits
+                    // with no timeout for each mouse button message to reach
+                    // the UI thread, so one lost message hangs the step until
+                    // the whole sequence times out.
+                    WithElement(LensOverlayController::kOverlayId,
+                                [this, target_point = std::move(target_point)](
+                                    ui::TrackedElement* el) mutable {
+                                  auto* const web_view =
+                                      AsView<views::WebView>(el);
+                                  const gfx::Rect bounds =
+                                      web_view->GetBoundsInScreen();
+                                  SimulateLeftClickDrag(
+                                      web_view->GetWebContents(),
+                                      gfx::Rect(bounds.size()).CenterPoint(),
+                                      std::move(target_point).Run() -
+                                          bounds.OffsetFromOrigin());
+                                }),
                     FinishScreenshotUpload(tab_id_int)));
 }

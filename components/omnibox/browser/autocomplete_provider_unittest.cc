@@ -22,6 +22,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/values_test_util.h"
@@ -469,7 +470,7 @@ void AutocompleteProviderTest::RegisterTemplateURL(
   turl_model->SetUserSelectedDefaultSearchProvider(default_turl);
   turl_model->Load();
   TemplateURLID default_provider_id = default_turl->id();
-  ASSERT_NE(0, default_provider_id);
+  ASSERT_NE(kInvalidTemplateURLID, default_provider_id);
 }
 
 void AutocompleteProviderTest::ResetControllerWithTestProviders(
@@ -528,7 +529,7 @@ void AutocompleteProviderTest::ResetControllerWithKeywordAndSearchProviders() {
       turl_model->Add(std::make_unique<TemplateURL>(data));
   turl_model->SetUserSelectedDefaultSearchProvider(default_turl);
   TemplateURLID default_provider_id = default_turl->id();
-  ASSERT_NE(0, default_provider_id);
+  ASSERT_NE(kInvalidTemplateURLID, default_provider_id);
 
   // Create another TemplateURL for KeywordProvider.
   TemplateURLData data2;
@@ -538,7 +539,7 @@ void AutocompleteProviderTest::ResetControllerWithKeywordAndSearchProviders() {
   data2.is_active = TemplateURLData::ActiveStatus::kTrue;
   TemplateURL* keyword_turl =
       turl_model->Add(std::make_unique<TemplateURL>(data2));
-  ASSERT_NE(0, keyword_turl->id());
+  ASSERT_NE(kInvalidTemplateURLID, keyword_turl->id());
 
   ResetControllerWithType(
       static_cast<int>(AutocompleteProvider::Type::kKeyword |
@@ -557,7 +558,7 @@ void AutocompleteProviderTest::ResetControllerWithKeywordProvider() {
   data.is_active = TemplateURLData::ActiveStatus::kTrue;
   TemplateURL* keyword_turl =
       turl_model->Add(std::make_unique<TemplateURL>(data));
-  ASSERT_NE(0, keyword_turl->id());
+  ASSERT_NE(kInvalidTemplateURLID, keyword_turl->id());
 
   // Make a TemplateURL for KeywordProvider that a shorter version of the
   // first.
@@ -566,7 +567,7 @@ void AutocompleteProviderTest::ResetControllerWithKeywordProvider() {
   data.SetURL("http://f.com/{searchTerms}");
   data.is_active = TemplateURLData::ActiveStatus::kTrue;
   keyword_turl = turl_model->Add(std::make_unique<TemplateURL>(data));
-  ASSERT_NE(0, keyword_turl->id());
+  ASSERT_NE(kInvalidTemplateURLID, keyword_turl->id());
 
   // Create another TemplateURL for KeywordProvider.
   data.SetShortName(u"bar.com");
@@ -574,7 +575,7 @@ void AutocompleteProviderTest::ResetControllerWithKeywordProvider() {
   data.SetURL("http://bar.com/{searchTerms}");
   data.is_active = TemplateURLData::ActiveStatus::kTrue;
   keyword_turl = turl_model->Add(std::make_unique<TemplateURL>(data));
-  ASSERT_NE(0, keyword_turl->id());
+  ASSERT_NE(kInvalidTemplateURLID, keyword_turl->id());
 
   ResetControllerWithType(
       static_cast<int>(AutocompleteProvider::Type::kKeyword));
@@ -1572,6 +1573,118 @@ TEST_F(AutocompleteProviderTest, GetDestinationURL) {
     EXPECT_EQ(1, expected.experiment_stats_v2_size());
     EXPECT_EQ(10001, expected.experiment_stats_v2(0).type_int());
     EXPECT_EQ("0,67", expected.experiment_stats_v2(0).string_value());
+  }
+}
+
+TEST_F(AutocompleteProviderTest, TruncateSearchUrlOq) {
+  ResetControllerWithTestProviders(false, nullptr, nullptr);
+  RegisterTemplateURL(
+      kTestTemplateURLKeyword,
+      "https://foo/?q={searchTerms}&{google:originalQueryForSuggestion}");
+  AutocompleteMatch match(nullptr, 1000, false,
+                          omnibox::AutocompleteMatchType::kSearchSuggest);
+  match.keyword = kTestTemplateURLKeyword;
+  match.search_terms_args =
+      std::make_unique<TemplateURLRef::SearchTermsArgs>(u"search");
+  match.search_terms_args->accepted_suggestion = 0;
+  match.search_terms_args->searchbox_stats.set_client_name("chrome");
+
+  // 1. By default, feature is disabled and no histogram is recorded.
+  {
+    base::HistogramTester histogram_tester;
+    match.search_terms_args->original_query = std::u16string(2500, 'a');
+    GetDestinationURL(match, base::Milliseconds(100));
+    histogram_tester.ExpectTotalCount("Omnibox.SuggestionUsed.TruncationOq", 0);
+  }
+
+  // 2. When feature is enabled with default param (2048).
+  {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndEnableFeature(omnibox::kTruncateSearchUrlOq);
+
+    // Truncated query logs true.
+    base::HistogramTester histogram_tester;
+    match.search_terms_args->original_query = std::u16string(2500, 'a');
+    GetDestinationURL(match, base::Milliseconds(100));
+    histogram_tester.ExpectUniqueSample("Omnibox.SuggestionUsed.TruncationOq",
+                                        true, 1);
+
+    // Short query logs false.
+    match.search_terms_args->original_query = u"short";
+    GetDestinationURL(match, base::Milliseconds(100));
+    histogram_tester.ExpectBucketCount("Omnibox.SuggestionUsed.TruncationOq",
+                                       false, 1);
+    histogram_tester.ExpectTotalCount("Omnibox.SuggestionUsed.TruncationOq", 2);
+
+    // Template without oq emits no histogram even when feature is enabled.
+    RegisterTemplateURL(u"no_oq", "https://foo/?q={searchTerms}");
+    AutocompleteMatch non_oq_match(
+        nullptr, 1000, false, omnibox::AutocompleteMatchType::kSearchSuggest);
+    non_oq_match.keyword = u"no_oq";
+    non_oq_match.search_terms_args =
+        std::make_unique<TemplateURLRef::SearchTermsArgs>(u"search");
+    non_oq_match.search_terms_args->accepted_suggestion = 0;
+    non_oq_match.search_terms_args->searchbox_stats.set_client_name("chrome");
+    non_oq_match.search_terms_args->original_query = std::u16string(2500, 'a');
+    GetDestinationURL(non_oq_match, base::Milliseconds(100));
+    histogram_tester.ExpectTotalCount("Omnibox.SuggestionUsed.TruncationOq", 2);
+  }
+}
+
+TEST_F(AutocompleteProviderTest, TruncateSearchUrlQ) {
+  ResetControllerWithTestProviders(false, nullptr, nullptr);
+  RegisterTemplateURL(
+      kTestTemplateURLKeyword,
+      "https://www.google.com/"
+      "search?q={searchTerms}&{google:originalQueryForSuggestion}");
+  AutocompleteMatch match(nullptr, 1000, false,
+                          omnibox::AutocompleteMatchType::kSearchSuggest);
+  match.keyword = kTestTemplateURLKeyword;
+  match.search_terms_args =
+      std::make_unique<TemplateURLRef::SearchTermsArgs>(u"search");
+  match.search_terms_args->accepted_suggestion = 0;
+  match.search_terms_args->searchbox_stats.set_client_name("chrome");
+
+  // 1. By default, feature is disabled and no histogram is recorded.
+  {
+    base::HistogramTester histogram_tester;
+    match.search_terms_args->search_terms = std::u16string(2500, 'a');
+    GetDestinationURL(match, base::Milliseconds(100));
+    histogram_tester.ExpectTotalCount("Omnibox.SuggestionUsed.TruncationQ", 0);
+  }
+
+  // 2. When feature is enabled with default param (2048).
+  {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndEnableFeature(omnibox::kTruncateSearchUrlQ);
+
+    // Truncated query logs true.
+    base::HistogramTester histogram_tester;
+    match.search_terms_args->search_terms = std::u16string(2500, 'a');
+    GetDestinationURL(match, base::Milliseconds(100));
+    histogram_tester.ExpectUniqueSample("Omnibox.SuggestionUsed.TruncationQ",
+                                        true, 1);
+
+    // Short query logs false.
+    match.search_terms_args->search_terms = u"short";
+    GetDestinationURL(match, base::Milliseconds(100));
+    histogram_tester.ExpectBucketCount("Omnibox.SuggestionUsed.TruncationQ",
+                                       false, 1);
+    histogram_tester.ExpectTotalCount("Omnibox.SuggestionUsed.TruncationQ", 2);
+
+    // Non-Google engine does not record histogram.
+    RegisterTemplateURL(u"bing", "http://www.bing.com/search?q={searchTerms}");
+    AutocompleteMatch non_google_match(
+        nullptr, 1000, false, omnibox::AutocompleteMatchType::kSearchSuggest);
+    non_google_match.keyword = u"bing";
+    non_google_match.search_terms_args =
+        std::make_unique<TemplateURLRef::SearchTermsArgs>(
+            std::u16string(2500, 'a'));
+    non_google_match.search_terms_args->accepted_suggestion = 0;
+    non_google_match.search_terms_args->searchbox_stats.set_client_name(
+        "chrome");
+    GetDestinationURL(non_google_match, base::Milliseconds(100));
+    histogram_tester.ExpectTotalCount("Omnibox.SuggestionUsed.TruncationQ", 2);
   }
 }
 

@@ -9,6 +9,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
+#include "build/build_config.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance_test_api.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
@@ -410,19 +411,30 @@ TEST(AutofillAiPersonalContextConverters, ConvertEntityWithGmailSource) {
   *entity.mutable_passport() = passport;
   personal_context::proto::SourceReference* source =
       entity.add_source_references();
-  source->mutable_gmail()->set_message_url(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  source->mutable_gmail()->mutable_message_urls()->set_desktop_web_url(
+      "https://mail.google.com/mail/#inbox/123");
+  source->mutable_gmail()->mutable_message_urls()->set_mobile_web_url(
+      "https://mail.google.com/mail/mu/mp/#cv/Inbox/123");
   source->mutable_gmail()->set_subject("Passport Information");
+  source->mutable_gmail()->mutable_timestamp()->set_year(2025);
+  source->mutable_gmail()->mutable_timestamp()->set_month(10);
+  source->mutable_gmail()->mutable_timestamp()->set_day(15);
+  source->mutable_gmail()->mutable_timestamp()->set_hours(14);
+  source->mutable_gmail()->mutable_timestamp()->set_minutes(30);
 
   std::optional<EntityInstance> opt_result =
       PersonalContextEntityToEntityInstance(entity);
 
   ASSERT_TRUE(opt_result.has_value());
   const EntityInstance& result = opt_result.value();
+  base::Time expected_timestamp;
+  ASSERT_TRUE(
+      base::Time::FromUTCString("2025-10-15 14:30:00", &expected_timestamp));
   EntityInstance::PersonalContextRecordTypePayload payload{
       .sources = {Source{
-          .url = GURL("https://mail.google.com/mail/u/0/#inbox/123"),
-          .metadata = GmailSourceMetadata{.title = "Passport Information"}}}};
+          .url = GetGmailSourceUrl(source->gmail()),
+          .metadata = GmailSourceMetadata{.title = "Passport Information",
+                                          .timestamp = expected_timestamp}}}};
   EXPECT_EQ(std::get<EntityInstance::PersonalContextRecordTypePayload>(
                 result.record_type_data()),
             payload);
@@ -437,18 +449,29 @@ TEST(AutofillAiPersonalContextConverters,
   *entity.mutable_passport() = passport;
   personal_context::proto::SourceReference* source =
       entity.add_source_references();
-  source->mutable_gmail()->set_message_url(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  source->mutable_gmail()->mutable_message_urls()->set_desktop_web_url(
+      "https://mail.google.com/mail/#inbox/123");
+  source->mutable_gmail()->mutable_message_urls()->set_mobile_web_url(
+      "https://mail.google.com/mail/mu/mp/#cv/Inbox/123");
 
   std::optional<EntityInstance> opt_result =
       PersonalContextEntityToEntityInstance(entity);
 
   ASSERT_TRUE(opt_result.has_value());
   const EntityInstance& result = opt_result.value();
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   EXPECT_THAT(std::get<EntityInstance::PersonalContextRecordTypePayload>(
                   result.record_type_data())
                   .sources,
               IsEmpty());
+#else
+  EntityInstance::PersonalContextRecordTypePayload payload{
+      .sources = {Source{.url = GURL("https://mail.google.com/mail/#inbox/123"),
+                         .metadata = GmailSourceMetadata{.title = ""}}}};
+  EXPECT_EQ(std::get<EntityInstance::PersonalContextRecordTypePayload>(
+                result.record_type_data()),
+            payload);
+#endif
 }
 
 TEST(AutofillAiPersonalContextConverters, ConvertEntityWithPhotosSource) {
@@ -501,10 +524,19 @@ TEST(AutofillAiPersonalContextConverters,
 
   ASSERT_TRUE(opt_result.has_value());
   const EntityInstance& result = opt_result.value();
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   EXPECT_THAT(std::get<EntityInstance::PersonalContextRecordTypePayload>(
                   result.record_type_data())
                   .sources,
               IsEmpty());
+#else
+  EntityInstance::PersonalContextRecordTypePayload payload{
+      .sources = {Source{.url = GURL("https://photos.google.com/photo/abc"),
+                         .metadata = PhotosSourceMetadata{}}}};
+  EXPECT_EQ(std::get<EntityInstance::PersonalContextRecordTypePayload>(
+                result.record_type_data()),
+            payload);
+#endif
 }
 
 TEST(AutofillAiPersonalContextConverters,
@@ -527,10 +559,19 @@ TEST(AutofillAiPersonalContextConverters,
 
   ASSERT_TRUE(opt_result.has_value());
   const EntityInstance& result = opt_result.value();
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   EXPECT_THAT(std::get<EntityInstance::PersonalContextRecordTypePayload>(
                   result.record_type_data())
                   .sources,
               IsEmpty());
+#else
+  EntityInstance::PersonalContextRecordTypePayload payload{
+      .sources = {Source{.url = GURL("https://photos.google.com/photo/abc"),
+                         .metadata = PhotosSourceMetadata{}}}};
+  EXPECT_EQ(std::get<EntityInstance::PersonalContextRecordTypePayload>(
+                result.record_type_data()),
+            payload);
+#endif
 }
 
 TEST(AutofillAiPersonalContextConverters, ConvertEntityWithMultipleSources) {
@@ -542,8 +583,10 @@ TEST(AutofillAiPersonalContextConverters, ConvertEntityWithMultipleSources) {
 
   personal_context::proto::SourceReference* gmail_source =
       entity.add_source_references();
-  gmail_source->mutable_gmail()->set_message_url(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  gmail_source->mutable_gmail()->mutable_message_urls()->set_desktop_web_url(
+      "https://mail.google.com/mail/#inbox/123");
+  gmail_source->mutable_gmail()->mutable_message_urls()->set_mobile_web_url(
+      "https://mail.google.com/mail/mu/mp/#cv/Inbox/123");
   gmail_source->mutable_gmail()->set_subject("Order Confirmation");
 
   personal_context::proto::SourceReference* photos_source =
@@ -559,8 +602,12 @@ TEST(AutofillAiPersonalContextConverters, ConvertEntityWithMultipleSources) {
   // Add Gmail source without subject.
   personal_context::proto::SourceReference* invalid_gmail_source =
       entity.add_source_references();
-  invalid_gmail_source->mutable_gmail()->set_message_url(
-      "https://mail.google.com/mail/u/0/#inbox/456");
+  invalid_gmail_source->mutable_gmail()
+      ->mutable_message_urls()
+      ->set_desktop_web_url("https://mail.google.com/mail/#inbox/456");
+  invalid_gmail_source->mutable_gmail()
+      ->mutable_message_urls()
+      ->set_mobile_web_url("https://mail.google.com/mail/mu/mp/#cv/Inbox/456");
 
   // Add Photos source without timestamp.
   personal_context::proto::SourceReference* invalid_photos_source =
@@ -571,7 +618,12 @@ TEST(AutofillAiPersonalContextConverters, ConvertEntityWithMultipleSources) {
   // Add source with invalid URL.
   personal_context::proto::SourceReference* invalid_url_source =
       entity.add_source_references();
-  invalid_url_source->mutable_gmail()->set_message_url("not-a-valid-url");
+  invalid_url_source->mutable_gmail()
+      ->mutable_message_urls()
+      ->set_desktop_web_url("not-a-valid-url");
+  invalid_url_source->mutable_gmail()
+      ->mutable_message_urls()
+      ->set_mobile_web_url("not-a-valid-url");
   invalid_url_source->mutable_gmail()->set_subject("Subject");
 
   // Add empty source.
@@ -588,11 +640,18 @@ TEST(AutofillAiPersonalContextConverters, ConvertEntityWithMultipleSources) {
   EntityInstance::PersonalContextRecordTypePayload payload{
       .sources = {
           Source{
-              .url = GURL("https://mail.google.com/mail/u/0/#inbox/123"),
+              .url = GetGmailSourceUrl(gmail_source->gmail()),
               .metadata = GmailSourceMetadata{.title = "Order Confirmation"}},
           Source{.url = GURL("https://photos.google.com/photo/abc"),
                  .metadata =
-                     PhotosSourceMetadata{.timestamp = expected_timestamp}}}};
+                     PhotosSourceMetadata{.timestamp = expected_timestamp}},
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+          Source{.url = GURL("https://mail.google.com/mail/#inbox/456"),
+                 .metadata = GmailSourceMetadata{.title = ""}},
+          Source{.url = GURL("https://photos.google.com/photo/def"),
+                 .metadata = PhotosSourceMetadata{}},
+#endif
+      }};
   EXPECT_EQ(std::get<EntityInstance::PersonalContextRecordTypePayload>(
                 result.record_type_data()),
             payload);

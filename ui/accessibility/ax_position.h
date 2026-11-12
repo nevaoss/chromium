@@ -3364,8 +3364,14 @@ class AXPosition {
           AXBoundaryBehavior::kStopAtAnchorBoundary) {
         return CreateNextPositionAtAnchorWithText();
       }
-      // With kStopAtAnchorBoundary, follow the same steps as for any other
-      // character boundary so that the result stays on this position's anchor.
+      // With kStopAtAnchorBoundary and kCheckInitialPosition, keep this
+      // position, which is already at a character boundary before the newline.
+      if (IsTextPosition() && options.boundary_detection ==
+                                  AXBoundaryDetection::kCheckInitialPosition) {
+        return Clone();
+      }
+      // Otherwise, follow the same steps as for any other character boundary so
+      // that the result stays on this position's anchor.
       text_position = CreateNextPositionAtAnchorWithText();
     } else {
       // Calling "AsLeafTextPositionBeforeCharacter" should have created a text
@@ -3455,10 +3461,25 @@ class AXPosition {
     // position that is either at the start of an anchor that is preceded by a
     // generated newline, at a grapheme boundary or a null position.
     if (text_position->IsPrecededByGeneratedNewline()) {
-      // When `text_position` is right after a generated newline character, we
-      // should create a position located at the end of the previous anchor.
-      text_position = CreatePreviousPositionAtAnchorWithText();
-      DCHECK(!text_position->IsNullPosition());
+      // With kStopAtAnchorBoundary and kCheckInitialPosition, keep this
+      // position, which is already at a character boundary after the newline.
+      if (IsTextPosition() &&
+          options.boundary_behavior ==
+              AXBoundaryBehavior::kStopAtAnchorBoundary &&
+          options.boundary_detection ==
+              AXBoundaryDetection::kCheckInitialPosition) {
+        return Clone();
+      }
+      // When `text_position` is right after a generated newline, the preceding
+      // character boundary is at the end of the previous anchor with text or,
+      // if there isn't one before the newline, at the start of content.
+      AXPositionInstance previous_position =
+          CreatePreviousPositionAtAnchorWithText();
+      if (previous_position->IsNullPosition()) {
+        previous_position = text_position->CreatePositionAtStartOfContent()
+                                ->AsLeafTextPosition();
+      }
+      text_position = std::move(previous_position);
     } else {
       // If our text offset is pointing to a position that is in the middle of a
       // grapheme cluster, we should not erroneously assume that we are at a
@@ -4253,6 +4274,41 @@ class AXPosition {
       // |other| normalized to a position past the end of the whole content.
       // Since we don't know if one position is the ancestor of the other, we
       // need to use the slow path.
+      return SlowCompareTo(other);
+    }
+
+    // `AsLeafTextPositionBeforeCharacter` keeps a text position at the end of
+    // its anchor only when that position is followed by a generated newline,
+    // i.e. it is at the end of a paragraph. Such a position was not moved to
+    // the start of the next text anchor, so the order of the first uncommon
+    // ancestors (computed below) is no longer guaranteed to reflect the order
+    // of the two positions in the tree's text representation. For example, an
+    // unignored empty object that sits between the end of the paragraph and
+    // the next text contributes no text and is skipped when normalizing a
+    // position anchored to it, but it still occupies its own slot among the
+    // uncommon ancestors. The two methods would then disagree on whether a
+    // position in that empty object is after or at the end of the paragraph.
+    // Defer to "SlowCompareTo", which compares equivalent ancestor positions,
+    // including their affinity, on the common anchor.
+    //
+    // ++1 kRootWebArea
+    // ++++2 kGenericContainer kIsLineBreakingObject
+    // ++++++3 kTextField "Hello"
+    // ++++++++4 kStaticText "Hello"
+    // ++++++++++5 kInlineTextBox "Hello"
+    // ++++++6 kGenericContainer kIsLineBreakingObject (empty, unignored)
+    // ++++++7 kButton "Go"
+    // ++++++++8 kStaticText "Go"
+    // ++++++++++9 kInlineTextBox "Go"
+    //
+    // TextPosition anchor_id=5 text_offset=5 (annotated_text=Hello<>) is kept
+    // as is, because a generated newline separates it from "Go", while
+    // TextPosition anchor_id=6 text_offset=0 is normalized to anchor_id=9
+    // text_offset=0, i.e. after the generated newline.
+    if ((normalized_this_position->IsTextPosition() &&
+         normalized_this_position->AtEndOfAnchor()) ||
+        (normalized_other_position->IsTextPosition() &&
+         normalized_other_position->AtEndOfAnchor())) {
       return SlowCompareTo(other);
     }
 

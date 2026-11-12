@@ -9,6 +9,8 @@ import 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 
+import {ExtensionBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import {recordTabPickerTabSelected, TabPickerSurface} from 'chrome://resources/cr_components/composebox/common.js';
 import {AnchorAlignment} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
@@ -55,6 +57,10 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
         type: Boolean,
         reflect: true,
       },
+      darkMode: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
@@ -62,22 +68,39 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
   accessor selectedTabs: TabInfo[] = [];
   accessor tabMenuOpen: boolean = false;
   accessor recentTabId: number|null = null;
-  protected accessor sharingTabsText_: string = '';
   accessor useUnbounded: boolean = true;
+  accessor darkMode: boolean = false;
+
+  protected accessor sharingTabsText_: string = '';
 
   private closeTimer_: number|null = null;
+  private listenerIds_: number[] = [];
   private browserProxy_: TabPickerBrowserProxy =
       TabPickerBrowserProxyImpl.getInstance();
 
   override connectedCallback() {
     super.connectedCallback();
+    this.darkMode = this.isDarkModeEnabled_();
     this.updateSharingTabsText_();
     this.fetchTabSuggestions_();
+
+    const callbackRouter =
+        ExtensionBrowserProxyImpl.getInstance().callbackRouter;
+    this.listenerIds_.push(
+        callbackRouter.onTabContextUpdated.addListener((tabs: TabInfo[]) => {
+          this.selectedTabs = tabs;
+        }));
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.cancelCloseTimer_();
+    const callbackRouter =
+        ExtensionBrowserProxyImpl.getInstance().callbackRouter;
+    for (const id of this.listenerIds_) {
+      callbackRouter.removeListener(id);
+    }
+    this.listenerIds_ = [];
   }
 
   override firstUpdated() {
@@ -121,6 +144,11 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
       return false;
     }
     return this.useUnbounded;
+  }
+
+  protected isDarkModeEnabled_(): boolean {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('cs') === '1';
   }
 
   protected get hasTabSuggestions_(): boolean {
@@ -169,6 +197,7 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
   }
 
   protected onShareTabsRowPointerleave_() {
+    this.$.shareTabsTrigger.blur();
     this.scheduleCloseTimer_();
   }
 
@@ -197,6 +226,9 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
 
   protected onMenuClose_() {
     this.tabMenuOpen = false;
+    requestAnimationFrame(() => {
+      this.$.shareTabsTrigger.blur();
+    });
   }
 
   protected onTabClick_(e: Event) {
@@ -212,8 +244,13 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
       this.selectedTabs = this.selectedTabs.filter(t => t.tabId !== tab.tabId);
       this.browserProxy_.deleteTabContext(tab.tabId);
     } else {
-      this.selectedTabs = [...this.selectedTabs, tab];
+      this.selectedTabs = [tab, ...this.selectedTabs];
       this.browserProxy_.addTabContext(tab.tabId);
+      const hasActiveTab =
+          this.tabSuggestions.some(t => t.showInCurrentTabChip);
+      recordTabPickerTabSelected(
+          TabPickerSurface.CONTEXTUAL_TASKS_EXTENSION, tab.showInCurrentTabChip,
+          index, hasActiveTab);
     }
     this.fire('tab-selected', {tab, selected: !isSelected});
   }
@@ -239,6 +276,7 @@ export class TabPickerAppElement extends TabPickerAppElementBase {
     this.closeTimer_ = window.setTimeout(() => {
       if (this.$.tabMenu.open) {
         this.$.tabMenu.close();
+        this.$.shareTabsTrigger.blur();
       }
     }, 300);
   }

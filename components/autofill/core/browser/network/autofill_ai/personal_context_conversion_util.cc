@@ -21,11 +21,13 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
+#include "build/build_config.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/personal_context/proto/features/common_data.pb.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
+#include "ui/base/device_form_factor.h"
 #include "url/gurl.h"
 
 namespace autofill {
@@ -107,6 +109,8 @@ bool IsSourceValid(
   if (!source.url.is_valid()) {
     return false;
   }
+  // Source metadata other than the URL is only required on mobile.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   return std::visit(absl::Overload{[](const GmailSourceMetadata& gmail) {
                                      return !gmail.title.empty();
                                    },
@@ -114,6 +118,9 @@ bool IsSourceValid(
                                      return !photos.timestamp.is_null();
                                    }},
                     source.metadata);
+#else
+  return true;
+#endif
 }
 
 std::optional<EntityInstance::PersonalContextRecordTypePayload::Source>
@@ -124,10 +131,14 @@ PersonalContextSourceReferenceToSource(
       source;
   switch (source_reference.source_reference_case()) {
     case personal_context::proto::SourceReference::kGmail:
-      source =
-          Source{.url = GURL(source_reference.gmail().message_url()),
-                 .metadata = GmailSourceMetadata{
-                     .title = std::string(source_reference.gmail().subject())}};
+      source = Source{
+          .url = GetGmailSourceUrl(source_reference.gmail()),
+          .metadata = GmailSourceMetadata{
+              .title = std::string(source_reference.gmail().subject()),
+              .timestamp = source_reference.gmail().has_timestamp()
+                               ? FormatDateTimeAsTime(
+                                     source_reference.gmail().timestamp())
+                               : base::Time()}};
       break;
     case personal_context::proto::SourceReference::kPhotos:
       source = Source{
@@ -139,6 +150,7 @@ PersonalContextSourceReferenceToSource(
                                : base::Time()}};
       break;
     case personal_context::proto::SourceReference::kDrive:
+    case personal_context::proto::SourceReference::kChromeHistoryEntry:
     case personal_context::proto::SourceReference::SOURCE_REFERENCE_NOT_SET:
       return std::nullopt;
   }
@@ -372,6 +384,18 @@ EntityInstance PersonalContextKnownTravelerNumberToEntityInstance(
 }
 
 }  // namespace
+
+GURL GetGmailSourceUrl(const personal_context::proto::GmailReference& gmail) {
+  // Large form factors (such as tablets and Android desktop form factors) use
+  // the desktop Gmail URL instead of the mobile one.
+  const ui::DeviceFormFactor form_factor = ui::GetDeviceFormFactor();
+  if (form_factor != ui::DEVICE_FORM_FACTOR_DESKTOP &&
+      form_factor != ui::DEVICE_FORM_FACTOR_TABLET) {
+    return GURL(gmail.message_urls().mobile_web_url());
+  }
+
+  return GURL(gmail.message_urls().desktop_web_url());
+}
 
 void MaskSpiiEntityFields(personal_context::proto::Entity& entity) {
   auto GetMaskedValue = [](std::string_view value) {

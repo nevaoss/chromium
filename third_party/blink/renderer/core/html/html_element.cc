@@ -26,12 +26,14 @@
 #include "third_party/blink/renderer/core/html/html_element.h"
 
 #include <iterator>
+#include <ranges>
 
-#include "base/containers/adapters.h"
 #include "base/containers/enum_set.h"
 #include "base/feature_list.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/forms/form_control_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
@@ -69,6 +71,7 @@
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
 #include "third_party/blink/renderer/core/dom/id_target_observer.h"
+#include "third_party/blink/renderer/core/dom/interest_invoker_target_data.h"
 #include "third_party/blink/renderer/core/dom/invoker_data.h"
 #include "third_party/blink/renderer/core/dom/node-inl.h"
 #include "third_party/blink/renderer/core/dom/node_lists_node_data.h"
@@ -173,31 +176,11 @@ using AttributeChangedFunction =
 using mojom::blink::FormControlType;
 
 struct AttributeTriggers {
-  // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
-  // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
-  // The error is: "non-static const member '<member-name>',
-  // cannot use default assignment operator".
-#if defined(__GNUC__) && !defined(__clang__) && \
-    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
-     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
-     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
-  QualifiedName attribute;
-#else
-  const QualifiedName& attribute;
-#endif
+  // RAW_PTR_EXCLUSION: #global-scope
+  RAW_PTR_EXCLUSION const QualifiedName& attribute;
   WebFeature web_feature;
-  // TODO(neva): Not allowed for GCC 12.4, 13.3, 14.1.
-  // For GCC 11.4, 12.1/2/3, 13.1/2 and 14.2 it is Ok.
-  // The error is: "non-static const member '<member-name>',
-  // cannot use default assignment operator".
-#if defined(__GNUC__) && !defined(__clang__) && \
-    ((__GNUC__ == 12 && __GNUC_MINOR__ == 4) || \
-     (__GNUC__ == 13 && __GNUC_MINOR__ == 3) || \
-     (__GNUC__ == 14 && __GNUC_MINOR__ == 1))
-  AtomicString event;
-#else
-  const AtomicString& event;
-#endif
+  // RAW_PTR_EXCLUSION: #global-scope
+  RAW_PTR_EXCLUSION const AtomicString& event;
   AttributeChangedFunction function;
 };
 
@@ -2074,7 +2057,7 @@ void HTMLElement::ShowPopoverInternal(Element* invoker,
                   mojom::blink::ConsoleMessageSource::kOther,
                   mojom::blink::ConsoleMessageLevel::kError,
                   "Cannot open an auto popover nested inside a hint popover.");
-              Vector<DOMNodeId> nodes;
+              Vector<DOMNodeIdType> nodes;
               nodes.push_back(GetDomNodeId());
               message->SetNodes(original_document.GetFrame(), nodes);
               original_document.AddConsoleMessage(message);
@@ -2311,7 +2294,7 @@ PopoverHideResult HTMLElement::CloseEntirePopoverStack(
     // order.
     CHECK(probe::ToCoreProbeSink(popover_stack_for_inspector.back())
               ->HasDevToolsSessions());
-    stack.append_range(base::Reversed(popover_stack_for_inspector));
+    stack.append_range(std::views::reverse(popover_stack_for_inspector));
     return PopoverHideResult::kForcedOpenByInspector;
   }
   return PopoverHideResult::kHidden;
@@ -2448,7 +2431,7 @@ PopoverHideResult HTMLElement::HideAllPopoversUntil(
       }
 
       if (!popover_stack_for_inspector->empty()) {
-        stack.append_range(base::Reversed(*popover_stack_for_inspector));
+        stack.append_range(std::views::reverse(*popover_stack_for_inspector));
         result = PopoverHideResult::kForcedOpenByInspector;
       }
     } while (repeating_hide);
@@ -2743,6 +2726,23 @@ PopoverHideResult HTMLElement::HidePopoverInternal(
                                         Document::TopLayerReason::kPopover);
   } else {
     document.RemoveFromTopLayerImmediately(this);
+  }
+
+  // If this popover is the target of an active interest invoker, and the
+  // 'loseinterest' event was not fired above (either because events are not
+  // being fired, or because the invoker's `interestfor` relationship no longer
+  // resolves), move the invoker to the no-interest state without firing
+  // events. If 'loseinterest' was fired and canceled, interest is maintained.
+  if (InterestInvokerTargetData* target_data = GetInterestInvokerTargetData()) {
+    if (Element* interest_invoker = target_data->interestInvoker();
+        interest_invoker &&
+        interest_invoker->GetInterestState() != InterestState::kNoInterest &&
+        interest_invoker->GetInvokerData()->ActiveInterestTarget() == this &&
+        (transition_behavior ==
+             HidePopoverTransitionBehavior::kNoEventsNoWaiting ||
+         !SourceInterestInvoker())) {
+      interest_invoker->ChangeInterestState(this, InterestState::kNoInterest);
+    }
   }
 
   // Remove this popover from the stack.
@@ -3273,7 +3273,8 @@ bool HTMLElement::IsValidBuiltinCommand(HTMLElement& invoker,
     return true;
   }
   if (Element::IsOverscrollCommand(command)) {
-    CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+    CHECK(
+        RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()));
     return GetTreeScope() == invoker.GetTreeScope();
   }
   return false;
@@ -3290,7 +3291,8 @@ bool HTMLElement::HandleCommandInternal(HTMLElement& invoker,
   }
 
   if (command == CommandEventType::kToggleOverscroll) {
-    CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+    CHECK(
+        RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()));
     if (Element* container = GetOverscrollContainer()) {
       if (auto* tracker = container->GetOverscrollAreaTracker()) {
         tracker->ToggleArea(this);
@@ -3300,7 +3302,8 @@ bool HTMLElement::HandleCommandInternal(HTMLElement& invoker,
   }
 
   if (command == CommandEventType::kShowOverscroll) {
-    CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+    CHECK(
+        RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()));
     if (Element* container = GetOverscrollContainer()) {
       if (auto* tracker = container->GetOverscrollAreaTracker()) {
         tracker->OpenArea(this);
@@ -3310,7 +3313,8 @@ bool HTMLElement::HandleCommandInternal(HTMLElement& invoker,
   }
 
   if (command == CommandEventType::kHideOverscroll) {
-    CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
+    CHECK(
+        RuntimeEnabledFeatures::OverscrollAreasEnabled(GetExecutionContext()));
     if (Element* container = GetOverscrollContainer()) {
       if (auto* tracker = container->GetOverscrollAreaTracker()) {
         tracker->CloseArea(this);
@@ -3534,7 +3538,7 @@ CommandEventType HTMLElement::GetCommandEventType(
   }
 
   // Overscroll gestures.
-  if (RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+  if (RuntimeEnabledFeatures::OverscrollAreasEnabled(execution_context)) {
     if (EqualIgnoringAsciiCase(action, keywords::kToggleOverscroll)) {
       return CommandEventType::kToggleOverscroll;
     }
@@ -3961,7 +3965,7 @@ const AtomicString& HTMLElement::GetDirectionalAttribute(
     if (const LayoutObject* layout_object = GetLayoutObject()) {
       // Note that this isn't part of the HTML spec's concept, but we've
       // always honored CSS directionality for the title attribute.
-      direction = layout_object->StyleRef().Direction();
+      direction = layout_object->Style().Direction();
     }
     if (HasDirectionAuto()) {
       if (const std::optional<TextDirection> string_direction =
@@ -4386,8 +4390,7 @@ void HTMLElement::HandleKeypressEvent(KeyboardEvent& event) {
 int HTMLElement::AdjustedOffsetForZoom(LayoutUnit offset) {
   const auto* layout_object = GetLayoutObject();
   DCHECK(layout_object);
-  return AdjustForAbsoluteZoom::AdjustLayoutUnit(offset,
-                                                 layout_object->StyleRef())
+  return AdjustForAbsoluteZoom::AdjustLayoutUnit(offset, layout_object->Style())
       .Round();
 }
 

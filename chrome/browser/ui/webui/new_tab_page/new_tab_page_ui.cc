@@ -33,12 +33,9 @@
 #include "chrome/browser/new_tab_page/feature_promo_helper/new_tab_page_feature_promo_helper.h"
 #include "chrome/browser/new_tab_page/modules/file_suggestion/drive_service.h"
 #include "chrome/browser/new_tab_page/modules/file_suggestion/drive_suggestion_handler.h"
-#include "chrome/browser/new_tab_page/modules/file_suggestion/microsoft_files_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/new_tab_page_modules.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/google_calendar_page_handler.h"
-#include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption_page_handler.h"
-#include "chrome/browser/new_tab_page/modules/v2/tab_groups/tab_groups_page_handler.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
 #include "chrome/browser/page_image_service/image_service_factory.h"
@@ -98,7 +95,6 @@
 #include "components/lens/lens_url_utils.h"
 #include "components/ntp_tiles/features.h"
 #include "components/ntp_tiles/most_visited_sites.h"
-#include "components/ntp_tiles/pref_names.h"
 #include "components/ntp_tiles/tile_type.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
@@ -142,6 +138,9 @@
 #include "url/url_util.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/new_tab_page/modules/file_suggestion/microsoft_files_page_handler.h"
+#include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar_page_handler.h"
+#include "chrome/browser/new_tab_page/modules/v2/tab_groups/tab_groups_page_handler.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/views/side_panel/customize_chrome/customize_chrome_utils.h"
@@ -249,6 +248,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("mostVisitedHighDpiFaviconsEnabled",
                      base::FeatureList::IsEnabled(
                          ntp_features::kNtpMostVisitedHighDpiFavicons));
+  source->AddBoolean("ntpShortcutsReorderEnabled",
+                     base::FeatureList::IsEnabled(
+                         ntp_features::kNtpShortcutsReorder));
 
   source->AddInteger("maxTilesInCollapsedState",
                      ntp_features::GetMaxTilesInCollapsedState());
@@ -386,6 +388,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
       {"linkDone", IDS_NTP_CUSTOM_LINKS_DONE},
       {"linkEditedMsg", IDS_NTP_CONFIRM_MSG_SHORTCUT_EDITED},
       {"linkRemove", IDS_NTP_CUSTOM_LINKS_REMOVE},
+      {"shortcutReorder", IDS_NTP_CUSTOM_LINKS_REORDER},
+      {"shortcutReorderA11y", IDS_NTP_SHORTCUT_REORDER_A11Y},
       {"linkRemoveA11y", IDS_NTP_MOST_VISITED_SITES_REMOVE},
       {"linkRemovedMsg", IDS_NTP_CONFIRM_MSG_SHORTCUT_REMOVED},
       {"shortcutMoreActions", IDS_NTP_CUSTOM_LINKS_MORE_ACTIONS},
@@ -751,6 +755,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
 
   source->AddBoolean("enableThreadsRail", base::FeatureList::IsEnabled(
                                               ntp_features::kNtpThreadsRail));
+  source->AddBoolean("enableThreadsRailHybrid",
+                     ntp_features::kNtpThreadsRailHybridParam.Get());
 
   // Action Chips LoadTimeData
   const auto* aim_eligibility_service =
@@ -854,6 +860,10 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::MediaSrc,
       "media-src blob: data: 'self';");
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::TrustedTypes,
+      base::StrCat(
+          {webui::kDefaultTrustedTypesPolicies, " composebox-input;"}));
 
   return source;
 }
@@ -1128,13 +1138,6 @@ void NewTabPageUI::BindInterface(
 #endif
 
 void NewTabPageUI::BindInterface(
-    mojo::PendingReceiver<ntp::tab_groups::mojom::PageHandler>
-        pending_page_handler) {
-  tab_groups_handler_ = std::make_unique<TabGroupsPageHandler>(
-      std::move(pending_page_handler), web_contents());
-}
-
-void NewTabPageUI::BindInterface(
     mojo::PendingReceiver<ntp::most_relevant_tab_resumption::mojom::PageHandler>
         pending_page_handler) {
   most_relevant_tab_resumption_handler_ =
@@ -1146,20 +1149,6 @@ void NewTabPageUI::BindInterface(
     mojo::PendingReceiver<ntp::calendar::mojom::GoogleCalendarPageHandler>
         pending_page_handler) {
   google_calendar_handler_ = std::make_unique<GoogleCalendarPageHandler>(
-      std::move(pending_page_handler), profile_);
-}
-
-void NewTabPageUI::BindInterface(
-    mojo::PendingReceiver<ntp::calendar::mojom::OutlookCalendarPageHandler>
-        pending_page_handler) {
-  outlook_calendar_handler_ = std::make_unique<OutlookCalendarPageHandler>(
-      std::move(pending_page_handler), profile_);
-}
-
-void NewTabPageUI::BindInterface(
-    mojo::PendingReceiver<file_suggestion::mojom::MicrosoftFilesPageHandler>
-        pending_page_handler) {
-  microsoft_files_handler_ = std::make_unique<MicrosoftFilesPageHandler>(
       std::move(pending_page_handler), profile_);
 }
 
@@ -1203,8 +1192,29 @@ void NewTabPageUI::BindInterface(
   help_bubble_handler_factory_receiver_.Bind(std::move(pending_receiver));
 }
 
-// TODO(b/502297163): Implement for Android.
 #if !BUILDFLAG(IS_ANDROID)
+void NewTabPageUI::BindInterface(
+    mojo::PendingReceiver<ntp::tab_groups::mojom::PageHandler>
+        pending_page_handler) {
+  tab_groups_handler_ = std::make_unique<TabGroupsPageHandler>(
+      std::move(pending_page_handler), web_contents());
+}
+
+void NewTabPageUI::BindInterface(
+    mojo::PendingReceiver<ntp::calendar::mojom::OutlookCalendarPageHandler>
+        pending_page_handler) {
+  outlook_calendar_handler_ = std::make_unique<OutlookCalendarPageHandler>(
+      std::move(pending_page_handler), profile_);
+}
+
+void NewTabPageUI::BindInterface(
+    mojo::PendingReceiver<file_suggestion::mojom::MicrosoftFilesPageHandler>
+        pending_page_handler) {
+  microsoft_files_handler_ = std::make_unique<MicrosoftFilesPageHandler>(
+      std::move(pending_page_handler), profile_);
+}
+
+// TODO(b/502297163): Implement for Android.
 void NewTabPageUI::BindInterface(
     mojo::PendingReceiver<ntp_promo::mojom::NtpPromoHandlerFactory>
         pending_receiver) {

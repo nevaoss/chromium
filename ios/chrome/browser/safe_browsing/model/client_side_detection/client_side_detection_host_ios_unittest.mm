@@ -23,6 +23,7 @@
 #import "components/safe_browsing/core/browser/db/test_database_manager.h"
 #import "components/safe_browsing/core/browser/intelligent_scan_delegate.h"
 #import "components/safe_browsing/core/browser/verdict_cache_manager.h"
+#import "components/safe_browsing/core/common/client_side_detection_enums.h"
 #import "components/safe_browsing/core/common/features.h"
 #import "components/safe_browsing/core/common/phishing_classifier/phishing_image_embedder.h"
 #import "components/safe_browsing/core/common/phishing_classifier/scorer.h"
@@ -184,11 +185,13 @@ class FakeSafeBrowsingDatabaseManager : public TestSafeBrowsingDatabaseManager {
   void CheckUrlForHighConfidenceAllowlist(
       const GURL& url,
       CheckUrlForHighConfidenceAllowlistCallback callback) override {
+    hc_check_count_++;
     std::move(callback).Run(match_hc_allowlist_, std::nullopt);
   }
 
   void SetMatchCsdAllowlist(bool match) { match_csd_allowlist_ = match; }
   void SetMatchHcAllowlist(bool match) { match_hc_allowlist_ = match; }
+  int hc_check_count() const { return hc_check_count_; }
 
  protected:
   ~FakeSafeBrowsingDatabaseManager() override = default;
@@ -196,6 +199,7 @@ class FakeSafeBrowsingDatabaseManager : public TestSafeBrowsingDatabaseManager {
  private:
   bool match_csd_allowlist_;
   bool match_hc_allowlist_;
+  int hc_check_count_ = 0;
 };
 
 class FakeOptimizationGuideModelProvider
@@ -326,11 +330,13 @@ class ClientSideDetectionHostIOSTest : public PlatformTest {
     return fake_wrapper;
   }
 
-  std::unique_ptr<ClientSideDetectionHostIOS> CreateHost() {
+  std::unique_ptr<ClientSideDetectionHostIOS> CreateHost(
+      safe_browsing::IntelligentScanDelegate* intelligent_scan_delegate =
+          nullptr) {
     return std::make_unique<ClientSideDetectionHostIOS>(
         &web_state_, &mock_service_,
         VerdictCacheManagerFactory::GetForProfile(profile_.get()),
-        profile_->GetPrefs(),
+        intelligent_scan_delegate, profile_->GetPrefs(),
         IdentityManagerFactory::GetForProfile(profile_.get()),
         ios::HistoryServiceFactory::GetForProfile(
             profile_.get(), ServiceAccessType::EXPLICIT_ACCESS));
@@ -446,6 +452,11 @@ class ClientSideDetectionHostIOSTest : public PlatformTest {
 
   PageContextWrapper* page_context_wrapper(ClientSideDetectionHostIOS* host) {
     return host->page_context_wrapper_;
+  }
+
+  std::optional<bool> did_match_high_confidence_allowlist(
+      ClientSideDetectionHostIOS* host) {
+    return host->did_match_high_confidence_allowlist_;
   }
 
   void MaybeStartImageEmbedding(
@@ -1835,6 +1846,7 @@ TEST_F(ClientSideDetectionHostIOSTest,
   host->ShowBlockingPage(phishing_url,
                          safe_browsing::ClientSideDetectionType::TRIGGER_MODELS,
                          /*intelligent_scan_verdict=*/std::nullopt,
+                         /*is_phishing=*/true,
                          /*should_show_scam_warning=*/false);
 
   SafeBrowsingUnsafeResourceContainer* container =
@@ -1865,6 +1877,7 @@ TEST_F(ClientSideDetectionHostIOSTest, ShowBlockingPageEnforcementEnabled) {
   host->ShowBlockingPage(phishing_url,
                          safe_browsing::ClientSideDetectionType::TRIGGER_MODELS,
                          /*intelligent_scan_verdict=*/std::nullopt,
+                         /*is_phishing=*/true,
                          /*should_show_scam_warning=*/false);
 
   SafeBrowsingUnsafeResourceContainer* container =
@@ -2343,8 +2356,7 @@ TEST_F(ClientSideDetectionHostIOSTest,
       {{"CsdEnforceIos", "true"}});
 
   MockIntelligentScanDelegate mock_delegate;
-  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost();
-  host->set_intelligent_scan_delegate_for_testing(&mock_delegate);
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost(&mock_delegate);
 
   EXPECT_CALL(mock_delegate, OnScamWarningShown()).Times(1);
 
@@ -2355,6 +2367,7 @@ TEST_F(ClientSideDetectionHostIOSTest,
   host->ShowBlockingPage(phishing_url,
                          safe_browsing::ClientSideDetectionType::TRIGGER_MODELS,
                          scan_verdict,
+                         /*is_phishing=*/false,
                          /*should_show_scam_warning=*/true);
 
   SafeBrowsingUnsafeResourceContainer* container =
@@ -2367,8 +2380,114 @@ TEST_F(ClientSideDetectionHostIOSTest,
             safe_browsing::ThreatSubtype::SCAM_EXPERIMENT_VERDICT_1);
 }
 
-// Tests that High Confidence and CSD allowlist telemetry metrics are emitted.
+// Tests that ShowBlockingPage uses the billing threat type for a billing scam
+// verdict.
+TEST_F(ClientSideDetectionHostIOSTest,
+       ShowBlockingPageBillingVerdictUsesBillingThreatType) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      safe_browsing::kClientSideDetectionEnabledIos,
+      {{"CsdEnforceIos", "true"}});
+
+  MockIntelligentScanDelegate mock_delegate;
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost(&mock_delegate);
+
+  EXPECT_CALL(mock_delegate, OnScamWarningShown()).Times(1);
+
+  GURL phishing_url(kPhishingUrl);
+  host->ShowBlockingPage(
+      phishing_url, safe_browsing::ClientSideDetectionType::TRIGGER_MODELS,
+      safe_browsing::IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_BILLING,
+      /*is_phishing=*/false,
+      /*should_show_scam_warning=*/true);
+
+  SafeBrowsingUnsafeResourceContainer* container =
+      SafeBrowsingUnsafeResourceContainer::FromWebState(&web_state_);
+  ASSERT_TRUE(container);
+  const security_interstitials::UnsafeResource* resource =
+      container->GetMainFrameUnsafeResource();
+  ASSERT_TRUE(resource);
+  EXPECT_EQ(resource->threat_type,
+            safe_browsing::SBThreatType::SB_THREAT_TYPE_BILLING);
+  EXPECT_EQ(resource->threat_subtype,
+            safe_browsing::ThreatSubtype::SCAM_EXPERIMENT_VERDICT_BILLING);
+}
+
+// Tests that ShowBlockingPage prefers the phishing threat type over the billing
+// threat type when the page is also classified as phishing.
+TEST_F(ClientSideDetectionHostIOSTest,
+       ShowBlockingPageBillingVerdictWithPhishingUsesPhishingThreatType) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      safe_browsing::kClientSideDetectionEnabledIos,
+      {{"CsdEnforceIos", "true"}});
+
+  MockIntelligentScanDelegate mock_delegate;
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost(&mock_delegate);
+
+  EXPECT_CALL(mock_delegate, OnScamWarningShown()).Times(1);
+
+  GURL phishing_url(kPhishingUrl);
+  host->ShowBlockingPage(
+      phishing_url, safe_browsing::ClientSideDetectionType::TRIGGER_MODELS,
+      safe_browsing::IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_BILLING,
+      /*is_phishing=*/true,
+      /*should_show_scam_warning=*/true);
+
+  SafeBrowsingUnsafeResourceContainer* container =
+      SafeBrowsingUnsafeResourceContainer::FromWebState(&web_state_);
+  ASSERT_TRUE(container);
+  const security_interstitials::UnsafeResource* resource =
+      container->GetMainFrameUnsafeResource();
+  ASSERT_TRUE(resource);
+  EXPECT_EQ(
+      resource->threat_type,
+      safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING);
+  EXPECT_EQ(resource->threat_subtype,
+            safe_browsing::ThreatSubtype::SCAM_EXPERIMENT_VERDICT_BILLING);
+}
+
+// Tests that High Confidence allowlist telemetry metrics are emitted when CSD
+// allowlist does not match.
 TEST_F(ClientSideDetectionHostIOSTest, AllowlistTelemetryMetricsEmitted) {
+  safe_browsing::SetSafeBrowsingState(
+      profile_->GetPrefs(),
+      safe_browsing::SafeBrowsingState::ENHANCED_PROTECTION);
+  database_manager_->SetMatchCsdAllowlist(false);
+  database_manager_->SetMatchHcAllowlist(true);
+
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost();
+
+  SnapshotTabHelper::CreateForWebState(&web_state_);
+  web_state_.SetContentsMimeType("text/html");
+
+  web::FakeNavigationContext context;
+  context.SetUrl(GURL(kExampleUrl));
+  context.SetHasCommitted(true);
+  context.SetIsSameDocument(false);
+  web_state_.SetCurrentURL(GURL(kExampleUrl));
+  web_state_.OnNavigationFinished(&context);
+
+  host->MaybeStartPreClassification(
+      safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
+
+  EXPECT_EQ(database_manager_->hc_check_count(), 1);
+  histogram_tester_.ExpectTotalCount(
+      "SBClientPhishing.HighConfidenceAllowlistCheckDuration", 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.MatchHighConfidenceAllowlist",
+      safe_browsing::ClientSideAllowlistMatchResult::kHighConfidenceMatch, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.MatchHighConfidenceAllowlist.TriggerModel",
+      safe_browsing::ClientSideAllowlistMatchResult::kHighConfidenceMatch, 1);
+  ASSERT_TRUE(did_match_high_confidence_allowlist(host.get()).has_value());
+  EXPECT_TRUE(did_match_high_confidence_allowlist(host.get()).value());
+}
+
+// Tests that High Confidence allowlist checking is skipped when CSD allowlist
+// matches.
+TEST_F(ClientSideDetectionHostIOSTest,
+       HighConfidenceAllowlistCheckSkippedOnCsdMatch) {
   safe_browsing::SetSafeBrowsingState(
       profile_->GetPrefs(),
       safe_browsing::SafeBrowsingState::ENHANCED_PROTECTION);
@@ -2390,13 +2509,122 @@ TEST_F(ClientSideDetectionHostIOSTest, AllowlistTelemetryMetricsEmitted) {
   host->MaybeStartPreClassification(
       safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
 
+  EXPECT_EQ(database_manager_->hc_check_count(), 0);
   histogram_tester_.ExpectTotalCount(
-      "SBClientPhishing.HighConfidenceAllowlistCheckDuration", 1);
-  // ClientSideAllowlistMatchResult::kCsdAndHighConfidenceMatch is 3.
+      "SBClientPhishing.HighConfidenceAllowlistCheckDuration", 0);
   histogram_tester_.ExpectUniqueSample(
-      "SBClientPhishing.MatchHighConfidenceAllowlist", 3, 1);
+      "SBClientPhishing.MatchHighConfidenceAllowlist",
+      safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
   histogram_tester_.ExpectUniqueSample(
-      "SBClientPhishing.MatchHighConfidenceAllowlist.TriggerModel", 3, 1);
+      "SBClientPhishing.MatchHighConfidenceAllowlist.TriggerModel",
+      safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.PreClassificationCheckResult",
+      safe_browsing::PreClassificationCheckResult::
+          NO_CLASSIFY_MATCH_CSD_ALLOWLIST,
+      1);
+  EXPECT_FALSE(did_match_high_confidence_allowlist(host.get()).has_value());
+}
+
+// Tests that High Confidence allowlist checking is skipped when the CSD
+// allowlist matches even if a sample ping is triggered, and that the sampled
+// ping still proceeds to classification.
+TEST_F(ClientSideDetectionHostIOSTest,
+       HighConfidenceAllowlistCheckSkippedOnCsdMatchWithSamplePing) {
+  safe_browsing::SetSafeBrowsingState(
+      profile_->GetPrefs(),
+      safe_browsing::SafeBrowsingState::ENHANCED_PROTECTION);
+  database_manager_->SetMatchCsdAllowlist(true);
+  database_manager_->SetMatchHcAllowlist(false);
+
+  EXPECT_CALL(mock_service_, IsModelAvailable())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(mock_service_, GetValidCachedResult(testing::_, testing::_))
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(mock_service_, AtPhishingReportLimit())
+      .WillRepeatedly(testing::Return(false));
+  mock_service_.SetScorerForTesting(std::make_unique<safe_browsing::Scorer>());
+
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost();
+  host->set_sample_ping_rate_for_testing(1.0);
+
+  SnapshotTabHelper::CreateForWebState(&web_state_);
+  web_state_.SetContentsMimeType("text/html");
+
+  web::FakeNavigationContext context;
+  context.SetUrl(GURL(kExampleUrl));
+  context.SetHasCommitted(true);
+  context.SetIsSameDocument(false);
+  web_state_.SetCurrentURL(GURL(kExampleUrl));
+  web_state_.OnNavigationFinished(&context);
+
+  host->MaybeStartPreClassification(
+      safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
+
+  EXPECT_EQ(database_manager_->hc_check_count(), 0);
+  histogram_tester_.ExpectTotalCount(
+      "SBClientPhishing.HighConfidenceAllowlistCheckDuration", 0);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.MatchHighConfidenceAllowlist",
+      safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.MatchHighConfidenceAllowlist.TriggerModel",
+      safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.PreClassificationCheckResult",
+      safe_browsing::PreClassificationCheckResult::CLASSIFY, 1);
+  EXPECT_FALSE(did_match_high_confidence_allowlist(host.get()).has_value());
+}
+
+// Tests that a High Confidence allowlist match no longer suppresses a sampled
+// ping for a CSD-allowlisted URL. Because the High Confidence allowlist is
+// never consulted once the CSD allowlist matches, classification proceeds.
+TEST_F(ClientSideDetectionHostIOSTest,
+       HighConfidenceAllowlistMatchDoesNotSuppressSampledCsdAllowlistedPing) {
+  safe_browsing::SetSafeBrowsingState(
+      profile_->GetPrefs(),
+      safe_browsing::SafeBrowsingState::ENHANCED_PROTECTION);
+  database_manager_->SetMatchCsdAllowlist(true);
+  database_manager_->SetMatchHcAllowlist(true);
+
+  EXPECT_CALL(mock_service_, IsModelAvailable())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(mock_service_, GetValidCachedResult(testing::_, testing::_))
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(mock_service_, AtPhishingReportLimit())
+      .WillRepeatedly(testing::Return(false));
+  mock_service_.SetScorerForTesting(std::make_unique<safe_browsing::Scorer>());
+
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost();
+  host->set_sample_ping_rate_for_testing(1.0);
+  host->set_high_confidence_allowlist_acceptance_rate_for_testing(1.0);
+
+  SnapshotTabHelper::CreateForWebState(&web_state_);
+  web_state_.SetContentsMimeType("text/html");
+
+  web::FakeNavigationContext context;
+  context.SetUrl(GURL(kExampleUrl));
+  context.SetHasCommitted(true);
+  context.SetIsSameDocument(false);
+  web_state_.SetCurrentURL(GURL(kExampleUrl));
+  web_state_.OnNavigationFinished(&context);
+
+  host->MaybeStartPreClassification(
+      safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
+
+  EXPECT_EQ(database_manager_->hc_check_count(), 0);
+  histogram_tester_.ExpectTotalCount(
+      "SBClientPhishing.HighConfidenceAllowlistCheckDuration", 0);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.MatchHighConfidenceAllowlist",
+      safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.MatchHighConfidenceAllowlist.TriggerModel",
+      safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.PreClassificationCheckResult",
+      safe_browsing::PreClassificationCheckResult::CLASSIFY, 1);
+  EXPECT_FALSE(did_match_high_confidence_allowlist(host.get()).has_value());
 }
 
 // Tests the different enum outcomes of MatchHighConfidenceAllowlist telemetry.
@@ -2415,7 +2643,7 @@ TEST_F(ClientSideDetectionHostIOSTest,
   SnapshotTabHelper::CreateForWebState(&web_state_);
   web_state_.SetContentsMimeType("text/html");
 
-  // Outcome 1: CSD match only (kCsdMatch = 1).
+  // Outcome 1: CSD match only.
   {
     base::HistogramTester tester;
     database_manager_->SetMatchCsdAllowlist(true);
@@ -2432,11 +2660,12 @@ TEST_F(ClientSideDetectionHostIOSTest,
     host->MaybeStartPreClassification(
         safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
 
-    tester.ExpectUniqueSample("SBClientPhishing.MatchHighConfidenceAllowlist",
-                              1, 1);
+    tester.ExpectUniqueSample(
+        "SBClientPhishing.MatchHighConfidenceAllowlist",
+        safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
   }
 
-  // Outcome 2: HC match only (kHighConfidenceMatch = 2).
+  // Outcome 2: HC match only.
   {
     base::HistogramTester tester;
     database_manager_->SetMatchCsdAllowlist(false);
@@ -2453,11 +2682,12 @@ TEST_F(ClientSideDetectionHostIOSTest,
     host->MaybeStartPreClassification(
         safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
 
-    tester.ExpectUniqueSample("SBClientPhishing.MatchHighConfidenceAllowlist",
-                              2, 1);
+    tester.ExpectUniqueSample(
+        "SBClientPhishing.MatchHighConfidenceAllowlist",
+        safe_browsing::ClientSideAllowlistMatchResult::kHighConfidenceMatch, 1);
   }
 
-  // Outcome 3: No match on either allowlist (kNoMatch = 0).
+  // Outcome 3: No match on either allowlist.
   {
     base::HistogramTester tester;
     database_manager_->SetMatchCsdAllowlist(false);
@@ -2474,11 +2704,14 @@ TEST_F(ClientSideDetectionHostIOSTest,
     host->MaybeStartPreClassification(
         safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
 
-    tester.ExpectUniqueSample("SBClientPhishing.MatchHighConfidenceAllowlist",
-                              0, 1);
+    tester.ExpectUniqueSample(
+        "SBClientPhishing.MatchHighConfidenceAllowlist",
+        safe_browsing::ClientSideAllowlistMatchResult::kNoMatch, 1);
   }
 
-  // Outcome 4: CSD match with send_sample_ping_ == true (kNoMatch = 0).
+  // Outcome 4: CSD match with `send_sample_ping_` == true. Sample pinging does
+  // not change the logged result, since the high confidence allowlist is
+  // skipped on any CSD match.
   {
     base::HistogramTester tester;
     database_manager_->SetMatchCsdAllowlist(true);
@@ -2497,8 +2730,9 @@ TEST_F(ClientSideDetectionHostIOSTest,
     host->MaybeStartPreClassification(
         safe_browsing::ClientSideDetectionType::TRIGGER_MODELS);
 
-    tester.ExpectUniqueSample("SBClientPhishing.MatchHighConfidenceAllowlist",
-                              0, 1);
+    tester.ExpectUniqueSample(
+        "SBClientPhishing.MatchHighConfidenceAllowlist",
+        safe_browsing::ClientSideAllowlistMatchResult::kCsdMatch, 1);
   }
 }
 
@@ -2869,8 +3103,7 @@ TEST_F(ClientSideDetectionHostIOSTest,
       {{"CsdEnforceIos", "true"}});
 
   MockIntelligentScanDelegate mock_delegate;
-  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost();
-  host->set_intelligent_scan_delegate_for_testing(&mock_delegate);
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost(&mock_delegate);
 
   EXPECT_CALL(mock_delegate, OnScamWarningShown()).Times(0);
 
@@ -2878,6 +3111,7 @@ TEST_F(ClientSideDetectionHostIOSTest,
   host->ShowBlockingPage(phishing_url,
                          safe_browsing::ClientSideDetectionType::TRIGGER_MODELS,
                          /*intelligent_scan_verdict=*/std::nullopt,
+                         /*is_phishing=*/false,
                          /*should_show_scam_warning=*/true);
 
   SafeBrowsingUnsafeResourceContainer* container =
@@ -3884,6 +4118,158 @@ TEST_F(ClientSideDetectionHostIOSTest,
   [fake_wrapper respondWithInnerText:kTestInnerText];
 
   EXPECT_FALSE(future.IsReady());
+}
+
+// Test that when intelligent scan is requested and yields a scam verdict, a
+// scam warning blocking page is shown.
+TEST_F(ClientSideDetectionHostIOSTest,
+       IntelligentScanTriggeredAndShowsScamWarning) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      safe_browsing::kClientSideDetectionEnabledIos,
+      {{"CsdEnforceIos", "true"}});
+  profile_->GetPrefs()->SetBoolean(prefs::kSafeBrowsingEnhanced, true);
+
+  MockIntelligentScanDelegate mock_delegate;
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost(&mock_delegate);
+  FakeClientSideDetectionPageContextWrapper* fake_wrapper =
+      CreateAndStubPageContextWrapper();
+
+  EXPECT_CALL(mock_service_, ClassifyPhishingThroughThresholds(testing::_))
+      .WillOnce([](safe_browsing::ClientPhishingRequest* verdict) {
+        verdict->set_is_phishing(false);
+        verdict->set_client_side_detection_type(
+            safe_browsing::ClientSideDetectionType::FORCE_REQUEST);
+      });
+
+  EXPECT_CALL(mock_delegate, ShouldRequestIntelligentScan(testing::_))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_delegate, GetIntelligentScanModelType(true))
+      .WillOnce(testing::Return(
+          safe_browsing::IntelligentScanDelegate::ModelType::kServerSide));
+  EXPECT_CALL(mock_delegate,
+              StartIntelligentScan(testing::_, testing::_, testing::_))
+      .WillOnce(
+          [](std::string rendered_texts, std::string url,
+             safe_browsing::IntelligentScanDelegate::IntelligentScanDoneCallback
+                 callback) {
+            EXPECT_EQ(rendered_texts, std::string(100, 'a'));
+            EXPECT_EQ(url, GURL(kPhishingUrl).spec());
+            std::move(callback).Run(
+                safe_browsing::IntelligentScanDelegate::IntelligentScanResult::
+                    Success("ExampleBrand", "ExampleIntent", 1000,
+                            safe_browsing::IntelligentScanDelegate::ModelType::
+                                kServerSide,
+                            0.9f));
+            return base::UnguessableToken::Create();
+          });
+
+  EXPECT_CALL(mock_service_, SendClientReportPhishingRequest(
+                                 testing::_, testing::_, testing::_))
+      .WillOnce([](std::unique_ptr<safe_browsing::ClientPhishingRequest>
+                       verdict,
+                   safe_browsing::ClientSideDetectionService::
+                       ClientReportPhishingRequestCallback callback,
+                   const std::string& access_token) {
+        EXPECT_TRUE(verdict->has_intelligent_scan_info());
+        EXPECT_EQ(verdict->intelligent_scan_info().brand(), "ExampleBrand");
+        EXPECT_EQ(verdict->intelligent_scan_info().intent(), "ExampleIntent");
+        std::move(callback).Run(
+            GURL(kPhishingUrl), /*is_phishing=*/false, net::HTTP_OK,
+            safe_browsing::IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_1);
+      });
+
+  EXPECT_CALL(
+      mock_delegate,
+      ShouldShowScamWarning(std::optional<
+                            safe_browsing::IntelligentScanVerdict>(
+          safe_browsing::IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_1)))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_delegate, OnScamWarningShown()).Times(1);
+
+  host->OnVisualClassificationDoneForTesting(GURL(kPhishingUrl), {0.1, 0.2});
+
+  EXPECT_TRUE([fake_wrapper populateCalled]);
+  [fake_wrapper respondWithInnerText:std::string(100, 'a')];
+
+  SafeBrowsingUnsafeResourceContainer* container =
+      SafeBrowsingUnsafeResourceContainer::FromWebState(&web_state_);
+  ASSERT_TRUE(container);
+  const security_interstitials::UnsafeResource* resource =
+      container->GetMainFrameUnsafeResource();
+  ASSERT_TRUE(resource);
+  EXPECT_EQ(resource->threat_subtype,
+            safe_browsing::ThreatSubtype::SCAM_EXPERIMENT_VERDICT_1);
+
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.IsIntelligentScanAvailableAtInquiryTime", true, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.IsIntelligentScanAvailableAtInquiryTime.ForceRequest",
+      true, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.IntelligentScanInnerTextSize", 100, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.IntelligentScanHasSuccessfulResponse", true, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "SBClientPhishing.IntelligentScanVerdict",
+      safe_browsing::IntelligentScanVerdict::SCAM_EXPERIMENT_VERDICT_1, 1);
+  histogram_tester_.ExpectBucketCount(
+      "SBClientPhishing.ClientSideDetectionEvent",
+      safe_browsing::ClientSideDetectionEvent::kIntelligentScanBegin, 1);
+  histogram_tester_.ExpectBucketCount(
+      "SBClientPhishing.ClientSideDetectionEvent",
+      safe_browsing::ClientSideDetectionEvent::kIntelligentScanComplete, 1);
+  histogram_tester_.ExpectBucketCount(
+      "SBClientPhishing.ClientSideDetectionEvent",
+      safe_browsing::ClientSideDetectionEvent::kWarningShown, 1);
+}
+
+// Test that cancelling pending requests cancels an ongoing intelligent scan.
+TEST_F(ClientSideDetectionHostIOSTest,
+       IntelligentScanCancelledOnPendingRequestCancellation) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      safe_browsing::kClientSideDetectionEnabledIos,
+      {{"CsdEnforceIos", "true"}});
+  profile_->GetPrefs()->SetBoolean(prefs::kSafeBrowsingEnhanced, true);
+
+  MockIntelligentScanDelegate mock_delegate;
+  std::unique_ptr<ClientSideDetectionHostIOS> host = CreateHost(&mock_delegate);
+  FakeClientSideDetectionPageContextWrapper* fake_wrapper =
+      CreateAndStubPageContextWrapper();
+
+  base::UnguessableToken scan_id = base::UnguessableToken::Create();
+
+  EXPECT_CALL(mock_service_, ClassifyPhishingThroughThresholds(testing::_))
+      .WillOnce([](safe_browsing::ClientPhishingRequest* verdict) {
+        verdict->set_is_phishing(false);
+        verdict->set_client_side_detection_type(
+            safe_browsing::ClientSideDetectionType::FORCE_REQUEST);
+      });
+
+  EXPECT_CALL(mock_delegate, ShouldRequestIntelligentScan(testing::_))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_delegate, GetIntelligentScanModelType(true))
+      .WillOnce(testing::Return(
+          safe_browsing::IntelligentScanDelegate::ModelType::kServerSide));
+  EXPECT_CALL(mock_delegate,
+              StartIntelligentScan(testing::_, testing::_, testing::_))
+      .WillOnce([scan_id](std::string rendered_texts, std::string url,
+                          safe_browsing::IntelligentScanDelegate::
+                              IntelligentScanDoneCallback callback) {
+        return scan_id;
+      });
+
+  host->OnVisualClassificationDoneForTesting(GURL(kPhishingUrl), {0.1, 0.2});
+
+  EXPECT_TRUE([fake_wrapper populateCalled]);
+  [fake_wrapper respondWithInnerText:std::string(100, 'a')];
+
+  EXPECT_CALL(mock_delegate, CancelIntelligentScan(scan_id))
+      .Times(testing::AtLeast(1))
+      .WillRepeatedly(testing::Return(true));
+
+  host->CancelPendingRequests();
 }
 
 }  // namespace safe_browsing

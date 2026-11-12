@@ -34,6 +34,10 @@
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/native_widget.h"
 
+#if BUILDFLAG(IS_MAC)
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_native_widget_mac.h"
+#endif
+
 namespace omnibox {
 const void* kOmniboxWebUIPopupWidgetId = &kOmniboxWebUIPopupWidgetId;
 }
@@ -402,6 +406,13 @@ void OmniboxPopupPresenterBase::SetWebUIContent(
       GetUIContainer()->AddChildView(std::move(webui_content));
 
   Observe(omnibox_popup_webui_content_->GetWebContents());
+
+  // A hidden popup needs no native window, and building one per popup slows
+  // down browser window creation. `Show()` creates it on demand.
+  if (base::FeatureList::IsEnabled(
+          omnibox::kOmniboxWebUIPopupCreateWidgetOnShow)) {
+    return;
+  }
   EnsureWidgetCreated();
 
   // Explicitly put the presenter into its resting hidden state upon creation.
@@ -439,6 +450,12 @@ void OmniboxPopupPresenterBase::EnsureWidgetCreated() {
   params.context = parent_widget->GetNativeWindow();
 
   RoundedOmniboxResultsFrame::OnBeforeWidgetInit(&params, widget_.get());
+#if BUILDFLAG(IS_MAC)
+  // Makes window managers move the browser window, not the popup.
+  if (delegate().is_full_webui_omnibox()) {
+    params.native_widget = CreateOmniboxPopupNativeWidget(widget_.get());
+  }
+#endif
 
   widget_->MakeCloseSynchronous(base::BindOnce(
       &OmniboxPopupPresenterBase::OnWidgetClosed, base::Unretained(this)));
