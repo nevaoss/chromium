@@ -264,8 +264,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   // Cached current tab favicon.
   UIImage* _currentTabFavicon;
 
-  // Stores the page context wrappers for the duration of the APC retrieval.
-  std::unordered_map<web::WebStateID, PageContextWrapper*> _pageContextWrappers;
+  // Owns the in-flight page context extractions, keyed by the identifier of
+  // the item whose tab is being extracted. A wrapper doesn't retain itself
+  // while extracting, so erasing its entry cancels its extraction.
+  std::unordered_map<base::UnguessableToken,
+                     PageContextWrapper*,
+                     base::UnguessableTokenHash>
+      _pageContextWrappers;
   std::unordered_map<base::UnguessableToken,
                      web::WebStateID,
                      base::UnguessableTokenHash>
@@ -747,7 +752,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     }
   }
   [self removeItemInternal:item];
-  _latestTabSelectionMapping.erase(item.identifier);
 }
 
 // Internal helper to remove an item from the collection and session without
@@ -759,6 +763,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   if (!item) {
     return;
   }
+
+  // Cancels the page context extraction of the item's tab, if in flight.
+  _pageContextWrappers.erase(item.identifier);
+  _latestTabSelectionMapping.erase(item.identifier);
 
   [self.debugLogger
       logEvent:[ComposeboxDebuggerEvent
@@ -1216,15 +1224,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
         base::NumberToString(weakWebState->GetUniqueIdentifier().identifier()),
         base::BindOnce(^(std::optional<std::unique_ptr<
                              optimization_guide::proto::PageContext>> context) {
-          if (context.has_value()) {
-            [weakSelf handlePageContextResponse:std::move(context.value())
-                                       webState:weakWebState.get()
-                                     identifier:identifier];
-          } else {
-            [weakSelf attachWebState:weakWebState.get()
-                          identifier:identifier
-                            isCached:NO];
-          }
+          [weakSelf didFetchCachedPageContext:std::move(context)
+                                     webState:weakWebState.get()
+                                   identifier:identifier];
         }));
     return;
   }
@@ -1239,23 +1241,79 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                   config:config
       completionCallback:base::BindOnce(^(
                              PageContextWrapperCallbackResponse response) {
-        if (response.has_value()) {
-          [weakSelf handlePageContextResponse:std::move(response.value())
-                                     webState:weakWebState.get()
-                                   identifier:identifier];
-        } else {
-          [weakSelf handleFailedAttachment:identifier];
-        }
+        [weakSelf didExtractPageContext:std::move(response)
+                               webState:weakWebState.get()
+                             identifier:identifier];
       })];
 
   pageContextWrapper.shouldGetAnnotatedPageContent = YES;
   pageContextWrapper.shouldGetSnapshot = YES;
+  // Store the wrapper before starting it, as its extraction can complete
+  // synchronously.
+  _pageContextWrappers[identifier] = pageContextWrapper;
   // The Page Context execution can take more than the default 1 second on slow
   // devices or bots.
   [pageContextWrapper
       populatePageContextFieldsAsyncWithTimeout:kPageContextTimeout];
+}
 
-  _pageContextWrappers[webState->GetUniqueIdentifier()] = pageContextWrapper;
+// Handles the result of fetching cached page context for `webState`.
+- (void)
+    didFetchCachedPageContext:
+        (std::optional<std::unique_ptr<optimization_guide::proto::PageContext>>)
+            context
+                     webState:(web::WebState*)webState
+                   identifier:(base::UnguessableToken)identifier {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  if (!context.has_value()) {
+    [self attachWebState:webState identifier:identifier isCached:NO];
+    return;
+  }
+
+  if (webState) {
+    [self.debugLogger
+        logEvent:
+            [ComposeboxDebuggerEvent
+                 apcEvent:composebox_debugger::event::APC::kRetrievedFromCache
+                withTitle:base::SysUTF16ToNSString(webState->GetTitle())
+                    tabID:webState->GetUniqueIdentifier().identifier()]];
+  }
+  [self handlePageContextResponse:std::move(context.value())
+                         webState:webState
+                       identifier:identifier];
+}
+
+// Handles the result of extracting page context on the fly for `webState`.
+- (void)didExtractPageContext:(PageContextWrapperCallbackResponse)response
+                     webState:(web::WebState*)webState
+                   identifier:(base::UnguessableToken)identifier {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  if (!response.has_value()) {
+    [self.debugLogger
+        logEvent:
+            [ComposeboxDebuggerEvent
+                 apcEvent:composebox_debugger::event::APC::kExtractionFailed
+                withTitle:webState
+                              ? base::SysUTF16ToNSString(webState->GetTitle())
+                              : @""
+                    tabID:webState
+                              ? webState->GetUniqueIdentifier().identifier()
+                              : 0]];
+    [self handleFailedAttachment:identifier];
+    return;
+  }
+
+  if (webState) {
+    [self.debugLogger
+        logEvent:[ComposeboxDebuggerEvent
+                      apcEvent:composebox_debugger::event::APC::
+                                   kExtractionCompletedSuccessfully
+                     withTitle:base::SysUTF16ToNSString(webState->GetTitle())
+                         tabID:webState->GetUniqueIdentifier().identifier()]];
+  }
+  [self handlePageContextResponse:std::move(response.value())
+                         webState:webState
+                       identifier:identifier];
 }
 
 // Transforms the page context into input data and uploads the data after a
@@ -1266,13 +1324,12 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                          webState:(web::WebState*)webState
                        identifier:(base::UnguessableToken)identifier {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  _pageContextWrappers.erase(identifier);
 
   if (!webState || !page_context) {
     [self handleFailedAttachment:identifier];
     return;
   }
-
-  _pageContextWrappers.erase(webState->GetUniqueIdentifier());
 
   __block std::unique_ptr<lens::ContextualInputData> input_data =
       CreateInputDataFromAnnotatedPageContent(
@@ -1305,18 +1362,15 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     return;
   }
 
-  web::WebStateID webStateID = _latestTabSelectionMapping[identifier];
-  if (!webStateID.valid()) {
+  auto it = _latestTabSelectionMapping.find(identifier);
+  ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
+  if (it == _latestTabSelectionMapping.end() || !it->second.valid() || !item) {
     [self handleFailedAttachment:identifier];
     return;
   }
 
   auto serverToken = _contextualSearchSession->CreateContextToken();
-
-  ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
-  if (item) {
-    item.serverToken = serverToken;
-  }
+  item.serverToken = serverToken;
 
   if (_contextualSearchSession) {
     _contextualSearchSession->StartTabContextUploadFlow(
@@ -1448,7 +1502,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   for (ComposeboxInputItem* item in items) {
     if (item.isAutoAdded) {
       [self removeItemInternal:item];
-      _latestTabSelectionMapping.erase(item.identifier);
     }
   }
 }
@@ -1671,8 +1724,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                      fromExternalWebState:(web::WebState*)externalWebState
                                    source:(ComposeboxInputItemSource)source
                                 autoAdded:(BOOL)autoAdded {
-  _pageContextWrappers.clear();
-
   // Remove tabs from context that were deselected in the tab picker.
   std::set<web::WebStateID> alreadyProcessedIDsFromCurrentWebState =
       [self attachedWebStateIDsInCurrentContext];
@@ -1872,11 +1923,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [self updateAwaitingAttachmentSignalsState];
 
   BOOL shouldRestartAutocomplete = _items.count <= 1;
-
-  if (_items.count > 1) {
-    shouldRestartAutocomplete =
-        IsComposeboxFetchContextualSuggestionsForMultiAttachmentsEnabled();
-  }
   [self.delegate
       reloadAutocompleteSuggestionsRestarting:shouldRestartAutocomplete];
 }
@@ -2287,6 +2333,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 }
 
 - (void)handleFailedAttachment:(base::UnguessableToken)identifier {
+  _pageContextWrappers.erase(identifier);
   _latestTabSelectionMapping.erase(identifier);
   ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
   // `item` can be nil if the user deleted the shared tab or closed the sheet
@@ -2458,6 +2505,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
 
   for (ComposeboxInputItem* item in invalidatedItems) {
+    _pageContextWrappers.erase(item.identifier);
+    _latestTabSelectionMapping.erase(item.identifier);
     if (_contextualSearchSession && !item.serverToken.is_empty()) {
       _contextualSearchSession->DeleteFile(item.serverToken);
     }

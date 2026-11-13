@@ -43,6 +43,7 @@
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/zero_state_suggestions/ui/gemini_zero_state_consumer.h"
 #import "ios/chrome/browser/intelligence/zero_state_suggestions/zero_state_suggestions_service.h"
+#import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
@@ -76,6 +77,9 @@ using ios::provider::GeminiViewState;
 - (void)onActiveWebStateChanged:(web::WebState*)oldActive
                       newActive:(web::WebState*)newActive;
 
+// Called when a new tab page is inserted and activated.
+- (void)onNewTabPageInserted;
+
 // Called when the page context for `webState` is updated.
 - (void)onPageContextUpdated:(web::WebState*)webState;
 
@@ -103,6 +107,10 @@ class GeminiContainerMediatorWebStateListObserver
     if (status.active_web_state_change()) {
       [mediator_ onActiveWebStateChanged:status.old_active_web_state
                                newActive:status.new_active_web_state];
+      if (change.type() == WebStateListChange::Type::kInsert &&
+          IsVisibleURLNewTabPage(status.new_active_web_state)) {
+        [mediator_ onNewTabPageInserted];
+      }
     }
   }
 
@@ -386,6 +394,8 @@ class GeminiContainerMediatorTabHelperObserver
     // Assumes it's minimized.
     [_containerHandler animateAssistantContainerToDetent:kMedium];
   }
+
+  [self requestActivePageContextGeneration];
 }
 
 #pragma mark - IdentityManagerObserving
@@ -611,11 +621,10 @@ class GeminiContainerMediatorTabHelperObserver
 - (void)geminiZeroStateViewController:
             (GeminiZeroStateViewController*)viewController
                   didSelectSuggestion:(ZeroStateSuggestion*)suggestion {
-  if (!_startupState || !suggestion.query.length) {
+  if (!suggestion.query.length) {
     return;
   }
-  ios::provider::UpdatePromptAction(_startupState.entryPoint, suggestion.query,
-                                    YES);
+  ios::provider::UpdatePromptAction(suggestion.type, suggestion.query, YES);
 }
 
 - (void)didTapZeroStateCloseButton {
@@ -766,6 +775,9 @@ class GeminiContainerMediatorTabHelperObserver
   if (!_stateManager.currentUIState.actuating) {
     return;
   }
+
+  // TODO(crbug.com/572022005): Add containerHandler to
+  // GeminiContainerViewController
   [self.containerHandler
       setAssistantContainerMediumDetentHeight:static_cast<NSInteger>(
                                                   ceil(height))];
@@ -903,6 +915,15 @@ class GeminiContainerMediatorTabHelperObserver
   ios::provider::UpdateActivePageContext(
       pageContext,
       _sharedTabsDelegate ? _sharedTabsDelegate->GetInactiveSharedTabs() : nil);
+
+  // Update the zero-state height to match the content height since the page
+  // context chip might change it.
+  if (_stateManager.currentUIState.zeroStateVisible &&
+      IsIOSGeminiBottomSheetMigrationEnabled()) {
+    [self.containerHandler
+        setAssistantContainerMediumDetentHeight:ceil([self.consumer
+                                                          contentHeight])];
+  }
 }
 
 - (void)updateFloatyWithPartialPageContext {
@@ -934,6 +955,13 @@ class GeminiContainerMediatorTabHelperObserver
       [self onPageContextUpdated:newActive];
     }
   }
+}
+
+- (void)onNewTabPageInserted {
+  // Minimize the container when opening a new tab page so the newly created
+  // tab is not obstructed by an expanded bottom sheet.
+  [self.containerHandler
+      animateAssistantContainerToDetent:AssistantContainerDetent::kMinimized];
 }
 
 - (void)onPageContextUpdated:(web::WebState*)webState {

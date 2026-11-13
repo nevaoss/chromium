@@ -159,7 +159,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Windows.Enclave.{Type}.Available" enum="BooleanAvailable"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>ajgo@chromium.org</owner>
   <owner>wfh@chromium.org</owner>
   <summary>
@@ -262,16 +262,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     The value of TimeTicks::IsHighResolution(). Reported once per browser
     session, on startup.
-  </summary>
-</histogram>
-
-<histogram name="Windows.HasThreadTicks" enum="Boolean"
-    expires_after="2025-02-23">
-  <owner>olivierli@chromium.org</owner>
-  <owner>gab@chromium.org</owner>
-  <summary>
-    The value of ThreadTicks::IsSupported(). Reported once per browser session,
-    on startup.
   </summary>
 </histogram>
 
@@ -439,7 +429,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Windows.OneDriveSyncState.{SyncedState}" enum="BooleanEnabled"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>koretadaniel@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <summary>
@@ -457,7 +447,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Windows.OpenWithLauncherResult" enum="OpenWithLauncherResult"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>jessemckenna@google.com</owner>
   <owner>davidbienvenu@chromium.org</owner>
   <summary>
@@ -606,7 +596,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Windows.ProcessorFamily" enum="ProcessorFamily"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>rkc@chromium.org</owner>
   <owner>vnagarnaik@google.com</owner>
   <owner>rockot@chromium.org</owner>

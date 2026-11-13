@@ -840,6 +840,12 @@ bool ContentBrowserClient::IsUnboundedElementAllowed(
   return false;
 }
 
+bool ContentBrowserClient::IsUnboundedElementAllowedForSubframesOf(
+    const url::Origin& origin) {
+  // TODO(crbug.com/571879162): Remove this temporary allowlist.
+  return false;
+}
+
 bool ContentBrowserClient::CanCreateWindow(
     RenderFrameHost* opener,
     const GURL& opener_url,
@@ -2118,6 +2124,10 @@ bool ContentBrowserClient::ShouldAllowSystemUiPopups(
 
 bool ContentBrowserClient::IsExemptFromWindowSizeCheck(const GURL& url) {
   return url.SchemeIs(kChromeUIScheme) || url.SchemeIs(kChromeDevToolsScheme);
+}
+
+bool ContentBrowserClient::IsNoStatePrefetch(WebContents* web_contents) {
+  return false;
 }
 
 }  // namespace content

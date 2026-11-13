@@ -13,12 +13,13 @@ import {ComposeboxProxyImpl, createAutocompleteMatch} from 'chrome://resources/c
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import type {ContextualEntrypointButtonElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_button.js';
 import type {ComposeboxFileCarouselElement} from 'chrome://resources/cr_components/composebox/file_carousel.js';
-import {createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {InputSource, QueryActionOverride, SearchboxOverride, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
-import {DriveDisclaimerStatus, DriveUploadError, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SuggestStyle, TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {DriveDisclaimerStatus, DriveUploadError, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteMatch, AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SuggestStyle} from 'chrome://resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {InputState} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
@@ -1736,6 +1737,34 @@ suite('ComposeboxMixinTest', () => {
     assertEquals(null, element.suggestInventory);
   });
 
+  test('close-composebox marks closes that follow a submit', async () => {
+    type CloseEvent =
+        CustomEvent<{composeboxText: string, afterSubmit: boolean}>;
+
+    // A modifier submit closes the composebox right after submitting.
+    await simulateUserTextInput(element.getInputElement(), 'test');
+    let whenCloseComposebox =
+        eventToPromise<CloseEvent>('close-composebox', element);
+    element.submitQuery(
+        new KeyboardEvent('keydown', {key: 'Enter', ctrlKey: true}));
+    assertEquals(1, searchboxHandler.getCallCount('submitQuery'));
+    assertTrue((await whenCloseComposebox).detail.afterSubmit);
+
+    // So does a modifier click on a match.
+    whenCloseComposebox =
+        eventToPromise<CloseEvent>('close-composebox', element);
+    element.onMatchClick(new CustomEvent(
+        'match-click',
+        {detail: {ctrlKey: true, metaKey: false, shiftKey: false}}));
+    assertTrue((await whenCloseComposebox).detail.afterSubmit);
+
+    // Any other close is a dismissal.
+    whenCloseComposebox =
+        eventToPromise<CloseEvent>('close-composebox', element);
+    element.closeComposebox();
+    assertFalse((await whenCloseComposebox).detail.afterSubmit);
+  });
+
   test(
       'esc clears input instead of closing when closeOnEscape is false and has content',
       async () => {
@@ -2930,7 +2959,8 @@ suite('ComposeboxMixinTest', () => {
         element.richImageSuggestionsEnabled = true;
         await showAndSelectMatch('', {
           fillIntoEdit: 'image prompt',
-          suggestStyle: SuggestStyle.kRichImage,
+          suggestTemplate:
+              createSuggestTemplateInfo({style: SuggestStyle.kRichImage}),
         });
         assertEquals('', element.input);
         assertFalse(element.hasFiles());

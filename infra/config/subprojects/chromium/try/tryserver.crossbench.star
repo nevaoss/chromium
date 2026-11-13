@@ -18,6 +18,7 @@ try_.defaults.set(
     builderless = True,
     cores = 8,
     os = os.LINUX_DEFAULT,
+    ssd = True,
     execution_timeout = try_constants.DEFAULT_EXECUTION_TIMEOUT,
     experiments = {
         "chromium_tests.resultdb_module": 100,
@@ -45,7 +46,7 @@ try_.builder(
     cq_settings = try_.cq_settings(
         location_filters = [
             # Inclusion filters.
-            cq.location_filter(path_regexp = "third_party/crossbench/.+"),
+            cq.location_filter(path_regexp = "third_party/crossbench"),
             cq.location_filter(path_regexp = "third_party/speedometer/.+"),
         ],
     ),

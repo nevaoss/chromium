@@ -113,6 +113,7 @@
 #include "components/feature_engagement/public/event_constants.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_features.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/pdf/browser/pdf_document_helper.h"
 #include "components/safe_browsing/core/common/safebrowsing_referral_methods.h"
 #include "components/saved_tab_groups/public/features.h"
@@ -1418,17 +1419,6 @@ void MaybeRegisterChromeFeaturePromos(
                 "customize settings in Reading Mode.")));
   }
 
-  // kIPHReadingModeSidePanelFeature:
-  registry.RegisterFeature(std::move(
-      FeaturePromoSpecification::CreateForSnoozePromo(
-          feature_engagement::kIPHReadingModeSidePanelFeature,
-          kToolbarAppMenuButtonElementId,
-          IDS_READING_MODE_SIDE_PANEL_PROMO_PINNING)
-          .SetHighlightedMenuItem(ToolsMenuModel::kReadingModeMenuItem)
-          .SetMetadata(115, "jocelyntran@chromium.org",
-                       "Triggered to encourage users to try out the reading "
-                       "mode feature.")));
-
   // kIPHResumptionRailFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForToastPromo(
@@ -1741,26 +1731,6 @@ void MaybeRegisterChromeFeaturePromos(
                        "sync yet, after the sync-to-signin migration.")));
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-  // kIPHTabSearchComboButtonFeature:
-  registry.RegisterFeature(std::move(
-      FeaturePromoSpecification::CreateForToastPromo(
-          feature_engagement::kIPHTabSearchComboButtonFeature,
-          kTabSearchButtonElementId, IDS_TAB_SEARCH_COMBO_BUTTON_PROMO_BODY,
-          IDS_TAB_SEARCH_COMBO_BUTTON_PROMO_SCREENREADER,
-          FeaturePromoSpecification::AcceleratorInfo())
-          .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
-          .SetBubbleTitleText(IDS_TAB_SEARCH_COMBO_BUTTON_PROMO_TITLE)
-          // Overriding due to director-level guidance that we show a more
-          // prominent promo than the move to the tab search toolbar button
-          .OverrideBubbleShouldTimeOut(false)
-          .SetAdditionalConditions(std::move(
-              AdditionalConditions().AddAdditionalCondition(AdditionalCondition{
-                  feature_engagement::events::kTabSearchComboButtonUsed,
-                  AdditionalConditions::Constraint::kExactly, 0})))
-          .SetMetadata(147, "emshack@chromium.org",
-                       "Triggered when the tab search button has been moved "
-                       "into the tab strip combo button.")));
-
   // kIPHDesktopSharedHighlightingFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForLegacyPromo(
@@ -1993,6 +1963,27 @@ void MaybeRegisterChromeFeaturePromos(
               154, "abhmadan@google.com",
               "Triggered to inform users of the Lens search feature in "
               "Omnibox Everywhere.")));
+
+  // kIPHOmniboxAskGLensIconFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForToastPromo(
+          feature_engagement::kIPHOmniboxAskGLensIconFeature,
+          kOmniboxPopupLensIconElementId,
+          IDS_LENS_OVERLAY_INITIAL_TOAST_MESSAGE_SIMPLIFIED,
+          IDS_OMNIBOX_ASKG_LENS_ICON_IPH_ACCESSIBLE_TEXT,
+          FeaturePromoSpecification::AcceleratorInfo())
+          .SetBubbleArrow(HelpBubbleArrow::kRightCenter)
+          // The anchor lives in the WebUI omnibox popup, so the promo can only
+          // show while the omnibox is open.
+          .AddPreconditionExemption(kOmniboxNotOpenPrecondition)
+          // The omnibox popup is a separate widget with its own element
+          // context, so the anchor isn't in the browser window's context.
+          .SetInAnyContext(true)
+          .SetMetadata(
+              157, "caitc@google.com",
+              "Triggered when the Lens icon is shown in the omnibox "
+              "popup for the Ask Google about this page experiment.",
+              Metadata::FeatureSet{&omnibox::kWebUIOmniboxAskGAboutThisPage})));
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -2876,12 +2867,6 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
                                "to be a vertical tab strip")));
 
   registry.RegisterFeature(user_education::NewBadgeSpecification(
-      send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
-      user_education::Metadata(
-          151, "mtatarski@google.com",
-          "Show the new badge on Send to your device context menu items.")));
-
-  registry.RegisterFeature(user_education::NewBadgeSpecification(
       send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2,
       user_education::Metadata(
           153, "mtatarski@google.com",
@@ -2909,6 +2894,11 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
       user_education::Metadata(
           157, "nguyenbryan@google.com",
           "Shown on Ask Google about this page in context and app menus.")));
+
+  registry.RegisterFeature(user_education::NewBadgeSpecification(
+      features::kIndigoContextMenu,
+      user_education::Metadata(158, "jbroman@chromium.org",
+                               "Shown on the Try it on context menu item.")));
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   registry.RegisterFeature(user_education::NewBadgeSpecification(

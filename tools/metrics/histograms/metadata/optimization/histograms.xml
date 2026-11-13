@@ -99,12 +99,17 @@ chromium-metrics-reviews@google.com.
   <variant name="ZeroStateSuggestions" summary="GLIC Zero State Suggestions"/>
 </variants>
 
+<!-- LINT.IfChange(ModelExecutionFeature) -->
+
 <variants name="ModelExecutionFeature">
   <variant name="AmountExtraction" summary="Amount Extraction"/>
+  <variant name="AnnotationReducerOnePResolver"
+      summary="Annotation Reducer OneP Resolver"/>
   <variant name="AnnotationReducerQueryClassifier"
       summary="User Query Classification"/>
   <variant name="BlingPrototyping" summary="Bling Prototyping"/>
   <variant name="CardRecommendations" summary="Card Recommendations"/>
+  <variant name="Classifier" summary="Classifier"/>
   <variant name="Compose" summary="Compose"/>
   <variant name="ContentAnnotation" summary="Content Annotation"/>
   <variant name="ContextHub" summary="Context Hub"/>
@@ -114,6 +119,9 @@ chromium-metrics-reviews@google.com.
   <variant name="FormsAnnotations" summary="Forms Annotations"/>
   <variant name="FormsClassifications" summary="Forms Classifications"/>
   <variant name="FormsPredictions" summary="Forms Predictions"/>
+  <variant name="GeminiAntiscamProtection"
+      summary="Gemini Antiscam Protection"/>
+  <variant name="HistoryQueryIntent" summary="History Query Intent"/>
   <variant name="HistorySearch" summary="History Search"/>
   <variant name="IosSmartTabGrouping" summary="iOS Smart Tab Grouping"/>
   <variant name="OnDeviceSpeechRecognition"
@@ -136,14 +144,19 @@ chromium-metrics-reviews@google.com.
   <variant name="TabOrganization" summary="Tab Organization"/>
   <variant name="Test" summary="Test"/>
   <variant name="TextSafety" summary="Text Safety"/>
+  <variant name="Ttc" summary="TTC"/>
   <variant name="Unknown" summary="Unknown"/>
   <variant name="UpdaterChat" summary="Updater Chat"/>
+  <variant name="WalletablePassExtraction" summary="Extract walletable pass"/>
   <variant name="WallpaperSearch" summary="Wallpaper search"/>
   <variant name="WebRTCNeuralResidualEchoEstimator"
       summary="WebRTC Neural Residual Echo Estimator"/>
   <variant name="WritingAssistance" summary="Writing Assistance APIs"/>
+  <variant name="WritingAssistanceApi" summary="Writing Assistance APIs"/>
   <variant name="ZeroStateSuggestions" summary="GLIC Zero State Suggestions"/>
 </variants>
+
+<!-- LINT.ThenChange(//components/optimization_guide/core/optimization_guide_util.cc:ModelExecutionFeature) -->
 
 <variants name="OptimizationTarget">
   <variant name="AutofillFieldTypeClassification"
@@ -828,6 +841,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="OptimizationGuide.AIPageContent.MathSerializedSize"
+    units="bytes" expires_after="2027-09-01">
+  <owner>alexmt@chromium.org</owner>
+  <owner>chrome-intelligence-core@google.com</owner>
+  <summary>
+    Records the size in bytes of the serialized MathML content extracted for a
+    &lt;math&gt; element in AnnotatedPageContent when serialization succeeds
+    within the 64 KiB size limit and 128-level depth limit. Recorded once per
+    visible root &lt;math&gt; element extracted by AIPageContentAgent with
+    populated stripped_mathml.
+  </summary>
+</histogram>
+
 <histogram name="OptimizationGuide.AIPageContent.RendererLatency.{FrameType}"
     units="ms" expires_after="2027-03-07">
   <owner>khushalsagar@chromium.org</owner>
@@ -924,7 +950,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.AnnotatedPageContent.TotalNodeCount.{AIPageContentMode}"
-    units="nodes" expires_after="2027-02-07">
+    units="nodes" expires_after="2027-04-11">
   <owner>khushalsagar@chromium.org</owner>
   <owner>abigailbklein@google.com</owner>
   <owner>gklassen@chromium.org</owner>
@@ -1051,7 +1077,8 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.HintsFetcher.GetHintsRequest.RequestStatus.{RequestContext}"
-    enum="OptimizationGuideFetcherRequestStatus" expires_after="2027-02-14">
+    enum="OptimizationGuideHintsFetcherRequestStatus"
+    expires_after="2027-02-14">
   <owner>holte@chromium.org</owner>
   <owner>wittman@chromium.org</owner>
   <owner>catliu@chromium.org</owner>
@@ -1226,7 +1253,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelExecution.FetchLatency2.{ModelExecutionFeature}"
-    units="ms" expires_after="2027-02-07">
+    units="ms" expires_after="2027-04-11">
   <owner>arabm@google.com</owner>
   <owner>dullweber@chromium.org</owner>
   <owner>lamzin@google.com</owner>
@@ -1564,6 +1591,33 @@ chromium-metrics-reviews@google.com.
   <token key="ModelExecutionFeature" variants="ModelExecutionFeature"/>
 </histogram>
 
+<histogram
+    name="OptimizationGuide.ModelExecution.Streaming.ConnectionStatus.Ttc"
+    enum="OptimizationGuideStreamingConnectionStatus"
+    expires_after="2027-04-14">
+  <owner>zekunjiang@google.com</owner>
+  <owner>wittman@chromium.org</owner>
+  <summary>
+    Records the status of establishing a streaming WebSocket connection for TTC
+    to the Optimization Guide Service. Recorded once per connection attempt when
+    it resolves (either succeeding, failing, or being cancelled on session
+    destruction).
+  </summary>
+</histogram>
+
+<histogram
+    name="OptimizationGuide.ModelExecution.Streaming.DisconnectReason.Ttc"
+    enum="OptimizationGuideStreamingDisconnectReason"
+    expires_after="2027-04-14">
+  <owner>zekunjiang@google.com</owner>
+  <owner>wittman@chromium.org</owner>
+  <summary>
+    Records the reason an active (connected) streaming WebSocket session for TTC
+    disconnected. Recorded every time a session transitions out of the connected
+    state.
+  </summary>
+</histogram>
+
 <histogram name="OptimizationGuide.ModelExecutionFetcher.NetErrorCode"
     enum="NetErrorCodes" expires_after="2027-04-14">
   <owner>freedjm@google.com</owner>
@@ -1577,7 +1631,8 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelExecutionFetcher.RequestStatus.{ModelExecutionFeature}"
-    enum="OptimizationGuideFetcherRequestStatus" expires_after="2027-04-14">
+    enum="OptimizationGuideModelExecutionFetcherRequestStatus"
+    expires_after="2027-04-14">
   <owner>holte@chromium.org</owner>
   <owner>wittman@chromium.org</owner>
   <owner>freedjm@google.com</owner>
@@ -1897,7 +1952,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentAnnotations.BatchRequestedSize.{AnnotationType}"
-    units="counts" expires_after="2027-02-07">
+    units="counts" expires_after="2027-04-11">
   <owner>robertogden@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -1967,7 +2022,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentAnnotations.JobScheduleTime.{AnnotationType}"
-    units="ms" expires_after="2027-02-07">
+    units="ms" expires_after="2027-04-11">
   <owner>robertogden@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -1980,7 +2035,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentAnnotationsService.ContentAnnotated"
-    enum="BooleanAnnotated" expires_after="2027-02-07">
+    enum="BooleanAnnotated" expires_after="2027-04-11">
   <owner>sophiechang@chromium.org</owner>
   <owner>mcrouse@chromium.org</owner>
   <summary>
@@ -2352,7 +2407,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentExtraction.AutomaticOnLoad.StabilityLatency"
-    units="ms" expires_after="2027-02-07">
+    units="ms" expires_after="2027-04-11">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>

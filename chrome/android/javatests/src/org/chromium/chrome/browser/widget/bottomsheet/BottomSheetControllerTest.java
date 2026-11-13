@@ -12,8 +12,6 @@ import static org.junit.Assert.assertTrue;
 import android.graphics.Rect;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup.LayoutParams;
-import android.widget.ScrollView;
 
 import androidx.test.espresso.Espresso;
 import androidx.test.filters.MediumTest;
@@ -276,74 +274,6 @@ public class BottomSheetControllerTest {
                                 bottomSheetContent.getHeight(),
                                 Matchers.equalTo(
                                         Math.max(0, heightWithoutBottomInset - bottomInsets))));
-    }
-
-    @Test
-    @SmallTest
-    @Feature({"BottomSheetController"})
-    public void testShowWithBottomInset_WrapContentWithHandlebarAndScrollView() {
-        mEdgeToEdgeController.bottomInset = 50;
-        ScrollView scrollView =
-                ThreadUtils.runOnUiThreadBlocking(
-                        () -> {
-                            int tallChildHeight =
-                                    mActivity.getWindow().getDecorView().getHeight() * 2;
-                            ScrollView view = new ScrollView(mActivity);
-                            View tallChild = new View(mActivity);
-                            tallChild.setMinimumHeight(tallChildHeight);
-                            view.addView(
-                                    tallChild,
-                                    new LayoutParams(LayoutParams.MATCH_PARENT, tallChildHeight));
-                            return view;
-                        });
-        TestBottomSheetContent wrapContent =
-                ThreadUtils.runOnUiThreadBlocking(
-                        () -> {
-                            TestBottomSheetContent content =
-                                    new TestBottomSheetContent(
-                                            mActivity,
-                                            BottomSheetContent.ContentPriority.HIGH,
-                                            false,
-                                            scrollView) {
-                                        @Override
-                                        public boolean showHandlebar() {
-                                            return true;
-                                        }
-                                    };
-                            content.setFullHeightRatio(HeightMode.WRAP_CONTENT);
-                            content.setHalfHeightRatio(HeightMode.DISABLED);
-                            content.setPeekHeight(HeightMode.DISABLED);
-                            return content;
-                        });
-
-        requestContentInSheet(wrapContent, true);
-        BottomSheetTestSupport.waitForState(mSheetController, SheetState.FULL);
-
-        int bottomInsets = ViewUtils.dpToPx(mActivity, mEdgeToEdgeController.bottomInset);
-        View bottomSheet = mActivity.findViewById(R.id.bottom_sheet);
-        View bottomSheetContent = bottomSheet.findViewById(R.id.bottom_sheet_content);
-        View handlebar = bottomSheet.findViewById(R.id.handlebar);
-
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    Criteria.checkThat(
-                            "Padding for the sheet should match the bottom insets.",
-                            bottomSheetContent.getPaddingBottom(),
-                            Matchers.equalTo(bottomInsets));
-                    int expectedContentHeight =
-                            mSheetController.getMaxSheetHeight()
-                                    - handlebar.getHeight()
-                                    - bottomInsets;
-                    Criteria.checkThat(
-                            "Wrap-content view measured height should account for handlebar and"
-                                    + " bottom inset.",
-                            scrollView.getMeasuredHeight(),
-                            Matchers.equalTo(expectedContentHeight));
-                    Criteria.checkThat(
-                            "Wrap-content view laid-out height should match measured height.",
-                            scrollView.getHeight(),
-                            Matchers.equalTo(expectedContentHeight));
-                });
     }
 
     @Test
@@ -1139,6 +1069,129 @@ public class BottomSheetControllerTest {
         assertNull(
                 "The bottom sheet is showing incorrect content.",
                 mSheetController.getCurrentSheetContent());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"BottomSheetController"})
+    public void testDoubleHide_AnimatedThenNonAnimatedDismissesCleanly() {
+        requestContentInSheet(mHighPriorityContent, true);
+        assertEquals(mHighPriorityContent, mSheetController.getCurrentSheetContent());
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mSheetController.hideContent(mHighPriorityContent, true);
+                    mSheetController.hideContent(mHighPriorityContent, false);
+                });
+
+        BottomSheetTestSupport.waitForState(mSheetController, SheetState.HIDDEN);
+        CriteriaHelper.pollUiThread(() -> mSheetController.getCurrentSheetContent() == null);
+        assertNull(mSheetController.getCurrentSheetContent());
+        assertEquals(SheetState.HIDDEN, mSheetController.getSheetState());
+
+        // Verify subsequent content can be shown without being wedged.
+        requestContentInSheet(mLowPriorityContent, true);
+        assertEquals(mLowPriorityContent, mSheetController.getCurrentSheetContent());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"BottomSheetController"})
+    public void testHideContent_CalledFromOnSheetClosedObserver() throws TimeoutException {
+        requestContentInSheet(mHighPriorityContent, true);
+        expandSheet();
+
+        CallbackHelper closedHelper = new CallbackHelper();
+        BottomSheetObserver observer =
+                new BottomSheetObserver() {
+                    @Override
+                    public void onSheetClosed(@StateChangeReason int reason) {
+                        // Re-entrant call to hideContent() from onSheetClosed observer callback
+                        // (ArchivedTabsAutoDeletePromo pattern).
+                        mSheetController.hideContent(mHighPriorityContent, false);
+                        closedHelper.notifyCalled();
+                        mSheetController.removeObserver(this);
+                    }
+                };
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mSheetController.addObserver(observer);
+                    mSheetController.hideContent(mHighPriorityContent, true);
+                });
+
+        closedHelper.waitForOnly();
+        BottomSheetTestSupport.waitForState(mSheetController, SheetState.HIDDEN);
+        CriteriaHelper.pollUiThread(() -> mSheetController.getCurrentSheetContent() == null);
+        assertNull(mSheetController.getCurrentSheetContent());
+        assertEquals(SheetState.HIDDEN, mSheetController.getSheetState());
+
+        // Subsequent show succeeds.
+        requestContentInSheet(mLowPriorityContent, true);
+        assertEquals(mLowPriorityContent, mSheetController.getCurrentSheetContent());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"BottomSheetController"})
+    public void testHideContent_WhenAlreadyHidden_DoesNotWedgeController() {
+        assertEquals(SheetState.HIDDEN, mSheetController.getSheetState());
+        assertNull(mSheetController.getCurrentSheetContent());
+
+        // Calling hideContent() when already at SheetState.HIDDEN should be a no-op and not wedge.
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mSheetController.hideContent(mHighPriorityContent, false);
+                    mSheetController.hideContent(mHighPriorityContent, true);
+                    mSheetController.hideContent(null, false);
+                });
+
+        assertEquals(SheetState.HIDDEN, mSheetController.getSheetState());
+        assertNull(mSheetController.getCurrentSheetContent());
+
+        // Verify that subsequent show content requests still succeed cleanly.
+        requestContentInSheet(mHighPriorityContent, true);
+        assertEquals(mHighPriorityContent, mSheetController.getCurrentSheetContent());
+        assertEquals(SheetState.PEEK, mSheetController.getSheetState());
+
+        // Hide and confirm another redundant hideContent when already HIDDEN.
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> mSheetController.hideContent(mHighPriorityContent, false));
+        BottomSheetTestSupport.waitForState(mSheetController, SheetState.HIDDEN);
+        CriteriaHelper.pollUiThread(() -> mSheetController.getCurrentSheetContent() == null);
+        assertNull(mSheetController.getCurrentSheetContent());
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> mSheetController.hideContent(mHighPriorityContent, false));
+        assertEquals(SheetState.HIDDEN, mSheetController.getSheetState());
+
+        // Verify another subsequent show still succeeds.
+        requestContentInSheet(mLowPriorityContent, true);
+        assertEquals(mLowPriorityContent, mSheetController.getCurrentSheetContent());
+        assertEquals(SheetState.PEEK, mSheetController.getSheetState());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"BottomSheetController"})
+    public void testRapidDismissAndReopen() {
+        requestContentInSheet(mHighPriorityContent, true);
+        assertEquals(mHighPriorityContent, mSheetController.getCurrentSheetContent());
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    // Rapidly dismiss current content and request new content while dismissal
+                    // to HIDDEN is actively in progress (ReadAloud / "Listen to this page"
+                    // pattern).
+                    mSheetController.hideContent(mHighPriorityContent, true);
+                    mSheetController.requestShowContent(mLowPriorityContent, true);
+                });
+
+        CriteriaHelper.pollUiThread(
+                () -> mSheetController.getCurrentSheetContent() == mLowPriorityContent);
+        assertEquals(mLowPriorityContent, mSheetController.getCurrentSheetContent());
+        BottomSheetTestSupport.waitForState(mSheetController, SheetState.PEEK);
+        assertEquals(SheetState.PEEK, mSheetController.getSheetState());
     }
 
     /**

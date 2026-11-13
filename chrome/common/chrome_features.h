@@ -142,6 +142,13 @@ BASE_DECLARE_FEATURE(kDocumentPipStandaloneWindow);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kRemoteActorCredentialSharing);
 
+// This parameter is for testing purposes only and must not be used in
+// production. It overrides the actor name displayed in the credential
+// selection dialog.
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string>
+    kRemoteActorCredentialSharingActorNameForTesting;
+
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string>
     kRemoteActorCredentialSharingAllowedHostForTesting;
@@ -840,6 +847,9 @@ extern const base::FeatureParam<std::string>
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<bool>
     kHappinessTrackingSurveysForSecurityPageRequireInteraction;
+
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kHappinessTrackingSurveysForDesktopScheduledRestart);
 #endif
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kHttpsFirstBalancedMode);
@@ -869,6 +879,8 @@ BASE_DECLARE_FEATURE(kIncomingCallNotifications);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIndigo);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kIndigoContextMenu);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIndigoContextualCueingV2);
 COMPONENT_EXPORT(CHROME_FEATURES)

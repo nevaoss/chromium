@@ -278,22 +278,20 @@ class WebUILocationBarInteractiveUiTest
       public testing::WithParamInterface<Mode> {
  public:
   WebUILocationBarInteractiveUiTest() {
-    // TODO(crbug.com/539786691): Re-enable kPrewarm once the feature is
-    // compatible with the test.
     if (mode() == Mode::kCutout) {
       feature_list_.InitWithFeatures(
           {features::kInitialWebUI, features::kWebUIReloadButton,
            features::kWebUILocationBar,
-           omnibox::internal::kWebUIOmniboxAimPopup},
-          {omnibox::kAimServerEligibilityEnabled, features::kPrewarm,
+           omnibox::internal::kWebUIOmniboxAimPopup, features::kPrewarm},
+          {omnibox::kAimServerEligibilityEnabled,
            omnibox::internal::kWebUIOmniboxFullPopup});
     } else {
       feature_list_.InitWithFeatures(
           {features::kInitialWebUI, features::kWebUIReloadButton,
            features::kWebUILocationBar,
            omnibox::internal::kWebUIOmniboxFullPopup,
-           omnibox::internal::kWebUIOmniboxAimPopup},
-          {omnibox::kAimServerEligibilityEnabled, features::kPrewarm});
+           omnibox::internal::kWebUIOmniboxAimPopup, features::kPrewarm},
+          {omnibox::kAimServerEligibilityEnabled});
     }
   }
   ~WebUILocationBarInteractiveUiTest() override = default;
@@ -998,8 +996,18 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ShowHidePopup) {
                   RemoveFocusFromPopup());
 }
 
+// TODO(crbug.com/572093164): Consistently times out on ChromeOS MSan.
+#if BUILDFLAG(IS_CHROMEOS) && defined(MEMORY_SANITIZER)
+#define MAYBE_ShowHideAIPopup DISABLED_ShowHideAIPopup
+#define MAYBE_ShowHideAIPopup2 DISABLED_ShowHideAIPopup2
+#else
+#define MAYBE_ShowHideAIPopup ShowHideAIPopup
+#define MAYBE_ShowHideAIPopup2 ShowHideAIPopup2
+#endif
+
 // Show and hide the omnibox AI mode popup.
-IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ShowHideAIPopup) {
+IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
+                       MAYBE_ShowHideAIPopup) {
   RunTestSequence(
       InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
       InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
@@ -1026,7 +1034,8 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ShowHideAIPopup) {
 }
 
 // Show and hide the omnibox AI mode popup, with no user text
-IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ShowHideAIPopup2) {
+IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
+                       MAYBE_ShowHideAIPopup2) {
   RunTestSequence(
       InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
       InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
@@ -1408,8 +1417,7 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, AdditionalText) {
 // Use Ctrl-Alt-Enter to append www. and .com to URL and open it in new tab.
 IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, Modifiers) {
   FAILS_IN_MODE(Mode::kFull,
-                "Full popup doesn't appear to do Ctrl-Enter when oneline."
-                "See crbug.com/549864613");
+                "Full popup doesn't appear like Ctrl-Enter of https://google");
   RunTestSequence(InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
                   InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
                   EnsureNoPopup(), FocusOmnibox(),
@@ -1553,6 +1561,31 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ClickSelectsAll) {
       WaitTillOmniboxViewSelection("about:blank", gfx::Range(11, 0)));
 }
 
+// Make sure that interacting with a zero-suggest suggestion doesn't
+// mess things up by trying to do an unelide.
+// See crbug.com/572584251
+IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ZeroSuggestNoEnlide) {
+  RunTestSequence(
+      InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
+      InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
+      HandleAutofocus(), WaitTillOmniboxViewText("about:blank"),
+      WaitTillOmniboxViewSelection("about:blank", gfx::Range(11, 0)),
+      // Unfocus, want the popup that shows from focus in.
+      FocusTab(),
+      // Go to a URL that will give us a popup.
+      NavigateWebContents(kTabId, GURL("https://local.test")),
+      WaitTillOmniboxViewText("local.test", View::kStatic),
+      // Click to focus location bar.
+      MoveMouseTo(kOmniboxElementId), ClickMouse(), WaitTillOmniboxViewFocus(),
+      WaitForPopupShow(),
+      // Select a suggestion from the zero-suggest dropdown, and then change
+      // caret position in it (which is an action that can trigger unelide).
+      InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_DOWN)),
+      WaitTillOmniboxViewText("Ask Google about this page"),
+      InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_LEFT)),
+      WaitTillOmniboxViewSelection("", gfx::Range(25, 25)));
+}
+
 IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, Placeholder) {
   FAILS_IN_MODE(Mode::kFull, "Full doesn't seem to have the AIM placeholder");
   RunTestSequence(
@@ -1651,9 +1684,6 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
 
 IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
                        RestoreSelectionTabSwitch) {
-  FAILS_IN_MODE(Mode::kFull,
-                "Our behavior on autofocus of location bar (since no restore) "
-                "overwrites full's restore of selection");
   RunTestSequence(
       InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
       InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
@@ -2023,9 +2053,7 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
 
 // Test of location bar context menu; uses the 'Copy' item.
 IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, MAYBE_ContextMenu) {
-  FAILS_IN_MODE(Mode::kFull,
-                "Selection lost on right-click when uneliding; possibly "
-                "the same as crbug.com/549791744");
+  FAILS_IN_MODE(Mode::kFull, "Right-click goes to the wrong omnibox");
   RunTestSequence(
       InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
       InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),

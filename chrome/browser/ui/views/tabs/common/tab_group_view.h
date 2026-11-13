@@ -74,8 +74,6 @@ class TabGroupView : public TabCollectionZOrderManager,
   bool ShouldAnimateOpacityForAddAndRemove(
       const views::View& child_view) const override;
   bool ShouldSnapToTarget(const views::View& child_view) const override;
-  std::optional<views::SizeBound> GetAvailableMainAxisSpaceOverride()
-      const override;
   void OnAnimationEnded() override;
 
   bool IsCollapsed() const;
@@ -99,11 +97,6 @@ class TabGroupView : public TabCollectionZOrderManager,
 
   TabGroupLineView* group_line() { return group_line_; }
   const TabGroupLineView* group_line() const { return group_line_; }
-
-  // Sets the main-axis space allocated for this group during unpinned tab
-  // container layout passes.
-  void SetAvailableSpace(views::SizeBound space);
-  views::SizeBound available_space() const { return available_space_; }
 
   // Returns the minimum width for the group in horizontal orientation where all
   // child tabs have the same size. Below this width, an active tab has a larger
@@ -131,6 +124,7 @@ class TabGroupView : public TabCollectionZOrderManager,
 
   void ResetCollectionNode();
   void OnDataChanged();
+  void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);
   void UpdateChildVisibilityForCollapseState(bool collapsed);
   void ExitFocusMode();
 
@@ -142,9 +136,6 @@ class TabGroupView : public TabCollectionZOrderManager,
   const raw_ptr<TabGroupHeaderView> group_header_ = nullptr;
   const raw_ptr<TabGroupLineView> group_line_ = nullptr;
 
-  // The available main-axis space allocated by the parent unpinned container.
-  views::SizeBound available_space_;
-
   // Tracked separately for layout purposes so child/underline visibility
   // updates occur only when collapse/expand animations complete, rather than
   // reacting immediately to visual data updates during animation.
@@ -155,6 +146,7 @@ class TabGroupView : public TabCollectionZOrderManager,
   std::unique_ptr<tabs::TabGroupDataObserver> tab_group_data_observer_;
   base::CallbackListSubscription tab_group_data_changed_subscription_;
   base::CallbackListSubscription node_destroyed_subscription_;
+  base::CallbackListSubscription collapsed_state_changed_subscription_;
   base::CallbackListSubscription paint_as_active_subscription_;
 };
 

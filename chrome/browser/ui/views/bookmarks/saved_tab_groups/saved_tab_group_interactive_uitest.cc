@@ -43,6 +43,7 @@
 #include "chrome/browser/ui/views/tabs/tab_group_header.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/test/tab_strip_interactive_test_mixin.h"
+#include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/interaction/interaction_test_util_browser.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
@@ -159,6 +160,7 @@ class SavedTabGroupInteractiveTestBase
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
     InteractiveBrowserTest::SetUpOnMainThread();
+    WaitForInitialWebUIToolbar(browser());
   }
 
   void TearDownOnMainThread() override {
@@ -539,7 +541,6 @@ IN_PROC_BROWSER_TEST_P(SavedTabGroupInteractiveTest,
             "Check all groups is empty."));
 }
 
-
 IN_PROC_BROWSER_TEST_P(SavedTabGroupInteractiveTest, UnpinGroupFromButtonMenu) {
   // Add 1 tab into the browser. And verify there are 2 tabs (The tab when you
   // open the browser and the added one).
@@ -610,7 +611,7 @@ IN_PROC_BROWSER_TEST_P(SavedTabGroupInteractiveTest,
       WaitForShow(AppMenuModel::kTabGroupsMenuItem),
       SelectMenuItem(AppMenuModel::kTabGroupsMenuItem),
       SelectMenuItem(STGEverythingMenu::kTabGroup),
-      EnsurePresent(STGTabsMenuModel::kOpenGroup),
+      EnsurePresent(STGTabsMenuModel::kCloseGroup),
       EnsurePresent(STGTabsMenuModel::kMoveGroupToNewWindowMenuItem),
       EnsurePresent(STGTabsMenuModel::kToggleGroupPinStateMenuItem),
       EnsurePresent(STGTabsMenuModel::kDeleteGroupMenuItem),
@@ -652,17 +653,17 @@ IN_PROC_BROWSER_TEST_P(SavedTabGroupInteractiveTest,
 
       // Check the number of tabs in the first group.
       SelectMenuItem(STGEverythingMenu::kTabGroup),
-      WaitForShow(STGTabsMenuModel::kOpenGroup),
+      WaitForShow(STGTabsMenuModel::kCloseGroup),
       CheckTabGroupSubmenuTabCount(STGEverythingMenu::kTabGroup, 1),
 
       // Check the number of tabs in the second group.
       SelectMenuItem(kSecondSavedGroupItem),
-      WaitForShow(STGTabsMenuModel::kOpenGroup),
+      WaitForShow(STGTabsMenuModel::kCloseGroup),
       CheckTabGroupSubmenuTabCount(kSecondSavedGroupItem, 1),
 
       // Check the number of tabs in the first group again.
       SelectMenuItem(STGEverythingMenu::kTabGroup),
-      WaitForShow(STGTabsMenuModel::kOpenGroup),
+      WaitForShow(STGTabsMenuModel::kCloseGroup),
       CheckTabGroupSubmenuTabCount(STGEverythingMenu::kTabGroup, 1),
 
       // Close the menu to prevent flakes.
@@ -1172,10 +1173,6 @@ IN_PROC_BROWSER_TEST_P(SavedTabGroupInteractiveTest,
       // Expect the group to not be displayed.
       EnsureNotPresent(STGEverythingMenu::kTabGroup));
 }
-
-
-
-
 
 #if !BUILDFLAG(IS_CHROMEOS)
 // TODO(crbug.com/438799035): This test is flaky on chromeos when waiting for

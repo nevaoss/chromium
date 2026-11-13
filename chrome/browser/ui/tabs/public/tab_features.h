@@ -36,6 +36,7 @@
 #include "components/offline_pages/buildflags/buildflags.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/signin/public/base/signin_buildflags.h"
+#include "components/site_engagement/content/site_engagement_service.h"
 #include "content/public/common/buildflags.h"
 #include "extensions/buildflags/buildflags.h"
 #include "rlz/buildflags/buildflags.h"
@@ -56,6 +57,7 @@ class CookieControlsPageActionController;
 class CoreTabHelper;
 class ExternalProtocolObserver;
 class FileSystemAccessPageActionController;
+class FileSystemAccessPermissionRequestManager;
 class FileSystemAccessTabHelper;
 class FocusTabAfterNavigationHelper;
 class FontPrewarmerTabHelper;
@@ -86,7 +88,6 @@ class Profile;
 class PwaInstallPageActionController;
 class QwacWebContentsObserver;
 class ReadAnythingController;
-class ReadAnythingSidePanelController;
 class RecentlyAudibleHelper;
 class RecordReplayPageActionController;
 class RevokedPermissionsTabHelper;
@@ -193,6 +194,7 @@ class ContextualSearchCueTabState;
 }  // namespace contextual_search
 
 namespace contextual_tasks {
+class ContextualTasksTabNavigationObserver;
 class ContextualTasksTabVisitTracker;
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 class SearchAiModePromoTabHelper;
@@ -227,6 +229,7 @@ class GlicPromotionSourceNavigationObserver;
 class GlicTabIndicatorHelper;
 class GlicSidePanelCoordinator;
 class GlicSelectionObserver;
+class GlicWebDragObserver;
 class SelectionOverlayController;
 class SelectionSuggestionTool;
 class GlicPageFeaturesManager;
@@ -247,6 +250,12 @@ class ZoomViewController;
 namespace permissions {
 class PermissionIndicatorsTabData;
 }  // namespace permissions
+
+#if BUILDFLAG(IS_CHROMEOS)
+namespace policy {
+class DlpContentTabHelper;
+}  // namespace policy
+#endif
 
 namespace predictors {
 class LoadingPredictorTabHelper;
@@ -293,6 +302,7 @@ class PageActionController;
 }  // namespace page_actions
 
 namespace page_content_annotations {
+class AnnotatedPageContentRequest;
 class PageContentAnnotationsWebContentsObserver;
 }  // namespace page_content_annotations
 
@@ -545,6 +555,10 @@ class TabFeatures {
     return contextual_cueing_controller_.get();
   }
 
+  site_engagement::SiteEngagementService::Helper* site_engagement_helper() {
+    return site_engagement_helper_.get();
+  }
+
   // Called exactly once to initialize features.
   void Init(TabInterface& tab, Profile* profile);
 
@@ -707,6 +721,7 @@ class TabFeatures {
   std::unique_ptr<glic::GlicTabIndicatorHelper> glic_tab_indicator_helper_;
   std::unique_ptr<glic::GlicSidePanelCoordinator> glic_side_panel_coordinator_;
   std::unique_ptr<glic::GlicSelectionObserver> glic_selection_observer_;
+  std::unique_ptr<glic::GlicWebDragObserver> glic_web_drag_observer_;
   std::unique_ptr<selection::SuggestionService>
       selection_suggestion_service_;
   std::unique_ptr<glic::SelectionSuggestionTool>
@@ -862,6 +877,8 @@ class TabFeatures {
   std::unique_ptr<wallet::ChromeWalletablePassClient> walletable_pass_client_;
 #endif
 
+  std::unique_ptr<contextual_tasks::ContextualTasksTabNavigationObserver>
+      contextual_tasks_tab_navigation_observer_;
   std::unique_ptr<contextual_tasks::ContextualTasksTabVisitTracker>
       contextual_tasks_tab_visit_tracker_;
   std::unique_ptr<contextual_tasks::SearchJourneyTabFeature>
@@ -1066,6 +1083,19 @@ class TabFeatures {
       loading_predictor_tab_helper_;
 
   std::unique_ptr<BreadcrumbManagerTabHelper> breadcrumb_manager_tab_helper_;
+
+  std::unique_ptr<site_engagement::SiteEngagementService::Helper>
+      site_engagement_helper_;
+
+  std::unique_ptr<page_content_annotations::AnnotatedPageContentRequest>
+      annotated_page_content_request_;
+
+  std::unique_ptr<FileSystemAccessPermissionRequestManager>
+      file_system_access_permission_request_manager_;
+
+#if BUILDFLAG(IS_CHROMEOS)
+  std::unique_ptr<policy::DlpContentTabHelper> dlp_content_tab_helper_;
+#endif
 
   // Must be the last member.
   base::WeakPtrFactory<TabFeatures> weak_factory_{this};

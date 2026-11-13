@@ -36,6 +36,28 @@ enum class TipsNotificationType;
 // YES if the current interface language uses RTL layout.
 + (BOOL)isRTL;
 
+// Stops startup tracing, flushes trace file to disk, and returns trace file
+// path.
++ (NSString*)stopStartupTracing;
+
+// Starts manual tracing. Returns YES on success.
++ (BOOL)startManualTracing;
+
+// Stops manual tracing, flushes trace file to disk, and returns trace file
+// path.
++ (NSString*)stopManualTracing;
+
+// Returns YES if the trace file at `filePath` exists and has a size greater
+// than 0.
++ (BOOL)isTraceFileReadyAtPath:(NSString*)filePath;
+
+// Returns the content of the trace file at `filePath` as NSData, or nil if
+// reading failed.
++ (NSData*)traceDataForPath:(NSString*)filePath;
+
+// Removes the trace file at `filePath`. Returns YES if successfully deleted.
++ (BOOL)removeTraceFileAtPath:(NSString*)filePath;
+
 // Returns YES if the application window is in windowed mode (multitasking).
 + (BOOL)isWindowedMode;
 
@@ -291,6 +313,10 @@ enum class TipsNotificationType;
 // well together, so EG often fails to interact with the tools menu in secondary
 // windows.
 + (void)openSettingsInWindowWithNumber:(int)windowNumber;
+
+// Shows the tab switcher directly (not via the UI) in the window with the
+// given number.
++ (void)showTabSwitcherInWindowWithNumber:(int)windowNumber;
 
 // Returns the interface orientation of the scene.
 + (UIInterfaceOrientation)interfaceOrientation;

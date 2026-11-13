@@ -68,6 +68,9 @@ BASE_FEATURE(kAddSessionFallbackToPrimaryAccount,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+BASE_FEATURE(kAiSubscriptionAvatarRingFollowup,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kAvoidAutoTriggerListAccountsOnStale,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -331,8 +334,9 @@ BASE_FEATURE_PARAM(bool,
 BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls whether storing and exposing the preferred account is enabled.
-// This flag has no effect if `kEnableAccountPreviewData` is not enabled.
+// Controls whether storing and exposing the preferred account when offering
+// signed-out users to sign in is enabled. This flag has no effect if
+// `kEnableAccountPreviewData` is not enabled.
 BASE_FEATURE(kEnableAccountPreviewPreferredAccount,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(size_t,
@@ -421,11 +425,23 @@ BASE_FEATURE_PARAM(
 BASE_FEATURE(kEnableAccountPreviewPreferredAccountFollowup,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kEnableAccountPreviewPreferredAccountFRE,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+
 // Controls whether storing and exposing the preferred account for switching is
 // enabled. This flag has no effect if `kEnableAccountPreviewData` is not
 // enabled.
 BASE_FEATURE(kEnableAccountPreviewSwitchingAccount,
              base::FEATURE_DISABLED_BY_DEFAULT);
+// When true, skips cooldowns and throttling limits for the account switching
+// promo. Used for manual and automated testing.
+BASE_FEATURE_PARAM(bool,
+                   kEnableAccountPreviewSwitchingAccountSkipCooldown,
+                   &kEnableAccountPreviewSwitchingAccount,
+                   "SkipCooldown",
+                   false);
 
 #if BUILDFLAG(IS_ANDROID)
 // This flag controls whether the CCT captures the account name of the 1p app
@@ -441,16 +457,8 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
-// Extensions are not shipped on Android yet. The flow is newly implemented. We
-// enable activityless signin by default on this new userless entrypoint to
-// avoid implementing the legacy flow which will never be shipped.
 BASE_FEATURE(kEnableActivitylessSigninAllEntryPoint,
-#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
@@ -665,8 +673,13 @@ BASE_FEATURE(kFetchAccountCapabilitiesOnRestart,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN)
+BASE_FEATURE(kFirstRunDesktopChoiceScreenRefresh,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kFirstRunDesktopChoiceScreenRefresh,
              base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -747,11 +760,6 @@ BASE_FEATURE(kHandleMdmErrorsForDasherAccountsOnAndroid,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_IOS)
-// Feature flag to ignore invalid grant errors in AuthenticationService.
-BASE_FEATURE(kIgnoreInvalidGrantError, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 BASE_FEATURE(kMagiChromePasskeySignIn, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kMagiChromePasskeySignInFlowType{
@@ -787,6 +795,11 @@ BASE_FEATURE(kMakeIdentityManagerSourceOfAccountsPart2,
 // AccountManagerAccountManagerDelegate
 BASE_FEATURE(kMigrateAccountManagerDelegate, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kMigrateToSigninReauthCoordinator,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kNoAccountWebSignin, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -843,6 +856,11 @@ BASE_FEATURE(kRestrictDeviceManagementServiceOAuthScope,
 BASE_FEATURE(kSearchAIModeSignInPromoSelfDismissal,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kSecondaryGoogleAccountsSigninAllowedOnAndroid,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kSigninButtonProfileMenu, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -949,12 +967,7 @@ BASE_FEATURE(kSwitchToIncognitoInSettings, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kSyncEnableBookmarksInTransportMode,
-#if BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_CHROMEOS)
 BASE_FEATURE(kUndoChromeOsUseConsentLevelSignin,
@@ -964,6 +977,10 @@ BASE_FEATURE(kUndoChromeOsUseConsentLevelSignin,
 #if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
 BASE_FEATURE(kUnifyWaitForCookies, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kUseAccountInfoFetcherIos, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kUserPolicyFetchRequiresAcceptance,

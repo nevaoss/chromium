@@ -3601,7 +3601,7 @@ enum WebFeature {
   // The items above roughly this point are available in the M105 branch.
   kFlexboxAbsPosJustifyContent = 4330,
   kMultipleFetchHandlersInServiceWorker = 4331,
-  kStorageAccessAPI_requestStorageAccessFor_Method = 4332,
+  kOBSOLETE_StorageAccessAPI_requestStorageAccessFor_Method = 4332,
   kOBSOLETE_PrivateAggregationApiAll = 4333,
   kOBSOLETE_PrivateAggregationApiFledge = 4334,
   kOBSOLETE_PrivateAggregationApiSharedStorage = 4335,
@@ -5086,7 +5086,7 @@ enum WebFeature {
   kDigitalCredentialsProtocolUnknown = 5770,
   kSetCookieWithEmptyName = 5771,
   kSetCookieWithEmptyNameAndAmbiguousValue = 5772,
-  kStorageAccessAPI_requestStorageAccessFor_Method_AsyncSuccess = 5773,
+  kOBSOLETE_StorageAccessAPI_requestStorageAccessFor_Method_AsyncSuccess = 5773,
   kWebAudioRenderSizeHint = 5774,
   kWebAudioRenderQuantumSize = 5775,
   kImageElementTimingNotImageOrVideoNode = 5776,
@@ -5357,6 +5357,7 @@ enum WebFeature {
   kHTMLSelectedContentElement = 6040,
   kWebTransportExportKeyingMaterial = 6041,
   kOfflineAudioContextClose = 6042,
+  kViewTransitionPreventSvgFilterPaint = 6043,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

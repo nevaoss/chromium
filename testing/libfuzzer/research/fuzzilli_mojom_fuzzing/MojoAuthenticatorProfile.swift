@@ -1103,7 +1103,11 @@ extension ILType {
 ///
 extension ILType {
     fileprivate static let jsBlinkMojomGetCredentialResponseUnion: ILType = .object(
-        ofGroup: "blink.mojom.GetCredentialResponse")
+        ofGroup: "blink.mojom.GetCredentialResponse",
+        withProperties: [
+            "getAssertionResponse",
+            "passwordResponse",
+        ])
     fileprivate static let jsBlinkMojomGetCredentialResponseUnionGetAssertionResponseConstructor: ILType = .constructor(
         [.plain(.jsBlinkMojomGetAssertionResponse)] => .jsBlinkMojomGetCredentialResponseUnion)
     fileprivate static let jsBlinkMojomGetCredentialResponseUnionPasswordResponseConstructor: ILType = .constructor(
@@ -1114,7 +1118,10 @@ extension ObjectGroup {
     fileprivate static let blinkMojomGetCredentialResponseUnion = ObjectGroup(
         name: "blink.mojom.GetCredentialResponse",
         instanceType: .jsBlinkMojomGetCredentialResponseUnion,
-        properties: [:],
+        properties: [
+            "getAssertionResponse": .jsBlinkMojomGetAssertionResponse,
+            "passwordResponse": .jsBlinkMojomCredentialInfo,
+        ],
         methods: [:]
     )
 }
@@ -1269,6 +1276,7 @@ let mojoAuthenticatorProfile = Profile(
     maxExecsBeforeRespawn: 50,
     timeout: Timeout.interval(11000, 11000),
     codePrefix: """
+        // --- Begin program prefix ---
         let globalRemote = null;
         function getOrCreatePrimaryRemote() {
             if (!globalRemote) {
@@ -1276,8 +1284,13 @@ let mojoAuthenticatorProfile = Profile(
             }
             return globalRemote;
         }
+        // --- End program prefix ---
         """,
-    codeSuffix: "if (globalRemote) {globalRemote.$.close()}",
+    codeSuffix: """
+        // --- Begin program suffix ---
+        if (globalRemote) {globalRemote.$.close()}
+        // --- End program suffix ---
+        """,
     ecmaVersion: v8Profile.ecmaVersion,
     startupTests: [
         ("fuzzilli('FUZZILLI_PRINT', 'test')", .shouldSucceed),

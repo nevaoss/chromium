@@ -231,9 +231,43 @@ TEST_F(VerticalTabStripTopContainerTest, DefaultShowsComboButton) {
   EXPECT_EQ(segmented_control(), nullptr);
 }
 
-TEST_F(VerticalTabStripTopContainerTest, ShowsSegmentedControlWhenEligible) {
+TEST_F(VerticalTabStripTopContainerTest,
+       OrganizerPanelDefaultParamShowsComboButton) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(organizer_panel::kOrganizerPanel);
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  top_container()->UpdateControlsVisibility();
+  LayoutView();
+
+  EXPECT_EQ(segmented_control(), nullptr);
+  EXPECT_TRUE(combo_button()->GetVisible());
+}
+
+TEST_F(VerticalTabStripTopContainerTest,
+       OrganizerPanelParamDisabledShowsComboButton) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "false"}});
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  top_container()->UpdateControlsVisibility();
+  LayoutView();
+
+  EXPECT_EQ(segmented_control(), nullptr);
+  EXPECT_TRUE(combo_button()->GetVisible());
+}
+
+TEST_F(VerticalTabStripTopContainerTest, ShowsSegmentedControlWhenEligible) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "true"}});
   ResetTopContainer();
 
   pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
@@ -261,7 +295,9 @@ TEST_F(VerticalTabStripTopContainerTest, ShowsSegmentedControlWhenEligible) {
 TEST_F(VerticalTabStripTopContainerTest,
        CollapsedExpandOnHoverRendersSegmentedControlAtExpandedWidth) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(organizer_panel::kOrganizerPanel);
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "true"}});
   ResetTopContainer();
 
   pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
@@ -306,9 +342,84 @@ TEST_F(VerticalTabStripTopContainerTest,
 }
 
 TEST_F(VerticalTabStripTopContainerTest,
-       CollapsedExpandOnHoverWithCaptionButtonsExclusionZone) {
+       CollapsedExpandOnHoverRendersComboButtonAtExpandedWidth) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(organizer_panel::kOrganizerPanel);
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  controller()->SetExpandOnHoverEnabled(true);
+  controller()->RequestCollapse(true);
+  EXPECT_TRUE(controller()->IsCollapsed());
+
+  top_container()->UpdateControlsVisibility();
+  EXPECT_EQ(segmented_control(), nullptr);
+  EXPECT_TRUE(combo_button()->GetVisible());
+
+  // When narrow (unhovered), combo button is rendered based on the known
+  // uncollapsed width, outside of the narrow container width.
+  top_container()->SetSize(
+      gfx::Size(tabs::kVerticalTabStripCollapseSnapWidth - 10, 40));
+  views::ProposedLayout layout = top_container()->CalculateProposedLayout(
+      views::SizeBounds(top_container()->size()));
+  auto it = std::ranges::find(layout.child_layouts, combo_button(),
+                              &views::ChildLayout::child_view);
+  ASSERT_NE(it, layout.child_layouts.end());
+  EXPECT_TRUE(it->visible);
+  EXPECT_GT(it->bounds.x(), top_container()->width());
+
+  // When expanded, the combo button fits within the container width.
+  top_container()->SetSize(gfx::Size(300, 40));
+  layout = top_container()->CalculateProposedLayout(
+      views::SizeBounds(top_container()->size()));
+  it = std::ranges::find(layout.child_layouts, combo_button(),
+                         &views::ChildLayout::child_view);
+  ASSERT_NE(it, layout.child_layouts.end());
+  EXPECT_TRUE(it->visible);
+  EXPECT_LE(it->bounds.right(), top_container()->width());
+
+  // When expand on hover is disabled while collapsed, combo button is
+  // laid out vertically inside the collapsed width.
+  controller()->SetExpandOnHoverEnabled(false);
+  top_container()->SetSize(
+      gfx::Size(tabs::kVerticalTabStripCollapseSnapWidth - 10, 40));
+  layout = top_container()->CalculateProposedLayout(
+      views::SizeBounds(top_container()->size()));
+  it = std::ranges::find(layout.child_layouts, combo_button(),
+                         &views::ChildLayout::child_view);
+  ASSERT_NE(it, layout.child_layouts.end());
+  EXPECT_TRUE(it->visible);
+  EXPECT_LE(it->bounds.right(), top_container()->width());
+}
+
+TEST_F(VerticalTabStripTopContainerTest,
+       CollapsedExpandOnHoverOrganizerDisabledLaysOutComboButtonVertically) {
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  controller()->SetExpandOnHoverEnabled(true);
+  controller()->RequestCollapse(true);
+  EXPECT_TRUE(controller()->IsCollapsed());
+
+  top_container()->SetSize(
+      gfx::Size(tabs::kVerticalTabStripCollapseSnapWidth - 10, 40));
+  views::ProposedLayout layout = top_container()->CalculateProposedLayout(
+      views::SizeBounds(top_container()->size()));
+  auto it = std::ranges::find(layout.child_layouts, combo_button(),
+                              &views::ChildLayout::child_view);
+  ASSERT_NE(it, layout.child_layouts.end());
+  EXPECT_TRUE(it->visible);
+  EXPECT_LE(it->bounds.right(), top_container()->width());
+}
+
+TEST_F(VerticalTabStripTopContainerTest,
+       CollapsedExpandOnHoverWithCaptionButtonsExclusionZone) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "true"}});
   ResetTopContainer();
 
   constexpr int kCaptionButtonWidth = 50;
@@ -347,4 +458,140 @@ TEST_F(VerticalTabStripTopContainerTest,
   ASSERT_NE(collapse_it, layout.child_layouts.end());
   EXPECT_TRUE(collapse_it->visible);
   EXPECT_EQ(collapse_it->bounds.x(), kCaptionButtonWidth);
+}
+
+TEST_F(VerticalTabStripTopContainerTest, IsCollapsedOverrideSwitchesControls) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "true"}});
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  controller()->SetExpandOnHoverEnabled(false);
+  top_container()->UpdateControlsVisibility();
+  LayoutView();
+
+  ASSERT_NE(segmented_control(), nullptr);
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+  EXPECT_FALSE(controller()->IsCollapsed());
+
+  // Simulate passing the collapse threshold mid-drag to collapsed.
+  // The state controller is still uncollapsed, so the override takes effect.
+  top_container()->SetStateOverride(
+      tabs::VerticalTabStripState{.collapsed = true, .uncollapsed_width = 300});
+  EXPECT_FALSE(segmented_control()->GetVisible());
+  EXPECT_TRUE(combo_button()->GetVisible());
+  EXPECT_EQ(top_container()->state_override_for_testing(),
+            (tabs::VerticalTabStripState{.collapsed = true,
+                                         .uncollapsed_width = 300}));
+
+  // When the state controller officially updates to collapsed, the caller
+  // clears the override.
+  controller()->RequestCollapse(true);
+  top_container()->ClearStateOverride();
+  EXPECT_TRUE(controller()->IsCollapsed());
+  EXPECT_EQ(top_container()->state_override_for_testing(), std::nullopt);
+  EXPECT_FALSE(segmented_control()->GetVisible());
+  EXPECT_TRUE(combo_button()->GetVisible());
+
+  // Simulate passing the threshold mid-drag back to uncollapsed.
+  // The state controller is still collapsed, so the override takes effect.
+  top_container()->SetStateOverride(tabs::VerticalTabStripState{
+      .collapsed = false, .uncollapsed_width = 300});
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+  EXPECT_EQ(top_container()->state_override_for_testing(),
+            (tabs::VerticalTabStripState{.collapsed = false,
+                                         .uncollapsed_width = 300}));
+
+  // When the state controller updates back to uncollapsed, the caller clears
+  // the override.
+  controller()->RequestCollapse(false);
+  top_container()->ClearStateOverride();
+  EXPECT_FALSE(controller()->IsCollapsed());
+  EXPECT_EQ(top_container()->state_override_for_testing(), std::nullopt);
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+}
+
+TEST_F(VerticalTabStripTopContainerTest,
+       UncollapsedWidthOverrideSwitchesControls) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "true"}});
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  top_container()->UpdateControlsVisibility();
+  LayoutView();
+
+  ASSERT_NE(segmented_control(), nullptr);
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+
+  // Simulate dragging narrower past the organizer panel threshold (236px)
+  // mid-drag. The state controller still has 300px, but the override is 200px.
+  top_container()->SetStateOverride(tabs::VerticalTabStripState{
+      .collapsed = false, .uncollapsed_width = 200});
+  EXPECT_FALSE(segmented_control()->GetVisible());
+  EXPECT_TRUE(combo_button()->GetVisible());
+  EXPECT_EQ(top_container()->state_override_for_testing(),
+            (tabs::VerticalTabStripState{.collapsed = false,
+                                         .uncollapsed_width = 200}));
+
+  // When the state controller updates to the new width, the caller clears the
+  // override.
+  controller()->SetUncollapsedWidth(200);
+  top_container()->ClearStateOverride();
+  EXPECT_EQ(top_container()->state_override_for_testing(), std::nullopt);
+  EXPECT_FALSE(segmented_control()->GetVisible());
+  EXPECT_TRUE(combo_button()->GetVisible());
+
+  // Simulate dragging wider past the threshold (236px) mid-drag.
+  // The state controller has 200px, but the override is 260px.
+  top_container()->SetStateOverride(tabs::VerticalTabStripState{
+      .collapsed = false, .uncollapsed_width = 260});
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+  EXPECT_EQ(top_container()->state_override_for_testing(),
+            (tabs::VerticalTabStripState{.collapsed = false,
+                                         .uncollapsed_width = 260}));
+
+  // When the state controller updates to the new width, the caller clears the
+  // override.
+  controller()->SetUncollapsedWidth(260);
+  top_container()->ClearStateOverride();
+  EXPECT_EQ(top_container()->state_override_for_testing(), std::nullopt);
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+}
+
+TEST_F(VerticalTabStripTopContainerTest, ModeChangedSwitchesControls) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      organizer_panel::kOrganizerPanel,
+      {{organizer_panel::kOrganizerPanelUseSegmentationControl.name, "true"}});
+  controller()->SetVerticalTabsEnabled(false);
+  ResetTopContainer();
+
+  pref_service()->SetBoolean(prefs::kTabSearchPinnedToTabstrip, true);
+  controller()->SetUncollapsedWidth(300);
+  LayoutView();
+
+  ASSERT_NE(segmented_control(), nullptr);
+  EXPECT_FALSE(segmented_control()->GetVisible());
+  EXPECT_TRUE(combo_button()->GetVisible());
+
+  controller()->SetVerticalTabsEnabled(true);
+  EXPECT_TRUE(segmented_control()->GetVisible());
+  EXPECT_FALSE(combo_button()->GetVisible());
+
+  controller()->SetVerticalTabsEnabled(false);
+  EXPECT_FALSE(segmented_control()->GetVisible());
+  EXPECT_TRUE(combo_button()->GetVisible());
 }

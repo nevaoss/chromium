@@ -335,6 +335,12 @@ class FakeRenderWidgetHostViewAura : public RenderWidgetHostViewAura {
 
   bool ShouldSkipCursorUpdate() const override { return false; }
 
+  bool CanSynchronizeVisualProperties() override {
+    ++can_synchronize_visual_properties_count_;
+    return RenderWidgetHostViewAura::CanSynchronizeVisualProperties();
+  }
+
+  size_t can_synchronize_visual_properties_count_ = 0;
   gfx::Size last_frame_size_;
   raw_ptr<FakeWindowEventDispatcher> dispatcher_;
 };
@@ -5711,6 +5717,56 @@ TEST_F(RenderWidgetHostViewAuraTest,
 }
 #endif
 
+// Verify that SetBounds/SetSize does not re-entrantly invoke InternalSetBounds
+// a second time via OnBoundsChanged when kPreventReentrantInternalSetBounds is
+// enabled, while still syncing direct window()->SetBounds() calls.
+TEST_F(RenderWidgetHostViewAuraTest, SetBoundsDoesNotReenterInternalSetBounds) {
+  InitViewForFrame(nullptr);
+  ParentHostView(view_, parent_view_);
+  view_->ShowWithVisibility(PageVisibilityState::kVisible);
+
+  // Force CanSynchronizeVisualProperties() to return false so
+  // visual_properties_ack_pending_ does not short-circuit a second call.
+  view_->needs_to_update_display_metrics_ = true;
+
+  {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndDisableFeature(kPreventReentrantInternalSetBounds);
+    view_->can_synchronize_visual_properties_count_ = 0;
+
+    view_->SetBounds(gfx::Rect(0, 0, 150, 150));
+    EXPECT_EQ(2u, view_->can_synchronize_visual_properties_count_);
+    EXPECT_EQ(gfx::Size(150, 150), view_->GetViewBounds().size());
+
+    view_->SetSize(gfx::Size(250, 250));
+    EXPECT_EQ(4u, view_->can_synchronize_visual_properties_count_);
+    EXPECT_EQ(gfx::Size(250, 250), view_->GetViewBounds().size());
+
+    view_->window()->SetBounds(gfx::Rect(0, 0, 350, 350));
+    EXPECT_EQ(5u, view_->can_synchronize_visual_properties_count_);
+    EXPECT_EQ(gfx::Size(350, 350), view_->GetViewBounds().size());
+  }
+
+  {
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndEnableFeature(kPreventReentrantInternalSetBounds);
+    view_->can_synchronize_visual_properties_count_ = 0;
+
+    view_->SetBounds(gfx::Rect(0, 0, 200, 200));
+    EXPECT_EQ(1u, view_->can_synchronize_visual_properties_count_);
+    EXPECT_EQ(gfx::Size(200, 200), view_->GetViewBounds().size());
+
+    view_->SetSize(gfx::Size(300, 300));
+    EXPECT_EQ(2u, view_->can_synchronize_visual_properties_count_);
+    EXPECT_EQ(gfx::Size(300, 300), view_->GetViewBounds().size());
+
+    // Direct window()->SetBounds() must still sync visual properties once.
+    view_->window()->SetBounds(gfx::Rect(0, 0, 400, 400));
+    EXPECT_EQ(3u, view_->can_synchronize_visual_properties_count_);
+    EXPECT_EQ(gfx::Size(400, 400), view_->GetViewBounds().size());
+  }
+}
+
 // Test that we elide touchpad pinch gesture steams consisting of only begin
 // and end events.
 TEST_F(RenderWidgetHostViewAuraTest, ElideEmptyTouchpadPinchSequence) {
@@ -7166,21 +7222,12 @@ TEST_F(RenderWidgetHostViewAuraInputMethodTest,
   GetInputMethod()->RemoveObserver(this);
 }
 
-// Mock InputMethod that runs a closure when OnCaretBoundsChanged is invoked.
-// Simulates a Windows TSF IME whose ITextStoreACPSink::OnLayoutChange handler
-// pumps the thread message queue, allowing a queued task to synchronously
-// destroy the RenderWidgetHostViewAura while it is still inside
-// OnBoundsChanged().
+// Mock InputMethod that runs a closure when IME methods are invoked.
+// Simulates a platform IME whose handler pumps the thread message queue,
+// allowing a queued task to synchronously destroy the RenderWidgetHostViewAura.
 class DestroyingMockInputMethod : public ui::MockInputMethod {
  public:
   DestroyingMockInputMethod() : ui::MockInputMethod(nullptr) {}
-
-  void OnCaretBoundsChanged(const ui::TextInputClient* client) override {
-    ui::MockInputMethod::OnCaretBoundsChanged(client);
-    if (on_caret_bounds_changed_) {
-      std::move(on_caret_bounds_changed_).Run();
-    }
-  }
 
   void OnTextInputTypeChanged(ui::TextInputClient* client) override {
     ui::MockInputMethod::OnTextInputTypeChanged(client);
@@ -7210,10 +7257,6 @@ class DestroyingMockInputMethod : public ui::MockInputMethod {
     }
   }
 
-  void set_on_caret_bounds_changed(base::OnceClosure closure) {
-    on_caret_bounds_changed_ = std::move(closure);
-  }
-
   void set_on_text_input_type_changed(base::OnceClosure closure) {
     on_text_input_type_changed_ = std::move(closure);
   }
@@ -7232,7 +7275,6 @@ class DestroyingMockInputMethod : public ui::MockInputMethod {
   }
 
  private:
-  base::OnceClosure on_caret_bounds_changed_;
   base::OnceClosure on_text_input_type_changed_;
   base::OnceClosure on_set_virtual_keyboard_visibility_if_enabled_;
   base::OnceClosure on_detach_text_input_client_;
@@ -7258,40 +7300,6 @@ class RenderWidgetHostViewAuraReentrantDestructionIME
  protected:
   raw_ptr<DestroyingMockInputMethod> input_method_ = nullptr;
 };
-
-// RWHVA::OnBoundsChanged() constructs a base::AutoReset<bool> holding
-// &in_bounds_changed_, then calls GetInputMethod()->OnCaretBoundsChanged(this).
-// On Windows that reaches TSFTextStore::SendOnLayoutChange ->
-// text_store_acp_sink_->OnLayoutChange(), a synchronous COM call into the
-// active third-party IME. If the IME pumps messages and the view is destroyed
-// re-entrantly, on unwind UpdateInsetsWithVirtualKeyboardEnabled() and
-// ~AutoReset both touch freed memory. AutoReset::scoped_variable_ is
-// RAW_PTR_EXCLUSION, so it is not MiraclePtr-protected: the ~AutoReset write
-// lands in a freed (un-quarantined) slot.
-TEST_F(RenderWidgetHostViewAuraReentrantDestructionIME,
-       DestroyDuringOnCaretBoundsChanged) {
-  InitViewForFrame(nullptr);
-  ParentHostView(view_, parent_view_);
-  // `view_` shares the root window (and thus the InputMethod) with
-  // `parent_view_`.
-  ASSERT_EQ(static_cast<ui::InputMethod*>(input_method_.get()),
-            GetInputMethod());
-
-  // Arrange for the view to be synchronously destroyed inside
-  // OnCaretBoundsChanged, simulating re-entrant destruction triggered by a
-  // TSF IME callout that pumps a queued window.close() / renderer-gone task.
-  FakeRenderWidgetHostViewAura* raw_view = view_.get();
-  input_method_->set_on_caret_bounds_changed(base::BindLambdaForTesting([&]() {
-    widget_host_ = nullptr;
-    view_.ExtractAsDangling()->DestroyOrDefer();
-  }));
-
-  // Under ASAN this triggers heap-use-after-free in
-  // UpdateInsetsWithVirtualKeyboardEnabled() (read of freed
-  // keyboard_occluded_bounds_) followed by a write-after-free in
-  // ~AutoReset<bool> to the freed in_bounds_changed_ slot.
-  raw_view->OnBoundsChanged(gfx::Rect(), gfx::Rect(0, 0, 100, 100));
-}
 
 // RWHVA::OnUpdateTextInputStateCalled() calls
 // GetInputMethod()->OnTextInputTypeChanged(this), which on Windows reaches

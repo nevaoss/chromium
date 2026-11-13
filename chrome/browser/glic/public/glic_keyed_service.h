@@ -59,6 +59,7 @@ class GlicMetrics;
 class GlicProfileManager;
 class GlicProviderSpec;
 class GlicShareImageHandler;
+class GlicClientDataStorage;
 class GlicTabDataObserver;
 class GlicTabFaviconObserver;
 class GlicInstanceCoordinator;
@@ -264,6 +265,7 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   GlicTabFaviconObserver& tab_favicon_observer() {
     return *tab_favicon_observer_;
   }
+  GlicClientDataStorage& client_data_storage() { return *client_data_storage_; }
 
   using ActOnWebCapabilityChangedCallback = base::RepeatingCallback<void(bool)>;
   base::CallbackListSubscription AddActOnWebCapabilityChangedCallback(
@@ -292,6 +294,10 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
 
   void OnExperimentalTriggeringStateChanged();
 
+#if BUILDFLAG(IS_ANDROID)
+  void OnBrowserWindowClosed(BrowserWindowInterface* browser);
+#endif
+
   // List of callbacks to be notified when the client requests a change to the
   // context access indicator status.
   base::RepeatingCallbackList<void(bool)>
@@ -304,14 +310,15 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
 
   raw_ptr<Profile> profile_;
 
-  // Never null - GlicActorTaskManager and GlicInstanceCoordinatorImpl hold a
-  // reference to this so it must be destroyed after them.
+  // Never null - GlicActorTaskManager, GlicInstanceCoordinatorImpl and
+  // GlicEnabling hold a reference to this so it must be destroyed after them.
   std::unique_ptr<GlicActorPolicyChecker> actor_policy_checker_;
 
   std::unique_ptr<GlicEnabling> enabling_;
   std::unique_ptr<GlicProviderSpec> provider_spec_;
   std::unique_ptr<GlicMetrics> metrics_;
   std::unique_ptr<GlicExperimentalOptInController> opt_in_controller_;
+  std::unique_ptr<GlicClientDataStorage> client_data_storage_;
   // Is a GlicInstanceCoordinatorImpl.
   std::unique_ptr<GlicInstanceCoordinator> instance_coordinator_;
   std::unique_ptr<LegacyGlicActivityManager> legacy_activity_manager_;
@@ -331,8 +338,6 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   base::CallbackListSubscription experimental_triggering_state_subscription_;
 
 #if BUILDFLAG(IS_ANDROID)
-  void OnBrowserWindowClosed(BrowserWindowInterface* browser);
-
   base::flat_map<BrowserWindowInterface*,
                  std::unique_ptr<class GlicSplitButtonController>>
       button_controllers_;

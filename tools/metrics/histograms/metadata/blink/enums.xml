@@ -4960,7 +4960,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="4329" label="ReplacedElementPaintedWithLargeOverflow"/>
   <int value="4330" label="FlexboxAbsPosJustifyContent"/>
   <int value="4331" label="MultipleFetchHandlersInServiceWorker"/>
-  <int value="4332" label="StorageAccessAPI_requestStorageAccessFor_Method"/>
+  <int value="4332"
+      label="OBSOLETE_StorageAccessAPI_requestStorageAccessFor_Method"/>
   <int value="4333" label="OBSOLETE_PrivateAggregationApiAll"/>
   <int value="4334" label="OBSOLETE_PrivateAggregationApiFledge"/>
   <int value="4335" label="OBSOLETE_PrivateAggregationApiSharedStorage"/>
@@ -6573,7 +6574,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5771" label="SetCookieWithEmptyName"/>
   <int value="5772" label="SetCookieWithEmptyNameAndAmbiguousValue"/>
   <int value="5773"
-      label="StorageAccessAPI_requestStorageAccessFor_Method_AsyncSuccess"/>
+      label="OBSOLETE_StorageAccessAPI_requestStorageAccessFor_Method_AsyncSuccess"/>
   <int value="5774" label="WebAudioRenderSizeHint"/>
   <int value="5775" label="WebAudioRenderQuantumSize"/>
   <int value="5776" label="ImageElementTimingNotImageOrVideoNode"/>
@@ -6857,6 +6858,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="6040" label="HTMLSelectedContentElement"/>
   <int value="6041" label="WebTransportExportKeyingMaterial"/>
   <int value="6042" label="OfflineAudioContextClose"/>
+  <int value="6043" label="ViewTransitionPreventSvgFilterPaint"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -7017,6 +7019,7 @@ Called by update_permissions_policy_enum.py.-->
   <int value="147" label="WebNN"/>
   <int value="148" label="Haptics"/>
   <int value="149" label="PublicKeyCredentialsRemoteClientDataJson"/>
+  <int value="150" label="UnboundedElement"/>
 </enum>
 
 <!-- LINT.IfChange(FedCmAccountChooserResult) -->
@@ -8593,7 +8596,7 @@ Called by update_use_counter_css.py.-->
   <int value="805" label="text-wrap-mode"/>
   <int value="806" label="text-wrap-style"/>
   <int value="807" label="masonry-track (obsolete)"/>
-  <int value="808" label="flow-tolerance"/>
+  <int value="808" label="fit-tolerance"/>
   <int value="809" label="caret-animation"/>
   <int value="810" label="view-transition-capture-mode (obsolete)"/>
   <int value="811" label="interactivity"/>
@@ -9332,7 +9335,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="421" label="Proofreader"/>
   <int value="422" label="Rewriter"/>
   <int value="423" label="Writer"/>
-  <int value="424" label="DRAFT_InstallElement"/>
+  <int value="424" label="Install"/>
   <int value="425" label="Languagedetector"/>
   <int value="426" label="Translator"/>
   <int value="427" label="DocumentModelcontext"/>

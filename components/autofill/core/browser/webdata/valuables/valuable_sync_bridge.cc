@@ -32,10 +32,10 @@
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_sync_util.h"
 #include "components/autofill/core/browser/webdata/autofill_change.h"
+#include "components/autofill/core/browser/webdata/autofill_sync_bridge_util.h"
 #include "components/autofill/core/browser/webdata/autofill_sync_metadata_table.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
 #include "components/autofill/core/browser/webdata/payments/payments_autofill_table.h"
-#include "components/autofill/core/browser/webdata/payments/payments_sync_bridge_util.h"
 #include "components/autofill/core/browser/webdata/valuables/valuables_sync_util.h"
 #include "components/autofill/core/browser/webdata/valuables/valuables_table.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -192,10 +192,17 @@ bool IsSyncWalletShoppingEnabled() {
 }
 
 bool IsSyncWalletDirectOffersEnabled(std::string_view app_locale) {
-  return (app_locale == "en-US" || app_locale == "en-CA" ||
-          app_locale == "en-GB") &&
-         base::FeatureList::IsEnabled(
-             features::kAutofillEnableWalletDirectOffers);
+  if (!base::FeatureList::IsEnabled(
+          features::kAutofillEnableWalletDirectOffers)) {
+    return false;
+  }
+  if (base::FeatureList::IsEnabled(
+          features::
+              kAutofillDisableWalletDirectOffersLocaleCountryCheckForTesting)) {
+    return true;
+  }
+  return app_locale == "en-US" || app_locale == "en-CA" ||
+         app_locale == "en-GB";
 }
 
 // Returns if the entity `change` should be uploaded to AUTOFILL_VALUABLE.
@@ -754,7 +761,13 @@ ValuableDatabaseOperationResult ValuableSyncBridge::SetWalletDirectOffers(
   std::vector<std::unique_ptr<AutofillOfferData>> existing_offers;
   table->GetAutofillOffers(&existing_offers);
 
-  if (!AreAnyItemsDifferent(existing_offers, wallet_direct_offers)) {
+  if (!AreAnyItemsDifferent(
+          existing_offers, wallet_direct_offers,
+          [](const AutofillOfferData& a, const AutofillOfferData& b) {
+            return a.Compare(b) < 0;
+          },
+          [](const std::unique_ptr<AutofillOfferData>& offer)
+              -> const AutofillOfferData& { return *offer; })) {
     return ValuableDatabaseOperationResult::kNoChange;
   }
 
@@ -869,7 +882,7 @@ std::optional<syncer::ModelError> ValuableSyncBridge::SetSyncData(
 
 void ValuableSyncBridge::EntityInstanceChanged(
     const EntityInstanceChange& change,
-    std::optional<std::string_view> context_token) {
+    std::optional<std::string_view> legal_message_token) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!IsSyncWalletFlightReservationsEnabled() &&
       !IsSyncWalletVehicleRegistrationsEnabled()) {
@@ -896,17 +909,17 @@ void ValuableSyncBridge::EntityInstanceChanged(
           CreateEntityDataFromEntityInstance(
               change.data_model(),
               GetPossiblyTrimmedValuableSpecifics(*change.key()),
-              context_token.value_or("")),
+              legal_message_token.value_or("")),
           metadata_change_list.get());
       break;
     case EntityInstanceChange::UPDATE:
-      CHECK(!context_token.has_value());
+      CHECK(!legal_message_token.has_value());
       change_processor()->Put(
           *change.key(),
           CreateEntityDataFromEntityInstance(
               change.data_model(),
               GetPossiblyTrimmedValuableSpecifics(*change.key()),
-              /*context_token=*/{}),
+              /*legal_message_token=*/{}),
           metadata_change_list.get());
       break;
     case EntityInstanceChange::REMOVE:

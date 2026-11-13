@@ -56,6 +56,7 @@
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 #include "components/autofill/core/browser/integrators/at_memory/mock_at_memory_query_service.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/mock_autofill_ai_manager.h"
 #include "components/autofill/core/browser/integrators/compose/autofill_compose_delegate.h"
 #include "components/autofill/core/browser/integrators/compose/mock_autofill_compose_delegate.h"
@@ -286,6 +287,10 @@ class MockAutofillClient : public TestAutofillClient {
   MOCK_METHOD(void, OpenGmailForOtps, (), (override));
   MOCK_METHOD(void, OpenGeminiInSidebar, (const std::u16string&), (override));
   MOCK_METHOD(void, ShowAutofillSettings, (SuggestionType), (override));
+  MOCK_METHOD(void,
+              TriggerOneTimePasswordDismissalPersonalizationAndTrustSurvey,
+              (const HatsSurveyStringData&),
+              (override));
   MOCK_METHOD(AutofillComposeDelegate*, GetComposeDelegate, (), (override));
   MOCK_METHOD(IdentityCredentialDelegate*,
               GetIdentityCredentialDelegate,
@@ -1811,6 +1816,48 @@ TEST_F(AutofillExternalDelegateTest,
   EXPECT_CALL(autofill_manager(), OnSuggestionsHidden(reason));
 
   external_delegate().OnSuggestionsHidden(reason);
+}
+
+// Tests that a HaT survey is triggered when dismissing a popup without
+// accepting one of the shown OTP suggestions.
+TEST_F(AutofillExternalDelegateTest,
+       PersonalizationAndTrustSurvey_OtpDismissal) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillPersonalizationAndTrustOneTimePasswordSurvey};
+  IssueOnQuery();
+
+  OnSuggestionsReturned(queried_field(),
+                        {Suggestion(SuggestionType::kOneTimePasswordEntry)});
+
+  EXPECT_CALL(autofill_client(),
+              TriggerOneTimePasswordDismissalPersonalizationAndTrustSurvey(
+                  HatsSurveyStringData{
+                      {"GIC opt-in accepted", "false"},
+                      {"Origin of the website (eTLD+1)", "example.test"},
+                      {"OTP type", "SMS"},
+                      {"Personal Intelligence available", "true"},
+                      {"Type of dismissal", "User dismissed"}}));
+
+  external_delegate().OnSuggestionsHidden(SuggestionHidingReason::kUserAborted);
+}
+
+// Tests that no OTP dismissal HaT survey is triggered when accepting an OTP
+// suggestion.
+TEST_F(AutofillExternalDelegateTest,
+       PersonalizationAndTrustSurvey_NoDismissalSurvey_OnOtpFilling) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillPersonalizationAndTrustOneTimePasswordSurvey};
+  IssueOnQuery();
+
+  OnSuggestionsReturned(queried_field(),
+                        {Suggestion(SuggestionType::kOneTimePasswordEntry)});
+
+  EXPECT_CALL(autofill_client(),
+              TriggerOneTimePasswordDismissalPersonalizationAndTrustSurvey)
+      .Times(0);
+
+  external_delegate().OnSuggestionsHidden(
+      SuggestionHidingReason::kAcceptSuggestion);
 }
 
 // Tests that the Autofill delegate fills a form with a VCN when a suggestion
@@ -4100,9 +4147,13 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
   ASSERT_FALSE(dialog_callback.is_null());
 
   EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification);
+  base::HistogramTester histogram_tester;
   std::move(dialog_callback).Run(/*confirmed=*/true);
   EXPECT_TRUE(
       autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.Suppression.ConfirmationDialogResult",
+      EntitySuppressionConfirmationDialogResult::kAccepted, 1);
 }
 
 // Tests that cancelling the dialog does not suppress the entity.
@@ -4116,10 +4167,14 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
   EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification)
       .Times(0);
 
+  base::HistogramTester histogram_tester;
   external_delegate().DidAcceptSuggestion(remove_suggestion,
                                           {.multi_index = {0}});
   EXPECT_FALSE(
       autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.Suppression.ConfirmationDialogResult",
+      EntitySuppressionConfirmationDialogResult::kCancelled, 1);
 }
 
 // Tests that removing a `kFillAutofillAi` suggestion (e.g. via Shift+Delete)

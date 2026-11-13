@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
-
 #include <optional>
 
 #include "base/test/scoped_feature_list.h"
@@ -27,7 +25,6 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "chrome/test/user_education/interactive_feature_promo_test.h"
-#include "components/accessibility/reading/distillable_pages.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/optimization_guide/proto/hints.pb.h"
 #include "components/tabs/public/tab_interface.h"
@@ -66,21 +63,6 @@ class ReadAnythingSidePanelControllerTest : public InProcessBrowserTest {
         ->RemoveObserver(observer);
   }
 
-  void OnEntryShown(SidePanelEntry* entry) {
-    ReadAnythingOpenTrigger read_anything_trigger =
-        entry->last_open_trigger().has_value()
-            ? read_anything::SidePanelToReadAnythingOpenTrigger(
-                  entry->last_open_trigger().value())
-            : ReadAnythingOpenTrigger::kUnknown;
-    ReadAnythingController::From(browser()->GetActiveTabInterface())
-        ->OnEntryShown(read_anything_trigger);
-  }
-
-  void OnEntryHidden(SidePanelEntry* entry) {
-    ReadAnythingController::From(browser()->GetActiveTabInterface())
-        ->OnEntryHidden();
-  }
-
  protected:
   MockReadAnythingLifecycleObserver read_anything_observer_;
 };
@@ -108,7 +90,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingSidePanelControllerTest,
   EXPECT_CALL(read_anything_observer_,
               Activate(true, ReadAnythingOpenTrigger::kOmniboxChip, testing::_))
       .Times(1);
-  OnEntryShown(entry);
+  entry->OnEntryShown();
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingSidePanelControllerTest,
@@ -122,76 +104,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingSidePanelControllerTest,
   EXPECT_CALL(read_anything_observer_,
               Activate(false, ReadAnythingOpenTrigger::kUnknown, testing::_))
       .Times(1);
-  OnEntryHidden(entry);
-}
-
-IN_PROC_BROWSER_TEST_F(ReadAnythingSidePanelControllerTest,
-                       TabWillDetach_MarkOmniboxIgnoredIfGoodCandidate) {
-  browser()->GetActiveTabInterface()->Close();
-}
-
-class ReadAnythingCUJTest : public InteractiveFeaturePromoTest {
- public:
-  template <typename... Args>
-  explicit ReadAnythingCUJTest(Args&&... args)
-      : InteractiveFeaturePromoTest(
-            UseDefaultTrackerAllowingPromos({std::forward<Args>(args)...})) {}
-  void SetUp() override {
-    ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
-    distillable_url_ =
-        embedded_test_server()->GetURL(kDocumentWithNamedElement);
-    non_distillable_url_ = GURL("chrome://blank");
-    a11y::SetDistillableDomainsForTesting({distillable_url_.GetHost()});
-    feature_list_.InitWithExistingFeatures(
-        {feature_engagement::kIPHReadingModeSidePanelFeature});
-
-    InteractiveFeaturePromoTest::SetUp();
-  }
-  void SetUpOnMainThread() override {
-    InteractiveFeaturePromoTest::SetUpOnMainThread();
-    embedded_test_server()->StartAcceptingConnections();
-  }
-  void TearDownOnMainThread() override {
-    EXPECT_TRUE(embedded_test_server()->ShutdownAndWaitUntilComplete());
-    InteractiveFeaturePromoTest::TearDownOnMainThread();
-  }
-  GURL distillable_url_;
-  GURL non_distillable_url_;
-  feature_engagement::test::ScopedIphFeatureList feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(ReadAnythingCUJTest, ShowAndHideIphAfterTabSwitch) {
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTab);
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSecondTab);
-  RunTestSequence(
-      // First tab is non-distillable, second tab is distillable.
-      InstrumentTab(kFirstTab),
-      NavigateWebContents(kFirstTab, non_distillable_url_),
-      AddInstrumentedTab(kSecondTab, distillable_url_),
-
-      // Select the second tab, wait for promo to show.
-      SelectTab(kTabStripElementId, 1),
-      WaitForPromo(feature_engagement::kIPHReadingModeSidePanelFeature),
-
-      // Select the first tab, wait for promo to hide.
-      SelectTab(kTabStripElementId, 0),
-      WaitForHide(
-          user_education::HelpBubbleView::kHelpBubbleElementIdForTesting));
-}
-
-IN_PROC_BROWSER_TEST_F(ReadAnythingCUJTest, ShowAndHideIphAfterNavigation) {
-  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
-  RunTestSequence(
-      InstrumentTab(kActiveTab),
-      NavigateWebContents(kActiveTab, distillable_url_),
-
-      // Show the Iph after navigating to a distillable domain.
-      WaitForPromo(feature_engagement::kIPHReadingModeSidePanelFeature),
-
-      // Hide the Iph after navigating to a non-distillable domain.
-      NavigateWebContents(kActiveTab, non_distillable_url_),
-      WaitForHide(
-          user_education::HelpBubbleView::kHelpBubbleElementIdForTesting));
+  entry->OnEntryHidden();
 }
 
 class ReadAnythingSidePanelControllerInteractiveTest
@@ -279,7 +192,6 @@ class ReadAnythingKeyboardShortcutCUJTest
     ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
     distillable_url_ = embedded_test_server()->GetURL("/long_text_page.html");
     non_distillable_url_ = GURL("chrome://blank");
-    a11y::SetDistillableDomainsForTesting({distillable_url_.GetHost()});
 
     std::vector<base::test::FeatureRef> enabled_features = {
         features::kReadAnythingOmniboxChip,
@@ -354,7 +266,6 @@ class ReadAnythingPresentationModeCUJTest
     ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
     distillable_url_ = embedded_test_server()->GetURL("/long_text_page.html");
     non_distillable_url_ = GURL("chrome://blank");
-    a11y::SetDistillableDomainsForTesting({distillable_url_.GetHost()});
 
     std::vector<base::test::FeatureRef> enabled_features = {
         features::kReadAnythingOmniboxChip,
@@ -500,7 +411,6 @@ class ReadAnythingAiPlaybackCUJTest
     ASSERT_TRUE(embedded_test_server()->InitializeAndListen());
     distillable_url_ = embedded_test_server()->GetURL("/long_text_page.html");
     non_distillable_url_ = GURL("chrome://blank");
-    a11y::SetDistillableDomainsForTesting({distillable_url_.GetHost()});
 
     std::vector<base::test::FeatureRef> enabled_features = {
         features::kReadAnythingOmniboxChip,

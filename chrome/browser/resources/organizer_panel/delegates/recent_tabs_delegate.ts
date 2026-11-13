@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import '../organizer_zero_state.js';
+
 import {assert} from '//resources/js/assert.js';
 import type {TemplateResult} from '//resources/lit/v3_0/lit.rollup.js';
 import {html} from '//resources/lit/v3_0/lit.rollup.js';
@@ -12,7 +14,7 @@ import type {OrganizerListSectionItem, OrganizerListSectionItemDescriptionPart} 
 import type {BrowserProxy, ProfileData, RecentlyClosedSplitView, RecentlyClosedTab, RecentlyClosedTabGroup, TabsRemovedInfo} from '../tab_search.mojom-webui.js';
 import {browserProxyFactory} from '../tab_search.mojom-webui.js';
 
-import {compareTimeDescending, getSplitViewPrefixIcon, getTabCountText, tokenToString} from './tab_delegate_utils.js';
+import {compareTimeDescending, getHostnameOrUrl, getSplitViewPrefixIcon, getTabCountText, tokenToString} from './tab_delegate_utils.js';
 
 // Union type to represent all possible recently closed items (tabs, tab groups,
 // split views).
@@ -66,9 +68,9 @@ export class RecentTabsDelegate implements
   }
 
   getZeroState(): TemplateResult {
-    return html`<div class="zero-state-text">
+    return html`<organizer-zero-state>
       ${loadTimeData.getString('noRecentlyClosedTabs')}
-    </div>`;
+    </organizer-zero-state>`;
   }
 
   onItemClick(item: OrganizerListSectionItem<RecentlyClosedItem>) {
@@ -152,8 +154,10 @@ export class RecentTabsDelegate implements
       OrganizerListSectionItem<RecentlyClosedItem> {
     return {
       title: [tab.title],
-      description:
-          tab.lastActiveElapsedText ? [{text: tab.lastActiveElapsedText}] : [],
+      description: tab.lastActiveElapsedText ?
+          [{text: tab.lastActiveElapsedText, matchable: false}] :
+          [],
+      extraSearchTerms: [getHostnameOrUrl(tab.url)],
       prefixIcon: {
         url: tab.url,
       },
@@ -165,7 +169,10 @@ export class RecentTabsDelegate implements
       OrganizerListSectionItem<RecentlyClosedItem> {
     const description: OrganizerListSectionItemDescriptionPart[] = [];
     if (splitView.lastActiveElapsedText) {
-      description.push({text: splitView.lastActiveElapsedText});
+      description.push({
+        text: splitView.lastActiveElapsedText,
+        matchable: false,
+      });
     }
     description.push(
         {text: splitView.tabTitles[0]!}, {text: splitView.tabTitles[1]!});
@@ -173,6 +180,7 @@ export class RecentTabsDelegate implements
     return {
       title: [loadTimeData.getString('splitView')],
       description,
+      extraSearchTerms: splitView.tabUrls.map(url => getHostnameOrUrl(url)),
       prefixIcon: getSplitViewPrefixIcon(
           [splitView.tabUrls[0]!, splitView.tabUrls[1]!], splitView.layout),
       data: splitView,
@@ -185,7 +193,7 @@ export class RecentTabsDelegate implements
     return {
       title: [title],
       description: tabGroup.lastActiveElapsedText ?
-          [{text: tabGroup.lastActiveElapsedText}] :
+          [{text: tabGroup.lastActiveElapsedText, matchable: false}] :
           [],
       data: tabGroup,
     };

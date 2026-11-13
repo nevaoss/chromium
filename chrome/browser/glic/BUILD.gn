@@ -87,6 +87,8 @@ source_set("glic") {
     "public/glic_keyed_service_factory.h",
     "public/glic_passkeys.h",
     "public/glic_perf_traits_tracker.h",
+    "public/glic_provider_metrics.cc",
+    "public/glic_provider_metrics.h",
     "public/glic_provider_spec.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
@@ -256,7 +258,10 @@ if (is_android) {
   }
 
   android_library("context_menu_utils_java") {
-    sources = [ "public/android/java/src/org/chromium/chrome/browser/glic/GlicContextMenuUtils.java" ]
+    sources = [
+      "public/android/java/src/org/chromium/chrome/browser/glic/GlicContextMenuUtils.java",
+      "public/android/java/src/org/chromium/chrome/browser/glic/SelectedTextSanitizer.java",
+    ]
     deps = [
       ":public_java",
       "//base:build_info_java",
@@ -277,6 +282,7 @@ if (is_android) {
       ":public_java",
       "//base:base_java",
       "//build/android:build_java",
+      "//third_party/androidx:androidx_annotation_annotation_java",
     ]
   }
 }
@@ -437,6 +443,8 @@ source_set("impl") {
     "host/context/glic_tab_favicon_observer.cc",
     "host/context/glic_tab_favicon_observer.h",
     "host/glic_annotation_manager.cc",
+    "host/glic_client_data_storage.cc",
+    "host/glic_client_data_storage.h",
     "host/glic_cookie_synchronizer.cc",
     "host/glic_cookie_synchronizer.h",
     "host/glic_guest_actionable_mark_observer.cc",
@@ -610,6 +618,7 @@ source_set("impl") {
     "//components/pdf/common:constants",
     "//components/pref_registry",
     "//components/prefs",
+    "//components/security_interstitials/content:security_interstitial_page",
     "//components/services/storage/public/mojom",
     "//components/sessions",
     "//components/skills:features",
@@ -857,6 +866,7 @@ source_set("unit_tests") {
     "public/glic_cui_tracker_unittest.cc",
     "public/glic_enabling_unittest.cc",
     "public/glic_invoke_options_unittest.cc",
+    "public/glic_provider_metrics_unittest.cc",
     "service/glic_invoke_handler_unittest.cc",
     "service/glic_invoke_task_unittest.cc",
     "suggestions/caching_zero_state_suggestions_manager_unittest.cc",
@@ -985,6 +995,7 @@ source_set("browser_tests") {
     "host/glic_api_zss_browsertest.cc",
     "host/glic_chrome_tools_browsertest.cc",
     "host/glic_drag_and_drop_browsertest.cc",
+    "host/glic_file_picker_browsertest.cc",
     "host/glic_internals_browsertest.cc",
     "host/glic_no_webview_contents_manager_browsertest.cc",
     "host/glic_overlay_browsertest.cc",
@@ -1037,6 +1048,7 @@ source_set("browser_tests") {
     "//components/actor/core",
     "//components/actor/public/mojom:mojo_bindings",
     "//components/contextual_tasks/public:feature_list",
+    "//components/critical_actions/core/browser",
     "//components/enterprise/buildflags",
     "//components/enterprise/connectors/core",
     "//components/favicon/content",
@@ -1047,6 +1059,8 @@ source_set("browser_tests") {
     "//components/page_content_annotations/content",
     "//components/page_content_annotations/content:metrics",
     "//components/prefs",
+    "//components/security_interstitials/content:security_interstitial_page",
+    "//components/security_interstitials/core",
     "//components/skills:features",
     "//components/skills/public",
     "//components/sync_device_info:test_support",
@@ -1055,6 +1069,7 @@ source_set("browser_tests") {
     "//pdf:buildflags",
     "//third_party/blink/public/common:headers",
     "//ui/gfx/geometry",
+    "//ui/shell_dialogs",
   ]
 
   if (!is_android) {
@@ -1074,6 +1089,7 @@ source_set("browser_tests") {
       "host/context/glic_tab_data_browsertest.cc",
       "host/glic_focus_browsertest.cc",
       "host/glic_guest_navigation_throttle_browsertest.cc",
+      "host/glic_visibility_browsertest.cc",
       "host/glic_webui_browsertest.cc",
       "host/guest_util_browsertest.cc",
       "public/glic_enabling_browsertest.cc",
@@ -1117,6 +1133,7 @@ source_set("browser_tests") {
       "//chrome/browser/permissions:test_support",
       "//chrome/browser/policy:test_support",
       "//chrome/browser/prefs",
+      "//chrome/browser/signin/e2e_tests:test_support",
       "//chrome/browser/skills",
       "//chrome/browser/skills:ui",
       "//chrome/browser/subscription_eligibility",
@@ -1176,6 +1193,7 @@ source_set("browser_tests") {
       "//chrome/test:test_support_ui_android",
       "//chrome/test/data/webui/glic:generate_test_files",
       "//components/messages/android:test_support",
+      "//components/page_content_annotations/content:metrics",
     ]
   }
 

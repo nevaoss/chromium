@@ -367,12 +367,15 @@ void AddChromeColorMixer(ui::ColorProvider* provider,
       ui::kColorSysStateHoverOnSubtle, kColorAppMenuChipBackground)};
   mixer[kColorAppMenuChipForeground] = {ui::kColorSysOnTonalContainer};
   mixer[kColorAppMenuYourChromeBackground] = {ui::kColorSysBaseContainer};
+  mixer[kColorAppMenuYourChromeForeground] = {
+      ui::kColorSysOnBaseTonalContainer};
   mixer[kColorAppMenuToolsAndActionsBackground] = {
       ui::kColorSysNeutralContainer};
+  mixer[kColorAppMenuToolsAndActionsForeground] = {ui::kColorSysOnSurface};
   mixer[kColorAppMenuBlockButtonBackground] = {ui::kColorSysSurface};
   mixer[kColorAppMenuBlockButtonBackgroundHovered] = {
       ui::kColorSysStateHoverOnSubtle};
-  mixer[kColorAppMenuBlockButtonBorder] = {ui::kColorSysInversePrimary};
+  mixer[kColorAppMenuBlockButtonBorder] = {ui::kColorSysTonalOutline};
   mixer[kColorAppMenuBlockButtonForeground] = {ui::kColorSysPrimary};
   mixer[kColorAppMenuFooterButtonForeground] = {ui::kColorSysPrimary};
   mixer[kColorAppMenuFooterButtonForegroundHovered] = {ui::kColorSysPrimary};
@@ -537,6 +540,10 @@ void AddChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorInfoBarContentAreaSeparator] =
       ui::AlphaBlend(kColorInfoBarButtonIcon, kColorInfoBarBackground, 0x3A);
   mixer[kColorInfoBarForeground] = {kColorToolbarText};
+  mixer[kColorInfoBarQueuedCountPillBackground] = ui::BlendTowardMaxContrast(
+      kColorInfoBarBackground, gfx::kGoogleGreyAlpha100);
+  mixer[kColorInfoBarQueuedCountPillForeground] = ui::AlphaBlend(
+      kColorInfoBarForeground, kColorInfoBarQueuedCountPillBackground, 0xB3);
   // kColorInfoBarIcon is referenced in //components/infobars, so
   // we can't use a color id from the chrome namespace. Here we're
   // overriding the default color with something more suitable.

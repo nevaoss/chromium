@@ -61,6 +61,7 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites();
 BASE_DECLARE_FEATURE(kGlicSelectionOverlayPrompt);
 BASE_DECLARE_FEATURE(kGlicSelectionOverlayPromptBox);
 BASE_DECLARE_FEATURE(kGlicSelectionSuggestions);
+BASE_DECLARE_FEATURE_PARAM(std::string, kGlicSelectionSuggestionsCapabilities);
 
 BASE_DECLARE_FEATURE(kGlicSelectionSmallChip);
 extern const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop;
@@ -212,6 +213,7 @@ bool IsGlicNoWebviewEnabled();
 // parameter to the guest URL when NoWebview is enabled.
 BASE_DECLARE_FEATURE(kGlicSetAuthUser);
 BASE_DECLARE_FEATURE(kGlicDisconnectedWebview);
+BASE_DECLARE_FEATURE(kGlicGuestInitialSize);
 
 BASE_DECLARE_FEATURE(kGlicShakeTrigger);
 extern const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel;
@@ -238,6 +240,8 @@ BASE_DECLARE_FEATURE(kGlicBackfillWarmingUsePerformanceManager);
 BASE_DECLARE_FEATURE(kGlicColdWarmingUsePerformanceManager);
 
 BASE_DECLARE_FEATURE(kGlicSsr);
+
+BASE_DECLARE_FEATURE(kGlicClientDataStorage);
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

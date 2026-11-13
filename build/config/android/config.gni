@@ -162,7 +162,7 @@ if (is_android) {
   }
 
   if (!defined(default_target_sdk_version)) {
-    default_target_sdk_version = "37"
+    default_target_sdk_version = "36"
   }
 
   if (!defined(default_lint_android_sdk_root)) {
@@ -295,6 +295,9 @@ if (is_android) {
     # Enables all resource optimizations (shrinking, shortening paths, stripping
     # names).
     optimize_android_resources = !is_java_debug
+
+    # Converts PNG resources (except 9-patch files) to lossless WebP.
+    png_to_webp = !is_java_debug && build_with_chromium && !is_cronet_build
 
     # Controls whether specifying |art_profile_path| automatically adds a binary
     # baseline profile to the APK/AAB.

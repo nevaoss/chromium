@@ -28,6 +28,7 @@ source_set("tabs_public") {
     "//components/favicon/core",
     "//components/safe_browsing:buildflags",
     "//components/sessions:session_id",
+    "//components/site_engagement/content",
     "//components/split_tabs",
     "//components/tab_groups",
     "//components/tabs:public",
@@ -208,6 +209,7 @@ source_set("tabs_impl") {
     "//chrome/browser/resource_coordinator",
     "//chrome/browser/safe_browsing",
     "//chrome/browser/search_engines",
+    "//chrome/browser/sessions",
     "//chrome/browser/site_protection",
     "//chrome/browser/ssl",
     "//chrome/browser/storage_access_api",
@@ -275,6 +277,7 @@ source_set("tabs_impl") {
     "//components/tabs:public",
     "//components/ukm/content",
     "//components/webapps/browser",
+    "//components/zoom",
     "//content/public/browser",
     "//extensions/buildflags",
     "//media",
@@ -637,6 +640,7 @@ if (is_android) {
       "tab_web_contents_destroyer.cc",
       "tab_web_contents_destroyer.h",
       "tabbed_startup_window_policy_delegate_bridge.cc",
+      "tabbed_startup_window_policy_delegate_bridge.h",
       "trusted_cdn.cc",
       "trusted_cdn.h",
       "usage_stats/usage_stats_bridge.cc",
@@ -808,7 +812,6 @@ if (is_android) {
       "//chrome/browser/translate/android:android_impl",
       "//chrome/browser/translate/android:jni_headers",
       "//chrome/browser/ui:recently_audible_helper",
-      "//chrome/browser/ui:tab_helpers",
       "//chrome/browser/ui/android",
       "//chrome/browser/ui/android:context_menu_helper",
       "//chrome/browser/ui/android/autofill",
@@ -978,6 +981,7 @@ if (is_android) {
       "//ui/accessibility",
       "//ui/base/unowned_user_data",
       "//ui/menus",
+      "//ui/webui:buildflags",
       "//url",
 
       # TODO(crbug.com/372647115): When c/b/android/oom_intervention gets
@@ -1194,6 +1198,20 @@ if (is_android) {
         ]
       }
     }
+
+    if (enable_webui_tabstrip_ntb) {
+      sources += [
+        "compositor/tab_strip_ntb_webui_host.cc",
+        "compositor/tab_strip_ntb_webui_host.h",
+      ]
+      deps += [
+        "//chrome/browser/ui/tabs/tab_strip_api/android_tab_model_impl",
+        "//chrome/browser/ui/webui/tabstrip_ntb",
+        "//components/browser_apis/tab_strip:service",
+      ]
+    } else {
+      sources += [ "compositor/tab_strip_ntb_webui_host_stub.cc" ]
+    }
   }
 }
 
@@ -1232,6 +1250,7 @@ source_set("unit_tests") {
     "selection/chrome_selection_dropdown_menu_delegate_unittest.cc",
     "tab_android_unittest.cc",
     "tab_web_contents_destroyer_unittest.cc",
+    "tabbed_startup_window_policy_delegate_bridge_unittest.cc",
     "usage_stats/usage_stats_database_unittest.cc",
     "webapps/twa_launch_queue_delegate_unittest.cc",
     "webapps/twa_launch_queue_tab_helper_unittest.cc",
@@ -1257,10 +1276,10 @@ source_set("unit_tests") {
     "//chrome/browser/flags:flags_android",
     "//chrome/browser/permissions",
     "//chrome/browser/persisted_state_db",
+    "//chrome/browser/prefs:util",
     "//chrome/browser/renderer_host",
     "//chrome/browser/search_engines",
     "//chrome/browser/sessions",
-    "//chrome/browser/ui:tab_helpers",
     "//chrome/browser/ui/android/tab_model",
     "//chrome/browser/ui/contextual_search",
     "//chrome/browser/ui/javascript_dialogs",

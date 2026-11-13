@@ -16,16 +16,18 @@
 #include "base/test/values_test_util.h"
 #include "base/values.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
-#include "chrome/browser/actor/tools/attempt_otp_filling_tool_request.h"
+#include "chrome/browser/actor/tools/bookmark_management_tool_request.h"
 #include "chrome/browser/actor/tools/click_tool_request.h"
 #include "chrome/browser/actor/tools/file_upload_tool_request.h"
 #include "chrome/browser/actor/tools/find_and_highlight_tool_request.h"
 #include "chrome/browser/actor/tools/history_tool_request.h"
 #include "chrome/browser/actor/tools/media_control_tool_request.h"
 #include "chrome/browser/actor/tools/navigate_tool_request.h"
+#include "chrome/browser/actor/tools/one_time_token/attempt_otp_filling_tool_request.h"
 #include "chrome/browser/actor/tools/perform_search_tool_request.h"
 #include "chrome/browser/actor/tools/registry/tool_definition.h"
 #include "chrome/browser/actor/tools/registry/tool_definition_test_util.h"
+#include "chrome/browser/actor/tools/scroll_to_tool_request.h"
 #include "chrome/browser/actor/tools/scroll_tool_request.h"
 #include "chrome/browser/actor/tools/select_tool_request.h"
 #include "chrome/browser/actor/tools/tool_request.h"
@@ -325,6 +327,42 @@ TEST(ToolRegistryTest, FileUploadToolDefinition) {
               RequiresParam(FileUploadToolRequest::kFileUrlsParam));
 }
 
+TEST(ToolRegistryTest, ScrollToToolDefinition) {
+  const std::optional<ToolDefinition> definition =
+      ScrollToToolRequest::GetToolDefinition();
+  ASSERT_TRUE(definition.has_value());
+  EXPECT_EQ(definition->id, ToolId::kScrollTo);
+  EXPECT_EQ(definition->name, ScrollToToolRequest::kModelFacingName);
+  EXPECT_THAT(*definition,
+              HasParamOfType(ScrollToToolRequest::kDomNodeIdParam, "integer"));
+  EXPECT_THAT(*definition, RequiresParam(ScrollToToolRequest::kDomNodeIdParam));
+}
+
+TEST(ToolRegistryTest, AddBookmarkToolDefinition) {
+  const std::optional<ToolDefinition> definition =
+      AddBookmarkToolRequest::GetToolDefinition();
+  ASSERT_TRUE(definition.has_value());
+  EXPECT_EQ(definition->id, ToolId::kAddBookmark);
+  EXPECT_EQ(definition->name, AddBookmarkToolRequest::kModelFacingName);
+  EXPECT_THAT(*definition,
+              HasParamOfType(AddBookmarkToolRequest::kUrlParam, "string"));
+  EXPECT_THAT(*definition, RequiresParam(AddBookmarkToolRequest::kUrlParam));
+  EXPECT_THAT(*definition,
+              HasParamOfType(AddBookmarkToolRequest::kTitleParam, "string"));
+  EXPECT_THAT(*definition, RequiresParam(AddBookmarkToolRequest::kTitleParam));
+}
+
+TEST(ToolRegistryTest, RemoveBookmarkToolDefinition) {
+  const std::optional<ToolDefinition> definition =
+      RemoveBookmarkToolRequest::GetToolDefinition();
+  ASSERT_TRUE(definition.has_value());
+  EXPECT_EQ(definition->id, ToolId::kRemoveBookmark);
+  EXPECT_EQ(definition->name, RemoveBookmarkToolRequest::kModelFacingName);
+  EXPECT_THAT(*definition,
+              HasParamOfType(RemoveBookmarkToolRequest::kUrlParam, "string"));
+  EXPECT_THAT(*definition, RequiresParam(RemoveBookmarkToolRequest::kUrlParam));
+}
+
 TEST(ToolRegistryTest, GetAllToolsContainsNavigateTool) {
   base::test::ScopedFeatureList scoped_feature_list(features::kGlicActor);
   content::BrowserTaskEnvironment task_environment;
@@ -602,6 +640,40 @@ TEST(ToolRegistryTest, GetAllToolsContainsCloseTabTool) {
                                     ToolId::kCloseTab, &ToolDefinition::id));
 }
 #endif
+
+TEST(ToolRegistryTest, GetAllToolsContainsScrollToTool) {
+  base::test::ScopedFeatureList scoped_feature_list(features::kGlicActor);
+  content::BrowserTaskEnvironment task_environment;
+  TestingProfile profile;
+  ActorKeyedService* service = ActorKeyedService::Get(&profile);
+  CHECK(service);
+
+  EXPECT_TRUE(std::ranges::contains(service->tool_registry().GetAllTools(),
+                                    ToolId::kScrollTo, &ToolDefinition::id));
+}
+
+TEST(ToolRegistryTest, GetAllToolsContainsAddBookmarkTool) {
+  base::test::ScopedFeatureList scoped_feature_list(features::kGlicActor);
+  content::BrowserTaskEnvironment task_environment;
+  TestingProfile profile;
+  ActorKeyedService* service = ActorKeyedService::Get(&profile);
+  CHECK(service);
+
+  EXPECT_TRUE(std::ranges::contains(service->tool_registry().GetAllTools(),
+                                    ToolId::kAddBookmark, &ToolDefinition::id));
+}
+
+TEST(ToolRegistryTest, GetAllToolsContainsRemoveBookmarkTool) {
+  base::test::ScopedFeatureList scoped_feature_list(features::kGlicActor);
+  content::BrowserTaskEnvironment task_environment;
+  TestingProfile profile;
+  ActorKeyedService* service = ActorKeyedService::Get(&profile);
+  CHECK(service);
+
+  EXPECT_TRUE(std::ranges::contains(service->tool_registry().GetAllTools(),
+                                    ToolId::kRemoveBookmark,
+                                    &ToolDefinition::id));
+}
 
 TEST(ToolRegistryTest, ToolIdToNameReturnsEmptyForUnrecognizedId) {
   EXPECT_TRUE(ToolRegistry::ToolIdToName(kUnrecognizedToolId).empty());

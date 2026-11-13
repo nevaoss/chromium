@@ -202,11 +202,14 @@ ShapeResult* ShapeResultView::CreateShapeResult() const {
         part_run->canvas_rotation_, part_run->script_, part.start_index_,
         /*num_glyphs=*/0, part.num_characters_);
     new_run->glyph_data_.CopyFromRange(part.range_);
-    for (HarfBuzzRunGlyphData& glyph_data :
-         new_run->glyph_data_.MutableGlyphs()) {
-      DCHECK_GE(glyph_data.character_index, part.offset_);
-      glyph_data.character_index -= part.offset_;
-      DCHECK_LT(glyph_data.character_index, part.num_characters_);
+    // Compact identity indices don't need adjustment.
+    if (!new_run->glyph_data_.IsCompact()) {
+      for (HarfBuzzRunGlyphData& glyph_data :
+           new_run->glyph_data_.MutableGlyphs()) {
+        CHECK_GE(glyph_data.character_index, part.offset_);
+        glyph_data.character_index -= part.offset_;
+        CHECK_LT(glyph_data.character_index, part.num_characters_);
+      }
     }
 
     new_run->start_index_ += char_index_offset_;
@@ -268,12 +271,19 @@ void ShapeResultView::PopulateRunInfoParts(const ShapeResultType& other,
       part_width = run->width_;
     } else {
       range = run->FindGlyphDataRange(range_start, range_end);
-      const auto [begin, end] = range.NonCompactGlyphPointers();
-      part_width = std::accumulate(
-          begin, end, InlineLayoutUnit(),
-          [](InlineLayoutUnit sum, const auto& glyph) {
-            return sum + glyph.advance.template To<InlineLayoutUnit>();
-          });
+      if (range.IsCompactSource()) [[unlikely]] {
+        part_width =
+            InlineLayoutUnit::FromRawValue(
+                int64_t{range.CompactSourceAdvance().RawValue()} * range.size())
+                .ToFloat();
+      } else {
+        const auto [begin, end] = range.NonCompactGlyphPointers();
+        part_width = std::accumulate(
+            begin, end, InlineLayoutUnit(),
+            [](InlineLayoutUnit sum, const auto& glyph) {
+              return sum + glyph.advance.template To<InlineLayoutUnit>();
+            });
+      }
     }
 
     width_ += part_width;

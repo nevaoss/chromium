@@ -165,6 +165,9 @@ const base::FeatureParam<std::string> kIPHLensOverlayUrlPathMatchBlockPatterns{
     &kIPHLensOverlayFeature, "x_url_path_match_block_patterns", "[]"};
 const base::FeatureParam<base::TimeDelta> kIPHLensOverlayDelayTime{
     &kIPHLensOverlayFeature, "x_wait_time", base::Seconds(7)};
+BASE_FEATURE(kIPHOmniboxAskGLensIconFeature,
+             "IPH_OmniboxAskGLensIcon",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHOmniboxEverywhereLensPromoFeature,
              "IPH_OmniboxEverywhereLensPromo",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -249,9 +252,6 @@ BASE_FEATURE(kIPHReadingModePageActionLabelFeature,
 BASE_FEATURE(kIPHReadingModePresentationModeFeature,
              "IPH_ReadingModePresentationMode",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHReadingModeSidePanelFeature,
-             "IPH_ReadingModeSidePanel",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHSendTabToSelfTutorialFeature,
              "IPH_SendTabToSelfTutorial",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -318,9 +318,6 @@ BASE_FEATURE(kIPHTabGroupsSharedTabFeedbackFeature,
 BASE_FEATURE(kIPHTabScrollButtonFeature,
              "IPH_TabScrollButtonFeature",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHTabSearchComboButtonFeature,
-             "IPH_TabSearchComboButton",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDesktopSnoozeFeature,
              "IPH_DesktopSnoozeFeature",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -407,9 +404,17 @@ BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationPageSummaryPdfFeature,
 BASE_FEATURE(kIPHAimActivationHint,
              "IPH_AimActivationHint",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_AndroidTipsOptInPromo, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_AppLanguagePromo, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_ArchivedTabsAutoDeletePromo,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPH_BlueBubbleCooldownGroup, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_FullscreenSigninPromo, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPH_InterruptiveIphCooldownGroup,
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_NotificationPermissionPromo,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPH_SearchEngineChoicePromo, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPageSummaryWebMenuFeature,
              "IPH_PageSummaryWebMenu",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -545,6 +550,9 @@ BASE_FEATURE(kIPHFeedCardMenuFeature,
 BASE_FEATURE(kIPHFuseboxAttachmentFeature,
              "IPH_FuseboxAttachment",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHFuseboxPlusButtonHintFeature,
+             "IPH_FuseboxPlusButtonHint",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHGenericAlwaysTriggerHelpUiFeature,
              "IPH_GenericAlwaysTriggerHelpUiFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1060,9 +1068,6 @@ BASE_FEATURE(kIPHGrowthFramework,
 BASE_FEATURE(kIPHGoogleOneOfferNotificationFeature,
              "IPH_GoogleOneOfferNotification",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHLauncherSearchHelpUiFeature,
-             "IPH_LauncherSearchHelpUi",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \

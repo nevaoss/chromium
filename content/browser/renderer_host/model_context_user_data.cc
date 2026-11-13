@@ -151,20 +151,6 @@ void ModelContextUserData::RegisterScriptTool(
     }
   }
 
-  // TOOD(https://crbug.com/509568047): Stop passing in a frame token and origin
-  // during tool registration. These values are obvious from context, and the
-  // renderer shouldn't need to pass them in and have the browser verify them.
-  // Instead, the browser should be setting them for the first time here, with
-  // no input from the renderer.
-  if (tool->tool_owner_frame_token != render_frame_host().GetFrameToken() ||
-      tool->origin != render_frame_host().GetLastCommittedOrigin()) {
-    bad_message::ReceivedBadMessage(
-        render_frame_host().GetProcess(),
-        bad_message::RFHI_WEBMCP_INVALID_TOOL_OWNER);
-    std::move(callback).Run();
-    return;
-  }
-
   std::vector<url::Origin> exposed_origins = tool->exposed_origins;
   script_tools_.push_back(std::move(tool));
   NotifyToolChange(exposed_origins);
@@ -210,7 +196,7 @@ void ModelContextUserData::GetScriptTools(
   const url::Origin& caller_origin =
       render_frame_host().GetLastCommittedOrigin();
 
-  std::vector<blink::mojom::ScriptToolPtr> all_tools;
+  std::vector<blink::mojom::ExposedScriptToolPtr> all_tools;
   RenderFrameHost* main_frame = render_frame_host().GetMainFrame();
   SiteInstanceGroup* site_instance_group =
       static_cast<SiteInstanceImpl*>(render_frame_host().GetSiteInstance())
@@ -243,7 +229,7 @@ void ModelContextUserData::GetScriptTools(
         continue;
       }
 
-      blink::mojom::ScriptToolPtr cloned_tool = t.Clone();
+      blink::mojom::ScriptToolPtr exposed_tool = t.Clone();
       // Find the frame (it could be local or remote) that the caller can use
       // to reference the `Window` hosting the tool.
       //
@@ -254,20 +240,19 @@ void ModelContextUserData::GetScriptTools(
                ->render_manager()
                ->GetFrameTokenForSiteInstanceGroup(site_instance_group);
 
-      cloned_tool->tool_owner_frame_token = token;
-
       // Clear `exposed_origins` to prevent leaking the full list of
       // authorized origins to the calling renderer process.
-      cloned_tool->exposed_origins.clear();
+      exposed_tool->exposed_origins.clear();
 
-      all_tools.push_back(std::move(cloned_tool));
+      all_tools.push_back(blink::mojom::ExposedScriptTool::New(
+          std::move(exposed_tool), token, tool_owner_origin));
     }
     return RenderFrameHost::FrameIterationAction::kContinue;
   });
 
-  std::ranges::sort(all_tools, [](const blink::mojom::ScriptToolPtr& a,
-                                  const blink::mojom::ScriptToolPtr& b) {
-    return a->name < b->name;
+  std::ranges::sort(all_tools, [](const blink::mojom::ExposedScriptToolPtr& a,
+                                  const blink::mojom::ExposedScriptToolPtr& b) {
+    return a->tool->name < b->tool->name;
   });
 
   std::move(callback).Run(std::move(all_tools));
@@ -275,9 +260,9 @@ void ModelContextUserData::GetScriptTools(
 
 void ModelContextUserData::ExecuteRemoteScriptTool(
     const base::UnguessableToken& invocation_id,
+    const base::UnguessableToken& tool_id,
     const blink::FrameToken& tool_owner_frame_token,
     const url::Origin& expected_target_origin,
-    const std::string& name,
     const std::string& input_arguments,
     ExecuteRemoteScriptToolCallback callback) {
   if (!IsWebMCPEnabled(render_frame_host())) {
@@ -348,11 +333,12 @@ void ModelContextUserData::ExecuteRemoteScriptTool(
   }
 
   auto& tools = target_data->script_tools();
-  auto it = std::find_if(
-      tools.begin(), tools.end(),
-      [&](const blink::mojom::ScriptToolPtr& t) { return t->name == name; });
+  auto it = std::find_if(tools.begin(), tools.end(),
+                         [&](const blink::mojom::ScriptToolPtr& t) {
+                           return t->tool_id == tool_id;
+                         });
 
-  // Don't kill the renderer, since legitimate script can provide the name of a
+  // Don't kill the renderer, since legitimate script can provide the id of a
   // tool that doesn't exist (including one that did exist, but got unregistered
   // by the time the call to invoke it here).
   if (it == tools.end()) {
@@ -380,12 +366,12 @@ void ModelContextUserData::ExecuteRemoteScriptTool(
       static_cast<RenderFrameHostImpl&>(render_frame_host()).GetDocumentToken();
   execution.target_token = target_rfh->GetDocumentToken();
   execution.target_document = target_rfh->GetWeakDocumentPtr();
-  execution.tool_name = name;
+  execution.tool_name = (*it)->name;
   execution.callback = std::move(callback);
   page_data->AddPendingScriptToolExecution(invocation_id, std::move(execution));
 
   target_data->model_context_remote_->ExecuteScriptTool(
-      invocation_id, name, input_arguments,
+      invocation_id, tool_id, input_arguments,
       base::BindOnce(
           [](base::WeakPtr<ModelContextPageUserData> page_data,
              base::UnguessableToken invocation_id,

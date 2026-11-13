@@ -764,8 +764,9 @@ BEGIN_METADATA(PaintCountView)
 END_METADATA
 
 // Test that a child widget is only added to its parent NSWindow when the
-// parent is on the active space. Otherwise, it may cause a space transition.
-// See https://crbug.com/866760.
+// parent is on the active space. Otherwise, it may cause a space transition
+// or order an unattached transient child window onto the currently active
+// space. See https://crbug.com/866760 and http://b/565454675.
 TEST_F(NativeWidgetMacTest, ChildWidgetOnInactiveSpace) {
   NativeWidgetMacTestWindow* parent_window;
   NativeWidgetMacTestWindow* child_window;
@@ -779,13 +780,22 @@ TEST_F(NativeWidgetMacTest, ChildWidgetOnInactiveSpace) {
   parent_window.fakeOnInactiveSpace = YES;
 
   init_params.parent = parent->GetNativeView();
-  CreateWidgetWithTestWindow(std::move(init_params), &child_window);
+  Widget* child =
+      CreateWidgetWithTestWindow(std::move(init_params), &child_window);
 
   EXPECT_EQ(nil, child_window.parentWindow);
+  EXPECT_FALSE([child_window isVisible]);
+
+  child->Activate();
+  EXPECT_EQ(nil, child_window.parentWindow);
+  EXPECT_FALSE([child_window isVisible]);
 
   parent_window.fakeOnInactiveSpace = NO;
-  parent->Show();
+  [NSWorkspace.sharedWorkspace.notificationCenter
+      postNotificationName:NSWorkspaceActiveSpaceDidChangeNotification
+                    object:NSWorkspace.sharedWorkspace];
   EXPECT_EQ(parent_window, child_window.parentWindow);
+  EXPECT_TRUE([child_window isVisible]);
 
   parent->CloseNow();
 }
@@ -1503,6 +1513,60 @@ TEST_F(NativeWidgetMacTest, KeyStatusChangeWithNoTopLevelDoesNotCrash) {
   // The child is detached from `native_parent`, so close it directly.
   [child->GetNativeWindow().GetNativeNSWindow() close];
   [native_parent close];
+}
+
+// Tests that when a widget's window becomes key, its stored focused View is
+// restored before activation observers are notified, like on Aura, so that a
+// View that requested focus while the widget was inactive (see
+// FocusManager::SetFocusedViewWithReason()) isn't overridden by observers that
+// also restore focus on activation.
+TEST_F(NativeWidgetMacTest, KeyStatusChangeRestoresFocusBeforeObservers) {
+  WidgetAutoclosePtr widget(CreateTopLevelPlatformWidget());
+  View* view =
+      widget->GetContentsView()->AddChildView(std::make_unique<View>());
+  view->SetFocusBehavior(View::FocusBehavior::ALWAYS);
+
+  FocusManager* focus_manager = widget->GetFocusManager();
+  focus_manager->SetStoredFocusView(view);
+  ASSERT_FALSE(focus_manager->GetFocusedView());
+
+  // Records the focused View when the widget is activated.
+  class FocusOnActivationObserver : public WidgetObserver {
+   public:
+    void OnWidgetActivationChanged(Widget* widget, bool active) override {
+      if (active) {
+        notified_ = true;
+        focused_view_ = widget->GetFocusManager()->GetFocusedView();
+      }
+    }
+
+    bool notified() const { return notified_; }
+    View* focused_view() const { return focused_view_; }
+
+   private:
+    bool notified_ = false;
+    raw_ptr<View> focused_view_ = nullptr;
+  };
+  FocusOnActivationObserver observer;
+  base::ScopedObservation<Widget, WidgetObserver> observation(&observer);
+  observation.Observe(widget.get());
+
+  // Simulate the window becoming key.
+  remote_cocoa::mojom::NativeWidgetNSWindowHost* host =
+      NativeWidgetMacNSWindowHost::GetFromNativeWindow(
+          widget->GetNativeWindow());
+  ASSERT_TRUE(host);
+  host->OnWindowKeyStatusChanged(/*is_key=*/true,
+                                 /*is_content_first_responder=*/true,
+                                 /*full_keyboard_access_enabled=*/false);
+
+  ASSERT_TRUE(observer.notified());
+  EXPECT_EQ(view, observer.focused_view());
+  EXPECT_EQ(view, focus_manager->GetFocusedView());
+
+  host->OnWindowKeyStatusChanged(/*is_key=*/false,
+                                 /*is_content_first_responder=*/true,
+                                 /*full_keyboard_access_enabled=*/false);
 }
 
 // Tests that CloseAllWidgets behaves in various configurations.
@@ -2347,6 +2411,38 @@ TEST_F(NativeWidgetMacTest, CloseWindowModalSheetWithoutSheetParent) {
   // Now there is still a task to end the sheet in the message queue, which
   // should not crash.
   base::RunLoop().RunUntilIdle();
+  [native_parent close];
+}
+
+// Regression test for https://crbug.com/572474546. Calling Show() and
+// Activate() on a window-modal sheet before the posted beginSheet: task runs
+// must not invoke -[NSWindow beginSheet:completionHandler:] twice on the same
+// sheet, which would corrupt AppKit's sheet state and leave a dangling sheet
+// with a nil documentWindow after closing.
+TEST_F(NativeWidgetMacTest, ShowAndActivateWindowModalSheet) {
+  NSWindow* native_parent = MakeClosableTitledNativeParent();
+
+  Widget* sheet_widget = views::DialogDelegate::CreateDialogWidget(
+      MakeModalDialog(ui::mojom::ModalType::kWindow), gfx::NativeWindow(),
+      gfx::NativeView(native_parent.contentView));
+  NSWindow* sheet_window = sheet_widget->GetNativeWindow().GetNativeNSWindow();
+
+  WidgetChangeObserver widget_observer(sheet_widget);
+  sheet_widget->Show();
+  sheet_widget->Activate();
+  EXPECT_TRUE(base::test::RunUntil([&]() { return [sheet_window isVisible]; }));
+
+  // Ensure any second task posted by Activate() has also executed.
+  base::RunLoop flush_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, flush_loop.QuitClosure());
+  flush_loop.Run();
+
+  sheet_widget->Close();
+  EXPECT_TRUE(
+      base::test::RunUntil([&]() { return widget_observer.widget_closed(); }));
+  EXPECT_FALSE([native_parent attachedSheet]);
+
   [native_parent close];
 }
 

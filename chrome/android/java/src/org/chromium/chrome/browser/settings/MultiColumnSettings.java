@@ -212,11 +212,14 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         // Otherwise fallback to the original logic, i.e. use the first item in the main menu.
         FragmentData processed = processPendingFragmentIntent();
         if (processed != null) {
-            SlidingPaneLayout slidingPane = getSlidingPaneLayoutOrNull();
-            if (slidingPane != null
-                    && processed.fragment != null
-                    && !(processed.fragment instanceof MainSettings)) {
-                slidingPane.openPane();
+            if (processed.fragment != null && !(processed.fragment instanceof MainSettings)) {
+                mCanBeBackToMain = false;
+                SlidingPaneLayout slidingPane = getSlidingPaneLayoutOrNull();
+                if (slidingPane != null) {
+                    slidingPane.openPane();
+                }
+            } else {
+                mCanBeBackToMain = true;
             }
             return processed.fragment;
         }
@@ -245,6 +248,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
             var fragmentClass = resolution.fragmentClass;
             if (fragmentClass != null && !MainSettings.class.equals(fragmentClass)) {
+                mCanBeBackToMain = false;
                 Fragment initialDetailFragment =
                         Fragment.instantiate(
                                 requireContext(), fragmentClass.getName(), resolution.args);
@@ -256,6 +260,8 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 return initialDetailFragment;
             }
         }
+
+        mCanBeBackToMain = true;
 
         // When shown in a tab in single-column mode, do not instantiate an initial detail
         // fragment if no sub-fragment intent was specified. Returning null prevents
@@ -319,6 +325,30 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         // restore the pane as open, showing this auto-created fragment instead of root settings.
         // The user never navigated here, so undo it. https://crbug.com/563047017
         getSlidingPaneLayout().closePane();
+    }
+
+    /**
+     * Returns whether the current detail page can return to the main settings menu instead of
+     * finishing the host activity when the detail fragment back stack is empty.
+     */
+    boolean canBeBackToMain() {
+        return (mCanBeBackToMain || mMainSettings == null) && isLayoutOpen();
+    }
+
+    /**
+     * Resets the detail pane to the default initial detail fragment and closes the sliding pane if
+     * in single-column mode.
+     */
+    void showMainSettings() {
+        Fragment initialFragment = onCreateInitialDetailFragment();
+        if (initialFragment != null) {
+            showDetailFragment(initialFragment, /* addToBackStack= */ false, /* tag= */ null);
+        }
+        SlidingPaneLayout slidingPane = getSlidingPaneLayoutOrNull();
+        if (slidingPane != null) {
+            slidingPane.closePane();
+            updateHeaderPaneFocusability();
+        }
     }
 
     /**
@@ -714,7 +744,16 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
         View view = super.onCreateView(inflater, container, savedInstanceState);
-        addTitleContainer(inflater, (SlidingPaneLayout) view);
+        SlidingPaneLayout slidingPaneLayout = (SlidingPaneLayout) view;
+        addTitleContainer(inflater, slidingPaneLayout);
+        // Before the initial measurement pass, SlidingPaneLayout.isSlideable() is false and its
+        // internal slideableView reference is null. If a child view requests focus before
+        // onMeasure() runs (e.g. on SDK <= 29 where View.requestFocus() succeeds before window
+        // attachment), SlidingPaneLayout.requestChildFocus() evaluates `preservedOpenState =
+        // (child == slideableView)` as `false`, clobbering the open state set by openPane() and
+        // causing the detail pane to be laid out closed on the first layout pass. Block descendant
+        // focus until the first layout pass completes.
+        slidingPaneLayout.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
 
         var resources = view.getResources();
         View headerView = view.findViewById(R.id.preferences_header);
@@ -884,6 +923,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 int oldTop,
                 int oldRight,
                 int oldBottom) {
+            getSlidingPaneLayout().setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
             updateHeaderPaneFocusability();
             boolean prevSlideable = mSlideable;
             mSlideable = getSlidingPaneLayout().isSlideable();

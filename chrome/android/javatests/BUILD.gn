@@ -654,6 +654,7 @@ android_library(
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityClientContactsDelegationTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityClientLocationDelegationTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityClientTest.java",
+    "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityEdgeToEdgeTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityOrientationTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityShareTargetTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityTest.java",
@@ -1071,7 +1072,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.omnibox") {
     "src/org/chromium/chrome/browser/omnibox/OmniboxPTTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxTest.java",
     "src/org/chromium/chrome/browser/omnibox/SiteSearchTest.java",
-    "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxActionsTest.java",
     "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxPedalsTest.java",
     "src/org/chromium/chrome/browser/omnibox/voice/VoiceSearchPTTest.java",
   ]
@@ -1321,6 +1321,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
     "src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistryTest.java",
     "src/org/chromium/chrome/browser/settings/search/SettingsSearchCoordinatorTest.java",
     "src/org/chromium/chrome/browser/settings/search/SettingsSearchOrphanTest.java",
+    "src/org/chromium/chrome/browser/settings/startup/OnStartupSettingsFragmentTest.java",
   ]
 
   deps = [
@@ -1537,6 +1538,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tab") {
   deps = [
     ":chrome_test_java_helper",
     "//components/tabs/public/android:java",
+    "//ui/accessibility:ui_accessibility_test_support_java",
   ]
 }
 

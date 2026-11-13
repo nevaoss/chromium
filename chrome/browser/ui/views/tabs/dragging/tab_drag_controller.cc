@@ -92,6 +92,8 @@
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/public/cpp/window_properties.h"  // nogncheck
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
+#include "chrome/common/chrome_features.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "chromeos/ui/base/window_state_type.h"  // nogncheck
 #endif
@@ -511,9 +513,17 @@ TabDragController::Liveness TabDragController::Init(
       BrowserView::GetBrowserViewForNativeWindow(
           source_context->GetWidget()->GetNativeWindow())
           ->browser();
-  if (ash::boca::OnTaskLockedController::From(source_browser)
-          ->is_locked_for_on_task()) {
-    ref->detach_behavior_ = DetachBehavior::kNotDetachable;
+  if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+    if (!chromeos::LockedStateController::From(source_browser)
+             ->GetCapabilities()
+             .allow_tab_modification) {
+      ref->detach_behavior_ = DetachBehavior::kNotDetachable;
+    }
+  } else {
+    if (ash::boca::OnTaskLockedController::From(source_browser)
+            ->is_locked_for_on_task()) {
+      ref->detach_behavior_ = DetachBehavior::kNotDetachable;
+    }
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
   for (TabSlotView* dragging_view : dragging_views) {
@@ -2159,6 +2169,10 @@ void TabDragController::RevertDrag() {
   CHECK(source_context_);
 
   dragging_tabs_session_ = nullptr;
+  if (current_drag_target_) {
+    current_drag_target_->OnTabDragEnded();
+    ResetDragTarget();
+  }
 
   // If we're dragging a saved tab group, suspend tracking during the revert.
   // Otherwise, the group will get emptied out as we revert all the tabs.
@@ -2540,6 +2554,10 @@ void TabDragController::CompleteDrag() {
 
   if (current_drag_target_ && current_drag_target_->CanDropTab()) {
     current_drag_target_->HandleTabDrop(*this);
+    if (current_drag_target_) {
+      current_drag_target_->OnTabDragEnded();
+      ResetDragTarget();
+    }
     OnContextStoppedDragging();
 
     // The delegate is expected to handle all tab dragging finalization, and

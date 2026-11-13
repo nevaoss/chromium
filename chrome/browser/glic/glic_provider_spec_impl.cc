@@ -7,7 +7,9 @@
 #include <memory>
 #include <string_view>
 
+#include "base/no_destructor.h"
 #include "chrome/browser/glic/gemini_enterprise/geic_enabling.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_provider_spec.h"
 #include "chrome/browser/glic/resources/grit/glic_browser_resources.h"
 #include "chrome/browser/profiles/profile.h"
@@ -27,6 +29,11 @@ class GeminiGlicProviderSpec final : public GlicProviderSpec {
     return chrome::kGlicSettingsSubpage;
   }
   int GetEntryPointIconId() const override { return IDR_GLIC_BUTTON_ALT_ICON; }
+  std::string_view GetSyntheticTrialGroupName() const override {
+    return "Gemini";
+  }
+  std::string_view GetMetricsInfix() const override { return "Consumer"; }
+  bool IsActuationSupported() const override { return true; }
 };
 
 class GeminiEnterpriseGlicProviderSpec final : public GlicProviderSpec {
@@ -39,9 +46,24 @@ class GeminiEnterpriseGlicProviderSpec final : public GlicProviderSpec {
     return chrome::kGlicEnterpriseSettingsSubpage;
   }
   int GetEntryPointIconId() const override { return IDR_GEIC_BUTTON_ICON; }
+  std::string_view GetSyntheticTrialGroupName() const override {
+    return "GeminiEnterprise";
+  }
+  std::string_view GetMetricsInfix() const override { return "Enterprise"; }
+  bool IsActuationSupported() const override { return false; }
 };
 
 }  // namespace
+
+const GlicProviderSpec& GetGlicProviderSpec(Profile* profile) {
+  if (profile) {
+    if (auto* service = GlicKeyedService::Get(profile)) {
+      return service->provider_spec();
+    }
+  }
+  static base::NoDestructor<GeminiGlicProviderSpec> fallback_spec;
+  return *fallback_spec;
+}
 
 std::unique_ptr<GlicProviderSpec> CreateGlicProviderSpec(Profile* profile) {
   return geic::IsGeicEnabled(profile)

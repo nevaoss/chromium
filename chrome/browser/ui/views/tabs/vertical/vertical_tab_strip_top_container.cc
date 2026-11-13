@@ -16,7 +16,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_host.h"
+#include "chrome/browser/ui/views/tabs/organizer/layout_constants.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
 #include "chrome/browser/ui/views/tabs/vertical/top_container_button.h"
@@ -27,6 +27,7 @@
 #include "components/prefs/pref_service.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/compositor/layer.h"
 #include "ui/views/actions/action_view_controller.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/menu/menu_runner.h"
@@ -51,15 +52,14 @@ VerticalTabStripTopContainer::VerticalTabStripTopContainer(
               kVerticalTabStripTopContainerElementId);
   SetLayoutManager(std::make_unique<views::DelegatingLayoutManager>(this));
 
+  SetPaintToLayer();
+  layer()->SetFillsBoundsOpaquely(false);
+  layer()->SetMasksToBounds(true);
+
   collapse_button_ = AddChildButtonFor(kActionToggleCollapseVertical);
   collapse_button_->set_context_menu_controller(this);
   collapse_button_->SetProperty(views::kElementIdentifierKey,
                                 kVerticalTabStripCollapseButtonElementId);
-
-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
-    unfocus_button_ = AddChildButtonFor(kActionUnfocusTabGroup);
-    unfocus_button_->SetVisible(false);
-  }
 
   combo_button_ = AddChildView(std::make_unique<TabStripComboButton>(
       browser_, TabStripComboButton::Context::kVerticalTabStrip));
@@ -69,8 +69,10 @@ VerticalTabStripTopContainer::VerticalTabStripTopContainer(
                                       : views::LayoutOrientation::kHorizontal);
 
   if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
-    segmented_control_ = AddChildView(
-        std::make_unique<VerticalTabStripSegmentedControl>(browser_));
+    if (organizer_panel::IsOrganizerPanelSegmentationControlEnabled()) {
+      segmented_control_ = AddChildView(
+          std::make_unique<VerticalTabStripSegmentedControl>(browser_));
+    }
 
     if (browser_ && browser_->GetProfile()) {
       pref_registrar_.Init(browser_->GetProfile()->GetPrefs());
@@ -96,6 +98,11 @@ VerticalTabStripTopContainer::VerticalTabStripTopContainer(
           base::IgnoreArgs<bool>(base::BindRepeating(
               &VerticalTabStripTopContainer::UpdateControlsVisibility,
               base::Unretained(this))));
+      mode_changed_subscription_ = state_controller_->RegisterOnModeChanged(
+          base::IgnoreArgs<tabs::VerticalTabStripStateController*>(
+              base::BindRepeating(
+                  &VerticalTabStripTopContainer::UpdateControlsVisibility,
+                  base::Unretained(this))));
     }
 
     UpdateControlsVisibility();
@@ -124,12 +131,14 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
           ? host_size.width()
           : parent()->GetAvailableSize(this).width().value_or(0);
 
-  const bool is_collapsed = state_controller_->IsCollapsed();
+  const tabs::VerticalTabStripState state = GetCurrentState();
+  const bool is_collapsed = state.collapsed;
+  const int uncollapsed_width = state.uncollapsed_width;
   const bool is_expand_on_hover =
       state_controller_ && state_controller_->IsExpandOnHoverEnabled();
-  const bool is_segmented_expand_on_hover =
-      is_collapsed && is_expand_on_hover && segmented_control_ &&
-      segmented_control_->GetVisible();
+  const bool is_control_expand_on_hover =
+      is_collapsed && is_expand_on_hover &&
+      organizer_panel::IsOrganizerPanelFeatureEnabled();
 
   int trailing_control_width = 0;
   if (segmented_control_ && segmented_control_->GetVisible()) {
@@ -146,7 +155,7 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
 
   // Once the available width is below the collapse snap width, we update the
   // orientation in order to have smooth transition during animation.
-  if (!is_segmented_expand_on_hover &&
+  if (!is_control_expand_on_hover &&
       (trailing_control_width >= available_width ||
        available_width < tabs::kVerticalTabStripCollapseSnapWidth ||
        is_collapsed_with_combo)) {
@@ -156,9 +165,7 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
     // Find height of the first visible button to calculate the matching
     // baseline offset.
     int first_button_height = 0;
-    if (unfocus_button_ && unfocus_button_->GetVisible()) {
-      first_button_height = unfocus_button_->GetPreferredSize().height();
-    } else if (collapse_button_ && collapse_button_->GetVisible()) {
+    if (collapse_button_ && collapse_button_->GetVisible()) {
       first_button_height = collapse_button_->GetPreferredSize().height();
     }
 
@@ -172,19 +179,6 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
     // caption buttons when they are leading.
     if (caption_button_width_ > 0) {
       current_y = std::max(current_y, toolbar_height_);
-    }
-
-    if (unfocus_button_ && unfocus_button_->GetVisible()) {
-      const gfx::Size pref_size = unfocus_button_->GetPreferredSize();
-      int x = is_collapsed
-                  ? 0
-                  : std::max(0, (host_size.width() - pref_size.width()) / 2);
-      gfx::Rect bounds(x, current_y, pref_size.width(), pref_size.height());
-      layout.child_layouts.emplace_back(unfocus_button_.get(),
-                                        unfocus_button_->GetVisible(), bounds);
-      host_size.SetToMax(gfx::Size(bounds.right(), 0));
-
-      current_y += pref_size.height();
     }
 
     if (collapse_button_ && collapse_button_->GetVisible()) {
@@ -255,7 +249,7 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
 
     // If there is not enough space for the buttons on a single line with
     // caption buttons, shift them below.
-    const bool wrapped_due_to_overflow = !is_segmented_expand_on_hover &&
+    const bool wrapped_due_to_overflow = !is_control_expand_on_hover &&
                                          size_bounds.width().is_bounded() &&
                                          WillWrapDueToOverflow(available_width);
 
@@ -283,19 +277,6 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
     }
 
     int current_y = 0;
-    if (unfocus_button_ && unfocus_button_->GetVisible()) {
-      const gfx::Size pref_size = unfocus_button_->GetPreferredSize();
-      gfx::Rect bounds(left_alignment,
-                       std::max(0, y_baseline - pref_size.height() / 2),
-                       pref_size.width(), pref_size.height());
-      layout.child_layouts.emplace_back(unfocus_button_.get(),
-                                        unfocus_button_->GetVisible(), bounds);
-      current_y =
-          bounds.bottom() +
-          GetLayoutConstant(
-              LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
-    }
-
     if (collapse_button_ && collapse_button_->GetVisible()) {
       const gfx::Size pref_size = collapse_button_->GetPreferredSize();
       gfx::Rect bounds(left_alignment,
@@ -310,16 +291,16 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
     }
 
     const int expected_uncollapsed_width =
-        state_controller_->GetUncollapsedWidth() -
+        uncollapsed_width -
         2 * GetLayoutConstant(
                 LayoutConstant::kVerticalTabStripHorizontalPadding);
     const int layout_width =
-        is_segmented_expand_on_hover
+        is_control_expand_on_hover
             ? std::max(host_size.width(), expected_uncollapsed_width)
             : host_size.width();
     int right_alignment = layout_width;
 
-    bool wrap_during_animation = !is_segmented_expand_on_hover &&
+    bool wrap_during_animation = !is_control_expand_on_hover &&
                                  caption_button_width_ != 0 &&
                                  available_width < GetPreferredWidth();
 
@@ -392,11 +373,6 @@ bool VerticalTabStripTopContainer::IsPositionInWindowCaption(
 
   if (collapse_button_ && collapse_button_->GetVisible() &&
       IsHitInView(collapse_button_, point)) {
-    return false;
-  }
-
-  if (unfocus_button_ && unfocus_button_->GetVisible() &&
-      IsHitInView(unfocus_button_, point)) {
     return false;
   }
 
@@ -500,6 +476,16 @@ void VerticalTabStripTopContainer::SetIsExitingExpandOnHoverForLayout(
   InvalidateLayout(/*avoid_propagate_during_layout=*/true);
 }
 
+void VerticalTabStripTopContainer::SetStateOverride(
+    std::optional<tabs::VerticalTabStripState> state_override) {
+  if (state_override_ == state_override) {
+    return;
+  }
+  state_override_ = state_override;
+  UpdateControlsVisibility();
+  InvalidateLayout(/*avoid_propagate_during_layout=*/true);
+}
+
 bool VerticalTabStripTopContainer::WillWrapDueToOverflow(
     int available_width) const {
   return caption_button_width_ > 0 &&
@@ -530,20 +516,11 @@ int VerticalTabStripTopContainer::GetPreferredWidth() const {
     total_width += collapse_button_->GetPreferredSize().width() + padding;
   }
 
-  // Unfocus Button
-  if (unfocus_button_ && unfocus_button_->GetVisible()) {
-    total_width += unfocus_button_->GetPreferredSize().width() + padding;
-  }
-
   return total_width;
 }
 
 int VerticalTabStripTopContainer::GetBaselineMinHeight() const {
   int min_height = 0;
-  if (unfocus_button_ && unfocus_button_->GetVisible()) {
-    min_height =
-        std::max(min_height, unfocus_button_->GetPreferredSize().height());
-  }
   if (collapse_button_ && collapse_button_->GetVisible()) {
     min_height =
         std::max(min_height, collapse_button_->GetPreferredSize().height());
@@ -566,37 +543,44 @@ int VerticalTabStripTopContainer::GetBaselineMinHeight() const {
   return std::max(toolbar_height_, min_height);
 }
 
+tabs::VerticalTabStripState VerticalTabStripTopContainer::GetCurrentState()
+    const {
+  if (state_override_.has_value()) {
+    return *state_override_;
+  }
+  if (state_controller_) {
+    return state_controller_->GetState();
+  }
+  return tabs::VerticalTabStripState{};
+}
+
+bool VerticalTabStripTopContainer::SupportsEmbeddedOrganizerPanel() const {
+  if (!state_controller_ || !state_controller_->ShouldDisplayVerticalTabs()) {
+    return false;
+  }
+  const tabs::VerticalTabStripState state = GetCurrentState();
+  const bool width_supports_panel =
+      state.uncollapsed_width > organizer_panel::kOrganizerPanelMinWidth -
+                                    organizer_panel::kOrganizerPanelMinOverlap;
+  if (state.collapsed) {
+    return state_controller_->IsExpandOnHoverEnabled() && width_supports_panel;
+  }
+  return width_supports_panel;
+}
+
 void VerticalTabStripTopContainer::UpdateControlsVisibility() {
   PrefService* prefs = browser_->GetProfile()->GetPrefs();
   const bool is_tab_search_pinned =
       prefs->GetBoolean(prefs::kTabSearchPinnedToTabstrip);
-  const bool embedded_supported =
-      DoesVerticalTabStripSupportEmbeddedOrganizerPanel(*browser_);
   const bool is_segmentation_eligible =
-      organizer_panel::IsOrganizerPanelFeatureEnabled() && embedded_supported &&
-      is_tab_search_pinned;
+      organizer_panel::IsOrganizerPanelSegmentationControlEnabled() &&
+      SupportsEmbeddedOrganizerPanel() && is_tab_search_pinned;
 
-  if (is_segmentation_eligible) {
-    const bool is_collapsed =
-        state_controller_ && state_controller_->IsCollapsed();
-    const bool is_expand_on_hover =
-        state_controller_ && state_controller_->IsExpandOnHoverEnabled();
-    const bool should_show_segmented = !is_collapsed || is_expand_on_hover;
-
-    if (segmented_control_) {
-      segmented_control_->SetVisible(should_show_segmented);
-    }
-    if (combo_button_) {
-      combo_button_->SetVisible(!should_show_segmented);
-    }
-  } else {
-    // Segmentation is ineligible: hide segmented control and show combo button.
-    if (segmented_control_) {
-      segmented_control_->SetVisible(false);
-    }
-    if (combo_button_) {
-      combo_button_->SetVisible(true);
-    }
+  if (segmented_control_) {
+    segmented_control_->SetVisible(is_segmentation_eligible);
+  }
+  if (combo_button_) {
+    combo_button_->SetVisible(!is_segmentation_eligible);
   }
 }
 

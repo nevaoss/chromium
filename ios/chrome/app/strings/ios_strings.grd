@@ -323,6 +323,24 @@
       <message name="IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME_MANAGED_STATUS_AI_TIER" is_accessibility_with_no_ui="true" desc="The accessibility label for the cell containing user’s name, email, managed status and AI tier. [iOS only]">
         <ph name="USER_NAME">$1<ex>Jessica</ex></ph>, <ph name="EMAIL">$2<ex>jessica@gmail.com</ex></ph>. <ph name="MANAGED_STATUS">$3<ex>Your account is managed</ex></ph>. <ph name="AI_TIER">$4<ex>Google AI Foo membership</ex></ph>.
       </message>
+      <message name="IDS_IOS_ACTOR_BACKGROUND_TASK_INPUT_NEEDED" desc="Title of the system-provided Live Activity shown for an actor task running in the background, displayed when the task waits for the user to provide input in the app. [iOS only]">
+        Input needed
+      </message>
+      <message name="IDS_IOS_ACTOR_BACKGROUND_TASK_STOPPED" desc="Title of the system-provided Live Activity shown for an actor task running in the background, displayed when the task is paused. [iOS only]">
+        Task stopped
+      </message>
+      <message name="IDS_IOS_ACTOR_HEADER_INPUT_NEEDED" desc="Title of the minimized actuation header when the actor is waiting for input or confirmation from the user. The task title is displayed below it. [iOS only]">
+        Input needed
+      </message>
+      <message name="IDS_IOS_ACTOR_HEADER_TASK_DONE" desc="Title of the minimized actuation header when the actor successfully completed the task. The task title is displayed below it. [iOS only]">
+        Task done
+      </message>
+      <message name="IDS_IOS_ACTOR_HEADER_TASK_FAILED" desc="Title of the minimized actuation header when the task failed. The task title is displayed below it. [iOS only]">
+        Task failed
+      </message>
+      <message name="IDS_IOS_ACTOR_HEADER_TASK_STOPPED" desc="Title of the minimized actuation header when the user stopped the task. The task title is displayed below it. [iOS only]">
+        Task stopped
+      </message>
       <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_CLICKING" desc="Worklog chip label indicating the actor is clicking an element on the page. [iOS only]">
         Clicking
       </message>
@@ -464,12 +482,6 @@
       <message name="IDS_IOS_AI_HUB_MICROPHONE_PERMISSION_LABEL" desc="The button label for the Microphone permission feature of the AI hub.">
         Microphone
       </message>
-      <message name="IDS_IOS_AI_HUB_OPEN_PRICE_TRACKING_ACCESSIBILITY_LABEL" desc="The accessibility label for the button to open price tracking in the AI hub.">
-        Currently tracking this product. Open to see price history
-      </message>
-      <message name="IDS_IOS_AI_HUB_OPEN_PRICE_TRACK_ACCESSIBILITY_LABEL" desc="The accessibility label for the button to open price tracking in the AI hub.">
-        Open to see price history
-      </message>
       <message name="IDS_IOS_AI_HUB_OPEN_TRANSLATE_SETTINGS_ACCESSIBILITY_LABEL" desc="The accessibility label for the button to open translate settings in the AI hub.">
         Open Translate settings
       </message>
@@ -487,12 +499,6 @@
       </message>
       <message name="IDS_IOS_AI_HUB_POPUP_BLOCKER_LABEL" desc="The button label for the Pop-up blocker feature of the AI hub.">
         Pop-ups blocked
-      </message>
-      <message name="IDS_IOS_AI_HUB_PRICE_TRACKING_BUTTON_LABEL" desc="The button label for tracking prices in the Price tracking feature of the AI hub.">
-        Tracking
-      </message>
-      <message name="IDS_IOS_AI_HUB_PRICE_TRACKING_LABEL" desc="The label for the Price tracking feature of the AI hub.">
-        Price history
       </message>
       <message name="IDS_IOS_AI_HUB_READER_MODE_LABEL" desc="The button label for the Reader mode entry point of the AI hub.">
         Reading Mode
@@ -626,6 +632,9 @@
       <message name="IDS_IOS_APP_BAR_ASK_GEMINI" desc="Title of the button opening a gemini prompt." meaning="Tap this button to ask something to Gemini">
           Ask Gemini
           </message>
+      <message name="IDS_IOS_APP_BAR_ASK_GOOGLE" desc="Title of the button opening an AI Mode prompt." meaning="Tap this button to ask something to Google">
+        Ask Google
+      </message>
       <message name="IDS_IOS_APP_BAR_ASSISTANT_CUSTOMIZATION_TITLE" desc="Title for the menu displaying the different customization options of the toolbar button">
         Choose what button to show in the toolbar
       </message>
@@ -3750,6 +3759,12 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_SETTINGS_CAPTIONS_TITLE" desc="Title of the Closed Captioning toggle in Gemini settings.">
         Closed Captioning
       </message>
+      <message name="IDS_IOS_GEMINI_SETTINGS_EDIT_PROMPT" desc="Title for the button in the contextual cue settings sheet that opens the Gemini floaty with the contextual cue prompt pre-filled so the user can edit it.">
+        Edit prompt
+      </message>
+      <message name="IDS_IOS_GEMINI_SETTINGS_MANAGE_SUGGESTIONS" desc="Title for the button in the contextual cue settings sheet that opens the Gemini suggestions settings page.">
+        Manage Gemini suggestions
+      </message>
       <message name="IDS_IOS_GEMINI_SETTINGS_MIC_FOOTER_TEXT" desc="Footer text of the Microphone toggle in Gemini settings.">
         Use your microphone to chat with Gemini. When you speak to Gemini, audio is stored in Gemini Apps Activity (if it's on). Your data is not used to improve generative AI models
       </message>
@@ -4468,6 +4483,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_ITEM_ACCOUNT_ERROR_BADGE_ACCESSIBILITY_HINT" desc="Accessibility hint to let the user know that there is an error badge associated with the listed item. The hint is appended to the a11y message that describes the item. For example, the 'settings' message will become 'settings, account error' when there is an account error badge on the item. [iOS only]">
         Account error
+      </message>
+      <message name="IDS_IOS_ITEM_WARNING_BADGE_ACCESSIBILITY_HINT" desc="Accessibility hint to let the user know that there is a warning badge associated with the listed item. The hint is appended to the accessibility message that describes the item. For example, the 'Settings' message will become 'Settings, Attention needed' when there is a warning badge on the item. [iOS only]">
+        Attention needed
       </message>
       <message name="IDS_IOS_JAVA_SCRIPT_DIALOG_BLOCKING_BUTTON_TEXT" desc="The text used for the button added to JavaScript dialogs to prevent a page from spamming the user with endless alerts. [Length:27em]">
         Suppress dialogs
@@ -5217,8 +5235,8 @@ You can restart anytime.
       <message name="IDS_IOS_MANUAL_FALLBACK_EXPIRATION_YEAR_CHIP_ACCESSIBILITY_LABEL" desc="Accessibility label for the expiration year chip button displayed in the payment method manual fallback screen and that's allowing the user to autofill a specific form field with their payment method's expiration year.">
         Autofill the expiration year <ph name="YEAR">$1<ex>26</ex></ph>
       </message>
-      <message name="IDS_IOS_MANUAL_FALLBACK_MANAGE_ADDRESSES_AND_MORE" desc="The title for the button in the manual fallback UI that takes the user to the addresses and more settings. In this screen they see all the addresses and Autofill AI entities and can erase them. [30em]">
-        Manage addresses and more…
+      <message name="IDS_IOS_MANUAL_FALLBACK_MANAGE_ADDRESSES_AND_MORE" desc="The title for the button in the manual fallback UI that takes the user to the contact info settings. In this screen they see all the addresses and Autofill AI entities and can erase them. [30em]">
+        Manage contact info…
       </message>
       <message name="IDS_IOS_MANUAL_FALLBACK_MANAGE_CREDIT_CARDS" desc="The title for the button in the manual fallback UI that takes the user to the payments settings. In this screen they see all the credit cards and can erase them. [30em]">
         Manage payment methods…
@@ -5709,6 +5727,12 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_ERROR_LEARN_MORE" desc="Button label allowing the user to learn more about the Universal Opt-Out error. [iOS only]">
         Learn more
+      </message>
+      <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_NOTE" desc="Note displayed in the Universal Opt-Out settings footer when using the web extension solution on earlier iOS versions. [iOS only]">
+        Note: This setting works better with iOS 27 or newer.
+      </message>
+      <message name="IDS_IOS_OPTIONS_ENABLE_UNIVERSAL_OPT_OUT_TITLE" desc="The title of the settings screen about the Universal Opt-Out feature [iOS only]">
+        Opt-out request
       </message>
       <message name="IDS_IOS_OPTIONS_GENERAL_TAB_LABEL" desc="The title of the Basics section of the Settings page. [iOS only]" meaning="The title of the Basics section of the Settings page.">
         Basics
@@ -7677,12 +7701,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SEND_TAB_TO_SELF_SHARE_SHEET_DEVICE_NAME_WITH_OWNER" desc="Title for dynamic target device in iOS share sheet, displaying the user's name and device name. [iOS only]">
         <ph name="OWNER_NAME">$1<ex>John</ex></ph> • <ph name="DEVICE_NAME">$2<ex>Pixel 7 Pro</ex></ph>
       </message>
-      <message name="IDS_IOS_SEND_TAB_TO_SELF_SNACKBAR_MESSAGE" desc="Message briefly displayed at the bottom of the screen to the user to inform that the tab is being sent to the target device. [Length: 35em]" meaning="The is being sent to the target device. [Length: 35em]">
-        Sending to <ph name="DEVICE_NAME">$1<ex>IPhone</ex></ph>…
-      </message>
-      <message name="IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_TITLE" desc="Title for the Send Tab To Self modal dialog that chooses the device to which the current tab will be sent. [iOS only]">
-        Send webpage
-      </message>
       <message name="IDS_IOS_SETTINGS_ADD_PASSWORD_DESCRIPTION" desc="Footer text shown when the user is trying to add a new credential manually via settings [iOS only]" meaning="Telling user to ensure provided password matches password on the website.">
         Make sure you're saving your current password for this site.
       </message>
@@ -8480,7 +8498,7 @@ Handoff must also be enabled in the General section of Settings, and your device
         Don't allow sites to use your microphone
       </message>
       <message name="IDS_IOS_SITE_SETTINGS_NOT_ALLOWED" desc="Title for the section header and popup menu option in Site Settings for sites that are blocked from using a permission. [iOS only]">
-        Not Allowed
+        Not allowed
       </message>
       <message name="IDS_IOS_SITE_SETTINGS_PERMISSIONS_HEADER" desc="Header text for the Permissions section in Site Settings. [iOS only]">
         Permissions
@@ -9405,6 +9423,12 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_UNITS_MEASUREMENTS_ACCESSIBILITY_HINT_UNIT_TYPE_SELECTOR" desc="Accessibility Hint for the unit conversion title button that displays a menu of unit types. This is spoken by VoiceOver.   [Length:Unlimited] [iOS only]">
           Unit type selector
       </message>
+      <message name="IDS_IOS_UNIVERSAL_OPT_OUT_SNACKBAR_ACTION" desc="Button text on the snackbar allowing the user to manage their data use setting. [iOS only]">
+        Manage
+      </message>
+      <message name="IDS_IOS_UNIVERSAL_OPT_OUT_SNACKBAR_MESSAGE" desc="Text displayed in a snackbar when loading the data use setting extension fails. [iOS only]">
+        Data use setting encountered an error.
+      </message>
       <message name="IDS_IOS_UNO_UPGRADE_PROMO_SIGNIN_SUBTITLE" desc="This string is on a sign-in page, shown several weeks after the user has installed Chrome. It explains the overarching user benefit of signing in (access to bookmarks, passwords, history, settings, etc.). We want users to understand why signing in is beneficial, and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight.">
         Get your bookmarks, passwords, and more on all your devices.
       </message>
@@ -9736,14 +9760,8 @@ Handoff must also be enabled in the General section of Settings, and your device
         =1 {Link received}
         other {{count} links received}}
       </message>
-      <message name="IDS_SEND_TAB_TO_SELF_INFOBAR_MESSAGE" desc="The message text for the infobar when a user receives a shared tab from another device.">
-        Tab received.
-      </message>
       <message name="IDS_SEND_TAB_TO_SELF_INFOBAR_MESSAGE_URL" desc="Clickable text displayed as part of a URL in the inforbar displayed when a user receives a shared tab from another device.">
         Open
-      </message>
-      <message name="IDS_SEND_TAB_TO_SELF_MANAGE_DEVICES_LINK" desc="Text with a link to a page where the user can manage the devices they can share a tab to.">
-        <ph name="BEGIN_LINK">BEGIN_LINK</ph>Your devices<ph name="END_LINK">END_LINK</ph> · <ph name="EMAIL">$1<ex>foo@gmail.com</ex></ph>
       </message>
       <message name="IDS_SIGNIN_ACCOUNT_PICKER_BOTTOM_SHEET_SUBTITLE_FOR_DEVICE_TYPE_BOOKMARKS" desc="This string is the subtitle of a promotional bottom sheet about signing in to Chrome with the user's Google Account. It explains the user benefit of signing in to get data from their other device where they may be signed-in.">
         Sign in to get your bookmarks and more from <ph name="DEVICE_TYPE">$1<ex>your phone</ex></ph>

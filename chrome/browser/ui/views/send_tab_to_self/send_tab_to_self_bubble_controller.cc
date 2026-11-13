@@ -28,7 +28,6 @@
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_no_target_device_bubble_view.h"
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_promo_bubble_view.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
-#include "chrome/browser/user_education/user_education_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/send_tab_to_self/features.h"
 #include "components/send_tab_to_self/metrics_util.h"
@@ -249,9 +248,6 @@ SendTabToSelfBubbleController::GetEntryPointDisplayReason() {
 void SendTabToSelfBubbleController::OnDeviceSelected(
     const std::string& target_device_guid,
     std::string_view device_name) {
-  UserEducationService::MaybeNotifyNewBadgeFeatureUsed(
-      GetProfile(), send_tab_to_self::kSendTabToSelfEnhancedDesktopUI);
-
   SendTabToSelfPageHandler* handler =
       SendTabToSelfPageHandler::GetOrCreateForWebContents(&GetWebContents());
 
@@ -273,7 +269,7 @@ void SendTabToSelfBubbleController::OnDeviceSelected(
       target_device_guid, url, base::UTF16ToUTF8(GetWebContents().GetTitle()),
       base::BindOnce(
           &SendTabToSelfBubbleController::HandleSendTabToDeviceResult,
-          weak_ptr_factory_.GetWeakPtr(), url, std::string(device_name),
+          weak_ptr_factory_.GetWeakPtr(), std::string(device_name),
           form_factor),
       entry_point_.value_or(ShareEntryPoint::kShareSheet));
 }
@@ -351,20 +347,15 @@ void SendTabToSelfBubbleController::OnBackButtonPressed() {
 }
 
 void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
-    const GURL& url,
     std::string_view device_name,
     syncer::DeviceInfo::FormFactor form_factor,
     SendTabToSelfResult result) {
   switch (result) {
     case SendTabToSelfResult::kSuccess:
-      if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
-        ShowTabSentSuccessToast(&GetWebContents(), device_name, form_factor);
-      }
+      ShowTabSentSuccessToast(&GetWebContents(), device_name, form_factor);
       break;
     case SendTabToSelfResult::kSuccessThrottled:
-      if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
-        ShowTabSentThrottledToast(&GetWebContents(), device_name, form_factor);
-      }
+      ShowTabSentThrottledToast(&GetWebContents(), device_name, form_factor);
       break;
     case SendTabToSelfResult::kFailureInvalidUrl:
     case SendTabToSelfResult::kFailureNotTrackingMetadata:
@@ -374,7 +365,7 @@ void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
     case SendTabToSelfResult::kFailureEntryRemoved:
     case SendTabToSelfResult::kFailureCommitTimeout:
     case SendTabToSelfResult::kFailureNoInternetConnection:
-      ShowTabSentFailure(&GetWebContents(), result, url);
+      ShowTabSentFailure(&GetWebContents(), result);
       break;
   }
 }

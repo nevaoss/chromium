@@ -21,6 +21,7 @@
 #include "base/test/test_future.h"
 #include "base/threading/thread_restrictions.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/actor_surface_handle.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/actor/site_policy.h"
@@ -422,8 +423,8 @@ IN_PROC_BROWSER_TEST_F(ExecutionEngineBrowserTest, FirstActionOnBlockedSite) {
 
   // Even though the first action failed, the tab should still be associated
   // with the task.
-  EXPECT_TRUE(
-      actor_task().GetLastActedTabs().contains(active_tab()->GetHandle()));
+  EXPECT_TRUE(actor_task().GetLastActedActorSurfaces().contains(
+      ActorSurfaceHandle::From(active_tab()->GetHandle())));
 }
 
 IN_PROC_BROWSER_TEST_F(ExecutionEngineBrowserTest, PrerenderBlockedSite) {
@@ -1132,9 +1133,11 @@ IN_PROC_BROWSER_TEST_F(ExecutionEngineBrowserTest, CollectsToolVotes) {
   ExpectOkResult(result);
 
   const TabObservationStrategy& strategy = result.GetStrategy();
-  EXPECT_EQ(strategy.GetScreenshotPolicy(active_tab()->GetHandle()),
+  EXPECT_EQ(strategy.GetScreenshotPolicy(
+                ActorSurfaceHandle::From(active_tab()->GetHandle())),
             ScreenshotPolicy::kRequested);
-  EXPECT_EQ(strategy.GetPageContentExtractionPolicy(active_tab()->GetHandle()),
+  EXPECT_EQ(strategy.GetPageContentExtractionPolicy(
+                ActorSurfaceHandle::From(active_tab()->GetHandle())),
             PageContentExtractionPolicy::kRequested);
 }
 
@@ -1148,10 +1151,10 @@ IN_PROC_BROWSER_TEST_F(ExecutionEngineBrowserTest, CollectsMultipleToolVotes) {
 
   std::unique_ptr<ToolRequest> tool1 = std::make_unique<FakeToolRequest>(
       on_invoke_future1.GetCallback(), base::OnceClosure(),
-      active_tab()->GetHandle());
+      ActorSurfaceHandle::From(active_tab()->GetHandle()));
   std::unique_ptr<ToolRequest> tool2 = std::make_unique<FakeToolRequest>(
       on_invoke_future2.GetCallback(), base::OnceClosure(),
-      active_tab()->GetHandle());
+      ActorSurfaceHandle::From(active_tab()->GetHandle()));
 
   ActResultFuture result;
   actor_task().Act(ToRequestList(tool1, tool2), result.GetCallback());
@@ -1178,9 +1181,11 @@ IN_PROC_BROWSER_TEST_F(ExecutionEngineBrowserTest, CollectsMultipleToolVotes) {
   // Screenshot: max(Skipped, Required) = Required.
   // Dom Extraction: max(Required, Skipped) = Required.
   const TabObservationStrategy& strategy = result.GetStrategy();
-  EXPECT_EQ(strategy.GetScreenshotPolicy(active_tab()->GetHandle()),
+  EXPECT_EQ(strategy.GetScreenshotPolicy(
+                ActorSurfaceHandle::From(active_tab()->GetHandle())),
             ScreenshotPolicy::kRequired);
-  EXPECT_EQ(strategy.GetPageContentExtractionPolicy(active_tab()->GetHandle()),
+  EXPECT_EQ(strategy.GetPageContentExtractionPolicy(
+                ActorSurfaceHandle::From(active_tab()->GetHandle())),
             PageContentExtractionPolicy::kRequired);
 }
 

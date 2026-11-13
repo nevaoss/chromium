@@ -147,10 +147,15 @@
 #include "base/system/sys_info.h"
 #include "chrome/browser/ash/app_restore/full_restore_app_launch_handler.h"
 #include "chrome/browser/ash/input_method/input_method_configuration.h"
+#include "chrome/browser/ash/ownership/owner_settings_service_ash_factory.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
 #include "chromeos/ash/services/device_sync/device_sync_impl.h"
 #include "chromeos/ash/services/device_sync/fake_device_sync.h"
+#include "chromeos/dbus/constants/dbus_paths.h"
+#include "components/ownership/mock_owner_key_util.h"
+#include "components/ownership/owner_key_util.h"
+#include "components/ownership/owner_key_util_impl.h"
 #include "components/user_manager/user_names.h"
 #include "ui/display/display_switches.h"
 #include "ui/events/test/event_generator.h"
@@ -202,6 +207,53 @@ FakeDeviceSyncImplFactory* GetFakeDeviceSyncImplFactory() {
   static base::NoDestructor<FakeDeviceSyncImplFactory> factory;
   return factory.get();
 }
+
+// OwnerKeyUtil implementation for browser tests that delegates file and slot
+// lookups to OwnerKeyUtilImpl while importing a pre-generated RSA key in
+// GenerateKeyPair() to avoid expensive runtime prime generation.
+class TestOwnerKeyUtil : public ownership::OwnerKeyUtil {
+ public:
+  TestOwnerKeyUtil() = default;
+  TestOwnerKeyUtil(const TestOwnerKeyUtil&) = delete;
+  TestOwnerKeyUtil& operator=(const TestOwnerKeyUtil&) = delete;
+
+  // ownership::OwnerKeyUtil:
+  scoped_refptr<ownership::PublicKey> ImportPublicKey() override {
+    scoped_refptr<ownership::OwnerKeyUtil> impl = GetImpl();
+    return impl ? impl->ImportPublicKey() : nullptr;
+  }
+
+  crypto::ScopedSECKEYPrivateKey GenerateKeyPair(PK11SlotInfo* slot) override {
+    return mock_->GenerateKeyPair(slot);
+  }
+
+  crypto::ScopedSECKEYPrivateKey FindPrivateKeyInSlot(
+      const std::vector<uint8_t>& key,
+      PK11SlotInfo* slot) override {
+    scoped_refptr<ownership::OwnerKeyUtil> impl = GetImpl();
+    return impl ? impl->FindPrivateKeyInSlot(key, slot) : nullptr;
+  }
+
+  bool IsPublicKeyPresent() override {
+    scoped_refptr<ownership::OwnerKeyUtil> impl = GetImpl();
+    return impl && impl->IsPublicKeyPresent();
+  }
+
+ private:
+  ~TestOwnerKeyUtil() override = default;
+
+  scoped_refptr<ownership::OwnerKeyUtil> GetImpl() const {
+    base::FilePath public_key_path;
+    if (!base::PathService::Get(chromeos::dbus_paths::FILE_OWNER_KEY,
+                                &public_key_path)) {
+      return nullptr;
+    }
+    return base::MakeRefCounted<ownership::OwnerKeyUtilImpl>(public_key_path);
+  }
+
+  scoped_refptr<ownership::MockOwnerKeyUtil> mock_ =
+      base::MakeRefCounted<ownership::MockOwnerKeyUtil>();
+};
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
@@ -391,14 +443,12 @@ void InProcessBrowserTest::Initialize() {
   // Disable session restore infobar the experiment as it causes test failures.
   disabled_features.push_back(features::kSessionRestoreInfobar);
 #endif
-#if BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER)
   // Prewarming the default search engine background page spawns an extra
   // prerender renderer process and warms up a compositor during browser
-  // startup, causing significant overhead and shard timeouts in browser_tests
-  // on win-asan (crbug.com/563340729). Dedicated prewarm tests explicitly
-  // enable it via ScopedPrewarmFeatureList.
+  // startup, causing unnecessary overhead in browser_tests
+  // (crbug.com/563340729). Dedicated prewarm tests explicitly enable it via
+  // ScopedPrewarmFeatureList.
   disabled_features.push_back(features::kPrewarm);
-#endif
   // In-product help can conflict with tests' expected window activation and
   // focus. Individual tests can re-enable IPH.
   block_all_iph_feature_list_.InitWithNoFeaturesAllowed();
@@ -556,6 +606,9 @@ void InProcessBrowserTest::SetUp() {
   // On CrOS, we need to use ash::Shell to get all root windows.
   views::test::WidgetTest::SetRootWindowProvider(
       base::BindRepeating(&ash::Shell::GetAllRootWindows));
+
+  ash::OwnerSettingsServiceAshFactory::GetInstance()->SetOwnerKeyUtilForTesting(
+      base::MakeRefCounted<TestOwnerKeyUtil>());
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Redirect the default download directory to a temporary directory.
@@ -625,6 +678,8 @@ void InProcessBrowserTest::TearDown() {
   }
 
 #if BUILDFLAG(IS_CHROMEOS)
+  ash::OwnerSettingsServiceAshFactory::GetInstance()->SetOwnerKeyUtilForTesting(
+      nullptr);
   ash::device_sync::DeviceSyncImpl::Factory::SetCustomFactory(nullptr);
   launch_browser_for_testing_ = nullptr;
   views::test::WidgetTest::SetRootWindowProvider(base::NullCallback());

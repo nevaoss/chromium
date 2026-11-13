@@ -330,6 +330,10 @@ class ReadAnythingAppControllerTest : public testing::Test {
     controller_->page_handler_.FlushForTesting();
   }
 
+  void ClearForcedDistillationMethod() {
+    controller_->forced_distillation_method_for_testing_.reset();
+  }
+
   void LogSpeechStop(int source) { controller_->LogSpeechStop(source); }
   void ProcessModelUpdates() { controller_->ProcessModelUpdates(); }
   bool IsControllerHidden() const { return controller_->IsHidden(); }
@@ -5591,17 +5595,17 @@ class ReadAnythingAppControllerReadabilityTest
 
     // Create a tree id and tell the controller it's the active one.
     tree_id_ = ui::AXTreeID::CreateNewAXTreeID();
-    ui::AXTreeUpdate snapshot;
-    ui::AXNodeData root;
-    root.id = 1;
-    snapshot.root_id = root.id;
-    snapshot.nodes = {std::move(root)};
-    test::SetUpdateTreeID(&snapshot, tree_id_);
-    AccessibilityEventReceived({std::move(snapshot)});
+    std::unique_ptr<ui::AXTreeUpdate> snapshot = test::CreateInitialUpdate();
+    test::SetUpdateTreeID(snapshot.get(), tree_id_);
+    AccessibilityEventReceived({*snapshot});
     controller().OnGetPresentationState(
         read_anything::mojom::ReadAnythingPresentationState::kInSidePanel);
     controller().OnActiveAXTreeIDChanged(tree_id_, ukm::kInvalidSourceId,
                                          /*is_pdf=*/false);
+    // Stop the distillation status logging timer started during setup to
+    // prevent it from firing or logging during test cases.
+    controller_->distillation_status_logging_delay_timer_.Stop();
+    controller_->has_logged_distillation_status_ = false;
   }
 };
 
@@ -5617,6 +5621,7 @@ TEST_F(ReadAnythingAppControllerReadabilityTest,
             ReadAnythingAppModel::DistillationMethod::kReadability);
 
   EXPECT_TRUE(model().readability_distillation_complete_for_current_tree());
+  EXPECT_TRUE(model().readability_content_drawn());
 }
 
 TEST_F(ReadAnythingAppControllerReadabilityTest,
@@ -5636,6 +5641,26 @@ TEST_F(ReadAnythingAppControllerReadabilityTest,
 
   EXPECT_EQ(model().current_content_distillation_method(),
             ReadAnythingAppModel::DistillationMethod::kReadability);
+  EXPECT_FALSE(model().readability_content_drawn());
+}
+
+TEST_F(ReadAnythingAppControllerReadabilityTest,
+       UpdateContent_UpdatesReadabilityContentDrawn) {
+  EXPECT_FALSE(model().readability_content_drawn());
+
+  controller().UpdateContent("Title", "Some valid content");
+  EXPECT_TRUE(model().readability_content_drawn());
+
+  controller().UpdateContent("Title", "");
+  EXPECT_FALSE(model().readability_content_drawn());
+
+  controller().UpdateContent("Title", "Some valid content");
+  EXPECT_TRUE(model().readability_content_drawn());
+
+  ui::AXTreeID new_tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_tree_id, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/false);
+  EXPECT_FALSE(model().readability_content_drawn());
 }
 
 TEST_F(ReadAnythingAppControllerReadabilityTest,
@@ -5856,13 +5881,12 @@ TEST_F(ReadAnythingAppControllerReadabilityTest,
 
 TEST_F(ReadAnythingAppControllerReadabilityTest,
        CurrentContentDistillationMethod_Screen2x_UpdatesUntilDrawn) {
-  scoped_feature_list_.Reset();
-  scoped_feature_list_.InitWithFeatures(
-      {features::kReadAnythingWithReadability},
-      {features::kReadAnythingReadabilitySelectText});
-  // Mock Readability content being the current_distillation_method.
+  // Mock Readability content being the current_distillation_method, and
+  // Screen2x being the next distillation method (e.g., after fallback).
   model().set_current_content_distillation_method(
       ReadAnythingAppModel::DistillationMethod::kReadability);
+  model().set_next_distillation_method(
+      ReadAnythingAppModel::DistillationMethod::kScreen2x);
 
   // Start speech to pause updates.
   read_aloud_model().SetSpeechPlaying(true);
@@ -5876,50 +5900,15 @@ TEST_F(ReadAnythingAppControllerReadabilityTest,
   EXPECT_EQ(model().current_content_distillation_method(),
             ReadAnythingAppModel::DistillationMethod::kReadability);
 
-  // Stop speech.
+  // Stop speech. Now that speech has stopped, the queued Screen2x distillation
+  // is triggered.
+  EXPECT_CALL(*distiller_, Distill).Times(1);
   controller().OnIsSpeechActiveChanged(false);
-
-  // Now that speech has stopped, the model should require distillation.
-  EXPECT_TRUE(model().requires_distillation());
-
-  // Update distillation method to Screen2x so that Draw() can be called.
-  model().set_next_distillation_method(
-      ReadAnythingAppModel::DistillationMethod::kScreen2x);
 
   // Once distillation finishes and Draw() is called, the method should update.
   controller().OnAXTreeDistilled(tree_id_, {1});
   EXPECT_EQ(model().current_content_distillation_method(),
             ReadAnythingAppModel::DistillationMethod::kScreen2x);
-}
-
-TEST_F(
-    ReadAnythingAppControllerReadabilityTest,
-    AccessibilityEventReceived_Readability_DoesNotProcessSelectionIfFeatureDisabled) {
-  scoped_feature_list_.Reset();
-  scoped_feature_list_.InitWithFeatures(
-      {features::kReadAnythingWithReadability},
-      {features::kReadAnythingReadabilitySelectText});
-  // Set conditions to process readability accessibility updates
-  EXPECT_CALL(page_handler_,
-              OnDistillationStateChanged(
-                  read_anything::mojom::ReadAnythingDistillationState::
-                      kDistillationInProgress))
-      .Times(1);
-  controller().SetDistillationState(
-      read_anything::mojom::ReadAnythingDistillationState::
-          kDistillationInProgress);
-
-  // Set up: requires_post_process_selection is true.
-  model().set_requires_post_process_selection(true);
-
-  // Call AccessibilityEventReceived.
-  ui::AXTreeUpdate update;
-  test::SetUpdateTreeID(&update, tree_id_);
-  AccessibilityEventReceived({update});
-
-  // Verification: PostProcessSelection was NOT called because the feature flag
-  // is disabled, so requires_post_process_selection remains true.
-  EXPECT_TRUE(model().requires_post_process_selection());
 }
 
 TEST_F(ReadAnythingAppControllerScreen2xTest,
@@ -6504,39 +6493,7 @@ TEST_F(ReadAnythingAppControllerTest,
       1);
 }
 
-class ReadAnythingAppControllerReadabilitySelectTextTest
-    : public ReadAnythingAppControllerTest {
- public:
-  ReadAnythingAppControllerReadabilitySelectTextTest() = default;
-  ~ReadAnythingAppControllerReadabilitySelectTextTest() override = default;
-
-  void SetUp() override {
-    scoped_feature_list_.Reset();
-    scoped_feature_list_.InitWithFeatures(
-        {features::kReadAnythingWithReadability,
-         features::kReadAnythingReadabilitySelectText},
-        {});
-    ReadAnythingAppControllerTest::SetUp();
-    model().set_next_distillation_method(
-        ReadAnythingAppModel::DistillationMethod::kReadability);
-    model().set_current_content_distillation_method(
-        ReadAnythingAppModel::DistillationMethod::kReadability);
-    VerifyAndClearPageHandlerExpectations();
-  }
-
- protected:
-  void DoInitialDistillation() override {
-    // Perform basic navigation setup to initialize timers and the AXTree root,
-    // but skip the manual Screen2x distillation callback.
-    std::unique_ptr<ui::AXTreeUpdate> snapshot = test::CreateInitialUpdate();
-    test::SetUpdateTreeID(snapshot.get(), tree_id_);
-    AccessibilityEventReceived({*snapshot});
-    controller().OnActiveAXTreeIDChanged(tree_id_, ukm::kInvalidSourceId,
-                                         false);
-  }
-};
-
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        AccessibilityEventReceived_Readability_HandlesSelectionEvent) {
   // Setup: A selection event on the active tree.
   ui::AXTreeUpdate update;
@@ -6560,7 +6517,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_TRUE(model().has_selection());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        ProcessModelUpdates_Readability_OnlyProcessesSelection) {
   // Setup: Model has a pending selection request.
   model().set_requires_post_process_selection(true);
@@ -6573,7 +6530,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_FALSE(model().requires_post_process_selection());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        OnRenderedTextBlocksAvailable_UpdatesModel) {
   std::vector<std::u16string> blocks = {u"The quick brown fox", u"jumps over",
                                         u"the lazy dog"};
@@ -6585,7 +6542,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_EQ(model().readability_text_blocks(), blocks);
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        UpdateContent_ResetsReadabilitySelectTextState) {
   // Dirty the model state with data from a previous distillation.
   model().set_readability_text_blocks({u"stale block 1", u"stale block 2"});
@@ -6599,7 +6556,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_FALSE(model().should_map_rendered_text_to_tree_for_readability());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        MappingTriggered_OnTreeUpdate_IfBlocksAlreadyAvailable) {
   // Setup a new tree ID to simulate a navigation/new distillation pass.
   ui::AXTreeID new_tree_id = ui::AXTreeID::CreateNewAXTreeID();
@@ -6642,7 +6599,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_FALSE(model().should_map_rendered_text_to_tree_for_readability());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        MappingTriggered_OnBlocksAvailable_IfTreeAlreadyReady) {
   // Setup a new tree ID and make it active.
   ui::AXTreeID new_tree_id = ui::AXTreeID::CreateNewAXTreeID();
@@ -6674,7 +6631,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_FALSE(model().should_map_rendered_text_to_tree_for_readability());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        AccessibilityEventReceived_Readability_ProcessesSelectionIfRequired) {
   // Set conditions to process readability accessibility updates
   EXPECT_CALL(page_handler_,
@@ -6700,7 +6657,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 }
 
 TEST_F(
-    ReadAnythingAppControllerReadabilitySelectTextTest,
+    ReadAnythingAppControllerReadabilityTest,
     AccessibilityEventReceived_Readability_DoesNotProcessSelectionWhenSpeechPlaying) {
   EXPECT_CALL(page_handler_,
               OnDistillationStateChanged(
@@ -6724,7 +6681,7 @@ TEST_F(
   EXPECT_FALSE(model().requires_post_process_selection());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        ProcessModelUpdates_Readability_RequiresDistillation) {
   // Provide  "stale" content.
   std::string stale_content = "<div>Old stale article content</div>";
@@ -6748,7 +6705,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   EXPECT_TRUE(controller().GetDomDistillerContentHtml().empty());
 }
 
-TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+TEST_F(ReadAnythingAppControllerReadabilityTest,
        ProcessModelUpdates_Readability_AvoidsRedundantDistillation) {
   // Set up an active tree with a valid URL.
   ui::AXTreeUpdate update;
@@ -6782,7 +6739,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 }
 
 TEST_F(
-    ReadAnythingAppControllerReadabilitySelectTextTest,
+    ReadAnythingAppControllerReadabilityTest,
     ProcessModelUpdates_Readability_SameDocumentNavigationTriggersDistillation) {
   // Set up an active tree with URL Page 1.
   ui::AXTreeUpdate update1;
@@ -7546,11 +7503,10 @@ class ReadAnythingAppControllerDistillerRefactorTest
     AccessibilityEventReceived({*snapshot});
   }
 
-  // Makes the next tree change start with Readability instead of Screen2x.
-  void UseReadability() {
-    controller().set_forced_distillation_method_for_testing(
-        ReadAnythingAppModel::DistillationMethod::kReadability);
-  }
+  // Clears the fixture's forced Screen2x method so the controller uses its
+  // real Readability-first selection logic (Readability for web pages, Screen2x
+  // for PDFs and Google Docs).
+  void UseReadability() { ClearForcedDistillationMethod(); }
 
   // Expects the controller to send one Readability request to the browser.
   // Instead of answering right away, saves the answer callback in the returned
@@ -7608,6 +7564,25 @@ TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
 
   controller().OnActiveAXTreeIDChanged(tree_id, ukm::kInvalidSourceId, false);
   page_handler_.FlushForTesting();
+}
+
+TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
+       OnDistillationStateChanged_CalledAfterDistillationEmpty) {
+  // AddTree's nodes have no main/article role, so rules-based Screen2x finds
+  // no content.
+  ui::AXTreeID tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  AddTree(tree_id);
+  VerifyAndClearPageHandlerExpectations();
+  EXPECT_CALL(page_handler_,
+              OnDistillationStateChanged(
+                  read_anything::mojom::ReadAnythingDistillationState::
+                      kDistillationEmpty))
+      .Times(1);
+
+  controller().OnActiveAXTreeIDChanged(tree_id, ukm::kInvalidSourceId, false);
+  page_handler_.FlushForTesting();
+
+  EXPECT_TRUE(model().content_node_ids().empty());
 }
 
 TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
@@ -7697,6 +7672,116 @@ TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
 }
 
 TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
+       UpdateContent_EmptyContentNoTree_SkipsDistillationAttempt) {
+  ui::AXTreeID tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  UseReadability();
+  ReadabilityReply& reply = ExpectReadabilityRequest();
+  controller().OnActiveAXTreeIDChanged(tree_id, ukm::kInvalidSourceId, false);
+  page_handler_.FlushForTesting();
+  ASSERT_FALSE(model().ContainsActiveTree());
+
+  // Without an active tree, falling back to Screen2x defers instantiating and
+  // running Screen2xDistiller until the tree arrives.
+  Reply(reply, read_anything::mojom::ReadabilityDistillationResult::kEmpty);
+
+  EXPECT_EQ(model().next_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_TRUE(model().requires_distillation());
+  EXPECT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kReadability);
+
+  AddTree(tree_id);
+
+  EXPECT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_FALSE(model().requires_distillation());
+}
+
+TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
+       OnActiveAXTreeIDChanged_ResetsDistillationMethod) {
+  // SetUp distilled with Screen2x. Navigating to a standard web page should
+  // replace Screen2xDistiller with ReadabilityDistiller.
+  ASSERT_EQ(model().current_content_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  ASSERT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+
+  UseReadability();
+  ExpectReadabilityRequest();
+  controller().OnActiveAXTreeIDChanged(ui::AXTreeID::CreateNewAXTreeID(),
+                                       ukm::kInvalidSourceId, /*is_pdf=*/false);
+  page_handler_.FlushForTesting();
+
+  EXPECT_EQ(model().current_content_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kReadability);
+  EXPECT_EQ(model().next_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kReadability);
+  EXPECT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kReadability);
+}
+
+TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
+       OnActiveAXTreeIDChanged_UsesScreen2xForPDF) {
+  UseReadability();
+  ReadabilityReply& stale_reply = ExpectReadabilityRequest();
+  controller().OnActiveAXTreeIDChanged(ui::AXTreeID::CreateNewAXTreeID(),
+                                       ukm::kInvalidSourceId, /*is_pdf=*/false);
+  page_handler_.FlushForTesting();
+  ASSERT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kReadability);
+
+  // Navigating to a PDF switches to Screen2xDistiller and destroys the
+  // in-flight ReadabilityDistiller.
+  ui::AXTreeID pdf_tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  AddTree(pdf_tree_id);
+  controller().OnActiveAXTreeIDChanged(pdf_tree_id, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/true);
+
+  EXPECT_EQ(model().current_content_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_EQ(model().next_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+
+  Reply(stale_reply,
+        read_anything::mojom::ReadabilityDistillationResult::kSuccess, "Stale",
+        "<p>Stale</p>");
+  EXPECT_TRUE(controller().GetDomDistillerContentHtml().empty());
+}
+
+TEST_F(
+    ReadAnythingAppControllerDistillerRefactorTest,
+    AccessibilityEventReceived_DocsUrlWhileReadabilityInFlight_SwitchesToScreen2x) {
+  ui::AXTreeID tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  UseReadability();
+  ReadabilityReply& stale_reply = ExpectReadabilityRequest();
+  controller().OnActiveAXTreeIDChanged(tree_id, ukm::kInvalidSourceId,
+                                       /*is_pdf=*/false);
+  page_handler_.FlushForTesting();
+  ASSERT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kReadability);
+
+  // Discovering the active tree is a Google Doc while Readability is in flight
+  // switches to Screen2xDistiller and destroys the in-flight
+  // ReadabilityDistiller.
+  AddTree(tree_id, DOCS_URL);
+
+  EXPECT_EQ(model().current_content_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_EQ(model().next_distillation_method(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_EQ(active_distiller()->GetDistillationMethod(),
+            ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  EXPECT_FALSE(model().requires_distillation());
+
+  Reply(stale_reply,
+        read_anything::mojom::ReadabilityDistillationResult::kSuccess, "Stale",
+        "<p>Stale</p>");
+  EXPECT_TRUE(controller().GetDomDistillerContentHtml().empty());
+}
+
+TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
        TreeChange_StaleReadabilityReply_IsIgnored) {
   UseReadability();
   ReadabilityReply& stale_reply = ExpectReadabilityRequest();
@@ -7744,25 +7829,21 @@ class ReadAnythingAppControllerDistillerRefactorSelectTextTest
  public:
   void SetUp() override {
     ReadAnythingAppControllerDistillerRefactorTest::SetUp();
-    select_text_feature_list_.InitAndEnableFeature(
-        features::kReadAnythingReadabilitySelectText);
 
     // Start every test from a page that Readability already distilled. The URL
     // is what decides whether a later request is redundant.
-    ui::AXTreeID tree_id = ui::AXTreeID::CreateNewAXTreeID();
-    AddTree(tree_id, "https://example.com/page");
+    tree_id_ = ui::AXTreeID::CreateNewAXTreeID();
+    AddTree(tree_id_, "https://example.com/page");
     UseReadability();
     ReadabilityReply& reply = ExpectReadabilityRequest();
-    controller().OnActiveAXTreeIDChanged(tree_id, ukm::kInvalidSourceId, false);
+    controller().OnActiveAXTreeIDChanged(tree_id_, ukm::kInvalidSourceId,
+                                         false);
     page_handler_.FlushForTesting();
     Reply(reply, read_anything::mojom::ReadabilityDistillationResult::kSuccess,
           "Title", "<p>Content</p>");
     ASSERT_TRUE(model().readability_distillation_complete_for_current_tree());
     VerifyAndClearPageHandlerExpectations();
   }
-
- private:
-  base::test::ScopedFeatureList select_text_feature_list_;
 };
 
 TEST_F(ReadAnythingAppControllerDistillerRefactorSelectTextTest,
@@ -7793,6 +7874,60 @@ TEST_F(ReadAnythingAppControllerDistillerRefactorSelectTextTest,
   ProcessModelUpdates();
   page_handler_.FlushForTesting();
 
+  EXPECT_TRUE(model().readability_distillation_complete_for_current_tree());
+}
+
+TEST_F(
+    ReadAnythingAppControllerDistillerRefactorSelectTextTest,
+    ProcessModelUpdates_Readability_SameDocumentNavigationTriggersDistillation) {
+  // Simulate an SPA navigation that changes the root URL on the same tree.
+  AddTree(tree_id_, "https://example.com/page2");
+  model().set_requires_readability_distillation(true);
+  ReadabilityReply& reply = ExpectReadabilityRequest(
+      read_anything::mojom::ReadabilityDistillationReason::kRedistill);
+
+  ProcessModelUpdates();
+  page_handler_.FlushForTesting();
+
+  EXPECT_FALSE(model().requires_readability_distillation());
+  Reply(reply, read_anything::mojom::ReadabilityDistillationResult::kSuccess,
+        "Title 2", "<p>Page 2 content</p>");
+  EXPECT_EQ(controller().GetDomDistillerContentHtml(), "<p>Page 2 content</p>");
+}
+
+TEST_F(ReadAnythingAppControllerDistillerRefactorSelectTextTest,
+       UpdateContent_SpeechPlaying_DefersDistillation) {
+  base::test::ScopedFeatureList improved_ui_feature_list{
+      features::kReadAnythingImprovedUi};
+  ui::AXTreeID tree_id = ui::AXTreeID::CreateNewAXTreeID();
+  AddTree(tree_id);
+  ReadabilityReply& deferred_reply = ExpectReadabilityRequest();
+  controller().OnActiveAXTreeIDChanged(tree_id, ukm::kInvalidSourceId, false);
+  page_handler_.FlushForTesting();
+
+  // Speech is playing when the reply arrives, so completing distillation is
+  // deferred until speech stops.
+  controller().OnIsSpeechActiveChanged(true);
+  Reply(deferred_reply,
+        read_anything::mojom::ReadabilityDistillationResult::kSuccess, "Title",
+        "<p>Content</p>");
+
+  EXPECT_TRUE(model().requires_readability_distillation());
+  EXPECT_FALSE(model().readability_distillation_complete_for_current_tree());
+
+  // Stopping speech triggers a re-distillation.
+  model().set_distillation_state(
+      read_anything::mojom::ReadAnythingDistillationState::
+          kDistillationWithContent);
+  ReadabilityReply& redistill_reply = ExpectReadabilityRequest(
+      read_anything::mojom::ReadabilityDistillationReason::kRedistill);
+  controller().OnIsSpeechActiveChanged(false);
+  page_handler_.FlushForTesting();
+
+  EXPECT_FALSE(model().requires_readability_distillation());
+  Reply(redistill_reply,
+        read_anything::mojom::ReadabilityDistillationResult::kSuccess, "Title",
+        "<p>Content</p>");
   EXPECT_TRUE(model().readability_distillation_complete_for_current_tree());
 }
 
@@ -7848,4 +7983,18 @@ TEST_F(ReadAnythingAppControllerDistillerRefactorTest,
 
   EXPECT_EQ(active_distiller()->GetDistillationMethod(),
             ReadAnythingAppModel::DistillationMethod::kScreen2x);
+}
+
+TEST_F(ReadAnythingAppControllerTest, IsInSelectionMode) {
+  model().set_side_panel_distillation_mode_for_testing(
+      ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+  EXPECT_FALSE(controller().IsInSelectionMode());
+
+  model().set_side_panel_distillation_mode_for_testing(
+      ReadAnythingAppModel::SidePanelDistillationMode::kSelection);
+  EXPECT_TRUE(controller().IsInSelectionMode());
+
+  model().set_side_panel_distillation_mode_for_testing(
+      ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+  EXPECT_FALSE(controller().IsInSelectionMode());
 }

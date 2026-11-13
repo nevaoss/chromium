@@ -502,6 +502,20 @@ export class BrowsingContextImpl {
         params.type,
       );
 
+      // If the execution context was reused (e.g. navigating from initial about:blank
+      // to a same-site URL), no `Runtime.executionContextCreated` event is emitted.
+      // If we reset the default realm deferred in `Page.frameStartedNavigating`,
+      // we must resolve it here to prevent it from hanging forever.
+      if (!this.#defaultRealmDeferred.isFinished) {
+        const defaultRealms = this.#realmStorage.findRealms({
+          browsingContextId: this.id,
+          sandbox: null,
+        });
+        if (defaultRealms.length > 0) {
+          this.#defaultRealmDeferred.resolve(defaultRealms[0]!);
+        }
+      }
+
       // At the point the page is initialized, all the nested iframes from the
       // previous page are detached and realms are destroyed.
       // Delete children from context.
@@ -1932,9 +1946,17 @@ export class BrowsingContextImpl {
 
     const startBackendNodeIds: number[] = [];
     if (startNodes.length === 0) {
-      const {root: documentRoot} =
-        await this.#cdpTarget.cdpClient.sendCommand('DOM.getDocument');
-      startBackendNodeIds.push(documentRoot.backendNodeId);
+      // Fetch the root AX node of this frame to get its document backendNodeId.
+      const {node: rootNode} = await this.#cdpTarget.cdpClient.sendCommand(
+        'Accessibility.getRootAXNode',
+        {
+          frameId: this.id,
+        },
+      );
+      if (rootNode.backendDOMNodeId !== undefined) {
+        // Default to the current frame's document when no startNodes are given.
+        startBackendNodeIds.push(rootNode.backendDOMNodeId);
+      }
     } else {
       for (const node of startNodes) {
         if (node.sharedId) {
@@ -1999,6 +2021,8 @@ export class BrowsingContextImpl {
           'DOM.resolveNode',
           {
             backendNodeId,
+            // Resolve the node in the requested realm instead of the main world.
+            executionContextId: realm.executionContextId,
           },
         );
         // We need to use `serializeCdpObject` to convert it to BiDi format.

@@ -17,8 +17,8 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_auto_reset.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/not_fatal_until.h"
 #include "base/notimplemented.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -119,7 +119,6 @@
 #include <windows.h>
 
 #include "base/strings/string_util.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "components/stylus_handwriting/win/features.h"
 #include "content/browser/renderer_host/input/stylus_handwriting_controller_win.h"
@@ -177,6 +176,9 @@ DEFINE_UI_CLASS_PROPERTY_KEY(InputScope,
 
 namespace content {
 
+BASE_FEATURE(kPreventReentrantInternalSetBounds,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 namespace {
 // Guards CHECKing that the UI compositor LSI is only ever invalid when
 // `RenderWidgetHost` is hidden.
@@ -185,8 +187,6 @@ namespace {
 BASE_FEATURE(kRenderWidgetHostHiddenCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
-BASE_FEATURE(kDeduplicateSetInputScope, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Arabic (101) HKL: 00000401
 const std::wstring_view kArabic101KeyboardLayoutName = L"00000401";
 
@@ -362,7 +362,6 @@ RenderWidgetHostViewAura::RenderWidgetHostViewAura(
     : RenderWidgetHostViewBase(widget_host),
       window_(nullptr),
       in_shutdown_(false),
-      in_bounds_changed_(false),
       popup_parent_host_view_(nullptr),
       popup_child_host_view_(nullptr),
       is_loading_(false),
@@ -433,23 +432,16 @@ void RenderWidgetHostViewAura::InitAsChild(gfx::NativeView parent_view) {
   // This will fetch and set the display features.
   ObserveDevicePosturePlatformProvider();
 
-  // We want to set input scope once after the window is created
-  // and before any focus change happens. We want to set it only
-  // once for each hwnd.
-  if (window_->GetHost() && GetInputMethod()) {
+  // Set input scope once after the window is created and before any focus
+  // change happens.
+  if (aura::WindowTreeHost* host = window_->GetHost();
+      host && GetInputMethod()) {
     InputScope input_scope = ShouldDoLearning() ? IS_DEFAULT : IS_PRIVATE;
-    if (base::FeatureList::IsEnabled(kDeduplicateSetInputScope)) {
-      aura::WindowTreeHost* host = window_->GetHost();
-      InputScope last_input_scope =
-          host->window()->GetProperty(kLastInputScopeKey);
-      if (last_input_scope != input_scope) {
-        ui::tsf_inputscope::SetInputScope(
-            RenderWidgetHostViewAura::GetHostWindowHWND(), input_scope);
-        host->window()->SetProperty(kLastInputScopeKey, input_scope);
-      }
-    } else {
-      ui::tsf_inputscope::SetInputScope(
-          RenderWidgetHostViewAura::GetHostWindowHWND(), input_scope);
+    InputScope last_input_scope =
+        host->window()->GetProperty(kLastInputScopeKey);
+    if (last_input_scope != input_scope) {
+      ui::tsf_inputscope::SetInputScope(GetHostWindowHWND(), input_scope);
+      host->window()->SetProperty(kLastInputScopeKey, input_scope);
     }
   }
 #endif
@@ -2426,27 +2418,25 @@ void RenderWidgetHostViewAura::OnBoundsChanged(const gfx::Rect& old_bounds,
   if (destroy_pending()) {
     return;
   }
-  // OnCaretBoundsChanged() below may call out to a third-party TSF IME on
-  // Windows, which can re-entrantly destroy `this`. Use WeakAutoReset so the
-  // unwind write does not land in freed memory (AutoReset::scoped_variable_ is
-  // RAW_PTR_EXCLUSION and not BRP-protected).
-  base::WeakAutoReset in_bounds_changed(
-      weak_ptr_factory_.GetWeakPtr(),
-      &RenderWidgetHostViewAura::in_bounds_changed_, true);
+  // `OnBoundsChanged()` is only called from
+  // `aura::Window::NotifyBoundsChanged()`, which holds an active
+  // `ScopedDeleteBlocker` on `window_`. Since `DestroyImpl()` deletes `window_`
+  // before `delete this`, `this` cannot be deleted while `OnBoundsChanged()` is
+  // on the stack.
+  window_->AssertDeleteBlocked();
+  const bool was_setting_bounds = is_setting_bounds_;
+  base::AutoReset<bool> is_setting_bounds(&is_setting_bounds_, true);
   // We care about this whenever RenderWidgetHostViewAura is not owned by a
   // WebContentsViewAura since changes to the Window's bounds need to be
-  // messaged to the renderer.  WebContentsViewAura invokes SetSize() or
-  // SetBounds() itself.  No matter how we got here, any redundant calls are
-  // harmless.
-  SetSize(new_bounds.size());
+  // messaged to the renderer. WebContentsViewAura invokes SetSize() or
+  // SetBounds() itself.
+  if (!was_setting_bounds ||
+      !base::FeatureList::IsEnabled(kPreventReentrantInternalSetBounds)) {
+    SetSize(new_bounds.size());
+  }
 
   if (GetInputMethod()) {
-    auto weak_this = weak_ptr_factory_.GetWeakPtr();
     GetInputMethod()->OnCaretBoundsChanged(this);
-    if (!weak_this) {
-      // `this` may have been deleted inside the IME callout.
-      return;
-    }
     UpdateInsetsWithVirtualKeyboardEnabled();
   }
 }
@@ -3109,6 +3099,10 @@ RenderWidgetHostViewAura::~RenderWidgetHostViewAura() {
 
   delegated_frame_host_.reset();
   window_observer_.reset();
+  // TODO(crbug.com/568824848): Remove the `if (window_)` branch once M160
+  // confirms `window_` is always null here (both `DestroyImpl()` and
+  // `OnWindowDestroyed()` clear `window_ = nullptr` before `delete this`).
+  CHECK(!window_, base::NotFatalUntil::M160);
   if (window_) {
     aura::client::SetFocusChangeObserver(window_, nullptr);
     if (window_->GetHost())
@@ -3432,8 +3426,23 @@ void RenderWidgetHostViewAura::SetSelectionControllerClientForTest(
 void RenderWidgetHostViewAura::InternalSetBounds(const gfx::Rect& rect) {
   // Don't recursively call SetBounds if this bounds update is the result of
   // a Window::SetBoundsInternal call.
-  if (!in_bounds_changed_)
-    window_->SetBounds(rect);
+  if (!is_setting_bounds_) {
+    if (base::FeatureList::IsEnabled(kPreventReentrantInternalSetBounds)) {
+      // `aura::Window::NotifyBoundsChanged()` already instantiates a
+      // `ScopedDeleteBlocker` on `window_`; instantiate one at the outer scope
+      // as well to make it explicit that `this` (which deletes `window_` in
+      // `DestroyImpl()`) cannot be deleted while `is_setting_bounds` is on the
+      // stack, making `base::AutoReset` safe.
+      aura::Window::ScopedDeleteBlocker delete_blocker(window_);
+      base::AutoReset<bool> is_setting_bounds(&is_setting_bounds_, true);
+      window_->SetBounds(rect);
+    } else {
+      window_->SetBounds(rect);
+    }
+  }
+  if (destroy_pending()) {
+    return;
+  }
 
   if (!display_feature_bounds_.IsEmpty()) {
     // The view bounds have changed so if we have viewport segments from the

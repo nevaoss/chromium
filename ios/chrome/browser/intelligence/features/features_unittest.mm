@@ -54,6 +54,17 @@ TEST_F(ActorFeaturesTest, IsToolDisabled_ToolNotSet) {
       IsToolDisabled(optimization_guide::proto::Action::ACTION_NOT_SET));
 }
 
+// Tests that the tab observation PageContext timeout honors the feature
+// parameter override.
+TEST_F(ActorFeaturesTest, TabObservationPageContextTimeout_ParamOverride) {
+  base::test::ScopedFeatureList scoped_feature_list;
+
+  base::FieldTrialParams params;
+  params["ActorTabObservationPageContextTimeout"] = "7s";
+  scoped_feature_list.InitAndEnableFeatureWithParameters(kGeminiActor, params);
+  EXPECT_EQ(base::Seconds(7), GetActorTabObservationPageContextTimeout());
+}
+
 TEST_F(ActorFeaturesTest, IsPageActionMenuEnabled_Default) {
   EXPECT_FALSE(IsPageActionMenuEnabled());
 }
@@ -283,4 +294,27 @@ TEST_F(ActorFeaturesTest, TestGeminiActorBackgroundingKillswitchDisabled) {
       {kPageActionMenu, kActorTools, kGeminiClientMigration, kGeminiActor},
       {kEnableBackgroundContinuedProcessing});
   EXPECT_FALSE(IsGeminiActorBackgroundingEnabled());
+}
+
+// Tests that page stability is disabled by default when `kActorTools` is
+// disabled.
+TEST_F(ActorFeaturesTest, IsPageStabilityEnabled_Default) {
+  EXPECT_FALSE(IsPageStabilityEnabled());
+}
+
+// Tests that page stability is enabled by default when `kActorTools` is
+// enabled.
+TEST_F(ActorFeaturesTest, IsPageStabilityEnabled_WithActorTools) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kActorTools);
+  EXPECT_TRUE(IsPageStabilityEnabled());
+}
+
+// Tests that page stability can be disabled via feature parameter when
+// `kActorTools` is enabled.
+TEST_F(ActorFeaturesTest, IsPageStabilityEnabled_FeatureParamDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      kActorTools, {{kActorToolsPageStabilityParam, "false"}});
+  EXPECT_FALSE(IsPageStabilityEnabled());
 }

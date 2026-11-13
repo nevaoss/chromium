@@ -18,7 +18,10 @@ export function getHtml(this: TopicFeedbackExportDialogElement) {
     <div id="title">Send fishfood feedback</div>
     <div id="subtitle">
       Download your ratings and recent browsing as a file, then upload it to
-      the feedback form.
+      the ${this.getFormUrl_() ? html`<a id="formLink"
+          href="${this.getFormUrl_()}" target="_blank"
+          @click="${this.onFormLinkClick_}">feedback form</a>` :
+          html`feedback form`}.
     </div>
   </div>
   <div slot="body">
@@ -145,8 +148,8 @@ export function getHtml(this: TopicFeedbackExportDialogElement) {
         The file contains your topics, your ratings and comments, and the URLs,
         titles and times of the pages you visited in this window, except what
         you exclude above, plus your Chrome version and experiment state. Only
-        the Topics team can access it. It's deleted after 90 days; to have it
-        deleted sooner, contact the Topics team.
+        the Topics team can access it. It's deleted 18 months after upload; to
+        have it deleted sooner, contact the Topics team.
       </p>
       <cr-checkbox id="acknowledge" ?checked="${this.acknowledged_}"
           @checked-changed="${this.onAcknowledgeCheckedChanged_}">
@@ -157,11 +160,6 @@ export function getHtml(this: TopicFeedbackExportDialogElement) {
     ${this.exportState_ === 'done' ? html`
       <div id="exportDone" class="banner" role="status">
         <span>Downloaded. Upload the file to the feedback form.</span>
-        ${this.getFormUrl_() ? html`
-          <cr-button id="openForm" @click="${this.onOpenFormClick_}">
-            Open feedback form
-          </cr-button>
-        ` : ''}
       </div>
     ` : ''}
     ${this.exportState_ === 'error' ? html`
@@ -189,11 +187,18 @@ export function getHtml(this: TopicFeedbackExportDialogElement) {
     <cr-button id="close" class="cancel-button" @click="${this.onCloseClick_}">
       Close
     </cr-button>
-    <cr-button id="download" class="action-button"
+    <cr-button id="download"
+        class="${this.isFormNextStep_() ? 'cancel-button' : 'action-button'}"
         ?disabled="${!this.canDownload_()}"
         @click="${this.onDownloadClick_}">
-      Download JSON
+      ${this.isFormNextStep_() ? 'Download again' : 'Download JSON'}
     </cr-button>
+    ${this.isFormNextStep_() ? html`
+      <cr-button id="openForm" class="action-button"
+          @click="${this.onOpenFormClick_}">
+        Open feedback form
+      </cr-button>
+    ` : ''}
   </div>
 </cr-dialog>
 <!--_html_template_end_-->`;

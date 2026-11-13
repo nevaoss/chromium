@@ -85,6 +85,7 @@ inline constexpr base::FeatureParam<int>
         "omnibox_full_webui_defer_show_until_visual_state_ready_timeout_ms",
         250};
 BASE_DECLARE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReadyWithFullWebUI);
+BASE_DECLARE_FEATURE(kOmniboxAimPopupDeferCreation);
 BASE_DECLARE_FEATURE(kOmniboxWebUIDebounceResize);
 BASE_DECLARE_FEATURE(kOmniboxAimDebounceResize);
 BASE_DECLARE_FEATURE(kOmniboxFullWebUIDebounceResize);
@@ -168,6 +169,10 @@ BASE_DECLARE_FEATURE(kOmniboxPrefetchSelectedSuggestionsOmtAndroid);
 // Enables simultaneous prefetch and navigation on Enter KeyDown in Omnibox.
 BASE_DECLARE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown);
 
+// Surfaces recent tabs, including tabs from other devices, as suggestions in
+// the Android Tab Search overlay.
+BASE_DECLARE_FEATURE(kAndroidTabSearchRecentTabs);
+
 // Site search/Keyword mode related features.
 BASE_DECLARE_FEATURE(kOmniboxSiteSearch);
 BASE_DECLARE_FEATURE(kStarterPackExpansion);
@@ -189,7 +194,7 @@ BASE_DECLARE_FEATURE(kOmniboxFuseboxAsyncInflation);
 
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdate);
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdateV2);
-BASE_DECLARE_FEATURE(kOmniboxXGeoPermissionGranularity);
+BASE_DECLARE_FEATURE(kOmniboxXGeoFailClosedOnPreciseLeak);
 BASE_DECLARE_FEATURE(kExactMatchFavicons);
 BASE_DECLARE_FEATURE(kOmniboxAimImageDownscaling);
 
@@ -271,13 +276,13 @@ extern const base::FeatureParam<bool> kVoiceSearchCoherenceRealboxHelperText;
 #if BUILDFLAG(IS_ANDROID)
 BASE_DECLARE_FEATURE(kDiagnostics);
 BASE_DECLARE_FEATURE(kForceAndroidRealbox);
-BASE_DECLARE_FEATURE(kJumpStartOmnibox);
 BASE_DECLARE_FEATURE(kSuppressIntermediateACUpdatesOnLowEndDevices);
 // Delay focusTab to prioritize navigation (https://crbug.com/374852568).
 BASE_DECLARE_FEATURE(kPostDelayedTaskFocusTab);
 BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
 BASE_DECLARE_FEATURE(kOmniboxSessionlessVoiceSearch);
 BASE_DECLARE_FEATURE(kSuppressStatusIconDuringHttpNavigation);
+BASE_DECLARE_FEATURE(kOmniboxAndroidIntranetRedirect);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, X-Geo headers are sent for all search navigations on all

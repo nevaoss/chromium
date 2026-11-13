@@ -58,6 +58,11 @@ enum ContextMenuType {
   kPinnedActionSidePanelShowMerchantTrust,
   kPinnedActionSendSharedTabGroupFeedback,
   kPinnedActionSidePanelShowComments,
+  kPinnedActionShowAiOverlayDialog,
+  kPinnedActionTtcToolbar,
+  kPinnedActionSidePanelShowHistory,
+  kPinnedActionShowChromeLabs,
+  kPinnedActionSidePanelShowGlic,
   // App Menu Button
   kAppMenu,
   // Glic Button
@@ -556,6 +561,9 @@ struct PageActionState {
   // Overrides background color from its usual behavior.
   skia.mojom.SkColor? background_color_override;
 
+  // Overrides foreground (icon and text) color from its usual behavior.
+  skia.mojom.SkColor? foreground_color_override;
+
   // The TrackedElement id to use for the page action icon button. Used for
   // element tracking.
   tracked_element.mojom.TrackedElementIdentifier identifier;
@@ -646,6 +654,9 @@ struct OmniboxViewState {
   // This is the same as `user_input_in_progress` in LocationBarFlags, but also
   // included here for convenience.
   bool user_input_in_progress = false;
+
+  // True if temporary text is being displayed, i.e. from suggestions.
+  bool has_temporary_text = false;
 };
 
 struct LocationBarFlags {
@@ -707,6 +718,11 @@ enum PinnedToolbarAction {
  kSidePanelShowMerchantTrust,
  kSendSharedTabGroupFeedback,
  kSidePanelShowComments,
+ kShowAiOverlayDialog,
+ kTtcToolbar,
+ kSidePanelShowHistory,
+ kShowChromeLabs,
+ kSidePanelShowGlic,
  kDivider, // A divider; not a clickable action.
 };
 
@@ -766,6 +782,10 @@ struct PinnedToolbarActionState {
   // The progress ring to draw around the icon, if any. Null if this action
   // never draws a progress ring.
   DownloadProgressRingState? progress_ring;
+
+  // The number to show in the badge drawn over the icon, if any. Null if this
+  // action has no badge.
+  int32? badge_number;
 };
 
 struct LocationBarState {

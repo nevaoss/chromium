@@ -89,6 +89,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+#include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window_state.h"
 #include "chrome/browser/ui/browser_window_theme_observer.h"
@@ -257,7 +258,6 @@
 #include "chrome/grit/theme_resources.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/collaboration/public/messaging/message.h"
-#include "components/content_settings/core/common/features.h"
 #include "components/enterprise/buildflags/buildflags.h"
 #include "components/feature_engagement/public/event_constants.h"
 #include "components/feature_engagement/public/feature_constants.h"
@@ -376,9 +376,11 @@
 #include "ash/public/cpp/metrics_util.h"
 #include "ash/wm/window_properties.h"
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view_chromeos.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller_chromeos.h"
 #include "chrome/browser/ui/views/frame/top_controls_slide_controller_chromeos.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/grit/chrome_unscaled_resources.h"
 #include "chromeos/components/mgs/managed_guest_session_utils.h"
 #include "chromeos/ui/base/window_properties.h"
@@ -694,6 +696,10 @@ class BrowserView::ExclusiveAccessContextImpl
 
   bool CanUserExitFullscreen() const override {
 #if BUILDFLAG(IS_CHROMEOS)
+    if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+      return !chromeos::LockedStateController::From(browser_view_->browser())
+                  ->IsLockedFullscreen();
+    }
     return !platform_util::IsBrowserLockedFullscreen(browser_view_->browser());
 #else
     return true;
@@ -774,8 +780,7 @@ class BrowserView::ExclusiveAccessContextImpl
     bool should_close_bubble = false;
 #if BUILDFLAG(IS_CHROMEOS)
     // Trusted pinned mode does not allow to escape. So do not show the bubble.
-    should_close_bubble =
-        platform_util::IsBrowserLockedFullscreen(browser_view_->browser_.get());
+    should_close_bubble = !CanUserExitFullscreen();
 #endif
     if (!params.has_download) {
       // ...TYPE_NONE indicates deleting the bubble, except when used with
@@ -914,9 +919,10 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
   // `create_params` to enable/disable specific size controls.
   if (IsRunningInForcedAppMode()) {
     SetHasWindowSizeControls(false);
-  } else if (GetIsPictureInPictureType()) {
-    // Picture in picture windows must always have a title, can never minimize,
-    // and can never maximize regardless of what the params say.
+  } else if (GetIsFloatingType()) {
+    // Picture in picture and always-on-top popup windows must always have a
+    // title, can never minimize, and can never maximize regardless of what the
+    // params say.
     SetShowTitle(true);
     SetCanMinimize(false);
     SetCanMaximize(false);
@@ -1094,10 +1100,15 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
   }
 
 #if BUILDFLAG(IS_CHROMEOS)
-  on_locked_task_subscription_ =
-      ash::boca::OnTaskLockedController::From(browser_)
-          ->AddLockedForOnTaskUpdatedCallback(base::BindRepeating(
-              &BrowserView::OnLockedForOnTaskUpdated, base::Unretained(this)));
+  // With the unified controller, LockedStateController handles the window
+  // updates done in OnLockedForOnTaskUpdated().
+  if (!features::IsUseUnifiedLockedStateControllerEnabled()) {
+    on_locked_task_subscription_ =
+        ash::boca::OnTaskLockedController::From(browser_)
+            ->AddLockedForOnTaskUpdatedCallback(
+                base::BindRepeating(&BrowserView::OnLockedForOnTaskUpdated,
+                                    base::Unretained(this)));
+  }
 #endif
 
   // This must be set before BrowserView::AddedToWidget() which relies on
@@ -1550,9 +1561,13 @@ bool BrowserView::GetIsWebAppType() const {
   return web_app::AppBrowserController::IsWebApp(browser_.get());
 }
 
+bool BrowserView::GetIsFloatingType() const {
+  return browser_->GetType() == BrowserWindowInterface::Type::TYPE_FLOATING;
+}
+
 bool BrowserView::GetIsPictureInPictureType() const {
-  return browser_->GetType() ==
-         BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE;
+  return DesktopBrowserWindowCapabilities::IsDocumentPictureInPicture(
+      browser_.get());
 }
 
 std::optional<blink::mojom::PictureInPictureWindowOptions>
@@ -4185,18 +4200,8 @@ void BrowserView::OnWidgetActivationChanged(views::Widget* widget,
         restore_focus_on_activation_ = false;
 
         // Set initial focus change on the first activation if there is no
-        // modal dialog, unless the `FocusManager` will restore a stored view
-        // (e.g. one that requested focus while inactive). On Mac that restore
-        // runs after activation observers, so `RestoreFocus()` would override
-        // it.
-        views::FocusManager* focus_manager = GetFocusManager();
-        views::View* requested_view =
-            focus_manager ? focus_manager->GetStoredFocusView() : nullptr;
-        const bool has_pending_focus_request = requested_view &&
-                                               requested_view->IsFocusable() &&
-                                               !focus_manager->GetFocusedView();
-        if (!WidgetHasChildModalDialog(GetWidget()) &&
-            !has_pending_focus_request) {
+        // modal dialog.
+        if (!WidgetHasChildModalDialog(GetWidget())) {
           RestoreFocus();
         }
       }
@@ -4487,28 +4492,13 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
   // If activity indicators or a permission request chip is visible, it must be
   // in the first position in the pane traversal order to be easily accessible
   // for keyboard users.
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kLeftHandSideActivityIndicators)) {
-    if (toolbar_ && toolbar_->location_bar_view() &&
-        toolbar_->location_bar_view()->permission_dashboard_view() &&
-        toolbar_->location_bar_view()
-            ->permission_dashboard_view()
-            ->GetVisible()) {
-      panes->push_back(
-          toolbar_->location_bar_view()->permission_dashboard_view());
-    }
-  } else if (toolbar_ && toolbar_->location_bar() &&
-             toolbar_->location_bar()->GetChipController() &&
-             toolbar_->location_bar()
-                 ->GetChipController()
-                 ->IsPermissionPromptChipVisible()) {
-    // TODO(crbug.com/495419742): For WebUI, chip_view() will return nullptr
-    // and individual chips won't be added here. Instead, the WebUI container
-    // itself will act as the pane, and DOM focus management will handle
-    // traversing the internal chips.
-    if (GetLocationBarView() && GetLocationBarView()->chip_view()) {
-      panes->push_back(GetLocationBarView()->chip_view());
-    }
+  if (toolbar_ && toolbar_->location_bar_view() &&
+      toolbar_->location_bar_view()->permission_dashboard_view() &&
+      toolbar_->location_bar_view()
+          ->permission_dashboard_view()
+          ->GetVisible()) {
+    panes->push_back(
+        toolbar_->location_bar_view()->permission_dashboard_view());
   }
 
   panes->push_back(
@@ -4561,6 +4551,15 @@ bool BrowserView::ShouldDescendIntoChildForEventHandling(
                point_in_contents_web_view_coords.x(),
                point_in_contents_web_view_coords.y()) ||
            WidgetOwnedByAnchorContainsPoint(point_in_browser_view_coords);
+  }
+
+  if (organizer_tray_ && organizer_tray_->GetVisible()) {
+    const gfx::Point point_in_tray_coords = views::View::ConvertPointToTarget(
+        GetWidget()->GetRootView(), organizer_tray_, location);
+    if (organizer_tray_->HitTestPoint(point_in_tray_coords) &&
+        organizer_tray_->IsPositionInWindowCaption(point_in_tray_coords)) {
+      return false;
+    }
   }
 
   return true;
@@ -4650,8 +4649,8 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
       return HTCLIENT;
     }
 
-    // The vertical tabstrip is not part of the overlay in immersive mode and
-    // must be tested separately.
+    // The vertical tabstrip and organizer tray are not part of the overlay in
+    // immersive mode and must be tested separately.
     if (vertical_tab_strip_region_view_ &&
         vertical_tab_strip_region_view_->GetVisible()) {
       gfx::Point test_point(point);
@@ -4659,6 +4658,16 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
                            &test_point)) {
         if (vertical_tab_strip_region_view_->IsPositionInWindowCaption(
                 test_point)) {
+          return HTCAPTION;
+        }
+        return HTCLIENT;
+      }
+    }
+
+    if (organizer_tray_ && organizer_tray_->GetVisible()) {
+      gfx::Point test_point(point);
+      if (ConvertedHitTest(parent(), organizer_tray_, &test_point)) {
+        if (organizer_tray_->IsPositionInWindowCaption(test_point)) {
           return HTCAPTION;
         }
         return HTCLIENT;

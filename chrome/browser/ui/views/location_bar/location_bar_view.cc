@@ -97,7 +97,6 @@
 #include "chrome/grit/omnibox_popup_resources.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
-#include "components/content_settings/core/common/features.h"
 #include "components/contextual_search/input_state_model.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/lens/lens_features.h"
@@ -251,10 +250,11 @@ LocationBarView::LocationBarView(BrowserWindowInterface* browser,
             return false;
           }
 
-          // Show focus ring when the Omnibox is visibly focused and the popup
-          // is closed.
+          // Show focus ring when the Omnibox is visibly focused and either the
+          // popup is closed or it's the full WebUI popup, which keeps the
+          // focused look (see `ShouldUsePopupOpenAppearance()`).
           return v->GetOmniboxController()->edit_model()->is_caret_visible() &&
-                 !v->GetOmniboxController()->IsPopupOpen();
+                 !v->ShouldUsePopupOpenAppearance();
         }));
     views::FocusRing::Get(this)->SetOutsetFocusRingDisabled(true);
     views::InstallPillHighlightPathGenerator(this);
@@ -314,22 +314,12 @@ void LocationBarView::Init() {
   SetPaintToLayer();
   layer()->SetFillsBoundsOpaquely(false);
 
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kLeftHandSideActivityIndicators)) {
-    permission_dashboard_view_ =
-        AddChildViewAt(std::make_unique<PermissionDashboardView>(), 0);
+  permission_dashboard_view_ =
+      AddChildViewAt(std::make_unique<PermissionDashboardView>(), 0);
 
-    permission_dashboard_controller_ =
-        std::make_unique<PermissionDashboardController>(
-            this, this, permission_dashboard_view_);
-  } else {
-    chip_view_ =
-        AddChildViewAt(std::make_unique<PermissionChipView>(
-                           PermissionChipView::Role::kPermissionRequestChip,
-                           PermissionChipView::PressedCallback()),
-                       0);
-    chip_controller_ = std::make_unique<ChipController>(this, this, chip_view_);
-  }
+  permission_dashboard_controller_ =
+      std::make_unique<PermissionDashboardController>(
+          this, this, permission_dashboard_view_);
 
   const auto& typography_provider = views::TypographyProvider::Get();
   const gfx::FontList& font_list = typography_provider.GetFont(
@@ -801,10 +791,10 @@ void LocationBarView::Layout(PassKey) {
   //    https://expired.badssl.com.
   //  - If a selected keyword label is visible, e.g., "Search History".
   // Indent the icon and the text when all of the following conditions are met:
-  //  - The popup is open.
+  //  - The popup is open, and it isn't the full WebUI popup.
   //  - The location icon view does *not* display a label.
   //  - The selected keyword view is *not* visible.
-  const bool should_indent = (omnibox_controller_->IsPopupOpen() ||
+  const bool should_indent = (ShouldUsePopupOpenAppearance() ||
                               omnibox_feature_configs::AdjustOmniboxIndent()
                                   .Get()
                                   .indent_input_when_popup_closed) &&
@@ -852,24 +842,11 @@ void LocationBarView::Layout(PassKey) {
   const double kLeadingDecorationMaxFraction = 0.5;
 
   const bool show_overriding_permission_chip =
-      base::FeatureList::IsEnabled(
-          content_settings::features::kLeftHandSideActivityIndicators)
-          ? permission_dashboard_view_->GetVisible() &&
-                !ShouldShowKeywordBubble()
-          : chip_controller_->chip()->GetVisible() &&
-                !ShouldShowKeywordBubble();
+      permission_dashboard_view_->GetVisible() && !ShouldShowKeywordBubble();
   if (show_overriding_permission_chip) {
-    if (base::FeatureList::IsEnabled(
-            content_settings::features::kLeftHandSideActivityIndicators)) {
-      leading_decorations.AddDecoration(vertical_padding, location_height,
-                                        false, 0, /*intra_item_padding=*/0,
-                                        icon_left, permission_dashboard_view_);
-    } else {
-      CHECK(chip_view_);
-      leading_decorations.AddDecoration(vertical_padding, location_height,
-                                        false, 0, /*intra_item_padding=*/0,
-                                        icon_left, chip_view_);
-    }
+    leading_decorations.AddDecoration(vertical_padding, location_height, false,
+                                      0, /*intra_item_padding=*/0, icon_left,
+                                      permission_dashboard_view_);
   }
 
   if (ShouldShowKeywordBubble()) {
@@ -1073,8 +1050,8 @@ void LocationBarView::Update(WebContents* contents) {
 
   RefreshContentSettingViews();
   RefreshPageActionIconViews();
-  location_icon_view_->Update(
-      /*suppress_animations=*/contents, GetOmniboxController()->IsPopupOpen());
+  location_icon_view_->Update(/*suppress_animations=*/contents,
+                              ShouldUsePopupOpenAppearance());
 
   if (contents) {
     omnibox_view_->OnTabChanged(contents);
@@ -1127,12 +1104,7 @@ bool LocationBarView::ShouldCloseOmniboxPopup(ui::MouseEvent* event) {
 }
 
 ChipController* LocationBarView::GetChipController() {
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kLeftHandSideActivityIndicators)) {
-    return permission_dashboard_controller_->request_chip_controller();
-  }
-
-  return chip_controller_.get();
+  return permission_dashboard_controller_->request_chip_controller();
 }
 
 PermissionDashboardController*
@@ -1302,6 +1274,19 @@ void LocationBarView::SetPermissionPromptShowing(bool showing) {
   }
 }
 
+bool LocationBarView::ShouldUsePopupOpenAppearance() const {
+  // The full popup covers the location bar, so the native look underneath
+  // isn't visible while it's on screen, and any frame where it isn't on screen
+  // shows a normal focused omnibox instead of a hollow one. The AIM popup
+  // (`kAim`) keeps today's behavior.
+  if (is_full_webui_omnibox_ &&
+      GetOmniboxController()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kFull) {
+    return false;
+  }
+  return GetOmniboxController()->IsPopupOpen();
+}
+
 bool LocationBarView::ShouldHidePageActionIcons() const {
   if (!omnibox_view_) {
     return false;
@@ -1313,9 +1298,10 @@ bool LocationBarView::ShouldHidePageActionIcons() const {
     return true;
   }
 
-  // Also hide them if the popup is open for any other reason, e.g. ZeroSuggest.
-  // The page action icons are not relevant to the displayed suggestions.
-  return GetOmniboxController()->IsPopupOpen();
+  // Also hide them if the popup is open for any other reason, e.g. ZeroSuggest,
+  // except under the full WebUI popup, which keeps the focused look. The page
+  // action icons are not relevant to the displayed suggestions.
+  return ShouldUsePopupOpenAppearance();
 }
 
 // Returns information about visible page actions in the location bar.
@@ -1455,10 +1441,7 @@ void LocationBarView::RefreshBackground() {
 
   // The divider between indicators and request chips should have the same color
   // as the omnibox.
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kLeftHandSideActivityIndicators)) {
-    permission_dashboard_view_->SetDividerBackgroundColor(background_color_);
-  }
+  permission_dashboard_view_->SetDividerBackgroundColor(background_color_);
 
   SchedulePaint();
 }
@@ -1828,13 +1811,6 @@ void LocationBarView::OnFullWebUiOmniboxReady() {
       had_focus && omnibox_view_->is_user_initiated_focus() &&
       !GetOmniboxController()->edit_model()->user_input_in_progress();
   if (had_focus) {
-    // Capture `omnibox_view_`'s selection before `SetFocusedView(this)` blurs
-    // it (`OmniboxViewViews::OnBlur()` collapses any active selection range to
-    // a caret), and restore it so `SyncNativeStateToWebUI()` can hand off the
-    // exact selection to WebUI.
-    const gfx::Range saved_selection = omnibox_view_
-                                           ? omnibox_view_->GetSelectionBounds()
-                                           : gfx::Range::InvalidRange();
     // Make `LocationBarView` focusable so `SetFocusedView()` satisfies
     // `IsFocusable()`.
     // NOTE: We don't call `UpdateFocusBehavior()` here because it
@@ -1842,15 +1818,10 @@ void LocationBarView::OnFullWebUiOmniboxReady() {
     SetFocusBehavior(is_toolbar_visible_ ? FocusBehavior::ALWAYS
                                          : FocusBehavior::NEVER);
     // Shift Views-level focus away from `omnibox_view_` to synchronously blur
-    // it.
+    // it. `OmniboxViewViews::OnBlur()` treats this as a handoff to WebUI, not
+    // a real blur.
     if (focus_manager) {
       focus_manager->SetFocusedView(this);
-    }
-    // Restore the pre-blur selection on `omnibox_view_` so that
-    // `popup_view->OnFocus()` (and `RequestInputState()`) can read and hand off
-    // the exact selection range via `SyncNativeStateToWebUI()`.
-    if (omnibox_view_ && saved_selection.IsValid()) {
-      omnibox_view_->SetSelectionBounds(saved_selection);
     }
     if (auto* popup_view = GetOmniboxPopupView()) {
       popup_view->OnFocus(query_zps);
@@ -2056,8 +2027,8 @@ void LocationBarView::OnChanged() {
   // Ensure that background colors get updated on tab-switch.
   RefreshBackground();
 
-  location_icon_view_->Update(
-      /*suppress_animations=*/false, GetOmniboxController()->IsPopupOpen());
+  location_icon_view_->Update(/*suppress_animations=*/false,
+                              ShouldUsePopupOpenAppearance());
   clear_all_button_->SetVisible(
       omnibox_view_ &&
       GetOmniboxController()->edit_model()->user_input_in_progress() &&
@@ -2144,18 +2115,15 @@ void LocationBarView::OnTouchUiChanged() {
   for (ContentSettingImageView* view : content_setting_views_) {
     view->SetFontList(font_list);
   }
-  location_icon_view_->Update(
-      /*suppress_animations=*/false, GetOmniboxController()->IsPopupOpen());
+  location_icon_view_->Update(/*suppress_animations=*/false,
+                              ShouldUsePopupOpenAppearance());
   PreferredSizeChanged();
 }
 
 bool LocationBarView::ShouldChipOverrideLocationIcon() {
-  if (permission_dashboard_view_) {
-    return permission_dashboard_view_->GetIndicatorChip()->GetVisible() ||
-           permission_dashboard_view_->GetRequestChip()->GetVisible();
-  }
-
-  return chip_controller_ && chip_controller_->chip()->GetVisible();
+  return permission_dashboard_view_ &&
+         (permission_dashboard_view_->GetIndicatorChip()->GetVisible() ||
+          permission_dashboard_view_->GetRequestChip()->GetVisible());
 }
 
 bool LocationBarView::IsEditingOrEmpty() const {
@@ -2396,15 +2364,12 @@ void LocationBarView::UpdateChipVisibility() {
     GetChipController()->ResetPermissionPromptChip();
   }
 
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kLeftHandSideActivityIndicators)) {
-    // Hide the LHS indicator to prevent it appearing in the location bar
-    // search panel.
-    // This is needed only if the indicator is already visible. If the
-    // location bar is in editing mode, we do not show new indicators.
-    if (permission_dashboard_view_->GetVisible()) {
-      permission_dashboard_view_->SetVisible(false);
-    }
+  // Hide the LHS indicator to prevent it appearing in the location bar
+  // search panel.
+  // This is needed only if the indicator is already visible. If the
+  // location bar is in editing mode, we do not show new indicators.
+  if (permission_dashboard_view_->GetVisible()) {
+    permission_dashboard_view_->SetVisible(false);
   }
 }
 

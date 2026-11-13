@@ -811,9 +811,46 @@ void OmniboxViewViews::ShowContextMenuForViewImpl(
     views::View* source,
     const gfx::Point& point,
     ui::mojom::MenuSourceType source_type) {
+  if (HandOffContextMenuToWebUI(point, source_type)) {
+    return;
+  }
   PrepareToShowContextMenu(
       base::BindOnce(&OmniboxViewViews::ShowContextMenuForViewImplComplete,
                      weak_factory_.GetWeakPtr(), point, source_type));
+}
+
+bool OmniboxViewViews::HandOffContextMenuToWebUI(
+    const gfx::Point& point,
+    ui::mojom::MenuSourceType source_type) {
+  if (!IsFullWebUIOmniboxReady() || !location_bar_view_) {
+    return false;
+  }
+  // Open and focus the WebUI omnibox if it isn't already open. On Windows a
+  // right-click gets here after `OnMouseReleased()` has done so, but touch,
+  // keyboard and accessibility requests reach this method directly.
+  auto* popup_state_manager = controller()->popup_state_manager();
+  if (popup_state_manager->popup_state() != OmniboxPopupState::kFull) {
+    SelectAll(true);
+    location_bar_view_->OpenOmniboxPopup(/*query_zps=*/false);
+    // `OpenOmniboxPopup()` doesn't report failure, and it's ignored briefly
+    // after any popup state change. Show the native menu if it didn't open.
+    if (popup_state_manager->popup_state() != OmniboxPopupState::kFull) {
+      return false;
+    }
+  }
+  // Mac/Linux: the menu is shown on press. Consume the release, like
+  // `MenuRunner::RunMenuAt()`, so `OnMouseReleased()` doesn't refocus the
+  // WebUI omnibox and drop this request.
+  if (is_mouse_pressed_) {
+    select_all_on_mouse_release_ = false;
+    is_mouse_pressed_ = false;
+    filter_drag_events_for_unelision_ = false;
+    if (GetWidget() && GetWidget()->GetRootView()) {
+      GetWidget()->GetRootView()->SetMouseAndGestureHandler(nullptr);
+    }
+  }
+  auto* popup_view = location_bar_view_->GetOmniboxPopupView();
+  return popup_view && popup_view->RequestWebUIContextMenu(point, source_type);
 }
 
 void OmniboxViewViews::ShowContextMenuForViewImplComplete(
@@ -1795,6 +1832,21 @@ void OmniboxViewViews::OnBlur() {
       focus_manager && focus_manager->GetFocusedView() &&
       focus_manager->GetFocusedView() != this;
 
+  // In Full WebUI mode, focus only moves from the native textfield to
+  // `LocationBarView` when `LocationBarView::OnFullWebUiOmniboxReady()` hands
+  // it off to the WebUI omnibox (e.g. the user started typing in a new window
+  // before WebUI was ready). That isn't a blur, but the popup is still closed,
+  // so the checks below would treat it as one.
+  if (IsFullWebUIOmnibox() && focus_manager &&
+      focus_manager->GetFocusedView() == location_bar_view_) {
+    // The native textfield stays visible whenever the popup is closed, but it
+    // can't take focus anymore, so it won't get another `OnBlur()`. Restore how
+    // it displays text while unfocused now.
+    ElideAndResetScrollPosition();
+    ClearAccessibilityLabel();
+    return;
+  }
+
   const OmniboxPopupState popup_state =
       controller()->popup_state_manager()->popup_state();
   if (popup_state == OmniboxPopupState::kFull ||
@@ -1884,10 +1936,26 @@ void OmniboxViewViews::OnBlur() {
   // Deselect the text. Ensures the cursor is an I-beam.
   SetSelectedRange(gfx::Range(GetCursorPosition()));
 
-  // When deselected, elide and reset scroll position. After eliding, the old
-  // scroll offset is meaningless (since the string is guaranteed to fit within
-  // the view). The scroll must be reset or the text may be rendered partly or
-  // wholly off-screen.
+  ElideAndResetScrollPosition();
+
+  aim_hint_shown_ = false;
+
+  // `location_bar_view_` can be null in tests.
+  if (location_bar_view_) {
+    location_bar_view_->OnOmniboxBlurred();
+
+    // The location bar needs to repaint without a focus ring.
+    location_bar_view_->SchedulePaint();
+  }
+
+  ClearAccessibilityLabel();
+  InstallPlaceholderText();
+}
+
+void OmniboxViewViews::ElideAndResetScrollPosition() {
+  // After eliding, the old scroll offset is meaningless (since the string is
+  // guaranteed to fit within the view). The scroll must be reset or the text
+  // may be rendered partly or wholly off-screen.
   //
   // Important: Since the URL can contain bidirectional text, it is important to
   // set the display offset directly to 0 (not simply scroll to the start of the
@@ -1905,19 +1973,6 @@ void OmniboxViewViews::OnBlur() {
   // whitespace to the left of the elision point.
   render_text->SetWhitespaceElision(false);
   render_text->SetDisplayOffset(0);
-
-  aim_hint_shown_ = false;
-
-  // `location_bar_view_` can be null in tests.
-  if (location_bar_view_) {
-    location_bar_view_->OnOmniboxBlurred();
-
-    // The location bar needs to repaint without a focus ring.
-    location_bar_view_->SchedulePaint();
-  }
-
-  ClearAccessibilityLabel();
-  InstallPlaceholderText();
 }
 
 bool OmniboxViewViews::SupportsEmoji() const {

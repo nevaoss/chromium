@@ -424,7 +424,7 @@ TEST_F(D3DVideoDecoderTest, OutputResultSendsDecodeFenceToTextureWrapper) {
   FakeTexture2DWrapper* wrapper_ptr = wrapper.get();
   const gfx::Size size = wrapper->GetSize();
   auto resource = MakeComPtr<NiceMock<D3D12ResourceMock>>();
-  auto picture_buffer = base::MakeRefCounted<D3DPictureBuffer>(
+  auto picture_buffer = base::MakeRefCounted<D3D12PictureBufferImpl>(
       task_environment_.GetMainThreadTaskRunner(), std::move(resource),
       /*array_slice=*/0, std::move(wrapper), size, /*picture_index=*/0);
 
@@ -469,6 +469,33 @@ TEST_F(D3DVideoDecoderTest, SubmitsDecoderBuffers) {
       true);
 
   SubmitBitstreamBuffer();
+}
+
+TEST_F(D3DVideoDecoderTest, ReinitializeWithSameCodecReusesDecoder) {
+  CreateDecoder();
+
+  VideoDecoderConfig normal =
+      TestVideoConfig::NormalCodecProfile(VideoCodec::kH264, H264PROFILE_MAIN);
+  EXPECT_CALL(*mock_d3d11_video_device_.Get(), CreateVideoDecoder(_, _, _))
+      .Times(1);
+  InitializeDecoder(normal, true);
+  InitializeDecoder(normal, true);
+
+  // Re-initializing with a different resolution of the same codec defers
+  // wrapper recreation to DoDecode()'s kConfigChange handling.
+  VideoDecoderConfig large = TestVideoConfig::Large(VideoCodec::kH264);
+  EXPECT_CALL(*mock_d3d11_video_device_.Get(), CreateVideoDecoder(_, _, _))
+      .Times(0);
+  InitializeDecoder(large, true);
+
+  // After a failed re-initialization, a subsequent Initialize() must not reuse
+  // the previous wrapper.
+  VideoDecoderConfig encrypted = large;
+  encrypted.SetIsEncrypted(true);
+  InitializeDecoder(encrypted, false);
+  EXPECT_CALL(*mock_d3d11_video_device_.Get(), CreateVideoDecoder(_, _, _))
+      .Times(1);
+  InitializeDecoder(large, true);
 }
 
 }  // namespace media

@@ -7,6 +7,7 @@
 #include <tuple>
 #include <vector>
 
+#include "base/base64.h"
 #include "base/strings/strcat.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
@@ -44,7 +45,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
-#include "content/public/test/test_web_ui.h"
 #include "content/public/test/web_contents_observer_test_utils.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -52,6 +52,7 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display_switches.h"
+#include "ui/gfx/codec/png_codec.h"
 #include "ui/views/interaction/element_tracker_views.h"
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -244,13 +245,21 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
     ASSERT_TRUE(future.Get().has_value());
   }
 
-  // The cached favicon data URL should be returned immediately.
+  // The cached favicon data URL should be returned immediately at 2x (32x32)
+  // resolution for crisp rendering on HiDPI displays.
   {
     base::test::TestFuture<const std::optional<GURL>&> future;
     handler_->WaitForTabFaviconLoad(tab_id, future.GetCallback());
     std::optional<GURL> data_url = future.Get();
     ASSERT_TRUE(data_url.has_value());
-    EXPECT_TRUE(data_url->spec().starts_with("data:image/png;base64,"));
+    constexpr std::string_view kPrefix = "data:image/png;base64,";
+    ASSERT_TRUE(data_url->spec().starts_with(kPrefix));
+    std::optional<std::vector<uint8_t>> png_bytes = base::Base64Decode(
+        std::string_view(data_url->spec()).substr(kPrefix.size()));
+    ASSERT_TRUE(png_bytes.has_value());
+    SkBitmap bitmap = gfx::PNGCodec::Decode(*png_bytes);
+    EXPECT_EQ(bitmap.width(), 32);
+    EXPECT_EQ(bitmap.height(), 32);
   }
 }
 
@@ -573,9 +582,6 @@ class WebuiOmniboxHandlerBrowserTest
   void SetUpOnMainThread() override {
     ContextualSearchboxHandlerBrowserTest::SetUpOnMainThread();
 
-    test_web_ui_.set_web_contents(
-        browser()->GetTabStripModel()->GetActiveWebContents());
-
     omnibox_controller_ = std::make_unique<OmniboxController>(
         std::make_unique<TestOmniboxClient>());
     omnibox_controller_->SetEditModelForTesting(
@@ -585,7 +591,9 @@ class WebuiOmniboxHandlerBrowserTest
     omnibox_handler_ = std::make_unique<WebuiOmniboxHandler>(
         mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
         omnibox_page_.BindAndGetRemote(),
-        /*metrics_reporter=*/nullptr, omnibox_controller_.get(), &test_web_ui_,
+        /*metrics_reporter=*/nullptr, omnibox_controller_.get(),
+        browser()->GetProfile(),
+        browser()->GetTabStripModel()->GetActiveWebContents(),
         base::BindLambdaForTesting([&]() { return session_handle_.get(); }));
   }
 
@@ -595,7 +603,6 @@ class WebuiOmniboxHandlerBrowserTest
     ContextualSearchboxHandlerBrowserTest::TearDownOnMainThread();
   }
 
-  content::TestWebUI test_web_ui_;
   testing::NiceMock<MockSearchboxPage> omnibox_page_;
   std::unique_ptr<OmniboxController> omnibox_controller_;
   std::unique_ptr<WebuiOmniboxHandler> omnibox_handler_;

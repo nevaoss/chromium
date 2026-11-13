@@ -409,9 +409,8 @@
 #include "chrome/browser/ash/login/security_token_session_controller.h"
 #include "chrome/browser/ash/login/session/chrome_session_manager.h"
 #include "chrome/browser/ash/login/session/user_session_manager.h"
-#include "chrome/browser/ash/login/signin/legacy_token_handle_fetcher.h"
 #include "chrome/browser/ash/login/signin/signin_error_notifier.h"
-#include "chrome/browser/ash/login/signin/token_handle_store_impl.h"
+#include "chrome/browser/ash/login/signin/token_handle_store.h"
 #include "chrome/browser/ash/login/startup_utils.h"
 #include "chrome/browser/ash/login/users/avatar/user_image_manager_impl.h"
 #include "chrome/browser/ash/login/users/avatar/user_image_prefs.h"
@@ -505,7 +504,6 @@
 #include "chromeos/components/quick_answers/public/cpp/quick_answers_prefs.h"
 #include "chromeos/constants/pref_names.h"
 #include "chromeos/ui/wm/fullscreen/pref_names.h"
-#include "components/account_manager_core/chromeos/account_manager.h"
 #include "components/onc/onc_pref_names.h"  // nogncheck
 #include "components/quirks/quirks_manager.h"
 #include "components/user_manager/multi_user/multi_user_sign_in_policy_controller.h"
@@ -1141,6 +1139,7 @@ inline constexpr char kHatsOsSettingsSearchSurveyIsSelected[] =
 inline constexpr char kDriveFsEnableMirrorSync[] = "drivefs.enable_mirror_sync";
 inline constexpr char kDriveFsMirrorSyncMachineRootId[] =
     "drivefs.mirror_sync_machine_root_id";
+inline constexpr char kLegacyTokenHandleMap[] = "ash.token_handle_map";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Deprecated 10/2026.
@@ -1155,6 +1154,11 @@ inline constexpr char kShownCountHistoryEmbeddingsSettingsPromo[] =
 
 // Deprecated 10/2026.
 constexpr char kSupervisedUserSafeSites[] = "profile.managed.safe_sites";
+constexpr char kSupervisedUserManualHosts[] = "profile.managed.manual_hosts";
+constexpr char kSupervisedUserManualUrls[] = "profile.managed.manual_urls";
+
+// Deprecated 10/2026.
+inline constexpr char kTabSearchUsed[] = "tab_search.used";
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1630,6 +1634,7 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(kHatsOsSettingsSearchSurveyIsSelected, false);
   registry->RegisterBooleanPref(kDriveFsEnableMirrorSync, false);
   registry->RegisterStringPref(kDriveFsMirrorSyncMachineRootId, "");
+  registry->RegisterDictionaryPref(kLegacyTokenHandleMap);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Deprecated 10/2026.
@@ -1641,6 +1646,11 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 10/2026.
   registry->RegisterBooleanPref(kSupervisedUserSafeSites, false);
+  registry->RegisterDictionaryPref(kSupervisedUserManualHosts);
+  registry->RegisterDictionaryPref(kSupervisedUserManualUrls);
+
+  // Deprecated 10/2026.
+  registry->RegisterBooleanPref(kTabSearchUsed, false);
 }
 
 }  // namespace
@@ -2322,7 +2332,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   ArcAppListPrefs::RegisterProfilePrefs(registry);
   arc::ArcBootPhaseMonitorBridge::RegisterProfilePrefs(registry);
   ash::AccountAppsAvailability::RegisterPrefs(registry);
-  account_manager::AccountManager::RegisterPrefs(registry);
   ash::ApkWebAppService::RegisterProfilePrefs(registry);
   ash::app_time::AppActivityRegistry::RegisterProfilePrefs(registry);
   ash::app_time::AppTimeController::RegisterProfilePrefs(registry);
@@ -2393,6 +2402,11 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   ash::boca::BabelOrcaManager::RegisterProfilePrefs(registry);
   ash::boca::GeminiStatusFetcher::RegisterProfilePrefs(registry);
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+  registry->RegisterBooleanPref(
+      policy::policy_prefs::kSecondaryGoogleAccountSigninAllowed, true);
+#endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_WIN)
   CdmPrefServiceHelper::RegisterProfilePrefs(registry);
@@ -2540,8 +2554,7 @@ void RegisterUserProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 #endif
 #if BUILDFLAG(IS_CHROMEOS)
   ash::RegisterUserProfilePrefs(registry, locale);
-  ash::LegacyTokenHandleFetcher::RegisterPrefs(registry);
-  ash::TokenHandleStoreImpl::RegisterPrefs(registry);
+  ash::TokenHandleStore::RegisterPrefs(registry);
 #endif
 }
 
@@ -3067,6 +3080,7 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kHatsOsSettingsSearchSurveyIsSelected);
   profile_prefs->ClearPref(kDriveFsEnableMirrorSync);
   profile_prefs->ClearPref(kDriveFsMirrorSyncMachineRootId);
+  profile_prefs->ClearPref(kLegacyTokenHandleMap);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Added 10/2026.
@@ -3077,6 +3091,11 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 10/2026.
   profile_prefs->ClearPref(kSupervisedUserSafeSites);
+  profile_prefs->ClearPref(kSupervisedUserManualHosts);
+  profile_prefs->ClearPref(kSupervisedUserManualUrls);
+
+  // Added 10/2026.
+  profile_prefs->ClearPref(kTabSearchUsed);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

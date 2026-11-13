@@ -110,6 +110,7 @@ source_set("impl") {
     "//components/signin/public/identity_manager",
     "//components/skills/public",
     "//components/variations/service",
+    "//components/vector_icons",
     "//content/public/browser",
     "//google_apis/common",
     "//net",
@@ -118,6 +119,9 @@ source_set("impl") {
     "//services/network/public/mojom",
     "//third_party/blink/public/common",
   ]
+  if (is_chrome_branded) {
+    deps += [ "//chrome/browser/indigo/resources:vector_icons" ]
+  }
   if (is_chromeos) {
     deps += [ "//chromeos/ash/components/install_attributes" ]
   }
@@ -259,6 +263,7 @@ source_set("interactive_ui_tests") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/signin",
     "//chrome/browser/signin:test_support",
+    "//chrome/browser/sync",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/views/indigo",
     "//chrome/browser/ui/views/page_action",
@@ -268,6 +273,7 @@ source_set("interactive_ui_tests") {
     "//components/prefs",
     "//components/signin/public/identity_manager",
     "//components/signin/public/identity_manager:test_support",
+    "//components/sync:test_support",
     "//content/public/browser",
     "//content/test:test_support",
     "//testing/gtest",

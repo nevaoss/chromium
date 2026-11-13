@@ -7,6 +7,8 @@
 
 #include <vector>
 
+#include "components/autofill/core/browser/ui/payments/payments_ui_closed_reasons.h"
+
 namespace autofill {
 
 class AutofillOfferData;
@@ -31,7 +33,26 @@ enum class PromoCodeFormEvent {
   // Promo code suggestion filled.
   kPromoCodeSuggestionFilled = 3,
 
-  kMaxValue = kPromoCodeSuggestionFilled,
+  // Form submitted with promo code present for the page. This is tracked
+  // separately of submissions with fills to compare conversion rates with users
+  // that don't have a promo code saved for a page.
+  kFormSubmittedWithPromoCodePresentForPage = 4,
+
+  // Form submitted without promo code present for the page. This is used to
+  // compare conversion rates between pages with and without promo codes.
+  kFormSubmittedWithoutPromoCodePresentForPage = 5,
+
+  // Form submitted after a promo code suggestion was filled. This is used to
+  // see the funnel for how often users submit a form after filling a promo
+  // code suggestion.
+  kFormSubmittedAfterPromoCodeFilled = 6,
+
+  // Form submitted and a merchant promo code field contained a value. This can
+  // be compared with the autofilled metric to see how often users manually
+  // enter a promo code in the field.
+  kFormSubmittedWithPromoCodeFieldContainingValue = 7,
+
+  kMaxValue = kFormSubmittedWithPromoCodeFieldContainingValue,
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/autofill/enums.xml:AutofillPromoCodeFormEvent)
 
@@ -44,6 +65,9 @@ void LogPromoCodeFormEvent(PromoCodeFormEvent event);
 // have available to autofill.
 void LogStoredPromoCodeMetrics(
     const std::vector<const AutofillOfferData*>& promo_codes);
+
+// Logs the result when the offer notification bubble is closed.
+void LogOfferNotificationBubbleResult(PaymentsUiClosedReason closed_reason);
 
 }  // namespace autofill_metrics
 

@@ -168,18 +168,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="API.TopLevelStorageAccess.RequestStorageAccessFor2"
-    enum="RequestStorageResult" expires_after="2027-02-14">
-  <owner>cfredric@chromium.org</owner>
-  <owner>mreichhoff@chromium.org</owner>
-  <summary>
-    Records invocations of document.requestStorageAccessFor and reasons the
-    request was approved or rejected. Recorded for every call to the function,
-    regardless of outcome. Note that API.StorageAccess.RequestStorageAccess is
-    similar, but for the other variant of this API.
-  </summary>
-</histogram>
-
 <histogram name="Clipboard.Read" enum="ClipboardFormatRead"
     expires_after="2026-12-27">
   <owner>huangdarwin@chromium.org</owner>
@@ -555,7 +543,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IndexedDB.NumConnections.OnCreateAbove10k" units="connections"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>fdoray@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
   <summary>
@@ -567,7 +555,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IndexedDB.NumPendingConnections.OnCreateAbove10k"
-    units="connections" expires_after="2027-02-07">
+    units="connections" expires_after="2027-04-11">
   <owner>fdoray@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
   <summary>
@@ -593,7 +581,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="IndexedDB.NumTransactionsInIDBDatabaseOnTransactionCreated.10kTransactions"
-    units="transactions" expires_after="2027-02-07">
+    units="transactions" expires_after="2027-04-11">
   <owner>fdoray@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
   <summary>
@@ -819,7 +807,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IndexedDB.TransactionTimeout.{TransactionCount}IsAborted"
-    enum="IDBTransactionMode" expires_after="2027-02-07">
+    enum="IDBTransactionMode" expires_after="2027-04-11">
   <owner>fdoray@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
   <summary>
@@ -2128,7 +2116,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Storage.{DomStorageType}.{Operation}.{DomStorageBackingStoreLifetime}"
-    enum="DomStorageDbStatusType" expires_after="2027-02-10">
+    enum="DomStorageDbStatusType" expires_after="2027-04-11">
   <owner>leimy@chromium.org</owner>
   <owner>fergal@chromium.org</owner>
   <owner>rahsin@microsoft.com</owner>

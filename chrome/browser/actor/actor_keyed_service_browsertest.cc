@@ -14,6 +14,7 @@
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_keyed_service_browsertest.h"
 #include "chrome/browser/actor/actor_proto_conversion.h"
+#include "chrome/browser/actor/actor_surface_handle.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/actor/tools/navigate_tool_request.h"
@@ -172,7 +173,8 @@ IN_PROC_BROWSER_TEST_F(ActorKeyedServiceBrowserTest,
   const GURL url =
       embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
   std::unique_ptr<ToolRequest> action_request =
-      std::make_unique<NavigateToolRequest>(active_tab()->GetHandle(), url);
+      std::make_unique<NavigateToolRequest>(
+          ActorSurfaceHandle::From(active_tab()->GetHandle()), url);
   actor_keyed_service()->PerformActions(
       first_task_id, ToRequestList(action_request), ActorTaskMetadata(),
       result_future.GetCallback());
@@ -360,7 +362,8 @@ IN_PROC_BROWSER_TEST_F(ActorKeyedServiceBrowserTest,
   const GURL url =
       embedded_https_test_server().GetURL("example.com", "/actor/simple.html");
   std::unique_ptr<ToolRequest> action_request =
-      std::make_unique<NavigateToolRequest>(new_tab->GetHandle(), url);
+      std::make_unique<NavigateToolRequest>(
+          ActorSurfaceHandle::From(new_tab->GetHandle()), url);
   actor_keyed_service()->PerformActions(task_id, ToRequestList(action_request),
                                         ActorTaskMetadata(),
                                         result_future.GetCallback());
@@ -631,7 +634,8 @@ IN_PROC_BROWSER_TEST_F(ActorKeyedServiceBrowserTest,
 
   task->ObserveTabOnce(tab2->GetHandle());
 
-  EXPECT_FALSE(task->GetLastActedTabs().contains(tab2->GetHandle()));
+  EXPECT_FALSE(task->GetLastActedActorSurfaces().contains(
+      ActorSurfaceHandle::From(tab2->GetHandle())));
 
   browser2->GetWindow()->Close();
 }

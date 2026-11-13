@@ -3495,6 +3495,7 @@
       "fast/events/pointerevents/pinch",
       "http/tests/devtools/isolated-code-cache",
       "http/tests/devtools/tracing",
+      "http/tests/inspector-protocol/issues/deprecation-view-transition-prevent-svg-filter-paint.js",
       "http/tests/inspector-protocol/paint-worklet",
       "http/tests/worklet",
       "inspector-protocol/css/css-get-keyframes-for-view-transitions.js",
@@ -3538,6 +3539,7 @@
       "external/wpt/requestidlecallback",
       "external/wpt/scheduler/tentative/yield/yield-priority-idle-callbacks.html",
       "http/tests/devtools/isolated-code-cache",
+      "http/tests/inspector-protocol/issues/deprecation-view-transition-prevent-svg-filter-paint.js",
       "http/tests/inspector-protocol/paint-worklet",
       "external/wpt/css/css-view-transitions",
       "wpt_internal/html/script-execution",
@@ -3711,14 +3713,17 @@
       "Win",
       "ChromeOS"
     ],
-    "bases": [],
+    "bases": [
+      "fast/events/installresult-global-event-handler-disabled.html"
+    ],
+    "exclusive_tests": "ALL",
     "args": [
       "--disable-features=InstallElement"
     ],
     "owners": [
       "permissions-core@google.com"
     ],
-    "expires": "never"
+    "expires": "Mar 1, 2027"
   },
   "This suite disables unload deprecation and allows tests to run with unload handlers.",
   "It should not expire as long as there are tests that use unload.",
@@ -3959,7 +3964,8 @@
       "Win"
     ],
     "bases": [
-      "external/wpt/web-install"
+      "external/wpt/web-install",
+      "wpt_internal/web-install"
     ],
     "exclusive_tests": "ALL",
     "args": [
@@ -5149,6 +5155,7 @@
     "prefix": "subresource-link-preload-enabled",
     "platforms": ["Linux", "Mac", "Win"],
     "bases": [
+      "external/wpt/preload/preload-referrer-policy-subresource-header.tentative.html",
       "http/tests/linkHeader/link-preload-in-js.html"
     ],
     "exclusive_tests": "ALL",

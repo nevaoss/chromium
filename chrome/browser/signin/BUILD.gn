@@ -378,6 +378,7 @@ source_set("impl") {
       "//chromeos/ash/components/account_manager",
       "//chromeos/ash/components/install_attributes",
       "//chromeos/ash/components/network",
+      "//components/signin/public/base:device_id_helper",
     ]
   } else {
     sources += [
@@ -530,15 +531,18 @@ source_set("test_support") {
 
   if (enable_bound_session_credentials) {
     public += [
+      "bound_session_credentials/bound_session_test_cookie_manager.h",
       "bound_session_credentials/fake_bound_session_cookie_refresh_service.h",
       "bound_session_credentials/fake_bound_session_refresh_cookie_fetcher.h",
       "bound_session_credentials/mock_bound_session_cookie_refresh_service.h",
     ]
     sources += [
+      "bound_session_credentials/bound_session_test_cookie_manager.cc",
       "bound_session_credentials/fake_bound_session_cookie_refresh_service.cc",
       "bound_session_credentials/fake_bound_session_refresh_cookie_fetcher.cc",
       "bound_session_credentials/mock_bound_session_cookie_refresh_service.cc",
     ]
+    public_deps += [ "//net" ]
     deps += [
       "//chrome/common",
       "//testing/gmock",
@@ -578,6 +582,7 @@ source_set("identity_test_support") {
     "//chrome/browser:browser_process_platform_part",
     "//chrome/browser/metrics",
     "//chrome/browser/profiles:profile",
+    "//chrome/test/base:testing_profile_impl",
     "//components/signin/public/base:test_support",
   ]
 }
@@ -593,7 +598,6 @@ source_set("unit_tests") {
     "account_consistency_mode_manager_unittest.cc",
     "account_id_from_account_info_unittest.cc",
     "account_preview_data_service_factory_unittest.cc",
-    "chrome_device_id_helper_unittest.cc",
     "chrome_signin_client_unittest.cc",
     "chrome_signin_helper_unittest.cc",
     "chrome_signin_proxying_url_loader_factory_unittest.cc",
@@ -613,6 +617,7 @@ source_set("unit_tests") {
     "//chrome/test/base:chrome_render_view_host_test_harness",
     "//chrome/test/base:testing_browser_process",
     "//components/enterprise/isolated_mode",
+    "//components/policy/core/common:common_constants",
     "//components/signin/public/base",
     "//components/signin/public/identity_manager",
     "//components/signin/public/identity_manager:test_support",

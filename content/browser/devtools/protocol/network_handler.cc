@@ -2053,6 +2053,9 @@ String BuildProtocolDeviceBoundSessionRefreshResult(
     case net::device_bound_sessions::RefreshResult::kInScopeRefreshNotYetNeeded:
       return protocol::Network::RefreshEventDetails::RefreshResultEnum::
           InScopeRefreshNotYetNeeded;
+    case net::device_bound_sessions::RefreshResult::kCanceled:
+      return protocol::Network::RefreshEventDetails::RefreshResultEnum::
+          Canceled;
   }
 }
 // LINT.ThenChange(//third_party/blink/public/devtools_protocol/domains/Network.pdl:DeviceBoundSessionRefreshResult,//net/device_bound_sessions/refresh_result.h:DeviceBoundSessionRefreshResult)
@@ -3749,8 +3752,6 @@ void NetworkHandler::ProcessDurableMessageOrGetLocalData(
 void NetworkHandler::GetResponseBody(
     const String& request_id,
     std::unique_ptr<GetResponseBodyCallback> callback) {
-  CHECK(storage_partition_);
-  CHECK(devtools_token_);
   network::mojom::DurableMessageCollector* collector =
       root_session_->MaybeGetDurableMessageCollector();
   if (collector) {
@@ -3847,6 +3848,10 @@ NetworkHandler::CreateRequestFromResourceRequest(
     request_object->SetIsAdRelated(true);
   }
   return request_object;
+}
+
+bool NetworkHandler::MayApplyOverridesTo(const GURL& url) const {
+  return client_ && client_->MayAttachToURL(url, host_ && host_->web_ui());
 }
 
 void NetworkHandler::ApplyOverrides(net::HttpRequestHeaders* headers,

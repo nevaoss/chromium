@@ -663,6 +663,7 @@ PerformanceEventTiming* WindowPerformance::EventTimingProcessingStart(
       .processing_start_time = processing_start,
       .is_processing_fully_nested_in_another_event =
           !active_event_timing_entries_.empty(),
+      .is_main_frame = DomWindow()->GetFrame()->IsMainFrame(),
   };
 
   if (pointer_event) {
@@ -1026,7 +1027,6 @@ void WindowPerformance::TryFlushEventTimingQueue() {
   CHECK(DomWindow()->document());
   InteractiveDetector* interactive_detector =
       InteractiveDetector::From(*(DomWindow()->document()));
-
 
   bool tracing_enabled = TRACE_EVENT_CATEGORY_ENABLED("latency");
 
@@ -1568,7 +1568,7 @@ void WindowPerformance::AddScrollTiming(base::TimeTicks start_time,
   // also defends in its `target()` getter, but filtering here keeps the stored
   // entry consistent with the intended design.
   Node* exposable_target =
-      Performance::CanExposeNode(target) ? target : nullptr;
+      Performance::CanExposeNode(target, DomWindow()) ? target : nullptr;
 
   PerformanceScrollTiming* entry =
       MakeGarbageCollected<PerformanceScrollTiming>(

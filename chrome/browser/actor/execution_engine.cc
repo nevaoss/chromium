@@ -43,7 +43,7 @@
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/site_policy.h"
-#include "chrome/browser/actor/tools/attempt_login_tool.h"
+#include "chrome/browser/actor/tools/password_manager/attempt_login/attempt_login_tool.h"
 #include "chrome/browser/actor/tools/tool_controller.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/ui/event_dispatcher.h"
@@ -121,7 +121,6 @@ using origin_gating::CustomPredicate;
 using origin_gating::DecisionSource;
 using origin_gating::GateableEvent;
 using origin_gating::GateableEventSet;
-using tabs::TabInterface;
 
 namespace actor {
 
@@ -1450,8 +1449,7 @@ void ExecutionEngine::KickOffNextAction() {
           contents->GetLastCommittedURL(), task_->id(),
           "ExecutionEngine::KickOffNextAction",
           JournalDetailsBuilder().AddError("Renderer crashed").Build());
-      task_->AddActorSurface(actor_surface->GetHandle(),
-                             /*stop_task_on_detach=*/true, base::DoNothing());
+      CHECK(task_->IsActingOnActorSurface(actor_surface->GetHandle()));
       CompleteActions(MakeResult(mojom::ActionResultCode::kRendererCrashed,
                                  /*requires_page_stabilization=*/false,
                                  "Renderer crashed."),
@@ -1541,7 +1539,9 @@ void ExecutionEngine::DidFinishAsyncSafetyChecks(
                   JournalDetailsBuilder()
                       .AddError("Acting after cross-origin navigation occurred")
                       .Build());
-    FailedOnTabBeforeToolCreation();
+    CHECK(
+        GetNextAction().GetActorSurfaceHandle().is_null() ||
+        task_->IsActingOnActorSurface(GetNextAction().GetActorSurfaceHandle()));
     CompleteActions(MakeResult(mojom::ActionResultCode::kCrossOriginNavigation,
                                /*requires_page_stabilization=*/false,
                                "Acting after cross-origin navigation occurred"),
@@ -1553,7 +1553,9 @@ void ExecutionEngine::DidFinishAsyncSafetyChecks(
     journal_->Log(
         GetNextAction().GetURLForJournal(), task_id, "Act Failed",
         JournalDetailsBuilder().AddError("URL blocked for actions").Build());
-    FailedOnTabBeforeToolCreation();
+    CHECK(
+        GetNextAction().GetActorSurfaceHandle().is_null() ||
+        task_->IsActingOnActorSurface(GetNextAction().GetActorSurfaceHandle()));
     CompleteActions(MakeResult(result_code,
                                /*requires_page_stabilization=*/false,
                                "URL blocked for actions"),
@@ -1562,21 +1564,6 @@ void ExecutionEngine::DidFinishAsyncSafetyChecks(
   }
 
   ExecuteNextAction();
-}
-
-void ExecutionEngine::FailedOnTabBeforeToolCreation() {
-  journal_->Log(
-      GetNextAction().GetURLForJournal(), task_->id(), "Act Failed",
-      JournalDetailsBuilder()
-          .Add("tabId", GetNextAction().GetTabForValidation().raw_value())
-          .AddError("Associating tab for failed action")
-          .Build());
-  ActorSurfaceHandle actuation_actor_surface_handle =
-      GetNextAction().GetActorSurfaceHandle();
-  if (!actuation_actor_surface_handle.is_null()) {
-    task_->AddActorSurface(actuation_actor_surface_handle,
-                           /*stop_task_on_detach=*/true, base::DoNothing());
-  }
 }
 
 void ExecutionEngine::ExecuteNextAction() {
@@ -1618,10 +1605,13 @@ void ExecutionEngine::FinishedUiPreInvoke(mojom::ActionResultPtr result) {
   // critical action under the correct pre-navigation page context.
   pre_invoke_navigation_id_ = 0;
   const ToolRequest& current_action = GetInProgressAction();
-  tabs::TabInterface* tab = current_action.GetTabForValidation().Get();
-  if (tab && tab->GetContents() && tab->GetContents()->GetPrimaryMainFrame()) {
+  ActorSurface* actor_surface =
+      current_action.GetActorSurfaceForValidation().Get();
+  content::WebContents* contents =
+      actor_surface ? actor_surface->GetWebContents() : nullptr;
+  if (contents && contents->GetPrimaryMainFrame()) {
     pre_invoke_navigation_id_ =
-        tab->GetContents()->GetPrimaryMainFrame()->GetNavigationId();
+        contents->GetPrimaryMainFrame()->GetNavigationId();
   }
 
   SetState(State::kToolInvoke);
@@ -1682,12 +1672,14 @@ void ExecutionEngine::FinishedToolInvoke(mojom::ActionResultPtr result) {
   RecordToolTimings(GetInProgressAction().Name(), end_time - action_start_time_,
                     end_time - *result->execution_end_time);
 
-  if (GetInProgressAction().GetTabForValidation() != tabs::TabHandle::Null()) {
+  if (ActorSurfaceHandle actor_surface_handle =
+          GetInProgressAction().GetActorSurfaceForValidation();
+      !actor_surface_handle.is_null()) {
     observation_strategy_.VoteForScreenshot(
-        GetInProgressAction().GetTabForValidation(),
+        actor_surface_handle,
         static_cast<ScreenshotPolicy>(result->screenshot_policy));
     observation_strategy_.VoteForPageContentExtraction(
-        GetInProgressAction().GetTabForValidation(),
+        actor_surface_handle,
         static_cast<PageContentExtractionPolicy>(result->page_content_policy));
   }
 
@@ -1993,19 +1985,21 @@ void ExecutionEngine::EnqueueFollowupAction(
                           std::move(action));
 }
 
-void ExecutionEngine::AddTab(
-    tabs::TabHandle tab_handle,
+void ExecutionEngine::AddActorSurface(
+    ActorSurfaceHandle actor_surface_handle,
     bool stop_task_on_detach,
     base::OnceCallback<void(mojom::ActionResultPtr)> callback) {
-  task_->AddTab(tab_handle, stop_task_on_detach, std::move(callback));
+  task_->AddActorSurface(actor_surface_handle, stop_task_on_detach,
+                         std::move(callback));
 }
 
-bool ExecutionEngine::HasTab(tabs::TabHandle tab_handle) {
-  return task_->HasTab(tab_handle);
+bool ExecutionEngine::HasActorSurface(ActorSurfaceHandle actor_surface_handle) {
+  return task_->HasActorSurface(actor_surface_handle);
 }
 
-void ExecutionEngine::RemoveTab(tabs::TabHandle tab_handle) {
-  task_->RemoveTab(tab_handle);
+void ExecutionEngine::RemoveActorSurface(
+    ActorSurfaceHandle actor_surface_handle) {
+  task_->RemoveActorSurface(actor_surface_handle);
 }
 
 base::WeakPtr<actor_login::ActionSequenceDelegate>

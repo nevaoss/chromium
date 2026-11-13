@@ -18,7 +18,7 @@ as an attribute to the <action> tag.
 Please run extract_actions.py to add new actions and pretty-print this file.
 
 If a user action is not being used any more, it can now be deleted instead of
-marked osolete..
+marked obsolete..
 
 Please send CLs to chromium-metrics-reviews@google.com rather than to specific
 individuals. These CLs will be automatically reassigned to a reviewer within
@@ -79,6 +79,7 @@ should be able to be added at any place in this file.
   <variant name=".kActionSplitTab" summary="Split view action"/>
   <variant name=".kActionTabSearch" summary="Tab search action"/>
   <variant name=".kActionTaskManager" summary="Task manager action"/>
+  <variant name=".kActionTtcToolbar" summary="TTC toolbar action"/>
 </variants>
 
 <variants name="ChromeOS_Settings_Languages_Type">
@@ -159,6 +160,7 @@ should be able to be added at any place in this file.
 </variants>
 
 <variants name="ContextualSearchSource">
+  <variant name="ContextualCue" summary="Contextual cue"/>
   <variant name="ContextualTasks" summary="Contextual tasks"/>
   <variant name="Lens" summary="Lens"/>
   <variant name="NewTabPage" summary="New tab page"/>
@@ -261,13 +263,19 @@ should be able to be added at any place in this file.
   <variant name="_AndroidBottomBarPromoDialog"
       summary="For the promo dialog shown to introduce the bottom bar."/>
   <variant name="_AndroidTabDeclutter" summary="For archived tabs on android."/>
+  <variant name="_AndroidTipsOptInPromo"
+      summary="For the Android Tips Notifications opt-in bottom sheet promo."/>
   <variant name="_AndroidVerticalTabsNewLabel"
       summary="Enables the 'New' label for Android Vertical Tabs."/>
   <variant name="_AndroidVerticalTabsPromo"
       summary="For the vertical tabs promo on android horizontal tab strip."/>
+  <variant name="_AppLanguagePromo"
+      summary="For the App Language prompt on Android."/>
   <variant name="_AppRatingPrompt" summary="For App Rating Prompt feature."/>
   <variant name="_AppSpecificHistory"
       summary="For App Specific History feature."/>
+  <variant name="_ArchivedTabsAutoDeletePromo"
+      summary="For the Archived Tabs auto-delete decision bottom sheet promo."/>
   <variant name="_AutoDarkOptOut" summary="For AutoDarkOptOut dialog feature."/>
   <variant name="_AutoDarkUserEducationMessage"
       summary="For AutoDarkUserEducationMessage feature."/>
@@ -494,8 +502,12 @@ should be able to be added at any place in this file.
       summary="For FocusHelpBubbleScreenReaderPromo feature."/>
   <variant name="_FollowWhileBrowsing"
       summary="For Follow While-Browsing IPH feature."/>
+  <variant name="_FullscreenSigninPromo"
+      summary="For the fullscreen sign-in (re-FRE) promo on Android."/>
   <variant name="_FuseboxAttachment"
       summary="For engagement with Fusebox attachments."/>
+  <variant name="_FuseboxPlusButtonHint"
+      summary="For the Omnibox Fusebox (+) attachment button IPH."/>
   <variant name="_GenericAlwaysTriggerHelpUiFeature"
       summary="For generic always show help UI feature."/>
   <variant name="_GestureUserEducation"
@@ -709,8 +721,6 @@ should be able to be added at any place in this file.
   <variant name="_iOSWelcomeBack" summary="For iOSWelcomeBack feature"/>
   <variant name="_KeyboardAccessoryPaymentOffer"
       summary="For KeyboardAccessoryPaymentOffer feature."/>
-  <variant name="_LauncherSearchHelpUi"
-      summary="For launcher search IPH feature."/>
   <variant name="_LensOverlay" summary="For Lens Overlay IPH feature."/>
   <variant name="_LiveCaption" summary="For LiveCaption feature. (obsolete)"/>
   <variant name="_LongPressToolbarTip" summary="For LongPressToolbar feature."/>
@@ -734,6 +744,10 @@ should be able to be added at any place in this file.
   <variant name="_NewTabPageThemeCustomization"
       summary="In product help for NewTabPage theme customization feature."/>
   <variant name="_NewTabTip" summary="For NewTabTip feature."/>
+  <variant name="_NotificationPermissionPromo"
+      summary="For the OS notification permission prompt on Android."/>
+  <variant name="_OmniboxAskGLensIcon"
+      summary="In product help for the Lens icon in the omnibox popup."/>
   <variant name="_OmniboxEverywhereLensPromo"
       summary="In product help for the Lens search feature in Omnibox
                Everywhere."/>
@@ -823,8 +837,6 @@ should be able to be added at any place in this file.
       summary="For reading mode omnibox entrypoint."/>
   <variant name="_ReadingModePresentationMode"
       summary="For changing reading mode presentation mode onboarding."/>
-  <variant name="_ReadingModeSidePanel"
-      summary="For reading mode side panel feature."/>
   <variant name="_ReadLaterAppMenuBookmarks"
       summary="For ReadLaterAppMenuBookmarks feature."/>
   <variant name="_ReadLaterAppMenuBookmarkThisPage"
@@ -849,6 +861,8 @@ should be able to be added at any place in this file.
       summary="For Resumption Rail feature entrypoint."/>
   <variant name="_RtlGestureNavigation"
       summary="For the gesture navigation in RTL mode."/>
+  <variant name="_SearchEngineChoicePromo"
+      summary="For the regulatory search engine choice dialog on Android."/>
   <variant name="_SearchPromotionFeature"
       summary="IPH for Search extension promo on Windows"/>
   <variant name="_SendTabToSelfOmnibox"
@@ -941,8 +955,6 @@ should be able to be added at any place in this file.
   <variant name="_TabScrollButtonFeature"
       summary="For the tab scroll button feature."/>
   <variant name="_TabSearch" summary="For the tab search feature."/>
-  <variant name="_TabSearchComboButton"
-      summary="For the tab search migration to a tab strip combo button."/>
   <variant name="_TabSearchToolbarButton"
       summary="For the tab search migration to a toolbar button."/>
   <variant name="_TabSwitcherAddToGroup"
@@ -7092,7 +7104,6 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="BookmarkBar_ContextMenu_Move">
-  <owner>amelies@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <description>
     The user decided to move one or more bookmarks using the context menu (e.g.
@@ -13422,19 +13433,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="Glic.Enabled">
-  <owner>iwells@google.com</owner>
-  <owner>erikchen@chromium.org</owner>
-  <description>
-    This metric is currently broken. It is logged once per profile
-    initialization if Glic is enabled for that profile. The only action a user
-    can take to enable Glic is to accept the FRE. Use
-    Glic.Onboarding.OptInAccept instead of this metric. All other actions that
-    might enable Glic are not user initiated. And not likely to occur once the
-    FRE has been accepted.
-  </description>
-</action>
-
 <action name="Glic.ExperimentalTriggering.OptIn.Actuation.Accepted">
   <owner>sauski@google.com</owner>
   <owner>nyquist@chromium.org</owner>
@@ -15167,6 +15165,25 @@ should be able to be added at any place in this file.
   <description>Please enter the description of this user action.</description>
 </action>
 
+<action name="Indigo.ContextMenu.Click">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    User clicked the Indigo item from a page or image context menu.
+  </description>
+</action>
+
+<action name="Indigo.ContextMenu.Show">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    The Indigo item was displayed in a page or image context menu (recorded at
+    most once per page load).
+  </description>
+</action>
+
 <action name="Indigo.DeleteOriginalPhoto.Complete">
   <owner>jbroman@chromium.org</owner>
   <owner>adithyas@chromium.org</owner>
@@ -15315,6 +15332,18 @@ should be able to be added at any place in this file.
   <description>Reported when the inforbar modal is cancelled.</description>
 </action>
 
+<action name="InProductHelp.CooldownGroupActive.IPH{InProductHelp_Type}"
+    not_user_triggered="true">
+  <owner>jhimawan@google.com</owner>
+  <owner>mschillaci@google.com</owner>
+  <owner>clank-app-team@google.com</owner>
+  <description>
+    Recorded when an in-product help query encounters an active cooldown group.
+    {InProductHelp_Type}
+  </description>
+  <token key="InProductHelp_Type" variants="InProductHelp_Type"/>
+</action>
+
 <action name="InProductHelp.Dismissed">
   <owner>dtrainor@chromium.org</owner>
   <owner>nyquist@chromium.org</owner>
@@ -15367,6 +15396,32 @@ should be able to be added at any place in this file.
   <description>
     The feature engagement tracker tried to determine whether in-product help
     should be shown to the user. {InProductHelp_Type}
+  </description>
+  <token key="InProductHelp_Type" variants="InProductHelp_Type"/>
+</action>
+
+<action
+    name="InProductHelp.ShouldTriggerHelpUIResult.BlockedByCooldownGroup.IPH{InProductHelp_Type}"
+    not_user_triggered="true">
+  <owner>jhimawan@google.com</owner>
+  <owner>mschillaci@google.com</owner>
+  <owner>clank-app-team@google.com</owner>
+  <description>
+    An in-product help feature was blocked from showing by its cooldown group.
+    {InProductHelp_Type}
+  </description>
+  <token key="InProductHelp_Type" variants="InProductHelp_Type"/>
+</action>
+
+<action
+    name="InProductHelp.ShouldTriggerHelpUIResult.BypassedCooldownGroup.IPH{InProductHelp_Type}"
+    not_user_triggered="true">
+  <owner>jhimawan@google.com</owner>
+  <owner>mschillaci@google.com</owner>
+  <owner>clank-app-team@google.com</owner>
+  <description>
+    An in-product help feature bypassed an active cooldown group.
+    {InProductHelp_Type}
   </description>
   <token key="InProductHelp_Type" variants="InProductHelp_Type"/>
 </action>
@@ -31686,6 +31741,7 @@ should be able to be added at any place in this file.
         summary="Pinned show translate button"/>
     <variant name=".PinnedTaskManagerButton"
         summary="Pinned task manager button"/>
+    <variant name=".PinnedTtcButton" summary="Pinned TTC button"/>
     <variant name=".SharedTabGroupFeedbackButton"
         summary="Feedback button for the shared tab groups feature"/>
     <variant name=".ShowPerformanceSidePanelButton"
@@ -35928,7 +35984,8 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Impression_FromAddressBubble">
-  <owner>amelies@google.com</owner>
+  <owner>droger@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
   <description>
     Recorded when showing sign in entry in the saving address bubble.
   </description>
@@ -36391,7 +36448,8 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromAddressBubble">
-  <owner>amelies@google.com</owner>
+  <owner>droger@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kAddressBubble.
@@ -37908,6 +37966,18 @@ should be able to be added at any place in this file.
   <description>
     Ash system menu: Accessibility: Enable mouse cursor highlighting
   </description>
+</action>
+
+<action name="StatusArea_HoverTextDisabled">
+  <owner>katie@chromium.org</owner>
+  <owner>chromeos-a11y-eng@google.com</owner>
+  <description>Ash system menu: Accessibility: Disable Hover Text</description>
+</action>
+
+<action name="StatusArea_HoverTextEnabled">
+  <owner>katie@chromium.org</owner>
+  <owner>chromeos-a11y-eng@google.com</owner>
+  <description>Ash system menu: Accessibility: Enable Hover Text</description>
 </action>
 
 <action name="StatusArea_IME_Detailed">
@@ -40028,6 +40098,17 @@ should be able to be added at any place in this file.
   <description>
     User added a tab into a SavedTabGroup, for example by clicking on a link
     that opens a new tab or by manually adding a new tab into the group.
+  </description>
+</action>
+
+<action name="TabGroups_SavedTabGroups_TabGroupSubmenu_Closed">
+  <owner>dominicaustria@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    User closed a SavedTabGroup by clicking the 'Close group' menu item that
+    appears in the submenu or context menu for a tab group. This can appear in
+    several places, but one such location is the tab groups submenu within the
+    app menu.
   </description>
 </action>
 

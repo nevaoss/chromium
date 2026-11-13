@@ -6,12 +6,13 @@ import 'chrome://new-tab-page/new_tab_page.js';
 
 import {SearchboxBrowserProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import type {SearchboxMatchElement} from 'chrome://new-tab-page/new_tab_page.js';
-import {createAutocompleteMatch, createMatchKeywordModelForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteMatch, createFormattedString, createMatchKeywordModelForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {NavigationPredictor} from 'chrome://resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import {KeywordActivationMethod, KeywordType, SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertArrayEquals, assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
+import {createSuggestTemplateInfo} from './searchbox_test_utils.js';
 import {TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
 
 suite('CrComponentsRealboxMatchTest', () => {
@@ -266,10 +267,11 @@ suite('CrComponentsRealboxMatchTest', () => {
 
   test('PrimaryAndSecondaryTextWithClassifications', async () => {
     const match = createAutocompleteMatch();
-    match.suggestTemplate.primaryText = 'test content';
+    match.suggestTemplate.primaryText = createFormattedString('test content');
     match.suggestTemplate.primaryTextClass =
         [{offset: 0, style: 0}, {offset: 5, style: 2}];
-    match.suggestTemplate.secondaryText = 'test description';
+    match.suggestTemplate.secondaryText =
+        createFormattedString('test description');
     match.suggestTemplate.secondaryTextClass =
         [{offset: 0, style: 0}, {offset: 5, style: 2}];
     matchEl.match = match;
@@ -291,7 +293,7 @@ suite('CrComponentsRealboxMatchTest', () => {
 
   test('ClassificationsNotStartingAtZeroIndex', async () => {
     const match = createAutocompleteMatch();
-    match.suggestTemplate.primaryText = 'prefix content';
+    match.suggestTemplate.primaryText = createFormattedString('prefix content');
     match.suggestTemplate.primaryTextClass = [{offset: 7, style: 2}];
     matchEl.match = match;
     await microtasksFinished();
@@ -308,10 +310,10 @@ suite('CrComponentsRealboxMatchTest', () => {
   test('EscapesPrimaryAndSecondaryText', async () => {
     const match = createAutocompleteMatch();
     match.suggestTemplate.primaryText =
-        '<script>alert("xss")</script>Safe Content';
+        createFormattedString('<script>alert("xss")</script>Safe Content');
     match.suggestTemplate.primaryTextClass = [{offset: 0, style: 0}];
     match.suggestTemplate.secondaryText =
-        '<img src=x onerror=alert(1)>Safe Description';
+        createFormattedString('<img src=x onerror=alert(1)>Safe Description');
     match.suggestTemplate.secondaryTextClass = [{offset: 0, style: 0}];
     matchEl.match = match;
     await microtasksFinished();
@@ -333,11 +335,14 @@ suite('CrComponentsRealboxMatchTest', () => {
     assertEquals(0, secondaryTextEl.querySelectorAll('img').length);
   });
 
-  test('AriaLabelUpdatingWithVirtualFocus', async () => {
+  test('AriaLabelDoesNotFollowVirtualFocusSelection', async () => {
+    // Virtual focus selection changes, including onto this match's keyword
+    // chip, action and remove button, are narrated by the hosting searchbox.
+    // The match's own label stays put so nothing else narrates them.
     matchEl.virtualFocusEnabled = true;
     const match = createAutocompleteMatch();
     match.a11yLabel = 'Search Google';
-    match.suggestTemplate.secondaryText = 'Google';
+    match.suggestTemplate.secondaryText = createFormattedString('Google');
     match.keywordModel = createMatchKeywordModelForTesting(
         {chipA11y: 'Search Google in Keyword Mode'});
     match.actions = [
@@ -353,44 +358,18 @@ suite('CrComponentsRealboxMatchTest', () => {
     matchEl.match = match;
     matchEl.matchIndex = 0;
     await microtasksFinished();
-
-    // 1. Normal state selection
-    matchEl.selection = {
-      line: 0,
-      state: SelectionLineState.kNormal,
-      actionIndex: 0,
-    };
-    await microtasksFinished();
     assertEquals('Search Google', matchEl.ariaLabel);
 
-    // 2. Keyword Mode chip selection
-    matchEl.selection = {
-      line: 0,
-      state: SelectionLineState.kKeywordMode,
-      actionIndex: 0,
-    };
-    await microtasksFinished();
-    assertEquals('Search Google in Keyword Mode', matchEl.ariaLabel);
+    for (const state
+             of [SelectionLineState.kNormal, SelectionLineState.kKeywordMode,
+                 SelectionLineState.kFocusedButtonAction,
+                 SelectionLineState.kFocusedButtonRemoveSuggestion]) {
+      matchEl.selection = {line: 0, state, actionIndex: 0};
+      await microtasksFinished();
+      assertEquals('Search Google', matchEl.ariaLabel);
+    }
 
-    // 3. Action chip selection
-    matchEl.selection = {
-      line: 0,
-      state: SelectionLineState.kFocusedButtonAction,
-      actionIndex: 0,
-    };
-    await microtasksFinished();
-    assertEquals('First Action A11y Label', matchEl.ariaLabel);
-
-    // 4. Remove button selection
-    matchEl.selection = {
-      line: 0,
-      state: SelectionLineState.kFocusedButtonRemoveSuggestion,
-      actionIndex: 0,
-    };
-    await microtasksFinished();
-    assertEquals('Remove Suggestion', matchEl.ariaLabel);
-
-    // 5. Selection index mismatch (different match line selected)
+    // Nor when another line is selected.
     matchEl.selection = {
       line: 1,
       state: SelectionLineState.kNormal,
@@ -485,5 +464,22 @@ suite('CrComponentsRealboxMatchTest', () => {
     assertEquals('Basketball', spans[1]!.textContent);
     assertFalse(spans[1]!.classList.contains('match'));
     assertTrue(spans[1]!.classList.contains('dim'));
+  });
+
+  test('DescriptionIcon', async () => {
+    const iconStyle = () =>
+        getComputedStyle(matchEl.$.secondaryText, '::before');
+    assertEquals('none', iconStyle().content);
+
+    matchEl.match = createAutocompleteMatch({
+      suggestTemplate:
+          createSuggestTemplateInfo({secondaryText: 'Opens in side panel'}),
+      descriptionIconPath: 'dock_to_right.svg',
+    });
+    await microtasksFinished();
+    assertEquals('""', iconStyle().content);
+    assertTrue(iconStyle()
+                   .getPropertyValue('-webkit-mask-image')
+                   .includes('dock_to_right.svg'));
   });
 });

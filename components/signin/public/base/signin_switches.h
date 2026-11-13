@@ -60,6 +60,11 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kAddSessionFallbackToPrimaryAccount);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+// Extends the AI subscription avatar decorations to more surfaces. Has no
+// effect unless `kEnableAiSubscriptionAvatarRing` is also enabled.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kAiSubscriptionAvatarRingFollowup);
+
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kAvoidAutoTriggerListAccountsOnStale);
 
@@ -310,6 +315,9 @@ BASE_DECLARE_FEATURE_PARAM(bool, kAccountPreviewDataMediumPriority);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewEntityPreviews);
 
+// Controls whether storing and exposing the preferred account when offering
+// signed-out users to sign in is enabled. This flag has no effect if
+// `kEnableAccountPreviewData` is not enabled.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccount);
 // Feature parameters for quartile classification thresholds of sync data
@@ -364,11 +372,23 @@ BASE_DECLARE_FEATURE_PARAM(
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccountFollowup);
 
-// Controls whether storing and exposing the preferred account for switching is
-// enabled. This flag has no effect if `kEnableAccountPreviewData` is not
-// enabled.
+#if BUILDFLAG(IS_IOS)
+// Controls whether preferred account selection is enabled in the First Run
+// Experience (FRE).
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccountFRE);
+#endif
+
+// Controls whether storing and exposing the preferred account when offering
+// signed-in users to switch accounts is enabled. This flag has no effect if
+// `kEnableAccountPreviewData` is not enabled.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewSwitchingAccount);
+// When true, skips cooldowns and throttling limits for the account switching
+// promo. Used for manual and automated testing.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(bool,
+                           kEnableAccountPreviewSwitchingAccountSkipCooldown);
 
 #if BUILDFLAG(IS_ANDROID)
 // Enables the use of 1P app account information on Android in preferred account
@@ -676,12 +696,6 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kHandleMdmErrorsForDasherAccountsOnAndroid);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_IOS)
-// Feature flag to ignore invalid grant errors in AuthenticationService.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kIgnoreInvalidGrantError);
-#endif
-
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // Controls the MagiChrome passkey sign-in experiment, enabling either the
 // Autofill-based promo flow or the native Views-based banner flow.
@@ -722,6 +736,13 @@ BASE_DECLARE_FEATURE(kMakeIdentityManagerSourceOfAccountsPart2);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kMigrateAccountManagerDelegate);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_IOS)
+// Migrates primary account reauthentication flows from `SigninCoordinator` to
+// `SigninReauthCoordinator`.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kMigrateToSigninReauthCoordinator);
+#endif
 
 #if BUILDFLAG(IS_IOS)
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -812,6 +833,14 @@ BASE_DECLARE_FEATURE(kRestrictDeviceManagementServiceOAuthScope);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kSearchAIModeSignInPromoSelfDismissal);
 #endif
+
+#if BUILDFLAG(IS_ANDROID)
+// When enabled, the SecondaryGoogleAccountSigninAllowed policy is honored on
+// Android: if the policy is set to false, Chrome asks Google web properties
+// (via the X-Chrome-Connected header) not to offer adding another account.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kSecondaryGoogleAccountsSigninAllowedOnAndroid);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID)
 // Opens a desktop-like profile menu from the toolbar sign-in button on Desktop
@@ -945,6 +974,12 @@ BASE_DECLARE_FEATURE(kUndoChromeOsUseConsentLevelSignin);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kUnifyWaitForCookies);
 #endif  // BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+
+#if BUILDFLAG(IS_IOS)
+// Feature flag to use the AccountInfoFetcherIos.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kUseAccountInfoFetcherIos);
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
 // Additional gate for user policy registration and download based on user

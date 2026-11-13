@@ -106,6 +106,15 @@ TabGroupView::TabGroupView(TabCollectionNode* collection_node)
       collection_node_->RegisterWillDestroyCallback(base::BindOnce(
           &TabGroupView::ResetCollectionNode, base::Unretained(this)));
 
+  if (orientation_ == TabStripOrientation::kVertical) {
+    auto* state_controller =
+        collection_node_->GetController()->GetStateController();
+    CHECK(state_controller);
+    collapsed_state_changed_subscription_ =
+        state_controller->RegisterOnCollapseChanged(base::BindRepeating(
+            &TabGroupView::OnCollapseStateChanged, base::Unretained(this)));
+  }
+
   TabGroup* const tab_group =
       const_cast<TabGroup*>(GetTabGroupFromNode(collection_node_));
 
@@ -234,10 +243,6 @@ bool TabGroupView::ShouldSnapToTarget(const views::View& child_view) const {
   return views::IsViewClass<SplitTabView>(&child_view);
 }
 
-void TabGroupView::SetAvailableSpace(views::SizeBound space) {
-  available_space_ = space;
-}
-
 int TabGroupView::GetCrossoverWidth() const {
   if (orientation_ == TabStripOrientation::kHorizontal) {
     return static_cast<TabGroupViewLayout*>(
@@ -245,16 +250,6 @@ int TabGroupView::GetCrossoverWidth() const {
         ->CalculateHorizontalCrossoverWidth(this);
   }
   return GetMinimumSize().width();
-}
-
-std::optional<views::SizeBound>
-TabGroupView::GetAvailableMainAxisSpaceOverride() const {
-  if (orientation_ == TabStripOrientation::kHorizontal) {
-    if (available_space_.is_bounded()) {
-      return available_space_;
-    }
-  }
-  return std::nullopt;
 }
 
 void TabGroupView::OnAnimationEnded() {
@@ -300,6 +295,7 @@ std::unique_ptr<views::View> TabGroupView::DetachChildView(
 void TabGroupView::ResetCollectionNode() {
   HideHoverCard(TabSlotController::HoverCardUpdateType::kTabRemoved);
   node_destroyed_subscription_ = {};
+  collapsed_state_changed_subscription_ = {};
   tab_group_data_changed_subscription_ = {};
   tab_group_data_observer_.reset();
   collection_node_ = nullptr;
@@ -333,14 +329,16 @@ void TabGroupView::OnDataChanged() {
   InvalidateLayout();
 }
 
+void TabGroupView::OnCollapseStateChanged(
+    tabs::VerticalTabStripCollapseState state) {
+  InvalidateLayout();
+}
+
 void TabGroupView::SetIsCollapsed(bool is_collapsed) {
   if (is_collapsed_ == is_collapsed) {
     return;
   }
   is_collapsed_ = is_collapsed;
-  // Reset the cached available space so stale collapsed bounds (which only
-  // accommodated the header chip) do not constrain group tabs when expanding.
-  available_space_ = views::SizeBound();
   InvalidateLayout();
 }
 

@@ -489,6 +489,7 @@ chromium-metrics-reviews@google.com.
   <int value="10" label="UnexpectedEmptyCapability"/>
   <int value="11" label="NoMediaDrmSupport"/>
   <int value="12" label="MediaFoundationGetExtendedDRMTypeSupportFailed"/>
+  <int value="13" label="Pending (not reported)"/>
 </enum>
 
 <enum name="CdmHostVerificationStatus">
@@ -733,6 +734,16 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Unknown error"/>
   <int value="2" label="Error - Video Capturer Service crashed"/>
 </enum>
+
+<!-- LINT.IfChange(DisplayAffinityResult) -->
+
+<enum name="DisplayAffinityResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Skipped due to remote session"/>
+  <int value="2" label="SetWindowDisplayAffinity failed"/>
+</enum>
+
+<!-- LINT.ThenChange(//ui/views/widget/desktop_aura/desktop_window_tree_host_win.h:DisplayAffinityResult) -->
 
 <enum name="DisplayCapturePolicyResult">
   <int value="0" label="kDisallowed"/>

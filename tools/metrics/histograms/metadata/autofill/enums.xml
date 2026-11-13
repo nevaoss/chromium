@@ -142,7 +142,7 @@ chromium-metrics-reviews@google.com.
   <int value="4" label="Autofill Attention Dialog accepted by the user"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/tools/attempt_form_filling_tool_metrics.h:AttemptFormFillingToolEvent) -->
+<!-- LINT.ThenChange(//chrome/browser/actor/tools/autofill/attempt_form_filling/attempt_form_filling_tool_metrics.h:AttemptFormFillingToolEvent) -->
 
 <enum name="AufofillStructuredTokenVerificationStatus">
   <int value="0" label="No Status"/>
@@ -273,6 +273,25 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//components/autofill/core/browser/webdata/autofill_ai/entity_table.cc:DecryptionStatus) -->
+
+<!-- LINT.IfChange(AutofillAiEntitySuppressionConfirmationDialogResult) -->
+
+<enum name="AutofillAiEntitySuppressionConfirmationDialogResult">
+  <int value="0" label="Accepted"/>
+  <int value="1" label="Cancelled"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h:AutofillAiEntitySuppressionConfirmationDialogResult) -->
+
+<!-- LINT.IfChange(AutofillAiEntitySuppressionLoadDropReason) -->
+
+<enum name="AutofillAiEntitySuppressionLoadDropReason">
+  <int value="0" label="Decryption failed"/>
+  <int value="1" label="Parsing failed"/>
+  <int value="2" label="Invalid entry"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h:AutofillAiEntitySuppressionLoadDropReason) -->
 
 <enum name="AutofillAiEntityType">
 <!-- Generated from components/autofill/core/browser/data_model/autofill_ai/entity_schema.json.
@@ -4182,6 +4201,24 @@ Called by update_autofill_enums.py.-->
 
   <int value="2" label="Promo code suggestions shown (once)"/>
   <int value="3" label="Promo code suggestion filled (once)"/>
+  <int value="4"
+      label="Form submitted with promo code present for the page (once). This
+             is tracked separately of submissions with fills to compare
+             conversion rates with users that don't have a promo code saved
+             for a page"/>
+  <int value="5"
+      label="Form submitted without promo code present for the page (once).
+             This is used to compare conversion rates between pages with and
+             without promo codes"/>
+  <int value="6"
+      label="Form submitted after promo code suggestion was filled on
+             suggestion acceptance (once). This is used to see the funnel for
+             how often users submit a form after filling a promo code
+             suggestion"/>
+  <int value="7"
+      label="Form submitted and promo code field contained a value (once).
+             This can be compared with the autofilled metric to see how often
+             users manually enter a promo code in the field"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/metrics/payments/promo_code_metrics.h:AutofillPromoCodeFormEvent) -->

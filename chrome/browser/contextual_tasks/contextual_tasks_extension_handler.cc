@@ -201,13 +201,6 @@ void ContextualTasksExtensionHandler::CreateExtensionPageHandler(
         base::BindRepeating(&ContextualTasksExtensionHandler::OnLensCropUpdated,
                             weak_ptr_factory_.GetWeakPtr()));
   }
-#if !BUILDFLAG(IS_ANDROID)
-  if (auto* controller = GetLensSearchController()) {
-    if (controller->IsShowingUI()) {
-      contextual_tasks_page_->OnLensOverlayStateChanged(/*is_showing=*/true);
-    }
-  }
-#endif
   InitializeInputStateModel();
   // Do not reset the session's tab context here. The session is shared by every
   // extension frame in this WebContents, so a frame binding in the middle of a
@@ -232,7 +225,8 @@ void ContextualTasksExtensionHandler::SetTaskId(const base::Uuid& uuid) {
 }
 
 void ContextualTasksExtensionHandler::OnWebviewMessage(
-    const std::vector<uint8_t>& message) {
+    const std::vector<uint8_t>& message,
+    const std::optional<std::string>& document_id) {
   if (!contextual_tasks_page_.is_bound()) {
     return;
   }
@@ -244,7 +238,7 @@ void ContextualTasksExtensionHandler::OnWebviewMessage(
   // Try parsing SearchToClientMessage first via
   // ContextualTasksWebContentsUserData.
   if (auto* user_data = GetOrCreateWebContentsUserData()) {
-    if (user_data->OnSearchMessageReceived(message)) {
+    if (user_data->OnSearchMessageReceived(message, this)) {
       return;
     }
   }
@@ -281,6 +275,7 @@ void ContextualTasksExtensionHandler::RecordTimeToHandshakeComplete() {
 }
 
 void ContextualTasksExtensionHandler::GetHandshakeMessage(
+    const std::optional<std::string>& document_id,
     GetHandshakeMessageCallback callback) {
   std::move(callback).Run(
       mojo_base::ProtoWrapper(contextual_tasks::GetHandshakeMessageProto()));
@@ -649,7 +644,8 @@ void ContextualTasksExtensionHandler::PostAimMessage(
 void ContextualTasksExtensionHandler::SendSearchMessageToBoundPage(
     const lens::ClientToSearchMessage& message) {
   if (contextual_tasks_page_.is_bound()) {
-    contextual_tasks_page_->PostSearchMessage(mojo_base::ProtoWrapper(message));
+    contextual_tasks_page_->PostSearchMessage(mojo_base::ProtoWrapper(message),
+                                              std::nullopt);
   }
 }
 

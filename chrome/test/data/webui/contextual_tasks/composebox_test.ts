@@ -17,7 +17,7 @@ import {VoiceSearchAction, VoiceSearchQuerySource} from 'chrome://resources/cr_c
 import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState, VoiceSearchState} from 'chrome://resources/cr_components/search/constants.js';
-import {createAutocompleteMatch, createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 /* clang-format off */
@@ -29,14 +29,14 @@ import {TabAttachmentSource} from 'chrome://resources/mojo/components/omnibox/br
 import type {AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
+import {createSuggestTemplateInfo, MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
 import {MockTimer} from 'chrome://webui-test/mock_timer.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
-import {createCtComposeboxApp, fixtureUrl, getInputValue, getSubmitButton, simulateUserInput} from './contextual_tasks_test_utils.js';
+import {createCtComposeboxApp, fixtureUrl, getInputValue, getSubmitButton, getSubmitContainer, simulateUserInput} from './contextual_tasks_test_utils.js';
 import type {CtComposeboxAppParts} from './contextual_tasks_test_utils.js';
 import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
 import {setupAutocompleteResults} from './test_searchbox_utils.js';
@@ -437,6 +437,7 @@ suite('ContextualTasksComposeboxTest', () => {
   test(
       'composebox remains visible during results-to-results navigation',
       async () => {
+        contextualTasksApp.removeThreadFrameListenersForTesting();
         // Setup: Start in a loaded results state (not initial load, not zero state).
         contextualTasksApp.setIsInitialFrameLoadForTesting(false);
         contextualTasksApp.setIsZeroStateForTesting(false);
@@ -492,6 +493,7 @@ suite('ContextualTasksComposeboxTest', () => {
   test(
       'composebox is hidden during subsequent navigation to zero-state until DOM loads',
       async () => {
+        contextualTasksApp.removeThreadFrameListenersForTesting();
         // Setup: Start in a loaded results state (not initial load, not zero state).
         contextualTasksApp.setIsInitialFrameLoadForTesting(false);
         contextualTasksApp.setIsZeroStateForTesting(false);
@@ -504,6 +506,18 @@ suite('ContextualTasksComposeboxTest', () => {
             contextualTasksApp.shadowRoot.querySelector('#composebox');
         assertTrue(!!composebox);
         assertEquals('visible', window.getComputedStyle(composebox).visibility);
+
+        const innerComposebox = contextualTasksApp.$.composebox.$.composebox;
+        const inputElement =
+            innerComposebox.getInputElement()
+                .shadowRoot.querySelector<HTMLElement>('#input')!;
+        const submitContainer = getSubmitContainer(innerComposebox);
+        assertTrue(!!submitContainer);
+        simulateUserInput(inputElement, 'test query');
+        await innerComposebox.updateComplete;
+        assertTrue(innerComposebox.hasAttribute('submit-enabled'));
+        assertEquals(
+            'visible', window.getComputedStyle(submitContainer).visibility);
 
         const mockEvent = {
           url: 'https://google.com/?gsc=2',
@@ -533,7 +547,16 @@ suite('ContextualTasksComposeboxTest', () => {
         assertEquals(
             'hidden', window.getComputedStyle(composebox).visibility);
 
-        // Simulate DOM load.
+        // Even when submit-enabled is set (e.g., from an attached tab chip),
+        // the submit container must inherit visibility: hidden rather than
+        // remaining visible on its own.
+        simulateUserInput(inputElement, 'test query');
+        await innerComposebox.updateComplete;
+        assertTrue(innerComposebox.hasAttribute('submit-enabled'));
+        assertEquals(
+            'hidden', window.getComputedStyle(submitContainer).visibility);
+
+        // Simulate DOM load (which also clears typed input for the new thread).
         window.dispatchEvent(new MessageEvent('message', {
           data: 'domContentLoaded',
         }));
@@ -542,6 +565,11 @@ suite('ContextualTasksComposeboxTest', () => {
 
         assertEquals(
             'visible', window.getComputedStyle(composebox).visibility);
+        simulateUserInput(inputElement, 'test query');
+        await innerComposebox.updateComplete;
+        assertTrue(innerComposebox.hasAttribute('submit-enabled'));
+        assertEquals(
+            'visible', window.getComputedStyle(submitContainer).visibility);
       });
 
   test('queries autocomplete on load when isZeroState is true', async () => {

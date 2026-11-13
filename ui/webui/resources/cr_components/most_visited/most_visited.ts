@@ -199,6 +199,11 @@ export class MostVisitedElement extends MostVisitedElementBase {
         reflect: true,
       },
       inReorderMode_: {type: Boolean, reflect: true},
+      /**
+       * The element whose width is used for calculating the number of MVTs per
+       * row. If null, the window's width is used.
+       */
+      widthContainer: {type: Object},
     };
   }
 
@@ -214,6 +219,7 @@ export class MostVisitedElement extends MostVisitedElementBase {
   accessor maxMostVisitedTilesInExpandedState: number = 8;
   accessor maxEnterpriseShortcuts: number = 10;
   accessor maxTiles: number = 0;
+  accessor widthContainer: HTMLElement|null = null;
   private accessor showAll_: boolean = false;
   protected accessor showShowMore_: boolean = false;
   protected accessor showShowLess_: boolean = false;
@@ -251,6 +257,7 @@ export class MostVisitedElement extends MostVisitedElementBase {
   private tileRects_: DOMRect[] = [];
   private isRtl_: boolean = false;
   private mediaEventTracker_: EventTracker;
+  private resizeObserver_: ResizeObserver|null = null;
   private eventTracker_: EventTracker;
   private boundOnDocumentKeyDown_: (e: KeyboardEvent) => void = (_e) => null;
   private prefetchTimer_: null|ReturnType<typeof setTimeout> = null;
@@ -326,6 +333,7 @@ export class MostVisitedElement extends MostVisitedElementBase {
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.mediaEventTracker_.removeAll();
+    this.resizeObserver_?.disconnect();
     this.eventTracker_.removeAll();
     this.ownerDocument.removeEventListener(
         'keydown', this.boundOnDocumentKeyDown_);
@@ -396,7 +404,8 @@ export class MostVisitedElement extends MostVisitedElementBase {
     const changedPrivateProperties =
         changedProperties as Map<PropertyKey, unknown>;
 
-    if (changedProperties.has('singleRow')) {
+    if (changedProperties.has('singleRow') ||
+        changedProperties.has('widthContainer')) {
       this.onSingleRowChange_();
     }
 
@@ -792,25 +801,38 @@ export class MostVisitedElement extends MostVisitedElementBase {
       return;
     }
     this.mediaEventTracker_.removeAll();
-    const queryLists: MediaQueryList[] = [];
-    const updateCount = () => {
-      const index = queryLists.findIndex(listener => listener.matches);
-      this.maxVisibleColumnCount_ =
-          3 + (index > -1 ? queryLists.length - index : 0);
-    };
+    this.resizeObserver_?.disconnect();
     const tileSize =
         parseInt(
             getComputedStyle(this).getPropertyValue('--most-visited-tile-size'),
             10) ||
         112;
     const maxColumnCount = this.singleRow ? 10 : 5;
-    for (let i = maxColumnCount; i >= 4; i--) {
-      const query = `(min-width: ${tileSize * (i + 1)}px)`;
-      const queryList = this.windowProxy_.matchMedia(query);
-      this.mediaEventTracker_.add(queryList, 'change', updateCount);
-      queryLists.push(queryList);
+    if (this.widthContainer) {
+      // Same breakpoints as the media queries below: N columns need a width of
+      // at least N + 1 tiles.
+      const updateCountForWidth = (width: number) => {
+        this.maxVisibleColumnCount_ = Math.min(
+            maxColumnCount, Math.max(3, Math.floor(width / tileSize) - 1));
+      };
+      this.resizeObserver_ = new ResizeObserver(
+          entries => updateCountForWidth(entries[0]!.contentRect.width));
+      this.resizeObserver_.observe(this.widthContainer);
+    } else {
+      const queryLists: MediaQueryList[] = [];
+      const updateCount = () => {
+        const index = queryLists.findIndex(listener => listener.matches);
+        this.maxVisibleColumnCount_ =
+            3 + (index > -1 ? queryLists.length - index : 0);
+      };
+      for (let i = maxColumnCount; i >= 4; i--) {
+        const query = `(min-width: ${tileSize * (i + 1)}px)`;
+        const queryList = this.windowProxy_.matchMedia(query);
+        this.mediaEventTracker_.add(queryList, 'change', updateCount);
+        queryLists.push(queryList);
+      }
+      updateCount();
     }
-    updateCount();
   }
 
   protected onAddClick_() {
@@ -1007,6 +1029,7 @@ export class MostVisitedElement extends MostVisitedElementBase {
   protected async onReorderClick_() {
     this.$.actionMenu.close();
     this.inReorderMode_ = true;
+    this.reordering_ = true;
     await this.updateComplete;
     this.tileFocus_(this.actionMenuTargetIndex_);
   }
@@ -1091,9 +1114,33 @@ export class MostVisitedElement extends MostVisitedElementBase {
         item, index, e.button || 0, e.altKey, e.ctrlKey, e.metaKey, e.shiftKey);
   }
 
-  protected onTileKeydown_(e: KeyboardEvent) {
+  protected async onTileKeydown_(e: KeyboardEvent) {
     if (hasKeyModifiers(e)) {
       return;
+    }
+
+    if (this.shortcutsReorderEnabled && this.inReorderMode_) {
+      // Handle reordering key events.
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const currentIndex = this.actionMenuTargetIndex_;
+        const direction = e.key === 'ArrowLeft' ? -1 : 1;
+        const newIndex = (currentIndex + direction + this.tiles_.length) %
+            this.tiles_.length;
+
+        const selectedTile = this.tiles_[currentIndex]!;
+        const adjacentTile = this.tiles_[newIndex]!;
+        this.tiles_[currentIndex] = adjacentTile;
+        this.tiles_[newIndex] = selectedTile;
+
+        this.requestUpdate();
+        this.browserProxy_.handler.reorderMostVisitedTile(
+            selectedTile, newIndex);
+
+        this.actionMenuTargetIndex_ = newIndex;
+        await this.updateComplete;
+        this.tileFocus_(newIndex);
+        return;
+      }
     }
 
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' &&

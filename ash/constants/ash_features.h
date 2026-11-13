@@ -24,8 +24,6 @@ BASE_DECLARE_FEATURE(kAllowApnModificationPolicy);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kAllowCrossDeviceFeatureSuite);
 COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kAltClickAndSixPackCustomization);
-COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kAlwaysReinstallSystemWebApps);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kAmbientEQDefaultOff);
 COMPONENT_EXPORT(ASH_CONSTANTS)
@@ -151,15 +149,6 @@ enum BorealisZinkGlDriverParam { kZinkEnableRecommended, kZinkEnableAll };
 COMPONENT_EXPORT(ASH_CONSTANTS)
 extern const base::FeatureParam<BorealisZinkGlDriverParam>
     kBorealisZinkGlDriverParam;
-COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kCaptureModeEducation);
-enum class CaptureModeEducationParam {
-  kShortcutNudge,
-  kShortcutTutorial,
-  kQuickSettingsNudge
-};
-COMPONENT_EXPORT(ASH_CONSTANTS)
-extern const base::FeatureParam<CaptureModeEducationParam>
-    kCaptureModeEducationParam;
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kCaptureModeOnDeviceOcr);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kCellularBypassESimInstallationConnectivityCheck);
@@ -448,8 +437,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHealthdInternalsTabs);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHeliumArcvmKiosk);
-COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kHelpAppAutoTriggerInstallDialog);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kHiddenNetworkWarning);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHideShelfControlsInTabletMode);
@@ -539,7 +526,6 @@ extern const base::FeatureParam<MantisModel> kMediaAppImageMantisModelParams;
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kMouseImposterCheck);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kMultiCalendarSupport);
-COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kNearbyPresence);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kNotificationLimit);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kNotificationCenterController);
@@ -669,7 +655,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kReleaseNotesNotificationAlwaysEligible);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kResetShortcutCustomizations);
-COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kSameAppWindowCycle);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kSanitize);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kSanitizeV1);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kScalableShelfPods);
@@ -769,7 +754,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kUseStorkSmdsServerAddress);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kUseWallpaperStagingUrl);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kUserActivityPrediction);
-COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kUseTokenHandleStore);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kLiveCaptionUserMicrophone);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kVcBackgroundReplace);
@@ -868,7 +852,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS) bool IsAdjustSplitViewForVKEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsAllowAmbientEQEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsEapDefaultCasWithoutSubjectVerificationAllowed();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool IsAltClickAndSixPackCustomizationEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsAmbientEQDefaultOff();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsAmbientModeDevUseProdEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsAnnotatorModeEnabled();
@@ -933,7 +916,6 @@ bool IsBocaConfigureMaxStudentsEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaCourseWorkMaterialApiEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaScreenSharingTeacherEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaScreenSharingStudentEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool IsCaptureModeEducationEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsCaptureModeOnDeviceOcrEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsClipboardHistoryPolicyEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
@@ -1062,7 +1044,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS) bool IsLockScreenNotificationsEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsMacAddressRandomizationEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool ShouldMigrateOwnerKeyToPrivateSlot();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsMultiCalendarSupportEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool IsNearbyPresenceEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsNotificationLimitEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsEnrollmentNudgingForTestingEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsNotificationCenterControllerEnabled();
@@ -1119,7 +1100,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS) bool IsProjectorUseDVSPlaybackEndpointEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsQuickDimEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsRecoveryFlowReorderEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool IsSameAppWindowCycleEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsResetShortcutCustomizationsEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
@@ -1193,7 +1173,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS) bool ShouldUseAndroidStagingSmds();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool ShouldUseStorkSmds();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsFeatureAwareDeviceDemoModeEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool IsUseTokenHandleStoreEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsLocalFactorsPasswordComplexityEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsManagedLocalPinAndPasswordEnabled();
 

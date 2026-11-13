@@ -63,7 +63,13 @@ enum class ToolId {
   kCreateTab = 21,
   // Activates an open tab by its ID.
   kActivateTab = 22,
-  kMaxValue = kActivateTab,
+  // Scrolls an element into view in the active tab.
+  kScrollTo = 23,
+  // Adds a bookmark for the specified URL and title.
+  kAddBookmark = 24,
+  // Removes bookmarks matching the specified URL.
+  kRemoveBookmark = 25,
+  kMaxValue = kRemoveBookmark,
 };
 
 // In-memory metadata and parameter schema for a shared browser tool. Prefer

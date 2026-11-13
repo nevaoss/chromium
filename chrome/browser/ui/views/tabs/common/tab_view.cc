@@ -162,7 +162,7 @@ class TabStyleViewDelegateImpl : public TabStyleViewDelegate {
            TabStyle::TabSelectionState::kSelected;
   }
 
-  bool IsHovering() const override { return tab_view_->IsMouseHovered(); }
+  bool IsHovering() const override { return tab_view_->IsHovering(); }
 
   bool IsClosing() const override { return tab_view_->IsClosing(); }
   bool IsDragging() const override { return tab_view_->IsDragging(); }
@@ -1103,7 +1103,12 @@ void TabView::OnAXNameChanged(ax::mojom::StringAttribute attribute,
 
 void TabView::OnCollapseStateChanged(
     tabs::VerticalTabStripCollapseState state) {
-  collapsed_ = state == tabs::VerticalTabStripCollapseState::kCollapsed;
+  const bool collapsed =
+      state == tabs::VerticalTabStripCollapseState::kCollapsed;
+  if (collapsed_ != collapsed) {
+    collapsed_ = collapsed;
+    InvalidateLayout();
+  }
 }
 
 void TabView::OnTabStateChanged() {

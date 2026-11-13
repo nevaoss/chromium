@@ -90,7 +90,11 @@ TransportSessionImpl::SendUpstreamMessage(
     const google::protobuf::MessageLite& message) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (channel_) {
-    channel_->SendUpstreamMessage(session_id_, payload_type, message);
+    std::optional<int64_t> responding_to_sequence_number =
+        payload_type == PayloadType::kControl ? dispatching_sequence_number_
+                                              : std::nullopt;
+    channel_->SendUpstreamMessage(session_id_, payload_type, message,
+                                  responding_to_sequence_number);
     return {};
   }
   return base::unexpected(SendUpstreamMessageError::kChannelDisconnected);
@@ -147,6 +151,11 @@ TransportSessionImpl::DispatchToHandlers(
       if (!session) {
         break;
       }
+      auto current_it = routing_table_.find(payload_type);
+      if (current_it == routing_table_.end() ||
+          !std::ranges::contains(current_it->second, handler)) {
+        continue;
+      }
       dispatch_fn(handler);
     }
   }
@@ -166,6 +175,9 @@ TransportSessionImpl::ResolveHandlersForType(PayloadType payload_type) {
   TransportHandlerFactoryRegistry* registry =
       channel_->GetHandlerFactoryRegistry();
   CHECK(registry);
+  if (!factory_registry_observation_.IsObserving()) {
+    factory_registry_observation_.Observe(registry);
+  }
 
   std::vector<TransportHandlerFactory*> factories =
       registry->GetFactories(payload_type);
@@ -201,6 +213,32 @@ TransportSessionImpl::ResolveHandlersForType(PayloadType payload_type) {
   }
 
   return {};
+}
+
+void TransportSessionImpl::OnFactoryUnregistered(FactoryId factory_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto handler_it = factory_handler_map_.find(factory_id);
+  if (handler_it == factory_handler_map_.end()) {
+    return;
+  }
+
+  std::unique_ptr<TransportHandler> handler = std::move(handler_it->second);
+  factory_handler_map_.erase(handler_it);
+
+  for (auto routing_it = routing_table_.begin();
+       routing_it != routing_table_.end();) {
+    std::erase(routing_it->second, handler.get());
+    if (routing_it->second.empty()) {
+      routing_it = routing_table_.erase(routing_it);
+    } else {
+      ++routing_it;
+    }
+  }
+}
+
+void TransportSessionImpl::OnRegistryDestroyed() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  factory_registry_observation_.Reset();
 }
 
 base::expected<void, DownstreamMessageSequencer::Error>
@@ -244,6 +282,7 @@ TransportSessionImpl::ProcessDownstreamMessage(
       break;
     }
     last_seen_sequence_number_ = ready_message.sequence_number();
+    dispatching_sequence_number_ = ready_message.sequence_number();
     for (const auto& typed_payload : ready_message.typed_payloads()) {
       // A handler's OnMessage() may have synchronously destroyed this session.
       if (!weak_this) {
@@ -251,6 +290,9 @@ TransportSessionImpl::ProcessDownstreamMessage(
       }
       ProcessTypedPayload(typed_payload);
     }
+  }
+  if (weak_this) {
+    dispatching_sequence_number_.reset();
   }
   return {};
 }

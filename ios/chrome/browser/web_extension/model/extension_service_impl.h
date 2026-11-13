@@ -25,6 +25,7 @@ class PrefService;
 
 namespace web {
 class ExtensionController;
+enum class BuiltInExtension;
 enum class UniversalOptOutState;
 }  // namespace web
 
@@ -60,6 +61,15 @@ class ExtensionServiceImpl final : public ExtensionService {
       base::OnceClosure callback) override;
 
  private:
+  // Loads `extension` if not already loaded or loading, and starts the
+  // loading timeout timer.
+  void LoadExtension(web::BuiltInExtension extension);
+
+  // Called when the extension loading finishes, applying any remaining delay
+  // from experimental flags before delegating to `OnExtensionLoaded`.
+  void OnExtensionLoadedWithDelay(base::TimeTicks load_start_time,
+                                  base::TimeDelta min_duration,
+                                  bool success);
   // Called when the extension loading callback finishes.
   void OnExtensionLoaded(bool success);
 
@@ -95,6 +105,9 @@ class ExtensionServiceImpl final : public ExtensionService {
 
   // Timer for loading timeout.
   base::OneShotTimer loading_timer_;
+
+  // Timer for artificial loading delay from experimental settings.
+  base::OneShotTimer delay_timer_;
 
   // Whether the service has completed loading initial extensions.
   bool is_ready_ = false;

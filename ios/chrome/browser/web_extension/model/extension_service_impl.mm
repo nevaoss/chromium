@@ -16,6 +16,7 @@
 #import "components/prefs/pref_service.h"
 #import "components/universal_optout/features.h"
 #import "components/universal_optout/prefs.h"
+#import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/web/public/extension/extension_controller.h"
 #import "ios/web/public/web_client.h"
 
@@ -40,6 +41,7 @@ void ExtensionServiceImpl::Shutdown() {
   is_loading_ = false;
   has_load_error_ = false;
   loading_timer_.Stop();
+  delay_timer_.Stop();
   pref_change_registrar_.RemoveAll();
   ready_callbacks_.Clear();
   observers_.Clear();
@@ -80,22 +82,11 @@ void ExtensionServiceImpl::Initialize(web::UniversalOptOutState state) {
 
   if (should_load_at_startup) {
     extension_load_started_at_startup_ = true;
-    is_loading_ = true;
     initialization_start_time_ = base::TimeTicks::Now();
-    extension_load_start_time_ = initialization_start_time_;
-    loading_timer_.Start(
-        FROM_HERE, kExtensionLoadingTimeout,
-        base::BindOnce(&ExtensionServiceImpl::OnExtensionLoadTimeout,
-                       weak_ptr_factory_.GetWeakPtr()));
-
     web::BuiltInExtension extension_to_load =
         is_silent ? web::BuiltInExtension::kGPCTest
                   : web::BuiltInExtension::kGPC;
-
-    extension_controller_->LoadBuiltInExtension(
-        extension_to_load,
-        base::BindOnce(&ExtensionServiceImpl::OnExtensionLoaded,
-                       weak_ptr_factory_.GetWeakPtr()));
+    LoadExtension(extension_to_load);
   } else {
     is_ready_ = true;
   }
@@ -149,15 +140,71 @@ base::CallbackListSubscription ExtensionServiceImpl::RunWhenReady(
   return ready_callbacks_.Add(std::move(callback));
 }
 
+void ExtensionServiceImpl::LoadExtension(web::BuiltInExtension extension) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!extension_controller_ || is_loading_ || delay_timer_.IsRunning() ||
+      extension_controller_->IsBuiltInExtensionLoaded(extension)) {
+    return;
+  }
+  is_loading_ = true;
+  extension_load_start_time_ = base::TimeTicks::Now();
+  loading_timer_.Start(
+      FROM_HERE, kExtensionLoadingTimeout,
+      base::BindOnce(&ExtensionServiceImpl::OnExtensionLoadTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
+
+  const base::TimeDelta delay = experimental_flags::GetWebExtensionLoadDelay();
+
+  if (experimental_flags::ShouldWebExtensionLoadFail()) {
+    delay_timer_.Start(
+        FROM_HERE, delay,
+        base::BindOnce(&ExtensionServiceImpl::OnExtensionLoaded,
+                       weak_ptr_factory_.GetWeakPtr(), /*success=*/false));
+    return;
+  }
+
+  if (delay.is_positive()) {
+    extension_controller_->LoadBuiltInExtension(
+        extension,
+        base::BindOnce(&ExtensionServiceImpl::OnExtensionLoadedWithDelay,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       extension_load_start_time_, delay));
+    return;
+  }
+
+  extension_controller_->LoadBuiltInExtension(
+      extension, base::BindOnce(&ExtensionServiceImpl::OnExtensionLoaded,
+                                weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ExtensionServiceImpl::OnExtensionLoadedWithDelay(
+    base::TimeTicks load_start_time,
+    base::TimeDelta min_duration,
+    bool success) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  const base::TimeDelta elapsed = base::TimeTicks::Now() - load_start_time;
+  const base::TimeDelta remaining = min_duration - elapsed;
+  if (remaining.is_positive()) {
+    delay_timer_.Start(FROM_HERE, remaining,
+                       base::BindOnce(&ExtensionServiceImpl::OnExtensionLoaded,
+                                      weak_ptr_factory_.GetWeakPtr(), success));
+  } else {
+    OnExtensionLoaded(success);
+  }
+}
+
 void ExtensionServiceImpl::OnExtensionLoaded(bool success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   is_loading_ = false;
   loading_timer_.Stop();
+  delay_timer_.Stop();
   if (!extension_load_start_time_.is_null()) {
-    base::UmaHistogramBoolean("IOS.WebExtension.LoadSuccess", success);
-    base::UmaHistogramTimes(
-        "IOS.WebExtension.LoadDelay",
-        base::TimeTicks::Now() - extension_load_start_time_);
+    if (experimental_flags::IsWebExtensionLoadDelayDefault()) {
+      base::UmaHistogramBoolean("IOS.WebExtension.LoadSuccess", success);
+      base::UmaHistogramTimes(
+          "IOS.WebExtension.LoadDelay",
+          base::TimeTicks::Now() - extension_load_start_time_);
+    }
     extension_load_start_time_ = base::TimeTicks();
   }
   const bool is_silent =
@@ -205,9 +252,11 @@ void ExtensionServiceImpl::OnExtensionLoadTimeout() {
 void ExtensionServiceImpl::NotifyReady() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!initialization_start_time_.is_null()) {
-    base::UmaHistogramTimes(
-        "IOS.WebExtension.ReadyDelay",
-        base::TimeTicks::Now() - initialization_start_time_);
+    if (experimental_flags::IsWebExtensionLoadDelayDefault()) {
+      base::UmaHistogramTimes(
+          "IOS.WebExtension.ReadyDelay",
+          base::TimeTicks::Now() - initialization_start_time_);
+    }
     initialization_start_time_ = base::TimeTicks();
   }
   is_ready_ = true;
@@ -224,19 +273,12 @@ void ExtensionServiceImpl::OnOptOutPrefChanged() {
   }
   const bool enabled = pref_service_->GetBoolean(
       universal_optout::prefs::kUniversalOptOutEnabled);
-  const bool is_loaded = extension_controller_->IsBuiltInExtensionLoaded(
-      web::BuiltInExtension::kGPC);
   if (enabled) {
-    if (!is_loaded && !is_loading_) {
-      is_loading_ = true;
-      extension_controller_->LoadBuiltInExtension(
-          web::BuiltInExtension::kGPC,
-          base::BindOnce(&ExtensionServiceImpl::OnExtensionLoaded,
-                         weak_ptr_factory_.GetWeakPtr()));
-    }
+    LoadExtension(web::BuiltInExtension::kGPC);
   } else {
     SetHasLoadError(false);
-    if (is_loaded) {
+    if (extension_controller_->IsBuiltInExtensionLoaded(
+            web::BuiltInExtension::kGPC)) {
       extension_controller_->UnloadBuiltInExtension(web::BuiltInExtension::kGPC,
                                                     base::DoNothing());
     }

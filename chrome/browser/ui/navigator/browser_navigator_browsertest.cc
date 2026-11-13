@@ -13,6 +13,7 @@
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/file_system_access/file_system_access_features.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
@@ -26,6 +27,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+#include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
@@ -50,6 +52,8 @@
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/captive_portal/core/buildflags.h"
+#include "components/content_settings/core/browser/host_content_settings_map.h"
+#include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/features.h"
 #include "components/omnibox/browser/tab_matcher.h"
 #include "components/policy/core/common/policy_pref_names.h"
@@ -95,6 +99,12 @@
 #if BUILDFLAG(IS_OZONE)
 #include "ui/ozone/public/ozone_platform.h"
 #endif
+
+#if BUILDFLAG(IS_WIN)
+#include "components/viz/common/resources/shared_image_format.h"
+#include "ui/gfx/color_space.h"
+#include "ui/gfx/display_color_spaces.h"
+#endif  // BUILDFLAG(IS_WIN)
 
 using content::WebContents;
 
@@ -2098,7 +2108,7 @@ IN_PROC_BROWSER_TEST_P(BrowserNavigatorPictureInPictureTest,
   // Should not reuse the browser.
   EXPECT_NE(browser(), params.browser);
   EXPECT_EQ(params.browser->GetType(),
-            BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
+            BrowserWindowInterface::Type::TYPE_FLOATING);
   EXPECT_EQ(BrowserInitState::From(params.browser)->create_params().app_name,
             std::string());
 
@@ -2160,7 +2170,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   // Make sure that attempting to open a picture in picture window from a
   // picture in picture window fails.
   BrowserWindowInterface* pip = CreateEmptyBrowserForType(
-      BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE, browser()->GetProfile());
+      BrowserWindowInterface::TYPE_FLOATING, browser()->GetProfile());
   NavigateParams params = MakeNavigateParams(pip);
   params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
 
@@ -2182,7 +2192,7 @@ IN_PROC_BROWSER_TEST_F(
     Disposition_PictureInPicture_CantWithoutASourceContents) {
   // Opening a picture-in-picture window without a source contents should fail.
   BrowserWindowInterface* pip = CreateEmptyBrowserForType(
-      BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE, browser()->GetProfile());
+      BrowserWindowInterface::TYPE_FLOATING, browser()->GetProfile());
   NavigateParams params = MakeNavigateParams(pip);
   params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
   params.source_contents = nullptr;
@@ -2195,7 +2205,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   // Disallow document PiP windows from opening from a window with about:blank
   // in the omnibox
   BrowserWindowInterface* pip = CreateEmptyBrowserForType(
-      BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE, browser()->GetProfile());
+      BrowserWindowInterface::TYPE_FLOATING, browser()->GetProfile());
   NavigateParams params = MakeNavigateParams(pip);
   params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
 
@@ -2342,7 +2352,9 @@ IN_PROC_BROWSER_TEST_P(BrowserNavigatorPictureInPictureTest,
   EXPECT_EQ(browser_count + 1,
             GlobalBrowserCollection::GetInstance()->GetSize());
   EXPECT_EQ(params.browser->GetType(),
-            BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
+            BrowserWindowInterface::Type::TYPE_FLOATING);
+  EXPECT_TRUE(DesktopBrowserWindowCapabilities::IsDocumentPictureInPicture(
+      params.browser));
   EXPECT_NE(BrowserInitState::From(params.browser)->create_params().app_name,
             std::string());
 }
@@ -2378,16 +2390,7 @@ class MockScreen : public display::ScreenBase {
 };
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
-// Windows has assumptions that the screen is a ScreenWin, which causes a crash
-// when we inject the MockScreen.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_BrowserNavigatorTestWithMockScreen \
-  DISABLED_BrowserNavigatorTestWithMockScreen
-#else
-#define MAYBE_BrowserNavigatorTestWithMockScreen \
-  BrowserNavigatorTestWithMockScreen
-#endif
-class MAYBE_BrowserNavigatorTestWithMockScreen
+class BrowserNavigatorTestWithMockScreen
     : public BrowserNavigatorPictureInPictureTest {
  public:
   void SetScreenInstance() override {
@@ -2396,11 +2399,22 @@ class MAYBE_BrowserNavigatorTestWithMockScreen
     BrowserNavigatorTest::SetScreenInstance();
 #else
     mock_screen_.Init();
-    mock_screen_.display_list().AddDisplay({1, gfx::Rect(0, 0, 800, 700)},
+    display::Display display1(1, gfx::Rect(0, 0, 800, 700));
+    display::Display display2(2, gfx::Rect(800, 0, 800, 700));
+#if BUILDFLAG(IS_WIN)
+    // Windows swap chains are BGRA, which is what ScreenWin reports for real
+    // displays. With the default RGBA output format the GPU process crashes
+    // and restarts, so the test times out or runs very slowly.
+    gfx::DisplayColorSpaces color_spaces(gfx::ColorSpace::CreateSRGB());
+    color_spaces.SetOutputFormats(viz::SinglePlaneFormat::kBGRA_8888,
+                                  viz::SinglePlaneFormat::kBGRA_8888);
+    display1.SetColorSpaces(color_spaces);
+    display2.SetColorSpaces(color_spaces);
+#endif  // BUILDFLAG(IS_WIN)
+    mock_screen_.display_list().AddDisplay(display1,
                                            display::DisplayList::Type::PRIMARY);
     mock_screen_.display_list().AddDisplay(
-        {2, gfx::Rect(800, 0, 800, 700)},
-        display::DisplayList::Type::NOT_PRIMARY);
+        display2, display::DisplayList::Type::NOT_PRIMARY);
     ASSERT_EQ(2, display::Screen::Get()->GetNumDisplays());
 #endif  // BUILDFLAG(IS_CHROMEOS)
   }
@@ -2425,13 +2439,13 @@ class MAYBE_BrowserNavigatorTestWithMockScreen
 };
 
 INSTANTIATE_TEST_SUITE_P(All,
-                         MAYBE_BrowserNavigatorTestWithMockScreen,
+                         BrowserNavigatorTestWithMockScreen,
                          testing::Bool(),
                          [](const testing::TestParamInfo<bool>& info) {
                            return info.param ? "Standalone" : "BrowserBacked";
                          });
 
-IN_PROC_BROWSER_TEST_P(MAYBE_BrowserNavigatorTestWithMockScreen,
+IN_PROC_BROWSER_TEST_P(BrowserNavigatorTestWithMockScreen,
                        Disposition_PictureInPicture_OpensInSameDisplay) {
   // Create the params for the PiP request.
   auto pip_options = blink::mojom::PictureInPictureWindowOptions::New();
@@ -2484,7 +2498,7 @@ IN_PROC_BROWSER_TEST_P(MAYBE_BrowserNavigatorTestWithMockScreen,
     } else {
       ASSERT_NE(nullptr, params.browser);
       EXPECT_EQ(params.browser->GetType(),
-                BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
+                BrowserWindowInterface::Type::TYPE_FLOATING);
     }
 
     // The PiP window should also be on display 1.
@@ -2531,7 +2545,7 @@ IN_PROC_BROWSER_TEST_P(MAYBE_BrowserNavigatorTestWithMockScreen,
     } else {
       ASSERT_NE(nullptr, params.browser);
       EXPECT_EQ(params.browser->GetType(),
-                BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
+                BrowserWindowInterface::Type::TYPE_FLOATING);
     }
 
     // The PiP window should also be on display 2.
@@ -2756,6 +2770,64 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_TRUE(tab_strip_model->IsTabSelected(0));
   EXPECT_TRUE(tab_strip_model->IsTabSelected(1));
   EXPECT_FALSE(tab_strip_model->IsTabSelected(2));
+}
+
+class BrowserNavigatorTestAlwaysOnTop : public BrowserNavigatorTest {
+ public:
+  BrowserNavigatorTestAlwaysOnTop() {
+    scoped_feature_list_.InitAndEnableFeature(
+        blink::features::kWindowOpenAlwaysOnTop);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestAlwaysOnTop, AlwaysOnTopAttribute) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL opener_url(embedded_test_server()->GetURL("/title1.html"));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), opener_url));
+
+  // 1. Without permission, window.alwaysOnTop should return false.
+  {
+    ui_test_utils::BrowserCreatedObserver observer;
+    ASSERT_TRUE(content::ExecJs(
+        browser()->tab_strip_model()->GetActiveWebContents(),
+        "window.open('about:blank', 'popup1', 'alwaysontop=true');"));
+    BrowserWindowInterface* popup_browser = observer.Wait();
+    ASSERT_TRUE(popup_browser);
+    EXPECT_EQ(popup_browser->GetType(),
+              BrowserWindowInterface::Type::TYPE_POPUP);
+    EXPECT_FALSE(DesktopBrowserWindowCapabilities::IsDocumentPictureInPicture(
+        popup_browser));
+    content::WebContents* new_contents =
+        popup_browser->GetActiveTabInterface()->GetContents();
+    ASSERT_TRUE(new_contents);
+    EXPECT_EQ(false, content::EvalJs(new_contents, "window.alwaysOnTop"));
+  }
+
+  // 2. With permission, window.alwaysOnTop should return true.
+  HostContentSettingsMapFactory::GetForProfile(browser()->GetProfile())
+      ->SetContentSettingDefaultScope(opener_url, opener_url,
+                                      ContentSettingsType::WINDOW_MANAGEMENT,
+                                      CONTENT_SETTING_ALLOW);
+
+  {
+    ui_test_utils::BrowserCreatedObserver observer;
+    ASSERT_TRUE(content::ExecJs(
+        browser()->tab_strip_model()->GetActiveWebContents(),
+        "window.open('about:blank', 'popup2', 'alwaysontop=true');"));
+    BrowserWindowInterface* popup_browser = observer.Wait();
+    ASSERT_TRUE(popup_browser);
+    EXPECT_EQ(popup_browser->GetType(),
+              BrowserWindowInterface::Type::TYPE_FLOATING);
+    EXPECT_FALSE(DesktopBrowserWindowCapabilities::IsDocumentPictureInPicture(
+        popup_browser));
+    content::WebContents* new_contents =
+        popup_browser->GetActiveTabInterface()->GetContents();
+    ASSERT_TRUE(new_contents);
+    EXPECT_EQ(true, content::EvalJs(new_contents, "window.alwaysOnTop"));
+  }
 }
 
 }  // namespace

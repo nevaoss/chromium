@@ -2626,6 +2626,10 @@ interface External
     method AddSearchProvider
     method IsSearchProviderInstalled
     method constructor
+interface EyeDropper
+    attribute @@toStringTag
+    method constructor
+    method open
 interface FeaturePolicy
     attribute @@toStringTag
     method allowedFeatures
@@ -11251,17 +11255,6 @@ interface XRLayer : EventTarget
 interface XRWebGLBinding
     attribute @@toStringTag
     method constructor
-interface XSLTProcessor
-    attribute @@toStringTag
-    method clearParameters
-    method constructor
-    method getParameter
-    method importStylesheet
-    method removeParameter
-    method reset
-    method setParameter
-    method transformToDocument
-    method transformToFragment
 interface webkitMediaStream : EventTarget
     attribute @@toStringTag
     getter active

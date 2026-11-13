@@ -374,6 +374,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityCSSFontSize) {
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityCSSFontSizeZero) {
+  RunCSSTest(FILE_PATH_LITERAL("font-size-zero.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityCSSHeadStyleScriptDisplayBlock) {
   RunCSSTest(FILE_PATH_LITERAL("head-style-script-display-block.html"));
 }
@@ -1657,6 +1662,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityAriaModal) {
   RunAriaTest(FILE_PATH_LITERAL("aria-modal.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityAriaModalWithAriaOwns) {
+  RunAriaTest(FILE_PATH_LITERAL("aria-modal-with-aria-owns.html"));
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,

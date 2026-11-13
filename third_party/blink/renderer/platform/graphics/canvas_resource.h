@@ -102,9 +102,6 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
 
   const gpu::SyncToken& sync_token() const { return GetSyncToken(); }
 
-  virtual base::WeakPtr<WebGraphicsContext3DProviderWrapper>
-  ContextProviderWrapper() const = 0;
-
  protected:
   explicit CanvasResource(scoped_refptr<gpu::ClientSharedImage> shared_image);
 
@@ -208,9 +205,6 @@ class PLATFORM_EXPORT CanvasResourceSharedImage final : public CanvasResource {
   // Should be called only if the resource is using software raster.
   void UploadSoftwareRenderingResults(SkSurface* sk_surface);
 
-  base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
-      const override;
-
  private:
   bool UsesAcceleratedRaster() const final { return is_accelerated_; }
 
@@ -243,12 +237,12 @@ class PLATFORM_EXPORT CanvasResourceSharedImage final : public CanvasResource {
 // context that support GL.
 class PLATFORM_EXPORT ExternalCanvasResource final : public CanvasResource {
  public:
-  static scoped_refptr<ExternalCanvasResource> Create(
+  ExternalCanvasResource(
       scoped_refptr<gpu::ClientSharedImage> client_si,
       const gpu::SyncToken& sync_token,
       viz::TransferableResource::ResourceSource resource_source,
       const gfx::HDRMetadata& hdr_metadata,
-      viz::ReleaseCallback release_callback,
+      viz::ReleaseCallback out_callback,
       base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
 
   bool CreatesAcceleratedTransferableResources() const override { return true; }
@@ -266,17 +260,7 @@ class PLATFORM_EXPORT ExternalCanvasResource final : public CanvasResource {
     return resource_source_;
   }
   bool UsesAcceleratedRaster() const final { return true; }
-  base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
-      const override;
-  gpu::InterfaceBase* InterfaceBase() const;
 
-  ExternalCanvasResource(
-      scoped_refptr<gpu::ClientSharedImage> client_si,
-      const gpu::SyncToken& sync_token,
-      viz::TransferableResource::ResourceSource resource_source,
-      const gfx::HDRMetadata& hdr_metadata,
-      viz::ReleaseCallback out_callback,
-      base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
   ~ExternalCanvasResource() override;
 
   const base::WeakPtr<WebGraphicsContext3DProviderWrapper>

@@ -621,12 +621,34 @@ SkiaGraphiteImageRepresentation::SkiaGraphiteImageRepresentation(
     : SkiaImageRepresentation(manager, backing, tracker, /*is_graphite=*/true) {
 }
 
+SkiaGraphiteImageRepresentation::EndAccessState::EndAccessState() = default;
+
+SkiaGraphiteImageRepresentation::EndAccessState::EndAccessState(
+    EndAccessState&& other) = default;
+
+SkiaGraphiteImageRepresentation::EndAccessState&
+SkiaGraphiteImageRepresentation::EndAccessState::operator=(
+    EndAccessState&& other) = default;
+
+SkiaGraphiteImageRepresentation::EndAccessState::~EndAccessState() {
+  CHECK(!NeedsApply());
+}
+
+void SkiaGraphiteImageRepresentation::EndAccessState::Apply() {
+  if (!NeedsApply()) {
+    return;
+  }
+  // TODO(crbug.com/40945084): Implement.
+}
+
 SkiaGraphiteImageRepresentation::ScopedGraphiteWriteAccess::
     ScopedGraphiteWriteAccess(
         base::PassKey<SkiaGraphiteImageRepresentation> /* pass_key */,
         SkiaImageRepresentation* representation,
-        std::vector<sk_sp<SkSurface>> surfaces)
-    : ScopedWriteAccess(representation, std::move(surfaces)) {
+        std::vector<sk_sp<SkSurface>> surfaces,
+        EndAccessState end_access_state)
+    : ScopedWriteAccess(representation, std::move(surfaces)),
+      end_access_state_(std::move(end_access_state)) {
   CHECK(!surfaces_.empty());
 }
 
@@ -634,8 +656,10 @@ SkiaGraphiteImageRepresentation::ScopedGraphiteWriteAccess::
     ScopedGraphiteWriteAccess(
         base::PassKey<SkiaGraphiteImageRepresentation> /* pass_key */,
         SkiaImageRepresentation* representation,
-        std::vector<scoped_refptr<GraphiteTextureHolder>> backend_textures)
-    : ScopedWriteAccess(representation, std::move(backend_textures)) {
+        std::vector<scoped_refptr<GraphiteTextureHolder>> backend_textures,
+        EndAccessState end_access_state)
+    : ScopedWriteAccess(representation, std::move(backend_textures)),
+      end_access_state_(std::move(end_access_state)) {
   CHECK(!graphite_texture_holders_.empty());
 }
 
@@ -644,13 +668,13 @@ SkiaGraphiteImageRepresentation::ScopedGraphiteWriteAccess::
 
 bool SkiaGraphiteImageRepresentation::ScopedGraphiteWriteAccess::
     HasBackendSurfaceEndState() {
-  return false;
+  return end_access_state_.NeedsApply();
 }
 
-// Graphite-Dawn backend handles Vulkan transitions by itself, so nothing to do
-// here.
 void SkiaGraphiteImageRepresentation::ScopedGraphiteWriteAccess::
-    ApplyBackendSurfaceEndState() {}
+    ApplyBackendSurfaceEndState() {
+  end_access_state_.Apply();
+}
 
 std::unique_ptr<SkiaImageRepresentation::ScopedWriteAccess>
 SkiaGraphiteImageRepresentation::BeginScopedWriteAccess(
@@ -676,8 +700,9 @@ SkiaGraphiteImageRepresentation::BeginScopedWriteAccess(
   }
 
   if (use_sk_surface) {
+    EndAccessState end_access_state;
     std::vector<sk_sp<SkSurface>> surfaces =
-        BeginWriteAccess(surface_props, update_rect);
+        BeginWriteAccess(surface_props, update_rect, end_access_state);
     if (surfaces.empty()) {
       LOG(ERROR) << "Unable to initialize SkSurface";
       return nullptr;
@@ -685,18 +710,20 @@ SkiaGraphiteImageRepresentation::BeginScopedWriteAccess(
 
     return std::make_unique<ScopedGraphiteWriteAccess>(
         base::PassKey<SkiaGraphiteImageRepresentation>(), this,
-        std::move(surfaces));
+        std::move(surfaces), std::move(end_access_state));
   }
+
+  EndAccessState end_access_state;
   std::vector<scoped_refptr<GraphiteTextureHolder>> graphite_textures =
-      BeginWriteAccess();
+      BeginWriteAccess(end_access_state);
   if (graphite_textures.empty()) {
     LOG(ERROR) << "Unable to initialize graphite::BackendTextures";
     return nullptr;
   }
 
   return std::make_unique<ScopedGraphiteWriteAccess>(
-      base::PassKey<SkiaGraphiteImageRepresentation>(), this,
-      graphite_textures);
+      base::PassKey<SkiaGraphiteImageRepresentation>(), this, graphite_textures,
+      std::move(end_access_state));
 }
 
 std::unique_ptr<SkiaImageRepresentation::ScopedWriteAccess>
@@ -727,8 +754,10 @@ SkiaGraphiteImageRepresentation::ScopedGraphiteReadAccess::
     ScopedGraphiteReadAccess(
         base::PassKey<SkiaGraphiteImageRepresentation> /* pass_key */,
         SkiaImageRepresentation* representation,
-        std::vector<scoped_refptr<GraphiteTextureHolder>> graphite_textures)
-    : ScopedReadAccess(representation, graphite_textures) {
+        std::vector<scoped_refptr<GraphiteTextureHolder>> graphite_textures,
+        EndAccessState end_access_state)
+    : ScopedReadAccess(representation, graphite_textures),
+      end_access_state_(std::move(end_access_state)) {
   CHECK(!graphite_texture_holders_.empty());
 }
 
@@ -806,13 +835,13 @@ sk_sp<SkImage> SkiaGraphiteImageRepresentation::ScopedGraphiteReadAccess::
 
 bool SkiaGraphiteImageRepresentation::ScopedGraphiteReadAccess::
     HasBackendSurfaceEndState() {
-  return false;
+  return end_access_state_.NeedsApply();
 }
 
-// Graphite-Dawn backend handles Vulkan transitions by itself, so nothing to do
-// here.
 void SkiaGraphiteImageRepresentation::ScopedGraphiteReadAccess::
-    ApplyBackendSurfaceEndState() {}
+    ApplyBackendSurfaceEndState() {
+  end_access_state_.Apply();
+}
 
 std::unique_ptr<SkiaImageRepresentation::ScopedReadAccess>
 SkiaGraphiteImageRepresentation::BeginScopedReadAccess(
@@ -828,16 +857,17 @@ SkiaGraphiteImageRepresentation::BeginScopedReadAccess(
     return nullptr;
   }
 
+  EndAccessState end_access_state;
   std::vector<scoped_refptr<GraphiteTextureHolder>> graphite_textures =
-      BeginReadAccess();
+      BeginReadAccess(end_access_state);
   if (graphite_textures.empty()) {
     LOG(ERROR) << "Unable to initialize graphite::BackendTextures";
     return nullptr;
   }
 
   return std::make_unique<ScopedGraphiteReadAccess>(
-      base::PassKey<SkiaGraphiteImageRepresentation>(), this,
-      graphite_textures);
+      base::PassKey<SkiaGraphiteImageRepresentation>(), this, graphite_textures,
+      std::move(end_access_state));
 }
 
 std::string SkiaGraphiteImageRepresentation::WrappedTextureDebugLabel(
@@ -1116,62 +1146,6 @@ std::unique_ptr<MemoryImageRepresentation::ScopedReadAccess>
 MemoryImageRepresentation::BeginScopedReadAccess() {
   return std::make_unique<ScopedReadAccess>(
       base::PassKey<MemoryImageRepresentation>(), this, BeginReadAccess());
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// RasterImageRepresentation
-
-RasterImageRepresentation::ScopedReadAccess::ScopedReadAccess(
-    base::PassKey<RasterImageRepresentation> pass_key,
-    RasterImageRepresentation* representation,
-    const cc::PaintOpBuffer* paint_op_buffer,
-    const std::optional<SkColor4f>& clear_color)
-    : ScopedAccessBase(representation, AccessMode::kRead),
-      paint_op_buffer_(paint_op_buffer),
-      clear_color_(clear_color) {}
-
-RasterImageRepresentation::ScopedReadAccess::~ScopedReadAccess() {
-  representation()->EndReadAccess();
-}
-
-RasterImageRepresentation::ScopedWriteAccess::ScopedWriteAccess(
-    base::PassKey<RasterImageRepresentation> pass_key,
-    RasterImageRepresentation* representation,
-    cc::PaintOpBuffer* paint_op_buffer)
-    : ScopedAccessBase(representation, AccessMode::kWrite),
-      paint_op_buffer_(paint_op_buffer) {}
-
-RasterImageRepresentation::ScopedWriteAccess::~ScopedWriteAccess() {
-  representation()->EndWriteAccess(std::move(callback_));
-}
-
-std::unique_ptr<RasterImageRepresentation::ScopedReadAccess>
-RasterImageRepresentation::BeginScopedReadAccess() {
-  std::optional<SkColor4f> clear_color;
-  auto* paint_op_buffer = BeginReadAccess(clear_color);
-  if (!paint_op_buffer) {
-    return nullptr;
-  }
-  return std::make_unique<ScopedReadAccess>(
-      base::PassKey<RasterImageRepresentation>(), this, paint_op_buffer,
-      clear_color);
-}
-
-std::unique_ptr<RasterImageRepresentation::ScopedWriteAccess>
-RasterImageRepresentation::BeginScopedWriteAccess(
-    scoped_refptr<SharedContextState> context_state,
-    int final_msaa_count,
-    const SkSurfaceProps& surface_props,
-    const std::optional<SkColor4f>& clear_color,
-    bool visible) {
-  auto* paint_op_buffer =
-      BeginWriteAccess(std::move(context_state), final_msaa_count,
-                       surface_props, clear_color, visible);
-  if (!paint_op_buffer) {
-    return nullptr;
-  }
-  return std::make_unique<ScopedWriteAccess>(
-      base::PassKey<RasterImageRepresentation>(), this, paint_op_buffer);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -45,6 +45,7 @@ import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.test.util.TestAccounts;
 import org.chromium.components.sync_device_info.FormFactor;
 import org.chromium.components.sync_device_info.OsType;
+import org.chromium.components.sync_device_info.RemoteDeviceInfo;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.ui.test.util.BlankUiTestActivity;
@@ -102,7 +103,7 @@ public class SendTabToSelfBottomSheetRenderTest {
     }
 
     private View createAndShowEnhancedDevicePickerView(
-            List<TargetDeviceInfo> devices, @BottomSheetController.SheetState int sheetState) {
+            List<RemoteDeviceInfo> devices, @BottomSheetController.SheetState int sheetState) {
         Activity activity = mActivityTestRule.getActivity();
         return ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -151,94 +152,6 @@ public class SendTabToSelfBottomSheetRenderTest {
     @Test
     @MediumTest
     @Feature("RenderTest")
-    public void testDevicePickerBottomSheet() throws Throwable {
-        setUpAccountData(TestAccounts.ACCOUNT1);
-        List<TargetDeviceInfo> devices =
-                Arrays.asList(
-                        new TargetDeviceInfo(
-                                "My Phone",
-                                "guid1",
-                                FormFactor.PHONE,
-                                OsType.ANDROID,
-                                "Active today"),
-                        new TargetDeviceInfo(
-                                "My Computer",
-                                "guid2",
-                                FormFactor.DESKTOP,
-                                OsType.WINDOWS,
-                                "Active 1 day ago"),
-                        new TargetDeviceInfo(
-                                "My Tablet",
-                                "guid3",
-                                FormFactor.TABLET,
-                                OsType.ANDROID,
-                                "Active 2 days ago"));
-        Activity activity = mActivityTestRule.getActivity();
-        View view =
-                ThreadUtils.runOnUiThreadBlocking(
-                        () -> {
-                            DevicePickerBottomSheetContent sheetContent =
-                                    new DevicePickerBottomSheetContent(
-                                            activity,
-                                            JUnitTestGURLs.HTTP_URL.getSpec(),
-                                            "Title",
-                                            mBottomSheetController,
-                                            devices,
-                                            mProfile,
-                                            SupplierUtils.ofNull(),
-                                            ShareEntryPoint.SHARE_SHEET);
-                            activity.setContentView(sheetContent.getContentView());
-                            return sheetContent.getContentView();
-                        });
-        mRenderTestRule.render(view, "device_picker");
-    }
-
-    @Test
-    @MediumTest
-    public void testDevicePickerBottomSheetWithNonDisplayableAccountEmail() throws Throwable {
-        AccountInfo account = TestAccounts.CHILD_ACCOUNT_NON_DISPLAYABLE_EMAIL;
-        setUpAccountData(account);
-        List<TargetDeviceInfo> devices =
-                Arrays.asList(
-                        new TargetDeviceInfo(
-                                "My Phone",
-                                "guid1",
-                                FormFactor.PHONE,
-                                OsType.ANDROID,
-                                "Active today"),
-                        new TargetDeviceInfo(
-                                "My Computer",
-                                "guid2",
-                                FormFactor.DESKTOP,
-                                OsType.WINDOWS,
-                                "Active 1 day ago"),
-                        new TargetDeviceInfo(
-                                "My Tablet",
-                                "guid3",
-                                FormFactor.TABLET,
-                                OsType.ANDROID,
-                                "Active 2 days ago"));
-        Activity activity = mActivityTestRule.getActivity();
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    DevicePickerBottomSheetContent sheetContent =
-                            new DevicePickerBottomSheetContent(
-                                    activity,
-                                    JUnitTestGURLs.HTTP_URL.getSpec(),
-                                    "Title",
-                                    mBottomSheetController,
-                                    devices,
-                                    mProfile,
-                                    SupplierUtils.ofNull(),
-                                    ShareEntryPoint.SHARE_SHEET);
-                    activity.setContentView(sheetContent.getContentView());
-                });
-        onView(withText(account.getEmail())).check(doesNotExist());
-    }
-
-    @Test
-    @MediumTest
-    @Feature("RenderTest")
     public void testNoTargetDeviceBottomSheet() throws Throwable {
         setUpAccountData(TestAccounts.ACCOUNT1);
         Activity activity = mActivityTestRule.getActivity();
@@ -274,21 +187,21 @@ public class SendTabToSelfBottomSheetRenderTest {
     @Feature("RenderTest")
     public void testEnhancedTargetDevicePickerBottomSheet() throws Throwable {
         setUpAccountData(TestAccounts.ACCOUNT1);
-        List<TargetDeviceInfo> devices =
+        List<RemoteDeviceInfo> devices =
                 Arrays.asList(
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Phone",
                                 "guid1",
                                 FormFactor.PHONE,
                                 OsType.ANDROID,
                                 "Active today"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Computer",
                                 "guid2",
                                 FormFactor.DESKTOP,
                                 OsType.WINDOWS,
                                 "Active 1 day ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Tablet",
                                 "guid3",
                                 FormFactor.TABLET,
@@ -309,39 +222,39 @@ public class SendTabToSelfBottomSheetRenderTest {
     @Feature("RenderTest")
     public void testEnhancedTargetDevicePickerBottomSheet_overflowHalfState() throws Throwable {
         setUpAccountData(TestAccounts.ACCOUNT1);
-        List<TargetDeviceInfo> devices =
+        List<RemoteDeviceInfo> devices =
                 Arrays.asList(
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Phone",
                                 "guid1",
                                 FormFactor.PHONE,
                                 OsType.ANDROID,
                                 "Active today"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Computer",
                                 "guid2",
                                 FormFactor.DESKTOP,
                                 OsType.WINDOWS,
                                 "Active 1 day ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Tablet",
                                 "guid3",
                                 FormFactor.TABLET,
                                 OsType.ANDROID,
                                 "Active 2 days ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Laptop",
                                 "guid4",
                                 FormFactor.DESKTOP,
                                 OsType.WINDOWS,
                                 "Active 3 days ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Watch",
                                 "guid5",
                                 FormFactor.PHONE,
                                 OsType.ANDROID,
                                 "Active 4 days ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My TV",
                                 "guid6",
                                 FormFactor.TABLET,
@@ -363,10 +276,10 @@ public class SendTabToSelfBottomSheetRenderTest {
     @Feature("RenderTest")
     public void testEnhancedTargetDevicePickerBottomSheet_overflowFullState() throws Throwable {
         setUpAccountData(TestAccounts.ACCOUNT1);
-        List<TargetDeviceInfo> devices = new ArrayList<>();
+        List<RemoteDeviceInfo> devices = new ArrayList<>();
         for (int i = 1; i <= 15; i++) {
             devices.add(
-                    new TargetDeviceInfo(
+                    new RemoteDeviceInfo(
                             "Device " + i,
                             "guid" + i,
                             FormFactor.PHONE,
@@ -390,27 +303,27 @@ public class SendTabToSelfBottomSheetRenderTest {
     public void testEnhancedTargetDevicePickerBottomSheet_exactlyFourDevicesHalfState()
             throws Throwable {
         setUpAccountData(TestAccounts.ACCOUNT1);
-        List<TargetDeviceInfo> devices =
+        List<RemoteDeviceInfo> devices =
                 Arrays.asList(
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Phone",
                                 "guid1",
                                 FormFactor.PHONE,
                                 OsType.ANDROID,
                                 "Active today"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Computer",
                                 "guid2",
                                 FormFactor.DESKTOP,
                                 OsType.WINDOWS,
                                 "Active 1 day ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Tablet",
                                 "guid3",
                                 FormFactor.TABLET,
                                 OsType.ANDROID,
                                 "Active 2 days ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Laptop",
                                 "guid4",
                                 FormFactor.DESKTOP,
@@ -432,27 +345,27 @@ public class SendTabToSelfBottomSheetRenderTest {
     @Feature("RenderTest")
     public void testEnhancedTargetDevicePickerBottomSheet_landscapeMode() throws Throwable {
         setUpAccountData(TestAccounts.ACCOUNT1);
-        List<TargetDeviceInfo> devices =
+        List<RemoteDeviceInfo> devices =
                 Arrays.asList(
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Phone",
                                 "guid1",
                                 FormFactor.PHONE,
                                 OsType.ANDROID,
                                 "Active today"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Computer",
                                 "guid2",
                                 FormFactor.DESKTOP,
                                 OsType.WINDOWS,
                                 "Active 1 day ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Tablet",
                                 "guid3",
                                 FormFactor.TABLET,
                                 OsType.ANDROID,
                                 "Active 2 days ago"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "My Laptop",
                                 "guid4",
                                 FormFactor.DESKTOP,

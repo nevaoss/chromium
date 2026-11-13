@@ -281,6 +281,7 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Non-regular Default Account (Priority 1)"/>
   <int value="2" label="External App Primary Account (Priority 2)"/>
   <int value="3" label="Sync Data Score (Priority 3)"/>
+  <int value="4" label="No Selection: Signed in on other profile"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/core/browser/account_preview_heuristic.h:AccountPreviewSelectionReason) -->
@@ -346,6 +347,8 @@ chromium-metrics-reviews@google.com.
       label="Would not show: Secondary accounts missing preview data (fetch
              failed)"/>
   <int value="12" label="Would not show: Primary account has other devices"/>
+  <int value="13"
+      label="Would not show: Secondary accounts signed in on other profile"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/core/browser/account_preview_heuristic.h:AccountSwitchingSelectionOutcome) -->
@@ -972,7 +975,7 @@ chromium-metrics-reviews@google.com.
   <int value="57" label="Policy Token Forwarder"/>
   <int value="58" label="Plugin Vm License Checker (deprecated 07/2026)"/>
   <int value="59" label="Drivefs Auth"/>
-  <int value="60" label="Nearby Presence Server Client"/>
+  <int value="60" label="Nearby Presence Server Client (deprecated 10/2026)"/>
   <int value="61" label="Crypt Auth Client"/>
   <int value="62" label="Ambient Mode CrOS"/>
   <int value="63" label="Profile Downloader"/>
@@ -1112,6 +1115,7 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="Account menu"/>
   <int value="1" label="Account settings"/>
   <int value="2" label="Recent tabs"/>
+  <int value="3" label="Reauth info bar"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/public/base/signin_metrics.h:ReauthAccessPoint) -->
@@ -1371,6 +1375,23 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Success"/>
   <int value="2" label="Failure"/>
 </enum>
+
+<!-- LINT.IfChange(SigninInterceptEnterprisePolicyDecisionSource) -->
+
+<enum name="SigninInterceptEnterprisePolicyDecisionSource">
+  <int value="0" label="DM Server management status"/>
+  <int value="1" label="Not subject to enterprise features"/>
+  <int value="2" label="Fail open: no DM Server management status">
+    The account is subject to enterprise features, but the DM Server management
+    status is unavailable (fetch failed, timed out or could not be started).
+  </int>
+  <int value="3" label="Fail open: enterprise capability unknown">
+    The enterprise capability of the account is unknown, so the DM Server
+    management status was not fetched.
+  </int>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/signin/dice_web_signin_interceptor.h:SigninInterceptEnterprisePolicyDecisionSource) -->
 
 <enum name="SigninInterceptFREDialogEvent">
   <int value="0" label="FRE started"/>

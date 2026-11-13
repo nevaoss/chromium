@@ -9,6 +9,7 @@
 
 #include <utility>
 
+#include "base/feature_list.h"
 #include "base/location.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
@@ -18,6 +19,7 @@
 #include "base/strings/string_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#include "media/base/media_switches.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_byte_range.h"
 #include "net/http/http_request_headers.h"
@@ -302,11 +304,15 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
       network::cors::IsCorsCrossOriginResponseType(response.GetType());
   bytes_to_discard_ = 0;
 
-  // We make a strong assumption that when we reach here we have either
-  // received a response from HTTP/HTTPS protocol or the request was
-  // successful (in particular range request). So we only verify the partial
-  // response for HTTP and HTTPS protocol.
-  if (destination_url_data->url().ProtocolIsInHttpFamily()) {
+  // Mixing non-opaque and opaque responses on a resource that has already
+  // received a response is not allowed, as consumers may have already checked
+  // origin tainting based on the earlier response.
+  if (old_url_data->data_origin().has_value() &&
+      old_url_data->is_cors_cross_origin() != is_cors_cross_origin &&
+      base::FeatureList::IsEnabled(media::kDisallowMixedOpaqueMediaResponses)) {
+    active_loader_.reset();
+    do_fail = true;
+  } else if (destination_url_data->url().ProtocolIsInHttpFamily()) {
     bool partial_response = (response.HttpStatusCode() == kHttpPartialContent);
     bool ok_response = (response.HttpStatusCode() == kHttpOK);
 
@@ -524,12 +530,26 @@ void ResourceMultiBufferDataProvider::DidFail(const WebURLError& error) {
   DCHECK(active_loader_.get());
   active_loader_.reset();
 
-  // ORB only blocks cross-origin no-cors responses, which are opaque. Record
-  // this so that the failure is not distinguishable from other opaque
-  // failures (e.g. via error messages exposed by the media element). An ORB
-  // block is also deterministic, so fail immediately rather than retrying.
-  if (error.reason() == net::ERR_BLOCKED_BY_ORB) {
+  // ORB, Cross-Origin-Resource-Policy / COEP / DIP enforcement
+  // (ERR_BLOCKED_BY_RESPONSE), and web security violations (CORS, LNA, CSP,
+  // etc.) block cross-origin responses. Record this so that the failure is not
+  // distinguishable from other opaque failures (e.g. via error messages exposed
+  // by the media element). These blocks (as well as request-blocked and
+  // certificate errors) are deterministic for a given request, so fail
+  // immediately rather than retrying: a retry can never succeed, and the retry
+  // cadence is observable (e.g. by a service worker counting fetch events),
+  // which would leak whether the cross-origin server answered 206 or 416.
+  if (error.reason() == net::ERR_BLOCKED_BY_ORB ||
+      error.reason() == net::ERR_BLOCKED_BY_RESPONSE ||
+      error.is_web_security_violation()) {
     url_data_->set_is_cors_cross_origin(true);
+    url_data_->Fail();
+    return;  // "this" may be deleted now.
+  }
+
+  if (net::IsRequestBlockedError(error.reason()) ||
+      net::IsCertificateError(error.reason()) ||
+      net::IsClientCertificateError(error.reason())) {
     url_data_->Fail();
     return;  // "this" may be deleted now.
   }

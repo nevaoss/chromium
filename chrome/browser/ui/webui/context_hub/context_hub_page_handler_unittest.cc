@@ -887,7 +887,8 @@ TEST(ContextHubMojomTraitsTest, AutoTodoItemSerialization_ThirdPartyData) {
 
 TEST(ContextHubMojomTraitsTest, EntryTypeSerialization) {
   for (auto entry_type : {context_hub::MemoryBankType::kTab,
-                          context_hub::MemoryBankType::kTextSelection}) {
+                          context_hub::MemoryBankType::kTextSelection,
+                          context_hub::MemoryBankType::kImage}) {
     context_hub::MemoryBankType output;
     ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
                 browser::context_hub::mojom::EntryType>(entry_type, output));
@@ -916,9 +917,30 @@ TEST(ContextHubMojomTraitsTest, MemoryBankEntrySerialization) {
   EXPECT_EQ(output.url, GURL("https://example.com/article"));
   EXPECT_EQ(output.tab_title, "Article Title");
   EXPECT_EQ(output.selected_text, "Selected snippet");
+  EXPECT_FALSE(output.image_url.has_value());
   EXPECT_THAT(output.tags, testing::ElementsAre("research", "ai"));
   EXPECT_EQ(output.note, "Important note");
   EXPECT_EQ(output.collection, "Reading");
+}
+
+TEST(ContextHubMojomTraitsTest, MemoryBankEntrySerialization_Image) {
+  context_hub::MemoryBankEntry input(
+      context_hub::MemoryBankType::kImage, GURL("https://example.com/gallery"),
+      "Gallery Title",
+      /*selected_text=*/std::nullopt, GURL("https://example.com/photo.png"));
+  input.id = 43;
+  input.timestamp = base::Time::FromMillisecondsSinceUnixEpoch(1700000000000);
+
+  context_hub::MemoryBankEntry output;
+  ASSERT_TRUE(mojo::test::SerializeAndDeserialize<
+              browser::context_hub::mojom::MemoryBankEntry>(input, output));
+
+  EXPECT_EQ(output.id, 43);
+  EXPECT_EQ(output.type, context_hub::MemoryBankType::kImage);
+  EXPECT_EQ(output.url, GURL("https://example.com/gallery"));
+  EXPECT_EQ(output.tab_title, "Gallery Title");
+  EXPECT_FALSE(output.selected_text.has_value());
+  EXPECT_EQ(output.image_url, GURL("https://example.com/photo.png"));
 }
 
 TEST_F(ContextHubPageHandlerTest, GetAutoTodos_Empty) {
@@ -1473,7 +1495,7 @@ TEST_F(ContextHubPageHandlerTest, OnAutoTodosChanged_IncludesDismissedTodos) {
   EXPECT_EQ(cached_items[0].status, AutoTodoEntry::Status::kDismissed);
 }
 
-TEST_F(ContextHubPageHandlerTest, GetAutoTodos_FiltersOutChromeHistoryTodos) {
+TEST_F(ContextHubPageHandlerTest, GetAutoTodos_IncludesChromeHistoryTodos) {
   ContextHubService* service =
       ContextHubServiceFactory::GetForProfile(&profile_);
   ASSERT_TRUE(service);
@@ -1505,7 +1527,7 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_FiltersOutChromeHistoryTodos) {
                           history_future.GetCallback());
   ASSERT_TRUE(history_future.Get());
 
-  // Verify that `GetAutoTodos()` filters out the Chrome history todo.
+  // Verify that `GetAutoTodos()` returns both Gmail and Chrome history todos.
   base::test::TestFuture<const std::vector<context_hub::AutoTodoEntry>&,
                          const std::vector<context_hub::AutoTodoEntry>&,
                          const context_hub::AutoTodosGenerationMetadata&,
@@ -1515,18 +1537,16 @@ TEST_F(ContextHubPageHandlerTest, GetAutoTodos_FiltersOutChromeHistoryTodos) {
 
   auto [first_party, third_party, first_party_metadata, third_party_metadata] =
       get_future.Take();
-  ASSERT_EQ(first_party.size(), 1u);
-  EXPECT_EQ(first_party[0].id, "gmail_1");
+  ASSERT_EQ(first_party.size(), 2u);
+  std::vector<std::string> first_party_ids = {first_party.at(0).id,
+                                              first_party.at(1).id};
+  EXPECT_THAT(first_party_ids,
+              testing::UnorderedElementsAre("gmail_1", "history_1"));
   EXPECT_TRUE(third_party.empty());
-
-  // Verify both items are still in the underlying store.
-  base::test::TestFuture<std::vector<AutoTodoEntry>> service_get_future;
-  service->GetAutoTodos(service_get_future.GetCallback());
-  EXPECT_EQ(service_get_future.Get().size(), 2u);
 }
 
 TEST_F(ContextHubPageHandlerTest,
-       OnAutoTodosChanged_FiltersOutChromeHistoryTodos) {
+       OnAutoTodosChanged_IncludesChromeHistoryTodos) {
   personal_context::proto::AutoTodosResponse response;
 
   personal_context::proto::AutoTodoItem* gmail_todo = response.add_todos();
@@ -1562,8 +1582,10 @@ TEST_F(ContextHubPageHandlerTest,
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(true));
   EXPECT_CALL(mock_page_, OnAutoTodosChanged(Not(IsEmpty())))
       .WillOnce([](const std::vector<context_hub::AutoTodoEntry>& todos) {
-        ASSERT_EQ(todos.size(), 1u);
-        EXPECT_EQ(todos[0].title, "Gmail Todo");
+        ASSERT_EQ(todos.size(), 2u);
+        std::vector<std::string> titles = {todos[0].title, todos[1].title};
+        EXPECT_THAT(titles, testing::UnorderedElementsAre("Gmail Todo",
+                                                          "History Todo"));
       });
   EXPECT_CALL(mock_page_, OnFirstPartyAutoTodosGenerationStateChanged(false));
 
@@ -1601,33 +1623,53 @@ TEST_F(ContextHubPageHandlerTest, GetAllMemoryBankEntries_Success) {
       save_selection_future.GetCallback());
   ASSERT_TRUE(save_selection_future.Wait());
 
+  base::test::TestFuture<bool> save_image_future;
+  service->SaveMemoryBankEntry(
+      MemoryBankEntry(MemoryBankType::kImage, GURL("https://example.com/image"),
+                      "Image Title", /*selected_text=*/std::nullopt,
+                      GURL("https://example.com/photo.png")),
+      save_image_future.GetCallback());
+  ASSERT_TRUE(save_image_future.Wait());
+
   base::test::TestFuture<const std::vector<MemoryBankEntry>&> future;
   handler_->GetAllMemoryBankEntries(future.GetCallback());
 
   std::vector<MemoryBankEntry> result = future.Take();
 
-  ASSERT_EQ(result.size(), 2u);
+  ASSERT_EQ(result.size(), 3u);
 
   const MemoryBankEntry* tab_entry = nullptr;
   const MemoryBankEntry* text_entry = nullptr;
+  const MemoryBankEntry* image_entry = nullptr;
   for (const auto& entry : result) {
     if (entry.type == MemoryBankType::kTab) {
       tab_entry = &entry;
     } else if (entry.type == MemoryBankType::kTextSelection) {
       text_entry = &entry;
+    } else if (entry.type == MemoryBankType::kImage) {
+      image_entry = &entry;
     }
   }
 
   ASSERT_TRUE(tab_entry);
   EXPECT_EQ(tab_entry->url, GURL("https://example.com/tab"));
   EXPECT_EQ(tab_entry->tab_title, "Tab Title");
+  EXPECT_FALSE(tab_entry->image_url.has_value());
   EXPECT_FALSE(tab_entry->timestamp.is_null());
 
   ASSERT_TRUE(text_entry);
   EXPECT_EQ(text_entry->url, GURL("https://example.com/select"));
   EXPECT_EQ(text_entry->tab_title, "Selection Title");
   EXPECT_EQ(text_entry->selected_text, "Selected Text Detail");
+  EXPECT_FALSE(text_entry->image_url.has_value());
   EXPECT_FALSE(text_entry->timestamp.is_null());
+
+  ASSERT_TRUE(image_entry);
+  EXPECT_EQ(image_entry->url, GURL("https://example.com/image"));
+  EXPECT_EQ(image_entry->tab_title, "Image Title");
+  EXPECT_FALSE(image_entry->selected_text.has_value());
+  EXPECT_EQ(image_entry->image_url, GURL("https://example.com/photo.png"));
+  EXPECT_FALSE(image_entry->timestamp.is_null());
 }
 
 TEST_F(ContextHubPageHandlerTest, DeleteMemoryBankEntries_Success) {
@@ -1690,7 +1732,9 @@ TEST_F(ContextHubPageHandlerTest, MemoryBankEntryDeltaNotifications) {
   EXPECT_EQ(saved_entry.type, MemoryBankType::kTab);
   EXPECT_EQ(saved_entry.url, GURL("https://example.com/tab"));
   EXPECT_EQ(saved_entry.tab_title, "Tab Title");
-  EXPECT_EQ(saved_entry.selected_text, "Page text");
+  // Caller-provided text is ignored for tab entries saved without a source
+  // WebContents.
+  EXPECT_FALSE(saved_entry.selected_text.has_value());
   EXPECT_THAT(saved_entry.tags, testing::ElementsAre("tag1"));
   EXPECT_EQ(saved_entry.note, "Note");
   EXPECT_EQ(saved_entry.collection, "Collection");
@@ -2707,7 +2751,7 @@ TEST_F(ContextHubPageHandlerTest,
   EXPECT_EQ(context->url, GURL("https://example.com/test"));
   EXPECT_EQ(context->tab_title, "Test Title");
   EXPECT_EQ(context->selected_text, "Test Snippet");
-  EXPECT_TRUE(context->is_text_selection);
+  EXPECT_FALSE(context->image_url.has_value());
 }
 
 TEST_F(ContextHubPageHandlerTest, GetSaveToMemoryBankContext_WithTabContext) {
@@ -2728,7 +2772,29 @@ TEST_F(ContextHubPageHandlerTest, GetSaveToMemoryBankContext_WithTabContext) {
   EXPECT_EQ(context->url, GURL("https://example.com/test"));
   EXPECT_EQ(context->tab_title, "Test Title");
   EXPECT_FALSE(context->selected_text.has_value());
-  EXPECT_FALSE(context->is_text_selection);
+  EXPECT_FALSE(context->image_url.has_value());
+}
+
+TEST_F(ContextHubPageHandlerTest, GetSaveToMemoryBankContext_WithImageContext) {
+  auto* service = ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+  MemoryBankEntry entry(
+      MemoryBankType::kImage, GURL("https://example.com/test"), "Test Title",
+      /*selected_text=*/std::nullopt, GURL("https://example.com/image.png"));
+  service->SetPendingMemoryBankEntry(std::move(entry));
+
+  base::test::TestFuture<
+      browser::context_hub::mojom::SaveToMemoryBankContextPtr>
+      future;
+  handler_->GetSaveToMemoryBankContext(future.GetCallback());
+
+  browser::context_hub::mojom::SaveToMemoryBankContextPtr context =
+      future.Take();
+  ASSERT_TRUE(context);
+  EXPECT_EQ(context->url, GURL("https://example.com/test"));
+  EXPECT_EQ(context->tab_title, "Test Title");
+  EXPECT_FALSE(context->selected_text.has_value());
+  EXPECT_EQ(context->image_url, GURL("https://example.com/image.png"));
 }
 
 TEST_F(ContextHubPageHandlerTest,
@@ -2833,6 +2899,74 @@ TEST_F(ContextHubPageHandlerTest, UpdateMemoryBankEntryAnnotations_NotFound) {
   EXPECT_FALSE(replace_future.Get());
 }
 
+TEST_F(ContextHubPageHandlerTest, UploadMemoryBankEntries_Empty) {
+  base::test::TestFuture<bool> upload_future;
+  handler_->UploadMemoryBankEntries({}, upload_future.GetCallback());
+  EXPECT_FALSE(upload_future.Get());
+}
+
+TEST_F(ContextHubPageHandlerTest, UploadMemoryBankEntries_InvalidUrl) {
+  MemoryBankEntry invalid_entry(MemoryBankType::kTab, GURL(),
+                                "Invalid URL Tab");
+
+  base::test::TestFuture<bool> upload_future;
+  handler_->UploadMemoryBankEntries({std::move(invalid_entry)},
+                                    upload_future.GetCallback());
+  EXPECT_FALSE(upload_future.Get());
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       UploadMemoryBankEntries_UnsafeSchemeRejected) {
+  MemoryBankEntry js_entry(MemoryBankType::kTab, GURL("javascript:alert(1)"),
+                           "JS Injection Tab");
+
+  base::test::TestFuture<bool> upload_future;
+  handler_->UploadMemoryBankEntries({std::move(js_entry)},
+                                    upload_future.GetCallback());
+  EXPECT_FALSE(upload_future.Get());
+}
+
+TEST_F(ContextHubPageHandlerTest, UploadMemoryBankEntries_Success) {
+  auto* service = ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
+  MemoryBankEntry entry1(MemoryBankType::kTextSelection,
+                         GURL("https://example.com/first"), "First Entry",
+                         "Selected snippet");
+  entry1.id = 123;
+  entry1.tags = {"tag1", "tag2"};
+  entry1.note = "Note 1";
+  entry1.collection = "Work";
+
+  MemoryBankEntry entry2(MemoryBankType::kTab,
+                         GURL("https://example.com/second"), "Second Entry");
+  entry2.id = 456;
+
+  base::test::TestFuture<bool> upload_future;
+  handler_->UploadMemoryBankEntries({std::move(entry1), std::move(entry2)},
+                                    upload_future.GetCallback());
+  EXPECT_TRUE(upload_future.Get());
+
+  base::test::TestFuture<std::vector<MemoryBankEntry>> entries_future;
+  service->GetAllEntries(entries_future.GetCallback());
+  auto saved_entries = entries_future.Take();
+  ASSERT_EQ(saved_entries.size(), 2u);
+
+  EXPECT_EQ(saved_entries[0].type, MemoryBankType::kTextSelection);
+  EXPECT_EQ(saved_entries[0].url, GURL("https://example.com/first"));
+  EXPECT_EQ(saved_entries[0].tab_title, "First Entry");
+  EXPECT_EQ(saved_entries[0].selected_text, "Selected snippet");
+  EXPECT_THAT(saved_entries[0].tags, testing::ElementsAre("tag1", "tag2"));
+  EXPECT_EQ(saved_entries[0].note, "Note 1");
+  EXPECT_EQ(saved_entries[0].collection, "Work");
+  EXPECT_NE(saved_entries[0].id, 123);
+
+  EXPECT_EQ(saved_entries[1].type, MemoryBankType::kTab);
+  EXPECT_EQ(saved_entries[1].url, GURL("https://example.com/second"));
+  EXPECT_EQ(saved_entries[1].tab_title, "Second Entry");
+  EXPECT_NE(saved_entries[1].id, 456);
+}
+
 TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_Success) {
   personal_context::proto::SmartSearchResponse expected_response;
 
@@ -2921,7 +3055,13 @@ TEST_F(ContextHubPageHandlerTest, GetTopics_MapsResolvedJourneys) {
                                        base::Time::FromTimeT(500),
                                        /*is_foreign=*/false)},
       {history::journeys::JourneyContinuationQuery(
-          "Test Continuation Query Title", "Test Continuation Query Prompt")});
+          "Test Continuation Query Title", "Test Continuation Query Prompt")},
+      {history::journeys::JourneyVisitCollection(
+          "Test Collection Title",
+          {history::journeys::JourneyVisit(
+              GURL("https://example.com/collection-item"),
+              u"Test Collection Item Title", base::Time::FromTimeT(600),
+              /*is_foreign=*/false)})});
 
   EXPECT_CALL(*GetMockHistoryService(), GetAllJourneys(_, _))
       .WillOnce(
@@ -2954,6 +3094,15 @@ TEST_F(ContextHubPageHandlerTest, GetTopics_MapsResolvedJourneys) {
             "Test Continuation Query Title");
   EXPECT_EQ(topics[0]->continuation_queries[0]->prompt,
             "Test Continuation Query Prompt");
+
+  ASSERT_EQ(topics[0]->collections.size(), 1u);
+  EXPECT_EQ(topics[0]->collections[0]->title, "Test Collection Title");
+  ASSERT_EQ(topics[0]->collections[0]->items.size(), 1u);
+  EXPECT_EQ(topics[0]->collections[0]->items[0]->title,
+            "Test Collection Item Title");
+  EXPECT_EQ(topics[0]->collections[0]->items[0]->url,
+            GURL("https://example.com/collection-item"));
+  EXPECT_FALSE(topics[0]->collections[0]->items[0]->site_name);
 }
 
 TEST_F(ContextHubPageHandlerTest, GetTopics_NoJourneys) {
@@ -3559,6 +3708,30 @@ TEST_F(ContextHubPageHandlerGlicTest, KeepsZeroStateSuggestionsWhenNoPrompts) {
   ASSERT_TRUE(captured_options_.has_value());
   EXPECT_THAT(captured_options_->prompts, IsEmpty());
   EXPECT_FALSE(captured_options_->disable_zss);
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, KeepsZeroStateSuggestionsWithOnePrompt) {
+  AttachWebContentsToTab();
+  ExpectInvokeCapturingOptions();
+
+  // A single prompt is too few to replace ZSS, so ZSS stays on alongside it.
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_THAT(captured_options_->prompts,
+              testing::ElementsAre("Catch me up on Topic"));
+  EXPECT_FALSE(captured_options_->disable_zss);
+}
+
+TEST_F(ContextHubPageHandlerGlicTest,
+       DisablesZeroStateSuggestionsWithTwoPrompts) {
+  AttachWebContentsToTab();
+  ExpectInvokeCapturingOptions();
+
+  handler_->OpenGlicPanel({"Catch me up on Topic", "What should I do next?"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_TRUE(captured_options_->disable_zss);
 }
 
 TEST_F(ContextHubPageHandlerGlicTest, FocusesPanelWhenNotAlreadyShowing) {

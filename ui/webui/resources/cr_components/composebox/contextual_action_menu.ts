@@ -136,7 +136,6 @@ export class ContextualActionMenuElement extends
       },
       shareTabsFlyoutPosition_: {type: String},
       sharingTabsText_: {type: String},
-      uploadButtonDisabled: {type: Boolean},
       isSidePanel: {type: Boolean},
       recentTabId: {type: Number},
       unboundedMenuEnabled: {
@@ -146,6 +145,8 @@ export class ContextualActionMenuElement extends
       },
       isOpen_: {type: Boolean},
       contextMenuTooltipsEnabled: {type: Boolean},
+      singleTabIndex_: {type: Number},
+      singleTab_: {type: Object},
     };
   }
 
@@ -162,7 +163,6 @@ export class ContextualActionMenuElement extends
   accessor contextMenuTooltipsEnabled: boolean =
       getLoadTimeBoolean('composeboxContextMenuTooltipsEnabled', false);
   accessor disableAutoReposition: boolean = false;
-  accessor uploadButtonDisabled: boolean = false;
   accessor isSidePanel: boolean = false;
   accessor shareTabsFlyoutOpen: boolean = false;
   accessor unboundedMenuEnabled: boolean = false;
@@ -187,6 +187,13 @@ export class ContextualActionMenuElement extends
       loadTimeData.getBoolean('ShowContextMenuHeaders');
   protected enableTabDeselection_: boolean =
       getLoadTimeBoolean('composeboxContextMenuEnableTabDeselection', false);
+  // Whether the "single tab" arm of context management is enabled.
+  private singleTabMenuItemEnabled_: boolean =
+      getLoadTimeBoolean('composeboxSingleTabMenuItemEnabled', false);
+  // Index in `tabSuggestions` of the tab backing the single tab menu item
+  // (-1 if none), and the tab itself.
+  protected accessor singleTabIndex_: number = -1;
+  protected accessor singleTab_: TabInfo|null = null;
   protected accessor shareTabsFlyoutPosition_: string = 'right';
   protected accessor sharingTabsText_: string = '';
   // Only close menu if the context management flag and the
@@ -245,6 +252,14 @@ export class ContextualActionMenuElement extends
 
   override willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);
+
+    if (changedProperties.has('tabSuggestions') ||
+        changedProperties.has('recentTabId')) {
+      this.singleTabIndex_ = this.computeSingleTabIndex_();
+      this.singleTab_ = this.singleTabIndex_ === -1 ?
+          null :
+          this.tabSuggestions[this.singleTabIndex_]!;
+    }
 
     if (!this.closeMenuOnSelect && changedProperties.has('selectedTabIds') &&
         this.pendingTabAddId_ !== null) {
@@ -596,9 +611,6 @@ export class ContextualActionMenuElement extends
   }
 
   private isItemDisabled_<T>(item: T, disabledItems: T[]|undefined): boolean {
-    if (this.uploadButtonDisabled) {
-      return true;
-    }
     if (!this.inputState || !disabledItems) {
       return true;
     }
@@ -610,9 +622,6 @@ export class ContextualActionMenuElement extends
   }
 
   protected isToolDisabled_(tool: ToolMode): boolean {
-    if (this.uploadButtonDisabled) {
-      return true;
-    }
     if (this.isToolActive_(tool)) {
       return false;
     }
@@ -781,9 +790,6 @@ export class ContextualActionMenuElement extends
   }
 
   protected isInputTypeDisabled_(inputType: InputType): boolean {
-    if (this.uploadButtonDisabled) {
-      return true;
-    }
     const limitReached = this.fileNum >= this.maxFileCount_;
     if (this.inputState) {
       return limitReached ||
@@ -864,6 +870,25 @@ export class ContextualActionMenuElement extends
 
   protected isRecentTab_(tabId: number): boolean {
     return this.recentTabId !== null && tabId === this.recentTabId;
+  }
+
+  // The single tab menu item mirrors the tab the backend reports as most
+  // recent, the current tab in the side panel, or the most recently active tab
+  // on the NTP. Returns its index in `tabSuggestions`, or -1 if the arm is
+  // disabled or the tab is not among the suggestions.
+  private computeSingleTabIndex_(): number {
+    if (!this.singleTabMenuItemEnabled_ || this.recentTabId === null) {
+      return -1;
+    }
+    return this.tabSuggestions.findIndex(tab => tab.tabId === this.recentTabId);
+  }
+
+  // Whether to render the single tab menu item. `singleTab_` is null when the
+  // arm is disabled; the row is also hidden while Smart Tab Sharing is active,
+  // since the STS toggle replaces the manual tab section.
+  protected shouldShowSingleTabItem_(): boolean {
+    return this.singleTab_ !== null &&
+        !(this.smartTabSharingVisible && this.smartTabSharingActive);
   }
 
   protected onSmartTabSharingItemClick_() {

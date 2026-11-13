@@ -56,6 +56,7 @@
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ttc/core/states.h"
 #include "chrome/browser/ttc/core/ttc_keyed_service.h"
+#include "chrome/browser/ui/accelerator_table.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/actions/command_action_updater.h"
@@ -541,14 +542,7 @@ bool BrowserCommandController::IsReservedCommandOrKey(
   }
 #endif
 
-  return command_id == IDC_CLOSE_TAB || command_id == IDC_CLOSE_WINDOW ||
-         command_id == IDC_NEW_INCOGNITO_WINDOW ||
-         command_id == IDC_NEW_ISOLATED_WINDOW || command_id == IDC_NEW_TAB ||
-         command_id == IDC_NEW_WINDOW || command_id == IDC_RESTORE_TAB ||
-         command_id == IDC_SELECT_NEXT_TAB ||
-         command_id == IDC_SELECT_PREVIOUS_TAB ||
-         command_id == IDC_CYCLE_TO_NEXT_TAB ||
-         command_id == IDC_CYCLE_TO_PREV_TAB || command_id == IDC_EXIT;
+  return IsReservedCommand(command_id);
 }
 
 void BrowserCommandController::TabStateChanged() {
@@ -1366,8 +1360,13 @@ void BrowserCommandController::HandleCommandWithDisposition(
       ShowAboutChrome(webui::GetBrowserForOpeningWebUi(browser_));
       break;
     case IDC_UPGRADE_DIALOG:
-      OpenUpdateChromeDialog(browser_);
+      MaybeUpdateChrome(browser_);
       break;
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+    case IDC_SCHEDULED_RESTART_DIALOG:
+      OpenScheduledRestartDialog(browser_);
+      break;
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
     case IDC_OPEN_SAFETY_HUB:
       ShowSettingsSubPage(webui::GetBrowserForOpeningWebUi(browser_),
                           chrome::kSafetyHubSubPage);
@@ -1456,9 +1455,6 @@ void BrowserCommandController::HandleCommandWithDisposition(
       break;
     case IDC_ADD_NEW_TAB_RECENT_GROUP:
       AddNewTabToRecentGroup(browser_);
-      break;
-    case IDC_UNFOCUS_TAB_GROUP:
-      ExitFocusMode(browser_, TabGroupFocusExitReason::kTabStripButton);
       break;
     case IDC_WINDOW_CLOSE_TABS_TO_RIGHT:
       CloseTabsToRight(browser_);
@@ -1718,12 +1714,6 @@ void BrowserCommandController::OnTabPinnedStateChanged(tabs::TabInterface* tab,
   UpdateCommandsForTabStripStateChanged();
 }
 
-void BrowserCommandController::OnTabGroupFocusChanged(
-    std::optional<tab_groups::TabGroupId> new_focused_group,
-    std::optional<tab_groups::TabGroupId> old_focused_group) {
-  UpdateCommandsForTabGroupFocusChanged();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // BrowserCommandController, TabRestoreServiceObserver implementation:
 
@@ -1805,7 +1795,6 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(IDC_CLOSE_TAB_GROUP, true);
   command_updater_->UpdateCommandEnabled(IDC_GROUP_UNGROUPED_TABS, true);
   command_updater_->UpdateCommandEnabled(IDC_ADD_NEW_TAB_RECENT_GROUP, true);
-  command_updater_->UpdateCommandEnabled(IDC_UNFOCUS_TAB_GROUP, true);
 
   // Omnibox commands
   command_updater_->UpdateCommandEnabled(IDC_SHOW_FULL_URLS, true);
@@ -1825,8 +1814,7 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(IDC_CLOSE_TAB, true);
   command_updater_->UpdateCommandEnabled(
       IDC_DUPLICATE_TAB,
-      browser_->GetType() !=
-          BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
+      browser_->GetType() != BrowserWindowInterface::Type::TYPE_FLOATING);
   UpdateTabRestoreCommandState();
   command_updater_->UpdateCommandEnabled(IDC_EXIT, true);
   command_updater_->UpdateCommandEnabled(IDC_NAME_WINDOW, true);
@@ -2049,6 +2037,9 @@ void BrowserCommandController::InitCommandState() {
 
   // These are always enabled; the menu determines their menu item visibility.
   command_updater_->UpdateCommandEnabled(IDC_UPGRADE_DIALOG, true);
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  command_updater_->UpdateCommandEnabled(IDC_SCHEDULED_RESTART_DIALOG, true);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   command_updater_->UpdateCommandEnabled(IDC_SET_BROWSER_AS_DEFAULT, true);
 
   // Safety Hub commands.
@@ -2113,7 +2104,6 @@ void BrowserCommandController::InitCommandState() {
   UpdateCommandsForExtensionsMenu();
   UpdateCommandsForTabKeyboardFocus(GetKeyboardFocusedTabIndex(browser_));
   UpdateCommandsForWebContentsFocus();
-  UpdateCommandsForTabGroupFocusChanged();
   UpdateCommandsForProfile();
 }
 
@@ -2441,8 +2431,7 @@ void BrowserCommandController::UpdateCommandsForFullscreenMode() {
       browser_->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL &&
           !is_fullscreen &&
           browser_->GetType() != BrowserWindowInterface::Type::TYPE_DEVTOOLS &&
-          browser_->GetType() !=
-              BrowserWindowInterface::Type::TYPE_PICTURE_IN_PICTURE);
+          browser_->GetType() != BrowserWindowInterface::Type::TYPE_FLOATING);
 
   // Focus various bits of UI
   command_updater_->UpdateCommandEnabled(IDC_FOCUS_TOOLBAR, show_main_ui);
@@ -2637,6 +2626,23 @@ void BrowserCommandController::UpdateTabSwitchingCommandState() {
 void BrowserCommandController::SetTabSwitchCommandsEnabled(bool enabled) {
   is_tab_switching_enabled_ = enabled;
   UpdateTabSwitchingCommandState();
+}
+
+void BrowserCommandController::OnTaskStateChanged() {
+  CHECK(features::IsUseUnifiedLockedStateControllerEnabled());
+  // While pinned (including extension locked fullscreen), all commands are
+  // disabled by UpdateCommandsForLockedFullscreenMode() and must stay that way.
+  if (IsInLockedFullscreenMode(/*allow_ontask=*/false)) {
+    return;
+  }
+  // DevTools are unavailable throughout the OnTask lifecycle; this re-derives
+  // the state for the unpinned (prepared / unlocked) transitions.
+  const bool enabled = !IsLockedForOnTask(browser_);
+  command_updater_->UpdateCommandEnabled(IDC_DEV_TOOLS, enabled);
+  command_updater_->UpdateCommandEnabled(IDC_DEV_TOOLS_CONSOLE, enabled);
+  command_updater_->UpdateCommandEnabled(IDC_DEV_TOOLS_DEVICES, enabled);
+  command_updater_->UpdateCommandEnabled(IDC_DEV_TOOLS_INSPECT, enabled);
+  command_updater_->UpdateCommandEnabled(IDC_DEV_TOOLS_TOGGLE, enabled);
 }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
@@ -2876,22 +2882,6 @@ void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
   }
   if (auto* const action = FindAction(kActionFindExtensions, browser_)) {
     action->SetVisible(!show_skills_and_extensions);
-  }
-}
-
-void BrowserCommandController::UpdateCommandsForTabGroupFocusChanged() {
-  if (IsInLockedFullscreenMode(/*allow_ontask=*/false)) {
-    return;
-  }
-
-  if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
-    if (auto* const action = FindAction(kActionUnfocusTabGroup, browser_)) {
-      action->SetVisible(false);
-    }
-    if (auto* const action =
-            FindAction(kActionToggleCollapseVertical, browser_)) {
-      action->SetVisible(true);
-    }
   }
 }
 

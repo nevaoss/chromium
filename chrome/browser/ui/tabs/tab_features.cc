@@ -44,6 +44,7 @@
 #include "chrome/browser/file_system_access/file_system_access_permission_request_manager.h"
 #include "chrome/browser/file_system_access/file_system_access_tab_helper.h"
 #include "chrome/browser/glic/host/context/glic_page_features_manager.h"
+#include "chrome/browser/glic/host/glic_drag_and_drop_util.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_helper.h"
 #include "chrome/browser/glic/suggestions/glic_cue_tab_state.h"
 #include "chrome/browser/glic/suggestions/glic_cue_target.h"
@@ -89,6 +90,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/resource_coordinator/tab_helper.h"
+#include "chrome/browser/sessions/session_tab_helper_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/site_protection/site_protection_metrics_observer.h"
 #include "chrome/browser/ssl/ask_before_http_dialog_controller.h"
@@ -201,6 +203,7 @@
 #include "components/enterprise/net/content/enterprise_proxy_tab_helper.h"
 #include "components/history/content/browser/web_contents_top_sites_observer.h"
 #include "components/history/core/browser/top_sites.h"
+#include "components/infobars/content/content_infobar_manager.h"
 #include "components/javascript_dialogs/tab_modal_dialog_manager.h"
 #include "components/multistep_filter/core/features.h"
 #include "components/payments/core/features.h"
@@ -208,6 +211,7 @@
 #include "components/site_engagement/content/site_engagement_helper.h"
 #include "components/site_engagement/content/site_engagement_service.h"
 #include "components/skills/features.h"
+#include "components/zoom/zoom_controller.h"
 #include "content/public/browser/navigation_controller.h"
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 #include "chrome/browser/metrics/desktop_session_duration/desktop_session_duration_observer.h"
@@ -215,6 +219,7 @@
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/contextual_tasks/contextual_tasks_tab_navigation_observer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
 #include "chrome/browser/contextual_tasks/search_journey_tab_feature.h"
 #include "chrome/browser/record_replay/chrome_record_replay_client.h"
@@ -424,8 +429,15 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           &TabFeatures::WillDiscardContents, weak_factory_.GetWeakPtr())));
   tab_subscriptions_.push_back(webui::InitEmbeddingContext(&tab));
 
+  CreateSessionServiceTabHelper(tab.GetContents());
+
+  zoom::ZoomController::CreateForWebContents(tab.GetContents());
+
+  infobars::ContentInfoBarManager::CreateForWebContents(tab.GetContents());
+
   autofill::AutofillClientProvider& autofill_client_provider =
       autofill::AutofillClientProviderFactory::GetForProfile(profile);
+  autofill_client_provider.CreateClientForWebContents(tab.GetContents());
   if (!autofill_client_provider.uses_platform_autofill()) {
     ChromePasswordManagerClient::CreateForWebContents(tab.GetContents());
   }
@@ -458,10 +470,11 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   auto* page_content_extraction_service = page_content_annotations::
       PageContentExtractionServiceFactory::GetForProfile(profile);
   if (page_content_extraction_service) {
-    AnnotatedPageContentRequest::CreateForWebContents(
-        tab.GetContents(), *page_content_extraction_service,
-        base::BindRepeating(&page_content_annotations::FetchPageContext),
-        base::BindRepeating(&GetPageContentAnnotationsTabId));
+    annotated_page_content_request_ =
+        GetUserDataFactory().CreateInstance<AnnotatedPageContentRequest>(
+            tab, tab, tab.GetContents(), *page_content_extraction_service,
+            base::BindRepeating(&page_content_annotations::FetchPageContext),
+            base::BindRepeating(&GetPageContentAnnotationsTabId));
   }
 
   InitializePageLoadMetricsForWebContents(tab.GetContents());
@@ -520,8 +533,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
             .CreateInstance<IntentPickerViewPageActionController>(tab, tab);
   }
 
-  FileSystemAccessPermissionRequestManager::CreateForWebContents(
-      tab.GetContents());
+  file_system_access_permission_request_manager_ =
+      GetUserDataFactory()
+          .CreateInstance<FileSystemAccessPermissionRequestManager>(tab, tab);
   if (page_action_controller_->ActionExists(kActionShowFileSystemAccess)) {
     file_system_access_page_action_controller_ =
         std::make_unique<FileSystemAccessPageActionController>(tab);
@@ -592,6 +606,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   page_context_eligibility_helper_ =
       GetUserDataFactory().CreateInstance<tabs::PageContextEligibilityHelper>(
           tab, tab);
+
+  glic_web_drag_observer_ = std::make_unique<glic::GlicWebDragObserver>(tab);
 
   commerce_tab_helper_ = std::make_unique<commerce::CommerceTabHelper>(
       tab.GetContents(), profile->IsOffTheRecord(),
@@ -797,8 +813,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
               tab, tab, tab.GetContents(),
               EnterpriseProxyErrorServiceFactory::GetForProfile(profile));
 
-  // Create the ReadAnythingController first to ensure it exists before
-  // any potential consumers, like the side panel controller.
   read_anything_controller_ =
       GetUserDataFactory().CreateInstance<ReadAnythingController>(
           tab, &tab, side_panel_registry_.get());
@@ -905,6 +919,11 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
                 tab, tab);
   }
 
+  if (contextual_tasks::IsContextualTasksRearchitectureEnabled()) {
+    contextual_tasks_tab_navigation_observer_ = std::make_unique<
+        contextual_tasks::ContextualTasksTabNavigationObserver>(tab);
+  }
+
   if (contextual_tasks::IsABASearchJourneysEnabled()) {
     search_journey_tab_feature_ =
         GetUserDataFactory()
@@ -1009,7 +1028,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
                                                             tab.GetContents());
   boot_times_recorder_tab_helper_ =
       ash::BootTimesRecorderTabHelper::MaybeCreate(tab.GetContents());
-  policy::DlpContentTabHelper::MaybeCreateForWebContents(tab.GetContents());
+  dlp_content_tab_helper_ =
+      policy::DlpContentTabHelper::MaybeCreate(tab, tab.GetContents());
 #endif
 
   // The controller is created for all tabs but only affects back button
@@ -1399,10 +1419,11 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   PrefsTabHelper::CreateForWebContents(tab.GetContents());
 
   if (site_engagement::SiteEngagementService::IsEnabled()) {
-    site_engagement::SiteEngagementService::Helper::CreateForWebContents(
-        tab.GetContents(),
-        prerender::NoStatePrefetchManagerFactory::GetForBrowserContext(
-            profile));
+    site_engagement_helper_ =
+        std::make_unique<site_engagement::SiteEngagementService::Helper>(
+            tab.GetContents(),
+            prerender::NoStatePrefetchManagerFactory::GetForBrowserContext(
+                profile));
   }
 
   SafetyTipWebContentsObserver::CreateForWebContents(tab.GetContents());
@@ -1464,8 +1485,15 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 
   Profile* profile = tab->GetBrowserWindowInterface()->GetProfile();
 
+  CreateSessionServiceTabHelper(new_contents);
+
+  zoom::ZoomController::CreateForWebContents(new_contents);
+
+  infobars::ContentInfoBarManager::CreateForWebContents(new_contents);
+
   autofill::AutofillClientProvider& autofill_client_provider =
       autofill::AutofillClientProviderFactory::GetForProfile(profile);
+  autofill_client_provider.CreateClientForWebContents(new_contents);
   if (!autofill_client_provider.uses_platform_autofill()) {
     ChromePasswordManagerClient::CreateForWebContents(new_contents);
   }
@@ -1495,11 +1523,13 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 
   auto* page_content_extraction_service = page_content_annotations::
       PageContentExtractionServiceFactory::GetForProfile(profile);
+  annotated_page_content_request_.reset();
   if (page_content_extraction_service) {
-    AnnotatedPageContentRequest::CreateForWebContents(
-        new_contents, *page_content_extraction_service,
-        base::BindRepeating(&page_content_annotations::FetchPageContext),
-        base::BindRepeating(&GetPageContentAnnotationsTabId));
+    annotated_page_content_request_ =
+        GetUserDataFactory().CreateInstance<AnnotatedPageContentRequest>(
+            *tab, *tab, new_contents, *page_content_extraction_service,
+            base::BindRepeating(&page_content_annotations::FetchPageContext),
+            base::BindRepeating(&GetPageContentAnnotationsTabId));
   }
 
   InitializePageLoadMetricsForWebContents(new_contents);
@@ -1753,7 +1783,9 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   }
   boot_times_recorder_tab_helper_ =
       ash::BootTimesRecorderTabHelper::MaybeCreate(new_contents);
-  policy::DlpContentTabHelper::MaybeCreateForWebContents(new_contents);
+  dlp_content_tab_helper_.reset();
+  dlp_content_tab_helper_ =
+      policy::DlpContentTabHelper::MaybeCreate(*tab, new_contents);
 #endif
 
 #if BUILDFLAG(ENABLE_RLZ)
@@ -1932,8 +1964,6 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
       GetUserDataFactory().CreateInstance<ChainedBackNavigationTracker>(
           *tab, *tab, new_contents);
 
-  FileSystemAccessPermissionRequestManager::CreateForWebContents(new_contents);
-
   file_system_access_tab_helper_ =
       std::make_unique<FileSystemAccessTabHelper>(new_contents);
 
@@ -2088,11 +2118,13 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
 
   PrefsTabHelper::CreateForWebContents(new_contents);
 
+  site_engagement_helper_.reset();
   if (site_engagement::SiteEngagementService::IsEnabled()) {
-    site_engagement::SiteEngagementService::Helper::CreateForWebContents(
-        new_contents,
-        prerender::NoStatePrefetchManagerFactory::GetForBrowserContext(
-            profile));
+    site_engagement_helper_ =
+        std::make_unique<site_engagement::SiteEngagementService::Helper>(
+            new_contents,
+            prerender::NoStatePrefetchManagerFactory::GetForBrowserContext(
+                profile));
   }
 
   SafetyTipWebContentsObserver::CreateForWebContents(new_contents);

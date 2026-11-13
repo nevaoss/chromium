@@ -51,6 +51,7 @@
 #include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
 #include "chrome/browser/ui/views/tabs/common/tab_view.h"
 #include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h"
+#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_view.h"
 #include "chrome/browser/ui/views/tabs/shared/drop_arrow.h"
 #include "chrome/browser/ui/views/tabs/vertical/top_container_button.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h"
@@ -282,6 +283,7 @@ void VerticalTabStripRegionView::OnAnimationProgressed(
       if (motion == TabStripAnimations::kCollapse) {
         update_state_controller_collapsed_callback_.Run(true);
       }
+      top_button_container_->ClearStateOverride();
       InvalidateLayout();
       break;
     }
@@ -303,6 +305,7 @@ void VerticalTabStripRegionView::OnAnimationProgressed(
       if (!target_collapse_state_.collapsed) {
         update_state_controller_collapsed_callback_.Run(true);
       }
+      top_button_container_->ClearStateOverride();
       break;
   }
 }
@@ -327,6 +330,18 @@ bool VerticalTabStripRegionView::IsPositionInWindowCaption(
     views::View::ConvertPointToTarget(this, bottom_button_container_,
                                       &point_in_child);
     return bottom_button_container_->IsPositionInWindowCaption(point_in_child);
+  }
+
+  if (organizer_panel_view_ && IsHitInView(organizer_panel_view_, point)) {
+    const gfx::Point point_in_child =
+        views::View::ConvertPointToTarget(this, organizer_panel_view_, point);
+    if (auto* panel = views::AsViewClass<OrganizerPanelView>(
+            organizer_panel_view_.get())) {
+      if (panel->IsPositionInWindowCaption(point_in_child)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // For any of the other children, absorb the click as non window caption.
@@ -362,20 +377,17 @@ void VerticalTabStripRegionView::SetIsExitingExpandOnHoverForLayout(
 }
 
 void VerticalTabStripRegionView::SetTransitionButtonOpacity(float opacity) {
-  for (views::LabelButton* label_button :
-       {top_button_container_->GetCollapseButton(),
-        top_button_container_->GetUnfocusButton()}) {
-    if (label_button) {
-      auto* button = static_cast<TopContainerButton*>(label_button);
-      button->layer()->SetOpacity(opacity);
+  if (views::LabelButton* label_button =
+          top_button_container_->GetCollapseButton()) {
+    auto* button = static_cast<TopContainerButton*>(label_button);
+    button->layer()->SetOpacity(opacity);
 
-      if (opacity == 0.0f) {
-        button->ApplyPendingIcon();
-      }
-      if (opacity == 1.0f) {
-        button->SetDelayIconUpdates(false);
-        button->ApplyPendingIcon();
-      }
+    if (opacity == 0.0f) {
+      button->ApplyPendingIcon();
+    }
+    if (opacity == 1.0f) {
+      button->SetDelayIconUpdates(false);
+      button->ApplyPendingIcon();
     }
   }
 }
@@ -777,6 +789,11 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
 
   target_collapse_state_ = new_state;
 
+  top_button_container_->SetStateOverride(
+      (!done_resizing || previously_collapsed != new_state.collapsed)
+          ? std::make_optional(new_state)
+          : std::nullopt);
+
   if (previously_collapsed != target_collapse_state_.collapsed) {
     state_controller_->RequestCollapse(target_collapse_state_.collapsed);
   } else if (!target_collapse_state_.collapsed && !IsAnimatingSize()) {
@@ -925,13 +942,10 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
                 LayoutConstant::kVerticalTabStripHorizontalPadding));
 
     if (!will_wrap) {
-      for (views::LabelButton* label_button :
-           {top_button_container_->GetCollapseButton(),
-            top_button_container_->GetUnfocusButton()}) {
-        if (label_button) {
-          static_cast<TopContainerButton*>(label_button)
-              ->SetDelayIconUpdates(true);
-        }
+      if (views::LabelButton* label_button =
+              top_button_container_->GetCollapseButton()) {
+        static_cast<TopContainerButton*>(label_button)
+            ->SetDelayIconUpdates(true);
       }
     }
   }

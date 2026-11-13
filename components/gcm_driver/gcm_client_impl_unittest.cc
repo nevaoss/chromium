@@ -763,6 +763,45 @@ TEST_F(GCMClientImplTest, DestroyStoreWhenNotNeeded) {
   EXPECT_EQ(0u, device_checkin_info().secret());
 }
 
+TEST_F(GCMClientImplTest, DestroyStoreWhenNotNeededCancelledOnStop) {
+  // Close the GCM store.
+  gcm_client()->Stop();
+  PumpLoopUntilIdle();
+
+  // Restart GCM client in delayed start mode. This schedules store destruction
+  // in 300 seconds.
+  BuildGCMClient(base::TimeDelta());
+  InitializeGCMClient();
+  gcm_client()->Start(GCMClient::DELAYED_START);
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::LOADED, gcm_client_state());
+
+  // Advance partway (200 seconds), then stop and restart in delayed start mode.
+  // Stopping should cancel the first scheduled store destruction task.
+  FastForwardBy(base::Seconds(200));
+  PumpLoopUntilIdle();
+  gcm_client()->Stop();
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::INITIALIZED, gcm_client_state());
+
+  gcm_client()->Start(GCMClient::DELAYED_START);
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::LOADED, gcm_client_state());
+
+  // Advance another 200 seconds (past the original 300-second deadline, but
+  // only 200 seconds after the second delayed start). The store must still be
+  // loaded.
+  FastForwardBy(base::Seconds(200));
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::LOADED, gcm_client_state());
+
+  // Advance the remaining 100 seconds to reach 300 seconds since the second
+  // delayed start. Now the store should be destroyed.
+  FastForwardBy(base::Seconds(100));
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::INITIALIZED, gcm_client_state());
+}
+
 TEST_F(GCMClientImplTest, SerializeAndDeserialize) {
   std::vector<std::string> senders{"sender"};
   auto gcm_info = base::MakeRefCounted<GCMRegistrationInfo>();
@@ -1388,6 +1427,36 @@ TEST_F(GCMClientImplStartAndStopTest, ImmediateStartAndThenDelayStart) {
   gcm_client()->Start(GCMClient::DELAYED_START);
   PumpLoopUntilIdle();
   EXPECT_EQ(GCMClientImpl::LOADED, gcm_client_state());
+}
+
+TEST_F(GCMClientImplStartAndStopTest,
+       DelayedStartLoadedThenImmediateStartAndResetStore) {
+  // Populate the store first via an immediate start and checkin.
+  gcm_client()->Start(GCMClient::IMMEDIATE_START);
+  PumpLoopUntilIdle();
+  ASSERT_NO_FATAL_FAILURE(DefaultCompleteCheckin());
+  gcm_client()->Stop();
+  PumpLoopUntilIdle();
+
+  // Restart with DELAYED_START so the existing store is loaded into LOADED
+  // state.
+  BuildGCMClient(gservices_settings().GetCheckinInterval());
+  InitializeGCMClient();
+  gcm_client()->Start(GCMClient::DELAYED_START);
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::LOADED, gcm_client_state());
+
+  // Transition from LOADED to READY via IMMEDIATE_START.
+  gcm_client()->Start(GCMClient::IMMEDIATE_START);
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::READY, gcm_client_state());
+
+  // Reject the periodic checkin to trigger ResetStore(). Since IMMEDIATE_START
+  // was requested while in LOADED state, the reset store should be recreated
+  // and transition to INITIAL_DEVICE_CHECKIN rather than staying INITIALIZED.
+  ASSERT_NO_FATAL_FAILURE(FailCheckin(net::HTTP_UNAUTHORIZED));
+  PumpLoopUntilIdle();
+  EXPECT_EQ(GCMClientImpl::INITIAL_DEVICE_CHECKIN, gcm_client_state());
 }
 
 TEST_F(GCMClientImplStartAndStopTest, DelayedStartRace) {

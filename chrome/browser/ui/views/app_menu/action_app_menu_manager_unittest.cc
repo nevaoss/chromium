@@ -5,6 +5,7 @@
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 
 #include "base/test/scoped_feature_list.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/defaults.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -391,7 +392,9 @@ TEST_F(ActionAppMenuManagerTest, BlockActionsIncognitoNewTabTextOverride) {
   std::u16string* text_override =
       new_tab_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
   ASSERT_NE(text_override, nullptr);
-  EXPECT_EQ(*text_override, u"New Incognito tab");
+  EXPECT_EQ(*text_override,
+            BrowserActions::GetMnemonicTitleText(
+                l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_TAB)));
 
   ASSERT_GE(block_section->GetChildren().children().size(), 3u);
   actions::BaseAction* incognito_window_action =
@@ -403,7 +406,9 @@ TEST_F(ActionAppMenuManagerTest, BlockActionsIncognitoNewTabTextOverride) {
   std::u16string* incognito_window_text_override =
       incognito_window_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
   ASSERT_NE(incognito_window_text_override, nullptr);
-  EXPECT_EQ(*incognito_window_text_override, u"New Incognito window");
+  EXPECT_EQ(*incognito_window_text_override,
+            BrowserActions::GetMnemonicTitleText(
+                l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_WINDOW)));
 }
 
 TEST_F(ActionAppMenuManagerTest,
@@ -442,7 +447,9 @@ TEST_F(ActionAppMenuManagerTest,
   std::u16string* text_override =
       new_tab_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
   ASSERT_NE(text_override, nullptr);
-  EXPECT_EQ(*text_override, u"New isolated tab");
+  EXPECT_EQ(*text_override,
+            BrowserActions::GetMnemonicTitleText(
+                l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_TAB)));
 
   ASSERT_GE(block_section->GetChildren().children().size(), 3u);
   actions::BaseAction* isolated_window_action =
@@ -455,7 +462,7 @@ TEST_F(ActionAppMenuManagerTest,
       isolated_window_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
   ASSERT_NE(isolated_window_text_override, nullptr);
   EXPECT_EQ(*isolated_window_text_override,
-            BrowserActions::GetCleanTitleAndTooltipText(
+            BrowserActions::GetMnemonicTitleText(
                 l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_WINDOW)));
 }
 
@@ -585,7 +592,7 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderSafetyHubNotification) {
                                               -> std::unique_ptr<KeyedService> {
         Profile* profile = Profile::FromBrowserContext(context);
         auto service = std::make_unique<SafetyHubMenuNotificationService>(
-            profile->GetPrefs(), nullptr, nullptr,
+            profile->GetPrefs(), nullptr,
 #if !BUILDFLAG(IS_ANDROID)
             nullptr,
 #endif
@@ -816,6 +823,7 @@ TEST_F(ActionAppMenuManagerTest,
             ExtensionsMenuModel::kVisitChromeWebStoreMenuItem);
 }
 
+#if !BUILDFLAG(CHROME_FOR_TESTING)
 TEST_F(ActionAppMenuManagerTest, AlertedElementPropagatesToSubmenu) {
   UserEducationServiceFactory::GetInstance()->SetTestingFactory(
       profile_.get(), base::BindRepeating([](content::BrowserContext* context)
@@ -876,6 +884,7 @@ TEST_F(ActionAppMenuManagerTest, AlertedElementPropagatesToSubmenu) {
   ASSERT_NE(show_downloads, nullptr);
   EXPECT_FALSE(show_downloads->GetProperty(AppMenuActionItem::kIsAlertedKey));
 }
+#endif  // !BUILDFLAG(CHROME_FOR_TESTING)
 
 TEST_F(ActionAppMenuManagerTest,
        SendTabToSelfEnhancedDesktopUIv2SubmenuAndPromos) {
@@ -948,7 +957,8 @@ TEST_F(ActionAppMenuManagerTest,
   sync_service->GetFakeSendTabToSelfModel()->SetTargetDeviceInfoSortedList(
       {syncer::RemoteDeviceInfo(
           "My Phone", "guid1", syncer::DeviceInfo::FormFactor::kPhone,
-          syncer::DeviceInfo::OsType::kAndroid, base::Time::Now())});
+          syncer::DeviceInfo::OsType::kAndroid, base::Time::Now(),
+          /*has_high_precision_timestamp=*/false)});
   root->ResetActionList();
   menu_manager.CreateMenuHierarchy();
   stts_action = find_send_tab_to_self();

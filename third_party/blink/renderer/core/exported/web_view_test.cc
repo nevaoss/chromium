@@ -3717,6 +3717,7 @@ TEST_F(WebViewTest, MouseDragDropSuppressesPointerStream) {
   const gfx::PointF center = GetElementCenterPoint(
       web_view->MainFrameImpl()->GetDocument().GetElementById("target"));
   mouse_event.SetPositionInWidget(center.x(), center.y());
+  mouse_event.SetPositionInScreen(center.x(), center.y());
   mouse_event.button = WebMouseEvent::Button::kLeft;
   mouse_event.click_count = 1;
   web_view->MainFrameWidget()->HandleInputEvent(
@@ -3726,6 +3727,7 @@ TEST_F(WebViewTest, MouseDragDropSuppressesPointerStream) {
                                  WebInputEvent::Modifiers::kNoModifiers,
                                  WebInputEvent::GetStaticTimeStampForTests());
   mouse_drag_event.SetPositionInWidget(center.x() + 50, center.y());
+  mouse_drag_event.SetPositionInScreen(center.x() + 50, center.y());
   mouse_drag_event.button = WebMouseEvent::Button::kLeft;
   web_view->MainFrameWidget()->HandleInputEvent(
       WebCoalescedInputEvent(mouse_drag_event, ui::LatencyInfo()));
@@ -3831,6 +3833,7 @@ class WebViewDragWithLayoutChangeTest
                                 WebInputEvent::kNoModifiers,
                                 WebInputEvent::GetStaticTimeStampForTests());
       mouse_event.SetPositionInWidget(center.x(), center.y());
+      mouse_event.SetPositionInScreen(center.x(), center.y());
       mouse_event.button = WebMouseEvent::Button::kLeft;
       mouse_event.click_count = 1;
       web_view->MainFrameWidget()->HandleInputEvent(
@@ -3842,6 +3845,7 @@ class WebViewDragWithLayoutChangeTest
           WebInputEvent::Modifiers::kNoModifiers,
           WebInputEvent::GetStaticTimeStampForTests());
       mouse_drag_event.SetPositionInWidget(center.x() + 50, center.y());
+      mouse_drag_event.SetPositionInScreen(center.x() + 50, center.y());
       mouse_drag_event.button = WebMouseEvent::Button::kLeft;
       web_view->MainFrameWidget()->HandleInputEvent(
           WebCoalescedInputEvent(mouse_drag_event, ui::LatencyInfo()));
@@ -4223,7 +4227,7 @@ TEST_F(WebViewTest, LongPressLink) {
                         WebInputEvent::kNoModifiers,
                         WebInputEvent::GetStaticTimeStampForTests(),
                         WebGestureDevice::kTouchscreen);
-  event.SetPositionInWidget(gfx::PointF(500, 300));
+  event.SetPositionInWidget(gfx::PointF(499, 299));
 
   EXPECT_EQ(WebInputEventResult::kHandledSystem,
             web_view->MainFrameWidget()->HandleInputEvent(
@@ -8116,6 +8120,7 @@ TEST_F(WebViewTest, DragAndDropMouseHistogramsTest) {
                             WebInputEvent::kNoModifiers,
                             WebInputEvent::GetStaticTimeStampForTests());
   mouse_event.SetPositionInWidget(250, 8);
+  mouse_event.SetPositionInScreen(250, 8);
   mouse_event.button = WebMouseEvent::Button::kLeft;
   mouse_event.click_count = 1;
   web_view->MainFrameWidget()->HandleInputEvent(
@@ -8125,6 +8130,7 @@ TEST_F(WebViewTest, DragAndDropMouseHistogramsTest) {
                                  WebInputEvent::Modifiers::kNoModifiers,
                                  WebInputEvent::GetStaticTimeStampForTests());
   mouse_drag_event.SetPositionInWidget(300, 8);
+  mouse_drag_event.SetPositionInScreen(300, 8);
   mouse_drag_event.button = WebMouseEvent::Button::kLeft;
   web_view->MainFrameWidget()->HandleInputEvent(
       WebCoalescedInputEvent(mouse_drag_event, ui::LatencyInfo()));
@@ -8204,6 +8210,7 @@ TEST_F(WebViewTest, DragAndDropPenButtonHistogramsTest) {
                           WebInputEvent::kNoModifiers,
                           WebInputEvent::GetStaticTimeStampForTests());
   pen_event.SetPositionInWidget(250, 8);
+  pen_event.SetPositionInScreen(250, 8);
   pen_event.button = WebPointerProperties::Button::kLeft;
   pen_event.pointer_type = blink::WebPointerProperties::PointerType::kPen;
   pen_event.click_count = 1;
@@ -8214,6 +8221,7 @@ TEST_F(WebViewTest, DragAndDropPenButtonHistogramsTest) {
                                WebInputEvent::Modifiers::kNoModifiers,
                                WebInputEvent::GetStaticTimeStampForTests());
   pen_drag_event.SetPositionInWidget(300, 8);
+  pen_drag_event.SetPositionInScreen(300, 8);
   pen_drag_event.button = WebPointerProperties::Button::kLeft;
   pen_drag_event.pointer_type = blink::WebPointerProperties::PointerType::kPen;
   web_view->MainFrameWidget()->HandleInputEvent(

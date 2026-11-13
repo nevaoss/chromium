@@ -124,6 +124,7 @@ export class OmniboxPopupSearchboxElement extends
         type: Boolean,
         reflect: true,
       },
+      omniboxDogfoodFeedbackEnabled_: {type: Boolean},
       searchboxChromeRefreshTheming: {
         type: Boolean,
         reflect: true,
@@ -245,6 +246,8 @@ export class OmniboxPopupSearchboxElement extends
       loadTimeData.getBoolean('searchboxCr23SteadyStateShadow');
   accessor omniboxPopupDebugEnabled_: boolean =
       loadTimeData.getBoolean('omniboxPopupDebugEnabled');
+  protected accessor omniboxDogfoodFeedbackEnabled_: boolean =
+      loadTimeData.getBoolean('omniboxDogfoodFeedbackEnabled');
   protected accessor searchboxIcon_: string =
       loadTimeData.getString('searchboxDefaultIcon');
   protected accessor searchboxVoiceSearchEnabled_: boolean =
@@ -307,6 +310,10 @@ export class OmniboxPopupSearchboxElement extends
   // True if the user has modified the text in the input field (e.g., typed or
   // deleted characters), as opposed to displaying permanent text set from C++.
   protected accessor userInputInProgress_: boolean = false;
+  // Stores the last selected autocomplete match while user input is in
+  // progress. Preserved across popup closures on blur or tab switch so the
+  // searchbox icon does not fall back to the default icon while editing.
+  private lastSelectedMatch_: AutocompleteMatch|null = null;
   protected accessor fullUrl_: string = '';
   protected accessor permanentDisplayText_: string = '';
   protected accessor aimButtonIconOnly_: boolean = false;
@@ -521,6 +528,12 @@ export class OmniboxPopupSearchboxElement extends
 
     super.willUpdate(changedProperties);
 
+    if (this.selectedMatch) {
+      this.lastSelectedMatch_ = this.selectedMatch;
+    } else if (!this.result && !this.hasUserInput_) {
+      this.lastSelectedMatch_ = null;
+    }
+
     if (changedProperties.has('searchboxChromeRefreshTheming')) {
       this.useWebkitSearchIcons_ = this.searchboxChromeRefreshTheming;
     }
@@ -637,6 +650,10 @@ export class OmniboxPopupSearchboxElement extends
     this.popupPageHandler_.openDevTools();
   }
 
+  protected onDogfoodFeedbackClick_() {
+    this.popupPageHandler_.openDogfoodFeedback();
+  }
+
   focusInput() {
     this.$.input.focus();
   }
@@ -730,15 +747,6 @@ export class OmniboxPopupSearchboxElement extends
     return false;
   }
 
-  /**
-   * Clears frontend autocomplete matches and reverts C++ `OmniboxEditModel`.
-   * Kept separate from `clearAutocompleteMatches()`, which is called internally
-   * by `SearchboxMixin` when selecting suggestions or blurring the input.
-   */
-  revert() {
-    this.clearAutocompleteMatches();
-    this.popupPageHandler_.revert(this.currentSequenceNum_);
-  }
   /**
    * Determines whether the dropdown should be visible considering contextual
    * chips because the header "Ask Google about this page" is suppressed when
@@ -874,9 +882,14 @@ export class OmniboxPopupSearchboxElement extends
     // A right-click should only open the context menu: keep the current
     // selection and elided URL, matching Views omnibox. On Mac, Blink's
     // context menu selects the word under the pointer (native behavior), so
-    // only guard when there is an active selection. Blink still dispatches
-    // the `contextmenu` event.
-    if (e.button === 2 && (hasSelection || !isMac)) {
+    // only guard when there is an active selection. If the input was unfocused
+    // focus it and select all text first. Blink still dispatches the
+    // `contextmenu` event.
+    if (e.button === 2 && (wasUnfocused || hasSelection || !isMac)) {
+      if (wasUnfocused) {
+        this.$.input.focus();
+        this.getInputElement().select();
+      }
       e.preventDefault();
       return;
     }
@@ -1008,6 +1021,7 @@ export class OmniboxPopupSearchboxElement extends
         this.keywordModeManager.clearKeyword(
             this.getInputElement().inputElement.value);
       }
+      this.maybeShowFullUrl_();
       this.getInputElement().select();
       if (!this.userInputInProgress_ && !this.dropdownIsVisible) {
         this.queryAutocomplete(
@@ -1271,6 +1285,22 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   /**
+   * Returns the match to use for the searchbox input element.
+   * While user input is in progress, preserves `lastSelectedMatch_` when
+   * results are cleared on blur or tab switch so the icon does not fall back
+   * to the default icon.
+   */
+  protected computeSelectedMatchForInput_(): AutocompleteMatch|null {
+    if (this.selectedMatch) {
+      return this.selectedMatch;
+    }
+    if (!this.result && this.userInputInProgress_) {
+      return this.lastSelectedMatch_;
+    }
+    return null;
+  }
+
+  /**
    * Reports selection changes back to C++.
    */
   private onSelectionChanged_() {
@@ -1354,7 +1384,7 @@ export class OmniboxPopupSearchboxElement extends
     const keywordChanged =
         this.inputKeywordModel?.keyword !== state.keywordModel?.keyword ||
         this.inputKeywordModel?.type !== state.keywordModel?.type;
-    this.inputKeywordModel = state.keywordModel;
+    this.keywordModeManager.inputKeywordModel = state.keywordModel;
     this.lastInputText_ = text;
     this.lastInputSelection_ = selection;
     // Clear edit history and set baseline text on hard state resets (e.g. tab
@@ -1362,6 +1392,10 @@ export class OmniboxPopupSearchboxElement extends
     // while the user is actively typing in the same tab.
     if (state.isTabSwitch || !state.userInputInProgress) {
       this.textfieldModel_.setInitialText(text, selection);
+      this.lastSelectedMatch_ =
+          (state.userInputInProgress && state.currentMatch) ?
+          state.currentMatch :
+          null;
     }
     this.updateEditHistoryState_();
 
@@ -1534,6 +1568,7 @@ export class OmniboxPopupSearchboxElement extends
   private async onClearPopup_(): Promise<void> {
     this.hasReceivedInitialInputState_ = false;
     this.hasDirectUserDomInput_ = false;
+    this.lastSelectedMatch_ = null;
     this.$.input.setInputText('');
     this.getInputElement().blur();
     this.clearAutocompleteMatches();
@@ -1549,6 +1584,11 @@ export class OmniboxPopupSearchboxElement extends
     this.selectAllOnMouseRelease_ = false;
     this.getInputElement().setSelectionRange(0, 0);
     this.getInputElement().blur();
+    // Cache the selected match before clearing autocomplete results so the
+    // searchbox icon does not fall back to the default icon while blurred.
+    if (this.selectedMatch) {
+      this.lastSelectedMatch_ = this.selectedMatch;
+    }
     // Clear autocomplete results so clicking into omnibox_view_views
     // registers that the popup is closed. This enables
     // select_all_on_mouse_release_ (in omnibox_view_views) to be set to the
@@ -1580,18 +1620,57 @@ export class OmniboxPopupSearchboxElement extends
     const isLogicallyFocused = this.shadowRoot?.activeElement === this.$.input;
     if (isFullSelection && isLogicallyFocused) {
       this.getInputElement().select();
+      // `select()` doesn't scroll either, so the input would keep its old
+      // offset. Show the start, as the native omnibox does after a select-all.
+      this.getInputElement().inputElement.scrollLeft = 0;
     } else {
+      // `selection` mirrors a native `gfx::Range`, whose `end` is the caret, so
+      // a right-to-left native selection arrives with `start > end`. Keep it
+      // backward so the caret stays on the end the user was dragging.
       const selStart = Math.min(start, end);
       const selEnd = Math.max(start, end);
-      this.$.input.setSelectionRange(selStart, selEnd);
+      this.$.input.setSelectionRange(
+          selStart, selEnd, start > end ? 'backward' : 'none');
       const inputEl = this.getInputElement().inputElement;
       if (selStart === inputEl.value.length &&
           selEnd === inputEl.value.length) {
         inputEl.scrollLeft = inputEl.scrollWidth;
       } else if (selStart === 0 && selEnd === 0) {
         inputEl.scrollLeft = 0;
+      } else if (!isFullSelection) {
+        this.scrollSelectionStartIntoView_(selStart);
       }
     }
+  }
+
+  /**
+   * Scrolls the single-line input to the start of the text, or only as far past
+   * it as needed to show the selection start at `selStart`. In Full WebUI mode
+   * the native textfield never takes focus, so it doesn't scroll while the user
+   * drags. It shows the start of the text with the end elided, so a range
+   * handed off from it starts where the user saw it. Blink doesn't scroll a
+   * text field for `setSelectionRange()`, so without this the input keeps its
+   * old scroll offset.
+   */
+  private scrollSelectionStartIntoView_(selStart: number) {
+    if (this.multiLineEnabled) {
+      return;
+    }
+    const inputEl = this.getInputElement().inputElement;
+    const style = window.getComputedStyle(inputEl);
+    // The width of the text before an offset is only its position in LTR text.
+    if (style.direction !== 'ltr') {
+      return;
+    }
+    const visibleWidth = inputEl.clientWidth - parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight);
+    if (visibleWidth <= 0) {
+      return;
+    }
+    const startLeft =
+        this.getTextWidth_(inputEl.value.substring(0, selStart), inputEl);
+    // Leave room for the 1px caret at the selection start.
+    inputEl.scrollLeft = Math.max(0, startLeft + 1 - visibleWidth);
   }
 
   private maybeShowFullUrl_() {
@@ -1729,6 +1808,7 @@ export class OmniboxPopupSearchboxElement extends
       // Notify the backend when the user clears all input (`onInputCleared`) so
       // it knows the draft was manually cleared and can revert empty drafts on
       // tab switch (restoring the permanent URL instead of a blank string).
+      this.lastSelectedMatch_ = null;
       this.clearAutocompleteMatches();
       this.popupPageHandler_.onInputCleared(this.currentSequenceNum_);
     } else if (this.hasReceivedInitialInputState_) {
@@ -2040,6 +2120,7 @@ export class OmniboxPopupSearchboxElement extends
       inputEl.urlEmphasis = restoredText ? this.urlEmphasis_ : null;
       inputEl.select();
       this.userInputInProgress_ = false;
+      this.lastSelectedMatch_ = null;
       this.popupPageHandler_.revert(this.currentSequenceNum_);
       this.popupPageHandler_.logEscapeAction(
           OmniboxEscapeAction.kClearUserInput);

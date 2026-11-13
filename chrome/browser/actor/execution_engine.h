@@ -257,12 +257,12 @@ class ExecutionEngine : public ToolDelegate,
   void InterruptFromTool(bool retain_user_control) override;
   void UninterruptFromTool() override;
   void EnqueueFollowupAction(std::unique_ptr<ToolRequest> action) override;
-  void AddTab(
-      tabs::TabHandle tab_handle,
+  void AddActorSurface(
+      ActorSurfaceHandle actor_surface_handle,
       bool stop_task_on_detach,
       base::OnceCallback<void(mojom::ActionResultPtr)> callback) override;
-  bool HasTab(tabs::TabHandle tab_handle) override;
-  void RemoveTab(tabs::TabHandle tab_handle) override;
+  bool HasActorSurface(ActorSurfaceHandle actor_surface_handle) override;
+  void RemoveActorSurface(ActorSurfaceHandle actor_surface_handle) override;
   base::WeakPtr<actor_login::ActionSequenceDelegate> GetActionSequenceDelegate()
       override;
 
@@ -381,11 +381,6 @@ class ExecutionEngine : public ToolDelegate,
   // passes calls tool_controller_.Invoke().
   void DidFinishAsyncSafetyChecks(const url::Origin& committed_origin,
                                   mojom::ActionResultCode result_code);
-
-  // If a failure occurs before the next action starts, we associate the tab
-  // that the action would have acted on with the task, so that we can provide
-  // tab observations back to the client.
-  void FailedOnTabBeforeToolCreation();
 
   // Synchronously executes the next action. There are several types of actions,
   // including renderer-scoped actions, tab-scoped actions, and global actions.

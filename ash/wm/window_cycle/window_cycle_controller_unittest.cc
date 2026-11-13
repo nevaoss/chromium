@@ -132,6 +132,28 @@ const WindowCycleList* GetCycleList() {
   return Shell::Get()->window_cycle_controller()->window_cycle_list();
 }
 
+class ShutdownVerifyingShellDelegate : public TestShellDelegate {
+ public:
+  ShutdownVerifyingShellDelegate() = default;
+  ShutdownVerifyingShellDelegate(const ShutdownVerifyingShellDelegate&) =
+      delete;
+  ShutdownVerifyingShellDelegate& operator=(
+      const ShutdownVerifyingShellDelegate&) = delete;
+  ~ShutdownVerifyingShellDelegate() override = default;
+
+  // TestShellDelegate:
+  void SetTabScrubberEnabled(bool enabled) override {
+    TestShellDelegate::SetTabScrubberEnabled(enabled);
+    if (enabled) {
+      // When `WindowCycleList::~WindowCycleList()` re-enables the tab scrubber
+      // during `Shell::~Shell()`, `WindowCycleController` and
+      // `EventRewriterController` must still be alive on `Shell`.
+      EXPECT_NE(nullptr, Shell::Get()->window_cycle_controller());
+      EXPECT_NE(nullptr, Shell::Get()->event_rewriter_controller());
+    }
+  }
+};
+
 }  // namespace
 
 // Wrapper for WindowCycleList that exposes internal state to test functions.
@@ -3548,401 +3570,71 @@ TEST_F(MultiUserWindowCycleControllerTest,
   CompleteCycling(cycle_controller);
 }
 
-class SameAppWindowCycleControllerTest : public WindowCycleControllerTest {
+// Verifies that if all cycled windows are destroyed while `cycle_view_` is
+// still null (during the initial 150ms UI show delay), window cycling is
+// immediately canceled rather than leaving an empty `WindowCycleList` alive.
+TEST_F(WindowCycleControllerTest,
+       DestroyAllWindowsDuringInitialDelayCancelsCycling) {
+  WindowCycleList::SetDisableInitialDelayForTesting(false);
+  WindowCycleController* controller = Shell::Get()->window_cycle_controller();
+
+  std::unique_ptr<Window> window0(CreateTestWindowInShell({.window_id = 0}));
+  std::unique_ptr<Window> window1(CreateTestWindowInShell({.window_id = 1}));
+  wm::ActivateWindow(window0.get());
+
+  controller->HandleCycleWindow(
+      WindowCycleController::WindowCyclingDirection::kForward);
+  EXPECT_TRUE(controller->IsCycling());
+  EXPECT_FALSE(CycleViewExists());
+
+  window0.reset();
+  EXPECT_TRUE(controller->IsCycling());
+  window1.reset();
+  EXPECT_FALSE(controller->IsCycling());
+}
+
+class WindowCycleControllerShutdownTest : public WindowCycleControllerTest {
  public:
-  SameAppWindowCycleControllerTest()
-      : scoped_feature_list_(features::kSameAppWindowCycle) {}
-  SameAppWindowCycleControllerTest(const SameAppWindowCycleControllerTest&) =
+  WindowCycleControllerShutdownTest() = default;
+  WindowCycleControllerShutdownTest(const WindowCycleControllerShutdownTest&) =
       delete;
-  SameAppWindowCycleControllerTest& operator=(
-      const SameAppWindowCycleControllerTest&) = delete;
-  ~SameAppWindowCycleControllerTest() override = default;
+  WindowCycleControllerShutdownTest& operator=(
+      const WindowCycleControllerShutdownTest&) = delete;
+  ~WindowCycleControllerShutdownTest() override = default;
 
-  std::unique_ptr<aura::Window> CreateTestWindowWithAppID(
-      std::string app_id_key) {
-    std::unique_ptr<aura::Window> window = CreateWindowWithAppType();
-    window->SetProperty(kAppIDKey, std::move(app_id_key));
-    return window;
+ protected:
+  // WindowCycleControllerTest:
+  void SetUpInitParams(AshTestHelper::InitParams& init_params) override {
+    WindowCycleControllerTest::SetUpInitParams(init_params);
+    init_params.delegate = std::make_unique<ShutdownVerifyingShellDelegate>();
   }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-TEST_F(SameAppWindowCycleControllerTest, NotEnoughWindows) {
-  ui::test::EventGenerator* generator = GetEventGenerator();
-
-  // Cycling doesn't crash if there are no windows.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-
-  // Cycling with 1 window doesn't change anything.
-  std::unique_ptr<Window> window0(CreateTestWindowWithAppID(std::string("0")));
-  wm::ActivateWindow(window0.get());
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(window0.get()));
-
-  // Cycling with 1 unfocused window focuses the window.
-  Shell::Get()->focus_cycler()->RotateFocus(FocusCycler::FORWARD);
-  EXPECT_FALSE(wm::IsActiveWindow(window0.get()));
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(window0.get()));
-}
-
-// Cycles between windows of the same app, ignoring other windows not of the
-// same app.
-TEST_F(SameAppWindowCycleControllerTest, CycleSameApps) {
-  WindowCycleController* controller = Shell::Get()->window_cycle_controller();
-  ui::test::EventGenerator* generator = GetEventGenerator();
-
-  // Create two windows with app id 0 and three windows with app id 1.
-  std::unique_ptr<aura::Window> w0(CreateTestWindowWithAppID(std::string("0")));
-  std::unique_ptr<aura::Window> w1(CreateTestWindowWithAppID(std::string("0")));
-  std::unique_ptr<aura::Window> w2(CreateTestWindowWithAppID(std::string("1")));
-  std::unique_ptr<aura::Window> w3(CreateTestWindowWithAppID(std::string("1")));
-  std::unique_ptr<aura::Window> w4(CreateTestWindowWithAppID(std::string("1")));
-  EXPECT_TRUE(wm::IsActiveWindow(w4.get()));
-
-  // Simulate pressing and releasing Alt-backtick.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-
-  // The window cycle controller should only have 3 windows; the windows with
-  // app id 1.
-  ASSERT_EQ(3u, GetWindows(controller).size());
-
-  // 1 press should cycle from w4 to w3.
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w3.get()));
-
-  // Current MRU order: w3 -> w4 -> w2 -> w1 -> w0. 2 presses of alt backtick
-  // should cycle to w2.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(controller->IsCycling());
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w2.get()));
-
-  // Current MRU order: w2 -> w3 -> w4 -> w1 -> w0. Current same app window
-  // cycle list order: w2 -> w3 -> w4. 5 presses of alt backtick should cycle to
-  // w4.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w4.get()));
-}
-
-// Alternates between window cycling and same app window cycling.
-TEST_F(SameAppWindowCycleControllerTest, AlternateCyclingTypes) {
-  ui::test::EventGenerator* generator = GetEventGenerator();
-
-  // Create one window with app id 1, two windows with app id 2, and three
-  // windows with app id 3.
-  std::unique_ptr<aura::Window> w0(CreateTestWindowWithAppID(std::string("1")));
-  std::unique_ptr<aura::Window> w1(CreateTestWindowWithAppID(std::string("2")));
-  std::unique_ptr<aura::Window> w2(CreateTestWindowWithAppID(std::string("2")));
-  std::unique_ptr<aura::Window> w3(CreateTestWindowWithAppID(std::string("3")));
-  std::unique_ptr<aura::Window> w4(CreateTestWindowWithAppID(std::string("3")));
-  std::unique_ptr<aura::Window> w5(CreateTestWindowWithAppID(std::string("3")));
-  EXPECT_TRUE(wm::IsActiveWindow(w5.get()));
-
-  // Alt-tab 3 times to cycle to w2.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w2.get()));
-
-  // MRU order: w2 -> w5 -> w4 -> w3 -> w1 -> w0. Same app order: w2 -> w1.
-  // Alt-backtick once to cycle to w1.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w1.get()));
-
-  // MRU order: w1 -> w2 -> w5 -> w4 -> w3 -> w0. Alt-tab 5 times to get to w0.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w0.get()));
-
-  // Alt-backtick once to stay on w0.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w0.get()));
-
-  // MRU order: w0 -> w1 -> w2 -> w5 -> w4 -> w3. Shift-alt-tab once to cycle
-  // back to w3.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB,
-                                ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w3.get()));
-
-  // MRU order: w3 -> w0 -> w1 -> w2 -> w5 -> w4. Same app order: w3 -> w5 ->
-  // w4. Shift-alt-backtick twice to get to w5
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3,
-                                ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3,
-                                ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w5.get()));
-}
-
-// Tests that same app window cycling works in all desk mode, current desk mode,
-// switching between the two modes, and switching between same app window
-// cycling and normal window cycling.
-TEST_F(SameAppWindowCycleControllerTest, PerDeskMode) {
-  // On desk 1 create 1 window of app A and 3 windows of app B.
-  std::unique_ptr<aura::Window> w0(CreateTestWindowWithAppID(std::string("A")));
-  std::unique_ptr<aura::Window> w1(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w2(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w3(CreateTestWindowWithAppID(std::string("B")));
-
-  // On desk 2 create 2 windows of app A and 4 windows of app B.
-  auto* desks_controller = DesksController::Get();
+// Verifies that `Shell::~Shell()` cancels any active window cycling session
+// early during teardown (while `Shell::window_cycle_controller()` and
+// `Shell::event_rewriter_controller()` are still valid), even when cycling in
+// per-active-desk mode on an empty active desk where closing windows on other
+// desks does not notify `WindowCycleList::OnWindowDestroying()`.
+TEST_F(WindowCycleControllerShutdownTest,
+       ShellDestructionCancelsActiveWindowCycling) {
+  DesksController* desks_controller = DesksController::Get();
   desks_controller->NewDesk(DesksCreationRemovalSource::kButton);
   ASSERT_EQ(2u, desks_controller->desks().size());
-  const Desk* desk_2 = desks_controller->GetDeskAtIndex(1);
-  ActivateDesk(desk_2);
-  EXPECT_EQ(desk_2, desks_controller->active_desk());
-  std::unique_ptr<aura::Window> w4(CreateTestWindowWithAppID(std::string("A")));
-  std::unique_ptr<aura::Window> w5(CreateTestWindowWithAppID(std::string("A")));
-  std::unique_ptr<aura::Window> w6(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w7(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w8(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w9(CreateTestWindowWithAppID(std::string("B")));
 
-  // Start cycling, all desks mode should be default so we should see 7 windows
-  // of app B.
-  auto* generator = GetEventGenerator();
-  WindowCycleController* cycle_controller =
-      Shell::Get()->window_cycle_controller();
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  EXPECT_FALSE(cycle_controller->IsAltTabPerActiveDesk());
-  auto cycle_windows = GetWindows(cycle_controller);
-  EXPECT_EQ(7u, cycle_windows.size());
-  EXPECT_EQ(cycle_windows.size(), GetWindowCycleItemViews().size());
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w1.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w2.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w3.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w6.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w7.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w8.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w9.get()));
+  // Create a shell-owned app window on Desk 1, then switch to empty Desk 2 and
+  // enable per-desk Alt+Tab mode so `WindowCycleList` is created with an empty
+  // `windows_` list.
+  std::ignore = CreateWindowWithAppType(AppType::SYSTEM_APP).release();
+  ActivateDesk(desks_controller->GetDeskAtIndex(1));
+  Shell::Get()->session_controller()->GetActivePrefService()->SetBoolean(
+      prefs::kAltTabPerDesk, true);
 
-  // Select current-desk mode. We should see 4 windows of app B.
-  generator->MoveMouseTo(
-      GetWindowCycleTabSliderButtons()[1]->GetBoundsInScreen().CenterPoint());
-  generator->ClickLeftButton();
-  cycle_windows = GetWindows(cycle_controller);
-  EXPECT_EQ(4u, GetWindowCycleItemViews().size());
-  EXPECT_EQ(cycle_windows.size(), GetWindowCycleItemViews().size());
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w6.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w7.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w8.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w9.get()));
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-
-  // Go to desk 1 and start cycling, we should still be on current-desk mode and
-  // see 3 windows of app B.
-  ActivateDesk(desks_controller->GetDeskAtIndex(0));
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(cycle_controller->IsAltTabPerActiveDesk());
-  cycle_windows = GetWindows(cycle_controller);
-  EXPECT_EQ(3u, GetWindowCycleItemViews().size());
-  EXPECT_EQ(cycle_windows.size(), GetWindowCycleItemViews().size());
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w1.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w2.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w3.get()));
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-
-  // Start alt tabbing. The mode selection should be shared between alt tab and
-  // alt backtick so we should still be on current-desk mode and see 4 windows.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(cycle_controller->IsAltTabPerActiveDesk());
-  cycle_windows = GetWindows(cycle_controller);
-  EXPECT_EQ(4u, GetWindowCycleItemViews().size());
-  EXPECT_EQ(cycle_windows.size(), GetWindowCycleItemViews().size());
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w0.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w1.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w2.get()));
-  EXPECT_TRUE(std::ranges::contains(cycle_windows, w3.get()));
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-}
-
-TEST_F(SameAppWindowCycleControllerTest, RecordingSameAppCycleMetrics) {
-  // Create another desk so that desk mode metrics are collected.
-  auto* desks_controller = DesksController::Get();
-  desks_controller->NewDesk(DesksCreationRemovalSource::kButton);
-
-  // Create 2 windows of app A and 3 windows of app B.
-  std::unique_ptr<aura::Window> w1(CreateTestWindowWithAppID(std::string("A")));
-  std::unique_ptr<aura::Window> w2(CreateTestWindowWithAppID(std::string("A")));
-  std::unique_ptr<aura::Window> w3(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w4(CreateTestWindowWithAppID(std::string("B")));
-  std::unique_ptr<aura::Window> w5(CreateTestWindowWithAppID(std::string("B")));
-
-  // Alt backtick once. The new MRU order should be w4 - w5 - w3 - w2 - w1.
-  base::HistogramTester histogram_tester;
-  auto* generator = GetEventGenerator();
-  WindowCycleController* cycle_controller =
-      Shell::Get()->window_cycle_controller();
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  EXPECT_FALSE(cycle_controller->IsAltTabPerActiveDesk());
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w4.get()));
-
-  // DeskMode should have 1 in kAllDesks since all desks mode is default.
-  histogram_tester.ExpectUniqueSample(
-      "Ash.WindowCycleController.SameApp.DeskMode", /*sample=*/0,
-      /*expected_bucket_count=*/1);
-
-  // IsSameApp should be 1 since we've alt backticked once and haven't yet alt
-  // tabbed.
-  histogram_tester.ExpectTotalCount(
-      "Ash.WindowCycleController.SameApp.IsSameApp", 1);
-
-  // Skipped should have 1 entry in the 0 bucket since there were no windows of
-  // app type A between the two windows of app type B in the MRU order.
-  histogram_tester.ExpectUniqueSample(
-      "Ash.WindowCycleController.SameApp.SkippedWindows", /*sample=*/0,
-      /*expected_bucket_count=*/1);
-
-  // Alt tab to w2 and then to w4. This should change none of the alt backtick
-  // metrics. The new MRU order should be w4 - w2 - w5 - w3 - w1.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w2.get()));
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w4.get()));
-
-  // Alt backticking once should get us from w4 to w5, skipping w2. The new MRU
-  // order should be w5 - w4 - w2 - w3 - w1.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w5.get()));
-
-  // The kAllDesks bucket in DeskMode should now be 2. We've alt backticked
-  // twice so the true bucket for IsSameApp should be 2. Skipped should have a
-  // new bucket with a skip distance of 1, and a value of 1 entry in that
-  // bucket.
-  histogram_tester.ExpectUniqueSample(
-      "Ash.WindowCycleController.SameApp.DeskMode", /*sample=*/0,
-      /*expected_bucket_count=*/2);
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.IsSameApp", true, 2);
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.SkippedWindows", /*sample=*/1,
-      /*expected_count=*/1);
-
-  // Alt tab to w2 and switch the per desk mode to current desk. The new MRU
-  // order should be w2 - w5 - w4 - w3 - w1.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->MoveMouseTo(
-      GetWindowCycleTabSliderButtons()[1]->GetBoundsInScreen().CenterPoint());
-  generator->ClickLeftButton();
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(cycle_controller->IsAltTabPerActiveDesk());
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w2.get()));
-
-  // Alt Backtick once from w2 to w1, skipping w5, w4, and w3. The new MRU order
-  // should be w1 - w2 - w5 - w4 - w3.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w1.get()));
-
-  // DeskMode should have a new bucket for kCurrentDesk with a value of 1,
-  // IsSameApp true should be 3, and we should have a new skip distance bucket
-  // of 3 with 1 entry.
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.DeskMode", /*sample=*/1,
-      /*expected_count=*/1);
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.IsSameApp", true, 3);
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.SkippedWindows", /*sample=*/3,
-      /*expected_count=*/1);
-
-  // DeskMode and Skipped should both only have 3 entries between all their
-  // buckets: the number of times we alt backticked.
-  histogram_tester.ExpectTotalCount(
-      "Ash.WindowCycleController.SameApp.DeskMode", 3);
-  histogram_tester.ExpectTotalCount(
-      "Ash.WindowCycleController.SameApp.SkippedWindows", 3);
-
-  // Alt tab to w5 and then back to w1. The new MRU order should be w1 - w5 - w2
-  // - w4 - w3.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w5.get()));
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_TAB, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w1.get()));
-
-  // Alt backtick through the whole cycle list and then to w2. The loop
-  // shouldn't double count the skipped window. The new MRU order should be w2 -
-  // w1 - w5 - w4 - w3.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3, ui::EF_ALT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w2.get()));
-
-  // Skipping the same window twice should only count as one window skipped, so
-  // the bucket for a skip distance of 1 should have one more.
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.SkippedWindows", /*sample=*/1,
-      /*expected_count=*/2);
-
-  // We've alt tabbed 5 times, so the false bucket of IsSameApp should be 5.
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.IsSameApp", false, 5);
-
-  // Shift Alt backtick once to w1. A skip distance of 3 should be counted.
-  generator->PressKey(ui::VKEY_MENU, ui::EF_NONE);
-  generator->PressAndReleaseKey(ui::VKEY_OEM_3,
-                                ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN);
-  generator->ReleaseKey(ui::VKEY_MENU, ui::EF_NONE);
-  EXPECT_TRUE(wm::IsActiveWindow(w1.get()));
-
-  histogram_tester.ExpectBucketCount(
-      "Ash.WindowCycleController.SameApp.SkippedWindows", /*sample=*/3,
-      /*expected_count=*/2);
+  WindowCycleController* controller = Shell::Get()->window_cycle_controller();
+  controller->StartCycling(/*same_app_only=*/false);
+  EXPECT_TRUE(controller->IsCycling());
+  EXPECT_TRUE(GetWindows(controller).empty());
+  // Leave cycling active as the test finishes so `Shell::~Shell()` tears it
+  // down during `AshTestBase::TearDown()`.
 }
 
 }  // namespace ash

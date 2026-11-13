@@ -19,6 +19,7 @@
 #include "base/supports_user_data.h"
 #include "base/types/expected.h"
 #include "base/types/pass_key.h"
+#include "chrome/browser/actor/actor_surface_handle.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_task_delegate.h"
 #include "chrome/browser/actor/tools/registry/tool_registry.h"
@@ -52,6 +53,7 @@ class UiEventDispatcher;
 }  // namespace ui
 
 class ActorSurfaceRegistry;
+class ChromeActuationTransportHandlerFactory;
 class EnterprisePolicyChecker;
 class ActorTaskMetadata;
 class HeadlessWebContentsManager;
@@ -151,9 +153,15 @@ class ActorKeyedService : public KeyedService,
   // in the given `tab`.
   bool IsActiveOnTab(const tabs::TabInterface& tab) const;
 
-  // Returns an ActorTask which has the given tab in its set. Returns null if no
-  // task has `tab`. Note: a returned task may be paused.
+  // Deprecated: Use GetTaskFromActorSurface() instead. Returns an ActorTask
+  // which has the given tab in its set. Returns null if no task has `tab`.
+  // Note: a returned task may be paused.
   ActorTask* GetTaskFromTab(const tabs::TabInterface& tab) const;
+
+  // Returns an ActorTask which has the given surface in its set. Returns null
+  // if no task has `actor_surface_handle`. Note: a returned task may be paused.
+  ActorTask* GetTaskFromActorSurface(
+      ActorSurfaceHandle actor_surface_handle) const;
 
   Profile* GetProfile();
 
@@ -162,6 +170,15 @@ class ActorKeyedService : public KeyedService,
   // Request a TabObservation be generated from the given tab.
   void RequestTabObservation(
       tabs::TabInterface& tab,
+      TaskId task_id,
+      std::optional<page_content_annotations::ScreenshotOptions::
+                        ScreenshotCollectionOptions>
+          screenshot_collection_options,
+      base::OnceCallback<void(TabObservationResult)> callback);
+
+  // Request a TabObservation be generated from the given surface.
+  void RequestActorSurfaceObservation(
+      ActorSurfaceHandle actor_surface_handle,
       TaskId task_id,
       std::optional<page_content_annotations::ScreenshotOptions::
                         ScreenshotCollectionOptions>
@@ -338,6 +355,12 @@ class ActorKeyedService : public KeyedService,
   // surfaces.
   std::unique_ptr<HeadlessWebContentsManager> headless_web_contents_manager_;
   std::unique_ptr<ActorSurfaceRegistry> surface_registry_;
+
+  // Registered with `BrowserActuatorService` when `kBrowserActuator` is
+  // enabled, and unregistered and destroyed in `Shutdown()` after tasks are
+  // cleared.
+  std::unique_ptr<ChromeActuationTransportHandlerFactory>
+      actuation_transport_handler_factory_;
 
   std::map<TaskId, std::unique_ptr<ActorTask>> active_tasks_;
 

@@ -581,6 +581,13 @@ BASE_FEATURE(kAutofillAtMemorySearchStatefulness,
 BASE_FEATURE(kAutofillAtMemorySupportContenteditableOnAndroid,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Controls whether <textarea> fields on Android are supported for AtMemory.
+// When enabled, the keyboard accessory is shown on textareas with only the
+// AtMemory entry point, and regular Autofill suggestions are not generated
+// for them.
+BASE_FEATURE(kAutofillAtMemorySupportTextAreaOnAndroid,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, AtMemory can be triggered with a keyboard shortcut like
 // Ctrl+Space.
 BASE_FEATURE(kAutofillAtMemoryTriggerShortcut,
@@ -829,7 +836,7 @@ BASE_FEATURE(kAutofillFixIframeOwnership, base::FEATURE_DISABLED_BY_DEFAULT);
 // Prioritizes ADDRESS_HOME_STREET_ADDRESS over postal code in inferred labels.
 // See crbug.com/540151895.
 BASE_FEATURE(kAutofillFixLabelGenerationForStreetAddress,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the rewriter uses updated rewrite rules.
 // TODO(crbug.com/445863287): Cleanup when launched.
@@ -1139,6 +1146,13 @@ BASE_FEATURE(kAutofillUsePassedFormAndFieldIds,
 // TODO(crbug.com/431737839): Clean up when roll out finishes successfully.
 BASE_FEATURE(kAutofillUseStructuralSignatureInsteadOfSecondary,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, `FinalizeNameAddressComponent()` wipes invalid name
+// substructures regardless of the root node's verification status, and
+// `NameInfo::SetRawInfoWithVerificationStatus()` invalidates child nodes when
+// overwriting a non-empty full name with a non-token-equivalent value.
+BASE_FEATURE(kAutofillWipeInvalidNameStructure,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the field classification model uses runtime caching to not run
 // models on the same inputs multiple times.

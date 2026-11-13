@@ -5,6 +5,7 @@
 #include "chrome/browser/actor/ui/event_dispatcher.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -58,6 +59,17 @@ inline constexpr bool is_variant = is_variant_t<T>::value;
 template <typename T>
 using EventSequence = base::circular_deque<T>;
 
+// Returns the actor surface's tab, or nullopt for a headless actor surface,
+// which has no tab-level actor UI.
+// TODO(b/573589740): Add UI support for headless.
+std::optional<tabs::TabHandle> GetTabHandle(const ToolRequest& tr) {
+  tabs::TabHandle tab = tr.GetActorSurfaceHandle().GetTabHandle();
+  if (tab == tabs::TabHandle::Null()) {
+    return std::nullopt;
+  }
+  return tab;
+}
+
 template <typename T>
 auto NoUiEvents = [](const T& tr) -> EventSequence<AsyncUiEvent> {
   return EventSequence<AsyncUiEvent>();
@@ -65,10 +77,14 @@ auto NoUiEvents = [](const T& tr) -> EventSequence<AsyncUiEvent> {
 
 constexpr absl::Overload PreToolEventsFn{
     [](const ClickToolRequest& tr) {
-      auto [pt, source] = ComputeMouseTarget(tr.GetTabHandle(), tr.GetTarget());
+      std::optional<tabs::TabHandle> tab = GetTabHandle(tr);
+      if (!tab) {
+        return EventSequence<AsyncUiEvent>();
+      }
+      auto [pt, source] = ComputeMouseTarget(*tab, tr.GetTarget());
       return EventSequence<AsyncUiEvent>{
-          MouseMove(tr.GetTabHandle(), pt, source),
-          MouseClick(tr.GetTabHandle(), tr.GetClickType(), tr.GetClickCount())};
+          MouseMove(*tab, pt, source),
+          MouseClick(*tab, tr.GetClickType(), tr.GetClickCount())};
     },
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<ActivateTabToolRequest>,
@@ -81,6 +97,7 @@ constexpr absl::Overload PreToolEventsFn{
     NoUiEvents<ExitFullscreenToolRequest>,
 #endif
     NoUiEvents<AddBookmarkToolRequest>,
+    NoUiEvents<CloseGeminiPanelToolRequest>,
     NoUiEvents<DragAndReleaseToolRequest>,
     NoUiEvents<FileUploadToolRequest>,
     NoUiEvents<FindAndHighlightToolRequest>,
@@ -90,9 +107,12 @@ constexpr absl::Overload PreToolEventsFn{
     NoUiEvents<LoadAndExtractContentToolRequest>,
 #endif
     [](const MoveMouseToolRequest& tr) {
-      auto [pt, source] = ComputeMouseTarget(tr.GetTabHandle(), tr.GetTarget());
-      return EventSequence<AsyncUiEvent>{
-          MouseMove(tr.GetTabHandle(), pt, source)};
+      std::optional<tabs::TabHandle> tab = GetTabHandle(tr);
+      if (!tab) {
+        return EventSequence<AsyncUiEvent>();
+      }
+      auto [pt, source] = ComputeMouseTarget(*tab, tr.GetTarget());
+      return EventSequence<AsyncUiEvent>{MouseMove(*tab, pt, source)};
     },
     NoUiEvents<NavigateToolRequest>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
@@ -101,19 +121,24 @@ constexpr absl::Overload PreToolEventsFn{
     NoUiEvents<PauseMediaToolRequest>,
     NoUiEvents<PerformSearchToolRequest>,
     NoUiEvents<PlayMediaToolRequest>,
+    NoUiEvents<PromptGeminiPanelToolRequest>,
     NoUiEvents<ReloadPageToolRequest>,
     NoUiEvents<RemoveBookmarkToolRequest>,
     NoUiEvents<ScrollToolRequest>,
     NoUiEvents<SeekMediaToolRequest>,
     NoUiEvents<SelectToolRequest>,
+    NoUiEvents<SiteBasedSearchToolRequest>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<SwitchTabToolRequest>,
 #endif
     NoUiEvents<TranslatePageToolRequest>,
     [](const TypeToolRequest& tr) {
-      auto [pt, source] = ComputeMouseTarget(tr.GetTabHandle(), tr.GetTarget());
-      return EventSequence<AsyncUiEvent>{
-          MouseMove(tr.GetTabHandle(), pt, source)};
+      std::optional<tabs::TabHandle> tab = GetTabHandle(tr);
+      if (!tab) {
+        return EventSequence<AsyncUiEvent>();
+      }
+      auto [pt, source] = ComputeMouseTarget(*tab, tr.GetTarget());
+      return EventSequence<AsyncUiEvent>{MouseMove(*tab, pt, source)};
     },
     NoUiEvents<WaitToolRequest>,
     NoUiEvents<AttemptLoginToolRequest>,
@@ -136,6 +161,7 @@ constexpr absl::Overload PostToolEventsFn{
     NoUiEvents<ExitFullscreenToolRequest>,
 #endif
     NoUiEvents<AddBookmarkToolRequest>,
+    NoUiEvents<CloseGeminiPanelToolRequest>,
     NoUiEvents<DragAndReleaseToolRequest>,
     NoUiEvents<FileUploadToolRequest>,
     NoUiEvents<FindAndHighlightToolRequest>,
@@ -152,11 +178,13 @@ constexpr absl::Overload PostToolEventsFn{
     NoUiEvents<PauseMediaToolRequest>,
     NoUiEvents<PerformSearchToolRequest>,
     NoUiEvents<PlayMediaToolRequest>,
+    NoUiEvents<PromptGeminiPanelToolRequest>,
     NoUiEvents<ReloadPageToolRequest>,
     NoUiEvents<RemoveBookmarkToolRequest>,
     NoUiEvents<ScrollToolRequest>,
     NoUiEvents<SeekMediaToolRequest>,
     NoUiEvents<SelectToolRequest>,
+    NoUiEvents<SiteBasedSearchToolRequest>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<SwitchTabToolRequest>,
 #endif
@@ -194,6 +222,10 @@ constexpr absl::Overload ActorTaskSyncChangeFn{
     },
     [](const UiEventDispatcher::RemoveTab& c) {
       return EventSequence<SyncUiEvent>{StoppedActingOnTab(c.handle)};
+    },
+    [](const UiEventDispatcher::UpdateTaskStepProgress& c) {
+      return EventSequence<SyncUiEvent>{
+          TaskStepProgressUpdated(c.task_id, c.step_progress)};
     },
 };
 
@@ -274,6 +306,11 @@ struct InputTraits<UiEventDispatcher::ActorTaskSyncChange> {
               return absl::StrFormat("RemoveTab task_id=%d tab=%d",
                                      c.task_id.GetUnsafeValue(),
                                      c.handle.raw_value());
+            },
+            [](const UiEventDispatcher::UpdateTaskStepProgress& c) {
+              return absl::StrFormat(
+                  "UpdateTaskStepProgress task_id=%d step_progress=%s",
+                  c.task_id.GetUnsafeValue(), c.step_progress);
             }};
         return std::visit(DebugFn, change);
       };

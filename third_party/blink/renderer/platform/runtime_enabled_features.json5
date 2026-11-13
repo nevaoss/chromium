@@ -392,6 +392,10 @@
       status: "stable",
     },
     {
+      name: "AIPageContentIncludeMathML",
+      status: "stable",
+    },
+    {
       name: "AIPageContentIncludeSVGSubtree",
       status: "stable"
     },
@@ -1202,6 +1206,13 @@
       status: "stable",
     },
     {
+      // Updates the sequential focus navigation starting point when moving the
+      // caret with the keyboard during caret browsing.
+      // https://crbug.com/567653181
+      name: "CaretBrowsingSequentialFocusStartingPoint",
+      status: "stable",
+    },
+    {
       // Keeps the caret outside an editable atomic inline - e.g.
       // <div contenteditable style="display:inline-block"> - for a click that
       // landed next to the box rather than on it.
@@ -1365,15 +1376,6 @@
       // https://issues.chromium.org/issues/346766786
       name: "ComposedPathReturnTargetBeingDispatched",
       status: "stable",
-    },
-    {
-      name: "CompositeBGColorAnimation",
-      public: true,
-      status: "stable",
-      base_feature: "none",
-    },
-    {
-      name: "CompositeBoxShadowAnimation",
     },
     {
       name: "CompositeClipPathAnimation",
@@ -2734,6 +2736,14 @@
       status: "stable",
     },
     {
+      // When enabled, the cursor needs to move past the drag start threshold in
+      // absolute screen coordinates rather than window relative coordinates.
+      // See https://crbug.com/40943926 and
+      // https://html.spec.whatwg.org/multipage/dnd.html#security-risks-in-the-drag-and-drop-model
+      name: "DragThresholdRequiresMouseMovement",
+      status: "test"
+    },
+    {
       // See: crrev.com/c/7874048
       // Diagnostic flag to gather data for a case when compositable animations lack snapshots without a known reason.
       name: "DumpForAbsentKeyframeSnapshots",
@@ -2938,9 +2948,10 @@
     {
       name: "EyeDropperAPI",
       status: {
-        // EyeDropper UI is available on ChromeOS, Linux (x11), Mac, and Win.
+        // EyeDropper UI is available on Android, ChromeOS, Linux (x11), Mac, and Win.
         // This list should match the supported operating systems for the
         // kEyeDropper base::Feature.
+        "Android": "stable",
         "ChromeOS": "stable",
         "Linux": "stable",
         "Mac": "stable",
@@ -2955,6 +2966,10 @@
     {
       name: "FaceDetector",
       status: "experimental",
+    },
+    {
+      name: "FastCompositionCharacterBounds",
+      status: "stable",
     },
     {
       name: "FastPositionIterator",
@@ -4031,7 +4046,7 @@
         "Mac": "stable",
         "Linux": "stable",
         "ChromeOS": "stable",
-        "Android": "test",
+        "Android": "stable",
         "default": "",
       },
       base_feature_status: "enabled",
@@ -4200,6 +4215,11 @@
       // explainer: https://github.com/WICG/delayed-message-timing
       name: "LongAnimationFrameWorker",
       status: "test",
+    },
+    {
+      // https://crbug.com/572893186
+      name: "LongPressHitTestInFrame",
+      status: "stable",
     },
     {
       // Long press on a link selects the link text instead of bringing up
@@ -4468,6 +4488,7 @@
     // Optimization for monospace text.
     {
       name: "MonospaceGlyphCompaction",
+      status: "test",
     },
     // Move the selection to the last position in the list item. See
     // https://crbug.com/331841851
@@ -4532,6 +4553,17 @@
         "default": "experimental",
       },
       base_feature: "none",
+    },
+    {
+      // See crbug.com/567611289
+      // Per https://www.w3.org/TR/web-animations-1/
+      // #the-effect-value-of-a-keyframe-animation-effect:
+      // Keyframes not affecting the target property are to be removed prior
+      // to populating interval endpoints. Blink's longstanding behavior was
+      // not spec-compliant. Introducing a kill-switch to allow a quick revert
+      // should this be a breaking change for sites.
+      name: "NeutralKeyframeEasingCompliance",
+      status: "stable"
     },
     {
       // See crbug.com/521921832
@@ -5434,6 +5466,11 @@
       status: "stable",
     },
     {
+      // https://crbug.com/567626030
+      name: "ReplaceCompositionActualInsertedLength",
+      status: "stable",
+    },
+    {
       // Kill switch for painting non-SVG replaced normal-flow stacking
       // contexts inline with their siblings.
       // This was set to experimental due to crbug.com/532229489.
@@ -5451,10 +5488,6 @@
     {
       name: "RequestIsReloadNavigation",
       status: "stable",
-    },
-    {
-      name: "RequestStorageAccessFor",
-      base_feature: "none",
     },
     {
       name: "ResourceTimingInitiator",
@@ -5826,6 +5859,16 @@
       name: "SelectedcontentMultiple",
       status: "experimental",
       depends_on: ["CustomizableSelectMultiplePopup"],
+    },
+    {
+      // Makes minor tweaks to edge cases with the <selectedcontent> element.
+      // The prior set of spec-driven changes to the selectedcontent element
+      // were called "SelectedcontentSpec", so this one is called
+      // "SelectedcontentSpec2".
+      // https://github.com/whatwg/html/pull/12263
+      // Enabled in M156, can be removed in M159.
+      name: "SelectedcontentSpec2",
+      status: "stable",
     },
     {
       // See https://crbug.com/40664519
@@ -6279,11 +6322,6 @@
       origin_trial_type: "deprecation",
       origin_trial_allows_insecure: true,
       origin_trial_allows_third_party: true,
-    },
-    {
-      // Killswitch M149.
-      name: "StickyPositionHasOverflowPerAxis",
-      status: "stable",
     },
     {
       // Preserves the sticky user activation state after a page navigates to
@@ -6887,9 +6925,18 @@
     },
     {
       // The Unbounded Element API. See crbug.com/508672616.
-      // Enable Unbounded Element on the open web without privileged context.
+      // Allows open web content to escape the bounds of the top level window.
+      name: "UnsafeEscapingUnboundedElementOnTheOpenWeb",
+      public: true,
+    },
+    {
+      // The Unbounded Element API. See crbug.com/508672616.
+      // Enable Unbounded Element on the open web, with the bounds of the
+      // unbounded element limited to the topmost main frame bounds. (No
+      // escaping beyond the main frame, including over the Omnibox, etc.)
       name: "UnsafeUnboundedElementOnTheOpenWeb",
       public: true,
+      implied_by: ["UnsafeEscapingUnboundedElementOnTheOpenWeb"],
     },
     // If enabled, notify the associated DisplayCutoutHost of changes in
     // complex safe area constraint usage on the page.
@@ -7036,6 +7083,21 @@
     {
       name: "ViewTransitionLongCallbackTimeoutForTesting",
       status: "test",
+    },
+    {
+      // Kill switch for https://crbug.com/568974861, which prevents painting
+      // view transition content (which may contain cross-origin frames) under
+      // SVG reference filters.
+      name: "ViewTransitionPreventSvgFilterPaint",
+      status: "stable",
+    },
+    {
+      // Kill switch. Doesn't generate the ::view-transition pseudo-element
+      // tree when capturing the outgoing document of a cross-document view
+      // transition, since the animation runs on the new document. This avoids
+      // extra style and layout passes in the capture frame.
+      name: "ViewTransitionSkipPseudoTreeForNavigationCapture",
+      status: "stable",
     },
     {
       // Kill switch for https://crbug.com/569098933. Doesn't snap the browser
@@ -7360,7 +7422,7 @@
     },
     {
       name: "WebHID",
-      status: {"Android": "experimental", "default": "stable"},
+      status: "stable",
     },
     {
       // It is only enabled in extension environment for now.
@@ -7404,9 +7466,15 @@
       copied_from_base_feature_if: "overridden",
       // Note that `depends_on` isn't supported by origin trials.
       implied_by: [
+        "WebMCPContinuations",
         "WebMCPDeclarativeFileInput",
         "WebMCPFormAssociatedCustomElements"
       ],
+      status: "experimental",
+    },
+    {
+      name: "WebMCPContinuations",
+      public: true,
       status: "experimental",
     },
     {
@@ -7809,7 +7877,6 @@
       // See XSLTSpecialTrial below.
       // crbug.com/435623334.
       name: "XSLT",
-      status: "stable",
       public: true,
       origin_trial_feature_name: "XSLT",
       origin_trial_type: "deprecation",

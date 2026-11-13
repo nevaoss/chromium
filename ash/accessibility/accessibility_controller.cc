@@ -61,6 +61,7 @@
 #include "ash/system/accessibility/dictation_button_tray.h"
 #include "ash/system/accessibility/facegaze_bubble_controller.h"
 #include "ash/system/accessibility/floating_accessibility_controller.h"
+#include "ash/system/accessibility/hover_text_bubble_controller.h"
 #include "ash/system/accessibility/select_to_speak/select_to_speak_menu_bubble_controller.h"
 #include "ash/system/accessibility/switch_access/switch_access_menu_bubble_controller.h"
 #include "ash/system/input_device_settings/input_device_settings_controller_impl.h"
@@ -77,6 +78,8 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/i18n/language_tag.h"
+#include "base/i18n/tag_converters.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
@@ -224,8 +227,8 @@ const FeatureData kFeatures[] = {
      /*toggleable_in_quicksettings=*/true},
     {FeatureType::kDisableTouchpad, prefs::kAccessibilityDisableTrackpadEnabled,
      nullptr, 0, /*toggleable_in_quicksettings=*/false},
-    {FeatureType::kHoverText, prefs::kAccessibilityHoverTextEnabled, nullptr,
-     IDS_ASH_STATUS_TRAY_ACCESSIBILITY_HOVER_TEXT,
+    {FeatureType::kHoverText, prefs::kAccessibilityHoverTextEnabled,
+     &kHoverTextIcon, IDS_ASH_STATUS_TRAY_ACCESSIBILITY_HOVER_TEXT,
      /*toggleable_in_quicksettings=*/true,
      /*conflicting_feature=*/FeatureType::kSpokenFeedback},
 };
@@ -967,6 +970,11 @@ void AccessibilityController::Feature::UpdateFromPref() {
     enabled = false;
   }
 
+  if (type_ == FeatureType::kHoverText &&
+      !::features::IsAccessibilityHoverTextEnabled()) {
+    enabled = false;
+  }
+
   if (enabled) {
     // If it was turned on and we are in a active logged in session,
     // prepare to record duration metrics.
@@ -1574,6 +1582,7 @@ void AccessibilityController::Shutdown() {
   // Clean up any child windows and widgets that might be animating out.
   dictation_bubble_controller_.reset();
   facegaze_bubble_controller_.reset();
+  hover_text_bubble_controller_.reset();
 
   for (auto& observer : observers_) {
     observer.OnAccessibilityControllerShutdown();
@@ -2287,18 +2296,19 @@ void AccessibilityController::ShowDictationKeyboardDialog() {
 
   dictation_keyboard_dialog_showing_for_testing_ = true;
 
-  std::string dictation_locale;
-  if (active_user_prefs_->GetString(prefs::kAccessibilityDictationLocale)
-          .empty()) {
-    dictation_locale = client_->GetDictationDefaultLocale(/*new_user=*/true);
-  } else {
-    dictation_locale =
-        active_user_prefs_->GetString(prefs::kAccessibilityDictationLocale);
-  }
+  const std::string& dictation_locale_pref =
+      active_user_prefs_->GetString(prefs::kAccessibilityDictationLocale);
+  const std::optional<base::i18n::LanguageTag> dictation_locale =
+      dictation_locale_pref.empty()
+          ? client_->GetDictationDefaultLocale(/*new_user=*/true)
+          : base::i18n::GetLanguageTagFromString(dictation_locale_pref);
 
-  std::u16string display_locale = l10n_util::GetDisplayNameForLocale(
-      /*locale=*/dictation_locale, /*display_locale=*/dictation_locale,
-      /*is_for_ui=*/true);
+  std::u16string display_locale =
+      dictation_locale
+          ? l10n_util::GetDisplayNameForLocale(
+                /*locale=*/*dictation_locale,
+                /*display_locale=*/*dictation_locale, /*is_for_ui=*/true)
+          : std::u16string();
   std::vector<std::u16string> replacements{display_locale};
   std::u16string title =
       l10n_util::GetStringUTF16(IDS_ASH_DICTATION_KEYBOARD_DIALOG_TITLE);
@@ -2379,8 +2389,8 @@ void AccessibilityController::OnSelectToSpeakKeyboardDialogDismissed() {
 }
 
 void AccessibilityController::ShowDictationLanguageUpgradedNudge(
-    const std::string& dictation_locale,
-    const std::string& application_locale) {
+    const base::i18n::LanguageTag& dictation_locale,
+    const base::i18n::LanguageTag& application_locale) {
   const std::u16string language_name = l10n_util::GetDisplayNameForLocale(
       dictation_locale, application_locale, /*is_for_ui=*/true);
   const std::u16string body_text = l10n_util::GetStringFUTF16(
@@ -4008,12 +4018,33 @@ void AccessibilityController::UpdateFeatureFromPref(FeatureType feature) {
       UpdateFlashNotificationsFromPrefs();
       break;
     case FeatureType::kHoverText:
+      if (enabled && ::features::IsAccessibilityHoverTextEnabled()) {
+        if (!hover_text_bubble_controller_) {
+          hover_text_bubble_controller_ =
+              std::make_unique<HoverTextBubbleController>();
+        }
+      } else {
+        hover_text_bubble_controller_.reset();
+      }
       break;
     case FeatureType::kFeatureCount:
     case FeatureType::kNoConflictingFeature:
       NOTREACHED();
   }
   NotifyAccessibilityStatusChanged();
+}
+
+void AccessibilityController::UpdateHoverTextBubble(
+    const HoverTextBubbleProps& props) {
+  if (!hover_text_bubble_controller_) {
+    return;
+  }
+  hover_text_bubble_controller_->UpdateBubble(props);
+}
+
+HoverTextBubbleController*
+AccessibilityController::GetHoverTextBubbleControllerForTest() {
+  return hover_text_bubble_controller_.get();
 }
 
 void AccessibilityController::UpdateDictationBubble(

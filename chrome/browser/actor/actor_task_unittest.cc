@@ -44,6 +44,8 @@ namespace {
 
 using ChangeTaskState = ui::UiEventDispatcher::ChangeTaskState;
 using testing::_;
+using testing::AllOf;
+using testing::ElementsAre;
 using testing::Eq;
 using testing::Field;
 using testing::Property;
@@ -301,6 +303,58 @@ TEST_F(ActorTaskTest, BasicGetters) {
   EXPECT_NE(task_->GetWeakPtr(), nullptr);
 }
 
+TEST_F(ActorTaskTest, SetStepProgressSendsEveryUpdateToUi) {
+  using UpdateTaskStepProgress = ui::UiEventDispatcher::UpdateTaskStepProgress;
+  EXPECT_CALL(
+      *mock_ui_event_dispatcher_,
+      OnActorTaskSyncChange(VariantWith<UpdateTaskStepProgress>(AllOf(
+          Field(&UpdateTaskStepProgress::task_id, Eq(task_->id())),
+          Field(&UpdateTaskStepProgress::step_progress, Eq("Searching"))))))
+      .Times(2);
+  EXPECT_CALL(*mock_ui_event_dispatcher_,
+              OnActorTaskSyncChange(VariantWith<UpdateTaskStepProgress>(AllOf(
+                  Field(&UpdateTaskStepProgress::task_id, Eq(task_->id())),
+                  Field(&UpdateTaskStepProgress::step_progress,
+                        Eq("Adding to cart"))))))
+      .Times(1);
+  EXPECT_CALL(*mock_ui_event_dispatcher_,
+              OnActorTaskSyncChange(VariantWith<UpdateTaskStepProgress>(AllOf(
+                  Field(&UpdateTaskStepProgress::task_id, Eq(task_->id())),
+                  Field(&UpdateTaskStepProgress::step_progress, Eq(""))))))
+      .Times(1);
+
+  task_->SetStepProgress("Searching");
+  task_->SetStepProgress("Searching");
+  task_->SetStepProgress("Adding to cart");
+  task_->SetStepProgress("");
+}
+
+TEST_F(ActorTaskTest, SetStepProgressUpdatesStateBeforeUiEvent) {
+  using UpdateTaskStepProgress = ui::UiEventDispatcher::UpdateTaskStepProgress;
+  EXPECT_CALL(*mock_ui_event_dispatcher_,
+              OnActorTaskSyncChange(VariantWith<UpdateTaskStepProgress>(_)))
+      .WillOnce([&] { EXPECT_EQ(task_->step_progress(), "Searching"); });
+
+  task_->SetStepProgress("Searching");
+}
+
+TEST_F(ActorTaskTest, SetStepProgressNotifiesObserversOnlyOnChange) {
+  std::vector<std::string> updates;
+  base::CallbackListSubscription subscription =
+      ActorKeyedService::Get(profile_.get())
+          ->AddTaskStepProgressChangedCallback(base::BindLambdaForTesting(
+              [&](ActorTask&, const std::string& step_progress) {
+                updates.push_back(step_progress);
+              }));
+
+  task_->SetStepProgress("Searching");
+  task_->SetStepProgress("Searching");
+  task_->SetStepProgress("Adding to cart");
+
+  EXPECT_THAT(updates, ElementsAre("Searching", "Adding to cart"));
+  EXPECT_EQ(task_->step_progress(), "Adding to cart");
+}
+
 TEST_F(ActorTaskTest, StaticStateHelpers) {
   EXPECT_FALSE(ActorTask::IsCompletedState(ActorTask::State::kCreated));
   EXPECT_FALSE(ActorTask::IsCompletedState(ActorTask::State::kActing));
@@ -374,7 +428,8 @@ TEST_F(ActorTaskTest, ObserveTabOnceAndActing) {
 
   // Transitively verify ObserveTabOnce does not double add if already present.
   task_->ObserveTabOnce(mock_tab.GetHandle());
-  EXPECT_TRUE(task_->GetLastActedTabs().contains(mock_tab.GetHandle()));
+  EXPECT_TRUE(task_->GetLastActedActorSurfaces().contains(
+      ActorSurfaceHandle::From(mock_tab.GetHandle())));
 }
 
 TEST_F(ActorTaskTest, GetLastActuatedTabPreservedAfterTaskCompleted) {
@@ -392,7 +447,7 @@ TEST_F(ActorTaskTest, GetLastActuatedTabPreservedAfterTaskCompleted) {
   task_->Stop(ActorTask::StoppedReason::kTaskComplete);
 
   EXPECT_TRUE(task_->GetTabs().empty());
-  EXPECT_TRUE(task_->GetLastActedTabs().empty());
+  EXPECT_TRUE(task_->GetLastActedActorSurfaces().empty());
   EXPECT_EQ(task_->GetLastActuatedTab(), &mock_tab);
   EXPECT_EQ(task_->GetLastActuatedTabHandle().raw_value(),
             mock_tab.GetHandle().raw_value());
@@ -820,7 +875,9 @@ TEST_F(ActorTaskTest, AddTab_RejectsCrossProfileTab) {
                 add_tab_future.GetCallback());
   auto result = add_tab_future.Take();
   ASSERT_TRUE(result);
-  EXPECT_EQ(result->code, mojom::ActionResultCode::kActionTargetCrossProfile);
+  // The tab has no surface in this task's profile, so it can't be added and is
+  // reported as gone.
+  EXPECT_EQ(result->code, mojom::ActionResultCode::kTabWentAway);
   EXPECT_FALSE(task_->HasTab(cross_profile_tab->GetHandle()));
   EXPECT_FALSE(task_->GetTabs().contains(cross_profile_tab->GetHandle()));
 }
@@ -836,7 +893,9 @@ TEST_F(ActorTaskTest, AddTab_RejectsCrossProfileTabEvenWithNullContents) {
                 add_tab_future.GetCallback());
   auto result = add_tab_future.Take();
   ASSERT_TRUE(result);
-  EXPECT_EQ(result->code, mojom::ActionResultCode::kActionTargetCrossProfile);
+  // The tab has no surface in this task's profile, so it can't be added and is
+  // reported as gone.
+  EXPECT_EQ(result->code, mojom::ActionResultCode::kTabWentAway);
   EXPECT_FALSE(task_->HasTab(cross_profile_tab->GetHandle()));
   EXPECT_FALSE(task_->GetTabs().contains(cross_profile_tab->GetHandle()));
 }
@@ -892,14 +951,15 @@ TEST_F(ActorTaskTest, AddActorSurface_RejectsCrossProfileSurface) {
 TEST_F(ActorTaskTest, ObserveTabOnce_RejectsNonExistentAndCrossProfileTab) {
   tabs::TabHandle non_existent_handle(99999);
   task_->ObserveTabOnce(non_existent_handle);
-  EXPECT_FALSE(task_->GetLastActedTabs().contains(non_existent_handle));
+  EXPECT_FALSE(task_->GetLastActedActorSurfaces().contains(
+      ActorSurfaceHandle::From(non_existent_handle)));
 
   std::unique_ptr<tabs::MockTabInterface> cross_profile_tab =
       CreateCrossProfileMockTab();
 
   task_->ObserveTabOnce(cross_profile_tab->GetHandle());
-  EXPECT_FALSE(
-      task_->GetLastActedTabs().contains(cross_profile_tab->GetHandle()));
+  EXPECT_FALSE(task_->GetLastActedActorSurfaces().contains(
+      ActorSurfaceHandle::From(cross_profile_tab->GetHandle())));
 }
 
 // Uses a mock tab that has a real WebContents and a registered surface, as

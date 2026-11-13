@@ -74,6 +74,7 @@ import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.test.util.TestAccounts;
 import org.chromium.components.sync_device_info.FormFactor;
 import org.chromium.components.sync_device_info.OsType;
+import org.chromium.components.sync_device_info.RemoteDeviceInfo;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -212,17 +213,17 @@ public class SendTabToSelfAndroidBridgeTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testGetAllTargetDeviceInfos() {
-        List<TargetDeviceInfo> expected =
+        List<RemoteDeviceInfo> expected =
                 List.of(
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "name1",
                                 "guid1",
                                 FormFactor.DESKTOP,
                                 OsType.WINDOWS,
                                 "Active today"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "name2", "guid2", FormFactor.DESKTOP, OsType.MAC, "Active today"),
-                        new TargetDeviceInfo(
+                        new RemoteDeviceInfo(
                                 "name3",
                                 "guid3",
                                 FormFactor.PHONE,
@@ -230,7 +231,7 @@ public class SendTabToSelfAndroidBridgeTest {
                                 "Active today"));
         when(mNativeMock.getAllTargetDeviceInfos(eq(mProfile))).thenReturn(expected);
 
-        List<TargetDeviceInfo> actual =
+        List<RemoteDeviceInfo> actual =
                 SendTabToSelfAndroidBridge.getAllTargetDeviceInfos(mProfile);
 
         verify(mNativeMock).getAllTargetDeviceInfos(eq(mProfile));
@@ -273,8 +274,9 @@ public class SendTabToSelfAndroidBridgeTest {
         verify(mNativeMock).removeTargetDeviceListWaiter(eq(waiterPtr));
     }
 
+    // Tests that sending a tab to a device shows a success snackbar with the target device name
+    // and user email when the commit succeeds.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsSuccessSnackbar() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -312,7 +314,6 @@ public class SendTabToSelfAndroidBridgeTest {
     // Tests that the post-send success snackbar shows the fallback message without an email when
     // the user's primary account email address is not available.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsSuccessSnackbar_NoEmail() {
         when(mIdentityManager.getPrimaryAccountInfo()).thenReturn(null);
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
@@ -351,7 +352,6 @@ public class SendTabToSelfAndroidBridgeTest {
     // Tests that the post-send success snackbar shows the fallback message without an email when
     // the user's primary account email address cannot be displayed (e.g. supervised child account).
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsSuccessSnackbar_NonDisplayableEmail() {
         // Supervised child accounts are not allowed to display email addresses in the UI.
         when(mIdentityManager.getPrimaryAccountInfo())
@@ -389,8 +389,8 @@ public class SendTabToSelfAndroidBridgeTest {
                 snackbarCaptor.getValue().getTextForTesting().toString());
     }
 
+    // Tests that a throttled send result displays the throttled snackbar message.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsSuccessSnackbar_Throttled() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -425,8 +425,9 @@ public class SendTabToSelfAndroidBridgeTest {
                 snackbarCaptor.getValue().getTextForTesting().toString());
     }
 
+    // Tests that when `WebContents` is null, the snackbar is displayed using the focused activity's
+    // `SnackbarManager`.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsSnackbarFromActivity_WhenWebContentsNull() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -471,8 +472,8 @@ public class SendTabToSelfAndroidBridgeTest {
         ApplicationStatus.onStateChangeForTesting(mTabbedActivity, ActivityState.DESTROYED);
     }
 
+    // Tests that a generic send failure displays the failure snackbar message.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsFailureSnackbar_OnFailure() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -510,8 +511,8 @@ public class SendTabToSelfAndroidBridgeTest {
                 expectedMessage, snackbarCaptor.getValue().getTextForTesting().toString());
     }
 
+    // Tests that a no-internet connection failure displays the offline failure snackbar message.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsNoInternetSnackbar_OnNoInternetConnection() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -551,8 +552,8 @@ public class SendTabToSelfAndroidBridgeTest {
                 expectedMessage, snackbarCaptor.getValue().getTextForTesting().toString());
     }
 
+    // Tests that a commit timeout failure displays the offline failure snackbar message.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsNoInternetSnackbar_OnCommitTimeout() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -588,38 +589,6 @@ public class SendTabToSelfAndroidBridgeTest {
         verify(mSnackbarManager).showSnackbar(snackbarCaptor.capture());
         Assert.assertEquals(
                 expectedMessage, snackbarCaptor.getValue().getTextForTesting().toString());
-    }
-
-    @Test
-    @DisableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
-    public void testSendTabToDevice_PostSendToastFeatureDisabled() {
-        ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
-                confirmationCallbackCaptor =
-                        ArgumentCaptor.forClass(
-                                SendTabToSelfAndroidBridge.CommitConfirmationCallback.class);
-
-        SendTabToSelfAndroidBridge.sendTabToDevice(
-                mProfile,
-                mWebContents,
-                TARGET_DEVICE_SYNC_CACHE_GUID,
-                "Pixel 10",
-                URL,
-                TITLE,
-                ShareEntryPoint.SHARE_SHEET);
-
-        verify(mNativeMock)
-                .sendTabToDevice(
-                        eq(mProfile),
-                        eq(mWebContents),
-                        eq(TARGET_DEVICE_SYNC_CACHE_GUID),
-                        eq(URL),
-                        eq(TITLE),
-                        confirmationCallbackCaptor.capture(),
-                        eq(ShareEntryPoint.SHARE_SHEET));
-
-        confirmationCallbackCaptor.getValue().onResult(SendTabToSelfResult.SUCCESS);
-
-        verify(mSnackbarManager, never()).showSnackbar(any());
     }
 
     @Test
@@ -1018,8 +987,8 @@ public class SendTabToSelfAndroidBridgeTest {
         }
     }
 
+    // Tests that a fallback `Toast` is displayed on success when no `SnackbarManager` is available.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsToast_WhenSnackbarManagerUnavailable() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =
@@ -1052,8 +1021,8 @@ public class SendTabToSelfAndroidBridgeTest {
                 ShadowToast.getTextOfLatestToast());
     }
 
+    // Tests that a fallback `Toast` is displayed on failure when no `SnackbarManager` is available.
     @Test
-    @EnableFeatures(ChromeFeatureList.SEND_TAB_TO_SELF_POST_SEND_TOAST)
     public void testSendTabToDevice_ShowsToast_OnFailure_WhenSnackbarManagerUnavailable() {
         ArgumentCaptor<SendTabToSelfAndroidBridge.CommitConfirmationCallback>
                 confirmationCallbackCaptor =

@@ -257,8 +257,6 @@ BASE_FEATURE(kChildProcessSecurityPolicyRustProcessState,
 BASE_FEATURE(kClearCrossSiteCrossBrowsingContextGroupWindowName,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kCompositeBGColorAnimation, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Defer Session Storage scavenging to avoid LevelDB initialization blocking
 // the critical path of startup.
 BASE_FEATURE(kDeferSessionStorageScavengingOnStartup,
@@ -1385,6 +1383,12 @@ BASE_FEATURE(kWebBluetooth, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebBluetoothNewPermissionsBackend,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_ANDROID)
+// Enables WebHID support on extension service workers on Desktop Android.
+BASE_FEATURE(kWebHidOnDesktopAndroidServiceWorkers,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 // Controls which backend is used to retrieve OTP on Android. When disabled
 // we use User Consent API.
 BASE_FEATURE(kWebOtpBackendAuto, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1458,10 +1462,6 @@ const base::FeatureParam<bool>
 const base::FeatureParam<bool> kAccessibilityDeprecateJavaNodeCacheDisableCache{
     &kAccessibilityDeprecateJavaNodeCache, "disable_cache", false};
 
-// When enabled, extended selections are sent to Android through setSelection
-// API.
-BASE_FEATURE(kAccessibilityExtendedSelection, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, syncs accessibility focus when WebView gains focus.
 BASE_FEATURE(kAccessibilitySyncFocusOnViewFocusGain,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1514,11 +1514,6 @@ BASE_FEATURE(kAccessibilityPopulateSupplementalDescriptionApi,
 // Enables the reactive synchronization of accessibility and keyboard focus,
 // relying on new Android framework behavior.
 BASE_FEATURE(kAccessibilitySequentialFocus, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// When enabled, set selectable on all nodes with text, and support
-// ACTION_SET_SELECTION.
-BASE_FEATURE(kAccessibilitySetSelectableOnAllNodesWithText,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables posting registering, unregistering the broadcast receiver to the
 // background thread.

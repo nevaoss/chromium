@@ -251,6 +251,8 @@ std::string EntryPointToString(omnibox::ChromeAimEntryPoint entry_point) {
       return "omnibox_contextual_suggestion";
     case omnibox::DESKTOP_CHROME_COBROWSE_OMNIBOX_POPUP_BUTTON:
       return "omnibox_popup_button";
+    case omnibox::DESKTOP_CHROME_CONTEXTUAL_CUE:
+      return "contextual_cue";
     default:
       return "unknown";
   }
@@ -430,21 +432,6 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 #endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
   contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
-
-  std::vector<ui::ElementIdentifier> tracked_element_ids = {
-      kSmartTabSharingMenuItemElementId,
-      kContextualTasksWebUIPinButtonElementId,
-      kContextualTasksWebUIToolbarElementId,
-      kContextualTasksWebUIOverflowMenuElementId,
-      kContextualTasksWebUIOverflowMenuPinButtonElementId,
-      kContextualTasksSuperGButtonElementId};
-#if !BUILDFLAG(IS_ANDROID)
-  tracked_element_ids.push_back(
-      PermissionChipView::kPermissionRequestChipElementId);
-  tracked_element_ids.push_back(PermissionChipView::kIndicatorChipElementId);
-#endif
-  ui::TrackedElementHandlerDocumentSingleton::Register(
-      this, std::move(tracked_element_ids));
 }
 
 ContextualTasksUI::~ContextualTasksUI() = default;
@@ -1055,6 +1042,10 @@ bool ContextualTasksUIConfig::ShouldCrashOnJavascriptErrorInDevelopmentBuild()
 std::unique_ptr<content::WebUIController>
 ContextualTasksUIConfig::CreateWebUIController(content::WebUI* web_ui,
                                                const GURL& url) {
+  if (contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return std::make_unique<
+        contextual_tasks::ContextualTasksUIPostRearchitecture>(web_ui);
+  }
   return std::make_unique<ContextualTasksUI>(web_ui);
 }
 
@@ -1208,7 +1199,8 @@ void ContextualTasksUI::MoveTaskUiToNewTab() {
 }
 
 void ContextualTasksUI::ShowThreadHistory() {
-  if (page_handler_) {
+  if (!contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled() &&
+      page_handler_) {
     lens::ClientToAimMessage message;
     message.mutable_open_threads_view()->mutable_payload();
     PostAimMessage(message);

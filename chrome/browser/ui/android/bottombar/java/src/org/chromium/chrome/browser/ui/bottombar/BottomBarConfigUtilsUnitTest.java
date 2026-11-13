@@ -182,6 +182,52 @@ public class BottomBarConfigUtilsUnitTest {
     }
 
     @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR + ":move_toolbar_settings_to_appearance/true")
+    public void testShouldMoveToolbarSettingsToAppearance_Eligible_ParamTrue() {
+        assertTrue(BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(mContext));
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR + ":move_toolbar_settings_to_appearance/false")
+    public void testShouldMoveToolbarSettingsToAppearance_Eligible_ParamFalse() {
+        assertFalse(BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(mContext));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testShouldMoveToolbarSettingsToAppearance_FlagDisabled_ParamDefaultsTrue() {
+        assertTrue(ChromeFeatureList.sAndroidBottomBarMoveToolbarSettingsToAppearance.getValue());
+        assertFalse(BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(mContext));
+    }
+
+    @Test
+    @Config(qualifiers = "sw600dp")
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR + ":move_toolbar_settings_to_appearance/true")
+    public void testShouldMoveToolbarSettingsToAppearance_Tablet_ParamTrue() {
+        assertFalse(BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(mContext));
+    }
+
+    @Test
+    @Config(qualifiers = "sw600dp")
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR + ":move_toolbar_settings_to_appearance/true")
+    public void testShouldMoveToolbarSettingsToAppearance_FoldableUnfolded_ParamTrue() {
+        DeviceInfo.setIsFoldableForTesting(true);
+        assertTrue(BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(mContext));
+    }
+
+    @Test
+    @EnableFeatures(
+            ChromeFeatureList.ANDROID_BOTTOM_BAR + ":move_toolbar_settings_to_appearance/true")
+    public void testShouldMoveToolbarSettingsToAppearance_Automotive_ParamTrue() {
+        DeviceInfo.setIsAutomotiveForTesting(true);
+        assertFalse(BottomBarConfigUtils.shouldMoveToolbarSettingsToAppearance(mContext));
+    }
+
+    @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR + ":keep_app_menu_in_toolbar/false")
     public void testShouldIncludeAppMenuButton_FalseParam() {
         assertTrue(BottomBarConfigUtils.shouldIncludeAppMenuButton());
@@ -390,9 +436,9 @@ public class BottomBarConfigUtilsUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR + ":bottom_bar_height_dp/56")
-    public void testGetBottomBarHeightDp_ToolbarMatch56() {
-        assertEquals(56, BottomBarConfigUtils.getBottomBarHeightDp());
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR + ":bottom_bar_height_dp/60")
+    public void testGetBottomBarHeightDp_ToolbarMatch60() {
+        assertEquals(60, BottomBarConfigUtils.getBottomBarHeightDp());
     }
 
     @Test
@@ -419,7 +465,7 @@ public class BottomBarConfigUtilsUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR + ":bottom_bar_height_dp/0")
-    public void testGetBottomBarHeightDp_ZeroFallback_ReturnsDefault60() {
+    public void testGetBottomBarHeightDp_ZeroFallback_ReturnsDefault56() {
         assertEquals(
                 BottomBarConfigUtils.DEFAULT_BOTTOM_BAR_HEIGHT_DP,
                 BottomBarConfigUtils.getBottomBarHeightDp());

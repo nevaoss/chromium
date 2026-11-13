@@ -84,8 +84,6 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.banners.AppMenuVerbiage;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
-import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtils;
-import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtilsJni;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.layouts.toolbar.ToolbarWidthConsumer;
@@ -237,7 +235,6 @@ public class LocationBarMediatorUnitTest {
     @Mock private PrefChangeRegistrar.Natives mPrefChangeRegistrarJni;
     @Mock private PreloadPagesSettingsBridge.Natives mPreloadPagesSettingsJni;
     @Mock private OmniboxSuggestionsDropdownEmbedderImpl mEmbedderImpl;
-    @Mock private ContextualTasksUtils.Natives mContextualTasksUtilsJni;
     @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
     @Mock private AppBannerManager mAppBannerManager;
     @Mock private AppBannerManager.Natives mAppBannerManagerJni;
@@ -430,7 +427,6 @@ public class LocationBarMediatorUnitTest {
         lenient().doReturn(new WeakReference<>(mActivity)).when(mWindowAndroid).getActivity();
         OmniboxPrerenderJni.setInstanceForTesting(mPrerenderJni);
         PreloadPagesSettingsBridgeJni.setInstanceForTesting(mPreloadPagesSettingsJni);
-        ContextualTasksUtilsJni.setInstanceForTesting(mContextualTasksUtilsJni);
         lenient().doReturn(mProfile).when(mTab).getProfile();
         lenient()
                 .doReturn(mIdentityManager)
@@ -608,6 +604,19 @@ public class LocationBarMediatorUnitTest {
         locationBarMediator.getInstallButtonToolbarWidthConsumer().updateVisibility(buttonWidth);
         locationBarMediator.getBookmarkButtonToolbarWidthConsumer().updateVisibility(buttonWidth);
         locationBarMediator.getZoomButtonToolbarWidthConsumer().updateVisibility(buttonWidth);
+    }
+
+    /**
+     * Initializes {@link #mTabletMediator} and gives the install button enough toolbar width to
+     * show, then clears the resulting invocations on the tablet layout and embedder.
+     */
+    private void setUpTabletInstallButton() {
+        mTabletMediator.onFinishNativeInitialization();
+        int buttonWidth =
+                mContext.getResources()
+                        .getDimensionPixelSize(R.dimen.location_bar_action_icon_width);
+        mTabletMediator.getInstallButtonToolbarWidthConsumer().updateVisibility(buttonWidth);
+        clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
     }
 
     private void setUpMediatorAndCoordinator() {
@@ -987,46 +996,6 @@ public class LocationBarMediatorUnitTest {
         UrlBarData data = mMediator.getUrlBarDataForCurrentInput(input);
         assertNull(data.url);
         assertEquals("", data.displayText.toString());
-    }
-
-    @Test
-    public void testContextualTasks_UrlBarData_PrettyUrl() {
-        GURL contextualTasksUrl = new GURL("chrome://contextual-tasks");
-        GURL prettyUrl = new GURL("chrome://google.com/search");
-        doReturn(contextualTasksUrl).when(mLocationBarDataProvider).getCurrentGurl();
-        doReturn(mWebContents).when(mLocationBarDataProvider).getWebContents();
-        doReturn(prettyUrl)
-                .when(mContextualTasksUtilsJni)
-                .getContextualTasksDisplayUrl(mWebContents);
-
-        AutocompleteInput input = new AutocompleteInput();
-        input.setUserText("chrome://google.com/search")
-                .setInitialUserText("chrome://google.com/search")
-                .setPageUrl(contextualTasksUrl);
-
-        UrlBarData data = mMediator.getUrlBarDataForCurrentInput(input);
-        assertEquals(contextualTasksUrl, data.url);
-        assertEquals(prettyUrl.getSpec(), data.displayText.toString());
-    }
-
-    @Test
-    public void testContextualTasks_Copy() {
-        GURL contextualTasksUrl = new GURL("chrome://contextual-tasks");
-        GURL functionalUrl = new GURL("https://www.google.com/search");
-        String text = "chrome://www.google.com/search";
-
-        doReturn(contextualTasksUrl).when(mLocationBarDataProvider).getCurrentGurl();
-        doReturn(mWebContents).when(mLocationBarDataProvider).getWebContents();
-        doReturn(functionalUrl)
-                .when(mContextualTasksUtilsJni)
-                .getContextualTasksFunctionalURL(mWebContents);
-        doReturn(functionalUrl.getSpec())
-                .when(mContextualTasksUtilsJni)
-                .getReplacementUrl(eq(text), anyInt(), anyInt(), eq(functionalUrl));
-
-        assertEquals(
-                functionalUrl.getSpec(),
-                mMediator.getReplacementCutCopyText(text, new TextSelection(0, text.length())));
     }
 
     @Test
@@ -2971,107 +2940,120 @@ public class LocationBarMediatorUnitTest {
     @Test
     public void testInstallButton_visibleIfInstallable() {
         doReturn(true).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
-        mMediator.onUrlFocusChange(/* hasFocus= */ false);
-        mMediator.setUrlFocusChangeInProgress(/* inProgress= */ false);
+        setUpTabletInstallButton();
 
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
-
-        mMediator.onInstallabilityUpdated(mAppBannerManager);
-        verify(mLocationBarLayout).setInstallButtonVisibility(true);
+        mTabletMediator.onInstallabilityUpdated(mAppBannerManager);
+        verify(mLocationBarTablet).setInstallButtonVisibility(true);
         verify(mLocationBarEmbedder).onWidthConsumerVisibilityChanged();
     }
 
     @Test
     public void testInstallButton_invisibleIfNotInstallable() {
         doReturn(false).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        setUpTabletInstallButton();
 
-        mMediator.onInstallabilityUpdated(mAppBannerManager);
-        verify(mLocationBarLayout).setInstallButtonVisibility(false);
+        mTabletMediator.onInstallabilityUpdated(mAppBannerManager);
+        verify(mLocationBarTablet).setInstallButtonVisibility(false);
         verify(mLocationBarEmbedder).onWidthConsumerVisibilityChanged();
     }
 
     @Test
     public void testInstallButton_invisibleOmniboxIsFocused() {
-        mMediator.onUrlFocusChange(/* hasFocus= */ true);
-        mMediator.setUrlFocusChangeInProgress(/* inProgress= */ false);
+        setUpTabletInstallButton();
+        mTabletMediator.onUrlFocusChange(/* hasFocus= */ true);
 
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
 
-        mMediator.onInstallabilityUpdated(mAppBannerManager);
-        verify(mLocationBarLayout).setInstallButtonVisibility(false);
+        mTabletMediator.onInstallabilityUpdated(mAppBannerManager);
+        verify(mLocationBarTablet).setInstallButtonVisibility(false);
         verify(mLocationBarEmbedder).onWidthConsumerVisibilityChanged();
     }
 
     @Test
     public void testInstallButton_visibilityRespondsToAppInstallationStateChange() {
         doReturn(true).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
-        mMediator.onUrlFocusChange(/* hasFocus= */ false);
-        mMediator.setUrlFocusChangeInProgress(/* inProgress= */ false);
-
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        setUpTabletInstallButton();
 
         // 1. App is not installed yet -> Install button should show
         doReturn(AppInstallState.NOT_INSTALLED).when(mLocationBarDataProvider).getAppInstallState();
-        mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(true);
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(true);
 
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
 
         // 2. App becomes installed -> Install button should hide
         doReturn(AppInstallState.INSTALLED).when(mLocationBarDataProvider).getAppInstallState();
-        mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(false);
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(false);
     }
 
     @Test
     public void testInstallButton_visibilityRespondsToPendingAppInstallation() {
         doReturn(true).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
-        mMediator.onUrlFocusChange(false);
-        mMediator.setUrlFocusChangeInProgress(false);
-
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        setUpTabletInstallButton();
 
         doReturn(AppInstallState.NOT_INSTALLED).when(mLocationBarDataProvider).getAppInstallState();
-        mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(true);
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(true);
 
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
 
         doReturn(AppInstallState.PENDING_INSTALL)
                 .when(mLocationBarDataProvider)
                 .getAppInstallState();
-        mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(false);
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(false);
 
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
 
         doReturn(AppInstallState.NOT_INSTALLED).when(mLocationBarDataProvider).getAppInstallState();
-        mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(true);
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(true);
     }
 
     @Test
     public void testInstallButton_restoredWhenPendingInstallationFails() {
         doReturn(true).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
-        mMediator.onUrlFocusChange(false);
-        mMediator.setUrlFocusChangeInProgress(false);
-
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        setUpTabletInstallButton();
 
         // 1. Pending installation in progress -> install button is suppressed.
         doReturn(AppInstallState.PENDING_INSTALL)
                 .when(mLocationBarDataProvider)
                 .getAppInstallState();
-        mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(false);
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(false);
 
-        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+        clearInvocations(mLocationBarTablet, mLocationBarEmbedder);
 
         // 2. Pending installation fails / is cancelled -> install button is restored.
         doReturn(AppInstallState.NOT_INSTALLED).when(mLocationBarDataProvider).getAppInstallState();
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(true);
+    }
+
+    @Test
+    public void testInstallButton_stateChangeDoesNotQueryInstallStateWhenNotPromotable() {
+        doReturn(false).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
+        setUpTabletInstallButton();
+        clearInvocations(mLocationBarDataProvider);
+
+        // getAppInstallState() may do PackageManager IPCs, so it must not be queried when the
+        // page isn't promotable.
+        mTabletMediator.onAppInstallationStateChanged();
+        verify(mLocationBarTablet).setInstallButtonVisibility(false);
+        verify(mLocationBarDataProvider, never()).getAppInstallState();
+    }
+
+    @Test
+    public void testInstallButton_stateChangeDoesNotShowInstallButtonOnPhone() {
+        clearInvocations(mLocationBarLayout, mLocationBarDataProvider, mAppBannerManagerJni);
+
+        // The install button is never shown on phones, so nothing is queried.
         mMediator.onAppInstallationStateChanged();
-        verify(mLocationBarLayout).setInstallButtonVisibility(true);
+        verify(mLocationBarLayout).setInstallButtonVisibility(false);
+        verify(mLocationBarLayout, never()).setInstallButtonVisibility(true);
+        verify(mAppBannerManagerJni, never()).isProbablyPromotable(any());
+        verify(mLocationBarDataProvider, never()).getAppInstallState();
     }
 
     @Test
@@ -3545,6 +3527,49 @@ public class LocationBarMediatorUnitTest {
         mTabletMediator.onUrlChanged(/* isTabChanging= */ false);
 
         assertFalse(mTabletMediator.shouldShowInstallButton());
+    }
+
+    @Test
+    public void testShouldShowInstallButton_doesNotQueryInstallStateWhenNotPromotable() {
+        mTabletMediator.onFinishNativeInitialization();
+        doReturn(false).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
+        clearInvocations(mLocationBarDataProvider);
+
+        assertFalse(mTabletMediator.shouldShowInstallButton());
+        verify(mLocationBarDataProvider, never()).getAppInstallState();
+    }
+
+    @Test
+    public void testShouldShowInstallButton_doesNotQueryInstallStateWithoutWebContents() {
+        mTabletMediator.onFinishNativeInitialization();
+        doReturn(null).when(mTab).getWebContents();
+        clearInvocations(mLocationBarDataProvider);
+
+        assertFalse(mTabletMediator.shouldShowInstallButton());
+        verify(mLocationBarDataProvider, never()).getAppInstallState();
+    }
+
+    @Test
+    public void testShouldShowInstallButton_doesNotQueryInstallStateWhenFocused() {
+        mTabletMediator.onFinishNativeInitialization();
+        doReturn(true).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
+        assertTrue(mTabletMediator.shouldShowInstallButton());
+
+        mTabletMediator.onUrlFocusChange(/* hasFocus= */ true);
+        clearInvocations(mLocationBarDataProvider);
+
+        assertFalse(mTabletMediator.shouldShowInstallButton());
+        verify(mLocationBarDataProvider, never()).getAppInstallState();
+    }
+
+    @Test
+    public void testShouldShowInstallButton_returnsFalseOnPhoneWithoutQueries() {
+        mMediator.onFinishNativeInitialization();
+        clearInvocations(mLocationBarDataProvider, mAppBannerManagerJni);
+
+        assertFalse(mMediator.shouldShowInstallButton());
+        verify(mAppBannerManagerJni, never()).isProbablyPromotable(any());
+        verify(mLocationBarDataProvider, never()).getAppInstallState();
     }
 
     @Test
@@ -4360,6 +4385,7 @@ public class LocationBarMediatorUnitTest {
         mProfileSupplier.set(mProfile);
 
         verify(mUrlCoordinator).setShowAiMode(true);
+        verify(mUrlCoordinator).setShowAiModeLabel("Always show AI Mode");
         verify(mUrlCoordinator).setShowAiModeCallback(mCallbackCaptor.capture());
         assertNotNull(mCallbackCaptor.getValue());
 
@@ -4368,6 +4394,14 @@ public class LocationBarMediatorUnitTest {
         mCallbackCaptor.getValue().onResult(false);
         verify(mPrefService).setBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON, false);
         verify(mUrlCoordinator).setShowAiMode(false);
+
+        clearInvocations(mUrlCoordinator);
+        mAiModeButtonUiConfigSupplier.set(
+                createTestAiModeButtonUiConfig(
+                        "Always show Bing Copilot",
+                        "https://bing.com/chat?q={searchTerms}",
+                        new GURL("https://bing.com/chat")));
+        verify(mUrlCoordinator).setShowAiModeLabel("Always show Bing Copilot");
     }
 
     @Test
@@ -4377,6 +4411,7 @@ public class LocationBarMediatorUnitTest {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
 
+        verify(mUrlCoordinator).setShowAiModeLabel(null);
         verify(mUrlCoordinator).setShowAiModeCallback(null);
     }
 
@@ -4389,6 +4424,7 @@ public class LocationBarMediatorUnitTest {
         mProfileSupplier.set(mProfile);
 
         verify(mUrlCoordinator).setShowAiMode(true);
+        verify(mUrlCoordinator).setShowAiModeLabel("Always show AI Mode");
         verify(mUrlCoordinator).setShowAiModeCallback(mCallbackCaptor.capture());
         assertNotNull(mCallbackCaptor.getValue());
     }
@@ -5562,7 +5598,7 @@ public class LocationBarMediatorUnitTest {
         input.setRequestType(AutocompleteRequestType.SEARCH);
         mMediator.beginInput(input);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteState.ENABLED, input.getAutocompleteState());
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
@@ -5578,7 +5614,7 @@ public class LocationBarMediatorUnitTest {
         mMediator.beginInput(input);
         clearInvocations(mAutocompleteCoordinator, mUrlCoordinator);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mAutocompleteCoordinator)
@@ -5595,10 +5631,15 @@ public class LocationBarMediatorUnitTest {
         mMediator.beginInput(input);
         clearInvocations(mAutocompleteCoordinator, mUrlCoordinator);
 
-        mMediator.onActivationChipClicked();
+        var watcher =
+                expectAimEntrypointActivatedHistograms(
+                        /* userTextPresent= */ false, /* viaKeyboard= */ false, ".google");
+
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mAutocompleteCoordinator, never()).loadTypedOmniboxText(anyLong(), anyInt());
+        watcher.assertExpected();
     }
 
     @Test
@@ -5611,7 +5652,7 @@ public class LocationBarMediatorUnitTest {
         doReturn("google.com").when(mUrlCoordinator).getTextWithoutAutocomplete();
         clearInvocations(mAutocompleteCoordinator, mUrlCoordinator);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mAutocompleteCoordinator, never()).loadTypedOmniboxText(anyLong(), anyInt());
@@ -5634,7 +5675,7 @@ public class LocationBarMediatorUnitTest {
         doReturn("").when(mUrlCoordinator).getTextWithoutAutocomplete();
         mMediator.beginInput(input);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
@@ -5646,6 +5687,7 @@ public class LocationBarMediatorUnitTest {
 
     @Test
     public void testActivationChipClicked_withUserText_expandsNavigationUrl() {
+        doReturn(false).when(mSearchEngineService).isDefaultSearchEngineGoogle();
         mAiModeButtonUiConfigSupplier.set(
                 createTestAiModeButtonUiConfig(
                         "https://3p.com/ai?q={searchTerms}", new GURL("https://3p.com/ai")));
@@ -5660,9 +5702,14 @@ public class LocationBarMediatorUnitTest {
         input.setRequestType(AutocompleteRequestType.SEARCH);
         input.setInitialUserText("page.com");
         input.setUserText("cat pictures");
+        doReturn("cat pictures").when(mUrlCoordinator).getTextWithoutAutocomplete();
         mMediator.beginInput(input);
 
-        mMediator.onActivationChipClicked();
+        var watcher =
+                expectAimEntrypointActivatedHistograms(
+                        /* userTextPresent= */ true, /* viaKeyboard= */ false, ".3p");
+
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
@@ -5672,6 +5719,7 @@ public class LocationBarMediatorUnitTest {
                 PageTransition.FROM_ADDRESS_BAR,
                 mOmniboxLoadUrlParamsCaptor.getValue().transitionType);
         verify(mAutocompleteCoordinator, never()).loadTypedOmniboxText(anyLong(), anyInt());
+        watcher.assertExpected();
     }
 
     @Test
@@ -5690,7 +5738,7 @@ public class LocationBarMediatorUnitTest {
         input.setUserText("page.com");
         doReturn("page.com").when(mUrlCoordinator).getTextWithoutAutocomplete();
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
@@ -5716,7 +5764,7 @@ public class LocationBarMediatorUnitTest {
         input.setUserText("cat pictures");
         mMediator.beginInput(input);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
@@ -5736,7 +5784,7 @@ public class LocationBarMediatorUnitTest {
         input.setUserText("");
         mMediator.beginInput(input);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
@@ -5756,11 +5804,48 @@ public class LocationBarMediatorUnitTest {
         doReturn("suggestion text").when(mUrlCoordinator).getTextWithoutAutocomplete();
         mMediator.beginInput(input);
 
-        mMediator.onActivationChipClicked();
+        mMediator.onActivationChipClicked(/* viaKeyboard= */ false);
 
         verify(mNavigator, never()).loadUrl(any());
         verify(mAutocompleteCoordinator)
                 .loadTypedOmniboxText(anyLong(), eq(NavigationTarget.CURRENT_TAB));
+    }
+
+    @Test
+    public void testActivationChipActivatedViaKeyboard_recordsHistograms() {
+        setUpTabToActivationChip(DisplayState.SUGGESTIONS, /* withInitialUserText= */ true);
+
+        // Tab from UrlBar to ActivationChip (which clears unchanged initial URL text).
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
+        doReturn("").when(mUrlCoordinator).getTextWithoutAutocomplete();
+
+        var watcher =
+                expectAimEntrypointActivatedHistograms(
+                        /* userTextPresent= */ false, /* viaKeyboard= */ true, ".google");
+
+        doReturn(KeyEvent.KEYCODE_ENTER).when(mKeyEvent).getKeyCode();
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_ENTER, mKeyEvent));
+
+        watcher.assertExpected();
+    }
+
+    private static HistogramWatcher expectAimEntrypointActivatedHistograms(
+            boolean userTextPresent, boolean viaKeyboard, String engineSuffix) {
+        return HistogramWatcher.newBuilder()
+                .expectBooleanRecord(
+                        OmniboxMetrics.HISTOGRAM_AIM_ENTRYPOINT_ACTIVATED_USER_TEXT_PRESENT,
+                        userTextPresent)
+                .expectBooleanRecord(
+                        OmniboxMetrics.HISTOGRAM_AIM_ENTRYPOINT_ACTIVATED_USER_TEXT_PRESENT
+                                + engineSuffix,
+                        userTextPresent)
+                .expectBooleanRecord(
+                        OmniboxMetrics.HISTOGRAM_AIM_ENTRYPOINT_ACTIVATED_VIA_KEYBOARD, viaKeyboard)
+                .expectBooleanRecord(
+                        OmniboxMetrics.HISTOGRAM_AIM_ENTRYPOINT_ACTIVATED_VIA_KEYBOARD
+                                + engineSuffix,
+                        viaKeyboard)
+                .build();
     }
 
     @Test
@@ -5794,11 +5879,17 @@ public class LocationBarMediatorUnitTest {
      */
     private static AiModeButtonUiConfig createTestAiModeButtonUiConfig(
             String navigationUrl, GURL navigationUrlEmpty) {
+        return createTestAiModeButtonUiConfig(
+                "Always show AI Mode", navigationUrl, navigationUrlEmpty);
+    }
+
+    private static AiModeButtonUiConfig createTestAiModeButtonUiConfig(
+            String contextMenuLabel, String navigationUrl, GURL navigationUrlEmpty) {
         return new AiModeButtonUiConfig(
                 "AI Mode",
                 "Ask AI Mode",
                 "AI Mode button",
-                "Always show AI Mode",
+                contextMenuLabel,
                 "Ask AI Mode",
                 GURL.emptyGURL(),
                 navigationUrl,

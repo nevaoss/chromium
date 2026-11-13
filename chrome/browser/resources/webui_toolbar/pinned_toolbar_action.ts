@@ -37,6 +37,7 @@ const initialState: PinnedToolbarActionState = {
   elementId: null,
   icon: {handleId: 0n},
   progressRing: null,
+  badgeNumber: null,
 };
 
 const PinnedToolbarActionElementBase = OverflowableToolbarActionMixin(
@@ -161,6 +162,25 @@ export class PinnedToolbarActionElement extends PinnedToolbarActionElementBase {
     return `stroke-dasharray: ${percentage} 100;`;
   }
 
+  /**
+   * Returns the text to display in the badge, or undefined if no badge should
+   * be drawn.
+   */
+  protected getBadgeText_(): string|undefined {
+    if (!this.state.badgeNumber) {
+      return undefined;
+    }
+    if (this.state.badgeNumber > 9) {
+      return '9+';
+    }
+    return this.state.badgeNumber.toString();
+  }
+
+  protected isDormant_(): boolean {
+    return this.state.progressRing?.status ===
+        DownloadProgressRingStatus.kDormant;
+  }
+
   private getContextMenuType_(): ContextMenuType {
     switch (this.state.action) {
       case PinnedToolbarAction.kNewIncognitoWindow:
@@ -219,6 +239,16 @@ export class PinnedToolbarActionElement extends PinnedToolbarActionElementBase {
         return ContextMenuType.kPinnedActionSendSharedTabGroupFeedback;
       case PinnedToolbarAction.kSidePanelShowComments:
         return ContextMenuType.kPinnedActionSidePanelShowComments;
+      case PinnedToolbarAction.kShowAiOverlayDialog:
+        return ContextMenuType.kPinnedActionShowAiOverlayDialog;
+      case PinnedToolbarAction.kTtcToolbar:
+        return ContextMenuType.kPinnedActionTtcToolbar;
+      case PinnedToolbarAction.kSidePanelShowHistory:
+        return ContextMenuType.kPinnedActionSidePanelShowHistory;
+      case PinnedToolbarAction.kShowChromeLabs:
+        return ContextMenuType.kPinnedActionShowChromeLabs;
+      case PinnedToolbarAction.kSidePanelShowGlic:
+        return ContextMenuType.kPinnedActionSidePanelShowGlic;
       case PinnedToolbarAction.kUnspecified:
       case PinnedToolbarAction.kDivider:
         return ContextMenuType.kUnspecified;

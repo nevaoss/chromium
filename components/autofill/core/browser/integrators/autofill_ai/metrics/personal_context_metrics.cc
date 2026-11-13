@@ -104,9 +104,37 @@ void LogPersonalContextPrefetchEntityValidationResult(
       result);
 }
 
+void LogPersonalContextPrefetchEntitySourceCount(EntityType type,
+                                                 size_t count) {
+  base::UmaHistogramCounts100(
+      "Autofill.Ai.PersonalContext.Prefetch.EntitySourceCount", count);
+  base::UmaHistogramCounts100(
+      base::StrCat({"Autofill.Ai.PersonalContext.Prefetch.EntitySourceCount.",
+                    EntityTypeToMetricsString(type)}),
+      count);
+}
+
 void LogEntitySuppressionEntitiesFilteredPerPrefetch(size_t count) {
   base::UmaHistogramCounts100(
       "Autofill.Ai.Suppression.EntitiesFilteredPerPrefetch", count);
+}
+
+void LogEntitySuppressionLoadDroppedRecordCount(size_t count) {
+  base::UmaHistogramCounts1000(
+      "Autofill.Ai.Suppression.Load.DroppedRecordCount", count);
+}
+
+void LogEntitySuppressionLoadDropReason(
+    EntitySuppressionLoadDropReason reason) {
+  base::UmaHistogramEnumeration("Autofill.Ai.Suppression.Load.DropReason",
+                                reason);
+}
+
+void LogEntitySuppressionConfirmationDialogResult(bool accepted) {
+  base::UmaHistogramEnumeration(
+      "Autofill.Ai.Suppression.ConfirmationDialogResult",
+      accepted ? EntitySuppressionConfirmationDialogResult::kAccepted
+               : EntitySuppressionConfirmationDialogResult::kCancelled);
 }
 
 }  // namespace autofill

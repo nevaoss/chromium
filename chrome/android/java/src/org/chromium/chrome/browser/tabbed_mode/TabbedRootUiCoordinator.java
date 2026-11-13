@@ -412,8 +412,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private boolean mPromosEvaluatedForCurrentForeground;
     private final OneshotSupplier<ChromeInactivityTracker> mInactivityTrackerSupplier;
     private final InactivityObserver mInactivityObserver;
-    private @Nullable NtpSyncedThemeManager mNtpSyncedThemeManager;
-    private final @Nullable CrossDeviceSettingImporter mCrossDeviceSettingImporter;
+    private @Nullable CrossDeviceSettingImporter mCrossDeviceSettingImporter;
     private @Nullable SideUiCoordinator mSideUiCoordinator;
     private @Nullable WebContentHairlineCoordinator mWebContentHairlineCoordinator;
     private @Nullable SidePanelContainerCoordinator mSidePanelContainerCoordinator;
@@ -863,16 +862,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
         maybeShowPromosOnForeground();
 
-        mCrossDeviceSettingImporter =
-                DeviceInfo.isDesktop() || !CrossDeviceSettingImporter.shouldCreateImporter()
-                        ? null
-                        : new CrossDeviceSettingImporter(
-                                activityLifecycleDispatcher,
-                                mActivityTabProvider.asObservable(),
-                                mActivity,
-                                modalDialogManagerSupplier,
-                                snackbarManagerSupplier);
-
         new OneShotCallback<>(mProfileSupplier, this::waitForTrackerInit);
 
         try {
@@ -1053,10 +1042,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mInactivityTrackerSupplier.get().removeObserver(mInactivityObserver);
         }
 
-        if (mNtpSyncedThemeManager != null) {
-            mNtpSyncedThemeManager.destroy();
-        }
-
         if (mTabBottomSheetReadAloudControllerCallback != null) {
             mReadAloudControllerSupplier.removeObserver(mTabBottomSheetReadAloudControllerCallback);
             mTabBottomSheetReadAloudControllerCallback = null;
@@ -1078,6 +1063,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
         if (mCrossDeviceSettingImporter != null) {
             mCrossDeviceSettingImporter.destroy();
+            mCrossDeviceSettingImporter = null;
         }
 
         if (mGlicUiCoordinator != null) {
@@ -1607,7 +1593,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         || NtpCustomizationUtils.supportsEnableEdgeToEdgeOnTop(
                                 mWindowAndroid, isTablet);
         if (isNewTabPageCustomizationV2Enabled) {
-            mNtpSyncedThemeManager = new NtpSyncedThemeManager(mActivity, originalProfile);
+            NtpSyncedThemeManager.getInstance().onFinishNativeInitialization(originalProfile);
             NtpCustomizationPolicyManager.getInstance()
                     .onFinishNativeInitialization(currentlySelectedProfile);
             if (NtpCustomizationUtils.isNTPCustomizationSyncEnabled()) {
@@ -1615,6 +1601,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         .onFinishNativeInitialization(originalProfile);
             }
         }
+        mCrossDeviceSettingImporter =
+                DeviceInfo.isDesktop() || !CrossDeviceSettingImporter.shouldCreateImporter()
+                        ? null
+                        : new CrossDeviceSettingImporter(
+                                mActivityLifecycleDispatcher,
+                                mActivityTabProvider.asObservable(),
+                                mActivity,
+                                mModalDialogManagerSupplier,
+                                mSnackbarManagerSupplier);
         NewTabPageLocationPolicyManager.getInstance().onFinishNativeInitialization(originalProfile);
 
         // Must precede initializeSideUi(), which passes this controller to vertical tabs.
@@ -2998,7 +2993,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         new NotificationPermissionRationaleDialogController(
                                 mActivity, mModalDialogManagerSupplier.get());
         mNotificationPermissionController =
-                new NotificationPermissionController(mWindowAndroid, rationaleUIDelegateSupplier);
+                new NotificationPermissionController(
+                        mWindowAndroid, rationaleUIDelegateSupplier, profile);
         NotificationPermissionController.attach(mWindowAndroid, mNotificationPermissionController);
         if (mNotificationPermissionController.requestPermissionIfNeeded(/* contextual= */ false)) {
             return true;
@@ -3418,9 +3414,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * the next image for the theme collection to be used for the following day's refresh.
      */
     public void onDailyRefreshThemeCollectionApplied() {
-        if (mNtpSyncedThemeManager != null) {
-            mNtpSyncedThemeManager.fetchNextThemeCollectionImageAfterDailyRefreshApplied();
-        }
+        NtpSyncedThemeManager.getInstance().fetchNextThemeCollectionImageAfterDailyRefreshApplied();
     }
 
     private void waitForTrackerInit(Profile profile) {

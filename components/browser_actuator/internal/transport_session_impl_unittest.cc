@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -72,11 +73,75 @@ TEST(TransportSessionImplTest, SendUpstreamMessage) {
   ControlCommand command;
   command.mutable_close_channel();
 
-  EXPECT_CALL(channel,
-              SendUpstreamMessage("test_session", PayloadType::kUnspecified,
-                                  testing::Ref(command)));
+  EXPECT_CALL(channel, SendUpstreamMessage(
+                           "test_session", PayloadType::kUnspecified,
+                           testing::Ref(command), std::optional<int64_t>()));
   EXPECT_TRUE(session.SendUpstreamMessage(PayloadType::kUnspecified, command)
                   .has_value());
+}
+
+TEST(TransportSessionImplTest,
+     SendUpstreamControlMessageDuringDownstreamDispatchSetsRespondingToSeq) {
+  MockTransportChannel channel;
+  TransportHandlerFactoryRegistryImpl registry;
+  EXPECT_CALL(channel, GetHandlerFactoryRegistry())
+      .WillRepeatedly(testing::Return(&registry));
+
+  TransportSessionImpl session("test_session", channel.GetWeakPtr());
+
+  MockTransportHandlerFactory control_factory({PayloadType::kControl});
+  MockTransportHandlerFactory feature_factory(
+      {PayloadType::kExperimentalTriggering}, kTestFactoryId2);
+  registry.RegisterFactory(&control_factory);
+  registry.RegisterFactory(&feature_factory);
+
+  auto control_handler = std::make_unique<MockTransportHandler>(&session);
+  MockTransportHandler* control_handler_ptr = control_handler.get();
+  EXPECT_CALL(control_factory, OnNewSession(&session))
+      .WillOnce(testing::Return(std::move(control_handler)));
+
+  auto feature_handler = std::make_unique<MockTransportHandler>(&session);
+  MockTransportHandler* feature_handler_ptr = feature_handler.get();
+  EXPECT_CALL(feature_factory, OnNewSession(&session))
+      .WillOnce(testing::Return(std::move(feature_handler)));
+
+  ControlCommand ack;
+  ack.mutable_start_session_ack();
+
+  EXPECT_CALL(*control_handler_ptr, OnMessage)
+      .WillOnce([&](PayloadType, std::string_view) {
+        EXPECT_TRUE(session.SendUpstreamMessage(PayloadType::kControl, ack)
+                        .has_value());
+      });
+  EXPECT_CALL(*feature_handler_ptr, OnMessage)
+      .WillOnce([&](PayloadType, std::string_view) {
+        EXPECT_TRUE(
+            session
+                .SendUpstreamMessage(PayloadType::kExperimentalTriggering, ack)
+                .has_value());
+      });
+
+  // Control reply during ProcessDownstreamMessage attaches sequence_number 1.
+  EXPECT_CALL(channel, SendUpstreamMessage(
+                           "test_session", PayloadType::kControl,
+                           testing::Ref(ack), std::optional<int64_t>(1)));
+  // Non-control reply omits responding_to_sequence_number.
+  EXPECT_CALL(channel, SendUpstreamMessage(
+                           "test_session", PayloadType::kExperimentalTriggering,
+                           testing::Ref(ack), std::optional<int64_t>()));
+
+  ActuatorDownstreamMessage downstream =
+      MakeDownstreamMessage(ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND,
+                            ExpectedTypeUrl(PayloadType::kControl), "payload",
+                            /*sequence_number=*/1);
+  auto* feature_payload = downstream.add_typed_payloads();
+  feature_payload->set_payload_type(
+      ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_EXPERIMENTAL_TRIGGERING);
+  feature_payload->mutable_proto_payload()->set_type_url(
+      std::string(ExpectedTypeUrl(PayloadType::kExperimentalTriggering)));
+  feature_payload->mutable_proto_payload()->set_value("payload");
+
+  EXPECT_OK(session.ProcessDownstreamMessage(downstream));
 }
 
 TEST(TransportSessionImplTest, SendUpstreamMessageAfterChannelDestruction) {
@@ -108,8 +173,14 @@ TEST(TransportSessionImplTest, ServerSequenceNumbers) {
   MockTransportChannel channel;
   TransportSessionImpl session("test_session", channel.GetWeakPtr());
 
-  EXPECT_EQ(session.last_seen_sequence_number(), 0);
+  EXPECT_EQ(session.last_seen_sequence_number(), -1);
   EXPECT_FALSE(session.has_last_seen_sequence_number());
+
+  // Out-of-band FCM wake message (sequence 0) advances
+  // `last_seen_sequence_number()` to 0.
+  EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(0)));
+  EXPECT_EQ(session.last_seen_sequence_number(), 0);
+  EXPECT_TRUE(session.has_last_seen_sequence_number());
 
   EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(1)));
   EXPECT_EQ(session.last_seen_sequence_number(), 1);
@@ -118,18 +189,67 @@ TEST(TransportSessionImplTest, ServerSequenceNumbers) {
   EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(2)));
   EXPECT_EQ(session.last_seen_sequence_number(), 2);
 
-  // Duplicate sequence numbers are ignored.
+  // Duplicate sequence numbers (including late sequence 0 retries) are ignored.
+  EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(0)));
   EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(1)));
   EXPECT_EQ(session.last_seen_sequence_number(), 2);
 
-  // Non-positive sequence numbers are rejected.
-  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(0)),
+  // Negative sequence numbers are rejected.
+  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(-1)),
               base::test::ErrorIs(
                   DownstreamMessageSequencer::Error::kInvalidSequenceNumber));
   EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(-5)),
               base::test::ErrorIs(
                   DownstreamMessageSequencer::Error::kInvalidSequenceNumber));
   EXPECT_EQ(session.last_seen_sequence_number(), 2);
+}
+
+TEST(TransportSessionImplTest,
+     ProcessDownstreamMessageDispatchesZeroSequenceNumberOnce) {
+  MockTransportChannel channel;
+  TransportHandlerFactoryRegistryImpl registry;
+  EXPECT_CALL(channel, GetHandlerFactoryRegistry())
+      .WillRepeatedly(testing::Return(&registry));
+
+  TransportSessionImpl session("test_session", channel.GetWeakPtr());
+
+  MockTransportHandlerFactory factory({PayloadType::kControl});
+  registry.RegisterFactory(&factory);
+
+  auto handler = std::make_unique<MockTransportHandler>();
+  MockTransportHandler* handler_ptr = handler.get();
+
+  ControlCommand start_cmd;
+  start_cmd.mutable_start_session();
+  const std::string serialized_start = start_cmd.SerializeAsString();
+
+  EXPECT_CALL(factory, OnNewSession(&session))
+      .WillOnce(testing::Return(std::move(handler)));
+  EXPECT_CALL(*handler_ptr, OnMessage(PayloadType::kControl, serialized_start))
+      .WillOnce([&](PayloadType, std::string_view) {
+        EXPECT_EQ(session.last_seen_sequence_number(), 0);
+        EXPECT_TRUE(session.has_last_seen_sequence_number());
+      });
+
+  // First wake message (sequence 0) is dispatched to the handler and advances
+  // `last_seen_sequence_number()` from -1 to 0.
+  EXPECT_OK(session.ProcessDownstreamMessage(MakeDownstreamMessage(
+      ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND,
+      ExpectedTypeUrl(PayloadType::kControl), serialized_start,
+      /*sequence_number=*/0)));
+  EXPECT_EQ(session.last_seen_sequence_number(), 0);
+  EXPECT_TRUE(session.has_last_seen_sequence_number());
+  EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 0u);
+
+  // Duplicate wake message (sequence 0) is dropped without invoking the
+  // handler again or incrementing `consecutive_invalid_sequence_numbers()`.
+  EXPECT_OK(session.ProcessDownstreamMessage(MakeDownstreamMessage(
+      ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND,
+      ExpectedTypeUrl(PayloadType::kControl), serialized_start,
+      /*sequence_number=*/0)));
+  EXPECT_EQ(session.last_seen_sequence_number(), 0);
+  EXPECT_TRUE(session.has_last_seen_sequence_number());
+  EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 0u);
 }
 
 TEST(TransportSessionImplTest, GetWeakPtr) {
@@ -655,7 +775,7 @@ TEST(TransportSessionImplTest,
       ExpectedTypeUrl(PayloadType::kExperimentalTriggering), "payload-2",
       /*sequence_number=*/2)));
   EXPECT_TRUE(delivered.empty());
-  EXPECT_EQ(session.last_seen_sequence_number(), 0);
+  EXPECT_EQ(session.last_seen_sequence_number(), -1);
 
   // Sequence 1 fills the gap and drains 1, 2, 3 in ascending order, advancing
   // `last_seen_sequence_number()` before each message's handlers run.
@@ -743,6 +863,10 @@ TEST(TransportSessionImplTest,
       ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND,
       ExpectedTypeUrl(PayloadType::kControl), serialized_close,
       /*sequence_number=*/1)));
+  EXPECT_OK(session.ProcessDownstreamMessage(MakeDownstreamMessage(
+      ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND,
+      ExpectedTypeUrl(PayloadType::kControl), serialized_close,
+      /*sequence_number=*/0)));
   EXPECT_THAT(delivered_sequences, testing::ElementsAre(1));
 
   // Terminating CloseSession at sequence 4 (inside the gap below buffered 5 &
@@ -877,7 +1001,7 @@ TEST(TransportSessionImplTest,
           MakeSequenceOnlyMessage(static_cast<int64_t>(
               DownstreamMessageSequencer::kDefaultMaxBufferedMessages + 2))),
       base::test::ErrorIs(DownstreamMessageSequencer::Error::kBufferFull));
-  EXPECT_EQ(session.last_seen_sequence_number(), 0);
+  EXPECT_EQ(session.last_seen_sequence_number(), -1);
 }
 
 TEST(TransportSessionImplTest,
@@ -887,19 +1011,95 @@ TEST(TransportSessionImplTest,
 
   EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 0u);
 
-  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(0)),
+  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(-1)),
               base::test::ErrorIs(
                   DownstreamMessageSequencer::Error::kInvalidSequenceNumber));
   EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 1u);
 
-  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(-1)),
+  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(-2)),
               base::test::ErrorIs(
                   DownstreamMessageSequencer::Error::kInvalidSequenceNumber));
   EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 2u);
 
-  // A message with a valid sequence number resets the consecutive counter.
+  // An out-of-band wake message (sequence 0) resets the consecutive counter.
+  EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(0)));
+  EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 0u);
+
+  EXPECT_THAT(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(-1)),
+              base::test::ErrorIs(
+                  DownstreamMessageSequencer::Error::kInvalidSequenceNumber));
+  EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 1u);
+
+  // A message with a valid stream sequence number also resets the counter.
   EXPECT_OK(session.ProcessDownstreamMessage(MakeSequenceOnlyMessage(1)));
   EXPECT_EQ(session.consecutive_invalid_sequence_numbers(), 0u);
+}
+
+TEST(TransportSessionImplTest,
+     UnregisterFactoryDestroysHandlerAndStopsRouting) {
+  MockTransportChannel channel;
+  TransportHandlerFactoryRegistryImpl registry;
+
+  EXPECT_CALL(channel, GetHandlerFactoryRegistry())
+      .WillRepeatedly(testing::Return(&registry));
+
+  TransportSessionImpl session("test_session", channel.GetWeakPtr());
+
+  MockTransportHandlerFactory factory1({PayloadType::kUnspecified},
+                                       kTestFactoryId1);
+  MockTransportHandlerFactory factory2({PayloadType::kUnspecified},
+                                       kTestFactoryId2);
+  registry.RegisterFactory(&factory1);
+  registry.RegisterFactory(&factory2);
+
+  auto handler1 = std::make_unique<MockTransportHandler>();
+  MockTransportHandler* handler_ptr1 = handler1.get();
+  auto handler2 = std::make_unique<MockTransportHandler>();
+  MockTransportHandler* handler_ptr2 = handler2.get();
+
+  EXPECT_CALL(factory1, OnNewSession(&session))
+      .WillOnce(testing::Return(std::move(handler1)));
+  EXPECT_CALL(factory2, OnNewSession(&session))
+      .WillOnce(testing::Return(std::move(handler2)));
+
+  EXPECT_CALL(*handler_ptr1, OnMessage(PayloadType::kUnspecified, kTestPayload))
+      .Times(1);
+  EXPECT_CALL(*handler_ptr2, OnMessage(PayloadType::kUnspecified, kTestPayload))
+      .Times(2);
+
+  EXPECT_TRUE(session.ProcessPayload(PayloadType::kUnspecified, kTestPayload)
+                  .has_value());
+
+  registry.UnregisterFactory(&factory1);
+
+  EXPECT_TRUE(session.ProcessPayload(PayloadType::kUnspecified, kTestPayload)
+                  .has_value());
+}
+
+TEST(TransportSessionImplTest,
+     RegistryDestroyedBeforeSessionResetsObservation) {
+  MockTransportChannel channel;
+  auto registry = std::make_unique<TransportHandlerFactoryRegistryImpl>();
+
+  EXPECT_CALL(channel, GetHandlerFactoryRegistry())
+      .WillRepeatedly(testing::Return(registry.get()));
+
+  TransportSessionImpl session("test_session", channel.GetWeakPtr());
+
+  MockTransportHandlerFactory factory({PayloadType::kUnspecified},
+                                      kTestFactoryId1);
+  registry->RegisterFactory(&factory);
+
+  auto handler = std::make_unique<MockTransportHandler>();
+  EXPECT_CALL(*handler, OnMessage(PayloadType::kUnspecified, kTestPayload))
+      .Times(1);
+  EXPECT_CALL(factory, OnNewSession(&session))
+      .WillOnce(testing::Return(std::move(handler)));
+
+  EXPECT_TRUE(session.ProcessPayload(PayloadType::kUnspecified, kTestPayload)
+                  .has_value());
+
+  registry.reset();
 }
 
 }  // namespace

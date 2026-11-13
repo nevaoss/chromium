@@ -363,7 +363,7 @@ BASE_FEATURE(kCloneDevToolsConnectionOnlyIfRequested,
 
 // Enables unload handler deprecation via Permissions-Policy.
 // https://crbug.com/1324111
-BASE_FEATURE(kDeprecateUnload, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDeprecateUnload, base::FEATURE_ENABLED_BY_DEFAULT);
 // If < 100, each user experiences the deprecation on this % of origins. Which
 // origins varies by which bucket the user is in. This parameter only takes
 // effect if DeprecateUnloadByBucket is enabled. They are are separated so that
@@ -393,7 +393,7 @@ BASE_FEATURE_PARAM(std::string,
 // another study to control what fraction of users experience a specific value
 // of `kDeprecateUnloadPercent`. Doing both in one study greatly complicates the
 // study because we must deal in 100 1% groups.
-BASE_FEATURE(kDeprecateUnloadByBucket, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDeprecateUnloadByBucket, base::FEATURE_ENABLED_BY_DEFAULT);
 // This buckets users, with users in each bucket having a consistent experience
 // of the unload deprecation rollout.
 BASE_FEATURE_PARAM(int,
@@ -443,7 +443,7 @@ BASE_FEATURE(kCSPScriptSrcHashesInV1,
 BASE_FEATURE(kCacheSharingForPervasiveResources,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kPervasiveSharedDictionaries, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPervasiveSharedDictionaries, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSendSameSiteLaxForFedCM, base::FEATURE_DISABLED_BY_DEFAULT);
 

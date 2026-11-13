@@ -1171,16 +1171,6 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
     const {isAiPage} = await this.browserProxy_.handler.isAiPage(ev.url);
     const {isZeroState} = await this.browserProxy_.handler.isZeroState(ev.url);
 
-    // If the frame is no longer loading after waiting for isAiPage,
-    // then exit early to prevent racind.
-    if (!this.isFrameLoading) {
-      this.hasFinishedTopLevelNavigationForTesting_ = true;
-      if (this.onLoadStartFinishedCallbackForTesting_) {
-        this.onLoadStartFinishedCallbackForTesting_();
-      }
-      return;
-    }
-
     if (isAiPage && isZeroState) {
       this.isZeroState_ = true;
       if (!this.isInitialFrameLoad_) {
@@ -1195,6 +1185,18 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
           this.playZeroStateAnimations_();
         }
       }
+    }
+
+    this.isInitialFrameLoad_ = false;
+
+    // If the frame is no longer loading after waiting for isAiPage,
+    // then exit early to prevent racing.
+    if (!this.isFrameLoading) {
+      this.hasFinishedTopLevelNavigationForTesting_ = true;
+      if (this.onLoadStartFinishedCallbackForTesting_) {
+        this.onLoadStartFinishedCallbackForTesting_();
+      }
+      return;
     }
 
     if (!wasZeroState && isZeroState) {
@@ -1222,8 +1224,6 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       }
       this.isInBasicMode_ = true;
     }
-
-    this.isInitialFrameLoad_ = false;
 
     this.hasFinishedTopLevelNavigationForTesting_ = true;
     if (this.onLoadStartFinishedCallbackForTesting_) {
@@ -1552,14 +1552,17 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
     recordAction('ContextualTasks.WebUI.UserAction.OpenNewThread');
     const {url} = await this.browserProxy_.handler.getThreadUrl();
     const newThreadUrl = new URL(url);
-    const currentUrl = new URL(this.$.threadFrame.src);
-    const source = currentUrl.searchParams.get('source');
-    if (source) {
-      newThreadUrl.searchParams.set('source', source);
-    }
-    const aep = currentUrl.searchParams.get('aep');
-    if (aep) {
-      newThreadUrl.searchParams.set('aep', aep);
+    const currentUrlString = this.$.threadFrame.src || this.pendingUrl_;
+    if (currentUrlString && URL.canParse(currentUrlString)) {
+      const currentUrl = new URL(currentUrlString);
+      const source = currentUrl.searchParams.get('source');
+      if (source) {
+        newThreadUrl.searchParams.set('source', source);
+      }
+      const aep = currentUrl.searchParams.get('aep');
+      if (aep) {
+        newThreadUrl.searchParams.set('aep', aep);
+      }
     }
     this.$.threadFrame.src = newThreadUrl.href;
     const composebox = this.composebox_;

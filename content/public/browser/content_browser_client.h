@@ -1290,6 +1290,13 @@ class CONTENT_EXPORT ContentBrowserClient {
   // Unbounded Element API (for example, specific component extensions).
   virtual bool IsUnboundedElementAllowed(RenderFrameHost* render_frame_host);
 
+  // Returns true if subframes of a privileged outermost main frame with the
+  // given `origin` may use the non-privileged Unbounded Element API (subject
+  // to permissions policy).
+  // TODO(crbug.com/571879162): Remove this temporary allowlist.
+  virtual bool IsUnboundedElementAllowedForSubframesOf(
+      const url::Origin& origin);
+
   // Returns true if the given page is allowed to open a window of the given
   // type. If true is returned, |no_javascript_access| will indicate whether
   // the window that is created should be scriptable/in the same process.
@@ -3455,6 +3462,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   // WebUI, DevTools, or an embedder-specific extension scheme) that should be
   // exempt from top-level window size checks in `WebContentsBasedCanceller`.
   virtual bool IsExemptFromWindowSizeCheck(const GURL& url);
+
+  // Returns true if `web_contents` is used for NoStatePrefetch and will not be
+  // rendered.
+  virtual bool IsNoStatePrefetch(WebContents* web_contents);
 };
 
 }  // namespace content

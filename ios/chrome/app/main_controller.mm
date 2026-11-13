@@ -475,8 +475,9 @@ std::string GetProfileNameForChoice(ProfileChoice choice,
   // determined.
   std::optional<IOSLaunchReason> _launchReason;
 
-  // Duration between process creation and the call to main().
-  base::TimeDelta _preMainDuration;
+  // Duration between process creation and the call to main(), or std::nullopt
+  // if unavailable or invalid.
+  std::optional<base::TimeDelta> _preMainDuration;
 
   // True if the launch metrics have already been recorded.
   BOOL _launchMetricsRecorded;
@@ -1173,7 +1174,8 @@ std::string GetProfileNameForChoice(ProfileChoice choice,
   // not be possible to determine here whether they will be run (e.g. if
   // the depend on the state of a profile).
   if (_isFirstRun) {
-    _scopedForceOrientation = ForcePortraitOrientationOnIphone(_appState);
+    _scopedForceOrientation =
+        std::make_unique<ScopedForcePortraitOrientation>(_appState);
   }
 
   // Create app state agents.

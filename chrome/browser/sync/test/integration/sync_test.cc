@@ -113,8 +113,10 @@
 #include "chrome/browser/ash/app_list/arc/arc_app_list_prefs_factory.h"
 #include "chrome/browser/ash/app_list/test/fake_app_list_model_updater.h"
 #include "chrome/browser/sync/test/integration/sync_arc_package_helper.h"
+#include "chrome/browser/ui/ash/shelf/chrome_shelf_prefs.h"
 #include "chromeos/ash/components/account_manager/account_manager_factory.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
+#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
 #include "chromeos/ash/experiences/arc/test/arc_util_test_support.h"
 #include "components/account_id/account_id.h"
 #include "components/account_id/account_id_literal.h"  // nogncheck
@@ -405,6 +407,27 @@ void SyncTest::PostCreateThreads() {
   CHECK(g_browser_process->profile_manager());
   profile_manager_observation_.Observe(g_browser_process->profile_manager());
 
+#if BUILDFLAG(IS_CHROMEOS)
+  // Sets Arc flags, need to be called before create test profiles.
+  ArcAppListPrefsFactory::SetFactoryForSyncTest();
+
+  // Client 0 may reuse the primary user profile, which has
+  // ChromeShelfController attached. Once app list sync starts, it would
+  // pre-allocate pin positions for uninstalled default apps in
+  // AppListSyncableService.
+  ChromeShelfPrefs::SetShouldAddDefaultAppsForTest(false);
+
+  // Uses a fake app list model updater to avoid interacting with Ash.
+  model_updater_factory_scope_ =
+      app_list::AppListSyncableService::SetScopedModelUpdaterFactoryForTest(
+          base::BindRepeating(
+              [](app_list::reorder::AppListReorderDelegate* reorder_delegate)
+                  -> std::unique_ptr<AppListModelUpdater> {
+                return std::make_unique<FakeAppListModelUpdater>(
+                    /*profile=*/nullptr, reorder_delegate);
+              }));
+#endif
+
   switch (server_type_) {
     case EXTERNAL_LIVE_SERVER: {
       // Allows google.com as well as country-specific TLDs.
@@ -660,21 +683,6 @@ bool SyncTest::SetupClients() {
     cl->AppendSwitchASCII(syncer::kSyncDeferredStartupTimeoutSeconds, "0");
   }
 
-#if BUILDFLAG(IS_CHROMEOS)
-  // Sets Arc flags, need to be called before create test profiles.
-  ArcAppListPrefsFactory::SetFactoryForSyncTest();
-
-  // Uses a fake app list model updater to avoid interacting with Ash.
-  model_updater_factory_scope_ =
-      app_list::AppListSyncableService::SetScopedModelUpdaterFactoryForTest(
-          base::BindRepeating(
-              [](app_list::reorder::AppListReorderDelegate* reorder_delegate)
-                  -> std::unique_ptr<AppListModelUpdater> {
-                return std::make_unique<FakeAppListModelUpdater>(
-                    /*profile=*/nullptr, reorder_delegate);
-              }));
-#endif
-
   base::ScopedAllowBlockingForTesting allow_blocking;
 
   for (int i = 0; i < num_clients_; ++i) {
@@ -686,16 +694,6 @@ bool SyncTest::SetupClients() {
               << "; elapsed time since construction: "
               << (base::Time::Now() - test_construction_time_);
   }
-
-#if BUILDFLAG(IS_CHROMEOS)
-  if (ArcAppListPrefsFactory::IsFactorySetForSyncTest()) {
-    // Init SyncArcPackageHelper to ensure that the arc services are initialized
-    // for each Profile, only can be called after test profiles are created.
-    if (!sync_arc_helper()) {
-      return false;
-    }
-  }
-#endif
 
   LOG(INFO)
       << "SyncTest::SetupClients() completed; elapsed time since construction: "
@@ -1089,6 +1087,11 @@ void SyncTest::OnProfileAdded(Profile* profile) {
             profile->GetPath().value());
     account_manager->SetUrlLoaderFactoryForTests(
         test_url_loader_factory_.GetSafeWeakWrapper());
+  }
+
+  if (ArcAppListPrefsFactory::IsFactorySetForSyncTest() &&
+      ash::IsUserBrowserContext(profile)) {
+    sync_arc_helper()->SetupProfile(profile);
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 }

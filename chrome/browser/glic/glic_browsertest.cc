@@ -70,8 +70,7 @@ class GlicBrowserTest : public InProcessBrowserTest {
   }
 
  protected:
-  virtual void InitializeFeatureList() {
-  }
+  virtual void InitializeFeatureList() {}
 
  private:
   GlicTestEnvironment glic_test_environment_{{.fre_status = std::nullopt}};
@@ -80,7 +79,9 @@ class GlicBrowserTest : public InProcessBrowserTest {
 class SharedGlicBrowserTest : public glic::GlicBrowserTest {
  public:
   SharedGlicBrowserTest() {
-    // TODO(b/559775860): revisit this test for GlicNoWebview.
+    // Focus trapping inside the WebUI host (#webviewContainer webview) is
+    // specific to the <webview> architecture and not applicable in NoWebview
+    // mode where Views manages focus directly.
     scoped_feature_list_.InitAndDisableFeature(features::kGlicNoWebview);
   }
 
@@ -228,8 +229,12 @@ class GlicKeyedServiceSyncBrowserTest : public GlicBrowserTest {
   }
 
   void InitializeFeatureList() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kGlicExperimentalTriggering);
+    // The policy control exemption lets the test profile act on the web, which
+    // is required for experimental triggering to be available.
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{features::kGlicExperimentalTriggering,
+                              features::kGlicActorPolicyControlExemption},
+        /*disabled_features=*/{});
   }
 
   void SetUpInProcessBrowserTestFixture() override {

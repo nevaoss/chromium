@@ -524,6 +524,25 @@ bool IsTriggerSourceOnlyRelevantForCompose(
   NOTREACHED();
 }
 
+// Returns true if regular Autofill suggestions must not be generated for
+// `field` because it is a <textarea> on Android. With
+// `kAutofillAtMemorySupportTextAreaOnAndroid`, textareas behave like
+// contenteditables: the keyboard accessory only offers the AtMemory entry
+// point, so no address, payment or single-field suggestions are generated for
+// them. AtMemory-triggered suggestions are unaffected.
+bool ShouldSuppressSuggestionsForTextArea(
+    const FormFieldData& field,
+    AutofillSuggestionTriggerSource trigger_source) {
+#if BUILDFLAG(IS_ANDROID)
+  return field.form_control_type() == FormControlType::kTextArea &&
+         !IsAtMemoryTriggerSource(trigger_source) &&
+         base::FeatureList::IsEnabled(
+             features::kAutofillAtMemorySupportTextAreaOnAndroid);
+#else
+  return false;
+#endif
+}
+
 // Returns `true` if this suggestion trigger source should replace the currently
 // showing suggestions. `true` for everything but IPH-like nudges to start using
 // a product (Compose, AtMemory).
@@ -967,6 +986,8 @@ void BrowserAutofillManager::OnFormSubmittedImpl(const FormData& form,
   std::unique_ptr<FormStructure> submitted_form = ValidateSubmittedForm(form);
   CHECK(!client().IsOffTheRecord() || !submitted_form);
 
+  metrics_->autocomplete_key_metrics_logger.OnFormSubmitted(form);
+
   if (!submitted_form) {
     // We always give Autocomplete a chance to save the data.
     if (!client().IsOffTheRecord()) {
@@ -1248,6 +1269,14 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
   }
 
   external_delegate_->OnQuery(form, field, caret_bounds, trigger_source);
+
+  // Textareas on Android only offer the AtMemory entry point in the keyboard
+  // accessory, so no Autofill suggestions are generated for them.
+  if (ShouldSuppressSuggestionsForTextArea(field, trigger_source)) {
+    external_delegate_->OnSuggestionsReturned(field, /*input_suggestions=*/{},
+                                              /*prefilled_query=*/{});
+    return;
+  }
 
   if (AtMemoryManager* amm = client().GetAtMemoryManager();
       amm && IsAtMemoryTriggerSource(trigger_source)) {
@@ -2319,6 +2348,9 @@ void BrowserAutofillManager::DidShowSuggestions(
     }
   }
 
+  metrics_->autocomplete_key_metrics_logger.OnSuggestionsShown(field_id,
+                                                               suggestions);
+
   if (shown_suggestion_types.contains(SuggestionType::kIbanEntry) &&
       client().GetPaymentsAutofillClient()->GetIbanManager()) {
     client()
@@ -2462,6 +2494,9 @@ void BrowserAutofillManager::OnSingleFieldSuggestionSelected(
     const FieldGlobalId& field_id) {
   client().GetSingleFieldFillRouter().OnSingleFieldSuggestionSelected(
       suggestion);
+
+  metrics_->autocomplete_key_metrics_logger.OnSuggestionSelected(field_id,
+                                                                 suggestion);
 
   auto [form_structure, autofill_trigger_field] =
       FindMutableFormAndField(form_id, field_id);

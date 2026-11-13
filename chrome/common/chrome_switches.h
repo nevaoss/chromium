@@ -953,6 +953,12 @@ inline constexpr char kNoOpForTestingProcess[] = "no-op-for-testing";
 // The version for the staged child module.
 inline constexpr char kChildModuleVersion[] = "child-module-version";
 
+// The user path component identifying the directory in which the staged child
+// module resides (see child_module::GetModulesDirForUser()). The browser
+// computes this on behalf of renderers, which cannot.
+inline constexpr char kChildModuleUserPathComponent[] =
+    "child-module-user-path-component";
+
 // Force-enables the profile shortcut manager. This is needed for tests since
 // they use a custom-user-data-dir which disables this.
 inline constexpr char kEnableProfileShortcutManager[] =
@@ -1055,6 +1061,9 @@ inline constexpr char kGuest[] = "guest";
 
 // Overrides the glic guest URL.
 inline constexpr char kGlicGuestURL[] = "glic-guest-url";
+
+// Overrides the GEiC guest URL.
+inline constexpr char kGeicGuestURL[] = "geic-guest-url";
 
 inline constexpr char kSkillsV2Origin[] = "skills-v2-origin";
 

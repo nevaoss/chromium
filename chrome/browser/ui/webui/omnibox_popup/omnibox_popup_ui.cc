@@ -163,6 +163,9 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean(
       "omniboxPopupDebugEnabled",
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug));
+  source->AddBoolean("omniboxDogfoodFeedbackEnabled",
+                     omnibox::internal::IsWebUIOmniboxFullPopupEnabled() &&
+                         omnibox::kWebUIOmniboxFullPopupDogfoodFeedback.Get());
   source->AddBoolean("webuiOmniboxPopupSelectionControlEnabled",
                      base::FeatureList::IsEnabled(
                          omnibox::kWebUIOmniboxPopupSelectionControl));
@@ -366,7 +369,7 @@ void OmniboxPopupUI::CreatePageHandler(
     omnibox_handler_ = std::make_unique<WebuiOmniboxHandler>(
         std::move(pending_page_handler), std::move(page),
         metrics_reporter_service->metrics_reporter(), omnibox_controller,
-        web_ui(),
+        Profile::FromWebUI(web_ui()), web_ui()->GetWebContents(),
         base::BindRepeating(&OmniboxPopupUI::GetOrCreateContextualSessionHandle,
                             base::Unretained(this)));
   }

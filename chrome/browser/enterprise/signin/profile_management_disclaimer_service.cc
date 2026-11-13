@@ -67,9 +67,8 @@
 
 namespace {
 
-// TODO(b/537182192): Replace with a P-link.
 constexpr char kSignalsDisclaimerLearnMoreURL[] =
-    "https://support.google.com/chrome/a/answer/16191236";
+    "https://support.google.com/chrome/a?p=managed_profile_signals";
 
 bool CanTryPolicyRegistration(std::optional<base::Time> last_failure_time) {
   if (!last_failure_time) {
@@ -334,6 +333,8 @@ void ProfileManagementDisclaimerService::
       return;
     }
     policy::UserCloudManagementStatusFetcher::FetchStatusAndPolicies(
+        policy::UserCloudManagementStatusFetcher::Caller::
+            kProfileManagementDisclaimer,
         g_browser_process->browser_policy_connector()
             ->device_management_service(),
         g_browser_process->system_network_context_manager()

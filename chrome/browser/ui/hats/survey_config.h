@@ -114,6 +114,8 @@ inline constexpr char kHatsSurveyTriggerPerformanceControlsPPM[] =
     "performance-ppm";
 inline constexpr char kHatsSurveyTriggerPrivacyGuide[] = "privacy-guide";
 inline constexpr char kHatsSurveyTriggerRedWarning[] = "red-warning";
+inline constexpr char kHatsSurveyTriggerScheduledRestart[] =
+    "scheduled-restart";
 inline constexpr char kHatsSurveyTriggerSettings[] = "settings";
 inline constexpr char kHatsSurveyTriggerSEHijacking[] =
     "search-engine-hijacking";
@@ -194,6 +196,9 @@ inline constexpr char
 inline constexpr char
     kHatsSurveyTriggerAutofillPersonalizationAndTrustOneTimePasswordFilled[] =
         "autofill-personalization-and-trust-one-time-password-filled";
+inline constexpr char
+    kHatsSurveyTriggerAutofillPersonalizationAndTrustOneTimePasswordDismissed
+        [] = "autofill-personalization-and-trust-one-time-password-dismissed";
 inline constexpr char
     kHatsSurveyTriggerAutofillPersonalizationAndTrustPasswordFilled[] =
         "autofill-personalization-and-trust-password-filled";

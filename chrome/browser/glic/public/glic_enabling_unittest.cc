@@ -26,6 +26,7 @@
 #include "base/values.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
+#include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_types.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_pref_names.h"
@@ -36,6 +37,7 @@
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/public/glic_provider_spec.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
@@ -166,7 +168,7 @@ class GlicEnablingTest : public testing::Test {
 #else
         // Disable smart restart metrics to prevent background D-Bus queries to
         // screensaver status, which causes asynchronous test flakiness.
-        {features::kSmartRestartMetrics}
+        {features::kSmartRestart, features::kSmartRestartMetrics}
 #endif
     );
     histogram_tester_ = std::make_unique<base::HistogramTester>();
@@ -618,6 +620,7 @@ class GlicEnablingProfileEligibilityTest : public testing::Test {
 #if !BUILDFLAG(IS_ANDROID)
             // Disable smart restart metrics to prevent background D-Bus queries
             // to screensaver status, which causes asynchronous test flakiness.
+            features::kSmartRestart,
             features::kSmartRestartMetrics,
 #endif
         });
@@ -674,6 +677,7 @@ class GlicEnablingProfileEligibilityTest : public testing::Test {
     glic_user_session_test_helper_.PostProfileTearDown();
 #endif  // BUILDFLAG(IS_CHROMEOS)
     FlushMessageLoop();
+    task_environment_.RunUntilIdle();
   }
 
  protected:
@@ -814,7 +818,8 @@ class GlicEnablingProfileReadyStateTestBase
  public:
   explicit GlicEnablingProfileReadyStateTestBase(
       const std::vector<base::test::FeatureRef>& extra_enabled_features = {},
-      const std::vector<base::test::FeatureRef>& extra_disabled_features = {}) {
+      const std::vector<base::test::FeatureRef>& extra_disabled_features = {},
+      bool actor_policy_control_exemption = true) {
     // Ensure the profile is Enabled by default.
     // Disable rollout check and user status check complexities for these tests.
     // We already have kGlic enabled from the base class.
@@ -829,6 +834,12 @@ class GlicEnablingProfileReadyStateTestBase
     disabled_features.insert(disabled_features.end(),
                              extra_disabled_features.begin(),
                              extra_disabled_features.end());
+
+    // The test account is not eligible to act on the web, which would make
+    // experimental triggering unavailable. Exempt it by default so tests can
+    // exercise the other conditions.
+    (actor_policy_control_exemption ? enabled_features : disabled_features)
+        .push_back(features::kGlicActorPolicyControlExemption);
 
     scoped_feature_list_.InitWithFeatures(enabled_features, disabled_features);
   }
@@ -911,6 +922,7 @@ class GlicEnablingAnchorEntryPointTestBase : public testing::Test {
 #if !BUILDFLAG(IS_ANDROID)
             // Disable smart restart metrics to prevent background D-Bus queries
             // to screensaver status, which causes asynchronous test flakiness.
+            features::kSmartRestart,
             features::kSmartRestartMetrics,
 #endif
         });
@@ -1475,8 +1487,13 @@ TEST_F(GlicEnablingProfileEligibilityTest,
 #if !BUILDFLAG(IS_ANDROID)
 TEST_F(GlicEnablingProfileEligibilityTest,
        ExperimentalTriggering_ProfileTeardownNoCrash) {
-  base::test::ScopedFeatureList feature_list(
-      features::kGlicExperimentalTriggering);
+  // The actor policy control exemption makes the experimental triggering state
+  // depend only on the opt-in prefs, so that toggling them changes it.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kGlicExperimentalTriggering,
+                            features::kGlicActorPolicyControlExemption},
+      /*disabled_features=*/{});
 
   auto* identity_test_env = identity_test_env_adaptor_->identity_test_env();
   identity_test_env->MakePrimaryAccountAvailable("test@example.com",
@@ -1823,7 +1840,8 @@ TEST_F(GlicEnablingProfileReadyStateTestBase,
     EXPECT_EQ(enabling.GetExperimentalTriggeringState(),
               syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady);
     EXPECT_EQ(enabling.GetExperimentalTriggeringCapabilities(),
-              base::flat_set<std::string>{kGlicCapabilityStructuredYields});
+              (base::flat_set<std::string>{kGlicCapabilityStructuredYields,
+                                           kGlicCapabilityPaymentMetadata}));
   }
 
   {
@@ -1837,8 +1855,98 @@ TEST_F(GlicEnablingProfileReadyStateTestBase,
               syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady);
     EXPECT_EQ(enabling.GetExperimentalTriggeringCapabilities(),
               (base::flat_set<std::string>{kGlicCapabilityScreenshot,
-                                           kGlicCapabilityStructuredYields}));
+                                           kGlicCapabilityStructuredYields,
+                                           kGlicCapabilityPaymentMetadata}));
   }
+}
+
+// Fixture without the actor policy control exemption, so that the experimental
+// triggering state reflects whether the profile can actually act on the web.
+class GlicEnablingExperimentalTriggeringCanActOnWebTest
+    : public GlicEnablingProfileReadyStateTestBase {
+ public:
+  GlicEnablingExperimentalTriggeringCanActOnWebTest()
+      : GlicEnablingProfileReadyStateTestBase(
+            /*extra_enabled_features=*/{features::kGlicExperimentalTriggering},
+            /*extra_disabled_features=*/{},
+            /*actor_policy_control_exemption=*/false) {}
+
+ protected:
+  GlicEnabling& enabling() {
+    return glic::GlicKeyedService::Get(profile())->enabling();
+  }
+
+  void OptIn() {
+    enabling().SetCompletedFre(prefs::FreStatus::kCompleted);
+    enabling().SetUserEnabledActuationOnWeb(true);
+    enabling().SetExperimentalTriggeringEnabled(true);
+  }
+};
+
+TEST_F(GlicEnablingExperimentalTriggeringCanActOnWebTest,
+       UnavailableWhenCannotActOnWeb) {
+  OptIn();
+
+  // The account does not have an eligible subscription, so it cannot act on
+  // the web.
+  profile()->GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 0);
+  ASSERT_FALSE(
+      GlicKeyedService::Get(profile())->actor_policy_checker().CanActOnWeb());
+  EXPECT_EQ(enabling().GetExperimentalTriggeringState(),
+            syncer::DeviceInfo::GlicExperimentalTriggeringState::kUnavailable);
+  EXPECT_EQ(enabling().GetExperimentalTriggeringVersion(), std::nullopt);
+  EXPECT_TRUE(enabling().GetExperimentalTriggeringCapabilities().empty());
+
+  // With an eligible subscription the profile can act on the web.
+  profile()->GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 1);
+  ASSERT_TRUE(
+      GlicKeyedService::Get(profile())->actor_policy_checker().CanActOnWeb());
+  EXPECT_EQ(enabling().GetExperimentalTriggeringState(),
+            syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady);
+  EXPECT_NE(enabling().GetExperimentalTriggeringVersion(), std::nullopt);
+  EXPECT_FALSE(enabling().GetExperimentalTriggeringCapabilities().empty());
+}
+
+TEST_F(GlicEnablingExperimentalTriggeringCanActOnWebTest,
+       StateChangedCallbackOnActOnWebPolicyChange) {
+  policy::ScopedManagementServiceOverrideForTesting browser_management(
+      policy::ManagementServiceFactory::GetForProfile(profile()),
+      policy::EnterpriseManagementAuthority::CLOUD);
+  profile()->GetPrefs()->SetInteger(
+      prefs::kGlicSparkPolicySettings,
+      std::to_underlying(glic::prefs::GlicSparkPolicyState::kEnabled));
+  profile()->GetPrefs()->SetInteger(
+      glic::prefs::kGlicActuationOnWeb,
+      std::to_underlying(glic::prefs::GlicActuationOnWebPolicyState::kEnabled));
+  profile()->GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 1);
+  OptIn();
+  ASSERT_EQ(enabling().GetExperimentalTriggeringState(),
+            syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady);
+
+  bool callback_called = false;
+  auto subscription = enabling().RegisterOnExperimentalTriggeringStateChanged(
+      base::BindLambdaForTesting([&]() { callback_called = true; }));
+
+  // GlicEnabling doesn't observe the actuation policy itself, so this
+  // exercises the notification from GlicActorPolicyChecker.
+  profile()->GetPrefs()->SetInteger(
+      glic::prefs::kGlicActuationOnWeb,
+      std::to_underlying(
+          glic::prefs::GlicActuationOnWebPolicyState::kDisabled));
+  EXPECT_TRUE(callback_called);
+  EXPECT_EQ(enabling().GetExperimentalTriggeringState(),
+            syncer::DeviceInfo::GlicExperimentalTriggeringState::kUnavailable);
+
+  callback_called = false;
+  profile()->GetPrefs()->SetInteger(
+      glic::prefs::kGlicActuationOnWeb,
+      std::to_underlying(glic::prefs::GlicActuationOnWebPolicyState::kEnabled));
+  EXPECT_TRUE(callback_called);
+  EXPECT_EQ(enabling().GetExperimentalTriggeringState(),
+            syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady);
 }
 
 class GlicEnablingCombinedObserverTest
@@ -1994,6 +2102,48 @@ TEST_F(GlicEnablingWebActuationToggleTest, ManagedProfile_CanActOnWeb) {
 
   auto* glic_service = GlicKeyedService::Get(profile());
   EXPECT_TRUE(glic_service->enabling().ShouldShowWebActuationToggle());
+}
+class GlicEnablingWebActuationToggleGeicTest
+    : public GlicEnablingProfileEligibilityTest {
+ public:
+  GlicEnablingWebActuationToggleGeicTest() {
+    feature_list_.InitWithFeaturesAndParameters(
+        {{features::kGlicActor, {}},
+         {features::kGeic,
+          {{"enabled", "true"},
+           {"geic-guest-url", "https://business.gemini.google/side-panel"}}}},
+        {});
+  }
+
+ protected:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+TEST_F(GlicEnablingWebActuationToggleGeicTest,
+       ManagedProfile_Geic_CannotActOnWeb) {
+  auto* identity_test_env = identity_test_env_adaptor_->identity_test_env();
+  AccountInfo account_info = identity_test_env->MakePrimaryAccountAvailable(
+      "test@example.com", signin::ConsentLevel::kSignin);
+  AccountCapabilitiesTestMutator mutator(&account_info);
+  SetGlicCapability(mutator, true);
+  signin::UpdateAccountInfoForAccount(identity_test_env->identity_manager(),
+                                      account_info);
+
+  policy::ScopedManagementServiceOverrideForTesting browser_management(
+      policy::ManagementServiceFactory::GetForProfile(profile()),
+      policy::EnterpriseManagementAuthority::CLOUD_DOMAIN);
+
+  profile()->GetPrefs()->SetInteger(
+      glic::prefs::kGlicActuationOnWeb,
+      std::to_underlying(glic::prefs::GlicActuationOnWebPolicyState::kEnabled));
+  profile()->GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 1);
+
+  auto* glic_service = GlicKeyedService::Get(profile());
+  EXPECT_FALSE(glic_service->provider_spec().IsActuationSupported());
+  EXPECT_FALSE(glic_service->actor_policy_checker().CanActOnWeb());
+  EXPECT_FALSE(glic_service->actor_policy_checker().GlicApiCanActOnWeb());
+  EXPECT_FALSE(glic_service->enabling().ShouldShowWebActuationToggle());
 }
 
 // Tests for the subscription benefits priority pref

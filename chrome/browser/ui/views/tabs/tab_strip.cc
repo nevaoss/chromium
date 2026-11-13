@@ -110,6 +110,8 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
+#include "chrome/common/chrome_features.h"
 #endif
 
 namespace {
@@ -1467,6 +1469,14 @@ void TabStrip::OnGroupClosed(const tab_groups::TabGroupId& group) {
 void TabStrip::OnTabGroupFocusChanged(
     std::optional<tab_groups::TabGroupId> new_focused_group,
     std::optional<tab_groups::TabGroupId> old_focused_group) {
+  if (old_focused_group.has_value() &&
+      group_header(old_focused_group.value())) {
+    group_header(old_focused_group.value())->VisualsChanged();
+  }
+  if (new_focused_group.has_value() &&
+      group_header(new_focused_group.value())) {
+    group_header(new_focused_group.value())->VisualsChanged();
+  }
   // The TabStripLayoutHelper will query the controller for the focused group
   // and update the visibility of tabs and group headers. Calling
   // AnimateToIdealBounds() will trigger the animation to the new bounds.
@@ -1945,9 +1955,17 @@ void TabStrip::MaybeStartDrag(TabSlotView* source,
   // Block drag operation if the web app is locked for OnTask. This prevents the
   // window from moving along with the tab when in locked fullsceeen mode. Only
   // relevant for non-web browser scenarios.
-  if (ash::boca::OnTaskLockedController::From(GetBrowserWindowInterface())
-          ->is_locked_for_on_task()) {
-    return;
+  if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+    if (!chromeos::LockedStateController::From(GetBrowserWindowInterface())
+             ->GetCapabilities()
+             .allow_tab_modification) {
+      return;
+    }
+  } else {
+    if (ash::boca::OnTaskLockedController::From(GetBrowserWindowInterface())
+            ->is_locked_for_on_task()) {
+      return;
+    }
   }
 #endif
 

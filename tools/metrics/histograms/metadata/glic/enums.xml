@@ -287,14 +287,26 @@ chromium-metrics-reviews@google.com.
 <enum name="GlicDragAndDropValidationResult">
   <int value="0" label="Success"/>
   <int value="1" label="Blocked by feature flag"/>
-  <int value="2" label="Invalid drag ID"/>
+  <int value="2" label="(Obsolete) Invalid drag ID"/>
   <int value="3" label="Cross-profile drag blocked"/>
-  <int value="4" label="Source WebContents destroyed"/>
-  <int value="5" label="Source Tab closed"/>
-  <int value="6" label="Target WebContents destroyed"/>
-  <int value="7" label="Source frame navigated before context fetched"/>
-  <int value="8" label="Context fetch failed"/>
+  <int value="4" label="(Obsolete) Source WebContents destroyed">
+    (Obsolete) Source WebContents destroyed; replaced by Source frame destroyed.
+  </int>
+  <int value="5" label="(Obsolete) Source Tab closed"/>
+  <int value="6" label="(Obsolete) Target WebContents destroyed"/>
+  <int value="7"
+      label="(Obsolete) Source frame navigated before context fetched">
+    (Obsolete) Source frame navigated before context fetched. Obsoleted when
+    page context stopped being fetched for drops.
+  </int>
+  <int value="8" label="(Obsolete) Context fetch failed">
+    (Obsolete) Context fetch failed. Obsoleted when page context stopped being
+    fetched for drops.
+  </int>
   <int value="9" label="Unsupported content type"/>
+  <int value="10" label="Page context ineligible"/>
+  <int value="11" label="Unknown drag source"/>
+  <int value="12" label="Source frame destroyed"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/service/metrics/metrics_types.h:GlicDragAndDropValidationResult) -->
@@ -546,6 +558,8 @@ chromium-metrics-reviews@google.com.
   <int value="103" label="UpdateActorTaskStepProgress"/>
   <int value="104" label="OpenPinnedTabPicker"/>
   <int value="105" label="OpenContactInfoSettingsPage"/>
+  <int value="106" label="SetClientStorageItem"/>
+  <int value="107" label="ClearClientStorage"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/glic_api_metrics.h:GlicHostApiRequestId) -->
@@ -759,6 +773,7 @@ chromium-metrics-reviews@google.com.
   <int value="23" label="Instance destroyed: archived"/>
   <int value="24" label="Instance destroyed: signed out"/>
   <int value="25" label="Instance destroyed: shutdown"/>
+  <int value="26" label="Panel closed before the client was ready"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/glic_invoke_options.h:GlicInvokeError) -->
@@ -1426,7 +1441,10 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Executed"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:GlicWebContentsContextMenuResult) -->
+<!-- LINT.ThenChange(
+  //chrome/browser/renderer_context_menu/render_view_context_menu.cc:GlicWebContentsContextMenuResult,
+  //chrome/browser/glic/android/java/src/org/chromium/chrome/browser/glic/GlicMetrics.java:GlicWebContentsContextMenuResult
+) -->
 
 <!-- LINT.IfChange(GlicWebUseCounter) -->
 

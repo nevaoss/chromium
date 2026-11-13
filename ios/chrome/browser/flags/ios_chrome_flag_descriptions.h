@@ -261,6 +261,13 @@ inline constexpr char kAutofillEnableGradientGoogleLogosName[] =
 inline constexpr char kAutofillEnableGradientGoogleLogosDescription[] =
     "When enabled, gradient-style GPay and Wallet branding logos will be used.";
 
+inline constexpr char kAutofillEnableOAuth2TokenFixName[] =
+    "Enable Autofill OAuth2 token fix";
+inline constexpr char kAutofillEnableOAuth2TokenFixDescription[] =
+    "When enabled, Autofill payments requests fetch OAuth2 tokens from the "
+    "identity service on each request, instead of keeping local cache in "
+    "Autofill components.";
+
 inline constexpr char kAutofillEnableWalletBrandingName[] =
     "Update Google Pay branding to Wallet where applicable";
 inline constexpr char kAutofillEnableWalletBrandingDescription[] =
@@ -479,14 +486,6 @@ inline constexpr char kComposeboxDriveContextMenuOptionName[] =
     "Enable Composebox Drive option";
 inline constexpr char kComposeboxDriveContextMenuOptionDescription[] =
     "Enables Google Drive option in the Composebox menu.";
-
-inline constexpr char
-    kComposeboxFetchContextualSuggestionsForMultipleAttachmentsName[] =
-        "Enable Composebox Fetch Contextual Suggestions For multiple "
-        "attachments";
-inline constexpr char
-    kComposeboxFetchContextualSuggestionsForMultipleAttachmentsDescription[] =
-        "Enables showing suggestions for multiple attachments";
 
 inline constexpr char kComposeboxPlusButtonBottomSheetName[] =
     "Enable the bottom sheet for plus button in Composebox";
@@ -719,6 +718,12 @@ inline constexpr char kEditPasswordsInSettingsName[] =
 inline constexpr char kEditPasswordsInSettingsDescription[] =
     "Enables password editing in settings.";
 
+inline constexpr char kEnableAccountPreviewPreferredAccountFREName[] =
+    "Enable Account Preview Preferred Account in FRE";
+inline constexpr char kEnableAccountPreviewPreferredAccountFREDescription[] =
+    "Controls whether preferred account preview is enabled in the First "
+    "Run Experience (FRE).";
+
 inline constexpr char kEnableAccountPreviewPreferredAccountFollowupName[] =
     "Enable Account Preview Preferred Account Followup";
 inline constexpr char
@@ -867,6 +872,12 @@ inline constexpr char kFetchDeviceAuthorizationKeysName[] =
 inline constexpr char kFetchDeviceAuthorizationKeysDescription[] =
     "Enables fetching device authorization keys for password manager passkeys.";
 
+inline constexpr char kFiveButtonAppBarLayoutName[] =
+    "Five Button App Bar Layout";
+inline constexpr char kFiveButtonAppBarLayoutDescription[] =
+    "Enables a five-button layout for the App Bar, incorporating the forward "
+    "and back navigation buttons.";
+
 inline constexpr char kForceStartupSigninPromoName[] =
     "Display the startup sign-in promo";
 inline constexpr char kForceStartupSigninPromoDescription[] =
@@ -1006,6 +1017,11 @@ inline constexpr char kGlicActorAutofillName[] = "Actor autofill";
 inline constexpr char kGlicActorAutofillDescription[] =
     "Enables autofill actions for the actor tools on iOS. Specific fillable "
     "types may also need to be enabled.";
+
+inline constexpr char kGreyImageCIFilterName[] = "Grey Image CIFilter";
+inline constexpr char kGreyImageCIFilterDescription[] =
+    "Uses Core Image CIFilter instead of UIGraphicsImageRenderer for "
+    "grayscale image rendering.";
 
 inline constexpr char kHandleMdmErrorsForDasherAccountsName[] =
     "Mdm error handling for dasher accounts";
@@ -1377,6 +1393,12 @@ inline constexpr char kMetrickitNonCrashReportDescription[] =
     "Enables sending Metrickit reports for non crash type (hang, "
     "cpu-exception, diskwrite-exception)";
 
+inline constexpr char kMigrateToSigninReauthCoordinatorName[] =
+    "Migrate to SigninReauthCoordinator";
+inline constexpr char kMigrateToSigninReauthCoordinatorDescription[] =
+    "When enabled, primary account reauthentication flows use "
+    "SigninReauthCoordinator instead of SigninCoordinator.";
+
 inline constexpr char kMobilePromoOnDesktopName[] = "Mobile Promo On Desktop";
 inline constexpr char kMobilePromoOnDesktopDescription[] =
     "When enabled, shows a mobile promo on the desktop new tab page.";
@@ -1603,11 +1625,6 @@ inline constexpr char kOmniboxZeroSuggestPrefetchingOnWebName[] =
 inline constexpr char kOmniboxZeroSuggestPrefetchingOnWebDescription[] =
     "Enables prefetching of the zero prefix suggestions for eligible users "
     "on the Web (i.e. non-NTP and non-SRP URLs).";
-
-inline constexpr char kOpenEditGroupViewByTappingTitleName[] =
-    "OpenEditGroupViewByTappingTitle";
-inline constexpr char kOpenEditGroupViewByTappingTitleDescription[] =
-    "Enables the OpenEditGroupViewByTappingTitle feature.";
 
 inline constexpr char kOptimizationGuideDebugLogsName[] =
     "Enable optimization guide debug logs";

@@ -177,7 +177,11 @@ TEST_F(JXLImageDecoderTest, PqIntensityTargetIsContentLightLevel) {
   };
 
   EXPECT_EQ(max_cll("pq_intensity_target_600.jxl"), 600.f);
-  EXPECT_EQ(max_cll("pq_intensity_target_10000.jxl"), 10000.f);
+  // 10000 cd/m2 is the PQ nominal peak that encoders write by default, and
+  // 255 is the codestream default when the field is absent; neither states
+  // the content's peak.
+  EXPECT_EQ(max_cll("pq_intensity_target_10000.jxl"), std::nullopt);
+  EXPECT_EQ(max_cll("pq_intensity_target_255.jxl"), std::nullopt);
 }
 
 // Test that an SDR image's intensity_target is not reported as HDR metadata.
@@ -710,6 +714,31 @@ TEST_F(JXLImageDecoderTest, AnimationRepetitionCount) {
   int rep_count = decoder->RepetitionCount();
   EXPECT_NE(kAnimationNone, rep_count)
       << "Animation should not report kAnimationNone";
+}
+
+TEST_F(JXLImageDecoderTest, AnimationDecodeSecondFrameFirst) {
+  auto decoder = CreateJXLDecoder();
+  scoped_refptr<SharedBuffer> data =
+      ReadFileToSharedBuffer(kImagesDir, "image_decoder_frame_one_crash.jxl");
+  ASSERT_TRUE(data);
+
+  decoder->SetData(data.get(), true);
+  ASSERT_GT(decoder->FrameCount(), 1u);
+  ImageFrame* frame = decoder->DecodeFrameBufferAtIndex(1);
+  ASSERT_TRUE(frame);
+  ASSERT_EQ(ImageFrame::kFrameComplete, frame->GetStatus());
+  EXPECT_FALSE(decoder->Failed());
+
+  auto sequential = CreateJXLDecoder();
+  sequential->SetData(data.get(), true);
+  ImageFrame* first_frame = sequential->DecodeFrameBufferAtIndex(0);
+  ASSERT_TRUE(first_frame);
+  ASSERT_EQ(ImageFrame::kFrameComplete, first_frame->GetStatus());
+  ImageFrame* sequential_frame = sequential->DecodeFrameBufferAtIndex(1);
+  ASSERT_TRUE(sequential_frame);
+  ASSERT_EQ(ImageFrame::kFrameComplete, sequential_frame->GetStatus());
+  EXPECT_EQ(HashBitmap(sequential_frame->Bitmap()),
+            HashBitmap(frame->Bitmap()));
 }
 
 // Test random frame access (not sequential).

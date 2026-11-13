@@ -23,6 +23,7 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils.NtpBackgroundType;
+import org.chromium.chrome.browser.ntp_customization.theme.NtpSyncedThemeManager;
 import org.chromium.chrome.browser.ntp_customization.theme.NtpThemeStateProvider;
 import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThemeColorFromHexInfo;
 import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThemeColorInfo;
@@ -115,19 +116,6 @@ public class NtpCustomizationConfigManager {
         default void onBackgroundReset(@NtpBackgroundType int oldType) {}
     }
 
-    // TODO(crbug.com/488439751): NtpSyncedThemeManager is created per-window by the root UI
-    // coordinator, but only one instance is needed per process. Once it is a singleton, replace
-    // this observer with a direct call and delete ThemeSyncObserver.
-    /** Observer for committed NTP theme changes for outbound synchronization. */
-    public interface ThemeSyncObserver {
-        /**
-         * Dispatched when an NTP theme change is committed locally.
-         *
-         * @param backgroundData The newly chosen background data, or null for default reset.
-         */
-        void onThemeCommitted(@Nullable NtpBackgroundDataBase backgroundData);
-    }
-
     private static @Nullable NtpCustomizationConfigManager sInstanceForTesting;
 
     /** Static class that implements the initialization-on-demand holder idiom. */
@@ -136,7 +124,6 @@ public class NtpCustomizationConfigManager {
     }
 
     private final ObserverList<HomepageStateListener> mHomepageStateListeners;
-    private final ObserverList<ThemeSyncObserver> mThemeSyncObservers;
     private @Nullable NtpBackgroundDataBase mSyncedNtpBackgroundData;
 
     /** Returns the singleton instance of NtpCustomizationConfigManager. */
@@ -147,28 +134,9 @@ public class NtpCustomizationConfigManager {
         return NtpCustomizationConfigManager.LazyHolder.sInstance;
     }
 
-    /**
-     * Adds the given observer to receive theme sync commit events.
-     *
-     * @param observer The observer to add.
-     */
-    public void addThemeSyncObserver(ThemeSyncObserver observer) {
-        mThemeSyncObservers.addObserver(observer);
-    }
-
-    /**
-     * Removes the given observer from receiving theme sync commit events.
-     *
-     * @param observer The observer to remove.
-     */
-    public void removeThemeSyncObserver(ThemeSyncObserver observer) {
-        mThemeSyncObservers.removeObserver(observer);
-    }
-
     @VisibleForTesting
     public NtpCustomizationConfigManager() {
         mHomepageStateListeners = new ObserverList<>();
-        mThemeSyncObservers = new ObserverList<>();
 
         mBackgroundType = NtpCustomizationUtils.getNtpBackgroundType();
         mIsNtpCustomizationSyncEnabled = NtpCustomizationUtils.isNTPCustomizationSyncEnabled();
@@ -196,30 +164,42 @@ public class NtpCustomizationConfigManager {
                     EXECUTOR,
                     filePath);
         } else if (mBackgroundType == NtpBackgroundType.THEME_COLLECTION) {
-            mIsInitialized = true;
             NtpThemeDailyRefreshManager ntpThemeDailyRefreshManager =
                     NtpThemeDailyRefreshManager.getInstance();
-            BackgroundImageInfo imageInfo =
-                    ntpThemeDailyRefreshManager.getNtpBackgroundImageInfoForThemeCollection();
-            @Nullable
-            @ColorInt
-            Integer primaryColor = ntpThemeDailyRefreshManager.getNtpThemeColorForThemeCollection();
-            ntpThemeDailyRefreshManager.readNtpBackgroundImageForThemeCollection(
-                    (bitmap) -> {
-                        onBackgroundImageLoadedFromDisk(bitmap, imageInfo);
-                    },
-                    EXECUTOR,
-                    filePath);
-            mCustomBackgroundInfo =
+            CustomBackgroundInfo customBackgroundInfo =
                     ntpThemeDailyRefreshManager.getNtpCustomBackgroundInfoForThemeCollection();
-            mNtpBackgroundData =
-                    new NtpBackgroundDataThemeCollection(
-                            PlatformType.ANDROID,
-                            assumeNonNull(mCustomBackgroundInfo),
-                            imageInfo,
-                            /* bitmap= */ null,
-                            primaryColor,
-                            fileIdHash);
+            if (customBackgroundInfo == null) {
+                // The theme collection can't be restored if its info is missing or invalid. Clears
+                // the persisted background data and falls back to the default background. Unlike
+                // onBackgroundInitializationFailed(), doesn't notify any listener since this is
+                // called from the constructor, and doesn't delete the image files to avoid disk I/O
+                // on the UI thread.
+                mBackgroundType = NtpBackgroundType.DEFAULT;
+                NtpCustomizationUtils.removeAllNtpBackgroundDataFromSharedPreference();
+            } else {
+                mIsInitialized = true;
+                BackgroundImageInfo imageInfo =
+                        ntpThemeDailyRefreshManager.getNtpBackgroundImageInfoForThemeCollection();
+                @Nullable
+                @ColorInt
+                Integer primaryColor =
+                        ntpThemeDailyRefreshManager.getNtpThemeColorForThemeCollection();
+                ntpThemeDailyRefreshManager.readNtpBackgroundImageForThemeCollection(
+                        (bitmap) -> {
+                            onBackgroundImageLoadedFromDisk(bitmap, imageInfo);
+                        },
+                        EXECUTOR,
+                        filePath);
+                mCustomBackgroundInfo = customBackgroundInfo;
+                mNtpBackgroundData =
+                        new NtpBackgroundDataThemeCollection(
+                                PlatformType.ANDROID,
+                                customBackgroundInfo,
+                                imageInfo,
+                                /* bitmap= */ null,
+                                primaryColor,
+                                fileIdHash);
+            }
         }
 
         mIsMvtToggleOn =
@@ -381,7 +361,8 @@ public class NtpCustomizationConfigManager {
      */
     public void onBackgroundDataChanged(
             Context context, @Nullable NtpBackgroundDataBase backgroundData) {
-        onBackgroundDataChanged(context, backgroundData, /* shouldNotifyThemeSyncObserver= */ true);
+        onBackgroundDataChanged(
+                context, backgroundData, /* shouldNotifySyncedThemeManager= */ true);
     }
 
     /**
@@ -390,13 +371,14 @@ public class NtpCustomizationConfigManager {
      *
      * @param context The application context.
      * @param backgroundData The selected NTP background theme data.
-     * @param shouldNotifyThemeSyncObserver True if the change should notify ThemeSyncObservers
-     *     (e.g. for local user selection), false if it is from incoming sync.
+     * @param shouldNotifySyncedThemeManager True if the change should be committed to native via
+     *     {@link NtpSyncedThemeManager} (e.g. for local user selection), false if it is from
+     *     incoming sync.
      */
     public void onBackgroundDataChanged(
             Context context,
             @Nullable NtpBackgroundDataBase backgroundData,
-            boolean shouldNotifyThemeSyncObserver) {
+            boolean shouldNotifySyncedThemeManager) {
         clearPendingSyncedBackgroundAndSharedPreference(context, backgroundData);
 
         if (backgroundData == null
@@ -424,10 +406,8 @@ public class NtpCustomizationConfigManager {
             }
         }
 
-        if (shouldNotifyThemeSyncObserver) {
-            for (ThemeSyncObserver observer : mThemeSyncObservers) {
-                observer.onThemeCommitted(backgroundData);
-            }
+        if (shouldNotifySyncedThemeManager) {
+            NtpSyncedThemeManager.getInstance().onThemeCommitted(backgroundData);
         }
     }
 
@@ -921,7 +901,6 @@ public class NtpCustomizationConfigManager {
 
     public void resetForTesting() {
         mHomepageStateListeners.clear();
-        mThemeSyncObservers.clear();
         mIsInitialized = false;
         mBackgroundType = NtpBackgroundType.DEFAULT;
         mNtpBackgroundData = null;
@@ -955,7 +934,7 @@ public class NtpCustomizationConfigManager {
 
         if (isThemeMismatch) {
             onBackgroundDataChanged(
-                    context, mSyncedNtpBackgroundData, /* shouldNotifyThemeSyncObserver= */ false);
+                    context, mSyncedNtpBackgroundData, /* shouldNotifySyncedThemeManager= */ false);
             maybeSaveUserSelectedBackgroundTypeToSharedPreference(context);
             // Recreate the Activity to safely apply the new image AND the new OS-level dynamic
             // theme colors together.

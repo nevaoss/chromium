@@ -240,6 +240,18 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//ui/android/java/src/org/chromium/ui/dragdrop/DragAndDropDelegateImpl.java:DragTargetType) -->
 
+<!-- LINT.IfChange(AndroidFullscreenResizeResult) -->
+
+<enum name="AndroidFullscreenResizeResult">
+  <int value="0" label="Completed"/>
+  <int value="1" label="Exited fullscreen"/>
+  <int value="2" label="Hidden"/>
+  <int value="3" label="Evicted"/>
+  <int value="4" label="Destroyed"/>
+</enum>
+
+<!-- LINT.ThenChange(//ui/android/delegated_frame_host_android.h:AndroidFullscreenResizeResult) -->
+
 <enum name="AndroidKernelVersion">
   <int value="131078" label="2.6"/>
   <int value="196608" label="3.0"/>
@@ -329,6 +341,16 @@ chromium-metrics-reviews@google.com.
     more than 1 temporary files left in the temp directory.
   </int>
 </enum>
+
+<!-- LINT.IfChange(AndroidPdfFrozenStateWhenDisplayed) -->
+
+<enum name="AndroidPdfFrozenStateWhenDisplayed">
+  <int value="0" label="Not frozen"/>
+  <int value="1" label="Frozen (no unsaved changes)"/>
+  <int value="2" label="Frozen (with unsaved changes)"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/android/pdf/java/src/org/chromium/chrome/browser/pdf/PdfUtils.java:AndroidPdfFrozenStateWhenDisplayed) -->
 
 <!-- LINT.IfChange(AndroidPdfHyperlinkClickResult) -->
 
@@ -1359,6 +1381,7 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="TAB_STRIP_TO_NEW_INSTANCE"/>
   <int value="3" label="LINK_TO_NEW_INSTANCE"/>
   <int value="4" label="UNKNOWN_TO_NEW_INSTANCE"/>
+  <int value="5" label="LINK_TO_TAB_STRIP"/>
 </enum>
 
 <!-- LINT.IfChange(DroppedSequenceEventAndDownTimeDelta) -->
@@ -1706,6 +1729,8 @@ chromium-metrics-reviews@google.com.
   <int value="79" label="PasswordSavedConfirmation"/>
   <int value="80" label="EmailVerified"/>
   <int value="81" label="ResurrectChurnedUsers"/>
+  <int value="82" label="EmailVerificationError"/>
+  <int value="83" label="EmailVerificationLoading"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/messages/android/message_enums.h:MessageIdentifier) -->
@@ -1841,16 +1866,6 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//components/omnibox/browser/android/java/src/org/chromium/components/omnibox/OmniboxFocusReason.java:OmniboxFocusReason) -->
-
-<!-- LINT.IfChange(OmniboxJumpStartState) -->
-
-<enum name="OmniboxJumpStartState">
-  <int value="0" label="Not Eligible"/>
-  <int value="1" label="Enabled"/>
-  <int value="2" label="Disabled By User"/>
-</enum>
-
-<!-- LINT.ThenChange(//components/omnibox/common/android/java/src/org/chromium/components/omnibox/OmniboxFeatures.java:OmniboxJumpStartState) -->
 
 <!-- LINT.IfChange(OmniboxSuggestionUiType) -->
 
@@ -3073,12 +3088,6 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//android_webview/java/src/org/chromium/android_webview/AwDataDirLock.java:WebViewLockOutcome)-->
-
-<enum name="WebViewMixedContentMode">
-  <int value="0" label="Always allow"/>
-  <int value="1" label="Never allow"/>
-  <int value="2" label="Compatibility Mode"/>
-</enum>
 
 <!-- LINT.IfChange(WebViewRendererKeepAliveEvent) -->
 

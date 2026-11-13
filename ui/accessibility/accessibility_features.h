@@ -65,10 +65,6 @@ AX_BASE_EXPORT bool IsAccessibilityTextFormattingEnabled();
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityHandleOccludingViews);
 AX_BASE_EXPORT bool IsAccessibilityHandleOccludingViewsEnabled();
 
-// Enables text change types for text changed events.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityTextChangeTypes);
-AX_BASE_EXPORT bool IsAccessibilityTextChangeTypesEnabled();
-
 // Enables the addition of `labeledby` relationships in the accessibility tree.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityLabeledBy);
 AX_BASE_EXPORT bool IsAccessibilityLabeledByEnabled();
@@ -255,6 +251,13 @@ AX_BASE_EXPORT BASE_DECLARE_FEATURE(
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityAndroidMath);
 AX_BASE_EXPORT bool IsAccessibilityAndroidMathEnabled();
 
+// When enabled, web content accessibility runs on a background thread instead
+// of the UI thread. Use `IsAccessibilityAndroidBackgroundThreadEnabled()` to
+// check it. It returns true only when the device runs Android R or later and
+// the feature is enabled.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityAndroidBackgroundThread);
+AX_BASE_EXPORT bool IsAccessibilityAndroidBackgroundThreadEnabled();
+
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Controls the new native C++ implementation for Read Aloud,
@@ -308,10 +311,6 @@ GetReadAnythingMenuShuffleExperimentGroup();
 
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingMenuShuffleExperiment);
 AX_BASE_EXPORT bool IsReadAnythingMenuShuffleExperimentEnabled();
-
-// Enable the select text feature for Read Anything Readability.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingReadabilitySelectText);
-AX_BASE_EXPORT bool IsReadAnythingReadabilitySelectTextEnabled();
 
 // Enable the experimental playback UI for Read Anything Read Aloud.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(
@@ -370,13 +369,6 @@ AX_BASE_EXPORT bool IsScreenAIOCREnabled();
 // If enabled, ScreenAI library will be loaded from //third_party/screen-ai.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kScreenAITestMode);
 AX_BASE_EXPORT bool IsScreenAITestModeEnabled();
-
-#if BUILDFLAG(IS_LINUX)
-// Enables advanced partition allocation checks in ScreenAI service.
-// TODO(crbug.com/418199684): Remove when the bug is fixed.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(
-    kScreenAIPartitionAllocAdvancedChecksEnabled);
-#endif  // BUILDFLAG(IS_LINUX)
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 

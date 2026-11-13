@@ -296,10 +296,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
     }
   }
 
-  bookmarks_side_panel_coordinator_ =
-      GetUserDataFactory().CreateInstance<BookmarksSidePanelCoordinator>(
-          *browser, *browser);
-
   if (breadcrumbs::IsEnabled(g_browser_process->local_state())) {
     breadcrumb_manager_browser_agent_ =
         std::make_unique<BreadcrumbManagerBrowserAgent>(
@@ -376,12 +372,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   call_to_action_lock_ =
       GetUserDataFactory().CreateInstance<CallToActionLock>(*browser, browser);
 
-  if (CommentsSidePanelCoordinator::IsSupported()) {
-    comments_side_panel_coordinator_ =
-        GetUserDataFactory().CreateInstance<CommentsSidePanelCoordinator>(
-            *browser, browser);
-  }
-
   content_setting_bubble_model_delegate_ =
       GetUserDataFactory()
           .CreateInstance<BrowserContentSettingBubbleModelDelegate>(*browser,
@@ -419,15 +409,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 
   find_bar_controller_ = GetUserDataFactory().CreateInstance<FindBarController>(
       *browser, *browser, browser_command_controller_.get());
-
-  history_clusters_side_panel_coordinator_ =
-      GetUserDataFactory().CreateInstance<HistoryClustersSidePanelCoordinator>(
-          *browser, browser, browser->GetProfile());
-
-  if (HistorySidePanelCoordinator::IsSupported()) {
-    GetUserDataFactory().CreateInstance<HistorySidePanelCoordinator>(*browser,
-                                                                     browser);
-  }
 
   // Must be after window_feature_controller_.
   immersive_mode_controller_ =
@@ -512,10 +493,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
               session_restore_infobar::SessionRestoreInfobarController>(
               *browser, browser);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
-  reading_list_side_panel_coordinator_ =
-      GetUserDataFactory().CreateInstance<ReadingListSidePanelCoordinator>(
-          *browser, browser, profile, browser->GetTabStripModel());
 
   searchbox_context_data_ =
       GetUserDataFactory().CreateInstance<SearchboxContextData>(
@@ -914,6 +891,35 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
         std::make_unique<WebUIBrowserSidePanelUI>(browser);
   }
 
+  bookmarks_side_panel_coordinator_ =
+      GetUserDataFactory().CreateInstance<BookmarksSidePanelCoordinator>(
+          *browser, browser->GetUnownedUserDataHost(), *side_panel_registry_);
+
+  // TODO(webium): Consider supporting additional side panels beyond reading
+  // list and bookmarks.
+  if (!webui_browser::IsWebUIBrowserEnabled()) {
+    if (CommentsSidePanelCoordinator::IsSupported()) {
+      comments_side_panel_coordinator_ =
+          GetUserDataFactory().CreateInstance<CommentsSidePanelCoordinator>(
+              *browser, browser);
+    }
+
+    if (HistorySidePanelCoordinator::IsSupported()) {
+      history_side_panel_coordinator_ =
+          GetUserDataFactory().CreateInstance<HistorySidePanelCoordinator>(
+              *browser, browser);
+    } else {
+      history_clusters_side_panel_coordinator_ =
+          GetUserDataFactory()
+              .CreateInstance<HistoryClustersSidePanelCoordinator>(
+                  *browser, browser, profile);
+    }
+  }
+
+  reading_list_side_panel_coordinator_ =
+      GetUserDataFactory().CreateInstance<ReadingListSidePanelCoordinator>(
+          *browser, browser, profile, browser->GetTabStripModel());
+
   if (browser_view) {
     skills_ui_window_controller_ =
         std::make_unique<skills::SkillsUiWindowController>(browser_);
@@ -1188,6 +1194,11 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   toast_service_.reset();
   synced_window_delegate_.reset();
   skills_ui_window_controller_.reset();
+  reading_list_side_panel_coordinator_.reset();
+  history_side_panel_coordinator_.reset();
+  history_clusters_side_panel_coordinator_.reset();
+  comments_side_panel_coordinator_.reset();
+  bookmarks_side_panel_coordinator_.reset();
   // TODO(crbug.com/346148093): This logic should not be gated behind a
   // conditional.
   if (side_panel_coordinator_) {
@@ -1255,11 +1266,9 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   lens_overlay_entry_point_controller_.reset();
   // Must be before window_feature_controller_ (raw pointer).
   immersive_mode_controller_.reset();
-  history_clusters_side_panel_coordinator_.reset();
   find_bar_controller_.reset();
   extension_installed_watcher_.reset();
   context_highlight_window_feature_.reset();
-  comments_side_panel_coordinator_.reset();
   if (auto* const provider = browser_elements_->AsA<BrowserElementsViews>()) {
     provider->TearDown();
   }

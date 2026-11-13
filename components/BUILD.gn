@@ -444,6 +444,10 @@ test("components_unittests") {
     ]
   }
 
+  if (use_aura) {
+    deps += [ "//components/eye_dropper:unit_tests" ]
+  }
+
   if (is_fuchsia) {
     deps += [
       "//components/fuchsia_component_support:unit_tests",
@@ -497,6 +501,7 @@ test("components_unittests") {
       "//components/endpoint_fetcher:unit_tests",
       "//components/facilitated_payments/content/browser:unit_tests",
       "//components/facilitated_payments/content/renderer:unit_tests",
+      "//components/facilitated_payments/core/browser:unit_tests",
       "//components/favicon/content:unit_tests",
       "//components/feed/core/v2:core_unit_tests",
       "//components/feed/core/v2:ios_shared_unit_tests",
@@ -704,7 +709,6 @@ test("components_unittests") {
       "//components/enterprise/device_attestation/android:device_attestation_java",
       "//components/facilitated_payments/android:unit_tests",
       "//components/facilitated_payments/android/java",
-      "//components/facilitated_payments/core/browser:unit_tests",
       "//components/fcm/android:fcm_java",
       "//components/gcm_driver/instance_id:test_support",
       "//components/gcm_driver/instance_id/android:instance_id_driver_java",
@@ -1016,8 +1020,7 @@ test("components_unittests") {
     "CBORReaderFuzzTest.ReadValidAndTruncatedCBORDoesNotCrash",
     "CBORReaderFuzzTest.ReadValidCBORWithConfigDoesNotCrash",
     "CBORReaderFuzzTest.ReadWithConfigDoesNotCrash",
-    "CupEcdsaFuzzTest.EcdsaCupTestOneInputDoesNotCrash",
-    "CupMldsa44FuzzTest.Mldsa44CupTestOneInputDoesNotCrash",
+    "CupFuzzTest.CupTestOneInputDoesNotCrash",
     "CurrencyFormatterFuzzTest.FormatDoesNotCrash",
     "LocalDomainsStorageMigrationFuzzTest.MigrationAndMutationsMatchLegacyAdapter",
     "PaymentCurrencyAmountFuzzTest.FromValueDictDoesNotCrash",
@@ -1485,6 +1488,7 @@ if (is_android) {
       "//components/external_intents/android:junit",
       "//components/facilitated_payments/android/junit",
       "//components/fcm/android:components_fcm_junit_tests",
+      "//components/feature_engagement/internal:junit",
       "//components/gcm_driver/android:components_gcm_driver_junit_tests",
       "//components/image_fetcher:junit",
       "//components/installedapp/android:junit",

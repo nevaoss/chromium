@@ -7,11 +7,11 @@
 #include <optional>
 #include <string_view>
 
+#include "base/callback_list.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/types/expected.h"
-#include "components/one_time_tokens/core/browser/gmail_otp_backend.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_log_sink.h"
 #include "components/one_time_tokens/core/browser/one_time_token_retrieval_error.h"
@@ -32,10 +32,11 @@ inline constexpr base::TimeDelta kSmsRefetchInterval = base::Seconds(5);
 class OneTimeTokenServiceImpl : public OneTimeTokenService {
  public:
   // If `sms_otp_backend` is null, this class does not do any SMS-based
-  // subscriptions. If `gmail_otp_backend` is null, this class does not do any
-  // Gmail-based subscriptions.
-  OneTimeTokenServiceImpl(SmsOtpBackend* sms_otp_backend,
-                          GmailOtpBackend* gmail_otp_backend);
+  // subscriptions. If `log_handler` is provided, it is registered with
+  // `log_sink_` for the lifetime of this service.
+  explicit OneTimeTokenServiceImpl(
+      SmsOtpBackend* sms_otp_backend,
+      OneTimeTokenLogSink::LogHandler log_handler = {});
   OneTimeTokenServiceImpl(const OneTimeTokenServiceImpl&) = delete;
   OneTimeTokenServiceImpl& operator=(const OneTimeTokenServiceImpl&) = delete;
   ~OneTimeTokenServiceImpl() override;
@@ -44,16 +45,10 @@ class OneTimeTokenServiceImpl : public OneTimeTokenService {
   OneTimeTokenLogSink* log_sink() override;
   void GetRecentOneTimeTokens(Callback callback) override;
   [[nodiscard]] ExpiringSubscription Subscribe(
-      OneTimeTokenSource source,
       base::Time expiration,
       Callback callback,
       base::OnceClosure expiration_callback) override;
-  [[nodiscard]] ExpiringSubscription SubscribeToTickles(
-      OneTimeTokenSource source,
-      base::Time expiration,
-      TickleCallback callback) override;
   std::vector<OneTimeToken> GetCachedOneTimeTokens() const override;
-  bool HasPendingRequests(OneTimeTokenSource source) const override;
   void RequestOneTimeToken(
       base::TimeDelta timeout,
       base::OnceCallback<void(std::optional<OneTimeToken>)> callback) override;
@@ -64,26 +59,15 @@ class OneTimeTokenServiceImpl : public OneTimeTokenService {
   void RetrieveSmsOtpIfNeeded();
   void OnResponseFromSmsOtpBackend(
       base::expected<OneTimeToken, OneTimeTokenRetrievalError> reply);
-  void RetrieveGmailOtpIfNeeded(base::Time expiration);
-  void OnResponseFromGmailOtpBackend(
-      base::expected<OneTimeToken, OneTimeTokenRetrievalError> reply);
 
   // Handles subscriptions to the `OneTimeTokenService`.
   ExpiringSubscriptionManager<CallbackSignature> sms_subscription_manager_;
-  ExpiringSubscriptionManager<CallbackSignature> gmail_subscription_manager_;
 
   // Handles requests of the `OneTimeTokenService` to the `SmsOtpBackend`.
   struct {
     bool has_pending_request = false;
     raw_ptr<SmsOtpBackend> backend;
   } sms_;
-
-  // Handles requests of the `OneTimeTokenService` to the `GmailOtpBackend`.
-  struct {
-    raw_ptr<GmailOtpBackend> backend;
-  } gmail_;
-
-  ExpiringSubscription gmail_subscription_;
 
   // Keys used by `cache_` to identify and deduplicate tokens. Unlike a direct
   // comparison of `OneTimeToken` objects (which was removed because different
@@ -106,14 +90,14 @@ class OneTimeTokenServiceImpl : public OneTimeTokenService {
     }
   };
 
-  // Internal cache of tokens, now effectively used only for SMS OTPs as Gmail
-  // OTPs are managed in the GmailOtpBackend's cache.
+  // Internal cache of SMS OTPs received from `sms_.backend`.
   ExpiringCache<OneTimeToken,
                 decltype(&OneTimeToken::on_device_arrival_time),
                 CacheProjection>
       cache_;
 
   OneTimeTokenLogSink log_sink_;
+  base::CallbackListSubscription log_subscription_;
 
   // Weak pointer factory (must be last member in class).
   base::WeakPtrFactory<OneTimeTokenServiceImpl> weakptr_factory_{this};

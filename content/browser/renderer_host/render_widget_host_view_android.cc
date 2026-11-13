@@ -55,7 +55,7 @@
 #include "components/viz/common/surfaces/frame_sink_id_allocator.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "content/browser/accessibility/browser_accessibility_manager_android.h"
-#include "content/browser/accessibility/web_contents_accessibility_android.h"
+#include "content/browser/accessibility/web_contents_accessibility_base.h"
 #include "content/browser/android/gesture_listener_manager.h"
 #include "content/browser/android/ime_adapter_android.h"
 #include "content/browser/android/overscroll_controller_android.h"
@@ -1027,7 +1027,7 @@ void RenderWidgetHostViewAndroid::OnRenderFrameMetadataChangedBeforeActivation(
       top_shown_pix, controls_changed);
   // This needs to be called after GestureListenerManager::UpdateScrollInfo, as
   // it depends on frame info being updated during the UpdateScrollInfo call.
-  auto* wcax = GetWebContentsAccessibilityAndroid();
+  auto* wcax = GetWebContentsAccessibilityBase();
   if (wcax)
     wcax->UpdateFrameInfo(metadata.page_scale_factor);
 
@@ -1152,6 +1152,13 @@ void RenderWidgetHostViewAndroid::OnRenderFrameMetadataChangedAfterActivation(
     // We have received content, ensure that any subsequent navigation allocates
     // a new surface.
     pre_navigation_content_ = true;
+
+    if (delegated_frame_host_) {
+      // Let the frame host know which surface activated, so it can time
+      // fullscreen resizes.
+      delegated_frame_host_->OnRendererSurfaceActivated(
+          activated_local_surface_id, activation_time);
+    }
 
     while (!rotation_metrics_.empty()) {
       auto rotation_target = rotation_metrics_.front();
@@ -2365,8 +2372,8 @@ void RenderWidgetHostViewAndroid::SynchronousCopyContents(
   std::move(callback).Run(viz::CopyOutputBitmapWithMetadata(bitmap));
 }
 
-WebContentsAccessibilityAndroid*
-RenderWidgetHostViewAndroid::GetWebContentsAccessibilityAndroid() const {
+WebContentsAccessibilityBase*
+RenderWidgetHostViewAndroid::GetWebContentsAccessibilityBase() const {
   return web_contents_accessibility_;
 }
 
@@ -2580,6 +2587,9 @@ void RenderWidgetHostViewAndroid::HideInternal() {
   if (hide_frontbuffer) {
     view_.GetLayer()->SetHideLayerAndSubtree(true);
     delegated_frame_host_->WasHidden();
+  } else if (delegated_frame_host_) {
+    // The frontbuffer stays visible, but the renderer is hidden.
+    delegated_frame_host_->OnRendererHidden();
   }
 
   if (stop_observing_root_window) {
@@ -3933,7 +3943,7 @@ void RenderWidgetHostViewAndroid::OnUpdateScopedSelectionHandles() {
 }
 
 void RenderWidgetHostViewAndroid::SetWebContentsAccessibility(
-    WebContentsAccessibilityAndroid* web_contents_accessibility) {
+    WebContentsAccessibilityBase* web_contents_accessibility) {
   web_contents_accessibility_ = web_contents_accessibility;
   UpdateRootScrollOffsetUpdateFrequency();
 }

@@ -210,10 +210,20 @@ declare_args() {
   # warning serves as a flip switch to allow a gradual migration of targets
   # away from the opt-in wexit_time_destructors config, and into the default
   # compiler config.
+<<<<<<< HEAD
   # NOTE(neva): Disable is_wexit_time_destructors_default to avoid build error
   # "declaration requires an exit-time destructor
   # [-Werror,-Wexit-time-destructors]" because Neva uses "-Werror".
   is_wexit_time_destructors_default = build_with_chromium && false
+=======
+  is_wexit_time_destructors_default = build_with_chromium
+
+  # Enable Clang's -Wlifetime-safety-permissive warnings in chromium_code.
+  # https://clang.llvm.org/docs/LifetimeSafety.html
+  # TODO(crbug.com/570169685): Enable by default once baseline warnings are
+  # fixed.
+  enable_lifetime_safety_warnings = false
+>>>>>>> 158.0.8108.0~1
 }
 
 declare_args() {
@@ -2138,7 +2148,7 @@ config("default_clippy_lints") {
     # TODO(crbug.com/534628766): Fix and re-enable.
     "-Aclippy::chunks_exact_to_as_chunks",
 
-    # TODO(crbug.com/556789085): Fix and re-enable.
+    # TODO(crbug.com/573308406): Fix and re-enable.
     "-Aclippy::needless_range_loop",
   ]
 }
@@ -2300,6 +2310,7 @@ config("chromium_code") {
 
   configs = [
     ":default_warnings",
+    ":lifetime_safety",
     ":noshadowing",
   ]
   if (treat_warnings_as_errors) {
@@ -2486,6 +2497,16 @@ config("no_exceptions") {
 config("wglobal_constructors") {
   if (is_clang) {
     cflags = [ "-Wglobal-constructors" ]
+  }
+}
+
+# Enables Clang's compile-time lifetime safety analysis
+# (-Wlifetime-safety-permissive).
+# See: https://clang.llvm.org/docs/LifetimeSafety.html
+config("lifetime_safety") {
+  if (is_clang && enable_lifetime_safety_warnings) {
+    cflags_cc = [ "-Wlifetime-safety-permissive" ]
+    cflags_objcc = cflags_cc
   }
 }
 

@@ -132,6 +132,7 @@ import org.chromium.chrome.browser.ui.RootUiCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuPropertiesDelegate;
 import org.chromium.chrome.browser.ui.browser_window.BrowserWindowType;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderCoordinator;
+import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.chrome.browser.ui.google_bottom_bar.GoogleBottomBarCoordinator;
 import org.chromium.chrome.browser.ui.web_app_header.WebAppHeaderLayoutCoordinator;
 import org.chromium.chrome.browser.ui.web_app_header.WebAppHeaderUtils;
@@ -634,16 +635,45 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
     /**
      * Whether a web app with {@code displayMode} uses the short-edges cutout mode, where the
      * display cutout controller owns the window's edge-to-edge state. Fullscreen web apps are
-     * covered by the feature itself; standalone web apps additionally require the {@code
+     * covered by the feature itself; standalone apps additionally require the {@code
      * enable_standalone} parameter, since the experiment targets fullscreen web apps. Other display
      * modes keep the pre-feature behavior.
+     *
+     * <p>The coordinated paths withhold system bar and display cutout insets from the edge-to-edge
+     * root layout, so they require an activity that draws edge-to-edge, which excludes pre-Android
+     * 11, blocklisted OEM versions and automotive.
      */
     public static boolean isShortEdgesCutoutModeEnabledForDisplayMode(
             @DisplayMode.EnumType int displayMode) {
         if (!ChromeFeatureList.sWebAppShortEdgesCutoutMode.isEnabled()) return false;
+        if (!EdgeToEdgeUtils.isEdgeToEdgeEverywhereEnabled()) return false;
         if (displayMode == DisplayMode.FULLSCREEN) return true;
         return displayMode == DisplayMode.STANDALONE
                 && ChromeFeatureList.sWebAppShortEdgesCutoutModeStandalone.getValue();
+    }
+
+    /**
+     * Whether the short-edges cutout paths are coordinated for this installed app.
+     *
+     * <p>TWAs additionally require the {@code enable_twa} parameter, so they can be rolled out
+     * independently of WebAPKs.
+     */
+    public static boolean isShortEdgesCutoutModeEnabledForApp(
+            BrowserServicesIntentDataProvider provider) {
+        boolean isEnabledForAppType =
+                provider.isWebappOrWebApkActivity()
+                        || (provider.isTrustedWebActivity()
+                                && ChromeFeatureList.sWebAppShortEdgesCutoutModeTwa.getValue());
+        return isEnabledForAppType
+                && isShortEdgesCutoutModeEnabledForDisplayMode(provider.getResolvedDisplayMode());
+    }
+
+    /**
+     * Returns the inset consumer owning this web app's edge-to-edge state, or null when the
+     * activity is outside the short-edges cutout paths.
+     */
+    public @Nullable WebappInsetsConsumer getWebappInsetsConsumer() {
+        return mWebappInsetsConsumer;
     }
 
     @Override
@@ -673,20 +703,13 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
 
         InstalledWebappDataRegister.prefetchPreferences();
 
-        if (mIntentDataProvider.isWebappOrWebApkActivity()
-                && isShortEdgesCutoutModeEnabledForDisplayMode(
-                        mIntentDataProvider.getResolvedDisplayMode())) {
-            // The window's edge-to-edge state is owned by token holders (display cutout
-            // controller, immersive mode). While any token is held, withhold system bar and
-            // display cutout insets from the edge-to-edge root layout so the web app content
-            // draws under zero-height bars; releasing the last token restores the fitted
-            // layout, e.g. with the CCT toolbar below the status bar after an off-origin
-            // navigation.
+        if (isShortEdgesCutoutModeEnabledForApp(mIntentDataProvider)) {
+            // The display cutout controller and immersive mode own the web app's edge-to-edge
+            // state: while either holds a token, system bar and display cutout insets are
+            // withheld from the edge-to-edge root layout so the content draws under zero-height
+            // bars; releasing the last token restores the fitted layout, e.g. with the CCT
+            // toolbar below the status bar after an off-origin navigation.
             mWebappInsetsConsumer = new WebappInsetsConsumer(getInsetObserver());
-            assumeNonNull(getEdgeToEdgeManager())
-                    .getEdgeToEdgeStateProvider()
-                    .getSupplier()
-                    .addSyncObserverAndCallIfNonNull(mWebappInsetsConsumer::drawEdgeToEdge);
         }
 
         mClientPackageNameProvider =
@@ -1072,23 +1095,25 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
                                             getTabContentManagerSupplier().asNonNull()));
         }
         assumeNonNull(mIntentDataProvider);
-        if (!mIntentDataProvider.isWebappOrWebApkActivity()) {
+        boolean isWebappOrWebApk = mIntentDataProvider.isWebappOrWebApkActivity();
+        if (!isWebappOrWebApk) {
             getCustomTabActivityTabController().finishNativeInitialization();
-        } else {
-            // Webapp/WebAPK activities don't run CustomTabActivity#performPreInflationStartup,
-            // which is where CCT applies its navigation bar color. Apply it here so installed web
-            // apps color the navigation bar from the manifest theme color. This runs post-native
-            // because the color depends on a feature flag.
+        }
+        if (isWebappOrWebApk || isShortEdgesCutoutModeEnabledForApp(mIntentDataProvider)) {
+            // Installed web apps color the navigation bar from the manifest theme color: WebAPK
+            // activities never reach the CCT path that applies it
+            // (CustomTabActivity#performPreInflationStartup), and short-edges cutout apps must
+            // also follow the edge-to-edge state. This runs post-native because the color depends
+            // on a feature flag.
             updateNavigationBarColor();
             // In edge-to-edge the navigation buttons render over page content; follow dynamic
             // page theme-color changes and edge-to-edge transitions so the buttons stay
             // readable, e.g. dark buttons over a page that switches its theme color to white.
             getBrowserServicesThemeColorProvider()
                     .addThemeColorObserver((color, shouldAnimate) -> updateNavigationBarColor());
-            if (getEdgeToEdgeManager() != null) {
-                getEdgeToEdgeManager()
-                        .getEdgeToEdgeStateProvider()
-                        .getSupplier()
+            if (mWebappInsetsConsumer != null) {
+                mWebappInsetsConsumer
+                        .getDrawEdgeToEdgeSupplier()
                         .addSyncObserver(drawingEdgeToEdge -> updateNavigationBarColor());
             }
         }
@@ -1101,16 +1126,11 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
      * manifest theme color and the current edge-to-edge state.
      */
     protected void updateNavigationBarColor() {
-        // Webapp/WebAPK window tokens draw content behind the navigation bar only when the
-        // webapp insets consumer prevents the root layout from padding it.
+        // Installed web apps draw content behind the navigation bar only while the webapp insets
+        // consumer prevents the root layout from padding it.
         boolean windowDrawsEdgeToEdge =
                 mWebappInsetsConsumer != null
-                        && getEdgeToEdgeManager() != null
-                        && Boolean.TRUE.equals(
-                                getEdgeToEdgeManager()
-                                        .getEdgeToEdgeStateProvider()
-                                        .getSupplier()
-                                        .get());
+                        && mWebappInsetsConsumer.getDrawEdgeToEdgeSupplier().get();
         boolean drawEdgeToEdge =
                 windowDrawsEdgeToEdge
                         || (mEdgeToEdgeControllerSupplier.get() != null
@@ -1688,6 +1708,7 @@ public abstract class BaseCustomTabActivity extends ChromeActivity {
                             this,
                             windowAndroid,
                             assumeNonNull(getEdgeToEdgeManager()).getEdgeToEdgeStateProvider(),
+                            mWebappInsetsConsumer,
                             getLifecycleDispatcher());
         }
         return mImmersiveModeController;

@@ -263,7 +263,7 @@ bool AccountPreviewDataServiceImpl::IsRateLimited() const {
 }
 
 std::optional<AccountPreviewDataService::AccountPreviewPreference>
-AccountPreviewDataServiceImpl::GetPreferredAccountForPromo() const {
+AccountPreviewDataServiceImpl::GetPreferredAccountForSignin() const {
   return ReadPreferredAccountFromPrefs();
 }
 
@@ -809,6 +809,9 @@ AccountPreviewDataServiceImpl::GetHeuristicContexts() const {
 #else
         .is_external_app_primary = false,
 #endif
+        .is_signed_in_on_other_profile =
+            signin_client_->IsAccountSignedInOnOtherProfile(
+                account.GetGaiaId()),
     });
   }
   return contexts;
@@ -817,7 +820,7 @@ AccountPreviewDataServiceImpl::GetHeuristicContexts() const {
 void AccountPreviewDataServiceImpl::ComputeAndStorePreferredAccount(
     base::span<const AccountPreviewHeuristicContext> contexts) {
   AccountPreviewSelectionResult result =
-      ComputePreferredAccountForPromo(contexts);
+      ComputePreferredAccountForSignin(contexts);
   if (base::FeatureList::IsEnabled(
           switches::kEnableAccountPreviewPreferredAccount)) {
     WritePreferredAccountToPrefs(result.preference);
@@ -1042,7 +1045,7 @@ void AccountPreviewDataServiceImpl::ProcessAccountRemoval(
   }
 
   bool should_recompute = false;
-  auto preferred_account = GetPreferredAccountForPromo();
+  auto preferred_account = GetPreferredAccountForSignin();
   if (preferred_account && preferred_account->gaia_id == gaia_id) {
     WritePreferredAccountToPrefs(/*preference=*/std::nullopt);
     should_recompute = true;

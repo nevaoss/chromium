@@ -7,9 +7,11 @@ import 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 
 import type {ComposeboxDropdownElement} from 'chrome://resources/cr_components/composebox/composebox_dropdown.js';
 import {createAutocompleteMatch} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
-import {createAutocompleteResultForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
-import {RenderType, SideType, SuggestStyle} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {RenderType, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SuggestStyle} from 'chrome://resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {createSuggestTemplateInfo} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 suite('ComposeboxDropdown', () => {
@@ -255,10 +257,10 @@ suite('ComposeboxDropdown', () => {
                 createSuggestTemplateInfo({primaryText: 'visible text match'}),
           }),
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'hidden image match',
               image: {url: 'https://example.com/hidden.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
         ],
@@ -272,23 +274,24 @@ suite('ComposeboxDropdown', () => {
       dropdown.result = createAutocompleteResultForTesting({
         matches: [
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'image match 1',
               image: {url: 'https://example.com/image1.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'image match 2',
               image: {url: 'https://example.com/image2.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
-            suggestTemplate: createSuggestTemplateInfo(
-                {primaryText: 'image match 3 without image'}),
+            suggestTemplate: createSuggestTemplateInfo({
+              primaryText: 'image match 3 without image',
+              style: SuggestStyle.kRichImage,
+            }),
           }),
         ],
       });
@@ -329,17 +332,17 @@ suite('ComposeboxDropdown', () => {
       dropdown.result = createAutocompleteResultForTesting({
         matches: [
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'image match 1 updated',
               image: {url: 'https://example.com/image1.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'image match 2 updated',
               image: {url: 'https://example.com/image2.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
         ],
@@ -354,10 +357,10 @@ suite('ComposeboxDropdown', () => {
       dropdown.result = createAutocompleteResultForTesting({
         matches: [
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'failed image match',
               image: {url: 'https://example.com/error.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
         ],
@@ -373,10 +376,10 @@ suite('ComposeboxDropdown', () => {
       dropdown.result = createAutocompleteResultForTesting({
         matches: [
           createAutocompleteMatch({
-            suggestStyle: SuggestStyle.kRichImage,
             suggestTemplate: createSuggestTemplateInfo({
               primaryText: 'failed image match retry',
               image: {url: 'https://example.com/error.png', dominantColor: ''},
+              style: SuggestStyle.kRichImage,
             }),
           }),
         ],

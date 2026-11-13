@@ -5,34 +5,22 @@
 #ifndef IOS_CHROME_BROWSER_POLICY_MODEL_REPORTING_CLOUD_PROFILE_REPORTING_SERVICE_FACTORY_IOS_H_
 #define IOS_CHROME_BROWSER_POLICY_MODEL_REPORTING_CLOUD_PROFILE_REPORTING_SERVICE_FACTORY_IOS_H_
 
-#import "base/no_destructor.h"
-#import "ios/chrome/browser/shared/model/profile/profile_keyed_service_factory_ios.h"
+#import "ios/chrome/browser/policy/model/reporting/cloud_profile_reporting_service_ios.h"
+#import "ios/chrome/browser/shared/model/profile/typed_profile_keyed_service_factory_ios.h"
 
 namespace enterprise_reporting {
 
-class CloudProfileReportingServiceIOS;
-
 class CloudProfileReportingServiceFactoryIOS
-    : public ProfileKeyedServiceFactoryIOS {
+    : public TypedProfileKeyedServiceFactoryIOS<
+          CloudProfileReportingServiceFactoryIOS,
+          CloudProfileReportingServiceIOS> {
  public:
-  static CloudProfileReportingServiceFactoryIOS* GetInstance();
-  static CloudProfileReportingServiceIOS* GetForProfile(ProfileIOS* profile);
+  explicit CloudProfileReportingServiceFactoryIOS(PassKey key);
 
-  CloudProfileReportingServiceFactoryIOS(
-      const CloudProfileReportingServiceFactoryIOS&) = delete;
-  CloudProfileReportingServiceFactoryIOS& operator=(
-      const CloudProfileReportingServiceFactoryIOS&) = delete;
-
- protected:
+ private:
   // ProfileKeyedServiceFactoryIOS implementation.
   std::unique_ptr<KeyedService> BuildServiceInstanceFor(
       ProfileIOS* profile) const override;
-
- private:
-  friend base::NoDestructor<CloudProfileReportingServiceFactoryIOS>;
-
-  CloudProfileReportingServiceFactoryIOS();
-  ~CloudProfileReportingServiceFactoryIOS() override;
 };
 
 }  // namespace enterprise_reporting

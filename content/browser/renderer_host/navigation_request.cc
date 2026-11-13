@@ -6179,9 +6179,9 @@ void NavigationRequest::OnStartChecksComplete(
   bool report_raw_headers = false;
   GURL devtools_referrer_override;
   devtools_instrumentation::ApplyNetworkRequestOverrides(
-      frame_tree_node_, begin_params_.get(), &report_raw_headers,
-      &devtools_user_agent_override_, &devtools_accept_language_override_,
-      &devtools_referrer_override);
+      frame_tree_node_, common_params_->url, begin_params_.get(),
+      &report_raw_headers, &devtools_user_agent_override_,
+      &devtools_accept_language_override_, &devtools_referrer_override);
 
   if (!devtools_referrer_override.is_empty()) {
     // When the `Referer` header is overridden by DevTools (e.g. by CDP command
@@ -9815,7 +9815,9 @@ void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
       policy_container_builder_->FinalPolicies();
 
   local_network_access_request_policy_ = DeriveLocalNetworkAccessRequestPolicy(
-      policies, LocalNetworkAccessRequestContext::kSubresource);
+      policies, client->IsNoStatePrefetch(GetWebContents())
+                    ? LocalNetworkAccessRequestContext::kNoStatePrefetch
+                    : LocalNetworkAccessRequestContext::kSubresource);
 
   if (policy_override ==
       ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride::
@@ -11006,9 +11008,11 @@ const std::optional<GURL>& NavigationRequest::GetInitiatorBaseUrl() {
   return common_params().initiator_base_url;
 }
 
-const std::vector<std::string>& NavigationRequest::GetDnsAliases() {
-  static const base::NoDestructor<std::vector<std::string>> emptyvector_result;
-  return response_head_ ? response_head_->dns_aliases : *emptyvector_result;
+base::span<const std::string> NavigationRequest::GetDnsAliases() {
+  if (response_head_) {
+    return response_head_->dns_aliases;
+  }
+  return {};
 }
 
 bool NavigationRequest::IsSameProcess() {
@@ -11459,6 +11463,27 @@ NavigationRequest::BuildClientSecurityStateForNavigationFetch() {
     // TODO(crbug.com/40258826): Determine how to treat guest views.
     case FrameType::kPrimaryMainFrame:
     case FrameType::kGuestMainFrame: {
+      // No-state prefetch navigations load documents that are never displayed
+      // to the user, so they are not user-mediated the way regular main frame
+      // navigations are. Enforce local network access checks against the
+      // initiator, falling back to the most restrictive client (public,
+      // non-secure) when no initiator state was provided.
+      if (GetContentClient()->browser()->IsNoStatePrefetch(GetWebContents())) {
+        if (GetInitiatorPolicyContainerPolicies()) {
+          return DeriveClientSecurityStateForRendererInitiatedNavigation(
+              *GetInitiatorPolicyContainerPolicies(),
+              LocalNetworkAccessRequestContext::kNoStatePrefetch);
+        }
+
+        network::mojom::ClientSecurityStatePtr state =
+            network::mojom::ClientSecurityState::New();
+        state->local_network_access_request_policy =
+            DeriveLocalNetworkAccessRequestPolicy(
+                state->ip_address_space, state->is_web_secure_context,
+                LocalNetworkAccessRequestContext::kNoStatePrefetch);
+        return state;
+      }
+
       if (!GetInitiatorPolicyContainerPolicies()) {
         return nullptr;
       }

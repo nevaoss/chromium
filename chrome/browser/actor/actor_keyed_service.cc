@@ -22,6 +22,7 @@
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/actor/actor_metrics.h"
 #include "chrome/browser/actor/actor_proto_conversion.h"
+#include "chrome/browser/actor/actor_surface.h"
 #include "chrome/browser/actor/actor_surface_registry.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/actor_task.h"
@@ -38,8 +39,10 @@
 #include "chrome/browser/actor/headless_web_contents_manager.h"
 #include "chrome/browser/actor/tab_observation_strategy.h"
 #include "chrome/browser/actor/tools/tool_request.h"
+#include "chrome/browser/actor/transport/chrome_actuation_transport_handler_factory.h"
 #include "chrome/browser/actor/ui/actor_ui_state_manager.h"
 #include "chrome/browser/actor/ui/event_dispatcher.h"
+#include "chrome/browser/browser_actuator/browser_actuator_service_factory.h"
 #include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/search.h"
@@ -56,6 +59,10 @@
 #include "components/actor/core/journal_details_builder.h"
 #include "components/actor/core/task_id.h"
 #include "components/actor/public/mojom/actor_types.mojom.h"
+#include "components/browser_actuator/public/browser_actuator_service.h"
+#include "components/browser_actuator/public/features.h"
+#include "components/browser_actuator/public/transport_channel.h"
+#include "components/browser_actuator/public/transport_handler_factory_registry.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/origin_gating/core/task_policy_config_slot.h"
 #include "components/tabs/public/tab_interface.h"
@@ -167,6 +174,21 @@ ActorKeyedService::ActorKeyedService(Profile* profile) : profile_(profile) {
   if (!trace_path.empty()) {
     InitializeTraceRecording(trace_path);
   }
+
+  // TODO(crbug.com/572907956): Reconsider ownership of
+  // ChromeActuationTransportHandlerFactory.
+  if (base::FeatureList::IsEnabled(browser_actuator::kBrowserActuator)) {
+    browser_actuator::BrowserActuatorService* browser_actuator_service =
+        browser_actuator::BrowserActuatorServiceFactory::GetForProfile(
+            profile_);
+    if (browser_actuator_service && browser_actuator_service->GetChannel()) {
+      actuation_transport_handler_factory_ =
+          std::make_unique<ChromeActuationTransportHandlerFactory>(this);
+      browser_actuator_service->GetChannel()
+          ->GetHandlerFactoryRegistry()
+          ->RegisterFactory(actuation_transport_handler_factory_.get());
+    }
+  }
 }
 
 void ActorKeyedService::InitializeTraceRecording(
@@ -225,6 +247,17 @@ void ActorKeyedService::Shutdown() {
   // Ensure tasks get deleted synchronously to avoid dangling refs.
   CHECK(active_tasks_.empty());
   pending_delete_tasks_.clear();
+  if (actuation_transport_handler_factory_) {
+    browser_actuator::BrowserActuatorService* browser_actuator_service =
+        browser_actuator::BrowserActuatorServiceFactory::GetForProfile(
+            profile_);
+    if (browser_actuator_service && browser_actuator_service->GetChannel()) {
+      browser_actuator_service->GetChannel()
+          ->GetHandlerFactoryRegistry()
+          ->UnregisterFactory(actuation_transport_handler_factory_.get());
+    }
+    actuation_transport_handler_factory_.reset();
+  }
   surface_registry_.reset();
   headless_web_contents_manager_.reset();
   trace_file_serializer_.reset();
@@ -237,14 +270,8 @@ ActorKeyedService* ActorKeyedService::Get(content::BrowserContext* context) {
 
 const ActorTask* ActorKeyedService::GetActingActorTaskForWebContents(
     content::WebContents* web_contents) {
-  ActorSurfaceHandle actor_surface_handle;
-  if (ActorSurface* actor_surface =
-          GetSurfaceRegistry().GetForHeadless(web_contents)) {
-    actor_surface_handle = actor_surface->GetHandle();
-  } else if (auto* tab_interface =
-                 tabs::TabInterface::MaybeGetFromContents(web_contents)) {
-    actor_surface_handle = ActorSurfaceHandle::From(tab_interface->GetHandle());
-  }
+  const ActorSurfaceHandle actor_surface_handle =
+      ActorSurfaceHandle::From(web_contents);
   if (!actor_surface_handle.is_null()) {
     // There should only be one active task per surface.
     for (const auto& [task_id, actor_task] : GetActiveTasks()) {
@@ -643,8 +670,31 @@ void ActorKeyedService::RequestTabObservation(
                       ScreenshotCollectionOptions>
         screenshot_collection_options,
     base::OnceCallback<void(TabObservationResult)> callback) {
+  RequestActorSurfaceObservation(
+      ActorSurfaceHandle::From(tab.GetHandle()), task_id,
+      std::move(screenshot_collection_options), std::move(callback));
+}
+
+void ActorKeyedService::RequestActorSurfaceObservation(
+    ActorSurfaceHandle actor_surface_handle,
+    TaskId task_id,
+    std::optional<page_content_annotations::ScreenshotOptions::
+                      ScreenshotCollectionOptions>
+        screenshot_collection_options,
+    base::OnceCallback<void(TabObservationResult)> callback) {
   TRACE_EVENT0("actor", "ActorKeyedService::RequestTabObservation");
-  if (tab.GetProfile() != profile_.get()) {
+  ActorSurface* actor_surface = actor_surface_handle.Get();
+  if (!actor_surface) {
+    journal_.Log(GURL(), task_id, "RequestTabObservation",
+                 JournalDetailsBuilder().AddError("Tab went away").Build());
+    std::move(callback).Run(
+        base::unexpected(page_content_annotations::FetchPageContextErrorDetails{
+            .error_code = page_content_annotations::FetchPageContextError::
+                kWebContentsWentAway,
+            .message = "Tab went away"}));
+    return;
+  }
+  if (!GetSurfaceRegistry().Get(actor_surface_handle)) {
     journal_.Log(GURL(), task_id, "RequestTabObservation",
                  JournalDetailsBuilder()
                      .AddError("Cross-profile tab observation denied")
@@ -656,7 +706,8 @@ void ActorKeyedService::RequestTabObservation(
             .message = "Cross-profile tab observation denied"}));
     return;
   }
-  const GURL& last_committed_url = tab.GetContents()->GetLastCommittedURL();
+  const GURL& last_committed_url =
+      actor_surface->GetWebContents()->GetLastCommittedURL();
   auto journal_entry = journal_.CreatePendingAsyncEntry(
       last_committed_url, task_id, MakeBrowserTrackUUID(task_id),
       "RequestTabObservation", {});
@@ -684,11 +735,11 @@ void ActorKeyedService::RequestTabObservation(
   // 32 is the value specified in the TabObservation proto comment.
   options.annotated_page_content_options->max_meta_elements = 32;
   page_content_annotations::FetchPageContext(
-      *tab.GetContents(), options,
+      *actor_surface->GetWebContents(), options,
       CreateActorJournalFetchPageProgressListener(journal_.GetSafeRef(),
                                                   last_committed_url, task_id),
       base::BindOnce(
-          [](base::WeakPtr<tabs::TabInterface> tab,
+          [](ActorSurfaceHandle actor_surface_handle,
              base::OnceCallback<void(TabObservationResult)> callback,
              std::unique_ptr<AggregatedJournal::PendingAsyncEntry>
                  pending_journal_entry,
@@ -734,16 +785,19 @@ void ActorKeyedService::RequestTabObservation(
                     base::as_byte_span(data), iframe_data);
               }
 
-              if (tab) {
-                actor::ActorTabData::From(tab.get())->DidObserveContent(
-                    fetch_result.annotated_page_content_result->proto,
-                    actor::ApcSource::kActor);
+              if (ActorSurface* actor_surface = actor_surface_handle.Get()) {
+                // Null for headless surfaces.
+                if (ActorTabData* tab_data = actor_surface->GetActorTabData()) {
+                  tab_data->DidObserveContent(
+                      fetch_result.annotated_page_content_result->proto,
+                      actor::ApcSource::kActor);
+                }
               }
             }
 
             std::move(callback).Run(std::move(result).value());
           },
-          tab.GetWeakPtr(), std::move(callback), std::move(journal_entry),
+          actor_surface_handle, std::move(callback), std::move(journal_entry),
           last_committed_url));
 }
 
@@ -908,8 +962,11 @@ bool ActorKeyedService::IsActiveOnTab(const tabs::TabInterface& tab) const {
 
 ActorTask* ActorKeyedService::GetTaskFromTab(
     const tabs::TabInterface& tab) const {
-  ActorSurfaceHandle actor_surface_handle =
-      ActorSurfaceHandle::From(tab.GetHandle());
+  return GetTaskFromActorSurface(ActorSurfaceHandle::From(tab.GetHandle()));
+}
+
+ActorTask* ActorKeyedService::GetTaskFromActorSurface(
+    ActorSurfaceHandle actor_surface_handle) const {
   if (actor_surface_handle.is_null()) {
     return nullptr;
   }

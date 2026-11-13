@@ -355,6 +355,41 @@ bool IsGenericWrapper(const Element& element, const AtomicString& role_str) {
          element.IsCustomElement();
 }
 
+mojom::blink::ScrollAlignment ToBlinkScrollAlignment(
+    ax::mojom::blink::ScrollAlignment alignment,
+    ax::mojom::blink::ScrollBehavior scroll_behavior) {
+  mojom::blink::ScrollAlignment::Behavior behavior =
+      mojom::blink::ScrollAlignment::Behavior::kNoScroll;
+  switch (alignment) {
+    case ax::mojom::blink::ScrollAlignment::kNone:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kNoScroll;
+      break;
+    case ax::mojom::blink::ScrollAlignment::kScrollAlignmentCenter:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kCenter;
+      break;
+    case ax::mojom::blink::ScrollAlignment::kScrollAlignmentTop:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kTop;
+      break;
+    case ax::mojom::blink::ScrollAlignment::kScrollAlignmentBottom:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kBottom;
+      break;
+    case ax::mojom::blink::ScrollAlignment::kScrollAlignmentLeft:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kLeft;
+      break;
+    case ax::mojom::blink::ScrollAlignment::kScrollAlignmentRight:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kRight;
+      break;
+    case ax::mojom::blink::ScrollAlignment::kScrollAlignmentClosestEdge:
+      behavior = mojom::blink::ScrollAlignment::Behavior::kClosestEdge;
+      break;
+  }
+  mojom::blink::ScrollAlignment::Behavior visible_behavior =
+      scroll_behavior == ax::mojom::blink::ScrollBehavior::kScrollIfVisible
+          ? behavior
+          : mojom::blink::ScrollAlignment::Behavior::kNoScroll;
+  return {visible_behavior, behavior, behavior};
+}
+
 }  // namespace
 
 int32_t ToAXMarkerType(DocumentMarker::MarkerType marker_type) {
@@ -525,7 +560,7 @@ void AXObject::Init(AXObject* parent) {
   // for the role and cached value. We will set it again at the end of the
   // method using SetParent(), to ensure all of the normal code paths for
   // setting the parent are followed.
-  parent_ = parent;
+  SetParentInternal(parent);
 
   // The role must be determined immediately.
   // Note: in order to avoid reentrancy, the role computation cannot use the
@@ -591,6 +626,7 @@ void AXObject::Detach() {
   SetCachedValuesNeedUpdate(false);
   ax_object_cache_ = nullptr;
   children_dirty_ = false;
+  may_have_attached_children_ = false;
   child_cached_values_need_update_ = false;
   has_dirty_descendants_ = false;
   id_ = 0;
@@ -654,7 +690,7 @@ void AXObject::SetParent(AXObject* new_parent) {
   }
 
 #endif
-  parent_ = new_parent;
+  SetParentInternal(new_parent);
   if (AXObjectCache().IsUpdatingTree()) {
     // If updating tree, tell the newly included parent to iterate through
     // all of its children to look for the has dirty descendants flag.
@@ -1897,9 +1933,7 @@ void AXObject::SerializeScreenReaderAttributes(ui::AXNodeData* node_data) const 
     node_data->SetCheckedState(CheckedState());
   }
 
-  if (::features::IsAccessibilityTextChangeTypesEnabled()) {
-    SerializeTextChangeTypesAttributes(node_data);
-  }
+  SerializeTextChangeTypesAttributes(node_data);
 }
 
 String AXObject::KeyboardShortcut() const {
@@ -2167,8 +2201,10 @@ void AXObject::SerializeStyleAttributes(ui::AXNodeData* node_data) const {
     }
   }
 
-  // Font size is in pixels.
-  if (FontSize()) {
+  // Font size is in pixels. A font size of 0 is valid in CSS and makes the
+  // text invisible, so serialize it whenever there is a layout object (and
+  // therefore a computed style) rather than only when it is non-zero.
+  if (GetLayoutObject()) {
     node_data->AddFloatAttribute(ax::mojom::blink::FloatAttribute::kFontSize,
                                  FontSize());
   }
@@ -3395,7 +3431,8 @@ ax::mojom::blink::CheckedState AXObject::CheckedState() const {
                  ? ax::mojom::blink::CheckedState::kTrue
                  : ax::mojom::blink::CheckedState::kFalse;
     }
-  } else if (auto* menu_item = DynamicTo<HTMLMenuItemElement>(node)) {
+  } else if (auto* menu_item =
+                 DynamicTo<HTMLMenuItemCheckableElementBase>(node)) {
     return menu_item->ShouldAppearChecked()
                ? ax::mojom::blink::CheckedState::kTrue
                : ax::mojom::blink::CheckedState::kFalse;
@@ -4221,17 +4258,17 @@ bool AXObject::IsBlockedByAriaModalDialog(
     return false;
   }
 
-  if ((!GetNode() || GetNode()->IsPseudoElement()) && ParentObject()) {
-    return ParentObject()->IsBlockedByAriaModalDialog();
-  }
-
-  if (FlatTreeTraversal::Contains(*active_aria_modal_dialog, *GetNode())) {
-    return false;
+  AXObject* dialog_object = AXObjectCache().Get(active_aria_modal_dialog);
+  for (const AXObject* ancestor = this; ancestor;
+       ancestor = ancestor->ParentObject()) {
+    if (ancestor == dialog_object) {
+      return false;
+    }
   }
 
   if (ignored_reasons) {
-    ignored_reasons->push_back(IgnoredReason(
-        kAXAriaModalDialog, AXObjectCache().Get(active_aria_modal_dialog)));
+    ignored_reasons->push_back(
+        IgnoredReason(kAXAriaModalDialog, dialog_object));
   }
   return true;
 }
@@ -7302,8 +7339,23 @@ void AXObject::ClearChildren() {
 
   Node* node = GetNode();
   if (!node) {
+    may_have_attached_children_ = false;
     return;
   }
+
+  // On clearing of children, ensure that our plugin serializer, if it exists,
+  // is properly reset.
+  if (IsA<HTMLEmbedElement>(node)) {
+    AXObjectCache().ResetPluginTreeSerializer();
+  }
+
+  // If no child AXObject has set its `parent_` to this object since the last
+  // `ClearChildren()` call, no DOM child can point to `this` as its parent, so
+  // the DOM traversal below can be skipped.
+  if (!may_have_attached_children_) {
+    return;
+  }
+  may_have_attached_children_ = false;
 
   // Detach unincluded children from their parent (this).
   // These are children that were not cleared from first loop, as well as
@@ -7320,12 +7372,6 @@ void AXObject::ClearChildren() {
         ax_child_from_node->ParentObjectIfPresent() == this) {
       ax_child_from_node->DetachFromParentNoNotify();
     }
-  }
-
-  // On clearing of children, ensure that our plugin serializer, if it exists,
-  // is properly reset.
-  if (IsA<HTMLEmbedElement>(node)) {
-    AXObjectCache().ResetPluginTreeSerializer();
   }
 }
 
@@ -8011,8 +8057,21 @@ bool AXObject::PerformAction(const ui::AXActionData& action_data) {
       return RequestSetValueAction(String::FromUtf8(action_data.value));
     case ax::mojom::blink::Action::kShowContextMenu:
       return RequestShowContextMenuAction();
-    case ax::mojom::blink::Action::kScrollToMakeVisible:
-      return RequestScrollToMakeVisibleAction();
+    case ax::mojom::blink::Action::kScrollToMakeVisible: {
+      mojom::blink::ScrollAlignment horizontal_scroll_alignment =
+          ToBlinkScrollAlignment(action_data.horizontal_scroll_alignment,
+                                 action_data.scroll_behavior);
+      mojom::blink::ScrollAlignment vertical_scroll_alignment =
+          ToBlinkScrollAlignment(action_data.vertical_scroll_alignment,
+                                 action_data.scroll_behavior);
+      if (action_data.target_rect) {
+        return RequestScrollToMakeVisibleWithSubFocusAction(
+            *action_data.target_rect, horizontal_scroll_alignment,
+            vertical_scroll_alignment);
+      }
+      return RequestScrollToMakeVisibleAction(horizontal_scroll_alignment,
+                                              vertical_scroll_alignment);
+    }
     case ax::mojom::blink::Action::kScrollBackward:
     case ax::mojom::blink::Action::kScrollDown:
     case ax::mojom::blink::Action::kScrollForward:
@@ -8157,15 +8216,19 @@ AXObject* AXObject::GetTargetForScrollAction() {
   return IsDetached() ? cache.Get(node) : this;
 }
 
-bool AXObject::RequestScrollToMakeVisibleAction() {
+bool AXObject::RequestScrollToMakeVisibleAction(
+    mojom::blink::ScrollAlignment horizontal_scroll_alignment,
+    mojom::blink::ScrollAlignment vertical_scroll_alignment) {
   AXObject* target = GetTargetForScrollAction();
-  return target ? target->OnNativeScrollToMakeVisibleAction() : false;
+  return target ? target->OnNativeScrollToMakeVisibleAction(
+                      horizontal_scroll_alignment, vertical_scroll_alignment)
+                : false;
 }
 
 bool AXObject::RequestScrollToMakeVisibleWithSubFocusAction(
     const gfx::Rect& target_rect,
-    blink::mojom::blink::ScrollAlignment horizontal_scroll_alignment,
-    blink::mojom::blink::ScrollAlignment vertical_scroll_alignment) {
+    mojom::blink::ScrollAlignment horizontal_scroll_alignment,
+    mojom::blink::ScrollAlignment vertical_scroll_alignment) {
   AXObject* target = GetTargetForScrollAction();
   return target ? target->OnNativeScrollToMakeVisibleWithSubFocusAction(
                       target_rect, horizontal_scroll_alignment,
@@ -8237,7 +8300,7 @@ bool AXObject::RequestReplaceRangesAction(const ui::AXActionData& action_data) {
       ax::mojom::blink::IntListAttribute::kTextOperationEndAnchorIds);
   std::vector<int32_t> end_offsets = action_data.GetIntListAttribute(
       ax::mojom::blink::IntListAttribute::kTextOperationEndOffsets);
-  std::vector<std::string> replacement_strings =
+  base::span<const std::string> replacement_strings =
       action_data.GetStringListAttribute(ax::mojom::blink::StringListAttribute::
                                              kTextOperationReplacementStrings);
 
@@ -8483,8 +8546,8 @@ void AXObject::DispatchKeyboardEvent(LocalDOMWindow* local_dom_window,
 void AXObject::ScrollLayoutObjectRectToVisible(
     const LayoutObject& target_layout_object,
     const PhysicalRect& absolute_target_rect,
-    blink::mojom::blink::ScrollAlignment horizontal_scroll_alignment,
-    blink::mojom::blink::ScrollAlignment vertical_scroll_alignment) const {
+    mojom::blink::ScrollAlignment horizontal_scroll_alignment,
+    mojom::blink::ScrollAlignment vertical_scroll_alignment) const {
   const LayoutObject* layout_object = &target_layout_object;
   // To scroll an element into view, we don't scroll the element itself
   // unless it is the document scrolling element.
@@ -8504,21 +8567,23 @@ void AXObject::ScrollLayoutObjectRectToVisible(
                                    ax::mojom::blink::Event::kLocationChanged);
 }
 
-bool AXObject::OnNativeScrollToMakeVisibleAction() const {
+bool AXObject::OnNativeScrollToMakeVisibleAction(
+    mojom::blink::ScrollAlignment horizontal_scroll_alignment,
+    mojom::blink::ScrollAlignment vertical_scroll_alignment) const {
   const LayoutObject* layout_object = GetLayoutObjectForNativeScrollAction();
   if (!layout_object) {
     return false;
   }
   ScrollLayoutObjectRectToVisible(
       *layout_object, PhysicalRect(layout_object->AbsoluteBoundingBoxRect()),
-      ScrollAlignment::CenterIfNeeded(), ScrollAlignment::CenterIfNeeded());
+      horizontal_scroll_alignment, vertical_scroll_alignment);
   return true;
 }
 
 bool AXObject::OnNativeScrollToMakeVisibleWithSubFocusAction(
     const gfx::Rect& target_rect,
-    blink::mojom::blink::ScrollAlignment horizontal_scroll_alignment,
-    blink::mojom::blink::ScrollAlignment vertical_scroll_alignment) const {
+    mojom::blink::ScrollAlignment horizontal_scroll_alignment,
+    mojom::blink::ScrollAlignment vertical_scroll_alignment) const {
   const LayoutObject* layout_object = GetLayoutObjectForNativeScrollAction();
   if (!layout_object) {
     return false;

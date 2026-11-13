@@ -101,6 +101,7 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
+#include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
 #endif
 
 using base::UserMetricsAction;
@@ -141,10 +142,16 @@ int Center(int size, int item_size) {
 #if BUILDFLAG(IS_CHROMEOS)
 // Returns true if the tab should be locked for the task and false otherwise.
 bool IsLockedForOnTask(BrowserWindowInterface* browser_window_interface) {
-  return browser_window_interface
-             ? ash::boca::OnTaskLockedController::From(browser_window_interface)
-                   ->is_locked_for_on_task()
-             : false;
+  if (!browser_window_interface) {
+    return false;
+  }
+  if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+    return !chromeos::LockedStateController::From(browser_window_interface)
+                ->GetCapabilities()
+                .allow_tab_modification;
+  }
+  return ash::boca::OnTaskLockedController::From(browser_window_interface)
+      ->is_locked_for_on_task();
 }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
@@ -1375,7 +1382,10 @@ void Tab::UpdateIconVisibility() {
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   if (IsActive()) {
-    if (!declutter_eligible) {
+    const bool active_tab_declutter_eligible =
+        declutter_eligible &&
+        features::kTabStripDeclutterActiveTabCloseHideEnabled.Get();
+    if (!active_tab_declutter_eligible) {
       // Close button is shown on active tabs regardless of the size.
       showing_close_button_ = should_show_close_button;
       if (showing_close_button_) {
@@ -1394,7 +1404,7 @@ void Tab::UpdateIconVisibility() {
       available_width -= favicon_width;
     }
 
-    if (declutter_eligible) {
+    if (active_tab_declutter_eligible) {
       showing_close_button_ =
           should_show_close_button && ((!has_alert_icon && !has_favicon) ||
                                        close_button_width <= available_width);
@@ -1417,8 +1427,9 @@ void Tab::UpdateIconVisibility() {
     showing_close_button_ =
         should_show_close_button && large_enough_for_close_button &&
         !(declutter_eligible &&
+          features::kTabStripDeclutterInactiveTabCloseHideEnabled.Get() &&
           available_width <=
-              TabStyle::kTabStripDeclutterMaxTabWidthForCloseHide);
+              features::kTabStripDeclutterMaxTabWidthForCloseHide.Get());
     if (showing_close_button_) {
       available_width -= close_button_width;
     }

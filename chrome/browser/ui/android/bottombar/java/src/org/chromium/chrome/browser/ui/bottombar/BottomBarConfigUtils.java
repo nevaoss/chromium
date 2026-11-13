@@ -21,7 +21,7 @@ import org.chromium.ui.base.DeviceFormFactor;
 /** Utility class for determining the configuration of the bottom bar. */
 @NullMarked
 public class BottomBarConfigUtils {
-    public static final int DEFAULT_BOTTOM_BAR_HEIGHT_DP = 60;
+    public static final int DEFAULT_BOTTOM_BAR_HEIGHT_DP = 56;
     public static final int MIN_BOTTOM_BAR_HEIGHT_DP = 48;
     public static final int MAX_BOTTOM_BAR_HEIGHT_DP = 60;
 
@@ -54,6 +54,20 @@ public class BottomBarConfigUtils {
     public static boolean shouldShowSettingsToggle(Context context) {
         return isBottomBarEligible(context)
                 && ChromeFeatureList.sAndroidBottomBarShowSettingsToggle.getValue();
+    }
+
+    /**
+     * Returns whether the Address bar and Homepage settings rows should be moved from MainSettings
+     * into Appearance settings and Toolbar shortcut renamed to Address bar shortcut: the
+     * AndroidBottomBar flag and move_toolbar_settings_to_appearance param must be on, and the
+     * device must be a phone or foldable (not automotive or a non-foldable tablet).
+     */
+    public static boolean shouldMoveToolbarSettingsToAppearance(Context context) {
+        return ChromeFeatureList.sAndroidBottomBar.isEnabled()
+                && !DeviceInfo.isAutomotive()
+                && (DeviceInfo.isFoldable()
+                        || !DeviceFormFactor.isNonMultiDisplayContextOnTablet(context))
+                && ChromeFeatureList.sAndroidBottomBarMoveToolbarSettingsToAppearance.getValue();
     }
 
     /**

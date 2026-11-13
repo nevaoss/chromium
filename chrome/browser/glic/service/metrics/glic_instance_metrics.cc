@@ -521,8 +521,25 @@ void GlicInstanceMetrics::OnShowInSidePanel(tabs::TabInterface* tab) {
 
 void GlicInstanceMetrics::MaybeSetInitialInvocationSource(
     mojom::InvocationSource source) {
-  if (!initial_invocation_source_.has_value()) {
-    initial_invocation_source_ = source;
+  if (initial_invocation_source_.has_value()) {
+    return;
+  }
+  initial_invocation_source_ = source;
+
+  // Backfill events that happened before the initial invocation source was set.
+  const std::string source_str = GetInvocationSourceString(source);
+  const std::string event_counts_histogram =
+      base::StrCat({"Glic.InvocationSource.", source_str, ".EventCounts"});
+  const std::string had_event_histogram =
+      base::StrCat({"Glic.InvocationSource.", source_str, ".HadEvent"});
+  for (const auto& [event, count] : event_counts_) {
+    if (count <= 0) {
+      continue;
+    }
+    base::UmaHistogramEnumeration(had_event_histogram, event);
+    for (int i = 0; i < count; ++i) {
+      base::UmaHistogramEnumeration(event_counts_histogram, event);
+    }
   }
 }
 
@@ -860,14 +877,9 @@ void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
   }
 }
 
-void GlicInstanceMetrics::OnToggle(
-    glic::mojom::InvocationSource source,
-    const EmbedderKey& embedder_key,
-    bool is_showing,
-    std::unique_ptr<GlicWindowInvocationTracker> invocation_tracker) {
-  if (invocation_tracker) {
-    cui_trackers_.push_back(std::move(invocation_tracker));
-  }
+void GlicInstanceMetrics::OnToggle(glic::mojom::InvocationSource source,
+                                   const EmbedderKey& embedder_key,
+                                   bool is_showing) {
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Toggle"));
   if (std::holds_alternative<FloatingEmbedderKey>(embedder_key)) {
     base::UmaHistogramEnumeration("Glic.Instance.Floaty.ToggleSource", source);

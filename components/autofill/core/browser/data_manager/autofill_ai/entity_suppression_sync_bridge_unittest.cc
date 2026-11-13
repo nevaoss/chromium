@@ -9,12 +9,14 @@
 #include <string>
 #include <utility>
 
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_entry.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h"
 #include "components/autofill/core/browser/webdata/personal_context/entity_suppression_sync_util.h"
 #include "components/os_crypt/async/browser/os_crypt_async.h"
 #include "components/os_crypt/async/browser/test_utils.h"
@@ -120,15 +122,24 @@ class EntitySuppressionSyncBridgeTest : public testing::Test {
   void WriteToStore(const std::string& guid,
                     const EntitySuppressionEntry& entry,
                     base::Time creation_time = base::Time::Now()) {
-    sync_pb::AutofillEntitySuppressionSpecifics specifics =
-        CreateSpecificsFromEntitySuppressionEntry(guid, entry, creation_time);
-    std::string encrypted_blob;
-    ASSERT_TRUE(encryptor().EncryptString(specifics.SerializeAsString(),
-                                          &encrypted_blob));
+    WriteEncryptedToStore(guid, CreateSpecificsFromEntitySuppressionEntry(
+                                    guid, entry, creation_time)
+                                    .SerializeAsString());
+  }
 
+  // Encrypts `plaintext` and writes it to the store under `guid`.
+  void WriteEncryptedToStore(const std::string& guid,
+                             const std::string& plaintext) {
+    std::string encrypted_blob;
+    ASSERT_TRUE(encryptor().EncryptString(plaintext, &encrypted_blob));
+    WriteRawToStore(guid, encrypted_blob);
+  }
+
+  // Writes `value` to the store under `guid` without encrypting it.
+  void WriteRawToStore(const std::string& guid, const std::string& value) {
     std::unique_ptr<syncer::DataTypeStore::WriteBatch> batch =
         store_->CreateWriteBatch();
-    batch->WriteData(guid, encrypted_blob);
+    batch->WriteData(guid, value);
     base::test::TestFuture<const std::optional<syncer::ModelError>&> future;
     store_->CommitWriteBatch(std::move(batch), future.GetCallback());
     EXPECT_FALSE(future.Get().has_value());
@@ -583,6 +594,100 @@ TEST_F(EntitySuppressionSyncBridgeTest, ClearSuppressions_Empty) {
   EXPECT_CALL(mock_processor(), Delete).Times(0);
   EXPECT_CALL(observer(), OnSuppressionsChanged()).Times(0);
   EXPECT_FALSE(bridge().ClearSuppressions(base::Time(), base::Time::Max()));
+}
+
+// Tests that CountSuppressionsCreatedBetween only counts entries whose
+// creation time falls within the inclusive range [begin, end].
+TEST_F(EntitySuppressionSyncBridgeTest, CountSuppressionsCreatedBetween) {
+  const base::Time t1 =
+      base::Time::FromDeltaSinceWindowsEpoch(base::Seconds(100));
+  const base::Time t2 =
+      base::Time::FromDeltaSinceWindowsEpoch(base::Seconds(200));
+  WriteToStore("guid1", CreatePassportEntry(), t1);
+  WriteToStore("guid2", CreateDriversLicenseEntry(), t2);
+  CreateBridge();
+  ASSERT_EQ(bridge().GetSuppressions().size(), 2u);
+
+  // Null bounds cover everything.
+  EXPECT_EQ(
+      bridge().CountSuppressionsCreatedBetween(base::Time(), base::Time::Max()),
+      2u);
+  EXPECT_EQ(
+      bridge().CountSuppressionsCreatedBetween(base::Time(), base::Time()), 2u);
+  // Bounds are inclusive.
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(t1, t1), 1u);
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(t2, t2), 1u);
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(t1, t2), 2u);
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(t1 + base::Seconds(50),
+                                                     base::Time::Max()),
+            1u);
+  // Ranges not containing any creation time.
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(base::Time::Min(),
+                                                     t1 - base::Seconds(1)),
+            0u);
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(t1 + base::Seconds(1),
+                                                     t2 - base::Seconds(1)),
+            0u);
+  EXPECT_EQ(bridge().CountSuppressionsCreatedBetween(t2 + base::Seconds(1),
+                                                     base::Time::Max()),
+            0u);
+
+  // After clearing, nothing is left.
+  ASSERT_TRUE(bridge().ClearSuppressions(base::Time(), base::Time::Max()));
+  EXPECT_EQ(
+      bridge().CountSuppressionsCreatedBetween(base::Time(), base::Time::Max()),
+      0u);
+}
+
+// Tests that CountSuppressionsCreatedBetween returns zero when there are no
+// suppressions.
+TEST_F(EntitySuppressionSyncBridgeTest, CountSuppressionsCreatedBetween_Empty) {
+  CreateBridge();
+  ASSERT_TRUE(bridge().GetSuppressions().empty());
+
+  EXPECT_EQ(
+      bridge().CountSuppressionsCreatedBetween(base::Time(), base::Time::Max()),
+      0u);
+}
+
+// Tests that a load without corrupt records logs zero dropped records.
+TEST_F(EntitySuppressionSyncBridgeTest, Metrics_LoadWithoutDroppedRecords) {
+  WriteToStore("guid1", CreatePassportEntry());
+  base::HistogramTester histogram_tester;
+
+  CreateBridge();
+
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.Suppression.Load.DroppedRecordCount", 0, 1);
+  histogram_tester.ExpectTotalCount("Autofill.Ai.Suppression.Load.DropReason",
+                                    0);
+}
+
+// Tests that records which cannot be decrypted, parsed or converted are dropped
+// on load and that the reasons and the dropped count are logged.
+TEST_F(EntitySuppressionSyncBridgeTest, Metrics_LoadWithDroppedRecords) {
+  EntitySuppressionEntry valid_entry = CreatePassportEntry();
+  WriteToStore("guid1", valid_entry);
+  WriteRawToStore("guid2", "not encrypted");
+  // 0xFF encodes field 31 with the invalid wire type 7.
+  WriteEncryptedToStore("guid3", "\xFF");
+  // Empty specifics lack the suppression key and are therefore invalid.
+  WriteEncryptedToStore(
+      "guid4",
+      sync_pb::AutofillEntitySuppressionSpecifics().SerializeAsString());
+  base::HistogramTester histogram_tester;
+
+  CreateBridge();
+
+  EXPECT_THAT(bridge().GetSuppressions(), ElementsAre(valid_entry));
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Ai.Suppression.Load.DroppedRecordCount", 3, 1);
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples("Autofill.Ai.Suppression.Load.DropReason"),
+      base::BucketsAre(
+          base::Bucket(EntitySuppressionLoadDropReason::kDecryptionFailed, 1),
+          base::Bucket(EntitySuppressionLoadDropReason::kParseFailed, 1),
+          base::Bucket(EntitySuppressionLoadDropReason::kInvalidEntry, 1)));
 }
 
 }  // namespace

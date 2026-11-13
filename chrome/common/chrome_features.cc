@@ -163,6 +163,12 @@ BASE_FEATURE(kPreinstalledWebAppAlwaysMigrateForTesting,
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kRemoteActorCredentialSharing, base::FEATURE_DISABLED_BY_DEFAULT);
 // This parameter is for testing purposes only and must not be used in
+// production. It overrides the actor name displayed in the credential
+// selection dialog.
+const base::FeatureParam<std::string>
+    kRemoteActorCredentialSharingActorNameForTesting{
+        &kRemoteActorCredentialSharing, "actor_name_for_testing", "Gemini"};
+// This parameter is for testing purposes only and must not be used in
 // production. It overrides the whitelisted origins with the specified host.
 const base::FeatureParam<std::string>
     kRemoteActorCredentialSharingAllowedHostForTesting{
@@ -1205,6 +1211,10 @@ const base::FeatureParam<bool>
     kHappinessTrackingSurveysForSecurityPageRequireInteraction{
         &kHappinessTrackingSurveysForSecurityPage,
         "security-page-require-interaction", false};
+
+// Enables or disables HaTS for Scheduled Restarts on Desktop.
+BASE_FEATURE(kHappinessTrackingSurveysForDesktopScheduledRestart,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables HTTPS-First Mode in a balanced configuration that doesn't warn on
@@ -1267,6 +1277,7 @@ BASE_FEATURE(kIncomingCallNotifications,
 
 // Experimental image replacement feature. b/482792874
 BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIndigoContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIndigoContextualCueingV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIndigoWatermark, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -2114,17 +2125,32 @@ BASE_FEATURE(kSmartRestart, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta> kSmartRestartDelay{
     &kSmartRestart, "restart_delay", base::Minutes(1)};
 
-BASE_FEATURE(kSmartRestartLockScreen, base::FEATURE_DISABLED_BY_DEFAULT);
+// Enables automatic background browser restarts to apply pending updates while
+// the OS screen is locked.
+BASE_FEATURE(kSmartRestartLockScreen, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Maximum number of open tabs allowed for a lock screen restart. -1 disables
+// the tab count limit.
 const base::FeatureParam<int> kSmartRestartLockScreenTabThreshold{
     &kSmartRestartLockScreen, "lock_tab_threshold", -1};
 
+// Maximum SmartRestartDisruptionLevel allowed for a lock screen restart
+// (0 = kNoDisruption, 1 = kLowDisruption, 2 = kMediumDisruption,
+// 3 = kHighDisruption). Default 2 allows restarts up to medium disruption while
+// blocking high-disruption states (e.g. incognito, active downloads, media,
+// user edits, beforeunload).
 const base::FeatureParam<int> kSmartRestartLockScreenDisruptionThreshold{
     &kSmartRestartLockScreen, "lock_disruption_threshold", 2};
 
+// Grace period to wait after the screen is locked before evaluating and
+// executing a restart.
 const base::FeatureParam<base::TimeDelta> kSmartRestartLockScreenDelay{
-    &kSmartRestartLockScreen, "lock_restart_delay", base::Minutes(5)};
+    &kSmartRestartLockScreen, "lock_restart_delay", base::Minutes(2)};
 
+// Maximum Site Engagement score ([0.0, 100.0]) at or below which beforeunload
+// handlers can be bypassed during a lock screen restart. A negative value
+// (-1.0) disables bypassing beforeunload handlers; a value above 100.0 (e.g.
+// 101.0) runs in dry-run mode to record metrics without restarting.
 const base::FeatureParam<double> kSmartRestartLockBypassBeforeUnloadThreshold{
     &kSmartRestartLockScreen, "lock_bypass_beforeunload_threshold", -1.0};
 

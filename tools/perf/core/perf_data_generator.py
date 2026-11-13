@@ -286,12 +286,18 @@ FYI_BUILDERS = {
           '--xcode-build-version=27a266a',
           '--out-dir=${ISOLATED_OUTDIR}',
           '--xcodebuild-device-runner',
+          '--xctest',
         ],
       }
     ],
+    # TODO(crbug.com/570775933): Re-enable once on a dedicated
+    # chrome.tests.perf pool.
+    'perf_trigger': False,
     'platform': 'ios',
     'dimension': {
+      'cpu': None,
       'device': 'iPhone16,1',
+      'device_status': 'available',
       'os': 'iOS-26',
       'pool': 'chrome.tests',
     },
@@ -1600,6 +1606,15 @@ GTEST_BENCHMARKS = {
     (
       'https://chromium.googlesource.com/chromium/src/+/HEAD/base/'
       + 'README.md#performance-testing'
+    ),
+    stories=[benchmark_utils.StoryInfo('_gtest_', '', ['all'])],
+  ),
+  'partition_alloc_perftests': BenchmarkMetadata(
+    'memory-dev@chromium.org',
+    'Blink>MemoryAllocator>PartitionAlloc',
+    (
+      'https://chromium.googlesource.com/chromium/src/+/HEAD/base/'
+      + 'allocator/partition_allocator/README.md'
     ),
     stories=[benchmark_utils.StoryInfo('_gtest_', '', ['all'])],
   ),

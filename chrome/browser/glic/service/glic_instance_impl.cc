@@ -56,6 +56,7 @@
 #include "chrome/browser/glic/suggestions/contextual_cueing_service.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_service_factory.h"
 #include "chrome/browser/metrics/profile_metrics_service_factory.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -432,7 +433,7 @@ bool GlicInstanceImpl::IsActuating() const {
   return actor_task_manager_ && actor_task_manager_->IsActuating();
 }
 
-bool GlicInstanceImpl::IsLiveMode() {
+bool GlicInstanceImpl::IsLiveMode() const {
   return interaction_mode_ == mojom::WebClientMode::kAudio;
 }
 
@@ -1254,8 +1255,11 @@ void GlicInstanceImpl::ClearActiveEmbedderAndNotifyVisibilityChange() {
     NotifyVisibilityChange();
     host().PanelWasClosed();
 #if !BUILDFLAG(IS_ANDROID)
-    MaybeShowShortcutSnoozePromo();
-    MaybeShowCriticalActionFeaturePromo();
+    // KeyedService lookups are illegal once profile destruction has started.
+    if (!profile_->ShutdownStarted()) {
+      MaybeShowShortcutSnoozePromo();
+      MaybeShowCriticalActionFeaturePromo();
+    }
 #endif  // !BUILDFLAG(IS_ANDROID)
   }
   return;
@@ -1610,6 +1614,20 @@ void GlicInstanceImpl::DidCloseFor(EmbedderKey key,
   // Must be called early to avoid use-after-free if instance is deleted.
   if (reason == EmbedderCloseReason::kExplicitlyClosed) {
     instance_metrics().ResetShownState(key);
+    // The user dismissed the UI this instance was showing before the client
+    // became usable, so an invocation that only came to show that UI is
+    // abandoned rather than left to time out. Only the active embedder
+    // counts: closing an inactive one, or the old embedder while moving the
+    // conversation to another surface (detach/attach), does not take the UI
+    // away. Invocations that will send something to the client keep running,
+    // as the client may still act on them (and keep the instance alive, see
+    // MaybeRemoveBlankInstanceOnClose()).
+    if (IsActiveEmbedder(key) &&
+        host_.client_load_state() != ClientLoadState::kReady &&
+        coordinator_delegate_) {
+      coordinator_delegate_->CancelShowOnlyInvokes(
+          this, GlicInvokeError::kPanelClosed);
+    }
   }
 
   // Deactivation might delete 'this'

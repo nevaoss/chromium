@@ -52,6 +52,29 @@ constexpr char
         "KeyboardAccessory."
         "AccessoryActionSelectedForNonCredentialFieldWithoutSuggestions";
 
+// Returns true if `type` represents an unstructured field (contenteditable
+// or textarea) that only supports AtMemory. Textareas only count as such when
+// `kAutofillAtMemorySupportTextAreaOnAndroid` is enabled; otherwise the
+// accessory is never shown on them.
+bool IsUnstructuredFieldType(FocusedFieldType type) {
+  switch (type) {
+    case FocusedFieldType::kFillableTextArea:
+      return base::FeatureList::IsEnabled(
+          autofill::features::kAutofillAtMemorySupportTextAreaOnAndroid);
+    case FocusedFieldType::kContenteditableField:
+      return true;
+    case FocusedFieldType::kUnknown:
+    case FocusedFieldType::kUnfillableElement:
+    case FocusedFieldType::kFillableSearchField:
+    case FocusedFieldType::kFillableNonSearchField:
+    case FocusedFieldType::kFillableWebauthnTaggedField:
+    case FocusedFieldType::kFillableUsernameField:
+    case FocusedFieldType::kFillablePasswordField:
+      return false;
+  }
+  NOTREACHED();
+}
+
 }  // namespace
 
 // static
@@ -85,7 +108,6 @@ void ManualFillingControllerImpl::CreateForWebContentsForTesting(
     std::unique_ptr<ManualFillingViewInterface> view) {
   DCHECK(web_contents) << "Need valid WebContents to attach controller to!";
   DCHECK(!FromWebContents(web_contents)) << "Controller already attached!";
-  CHECK(pwd_controller, base::NotFatalUntil::M161);
   CHECK(address_controller, base::NotFatalUntil::M161);
   CHECK(payment_method_controller, base::NotFatalUntil::M161);
   CHECK(at_memory_controller, base::NotFatalUntil::M161);
@@ -250,8 +272,11 @@ void ManualFillingControllerImpl::RequestAccessorySheet(
     autofill::AccessoryTabType tab_type,
     base::OnceCallback<void(autofill::AccessorySheetData)> callback) {
   // TODO(crbug.com/40165275): Consider to execute this async to reduce jank.
-  std::optional<AccessorySheetData> sheet =
-      GetControllerForTabType(tab_type)->GetSheetData();
+  AccessoryController* controller = GetControllerForTabType(tab_type);
+  if (!controller) {
+    return;  // Controller not available anymore.
+  }
+  std::optional<AccessorySheetData> sheet = controller->GetSheetData();
   // After they were loaded, all currently existing sheet types always return a
   // value and will always result in a called callback.
   // The only case where they are not available is before their first load (so
@@ -288,10 +313,12 @@ void ManualFillingControllerImpl::Initialize() {
 ManualFillingControllerImpl::ManualFillingControllerImpl(
     content::WebContents* web_contents)
     : content::WebContentsUserData<ManualFillingControllerImpl>(*web_contents) {
-  pwd_controller_ = ChromePasswordManagerClient::FromWebContents(web_contents)
-                        ->GetOrCreatePasswordAccessory()
-                        ->AsWeakPtr();
-  CHECK(pwd_controller_, base::NotFatalUntil::M161);
+  if (ChromePasswordManagerClient* password_client =
+          ChromePasswordManagerClient::FromWebContents(web_contents)) {
+    pwd_controller_ =
+        password_client->GetOrCreatePasswordAccessory()->AsWeakPtr();
+    CHECK(pwd_controller_, base::NotFatalUntil::M161);
+  }
 
   address_controller_ =
       AddressAccessoryController::GetOrCreate(web_contents)->AsWeakPtr();
@@ -340,9 +367,6 @@ bool ManualFillingControllerImpl::ShouldShowAccessoryForLastFocusedFieldType()
       }
       return available_sources_.contains(FillingSource::AUTOFILL);
 
-    // Even if there are suggestions, don't show on textareas.
-    case FocusedFieldType::kFillableTextArea:
-      return false;
 
     // Sometimes autocomplete entries may be set when the focus is on an unknown
     // or unfillable field.
@@ -350,12 +374,27 @@ bool ManualFillingControllerImpl::ShouldShowAccessoryForLastFocusedFieldType()
     case FocusedFieldType::kUnknown:
       return available_sources_.contains(FillingSource::AUTOFILL);
 
-    // AtMemory suggestions are supported for contenteditable fields on Android.
+    // With `kAutofillAtMemorySupportTextAreaOnAndroid`, textareas show the
+    // accessory with only the AtMemory entry point: `BrowserAutofillManager`
+    // does not generate Autofill suggestions for them. Without the flag,
+    // textareas keep the legacy behavior of never showing the accessory.
+    case FocusedFieldType::kFillableTextArea:
+      if (!base::FeatureList::IsEnabled(
+              autofill::features::kAutofillAtMemorySupportTextAreaOnAndroid)) {
+        // Even if there are suggestions, don't show on textareas.
+        return false;
+      }
+      [[fallthrough]];
+
+    // AtMemory suggestions are supported for contenteditable and textarea
+    // fields on Android.
     // Unlike database-backed fallback sheets (passwords, addresses, payments)
     // which signal availability asynchronously via `available_sources_`,
-    // AtMemory availability on contenteditables is purely focus-driven and
-    // only requires that the `AtMemoryAccessoryController` is available.
-    // Note: `PasswordAutofillAgent` verifies the feature enablement.
+    // AtMemory availability on contenteditables and textareas is purely
+    // focus-driven and only requires that the `AtMemoryAccessoryController` is
+    // available.
+    // Note: `PasswordAutofillAgent` verifies the feature enablement for
+    // contenteditables.
     case FocusedFieldType::kContenteditableField:
       return at_memory_controller_ &&
              at_memory_controller_->IsAtMemoryAvailable();
@@ -369,9 +408,9 @@ void ManualFillingControllerImpl::UpdateVisibility() {
       if (source == FillingSource::AUTOFILL) {
         continue;  // Autofill suggestions have no sheet.
       }
-      // On contenteditable elements, only AtMemory is supported. Suppress
-      // pushing fallback sheet data (passwords, addresses, payments).
-      if (last_focused_field_type_ == FocusedFieldType::kContenteditableField &&
+      // On contenteditable and textarea elements, only AtMemory is supported.
+      // Suppress pushing fallback sheet data (passwords, addresses, payments).
+      if (IsUnstructuredFieldType(last_focused_field_type_) &&
           source != FillingSource::AT_MEMORY) {
         continue;
       }
@@ -390,10 +429,10 @@ void ManualFillingControllerImpl::UpdateVisibility() {
             last_focused_field_type_ != FocusedFieldType::kUnfillableElement &&
             last_focused_field_type_ != FocusedFieldType::kUnknown),
         ManualFillingViewInterface::ShouldShowOnLargeFormFactor(
+            IsUnstructuredFieldType(last_focused_field_type_) ||
             available_sources_.contains(FillingSource::AUTOFILL)),
-        ManualFillingViewInterface::IsContentEditable(
-            last_focused_field_type_ ==
-                FocusedFieldType::kContenteditableField));
+        ManualFillingViewInterface::IsUnstructuredField(
+            IsUnstructuredFieldType(last_focused_field_type_)));
   } else {
     view_->Hide();
   }
@@ -423,9 +462,9 @@ void ManualFillingControllerImpl::OnSourceAvailabilityChanged(
   // TODO(crbug.com/40165275): Remove once all sheets pull this information
   // instead of waiting to get it pushed.
   if (sheet.has_value()) {
-    // Suppress forwarding fallback sheet data for contenteditable elements
-    // so only the AtMemory sheet is made available to the view.
-    if (last_focused_field_type_ != FocusedFieldType::kContenteditableField ||
+    // Suppress forwarding fallback sheet data for contenteditable and textarea
+    // elements so only the AtMemory sheet is made available to the view.
+    if (!IsUnstructuredFieldType(last_focused_field_type_) ||
         source == FillingSource::AT_MEMORY) {
       view_->OnItemsAvailable(std::move(sheet.value()));
     }

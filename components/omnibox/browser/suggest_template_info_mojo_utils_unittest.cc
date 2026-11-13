@@ -4,6 +4,9 @@
 
 #include "components/omnibox/browser/suggest_template_info_mojo_utils.h"
 
+#include <array>
+#include <cstdint>
+
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -135,29 +138,137 @@ TEST(SuggestTemplateInfoMojoUtilsTest, PopulatesTextFromMatch) {
   {
     mojom::SuggestTemplateInfoPtr suggest_template =
         CreateSuggestTemplateInfo(match);
-    EXPECT_EQ(suggest_template->primary_text, u"example.com");
+    EXPECT_EQ(suggest_template->primary_text->text, u"example.com");
     ASSERT_EQ(suggest_template->primary_text_class.size(), 1u);
     EXPECT_EQ(suggest_template->primary_text_class[0]->style,
               ACMatchClassification::URL);
-    EXPECT_EQ(suggest_template->secondary_text, u"Example Title");
+    EXPECT_EQ(suggest_template->secondary_text->text, u"Example Title");
     ASSERT_EQ(suggest_template->secondary_text_class.size(), 1u);
     EXPECT_EQ(suggest_template->secondary_text_class[0]->style,
               ACMatchClassification::MATCH);
   }
-  // `swap_contents_and_description` is resolved here, and the classifications
-  // travel with their text.
+  // `swap_contents_and_description` is resolved here, and the styling travels
+  // with its text.
   {
     match.swap_contents_and_description = true;
     mojom::SuggestTemplateInfoPtr suggest_template =
         CreateSuggestTemplateInfo(match);
-    EXPECT_EQ(suggest_template->primary_text, u"Example Title");
+    EXPECT_EQ(suggest_template->primary_text->text, u"Example Title");
     ASSERT_EQ(suggest_template->primary_text_class.size(), 1u);
     EXPECT_EQ(suggest_template->primary_text_class[0]->style,
               ACMatchClassification::MATCH);
-    EXPECT_EQ(suggest_template->secondary_text, u"example.com");
+    ASSERT_EQ(suggest_template->primary_text->fragments.size(), 1u);
+    EXPECT_TRUE(suggest_template->primary_text->fragments[0]->is_bolded);
+    EXPECT_EQ(suggest_template->secondary_text->text, u"example.com");
     ASSERT_EQ(suggest_template->secondary_text_class.size(), 1u);
     EXPECT_EQ(suggest_template->secondary_text_class[0]->style,
               ACMatchClassification::URL);
+    ASSERT_EQ(suggest_template->secondary_text->fragments.size(), 1u);
+    EXPECT_EQ(suggest_template->secondary_text->fragments[0]->color,
+              mojom::ColorType::kPrimary);
+    EXPECT_FALSE(suggest_template->secondary_text->fragments[0]->is_bolded);
+  }
+}
+
+TEST(SuggestTemplateInfoMojoUtilsTest, ConvertsClassificationsToFragments) {
+  AutocompleteMatch match;
+  match.contents = u"0123456789";
+  match.contents_class = {
+      {0, ACMatchClassification::NONE},
+      {1, ACMatchClassification::MATCH},
+      {2, ACMatchClassification::DIM},
+      {3, ACMatchClassification::URL},
+      {4, ACMatchClassification::URL | ACMatchClassification::MATCH},
+      {5, ACMatchClassification::DIM | ACMatchClassification::MATCH},
+      {6, ACMatchClassification::URL | ACMatchClassification::DIM},
+      {7, ACMatchClassification::TOOLBELT},
+  };
+
+  mojom::SuggestTemplateInfoPtr suggest_template =
+      CreateSuggestTemplateInfo(match);
+  const mojom::FormattedString& primary_text = *suggest_template->primary_text;
+  EXPECT_EQ(primary_text.text, u"0123456789");
+  EXPECT_FALSE(primary_text.a11y_text);
+
+  struct Expected {
+    uint32_t start_index;
+    mojom::ColorType color;
+    bool is_bolded;
+  };
+  const auto kExpected = std::to_array<Expected>({
+      {0, mojom::ColorType::kUnknown, false},
+      {1, mojom::ColorType::kUnknown, true},
+      {2, mojom::ColorType::kOnSurfaceDeemphasis, false},
+      {3, mojom::ColorType::kPrimary, false},
+      {4, mojom::ColorType::kPrimary, true},
+      {5, mojom::ColorType::kOnSurfaceDeemphasis, true},
+      {6, mojom::ColorType::kPrimary, false},
+      {7, mojom::ColorType::kUnknown, false},
+  });
+  // Each classification becomes exactly one fragment, even when neighboring
+  // classifications have the same style. MATCH is converted to `is_bolded`,
+  // and URL and DIM to colors. URL wins when both are set.
+  ASSERT_EQ(primary_text.fragments.size(), kExpected.size());
+  for (size_t i = 0; i < kExpected.size(); ++i) {
+    SCOPED_TRACE(i);
+    const mojom::FormattedStringFragment& fragment = *primary_text.fragments[i];
+    EXPECT_EQ(fragment.start_index, kExpected[i].start_index);
+    EXPECT_EQ(fragment.color, kExpected[i].color);
+    EXPECT_EQ(fragment.is_bolded, kExpected[i].is_bolded);
+  }
+}
+
+TEST(SuggestTemplateInfoMojoUtilsTest, KeepsClassificationOffsets) {
+  // Offsets are UTF-16 offsets, like the classification offsets. The emoji
+  // takes two code units.
+  {
+    AutocompleteMatch match;
+    match.contents = u"\U0001F600 hello";
+    match.contents_class = {{0, ACMatchClassification::NONE},
+                            {3, ACMatchClassification::MATCH}};
+    mojom::SuggestTemplateInfoPtr suggest_template =
+        CreateSuggestTemplateInfo(match);
+    ASSERT_EQ(suggest_template->primary_text->fragments.size(), 2u);
+    EXPECT_EQ(suggest_template->primary_text->fragments[0]->start_index, 0u);
+    EXPECT_EQ(suggest_template->primary_text->fragments[1]->start_index, 3u);
+  }
+  // A first offset other than 0 is kept as is. The WebUI renders the text
+  // before it unstyled, like it does for classifications.
+  {
+    AutocompleteMatch match;
+    match.contents = u"hello world";
+    match.contents_class = {{6, ACMatchClassification::MATCH}};
+    mojom::SuggestTemplateInfoPtr suggest_template =
+        CreateSuggestTemplateInfo(match);
+    ASSERT_EQ(suggest_template->primary_text->fragments.size(), 1u);
+    EXPECT_EQ(suggest_template->primary_text->fragments[0]->start_index, 6u);
+    EXPECT_TRUE(suggest_template->primary_text->fragments[0]->is_bolded);
+  }
+  // No classifications give no fragments, i.e. unstyled text.
+  {
+    AutocompleteMatch match;
+    match.description = u"description";
+    mojom::SuggestTemplateInfoPtr suggest_template =
+        CreateSuggestTemplateInfo(match);
+    EXPECT_EQ(suggest_template->secondary_text->text, u"description");
+    EXPECT_TRUE(suggest_template->secondary_text->fragments.empty());
+  }
+}
+
+TEST(SuggestTemplateInfoMojoUtilsTest, UsesServerStyle) {
+  // Matches without a server-provided style have an unspecified style.
+  {
+    AutocompleteMatch match;
+    EXPECT_EQ(CreateSuggestTemplateInfo(match)->style,
+              mojom::SuggestStyle::kUnspecified);
+  }
+  {
+    AutocompleteMatch match;
+    omnibox::SuggestTemplateInfo suggest_template;
+    suggest_template.set_style(omnibox::SuggestTemplateInfo::RICH_IMAGE);
+    match.suggest_template = suggest_template;
+    EXPECT_EQ(CreateSuggestTemplateInfo(match)->style,
+              mojom::SuggestStyle::kRichImage);
   }
 }
 

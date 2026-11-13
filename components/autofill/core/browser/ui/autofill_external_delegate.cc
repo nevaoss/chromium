@@ -60,6 +60,7 @@
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_manager.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h"
 #include "components/autofill/core/browser/integrators/compose/autofill_compose_delegate.h"
 #include "components/autofill/core/browser/integrators/identity_credential/identity_credential_delegate.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_suggestion.h"
@@ -76,6 +77,7 @@
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/payments/payments_util.h"
 #include "components/autofill/core/browser/payments/save_and_fill_manager.h"
+#include "components/autofill/core/browser/studies/hats_surveys_util.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
@@ -720,6 +722,10 @@ void AutofillExternalDelegate::OnSuggestionsHidden(
   if (AtMemoryManager* amm = manager_->client().GetAtMemoryManager()) {
     amm->OnPopupHidden(reason);
   }
+
+  MaybeTriggerOneTimePasswordDismissalHatsSurvey(manager_->client(), reason,
+                                                 shown_suggestion_types_);
+
   manager_->OnSuggestionsHidden(reason);
 }
 
@@ -1866,6 +1872,7 @@ bool AutofillExternalDelegate::SuppressAutofillAiEntity(
       base::BindOnce(
           [](base::WeakPtr<AutofillExternalDelegate> self,
              EntityInstance entity, FieldGlobalId field_id, bool confirmed) {
+            LogEntitySuppressionConfirmationDialogResult(confirmed);
             if (self && confirmed) {
               self->SuppressEntityAndOfferUndo(std::move(entity), field_id);
             }

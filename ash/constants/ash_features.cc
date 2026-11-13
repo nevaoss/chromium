@@ -39,9 +39,6 @@ BASE_FEATURE(kAlwaysReinstallSystemWebApps,
              "ReinstallSystemWebApps",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kAltClickAndSixPackCustomization,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // This feature changes the default setting of Ambient EQ to off. This feature
 // has no effect if `kAllowAmbientEQ` is not also enabled.
 BASE_FEATURE(kAmbientEQDefaultOff, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -344,23 +341,6 @@ const base::FeatureParam<BorealisZinkGlDriverParam> kBorealisZinkGlDriverParam{
     &kBorealisZinkGlDriver, "BorealisZinkGlDriverParam",
     BorealisZinkGlDriverParam::kZinkEnableRecommended,
     &borealis_zink_gl_driver_options};
-
-// Enables the nudges/tutorials that inform users of the screen capture keyboard
-// shortcut and feature tile.
-BASE_FEATURE(kCaptureModeEducation, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// TODO(hewer): Remove the unused paths after at least one milestone after
-// Capture Mode Education has been enabled by default.
-// Determines how we educate the user to the screen capture entry points.
-constexpr base::FeatureParam<CaptureModeEducationParam>::Option
-    capture_mode_education_type_options[] = {
-        {CaptureModeEducationParam::kShortcutNudge, "ShortcutNudge"},
-        {CaptureModeEducationParam::kShortcutTutorial, "ShortcutTutorial"},
-        {CaptureModeEducationParam::kQuickSettingsNudge, "QuickSettingsNudge"}};
-const base::FeatureParam<CaptureModeEducationParam> kCaptureModeEducationParam{
-    &kCaptureModeEducation, "CaptureModeEducationParam",
-    CaptureModeEducationParam::kShortcutNudge,
-    &capture_mode_education_type_options};
 
 // Enables on-device OCR functionality in capture mode, used as part of the
 // Scanner and Sunfish features.
@@ -930,11 +910,6 @@ BASE_FEATURE(kHeliumArcvmKiosk, base::FEATURE_DISABLED_BY_DEFAULT);
 // Should stay disabled by default.
 BASE_FEATURE(kHeliumArcvmKioskDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the logic that auto triggers the install dialog during the web app
-// install flow initiated from the Help App.
-BASE_FEATURE(kHelpAppAutoTriggerInstallDialog,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables a warning about connecting to hidden WiFi networks.
 // https://crbug.com/903908
 BASE_FEATURE(kHiddenNetworkWarning, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -947,9 +922,6 @@ BASE_FEATURE(kHideShelfControlsInTabletMode, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, add Hindi Inscript keyboard layout.
 BASE_FEATURE(kHindiInscriptLayout, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, allows the user to cycle between windows of an app using Alt + `.
-BASE_FEATURE(kSameAppWindowCycle, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Make Sanitize available. This feature provides a "soft reset" option in CrOS
 // settings. This soft reset will disable extensions and reset some of the
@@ -1170,9 +1142,6 @@ const base::FeatureParam<base::TimeDelta> kEcheScanningCycleOffTime{
 // Enables events from multiple calendars to be displayed in the Quick
 // Settings Calendar.
 BASE_FEATURE(kMultiCalendarSupport, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables Nearby Presence for scanning and discovery of nearby devices.
-BASE_FEATURE(kNearbyPresence, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables a limit on the number of notifications that can show.
 BASE_FEATURE(kNotificationLimit, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1661,10 +1630,6 @@ BASE_FEATURE(kUseAndroidStagingSmds, base::FEATURE_DISABLED_BY_DEFAULT);
 // used. Note that IPv6 (DHCPv6-PD) always uses dhcpcd10.
 BASE_FEATURE(kUseDHCPCD10, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, the new `TokenHandleStoreImpl` will be used instead of
-// `TokenHandleUtil`.
-BASE_FEATURE(kUseTokenHandleStore, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Use the AnnotatedAccountId for mapping between User and BrowserContext
 // (a.k.a. browser's Profile).
 BASE_FEATURE(kUseAnnotatedAccountId, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1975,10 +1940,6 @@ bool IsAllowAmbientEQEnabled() {
   return base::FeatureList::IsEnabled(kAllowAmbientEQ);
 }
 
-bool IsAltClickAndSixPackCustomizationEnabled() {
-  return base::FeatureList::IsEnabled(kAltClickAndSixPackCustomization);
-}
-
 bool IsAmbientEQDefaultOff() {
   return base::FeatureList::IsEnabled(kAmbientEQDefaultOff);
 }
@@ -2145,10 +2106,6 @@ bool IsBocaScreenSharingStudentEnabled() {
 
 bool IsOnTaskStatusCheckEnabled() {
   return base::FeatureList::IsEnabled(kOnTaskStatusCheck);
-}
-
-bool IsCaptureModeEducationEnabled() {
-  return base::FeatureList::IsEnabled(kCaptureModeEducation);
 }
 
 bool IsCaptureModeOnDeviceOcrEnabled() {
@@ -2556,10 +2513,6 @@ bool AreEphemeralNetworkPoliciesEnabled() {
   return base::FeatureList::IsEnabled(kEphemeralNetworkPolicies);
 }
 
-bool IsNearbyPresenceEnabled() {
-  return base::FeatureList::IsEnabled(kNearbyPresence);
-}
-
 bool IsNotificationLimitEnabled() {
   return base::FeatureList::IsEnabled(kNotificationLimit);
 }
@@ -2747,10 +2700,6 @@ bool IsRecoveryFlowReorderEnabled() {
 
 bool IsResetShortcutCustomizationsEnabled() {
   return base::FeatureList::IsEnabled(kResetShortcutCustomizations);
-}
-
-bool IsSameAppWindowCycleEnabled() {
-  return base::FeatureList::IsEnabled(kSameAppWindowCycle);
 }
 
 bool IsScalableShelfPodsEnabled() {
@@ -2991,10 +2940,6 @@ bool IsWebAuthNAuthDialogMergeEnabled() {
 
 bool ShouldEnterOverviewFromWallpaper() {
   return base::FeatureList::IsEnabled(kEnterOverviewFromWallpaper);
-}
-
-bool IsUseTokenHandleStoreEnabled() {
-  return base::FeatureList::IsEnabled(kUseTokenHandleStore);
 }
 
 bool IsFwupdDeveloperModeEnabled() {

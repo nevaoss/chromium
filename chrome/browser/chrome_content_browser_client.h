@@ -495,6 +495,9 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::RenderFrameHost* render_frame_host) override;
   bool IsUnboundedElementAllowed(
       content::RenderFrameHost* render_frame_host) override;
+  // TODO(crbug.com/571879162): Remove this temporary allowlist.
+  bool IsUnboundedElementAllowedForSubframesOf(
+      const url::Origin& origin) override;
   bool CanCreateWindow(content::RenderFrameHost* opener,
                        const GURL& opener_url,
                        const GURL& opener_top_level_frame_url,
@@ -1265,6 +1268,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       const std::string& embedder_histogram_suffix) override;
 
   bool IsExemptFromWindowSizeCheck(const GURL& url) override;
+
+  bool IsNoStatePrefetch(content::WebContents* web_contents) override;
 
  protected:
   static bool HandleWebUI(GURL* url, content::BrowserContext* browser_context);

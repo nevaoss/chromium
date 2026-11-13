@@ -478,6 +478,7 @@
 #include "chrome/browser/performance_manager/public/dll_pre_read_policy_win.h"
 #include "chrome/browser/tracing/tracing_features.h"
 #include "chrome/browser/tracing/windows_system_tracing_client_win.h"
+#include "chrome/common/child_module/child_module_helper.h"
 #include "chrome/install_static/install_util.h"
 #include "chrome/installer/util/isolation_support.h"
 #include "chrome/services/util_win/public/mojom/util_win.mojom.h"
@@ -581,6 +582,7 @@
 #include "chrome/browser/direct_sockets/chrome_direct_sockets_delegate.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/headless/headless_command_processor.h"
 #include "chrome/browser/indigo/onboarding/indigo_onboarding_dialog.h"
 #include "chrome/browser/loader/features.h"
 #include "chrome/browser/loader/fetch_keepalive_process_manager.h"
@@ -3172,6 +3174,12 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
     if (auto child_module = GetChildModule()) {
       command_line->AppendSwitchASCII(switches::kChildModuleVersion,
                                       child_module->version.GetString());
+      // The renderer cannot compute the user path component identifying the
+      // directory that holds the patch, so provide it.
+      command_line->AppendSwitchPath(
+          switches::kChildModuleUserPathComponent,
+          child_module::GetUserPathComponentFromRendererBinaryPath(
+              child_module->path));
     }
 #endif
 
@@ -4043,14 +4051,19 @@ blink::mojom::PreferredContrast GetPreferredContrast(
                                       {NC::kLess, BC::kLess},
                                       {NC::kCustom, BC::kCustom}});
   const NC preferred_contrast =
-      PageColorsController::GetEffectivePageColors(web_contents)
+      PageColorsController::GetEffectivePageColors(
+          *Profile::FromBrowserContext(web_contents->GetBrowserContext())
+               ->GetPrefs())
           .preferred_contrast;
   return kContrastMap.at(preferred_contrast);
 }
 
 std::tuple<bool, bool> GetForcedColorsForWebContent(WebContents* web_contents) {
   const auto forced_colors =
-      PageColorsController::GetEffectivePageColors(web_contents).forced_colors;
+      PageColorsController::GetEffectivePageColors(
+          *Profile::FromBrowserContext(web_contents->GetBrowserContext())
+               ->GetPrefs())
+          .forced_colors;
   const bool in_forced_colors =
       forced_colors != ui::ColorProviderKey::ForcedColors::kNone;
   const bool is_forced_colors_disabled =
@@ -4108,7 +4121,7 @@ GetPreferredColorScheme(const WebPreferences& web_prefs,
                                    : blink::mojom::PreferredColorScheme::kDark;
     }
     const auto effective_page_colors =
-        PageColorsController::GetEffectivePageColors(web_contents);
+        PageColorsController::GetEffectivePageColors(*profile->GetPrefs());
     if (effective_page_colors.forced_colors !=
         ui::ColorProviderKey::ForcedColors::kNone) {
       preferred_color_scheme = ToBlinkPreferredColorScheme(
@@ -4455,6 +4468,14 @@ bool ChromeContentBrowserClient::IsUnboundedElementAllowed(
   }
 #endif
   return false;
+}
+
+bool ChromeContentBrowserClient::IsUnboundedElementAllowedForSubframesOf(
+    const url::Origin& origin) {
+  // Allowlist of outermost main frames whose subframes may use the Unbounded
+  // Element API.
+  // TODO(crbug.com/571879162): Remove this temporary allowlist.
+  return origin.IsSameOriginWith(GURL(chrome::kChromeUINewTabPageURL));
 }
 
 bool ChromeContentBrowserClient::CanCreateWindow(
@@ -4925,7 +4946,11 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
   }
 
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kDisableLazyLoading)) {
+          switches::kDisableLazyLoading)
+#if !BUILDFLAG(IS_ANDROID)
+      || headless::ShouldProcessHeadlessCommands()
+#endif
+  ) {
     web_prefs->lazy_load_enabled = false;
   } else {
     web_prefs->lazy_load_enabled =
@@ -5159,7 +5184,9 @@ bool ChromeContentBrowserClient::
 ui::ColorProviderKey::ForcedColors
 ChromeContentBrowserClient::GetForcedColorsForWebContents(
     WebContents& web_contents) const {
-  return PageColorsController::GetEffectivePageColors(&web_contents)
+  return PageColorsController::GetEffectivePageColors(
+             *Profile::FromBrowserContext(web_contents.GetBrowserContext())
+                  ->GetPrefs())
       .forced_colors;
 }
 
@@ -5553,6 +5580,13 @@ bool ChromeContentBrowserClient::PreSpawnChild(
       child_module.has_value();
 #endif
   const auto& extra_dlls = use_renderer_dll ? kRendererDlls : kChildDlls;
+  // TODO(crbug.com/558598893): The configuration for renderers using each
+  // distinct child module version is cached by the broker for the lifetime of
+  // the browser, and it holds an image section for the patched DLL (see
+  // SignedPolicy::GenerateRules()). This prevents the installer from deleting a
+  // superseded patch until the browser exits, even after all renderers using it
+  // have exited. Consider evicting a patch's configuration from the broker's
+  // cache once a newer patch is in use.
   for (const auto* dll : extra_dlls) {
     result = config->AllowExtraDll(GetModulePath(dll, child_module).value());
     if (result != sandbox::SBOX_ALL_OK) {
@@ -6720,6 +6754,12 @@ void ChromeContentBrowserClient::AddChromeSchemeFactories(
     allowed_webui_hosts.emplace_back(chrome::kChromeUIThemeHost);
     // For testing purposes chrome://webui-test/ is also allowed.
     allowed_webui_hosts.emplace_back(chrome::kChromeUIWebUITestHost);
+    // chrome://image/ is only allowed for component extensions that explicitly
+    // declare it in their manifest's host permissions.
+    if (extension->permissions_data()->HasHostPermission(
+            GURL(chrome::kChromeUIImageURL))) {
+      allowed_webui_hosts.emplace_back(chrome::kChromeUIImageHost);
+    }
   }
   if (extension->is_extension() || extension->is_legacy_packaged_app() ||
       (extension->is_platform_app() &&
@@ -7158,6 +7198,10 @@ bool ChromeContentBrowserClient::WillCreateRestrictedCookieManager(
 
 void ChromeContentBrowserClient::OnNetworkServiceCreated(
     network::mojom::NetworkService* network_service) {
+#if BUILDFLAG(IS_ANDROID)
+  content::BoostNetworkThreadPriorityDuringStartup();
+#endif  // BUILDFLAG(IS_ANDROID)
+
   PrefService* local_state;
   if (g_browser_process) {
     DCHECK(g_browser_process->local_state());
@@ -9995,4 +10039,10 @@ bool ChromeContentBrowserClient::IsExemptFromWindowSizeCheck(const GURL& url) {
 #else
   return false;
 #endif
+}
+
+bool ChromeContentBrowserClient::IsNoStatePrefetch(
+    content::WebContents* web_contents) {
+  return prerender::ChromeNoStatePrefetchContentsDelegate::FromWebContents(
+             web_contents) != nullptr;
 }

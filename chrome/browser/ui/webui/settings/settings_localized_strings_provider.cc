@@ -607,7 +607,6 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_BOOKMARKS_BAR_ONLY_SHOW_ON_NTP},
       {"bookmarksBarAlwaysHide", IDS_SETTINGS_BOOKMARKS_BAR_ALWAYS_HIDE},
       {"showTabSearchButton", IDS_SETTINGS_SHOW_TAB_SEARCH_BUTTON},
-      {"showOrganizerPanelButton", IDS_SETTINGS_SHOW_ORGANIZER_PANEL_BUTTON},
       {"showEverythingMenuButton", IDS_SETTINGS_SHOW_EVERYTHING_MENU_BUTTON},
       {"tabStripPosition", IDS_SETTINGS_TAB_STRIP_POSITION},
       {"tabScrollAutoShowOnOverflow", IDS_TAB_SCROLL_AUTO_SHOW_ON_OVERFLOW},
@@ -2446,7 +2445,7 @@ std::string GetPeopleSignInPromptSecondaryWithAccount(Profile* profile) {
               /*restrict_to_accounts_eligible_for_signin=*/true);
       std::optional<signin::AccountPreviewDataService::AccountPreviewPreference>
           preferred_account =
-              account_preview_data_service->GetPreferredAccountForPromo();
+              account_preview_data_service->GetPreferredAccountForSignin();
       if (!ordered_accounts.empty() && preferred_account.has_value() &&
           preferred_account->gaia_id == ordered_accounts[0].GetGaiaId()) {
         if (std::optional<std::string> custom_subtitle =
@@ -4456,6 +4455,7 @@ void AddSystemStrings(content::WebUIDataSource* html_source) {
        IDS_SETTINGS_SYSTEM_HARDWARE_ACCELERATION_LABEL},
 #if BUILDFLAG(IS_WIN)
       {"isolationStateLabel", IDS_SETTINGS_SYSTEM_ISOLATION_STATE_LABEL},
+      {"isolationStateSubLabel", IDS_SETTINGS_SYSTEM_ISOLATION_STATE_SUBLABEL},
 #endif  // BUILDFLAG(IS_WIN)
       {"proxySettingsLabel", IDS_SETTINGS_SYSTEM_PROXY_SETTINGS_LABEL},
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -4492,14 +4492,6 @@ void AddSystemStrings(content::WebUIDataSource* html_source) {
       "proxySettingsYourDevice",
       l10n_util::GetStringUTF16(
           IDS_SETTINGS_SYSTEM_PROXY_SETTINGS_YOUR_DEVICE_LABEL));
-
-#if BUILDFLAG(IS_WIN)
-  html_source->AddString(
-      "isolationStateSubLabel",
-      l10n_util::GetStringFUTF16(
-          IDS_SETTINGS_SYSTEM_ISOLATION_STATE_SUBLABEL,
-          l10n_util::GetStringUTF16(IDS_SHORT_PRODUCT_NAME)));
-#endif  // BUILDFLAG(IS_WIN)
 
   // TODO(dbeam): we should probably rename anything involving "localized
   // strings" to "load time data" as all primitive types are used now.

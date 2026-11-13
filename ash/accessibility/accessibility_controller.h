@@ -42,6 +42,10 @@ enum class Gesture;
 }  // namespace mojom
 }  // namespace ax
 
+namespace base::i18n {
+class LanguageTag;
+}  // namespace base::i18n
+
 namespace display {
 enum class TabletState;
 }  // namespace display
@@ -74,6 +78,8 @@ class FaceGazeBubbleController;
 class FilterKeysEventRewriter;
 class FlashScreenController;
 class FloatingAccessibilityController;
+class HoverTextBubbleController;
+struct HoverTextBubbleProps;
 class PointScanController;
 class ScopedBacklightsForcedOff;
 class SelectToSpeakEventHandler;
@@ -563,8 +569,8 @@ class ASH_EXPORT AccessibilityController
   // Shows a nudge explaining that a user's dictation language was upgraded to
   // work offline.
   void ShowDictationLanguageUpgradedNudge(
-      const std::string& dictation_locale,
-      const std::string& application_locale);
+      const base::i18n::LanguageTag& dictation_locale,
+      const base::i18n::LanguageTag& application_locale);
 
   // Called when the Automatic Clicks extension finds scrollable bounds.
   void HandleAutoclickScrollableBoundsFound(const gfx::Rect& bounds_in_screen);
@@ -625,6 +631,9 @@ class ASH_EXPORT AccessibilityController
 
   // Updates the FaceGaze UI bubble.
   void UpdateFaceGazeBubble(const std::u16string& text, bool is_warning);
+
+  // Updates the Hover Text UI bubble.
+  void UpdateHoverTextBubble(const HoverTextBubbleProps& props);
 
   // Shows a notification notifying the user about the FaceGaze DLC download.
   void ShowNotificationForFaceGaze(FaceGazeNotificationType type);
@@ -722,6 +731,8 @@ class ASH_EXPORT AccessibilityController
   DictationBubbleController* GetDictationBubbleControllerForTest();
 
   FaceGazeBubbleController* GetFaceGazeBubbleControllerForTest();
+
+  HoverTextBubbleController* GetHoverTextBubbleControllerForTest();
 
   DragEventRewriter* GetDragEventRewriterForTest() const {
     return drag_event_rewriter_.get();
@@ -942,6 +953,9 @@ class ASH_EXPORT AccessibilityController
 
   // Used to control the FaceGaze bubble UI.
   std::unique_ptr<FaceGazeBubbleController> facegaze_bubble_controller_;
+
+  // Used to control the Hover Text bubble UI.
+  std::unique_ptr<HoverTextBubbleController> hover_text_bubble_controller_;
 
   // Used to support drag-and-drop for features, including FaceGaze.
   std::unique_ptr<DragEventRewriter> drag_event_rewriter_;

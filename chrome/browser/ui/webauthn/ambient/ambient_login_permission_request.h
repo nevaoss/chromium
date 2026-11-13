@@ -15,6 +15,10 @@
 #include "ui/base/models/image_model.h"
 #include "url/gurl.h"
 
+namespace gfx {
+struct VectorIcon;
+}  // namespace gfx
+
 namespace ambient_signin {
 
 enum class CredentialType {
@@ -32,6 +36,9 @@ struct PasskeyOrPasswordCredential {
 
 // Represents a federated sign-in credential option (e.g. from FedCM).
 struct FederatedCredential {
+  // The identity provider's domain formatted for display, e.g. "idp.example".
+  // The prompt elides it at the start, so that the end of the domain stays
+  // visible.
   std::u16string idp_name;
   std::u16string account_name;
   std::u16string email;
@@ -94,7 +101,13 @@ class AmbientLoginPermissionRequest : public permissions::PermissionRequest {
   // `federated_selected_callback_` when the permission request is accepted.
   void SelectFederatedCredential(size_t index);
 
+  // Returns the vector icon representing a credential of the given `type`.
+  // Used both for credential rows in the bubble and for the omnibox chip.
+  static const gfx::VectorIcon& GetCredentialIcon(CredentialType type);
+
   // permissions::PermissionRequest:
+  permissions::IconId GetIconForChip() const override;
+  permissions::IconId GetBlockedIconForChip() const override;
   std::u16string GetMessageTextFragment() const override;
 
  private:

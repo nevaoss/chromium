@@ -814,6 +814,64 @@ public class WebappRegistryTest {
 
     @Test
     @Feature({"WebApk"})
+    public void testHasWebApkForOriginWithoutPackageCheck() throws Exception {
+        final String startUrl = START_URL + "/test_page.html";
+        final String testOrigin = START_URL;
+        final String testPackageName = "org.chromium.webapk";
+
+        assertFalse(
+                WebappRegistry.getInstance()
+                        .hasAtLeastOneWebApkForOriginWithoutPackageCheck(testOrigin));
+
+        String webappId = "webapp";
+        registerWebappWithId(webappId, createShortcutIntentDataProvider(startUrl));
+        assertFalse(
+                WebappRegistry.getInstance()
+                        .hasAtLeastOneWebApkForOriginWithoutPackageCheck(testOrigin));
+
+        String incompleteWebApkId = "webapk-incomplete";
+        registerWebappWithId(incompleteWebApkId, null);
+        SharedPreferences incompleteWebApkPrefs =
+                ContextUtils.getApplicationContext()
+                        .getSharedPreferences(
+                                WebappDataStorage.SHARED_PREFS_FILE_PREFIX + incompleteWebApkId,
+                                Context.MODE_PRIVATE);
+        incompleteWebApkPrefs.edit().putString(WebappDataStorage.KEY_SCOPE, startUrl).apply();
+        assertFalse(
+                WebappRegistry.getInstance()
+                        .hasAtLeastOneWebApkForOriginWithoutPackageCheck(testOrigin));
+
+        BrowserServicesIntentDataProvider webApkIntentDataProvider =
+                new WebApkIntentDataProviderBuilder(testPackageName, startUrl).build();
+        registerWebapp(webApkIntentDataProvider);
+        assertTrue(
+                WebappRegistry.getInstance()
+                        .hasAtLeastOneWebApkForOriginWithoutPackageCheck(testOrigin));
+        // The package-install check is intentionally skipped here, whereas
+        // hasAtLeastOneWebApkForOrigin() returns false for the same origin because the WebAPK
+        // package is not installed in this test.
+        assertFalse(WebappRegistry.getInstance().hasAtLeastOneWebApkForOrigin(testOrigin));
+
+        // A different origin that is only a string prefix of the scope must NOT match. This
+        // guards against a raw scope.startsWith(origin) comparison spuriously matching e.g.
+        // "https://foo.co" against a scope of "https://foo.com/test_page.html".
+        assertFalse(
+                WebappRegistry.getInstance()
+                        .hasAtLeastOneWebApkForOriginWithoutPackageCheck("https://foo.co"));
+
+        // An uninstalled WebAPK must be ignored even without the package-install check.
+        WebappDataStorage webApkStorage =
+                WebappRegistry.getInstance()
+                        .getWebappDataStorage(webApkIntentDataProvider.getWebappExtras().id);
+        assertNotNull(webApkStorage);
+        webApkStorage.setWebApkUninstallTimestamp();
+        assertFalse(
+                WebappRegistry.getInstance()
+                        .hasAtLeastOneWebApkForOriginWithoutPackageCheck(testOrigin));
+    }
+
+    @Test
+    @Feature({"WebApk"})
     public void testFindWebApkWithManifestId() throws Exception {
         final String testManifestId = START_URL + "/id";
         final String testPackageName = "org.chromium.webapk";
@@ -850,6 +908,8 @@ public class WebappRegistryTest {
                         .setWebApkManifestId(testManifestId)
                         .build();
         registerWebapp(intentDataProvider);
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager())
+                .addPackage(testPackageName);
 
         assertEquals(
                 testPackageName,
@@ -858,6 +918,37 @@ public class WebappRegistryTest {
         final String anotherManifestId = START_URL + "/test_page.html";
         assertNull(
                 WebappRegistry.getInstance().getWebappDataStorageForManifestId(anotherManifestId));
+    }
+
+    @Test
+    @Feature({"WebApk"})
+    public void testFindWebApkPackageWithManifestId_ignoresUninstalledWebApk() throws Exception {
+        final String testManifestId = START_URL + "/id";
+        final String testPackageName = "org.chromium.webapk";
+
+        BrowserServicesIntentDataProvider intentDataProvider =
+                new WebApkIntentDataProviderBuilder(testPackageName, START_URL)
+                        .setWebApkManifestId(testManifestId)
+                        .build();
+        registerWebapp(intentDataProvider);
+        WebappDataStorage storage =
+                WebappRegistry.getInstance()
+                        .getWebappDataStorage(intentDataProvider.getWebappExtras().id);
+        assertNotNull(storage);
+
+        // Package is not installed in PackageManager -> should return null.
+        assertNull(WebappRegistry.getInstance().findWebApkWithManifestId(testManifestId));
+
+        // Install package in PackageManager -> should return package name.
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager())
+                .addPackage(testPackageName);
+        assertEquals(
+                testPackageName,
+                WebappRegistry.getInstance().findWebApkWithManifestId(testManifestId));
+
+        // Mark storage as uninstalled -> should return null even if still in PackageManager.
+        storage.setWebApkUninstallTimestamp();
+        assertNull(WebappRegistry.getInstance().findWebApkWithManifestId(testManifestId));
     }
 
     @Test
@@ -905,6 +996,8 @@ public class WebappRegistryTest {
                         .setWebApkManifestId(testManifestId)
                         .build();
         registerWebapp(intentDataProvider);
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager())
+                .addPackage(testPackageName);
 
         // It should still be found because it is now registered.
         assertEquals(
@@ -1019,5 +1112,168 @@ public class WebappRegistryTest {
 
         TwaValidator.setTwaInstalledOverrideForTesting(false);
         assertFalse(WebappRegistry.getInstance().isAppInstalledForUrl(url));
+    }
+
+    @Test
+    @Feature({"WebApk"})
+    public void testIsAppInstalledForUrl_isScopeAwareOnSameOrigin() throws Exception {
+        // Regression test for crbug.com/568841400: two PWAs on the same origin with different
+        // scopes must not be treated as the same app.
+        final String packageA = "org.chromium.webapk.a";
+        final String scopeA = "https://example.com/apps/pwa-a/";
+        BrowserServicesIntentDataProvider webApkA =
+                new WebApkIntentDataProviderBuilder(packageA, scopeA).setScope(scopeA).build();
+        registerWebapp(webApkA);
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageA);
+        TwaValidator.setTwaInstalledOverrideForTesting(false);
+
+        WebappRegistry registry = WebappRegistry.getInstance();
+
+        // In-scope URLs of A are "installed".
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeA)));
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeA + "page.html?x=1#frag")));
+
+        // Same origin, different scope (PWA B) is NOT "installed".
+        assertFalse(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/pwa-b/")));
+        // Parent directories of the scope are NOT "installed".
+        assertFalse(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/")));
+        assertFalse(registry.isAppInstalledForUrl(new GURL("https://example.com/")));
+        // Different origin is NOT "installed".
+        assertFalse(
+                registry.isAppInstalledForUrl(new GURL("https://other.example.com/apps/pwa-a/")));
+
+        // Subdirectories within scopeA are "installed".
+        assertTrue(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/pwa-a/sub/")));
+        // Because scopeA ends with '/', the bare path without a trailing slash and sibling
+        // paths that share the prefix before '/' are NOT in scope.
+        assertFalse(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/pwa-a")));
+        assertFalse(
+                registry.isAppInstalledForUrl(new GURL("https://example.com/apps/pwa-a-other/")));
+
+        // Uninstalled WebAPKs are ignored even for in-scope URLs.
+        WebappDataStorage storageA = registry.getWebappDataStorage(webApkA.getWebappExtras().id);
+        assertNotNull(storageA);
+        storageA.setWebApkUninstallTimestamp();
+        assertFalse(registry.isAppInstalledForUrl(new GURL(scopeA)));
+    }
+
+    @Test
+    @Feature({"WebApk"})
+    public void testIsAppInstalledForUrl_twoWebApksSameOrigin() throws Exception {
+        final String packageA = "org.chromium.webapk.a";
+        final String packageB = "org.chromium.webapk.b";
+        final String scopeA = "https://example.com/apps/pwa-a/";
+        final String scopeB = "https://example.com/apps/pwa-b/";
+        registerWebapp(
+                new WebApkIntentDataProviderBuilder(packageA, scopeA).setScope(scopeA).build());
+        registerWebapp(
+                new WebApkIntentDataProviderBuilder(packageB, scopeB).setScope(scopeB).build());
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageA);
+        // B's package is NOT installed on the device yet.
+        TwaValidator.setTwaInstalledOverrideForTesting(false);
+
+        WebappRegistry registry = WebappRegistry.getInstance();
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeA)));
+        assertFalse(registry.isAppInstalledForUrl(new GURL(scopeB)));
+
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageB);
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeB)));
+    }
+
+    @Test
+    @Feature({"WebApk"})
+    public void testIsAppInstalledForUrl_nestedScopes() throws Exception {
+        final String packageParent = "org.chromium.webapk.parent";
+        final String scopeParent = "https://example.com/apps/";
+        final String packageChild = "org.chromium.webapk.child";
+        final String scopeChild = "https://example.com/apps/pwa-b/";
+        registerWebapp(
+                new WebApkIntentDataProviderBuilder(packageParent, scopeParent)
+                        .setScope(scopeParent)
+                        .build());
+        BrowserServicesIntentDataProvider webApkChild =
+                new WebApkIntentDataProviderBuilder(packageChild, scopeChild)
+                        .setScope(scopeChild)
+                        .build();
+        registerWebapp(webApkChild);
+        TwaValidator.setTwaInstalledOverrideForTesting(false);
+
+        WebappRegistry registry = WebappRegistry.getInstance();
+
+        // If the parent WebAPK is not installed in PackageManager (even with uninstallTimestamp
+        // == 0) while the child WebAPK is installed, the loop continues past the parent and
+        // matches the child for child URLs only.
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager())
+                .addPackage(packageChild);
+        assertFalse(registry.isAppInstalledForUrl(new GURL(scopeParent)));
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeChild)));
+
+        // Once the parent WebAPK is installed, it covers both its own scope and any nested path,
+        // including the child scope even after the child WebAPK is uninstalled.
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager())
+                .addPackage(packageParent);
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager())
+                .removePackage(packageChild);
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeParent)));
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeChild)));
+        assertTrue(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/other/")));
+
+        WebappDataStorage storageChild =
+                registry.getWebappDataStorage(webApkChild.getWebappExtras().id);
+        assertNotNull(storageChild);
+        storageChild.setWebApkUninstallTimestamp();
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeChild)));
+    }
+
+    @Test
+    @Feature({"WebApk"})
+    public void testIsAppInstalledForUrl_scopeClearedByClearHistory() throws Exception {
+        // After "clear history" the stored scope is removed until the next launch; in that
+        // window we fail open (report "not installed" so the user can still see Install).
+        final String packageA = "org.chromium.webapk.a";
+        final String scopeA = "https://example.com/apps/pwa-a/";
+        BrowserServicesIntentDataProvider webApkA =
+                new WebApkIntentDataProviderBuilder(packageA, scopeA).setScope(scopeA).build();
+        registerWebapp(webApkA);
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageA);
+        TwaValidator.setTwaInstalledOverrideForTesting(false);
+
+        WebappRegistry registry = WebappRegistry.getInstance();
+        assertTrue(registry.isAppInstalledForUrl(new GURL(scopeA)));
+
+        WebappDataStorage storageA = registry.getWebappDataStorage(webApkA.getWebappExtras().id);
+        assertNotNull(storageA);
+        storageA.clearHistory();
+        assertFalse(registry.isAppInstalledForUrl(new GURL(scopeA)));
+    }
+
+    @Test
+    @Feature({"WebApk"})
+    public void testIsAppInstalledForUrl_scopeUpdatedOnRelaunch() throws Exception {
+        final String packageA = "org.chromium.webapk.a";
+        final String startUrl = "https://example.com/apps/pwa-a/index.html";
+        final String initialScope = "https://example.com/apps/";
+        final String narrowedScope = "https://example.com/apps/pwa-a/";
+        BrowserServicesIntentDataProvider webApkA =
+                new WebApkIntentDataProviderBuilder(packageA, startUrl)
+                        .setScope(initialScope)
+                        .build();
+        registerWebapp(webApkA);
+        Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageA);
+        TwaValidator.setTwaInstalledOverrideForTesting(false);
+
+        WebappRegistry registry = WebappRegistry.getInstance();
+        assertTrue(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/pwa-b/")));
+
+        // Simulate relaunching the WebAPK after a manifest update narrowed its scope.
+        WebappDataStorage storageA = registry.getWebappDataStorage(webApkA.getWebappExtras().id);
+        assertNotNull(storageA);
+        storageA.updateFromWebappIntentDataProvider(
+                new WebApkIntentDataProviderBuilder(packageA, startUrl)
+                        .setScope(narrowedScope)
+                        .build());
+
+        assertTrue(registry.isAppInstalledForUrl(new GURL(narrowedScope)));
+        assertFalse(registry.isAppInstalledForUrl(new GURL("https://example.com/apps/pwa-b/")));
     }
 }

@@ -46,6 +46,10 @@ namespace {
 // Safety timeout duration to wait for pages to finish loading.
 constexpr base::TimeDelta kPageLoadTimeout = base::Seconds(7);
 
+// Default title for confirmation intervention prompts.
+// TODO(crbug.com/573515833): Localize default title string.
+NSString* const kDefaultConfirmationTitle = @"Input needed";
+
 // Default button text for confirmation intervention prompts.
 // TODO(crbug.com/556739755): Localize default button text string.
 NSString* const kDefaultConfirmationButtonText = @"Continue";
@@ -259,7 +263,7 @@ void ActorTask::AddControlledWebState(web::WebState* web_state) {
       tab_helper->SetControlState(ControlStateForTaskState(state_));
     }
 
-    background_worker_->OnWebStateAdded();
+    background_worker_->OnWebStateAdded(web_state);
 
     const ActorTaskId task_id = task_id_;
     const web::WebStateID web_state_id = web_state->GetUniqueIdentifier();
@@ -376,8 +380,8 @@ void ActorTask::ShowInterruptConfirmation(const std::string& message) {
   // Must remain the last statement: the delegate may stop, and thereby
   // destroy, the task.
   [intervention_delegate_ actorTask:task_id_
-      requestUserInterventionWithTitle:base::SysUTF8ToNSString(message)
-                              subtitle:nil
+      requestUserInterventionWithTitle:kDefaultConfirmationTitle
+                              subtitle:base::SysUTF8ToNSString(message)
                             buttonText:kDefaultConfirmationButtonText
                      completionHandler:completion];
 }
@@ -499,8 +503,6 @@ void ActorTask::WebStateDestroyed(web::WebState* web_state) {
     tab_helper->SetControlState(ActorControlState::kInactive);
   }
   PruneDestroyedWebStates(web_state);
-
-  background_worker_->OnWebStateDestroyed();
 }
 
 #pragma mark - Private
@@ -668,16 +670,6 @@ void ActorTask::OnNavigationBlocked(mojom::ActionResultCode code) {
 }
 
 #pragma mark - ActorTaskBackgroundWorker::TaskStateDelegate
-
-std::vector<web::WebState*> ActorTask::GetControlledWebStates() {
-  PruneDestroyedWebStates();
-  std::vector<web::WebState*> web_states;
-  for (const base::WeakPtr<web::WebState>& web_state_weak :
-       controlled_web_states_) {
-    web_states.push_back(web_state_weak.get());
-  }
-  return web_states;
-}
 
 ActorTaskState ActorTask::GetTaskState() const {
   return state_;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import {isDistilledByReadability} from '../shared/common.js';
-import {getNearestTextBoundaryPoint, getTextNodeOffsets} from '../shared/dom_queries.js';
+import {getNearestTextBoundaryPoint, getTextNodeOffsets, isBackwardSelection} from '../shared/dom_queries.js';
 
 import type {ContentBrowserProxy} from './content_browser_proxy.js';
 import {ContentBrowserProxyImpl} from './content_browser_proxy.js';
@@ -44,30 +44,19 @@ export class SelectionController {
       return null;
     }
 
-    let node: Node|null = null;
-    let offset: number = 0;
-    const pos =
-        selection.anchorNode.compareDocumentPosition(selection.focusNode);
-    // If the focus and anchor are the same node, use the earlier offset.
-    if (pos === 0) {
-      node = selection.anchorNode;
-      offset = Math.min(selection.anchorOffset, selection.focusOffset);
-    } else {
-      const focusIsFirst = pos === Node.DOCUMENT_POSITION_PRECEDING;
-      node = focusIsFirst ? selection.focusNode : selection.anchorNode;
-      offset = focusIsFirst ? selection.focusOffset : selection.anchorOffset;
+    const isBackward = isBackwardSelection(
+        selection.anchorNode, selection.anchorOffset, selection.focusNode,
+        selection.focusOffset);
+    let node: Node = isBackward ? selection.focusNode : selection.anchorNode;
+    let offset = isBackward ? selection.focusOffset : selection.anchorOffset;
+
+    const ancestor = this.nodeStore_.getAncestor(node);
+    if (ancestor) {
+      node = ancestor.node;
+      offset += ancestor.offset;
     }
 
-    if (node) {
-      const ancestor = this.nodeStore_.getAncestor(node);
-      if (ancestor) {
-        node = ancestor.node;
-        offset += ancestor.offset;
-      }
-    }
-
-    return node ? {node, offset, source: ContentPositionSource.SELECTION} :
-                  null;
+    return {node, offset, source: ContentPositionSource.SELECTION};
   }
 
   // Called when the user selects text in reading mode. Forwards that
@@ -97,11 +86,9 @@ export class SelectionController {
       return;
     }
 
-    // If we're using Readability with select text enabled, report a user
-    // selection attempt to try to log this as an early selection attempt from
-    // the side panel.
-    if (isDistilledByReadability() &&
-        this.contentBrowserProxy_.isReadabilitySelectTextEnabled()) {
+    // If we're using Readability, report a user selection attempt to try to log
+    // this as an early selection attempt from the side panel.
+    if (isDistilledByReadability()) {
       this.contentBrowserProxy_.attemptLogEarlySelection(
           /*fromSidePanel=*/ true);
     }
@@ -112,16 +99,9 @@ export class SelectionController {
     // end (isStart = false) to perform correct boundary shifting without
     // leaking into preceding elements (like the article title on backward
     // drags).
-    let isBackward = false;
-    if (selection.anchorNode && selection.focusNode) {
-      const position =
-          selection.anchorNode.compareDocumentPosition(selection.focusNode);
-      if (position === Node.DOCUMENT_POSITION_PRECEDING) {
-        isBackward = true;
-      } else if (position === 0) {
-        isBackward = selection.anchorOffset > selection.focusOffset;
-      }
-    }
+    const isBackward = isBackwardSelection(
+        selection.anchorNode, selection.anchorOffset, selection.focusNode,
+        selection.focusOffset);
 
     // Normalize the selection boundaries to ensure they fall on valid text
     // nodes within the article container, adjusting for the direction of
@@ -213,11 +193,9 @@ export class SelectionController {
       return;
     }
 
-    // If we're using Readability with select text enabled, report a user
-    // selection attempt to try to log this as an early selection attempt from
-    // the main panel.
-    if (isDistilledByReadability() &&
-        this.contentBrowserProxy_.isReadabilitySelectTextEnabled()) {
+    // If we're using Readability, report a user selection attempt to try to log
+    // this as an early selection attempt from the main panel.
+    if (isDistilledByReadability()) {
       this.contentBrowserProxy_.attemptLogEarlySelection(
           /*fromSidePanel=*/ false);
     }
@@ -268,7 +246,7 @@ export class SelectionController {
     };
 
     if (isDistilledByReadability()) {
-      return this.contentBrowserProxy_.isReadabilitySelectTextEnabled() ?
+      return this.contentBrowserProxy_.isReadabilityEnabled() ?
           this.getNewSelectionWithAxIds_(selectionIds) :
           this.getNewSelectionWithoutAxIds_(container, selectionIds);
     }

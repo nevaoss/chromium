@@ -21,6 +21,8 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ntp_customization.BottomSheetDelegate;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManager;
+import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator.BottomSheetType;
+import org.chromium.chrome.browser.ntp_customization.NtpCustomizationMetricsUtils;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.R;
 import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThemeColorInfo.NtpThemeColorId;
@@ -128,7 +130,10 @@ public class NtpThemeSyncHistoryCoordinator {
                 NtpThemeSyncHistoryProperties.RECYCLER_VIEW_LAYOUT_MANAGER, layoutManager);
         mPropertyModel.set(
                 NtpThemeSyncHistoryProperties.MORE_OPTIONS_CLICK_LISTENER,
-                moreOptionsClickListener);
+                (view) -> {
+                    moreOptionsClickListener.onClick(view);
+                    NtpCustomizationMetricsUtils.recordThemeHistoryMoreOptionButtonClick();
+                });
 
         mDefaultOptions = new ArrayList<>();
         mDefaultThemeCollections = new ArrayList<>();
@@ -412,6 +417,9 @@ public class NtpThemeSyncHistoryCoordinator {
         // Sets the highlighted color item if user has chosen a customized color theme.
         mPropertyModel.set(
                 NtpThemeSyncHistoryProperties.HIGHLIGHTED_ITEM_INDEX, mLastSelectedIndex);
+
+        NtpCustomizationMetricsUtils.recordBottomSheetShown(
+                BottomSheetType.THEME_HISTORY_SCROLLABLE_LIST);
     }
 
     /**

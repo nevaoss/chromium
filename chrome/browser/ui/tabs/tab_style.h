@@ -161,9 +161,10 @@ class TabStyle {
       const bool frame_active,
       const ui::ColorProvider* color_provider) const;
 
-  // Returns the tab foreground color of the the text based on `active` and the
-  // activation state of the window.
+  // Returns the tab foreground color of the text based on `apparently_active`,
+  // `hovered`, and the activation state of the window.
   SkColor GetTabForegroundColor(const bool apparently_active,
+                                const bool hovered,
                                 const bool frame_active,
                                 const ui::ColorProvider* color_provider) const;
 
@@ -209,9 +210,7 @@ class TabStyle {
 
   static constexpr float kDefaultSelectedTabOpacity = 0.75f;
 
-  // Thresholds where the tab strip may render without certain UI elements,
-  // such as separators and inactive tab close buttons.
-  static constexpr int kTabStripDeclutterMaxTabWidthForCloseHide = 100;
+  // Threshold where the tab strip may render without separators.
   static constexpr int kTabStripDeclutterMinTabsForSeparatorHide = 20;
 
   static const TabStyle* Get();

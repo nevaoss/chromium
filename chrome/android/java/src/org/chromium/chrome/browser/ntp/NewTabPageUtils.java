@@ -43,7 +43,12 @@ public class NewTabPageUtils {
         int NUM_ENTRIES = 4;
     }
 
-    /** Action chips options for NTP Aurora V2. */
+    /**
+     * Action chips options for NTP Aurora V2. These values are also recorded to the
+     * NewTabPage.Composeplate.Buttons.Impression histogram, where DEFAULT stands for the AI Mode
+     * button. Entries should not be renumbered and numeric values should never be reused.
+     */
+    // LINT.IfChange(ActionChips)
     @IntDef({
         ActionChips.DEFAULT,
         ActionChips.INCOGNITO,
@@ -58,6 +63,8 @@ public class NewTabPageUtils {
         int GALLERY = 3;
         int NUM_ENTRIES = 4;
     }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/new_tab_page/enums.xml:NtpActionChips)
 
     /**
      * Returns the view whose top margin controls the MVT section's vertical spacing. In the
@@ -161,5 +168,10 @@ public class NewTabPageUtils {
     /** Returns whether the beside-MVT layout is enabled. */
     public static boolean isBesideMvtModuleEnabled() {
         return getLayoutTypeForAuroraV2() == LayoutType.BESIDE_MVT;
+    }
+
+    /** Returns whether the inside-MVT AI Mode tile is enabled. */
+    public static boolean isAiModeTileInsideMvt() {
+        return getLayoutTypeForAuroraV2() == LayoutType.INSIDE_MVT;
     }
 }

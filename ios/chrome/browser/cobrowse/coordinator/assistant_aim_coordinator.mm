@@ -4,6 +4,7 @@
 
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_coordinator.h"
 
+#import <memory>
 #import <vector>
 
 #import "base/apple/foundation_util.h"
@@ -24,6 +25,8 @@
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_view_controller.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_input_plate_coordinator.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_mode_holder.h"
+#import "ios/chrome/browser/composebox/debugger/composebox_debugger_coordinator.h"
+#import "ios/chrome/browser/composebox/debugger/composebox_debugger_event.h"
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
@@ -40,10 +43,13 @@
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
+#import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/chrome/browser/shared/public/snackbar/snackbar_message.h"
 #import "ios/chrome/browser/shared/public/snackbar/snackbar_message_action.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
+#import "ios/chrome/browser/ssl/model/captive_portal_tab_helper.h"
+#import "ios/chrome/browser/tab_insertion/model/tab_insertion_browser_agent.h"
 #import "ios/chrome/browser/tabs/model/tab_helper_filter.h"
 #import "ios/chrome/browser/tabs/model/tab_helper_util.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
@@ -97,6 +103,7 @@ class AssistantAIMUIStateProvider
   AssistantAIMViewController* _viewController;
   AssistantAIMMediator* _mediator;
   ComposeboxInputPlateCoordinator* _inputPlateCoordinator;
+  ComposeboxDebuggerCoordinator* _debuggerCoordinator;
   ComposeboxModeHolder* _modeHolder;
   std::unique_ptr<AssistantAIMUIStateProvider> _uiStateProvider;
   AssistantContainerDetent _currentDetent;
@@ -147,9 +154,7 @@ class AssistantAIMUIStateProvider
       IOSContextualTasksServiceFactory::GetForProfile(
           self.browser->GetProfile());
 
-  web::WebState::CreateParams params(self.browser->GetProfile());
-  std::unique_ptr<web::WebState> webState = web::WebState::Create(params);
-  AttachTabHelpers(webState.get(), TabHelperFilter::kAssistantAim);
+  std::unique_ptr<web::WebState> webState = [self createWebState];
 
   _mediator = [[AssistantAIMMediator alloc]
              initWithWebState:std::move(webState)
@@ -168,6 +173,18 @@ class AssistantAIMUIStateProvider
   _mediator.consumer = _viewController;
   _viewController.mutator = _mediator;
 
+  if (experimental_flags::IsOmniboxDebuggingEnabled()) {
+    _debuggerCoordinator = [[ComposeboxDebuggerCoordinator alloc]
+        initWithBaseViewController:_viewController
+                           browser:self.browser];
+    _debuggerCoordinator.hideOptionsButton = YES;
+    [_debuggerCoordinator start];
+    [_debuggerCoordinator
+        logEvent:[ComposeboxDebuggerEvent
+                     composeboxGeneralEvent:composebox_debugger::event::
+                                                Composebox::kOpened]];
+  }
+
   _modeHolder = [[ComposeboxModeHolder alloc] init];
   ComposeboxTheme* theme = [[ComposeboxTheme alloc]
       initWithInputPlatePosition:ComposeboxInputPlatePosition::kBottomSheet
@@ -182,6 +199,7 @@ class AssistantAIMUIStateProvider
                        URLLoader:_mediator
                            theme:theme
                       modeHolder:_modeHolder];
+  _inputPlateCoordinator.debugLogger = _debuggerCoordinator;
   [_inputPlateCoordinator start];
 
   [_viewController
@@ -224,6 +242,13 @@ class AssistantAIMUIStateProvider
 
   [_mediator disconnect];
   _mediator = nil;
+
+  [_debuggerCoordinator
+      logEvent:[ComposeboxDebuggerEvent
+                   composeboxGeneralEvent:composebox_debugger::event::
+                                              Composebox::kClosed]];
+  [_debuggerCoordinator stop];
+  _debuggerCoordinator = nil;
 
   [_inputPlateCoordinator stop];
   _inputPlateCoordinator = nil;
@@ -361,6 +386,21 @@ class AssistantAIMUIStateProvider
 }
 
 #pragma mark - Private
+
+// Creates the WebState displayed in the sheet, with its tab helpers attached.
+- (std::unique_ptr<web::WebState>)createWebState {
+  web::WebState::CreateParams params(self.browser->GetProfile());
+  std::unique_ptr<web::WebState> webState = web::WebState::Create(params);
+  AttachTabHelpers(webState.get(), TabHelperFilter::kAssistantAim);
+  // The WebState is not in the WebStateList, so the TabLifecycleMediator does
+  // not install the dependencies of its tab helpers. Set the insertion agent
+  // so that the captive portal login page opens in a new tab when the user
+  // taps "Connect" on a captive portal interstitial displayed in the sheet.
+  CaptivePortalTabHelper::FromWebState(webState.get())
+      ->SetTabInsertionBrowserAgent(
+          TabInsertionBrowserAgent::FromBrowser(self.browser));
+  return webState;
+}
 
 // Minimizes the cobrowse container and opens the specified URL.
 - (void)minimizeAndOpenURL:(const GURL&)URL {
@@ -582,6 +622,11 @@ class AssistantAIMUIStateProvider
   [_viewController presentViewController:navController
                                 animated:YES
                               completion:nil];
+}
+
+- (void)assistantAIMViewControllerDidRequestComposeboxLogs:
+    (AssistantAIMViewController*)viewController {
+  [_debuggerCoordinator showBreadcrumbsLogs];
 }
 
 - (void)assistantAIMViewControllerDidTapMyActivity:

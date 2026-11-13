@@ -11,6 +11,12 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  user-select: none;
+}
+
+:host([vertical-tabs-enabled]) {
+  --organizer-divider-color:
+      var(--color-sys-on-header-divider, var(--cr-fallback-color-divider));
 }
 
 #searchField {
@@ -28,7 +34,6 @@
 
 #list {
   box-sizing: border-box;
-  flex: 1;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -42,8 +47,14 @@
 }
 
 #list::-webkit-scrollbar-thumb {
-  background: var(--color-side-panel-scrollbar-thumb);
+  background: var(--color-sys-state-disabled);
   background-clip: content-box;
   border: solid 1.5px transparent;
   border-radius: 100px;
+}
+
+#dragRegion {
+  app-region: drag;
+  -webkit-app-region: drag;
+  flex-grow: 1;
 }

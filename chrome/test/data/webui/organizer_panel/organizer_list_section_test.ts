@@ -152,37 +152,50 @@ suite('OrganizerListSectionTest', () => {
         assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
       });
 
-  test('expand() expands collapsed section and notifies handler', async () => {
-    mockHandler.setPromiseResolveFor(
-        'getSectionState', {state: {expanded: false, showAll: false}});
-    const items: Array<OrganizerListSectionItem<unknown>> = [
-      {title: ['Tab 1'], description: [{text: 'tab1.com'}]},
-    ];
-    listSection.delegate =
-        new TestSectionDelegate('Open Tabs', items, undefined, 'open-tabs');
-    await microtasksFinished();
+  test(
+      'setExpanded() updates expanded state and notifies handler', async () => {
+        const items: Array<OrganizerListSectionItem<unknown>> = [
+          {title: ['Tab 1'], description: [{text: 'tab1.com'}]},
+        ];
+        listSection.delegate =
+            new TestSectionDelegate('Open Tabs', items, undefined, 'open-tabs');
+        await microtasksFinished();
 
-    const header = listSection.$.header;
-    const itemsContainer =
-        listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
-    assertFalse(header.expanded);
-    assertFalse(itemsContainer.opened);
-    assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
+        const header = listSection.$.header;
+        const itemsContainer =
+            listSection.shadowRoot.querySelector<CrCollapseElement>('#items')!;
+        assertTrue(header.expanded);
+        assertTrue(itemsContainer.opened);
+        assertEquals(0, mockHandler.getCallCount('setSectionExpanded'));
 
-    listSection.expand();
-    await microtasksFinished();
+        listSection.setExpanded(false);
+        await microtasksFinished();
 
-    assertTrue(header.expanded);
-    assertTrue(itemsContainer.opened);
-    assertEquals(1, mockHandler.getCallCount('setSectionExpanded'));
-    assertDeepEquals(
-        ['open-tabs', true], mockHandler.getArgs('setSectionExpanded')[0]);
+        assertFalse(header.expanded);
+        assertFalse(itemsContainer.opened);
+        assertEquals(1, mockHandler.getCallCount('setSectionExpanded'));
+        assertDeepEquals(
+            ['open-tabs', false], mockHandler.getArgs('setSectionExpanded')[0]);
 
-    // Calling expand() again when already expanded is a no-op.
-    listSection.expand();
-    await microtasksFinished();
-    assertEquals(1, mockHandler.getCallCount('setSectionExpanded'));
-  });
+        // Calling setExpanded(false) again when already collapsed is a no-op.
+        listSection.setExpanded(false);
+        await microtasksFinished();
+        assertEquals(1, mockHandler.getCallCount('setSectionExpanded'));
+
+        listSection.setExpanded(true);
+        await microtasksFinished();
+
+        assertTrue(header.expanded);
+        assertTrue(itemsContainer.opened);
+        assertEquals(2, mockHandler.getCallCount('setSectionExpanded'));
+        assertDeepEquals(
+            ['open-tabs', true], mockHandler.getArgs('setSectionExpanded')[1]);
+
+        // Calling setExpanded(true) again when already expanded is a no-op.
+        listSection.setExpanded(true);
+        await microtasksFinished();
+        assertEquals(2, mockHandler.getCallCount('setSectionExpanded'));
+      });
 
   test(
       'updates expanded state when onSectionsStateChanged is called',
@@ -476,6 +489,83 @@ suite('OrganizerListSectionTest', () => {
         listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
     assertEquals(2, listItems.length);
     assertFalse(listSection.hidden);
+  });
+
+  test('matches items based on extraSearchTerms', async () => {
+    const delegateItems: Array<OrganizerListSectionItem<unknown>> = [
+      {
+        title: ['Google'],
+        description: [{text: 'Search engine'}],
+        extraSearchTerms: ['www.google.com'],
+      },
+      {
+        title: ['Split view'],
+        description: [{text: 'Docs'}, {text: 'Sheets'}],
+        extraSearchTerms: ['docs.google.com', 'sheets.google.com'],
+      },
+    ];
+    listSection.delegate = new TestSectionDelegate('Open Tabs', delegateItems);
+    await microtasksFinished();
+
+    listSection.searchQuery = 'sheets.google.com';
+    await microtasksFinished();
+
+    let listItems =
+        listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
+    assertEquals(1, listItems.length);
+    assertDeepEquals(['Split view'], listItems[0]!.item.title);
+    assertDeepEquals([[]], listItems[0]!.$.title.highlightRanges);
+    assertDeepEquals([[], []], listItems[0]!.$.description.highlightRanges);
+
+    listSection.searchQuery = 'www.google.com';
+    await microtasksFinished();
+
+    listItems =
+        listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
+    assertEquals(1, listItems.length);
+    assertDeepEquals(['Google'], listItems[0]!.item.title);
+    assertDeepEquals([[]], listItems[0]!.$.title.highlightRanges);
+    assertDeepEquals([[]], listItems[0]!.$.description.highlightRanges);
+  });
+
+  test('ignores description parts with matchable set to false', async () => {
+    const delegateItems: Array<OrganizerListSectionItem<unknown>> = [
+      {
+        title: ['Google'],
+        description: [
+          {text: '10m ago', matchable: false},
+          {text: 'Work Group'},
+        ],
+      },
+      {
+        title: ['YouTube'],
+        description: [
+          {text: '5m ago', matchable: false},
+          {text: 'Media', matchable: true},
+        ],
+      },
+    ];
+    listSection.delegate = new TestSectionDelegate('Open Tabs', delegateItems);
+    await microtasksFinished();
+
+    listSection.searchQuery = 'ago';
+    await microtasksFinished();
+
+    let listItems =
+        listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
+    assertEquals(0, listItems.length);
+    assertTrue(listSection.hidden);
+
+    listSection.searchQuery = 'm';
+    await microtasksFinished();
+
+    listItems =
+        listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
+    assertEquals(1, listItems.length);
+    assertDeepEquals(['YouTube'], listItems[0]!.item.title);
+    assertDeepEquals(
+        [[], [{start: 0, length: 1}]],
+        listItems[0]!.$.description.highlightRanges);
   });
 
   test(

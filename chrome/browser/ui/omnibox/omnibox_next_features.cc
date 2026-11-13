@@ -28,6 +28,7 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/search.h"
+#include "ui/accessibility/platform/ax_platform.h"
 #include "ui/base/l10n/l10n_util.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -60,8 +61,28 @@ BASE_FEATURE(kWebUIOmniboxSimplification, ENABLED);
 // will be removed).
 BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
 
+// Safety guard: if enabled, and a screen reader is detected the first time the
+// full WebUI omnibox state is queried (i.e. at startup), the full WebUI omnibox
+// popup is not used for the remainder of the session, even if
+// `kWebUIOmniboxFullPopup` is enabled.
+BASE_FEATURE(kDisableFullWebuiOmniboxForScreenreaderUsers, DISABLED);
+
 bool IsWebUIOmniboxFullPopupEnabled() {
-  return base::FeatureList::IsEnabled(internal::kWebUIOmniboxFullPopup);
+  if (!base::FeatureList::IsEnabled(internal::kWebUIOmniboxFullPopup)) {
+    return false;
+  }
+  if (base::FeatureList::IsEnabled(
+          internal::kDisableFullWebuiOmniboxForScreenreaderUsers)) {
+    // Latched on first use, so that the full WebUI omnibox state stays
+    // consistent for the whole session even if a screen reader is started or
+    // stopped later on.
+    static const bool kScreenReaderActiveAtStartup =
+        ui::AXPlatform::GetInstance().IsScreenReaderActive();
+    if (kScreenReaderActiveAtStartup) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace internal
@@ -103,9 +124,22 @@ BASE_FEATURE(kWebUIOmniboxFullPopupDoubleClick, ENABLED);
 // If enabled, enables OmniboxEverywhere popup triggered by shortcut.
 BASE_FEATURE(kOmniboxEverywhere, DISABLED);
 // If enabled, submitting a query with screenshots attached in Omnibox
-// Everywhere opens the result in a new 800x600 browser window aligned with the
+// Everywhere opens the result in a new browser window aligned with the
 // Omnibox Everywhere popup.
 BASE_FEATURE(kOmniboxEverywhereScreenshotNewWindow, ENABLED);
+// Controls the width of the new browser window opened for screenshot queries in
+// Omnibox Everywhere.
+const base::FeatureParam<int> kOmniboxEverywhereScreenshotNewWindowWidthParam{
+    &kOmniboxEverywhereScreenshotNewWindow, "WindowWidth", 800};
+// Controls the height of the new browser window opened for screenshot queries
+// in Omnibox Everywhere.
+const base::FeatureParam<int> kOmniboxEverywhereScreenshotNewWindowHeightParam{
+    &kOmniboxEverywhereScreenshotNewWindow, "WindowHeight", 800};
+// Controls the upward vertical offset of the new browser window relative to
+// the Omnibox Everywhere popup's top edge.
+const base::FeatureParam<int>
+    kOmniboxEverywhereScreenshotNewWindowVerticalOffsetParam{
+        &kOmniboxEverywhereScreenshotNewWindow, "VerticalOffset", 200};
 // Controls multiline searchbox support in OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereMultilineParam{
     &kOmniboxEverywhere, "Multiline", true};
@@ -526,6 +560,8 @@ const base::FeatureParam<bool> kWebUIOmniboxFullPopupUseBrowserView{
     &internal::kWebUIOmniboxFullPopup, "Omnibox_UseBrowserView", false};
 const base::FeatureParam<bool> kWebUIOmniboxFullPopupMultiline{
     &internal::kWebUIOmniboxFullPopup, "Omnibox_Multiline", false};
+const base::FeatureParam<bool> kWebUIOmniboxFullPopupDogfoodFeedback{
+    &internal::kWebUIOmniboxFullPopup, "Omnibox_DogfoodFeedback", false};
 const base::FeatureParam<int> kWebUIOmniboxFullPopupSnapshotCacheSize{
     &internal::kWebUIOmniboxFullPopup, "Omnibox_SnapshotCacheSize", 10};
 const base::FeatureParam<bool> kWebUIOmniboxDynamicAnimation{

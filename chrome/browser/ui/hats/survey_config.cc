@@ -381,6 +381,38 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       kHatsSurveyTriggerWallpaperSearch);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  // Scheduled Restart survey.
+  // LINT.IfChange(ScheduledRestartHatsPsdFields)
+  survey_configs.emplace_back(
+      &features::kHappinessTrackingSurveysForDesktopScheduledRestart,
+      kHatsSurveyTriggerScheduledRestart,
+      /*presupplied_trigger_id=*/std::nullopt,
+      /*product_specific_bits_data_fields=*/
+      std::vector<std::string>{
+          // Whether any incognito window is currently open (excludes Guest).
+          "Incognito window present",
+      },
+      /*product_specific_string_data_fields=*/
+      std::vector<std::string>{
+          "Client channel",
+          // Exponentially bucketed duration in seconds the prompt was visible.
+          "Seconds the prompt was visible",
+          // User action: "restart now", "restart when idle", or "dismiss".
+          "User choice",
+          // Elapsed days since update became available (capped at 90 days).
+          "Days since update became available",
+          // Tab and window counts across all normal browser windows.
+          "Number of open tabs and windows",
+          // Whether the dialog was triggered automatically or manually:
+          // "automatic" or "manual".
+          "Trigger type",
+          // Configured first nudge delay in days.
+          "First nudge delay in days",
+          // Configured nudge cooldown in days.
+          "Nudge cooldown in days",
+      });
+  // LINT.ThenChange(//chrome/browser/ui/views/scheduled_restart/scheduled_restart_hats.h:ScheduledRestartHatsPsdFields)
+
   std::vector<std::string> identity_string_psd_fields{
       "Channel", "Chrome Version", "Number of Chrome Profiles",
       "Number of Google Accounts", "Sign-in Status"};
@@ -840,6 +872,19 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       /*presupplied_trigger_id=*/std::nullopt,
       /*product_specific_bits_data_fields=*/std::vector<std::string>{},
       autofill_personalization_and_trust_product_specific_data);
+  survey_configs.emplace_back(
+      &::autofill::features::
+          kAutofillPersonalizationAndTrustOneTimePasswordSurvey,
+      kHatsSurveyTriggerAutofillPersonalizationAndTrustOneTimePasswordDismissed,
+      /*presupplied_trigger_id=*/std::nullopt,
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      /*product_specific_string_data_fields=*/
+      with_client_context_psd_fields({
+          // Description of how the OTP suggestion popup was dismissed.
+          "Type of dismissal",
+          // Source of the OTP offer that was dismissed (e.g. Gmail, SMS).
+          "OTP type",
+      }));
   survey_configs.emplace_back(
       &password_manager::features::
           kAutofillPersonalizationAndTrustPasswordSurvey,

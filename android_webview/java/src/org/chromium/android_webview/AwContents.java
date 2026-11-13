@@ -60,6 +60,7 @@ import androidx.core.graphics.Insets;
 import org.jni_zero.CalledByNative;
 import org.jni_zero.CalledByNativeUnchecked;
 import org.jni_zero.JNINamespace;
+import org.jni_zero.JniRawPtr;
 import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
@@ -72,6 +73,7 @@ import org.chromium.android_webview.common.SafeModeActionIds;
 import org.chromium.android_webview.common.SafeModeController;
 import org.chromium.android_webview.gfx.AwDrawFnImpl;
 import org.chromium.android_webview.gfx.AwPicture;
+import org.chromium.android_webview.http_headers.AwHeaderInterceptorStore;
 import org.chromium.android_webview.metrics.AwOriginVisitLogger;
 import org.chromium.android_webview.metrics.BackForwardCacheNotRestoredReason;
 import org.chromium.android_webview.permission.AwGeolocationCallback;
@@ -420,6 +422,8 @@ public class AwContents implements SmartClipProvider {
     private AwViewAndroidDelegate mViewAndroidDelegate;
     private WindowAndroidWrapper mWindowAndroid;
     private WebContents mWebContents;
+    private final AwHeaderInterceptorStore mHeaderInterceptorStore =
+            new AwHeaderInterceptorStore(this::supplyNativeHeaderInterceptorStore);
     private ViewEventSink mViewEventSink;
     private WebContentsInternalsHolder mWebContentsInternalsHolder;
     private NavigationController mNavigationController;
@@ -1198,7 +1202,6 @@ public class AwContents implements SmartClipProvider {
             mScrollAccessibilityHelper = new ScrollAccessibilityHelper(mContainerView);
 
             setOverScrollMode(mContainerView.getOverScrollMode());
-            setScrollBarStyle(mCurrentInternalAccessAdapter.super_getScrollBarStyle());
 
             mAwDarkMode = new AwDarkMode(this);
             mStylusWritingController = new StylusWritingController(context.getApplicationContext());
@@ -1509,7 +1512,6 @@ public class AwContents implements SmartClipProvider {
         if (mDisplayCutoutController != null) {
             mDisplayCutoutController.setCurrentContainerView(mContainerView);
         }
-        setScrollBarStyle(mCurrentInternalAccessAdapter.super_getScrollBarStyle());
     }
 
     public AwDrawFnImpl.DrawFnAccess getDrawFnAccess() {
@@ -2139,6 +2141,17 @@ public class AwContents implements SmartClipProvider {
     @VisibleForTesting
     public WebContents getWebContents() {
         return mWebContents;
+    }
+
+    public AwHeaderInterceptorStore getHeaderInterceptorStore() {
+        return mHeaderInterceptorStore;
+    }
+
+    private @Nullable JniRawPtr<AwHeaderInterceptorStore.Native>
+            supplyNativeHeaderInterceptorStore() {
+        return mNativeAwContents == 0
+                ? null
+                : AwContentsJni.get().getHeaderInterceptorStoreFromJava(mNativeAwContents);
     }
 
     public AwWebContentsObserver getWebContentsObserverForTesting() {
@@ -2853,12 +2866,12 @@ public class AwContents implements SmartClipProvider {
      *
      * @return The URL of the current page or null if it's empty.
      */
-    public GURL getUrl() {
+    public String getUrl() {
         if (TRACE) Log.i(TAG, "%s getUrl", this);
         if (isDestroyed(WARN)) return null;
         GURL url = mWebContents.getVisibleUrl();
         if (url == null || url.getSpec().trim().isEmpty()) return null;
-        return url;
+        return url.getSpec();
     }
 
     /**
@@ -2929,57 +2942,6 @@ public class AwContents implements SmartClipProvider {
     public void setOverScrollMode(int mode) {
         if (TRACE) Log.i(TAG, "%s setOverScrollMode", this);
         mOverScrollHelper.setOverScrollMode(mode, mContext);
-    }
-
-    // TODO(mkosiba): In WebViewClassic these appear in some of the scroll extent calculation
-    // methods but toggling them has no visiual effect on the content (in other words the scrolling
-    // code behaves as if the scrollbar-related padding is in place but the onDraw code doesn't
-    // take that into consideration).
-    // http://crbug.com/269032
-    private boolean mOverlayHorizontalScrollbar = true;
-    private boolean mOverlayVerticalScrollbar;
-
-    /**
-     * @see View#setScrollBarStyle(int)
-     */
-    public void setScrollBarStyle(int style) {
-        if (TRACE) Log.i(TAG, "%s setScrollBarStyle", this);
-        boolean scrollbars =
-                style == View.SCROLLBARS_INSIDE_OVERLAY || style == View.SCROLLBARS_OUTSIDE_OVERLAY;
-        mOverlayHorizontalScrollbar = scrollbars;
-        mOverlayVerticalScrollbar = scrollbars;
-    }
-
-    /**
-     * @see View#setHorizontalScrollbarOverlay(boolean)
-     */
-    public void setHorizontalScrollbarOverlay(boolean overlay) {
-        if (TRACE) Log.i(TAG, "%s setHorizontalScrollbarOverlay=%s", this, overlay);
-        mOverlayHorizontalScrollbar = overlay;
-    }
-
-    /**
-     * @see View#setVerticalScrollbarOverlay(boolean)
-     */
-    public void setVerticalScrollbarOverlay(boolean overlay) {
-        if (TRACE) Log.i(TAG, "%s setVerticalScrollbarOverlay=%s", this, overlay);
-        mOverlayVerticalScrollbar = overlay;
-    }
-
-    /**
-     * @see View#overlayHorizontalScrollbar()
-     */
-    public boolean overlayHorizontalScrollbar() {
-        if (TRACE) Log.i(TAG, "%s overlayHorizontalScrollbar", this);
-        return mOverlayHorizontalScrollbar;
-    }
-
-    /**
-     * @see View#overlayVerticalScrollbar()
-     */
-    public boolean overlayVerticalScrollbar() {
-        if (TRACE) Log.i(TAG, "%s overlayVerticalScrollbar", this);
-        return mOverlayVerticalScrollbar;
     }
 
     /**
@@ -5279,6 +5241,9 @@ public class AwContents implements SmartClipProvider {
         WebContents getWebContents(long nativeAwContents);
 
         AwBrowserContext getBrowserContext(long nativeAwContents);
+
+        JniRawPtr<AwHeaderInterceptorStore.Native> getHeaderInterceptorStoreFromJava(
+                long nativeAwContents);
 
         void setCompositorFrameConsumer(long nativeAwContents, long nativeCompositorFrameConsumer);
 

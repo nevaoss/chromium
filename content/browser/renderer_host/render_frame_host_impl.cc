@@ -146,6 +146,7 @@
 #include "content/browser/renderer_host/navigation_state_keep_alive.h"
 #include "content/browser/renderer_host/navigator.h"
 #include "content/browser/renderer_host/page_delegate.h"
+#include "content/browser/renderer_host/page_lifecycle_state_manager.h"
 #include "content/browser/renderer_host/policy_container_host.h"
 #include "content/browser/renderer_host/randomized_confidence_utils.h"
 #include "content/browser/renderer_host/render_frame_host_delegate.h"
@@ -198,6 +199,7 @@
 #include "content/common/navigation_params_utils.h"
 #include "content/public/browser/active_url_message_filter.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/child_process_termination_info.h"
 #include "content/public/browser/clipboard_types.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/context_menu_params.h"
@@ -2005,6 +2007,87 @@ constexpr base::MemoryConsumerTraits kRenderFrameHostTraits(
     base::MemoryConsumerTraits::ConsumerType::kPassive,
     // Frames are in an out-of-process renderer.
     base::MemoryConsumerTraits::InProcess::kNo);
+
+// LINT.IfChange(UnboundedElementEscape)
+bool DoesParentAllowUnboundedElementEscape(RenderFrameHostImpl* child) {
+  RenderFrameHostImpl* parent = child->GetParent();
+  CHECK(parent);
+  const auto feature =
+      network::mojom::PermissionsPolicyFeature::kUnboundedElement;
+  const url::Origin& parent_origin = parent->GetLastCommittedOrigin();
+  const url::Origin& child_origin = child->GetLastCommittedOrigin();
+
+  if (const network::PermissionsPolicy* parent_policy =
+          parent->GetPermissionsPolicy()) {
+    if (auto header_allowlist =
+            parent_policy->GetHeaderAllowlistForFeatureIfExists(feature)) {
+      if (!header_allowlist->Contains(parent_origin) ||
+          !header_allowlist->Contains(child_origin)) {
+        return false;
+      }
+    }
+  }
+
+  // The child can also opt out via its own Permissions-Policy header.
+  if (const network::PermissionsPolicy* child_policy =
+          child->GetPermissionsPolicy()) {
+    if (auto header_allowlist =
+            child_policy->GetHeaderAllowlistForFeatureIfExists(feature)) {
+      if (!header_allowlist->Contains(child_origin)) {
+        return false;
+      }
+    }
+  }
+
+  // An explicit allow="unbounded-element" grants escape even to sandboxed
+  // frames. The sandbox check below only blocks the implicit same-origin
+  // grant.
+  const network::ParsedPermissionsPolicy& container_policy =
+      child->browsing_context_state()
+          ->effective_frame_policy()
+          .container_policy;
+  for (const auto& decl : container_policy) {
+    if (decl.feature == feature) {
+      return network::PermissionsPolicy::Allowlist::FromDeclaration(decl)
+          .Contains(child_origin);
+    }
+  }
+
+  if (child->active_sandbox_flags() != network::mojom::WebSandboxFlags::kNone) {
+    return false;
+  }
+  // Same origin frames get this permission automatically.
+  return child_origin.IsSameOriginWith(parent_origin);
+}
+// LINT.ThenChange(//third_party/blink/renderer/core/layout/layout_object.cc:UnboundedElementEscape)
+
+// TODO(crbug.com/567604602): This uses the frame's full rect. It ignores the
+// parent's overflow clip and any parent content painted over the iframe, so a
+// clipped iframe can draw over its parent without allow="unbounded-element".
+// Intersecting with ancestor clip rects would partially fix this; ancestor
+// content painted over the iframe can't be accounted for this way. The
+// renderer has the same issue in
+// LayoutObject::AbsoluteBoundingBoxRectForUnboundedElement().
+gfx::Rect GetFrameBoundsInScreen(RenderFrameHostImpl* rfh,
+                                 RenderWidgetHostViewBase* root_view) {
+  auto* view = static_cast<RenderWidgetHostViewBase*>(
+      rfh->GetRenderWidgetHost()->GetView());
+  if (!view || !root_view) {
+    return gfx::Rect();
+  }
+  gfx::Rect bounds_in_local_root;
+  if (rfh->is_local_root()) {
+    bounds_in_local_root = gfx::Rect(view->GetViewBounds().size());
+  } else if (rfh->frame_bounds_in_local_root().has_value()) {
+    bounds_in_local_root = *rfh->frame_bounds_in_local_root();
+  } else {
+    // The frame's position within its local root is not known yet, so fall
+    // back to the full local root bounds.
+    bounds_in_local_root = gfx::Rect(view->GetViewBounds().size());
+  }
+  return root_view->ConvertSubframeBoundsToScreenWithoutConstraints(
+      bounds_in_local_root, view);
+}
 
 }  // namespace
 
@@ -4569,7 +4652,15 @@ void RenderFrameHostImpl::RenderProcessGone(
 
   ++renderer_exit_count_;
 
-  MaybeGenerateCrashReport(info.status, info.exit_code);
+  // Generate crash reports for this frame and any descendant frames hosted in
+  // the crashed process before `ResetChildren()` and `RenderFrameDeleted()`
+  // destroy them (and expire their reporting sources in
+  // `~RenderFrameHostImpl()`).
+  ForEachRenderFrameHostImpl([&](RenderFrameHostImpl* rfh) {
+    if (rfh->site_instance_->group() == site_instance_group) {
+      rfh->MaybeGenerateCrashReport(info);
+    }
+  });
 
   // When a frame's process dies, its RenderFrame no longer exists, which means
   // that its child frames must be cleaned up as well.
@@ -4923,6 +5014,7 @@ void RenderFrameHostImpl::RenderFrameCreated() {
 
   const RenderFrameState old_render_frame_state = render_frame_state_;
   render_frame_state_ = RenderFrameState::kCreated;
+  has_reported_crash_ = false;
 
   if (old_render_frame_state == RenderFrameState::kDeleted) {
     // Dispatch update notification when a Page is recreated after a crash. Only
@@ -5194,6 +5286,11 @@ void RenderFrameHostImpl::DidAddMessageToConsole(
 void RenderFrameHostImpl::FrameSizeChanged(const gfx::Size& frame_size) {
   frame_size_ = frame_size;
   delegate_->FrameSizeChanged(this, frame_size);
+}
+
+void RenderFrameHostImpl::FrameBoundsInLocalRootChanged(
+    const gfx::Rect& bounds) {
+  frame_bounds_in_local_root_ = bounds;
 }
 
 void RenderFrameHostImpl::RendererDidActivateForPrerendering() {
@@ -6173,13 +6270,20 @@ void RenderFrameHostImpl::Detach() {
   // FrameTreeNode's `frame_tree_` reference, which now belongs to a different
   // page. Trigger a renderer kill if we receive an unexpected Detach message.
   if (IsInBackForwardCache()) {
-    if (render_view_host()->DidReceiveBackForwardCacheAck()) {
+    if (!render_view_host()
+             ->GetPageLifecycleStateManager()
+             ->RendererExpectedToSendChannelAssociatedIpcs()) {
       bad_message::ReceivedBadMessage(GetProcess(),
                                       bad_message::RFH_DETACH_WHILE_BFCACHED);
     } else {
-      // The renderer might not have realized that it's in BFCache when it sent
-      // the Detach call, since we haven't received the BFCache ACK. In this
-      // case, just evict from BFCache instead of killing the renderer.
+      // The renderer can legitimately send Detach here in two cases:
+      // - It might not have realized that it's in BFCache when it sent the
+      //   Detach call, since we haven't received the BFCache ACK.
+      // - A restore has started and the browser already asked the renderer to
+      //   disable JS eviction (see `SetIsLeavingBackForwardCache()`), so page
+      //   script can run again before the restore commits.
+      // In these cases, just evict from BFCache instead of killing the
+      // renderer.
       IsInactiveAndDisallowActivation(DisallowActivationReasonId::kDetach);
     }
     // Return early in any case.
@@ -11127,9 +11231,14 @@ void RenderFrameHostImpl::InitializeCrashReportContext(
 //
 // Permissions require UnboundedElement to be enabled AND either:
 // - UnsafeUnboundedElementOnTheOpenWeb is enabled,
+// - UnsafeEscapingUnboundedElementOnTheOpenWeb is enabled,
 // - The context/origin is a privileged WebUI scheme (or has WebUI bindings), or
 // - The embedder explicitly authorizes the frame via
-//   ContentBrowserClient::IsUnboundedElementAllowed.
+//   ContentBrowserClient::IsUnboundedElementAllowed, or
+// - The frame is a subframe allowed by permissions policy, and its outermost
+//   main frame is privileged and listed in
+//   ContentBrowserClient::IsUnboundedElementAllowedForSubframesOf. (See
+//   crbug.com/571879162.)
 RenderFrameHostImpl::UnboundedElementAuth
 RenderFrameHostImpl::GetUnboundedElementAuth() const {
   if (!base::FeatureList::IsEnabled(blink::features::kUnboundedElement)) {
@@ -11142,10 +11251,78 @@ RenderFrameHostImpl::GetUnboundedElementAuth() const {
     return UnboundedElementAuth::kAllowedPrivileged;
   }
   if (base::FeatureList::IsEnabled(
-          blink::features::kUnsafeUnboundedElementOnTheOpenWeb)) {
+          blink::features::kUnsafeUnboundedElementOnTheOpenWeb) ||
+      base::FeatureList::IsEnabled(
+          blink::features::kUnsafeEscapingUnboundedElementOnTheOpenWeb)) {
+    return UnboundedElementAuth::kAllowedOpenWeb;
+  }
+  // TODO(crbug.com/571879162): Remove the temporary
+  // IsUnboundedElementAllowedForSubframesOf() allowlist.
+  if (GetParent() &&
+      const_cast<RenderFrameHostImpl*>(this)
+              ->GetOutermostMainFrame()
+              ->GetUnboundedElementAuth() ==
+          UnboundedElementAuth::kAllowedPrivileged &&
+      GetContentClient()->browser()->IsUnboundedElementAllowedForSubframesOf(
+          const_cast<RenderFrameHostImpl*>(this)
+              ->GetOutermostMainFrame()
+              ->GetLastCommittedOrigin()) &&
+      const_cast<RenderFrameHostImpl*>(this)->IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kUnboundedElement)) {
     return UnboundedElementAuth::kAllowedOpenWeb;
   }
   return UnboundedElementAuth::kDenied;
+}
+
+std::optional<gfx::Rect>
+RenderFrameHostImpl::GetUnboundedElementConstrainingBoundsInScreen(
+    RenderWidgetHostViewBase* root_view) {
+  std::optional<gfx::Rect> constraining_bounds;
+  RenderFrameHostImpl* current = this;
+  while (current) {
+    if (current->IsFencedFrameRoot()) {
+      gfx::Rect frame_bounds = GetFrameBoundsInScreen(current, root_view);
+      if (constraining_bounds.has_value()) {
+        constraining_bounds->Intersect(frame_bounds);
+      } else {
+        constraining_bounds = frame_bounds;
+      }
+      current = current->GetParentOrOuterDocument();
+      continue;
+    }
+    RenderFrameHostImpl* parent = current->GetParent();
+    if (!parent) {
+      break;
+    }
+    if (!DoesParentAllowUnboundedElementEscape(current)) {
+      gfx::Rect frame_bounds = GetFrameBoundsInScreen(current, root_view);
+      if (constraining_bounds.has_value()) {
+        constraining_bounds->Intersect(frame_bounds);
+      } else {
+        constraining_bounds = frame_bounds;
+      }
+    }
+    current = parent;
+  }
+  bool allow_escaping =
+      (GetUnboundedElementAuth() == UnboundedElementAuth::kAllowedPrivileged &&
+       GetOutermostMainFrame()->GetUnboundedElementAuth() ==
+           UnboundedElementAuth::kAllowedPrivileged) ||
+      base::FeatureList::IsEnabled(
+          blink::features::kUnsafeEscapingUnboundedElementOnTheOpenWeb);
+  if (root_view && !allow_escaping) {
+    // TODO(crbug.com/567605905): Clamping to the root view keeps the surface
+    // within the content area, but browser UI drawn over the content area
+    // (e.g. permission prompts, the fullscreen exit bubble) can still be
+    // covered.
+    gfx::Rect root_bounds = root_view->GetViewBounds();
+    if (constraining_bounds.has_value()) {
+      constraining_bounds->Intersect(root_bounds);
+    } else {
+      constraining_bounds = root_bounds;
+    }
+  }
+  return constraining_bounds;
 }
 
 void RenderFrameHostImpl::RequestUnboundedSurface(
@@ -11187,11 +11364,15 @@ void RenderFrameHostImpl::RequestUnboundedSurface(
   if (auto* root_view = GetUnboundedSurfaceRootView(&parent_view)) {
     // If an unbounded surface is already active, synchronously destroy it
     // first to enforce that only one is active per window.
+    // TODO(crbug.com/567605448): The renderer may have canceled closing the
+    // previous element, but its window is destroyed here anyway, so the
+    // renderer and browser disagree about which element owns the surface.
     if (root_view->HasActiveUnboundedSurface()) {
       root_view->DestroyUnboundedSurface(
           root_view->GetUnboundedSurfaceWindow()->GetWeakPtr());
     }
     CHECK(!root_view->HasActiveUnboundedSurface());
+    root_view->SetUnboundedSurfaceFrame(GetWeakPtr());
     root_view->CreateUnboundedSurface(
         std::move(host), std::move(client), bounds,
         parent_view ? parent_view->GetWeakPtr() : nullptr);
@@ -17102,8 +17283,12 @@ void RenderFrameHostImpl::OnSameDocumentCommitProcessed(
 }
 
 void RenderFrameHostImpl::MaybeGenerateCrashReport(
-    base::TerminationStatus status,
-    int exit_code) {
+    const ChildProcessTerminationInfo& info) {
+  if (has_reported_crash_) {
+    return;
+  }
+  has_reported_crash_ = true;
+
   if (!last_committed_url_.SchemeIsHTTPOrHTTPS()) {
     return;
   }
@@ -17118,13 +17303,7 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
     return;
   }
 
-  // Only generate reports for local root frames that are in a different
-  // process than their parent.
-  if (!is_main_frame() && !IsCrossProcessSubframe()) {
-    return;
-  }
-  CHECK(is_local_root());
-
+  const int exit_code = info.exit_code;
   auto metrics = GetProcess()->GetCrashMemoryMetrics();
 
   const bool is_oom =
@@ -17137,9 +17316,10 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
           static_cast<int>(partition_alloc::kTerminateOnCommitFailureExitCode);
 
   // All frames in the same renderer process share the main thread and V8
-  // isolate. If one frame hangs, the entire process is blocked and killed.
-  // Therefore, unresponsiveness is attributed to all local root frames in this
-  // process (individual documents are differentiated later by stack capture).
+  // isolate, so if one frame hangs, every frame in the process is blocked and
+  // killed together. An "unresponsive" report is generated for each frame in
+  // the process, however, only the frame whose `FrameToken` was executing when
+  // the hang occurred will have the actual call stack attached below.
   const bool is_unresponsive =
       exit_code == RESULT_CODE_HUNG ||
       (GetRenderWidgetHost() &&
@@ -17151,7 +17331,7 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
   // |is_unresponsive| because a renderer exhausting memory often becomes
   // unresponsive prior to termination.
   std::string reason;
-  switch (status) {
+  switch (info.status) {
     case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
     case base::TERMINATION_STATUS_PROCESS_CRASHED:
 #if BUILDFLAG(IS_WIN)
@@ -17187,11 +17367,35 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
       break;
     case base::TERMINATION_STATUS_OOM:
     case base::TERMINATION_STATUS_EVICTED_FOR_MEMORY:
-#if BUILDFLAG(IS_ANDROID)
-    case base::TERMINATION_STATUS_OOM_PROTECTED:
-#endif
       reason = "oom";
       break;
+#if BUILDFLAG(IS_ANDROID)
+    case base::TERMINATION_STATUS_OOM_PROTECTED:
+      // On Android, child processes are spawned from the system Zygote rather
+      // than being direct children of the browser process, so waitpid() does
+      // not work and ChildProcessLauncherHelper::GetTerminationInfo() maps all
+      // foreground process terminations to TERMINATION_STATUS_OOM_PROTECTED
+      // (while background/waived processes—including routine OS memory
+      // evictions—receive TERMINATION_STATUS_NORMAL_TERMINATION and are not
+      // reported).
+      if (GetProcess()->FastShutdownStarted() ||
+          GetProcess()->IsDeletingSoon() || info.clean_exit) {
+        return;
+      }
+      if (is_oom) {
+        reason = "oom";
+      } else if (is_unresponsive) {
+        reason = "unresponsive";
+      } else if (info.was_killed_intentionally_by_browser ||
+                 GetProcess()->ShutdownRequested()) {
+        if (exit_code != RESULT_CODE_KILLED_BAD_MESSAGE) {
+          // An intentional browser-initiated shutdown or Task Manager kill
+          // should not be reported.
+          return;
+        }
+      }
+      break;
+#endif
 #if BUILDFLAG(IS_CHROMEOS)
     case base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM:
       // On ChromeOS, GetTerminationStatus() maps any SIGKILL to

@@ -37,7 +37,6 @@
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
 #include "chrome/browser/policy/drive_file_sync_available_policy_handler.h"
 #include "chrome/browser/policy/file_selection_dialogs_policy_handler.h"
-#include "chrome/browser/policy/gemini_enterprise_settings_policy_handler.h"
 #include "chrome/browser/policy/gemini_enterprise_url_policy_handler.h"
 #include "chrome/browser/policy/homepage_location_policy_handler.h"
 #include "chrome/browser/policy/isolate_origins_policy_handler.h"
@@ -238,7 +237,6 @@
 #include "chromeos/constants/pref_names.h"
 #include "chromeos/dbus/power/power_policy_controller.h"
 #include "chromeos/ui/wm/fullscreen/pref_names.h"
-#include "components/account_manager_core/pref_names.h"
 #include "components/drive/drive_pref_names.h"  // nogncheck crbug.com/40147906
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
@@ -313,6 +311,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kAdsSettingForIntrusiveAdsSites,
     prefs::kManagedDefaultAdsSetting,
     base::Value::Type::INTEGER },
+  { key::kAudioCaptureAllowed,
+    prefs::kAudioCaptureAllowed,
+    base::Value::Type::BOOLEAN },
   { key::kAutoplayAllowed,
     prefs::kAutoplayAllowed,
     base::Value::Type::BOOLEAN },
@@ -602,9 +603,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kAmbientAuthenticationInPrivateModesEnabled,
     prefs::kAmbientAuthenticationInPrivateModesEnabled,
     base::Value::Type::INTEGER },
-  { key::kAudioCaptureAllowed,
-    prefs::kAudioCaptureAllowed,
-    base::Value::Type::BOOLEAN },
   { key::kAudioCaptureAllowedUrls,
     prefs::kAudioCaptureAllowedUrls,
     base::Value::Type::LIST },
@@ -3381,9 +3379,6 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
   handlers->AddHandler(std::make_unique<DefaultGeolocationPolicyHandler>());
   handlers->AddHandler(
       std::make_unique<DeviceLoginScreenGeolocationAccessLevelPolicyHandler>());
-  handlers->AddHandler(std::make_unique<BooleanDisablingPolicyHandler>(
-      key::kSecondaryGoogleAccountSigninAllowed,
-      ::account_manager::prefs::kSecondaryGoogleAccountSigninAllowed));
   handlers->AddHandler(std::make_unique<SimpleSchemaValidatingPolicyHandler>(
       key::kUsageTimeLimit, ash::prefs::kUsageTimeLimit, chrome_schema,
       SCHEMA_ALLOW_UNKNOWN,
@@ -3475,6 +3470,12 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       SimpleSchemaValidatingPolicyHandler::RECOMMENDED_PROHIBITED,
       SimpleSchemaValidatingPolicyHandler::MANDATORY_ALLOWED));
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+  handlers->AddHandler(std::make_unique<BooleanDisablingPolicyHandler>(
+      key::kSecondaryGoogleAccountSigninAllowed,
+      policy::policy_prefs::kSecondaryGoogleAccountSigninAllowed));
+#endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_MAC)
   handlers->AddHandler(
@@ -3750,8 +3751,6 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-  handlers->AddHandler(
-      std::make_unique<GeminiEnterpriseSettingsPolicyHandler>(chrome_schema));
   handlers->AddHandler(std::make_unique<GeminiEnterpriseUrlPolicyHandler>());
 #endif
 

@@ -460,6 +460,9 @@ if (is_android) {
       "src/org/chromium/chrome/browser/UndoRefocusHelperTest.java",
       "src/org/chromium/chrome/browser/document/ChromeLauncherActivityTest.java",
       "src/org/chromium/chrome/browser/handoff/HandoffControllerUnitTest.java",
+      "src/org/chromium/chrome/browser/undo_tab_close_snackbar/UndoBarContentFactoryTest.java",
+      "src/org/chromium/chrome/browser/undo_tab_close_snackbar/UndoClosureSnapshotFactoryTest.java",
+      "src/org/chromium/chrome/browser/undo_tab_close_snackbar/UndoClosureSnapshotTest.java",
       "src/org/chromium/chrome/browser/usage_stats/UsageStatsServiceTest.java",
     ]
 
@@ -590,6 +593,7 @@ if (is_android) {
       ":chrome_junit_tests_helper",
       "//chrome/browser/page_content_annotations:factory_java",
       "//chrome/browser/page_content_annotations:java",
+      "//chrome/browser/ui/android/native_page:java",
     ]
   }
 
@@ -695,6 +699,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/compositor/overlays/strip/reorder/TabDragShadowBuilderUnitTest.java",
       "src/org/chromium/chrome/browser/compositor/overlays/strip/reorder/TabReorderStrategyTest.java",
       "src/org/chromium/chrome/browser/compositor/overlays/strip/reorder/TabStripDragHandlerTest.java",
+      "src/org/chromium/chrome/browser/compositor/overlays/strip/reorder/TabStripLinkDragDelegateTest.java",
       "src/org/chromium/chrome/browser/compositor/scene_layer/TabStripSceneLayerTest.java",
     ]
 
@@ -810,6 +815,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarButtonsViewBinderUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarColorControllerUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarCoordinatorUnitTest.java",
+      "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarTestUtils.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarUnitTest.java",
     ]
 
@@ -1210,7 +1216,6 @@ if (is_android) {
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/screenshot/ScreenshotShareSheetViewTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/scroll_capture/ScrollCaptureCallbackDelegateTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/scroll_capture/ScrollCaptureManagerTest.java",
-      "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/DevicePickerBottomSheetContentTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/EnhancedTargetDevicePickerMediatorTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/EnhancedTargetDevicePickerViewTest.java",
       "//chrome/browser/share/android/javatests/src/org/chromium/chrome/browser/share/send_tab_to_self/NotificationManagerTest.java",
@@ -1491,6 +1496,8 @@ if (is_android) {
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/color_picker/TabGroupColorPickerItemViewBinderUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/color_picker/TabGroupColorPickerMediatorUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/data_provider/FlatTabListDataProviderUnitTest.java",
+      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/data_provider/GroupedTabListDataProviderUnitTest.java",
+      "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/data_provider/TabListDataProviderTestBase.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/labels/SendTabToSelfTabLabellerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/labels/TabBubblerUnitTest.java",
       "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/labels/TabCardHighlightHandlerUnitTest.java",
@@ -1595,7 +1602,9 @@ if (is_android) {
 
     deps = [
       ":chrome_junit_tests_helper",
-      "//chrome/browser/safe_browsing/android:tips_java",
+      "//chrome/browser/lens:java",
+      "//chrome/browser/quick_delete:java",
+      "//chrome/browser/safe_browsing/android:java",
       "//chrome/browser/tips/android:java",
     ]
   }
@@ -1730,6 +1739,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/about_settings/AboutSettingsBridgeTest.java",
       "src/org/chromium/chrome/browser/accessibility/AccessibilityTabHelperTest.java",
       "src/org/chromium/chrome/browser/accessibility/PageZoomIphControllerTest.java",
+      "src/org/chromium/chrome/browser/accessibility/PageZoomMenuItemViewUnitTest.java",
       "src/org/chromium/chrome/browser/accessibility/settings/CaretBrowsingDialogTest.java",
       "src/org/chromium/chrome/browser/actor/ActorBackgroundActuationManagerTest.java",
       "src/org/chromium/chrome/browser/actor/ActorForegroundServiceControllerImplTest.java",
@@ -1823,6 +1833,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/safe_browsing/SafeBrowsingPasswordReuseDialogBridgeTest.java",
       "src/org/chromium/chrome/browser/safe_browsing/SafeBrowsingReferringAppBridgeTest.java",
       "src/org/chromium/chrome/browser/safe_browsing/SafeBrowsingSuspiciousSiteDialogBridgeTest.java",
+      "src/org/chromium/chrome/browser/selection/GlicSelectionMenuTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/selection/TextSelectionActionMenuDelegateTest.java",
       "src/org/chromium/chrome/browser/services/gcm/ChromeGcmListenerServiceImplTest.java",
       "src/org/chromium/chrome/browser/status_indicator/StatusIndicatorMediatorTest.java",

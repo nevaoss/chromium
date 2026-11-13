@@ -89,7 +89,6 @@
   E(kActionShowJsOptimizationsIcon) \
   E(kActionShowCookieControls) \
   E(kActionShowZoomBubble) \
-  E(kActionUnfocusTabGroup, IDC_UNFOCUS_TAB_GROUP) \
   E(kActionAddNewTabToGroup, IDC_ADD_NEW_TAB_TO_GROUP) \
   E(kActionCreateNewTabGroup, IDC_CREATE_NEW_TAB_GROUP) \
   E(kActionTabGroupOpenInBrowser) \
@@ -174,6 +173,7 @@
     IDC_CHROME_ENTERPRISE_RELEASE_NOTES) \
   E(kActionDevToolsInspect, IDC_DEV_TOOLS_INSPECT) \
   E(kActionUpgradeDialog, IDC_UPGRADE_DIALOG) \
+  E(kActionScheduledRestartDialog, IDC_SCHEDULED_RESTART_DIALOG) \
   E(kActionGlobalError) \
   E(kActionSetBrowserAsDefault, IDC_SET_BROWSER_AS_DEFAULT) \
   E(kActionProfilingEnabled, IDC_PROFILING_ENABLED) \
@@ -266,6 +266,7 @@
     IDC_CONTENT_CONTEXT_GLICSHAREIMAGE) \
   E(kActionContentContextGlicSmartSuggestion, \
     IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION) \
+  E(kActionContentContextIndigo, IDC_CONTENT_CONTEXT_INDIGO) \
   E(kActionContentContextTranslateImageWithWeb) \
   E(kActionContentContextTranslateImageWithLens) \
   /* Audio/video items. */ \
@@ -482,6 +483,12 @@
   E(kRestoreWindow, IDC_RESTORE_WINDOW) \
   E(kActionMoveWindow, IDC_MOVE_WINDOW) \
   E(kActionSizeWindow, IDC_SIZE_WINDOW)
+#elif BUILDFLAG(IS_ANDROID)
+#define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
+  E(kActionToggleMultiselect, IDC_TOGGLE_MULTISELECT) \
+  E(kActionOpenTabStripContextMenu, IDC_OPEN_TAB_STRIP_CONTEXT_MENU) \
+  E(kActionReorderTabStripItemLeft, IDC_REORDER_TAB_STRIP_ITEM_LEFT) \
+  E(kActionReorderTabStripItemRight, IDC_REORDER_TAB_STRIP_ITEM_RIGHT)
 #else
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS
 #endif  // BUILDFLAG(IS_CHROMEOS)

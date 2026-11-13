@@ -3,10 +3,10 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
 #html_wrapper_imports_end -->
 <div id="content">
   ${this.enableThreadsRail_ ?
-    html`<cr-left-hand-side id="forcedLhs"></cr-left-hand-side>` :
+    html`<cr-left-hand-side id="lhsWrapper"></cr-left-hand-side>` :
     ''}
   <div id="rhsWrapper">
-    <div id="rhsContent">
+    <div id="rhsContent" @scroll="${this.onRhsContentScroll_}">
       ${this.lazyRender_ && this.microsoftModuleEnabled_ ? html`
         <iframe id="microsoftAuth" src="${this.microsoftAuthIframePath_}"></iframe>
       ` : ''}
@@ -49,8 +49,6 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
             @open-lens-search="${this.onOpenLensSearch_}"
             @open-voice-search="${this.onOpenVoiceSearch_}" ?shown="${this.realboxShown_}"
             @context-menu-entrypoint-click="${this.onContextMenuEntrypointClick_}"
-            ?had-secondary-side="${this.realboxHadSecondarySide}"
-            @had-secondary-side-changed="${this.onRealboxHadSecondarySideChanged_}"
             ?can-show-secondary-side="${this.realboxCanShowSecondarySide}"
             ?compose-button-enabled="${this.composeButtonEnabled}"
             ?composebox-enabled="${this.composeboxEnabled}"
@@ -122,12 +120,14 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
               max-most-visited-tiles-in-expanded-state="${this.maxMostVisitedTilesInExpandedState_}"
               max-enterprise-shortcuts="${this.maxEnterpriseShortcuts_}"
               ?shortcuts-reorder-enabled="${this.shortcutsReorderEnabled_}"
+              .widthContainer="${this.enableThreadsRail_ ? this.rhsWrapper_ : null}"
               @most-visited-auto-removed="${this.onMostVisitedAutoRemoved_}">
           </cr-most-visited>
         ` : ''}
         ${this.modulesEnabled_ ? html`
           <ntp-modules id="modules"
               ?modules-shown-to-user="${this.modulesShownToUser}"
+              .widthContainer="${this.enableThreadsRail_ ? this.rhsWrapper_ : null}"
               @modules-shown-to-user-changed="${this.onModulesShownToUserChanged_}"
               @customize-module="${this.onCustomizeModule_}"
               @modules-loaded="${this.onModulesLoaded_}"
@@ -247,7 +247,7 @@ ${!this.ntpRealboxNextEnabled_ &&
   <div id="scrim"
       @click="${this.onScrimClick_}"></div>
 ` : ''}
-<svg>
+<svg width="0" height="0">
   <defs>
     <clipPath id="oneGoogleBarClipPath">
       <!-- Set an initial non-empty clip-path so the OneGoogleBar resize events

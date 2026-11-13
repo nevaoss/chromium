@@ -11,17 +11,17 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/scoped_observation.h"
 #include "base/strings/strcat.h"
-#include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
+#include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
-#include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
@@ -33,7 +33,6 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_delegate.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h"
-#include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.h"
 #include "chrome/browser/ui/views/tab_contents/chrome_web_contents_view_focus_helper.h"
 #include "chrome/browser/ui/views/toolbar/app_menu_control.h"
@@ -52,77 +51,6 @@
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
-
-#if BUILDFLAG(IS_LINUX)
-#include "ui/aura/window.h"
-#include "ui/aura/window_tree_host.h"
-#include "ui/views/widget/desktop_aura/desktop_window_tree_host_platform.h"
-#endif  // BUILDFLAG(IS_LINUX)
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "ui/aura/window.h"
-#include "ui/wm/core/window_util.h"
-#include "ui/wm/public/activation_client.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_WIN)
-#include <windows.h>
-
-#include "ui/views/win/hwnd_util.h"
-#endif  // BUILDFLAG(IS_WIN)
-
-namespace {
-
-// Returns whether the browser window, including child widgets such as the
-// popup and bubbles, is active. On Aura, the popup can keep Aura activation,
-// and the browser's paint-as-active state, even after the browser window
-// deactivates, so ask the platform or window manager directly. If that lookup
-// fails, the window is being torn down or is not fully set up, so treat it as
-// inactive rather than trusting paint-as-active.
-bool IsBrowserWindowActive(views::Widget* browser_widget) {
-  if (!browser_widget) {
-    return false;
-  }
-#if BUILDFLAG(IS_LINUX)
-  if (aura::Window* native_window = browser_widget->GetNativeWindow();
-      native_window && native_window->GetHost()) {
-    if (auto* host = views::DesktopWindowTreeHostPlatform::GetHostForWidget(
-            native_window->GetHost()->GetAcceleratedWidget())) {
-      return host->IsActive();
-    }
-  }
-  return false;
-#elif BUILDFLAG(IS_WIN)
-  if (HWND hwnd = views::HWNDForWidget(browser_widget)) {
-    // Windows owned by the browser window (e.g. bubbles) count as active.
-    HWND active_hwnd = ::GetActiveWindow();
-    return active_hwnd && (active_hwnd == hwnd ||
-                           ::GetAncestor(active_hwnd, GA_ROOTOWNER) == hwnd);
-  }
-  return false;
-#elif BUILDFLAG(IS_CHROMEOS)
-  // On Ash, every window shares one activation client, and activation moves
-  // between windows in a single step, so ask it directly. Paint-as-active
-  // briefly reports inactive during activation handoffs within the browser
-  // window (e.g. from the popup to the tab strip). The popup and bubbles are
-  // transient children of the browser window, so they count as active.
-  if (aura::Window* native_window = browser_widget->GetNativeWindow()) {
-    if (wm::ActivationClient* activation_client =
-            wm::GetActivationClient(native_window->GetRootWindow())) {
-      aura::Window* active_window = activation_client->GetActiveWindow();
-      return active_window &&
-             native_window->Contains(wm::GetTransientRoot(active_window));
-    }
-  }
-  return false;
-#else
-  // Mac (and any other platform) has no Aura activation mismatch, so
-  // paint-as-active tracks the browser window's activation.
-  return browser_widget->ShouldPaintAsActive();
-#endif
-}
-
-}  // namespace
 
 OmniboxPopupFullPresenter::OmniboxPopupFullPresenter(
     LocationBar* location_bar,
@@ -177,10 +105,15 @@ void OmniboxPopupFullPresenter::Show() {
 
   auto* controller =
       GetWebUIContent()->contents_wrapper()->GetWebUIController();
-  auto* handler = controller ? controller->omnibox_handler() : nullptr;
-  auto* omnibox_view = location_bar()->GetOmniboxView();
-  if (handler && omnibox_view) {
-    handler->SetAimButtonVisible(omnibox_view->AimButtonVisible());
+  if (auto* handler = controller ? controller->omnibox_handler() : nullptr) {
+    // Compute visibility from the omnibox state rather than reading the Views
+    // AIM chip. During a tab change, `Show()` runs before the location bar's
+    // page action container is rebound to the new tab, so the chip still
+    // reflects the deactivated previous tab and would report hidden, briefly
+    // hiding the AIM button on new tab creation.
+    handler->SetAimButtonVisible(
+        omnibox::AiModePageActionController::ShouldShowPageAction(
+            location_bar()->GetProfile(), *location_bar()));
   }
 
   views::Widget* browser_widget = GetBrowserWidget();
@@ -191,22 +124,6 @@ void OmniboxPopupFullPresenter::Show() {
       focus_manager && !browser_focus_manager_observation_.IsObserving()) {
     browser_focus_manager_observation_.Observe(focus_manager);
   }
-  if (browser_widget && !browser_paint_as_active_subscription_) {
-    // Catches the user leaving the browser window while neither the browser
-    // nor the popup widget is active (e.g. while a bubble is active). Posted
-    // because the popup releasing its paint-as-active lock on the browser and
-    // the browser widget becoming active are separate notifications, so a
-    // handoff between them can briefly report inactive.
-    //
-    // This only triggers the check. `IsBrowserWindowActive()` decides, and
-    // outside Mac it asks the platform instead of paint-as-active.
-    browser_paint_as_active_subscription_ =
-        browser_widget->RegisterPaintAsActiveChangedCallback(
-            base::BindPostTaskToCurrentDefault(base::BindRepeating(
-                &OmniboxPopupFullPresenter::BlurIfBrowserWindowInactive,
-                weak_factory_.GetWeakPtr())));
-  }
-
   if (GetWidget() && !popup_widget_observation_.IsObserving()) {
     popup_widget_observation_.Observe(GetWidget());
   }
@@ -234,7 +151,12 @@ void OmniboxPopupFullPresenter::Hide() {
   pending_focus_task_.Cancel();
   browser_widget_observation_.Reset();
   browser_focus_manager_observation_.Reset();
-  browser_paint_as_active_subscription_ = {};
+  // Cancel any pending context menu request, since the base `Hide()` only
+  // clears the content (which also cancels it) when it closes the widget. A
+  // request left pending could show the menu on a later activation.
+  if (auto* content = GetWebUIContent()) {
+    content->CancelPendingContextMenuRequest();
+  }
   app_menu_control_observation_.Reset();
   event_monitor_.reset();
   forward_events_timer_.Stop();
@@ -266,8 +188,7 @@ void OmniboxPopupFullPresenter::RequestFocus() {
 
   // Don't take focus in a browser window the user has left. Activating the
   // popup would pull the window back in front of the one the user switched to.
-  if (!GetWidget() || !ShouldReceiveFocus() ||
-      (!IsBrowserWindowActive(GetBrowserWidget()))) {
+  if (!GetWidget() || !ShouldReceiveFocus() || !CanTakeFocus()) {
     return;
   }
 
@@ -282,8 +203,12 @@ void OmniboxPopupFullPresenter::RequestFocus() {
 
   // Defer activation to the next event loop cycle to avoid re-entrant window
   // activation in Aura FocusController during tab switches or startup.
+  // A request made while the browser window is active must not take
+  // activation from a bubble that opens before the task runs.
+  const bool was_browser_or_popup_active = IsBrowserOrPopupActive();
   pending_focus_task_.Reset(base::BindOnce(
-      [](base::WeakPtr<OmniboxPopupFullPresenter> presenter) {
+      [](base::WeakPtr<OmniboxPopupFullPresenter> presenter,
+         bool was_browser_or_popup_active) {
         // Activation is deferred asynchronously. Re-verify that the presenter,
         // widget, and popup state remain valid, and that focus was not lost
         // (e.g., user clicked away into the web page or opened a menu) while
@@ -300,8 +225,10 @@ void OmniboxPopupFullPresenter::RequestFocus() {
           return;
         }
         // The browser window may have been deactivated while this task was
-        // queued (e.g. another window opened).
-        if (!IsBrowserWindowActive(presenter->GetBrowserWidget())) {
+        // queued (e.g. a bubble opened). Only a request made while a bubble
+        // already held activation may take activation from it.
+        if (was_browser_or_popup_active ? !presenter->IsBrowserOrPopupActive()
+                                        : !presenter->CanTakeFocus()) {
           return;
         }
         if (auto* focus_manager = presenter->GetWidget()->GetFocusManager()) {
@@ -313,7 +240,7 @@ void OmniboxPopupFullPresenter::RequestFocus() {
         }
         presenter->FocusPopupContent();
       },
-      weak_factory_.GetWeakPtr()));
+      weak_factory_.GetWeakPtr(), was_browser_or_popup_active));
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, pending_focus_task_.callback());
 }
@@ -467,19 +394,16 @@ void OmniboxPopupFullPresenter::NotifyEscapeKeyPressed() {
 void OmniboxPopupFullPresenter::OnWidgetActivationChanged(views::Widget* widget,
                                                           bool active) {
   if (!active) {
-    // The browser or popup widget deactivating may mean the user left the
-    // browser window. Check once activation settles, since handoffs between
-    // the browser, the popup, and bubbles deactivate one widget before
-    // activating the next. The paint-as-active subscription
-    // (`browser_paint_as_active_subscription_`) isn't enough on its own, since
-    // on Aura the popup can keep the browser painting as active after the
-    // platform window deactivates. See `IsBrowserWindowActive()`.
+    // The browser or popup widget deactivating may mean another window, such
+    // as a bubble, took activation. Check once activation settles, since
+    // handoffs between the browser and the popup deactivate one widget before
+    // activating the next. See `IsBrowserOrPopupActive()`.
     //
     // Must be posted before the stored focus view task below, so that the
     // omnibox is blurred by the time that task runs and it does nothing.
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
-        base::BindOnce(&OmniboxPopupFullPresenter::BlurIfBrowserWindowInactive,
+        base::BindOnce(&OmniboxPopupFullPresenter::BlurIfBrowserOrPopupInactive,
                        weak_factory_.GetWeakPtr()));
   }
 
@@ -487,9 +411,9 @@ void OmniboxPopupFullPresenter::OnWidgetActivationChanged(views::Widget* widget,
   if (widget == GetBrowserWidget()) {
     if (!active) {
       // When the browser window deactivates (e.g. due to focusing the WebUI
-      // popup or opening a bubble), we must cache the Omnibox view
-      // as the stored focus view. This ensures that when the browser window
-      // reactivates, the FocusManager restores focus to the Omnibox.
+      // popup), we must cache the Omnibox view as the stored focus view. This
+      // ensures that when the browser window reactivates, the FocusManager
+      // restores focus to the Omnibox.
       //
       // We must post this as a task because on macOS, native deactivation
       // events run *before* the FocusManager processes
@@ -530,6 +454,9 @@ void OmniboxPopupFullPresenter::OnWidgetActivationChanged(views::Widget* widget,
         }
       }
 #endif  // BUILDFLAG(IS_MAC)
+      if (auto* content = GetWebUIContent()) {
+        content->OnPopupWidgetActivationChanged(/*active=*/true);
+      }
       return;
     }
 
@@ -543,6 +470,10 @@ void OmniboxPopupFullPresenter::OnWidgetActivationChanged(views::Widget* widget,
           FROM_HERE, base::BindOnce(&OmniboxPopupFullPresenter::RequestFocus,
                                     weak_factory_.GetWeakPtr()));
       return;
+    }
+
+    if (auto* content = GetWebUIContent()) {
+      content->OnPopupWidgetActivationChanged(/*active=*/false);
     }
 
 #if BUILDFLAG(IS_MAC)
@@ -577,8 +508,8 @@ void OmniboxPopupFullPresenter::OnWidgetActivationChanged(views::Widget* widget,
   }
 }
 
-void OmniboxPopupFullPresenter::BlurIfBrowserWindowInactive() {
-  if (!IsBrowserWindowActive(delegate().GetLocationBarWidget())) {
+void OmniboxPopupFullPresenter::BlurIfBrowserOrPopupInactive() {
+  if (!IsBrowserOrPopupActive()) {
     BlurForWindowDeactivation();
   }
 }
@@ -626,7 +557,7 @@ void OmniboxPopupFullPresenter::AppMenuClosed() {
   // window. Don't refocus here, since `FocusManager::SetFocusedView()`
   // activates an inactive widget on non-Mac platforms and would steal
   // activation back.
-  if (!IsBrowserWindowActive(GetBrowserWidget())) {
+  if (!IsBrowserOrPopupActive()) {
     BlurForWindowDeactivation();
     return;
   }
@@ -683,15 +614,13 @@ void OmniboxPopupFullPresenter::OnDidChangeFocus(views::View* focused_before,
 
   // The popup holds activation, so the browser widget is inactive and
   // focusing `focused_now` usually activated it first (see
-  // `FocusManager::SetFocusedViewWithReason()`). On Aura this runs while that
+  // `FocusManager::SetFocusedViewWithReason()`). This runs while that
   // activation is handled, and `BrowserView::OnWidgetActivationChanged()`
   // runs right after. If a tab was switched while the widget was inactive,
   // `BrowserView::OnActiveTabChanged()` deferred restoring the new tab's
   // focus to this activation, so `BrowserView` is about to focus the view that
   // tab last stored (e.g. the omnibox), taking focus back from `focused_now`.
   // Store `focused_now` as the tab's focus so that the restore is a no-op.
-  // On macOS, `BrowserView` restores before `focused_now` is focused, so this
-  // never runs for it (b/571201192).
   if (content::WebContents* web_contents = location_bar()->GetWebContents()) {
     if (auto* focus_helper =
             ChromeWebContentsViewFocusHelper::FromWebContents(web_contents)) {
@@ -716,7 +645,7 @@ void OmniboxPopupFullPresenter::OnDidChangeFocus(views::View* focused_before,
   // in front of the window they switched to.
   if (views::Widget* browser_widget = GetBrowserWidget();
       browser_widget && !browser_widget->IsActive() &&
-      IsBrowserWindowActive(browser_widget)) {
+      IsBrowserOrPopupActive()) {
     browser_widget->Activate();
   }
 }
@@ -767,10 +696,10 @@ void OmniboxPopupFullPresenter::DeactivatePopupAndKillFocus(
         focus_manager->ClearFocus();
         break;
       case FocusAfterBlur::kNone:
-        // The user left the browser window. Only clear Views focus here as
-        // `ClearFocus()` also clears native focus, which on Windows calls
-        // `::SetFocus()` on the browser HWND and reactivates it, stealing
-        // activation back from the window the user switched to.
+        // Another window, such as a bubble, took activation. Only clear Views
+        // focus here as `ClearFocus()` also clears native focus, which on
+        // Windows calls `::SetFocus()` on the browser HWND and reactivates it,
+        // stealing activation back from that window.
         focus_manager->SetFocusedView(nullptr);
         break;
       case FocusAfterBlur::kCurrent:
@@ -799,6 +728,12 @@ void OmniboxPopupFullPresenter::DeactivatePopupAndKillFocus(
   }
 
   is_deactivating_ = false;
+}
+
+void OmniboxPopupFullPresenter::OnWidgetPresentedChanged(bool presented) {
+  if (auto* content = GetWebUIContent()) {
+    content->OnPopupWidgetPresentedChanged(presented);
+  }
 }
 
 void OmniboxPopupFullPresenter::WidgetDestroyed() {
@@ -847,8 +782,7 @@ void OmniboxPopupFullPresenter::OnEvent(const ui::Event& event) {
   }
 
   // If neither this window nor its popup is currently active, ignore the click.
-  if (!browser_widget->IsActive() &&
-      !(GetWidget() && GetWidget()->IsActive())) {
+  if (!IsBrowserOrPopupActive()) {
     return;
   }
 
@@ -904,6 +838,31 @@ void OmniboxPopupFullPresenter::OnEvent(const ui::Event& event) {
 OmniboxFullPopupWebUIContent* OmniboxPopupFullPresenter::GetWebUIContent() {
   return static_cast<OmniboxFullPopupWebUIContent*>(
       OmniboxPopupPresenterBase::GetWebUIContent());
+}
+
+bool OmniboxPopupFullPresenter::IsBrowserOrPopupActive() {
+  views::Widget* browser_widget = GetBrowserWidget();
+  if (!browser_widget) {
+    return false;
+  }
+  return browser_widget->IsActive() ||
+         (GetWidget() && GetWidget()->IsActive());
+}
+
+bool OmniboxPopupFullPresenter::CanTakeFocus() {
+  if (IsBrowserOrPopupActive()) {
+    return true;
+  }
+#if BUILDFLAG(IS_MAC)
+  // A focus request can arrive while a bubble anchored to the browser window
+  // still holds activation, e.g. one that doesn't move Views focus and so
+  // doesn't activate the browser window first. The user hasn't left the
+  // window, and paint-as-active stays true while such a child widget is active.
+  views::Widget* browser_widget = GetBrowserWidget();
+  return browser_widget && browser_widget->ShouldPaintAsActive();
+#else
+  return false;
+#endif  // BUILDFLAG(IS_MAC)
 }
 
 views::Widget* OmniboxPopupFullPresenter::GetBrowserWidget() {

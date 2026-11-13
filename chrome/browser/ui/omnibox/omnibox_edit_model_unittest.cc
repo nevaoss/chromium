@@ -8,10 +8,12 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
@@ -27,6 +29,7 @@
 #include "chrome/browser/ui/omnibox/test_omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/test_omnibox_popup_view.h"
 #include "chrome/browser/ui/omnibox/test_omnibox_view.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/mock_contextual_search_service.h"
@@ -42,6 +45,8 @@
 #include "components/omnibox/browser/autocomplete_enums.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/fake_autocomplete_controller.h"
+#include "components/omnibox/browser/omnibox_event_global_tracker.h"
+#include "components/omnibox/browser/omnibox_log.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/browser/omnibox_triggered_feature_service.h"
 #include "components/omnibox/browser/open_tab_provider.h"
@@ -416,6 +421,45 @@ TEST_F(OmniboxEditModelTest, CurrentMatch) {
     // Additionally verify we aren't accidentally dropping the HTTPS scheme.
     EXPECT_EQ("https://www.google.com/", match.destination_url.spec());
   }
+}
+
+// Classifying empty text never yields a match, so the `AutocompleteClassifier`
+// should not be requested for it. This keeps the classifier from being created
+// while the browser window is being created.
+TEST_F(OmniboxEditModelTest, CurrentMatchForEmptyTextSkipsClassifier) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kLazyKeyedServiceInstantiation);
+
+  location_bar_model()->set_url(GURL());
+  location_bar_model()->set_url_for_display(std::u16string());
+  model()->ResetDisplayTexts();
+  model()->Revert();
+  ASSERT_EQ(std::u16string(), view()->GetText());
+
+  const int classifier_count = client()->get_autocomplete_classifier_count();
+  GURL alternate_nav_url("https://example.com/");
+  AutocompleteMatch match =
+      model()->CurrentMatchAndAlternateNavUrl(&alternate_nav_url);
+  EXPECT_FALSE(match.destination_url.is_valid());
+  EXPECT_FALSE(alternate_nav_url.is_valid());
+  EXPECT_EQ(classifier_count, client()->get_autocomplete_classifier_count());
+}
+
+TEST_F(OmniboxEditModelTest, CurrentMatchForEmptyTextUsesClassifierByDefault) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kLazyKeyedServiceInstantiation);
+
+  location_bar_model()->set_url(GURL());
+  location_bar_model()->set_url_for_display(std::u16string());
+  model()->ResetDisplayTexts();
+  model()->Revert();
+  ASSERT_EQ(std::u16string(), view()->GetText());
+
+  const int classifier_count = client()->get_autocomplete_classifier_count();
+  AutocompleteMatch match = model()->CurrentMatch();
+  EXPECT_FALSE(match.destination_url.is_valid());
+  EXPECT_EQ(classifier_count + 1,
+            client()->get_autocomplete_classifier_count());
 }
 
 TEST_F(OmniboxEditModelTest, DisplayText) {
@@ -1445,6 +1489,92 @@ TEST_F(OmniboxEditModelPopupTest, OpenActionSelectionLogsOmniboxEvent) {
   histogram_tester.ExpectUniqueSample("Omnibox.EventCount", 1, 1);
 }
 #endif
+
+// Ctrl+Enter on a popup line, as the WebUI omnibox sends it, opens the
+// generated .com URL. As with Ctrl+Enter in the Views omnibox, the log should
+// hold only that URL, not the popup's matches.
+TEST_F(OmniboxEditModelPopupTest, CtrlEnterOnPopupLineLogsGeneratedUrlMatch) {
+  view_->SetUserText(u"google");
+  model()->StartAutocomplete(false);
+  controller()->autocomplete_controller()->Stop(
+      AutocompleteStopReason::kInteraction);
+
+  // Show a search suggestion on line 0 of the open popup.
+  AutocompleteMatch search_match(
+      controller()->autocomplete_controller()->search_provider(), 1000, false,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped);
+  search_match.destination_url = GURL("https://www.google.com/search?q=google");
+  search_match.allowed_to_be_default_match = true;
+  AutocompleteResult* result = &AutocompleteControllerPublishedResult();
+  result->Reset();
+  result->AppendMatches({search_match});
+  model()->OnPopupResultChanged();
+
+  std::vector<GURL> logged_urls;
+  std::optional<OmniboxPopupSelection> logged_selection;
+  base::CallbackListSubscription subscription =
+      OmniboxEventGlobalTracker::GetInstance()->RegisterCallback(
+          base::BindLambdaForTesting([&](OmniboxLog* log) {
+            logged_selection = log->selection;
+            for (const AutocompleteMatch& match : *log->result) {
+              logged_urls.push_back(match.destination_url);
+            }
+          }));
+
+  EXPECT_CALL(*client(),
+              OnAutocompleteAccept(GURL("http://www.google.com/"), _,
+                                   WindowOpenDisposition::CURRENT_TAB, _, _, _,
+                                   _, _, _, _, _))
+      .Times(1);
+  model()->OpenSelection(
+      OmniboxPopupSelection(0, OmniboxPopupSelection::LineState::kCtrlEnter));
+
+  EXPECT_THAT(logged_urls,
+              testing::ElementsAre(GURL("http://www.google.com/")));
+  EXPECT_EQ(OmniboxPopupSelection(0), logged_selection);
+}
+
+// When no .com URL can be generated, Ctrl+Enter opens the selected popup match,
+// and the log keeps the popup's matches and selection.
+TEST_F(OmniboxEditModelPopupTest, CtrlEnterWithoutDotComUrlLogsPopupMatches) {
+  view_->SetUserText(u"foo bar");
+  model()->StartAutocomplete(false);
+  controller()->autocomplete_controller()->Stop(
+      AutocompleteStopReason::kInteraction);
+
+  const GURL search_url("https://www.google.com/search?q=foo+bar");
+  AutocompleteMatch search_match(
+      controller()->autocomplete_controller()->search_provider(), 1000, false,
+      omnibox::AutocompleteMatchType::kSearchWhatYouTyped);
+  search_match.destination_url = search_url;
+  search_match.allowed_to_be_default_match = true;
+  AutocompleteResult* result = &AutocompleteControllerPublishedResult();
+  result->Reset();
+  result->AppendMatches({search_match});
+  model()->OnPopupResultChanged();
+
+  std::vector<GURL> logged_urls;
+  std::optional<OmniboxPopupSelection> logged_selection;
+  base::CallbackListSubscription subscription =
+      OmniboxEventGlobalTracker::GetInstance()->RegisterCallback(
+          base::BindLambdaForTesting([&](OmniboxLog* log) {
+            logged_selection = log->selection;
+            for (const AutocompleteMatch& match : *log->result) {
+              logged_urls.push_back(match.destination_url);
+            }
+          }));
+
+  const OmniboxPopupSelection selection(
+      0, OmniboxPopupSelection::LineState::kCtrlEnter);
+  EXPECT_CALL(*client(), OnAutocompleteAccept(
+                             search_url, _, WindowOpenDisposition::CURRENT_TAB,
+                             _, _, _, _, _, _, _, _))
+      .Times(1);
+  model()->OpenSelection(selection);
+
+  EXPECT_THAT(logged_urls, testing::ElementsAre(search_url));
+  EXPECT_EQ(selection, logged_selection);
+}
 
 TEST_F(OmniboxEditModelPopupTest, OpenThumbsDownSelectionShowsFeedback) {
   // Set the input on the controller.

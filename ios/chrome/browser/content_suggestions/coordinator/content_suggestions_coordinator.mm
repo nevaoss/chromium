@@ -457,13 +457,17 @@ using segmentation_platform::TipIdentifier;
 
   if (areTipsCardsEnabled) {
     _tipsMediator = [[TipsMagicStackMediator alloc]
-        initWithIdentifier:TipIdentifier::kUnknown
-        profilePrefService:prefs
-           shoppingService:commerce::ShoppingServiceFactory::GetForProfile(
-                               profile)
-             bookmarkModel:ios::BookmarkModelFactory::GetForProfile(profile)
-              imageFetcher:std::make_unique<image_fetcher::ImageDataFetcher>(
-                               profile->GetSharedURLLoaderFactory())];
+                    initWithIdentifier:TipIdentifier::kUnknown
+                    profilePrefService:prefs
+                       shoppingService:commerce::ShoppingServiceFactory::
+                                           GetForProfile(profile)
+                         bookmarkModel:ios::BookmarkModelFactory::GetForProfile(
+                                           profile)
+                          imageFetcher:std::make_unique<
+                                           image_fetcher::ImageDataFetcher>(
+                                           profile->GetSharedURLLoaderFactory())
+        backgroundCustomizationService:
+            HomeBackgroundCustomizationServiceFactory::GetForProfile(profile)];
     _tipsMediator.presentationAudience = self;
     [moduleMediators addObject:_tipsMediator];
 
@@ -724,6 +728,21 @@ using segmentation_platform::TipIdentifier;
 - (void)didSelectTip:(segmentation_platform::TipIdentifier)tip {
   CHECK(_tipsMediator);
 
+  // Log the Tips (Magic Stack) Module tap immediately before starting the
+  // removal animation so click metrics are not dropped if the animation is
+  // interrupted.
+  base::UmaHistogramEnumeration(kTipsMagicStackModuleTappedTypeHistogram, tip);
+  [self.NTPActionsDelegate tipsOpened];
+
+  std::optional<std::string_view> name = OutputLabelForTipIdentifier(tip);
+  if (name.has_value()) {
+    segmentation_platform::home_modules::HomeModulesCardRegistry* registry =
+        segmentation_platform::SegmentationPlatformServiceFactory::
+            GetHomeCardRegistryForProfile(self.profile);
+    CHECK(registry);
+    registry->NotifyCardInteracted(std::string(name.value()).c_str());
+  }
+
   __weak __typeof(self) weakSelf = self;
 
   ProceduralBlock completion = ^{
@@ -763,8 +782,6 @@ using segmentation_platform::TipIdentifier;
 - (void)openTipDestination:(segmentation_platform::TipIdentifier)tip {
   CHECK(_tipsMediator);
   [self.customizationDelegate dismissCustomizationMenu];
-  // Log the Tips (Magic Stack) Module that the user tapped on.
-  base::UmaHistogramEnumeration(kTipsMagicStackModuleTappedTypeHistogram, tip);
   switch (tip) {
     case TipIdentifier::kUnknown:
       NOTREACHED();
@@ -826,8 +843,6 @@ using segmentation_platform::TipIdentifier;
       break;
     }
     case TipIdentifier::kNTPTheme: {
-      CHECK(!segmentation_platform::features::
-                IsMagicStackTipsV2IosActionableEnabled());
       [self.delegate openMainCustomizationMenuWithIconBubbleOnDismiss:YES
                                                        scrollToBottom:NO];
       break;
@@ -850,20 +865,6 @@ using segmentation_platform::TipIdentifier;
       break;
     }
   }
-
-  [self.NTPActionsDelegate tipsOpened];
-
-  std::optional<std::string_view> name = OutputLabelForTipIdentifier(tip);
-
-  if (name.has_value()) {
-    segmentation_platform::home_modules::HomeModulesCardRegistry* registry =
-        segmentation_platform::SegmentationPlatformServiceFactory::
-            GetHomeCardRegistryForProfile(self.profile);
-
-    CHECK(registry);
-
-    registry->NotifyCardInteracted(std::string(name.value()).c_str());
-  }
 }
 
 - (void)didSelectNTPThemePhotoPicker {
@@ -885,7 +886,6 @@ using segmentation_platform::TipIdentifier;
 }
 
 - (void)logEphemeralCardVisibility:(ContentSuggestionsModuleType)card {
-  UMA_HISTOGRAM_ENUMERATION(kMagicStackTopModuleImpressionHistogram, card);
   segmentation_platform::home_modules::HomeModulesCardRegistry* registry =
       segmentation_platform::SegmentationPlatformServiceFactory::
           GetHomeCardRegistryForProfile(self.profile);
@@ -900,7 +900,8 @@ using segmentation_platform::TipIdentifier;
           segmentation_platform::kSendTabNotificationPromo);
       break;
     case ContentSuggestionsModuleType::kTipsWithProductImage:
-    case ContentSuggestionsModuleType::kTips: {
+    case ContentSuggestionsModuleType::kTips:
+    case ContentSuggestionsModuleType::kTipsNTPThemeActionable: {
       CHECK(_tipsMediator);
       std::optional<std::string_view> name =
           OutputLabelForTipIdentifier(_tipsMediator.config.identifier);
@@ -958,6 +959,9 @@ using segmentation_platform::TipIdentifier;
       [priceNotificationsCommands showPriceTrackedItems];
       break;
     }
+    case ContentSuggestionsModuleType::kTipsNTPThemeActionable:
+      [self didSelectTip:segmentation_platform::TipIdentifier::kNTPTheme];
+      break;
     default:
       break;
   }
@@ -995,7 +999,8 @@ using segmentation_platform::TipIdentifier;
     case ContentSuggestionsModuleType::kTipsWithProductImage:
     case ContentSuggestionsModuleType::kTips:
     case ContentSuggestionsModuleType::kAppBundlePromo:
-    case ContentSuggestionsModuleType::kDefaultBrowser: {
+    case ContentSuggestionsModuleType::kDefaultBrowser:
+    case ContentSuggestionsModuleType::kTipsNTPThemeActionable: {
       // Disable all cards with "Chrome Tips" header.
       [self disableTipsModules];
       break;
@@ -1086,6 +1091,7 @@ using segmentation_platform::TipIdentifier;
       return NotificationOptInAccessPoint::kSetUpList;
     case ContentSuggestionsModuleType::kTipsWithProductImage:
     case ContentSuggestionsModuleType::kTips:
+    case ContentSuggestionsModuleType::kTipsNTPThemeActionable:
     case ContentSuggestionsModuleType::kAppBundlePromo:
     case ContentSuggestionsModuleType::kDefaultBrowser:
       return NotificationOptInAccessPoint::kTips;

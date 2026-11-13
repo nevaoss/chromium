@@ -771,8 +771,6 @@ public class BottomSheetSigninAndHistorySyncIntegrationTest {
 
     @Test
     @MediumTest
-    // TODO(crbug.com/572883184): Re-enable.
-    @DisableIf.Build(sdk_is_less_than = Build.VERSION_CODES.R)
     public void testWithNoAccount_bottomSheetSignin_requiredHistorySync() {
         launchActivity(
                 NoAccountSigninMode.BOTTOM_SHEET,
@@ -1034,6 +1032,8 @@ public class BottomSheetSigninAndHistorySyncIntegrationTest {
 
     @Test
     @MediumTest
+    @DisableIf.Build(
+            sdk_is_less_than = Build.VERSION_CODES.R) // TODO(crbug.com/573646619): Re-enable.
     public void testDelegatePostSigninGeneralError_retrySuccess() {
         mSigninTestRule.addAccount(TestAccounts.ACCOUNT1);
 

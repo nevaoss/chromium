@@ -68,7 +68,6 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.ActivityTabProvider.ActivityTabTabObserver;
 import org.chromium.chrome.browser.IntentHandler;
-import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.back_press.BackPressMetrics;
 import org.chromium.chrome.browser.back_press.BackPressMetrics.NavigationDirection;
@@ -93,6 +92,7 @@ import org.chromium.chrome.browser.customtabs.features.toolbar.CustomTabToolbar;
 import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.dom_distiller.DomDistillerTabUtils;
 import org.chromium.chrome.browser.download.DownloadFeatures;
+import org.chromium.chrome.browser.download.DownloadStateModel;
 import org.chromium.chrome.browser.download.DownloadToolbarButtonController;
 import org.chromium.chrome.browser.download.DownloadToolbarButtonState;
 import org.chromium.chrome.browser.download.items.OfflineContentAggregatorFactory;
@@ -170,6 +170,7 @@ import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManager;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetUtils;
+import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tab_ui.TabModelDotInfo;
 import org.chromium.chrome.browser.tab_ui.TabSwitcherUtils;
@@ -180,6 +181,7 @@ import org.chromium.chrome.browser.tabmodel.TabCreatorUtil;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabstrip.TabStripTopControlLayer;
+import org.chromium.chrome.browser.tasks.tab_management.GroupWindowChecker;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupUi;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupUiOneshotSupplier;
 import org.chromium.chrome.browser.theme.BottomUiThemeColorProvider;
@@ -273,6 +275,7 @@ import org.chromium.components.page_info.PageInfoController.OpenedFromSource;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
+import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.NavigationEntry;
@@ -454,6 +457,7 @@ public class ToolbarManager
     private @MonotonicNonNull ForwardButtonCoordinator mForwardButtonCoordinator;
     private @Nullable ExtensionsToolbarCoordinator mExtensionsToolbarCoordinator;
 
+    private @Nullable DownloadStateModel mDownloadStateModel;
     private @Nullable DownloadToolbarButtonController mDownloadToolbarButtonController;
     private final Callback<DownloadToolbarButtonState> mDownloadButtonStateObserver =
             mDownloadButtonStateSupplier::set;
@@ -2924,13 +2928,11 @@ public class ToolbarManager
         PictureInPictureWindowManagerBridge.initializeWithNative();
 
         if (DownloadFeatures.isDownloadToolbarButtonEnabled()) {
-            // The offline content aggregator requires native, so the controller is created
-            // here and bridged to the toolbar via mDownloadButtonStateSupplier.
-            // TODO(crbug.com/570641245): Consolidate download state observation into a shared
-            // model (seed-on-attach, single OfflineContentProvider observer) instead of the
-            // controller observing the aggregator directly alongside DownloadMessageUiController.
+            // The offline content aggregator requires native, so the model and controller are
+            // created here and bridged to the toolbar via mDownloadButtonStateSupplier.
+            mDownloadStateModel = new DownloadStateModel(OfflineContentAggregatorFactory.get());
             mDownloadToolbarButtonController =
-                    new DownloadToolbarButtonController(OfflineContentAggregatorFactory.get());
+                    new DownloadToolbarButtonController(mDownloadStateModel);
             mDownloadToolbarButtonController
                     .getStateSupplier()
                     .addSyncObserverAndCall(mDownloadButtonStateObserver);
@@ -2978,6 +2980,14 @@ public class ToolbarManager
         MenuButton button = mMenuButtonCoordinator.getMenuButton();
         if (button == null) return null;
         return button.getImageButton();
+    }
+
+    /**
+     * Returns the download button view, or null if the button is not present or not yet inflated.
+     */
+    // TODO(crbug.com/564646561): Use this view to anchor the downloads tray.
+    public @Nullable View getDownloadButtonView() {
+        return mToolbar.getDownloadButtonView();
     }
 
     /**
@@ -3154,6 +3164,11 @@ public class ToolbarManager
                     .removeObserver(mDownloadButtonStateObserver);
             mDownloadToolbarButtonController.destroy();
             mDownloadToolbarButtonController = null;
+        }
+
+        if (mDownloadStateModel != null) {
+            mDownloadStateModel.destroy();
+            mDownloadStateModel = null;
         }
 
         if (mOverviewModeMenuButtonCoordinator != null) {
@@ -4129,7 +4144,19 @@ public class ToolbarManager
                 menuItemId -> mAppMenuDelegate.onOptionsItemSelected(menuItemId, null),
                 profile,
                 mTabModelSelectorSupplier,
-                TabWindowManagerSingleton.getInstance());
+                (tabModel, currentTabGroupId) -> {
+                    Profile modelProfile = tabModel.getProfile();
+                    if (modelProfile == null) {
+                        return false;
+                    }
+                    TabGroupSyncService syncService =
+                            !modelProfile.isOffTheRecord()
+                                    ? TabGroupSyncServiceFactory.getForProfile(modelProfile)
+                                    : null;
+                    GroupWindowChecker windowChecker =
+                            new GroupWindowChecker(mActivity, syncService, tabModel);
+                    return windowChecker.hasOtherGroups(currentTabGroupId);
+                });
     }
 
     @Nullable HubExitNavigationHelper getHubExitNavigationHelperForTesting() {

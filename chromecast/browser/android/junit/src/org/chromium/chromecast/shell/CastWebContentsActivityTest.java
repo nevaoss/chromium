@@ -33,6 +33,7 @@ import android.content.res.Configuration;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.PatternMatcher;
+import android.os.PowerManager;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Window;
@@ -64,6 +65,7 @@ import org.robolectric.shadows.ShadowActivity;
 import org.robolectric.shadows.ShadowActivityManager;
 import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowPackageManager;
+import org.robolectric.shadows.ShadowPowerManager;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.DeviceInfo;
@@ -175,6 +177,7 @@ public class CastWebContentsActivityTest {
     private int mNextMediaId;
     private Application mApplication;
     private ShadowActivityManager mShadowActivityManager;
+    private ShadowPowerManager mShadowPowerManager;
     private ShadowPackageManager mShadowPackageManager;
     private ActivityController<CastWebContentsActivity> mActivityLifecycle;
     private CastWebContentsActivity mActivity;
@@ -199,6 +202,11 @@ public class CastWebContentsActivityTest {
                         (ActivityManager)
                                 RuntimeEnvironment.application.getSystemService(
                                         Context.ACTIVITY_SERVICE));
+        mShadowPowerManager =
+                Shadows.shadowOf(
+                        (PowerManager)
+                                RuntimeEnvironment.application.getSystemService(
+                                        Context.POWER_SERVICE));
         mShadowPackageManager =
                 Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager());
         mActivityLifecycle =
@@ -335,6 +343,30 @@ public class CastWebContentsActivityTest {
 
         Assert.assertTrue(shadowActivity.getTurnScreenOn());
         Assert.assertTrue(shadowActivity.getShowWhenLocked());
+    }
+
+    @Test
+    @Config(shadows = {ExtendedShadowActivity.class})
+    public void testRemovesTurnScreenOnFlagsOnScreenOff() {
+        mActivityLifecycle =
+                Robolectric.buildActivity(
+                        CastWebContentsActivity.class,
+                        CastWebContentsIntentUtils.requestStartCastActivity(
+                                mWebContents, true, false, true, false, "0"));
+        mActivity = mActivityLifecycle.get();
+        mActivity.testingModeForTesting();
+        ExtendedShadowActivity shadowActivity = (ExtendedShadowActivity) Shadow.extract(mActivity);
+        mActivityLifecycle.create();
+
+        Assert.assertTrue(shadowActivity.getTurnScreenOn());
+        Assert.assertTrue(shadowActivity.getShowWhenLocked());
+
+        Intent intent = new Intent(Intent.ACTION_SCREEN_OFF);
+        RuntimeEnvironment.application.sendBroadcast(intent);
+        ShadowLooper.idleMainLooper();
+
+        Assert.assertFalse(shadowActivity.getTurnScreenOn());
+        Assert.assertFalse(shadowActivity.getShowWhenLocked());
     }
 
     @Test
@@ -505,6 +537,7 @@ public class CastWebContentsActivityTest {
     public void testStopWhileInPipModeDoesNotCloseActivity() {
         mShadowPackageManager.setSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE, true);
         mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_NONE);
+        mShadowPowerManager.setIsInteractive(false);
         mActivityLifecycle.create().start().resume();
         updateMediaState(true, true);
         mActivity.onUserLeaveHint();
@@ -519,7 +552,27 @@ public class CastWebContentsActivityTest {
     }
 
     @Test
-    public void testStopWhileNoMediaPlayingClosesActivity() {
+    @Config(shadows = {ExtendedShadowActivity.class})
+    public void testStopWhileInPipModeWithScreenOnClosesActivity() {
+        mShadowPackageManager.setSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE, true);
+        mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_NONE);
+        mShadowPowerManager.setIsInteractive(true);
+        mActivityLifecycle.create().start().resume();
+        updateMediaState(true, true);
+        mActivity.onUserLeaveHint();
+        mActivity.onPictureInPictureModeChanged(true, null);
+        verifyBroadcastedIntent(
+                filterFor(CastWebContentsIntentUtils.ACTION_ACTIVITY_STOPPED),
+                () -> {
+                    mActivityLifecycle.pause().stop();
+                    assertTrue(mActivity.isFinishing());
+                },
+                true);
+    }
+
+    @Test
+    public void testStopWhileNoMediaPlayingOnTvClosesActivity() {
+        DeviceInfo.setIsTVForTesting(true);
         mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_NONE);
         mActivityLifecycle.create().start().resume();
         updateMediaState(false, false);
@@ -530,6 +583,21 @@ public class CastWebContentsActivityTest {
                     assertTrue(mActivity.isFinishing());
                 },
                 true);
+    }
+
+    @Test
+    public void testStopWhileNoMediaPlayingOnNonTvDoesNotCloseActivity() {
+        DeviceInfo.setIsTVForTesting(false);
+        mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_NONE);
+        mActivityLifecycle.create().start().resume();
+        updateMediaState(false, false);
+        verifyBroadcastedIntent(
+                filterFor(CastWebContentsIntentUtils.ACTION_ACTIVITY_STOPPED),
+                () -> {
+                    mActivity.onUserLeaveHint();
+                    assertFalse(mActivity.isFinishing());
+                },
+                false);
     }
 
     @Test
@@ -558,6 +626,19 @@ public class CastWebContentsActivityTest {
                 () -> {
                     mActivity.onUserLeaveHint();
                     assertTrue(mActivity.isFinishing());
+                },
+                true);
+    }
+
+    @Test
+    public void testStopWhenIsFinishingClosesActivity() {
+        mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_NONE);
+        mActivityLifecycle.create().start().resume();
+        verifyBroadcastedIntent(
+                filterFor(CastWebContentsIntentUtils.ACTION_ACTIVITY_STOPPED),
+                () -> {
+                    mActivity.finish();
+                    mActivityLifecycle.pause().stop();
                 },
                 true);
     }
@@ -622,11 +703,23 @@ public class CastWebContentsActivityTest {
     }
 
     @Test
-    public void testKeepsScreenOnInLockTaskMode() {
+    public void testKeepsScreenOnInLockTaskModeOnTv() {
+        DeviceInfo.setIsTVForTesting(true);
         mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_PINNED);
         mActivityLifecycle.create().start().resume();
 
         Assert.assertTrue(
+                Shadows.shadowOf(mActivityLifecycle.get().getWindow())
+                        .getFlag(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
+    }
+
+    @Test
+    public void testDoesNotKeepScreenOnInLockTaskModeOnNonTv() {
+        DeviceInfo.setIsTVForTesting(false);
+        mShadowActivityManager.setLockTaskModeState(ActivityManager.LOCK_TASK_MODE_PINNED);
+        mActivityLifecycle.create().start().resume();
+
+        Assert.assertFalse(
                 Shadows.shadowOf(mActivityLifecycle.get().getWindow())
                         .getFlag(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON));
     }
@@ -690,6 +783,7 @@ public class CastWebContentsActivityTest {
     @Test
     @SuppressWarnings("unchecked") // mock(Observer.class) returns raw Observer.
     public void testSurfaceAvailable() {
+        DeviceInfo.setIsTVForTesting(true);
         Observer<Unit> observer = mock(Observer.class);
         Scope scope = mock(Scope.class);
         when(observer.open(any())).thenReturn(scope);
@@ -741,6 +835,32 @@ public class CastWebContentsActivityTest {
         updateMediaState(false, false);
         // State: Undocked & No Media Playing
         assertWakeLockFlags(false, false);
+    }
+
+    @Test
+    public void testDoesNotAddRequiredFlagsForDockedAndAudioPlaying() {
+        DeviceInfo.setIsTVForTesting(false);
+        mActivityLifecycle =
+                Robolectric.buildActivity(
+                        CastWebContentsActivity.class,
+                        CastWebContentsIntentUtils.requestStartCastActivity(
+                                mWebContents, true, false, true, /* keepScreenOn= */ false, "0"));
+        mActivity = mActivityLifecycle.get();
+        mActivity.testingModeForTesting();
+        mActivityLifecycle.create();
+        // RuntimeEnvironment.application
+        updateDockState(false);
+        updateMediaState(false, false);
+        // State: Undocked & No Media Playing
+        assertWakeLockFlags(false, false);
+        // Audio Starts playing
+        updateMediaState(true, false);
+        // State: Undocked & Audio Playing
+        assertWakeLockFlags(false, false);
+        // Device docked
+        updateDockState(true);
+        // State: Docked & Audio Playing (Should NOT keep screen on, but should allow lock)
+        assertWakeLockFlags(false, true);
     }
 
     @Test

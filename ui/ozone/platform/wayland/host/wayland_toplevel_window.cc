@@ -67,7 +67,10 @@ WaylandToplevelWindow::WaylandToplevelWindow(PlatformWindowDelegate* delegate,
   SetWmMoveResizeHandler(this, AsWmMoveResizeHandler());
 }
 
-WaylandToplevelWindow::~WaylandToplevelWindow() = default;
+WaylandToplevelWindow::~WaylandToplevelWindow() {
+  // Child popups must be unmapped before `xdg_toplevel_` is destroyed.
+  HideChildPopups();
+}
 
 bool WaylandToplevelWindow::CreateXdgToplevel() {
 #if BUILDFLAG(IS_WEBOS)
@@ -181,10 +184,12 @@ void WaylandToplevelWindow::Hide() {
     return;
   }
 
-  if (child_popup()) {
-    child_popup()->Hide();
-    set_child_popup(nullptr);
+  auto weak_this = AsWeakPtr();
+  HideChildPopups();
+  if (!weak_this || !xdg_toplevel_) {
+    return;
   }
+  set_child_popup(nullptr);
   for (auto bubble : child_bubbles()) {
     bubble->Hide();
   }
@@ -233,6 +238,24 @@ void WaylandToplevelWindow::SetTitle(const std::u16string& title) {
 
   if (xdg_toplevel_) {
     xdg_toplevel_->SetTitle(title);
+    connection()->Flush();
+  }
+}
+
+void WaylandToplevelWindow::SetWindowClass(const std::string& wm_class_name,
+                                           const std::string& wm_class_class,
+                                           const std::string& wayland_app_id) {
+  if (app_id_ == wayland_app_id) {
+    return;
+  }
+
+  app_id_ = wayland_app_id;
+
+  // Unlike most xdg_toplevel state, the app_id isn't double-buffered, and may
+  // be changed at any time. Compositors re-evaluate the window's application
+  // when it changes.
+  if (xdg_toplevel_) {
+    xdg_toplevel_->SetAppId(app_id_);
     connection()->Flush();
   }
 }

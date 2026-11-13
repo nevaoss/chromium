@@ -109,6 +109,13 @@ TabDragContext* DraggedTabsContainer::OnTabDragUpdated(
 }
 
 void DraggedTabsContainer::ApplyUpdatesForDragPositionChange() {
+  // `on_scrolled_subscription_` can trigger this callback during drag teardown
+  // (e.g. when restoring focus or selection scrolls the tab strip) after the
+  // drag has already stopped.
+  if (!GetDragHandler().IsDragging()) {
+    return;
+  }
+
   gfx::Point point_in_container = views::View::ConvertPointFromScreen(
       base::to_address(host_view_), last_drag_point_in_screen_);
 
@@ -222,6 +229,8 @@ void DraggedTabsContainer::InitializeDragState(
   BuildDragLayout(session_data);
 
   InitializeDragStartAnimation(controller);
+  // Recalculate the target layout now that `dragging_views_` is populated.
+  UpdateTargetLayoutForDrag({});
 }
 
 void DraggedTabsContainer::InitializeDragStartAnimation(
@@ -442,6 +451,9 @@ void DraggedTabsContainer::ResetDragState() {
   last_move_drag_x_ = std::nullopt;
 
   on_scrolled_subscription_.reset();
+  // Invalidate layout after clearing `dragging_views_` so views animate to
+  // their final slots.
+  host_view_->InvalidateLayout();
 }
 
 void DraggedTabsContainer::UpdateDraggingViewTransforms(

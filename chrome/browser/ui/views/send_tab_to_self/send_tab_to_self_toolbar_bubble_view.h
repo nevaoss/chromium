@@ -40,16 +40,10 @@ class SendTabToSelfToolbarBubbleView : public views::BubbleDialogDelegateView {
 
  private:
   friend class SendTabToSelfToolbarBubbleViewTest;
-  friend class SendTabToSelfToolbarBubbleViewScrollPositionDisabledTest;
   FRIEND_TEST_ALL_PREFIXES(SendTabToSelfToolbarBubbleViewTest,
                            ButtonNavigatesToPage);
   FRIEND_TEST_ALL_PREFIXES(SendTabToSelfToolbarBubbleViewTest,
                            ButtonNavigatesWithScrollPosition);
-  FRIEND_TEST_ALL_PREFIXES(
-      SendTabToSelfToolbarBubbleViewScrollPositionDisabledTest,
-      ButtonNavigatesWithoutScrollPositionIfFeatureDisabled);
-
-  void Timeout();
 
   bool opened_ = false;
 
@@ -60,8 +54,6 @@ class SendTabToSelfToolbarBubbleView : public views::BubbleDialogDelegateView {
   raw_ptr<views::Label> device_label_;
 
   SendTabToSelfEntry entry_;
-
-  base::WeakPtrFactory<SendTabToSelfToolbarBubbleView> weak_ptr_factory_{this};
 };
 
 }  // namespace send_tab_to_self

@@ -21,6 +21,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/test/gtest_util.h"
+#include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/accessibility/ax_enums.mojom.h"
@@ -38,7 +39,9 @@
 #include "ui/events/base_event_utils.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/gfx/canvas.h"
+#include "ui/gfx/range/range.h"
 #include "ui/gfx/render_text.h"
+#include "ui/gfx/render_text_test_api.h"
 #include "ui/gfx/text_constants.h"
 #include "ui/gfx/text_elider.h"
 #include "ui/strings/grit/ui_strings.h"
@@ -53,6 +56,7 @@
 #include "ui/views/test/focus_manager_test.h"
 #include "ui/views/test/view_metadata_test_utils.h"
 #include "ui/views/test/views_test_base.h"
+#include "ui/views/views_features.h"
 #include "ui/views/widget/unique_widget_ptr.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_utils.h"
@@ -592,7 +596,24 @@ TEST_F(LabelTest, MultiLineGetHeightForWidth) {
   EXPECT_GT(label()->GetHeightForWidth(width / 4), height_for_half_width);
 }
 
-TEST_F(LabelTest, TooltipProperty) {
+// Runs tooltip tests with and without features::kLabelDefaultTooltipFastPath.
+class LabelTooltipTest : public LabelTest,
+                         public testing::WithParamInterface<bool> {
+ public:
+  LabelTooltipTest() {
+    feature_list_.InitWithFeatureState(features::kLabelDefaultTooltipFastPath,
+                                       IsLabelDefaultTooltipFastPathEnabled());
+  }
+
+  bool IsLabelDefaultTooltipFastPathEnabled() const { return GetParam(); }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All, LabelTooltipTest, testing::Bool());
+
+TEST_P(LabelTooltipTest, TooltipProperty) {
   label()->SetText(u"My cool string.");
 
   // Initially, label has no bounds, its text does not fit, and therefore its
@@ -667,7 +688,122 @@ TEST_F(LabelTest, TooltipProperty) {
   label()->SetCustomTooltipText(std::u16string());
 }
 
-TEST_F(LabelTest, TooltipPropertyAccessibility) {
+TEST_P(LabelTooltipTest, TooltipWithZeroContentWidth) {
+  // A single-line label with text and no bounds uses its text as tooltip.
+  label()->SetText(u"My cool string.");
+  ASSERT_TRUE(label()->bounds().IsEmpty());
+  EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+
+  // Changing the text updates the tooltip.
+  label()->SetText(u"Another string.");
+  EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+
+  // Zero width with non-zero height.
+  label()->SetBounds(0, 0, 0, 40);
+  EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+
+  // Zero content width due to insets.
+  label()->SetBorder(CreateEmptyBorder(gfx::Insets::TLBR(0, 5, 0, 5)));
+  label()->SetBounds(0, 0, 10, 40);
+  ASSERT_EQ(0, label()->GetContentsBounds().width());
+  EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+
+  // An obscured label has no tooltip.
+  label()->SetObscured(true);
+  EXPECT_TRUE(label()->GetTooltipText().empty());
+  label()->SetObscured(false);
+  EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+
+  // A label with empty text has no tooltip.
+  label()->SetText(std::u16string());
+  EXPECT_TRUE(label()->GetTooltipText().empty());
+
+  // Making the label wide enough eliminates the tooltip.
+  label()->SetText(u"My cool string.");
+  EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+  label()->SetBounds(0, 0, 1000, 40);
+  EXPECT_TRUE(label()->GetTooltipText().empty());
+}
+
+// Behavior change with kLabelDefaultTooltipFastPath: a multi-line label with
+// zero content width uses its text as tooltip, since none of it is visible.
+// Without the fast path, the text is considered to fit if the label is at least
+// one line tall.
+TEST_P(LabelTooltipTest, TooltipOfMultiLineLabelWithZeroContentWidth) {
+  label()->SetMultiLine(true);
+  label()->SetText(u"My cool string.");
+  label()->SetBounds(0, 0, 0, 1000);
+  if (IsLabelDefaultTooltipFastPathEnabled()) {
+    EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+  } else {
+    EXPECT_TRUE(label()->GetTooltipText().empty());
+  }
+}
+
+// Behavior change with kLabelDefaultTooltipFastPath: a label with empty text
+// is never a tooltip handler, which lets its parent's tooltip show. Without the
+// fast path, a label with empty text whose text size exceeds its contents
+// (here, a multi-line label shorter than a line) is a tooltip handler with an
+// empty tooltip, which hides its parent's tooltip.
+TEST_P(LabelTooltipTest, TooltipHandlerOfLabelWithEmptyText) {
+  label()->SetMultiLine(true);
+  label()->SetBounds(0, 0, 100, 2);
+  ASSERT_TRUE(label()->GetText().empty());
+  EXPECT_TRUE(label()->GetTooltipText().empty());
+  if (IsLabelDefaultTooltipFastPathEnabled()) {
+    EXPECT_FALSE(label()->GetTooltipHandlerForPoint(gfx::Point(1, 1)));
+  } else {
+    EXPECT_EQ(label(), label()->GetTooltipHandlerForPoint(gfx::Point(1, 1)));
+  }
+}
+
+// Behavior change with kLabelDefaultTooltipFastPath: a label with zero content
+// width uses its text as tooltip even if the text renders with zero width.
+// Without the fast path, the text is considered to fit.
+TEST_P(LabelTooltipTest, TooltipOfZeroWidthTextWithZeroContentWidth) {
+  label()->SetText(u"\u200B");  // Zero-width space.
+  ASSERT_TRUE(label()->bounds().IsEmpty());
+  if (IsLabelDefaultTooltipFastPathEnabled()) {
+    EXPECT_EQ(label()->GetText(), label()->GetTooltipText());
+  } else {
+    EXPECT_TRUE(label()->GetTooltipText().empty());
+  }
+}
+
+// Tests the default tooltip of labels whose displayed text differs from their
+// text.
+TEST_P(LabelTooltipTest, DefaultTooltipText) {
+  const std::u16string kLongText =
+      u"A string that's long enough to exceed the maximum width";
+  label()->SetMaximumWidthSingleLine(50);
+  label()->SetText(kLongText);
+
+  // Not laid out yet: the tooltip isn't elided.
+  ASSERT_TRUE(label()->bounds().IsEmpty());
+  EXPECT_EQ(kLongText, label()->GetTooltipText());
+
+  // Laid out narrower than the text: the tooltip isn't elided.
+  label()->SetBounds(0, 0, 20, 20);
+  EXPECT_EQ(kLongText, label()->GetTooltipText());
+
+  // Changing the text updates the tooltip.
+  const std::u16string kOtherLongText =
+      u"Another string that's long enough to exceed the maximum width";
+  label()->SetText(kOtherLongText);
+  EXPECT_EQ(kOtherLongText, label()->GetTooltipText());
+
+  // Control characters aren't replaced.
+  Label label_with_newline(u"Line 1\nLine 2");
+  EXPECT_EQ(u"Line 1\nLine 2", label_with_newline.GetTooltipText());
+}
+
+// A label constructed with text and no bounds uses its text as tooltip.
+TEST_P(LabelTooltipTest, TooltipOfLabelConstructedWithText) {
+  Label label(u"My cool string.");
+  EXPECT_EQ(label.GetText(), label.GetTooltipText());
+}
+
+TEST_P(LabelTooltipTest, TooltipPropertyAccessibility) {
   label()->SetText(u"My cool string.");
   ui::AXNodeData ax_data;
 
@@ -847,6 +983,81 @@ TEST_F(LabelTest, TextChangeWithoutLayout) {
   label()->OnPaint(&canvas);
   EXPECT_TRUE(label()->display_text_);
   EXPECT_EQ(u"Altered", label()->display_text_->GetDisplayText());
+}
+
+// By default, '&' is shown as is.
+TEST_F(LabelTest, MnemonicModeNoneKeepsMarkers) {
+  label()->SetText(u"Se&ttings");
+  EXPECT_EQ(label()->GetMnemonicMode(), Label::MnemonicMode::kNone);
+  EXPECT_EQ(label()->GetText(), u"Se&ttings");
+}
+
+// kHide removes the markers without underlining the mnemonic.
+TEST_F(LabelTest, MnemonicModeHideRemovesMarkers) {
+  label()->SetMnemonicMode(Label::MnemonicMode::kHide);
+  label()->SetText(u"Q&&&A");
+  label()->SetBounds(0, 0, 200, 200);
+  EXPECT_EQ(label()->GetText(), u"Q&A");
+  EXPECT_EQ(label()->GetViewAccessibility().GetCachedName(), u"Q&A");
+
+  gfx::Canvas canvas(gfx::Size(200, 200), 1.0f, true);
+  label()->OnPaint(&canvas);
+  ASSERT_TRUE(label()->display_text_);
+  gfx::test::RenderTextTestApi render_text(label()->display_text_.get());
+  const auto& underlines = render_text.styles()[gfx::TEXT_STYLE_UNDERLINE];
+  EXPECT_EQ(underlines.breaks().size(), 1u);
+  EXPECT_FALSE(underlines.breaks().front().second);
+}
+
+// kUnderline removes the markers and underlines only the mnemonic.
+TEST_F(LabelTest, MnemonicModeUnderlineUnderlinesMnemonic) {
+  label()->SetText(u"Se&ttings");
+  label()->SetBounds(0, 0, 200, 200);
+  label()->SetMnemonicMode(Label::MnemonicMode::kUnderline);
+  EXPECT_EQ(label()->GetText(), u"Settings");
+
+  gfx::Canvas canvas(gfx::Size(200, 200), 1.0f, true);
+  label()->OnPaint(&canvas);
+  ASSERT_TRUE(label()->display_text_);
+  gfx::test::RenderTextTestApi render_text(label()->display_text_.get());
+  const auto& underlines = render_text.styles()[gfx::TEXT_STYLE_UNDERLINE];
+  EXPECT_FALSE(underlines.GetBreak(1)->second);
+  EXPECT_TRUE(underlines.GetBreak(2)->second);
+  EXPECT_FALSE(underlines.GetBreak(3)->second);
+}
+
+// Changing the text style rebuilds the painted text, which keeps the
+// underline.
+TEST_F(LabelTest, MnemonicUnderlineSurvivesTextStyleChange) {
+  label()->SetMnemonicMode(Label::MnemonicMode::kUnderline);
+  label()->SetText(u"Se&ttings");
+  label()->SetBounds(0, 0, 200, 200);
+  label()->SetTextStyle(style::STYLE_EMPHASIZED);
+
+  gfx::Canvas canvas(gfx::Size(200, 200), 1.0f, true);
+  label()->OnPaint(&canvas);
+  ASSERT_TRUE(label()->display_text_);
+  gfx::test::RenderTextTestApi render_text(label()->display_text_.get());
+  EXPECT_TRUE(
+      render_text.styles()[gfx::TEXT_STYLE_UNDERLINE].GetBreak(2)->second);
+}
+
+// Setting a text with the same displayed text but no marker removes the
+// underline.
+TEST_F(LabelTest, MnemonicUnderlineFollowsText) {
+  label()->SetMnemonicMode(Label::MnemonicMode::kUnderline);
+  label()->SetText(u"Se&ttings");
+  label()->SetText(u"Settings");
+  label()->SetBounds(0, 0, 200, 200);
+  EXPECT_EQ(label()->GetText(), u"Settings");
+
+  gfx::Canvas canvas(gfx::Size(200, 200), 1.0f, true);
+  label()->OnPaint(&canvas);
+  ASSERT_TRUE(label()->display_text_);
+  gfx::test::RenderTextTestApi render_text(label()->display_text_.get());
+  const auto& underlines = render_text.styles()[gfx::TEXT_STYLE_UNDERLINE];
+  EXPECT_EQ(underlines.breaks().size(), 1u);
+  EXPECT_FALSE(underlines.breaks().front().second);
 }
 
 TEST_F(LabelTest, AccessibleNameAndRole) {
@@ -1088,7 +1299,7 @@ TEST_F(LabelTest, MultiLineSizingWithElide) {
 }
 
 // Check that labels support GetTooltipHandlerForPoint.
-TEST_F(LabelTest, GetTooltipHandlerForPoint) {
+TEST_P(LabelTooltipTest, GetTooltipHandlerForPoint) {
   label()->SetText(u"A string that's long enough to exceed the bounds");
   label()->SetBounds(0, 0, 10, 10);
 

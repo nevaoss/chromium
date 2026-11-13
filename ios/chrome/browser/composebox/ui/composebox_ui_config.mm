@@ -321,6 +321,7 @@
     case kNone:
       return nil;
     case kRegular:
+      return SymbolWithPointSize(SymbolAcute, kSymbolActionPointSize);
     case kFlash:
       return SymbolWithPointSize(SymbolBolt, kSymbolActionPointSize);
     case kAuto:
@@ -328,6 +329,7 @@
                                  kSymbolActionPointSize);
     case kThinking:
     case kThinkingNoGenUI:
+    case kProLatest:
       return SymbolWithPointSize(SymbolClock, kSymbolActionPointSize);
     default:
       return SymbolWithPointSize(SymbolBolt, kSymbolActionPointSize);

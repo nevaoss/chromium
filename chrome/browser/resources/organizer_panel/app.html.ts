@@ -17,14 +17,23 @@ export function getHtml(this: OrganizerPanelAppElement) {
 <organizer-list id="list" .sectionDelegates="${this.sectionDelegates_}"
     .searchQuery="${this.searchQuery_}">
 </organizer-list>
-<cr-action-menu id="menu">
-  <button id="expandAllButton" class="dropdown-item"
-      @click="${this.onExpandAllClick_}">
-    $i18n{expandAll}
-  </button>
+<div id="dragRegion"></div>
+<cr-action-menu id="menu" auto-close-on-focusout>
+  ${this.allSectionsExpanded_ ? html`
+    <button id="collapseAllButton" class="dropdown-item"
+        ?disabled="${this.isSearching_()}" @click="${this.onCollapseAllClick_}">
+      $i18n{collapseAll}
+    </button>
+  ` : html`
+    <button id="expandAllButton" class="dropdown-item"
+        ?disabled="${this.isSearching_()}" @click="${this.onExpandAllClick_}">
+      $i18n{expandAll}
+    </button>
+  `}
   <button id="closeTabSearchButton" class="dropdown-item"
       @click="${this.onCloseTabSearchClick_}">
-    $i18n{closeTabSearch}
+    ${this.verticalTabsEnabled ? '$i18n{goBackToOpenTabs}' :
+                               '$i18n{closeTabSearch}'}
   </button>
 </cr-action-menu>
 <!--_html_template_end_-->`;

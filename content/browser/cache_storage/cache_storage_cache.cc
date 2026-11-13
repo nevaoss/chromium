@@ -294,10 +294,19 @@ bool VaryMatches(const blink::FetchAPIRequestHeadersMap& request,
 // duplicates.
 //
 // The URLs are reported in normalized (fragment-stripped) form, since that is
-// what the duplicates collided on.  It is also deterministic: std::sort()
-// below is not stable, so among operations sharing a URL the relative order
-// is unspecified, and reporting the raw URL of one member of a duplicate pair
-// could name either fragment.
+// what the duplicates collided on; the raw URLs of a colliding pair may differ
+// in their fragments.
+//
+// See Batch Cache Operations, Query Cache and Request Matches Cached Item:
+//   https://w3c.github.io/ServiceWorker/#batch-cache-operations-algorithm
+//   https://w3c.github.io/ServiceWorker/#query-cache-algorithm
+//   https://w3c.github.io/ServiceWorker/#request-matches-cached-item-algorithm
+//
+// The check is order-dependent: each operation is compared only against the
+// puts that come before it in the list, using the earlier put's VARY header.
+// For puts A with "Vary: x-a" and B with "Vary: x-b" to the same URL, [A, B]
+// compares the requests' x-a headers while [B, A] compares their x-b headers,
+// so one order can be rejected while the other succeeds.
 std::vector<std::string> FindDuplicateOperations(
     const std::vector<blink::mojom::BatchOperationPtr>& operations) {
   using blink::mojom::BatchOperation;
@@ -331,10 +340,9 @@ std::vector<std::string> FindDuplicateOperations(
   for (const auto& op : operations) {
     sorted.push_back({op.get(), NormalizeCacheUrl(op->request->url).spec()});
   }
-  std::sort(sorted.begin(), sorted.end(),
-            [](const SortedOperation& left, const SortedOperation& right) {
-              return left.normalized_url < right.normalized_url;
-            });
+  // The sort is stable so that entries sharing a URL stay in batch order,
+  // which the order-dependent check below relies on.
+  std::ranges::stable_sort(sorted, {}, &SortedOperation::normalized_url);
 
   // Check each entry in the sorted vector for any duplicates.  Since the
   // list is sorted we only need to inspect the immediate neighbors that
@@ -367,14 +375,9 @@ std::vector<std::string> FindDuplicateOperations(
         break;
       }
 
-      // VaryMatches() is asymmetric since the operation depends on the VARY
-      // header in the target response.  Since we only visit each pair of
-      // entries once we need to perform the VaryMatches() call in both
-      // directions.
-      if (VaryMatches(outer_op->request->headers, inner_op->request->headers,
-                      inner_op->response->response_type,
-                      inner_op->response->headers) ||
-          VaryMatches(outer_op->request->headers, inner_op->request->headers,
+      // `outer_op` comes before `inner_op` in the batch, so only its VARY
+      // header is used.
+      if (VaryMatches(inner_op->request->headers, outer_op->request->headers,
                       outer_op->response->response_type,
                       outer_op->response->headers)) {
         duplicate_url_list.push_back(sorted[j].normalized_url);
@@ -1019,10 +1022,9 @@ void CacheStorageCache::BatchDidGetBucketSpaceRemaining(
       case blink::mojom::OperationType::kPut:
         if (skip_side_data) {
           operation->response->side_data_for_cache_put.reset();
-          Put(std::move(operation), trace_id, completion_callback);
-        } else {
-          Put(std::move(operation), trace_id, completion_callback);
         }
+        Put(std::move(operation->request), std::move(operation->response),
+            trace_id, completion_callback);
         break;
       case blink::mojom::OperationType::kDelete:
         CHECK_EQ(1u, operations.size(), base::NotFatalUntil::M158);
@@ -1077,21 +1079,6 @@ void CacheStorageCache::Keys(blink::mojom::FetchAPIRequestPtr request,
       base::BindOnce(
           &CacheStorageCache::KeysImpl, weak_ptr_factory_.GetWeakPtr(),
           std::move(request), std::move(options), trace_id,
-          scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
-}
-
-void CacheStorageCache::Close(base::OnceClosure callback) {
-  DCHECK(!close_requested_);
-  DCHECK_NE(BACKEND_CLOSED, backend_state_)
-      << "Was CacheStorageCache::Close() called twice?";
-  close_requested_ = true;
-
-  auto id = scheduler_->CreateId();
-  scheduler_->ScheduleOperation(
-      id, CacheStorageSchedulerMode::kExclusive,
-      CacheStorageSchedulerOp::kClose, CacheStorageSchedulerPriority::kNormal,
-      base::BindOnce(
-          &CacheStorageCache::CloseImpl, weak_ptr_factory_.GetWeakPtr(),
           scheduler_->WrapCallbackToRunNext(id, std::move(callback))));
 }
 
@@ -1882,15 +1869,6 @@ void CacheStorageCache::WriteSideDataComplete(
   UpdateCacheSize(std::move(callback));
 }
 
-void CacheStorageCache::Put(blink::mojom::BatchOperationPtr operation,
-                            int64_t trace_id,
-                            ErrorCallback callback) {
-  CHECK_EQ(blink::mojom::OperationType::kPut, operation->operation_type,
-           base::NotFatalUntil::M158);
-  Put(std::move(operation->request), std::move(operation->response), trace_id,
-      std::move(callback));
-}
-
 void CacheStorageCache::Put(blink::mojom::FetchAPIRequestPtr request,
                             blink::mojom::FetchAPIResponsePtr response,
                             int64_t trace_id,
@@ -2618,18 +2596,6 @@ void CacheStorageCache::KeysDidQueryCache(
   std::move(callback).Run(CacheStorageError::kSuccess, std::move(out_requests));
 }
 
-void CacheStorageCache::CloseImpl(base::OnceClosure callback) {
-  CHECK(scheduler_->IsRunningExclusiveOperation(), base::NotFatalUntil::M158);
-  InvalidateSideDataWriters();
-
-  if (backend_state_ != BACKEND_OPEN) {
-    std::move(callback).Run();
-    return;
-  }
-  backend_.reset();
-  post_backend_closed_callback_ = std::move(callback);
-}
-
 void CacheStorageCache::DeleteBackendCompletedIO() {
   if (!post_backend_closed_callback_.is_null()) {
     // TODO(crbug.com/555074520): CHECK-exclusion: Convert to a CHECK once we
@@ -2651,7 +2617,15 @@ void CacheStorageCache::SizeImpl(SizeCallback callback) {
 void CacheStorageCache::GetSizeThenCloseDidGetSize(SizeCallback callback,
                                                    int64_t cache_size) {
   cache_entry_handler_->InvalidateDiskCacheBlobEntrys();
-  CloseImpl(base::BindOnce(std::move(callback), cache_size));
+  InvalidateSideDataWriters();
+
+  if (backend_state_ != BACKEND_OPEN) {
+    std::move(callback).Run(cache_size);
+    return;
+  }
+  backend_.reset();
+  post_backend_closed_callback_ =
+      base::BindOnce(std::move(callback), cache_size);
 }
 
 void CacheStorageCache::CreateBackend(ErrorCallback callback) {

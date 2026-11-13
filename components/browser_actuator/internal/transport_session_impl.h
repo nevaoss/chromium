@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -16,12 +17,14 @@
 #include "base/functional/function_ref.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
 #include "base/sequence_checker.h"
 #include "base/thread_annotations.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
 #include "components/browser_actuator/internal/downstream_message_sequencer.h"
 #include "components/browser_actuator/public/common.h"
+#include "components/browser_actuator/public/transport_handler_factory_registry.h"
 #include "components/browser_actuator/public/transport_session.h"
 
 namespace browser_actuator {
@@ -32,7 +35,8 @@ class TransportHandler;
 
 // Implements TransportSession. Represents an active session instance between
 // the server and Chrome instance.
-class TransportSessionImpl : public TransportSession {
+class TransportSessionImpl : public TransportSession,
+                             public TransportHandlerFactoryRegistry::Observer {
  public:
   // Number of consecutive downstream messages with invalid sequence numbers
   // before the channel tears down the session.
@@ -63,6 +67,10 @@ class TransportSessionImpl : public TransportSession {
   void OnMessage(PayloadType payload_type,
                  const google::protobuf::MessageLite& message) override;
 
+  // TransportHandlerFactoryRegistry::Observer implementation.
+  void OnFactoryUnregistered(FactoryId factory_id) override;
+  void OnRegistryDestroyed() override;
+
   base::TimeTicks start_time() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return start_time_;
@@ -88,15 +96,16 @@ class TransportSessionImpl : public TransportSession {
   base::expected<void, DownstreamMessageSequencer::Error>
   ProcessDownstreamMessage(ActuatorDownstreamMessage message);
 
-  // Last contiguous sequence number dispatched for the session, used for
-  // resume positions and upstream reply correlation.
+  // Last contiguous sequence number (>= 0) dispatched for the session, or -1
+  // if no downstream message has been dispatched yet. Used for stream resume
+  // positions (when > 0) and upstream reply correlation.
   int64_t last_seen_sequence_number() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return last_seen_sequence_number_;
   }
   bool has_last_seen_sequence_number() const {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    return last_seen_sequence_number_ > 0;
+    return last_seen_sequence_number_ >= 0;
   }
 
   size_t consecutive_invalid_sequence_numbers() const {
@@ -138,15 +147,18 @@ class TransportSessionImpl : public TransportSession {
 
   const base::TimeTicks start_time_;
   DownstreamMessageSequencer sequencer_ GUARDED_BY_CONTEXT(sequence_checker_);
-  // Tracks the sequence number of the most recently dispatched message.
-  // Unlike `sequencer_.last_seen_sequence_number()` (which advances to the end
-  // of a drained batch at once), this advances message-by-message during a
+  // Tracks the sequence number of the most recently dispatched downstream
+  // message (>= 0), or -1 before any message is dispatched. Unlike
+  // `sequencer_.last_seen_sequence_number()` (which advances to the end of a
+  // drained batch at once), this advances message-by-message during a
   // multi-message drain so synchronous handlers observe the sequence number of
   // the message currently being handled when sending an upstream reply.
-  int64_t last_seen_sequence_number_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+  int64_t last_seen_sequence_number_ GUARDED_BY_CONTEXT(sequence_checker_) = -1;
   size_t consecutive_invalid_sequence_numbers_
       GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   int64_t client_sequence_number_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+  std::optional<int64_t> dispatching_sequence_number_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Map that holds ownership of all active `TransportHandler` instances for
   // this session, keyed by their instantiating factory ID to guarantee a
@@ -158,6 +170,10 @@ class TransportSessionImpl : public TransportSession {
   // active handler instances that support it.
   base::flat_map<PayloadType, std::vector<raw_ptr<TransportHandler>>>
       routing_table_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  base::ScopedObservation<TransportHandlerFactoryRegistry,
+                          TransportHandlerFactoryRegistry::Observer>
+      factory_registry_observation_ GUARDED_BY_CONTEXT(sequence_checker_){this};
 
   base::WeakPtrFactory<TransportSessionImpl> weak_ptr_factory_{this};
 };

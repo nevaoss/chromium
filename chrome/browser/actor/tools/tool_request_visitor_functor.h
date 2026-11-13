@@ -5,25 +5,27 @@
 #ifndef CHROME_BROWSER_ACTOR_TOOLS_TOOL_REQUEST_VISITOR_FUNCTOR_H_
 #define CHROME_BROWSER_ACTOR_TOOLS_TOOL_REQUEST_VISITOR_FUNCTOR_H_
 
-#include "chrome/browser/actor/tools/attempt_form_filling_tool_request.h"
-#include "chrome/browser/actor/tools/attempt_login_tool_request.h"
-#include "chrome/browser/actor/tools/attempt_otp_filling_tool_request.h"
+#include "chrome/browser/actor/tools/autofill/attempt_form_filling/attempt_form_filling_tool_request.h"
 #include "chrome/browser/actor/tools/bookmark_management_tool_request.h"
-#include "chrome/browser/actor/tools/change_password_tool_request.h"
 #include "chrome/browser/actor/tools/click_tool_request.h"
 #include "chrome/browser/actor/tools/drag_and_release_tool_request.h"
 #include "chrome/browser/actor/tools/file_upload_tool_request.h"
 #include "chrome/browser/actor/tools/find_and_highlight_tool_request.h"
+#include "chrome/browser/actor/tools/gemini_panel_tool_request.h"
 #include "chrome/browser/actor/tools/history_tool_request.h"
 #include "chrome/browser/actor/tools/load_and_extract_content_tool_request.h"
 #include "chrome/browser/actor/tools/media_control_tool_request.h"
 #include "chrome/browser/actor/tools/move_mouse_tool_request.h"
 #include "chrome/browser/actor/tools/navigate_tool_request.h"
+#include "chrome/browser/actor/tools/one_time_token/attempt_otp_filling_tool_request.h"
+#include "chrome/browser/actor/tools/password_manager/attempt_login/attempt_login_tool_request.h"
+#include "chrome/browser/actor/tools/password_manager/change_password/change_password_tool_request.h"
 #include "chrome/browser/actor/tools/perform_search_tool_request.h"
 #include "chrome/browser/actor/tools/script_tool_request.h"
 #include "chrome/browser/actor/tools/scroll_to_tool_request.h"
 #include "chrome/browser/actor/tools/scroll_tool_request.h"
 #include "chrome/browser/actor/tools/select_tool_request.h"
+#include "chrome/browser/actor/tools/site_based_search_tool_request.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/tools/translate_page_tool_request.h"
 #include "chrome/browser/actor/tools/type_tool_request.h"
@@ -51,6 +53,7 @@ class ToolRequestVisitorFunctor {
   virtual void Apply(const AttemptOtpFillingToolRequest&) = 0;
   virtual void Apply(const ChangePasswordToolRequest&) = 0;
   virtual void Apply(const ClickToolRequest&) = 0;
+  virtual void Apply(const CloseGeminiPanelToolRequest&) = 0;
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   virtual void Apply(const CloseTabToolRequest&) = 0;
   virtual void Apply(const CloseWindowToolRequest&) = 0;
@@ -75,6 +78,7 @@ class ToolRequestVisitorFunctor {
   virtual void Apply(const PauseMediaToolRequest&) = 0;
   virtual void Apply(const PerformSearchToolRequest&) = 0;
   virtual void Apply(const PlayMediaToolRequest&) = 0;
+  virtual void Apply(const PromptGeminiPanelToolRequest&) = 0;
   virtual void Apply(const ReloadPageToolRequest&) = 0;
   virtual void Apply(const RemoveBookmarkToolRequest&) = 0;
   virtual void Apply(const ScriptToolRequest&) = 0;
@@ -82,6 +86,7 @@ class ToolRequestVisitorFunctor {
   virtual void Apply(const ScrollToToolRequest&) = 0;
   virtual void Apply(const SeekMediaToolRequest&) = 0;
   virtual void Apply(const SelectToolRequest&) = 0;
+  virtual void Apply(const SiteBasedSearchToolRequest&) = 0;
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   virtual void Apply(const SwitchTabToolRequest&) = 0;
 #endif

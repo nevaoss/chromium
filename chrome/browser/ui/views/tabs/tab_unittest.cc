@@ -828,6 +828,108 @@ TEST_F(TabTest, ActiveTabFaviconSwapWithCloseOnHover) {
   EXPECT_TRUE(icon->GetVisible());
 }
 
+TEST_F(TabTest, ActiveTabCloseHideDisabledByParam) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kTabStripDeclutter,
+      {{features::kTabStripDeclutterActiveTabCloseHideEnabled.name, "false"}});
+
+  auto controller = std::make_unique<FakeTabSlotController>();
+  std::unique_ptr<views::Widget> widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  Tab* tab = widget->SetContentsView(
+      std::make_unique<Tab>(tabs::TabHandle(1), controller.get()));
+  controller->set_active_tab(tab);
+
+  tabs::TabData data;
+  data.should_display_favicon = true;
+  tab->SetDataForTesting(data);
+
+  const int close_button_width =
+      GetLayoutConstant(LayoutConstant::kTabCloseButtonSize) +
+      GetLayoutConstant(LayoutConstant::kTabAfterTitlePadding);
+  const int favicon_width = gfx::kFaviconSize;
+
+  // Set width such that it can fit favicon OR close button, but not both.
+  const int insets_width = tab->tab_style_views()->GetContentsInsets().width();
+  const int available_width = favicon_width + close_button_width - 1;
+  const int total_width = available_width + insets_width;
+
+  widget->SetBounds(gfx::Rect(0, 0, total_width, 50));
+  tab->InvalidateLayout();
+  LayoutTab(tab);
+
+  const views::View* close = GetCloseButton(tab);
+  const views::View* icon = GetTabIcon(tab);
+
+  // With active_tab_close_hide disabled, the active tab should always show the
+  // close button and hide the favicon when space is limited, even unhovered.
+  EXPECT_TRUE(close->GetVisible());
+  EXPECT_FALSE(icon->GetVisible());
+}
+
+TEST_F(TabTest, CloseButtonVisibilityCustomMaxTabWidthParam) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kTabStripDeclutter,
+      {{features::kTabStripDeclutterMaxTabWidthForCloseHide.name, "120"}});
+
+  auto controller = std::make_unique<FakeTabSlotController>();
+  std::unique_ptr<views::Widget> widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  Tab* tab = widget->SetContentsView(
+      std::make_unique<Tab>(tabs::TabHandle(1), controller.get()));
+
+  const int insets_width = tab->tab_style_views()->GetContentsInsets().width();
+  const views::View* close = GetCloseButton(tab);
+
+  widget->Show();
+  widget->Activate();
+  tab->GetFocusManager()->ClearFocus();
+
+  // At available width 110 (above the default 100, but <= custom 120), close
+  // button should be hidden for an inactive, unhovered tab.
+  tab->parent()->SetBounds(0, 0, insets_width + 110 + gfx::kFaviconSize, 50);
+  tab->InvalidateLayout();
+  LayoutTab(tab);
+  EXPECT_FALSE(close->GetVisible());
+
+  // At available width 130 (> custom 120), close button should be visible.
+  tab->parent()->SetBounds(0, 0, insets_width + 130 + gfx::kFaviconSize, 50);
+  tab->InvalidateLayout();
+  LayoutTab(tab);
+  EXPECT_TRUE(close->GetVisible());
+}
+
+TEST_F(TabTest, InactiveTabCloseHideDisabledByParam) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kTabStripDeclutter,
+      {{features::kTabStripDeclutterInactiveTabCloseHideEnabled.name,
+        "false"}});
+
+  auto controller = std::make_unique<FakeTabSlotController>();
+  std::unique_ptr<views::Widget> widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  Tab* tab = widget->SetContentsView(
+      std::make_unique<Tab>(tabs::TabHandle(1), controller.get()));
+
+  const int insets_width = tab->tab_style_views()->GetContentsInsets().width();
+  const views::View* close = GetCloseButton(tab);
+
+  widget->Show();
+  widget->Activate();
+  tab->GetFocusManager()->ClearFocus();
+
+  // At available width 80 (<= default 100, but >= minimum width for close
+  // buttons), close button should remain visible when inactive_tab_close_hide
+  // is false.
+  tab->parent()->SetBounds(0, 0, insets_width + 80 + gfx::kFaviconSize, 50);
+  tab->InvalidateLayout();
+  LayoutTab(tab);
+  EXPECT_TRUE(close->GetVisible());
+}
+
 TEST_F(TabTest, CloseButtonOnlyIconShowingOnHoverAndCentered) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(features::kTabStripDeclutter);
@@ -990,6 +1092,36 @@ TEST_F(TabTest, TitleTextHasSufficientContrast) {
       const float contrast = color_utils::GetContrastRatio(fg_color, bg_color);
       EXPECT_GE(contrast, color_utils::kMinimumReadableContrastRatio);
     }
+  }
+}
+
+TEST_F(TabTest, GlassFrameTabBackgroundColors) {
+  std::unique_ptr<views::Widget> widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  const ui::ColorProvider* color_provider = widget->GetColorProvider();
+
+  // In a glass frame, selected tabs should have 80% opacity, and hovering a
+  // selected tab should blend the hover state over the translucent color.
+  constexpr SkAlpha kExpectedSelectedAlpha = 0.80 * SK_AlphaOPAQUE;
+  for (bool frame_active : {false, true}) {
+    const SkColor selected_bg = TabStyle::Get()->GetTabBackgroundColor(
+        TabStyle::TabSelectionState::kSelected, /*hovered=*/false, frame_active,
+        /*frame_glass=*/true, color_provider);
+    EXPECT_EQ(SkColorGetA(selected_bg), kExpectedSelectedAlpha);
+
+    const SkColor selected_hovered_bg = TabStyle::Get()->GetTabBackgroundColor(
+        TabStyle::TabSelectionState::kSelected, /*hovered=*/true, frame_active,
+        /*frame_glass=*/true, color_provider);
+    EXPECT_NE(selected_hovered_bg, selected_bg);
+    EXPECT_LT(SkColorGetA(selected_hovered_bg), SK_AlphaOPAQUE);
+  }
+
+  // Unhovered inactive tabs in a glass frame should be fully transparent.
+  for (bool frame_active : {false, true}) {
+    const SkColor inactive_bg = TabStyle::Get()->GetTabBackgroundColor(
+        TabStyle::TabSelectionState::kInactive, /*hovered=*/false, frame_active,
+        /*frame_glass=*/true, color_provider);
+    EXPECT_EQ(SkColorGetA(inactive_bg), 0u);
   }
 }
 

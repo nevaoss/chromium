@@ -13,7 +13,6 @@ import android.view.View;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.native_page.ContextMenuManager;
 import org.chromium.chrome.browser.native_page.ContextMenuManager.ContextMenuItemId;
@@ -95,7 +94,7 @@ class TileInteractionDelegateImpl
     public boolean onKey(View view, int keyCode, KeyEvent event) {
         if (isCustomizationEnabledForTileSection()
                 && TileUtils.isCustomTileSwapKeyCombo(keyCode, event)) {
-            if (isCustomLink()) {
+            if (isDraggable()) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
                     // Complete pending reordering, skipping animation if necessary.
                     mTileDragDelegate.reset();
@@ -251,10 +250,12 @@ class TileInteractionDelegateImpl
             case ContextMenuItemId.UNPIN:
                 return isCustomizationItemSupported(/* matchIsCustomLink= */ true);
             case ContextMenuItemId.MOVE_UP:
-                return isCustomizationItemSupported(/* matchIsCustomLink= */ true)
+                return isCustomizationEnabledForTileSection()
+                        && isDraggable()
                         && !mTileDragDelegate.isFirstDraggableTile(mView);
             case ContextMenuItemId.MOVE_DOWN:
-                return isCustomizationItemSupported(/* matchIsCustomLink= */ true)
+                return isCustomizationEnabledForTileSection()
+                        && isDraggable()
                         && !mTileDragDelegate.isLastDraggableTile(mView);
             default:
                 return false;
@@ -313,12 +314,15 @@ class TileInteractionDelegateImpl
     }
 
     boolean isCustomizationEnabledForTileSection() {
-        return ChromeFeatureList.sMostVisitedTilesCustomization.isEnabled()
-                && mTile.getSectionType() == TileSectionType.PERSONALIZED;
+        return mTile.getSectionType() == TileSectionType.PERSONALIZED;
     }
 
     boolean isCustomLink() {
-        return mTile.getSource() == TileSource.CUSTOM_LINKS;
+        return mTile.isCustomLink();
+    }
+
+    boolean isDraggable() {
+        return mTile.isCustomLink() || mTile.isAiMode();
     }
 
     boolean isCustomizationItemSupported(boolean matchIsCustomLink) {

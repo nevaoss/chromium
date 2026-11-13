@@ -12,7 +12,9 @@ import static org.chromium.chrome.modules.readaloud.PlaybackListener.State.PLAYI
 import static org.chromium.chrome.modules.readaloud.PlaybackListener.State.STOPPED;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
@@ -1353,7 +1355,12 @@ public class ReadAloudController
                     ReadAloudMetrics.recordTabCreationSuccess(entrypoint, Entrypoint.NUM_ENTRIES);
                     Playback.Metadata metadata = assumeNonNull(playback.getMetadata());
                     mFeedbackType.set(FeedbackType.NONE);
-                    maybeSetUpHighlighter(metadata);
+                    // Native playback has no paragraphs yet: they arrive later via
+                    // onTextChunked(), which sets up the highlighter. Setting it up here would
+                    // lock it to empty metadata, since initialization is one-shot per tab.
+                    if (!(playback instanceof NativePlayback)) {
+                        maybeSetUpHighlighter(metadata);
+                    }
                     updatePlaybackModeSelectionEnabled(readabilityInfo, playbackLanguage, playback, playbackModes);
                     updateVoiceMenu(
                             isTranslated
@@ -1639,12 +1646,19 @@ public class ReadAloudController
                 : TranslateBridge.isPageTranslated(tab.getWebContents());
     }
 
-    /** If language string includes locale, strip it */
+    /** If language string includes locale, strip it and map to ReadAloud language code. */
     private String getLanguage(String language) {
         if (language.contains("-")) {
-            return language.split("-")[0];
+            language = language.split("-")[0];
         }
-        return language;
+        // TODO(crbug.com/573188805): Update readaloud_voices.textproto to match the modern ISO 639
+        // language code standard and remove this mapping.
+        // Map ISO 639 language codes returned by TranslateBridge to the codes expected by
+        // ReadAloud.
+        return switch (language) {
+            case "he" -> "iw";
+            default -> language;
+        };
     }
 
     private static boolean isAudioOverviewsAllowed() {
@@ -2013,11 +2027,32 @@ public class ReadAloudController
     private Playback createNativeVoicePreviewPlayback(PlaybackVoice voice) {
         Playback playback =
                 new NativeVoicePreviewPlayback(
-                        mNativeBridge, voice.getLanguage(), voice.getVoiceId());
+                        mNativeBridge,
+                        voice.getLanguage(),
+                        voice.getVoiceId(),
+                        getPreviewMessage(voice));
         mVoicePreviewPlayback = playback;
         playback.addListener(mVoicePreviewPlaybackListener);
         mVoicePreviewPlayback.play();
         return playback;
+    }
+
+    /**
+     * Returns the voice preview text localized to the voice's language.
+     *
+     * @param voice Voice being previewed.
+     */
+    private String getPreviewMessage(PlaybackVoice voice) {
+        String language = voice.getLanguage();
+        if (language == null || language.isEmpty()) {
+            return mActivity.getString(R.string.readaloud_voice_preview_message);
+        }
+        Configuration config = new Configuration(mActivity.getResources().getConfiguration());
+        config.setLocale(Locale.forLanguageTag(language));
+        Context localizedContext = mActivity.createConfigurationContext(config);
+        return localizedContext != null
+                ? localizedContext.getString(R.string.readaloud_voice_preview_message)
+                : mActivity.getString(R.string.readaloud_voice_preview_message);
     }
 
     @Override
@@ -2406,7 +2441,9 @@ public class ReadAloudController
         if (mPlayback instanceof NativePlayback nativePlayback) {
             nativePlayback.onTextChunked(chunks);
             Playback.Metadata metadata = mPlayback.getMetadata();
-            if (metadata != null && mActivePlaybackTabSupplier.get() != null) {
+            if (nativePlayback.isHighlightingSupported()
+                    && metadata != null
+                    && mActivePlaybackTabSupplier.get() != null) {
                 maybeSetUpHighlighter(metadata);
             }
         }
@@ -2426,18 +2463,20 @@ public class ReadAloudController
 
     // Called when the active word highlight boundary shifts in the text.
     void onWordHighlightUpdated(int absoluteStartIndex, int absoluteEndIndex) {
-        // TODO: Update property model with word highlight boundaries.
-        Log.d(
-                TAG,
-                "onWordHighlightUpdated: absoluteStartIndex = %d, absoluteEndIndex = %d",
-                absoluteStartIndex,
-                absoluteEndIndex);
+        if (mPlayback instanceof NativePlayback nativePlayback) {
+            // Painted via onPhraseChanged() if highlighting is supported.
+            nativePlayback.notifyWordHighlightUpdated(absoluteStartIndex, absoluteEndIndex);
+        }
     }
 
     // Called to notify if synchronized word highlighting is supported for the current content.
     void onHighlightingSupported(boolean supported) {
-        // TODO: Update property to toggle highlight visibility.
-        Log.d(TAG, "onHighlightingSupported: supported = %b", supported);
+        if (mPlayback instanceof NativePlayback nativePlayback) {
+            nativePlayback.setHighlightingSupported(supported);
+            if (!supported) {
+                maybeClearHighlights();
+            }
+        }
     }
 
     // Called when playback switches to the on-device system TTS engine.

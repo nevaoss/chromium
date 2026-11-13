@@ -1525,6 +1525,9 @@ bool IsFullscreenNextIAEnabled() {
 - (void)addConstraintsToToolbar {
   [self addConstraintsToPrimaryToolbar];
   [self addConstraintsToSecondaryToolbar];
+  if (!IsFullscreenNextIAEnabled()) {
+    [self.view layoutIfNeeded];
+  }
 }
 
 // Sets the correct frame and hierarchy for subviews and helper views.  Only
@@ -1938,15 +1941,18 @@ bool IsFullscreenNextIAEnabled() {
   self.fullscreenController->BrowserTraitCollectionChangedEnd();
 }
 
-// On iOS 26, returns the top inset with corner adapation, otherwise returns 0.
+// On iOS 26, returns the top inset with corner adaptation in windowed mode,
+// otherwise returns 0.
 - (CGFloat)topInsetWithCornerAdaptation {
   if (@available(iOS 26, *)) {
-    UIViewLayoutRegion* safeAreaRegion =
-        [UIViewLayoutRegion safeAreaLayoutRegionWithCornerAdaptation:
-                                UIViewLayoutRegionAdaptivityAxisVertical];
-    NSDirectionalEdgeInsets calculatedInsets = [self.safeAreaProvider
-        directionalEdgeInsetsForLayoutRegion:safeAreaRegion];
-    return calculatedInsets.top;
+    if (self.layoutState.windowedMode) {
+      UIViewLayoutRegion* safeAreaRegion =
+          [UIViewLayoutRegion safeAreaLayoutRegionWithCornerAdaptation:
+                                  UIViewLayoutRegionAdaptivityAxisVertical];
+      NSDirectionalEdgeInsets calculatedInsets = [self.safeAreaProvider
+          directionalEdgeInsetsForLayoutRegion:safeAreaRegion];
+      return calculatedInsets.top;
+    }
   }
 
   return 0;

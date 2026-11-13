@@ -336,6 +336,22 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="Fetching Time Out Error"/>
 </enum>
 
+<!-- LINT.IfChange(IOSBackgroundContinuedProcessingTaskRequestResult) -->
+
+<enum name="IOSBackgroundContinuedProcessingTaskRequestResult">
+  <int value="0" label="Rejected: unknown error"/>
+  <int value="1" label="Submitted to BGTaskScheduler"/>
+  <int value="2" label="Failed to register with BGTaskScheduler"/>
+  <int value="3" label="Rejected: BGTaskSchedulerErrorCodeUnavailable"/>
+  <int value="4"
+      label="Rejected: BGTaskSchedulerErrorCodeTooManyPendingTaskRequests"/>
+  <int value="5" label="Rejected: BGTaskSchedulerErrorCodeNotPermitted"/>
+  <int value="6"
+      label="Rejected: BGTaskSchedulerErrorCodeImmediateRunIneligible"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/app/background_task/background_continued_processing_metrics.h:BackgroundContinuedProcessingTaskRequestResult) -->
+
 <!-- LINT.IfChange(IOSBackgroundSelectionOutcome) -->
 
 <enum name="IOSBackgroundSelectionOutcome">
@@ -657,6 +673,18 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="No Recent Icon Launches"/>
   <int value="3" label="Low Engagement User with No Recent Icon Launches"/>
 </enum>
+
+<!-- LINT.IfChange(IOSDownloadWebViewResult) -->
+
+<enum name="IOSDownloadWebViewResult">
+  <int value="0" label="Completed">WKDownload completed successfully.</int>
+  <int value="1" label="Canceled">
+    WKDownload was canceled by the user or client.
+  </int>
+  <int value="2" label="Error">WKDownload failed with an error.</int>
+</enum>
+
+<!-- LINT.ThenChange(/ios/web/download/crw_web_view_download.h:IOSDownloadWebViewResult) -->
 
 <enum name="IOSEditMenuActions">
   <int value="0" label="Invalid"/>
@@ -1386,6 +1414,7 @@ chromium-metrics-reviews@google.com.
   <int value="22" label="App Bundle Promo"/>
   <int value="23" label="Default Browser"/>
   <int value="24" label="Level Up"/>
+  <int value="25" label="NTP Theme Actionable Tip"/>
 </enum>
 
 <enum name="IOSMiniMapConsentOutcome">
@@ -1643,7 +1672,7 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="PopupBlocker"/>
   <int value="2" label="CameraPermission"/>
   <int value="3" label="MicrophonePermission"/>
-  <int value="4" label="PriceTracking"/>
+  <int value="4" label="(Obsolete) PriceTracking"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/intelligence/page_action_menu/utils/ai_hub_metrics.h:IOSPageActionMenuFeatureType) -->

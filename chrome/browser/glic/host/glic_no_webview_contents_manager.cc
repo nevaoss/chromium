@@ -64,6 +64,8 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/glic/android/glic_navigation_utils_android.h"
+#include "ui/android/view_android.h"
+#include "ui/gfx/geometry/size_conversions.h"
 #endif
 
 namespace glic {
@@ -422,9 +424,10 @@ GlicNoWebviewContentsManager::OverlayContentsManager::DetermineOverlayState(
     return mojom::OverlayState::NewError(*error_type);
   }
 
-  // Input 2: Guest presentation. When the guest is ready, displaying a login
-  // or in-page error page, or when the loading overlay is disabled, the guest
-  // WebContents is shown and no overlay is needed.
+  // Input 2: Guest presentation. When the guest is ready, or displaying a
+  // login, security interstitial, or in-page error page, or when the loading
+  // overlay is disabled, the guest WebContents is shown and no overlay is
+  // needed.
   if (guest_state != GuestState::kLoading || ShouldDisableLoadingOverlay()) {
     return nullptr;
   }
@@ -762,7 +765,10 @@ void GlicNoWebviewContentsManager::Zoom(mojom::ZoomAction zoom_action,
 void GlicNoWebviewContentsManager::SetErrorCallback(
     base::RepeatingClosure callback) {
   error_callback_ = std::move(callback);
-  if (ShouldReloadOnShow()) {
+  // `GlicWebContentsWarmingPool::TakeContainer()` passes a null `callback` to
+  // clear the warming pool's error handler; only post a task if a non-null
+  // callback was registered.
+  if (error_callback_ && ShouldReloadOnShow()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
                                                              error_callback_);
   }
@@ -789,11 +795,31 @@ void GlicNoWebviewContentsManager::ApplySizeToGuest() {
   if (target_size.IsEmpty()) {
     target_size = cached_overlay_size_;
   }
+  if (target_size.IsEmpty() &&
+      base::FeatureList::IsEnabled(features::kGlicGuestInitialSize)) {
+    // Give the guest WebContents a non-zero initial viewport while warming in
+    // the background so Blink layout, ResizeObserver/IntersectionObserver
+    // callbacks, and async UI island hydration complete before the panel opens.
+    // The exact dimensions are not critical as long as the viewport is
+    // non-empty; 384x675 DIPs matches the default side panel width and lands in
+    // the same narrow-column CSS breakpoint (~352-412 DIPs) used across desktop
+    // side panel, floaty, and Android surfaces.
+    target_size = gfx::Size(384, 675);
+  }
   if (target_size.IsEmpty() || !guest_contents() ||
       !guest_contents()->GetRenderWidgetHostView()) {
     return;
   }
+#if BUILDFLAG(IS_ANDROID)
+  if (gfx::NativeView native_view = guest_contents()->GetNativeView()) {
+    gfx::Size size_px =
+        gfx::ScaleToCeiledSize(target_size, native_view->GetDipScale());
+    native_view->OnSizeChanged(size_px.width(), size_px.height());
+    native_view->OnPhysicalBackingSizeChanged(size_px);
+  }
+#else
   guest_contents()->GetRenderWidgetHostView()->SetSize(target_size);
+#endif
   // While the overlay is shown, the guest is not attached to a view, so mark it
   // visible to let it load and render at full priority.
   if (is_visible_) {
@@ -895,6 +921,12 @@ void GlicNoWebviewContentsManager::OnGuestNavigated(
       // credentials.
       ShowGuestDirectly(GuestState::kLogin);
       break;
+    case mojom::GuestPageType::kSecurityInterstitial:
+      // When the guest encounters a security interstitial (e.g. an enterprise
+      // warning page), present the guest WebContents directly so the user can
+      // interact with the interstitial.
+      ShowGuestDirectly(GuestState::kSecurityInterstitial);
+      break;
     case mojom::GuestPageType::kGuestError:
       // When the guest encounters an in-page error (e.g. /sorry/ or CAPTCHA),
       // present the guest WebContents directly so the user can see the error
@@ -987,6 +1019,7 @@ void GlicNoWebviewContentsManager::OnWebClientStateChanged(
 void GlicNoWebviewContentsManager::LoadGuest() {
   guest_state_.Set(GuestState::kLoading);
   UpdateClientLoadFailed();
+  ApplySizeToGuest();
   GURL guest_url = GetGuestURL(profile_);
   net_log::LogDummyNetworkRequestForTrafficAnnotation(guest_url);
   guest_contents()->GetController().LoadURLWithParams(

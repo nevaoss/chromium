@@ -67,6 +67,12 @@
 #   to the static LICENSE_KIND_TO_LICENSE_FILES object in
 #   //tools/crates/gnrt/lib/readme.rs instead.
 #
+# replace_with: A custom GN target label to use in place of this crate (e.g.
+#   `replace_with = "//third_party/rust/icu4x_data:lib"`). Crates that depend on
+#   this crate will have their dependency replaced with the specified GN target
+#   (and aliased via `aliased_deps`), while this crate will not be vendored or
+#   have a `BUILD.gn` file generated.
+#
 # security_critical: A boolean that overrides if the crate is marked security-
 #   critical in the README.chromium. It defaults to true if the crate is not in
 #   the 'test' group/.
@@ -88,8 +94,9 @@
 #     configs_to_remove / configs_to_add: A list of GN config labels.
 #
 #     cpp_api_from_rust: Either a boolean (e.g. `cpp_api_from_rust = true`) or
-#       a sub-table (e.g. `cpp_api_from_rust = { deps = ["png/v0_18"] }`) that
-#       asks for Crubit-based C++ bindings to be generated for the given crate.
+#       a sub-table (e.g.
+#       `cpp_api_from_rust = { bindings_deps = ["png/v0_18"] }`) that asks for
+#       Crubit-based C++ bindings to be generated for the given crate.
 #       See `//docs/rust/crubit/cpp_api_from_rust.md` for more details
 #       (and `//docs/rust/crubit/README.md` for general Crubit information).
 #

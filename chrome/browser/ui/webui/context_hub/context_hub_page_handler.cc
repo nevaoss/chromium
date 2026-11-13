@@ -5,14 +5,17 @@
 #include "chrome/browser/ui/webui/context_hub/context_hub_page_handler.h"
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "base/barrier_callback.h"
 #include "base/barrier_closure.h"
 #include "base/check.h"
+#include "base/containers/adapters.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/to_vector.h"
@@ -322,6 +325,11 @@ BrowserWindowInterface* GetBrowserWindowInterface(
 }  // namespace
 #endif
 
+using history::journeys::Journey;
+using history::journeys::JourneyContinuationQuery;
+using history::journeys::JourneyVisit;
+using history::journeys::JourneyVisitCollection;
+
 ContextHubPageHandler::ContextHubPageHandler(
     mojo::PendingRemote<browser::context_hub::mojom::Page> page,
     mojo::PendingReceiver<browser::context_hub::mojom::PageHandler> receiver,
@@ -400,15 +408,8 @@ GURL ContextHubPageHandler::TabProvider::ResolveTopicUrl(
 
 void ContextHubPageHandler::OnAutoTodosChanged(
     base::span<const context_hub::AutoTodoEntry> entries) {
-  std::vector<context_hub::AutoTodoEntry> filtered_entries;
-  filtered_entries.reserve(entries.size());
-  // Filter out entries with chrome history references for now.
-  for (const context_hub::AutoTodoEntry& entry : entries) {
-    if (!entry.HasChromeHistoryReferences()) {
-      filtered_entries.push_back(entry);
-    }
-  }
-  page_->OnAutoTodosChanged(std::move(filtered_entries));
+  page_->OnAutoTodosChanged(
+      std::vector<context_hub::AutoTodoEntry>(entries.begin(), entries.end()));
 }
 
 void ContextHubPageHandler::OnFirstPartyAutoTodosGenerationStateChanged(
@@ -479,10 +480,7 @@ void ContextHubPageHandler::GetAutoTodos(GetAutoTodosCallback callback) {
         std::vector<context_hub::AutoTodoEntry> third_party_todos;
         for (context_hub::AutoTodoEntry& entry : entries) {
           if (entry.is_first_party()) {
-            // Filter out entries with chrome history references for now.
-            if (!entry.HasChromeHistoryReferences()) {
-              first_party_todos.push_back(std::move(entry));
-            }
+            first_party_todos.push_back(std::move(entry));
           } else if (entry.is_third_party()) {
             third_party_todos.push_back(std::move(entry));
           }
@@ -582,9 +580,8 @@ void ContextHubPageHandler::GetSaveToMemoryBankContext(
           browser::context_hub::mojom::SaveToMemoryBankContext::New();
       mojo_context->url = pending->url;
       mojo_context->tab_title = pending->tab_title;
-      bool is_text_selection =
-          pending->type == context_hub::MemoryBankType::kTextSelection;
-      if (is_text_selection && pending->selected_text.has_value()) {
+      if (pending->type == context_hub::MemoryBankType::kTextSelection &&
+          pending->selected_text.has_value()) {
         // Truncate the snippet to a reasonable length since we only need a
         // preview in the UI.
         static constexpr size_t kMaxSnippetPreviewLength = 300;
@@ -594,7 +591,7 @@ void ContextHubPageHandler::GetSaveToMemoryBankContext(
         }
         mojo_context->selected_text = std::move(preview);
       }
-      mojo_context->is_text_selection = is_text_selection;
+      mojo_context->image_url = pending->image_url;
       std::move(callback).Run(std::move(mojo_context));
       return;
     }
@@ -683,6 +680,52 @@ void ContextHubPageHandler::UpdateMemoryBankEntryAnnotations(
   service->UpdateMemoryBankEntryAnnotations(
       id, std::move(tags), std::move(annotations->note),
       std::move(annotations->collection), std::move(callback));
+}
+
+void ContextHubPageHandler::UploadMemoryBankEntries(
+    const std::vector<context_hub::MemoryBankEntry>& entries,
+    UploadMemoryBankEntriesCallback callback) {
+  auto* service = ContextHubServiceFactory::GetForProfile(profile_);
+  if (!service || entries.empty()) {
+    std::move(callback).Run(/*success=*/false);
+    return;
+  }
+
+  std::vector<context_hub::MemoryBankEntry> valid_entries;
+  valid_entries.reserve(entries.size());
+  for (const auto& entry : entries) {
+    if (!entry.url.is_valid() || !entry.url.SchemeIsHTTPOrHTTPS()) {
+      continue;
+    }
+
+    context_hub::MemoryBankEntry valid_entry = entry;
+    // Reset `id` to 0 so the storage backend treats the uploaded entry as a
+    // new entry (generating a fresh ID and enforcing capacity limits) rather
+    // than overwriting an existing entry.
+    valid_entry.id = 0;
+    valid_entries.push_back(std::move(valid_entry));
+  }
+
+  if (valid_entries.empty()) {
+    std::move(callback).Run(/*success=*/false);
+    return;
+  }
+
+  // TODO(crbug.com/567261012): Surface partial or complete upload failures to
+  // the user when any of the uploaded entries fail to save or are invalid.
+  auto barrier_callback = base::BarrierCallback<bool>(
+      valid_entries.size(), base::BindOnce(
+                                [](UploadMemoryBankEntriesCallback callback,
+                                   const std::vector<bool>& results) {
+                                  bool any_succeeded = std::ranges::any_of(
+                                      results, std::identity{});
+                                  std::move(callback).Run(any_succeeded);
+                                },
+                                std::move(callback)));
+
+  for (auto& entry : base::Reversed(valid_entries)) {
+    service->SaveMemoryBankEntry(std::move(entry), barrier_callback);
+  }
 }
 
 namespace {
@@ -1188,45 +1231,46 @@ namespace {
 // representation. No further lookups are needed: the history service hands
 // back visits that carry their URL and title, and drops any journey it could
 // not fully resolve.
-browser::context_hub::mojom::TopicPtr ToMojoTopic(
-    history::journeys::Journey journey) {
-  std::vector<browser::context_hub::mojom::TopicVisitPtr> visits;
-  visits.reserve(journey.visits.size());
-  for (history::journeys::JourneyVisit& visit : journey.visits) {
-    visits.push_back(browser::context_hub::mojom::TopicVisit::New(
-        std::move(visit.url), base::UTF16ToUTF8(visit.title),
-        visit.visit_time));
-  }
+browser::context_hub::mojom::TopicPtr ToMojoTopic(Journey journey) {
+  std::vector<browser::context_hub::mojom::TopicVisitPtr> visits =
+      base::ToVector(journey.visits, [](JourneyVisit& visit) {
+        return browser::context_hub::mojom::TopicVisit::New(
+            std::move(visit.url), base::UTF16ToUTF8(visit.title),
+            visit.visit_time);
+      });
 
   std::vector<browser::context_hub::mojom::TopicContinuationQueryPtr>
-      continuation_queries;
-  continuation_queries.reserve(journey.continuation_queries.size());
-  for (history::journeys::JourneyContinuationQuery& query :
-       journey.continuation_queries) {
-    continuation_queries.push_back(
-        browser::context_hub::mojom::TopicContinuationQuery::New(
-            std::move(query.title), std::move(query.prompt)));
-  }
+      continuation_queries = base::ToVector(
+          journey.continuation_queries, [](JourneyContinuationQuery& query) {
+            return browser::context_hub::mojom::TopicContinuationQuery::New(
+                std::move(query.title), std::move(query.prompt));
+          });
 
-  // TODO(crbug.com/558572977): Send the topic's collections once the topic
-  // generation backend produces them.
+  std::vector<browser::context_hub::mojom::TopicCollectionPtr> collections =
+      base::ToVector(
+          journey.collections, [](JourneyVisitCollection& collection) {
+            return browser::context_hub::mojom::TopicCollection::New(
+                std::move(collection.title),
+                base::ToVector(collection.visits, [](JourneyVisit& visit) {
+                  return browser::context_hub::mojom::TopicCollectionItem::New(
+                      base::UTF16ToUTF8(visit.title), std::move(visit.url),
+                      /*site_name=*/std::nullopt);
+                }));
+          });
+
   return browser::context_hub::mojom::Topic::New(
       /*id=*/std::move(journey.journey_id), std::move(journey.title),
       journey.creation_time, std::move(journey.emoji),
       std::move(journey.overview), std::move(journey.short_overview),
       std::move(visits), std::move(continuation_queries),
-      /*collections=*/
-      std::vector<browser::context_hub::mojom::TopicCollectionPtr>());
+      std::move(collections));
 }
 
 std::vector<browser::context_hub::mojom::TopicPtr> ToMojoTopics(
-    std::vector<history::journeys::Journey> journeys) {
-  std::vector<browser::context_hub::mojom::TopicPtr> topics;
-  topics.reserve(journeys.size());
-  for (history::journeys::Journey& journey : journeys) {
-    topics.push_back(ToMojoTopic(std::move(journey)));
-  }
-  return topics;
+    std::vector<Journey> journeys) {
+  return base::ToVector(journeys, [](Journey& journey) {
+    return ToMojoTopic(std::move(journey));
+  });
 }
 
 }  // namespace
@@ -1244,8 +1288,7 @@ void ContextHubPageHandler::GetTopics(GetTopicsCallback callback) {
   // this handler, so a query outliving it is cancelled instead of replying.
   history_service->GetAllJourneys(
       base::BindOnce(
-          [](GetTopicsCallback callback,
-             std::vector<history::journeys::Journey> journeys) {
+          [](GetTopicsCallback callback, std::vector<Journey> journeys) {
             std::move(callback).Run(ToMojoTopics(std::move(journeys)));
           },
           std::move(callback)),
@@ -1266,8 +1309,7 @@ void ContextHubPageHandler::GetTopic(const std::string& id,
   history_service->GetJourney(
       id,
       base::BindOnce(
-          [](GetTopicCallback callback,
-             std::optional<history::journeys::Journey> journey) {
+          [](GetTopicCallback callback, std::optional<Journey> journey) {
             std::move(callback).Run(
                 journey ? ToMojoTopic(std::move(journey).value()) : nullptr);
           },
@@ -1353,15 +1395,17 @@ void ContextHubPageHandler::OpenGlicPanel(
   base::span<const std::string> capped_prompts =
       base::span(prompts).first(std::min(prompts.size(), kMaxPrompts));
   options.prompts.assign(capped_prompts.begin(), capped_prompts.end());
-  // The page supplies its own topic-specific prompts, so ask the web client to
-  // suppress the generic Zero State Suggestions in favor of them. If the page
-  // had none to offer (e.g. a topic with no title), fall back to ZSS rather
-  // than asking for a panel with no suggestions at all.
+  // With two or more topic-specific prompts the page has enough of its own
+  // suggestions, so ask the web client to suppress the generic Zero State
+  // Suggestions in favor of them. With fewer than two (e.g. a topic with no
+  // title, or a single prompt), keep ZSS so the panel still has a useful set
+  // of suggestions to offer.
   //
   // TODO(crbug.com/567878517): The web client doesn't support this yet. It
   // ignores `disable_zss`, and with more than one prompt it shows the generic
   // ZSS rather than these prompts.
-  options.disable_zss = !options.prompts.empty();
+  constexpr size_t kMinPromptsToDisableZss = 2;
+  options.disable_zss = options.prompts.size() >= kMinPromptsToDisableZss;
 
   if (already_showing) {
     // The invoke is still delivered to the web client, so it can replace its
@@ -1557,8 +1601,7 @@ void ContextHubPageHandler::FetchTopicsFeedbackExportData(
   history_service->GetAllJourneys(
       base::BindOnce(
           [](context_hub::TopicsFeedbackExportData* data,
-             base::RepeatingClosure done,
-             std::vector<history::journeys::Journey> journeys) {
+             base::RepeatingClosure done, std::vector<Journey> journeys) {
             data->journeys = std::move(journeys);
             done.Run();
           },

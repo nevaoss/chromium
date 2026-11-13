@@ -12,7 +12,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
 #include "chrome/test/base/testing_profile.h"
-#include "components/ntp_tiles/pref_names.h"
+#include "components/ntp_tiles/enterprise/enterprise_shortcuts_pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/prefs/testing_pref_service.h"
@@ -453,30 +453,30 @@ TEST_F(OmniboxEverywherePrefsTest, HotkeyPresetsAndTokens) {
   EXPECT_FALSE(tokens.empty());
   EXPECT_EQ(tokens.back(), "Space");
 #if BUILDFLAG(IS_MAC)
-  EXPECT_EQ(tokens[0], "Option");
+  EXPECT_EQ(tokens[0], "⌥ Option");
 
   // Verify Apple canonical order [control -> option -> shift -> command].
   ui::Accelerator cmd_shift_space(ui::VKEY_SPACE,
                                   ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN);
   auto cmd_tokens = GetOmniboxEverywhereHotkeyTokens(cmd_shift_space);
   ASSERT_EQ(3u, cmd_tokens.size());
-  EXPECT_EQ("Shift", cmd_tokens[0]);
-  EXPECT_EQ("Cmd", cmd_tokens[1]);
+  EXPECT_EQ("⇧ Shift", cmd_tokens[0]);
+  EXPECT_EQ("⌘ Cmd", cmd_tokens[1]);
   EXPECT_EQ("Space", cmd_tokens[2]);
 
   ui::Accelerator ctrl_shift_space(ui::VKEY_SPACE,
                                    ui::EF_CONTROL_DOWN | ui::EF_SHIFT_DOWN);
   auto ctrl_tokens = GetOmniboxEverywhereHotkeyTokens(ctrl_shift_space);
   ASSERT_EQ(3u, ctrl_tokens.size());
-  EXPECT_EQ("Ctrl", ctrl_tokens[0]);
-  EXPECT_EQ("Shift", ctrl_tokens[1]);
+  EXPECT_EQ("⌃ Ctrl", ctrl_tokens[0]);
+  EXPECT_EQ("⇧ Shift", ctrl_tokens[1]);
   EXPECT_EQ("Space", ctrl_tokens[2]);
 
   // Verify non-letter keys (Return) map to localized text instead of glyphs.
   ui::Accelerator cmd_return(ui::VKEY_RETURN, ui::EF_COMMAND_DOWN);
   auto return_tokens = GetOmniboxEverywhereHotkeyTokens(cmd_return);
   ASSERT_EQ(2u, return_tokens.size());
-  EXPECT_EQ("Cmd", return_tokens[0]);
+  EXPECT_EQ("⌘ Cmd", return_tokens[0]);
   EXPECT_EQ("Enter", return_tokens[1]);
 #else
   EXPECT_EQ(tokens[0], "Alt");

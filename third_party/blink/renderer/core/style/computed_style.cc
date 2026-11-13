@@ -1863,8 +1863,8 @@ static String DisableNewGeorgianCapitalLetters(const String& text) {
   // about surrogate handling.
   for (unsigned i = 0; i < length; ++i) {
     UChar character = UNSAFE_TODO(input[i]);
-    if (Character::IsModernGeorgianUppercase(character)) {
-      result.Append(Character::LowercaseModernGeorgianUppercase(character));
+    if (unicode::IsModernGeorgianUppercase(character)) {
+      result.Append(unicode::LowercaseModernGeorgianUppercase(character));
     } else {
       result.Append(character);
     }
@@ -2495,8 +2495,7 @@ bool ComputedStyle::HasBackground() const {
   // When background color animation is running on the compositor thread, we
   // need to trigger repaint even if the background is transparent to collect
   // artifacts in order to run the animation on the compositor.
-  if (RuntimeEnabledFeatures::CompositeBGColorAnimationEnabled() &&
-      HasCurrentBackgroundColorAnimation()) {
+  if (HasCurrentBackgroundColorAnimation()) {
     return true;
   }
   return HasBackgroundImage();

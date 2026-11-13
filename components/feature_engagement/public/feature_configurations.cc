@@ -148,19 +148,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHReadingModeSidePanelFeature.name == feature->name) {
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = kAlwaysAvailable;
-    config.session_rate = Comparator(EQUAL, 0);
-    // Show the promo up to 3 times a year.
-    config.trigger = EventConfig("iph_reading_mode_side_panel_trigger",
-                                 Comparator(LESS_THAN, 3), 360, 360);
-    config.used = EventConfig("reading_mode_side_panel_shown",
-                              Comparator(EQUAL, 0), 360, 360);
-    return config;
-  }
-
   if (kIPHSidePanelGenericPinnableFeature.name == feature->name) {
     FeatureConfig config;
     config.valid = true;
@@ -877,6 +864,22 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
                               kAlwaysTrue, 0, 0);
     config.event_configs.insert(EventConfig(
         "fusebox_attachment_popup_used", Comparator(GREATER_THAN, 0), 28, 360));
+    return config;
+  }
+
+  if (kIPHFuseboxPlusButtonHintFeature.name == feature->name) {
+    // Shows the IPH callout on the fusebox (+) button for users who have
+    // not yet engaged with the fusebox attachment menu.
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = Comparator(EQUAL, 0);
+    config.trigger =
+        EventConfig("fusebox_plus_button_hint_trigger",
+                    Comparator(LESS_THAN, 3), k10YearsInDays, k10YearsInDays);
+    config.used =
+        EventConfig("fusebox_attachment_popup_used", Comparator(EQUAL, 0),
+                    k10YearsInDays, k10YearsInDays);
     return config;
   }
 
@@ -2275,6 +2278,93 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   }
 #endif
 
+  if (kIPH_AndroidTipsOptInPromo.name == feature->name) {
+    // Allows the Android Tips Notifications opt-in bottom sheet promo to be
+    // shown at most once every 7 days and up to 3 times over 360 days.
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = kNoRestrictions;
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config.trigger = EventConfig("android_tips_opt_in_promo_triggered",
+                                 Comparator(EQUAL, 0), 7, 360);
+    config.event_configs.insert(
+        EventConfig("android_tips_opt_in_promo_triggered",
+                    Comparator(LESS_THAN, 3), 360, 360));
+    config.used = EventConfig("android_tips_opt_in_promo_used",
+                              Comparator(EQUAL, 0), 360, 360);
+    return config;
+  }
+
+  if (kIPH_AppLanguagePromo.name == feature->name) {
+    // Allows the App Language prompt to be shown at most once every 7 days and
+    // up to 3 times over 360 days.
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = kNoRestrictions;
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config.trigger = EventConfig("app_language_promo_triggered",
+                                 Comparator(EQUAL, 0), 7, 360);
+    config.event_configs.insert(EventConfig(
+        "app_language_promo_triggered", Comparator(LESS_THAN, 3), 360, 360));
+    config.used =
+        EventConfig("app_language_promo_used", Comparator(EQUAL, 0), 360, 360);
+    return config;
+  }
+
+  if (kIPH_ArchivedTabsAutoDeletePromo.name == feature->name) {
+    // Allows the Archived Tabs auto-delete decision bottom sheet promo to be
+    // shown at most once every 7 days and up to 3 times over 360 days.
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = kNoRestrictions;
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config.trigger = EventConfig("archived_tabs_auto_delete_promo_triggered",
+                                 Comparator(EQUAL, 0), 7, 360);
+    config.event_configs.insert(
+        EventConfig("archived_tabs_auto_delete_promo_triggered",
+                    Comparator(LESS_THAN, 3), 360, 360));
+    config.used = EventConfig("archived_tabs_auto_delete_promo_used",
+                              Comparator(EQUAL, 0), 360, 360);
+    return config;
+  }
+
+  if (kIPH_FullscreenSigninPromo.name == feature->name) {
+    // Allows the fullscreen sign-in (re-FRE) promo to be shown at most once
+    // every 7 days and up to 3 times over 360 days.
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = kAlwaysAvailable;
+    config.session_rate = kNoRestrictions;
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    config.trigger = EventConfig("fullscreen_signin_promo_triggered",
+                                 Comparator(EQUAL, 0), 7, 360);
+    config.event_configs.insert(EventConfig("fullscreen_signin_promo_triggered",
+                                            Comparator(LESS_THAN, 3), 360,
+                                            360));
+    config.used = EventConfig("fullscreen_signin_promo_used",
+                              Comparator(EQUAL, 0), 360, 360);
+    return config;
+  }
+
+  if (kIPH_NotificationPermissionPromo.name == feature->name) {
+    // Regulatory OS notification permission prompt that always triggers when
+    // requested and contributes to interruptive cooldown group blocking.
+    FeatureConfig config = CreateAlwaysTriggerConfig(feature);
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    return config;
+  }
+
+  if (kIPH_SearchEngineChoicePromo.name == feature->name) {
+    // Regulatory search engine choice dialog that always triggers when
+    // requested and contributes to interruptive cooldown group blocking.
+    FeatureConfig config = CreateAlwaysTriggerConfig(feature);
+    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
+    return config;
+  }
+
 // CONFIGURATION_ANDROID_END
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -3293,31 +3383,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   }
 
 #endif  // BUILDFLAG(IS_IOS)
-
-#if BUILDFLAG(IS_CHROMEOS)
-  if (kIPHLauncherSearchHelpUiFeature.name == feature->name) {
-    // A config that allows the ChromeOS Ash Launcher search IPH to be shown.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = kAlwaysAvailable;
-    config.session_rate = kNoRestrictions;
-    config.session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.blocked_by.type = BlockedBy::Type::NONE;
-    config.blocking.type = Blocking::Type::NONE;
-
-    // Can be shown any time until the `assistant_click` event is recorded.
-    config.trigger =
-        EventConfig("IPH_LauncherSearchHelpUi_trigger", kAlwaysTrue,
-                    kMaxStoragePeriod, kMaxStoragePeriod);
-    config.used =
-        EventConfig("IPH_LauncherSearchHelpUi_chip_click", kAlwaysTrue,
-                    kMaxStoragePeriod, kMaxStoragePeriod);
-    config.event_configs.insert(EventConfig(
-        "IPH_LauncherSearchHelpUi_assistant_click", Comparator(EQUAL, 0),
-        kMaxStoragePeriod, kMaxStoragePeriod));
-    return config;
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 

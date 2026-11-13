@@ -63,6 +63,7 @@ try_.builder(
         ],
     ),
     os = os.LINUX_DEFAULT,
+    ssd = True,
     contact_team_email = "chrome-build-team@google.com",
 )
 
@@ -217,6 +218,7 @@ try_.orchestrator_builder(
     #use_orchestrator_pool = True,
     cq_settings = try_.cq_settings(
         on_default_cq = True,
+        reuse_max_commit_distance = 800 if settings.is_main else None,
     ),
     experiments = {
         # go/nplus1shardsproposal
@@ -228,7 +230,7 @@ try_.orchestrator_builder(
         # crbug.com/40280175
         "chromium_checkout.expand_submodules": 100,
         "luci.buildbucket.run_in_turboci": 100,
-        "luci.buildbucket.run_in_turboci.grpc_client": 50,
+        "luci.buildbucket.run_in_turboci.grpc_client": 100,
     },
     main_list_view = "try",
     use_clang_coverage = True,

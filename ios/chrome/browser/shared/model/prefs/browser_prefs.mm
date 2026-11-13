@@ -877,6 +877,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
 
   registry->RegisterIntegerPref(prefs::kGeminiEnabledByPolicy, 0);
   registry->RegisterIntegerPref(prefs::kGenAiEnabledByPolicy, 0);
+  registry->RegisterIntegerPref(prefs::kGeminiActOnWebSettings, 0);
+  registry->RegisterListPref(prefs::kGeminiActOnWebAllowedForURLs);
+  registry->RegisterListPref(prefs::kGeminiActOnWebBlockedForURLs);
   registry->RegisterBooleanPref(prefs::kAIHubEligibilityTriggered, false);
 
   registry->RegisterListPref(policy::policy_prefs::kIncognitoModeUrlBlocklist);
@@ -897,6 +900,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   // Use `safety_check::prefs::kSafetyCheckHomeModuleEnabled` instead.
   registry->RegisterBooleanPref(
       prefs::kHomeCustomizationMagicStackSafetyCheckEnabled, true);
+
+  registry->RegisterBooleanPref(prefs::kUniversalOptOutErrorToastShown, false);
 
   // Deprecated 11/2025.
   registry->RegisterListPref(kReaderModeRecentlyUsedTimestampsPref);

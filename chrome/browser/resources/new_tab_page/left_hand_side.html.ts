@@ -13,7 +13,10 @@ export function getHtml(this: LeftHandSideElement) {
       ? html`<cr-threads-rail id="folded"></cr-threads-rail>`
       : ''}
   <ntp-iframe id="expanded"
-      src="chrome-untrusted://new-tab-page/expanded-lhs">
+      allow="unbounded-element"
+      style="width: ${this.expandedWidth_}px;"
+      src="${this.expandedLhsUrl_}"
+      ?hidden="${!this.isExpandedReady_}">
   </ntp-iframe>
   <!--_html_template_end_-->`;
   // clang-format on

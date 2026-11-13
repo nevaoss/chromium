@@ -41,6 +41,7 @@
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
@@ -72,6 +73,8 @@
 #include "chrome/browser/ui/tabs/vertical_tab_strip_metrics.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/thumbnails/thumbnail_tab_helper.h"
+#include "chrome/browser/ui/toasts/api/toast_id.h"
+#include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/web_applications/web_app_dialog_utils.h"
@@ -82,10 +85,12 @@
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/commerce/core/commerce_utils.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/reading_list/core/reading_list_model.h"
 #include "components/sessions/core/session_id.h"
@@ -97,6 +102,7 @@
 #include "components/tabs/public/split_tab_collection.h"
 #include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_collection_types.h"
+#include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_group_tab_collection.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/tabs/public/tab_strip_collection.h"
@@ -114,6 +120,7 @@
 #include "media/base/media_switches.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/list_selection_model.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/gfx/range/range.h"
@@ -2784,6 +2791,22 @@ bool TabStripModel::IsContextMenuCommandEnabled(
     case CommandGlicUnshare:
       return true;
 
+    case CommandAiModeShare:
+    case CommandAiModeCreateNewThread: {
+      if (!contextual_tasks::
+              IsContextualTasksSidePanelRearchitectureEnabled() ||
+          !contextual_tasks::CanShareTabContext(profile())) {
+        return false;
+      }
+      const std::vector<tabs::TabInterface*> tabs =
+          GetTabsAtIndices(GetIndicesForCommand(context_index));
+      return std::ranges::any_of(tabs, [](tabs::TabInterface* tab) {
+        content::WebContents* contents = tab ? tab->GetContents() : nullptr;
+        return contents && contextual_tasks::IsUrlValidForContextSharing(
+                               contents->GetLastCommittedURL());
+      });
+    }
+
     case CommandCopyURL:
       DCHECK(delegate()->IsForWebApp());
       return true;
@@ -3150,6 +3173,10 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
     case CommandGlicCreateNewChat:
     case CommandGlicSwitchToRecentConversation:
       // These are handled by GlicTabSubMenuModel.
+      break;
+    case CommandAiModeShare:
+    case CommandAiModeCreateNewThread:
+      // Handled by ContextualTasksTabSubMenuModel.
       break;
     case CommandGlicUnshare: {
       std::vector<int> indices = GetIndicesForCommand(context_index);
@@ -4232,6 +4259,7 @@ TabStripSelectionChange TabStripModel::SetSelection(
     TabStripModelObserver::ChangeReason reason,
     bool triggered_by_other_operation) {
   bool exited_focus = false;
+  std::optional<size_t> exited_ephemeral_group_tab_count;
   if (std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
       focused_group.has_value()) {
     if (!new_model.focused_group().has_value() ||
@@ -4241,6 +4269,10 @@ TabStripSelectionChange TabStripModel::SetSelection(
           !tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
               new_model.active_tab(), focused_group);
       if (exited_focus) {
+        if (IsEphemeralTabGroup(*focused_group)) {
+          exited_ephemeral_group_tab_count =
+              group_model_->GetTabGroup(*focused_group)->tab_count();
+        }
         ExitFocusMode(TabGroupFocusExitReason::kActiveTabGroupOperation);
       }
     }
@@ -4328,6 +4360,19 @@ TabStripSelectionChange TabStripModel::SetSelection(
 
     OnChange(TabStripModelChange(TabStripModelChange::SelectionOnly()),
              selection);
+
+    if (exited_focus) {
+      if (ToastController* const toast_controller =
+              ToastController::From(delegate_->GetBrowserWindowInterface())) {
+        ToastParams params(ToastId::kTabGroupFocusExited);
+        if (exited_ephemeral_group_tab_count.has_value()) {
+          params.body_string_override = l10n_util::GetPluralStringFUTF16(
+              IDS_NON_GROUP_FOCUS_EXITED_TOAST_BODY,
+              exited_ephemeral_group_tab_count.value());
+        }
+        toast_controller->MaybeShowToast(std::move(params));
+      }
+    }
   }
 
   return selection;

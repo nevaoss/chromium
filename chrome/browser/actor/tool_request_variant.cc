@@ -45,6 +45,9 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
   void Apply(const ClickToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
+  void Apply(const CloseGeminiPanelToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
   void Apply(const CloseTabToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
@@ -107,6 +110,9 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
   void Apply(const PlayMediaToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
+  void Apply(const PromptGeminiPanelToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
   void Apply(const ReloadPageToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
@@ -126,6 +132,9 @@ class ConvertToVariantFn : public ToolRequestVisitorFunctor {
     var_ = ToolRequestVariant(tr);
   }
   void Apply(const SelectToolRequest& tr) override {
+    var_ = ToolRequestVariant(tr);
+  }
+  void Apply(const SiteBasedSearchToolRequest& tr) override {
     var_ = ToolRequestVariant(tr);
   }
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)

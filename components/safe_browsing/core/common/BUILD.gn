@@ -11,8 +11,6 @@ static_library("safe_browsing_prefs") {
     "safe_browsing_prefs.h",
   ]
 
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
-
   deps = [
     ":features",
     "//components/pref_registry",
@@ -28,8 +26,6 @@ source_set("safe_browsing_policy_handler") {
     "safe_browsing_policy_handler.cc",
     "safe_browsing_policy_handler.h",
   ]
-
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 
   deps = [
     ":safe_browsing_prefs",
@@ -77,8 +73,6 @@ source_set("visual_utils") {
     "visual_utils.h",
   ]
 
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
-
   deps = [
     "//base",
     "//components/safe_browsing:buildflags",
@@ -86,10 +80,14 @@ source_set("visual_utils") {
     "//components/safe_browsing/core/common/proto:client_model_proto",
     "//components/safe_browsing/core/common/proto:csd_proto",
     "//skia",
-    "//ui/base",
     "//ui/gfx",
     "//ui/gfx:color_utils",
   ]
+
+  if (is_ios) {
+    sources += [ "visual_utils_ios.mm" ]
+    frameworks = [ "UIKit.framework" ]
+  }
 }
 
 source_set("common") {
@@ -109,8 +107,6 @@ source_set("common") {
     "web_ui_constants.cc",
     "web_ui_constants.h",
   ]
-
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 
   deps = [
     "//base",
@@ -141,8 +137,6 @@ source_set("features") {
     "features.cc",
     "features.h",
   ]
-
-  configs += [ "//build/config/compiler:wexit_time_destructors" ]
 
   deps = [
     "//base",

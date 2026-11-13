@@ -12,6 +12,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "base/check.h"
@@ -74,6 +75,9 @@
 #include "chrome/browser/glic/resources/grit/glic_browser_resources.h"
 #include "chrome/browser/indigo/indigo_image_replacement.h"
 #include "chrome/browser/indigo/indigo_image_replacement_manager.h"
+#include "chrome/browser/indigo/indigo_metrics.h"
+#include "chrome/browser/indigo/indigo_page_action_controller.h"
+#include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/language/language_model_manager_factory.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_features.h"
@@ -134,7 +138,6 @@
 #include "chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_entry_point_controller.h"
-#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller_utils.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_bubble.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_sub_menu_model.h"
@@ -178,7 +181,6 @@
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/compose/buildflags.h"
 #include "components/compose/core/browser/compose_features.h"
-#include "components/content_extraction/content/browser/inner_text.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/download/public/common/download_url_parameters.h"
@@ -461,7 +463,7 @@ enum class GlicWebContentsContextMenuResult {
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicWebContentsContextMenuResult)
 
-std::string GetGlicWebContentsContextToken(
+std::string_view GetGlicWebContentsContextToken(
     const content::ContextMenuParams& params) {
   if (params.selection_text.empty() && params.link_url.is_empty()) {
     return "Page";
@@ -473,6 +475,15 @@ std::string GetGlicWebContentsContextToken(
     return "Link";
   }
   return "TextSelection";
+}
+
+// Records whether the Glic item for `token` was executed or ignored.
+void RecordGlicWebContentsContextMenuResult(std::string_view token,
+                                            bool executed) {
+  base::UmaHistogramEnumeration(
+      base::StrCat({"Glic.WebContentsContextMenu.", token}),
+      executed ? GlicWebContentsContextMenuResult::kExecuted
+               : GlicWebContentsContextMenuResult::kShownAndIgnored);
 }
 
 ui::ImageModel GetLensContextMenuIcon() {
@@ -675,13 +686,14 @@ int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 170},
        {IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU, 171},
        {IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION, 172},
+       {IDC_CONTENT_CONTEXT_INDIGO, 173},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {kUmaMaxValueKey, 173}});
+       {kUmaMaxValueKey, 174}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
@@ -723,13 +735,14 @@ int UmaEnumForCommand(int key, UmaEnumIdLookupType type) {
        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
        {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 34},
        {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 35},
+       {IDC_CONTENT_CONTEXT_INDIGO, 36},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the ContextMenuOptionDesktop enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {kUmaMaxValueKey, 36}});
+       {kUmaMaxValueKey, 37}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
 
   switch (type) {
@@ -1153,19 +1166,17 @@ RenderViewContextMenu::~RenderViewContextMenu() = default;
 void RenderViewContextMenu::MenuClosed(ui::SimpleMenuModel* source) {
   if (source == &menu_model_) {
     if (glic_item_shown_) {
-      std::string token = GetGlicWebContentsContextToken(params_);
-      if (glic_item_executed_) {
-        base::UmaHistogramEnumeration(
-            base::StrCat({"Glic.WebContentsContextMenu.", token}),
-            GlicWebContentsContextMenuResult::kExecuted);
-      } else {
-        base::UmaHistogramEnumeration(
-            base::StrCat({"Glic.WebContentsContextMenu.", token}),
-            GlicWebContentsContextMenuResult::kShownAndIgnored);
-      }
+      RecordGlicWebContentsContextMenuResult(
+          GetGlicWebContentsContextToken(params_), glic_item_executed_);
+    }
+    if (glic_share_image_item_shown_) {
+      RecordGlicWebContentsContextMenuResult("Image",
+                                             glic_share_image_item_executed_);
     }
     glic_item_shown_ = false;
     glic_item_executed_ = false;
+    glic_share_image_item_shown_ = false;
+    glic_share_image_item_executed_ = false;
   }
   RenderViewContextMenuBase::MenuClosed(source);
 }
@@ -1352,6 +1363,10 @@ void RenderViewContextMenu::InitMenu() {
     if (content_type_->SupportsGroup(
             ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE)) {
       AppendGlicShareImageItem();
+    }
+
+    if (media_image) {
+      AppendIndigoItem();
     }
   }
 
@@ -2356,6 +2371,9 @@ void RenderViewContextMenu::AppendImageItems() {
     AppendQRCodeGeneratorItem(/*for_image=*/true, /*draw_icon=*/false,
                               /*add_separator=*/false);
   }
+  if (CanSaveImageToMemoryBanks()) {
+    AppendSaveToMemoryBanksItem();
+  }
 }
 
 void RenderViewContextMenu::AppendSearchWebForImageItems() {
@@ -2419,7 +2437,28 @@ void RenderViewContextMenu::AppendGlicShareImageItem() {
         menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE)
             .value(),
         kGlicShareImageMenuItem);
+    glic_share_image_item_shown_ = true;
   }
+}
+
+void RenderViewContextMenu::AppendIndigoItem() {
+  if (!CanAppendIndigoItem()) {
+    return;
+  }
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(source_web_contents_);
+  auto* controller = indigo::IndigoPageActionController::From(tab);
+  CHECK(controller);
+  menu_model_.AddItemWithStringIdAndIcon(
+      IDC_CONTENT_CONTEXT_INDIGO, IDS_INDIGO_CONTEXT_MENU_TEXT,
+      ui::ImageModel::FromVectorIcon(
+          indigo::IndigoPageActionController::GetEntryPointVectorIcon(),
+          ui::kColorMenuIcon, kTabMenuIconSize));
+  menu_model_.SetIsNewFeatureAt(
+      menu_model_.GetItemCount() - 1,
+      UserEducationService::MaybeShowNewBadge(GetBrowserContext(),
+                                              features::kIndigoContextMenu));
+  controller->OnContextMenuShown();
 }
 
 void RenderViewContextMenu::AppendAudioItems() {
@@ -2637,6 +2676,9 @@ void RenderViewContextMenu::AppendPageItems() {
       AppendSaveToMemoryBanksItem();
     }
 
+    // Indigo (Try it on)
+    AppendIndigoItem();
+
     // Open in reading mode & Listen to this page
     AppendReadAnythingItem();
 
@@ -2689,6 +2731,7 @@ void RenderViewContextMenu::AppendPageItems() {
     if (glic_below_search) {
       MaybeAppendOpenGlicItem(/*add_separator=*/false);
     }
+    AppendIndigoItem();
 
     if (experiment_group ==
         features::ReadAnythingMenuShuffleExperimentGroup::kDefault) {
@@ -2711,6 +2754,7 @@ void RenderViewContextMenu::AppendPageItems() {
       if (glic_below_search) {
         MaybeAppendOpenGlicItem(/*add_separator=*/false);
       }
+      AppendIndigoItem();
     }
     if (!use_simplified_text_selection) {
       AppendReadAnythingItem();
@@ -2910,10 +2954,17 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
 }
 
 void RenderViewContextMenu::AppendSaveToMemoryBanksItem() {
-  if (base::FeatureList::IsEnabled(context_hub::features::kMemoryBanks)) {
+  if (base::FeatureList::IsEnabled(context_hub::features::kMemoryBanks) &&
+      !menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS)
+           .has_value()) {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS,
                                     IDS_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS);
   }
+}
+
+bool RenderViewContextMenu::CanSaveImageToMemoryBanks() const {
+  return params_.media_type == ContextMenuDataMediaType::kImage &&
+         params_.has_image_contents && params_.src_url.SchemeIsHTTPOrHTTPS();
 }
 
 void RenderViewContextMenu::AppendGlicItems() {
@@ -3723,6 +3774,7 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     case IDC_CONTENT_CONTEXT_ARCHIVE_GLIC:
     case IDC_CONTENT_CONTEXT_GLIC:
     case IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION:
+    case IDC_CONTENT_CONTEXT_INDIGO:
       return true;
 
     case IDC_CONTENT_CONTEXT_EXIT_FULLSCREEN:
@@ -4027,6 +4079,10 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 
     case IDC_CONTENT_CONTEXT_GLICSHAREIMAGE:
       ExecGlicShareImage();
+      break;
+
+    case IDC_CONTENT_CONTEXT_INDIGO:
+      ExecIndigo();
       break;
 
     case IDC_CONTENT_CONTEXT_SEARCHLENSFORIMAGE:
@@ -4883,62 +4939,29 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
           is_link ? base::UTF16ToUTF8(params_.link_text) : std::string());
 
   if (send_tab_to_self_submenu_) {
-#if BUILDFLAG(IS_MAC)
-    if (features::IsMenuSimplificationEnabled()) {
-      menu_model_.AddSubMenuWithStringIdAndIcon(
-          IDC_SEND_TAB_TO_SELF, IDS_CONTEXT_MENU_SEND_TAB_TO_SELF,
-          send_tab_to_self_submenu_.get(),
-          ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
-                                             ? kDevicesIcon
-                                             : kDevicesOldIcon));
-    } else {
-      menu_model_.AddSubMenu(
-          IDC_SEND_TAB_TO_SELF,
-          l10n_util::GetStringUTF16(IDS_CONTEXT_MENU_SEND_TAB_TO_SELF),
-          send_tab_to_self_submenu_.get());
-    }
-#else
-    menu_model_.AddSubMenuWithStringIdAndIcon(
-        IDC_SEND_TAB_TO_SELF, IDS_CONTEXT_MENU_SEND_TAB_TO_SELF,
-        send_tab_to_self_submenu_.get(),
-        ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
-                                           ? kDevicesIcon
-                                           : kDevicesOldIcon));
-#endif
-
-    const base::Feature& stts_feature =
-        (is_link || base::FeatureList::IsEnabled(
-                        send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2))
-            ? send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2
-            : send_tab_to_self::kSendTabToSelfEnhancedDesktopUI;
-
+    menu_model_.AddSubMenuWithStringId(IDC_SEND_TAB_TO_SELF,
+                                       IDS_CONTEXT_MENU_SEND_TAB_TO_SELF,
+                                       send_tab_to_self_submenu_.get());
     // TODO(crbug.com/516708776): Remove new feature tag when no longer new.
-    menu_model_.SetIsNewFeatureAt(menu_model_.GetItemCount() - 1,
-                                  UserEducationService::MaybeShowNewBadge(
-                                      GetBrowserContext(), stts_feature));
+    menu_model_.SetIsNewFeatureAt(
+        menu_model_.GetItemCount() - 1,
+        UserEducationService::MaybeShowNewBadge(
+            GetBrowserContext(),
+            send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2));
+  } else {
+    menu_model_.AddItemWithStringId(IDC_SEND_TAB_TO_SELF,
+                                    IDS_CONTEXT_MENU_SEND_TAB_TO_SELF);
+  }
+
+#if BUILDFLAG(IS_MAC)
+  if (!features::IsMenuSimplificationEnabled()) {
     return;
   }
-
-#if BUILDFLAG(IS_MAC)
-  if (features::IsMenuSimplificationEnabled()) {
-    menu_model_.AddItemWithIcon(
-        IDC_SEND_TAB_TO_SELF,
-        l10n_util::GetStringUTF16(IDS_CONTEXT_MENU_SEND_TAB_TO_SELF),
-        ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
-                                           ? kDevicesIcon
-                                           : kDevicesOldIcon));
-  } else {
-    menu_model_.AddItem(
-        IDC_SEND_TAB_TO_SELF,
-        l10n_util::GetStringUTF16(IDS_CONTEXT_MENU_SEND_TAB_TO_SELF));
-  }
-#else
-  menu_model_.AddItemWithIcon(
+#endif
+  menu_model_.SetIconForCommandId(
       IDC_SEND_TAB_TO_SELF,
-      l10n_util::GetStringUTF16(IDS_CONTEXT_MENU_SEND_TAB_TO_SELF),
       ui::ImageModel::FromVectorIcon(
           features::IsRoundedIconsEnabled() ? kDevicesIcon : kDevicesOldIcon));
-#endif
 }
 
 std::unique_ptr<ui::DataTransferEndpoint>
@@ -5097,46 +5120,31 @@ void RenderViewContextMenu::ExecSaveToMemoryBanks() {
   }
 
   std::string tab_title = base::UTF16ToUTF8(source_web_contents_->GetTitle());
-  std::string selected_text = base::UTF16ToUTF8(params_.selection_text);
-
-  if (!selected_text.empty()) {
+  if (CanSaveImageToMemoryBanks()) {
     context_hub_service->SetPendingMemoryBankEntry(context_hub::MemoryBankEntry(
-        context_hub::MemoryBankType::kTextSelection, params_.page_url,
-        tab_title, selected_text));
+        context_hub::MemoryBankType::kImage, params_.page_url, tab_title,
+        /*selected_text=*/std::nullopt, params_.src_url));
     SaveToMemoryBankBubbleController::GetOrCreateForWebContents(
         source_web_contents_)
         ->ShowBubble();
     return;
   }
 
-  RenderFrameHost* render_frame_host = GetRenderFrameHost();
-  if (!render_frame_host) {
-    return;
-  }
+  std::string selected_text = base::UTF16ToUTF8(params_.selection_text);
 
-  content_extraction::GetInnerText(
-      *render_frame_host, std::nullopt,
-      base::BindOnce(
-          [](base::WeakPtr<content::WebContents> web_contents,
-             base::WeakPtr<context_hub::ContextHubService> service, GURL url,
-             std::string title,
-             std::unique_ptr<content_extraction::InnerTextResult> result) {
-            if (!web_contents || web_contents->IsBeingDestroyed() || !service ||
-                !result || result->inner_text.empty()) {
-              return;
-            }
-            if (web_contents->GetLastCommittedURL() != url) {
-              return;
-            }
-            service->SetPendingMemoryBankEntry(
-                context_hub::MemoryBankEntry(context_hub::MemoryBankType::kTab,
-                                             url, title, result->inner_text));
-            SaveToMemoryBankBubbleController::GetOrCreateForWebContents(
-                web_contents.get())
-                ->ShowBubble();
-          },
-          source_web_contents_->GetWeakPtr(), context_hub_service->GetWeakPtr(),
-          params_.page_url, tab_title));
+  if (!selected_text.empty()) {
+    context_hub_service->SetPendingMemoryBankEntry(context_hub::MemoryBankEntry(
+        context_hub::MemoryBankType::kTextSelection, params_.page_url,
+        tab_title, selected_text));
+  } else {
+    context_hub_service->SetPendingMemoryBankEntry(
+        context_hub::MemoryBankEntry(context_hub::MemoryBankType::kTab,
+                                     params_.page_url, tab_title),
+        source_web_contents_->GetWeakPtr());
+  }
+  SaveToMemoryBankBubbleController::GetOrCreateForWebContents(
+      source_web_contents_)
+      ->ShowBubble();
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
@@ -5329,10 +5337,30 @@ void RenderViewContextMenu::ExecGlicShareImage() {
     // If this has changed since the context menu was summoned, bail early.
     return;
   }
+  glic_share_image_item_executed_ = true;
   if (auto* glic_service = glic::GlicKeyedService::Get(browser_context_)) {
     glic_service->ShareContextImage(
         tabs::TabInterface::MaybeGetFromContents(source_web_contents_),
         GetRenderFrameHost(), params().src_url);
+  }
+}
+
+void RenderViewContextMenu::ExecIndigo() {
+  // See `ExecGlic()` for why the source document must still be active.
+  content::RenderFrameHost* source_frame =
+      source_document_at_menu_open_.AsRenderFrameHostIfValid();
+  if (!source_frame ||
+      &source_frame->GetPage() != &source_web_contents_->GetPrimaryPage()) {
+    return;
+  }
+
+  // Invokes the page-level Try on You image replacement flow on the detected
+  // product image.
+  if (auto* controller = indigo::IndigoPageActionController::From(
+          tabs::TabInterface::MaybeGetFromContents(source_web_contents_))) {
+    UserEducationService::MaybeNotifyNewBadgeFeatureUsed(
+        GetBrowserContext(), features::kIndigoContextMenu);
+    controller->InvokeAction(indigo::EntryPoint::kContextMenu);
   }
 }
 
@@ -6013,14 +6041,6 @@ content::WebContents* RenderViewContextMenu::GetWebContentsForDataControls()
       }
     }
   }
-  if (auto* glue = ReadAnythingSidePanelControllerGlue::FromWebContents(
-          source_web_contents_)) {
-    if (glue->controller() && glue->controller()->tab()) {
-      if (auto* contents = glue->controller()->tab()->GetContents()) {
-        return contents;
-      }
-    }
-  }
   return source_web_contents_;
 }
 
@@ -6228,6 +6248,22 @@ bool RenderViewContextMenu::CanAppendGlicShareImageItem() const {
              optimization_guide::PageContextEligibilityStatus::kEligible;
 }
 
+bool RenderViewContextMenu::CanAppendIndigoItem() const {
+  if (!base::FeatureList::IsEnabled(features::kIndigo) ||
+      !base::FeatureList::IsEnabled(features::kIndigoContextMenu)) {
+    return false;
+  }
+
+  if (!IsNormalBrowser() || IsAnyGlicWebContents(this)) {
+    return false;
+  }
+
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(source_web_contents_);
+  auto* controller = indigo::IndigoPageActionController::From(tab);
+  return controller && controller->IsPageEligible();
+}
+
 void RenderViewContextMenu::AppendLensGeminiSection() {
   if (!features::IsMenuSimplificationEnabled()) {
     return;
@@ -6239,13 +6275,16 @@ void RenderViewContextMenu::AppendLensGeminiSection() {
   bool can_glic = content_type_->SupportsGroup(
                       ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE) &&
                   CanAppendGlicShareImageItem();
+  bool can_indigo = content_type_->SupportsGroup(
+                        ContextMenuContentType::ITEM_GROUP_MEDIA_IMAGE) &&
+                    CanAppendIndigoItem();
   bool can_image_search =
       content_type_->SupportsGroup(
           ContextMenuContentType::ITEM_GROUP_SEARCHWEBFORIMAGE) &&
       params_.has_image_contents && IsSearchAllowedByPolicy() &&
       GetImageSearchProvider() != nullptr;
 
-  if (!can_region && !can_glic && !can_image_search) {
+  if (!can_region && !can_glic && !can_indigo && !can_image_search) {
     return;
   }
 
@@ -6259,6 +6298,9 @@ void RenderViewContextMenu::AppendLensGeminiSection() {
   }
   if (can_glic) {
     AppendGlicShareImageItem();
+  }
+  if (can_indigo) {
+    AppendIndigoItem();
   }
 
   menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);

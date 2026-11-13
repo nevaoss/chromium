@@ -146,6 +146,25 @@ import java.util.function.Supplier;
 @NullMarked
 public class VerticalTabListCoordinator {
     /**
+     * Observes external (i.e. OS-level) drags of tabs or tab groups started from this list. Drags
+     * started in other windows and internal (in-list) reorders are not reported.
+     */
+    interface ExternalDragObserver {
+        /**
+         * Called once an external drag started from this list has successfully started. Called in
+         * the same stack as the OS accepting the drag, before any later event can be processed.
+         */
+        void onExternalDragStarted();
+
+        /**
+         * Called once the external drag reported by {@link #onExternalDragStarted} has ended, or
+         * when this list is destroyed while that drag is in progress. Called from within the
+         * dispatch of the drag's {@code ACTION_DRAG_ENDED} event.
+         */
+        void onExternalDragEnded();
+    }
+
+    /**
      * Where on the rail a drop landed. The rail is not only its two lists: between and around them
      * sit the header, the new tab button and the rail's own margin, and a drop there is currently
      * accepted and reparented against the nearest item. This records how often that happens, which
@@ -224,6 +243,11 @@ public class VerticalTabListCoordinator {
 
     /** Decor view the drag-end relay is installed on while a rail-initiated drag is in flight. */
     private @Nullable View mDragEndRelayView;
+
+    private @Nullable ExternalDragObserver mExternalDragObserver;
+
+    /** Whether an external drag started from this list is in progress. */
+    private boolean mIsExternalDragInProgress;
 
     private boolean mIsActive;
 
@@ -951,6 +975,10 @@ public class VerticalTabListCoordinator {
             mBackPressManager.removeHandler(BackPressHandler.Type.CANCEL_TAB_SWITCHER_DRAG);
         }
         removeDragEndRelay();
+        // The drag handler is destroyed without ending an in-progress drag through its listener,
+        // so the drag's end would never be reported otherwise.
+        notifyExternalDragEnded();
+        mExternalDragObserver = null;
         mContainerView.setOnDragListener(null);
         mTabSwitcherDragHandler.destroy();
 
@@ -1001,6 +1029,32 @@ public class VerticalTabListCoordinator {
     /** Returns the {@link VerticalTabRailCollapseController} for managing rail collapse state. */
     VerticalTabRailCollapseController getCollapseController() {
         return mCollapseController;
+    }
+
+    /**
+     * Sets the {@link ExternalDragObserver} to notify of external drags started from this list.
+     *
+     * @param observer The observer, or null to stop notifying.
+     */
+    void setExternalDragObserver(@Nullable ExternalDragObserver observer) {
+        mExternalDragObserver = observer;
+    }
+
+    /** Returns whether an external drag started from this list is in progress. */
+    boolean isExternalDragInProgress() {
+        return mIsExternalDragInProgress;
+    }
+
+    private void notifyExternalDragStarted() {
+        if (mIsExternalDragInProgress) return;
+        mIsExternalDragInProgress = true;
+        if (mExternalDragObserver != null) mExternalDragObserver.onExternalDragStarted();
+    }
+
+    private void notifyExternalDragEnded() {
+        if (!mIsExternalDragInProgress) return;
+        mIsExternalDragInProgress = false;
+        if (mExternalDragObserver != null) mExternalDragObserver.onExternalDragEnded();
     }
 
     /**
@@ -1244,7 +1298,11 @@ public class VerticalTabListCoordinator {
 
                     return this::dismissActiveContextMenus;
                 });
-        touchHelperCallback.setOnDragStartCallback(this::dismissActiveContextMenus);
+        touchHelperCallback.setOnDragStartCallback(
+                () -> {
+                    dismissActiveContextMenus();
+                    mTabItemHoverController.resetHoverState();
+                });
 
         RecyclerView.OnItemTouchListener beforeTouchListener =
                 VerticalTabListItemTouchHelperCallback.createBeforeOnItemTouchListener(
@@ -1356,6 +1414,8 @@ public class VerticalTabListCoordinator {
                         itemTouchHelper.onExternalDragStop(/* recoverItem= */ true);
                         mTabSwitcherDragHandler.setDragHandlerDelegate(
                                 mNonOriginatingDragHandlerDelegate);
+                    } else {
+                        notifyExternalDragStarted();
                     }
                 });
 
@@ -1459,10 +1519,17 @@ public class VerticalTabListCoordinator {
      * <p>A view has a single {@code OnDragListener} slot. Nothing else in Chrome sets one on a
      * decor view; do not add a second one without merging it with this.
      *
+     * <p>Not installed with {@link ChromeFeatureList#SIDE_UI_ALLOW_PAUSE}: the rail's Side UI
+     * container is then frozen for the duration of a drag started from the rail (see {@link
+     * VerticalTabsSideUiCoordinator}), so the rail's listener is never detached mid-drag and {@code
+     * ACTION_DRAG_ENDED} reaches it on its normal path. TODO(crbug.com/556140903): Remove the relay
+     * once the flag ships.
+     *
      * @param dragHandler The drag handler to forward {@code ACTION_DRAG_ENDED} to.
      */
     private void installDragEndRelay(TabSwitcherDragHandler dragHandler) {
         removeDragEndRelay();
+        if (ChromeFeatureList.sSideUiAllowPause.isEnabled()) return;
 
         Activity activity = mWindowAndroid.getActivity().get();
         if (activity == null) return;
@@ -1983,6 +2050,7 @@ public class VerticalTabListCoordinator {
                 }
 
                 dragHandler.setDragHandlerDelegate(nonOriginatingDelegate);
+                notifyExternalDragEnded();
                 return true;
             }
 

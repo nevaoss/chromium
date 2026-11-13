@@ -15,7 +15,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/run_until.h"
-#include "chrome/browser/ttc/app/audio_controller.h"
+#include "chrome/browser/ttc/app/audio_controller_impl.h"
 #include "chrome/browser/ttc/core/session_controller.h"
 #include "chrome/browser/ttc/core/session_journal.h"
 #include "chrome/browser/ttc/core/states.h"
@@ -69,6 +69,18 @@ class FakeSessionController : public SessionController {
     return tools;
   }
   void UserAudioLevelUpdate(float audio_level) override {}
+  void AddObserver(Observer* observer) override {}
+  void RemoveObserver(Observer* observer) override {}
+  void SendTextInput(const std::string& text) override {}
+  void OnModelTurnStarted() override { ++turn_started_count_; }
+  void OnModelTurnComplete() override { ++turn_complete_count_; }
+  void OnModelInterrupted() override { ++interrupted_count_; }
+  void OnInputTranscription(const std::string& text) override {
+    last_input_transcription_ = text;
+  }
+  void OnOutputTranscription(const std::string& text) override {
+    last_output_transcription_ = text;
+  }
   void OnSessionInitialized() override {}
   void OnError(ErrorCode error) override {
     last_error_ = error;
@@ -80,6 +92,15 @@ class FakeSessionController : public SessionController {
   std::optional<ErrorCode> last_error() const { return last_error_; }
   int error_count() const { return error_count_; }
   int end_session_count() const { return end_session_count_; }
+  int turn_started_count() const { return turn_started_count_; }
+  int turn_complete_count() const { return turn_complete_count_; }
+  int interrupted_count() const { return interrupted_count_; }
+  const std::string& last_input_transcription() const {
+    return last_input_transcription_;
+  }
+  const std::string& last_output_transcription() const {
+    return last_output_transcription_;
+  }
 
   void AddToolDefinition(const std::string& name) {
     ToolDefinition tool;
@@ -93,6 +114,11 @@ class FakeSessionController : public SessionController {
   std::optional<ErrorCode> last_error_;
   int error_count_ = 0;
   int end_session_count_ = 0;
+  int turn_started_count_ = 0;
+  int turn_complete_count_ = 0;
+  int interrupted_count_ = 0;
+  std::string last_input_transcription_;
+  std::string last_output_transcription_;
   std::vector<ToolDefinition> tools_;
   SessionLifecycle session_lifecycle_ = SessionLifecycle::kInitializing;
   actor::AggregatedJournal journal_;
@@ -127,8 +153,8 @@ class ConversationImplTest : public testing::Test {
   ConversationImpl& CreateConversation() {
     conversation_ = std::make_unique<ConversationImpl>(
         std::make_unique<MockTtcBackend>(),
-        std::make_unique<AudioController>(GetAudioStreamFactoryBinder(),
-                                          GetAudioSystemFactory()),
+        std::make_unique<AudioControllerImpl>(GetAudioStreamFactoryBinder(),
+                                              GetAudioSystemFactory()),
         session_controller_);
     return *conversation_;
   }
@@ -137,19 +163,20 @@ class ConversationImplTest : public testing::Test {
     return static_cast<MockTtcBackend&>(*conversation_->backend());
   }
 
-  AudioController& audio_controller() {
-    return *conversation_->audio_controller();
+  AudioControllerImpl& audio_controller() {
+    return static_cast<AudioControllerImpl&>(
+        *conversation_->audio_controller());
   }
 
   // Returns a binder dropping the audio stream factory receiver, so that no
   // real audio service is reached.
-  AudioController::AudioStreamFactoryBinder GetAudioStreamFactoryBinder() {
+  AudioControllerImpl::AudioStreamFactoryBinder GetAudioStreamFactoryBinder() {
     return base::BindLambdaForTesting(
         [](mojo::PendingReceiver<media::mojom::AudioStreamFactory>) {});
   }
 
   // Returns a factory handing out AudioSystems backed by `audio_manager_`.
-  AudioController::AudioSystemFactory GetAudioSystemFactory() {
+  AudioControllerImpl::AudioSystemFactory GetAudioSystemFactory() {
     return base::BindLambdaForTesting(
         [this]() -> std::unique_ptr<media::AudioSystem> {
           return std::make_unique<media::AudioSystemImpl>(&audio_manager_);
@@ -371,6 +398,27 @@ TEST_F(ConversationImplTest, AudioCaptureErrorAfterStopIsIgnored) {
   run_loop.Run();
 
   EXPECT_EQ(session_controller_.error_count(), 0);
+}
+
+TEST_F(ConversationImplTest,
+       SessionControllerNotifiedOfTurnAndTranscriptionEvents) {
+  ConversationImpl& conversation = CreateConversation();
+
+  conversation.OnTranscriptions("user said hello", "agent said hi");
+  EXPECT_EQ(session_controller_.last_input_transcription(), "user said hello");
+  EXPECT_EQ(session_controller_.last_output_transcription(), "agent said hi");
+
+  conversation.OnGenerationStateChanged(/*started=*/true, /*completed=*/false,
+                                        /*interrupted=*/false);
+  EXPECT_EQ(session_controller_.turn_started_count(), 1);
+
+  conversation.OnGenerationStateChanged(/*started=*/false, /*completed=*/false,
+                                        /*interrupted=*/true);
+  EXPECT_EQ(session_controller_.interrupted_count(), 1);
+
+  conversation.OnGenerationStateChanged(/*started=*/false, /*completed=*/true,
+                                        /*interrupted=*/false);
+  EXPECT_EQ(session_controller_.turn_complete_count(), 1);
 }
 
 }  // namespace ttc

@@ -134,6 +134,10 @@ BASE_DECLARE_FEATURE(kApiDesktopAndroidNativeMessagingBypassExtensionAllowlist);
 
 // For historical reasons, this includes some APIs. Please don't add more APIs.
 
+// Controls whether opted-in component extension frames are permitted to
+// enter BackForwardCache instead of being unconditionally disabled.
+BASE_DECLARE_FEATURE(kBackForwardCacheForComponentExtensionFrames);
+
 // If enabled, navigations and window.open calls to URLs outside a hosted app's
 // web extent in background contents are blocked and not persisted to prefs.
 // TODO(crbug.com/511824746): Clean up in M156.
@@ -358,6 +362,12 @@ BASE_DECLARE_FEATURE(kWebRequestPerContextEventDispatch);
 
 // If enabled, `HashedExtensionId` uses SHA-256 hashes instead of SHA-1.
 BASE_DECLARE_FEATURE(kUseSha256ForExtensionHashes);
+
+// When enabled, generated paths (e.g. _favicon and the generated background
+// page) are excluded from wildcard web_accessible_resources entries. _favicon
+// must be explicitly listed to be web accessible, and the generated background
+// page is never web accessible.
+BASE_DECLARE_FEATURE(kRestrictGeneratedPathsInWebAccessibleResources);
 
 }  // namespace extensions_features
 

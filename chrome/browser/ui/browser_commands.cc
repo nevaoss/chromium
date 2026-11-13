@@ -80,6 +80,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+#include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
@@ -277,6 +278,10 @@
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_close_button_controller.h"
 #endif
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#include "chrome/browser/ui/views/scheduled_restart/scheduled_restart_bubble_controller.h"
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 namespace {
 
@@ -1185,7 +1190,7 @@ void ReloadBypassingCache(BrowserWindowInterface* browser,
 bool CanReload(const BrowserWindowInterface* browser) {
   return browser &&
          browser->GetType() != BrowserWindowInterface::TYPE_DEVTOOLS &&
-         browser->GetType() != BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE;
+         !DesktopBrowserWindowCapabilities::IsDocumentPictureInPicture(browser);
 }
 
 void Home(BrowserWindowInterface* browser, WindowOpenDisposition disposition) {
@@ -1781,7 +1786,7 @@ void DuplicateSplit(BrowserWindowInterface* browser,
 }
 
 bool CanDuplicateTabAt(const BrowserWindowInterface* browser, int index) {
-  if (browser->GetType() == BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE ||
+  if (browser->GetType() == BrowserWindowInterface::TYPE_FLOATING ||
       browser->GetType() == BrowserWindowInterface::TYPE_APP_POPUP ||
       browser->GetType() == BrowserWindowInterface::TYPE_DEVTOOLS) {
     return false;
@@ -2093,9 +2098,11 @@ void BookmarkCurrentTab(BrowserWindowInterface* browser) {
   bool is_bookmarked_by_user = bookmarks::IsBookmarkedByUser(model, url);
   // Make sure the model actually added a bookmark before showing the star. A
   // bookmark isn't created if the url is invalid.
-  if (browser->GetWindow()->IsActive() && is_bookmarked_by_user) {
+  if (browser->IsActive() && is_bookmarked_by_user) {
     // Only show the bubble if the window is active, otherwise we may get into
     // weird situations where the bubble is deleted as soon as it is shown.
+    // `IsActive()` also counts a child widget that holds activation, such as
+    // the Full WebUI omnibox popup while the omnibox is focused.
     BrowserWindow::FromBrowser(browser)->ShowBookmarkBubble(
         url, was_bookmarked_by_user);
   }
@@ -2851,11 +2858,7 @@ void ShowAvatarMenu(BrowserWindowInterface* browser) {
       /*is_source_accelerator=*/true);
 }
 
-// TODO(crbug.com/345770406): Rename the function name.
-// We removed the extra confirmation step in the Chrome update flow. After the
-// full rollout of the code, this name will be misleading. We will clean up the
-// code and its related source enums.
-void OpenUpdateChromeDialog(BrowserWindowInterface* browser) {
+void MaybeUpdateChrome(BrowserWindowInterface* browser) {
   UpgradeDetector* detector = UpgradeDetector::GetInstance();
   if (detector->is_outdated_install()) {
     ShowOutdatedUpgradeBubble(browser, browser,
@@ -2865,15 +2868,23 @@ void OpenUpdateChromeDialog(BrowserWindowInterface* browser) {
                               /*auto_update_enabled=*/false);
   } else {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-    if (base::FeatureList::IsEnabled(features::kFewerUpdateConfirmations)) {
-      chrome::AttemptRelaunch();
-      return;
-    }
-#endif
+    chrome::AttemptRelaunch();
+#else
     base::RecordAction(UserMetricsAction("UpdateChrome"));
     BrowserWindow::FromBrowser(browser)->ShowUpdateChromeDialog();
+#endif
   }
 }
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+void OpenScheduledRestartDialog(BrowserWindowInterface* browser) {
+  if (auto* controller =
+          scheduled_restart::ScheduledRestartBubbleController::From(
+              g_browser_process)) {
+    controller->ShowBubbleFromAppMenu(browser);
+  }
+}
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 bool CanRequestTabletSite(WebContents* current_tab) {
   return current_tab &&

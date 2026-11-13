@@ -17,7 +17,6 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
-#include "base/test/scoped_command_line.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ui/views/chrome_constrained_window_views_client.h"
 #include "chrome/browser/ui/views/webid/account_selection_bubble_view.h"
@@ -32,7 +31,6 @@
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/permissions/permission_request_manager.h"
 #include "components/permissions/request_type.h"
-#include "components/permissions/switches.h"
 #include "components/permissions/test/mock_permission_prompt_factory.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "components/tabs/public/tab_interface.h"
@@ -3162,12 +3160,13 @@ TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
       CreateAndShow(accounts_);
   ASSERT_TRUE(WaitForAmbientBubble());
 
-  // Multiple accounts are shown in the regular UI, which replaces the bubble.
-  Show(*controller,
-       CreateAccounts({{kAccountId1, LoginState::kSignIn},
-                       {kAccountId2, LoginState::kSignIn}},
-                      idp_data_),
-       blink::mojom::RpMode::kPassive);
+  // An account that is filtered out, e.g. by a login hint, is shown in the
+  // regular UI, which replaces the bubble.
+  std::vector<IdentityRequestAccountPtr> accounts = CreateAccounts(
+      {{kAccountId1, LoginState::kSignIn}, {kAccountId2, LoginState::kSignIn}},
+      idp_data_);
+  accounts[1]->is_filtered_out = true;
+  Show(*controller, accounts, blink::mojom::RpMode::kPassive);
   EXPECT_TRUE(controller->GetDialogWidget());
   EXPECT_FALSE(GetShownAmbientRequest());
   EXPECT_FALSE(HasAmbientRequest());
@@ -3265,10 +3264,91 @@ TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
 }
 
 TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
-       MultipleAccountsDoNotUseAmbientBubble) {
+       MultipleAccountsShowAmbientBubble) {
+  accounts_ = CreateAccounts(
+      {{kAccountId1, LoginState::kSignIn}, {kAccountId2, LoginState::kSignUp}},
+      idp_data_);
+  accounts_[0]->display_name = "John Doe";
+  accounts_[1]->display_name = "Jane Doe";
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_);
+
+  // No FedCM widget is created; the accounts are shown in the ambient bubble,
+  // in the same order.
+  EXPECT_FALSE(controller->GetDialogWidget());
+  EXPECT_EQ(delegate_->GetAccountsDisplayedCount(), 1);
+  ambient_signin::AmbientLoginPermissionRequest* request =
+      WaitForAmbientBubble();
+  ASSERT_TRUE(request);
+  ASSERT_EQ(request->federated_credentials().size(), 2u);
+  EXPECT_EQ(request->federated_credentials()[0].account_name, u"John Doe");
+  EXPECT_EQ(request->federated_credentials()[1].account_name, u"Jane Doe");
+}
+
+TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
+       AcceptingAmbientBubbleSelectsChosenAccount) {
   accounts_ = CreateAccounts(
       {{kAccountId1, LoginState::kSignIn}, {kAccountId2, LoginState::kSignIn}},
       idp_data_);
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_);
+  ambient_signin::AmbientLoginPermissionRequest* request =
+      WaitForAmbientBubble();
+  ASSERT_TRUE(request);
+
+  // The user expands the bubble and chooses the second account.
+  request->SelectFederatedCredential(1);
+  permission_request_manager()->Accept(std::monostate());
+
+  // The decision is handled asynchronously.
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return delegate_->GetSelectedAccountId().has_value(); }));
+  EXPECT_EQ(delegate_->GetSelectedAccountId(), kAccountId2);
+  EXPECT_FALSE(delegate_->GetDismissReason());
+  EXPECT_FALSE(controller->GetDialogWidget());
+  EXPECT_FALSE(HasAmbientRequest());
+}
+
+TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
+       BackFromAmbientRequestPermissionDialogShowsAccountPicker) {
+  accounts_ = CreateAccounts(
+      {{kAccountId1, LoginState::kSignIn}, {kAccountId2, LoginState::kSignUp}},
+      idp_data_);
+  std::unique_ptr<TestFedCmAccountSelectionView> controller =
+      CreateAndShow(accounts_);
+  ambient_signin::AmbientLoginPermissionRequest* request =
+      WaitForAmbientBubble();
+  ASSERT_TRUE(request);
+
+  // Choosing the new account in the bubble shows its disclosure text in the
+  // modal dialog.
+  request->SelectFederatedCredential(1);
+  permission_request_manager()->Accept(std::monostate());
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return controller->GetDialogWidget() != nullptr; }));
+  TestAccountSelectionView* view = controller->GetTestView();
+  EXPECT_EQ(TestAccountSelectionView::SheetType::kRequestPermission,
+            view->sheet_type_);
+  EXPECT_THAT(view->account_ids_, testing::ElementsAre(kAccountId2));
+
+  // Going back shows all the accounts in the modal dialog.
+  controller->OnBackButtonClicked();
+  EXPECT_EQ(TestAccountSelectionView::SheetType::kAccountPicker,
+            view->sheet_type_);
+  EXPECT_THAT(view->account_ids_,
+              testing::ElementsAre(kAccountId1, kAccountId2));
+  EXPECT_FALSE(delegate_->GetSelectedAccountId());
+  EXPECT_FALSE(delegate_->GetDismissReason());
+}
+
+TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
+       FilteredOutAccountDoesNotUseAmbientBubble) {
+  // E.g. the second account does not match the login hint. The regular UI
+  // offers to use another account in that case.
+  accounts_ = CreateAccounts(
+      {{kAccountId1, LoginState::kSignIn}, {kAccountId2, LoginState::kSignIn}},
+      idp_data_);
+  accounts_[1]->is_filtered_out = true;
   std::unique_ptr<TestFedCmAccountSelectionView> controller =
       CreateAndShow(accounts_);
 
@@ -3374,10 +3454,10 @@ TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
 
 TEST_F(FedCmAccountSelectionViewAmbientBubbleTest,
        RejectedAmbientRequestFallsBackToRegularUi) {
-  // PermissionRequestManager rejects all requests with this switch.
-  base::test::ScopedCommandLine scoped_command_line;
-  scoped_command_line.GetProcessCommandLine()->AppendSwitch(
-      permissions::switches::kDenyPermissionPrompts);
+  // PermissionRequestManager rejects all requests when the WebContents does not
+  // support permission requests.
+  permission_request_manager()->set_web_contents_supports_permission_requests(
+      false);
 
   std::unique_ptr<TestFedCmAccountSelectionView> controller =
       CreateAndShow(accounts_);

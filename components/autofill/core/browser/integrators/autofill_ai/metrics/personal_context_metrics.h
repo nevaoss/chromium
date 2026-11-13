@@ -5,6 +5,8 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_INTEGRATORS_AUTOFILL_AI_METRICS_PERSONAL_CONTEXT_METRICS_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_INTEGRATORS_AUTOFILL_AI_METRICS_PERSONAL_CONTEXT_METRICS_H_
 
+#include <cstddef>
+
 #include "base/time/time.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/common/dense_set.h"
@@ -74,6 +76,33 @@ enum class PersonalContextPrefetchEntityValidationResult {
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/autofill/enums.xml:AutofillAiPersonalContextPrefetchEntityValidationResult)
 
+// LINT.IfChange(AutofillAiEntitySuppressionLoadDropReason)
+// Reasons why a stored entity suppression record is dropped when loading
+// suppressions from disk. Logged to UMA.
+enum class EntitySuppressionLoadDropReason {
+  // The record could not be decrypted, e.g. because the OS encryption key
+  // changed.
+  kDecryptionFailed = 0,
+  // The decrypted record could not be parsed.
+  kParseFailed = 1,
+  // The parsed record does not describe a valid suppression entry.
+  kInvalidEntry = 2,
+  kMaxValue = kInvalidEntry,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/autofill/enums.xml:AutofillAiEntitySuppressionLoadDropReason)
+
+// LINT.IfChange(AutofillAiEntitySuppressionConfirmationDialogResult)
+// How the user closed the dialog asking to confirm the suppression of an
+// entity. Logged to UMA.
+enum class EntitySuppressionConfirmationDialogResult {
+  // The user confirmed the suppression.
+  kAccepted = 0,
+  // The user cancelled or dismissed the dialog.
+  kCancelled = 1,
+  kMaxValue = kCancelled,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/autofill/enums.xml:AutofillAiEntitySuppressionConfirmationDialogResult)
+
 // Returns the readiness state of the prefetch cache for `entity_type` when the
 // user first interacts with an Ambient Autofill supported field of that type.
 PersonalContextCacheReadinessOnFirstInteraction GetCacheReadinessState(
@@ -108,8 +137,23 @@ void LogPersonalContextPrefetchEntityValidationResult(
     EntityType type,
     PersonalContextPrefetchEntityValidationResult result);
 
+// Logs the number of valid sources attached to an entity extracted from
+// Personal Context prefetch responses for Ambient Autofill.
+void LogPersonalContextPrefetchEntitySourceCount(EntityType type, size_t count);
+
 // Logs the number of entities filtered out due to suppression during prefetch.
 void LogEntitySuppressionEntitiesFilteredPerPrefetch(size_t count);
+
+// Logs the number of stored suppression records that were dropped while
+// loading suppressions from disk.
+void LogEntitySuppressionLoadDroppedRecordCount(size_t count);
+
+// Logs why a stored suppression record was dropped while loading suppressions
+// from disk.
+void LogEntitySuppressionLoadDropReason(EntitySuppressionLoadDropReason reason);
+
+// Logs whether the user `accepted` the suppression confirmation dialog.
+void LogEntitySuppressionConfirmationDialogResult(bool accepted);
 
 }  // namespace autofill
 

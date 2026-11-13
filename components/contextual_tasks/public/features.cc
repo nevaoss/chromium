@@ -43,6 +43,10 @@ BASE_FEATURE(kContextualTasksPrivateApiNoAnimation,
 // capabilities.
 BASE_FEATURE(kContextualTasksSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Aligns the contextual tasks side panel to the right hand side by default.
+BASE_FEATURE(kContextualTasksSidePanelDefaultRight,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the branded entry point for contextual tasks.
 BASE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -254,6 +258,19 @@ BASE_FEATURE(kContextualTasksEnableStickyConversation,
 
 BASE_FEATURE(kContextualTasksClobberActiveTab,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksSidePanelTabState,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<bool> kOpenNewTabOnSidePanelLinkClick(
+    &kContextualTasksSidePanelTabState,
+    "open_new_tab_on_side_panel_link_click",
+    true);
+
+bool ShouldOpenNewTabOnSidePanelLinkClick() {
+  return base::FeatureList::IsEnabled(kContextualTasksSidePanelTabState) &&
+         kOpenNewTabOnSidePanelLinkClick.Get();
+}
 
 BASE_FEATURE(kContextualTasksNonBlockingUrlNavigation,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1002,6 +1019,12 @@ const char kContextualTasksSidePanelName[] = "Contextual Tasks Side Panel";
 const char kContextualTasksSidePanelDescription[] =
     "Enable the contextual tasks side panel infrastructure without enabling "
     "full Contextual Tasks capabilities.";
+
+const char kContextualTasksSidePanelDefaultRightName[] =
+    "Contextual Tasks Side Panel Default Right";
+const char kContextualTasksSidePanelDefaultRightDescription[] =
+    "Aligns the Contextual Tasks (Search in Chrome) side panel to the right "
+    "hand side by default.";
 
 const char kContextualTasksContextName[] = "Contextual Tasks Context";
 const char kContextualTasksContextDescription[] =

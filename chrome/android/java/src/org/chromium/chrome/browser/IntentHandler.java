@@ -1638,11 +1638,11 @@ public class IntentHandler {
      *
      * @param intent The Intent to be set.
      */
-    public static void setDestTabId(Intent intent, int destTabId) {
+    public static void setDestTabId(Intent intent, @TabId int destTabId) {
         intent.putExtra(EXTRA_DEST_TAB_ID, destTabId);
     }
 
-    public static int getDestTabId(Intent intent) {
+    public static @TabId int getDestTabId(Intent intent) {
         return IntentUtils.safeGetIntExtra(intent, EXTRA_DEST_TAB_ID, Tab.INVALID_TAB_ID);
     }
 
@@ -1998,9 +1998,7 @@ public class IntentHandler {
         int transitionType = PageTransition.LINK | PageTransition.FROM_API;
         loadUrlParams.setTransitionType(getTransitionTypeFromIntent(intent, transitionType));
 
-        if (IntentUtils.isTrustedIntentFromSelf(intent)
-                && ChromeFeatureList.isEnabled(
-                        ChromeFeatureList.SEND_TAB_TO_SELF_PROPAGATE_SCROLL_POSITION)) {
+        if (IntentUtils.isTrustedIntentFromSelf(intent)) {
             @Nullable String scrollToTextFragment =
                     IntentUtils.safeGetStringExtra(intent, EXTRA_SCROLL_TO_TEXT_FRAGMENT);
             if (!TextUtils.isEmpty(scrollToTextFragment)) {

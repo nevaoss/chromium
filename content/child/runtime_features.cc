@@ -138,12 +138,15 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
           {wf::EnableBackgroundFetch, features::kBackgroundFetch},
           {wf::EnableBoundaryEventDispatchTracksNodeRemoval,
            blink::features::kBoundaryEventDispatchTracksNodeRemoval},
+<<<<<<< HEAD
 #if defined(USE_FILESCHEME_CODECACHE)
           {wf::EnableLocalResourceCodeCache,
            blink::features::kLocalResourceCodeCache},
 #endif
           {wf::EnableCompositeBGColorAnimation,
            features::kCompositeBGColorAnimation},
+=======
+>>>>>>> 158.0.8108.0~1
           {wf::EnableDigitalGoods, features::kDigitalGoodsApi,
            kSetOnlyIfOverridden},
           {wf::EnableDocumentPolicyNegotiation,
@@ -306,8 +309,6 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
           {"ExperimentalMachineLearningNeuralNetwork",
            webnn::mojom::features::kExperimentalWebMachineLearningNeuralNetwork,
            kSetOnlyIfOverridden},
-          {"RequestStorageAccessFor",
-           content_settings::features::kStorageAccessAPIRelatedWebsiteSets},
           {"LocalNetworkAccessPermissionPolicy",
            network::features::kLocalNetworkAccessChecks}};
   for (const auto& mapping : runtime_feature_name_to_chromium_feature_mapping) {
@@ -433,8 +434,10 @@ void SetCustomizedRuntimeFeaturesFromCombinedArgs(
   // content. See HTMLElement::showUnboundedElement().
   if (base::android::android_info::sdk_int() <
       base::android::android_info::SDK_VERSION_U) {
-    // UnboundedElement is implied_by UnsafeUnboundedElementOnTheOpenWeb, so
-    // both have to be disabled for UnboundedElementEnabled() to return false.
+    // UnboundedElement is implied_by UnsafeUnboundedElementOnTheOpenWeb,
+    // which is implied_by UnsafeEscapingUnboundedElementOnTheOpenWeb, so they
+    // all have to be disabled for UnboundedElementEnabled() to return false.
+    WebRuntimeFeatures::EnableUnsafeEscapingUnboundedElementOnTheOpenWeb(false);
     WebRuntimeFeatures::EnableUnsafeUnboundedElementOnTheOpenWeb(false);
     WebRuntimeFeatures::EnableUnboundedElement(false);
   }

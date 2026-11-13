@@ -38,7 +38,6 @@
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/pickle.h"
-#include "base/rand_util.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -537,7 +536,7 @@ FeatureList::GetRuntimeMutableFeatureState(
 
 FeatureList::RuntimeMutableFeatureUpdate::RuntimeMutableFeatureUpdate(
     internal::RuntimeMutableFeatureState& state_entry,
-    const RuntimeFieldTrialInfo* override_info,
+    RuntimeFieldTrialInfo* override_info,
     OverrideState override_state)
     : state_entry_(&state_entry),
       override_info_(override_info),
@@ -603,7 +602,7 @@ void FeatureList::RuntimeMutableFeatureUpdate::RunPostMutationCallback() {
 std::optional<FeatureList::RuntimeMutableFeatureUpdate>
 FeatureList::PrepareRuntimeMutableFeatureStateUpdate(
     base::PassKey<variations::VariationsService>,
-    const RuntimeFieldTrialInfo* override_info,
+    RuntimeFieldTrialInfo* override_info,
     std::string_view feature_name,
     OverrideState override_state) {
   return PrepareRuntimeMutableFeatureStateUpdateImpl(
@@ -613,7 +612,7 @@ FeatureList::PrepareRuntimeMutableFeatureStateUpdate(
 std::optional<FeatureList::RuntimeMutableFeatureUpdate>
 FeatureList::PrepareRuntimeMutableFeatureStateUpdateForTesting(
     base::PassKey<base::test::ScopedFeatureList, FeatureListTest>,
-    const RuntimeFieldTrialInfo* override_info,
+    RuntimeFieldTrialInfo* override_info,
     std::string_view feature_name,
     OverrideState override_state) {
   return PrepareRuntimeMutableFeatureStateUpdateImpl(
@@ -622,7 +621,7 @@ FeatureList::PrepareRuntimeMutableFeatureStateUpdateForTesting(
 
 std::optional<FeatureList::RuntimeMutableFeatureUpdate>
 FeatureList::PrepareRuntimeMutableFeatureStateUpdateImpl(
-    const RuntimeFieldTrialInfo* override_info,
+    RuntimeFieldTrialInfo* override_info,
     std::string_view feature_name,
     OverrideState override_state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -1004,14 +1003,6 @@ void FeatureList::SetInstance(std::unique_ptr<FeatureList> instance) {
 
   EarlyFeatureAccessTracker::GetInstance()->AssertNoAccess();
 
-  // Don't configure random bytes field trials for a possibly early access
-  // FeatureList instance, as the state of the involved Features might change
-  // with the final FeatureList for this process.
-  if (!g_feature_list_instance->IsEarlyAccessInstance()) {
-    // Configured first because it takes precedence over the getrandom() trial.
-    internal::ConfigureBoringSSLBackedRandBytesFieldTrial();
-  }
-
 #if BUILDFLAG(DCHECK_IS_CONFIGURABLE)
   // Update the behaviour of LOGGING_DCHECK to match the Feature configuration.
   // DCHECK is also forced to be FATAL if we are running a death-test.
@@ -1248,20 +1239,13 @@ FeatureList::OverrideState FeatureList::GetOverrideStateImpl(
     const Feature& feature,
     bool activate_trial) const {
   DCHECK(initialized_);
-  DCHECK(IsValidFeatureOrFieldTrialName(feature.name)) << feature.name;
-  DCHECK(CheckFeatureIdentity(feature))
-      << feature.name
-      << " has multiple definitions. Either it is defined more than once in "
-         "code or (for component builds) the code is built into multiple "
-         "components (shared libraries) without a corresponding export "
-         "statement";
   Feature::FeatureStateCache current_cached_value =
       feature.cached_value.load(std::memory_order_relaxed);
 
   // If the feature is runtime mutable, then we need to check if there is a
   // runtime override state and use that if it exists.
-  auto optional_runtime_override =
-      MaybeGetRuntimeOverrideState(feature, current_cached_value);
+  auto optional_runtime_override = MaybeGetRuntimeOverrideState(
+      feature, current_cached_value, activate_trial);
   if (optional_runtime_override.has_value()) {
     return *optional_runtime_override;
   }
@@ -1276,6 +1260,21 @@ FeatureList::OverrideState FeatureList::GetOverrideStateImpl(
   if (caching_context == caching_context_) {
     return cached_state;
   }
+
+  // It is safe to defer these checks until after the cache check above:
+  // `feature.cached_value` is stored directly in the `Feature` instance at
+  // `&feature` and only gets populated with `caching_context_` after passing
+  // the checks below on a cache miss. Any duplicate `Feature` definition with
+  // the same `name` at a different address has its own separate `cached_value`
+  // (initially 0), so its first query will also miss the cache and fail
+  // `CheckFeatureIdentity()` below.
+  DCHECK(IsValidFeatureOrFieldTrialName(feature.name)) << feature.name;
+  DCHECK(CheckFeatureIdentity(feature))
+      << feature.name
+      << " has multiple definitions. Either it is defined more than once in "
+         "code or (for component builds) the code is built into multiple "
+         "components (shared libraries) without a corresponding export "
+         "statement";
 
   // Otherwise, look up the static override state by feature name.
   const OverrideState state =
@@ -1293,7 +1292,8 @@ FeatureList::OverrideState FeatureList::GetOverrideStateImpl(
 std::optional<FeatureList::OverrideState>
 FeatureList::MaybeGetRuntimeOverrideState(
     const Feature& feature,
-    Feature::FeatureStateCache current_cached_value) const {
+    Feature::FeatureStateCache current_cached_value,
+    bool activate_trial) const {
   const bool is_runtime_mutable = FeatureIsRuntimeMutable(current_cached_value);
   if (is_runtime_mutable) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -1309,6 +1309,10 @@ FeatureList::MaybeGetRuntimeOverrideState(
     const auto& override_entry = it->second;
     DCHECK_EQ(&override_entry.feature.get(), &feature);
     if (override_entry.override_state != OVERRIDE_USE_DEFAULT) {
+      CHECK(override_entry.override_info);
+      if (activate_trial) {
+        override_entry.override_info->Activate();
+      }
       return override_entry.override_state;
     }
   }

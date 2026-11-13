@@ -162,15 +162,16 @@
 #import "ios/chrome/browser/tab_insertion/model/tab_insertion_browser_agent.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_coordinator.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_coordinator_delegate.h"
+#import "ios/chrome/browser/universal_optout/model/eligibility_utils.h"
 #import "ios/chrome/browser/url_loading/model/scene_url_loading_service.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
+#import "ios/chrome/browser/web_extension/ui_bundled/web_extension_error_scene_agent.h"
 #import "ios/chrome/browser/web_state_list/model/web_usage_enabler/web_usage_enabler_browser_agent.h"
 #import "ios/chrome/browser/whats_new/coordinator/promo/whats_new_scene_agent.h"
 #import "ios/chrome/browser/window_activities/model/window_activity_helpers.h"
 #import "ios/chrome/common/app_group/app_group_constants.h"
 #import "ios/chrome/common/app_group/app_group_utils.h"
-#import "ios/chrome/common/ui/reauthentication/reauthentication_module.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ios/components/webui/web_ui_url_constants.h"
 #import "ios/public/provider/chrome/browser/cobalt/cobalt_api.h"
@@ -2082,6 +2083,10 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
       [sceneState addAgent:cobaltSceneAgent];
     }
   }
+
+  if (universal_optout::IsGPCExtensionEnabled(profile)) {
+    [sceneState addAgent:[[WebExtensionErrorSceneAgent alloc] init]];
+  }
 }
 
 // Adds agents that may depend on profileState. Called after a profileState has
@@ -2093,9 +2098,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 
   [_sceneState addAgent:[[UIBlockerSceneAgent alloc] init]];
   [_sceneState addAgent:[[IncognitoBlockerSceneAgent alloc] init]];
-  [_sceneState
-      addAgent:[[IncognitoReauthSceneAgent alloc]
-                   initWithReauthModule:[[ReauthenticationModule alloc] init]]];
+  [_sceneState addAgent:[[IncognitoReauthSceneAgent alloc] init]];
 
   [_sceneState addAgent:[[SigninAccountCapabilitiesSceneAgent alloc]
                             initWithSceneUIProvider:self]];

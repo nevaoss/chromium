@@ -812,7 +812,7 @@ void BlobMemoryController::NotifyMemoryItemsUsed(
     }
     // We don't want to re-add the item if we're currently paging it to disk.
     if (items_paging_to_file_.contains(item->item_id())) {
-      return;
+      continue;
     }
     auto iterator = populated_memory_items_.Get(item->item_id());
     if (iterator == populated_memory_items_.end()) {
@@ -988,8 +988,7 @@ void BlobMemoryController::MaybeScheduleEvictionUntilSystemHealthy(
     // We only page when we have enough items to fill a whole page file.
     if (populated_memory_items_bytes_ < min_page_file_size)
       break;
-    DCHECK_LE(min_page_file_size + in_flight_memory_used_,
-              static_cast<uint64_t>(blob_memory_used_));
+    DCHECK_LE(min_page_file_size, static_cast<uint64_t>(blob_memory_used_));
 
     std::vector<scoped_refptr<ShareableBlobDataItem>> items_to_swap;
 

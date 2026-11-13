@@ -693,13 +693,25 @@ bool HTMLCapabilityElementBase::MaybeRegisterPageEmbeddedPermissionControl() {
     return false;
   }
 
+  // `CreateEmbeddedPermissionRequestDescriptor()` computes `BoundsInWidget()`,
+  // which forces a synchronous style and layout update. That update can
+  // re-entrantly register this control, detach the frame, or change whether
+  // the element is rendered, so re-verify these conditions afterwards.
+  auto descriptor = CreateEmbeddedPermissionRequestDescriptor();
+  if (embedded_permission_control_receiver_.is_bound()) {
+    return true;
+  }
+  if (!GetDocument().GetFrame() || !IsRendered()) {
+    return false;
+  }
+
   mojo::PendingRemote<EmbeddedPermissionControlClient> client;
   embedded_permission_control_receiver_.Bind(
       client.InitWithNewPipeAndPassReceiver(), GetTaskRunner());
   CHECK(embedded_permission_control_receiver_.is_bound());
   GetPermissionService()->RegisterPageEmbeddedPermissionControl(
-      mojo::Clone(permission_descriptors_),
-      CreateEmbeddedPermissionRequestDescriptor(), std::move(client));
+      mojo::Clone(permission_descriptors_), std::move(descriptor),
+      std::move(client));
   return true;
 }
 
@@ -1133,9 +1145,15 @@ void HTMLCapabilityElementBase::RequestPageEmbededPermissions() {
   CHECK_LE(permission_descriptors_.size(), 2U);
   pending_request_created_ = base::TimeTicks::Now();
 
+  // `CreateEmbeddedPermissionRequestDescriptor()` forces a synchronous layout
+  // update, which may detach the frame or make the element unrendered.
+  auto descriptor = CreateEmbeddedPermissionRequestDescriptor();
+  if (!GetDocument().GetFrame() || !IsRendered()) {
+    return;
+  }
+
   GetPermissionService()->RequestPageEmbeddedPermission(
-      mojo::Clone(permission_descriptors_),
-      CreateEmbeddedPermissionRequestDescriptor(),
+      mojo::Clone(permission_descriptors_), std::move(descriptor),
       BindOnce(&HTMLCapabilityElementBase::OnEmbeddedPermissionsDecided,
                WrapWeakPersistent(this)));
 }
@@ -1412,27 +1430,23 @@ HTMLCapabilityElementBase::GetClickingEnabledState() const {
 
 void HTMLCapabilityElementBase::RefreshDisableReasonsAndUpdateTimer() {
   base::TimeTicks now = base::TimeTicks::Now();
+  clicking_disabled_reasons_.erase_if(
+      [&now](const auto& it) { return it.value <= now; });
+
   base::TimeTicks max_time_ticks = base::TimeTicks::Min();
   DisableReason reason = DisableReason::kUnknown;
-  HashMap<DisableReason, base::TimeTicks> swap_clicking_disabled_reasons;
-  for (auto it = clicking_disabled_reasons_.begin();
-       it != clicking_disabled_reasons_.end(); ++it) {
-    if (it->value == base::TimeTicks::Max()) {
-      StopTimerDueToIndefiniteReason(it->key);
+  for (const auto& it : clicking_disabled_reasons_) {
+    if (it.value == base::TimeTicks::Max()) {
+      StopTimerDueToIndefiniteReason(it.key);
       return;
     }
 
-    if (it->value < now) {
+    if (it.value <= max_time_ticks) {
       continue;
     }
 
-    swap_clicking_disabled_reasons.Set(it->key, it->value);
-    if (it->value <= max_time_ticks) {
-      continue;
-    }
-
-    max_time_ticks = it->value;
-    reason = it->key;
+    max_time_ticks = it.value;
+    reason = it.key;
   }
   // Restart the timer to match with  "longest alive, not indefinitely disabling
   // reason". That's the one has the max timeticks on
@@ -1442,7 +1456,6 @@ void HTMLCapabilityElementBase::RefreshDisableReasonsAndUpdateTimer() {
                                                           max_time_ticks - now);
   }
 
-  clicking_disabled_reasons_.swap(swap_clicking_disabled_reasons);
   MaybeDispatchValidationChangeEvent();
 }
 
@@ -1719,7 +1732,7 @@ HTMLCapabilityElementBase::GetRecentlyAttachedTimeoutRemaining() const {
   base::TimeTicks now = base::TimeTicks::Now();
   auto it = clicking_disabled_reasons_.find(
       DisableReason::kRecentlyAttachedToLayoutTree);
-  if (it == clicking_disabled_reasons_.end()) {
+  if (it == clicking_disabled_reasons_.end() || it->value <= now) {
     return std::nullopt;
   }
 

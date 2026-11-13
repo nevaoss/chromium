@@ -278,7 +278,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ContextMenu.SelectedOptionDesktop{ContextMenuTypeDesktop}"
-    enum="ContextMenuOptionDesktop" expires_after="2027-02-07">
+    enum="ContextMenuOptionDesktop" expires_after="2027-04-11">
   <owner>avi@chromium.org</owner>
   <owner>mpearson@chromium.org</owner>
   <summary>
@@ -305,7 +305,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ContextMenu.Shown{Type}" enum="BooleanPresent"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>mpearson@chromium.org</owner>
   <owner>twellington@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -368,7 +368,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="DefaultBrowser.InfoBar.TimesShownBeforeAccept" units="count"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>agale@chromium.org</owner>
   <owner>robliao@chromium.org</owner>
   <summary>
@@ -623,7 +623,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.NewWindow{CreationSource}.{ExistingWindow}.BrowserWindow.ShowRequestedToFirstPaint{Version}"
-    units="ms" expires_after="2027-02-07">
+    units="ms" expires_after="2027-04-11">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -957,7 +957,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InitialWebUI.Toolbar.ParseFinishedToFirstUpdate" units="ms"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>leimy@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -1005,44 +1005,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Record the number of times that the Web UI Toolbar render process is
     terminated abnormmaly and it exceeds the recovery limit.
-  </summary>
-</histogram>
-
-<histogram name="InitialWebUI.Toolbar.TimeToWindowMetricsManagerBound"
-    units="ms" expires_after="2027-08-01">
-  <owner>leimy@chromium.org</owner>
-  <owner>chrome-webium-product-eng@google.com</owner>
-  <summary>
-    Recorded when the `InitialWebUIWindowMetricsManager` is bound to the
-    `InitialWebUIPageLoadMetricsObserver` after being initially unavailable
-    (e.g., for prewarmed WebContents waiting for a BrowserWindowInterface).
-    Measures the elapsed time from observer creation until the manager is bound.
-  </summary>
-</histogram>
-
-<histogram
-    name="InitialWebUI.Toolbar.TimeWithoutWindowMetricsManagerOnDestruction"
-    units="ms" expires_after="2027-08-01">
-  <owner>leimy@chromium.org</owner>
-  <owner>chrome-webium-product-eng@google.com</owner>
-  <summary>
-    Recorded in `~InitialWebUIPageLoadMetricsObserver` upon destruction when no
-    `InitialWebUIWindowMetricsManager` was ever bound to the observer. Measures
-    the elapsed time from observer creation until destruction.
-  </summary>
-</histogram>
-
-<histogram name="InitialWebUI.Toolbar.WindowMetricsManagerBindingStatus"
-    enum="InitialWebUIWindowMetricsManagerBindingStatus"
-    expires_after="2027-08-01">
-  <owner>leimy@chromium.org</owner>
-  <owner>chrome-webium-product-eng@google.com</owner>
-  <summary>
-    Recorded in `~InitialWebUIPageLoadMetricsObserver` upon destruction. Records
-    the binding status of `InitialWebUIWindowMetricsManager`: whether it was
-    bound immediately at start, bound deferred (after receiving the
-    `BrowserWindowInterface` change notification), or never bound before
-    destruction.
   </summary>
 </histogram>
 
@@ -1218,7 +1180,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="Toolbar.Overflow.HomeButton" enum="Boolean"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>robliao@chromium.org</owner>
   <owner>pauljensen@chromium.org</owner>
   <summary>
@@ -1227,7 +1189,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="TopChromeUI.{UIName}.RequestToFirstContentfulPaint" units="ms"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webui@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1425,7 +1387,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.TopChrome.Preload.Reason" enum="WebUIPreloadReason"
-    expires_after="2027-02-07">
+    expires_after="2027-04-11">
   <owner>kerenzhu@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <owner>robliao@chromium.org</owner>
@@ -1582,6 +1544,7 @@ features through Chrome Labs. -->
     <variant name=".SavedTabGroupOpenInNewWindow"/>
     <variant name=".SavedTabGroupPin"/>
     <variant name=".SavePage"/>
+    <variant name=".ScheduledRestartDialog"/>
     <variant name=".SeeDeviceTabs"/>
     <variant name=".SendToDevices"/>
     <variant name=".SetBrowserAsDefault"/>

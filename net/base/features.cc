@@ -324,7 +324,7 @@ BASE_FEATURE(kDeferConnectionTypeAtStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_MAC)
-BASE_FEATURE(kTcpPortRandomizationMac, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTcpPortRandomizationMac, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(int,
                    kTcpPortRandomizationReuseDelaySec,
                    &kTcpPortRandomizationMac,
@@ -511,6 +511,9 @@ BASE_FEATURE(kDeviceBoundSessionsPersistExpiryOnRefresh,
 
 BASE_FEATURE(kDeviceBoundSessionsIncludeAudienceClaim,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kDeviceBoundSessionsDrainDeferredOnAllCanceled,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSpdySessionForProxyAdditionalChecks,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1040,8 +1043,6 @@ BASE_FEATURE_PARAM(int,
                    &kCacheCertVerification,
                    1800);
 
-BASE_FEATURE(kTlsGreaseSigalgs, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache,
 #if BUILDFLAG(CRONET_BUILD)
              // Disable for Cronet because when a CronetContext is shut down,
@@ -1085,6 +1086,22 @@ BASE_FEATURE_PARAM(int,
                    kQuicSocketSendBufferSizeParam,
                    &kQuicSocketSendBufferSize,
                    -1);
+
+BASE_FEATURE(kShaderDiskCacheBackendExperiment,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+constexpr base::FeatureParam<DiskCacheBackend>::Option
+    kShaderDiskCacheBackendTypeOptions[] = {
+        {DiskCacheBackend::kDefault, "default"},
+        {DiskCacheBackend::kSimple, "simple"},
+};
+
+BASE_FEATURE_ENUM_PARAM(DiskCacheBackend,
+                        kShaderDiskCacheBackendType,
+                        &kShaderDiskCacheBackendExperiment,
+                        "type",
+                        DiskCacheBackend::kSimple,
+                        &kShaderDiskCacheBackendTypeOptions);
 
 }  // namespace net::features
 

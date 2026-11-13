@@ -39,7 +39,6 @@
 #include "base/timer/elapsed_timer.h"
 #include "base/values.h"
 #include "base/version.h"
-#include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_launch_error.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_types.h"
 #include "chrome/browser/ash/arc/arc_util.h"
@@ -69,7 +68,6 @@
 #include "chrome/browser/net/system_network_context_manager.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/chrome_device_id_helper.h"
 #include "chrome/browser/ui/ash/login/login_display_host.h"
 #include "chrome/browser/ui/ash/login/login_display_host_mojo.h"
 #include "chrome/browser/ui/ash/login/signin_ui.h"
@@ -110,6 +108,7 @@
 #include "components/policy/proto/cloud_policy.pb.h"
 #include "components/prefs/pref_service.h"
 #include "components/session_manager/core/session_manager.h"
+#include "components/signin/public/base/device_id_helper.h"
 #include "components/user_manager/known_user.h"
 #include "components/user_manager/user_manager.h"
 #include "components/user_manager/user_names.h"
@@ -1748,7 +1747,7 @@ void ExistingUserController::DoCompleteLogin(
       const bool is_ephemeral =
           user_manager::UserManager::Get()->IsEphemeralAccountId(
               user_context.GetAccountId());
-      device_id = GenerateSigninScopedDeviceId(is_ephemeral);
+      device_id = signin::GenerateSigninScopedDeviceId(is_ephemeral);
     }
     user_context.SetDeviceId(device_id);
   }

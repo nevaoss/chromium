@@ -1024,13 +1024,6 @@ BackgroundRefreshRegressionTestArm GetBackgroundRefreshRegressionTestArm() {
   return kBackgroundRefreshRegressionTestArmParam.Get();
 }
 
-BASE_FEATURE(kOpenEditGroupViewByTappingTitle,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsOpenEditGroupViewByTappingTitleEnabled() {
-  return base::FeatureList::IsEnabled(kOpenEditGroupViewByTappingTitle);
-}
-
 bool IsUpdateTabGroupColorsEnabled() {
   return base::FeatureList::IsEnabled(tab_groups::kUpdateTabGroupColors);
 }
@@ -1128,7 +1121,7 @@ bool IsAiSubscriptionAvatarRingFollowupIOSEnabled() {
   return base::FeatureList::IsEnabled(kAiSubscriptionAvatarRingFollowupIOS);
 }
 
-BASE_FEATURE(kInfobarBannerRevamp, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kInfobarBannerRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsInfobarBannerRevampEnabled() {
   return base::FeatureList::IsEnabled(kInfobarBannerRevamp);
@@ -1229,6 +1222,12 @@ bool IsAppBarAssistantCustomizationEnabled() {
   return base::FeatureList::IsEnabled(kAppBarAssistantCustomization);
 }
 
+BASE_FEATURE(kGreyImageCIFilter, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGreyImageCIFilterEnabled() {
+  return base::FeatureList::IsEnabled(kGreyImageCIFilter);
+}
+
 BASE_FEATURE(kLightAppBar, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsLightAppBarEnabled() {
@@ -1245,4 +1244,13 @@ BASE_FEATURE(kVoiceSearchEvolutionPhase1, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsVoiceSearchEvolutionPhase1Enabled() {
   return base::FeatureList::IsEnabled(kVoiceSearchEvolutionPhase1);
+}
+
+BASE_FEATURE(kFiveButtonAppBarLayout, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsFiveButtonAppBarLayoutEnabled() {
+  if (!IsNextOldDesignEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kFiveButtonAppBarLayout);
 }

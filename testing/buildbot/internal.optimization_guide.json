@@ -1565,6 +1565,7 @@
           "--benchmark_binary_dir=./",
           "--backends=gpu"
         ],
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -3328,6 +3329,8 @@
         "args": [
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3350,6 +3353,8 @@
         "args": [
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3396,6 +3401,8 @@
           "--use-gpu-in-tests",
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3420,6 +3427,8 @@
           "--use-gpu-in-tests",
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3544,6 +3553,8 @@
           "Chrome.exe",
           "--target-platform=win32"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -3597,6 +3608,8 @@
         "variant_id": "NVIDIA GeForce GTX 1660"
       },
       {
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -3671,6 +3684,8 @@
         "args": [
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3693,6 +3708,8 @@
         "args": [
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3739,6 +3756,8 @@
           "--use-gpu-in-tests",
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -3763,6 +3782,8 @@
           "--use-gpu-in-tests",
           "--ui-test-action-timeout=30000"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
@@ -4200,6 +4221,8 @@
           "--binary",
           "Chrome.exe"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -4229,6 +4252,8 @@
           "--binary",
           "Chrome.exe"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -4287,6 +4312,8 @@
           "--binary",
           "Chrome.exe"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -4316,6 +4343,8 @@
           "--binary",
           "Chrome.exe"
         ],
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -4368,6 +4397,8 @@
         "variant_id": "NVIDIA GeForce GTX 1660"
       },
       {
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },
@@ -4391,6 +4422,8 @@
         "variant_id": "AMD Radeon RX 5500 XT"
       },
       {
+        "ci_only": true,
+        "experiment_percentage": 100,
         "merge": {
           "script": "//testing/merge_scripts/standard_isolated_script_merge.py"
         },

@@ -124,6 +124,8 @@ const char* kSearchSparkIconResourceName =
     "//resources/cr_components/searchbox/icons/search_spark.svg";
 const char* kReplyRotated180IconResourceName =
     "//resources/cr_components/searchbox/icons/reply_rotated180.svg";
+const char* kDockToRightIconResourceName =
+    "//resources/cr_components/searchbox/icons/dock_to_right.svg";
 }  // namespace searchbox_internal
 
 namespace {
@@ -579,6 +581,8 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds));
   dict.Set("ShowContextMenuHeaders",
            ntp_composebox::kShowContextMenuHeaders.Get());
+  dict.Set("composeboxSingleTabMenuItemEnabled",
+           omnibox::IsSingleTabMenuItemInComposeboxEnabled());
   dict.Set("composeboxSmartTabSharingVisible",
            options.is_lens ? false
                            : contextual_tasks::ContextualTasksContextService::
@@ -1071,11 +1075,6 @@ SearchboxHandler::CreateAutocompleteMatch(
   if (match.suggest_template && match.suggest_template->has_fusebox_action()) {
     mojom_match->fusebox_action = fusebox_action::SyncFuseboxActionProtoToMojo(
         match.suggest_template->fusebox_action());
-  }
-
-  if (match.suggest_template && match.suggest_template->has_style()) {
-    mojom_match->suggest_style = static_cast<searchbox::mojom::SuggestStyle>(
-        match.suggest_template->style());
   }
 
   if (SupportsKeywordMode()) {
@@ -1790,7 +1789,10 @@ void SearchboxHandler::OpenPopupSelection(
     AutocompleteMatch url_match = searchbox::GenerateDotComMatch(
         client(), autocomplete_controller(), input, text_for_tld);
     if (url_match.destination_url.is_valid()) {
-      OpenMatch(popup_selection, url_match, disposition, base::TimeTicks::Now(),
+      // `url_match` isn't in the result, so pass `kNoMatch` to log it as the
+      // only match, instead of logging the line that `popup_selection` is on.
+      OpenMatch(OmniboxPopupSelection(OmniboxPopupSelection::kNoMatch),
+                url_match, disposition, base::TimeTicks::Now(),
                 searchbox::MakeAutocompleteSnapshot(autocomplete_controller()));
       return;
     }

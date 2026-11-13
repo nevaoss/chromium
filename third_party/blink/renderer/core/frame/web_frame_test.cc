@@ -45,6 +45,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/unsafe_shared_memory_region.h"
+#include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
@@ -61,6 +62,7 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/system/data_pipe_utils.h"
+#include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy_declaration.h"
 #include "skia/public/mojom/skcolor.mojom-blink.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -11860,6 +11862,263 @@ TEST_F(WebFrameTest, ImeSelectionCommitDoesNotChangeClipboard) {
   widget->SetHandlingInputEvent(false);
 }
 
+namespace {
+
+// Loads `html` and focuses its element with id "target".
+WebLocalFrameImpl* LoadAndFocusTarget(
+    frame_test_helpers::WebViewHelper& web_view_helper,
+    const std::string& html) {
+  web_view_helper.Initialize();
+  // Without a default font size, text gets a font size of 0, and the bounds of
+  // all its characters can be empty.
+  web_view_helper.GetWebView()->GetSettings()->SetDefaultFontSize(16);
+  web_view_helper.Resize(gfx::Size(640, 480));
+  WebLocalFrameImpl* web_frame = web_view_helper.LocalMainFrame();
+  frame_test_helpers::LoadHTMLString(web_frame, html, ToKURL("about:blank"));
+  web_frame->GetFrame()
+      ->GetDocument()
+      ->getElementById(AtomicString("target"))
+      ->Focus();
+  return web_frame;
+}
+
+// Checks that the fast computation of the bounds of the `length` characters of
+// the current composition matches the legacy per-character computation.
+void ExpectCurrentCompositionCharacterBoundsMatchLegacy(
+    WebInputMethodController& controller,
+    int length) {
+  std::vector<gfx::Rect> fast_bounds;
+  {
+    ScopedFastCompositionCharacterBoundsForTest scoped_feature(true);
+    ASSERT_TRUE(controller.GetCompositionCharacterBounds(fast_bounds));
+  }
+  std::vector<gfx::Rect> legacy_bounds;
+  {
+    ScopedFastCompositionCharacterBoundsForTest scoped_feature(false);
+    ASSERT_TRUE(controller.GetCompositionCharacterBounds(legacy_bounds));
+  }
+  ASSERT_EQ(static_cast<size_t>(length), legacy_bounds.size());
+  // Make sure the comparison can't pass just because neither computation
+  // produced any real bounds.
+  EXPECT_TRUE(std::ranges::any_of(legacy_bounds, [](const gfx::Rect& rect) {
+    return !rect.IsEmpty();
+  })) << ::testing::PrintToString(legacy_bounds);
+  EXPECT_EQ(legacy_bounds, fast_bounds);
+}
+
+// Loads `html`, focuses its element with id "target", sets a composition over
+// the plain text offsets [start, end) of the focused editable, and checks that
+// the fast computation of the composition character bounds matches the legacy
+// per-character computation.
+void ExpectCompositionCharacterBoundsMatchLegacy(const std::string& html,
+                                                 int start,
+                                                 int end) {
+  frame_test_helpers::WebViewHelper web_view_helper;
+  WebLocalFrameImpl* web_frame = LoadAndFocusTarget(web_view_helper, html);
+  web_frame->GetFrame()
+      ->GetInputMethodController()
+      .SetCompositionFromExistingText(Vector<ImeTextSpan>(), start, end);
+  WebInputMethodController* controller = web_frame->GetInputMethodController();
+  const WebRange range = controller->CompositionRange();
+  ASSERT_EQ(start, range.StartOffset());
+  ASSERT_EQ(end, range.EndOffset());
+  ExpectCurrentCompositionCharacterBoundsMatchLegacy(*controller, end - start);
+}
+
+}  // namespace
+
+TEST_F(WebFrameTest, CompositionCharacterBoundsMatchLegacyComputation) {
+  ExpectCompositionCharacterBoundsMatchLegacy(
+      "<div id='target' contenteditable>first line<br>"
+      "second <b>bold</b> line<br>third line</div>",
+      8, 30);
+}
+
+// TextIterator only emits the separator that follows a block once it has
+// emitted text before it, so a composition that starts at the end of a block
+// has to be iterated in the context of the whole editable for its characters
+// to line up with their plain text offsets.
+TEST_F(WebFrameTest, CompositionCharacterBoundsStartingAtEndOfBlock) {
+  {
+    SCOPED_TRACE("paragraph");
+    // "first\n\nsecond"; the composition is "\n\nse".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable><p>first</p><p>second</p></div>", 5,
+        9);
+  }
+  {
+    SCOPED_TRACE("table cell");
+    // "ab\tcd"; the composition is "\tc".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable><table><tr><td>ab</td><td>cd</td>"
+        "</tr></table></div>",
+        2, 4);
+  }
+  {
+    SCOPED_TRACE("div");
+    // "first\nsecond"; the composition is "\nsec".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable><div>first</div><div>second</div>"
+        "</div>",
+        5, 9);
+  }
+}
+
+TEST_F(WebFrameTest, CompositionCharacterBoundsWithReplacedElement) {
+  ExpectCompositionCharacterBoundsMatchLegacy(
+      "<div id='target' contenteditable>ab"
+      "<img style='width: 10px; height: 10px'>cd</div>",
+      1, 4);
+}
+
+TEST_F(WebFrameTest, CompositionCharacterBoundsInTextArea) {
+  ExpectCompositionCharacterBoundsMatchLegacy(
+      "<textarea id='target'>line one\nline two\nline three</textarea>", 5, 20);
+}
+
+TEST_F(WebFrameTest, CompositionCharacterBoundsInInput) {
+  // "hello   world"; the composition is "lo   wo".
+  ExpectCompositionCharacterBoundsMatchLegacy(
+      "<input id='target' value='hello   world'>", 3, 10);
+}
+
+// Collapsed whitespace isn't part of the plain text, so the plain text offsets
+// of the characters after it differ from their offsets in the DOM.
+TEST_F(WebFrameTest, CompositionCharacterBoundsWithCollapsibleWhitespace) {
+  {
+    SCOPED_TRACE("spaces");
+    // "a b c"; the composition is " b ".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable>a   b    c</div>", 1, 4);
+  }
+  {
+    SCOPED_TRACE("spans");
+    // "abcd ef gh"; the composition is "bcd ef g".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable><span>ab</span><span>cd</span>   "
+        "<span> ef </span>  <span>gh</span></div>",
+        1, 9);
+  }
+  {
+    SCOPED_TRACE("indented blocks");
+    // "first line\nsecond line"; the composition is "line\nsec".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable>\n"
+        "  <div>  first   line  </div>\n"
+        "  <div>second <span> line </span> </div>\n"
+        "</div>",
+        6, 14);
+  }
+}
+
+TEST_F(WebFrameTest, CompositionCharacterBoundsAtStartAndEndOfEditable) {
+  {
+    SCOPED_TRACE("whole editable");
+    // "first line"; the composition is all of it.
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable>first line</div>", 0, 10);
+  }
+  {
+    SCOPED_TRACE("starting with a line break");
+    // "\nab\ncd\n"; the composition is "\nab".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable><br>ab<br>cd<br></div>", 0, 3);
+  }
+  {
+    SCOPED_TRACE("ending with a line break");
+    // "\nab\ncd\n"; the composition is "cd\n".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<div id='target' contenteditable><br>ab<br>cd<br></div>", 4, 7);
+  }
+  {
+    SCOPED_TRACE("end of a textarea");
+    // "line one\nline two"; the composition is "line two".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        "<textarea id='target'>line one\nline two</textarea>", 9, 17);
+  }
+}
+
+// Plain text offsets count UTF-16 code units, so a surrogate pair takes up two
+// offsets.
+TEST_F(WebFrameTest, CompositionCharacterBoundsWithSurrogatePairs) {
+  // U+20B9F, which is a surrogate pair in UTF-16.
+  constexpr char kPair[] = "\xF0\xA0\xAE\x9F";
+  {
+    SCOPED_TRACE("contenteditable");
+    // "a\U00020B9Fb\U00020B9F\U00020B9Fc\U00020B9Fd"; the composition is
+    // "b\U00020B9F\U00020B9Fc".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        base::StrCat({"<div id='target' contenteditable>a", kPair, "b", kPair,
+                      kPair, "c", kPair, "d</div>"}),
+        3, 9);
+  }
+  {
+    SCOPED_TRACE("textarea");
+    // "\U00020B9Fa\U00020B9F\nb\U00020B9F"; the composition is
+    // "a\U00020B9F\nb".
+    ExpectCompositionCharacterBoundsMatchLegacy(
+        base::StrCat({"<textarea id='target'>", kPair, "a", kPair, "\nb", kPair,
+                      "</textarea>"}),
+        2, 7);
+  }
+}
+
+TEST_F(WebFrameTest, CompositionCharacterBoundsWithCombiningMarks) {
+  // U+0301 COMBINING ACUTE ACCENT and U+0308 COMBINING DIAERESIS.
+  constexpr char kAcute[] = "\xCC\x81";
+  constexpr char kDiaeresis[] = "\xCC\x88";
+  // "ae\u0301i\u0308o"; the composition is "e\u0301i\u0308".
+  ExpectCompositionCharacterBoundsMatchLegacy(
+      base::StrCat({"<div id='target' contenteditable>ae", kAcute, "i",
+                    kDiaeresis, "o</div>"}),
+      1, 5);
+}
+
+// An IME that replaces selected text types its composition over the selection.
+// Unlike SetCompositionFromExistingText(), that changes the DOM: here, it
+// merges the lines around the replaced line break.
+TEST_F(WebFrameTest, CompositionCharacterBoundsReplacingSelection) {
+  // Selects the plain text offsets [start, end) of the focused editable in
+  // `html` and types a composition over them, as an IME does. Then moves the
+  // editable, as a page's input event handler might, so that the bounds are
+  // computed starting with stale layout.
+  auto expect_bounds_match_legacy = [](const std::string& html, int start,
+                                       int end) {
+    frame_test_helpers::WebViewHelper web_view_helper;
+    WebLocalFrameImpl* web_frame = LoadAndFocusTarget(web_view_helper, html);
+    WebInputMethodController* controller =
+        web_frame->GetInputMethodController();
+    const WebString composition = WebString::FromUtf8("xyz");
+    const int length = static_cast<int>(composition.length());
+    ASSERT_TRUE(controller->SetComposition(
+        composition, {}, WebRange(start, end - start), length, length));
+    const WebRange range = controller->CompositionRange();
+    ASSERT_EQ(start, range.StartOffset());
+    ASSERT_EQ(start + length, range.EndOffset());
+
+    Document* document = web_frame->GetFrame()->GetDocument();
+    document->body()->setAttribute(html_names::kStyleAttr,
+                                   AtomicString("padding-top: 20px"));
+    ASSERT_TRUE(document->NeedsLayoutTreeUpdate());
+    ExpectCurrentCompositionCharacterBoundsMatchLegacy(*controller, length);
+  };
+  {
+    SCOPED_TRACE("contenteditable");
+    // "first line\nsecond bold line\nthird line"; " line\n" is replaced.
+    expect_bounds_match_legacy(
+        "<div id='target' contenteditable>first line<br>"
+        "second <b>bold</b> line<br>third line</div>",
+        5, 11);
+  }
+  {
+    SCOPED_TRACE("textarea");
+    // "line one\nline two\nline three"; "e one\n" is replaced.
+    expect_bounds_match_legacy(
+        "<textarea id='target'>line one\nline two\nline three</textarea>", 3,
+        9);
+  }
+}
+
 TEST_F(WebFrameTest, SetSelectionForAccessibilityHandlingInputEvent) {
   RegisterMockedHttpURLLoad("foo.html");
   SelectionMockWebFrameClient web_frame_client;
@@ -12411,6 +12670,9 @@ TEST_F(WebFrameTest, DiscardFrame) {
 }
 
 TEST_F(WebFrameTest, DiscardFrameRunsUnloadEvents) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      network::features::kDeprecateUnload);
   DisableRendererSchedulerThrottling();
   RegisterMockedHttpURLLoad("foo.html");
 
@@ -12838,8 +13100,7 @@ TEST_F(WebFrameSimTest, HitTestWithIgnoreClippingAtNegativeOffset) {
   HitTestResult result(request, location);
   frame_view->GetLayoutView()->HitTest(location, result);
 
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("top")),
-            result.InnerNode());
+  EXPECT_EQ(GetElementById("top"), result.InnerNode());
 }
 
 TEST_F(WebFrameSimTest, TickmarksDocumentRelative) {
@@ -12927,8 +13188,8 @@ TEST_F(WebFrameSimTest, FindInPageSelectNextMatch) {
   auto* local_frame = To<LocalFrame>(WebView().GetPage()->MainFrame());
   auto* frame_view = local_frame->View();
 
-  Element* box1 = GetDocument().getElementById(AtomicString("box1"));
-  Element* box2 = GetDocument().getElementById(AtomicString("box2"));
+  Element* box1 = GetElementById("box1");
+  Element* box2 = GetElementById("box2");
 
   gfx::Rect box1_rect = box1->GetLayoutObject()->AbsoluteBoundingBoxRect();
   gfx::Rect box2_rect = box2->GetLayoutObject()->AbsoluteBoundingBoxRect();
@@ -12991,7 +13252,7 @@ TEST_F(WebFrameSimTest, TallBlockRectFindTest) {
   auto* local_frame = To<LocalFrame>(WebView().GetPage()->MainFrame());
   auto* frame_view = local_frame->View();
 
-  Element* target = GetDocument().getElementById(AtomicString("textnode"));
+  Element* target = GetElementById("textnode");
   gfx::Rect span_rect = target->GetLayoutObject()->AbsoluteBoundingBoxRect();
   WebView().ZoomToFindInPageRect(span_rect);
 
@@ -13145,7 +13406,7 @@ TEST_F(WebFrameSimTest, TestFocusPreventScrollNotScrollElementIntoView) {
   Compositor().BeginFrame();
 
   ScrollableArea* area = GetDocument().View()->LayoutViewport();
-  Element* input = GetDocument().getElementById(AtomicString("target"));
+  Element* input = GetElementById("target");
   gfx::Rect input_rect(0, 1000, 100, 20);
 
   // Focus the element with `preventScroll: true` to ensure it does not scroll
@@ -13342,7 +13603,7 @@ TEST_F(WebFrameSimTest, TestScrollFocusedEditableInRootScroller) {
   TopDocumentRootScrollerController& rs_controller =
       GetDocument().GetPage()->GlobalRootScrollerController();
 
-  Element* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  Element* scroller = GetElementById("scroller");
   ASSERT_EQ(scroller, rs_controller.GlobalRootScroller());
 
   auto* frame = To<LocalFrame>(WebView().GetPage()->MainFrame());
@@ -13458,7 +13719,7 @@ TEST_F(WebFrameSimTest, ScrollFocusedIntoViewClipped) {
       ->FrameWidget()
       ->ScrollFocusedEditableElementIntoView();
 
-  Element* input = GetDocument().getElementById(AtomicString("target"));
+  Element* input = GetElementById("target");
   gfx::Rect input_rect(input->GetBoundingClientRect()->top(),
                        input->GetBoundingClientRect()->left(),
                        input->GetBoundingClientRect()->width(),
@@ -13481,7 +13742,7 @@ TEST_F(WebFrameSimTest, ScrollFocusedIntoViewClipped) {
 
   // Additional gut-check that we actually scrolled the non-user-scrollable
   // clip element to make sure the input is in view.
-  Element* clip = GetDocument().getElementById(AtomicString("clip"));
+  Element* clip = GetElementById("clip");
   EXPECT_GT(clip->scrollTop(), 0);
 }
 
@@ -13518,8 +13779,7 @@ TEST_F(WebFrameSimTest, ScrollFocusedSelectionIntoView) {
   Compositor().BeginFrame();
   WebView().AdvanceFocus(false);
 
-  auto* input = To<HTMLInputElement>(
-      GetDocument().getElementById(AtomicString("target")));
+  auto* input = To<HTMLInputElement>(GetElementById("target"));
   input->select();
 
   // Simulate the keyboard being shown and resizing the widget. Cause a scroll
@@ -13675,7 +13935,7 @@ TEST_F(WebFrameSimTest, ScrollFocusedEditableIntoViewNoLayoutObject) {
 
   Compositor().BeginFrame();
 
-  Element* input = GetDocument().getElementById(AtomicString("target"));
+  Element* input = GetElementById("target");
   input->Focus();
 
   ScrollableArea* area = GetDocument().View()->LayoutViewport();

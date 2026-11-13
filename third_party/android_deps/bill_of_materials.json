@@ -127,17 +127,17 @@
     {
         "name": "collection",
         "group": "androidx.collection",
-        "version": "1.7.0"
+        "version": "1.8.0-SNAPSHOT"
     },
     {
         "name": "collection-jvm",
         "group": "androidx.collection",
-        "version": "1.7.0"
+        "version": "1.8.0-SNAPSHOT"
     },
     {
         "name": "collection-ktx",
         "group": "androidx.collection",
-        "version": "1.7.0"
+        "version": "1.8.0-SNAPSHOT"
     },
     {
         "name": "animation",
@@ -432,7 +432,7 @@
     {
         "name": "datastore",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-android",
@@ -447,17 +447,17 @@
     {
         "name": "datastore-core-android",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-core-okio",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-core-okio-jvm",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-preferences",
@@ -467,27 +467,27 @@
     {
         "name": "datastore-preferences-android",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-preferences-core",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-preferences-core-android",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-preferences-external-protobuf",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "datastore-preferences-proto",
         "group": "androidx.datastore",
-        "version": "1.3.0-alpha11"
+        "version": "1.3.0-rc01"
     },
     {
         "name": "documentfile",
@@ -507,7 +507,7 @@
     {
         "name": "emoji2",
         "group": "androidx.emoji2",
-        "version": "1.7.0"
+        "version": "1.8.0-SNAPSHOT"
     },
     {
         "name": "emoji2-views-helper",
@@ -1427,7 +1427,7 @@
     {
         "name": "play-services-base",
         "group": "com.google.android.gms",
-        "version": "18.11.0"
+        "version": "18.11.1"
     },
     {
         "name": "play-services-basement",
@@ -1882,12 +1882,12 @@
     {
         "name": "grpc-api",
         "group": "io.grpc",
-        "version": "1.84.2"
+        "version": "1.85.0"
     },
     {
         "name": "grpc-stub",
         "group": "io.grpc",
-        "version": "1.84.2"
+        "version": "1.85.0"
     },
     {
         "name": "rxandroid",

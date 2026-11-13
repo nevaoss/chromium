@@ -528,6 +528,12 @@ BASE_FEATURE(kDeferAudioFocusUntilAudible,
 // (instead of the FFmpegAudioDecoder).
 BASE_FEATURE(kDirectOpusAudioDecoding, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Killswitch for disallowing mixing opaque and non-opaque responses in
+// ResourceMultiBufferDataProvider (crbug.com/572363265).
+// TODO(crbug.com/572363265): Remove after M158 reaches stable.
+BASE_FEATURE(kDisallowMixedOpaqueMediaResponses,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Adds an animation to document picture-in-picture resizes.
 BASE_FEATURE(kDocumentPictureInPictureAnimateResize,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1627,6 +1633,13 @@ BASE_FEATURE(kIncludeIRCamerasInDeviceEnumeration,
 BASE_FEATURE(kMediaFoundationBatchRead, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kBatchReadCount{&kMediaFoundationBatchRead,
                                               "batch_read_count", 1};
+
+// Enables setting MF_MEDIA_ENGINE_COMPATIBILITY_MODE_CHROMIUM to the Chromium
+// compatibility mode attribute on the Media Engine, and the associated
+// OnMFSeekRequested handling. TODO(crbug.com/573570907): Remove when the
+// Chromium compatibility mode rollout is complete.
+BASE_FEATURE(kMediaFoundationChromiumCompatibilityMode,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the use of MediaFoundationRenderer for clear content on supported
 // systems. This is for testing purposes, and is not intended to be enabled

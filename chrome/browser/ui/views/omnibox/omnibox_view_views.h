@@ -288,6 +288,10 @@ class OmniboxViewViews
 
   void ClearAccessibilityLabel();
 
+  // Tail-elides the text and resets the scroll position, for when the
+  // textfield stops being where the user edits text.
+  void ElideAndResetScrollPosition();
+
   void SetAccessibilityLabel(const std::u16string& display_text,
                              const AutocompleteMatch& match,
                              bool notify_text_changed) override;
@@ -295,6 +299,11 @@ class OmniboxViewViews
   // Returns true if the user text was updated with the full URL (without
   // steady-state elisions).  |gesture| is the user gesture causing unelision.
   bool UnapplySteadyStateElisions(UnelisionGesture gesture);
+
+  // In Full WebUI mode, shows the WebUI searchbox menu instead of the views
+  // one. Returns true if handled.
+  bool HandOffContextMenuToWebUI(const gfx::Point& point,
+                                 ui::mojom::MenuSourceType source_type);
 
 #if BUILDFLAG(IS_MAC)
   void AnnounceFriendlySuggestionText();

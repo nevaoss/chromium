@@ -8,7 +8,7 @@ import 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import 'chrome://resources/cr_components/searchbox/searchbox_input.js';
 
 import {KeywordModeEntryMethod} from 'chrome://resources/cr_components/searchbox/keyword_mode_manager.js';
-import {createAutocompleteMatch, createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, createSuggestTemplateInfo, SearchboxBrowserProxy} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteMatch, createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, SearchboxBrowserProxy} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import type {ComposeClickEventDetail} from 'chrome://resources/cr_components/searchbox/searchbox_compose_button.js';
 import type {SearchboxDropdownElement} from 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import type {SearchboxInputElement} from 'chrome://resources/cr_components/searchbox/searchbox_input.js';
@@ -27,7 +27,7 @@ import {SecondaryTextPlacement} from 'chrome://resources/mojo/components/omnibox
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {$$, eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
-import {assertIconMaskImageUrl, assertStyle, createClipboardEvent, createKeyboardEvent, createUrlMatch} from './searchbox_test_utils.js';
+import {assertIconMaskImageUrl, assertStyle, createClipboardEvent, createKeyboardEvent, createSuggestTemplateInfo, createUrlMatch} from './searchbox_test_utils.js';
 import {TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
 
 const TestElementBase = SearchboxMixin(CrLitElement);
@@ -222,7 +222,8 @@ function createCalculatorMatch(modifiers: Partial<AutocompleteMatch> = {}):
 
 function verifyMatch(match: AutocompleteMatch, matchEl: SearchboxMatchElement) {
   assertEquals('option', matchEl.getAttribute('role'));
-  const {primaryText, secondaryText} = match.suggestTemplate;
+  const primaryText = match.suggestTemplate.primaryText.text;
+  const secondaryText = match.suggestTemplate.secondaryText.text;
   const separatorText =
       secondaryText ? loadTimeData.getString('searchboxSeparator') : '';
   const text = matchEl.$.primaryText.textContent +
@@ -2029,7 +2030,7 @@ suite('SearchboxMixinTest', () => {
         }));
         await microtasksFinished();
 
-        element.inputKeywordModel = {
+        element.keywordModeManager.inputKeywordModel = {
           type: KeywordType.kInKeyword,
           keyword,
           displayText: 'Search Google',
@@ -2485,6 +2486,20 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         inputElement.focus();
         await simulateUserTextInput(mockInput, 'hello');
         assertEquals(null, inputElement.ariaActiveDescendantElement);
+        // It is an option of a listbox the combobox controls: after a key
+        // press VoiceOver re-anchors keyboard focus according to the element
+        // it is told has focus, on the combobox (a no-op) for an option of
+        // its listbox, but on the web area for a plain group, which blurs the
+        // input and closes the popup. While there is no selection, listbox and
+        // option are hidden, hence out of the accessibility tree.
+        const listbox = mockInput.$.selectionListbox;
+        assertEquals('listbox', listbox.getAttribute('role'));
+        assertTrue(listbox.contains(distraction));
+        assertEquals(listbox.id, inputElement.getAttribute('aria-controls'));
+        assertEquals('option', distraction.getAttribute('role'));
+        assertEquals('true', distraction.getAttribute('aria-selected'));
+        assertEquals('', distraction.textContent);
+        assertTrue(listbox.hidden);
 
         element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
           queryId: element.activeQueryId,
@@ -2523,14 +2538,13 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         await element.updateComplete;
         assertEquals('hello world', inputElement.value);
         // The distraction keeps screen readers from narrating the input's new
-        // value. It has no role, so it does not become their focus.
+        // value. Listbox and option may enter the accessibility tree in the
+        // same update that makes the option the active descendant.
         assertEquals(distraction, inputElement.ariaActiveDescendantElement);
-        assertEquals(null, distraction.getAttribute('role'));
         assertEquals(
             'hello world, search suggestion, 1 of 2', distraction.textContent);
-        // Pointing aria-activedescendant at the distraction is reported to
-        // screen readers as a focus change, so the first label is notified
-        // only with the following accessibility tree update.
+        assertFalse(listbox.hidden);
+        // The label is notified with the following accessibility tree update.
         assertEquals(0, notifications.length);
         await paintFinished();
         assertEquals(1, notifications.length);
@@ -2540,26 +2554,44 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertEquals('high', notifications[0]!.options.priority);
         assertEquals('hello world', notifications[0]!.inputValue);
 
+        // The second selection is narrated exactly the same way, even though
+        // screen readers are on the distraction already.
         inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
         await element.updateComplete;
         assertEquals('hello there', inputElement.value);
         assertEquals(distraction, inputElement.ariaActiveDescendantElement);
         assertEquals(
             'hello there, search suggestion, 2 of 2', distraction.textContent);
-        // Screen readers are on the distraction already, so the label is
-        // notified right away.
+        assertEquals(1, notifications.length);
+        await paintFinished();
         assertEquals(2, notifications.length);
         assertEquals(
             'hello there, search suggestion, 2 of 2',
             notifications[1]!.message);
         assertEquals('hello there', notifications[1]!.inputValue);
 
-        // Editing the text narrates the input itself again, silently.
+        // Moving the caret narrates the input itself again, silently, and the
+        // next selection is narrated no differently for it.
+        inputElement.dispatchEvent(createKeyboardEvent('ArrowLeft'));
+        assertEquals(null, inputElement.ariaActiveDescendantElement);
+        inputElement.dispatchEvent(createKeyboardEvent('ArrowUp'));
+        await element.updateComplete;
+        assertEquals(distraction, inputElement.ariaActiveDescendantElement);
+        assertEquals(2, notifications.length);
+        await paintFinished();
+        assertEquals(3, notifications.length);
+        assertEquals(
+            'hello world, search suggestion, 1 of 2',
+            notifications[2]!.message);
+
+        // Editing the text narrates the input itself again, silently, and the
+        // listbox leaves the accessibility tree.
         await simulateUserTextInput(mockInput, 'hello t');
         assertEquals(null, inputElement.ariaActiveDescendantElement);
         assertEquals('', distraction.textContent);
+        assertTrue(listbox.hidden);
         await paintFinished();
-        assertEquals(2, notifications.length);
+        assertEquals(3, notifications.length);
 
         // Editing before a deferred notification goes out cancels it.
         mockInput.setSelectionA11yLabel('hello t, search suggestion, 1 of 1');
@@ -2567,7 +2599,14 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         await simulateUserTextInput(mockInput, 'hello th');
         assertEquals(null, inputElement.ariaActiveDescendantElement);
         await paintFinished();
-        assertEquals(2, notifications.length);
+        assertEquals(3, notifications.length);
+
+        // Rapid successive selections narrate only the last one.
+        mockInput.setSelectionA11yLabel('one');
+        mockInput.setSelectionA11yLabel('two');
+        await paintFinished();
+        assertEquals(4, notifications.length);
+        assertEquals('two', notifications[3]!.message);
       });
 
   test(
@@ -2608,12 +2647,103 @@ suite('SearchboxMixinVirtualFocusTest', () => {
             mockInput.$.selectionAnnouncement,
             inputElement.ariaActiveDescendantElement);
         assertEquals('AI Mode', mockInput.$.selectionAnnouncement.textContent);
-        // As the first selection, the label is notified only with the
-        // following accessibility tree update.
+        // The label is notified with the following accessibility tree update.
         assertDeepEquals([], notifications);
         await paintFinished();
         assertDeepEquals(['AI Mode'], notifications);
+
+        // With no default match, Shift+Tab returns the selection to the input
+        // itself. That has no label: the distraction is dropped so screen
+        // readers are back on the input and echo its restored text.
+        inputElement.dispatchEvent(
+            createKeyboardEvent('Tab', {shiftKey: true}));
+        await element.updateComplete;
+        assertEquals(-1, element.selection.line);
+        assertEquals(SelectionLineState.kNormal, element.selection.state);
+        assertEquals('test', inputElement.value);
+        assertEquals(null, inputElement.ariaActiveDescendantElement);
+        await paintFinished();
+        assertDeepEquals(['AI Mode'], notifications);
       });
+
+  test('Narration contract: every navigation key, one label each', async () => {
+    // Pins the complete mapping from keyboard navigation to what screen
+    // readers are told: each key that changes the selection produces exactly
+    // one notification, carrying the label of the new selection, and nothing
+    // else. Match labels come from C++ with their position; button labels,
+    // as in the native omnibox, do not include it.
+    const mockInput = element.getInputElement();
+    const inputElement = mockInput.inputElement;
+    inputElement.focus();
+    await simulateUserTextInput(mockInput, 'hello');
+
+    element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+      queryId: element.activeQueryId,
+      input: 'hello',
+      matches: [
+        createSearchMatchForTesting({
+          allowedToBeDefaultMatch: true,
+          fillIntoEdit: 'hello',
+          a11yLabel: 'hello, search suggestion, 1 of 3',
+          actions: [{
+            hint: 'Action',
+            suggestionContents: 'Action',
+            iconPath: '',
+            a11yLabel: 'Action one',
+          }],
+          supportsDeletion: true,
+          removeButtonA11yLabel: 'Remove hello',
+        }),
+        createSearchMatchForTesting({
+          fillIntoEdit: 'hello world',
+          destinationUrl: 'https://example.com/hello_world',
+          a11yLabel: 'hello world, search suggestion, 2 of 3',
+          supportsDeletion: true,
+          removeButtonA11yLabel: 'Remove hello world',
+        }),
+        createSearchMatchForTesting({
+          fillIntoEdit: 'hello there',
+          destinationUrl: 'https://example.com/hello_there',
+          a11yLabel: 'hello there, search suggestion, 3 of 3',
+        }),
+      ],
+    }));
+    await microtasksFinished();
+    assertEquals(0, element.selection.line);
+
+    const notifications: string[] = [];
+    document.ariaNotify = (message: string) => {
+      notifications.push(message);
+    };
+
+    const steps: Array<{key: string, shift?: boolean, expected: string}> = [
+      {key: 'ArrowDown', expected: 'hello world, search suggestion, 2 of 3'},
+      {key: 'Tab', expected: 'Remove hello world'},
+      {key: 'Tab', expected: 'hello there, search suggestion, 3 of 3'},
+      {key: 'Tab', shift: true, expected: 'Remove hello world'},
+      {
+        key: 'Tab',
+        shift: true,
+        expected: 'hello world, search suggestion, 2 of 3',
+      },
+      {key: 'PageUp', expected: 'hello, search suggestion, 1 of 3'},
+      {key: 'Tab', expected: 'Action one'},
+      {key: 'Tab', expected: 'Remove hello'},
+      {key: 'PageDown', expected: 'hello there, search suggestion, 3 of 3'},
+      {key: 'Escape', expected: 'hello, search suggestion, 1 of 3'},
+      {key: 'ArrowUp', expected: 'hello there, search suggestion, 3 of 3'},
+    ];
+    for (const [i, step] of steps.entries()) {
+      inputElement.dispatchEvent(
+          createKeyboardEvent(step.key, {shiftKey: !!step.shift}));
+      await element.updateComplete;
+      await paintFinished();
+      assertEquals(
+          i + 1, notifications.length,
+          `step ${i} (${step.shift ? 'Shift+' : ''}${step.key})`);
+      assertEquals(step.expected, notifications[i]);
+    }
+  });
 
   test('PageDown and PageUp jump through selections', async () => {
     const mockInput = element.getInputElement();
@@ -3051,7 +3181,7 @@ suite('SearchboxMixinVirtualFocusTest', () => {
   });
 
   test('computeMatchFillIntoEdit strips keyword when in keyword mode', () => {
-    element.inputKeywordModel = {
+    element.keywordModeManager.inputKeywordModel = {
       type: KeywordType.kInKeyword,
       keyword: '@tabs',
       displayText: 'Tabs',
@@ -3549,8 +3679,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertEquals('test default', mockInput.inputElement.value);
         assertEquals(' default', mockInput.lastInput()?.inline);
 
-        // Advancing focus to AIM button clears inline autocompletion and
-        // restores the typed input text.
+        // Advancing focus to AIM button clears inline autocompletion highlight
+        // while keeping the autocompleted text.
         element.setSelection({
           line: 0,
           state: SelectionLineState.kFocusedButtonAim,
@@ -3565,6 +3695,47 @@ suite('SearchboxMixinVirtualFocusTest', () => {
             },
             'Tab');
         await microtasksFinished();
+        assertEquals('test default', mockInput.inputElement.value);
+        assertEquals('', mockInput.lastInput()?.inline);
+      });
+
+  test(
+      'Tab to context entrypoint button restores typed input text',
+      async () => {
+        element.showContextEntrypointOverride = true;
+        const mockInput = element.getInputElement();
+        await simulateUserTextInput(mockInput, 'test');
+
+        const matches = [
+          createSearchMatchForTesting({
+            fillIntoEdit: 'test default',
+            inlineAutocompletion: ' default',
+            allowedToBeDefaultMatch: true,
+          }),
+        ];
+
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: 'test',
+          matches: matches,
+        }));
+        await microtasksFinished();
+
+        assertEquals('test default', mockInput.inputElement.value);
+        assertEquals(' default', mockInput.lastInput()?.inline);
+
+        // Pressing Tab moves virtual focus to the context entrypoint (+)
+        // button (line -1) and restores the typed input text.
+        mockInput.inputElement.dispatchEvent(createKeyboardEvent('Tab'));
+        await microtasksFinished();
+
+        assertDeepEquals(
+            {
+              line: -1,
+              state: SelectionLineState.kFocusedButtonContextEntrypoint,
+              actionIndex: 0,
+            },
+            element.selection);
         assertEquals('test', mockInput.inputElement.value);
         assertEquals('', mockInput.lastInput()?.inline);
       });
@@ -4375,4 +4546,106 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertDeepEquals(kDefaultSelection, element.selection);
         assertEquals('', mockInput.inputElement.value);
       });
+
+  test('post-deletion results narrate the remaining selection', async () => {
+    element.virtualFocusEnabledOverride = true;
+    const mockInput = element.getInputElement();
+    mockInput.inputElement.focus();
+
+    const match0 = createSearchMatchForTesting({
+      allowedToBeDefaultMatch: false,
+      supportsDeletion: true,
+      fillIntoEdit: 'history 0',
+      destinationUrl: 'https://example.com/0',
+      a11yLabel: 'history 0, 1 of 2',
+    });
+    const match1 = createSearchMatchForTesting({
+      allowedToBeDefaultMatch: false,
+      supportsDeletion: true,
+      fillIntoEdit: 'history 1',
+      destinationUrl: 'https://example.com/1',
+      a11yLabel: 'history 1, 2 of 2',
+    });
+    element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+      queryId: element.activeQueryId,
+      input: '',
+      matches: [match0, match1],
+    }));
+    await microtasksFinished();
+
+    const notifications: string[] = [];
+    document.ariaNotify = (message: string) => {
+      notifications.push(message);
+    };
+
+    // Select the last match and delete it.
+    mockInput.inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
+    await microtasksFinished();
+    await paintFinished();
+    mockInput.inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
+    await microtasksFinished();
+    await paintFinished();
+    assertDeepEquals(['history 0, 1 of 2', 'history 1, 2 of 2'], notifications);
+
+    mockInput.inputElement.dispatchEvent(
+        createKeyboardEvent('Delete', {shiftKey: true}));
+    await testProxy.handler.whenCalled('deleteAutocompleteMatch');
+
+    // The results that replace the deleted match narrate what is selected now.
+    const remaining = createSearchMatchForTesting({
+      allowedToBeDefaultMatch: false,
+      supportsDeletion: true,
+      fillIntoEdit: 'history 0',
+      destinationUrl: 'https://example.com/0',
+      a11yLabel: 'history 0, 1 of 1',
+    });
+    await element.onAutocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: '',
+          matches: [remaining],
+        }));
+    await microtasksFinished();
+    await paintFinished();
+    assertEquals(0, element.selection.line);
+    assertEquals('history 0', mockInput.inputElement.value);
+    assertDeepEquals(
+        ['history 0, 1 of 2', 'history 1, 2 of 2', 'history 0, 1 of 1'],
+        notifications);
+
+    // Deleting the last match clears the deleted match's label without
+    // narrating anything.
+    testProxy.handler.resetResolver('deleteAutocompleteMatch');
+    mockInput.inputElement.dispatchEvent(
+        createKeyboardEvent('Delete', {shiftKey: true}));
+    await testProxy.handler.whenCalled('deleteAutocompleteMatch');
+    await element.onAutocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: '',
+          matches: [],
+        }));
+    await microtasksFinished();
+    await paintFinished();
+    assertEquals(null, mockInput.inputElement.ariaActiveDescendantElement);
+    assertTrue(mockInput.$.selectionListbox.hidden);
+    assertEquals(3, notifications.length);
+
+    // Results of a new query, e.g. from typing, are not narrated; screen
+    // readers echo the input instead.
+    await simulateUserTextInput(mockInput, 'h');
+    await element.onAutocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: 'h',
+          matches: [createSearchMatchForTesting({
+            fillIntoEdit: 'history',
+            inlineAutocompletion: 'istory',
+            a11yLabel: 'history, 1 of 1',
+          })],
+        }));
+    await microtasksFinished();
+    await paintFinished();
+    assertEquals(3, notifications.length);
+  });
 });

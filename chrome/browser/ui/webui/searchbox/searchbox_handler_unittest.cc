@@ -67,7 +67,6 @@
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_renderer_host.h"
-#include "content/public/test/test_web_ui.h"
 #include "content/public/test/test_web_ui_data_source.h"
 #include "content/public/test/web_contents_tester.h"
 #include "extensions/common/extension_features.h"
@@ -1379,7 +1378,6 @@ class WebuiOmniboxHandlerTest : public SearchboxHandlerTest {
 
     web_contents_ =
         content::WebContentsTester::CreateTestWebContents(profile(), nullptr);
-    web_ui_.set_web_contents(web_contents_.get());
 
     popup_view_ =
         std::make_unique<FakeOmniboxPopupView>(omnibox_controller_.get());
@@ -1393,7 +1391,8 @@ class WebuiOmniboxHandlerTest : public SearchboxHandlerTest {
     handler_ = std::make_unique<WebuiOmniboxHandlerPublic>(
         mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
         page_.BindAndGetRemote(),
-        /*metrics_reporter=*/nullptr, omnibox_controller_.get(), &web_ui_,
+        /*metrics_reporter=*/nullptr, omnibox_controller_.get(), profile(),
+        web_contents_.get(),
         base::BindLambdaForTesting(
             []() -> contextual_search::ContextualSearchSessionHandle* {
               return nullptr;
@@ -1409,7 +1408,6 @@ class WebuiOmniboxHandlerTest : public SearchboxHandlerTest {
 
   content::RenderViewHostTestEnabler test_render_host_factories_;
   std::unique_ptr<content::WebContents> web_contents_;
-  content::TestWebUI web_ui_;
   std::unique_ptr<OmniboxPopupUI> omnibox_popup_ui_;
   std::unique_ptr<OmniboxController> omnibox_controller_;
   std::unique_ptr<FakeOmniboxPopupView> popup_view_;
@@ -1620,6 +1618,41 @@ TEST_F(
 }
 
 TEST_F(WebuiOmniboxHandlerTest,
+       CreateAutocompleteMatch_SidePanelDescriptionIcon) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      omnibox::kWebUIOmniboxAskGAboutThisPage,
+      {{"Omnibox_AskGSuggestionSidePanelDescription", "true"}});
+  auto* provider_client = static_cast<MockAutocompleteProviderClient*>(
+      handler_->autocomplete_controller()->autocomplete_provider_client());
+
+  AutocompleteMatch match;
+  match.subtypes.insert(omnibox::SuggestSubtype::SUBTYPE_CONTEXTUAL_SEARCH);
+  match.description = u"Opens in side panel";
+  match.destination_url = GURL("https://example.com");
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile());
+  bookmark_model->LoadEmptyForTest();
+  auto get_description_icon_path = [&] {
+    auto mojom_match = handler_->CreateAutocompleteMatch(
+        match, bookmark_model, omnibox::GroupConfigMap(),
+        omnibox_controller_->client()->GetTemplateURLService());
+    return mojom_match.value()->description_icon_path;
+  };
+
+  // No icon when the AskG action won't open the side panel.
+  EXPECT_CALL(*provider_client, ShouldOpenCoBrowsePanel())
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_EQ(get_description_icon_path(), "");
+
+  EXPECT_CALL(*provider_client, ShouldOpenCoBrowsePanel())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_EQ(get_description_icon_path(),
+            searchbox_internal::kDockToRightIconResourceName);
+}
+
+TEST_F(WebuiOmniboxHandlerTest,
        CreateAutocompleteMatch_PopulatesFuseboxAction) {
   AutocompleteMatch match;
   match.destination_url = GURL("https://example.com");
@@ -1654,27 +1687,6 @@ TEST_F(WebuiOmniboxHandlerTest,
             fusebox_action::mojom::QueryActionOverride::kPaste);
   EXPECT_EQ(mojom_match.value()->fusebox_action->searchbox_override,
             fusebox_action::mojom::SearchboxOverride::kComposebox);
-}
-
-TEST_F(WebuiOmniboxHandlerTest, CreateAutocompleteMatch_PopulatesSuggestStyle) {
-  AutocompleteMatch match;
-  match.destination_url = GURL("https://example.com");
-
-  omnibox::SuggestTemplateInfo suggest_template;
-  suggest_template.set_style(omnibox::SuggestTemplateInfo::RICH_IMAGE);
-  match.suggest_template = suggest_template;
-
-  bookmarks::BookmarkModel* bookmark_model =
-      BookmarkModelFactory::GetForBrowserContext(profile());
-  bookmark_model->LoadEmptyForTest();
-
-  auto mojom_match = handler_->CreateAutocompleteMatch(
-      match, bookmark_model, omnibox::GroupConfigMap(),
-      omnibox_controller_->client()->GetTemplateURLService());
-
-  ASSERT_TRUE(mojom_match.has_value());
-  EXPECT_EQ(mojom_match.value()->suggest_style,
-            searchbox::mojom::SuggestStyle::kRichImage);
 }
 
 TEST_F(WebuiOmniboxHandlerTest,

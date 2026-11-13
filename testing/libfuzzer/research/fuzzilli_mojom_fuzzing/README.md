@@ -150,6 +150,9 @@ Legend: ✅ supported · ⚠️ partial / approximated · ❌ not supported
     used in a meaningful way on a `CallbackRouter`. The callback always takes
     one parameter, whatever the method's arity. An unused parameter is
     harmless.
+*   Two generators give Fuzzilli access to the responses of asynchronous
+    methods, with all awaited values sharing one scope: `MojoAwaitGenerator`
+    and `MojoAsyncFunctionGenerator`.
 *   All type generators have a weight of 1. These are registered so that
     `findOrGenerateType` can use them.
 *   Most array and map generators generate a container with only one element.
@@ -166,6 +169,11 @@ Legend: ✅ supported · ⚠️ partial / approximated · ❌ not supported
     on-demand, it reduces the diversity of object types in the environment.
     Generators tend to only have numerous string and integer variables
     available to use at the start of the program.
+*   The response from asynchronous methods can only be used in the scope where
+    it is awaited.
+*   Since the outer functions emitted by `MojoAsyncFunctionGenerator` are never
+    awaited, the microtasks inside these async functions won't run until the
+    call stack empties, such as when the program finishes executing.
 
 #### Include every common definition
 
@@ -218,7 +226,8 @@ Legend: ✅ supported · ⚠️ partial / approximated · ❌ not supported
     `enable_mojom_fuzzer = true` have bindings with constructors for each union
     variant that output these object literals. Fuzzilli selects a constructor
     uniformly at random when generating the union.
-
+*   Each variant is exposed as a property on the union's `ILType` and
+    `ObjectGroup`, so Fuzzilli can read the value back with type information.
 #### WebIDL dictionaries
 
 *   WebIDL dictionaries, such as `MojoCreateDataPipeOptions`, have no

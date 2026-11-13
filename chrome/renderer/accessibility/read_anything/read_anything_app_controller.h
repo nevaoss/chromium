@@ -272,6 +272,7 @@ class ReadAnythingAppController
   int InImmersiveOverlayPresentationState() const;
   int DistillationTypeScreen2x() const;
   int DistillationTypeReadability() const;
+  bool IsInSelectionMode() const;
   std::string GetStoredVoice() const;
   std::vector<std::string> GetLanguagesEnabledInPref() const;
   std::vector<ui::AXNodeID> GetChildren(ui::AXNodeID ax_node_id) const;
@@ -329,7 +330,6 @@ class ReadAnythingAppController
   bool IsReadAnythingReadAloudExperimentalPlaybackUiEnabled() const;
   bool IsTsTextSegmentationEnabled() const;
   bool IsReadabilityEnabled() const;
-  bool IsReadabilitySelectTextEnabled() const;
   bool IsLineFocusEnabled() const;
   bool IsReadabilityWithLinksEnabled() const;
   bool IsPhraseHighlightingEnabled() const;
@@ -509,8 +509,7 @@ class ReadAnythingAppController
       const std::vector<ui::AXEvent>& events);
 
   // Triggers the text mapping algorithm if both the accessibility tree and the
-  // rendered text blocks from the WebUI are ready if
-  // IsReadabilitySelectTextEnabled.
+  // rendered text blocks from the WebUI are ready if IsReadabilityEnabled.
   void MaybeMapRenderedTextToTree();
 
   // Helper for forwarding reading mode hide events to the webui so we can

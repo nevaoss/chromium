@@ -32,10 +32,13 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.ANDROID_BOTTOM_BAR_NEW_TAB,
     FeatureConstants.ANDROID_BOTTOM_BAR_PROMO_DIALOG,
     FeatureConstants.ANDROID_TAB_DECLUTTER_FEATURE,
+    FeatureConstants.ANDROID_TIPS_OPT_IN_PROMO_FEATURE,
     FeatureConstants.ANDROID_VERTICAL_TABS_NEW_LABEL,
     FeatureConstants.ANDROID_VERTICAL_TABS_PROMO_FEATURE,
+    FeatureConstants.APP_LANGUAGE_PROMO_FEATURE,
     FeatureConstants.APP_RATING_PROMPT_FEATURE,
     FeatureConstants.APP_SPECIFIC_HISTORY_FEATURE,
+    FeatureConstants.ARCHIVED_TABS_AUTO_DELETE_PROMO_FEATURE,
     FeatureConstants.AUTO_DARK_OPT_OUT_FEATURE,
     FeatureConstants.AUTO_DARK_USER_EDUCATION_MESSAGE_FEATURE,
     FeatureConstants.AUTO_DARK_USER_EDUCATION_MESSAGE_OPT_IN_FEATURE,
@@ -67,7 +70,9 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.FEED_CARD_MENU_FEATURE,
     FeatureConstants.FEED_HEADER_MENU_FEATURE,
     FeatureConstants.FEED_SWIPE_REFRESH_FEATURE,
+    FeatureConstants.FULLSCREEN_SIGNIN_PROMO_FEATURE,
     FeatureConstants.FUSEBOX_ATTACHMENT_FEATURE,
+    FeatureConstants.FUSEBOX_PLUS_BUTTON_HINT_FEATURE,
     FeatureConstants.GENERIC_ALWAYS_TRIGGER_HELP_UI_FEATURE,
     FeatureConstants.GESTURE_USER_EDUCATION,
     FeatureConstants.GLIC_PROMO_ANDROID_FEATURE,
@@ -98,6 +103,7 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.MENU_ADD_TO_GROUP,
     FeatureConstants.MOST_VISITED_TILES_CUSTOMIZATION_PIN,
     FeatureConstants.NEW_TAB_PAGE_THEME_CUSTOMIZATION_FEATURE,
+    FeatureConstants.NOTIFICATION_PERMISSION_PROMO_FEATURE,
     FeatureConstants.PAGE_INFO_FEATURE,
     FeatureConstants.PAGE_INFO_STORE_INFO_FEATURE,
     FeatureConstants.PAGE_SUMMARY_PDF_MENU_FEATURE,
@@ -115,6 +121,7 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.REQUEST_DESKTOP_SITE_EXCEPTIONS_GENERIC_FEATURE,
     FeatureConstants.REQUEST_DESKTOP_SITE_WINDOW_SETTING_FEATURE,
     FeatureConstants.RESTORE_TABS_ON_FRE_FEATURE,
+    FeatureConstants.SEARCH_ENGINE_CHOICE_PROMO_FEATURE,
     FeatureConstants.SEND_TAB_TO_SELF_OMNIBOX,
     FeatureConstants.SHARED_HIGHLIGHTING_BUILDER_FEATURE,
     FeatureConstants.SHARED_HIGHLIGHTING_RECEIVER_FEATURE,
@@ -182,11 +189,14 @@ public @interface FeatureConstants {
     String ANDROID_BOTTOM_BAR_PROMO_DIALOG = "IPH_AndroidBottomBarPromoDialog";
 
     String ANDROID_TAB_DECLUTTER_FEATURE = "IPH_AndroidTabDeclutter";
+    String ANDROID_TIPS_OPT_IN_PROMO_FEATURE = "IPH_AndroidTipsOptInPromo";
     String ANDROID_VERTICAL_TABS_NEW_LABEL = "IPH_AndroidVerticalTabsNewLabel";
     String ANDROID_VERTICAL_TABS_PROMO_FEATURE = "IPH_AndroidVerticalTabsPromo";
 
+    String APP_LANGUAGE_PROMO_FEATURE = "IPH_AppLanguagePromo";
     String APP_RATING_PROMPT_FEATURE = "IPH_AppRatingPrompt";
     String APP_SPECIFIC_HISTORY_FEATURE = "IPH_AppSpecificHistory";
+    String ARCHIVED_TABS_AUTO_DELETE_PROMO_FEATURE = "IPH_ArchivedTabsAutoDeletePromo";
 
     String AUTO_DARK_OPT_OUT_FEATURE = "IPH_AutoDarkOptOut";
 
@@ -270,8 +280,13 @@ public @interface FeatureConstants {
     /** An IPH feature to prompt users to pull-to-refresh feed. */
     String FEED_SWIPE_REFRESH_FEATURE = "IPH_FeedSwipeRefresh";
 
+    String FULLSCREEN_SIGNIN_PROMO_FEATURE = "IPH_FullscreenSigninPromo";
+
     /** Used to track user engagement with the fusebox attachment button. */
     String FUSEBOX_ATTACHMENT_FEATURE = "IPH_FuseboxAttachment";
+
+    /** An IPH feature to prompt users to discover the fusebox (+) button. */
+    String FUSEBOX_PLUS_BUTTON_HINT_FEATURE = "IPH_FuseboxPlusButtonHint";
 
     /** A generic IPH feature to always trigger help UI when asked. */
     String GENERIC_ALWAYS_TRIGGER_HELP_UI_FEATURE = "IPH_GenericAlwaysTriggerHelpUiFeature";
@@ -373,6 +388,8 @@ public @interface FeatureConstants {
     /** An IPH feature to inform users about the NTP theme customization options. */
     String NEW_TAB_PAGE_THEME_CUSTOMIZATION_FEATURE = "IPH_NewTabPageThemeCustomization";
 
+    String NOTIFICATION_PERMISSION_PROMO_FEATURE = "IPH_NotificationPermissionPromo";
+
     /** An IPH feature to inform about changing permissions in PageInfo. */
     String PAGE_INFO_FEATURE = "IPH_PageInfo";
 
@@ -418,6 +435,8 @@ public @interface FeatureConstants {
      * An IPH feature to inform users that tabs from another synced device can be restored on FRE.
      */
     String RESTORE_TABS_ON_FRE_FEATURE = "IPH_RestoreTabsOnFRE";
+
+    String SEARCH_ENGINE_CHOICE_PROMO_FEATURE = "IPH_SearchEngineChoicePromo";
 
     /** IPH for Send Tab to Self entry point in the omnibox long-press menu */
     String SEND_TAB_TO_SELF_OMNIBOX = "IPH_SendTabToSelfOmnibox";

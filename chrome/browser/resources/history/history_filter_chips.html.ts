@@ -13,25 +13,43 @@ export function getHtml(this: HistoryFilterChipsElement) {
   <div class="filter-chip-container" role="group"
       aria-label="$i18n{sourceFilterChipsAriaLabel}">
     ${this.showActorFilter ? html`
-      <cr-chip id="userVisitsChip" ?selected="${this.isUserSelected()}"
-          @click="${this.onUserVisitsClick_}">
-        <cr-icon icon="${this.getUserVisitsIcon_()}"></cr-icon>
-        $i18n{sourceFilterChipUser}
-      </cr-chip>
-      <cr-chip id="actorVisitsChip" ?selected="${this.isActorSelected()}"
-          @click="${this.onActorVisitsClick_}">
-        <cr-icon icon="${this.getActorVisitsIcon_()}"></cr-icon>
-        $i18n{sourceFilterChipActor}
-      </cr-chip>
+      ${this.showActorFilterDropDownVersion_() ? html`
+        <select id="actorSelect" class="md-select"
+            @change="${this.onActorSelectChange_}">
+          <option value="all"
+              ?selected="${!this.isUserSelected() && !this.isActorSelected()}">
+            $i18n{sourceFilterAllActors}
+          </option>
+          <option value="user" ?selected="${this.isUserSelected()}">
+            $i18n{sourceFilterChipUser}
+          </option>
+          <option value="actor" ?selected="${this.isActorSelected()}">
+            $i18n{sourceFilterChipActor}
+          </option>
+        </select>
+      ` : html`
+        <cr-chip id="userVisitsChip" ?selected="${this.isUserSelected()}"
+            @click="${this.onUserVisitsClick_}">
+          <cr-icon icon="${this.getUserVisitsIcon_()}"></cr-icon>
+          $i18n{sourceFilterChipUser}
+        </cr-chip>
+        <cr-chip id="actorVisitsChip" ?selected="${this.isActorSelected()}"
+            @click="${this.onActorVisitsClick_}">
+          <cr-icon icon="${this.getActorVisitsIcon_()}"></cr-icon>
+          $i18n{sourceFilterChipActor}
+        </cr-chip>
+      `}
     ` : ''}
     ${this.showDeviceFilter ? html`
-      <select id="deviceSelect" class="md-select">
-        <!-- TODO(b/558659016): Replace hardcoded string with a localized string. -->
-        <option>All devices</option>
-        ${this.devices.map(device => html`
-          <option>${device.name}</option>
-        `)}
-      </select>
+      <div class="filter-chips">
+        <cr-icon icon="cr:check" aria-hidden="true"></cr-icon>
+        <select id="deviceFilterChip" class="md-select">
+          <option>$i18n{deviceFilterAllDevices}</option>
+          ${this.devices.map(device => html`
+            <option>${device.name}</option>
+          `)}
+        </select>
+      </div>
     ` : ''}
   </div>
 </div>

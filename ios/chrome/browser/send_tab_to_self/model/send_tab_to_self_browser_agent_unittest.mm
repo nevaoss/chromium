@@ -428,8 +428,7 @@ TEST_F(SendTabToSelfBrowserAgentTest, TestRemoteRemovePendingNotVisibleTab) {
       InfoBarManagerImpl::FromWebState(web_state);
   EXPECT_EQ(0UL, infobar_manager->infobars().size());
 
-  // Remote entry added while tab is not visible (so pending_entry_guid_ is
-  // set).
+  // Remote entry added while tab is not visible.
   const SendTabToSelfEntry* entry = model_->AddEntryRemotely(
       GURL("http://www.test.com/test-1"), "title", kDeviceID,
       send_tab_to_self::PageContext(), send_tab_to_self::NavigationHistory());
@@ -463,8 +462,7 @@ TEST_F(SendTabToSelfBrowserAgentTest,
       InfoBarManagerImpl::FromWebState(web_state1);
   EXPECT_EQ(0UL, infobar_manager1->infobars().size());
 
-  // Remote entry added while tab 1 is not visible (so pending_entry_guid_ is
-  // set).
+  // Remote entry added while tab 1 is not visible.
   const SendTabToSelfEntry* entry = model_->AddEntryRemotely(
       GURL("http://www.test.com/test-1"), "title", kDeviceID,
       send_tab_to_self::PageContext(), send_tab_to_self::NavigationHistory());
@@ -520,18 +518,7 @@ TEST_F(SendTabToSelfBrowserAgentTest, TestTabWillLoadUrl) {
             SendTabToSelfLoadNavigationUserData::FromWebState(web_state));
 }
 
-class SendTabToSelfBrowserAgentAutoOpenTest
-    : public SendTabToSelfBrowserAgentTest {
- public:
-  SendTabToSelfBrowserAgentAutoOpenTest()
-      : SendTabToSelfBrowserAgentTest(
-            {send_tab_to_self::kSendTabToSelfAutoOpen,
-             send_tab_to_self::kSendTabToSelfPropagateScrollPosition}) {
-    model_->SetLocalCacheGuid(kDeviceID);
-  }
-};
-
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
+TEST_F(SendTabToSelfBrowserAgentTest,
        ShouldAutoOpenNewEntriesInBackgroundIfActive) {
   base::HistogramTester histogram_tester;
   web::WebState* web_state = AppendNewWebState(GURL(kBlankURL));
@@ -557,7 +544,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
 // Tests that auto-opening a received tab in the background passes the entry
 // GUID on the OpenNewTabCommand (which will later be used to restore the scroll
 // position).
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
+TEST_F(SendTabToSelfBrowserAgentTest,
        ShouldAutoOpenNewEntriesInBackgroundWithScrollPosition) {
   web::WebState* web_state = AppendNewWebState(GURL(kBlankURL));
   InfoBarManagerImpl* infobar_manager =
@@ -581,7 +568,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
 
 // Tests that entries are not auto-opened if there is no active WebState
 // (e.g., during browser startup before tabs are restored).
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
+TEST_F(SendTabToSelfBrowserAgentTest,
        ShouldNotAutoOpenNewEntriesIfNoActiveWebState) {
   base::HistogramTester histogram_tester;
 
@@ -599,7 +586,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
       send_tab_to_self::AutoOpenOutcome::kUnopenedImmediately, 1);
 }
 
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
+TEST_F(SendTabToSelfBrowserAgentTest,
        ShouldAutoOpenPendingEntriesInBackgroundOnActivation) {
   base::HistogramTester histogram_tester;
   const send_tab_to_self::SendTabToSelfEntry* entry1 = model_->AddEntryRemotely(
@@ -631,7 +618,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
 // started (and only arrives via Sync after the scene is already foregrounded),
 // both kUnopenedImmediately and kTabsOpenedInBackgroundUponActivation are
 // recorded.
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
+TEST_F(SendTabToSelfBrowserAgentTest,
        ShouldRecordUponActivationForEntriesSharedBeforeForeground) {
   base::HistogramTester histogram_tester;
   web::WebState* web_state = AppendNewWebState(GURL(kBlankURL));
@@ -665,7 +652,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
 // opened upon activation. Returning to the foreground opens nothing more for
 // the already-opened entry, and subsequent entries shared in the new foreground
 // session are recorded as opened immediately in the background.
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
+TEST_F(SendTabToSelfBrowserAgentTest,
        ShouldRecordUponActivationForEntriesReceivedWhileAppBackgrounded) {
   base::HistogramTester histogram_tester;
   web::WebState* web_state = AppendNewWebState(GURL(kBlankURL));
@@ -727,8 +714,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
 
 // Tests that SendTabToSelfTabCardLabelData is attached when the tab is loaded
 // in the background, but NOT when loaded in the foreground.
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
-       TestTabWillLoadUrlBackgroundOnly) {
+TEST_F(SendTabToSelfBrowserAgentTest, TestTabWillLoadUrlBackgroundOnly) {
   web::WebState* web_state = AppendNewWebState(GURL("http://www.blank.com"));
 
   ExpectSceneCommandForBackgroundTabOpen();
@@ -769,7 +755,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
 
 // Tests that closing a tab by user action (detaching it with is_user_action =
 // true) with a tab card label attached logs the abandonment metric.
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest, ClosingTabLogsAbandonment) {
+TEST_F(SendTabToSelfBrowserAgentTest, ClosingTabLogsAbandonment) {
   web::WebState* web_state = AppendNewWebState(GURL("http://www.blank.com"));
 
   ExpectSceneCommandForBackgroundTabOpen();
@@ -805,7 +791,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest, ClosingTabLogsAbandonment) {
 
 // Tests that closing a tab due to shutdown (detaching it with is_user_action =
 // false) with a tab card label attached does NOT log the abandonment metric.
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest, ShutdownDoesNotLogAbandonment) {
+TEST_F(SendTabToSelfBrowserAgentTest, ShutdownDoesNotLogAbandonment) {
   web::WebState* web_state = AppendNewWebState(GURL("http://www.blank.com"));
 
   ExpectSceneCommandForBackgroundTabOpen();
@@ -838,8 +824,7 @@ TEST_F(SendTabToSelfBrowserAgentAutoOpenTest, ShutdownDoesNotLogAbandonment) {
 
 // Tests that moving a tab to another window via drag-and-drop (detaching it
 // with is_closing = false) does NOT log the abandonment metric.
-TEST_F(SendTabToSelfBrowserAgentAutoOpenTest,
-       DragAndDropDoesNotLogAbandonment) {
+TEST_F(SendTabToSelfBrowserAgentTest, DragAndDropDoesNotLogAbandonment) {
   web::WebState* web_state = AppendNewWebState(GURL("http://www.blank.com"));
 
   ExpectSceneCommandForBackgroundTabOpen();
@@ -877,17 +862,12 @@ class SendTabToSelfBrowserAgentAutoOpenInTabGridTest
  public:
   SendTabToSelfBrowserAgentAutoOpenInTabGridTest()
       : SendTabToSelfBrowserAgentTest(
-            {send_tab_to_self::kSendTabToSelfAutoOpen,
-             send_tab_to_self::kSendTabToSelfSupportAutoOpenInTabGrid,
-             send_tab_to_self::kSendTabToSelfPropagateScrollPosition}) {
-    model_->SetLocalCacheGuid(kDeviceID);
-  }
+            {send_tab_to_self::kSendTabToSelfSupportAutoOpenInTabGrid}) {}
 };
 
-// Tests that when both auto-open and Tab Grid support flags are enabled, and
-// the active WebState is not visible (e.g., user is in the Tab Grid), entries
-// are opened in the background immediately, but the infobar banner is not
-// displayed.
+// Tests that when the Tab Grid support flag is enabled, and the active
+// WebState is not visible (e.g., user is in the Tab Grid), entries are opened
+// in the background immediately, but the infobar banner is not displayed.
 TEST_F(SendTabToSelfBrowserAgentAutoOpenInTabGridTest,
        ShouldAutoOpenNewEntriesInBackgroundIfNotVisible) {
   base::HistogramTester histogram_tester;
@@ -1041,27 +1021,9 @@ TEST_F(SendTabToSelfBrowserAgentTest,
   EXPECT_EQ(SendTabToSelfResult::kSuccess, result_future.Get());
 }
 
-class SendTabToSelfBrowserAgentToastEnabledTest
-    : public SendTabToSelfBrowserAgentTest {
- public:
-  SendTabToSelfBrowserAgentToastEnabledTest()
-      : SendTabToSelfBrowserAgentTest(
-            {send_tab_to_self::kSendTabToSelfPostSendToast}) {}
-};
-
-class SendTabToSelfBrowserAgentToastDisabledTest
-    : public SendTabToSelfBrowserAgentTest {
- public:
-  SendTabToSelfBrowserAgentToastDisabledTest()
-      : SendTabToSelfBrowserAgentTest(
-            {},
-            {send_tab_to_self::kSendTabToSelfPostSendToast}) {}
-};
-
-// Tests that invoking HandleEntrySentForTest with kSuccess displays the
-// success toast when toast feature is enabled.
-TEST_F(SendTabToSelfBrowserAgentToastEnabledTest,
-       HandleEntrySent_SuccessShowsToast) {
+// Tests that invoking `HandleEntrySentForTest` with `kSuccess` displays the
+// success toast.
+TEST_F(SendTabToSelfBrowserAgentTest, HandleEntrySent_SuccessShowsToast) {
   id mock_snackbar_commands = OCMProtocolMock(@protocol(SnackbarCommands));
   OCMExpect([mock_snackbar_commands showSnackbarMessage:[OCMArg any]]);
 
@@ -1072,9 +1034,9 @@ TEST_F(SendTabToSelfBrowserAgentToastEnabledTest,
   EXPECT_OCMOCK_VERIFY(mock_snackbar_commands);
 }
 
-// Tests that invoking HandleEntrySentForTest with kSuccessThrottled displays
-// the throttled toast when toast feature is enabled.
-TEST_F(SendTabToSelfBrowserAgentToastEnabledTest,
+// Tests that invoking `HandleEntrySentForTest` with `kSuccessThrottled`
+// displays the throttled toast.
+TEST_F(SendTabToSelfBrowserAgentTest,
        HandleEntrySent_SuccessThrottledShowsToast) {
   id mock_snackbar_commands = OCMProtocolMock(@protocol(SnackbarCommands));
   OCMExpect([mock_snackbar_commands showSnackbarMessage:[OCMArg any]]);
@@ -1086,10 +1048,9 @@ TEST_F(SendTabToSelfBrowserAgentToastEnabledTest,
   EXPECT_OCMOCK_VERIFY(mock_snackbar_commands);
 }
 
-// Tests that invoking HandleEntrySentForTest with a failure result displays
-// the failure toast when toast feature is enabled.
-TEST_F(SendTabToSelfBrowserAgentToastEnabledTest,
-       HandleEntrySent_FailureShowsErrorToast) {
+// Tests that invoking `HandleEntrySentForTest` with a network failure result
+// displays the offline error toast.
+TEST_F(SendTabToSelfBrowserAgentTest, HandleEntrySent_FailureShowsErrorToast) {
   id mock_snackbar_commands = OCMProtocolMock(@protocol(SnackbarCommands));
   OCMExpect([mock_snackbar_commands showSnackbarMessage:[OCMArg any]]);
 
@@ -1100,101 +1061,21 @@ TEST_F(SendTabToSelfBrowserAgentToastEnabledTest,
   EXPECT_OCMOCK_VERIFY(mock_snackbar_commands);
 }
 
-// Tests that invoking HandleEntrySentForTest with kSuccess displays the
-// legacy snackbar when toast feature is disabled.
-TEST_F(SendTabToSelfBrowserAgentToastDisabledTest,
-       HandleEntrySent_LegacySnackbarDisplayedOnlyOnSuccess) {
+// Tests that invoking `HandleEntrySentForTest` with a generic failure result
+// displays the generic failure toast.
+TEST_F(SendTabToSelfBrowserAgentTest,
+       HandleEntrySent_GenericFailureShowsErrorToast) {
   id mock_snackbar_commands = OCMProtocolMock(@protocol(SnackbarCommands));
   OCMExpect([mock_snackbar_commands showSnackbarMessage:[OCMArg any]]);
 
   agent_->HandleEntrySentForTest(
-      mock_snackbar_commands, "My Phone",
-      send_tab_to_self::SendTabToSelfResult::kSuccess);
+      mock_snackbar_commands, "",
+      send_tab_to_self::SendTabToSelfResult::kFailureInvalidUrl);
 
   EXPECT_OCMOCK_VERIFY(mock_snackbar_commands);
 }
 
-class SendTabToSelfBrowserAgentWithoutAutoOpenTest
-    : public SendTabToSelfBrowserAgentTest {
- public:
-  SendTabToSelfBrowserAgentWithoutAutoOpenTest()
-      : SendTabToSelfBrowserAgentTest(
-            {},
-            {send_tab_to_self::kSendTabToSelfAutoOpen}) {}
-};
-
-TEST_F(SendTabToSelfBrowserAgentWithoutAutoOpenTest, TestRemoteRemoveSimple) {
-  web::WebState* web_state = AppendNewWebState(GURL("http://www.blank.com"));
-  InfoBarManagerImpl* infobar_manager =
-      InfoBarManagerImpl::FromWebState(web_state);
-  EXPECT_EQ(0UL, infobar_manager->infobars().size());
-
-  const SendTabToSelfEntry* entry = model_->AddEntryRemotely(
-      GURL("http://www.test.com/test-1"), "title", kDeviceID,
-      send_tab_to_self::PageContext(), send_tab_to_self::NavigationHistory());
-
-  // An infobar for the entry should have been added.
-  EXPECT_EQ(1UL, infobar_manager->infobars().size());
-
-  // Remove the entry remotely.
-  model_->RemoveEntryRemotely(entry->GetGUID());
-
-  // The infobar should have been removed.
-  EXPECT_EQ(0UL, infobar_manager->infobars().size());
-}
-
-// Tests that removing an unrelated entry remotely removes its InfoBar but
-// preserves the pending entry for a not-yet-visible WebState.
-TEST_F(SendTabToSelfBrowserAgentWithoutAutoOpenTest,
-       TestRemoteRemoveUnrelatedEntryPreservesPending) {
-  // Add first web state, active and visible.
-  web::WebState* web_state1 = AppendNewWebState(GURL("http://www.blank.com"));
-  InfoBarManagerImpl* infobar_manager1 =
-      InfoBarManagerImpl::FromWebState(web_state1);
-  EXPECT_EQ(0UL, infobar_manager1->infobars().size());
-
-  // Add an entry for the visible web state.
-  const SendTabToSelfEntry* entry1 = model_->AddEntryRemotely(
-      GURL("http://www.test.com/first"), "title1", kDeviceID,
-      send_tab_to_self::PageContext(), send_tab_to_self::NavigationHistory());
-  ASSERT_TRUE(entry1);
-  std::string guid1 = entry1->GetGUID();
-  EXPECT_EQ(1UL, infobar_manager1->infobars().size());
-
-  // Add second web state, active but not visible.
-  web::WebState* web_state2 =
-      AppendNewWebState(GURL("http://www.blank.com"),
-                        /*activate=*/true, /*is_visible=*/false);
-  InfoBarManagerImpl* infobar_manager2 =
-      InfoBarManagerImpl::FromWebState(web_state2);
-  EXPECT_EQ(0UL, infobar_manager2->infobars().size());
-
-  // Add the pending entry for the non-visible web state.
-  const SendTabToSelfEntry* pending_entry = model_->AddEntryRemotely(
-      GURL("http://www.test.com/pending"), "title2", kDeviceID,
-      send_tab_to_self::PageContext(), send_tab_to_self::NavigationHistory());
-  ASSERT_TRUE(pending_entry);
-  std::string pending_guid = pending_entry->GetGUID();
-  EXPECT_EQ(0UL, infobar_manager2->infobars().size());
-
-  // Remove the first entry remotely.
-  model_->RemoveEntryRemotely(guid1);
-  EXPECT_EQ(0UL, infobar_manager1->infobars().size());
-
-  // Show the second web state.
-  web_state2->WasShown();
-
-  // An infobar for the pending entry should now be added to the second web
-  // state.
-  ASSERT_EQ(1UL, infobar_manager2->infobars().size());
-  infobars::InfoBar* infobar = infobar_manager2->infobars()[0];
-  auto* delegate =
-      static_cast<send_tab_to_self::IOSSendTabToSelfInfoBarDelegate*>(
-          infobar->delegate());
-  EXPECT_EQ(pending_guid, delegate->GetGUID());
-}
-
-class SendTabToSelfBrowserAgentScrollPositionTestBase
+class SendTabToSelfBrowserAgentScrollPositionTest
     : public SendTabToSelfBrowserAgentTest {
  public:
   using SendTabToSelfBrowserAgentTest::SendTabToSelfBrowserAgentTest;
@@ -1220,37 +1101,6 @@ class SendTabToSelfBrowserAgentScrollPositionTestBase
   const GURL other_url_{kOtherURL};
   base::HistogramTester histogram_tester_;
 };
-
-class SendTabToSelfBrowserAgentScrollPositionDisabledTest
-    : public SendTabToSelfBrowserAgentScrollPositionTestBase {
- public:
-  SendTabToSelfBrowserAgentScrollPositionDisabledTest()
-      : SendTabToSelfBrowserAgentScrollPositionTestBase(
-            /*enabled_features=*/{},
-            /*disabled_features=*/{
-                send_tab_to_self::kSendTabToSelfPropagateScrollPosition}) {}
-};
-
-class SendTabToSelfBrowserAgentScrollPositionTest
-    : public SendTabToSelfBrowserAgentScrollPositionTestBase {
- public:
-  SendTabToSelfBrowserAgentScrollPositionTest()
-      : SendTabToSelfBrowserAgentScrollPositionTestBase(
-            {send_tab_to_self::kSendTabToSelfPropagateScrollPosition}) {}
-};
-
-// Tests that no scroll position metrics are recorded when the feature flag is
-// disabled.
-TEST_F(SendTabToSelfBrowserAgentScrollPositionDisabledTest,
-       FeatureDisabledDoesNotRecordMetrics) {
-  AppendNewWebState(url_);
-
-  agent_->SendTabToTargetDevice(url_, kTitle, kDeviceID, kDeviceName,
-                                ShareEntryPoint::kShareSheet);
-
-  histogram_tester_.ExpectTotalCount(kGenerationOutcomeHistogram, 0);
-  histogram_tester_.ExpectTotalCount(kGenerationTimeHistogram, 0);
-}
 
 // Tests that `kMainFrameUnavailable` is recorded when there is no active
 // WebState.

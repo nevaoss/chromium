@@ -125,7 +125,6 @@ class ScriptInitiationMonitor;
 class AssociatedInterfaceProvider;
 class AuditsIssue;
 class BackgroundColorPaintImageGenerator;
-class BoxShadowPaintImageGenerator;
 class ClipPathPaintImageGenerator;
 class Color;
 class ContentCaptureManager;
@@ -318,7 +317,6 @@ class CORE_EXPORT LocalFrame final
   SpellChecker& GetSpellChecker() const;
   FrameConsole& Console() const;
   BackgroundColorPaintImageGenerator* GetBackgroundColorPaintImageGenerator();
-  BoxShadowPaintImageGenerator* GetBoxShadowPaintImageGenerator();
   ClipPathPaintImageGenerator* GetClipPathPaintImageGenerator();
   void SetClipPathPaintImageGeneratorForTesting(ClipPathPaintImageGenerator*);
   LCPCriticalPathPredictor* GetLCPP();
@@ -359,8 +357,8 @@ class CORE_EXPORT LocalFrame final
   // activation.  Returns |true| if successfully consumed the state.
   static bool ConsumeTransientUserActivation(
       LocalFrame*,
-      UserActivationUpdateSource update_source =
-          UserActivationUpdateSource::kRenderer);
+      UserActivationUpdateScope update_scope =
+          UserActivationUpdateScope::kDefault);
 
   bool IsHistoryUserActivationActive() const {
     return history_user_activation_state_.IsActive();
@@ -1071,7 +1069,7 @@ class CORE_EXPORT LocalFrame final
 
   // Consumes and returns the transient user activation state this frame, after
   // updating all other frames in the frame tree.
-  bool ConsumeTransientUserActivation(UserActivationUpdateSource update_source);
+  bool ConsumeTransientUserActivation(UserActivationUpdateScope update_scope);
 
   void DidFreeze();
   void DidResume();
@@ -1203,13 +1201,6 @@ class CORE_EXPORT LocalFrame final
   // root and reused among sub frames.
   Member<BackgroundColorPaintImageGenerator>
       background_color_paint_image_generator_;
-
-  // TODO(crbug.com/1264553) : use a map from property id to
-  // NativePaintImageGenerator, then we could avoid needing to switch on the
-  // property in compositor_animations.cc
-  // Access to box shadow paint image
-  // generator. Initialized per local root and reused among sub frames.
-  Member<BoxShadowPaintImageGenerator> box_shadow_paint_image_generator_;
 
   // Access to clip-path paint image generator. Initialized per local root and
   // reused among sub frames.

@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/config/ozone.gni")
 import("//components/signin/features.gni")
 import("//ui/webui/webui_features.gni")
 
@@ -344,13 +343,11 @@ if (enable_webui_ntp && !is_android) {
       "//content/test:test_support",
       "//ui/accessibility",
       "//ui/base",
+      "//ui/base/clipboard",
       "//ui/events:test_support",
       "//ui/gfx/geometry",
       "//ui/shell_dialogs",
       "//ui/views",
     ]
-    if (use_ozone) {
-      deps += [ "//ui/ozone" ]
-    }
   }
 }

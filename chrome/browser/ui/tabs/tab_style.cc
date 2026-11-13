@@ -164,7 +164,8 @@ std::tuple<float, float, float, SkColor> TabStyle::GetContrastRatioValues(
   float radial_highlight_opacity_ = get_hover_opacity(kRadialGradientContrast);
 
   const SkColor inactive_fg =
-      GetTabForegroundColor(false, frame_active, color_provider);
+      GetTabForegroundColor(/*apparently_active=*/false, /*hovered=*/false,
+                            frame_active, color_provider);
   // The contrast ratio for the separator between inactive tabs.
   constexpr float kTabSeparatorContrast = 2.5f;
   SkColor separator_color_ =
@@ -180,8 +181,8 @@ TabStyle::TabColors TabStyle::CalculateTargetColors(
     const bool hovered,
     const bool frame_active,
     const ui::ColorProvider* color_provider) const {
-  const SkColor foreground_color =
-      GetTabForegroundColor(apparently_active, frame_active, color_provider);
+  const SkColor foreground_color = GetTabForegroundColor(
+      apparently_active, hovered, frame_active, color_provider);
   const SkColor background_color =
       GetTabBackgroundColor(state, hovered, frame_active, color_provider);
   const ui::ColorId focus_ring_color =
@@ -195,19 +196,26 @@ TabStyle::TabColors TabStyle::CalculateTargetColors(
 
 SkColor TabStyle::GetTabForegroundColor(
     const bool apparently_active,
+    const bool hovered,
     const bool frame_active,
     const ui::ColorProvider* color_provider) const {
   if (!color_provider) {
     return gfx::kPlaceholderColor;
   }
 
-  static constexpr std::array<std::array<ChromeColorIds, 2>, 2> kColorIds = {
+  if (apparently_active) {
+    constexpr std::array<ChromeColorIds, 2> kActiveColorIds = {
+        kColorTabForegroundActiveFrameInactive,
+        kColorTabForegroundActiveFrameActive};
+    return color_provider->GetColor(kActiveColorIds[frame_active]);
+  }
+
+  constexpr std::array<std::array<ChromeColorIds, 2>, 2> kInactiveColorIds = {
       {{kColorTabForegroundInactiveFrameInactive,
         kColorTabForegroundInactiveFrameActive},
-       {kColorTabForegroundActiveFrameInactive,
-        kColorTabForegroundActiveFrameActive}}};
-
-  return color_provider->GetColor(kColorIds[apparently_active][frame_active]);
+       {kColorTabForegroundInactiveHoverFrameInactive,
+        kColorTabForegroundInactiveHoverFrameActive}}};
+  return color_provider->GetColor(kInactiveColorIds[hovered][frame_active]);
 }
 
 SkColor TabStyle::GetTabBackgroundColor(
@@ -265,8 +273,23 @@ SkColor TabStyle::GetTabBackgroundColor(
 
   switch (state) {
     case TabStyle::TabSelectionState::kActive:
-    case TabStyle::TabSelectionState::kSelected:
       return color;
+    case TabStyle::TabSelectionState::kSelected: {
+      // Apply the glass opacity to the unhovered selected tab color first so
+      // that hovering blends the translucent hover state over the translucent
+      // selected tab color rather than overriding its alpha after blending.
+      constexpr SkAlpha kSelectedTabOpacity = 0.80 * SK_AlphaOPAQUE;
+      const SkColor selected_color =
+          SkColorSetA(GetTabBackgroundColor(state, /*hovered=*/false,
+                                            frame_active, color_provider),
+                      kSelectedTabOpacity);
+      if (hovered) {
+        return color_utils::GetResultingPaintColor(
+            color_provider->GetColor(ui::kColorSysStateHoverDimBlendProtection),
+            selected_color);
+      }
+      return selected_color;
+    }
     case TabStyle::TabSelectionState::kInactive: {
       // When the frame is transparent, using the unhovered color
       // as the background can produce jarring effects. So we just use the

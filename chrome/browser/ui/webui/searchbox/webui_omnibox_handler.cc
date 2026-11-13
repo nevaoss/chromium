@@ -134,15 +134,16 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
     mojo::PendingRemote<searchbox::mojom::Page> pending_page,
     MetricsReporter* metrics_reporter,
     OmniboxController* omnibox_controller,
-    content::WebUI* web_ui,
+    Profile* profile,
+    content::WebContents* web_contents,
     GetSessionHandleCallback get_session_callback)
     : ContextualSearchboxHandler(std::move(pending_page_handler),
                                  std::move(pending_page),
-                                 Profile::FromWebUI(web_ui),
-                                 web_ui->GetWebContents(),
+                                 profile,
+                                 web_contents,
                                  /*client=*/nullptr,
                                  std::move(get_session_callback)),
-      web_contents_observer_(/*handler=*/this, web_ui->GetWebContents()),
+      web_contents_observer_(/*handler=*/this, web_contents),
       metrics_reporter_(metrics_reporter) {
   // Keep a reference to the OmniboxController instance owned by the
   // `OmniboxView`.
@@ -153,7 +154,7 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
   edit_model_observation_.Observe(omnibox_controller->edit_model());
 
   auto* aim_eligibility_service =
-      AimEligibilityServiceFactory::GetForProfile(Profile::FromWebUI(web_ui));
+      AimEligibilityServiceFactory::GetForProfile(profile);
   if (aim_eligibility_service) {
     // `base::Unretained(this)` is safe here (and below) because `this` owns
     // the subscriptions and will automatically unsubscribe them when the
@@ -183,7 +184,7 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
                           base::Unretained(this)));
 
   if (tabs::TabInterface* tab =
-          tabs::TabInterface::MaybeGetFromContents(web_ui->GetWebContents())) {
+          tabs::TabInterface::MaybeGetFromContents(web_contents)) {
     tab_will_detach_subscription_ = tab->RegisterWillDetach(base::BindRepeating(
         &WebuiOmniboxHandler::OnTabWillDetach, base::Unretained(this)));
     tab_did_insert_subscription_ = tab->RegisterDidInsert(base::BindRepeating(
@@ -442,6 +443,16 @@ void WebuiOmniboxHandler::OverrideIconPaths(
         omnibox::kAskGSwapSuggestionIcon.Get()
             ? searchbox_internal::kSearchSparkIconResourceName
             : searchbox_internal::kReplyRotated180IconResourceName;
+  }
+
+  // Show a side panel icon in front of the "Opens in side panel" description.
+  // Description icons are new; consider moving this to its own hook (e.g.
+  // GetDescriptionIconPath()) depending on how this parameter evolves.
+  // For now we are keeping this icon override scoped to webui omnibox.
+  if (ContextualSearchProvider::HasSidePanelDescription(
+          match, autocomplete_controller()->autocomplete_provider_client())) {
+    mojom_match->description_icon_path =
+        searchbox_internal::kDockToRightIconResourceName;
   }
   SearchboxHandler::OverrideIconPaths(match, mojom_match);
 }

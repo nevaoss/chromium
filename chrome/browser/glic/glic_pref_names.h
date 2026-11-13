@@ -192,28 +192,30 @@ inline constexpr char kGlicActuationOnWebBlockedForURLs[] =
 
 // String pref populated by the `GeminiEnterpriseUrl` enterprise policy. Stores
 // the enterprise's Gemini Enterprise web application URL (e.g.
-// `https://business.gemini.google/home/cid/<id>`). Replaces
-// `kGlicGeminiEnterpriseSettings`.
+// `https://business.gemini.google/home/cid/<id>`). When `features::kGeic` is
+// enabled, a valid URL here configures the GEiC guest URL and enables GEiC for
+// the profile (unless overridden by `--geic-guest-url` or supplemented by
+// `features::kGeicGuestURL`).
 inline constexpr char kGlicGeminiEnterpriseUrl[] = "glic.gemini_enterprise_url";
-
-// Dict pref populated by the `GeminiEnterpriseSettings` enterprise policy.
-// Stores a `"url"` string key pointing to the enterprise's Gemini Enterprise
-// web application URL (e.g. `https://business.gemini.google/home/cid/<id>`).
-// When `features::kGeic` is enabled, a valid `"url"` here configures the GEiC
-// guest URL and enables GEiC for the profile (unless overridden by
-// `--geic-guest-url` or supplemented by `features::kGeicGuestURL`). In
-// consumer Glic, it is also parsed to configure Gemini Enterprise tools.
-inline constexpr char kGlicGeminiEnterpriseSettings[] =
-    "glic.gemini_enterprise_settings";
 
 // Boolean pref that tracks if the Glic partition needs a cookie sync.
 inline constexpr char kGlicPartitionNeedsCookieSync[] =
     "glic.partition_needs_cookie_sync";
 
-// Boolean pref that tracks if the Glic local storage keys have been copied from
-// the Glic partition to the main partition.
+// Deprecated pref that tracked if the Glic local storage keys were copied from
+// the Glic partition to the main partition. Replaced by
+// `kGlicLocalStorageCopiedToPrefs`.
+// TODO(b/573595701): Remove after a few milestones.
 inline constexpr char kGlicLocalStorageCopiedToMainPartition[] =
     "glic.local_storage_copied_to_main_partition";
+
+// Boolean pref that tracks if the Glic local storage keys have been copied from
+// the Glic partition to prefs.
+inline constexpr char kGlicLocalStorageCopiedToPrefs[] =
+    "glic.local_storage_copied_to_prefs";
+
+// Dict pref that stores key-value pairs for the Glic web client's storage.
+inline constexpr char kGlicClientDataStorage[] = "glic.client_data_storage";
 
 // Boolean pref that tracks if the Glic profile was previously ineligible.
 inline constexpr char kGlicPreviouslyNotAllowed[] =

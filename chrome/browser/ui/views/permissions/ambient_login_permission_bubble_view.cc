@@ -22,19 +22,16 @@
 #include "components/permissions/permission_request.h"
 #include "components/permissions/request_type.h"
 #include "components/strings/grit/components_strings.h"
-#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/mojom/dialog_button.mojom.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/text_constants.h"
-#include "ui/gfx/vector_icon_types.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/button.h"
@@ -59,17 +56,10 @@ namespace {
 constexpr int kIconSize = 20;
 constexpr int kViewportBottomMargin = 48;
 
-const gfx::VectorIcon& GetCredentialIcon(ambient_signin::CredentialType type) {
-  switch (type) {
-    case ambient_signin::CredentialType::kPasskey:
-      return features::IsRoundedIconsEnabled() ? vector_icons::kPasskeyIcon
-                                               : vector_icons::kPasskeyOldIcon;
-    case ambient_signin::CredentialType::kPassword:
-      return features::IsRoundedIconsEnabled()
-                 ? vector_icons::kPasswordManagerIcon
-                 : vector_icons::kPasswordManagerOldIcon;
-  }
-}
+// The IdP name of a federated credential is a domain, e.g. "idp.example".
+// Domains are elided at the start, since their end is the most significant
+// part.
+constexpr gfx::ElideBehavior kIdpNameElideBehavior = gfx::ELIDE_HEAD;
 
 // Returns the icon shown when there is no more specific icon, e.g. for a
 // federated credential without an account picture.
@@ -91,6 +81,27 @@ ui::ImageModel GetFederatedCredentialIcon(
   return GetDefaultCredentialIcon();
 }
 
+// A row for a federated credential in the expanded bubble.
+class FederatedCredentialRow : public HoverButton {
+  METADATA_HEADER(FederatedCredentialRow, HoverButton)
+
+ public:
+  // `idp_name_in_footer` is whether the IdP name is `params.footer` rather
+  // than `params.subtitle`.
+  FederatedCredentialRow(PressedCallback callback,
+                         Params params,
+                         bool idp_name_in_footer)
+      : HoverButton(std::move(callback), std::move(params)) {
+    // There is no label for the IdP name if it is empty.
+    if (views::Label* idp_label = idp_name_in_footer ? footer() : subtitle()) {
+      idp_label->SetElideBehavior(kIdpNameElideBehavior);
+    }
+  }
+};
+
+BEGIN_METADATA(FederatedCredentialRow)
+END_METADATA
+
 }  // namespace
 
 AmbientLoginPermissionBubbleView::AmbientLoginPermissionBubbleView(
@@ -106,6 +117,7 @@ AmbientLoginPermissionBubbleView::AmbientLoginPermissionBubbleView(
 
   std::u16string username;
   std::u16string provider;
+  gfx::ElideBehavior provider_elide_behavior = gfx::ELIDE_TAIL;
   ui::ImageModel credential_icon = GetDefaultCredentialIcon();
   CHECK_EQ(delegate->Requests().size(), 1u);
   ambient_signin::AmbientLoginPermissionRequest* ambient_request =
@@ -117,13 +129,16 @@ AmbientLoginPermissionBubbleView::AmbientLoginPermissionBubbleView(
     username = cred.username;
     provider = cred.provider_name;
     credential_icon = ui::ImageModel::FromVectorIcon(
-        GetCredentialIcon(cred.type), ui::kColorIcon, kIconSize);
+        ambient_signin::AmbientLoginPermissionRequest::GetCredentialIcon(
+            cred.type),
+        ui::kColorIcon, kIconSize);
   } else if (!ambient_request->federated_credentials().empty()) {
     const ambient_signin::FederatedCredential& fed_cred =
         ambient_request->federated_credentials().front();
     username =
         !fed_cred.account_name.empty() ? fed_cred.account_name : fed_cred.email;
     provider = fed_cred.idp_name;
+    provider_elide_behavior = kIdpNameElideBehavior;
     credential_icon = GetFederatedCredentialIcon(fed_cred);
   }
 
@@ -160,7 +175,7 @@ AmbientLoginPermissionBubbleView::AmbientLoginPermissionBubbleView(
         provider, views::style::CONTEXT_LABEL, views::style::STYLE_BODY_4);
     provider_label->SetEnabledColor(ui::kColorLabelForegroundSecondary);
     provider_label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
-    provider_label->SetElideBehavior(gfx::ELIDE_TAIL);
+    provider_label->SetElideBehavior(provider_elide_behavior);
     text_container->AddChildView(std::move(provider_label));
   }
 
@@ -371,7 +386,9 @@ AmbientLoginPermissionBubbleView::CreateCredentialRow(
   HoverButton::Params params;
   params.icon_view =
       std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-          GetCredentialIcon(credential.type), ui::kColorIcon, kIconSize));
+          ambient_signin::AmbientLoginPermissionRequest::GetCredentialIcon(
+              credential.type),
+          ui::kColorIcon, kIconSize));
   if (credential.type == ambient_signin::CredentialType::kPasskey &&
       !credential.display_name.empty() && credential.display_name != username) {
     params.title = credential.display_name;
@@ -404,7 +421,9 @@ AmbientLoginPermissionBubbleView::CreateFederatedCredentialRow(
       GetFederatedCredentialIcon(credential));
   icon_view->SetImageSize(gfx::Size(kIconSize, kIconSize));
   params.icon_view = std::move(icon_view);
-  if (!credential.account_name.empty() && !credential.email.empty()) {
+  const bool has_name_and_email =
+      !credential.account_name.empty() && !credential.email.empty();
+  if (has_name_and_email) {
     params.title = credential.account_name;
     params.subtitle = credential.email;
     params.footer = credential.idp_name;
@@ -419,11 +438,11 @@ AmbientLoginPermissionBubbleView::CreateFederatedCredentialRow(
     params.subtitle = credential.idp_name;
   }
 
-  auto row = std::make_unique<HoverButton>(
+  auto row = std::make_unique<FederatedCredentialRow>(
       base::BindRepeating(
           &AmbientLoginPermissionBubbleView::OnFederatedCredentialClicked,
           base::Unretained(this), index),
-      std::move(params));
+      std::move(params), /*idp_name_in_footer=*/has_name_and_email);
   row->title()->SetTextStyle(views::style::STYLE_BODY_3_MEDIUM);
   row->SetSubtitleTextStyle(views::style::CONTEXT_LABEL,
                             views::style::STYLE_BODY_4);

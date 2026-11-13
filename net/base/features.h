@@ -564,6 +564,14 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsPersistExpiryOnRefresh);
 // and refresh JWT payloads.
 NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsIncludeAudienceClaim);
 
+// Kill switch for draining a session's deferred requests queue when every
+// request in it is destroyed while the session's binding key is being restored.
+// Without this, the abandoned queue entry looks like an in-flight refresh, so
+// later requests and pre-warms for the session wait on it until the session is
+// deleted, and proactive refreshes do not start.
+// TODO(crbug.com/509885112): Remove once this has shipped to stable.
+NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsDrainDeferredOnAllCanceled);
+
 // Enables more checks when creating a SpdySession for proxy. These checks are
 // already applied to non-proxy SpdySession creations.
 // TODO(crbug.com/343519247): Remove this once we are sure that these checks are
@@ -1028,13 +1036,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kCacheCertVerification);
 // already be expired.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kCacheCertVerificationTtlSecs);
 
-// If enabled, configures SSLClientSocketImpl to enable GREASE for
-// signature_algorithms. This is a killswitch for behavior that is enabled by
-// default.
-// TODO(crbug.com/526597789): Clean up this killswitch after successfully
-// deployed.
-NET_EXPORT BASE_DECLARE_FEATURE(kTlsGreaseSigalgs);
-
 // Enables the BackendCleanupTracker for HTTP cache backends (net::DISK_CACHE)
 // to prevent conflicts when multiple backends are created for the same path.
 NET_EXPORT BASE_DECLARE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache);
@@ -1074,6 +1075,14 @@ NET_EXPORT BASE_DECLARE_FEATURE(kEnableWindowsTcpLoopbackFastFail);
 // If the feature is disabled, the default behavior (20 packets) is used.
 NET_EXPORT BASE_DECLARE_FEATURE(kQuicSocketSendBufferSize);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kQuicSocketSendBufferSizeParam);
+
+// Controls the disk cache backend experiment for the GPU shader cache
+// (`net::SHADER_CACHE`). When enabled, each shader cache directory is wiped
+// once on first open (tracked in the cache index header) and recreated using
+// the backend specified by `kShaderDiskCacheBackendType`.
+NET_EXPORT BASE_DECLARE_FEATURE(kShaderDiskCacheBackendExperiment);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(DiskCacheBackend,
+                                      kShaderDiskCacheBackendType);
 
 }  // namespace net::features
 

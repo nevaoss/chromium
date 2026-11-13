@@ -54,6 +54,7 @@ namespace readaloud {
 namespace {
 
 constexpr char kTestVoiceId[] = "msf00006";
+constexpr std::u16string_view kTestPreviewText = u"Voice preview sample text.";
 
 class TestDistillerPage : public dom_distiller::test::MockDistillerPage {
  public:
@@ -264,6 +265,12 @@ class FakePlaybackController
       std::move(seek_to_time_callback_).Run();
     }
   }
+  void SeekRelative(base::TimeDelta offset) override {
+    last_seek_relative_offset_ = offset;
+    if (seek_relative_callback_) {
+      std::move(seek_relative_callback_).Run();
+    }
+  }
   void SetVoice(const std::string& voice_id) override {}
   void SetPlaybackRate(float rate) override {
     last_playback_rate_ = rate;
@@ -288,6 +295,9 @@ class FakePlaybackController
   void set_seek_to_time_callback(base::OnceClosure callback) {
     seek_to_time_callback_ = std::move(callback);
   }
+  void set_seek_relative_callback(base::OnceClosure callback) {
+    seek_relative_callback_ = std::move(callback);
+  }
   void set_playback_rate_callback(base::OnceClosure callback) {
     set_playback_rate_callback_ = std::move(callback);
   }
@@ -307,6 +317,9 @@ class FakePlaybackController
   }
   std::optional<base::TimeDelta> last_seek_time() const {
     return last_seek_time_;
+  }
+  std::optional<base::TimeDelta> last_seek_relative_offset() const {
+    return last_seek_relative_offset_;
   }
   float last_playback_rate() const { return last_playback_rate_; }
   void set_initialize_audio_callback(base::OnceClosure callback) {
@@ -371,12 +384,14 @@ class FakePlaybackController
   base::OnceClosure pause_callback_;
   base::OnceClosure seek_to_word_callback_;
   base::OnceClosure seek_to_time_callback_;
+  base::OnceClosure seek_relative_callback_;
   base::OnceClosure set_playback_rate_callback_;
   int play_count_ = 0;
   int pause_count_ = 0;
   std::optional<uint32_t> last_seek_segment_index_;
   std::optional<uint32_t> last_seek_character_offset_;
   std::optional<base::TimeDelta> last_seek_time_;
+  std::optional<base::TimeDelta> last_seek_relative_offset_;
   float last_playback_rate_ = 1.0f;
   base::OnceClosure initialize_audio_callback_;
   int initialize_audio_called_count_ = 0;
@@ -1347,7 +1362,7 @@ TEST_F(ReadAloudServiceTest, VoicePreviewDispatchesPlayingAndStoppedStates) {
               OnVoicePreviewPlaybackStateChanged(
                   kTestVoiceId, read_aloud::mojom::PlaybackState::kBuffering))
       .Times(1);
-  service()->PreviewVoice(kTestVoiceId);
+  service()->PreviewVoice(kTestVoiceId, kTestPreviewText);
 
   EXPECT_CALL(*delegate_ptr,
               OnVoicePreviewPlaybackStateChanged(
@@ -1370,7 +1385,7 @@ TEST_F(ReadAloudServiceTest, VoicePreviewDispatchesPlayingAndStoppedStates) {
   fake_controller()->FlushForTesting();
 
   // Calling PreviewVoice with the same voice ID resumes the paused preview.
-  service()->PreviewVoice(kTestVoiceId);
+  service()->PreviewVoice(kTestVoiceId, kTestPreviewText);
   fake_controller()->FlushForTesting();
   EXPECT_EQ(fake_controller()->play_count(), 2);
 
@@ -1402,7 +1417,7 @@ TEST_F(ReadAloudServiceTest, PreviewVoicePausesActivePlayback) {
               OnVoicePreviewPlaybackStateChanged(
                   kTestVoiceId, read_aloud::mojom::PlaybackState::kBuffering))
       .Times(1);
-  service()->PreviewVoice(kTestVoiceId);
+  service()->PreviewVoice(kTestVoiceId, kTestPreviewText);
   fake_controller()->FlushForTesting();
   EXPECT_EQ(fake_controller()->pause_count(), 1);
 
@@ -1423,7 +1438,7 @@ TEST_F(ReadAloudServiceTest, PreviewVoicePausesActivePlayback) {
 TEST_F(ReadAloudServiceTest, PlayResumesPlaybackAfterVoicePreview) {
   SetFakeController(std::make_unique<FakePlaybackController>());
   service()->Play(web_contents());
-  service()->PreviewVoice(kTestVoiceId);
+  service()->PreviewVoice(kTestVoiceId, kTestPreviewText);
   fake_controller()->FlushForTesting();
 
   auto delegate = std::make_unique<testing::StrictMock<MockDelegate>>();
@@ -1463,7 +1478,7 @@ TEST_F(ReadAloudServiceTest, PlayResumesPlaybackAfterVoicePreview) {
 
 TEST_F(ReadAloudServiceTest, InitializeStopsActiveVoicePreview) {
   SetFakeController(std::make_unique<FakePlaybackController>());
-  service()->PreviewVoice(kTestVoiceId);
+  service()->PreviewVoice(kTestVoiceId, kTestPreviewText);
 
   auto delegate = std::make_unique<testing::StrictMock<MockDelegate>>();
   MockDelegate* delegate_ptr = delegate.get();
@@ -1538,6 +1553,38 @@ TEST_F(ReadAloudServiceTest, SeekIgnoresNegativeAndMaxTime) {
   service()->Seek(base::TimeDelta::Max());
   fake_controller()->FlushForTesting();
   EXPECT_EQ(fake_controller()->last_seek_time(), std::nullopt);
+}
+
+TEST_F(ReadAloudServiceTest, SeekRelativeForwardedToUtility) {
+  SetFakeController(std::make_unique<FakePlaybackController>());
+  service()->Initialize(web_contents());
+
+  base::RunLoop run_loop;
+  fake_controller()->set_seek_relative_callback(run_loop.QuitClosure());
+  service()->SeekRelative(base::Seconds(10));
+  run_loop.Run();
+  EXPECT_EQ(fake_controller()->last_seek_relative_offset(), base::Seconds(10));
+}
+
+TEST_F(ReadAloudServiceTest, SeekRelativeNegativeOffsetForwardedToUtility) {
+  SetFakeController(std::make_unique<FakePlaybackController>());
+  service()->Initialize(web_contents());
+
+  base::RunLoop run_loop;
+  fake_controller()->set_seek_relative_callback(run_loop.QuitClosure());
+  service()->SeekRelative(base::Seconds(-5));
+  run_loop.Run();
+  EXPECT_EQ(fake_controller()->last_seek_relative_offset(), base::Seconds(-5));
+}
+
+TEST_F(ReadAloudServiceTest, SeekRelativeIgnoresMinAndMaxOffset) {
+  SetFakeController(std::make_unique<FakePlaybackController>());
+  service()->Initialize(web_contents());
+
+  service()->SeekRelative(base::TimeDelta::Max());
+  service()->SeekRelative(base::TimeDelta::Min());
+  fake_controller()->FlushForTesting();
+  EXPECT_EQ(fake_controller()->last_seek_relative_offset(), std::nullopt);
 }
 
 TEST_F(ReadAloudServiceTest, SeekToWordForwardedToUtility) {
@@ -2081,6 +2128,86 @@ TEST_F(ReadAloudServiceTest, OnTextChunkedForwardsToDelegate) {
   service()->OnTextChunked(chunks);
 }
 
+TEST_F(ReadAloudServiceTest, OnWordBoundaryReachedForwardsHighlightInBounds) {
+  auto delegate = std::make_unique<testing::NiceMock<MockDelegate>>();
+  MockDelegate* delegate_ptr = delegate.get();
+  service()->SetDelegate(std::move(delegate));
+  // Highlight space: "First chunk." (12) + 1 + "Second chunk!" (13) = 26.
+  service()->OnTextChunked({u"First chunk.", u"Second chunk!"});
+
+  // "Second" starts right after "First chunk." plus one separator.
+  EXPECT_CALL(*delegate_ptr, OnWordHighlightUpdated(/*absolute_start_index=*/13,
+                                                    /*absolute_end_index=*/19));
+
+  service()->OnWordBoundaryReached(/*start_character_offset=*/13,
+                                   /*end_character_offset=*/19);
+}
+
+TEST_F(ReadAloudServiceTest,
+       OnWordBoundaryReachedForwardsHighlightEndingAtTextLength) {
+  auto delegate = std::make_unique<testing::NiceMock<MockDelegate>>();
+  MockDelegate* delegate_ptr = delegate.get();
+  service()->SetDelegate(std::move(delegate));
+  service()->OnTextChunked({u"Hello."});  // Highlight space length 6.
+
+  EXPECT_CALL(*delegate_ptr, OnWordHighlightUpdated(/*absolute_start_index=*/0,
+                                                    /*absolute_end_index=*/6));
+
+  service()->OnWordBoundaryReached(/*start_character_offset=*/0,
+                                   /*end_character_offset=*/6);
+}
+
+TEST_F(ReadAloudServiceTest,
+       OnWordBoundaryReachedDropsHighlightEndingAfterLastChunk) {
+  auto delegate = std::make_unique<testing::NiceMock<MockDelegate>>();
+  MockDelegate* delegate_ptr = delegate.get();
+  service()->SetDelegate(std::move(delegate));
+  service()->OnTextChunked({u"Hello."});  // Highlight space length 6.
+
+  // No word can end in the trailing separator, so 7 is out of range.
+  EXPECT_CALL(*delegate_ptr, OnWordHighlightUpdated).Times(0);
+
+  service()->OnWordBoundaryReached(/*start_character_offset=*/0,
+                                   /*end_character_offset=*/7);
+}
+
+TEST_F(ReadAloudServiceTest, OnWordBoundaryReachedDropsOutOfBoundsHighlight) {
+  auto delegate = std::make_unique<testing::NiceMock<MockDelegate>>();
+  MockDelegate* delegate_ptr = delegate.get();
+  service()->SetDelegate(std::move(delegate));
+  service()->OnTextChunked({u"Hello."});  // Highlight space length 6.
+
+  EXPECT_CALL(*delegate_ptr, OnWordHighlightUpdated).Times(0);
+
+  service()->OnWordBoundaryReached(/*start_character_offset=*/3,
+                                   /*end_character_offset=*/8);
+}
+
+TEST_F(ReadAloudServiceTest, OnWordBoundaryReachedDropsEmptyHighlight) {
+  auto delegate = std::make_unique<testing::NiceMock<MockDelegate>>();
+  MockDelegate* delegate_ptr = delegate.get();
+  service()->SetDelegate(std::move(delegate));
+  service()->OnTextChunked({u"Hello."});
+
+  EXPECT_CALL(*delegate_ptr, OnWordHighlightUpdated).Times(0);
+
+  service()->OnWordBoundaryReached(/*start_character_offset=*/2,
+                                   /*end_character_offset=*/2);
+}
+
+TEST_F(ReadAloudServiceTest, OnWordBoundaryReachedDropsHighlightAfterStop) {
+  auto delegate = std::make_unique<testing::NiceMock<MockDelegate>>();
+  MockDelegate* delegate_ptr = delegate.get();
+  service()->SetDelegate(std::move(delegate));
+  service()->OnTextChunked({u"Hello."});
+  service()->Stop();
+
+  EXPECT_CALL(*delegate_ptr, OnWordHighlightUpdated).Times(0);
+
+  service()->OnWordBoundaryReached(/*start_character_offset=*/0,
+                                   /*end_character_offset=*/5);
+}
+
 TEST_F(ReadAloudServiceTest, OnTextChunkedExceedsLimit) {
   NavigateAndCommit(GURL("https://www.example.com/article"));
   SetFakeController(std::make_unique<FakePlaybackController>());
@@ -2352,6 +2479,19 @@ TEST_F(ReadAloudServiceTest, OnPlaybackStateChangedRejectsPlaybackCreation) {
   EXPECT_EQ(
       bad_message_observer.WaitForBadMessage(),
       "ReadAloudService: browser-only PlaybackState received from utility");
+}
+
+TEST_F(ReadAloudServiceTest, OnWordBoundaryReachedRejectsStartAfterEnd) {
+  NavigateAndCommit(GURL("https://www.example.com/article"));
+  SetFakeController(std::make_unique<FakePlaybackController>());
+  service()->Initialize(web_contents());
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  fake_controller()->client()->OnWordBoundaryReached(
+      /*start_character_offset=*/5, /*end_character_offset=*/4);
+
+  EXPECT_EQ(bad_message_observer.WaitForBadMessage(),
+            "ReadAloudService: word boundary start exceeds end");
 }
 
 }  // namespace readaloud

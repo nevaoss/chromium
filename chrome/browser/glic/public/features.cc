@@ -56,6 +56,10 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites() {
 BASE_FEATURE(kGlicSelectionOverlayPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicSelectionOverlayPromptBox, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicSelectionSuggestions, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kGlicSelectionSuggestionsCapabilities,
+                   &kGlicSelectionSuggestions,
+                   "no_override");
 
 BASE_FEATURE(kGlicSelectionSmallChip, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop{
@@ -106,7 +110,8 @@ BASE_FEATURE(kGlicContextMenuBelowSearch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicDynamicChromeTools, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicTextSelectionContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicTextSelectionContextMenu,
+             FEATURE_ENABLED_BY_DEFAULT_NON_ANDROID);
 const base::FeatureParam<bool> kGlicTextSelectionContextMenuMessageFirstFre{
     &kGlicTextSelectionContextMenu, "message_first_fre", false};
 const base::FeatureParam<bool> kGlicTextSelectionContextMenuAutoSubmit{
@@ -315,6 +320,7 @@ BASE_FEATURE(kGlicSetAuthUser, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 // functionality implemented by glic's webview.ts is implemented instead by c++
 // code.
 BASE_FEATURE(kGlicDisconnectedWebview, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicGuestInitialSize, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 BASE_FEATURE(kGlicShakeTrigger, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel{
     &kGlicShakeTrigger, "only_on_side_panel", true};
@@ -352,4 +358,6 @@ BASE_FEATURE(kGlicColdWarmingUsePerformanceManager,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSsr, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicClientDataStorage, FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS);
 }  // namespace features

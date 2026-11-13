@@ -24,8 +24,10 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_dogfood_feedback.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
+#include "components/omnibox/browser/suggest_template_info_mojo_utils.h"
 #include "components/search/search.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
@@ -235,6 +237,24 @@ void OmniboxPopupHandler::SetInputState(
   state->is_tab_switch = is_tab_switch;
   state->url_emphasis = ComputeUrlEmphasis(text);
   state->unelided_url_emphasis = ComputeUrlEmphasis(full_url);
+  if (is_tab_switch && user_input_in_progress && controller_ &&
+      controller_->edit_model()) {
+    AutocompleteMatch current_match = controller_->edit_model()->CurrentMatch();
+    auto mojom_match = searchbox::mojom::AutocompleteMatch::New();
+    mojom_match->suggest_template =
+        suggest_template_info::CreateSuggestTemplateInfo(current_match);
+    mojom_match->destination_url = current_match.destination_url;
+    mojom_match->fill_into_edit = current_match.fill_into_edit;
+    mojom_match->inline_autocompletion = current_match.inline_autocompletion;
+    mojom_match->is_search_type =
+        AutocompleteMatch::IsSearchType(current_match.type);
+    mojom_match->type =
+        omnibox::AutocompleteMatchTypeToString(current_match.type);
+    mojom_match->allowed_to_be_default_match =
+        current_match.allowed_to_be_default_match;
+    mojom_match->icon_url = current_match.icon_url;
+    state->current_match = std::move(mojom_match);
+  }
   // Extract active tab ID if in a Chrome browser window context.
   if (controller_ && controller_->client()->IsChromeOmniboxClient()) {
     auto* chrome_client =
@@ -465,6 +485,19 @@ void OmniboxPopupHandler::OpenDevTools() {
     DevToolsWindow::OpenDevToolsWindow(web_contents_,
                                        DevToolsOpenedByAction::kUnknown);
   }
+}
+
+void OmniboxPopupHandler::OpenDogfoodFeedback() {
+  if (!omnibox::kWebUIOmniboxFullPopupDogfoodFeedback.Get() || !controller_ ||
+      !controller_->client()->IsChromeOmniboxClient()) {
+    return;
+  }
+  auto* browser =
+      static_cast<ChromeOmniboxClient*>(controller_->client())->browser();
+  if (!browser) {
+    return;
+  }
+  omnibox_dogfood_feedback::ShowFeedbackForm(browser);
 }
 
 void OmniboxPopupHandler::AdvanceFocus(bool reverse) {

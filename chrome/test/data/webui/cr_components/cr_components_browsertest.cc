@@ -203,6 +203,11 @@ IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, ReflowLayouts) {
           "runMochaSuite('Reflow Layouts');");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, WidthContainer) {
+  RunTest("cr_components/most_visited_test.js",
+          "runMochaSuite('WidthContainer');");
+}
+
 IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, LoggingAndUpdates) {
   RunTest("cr_components/most_visited_test.js",
           "runMochaSuite('LoggingAndUpdates');");
@@ -474,13 +479,7 @@ class CrComponentsWithPixelOutputTest : public WebUIMochaBrowserTest {
   }
 };
 
-// TODO(crbug.com/568716335): Re-enable this test once fixed.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_CrLottie DISABLED_CrLottie
-#else
-#define MAYBE_CrLottie CrLottie
-#endif
-IN_PROC_BROWSER_TEST_F(CrComponentsWithPixelOutputTest, MAYBE_CrLottie) {
+IN_PROC_BROWSER_TEST_F(CrComponentsWithPixelOutputTest, CrLottie) {
   RunTest("cr_components/cr_lottie/cr_lottie_test.js", "mocha.run()");
 }
 #endif  // !BUILDFLAG(IS_ANDROID)

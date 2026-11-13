@@ -112,12 +112,6 @@ std::unique_ptr<ObservationDelayController> NavigateTool::GetObservationDelayer(
       page_stability_config);
 }
 
-void NavigateTool::UpdateTaskBeforeInvoke(ActorTask& task,
-                                          ToolCallback callback) const {
-  task.AddActorSurface(actor_surface_handle_, /*stop_task_on_detach=*/true,
-                       std::move(callback));
-}
-
 ActorSurfaceHandle NavigateTool::GetTargetActorSurface() const {
   return actor_surface_handle_;
 }

@@ -185,6 +185,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kD3D11VideoDecoderUseSharedHandle);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDedicatedMediaServiceThread);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDeferAudioFocusUntilAudible);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDirectOpusAudioDecoding);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kDisallowMixedOpaqueMediaResponses);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDocumentPictureInPictureAnimateResize);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDocumentPictureInPictureCapture);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kDocumentPictureInPictureNavigation);
@@ -520,6 +521,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaFoundationBatchRead);
 // Specify the batch read count between client renderer and remote renderer,
 // default value is 1.
 MEDIA_EXPORT extern const base::FeatureParam<int> kBatchReadCount;
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaFoundationChromiumCompatibilityMode);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaFoundationClearPlayback);
 // For feature check of kMediaFoundationD3D11VideoCapture at runtime,
 // please use IsMediaFoundationD3D11VideoCaptureEnabled() instead.

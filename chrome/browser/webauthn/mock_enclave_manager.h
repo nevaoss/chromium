@@ -7,6 +7,7 @@
 
 #include "base/functional/callback.h"
 #include "base/time/time.h"
+#include "build/build_config.h"
 #include "chrome/browser/webauthn/enclave_manager_interface.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
@@ -19,12 +20,22 @@ class MockEnclaveManager : public EnclaveManagerInterface {
 
   MOCK_METHOD(void, Unenroll, (EnclaveManagerInterface::Callback), (override));
   MOCK_METHOD(bool, IsRegistered, (), (const override));
+  MOCK_METHOD(void,
+              LoadAndCheckIsRegistered,
+              (EnclaveManagerInterface::Callback),
+              (override));
   MOCK_METHOD(bool, IsLoaded, (), (const override));
   MOCK_METHOD(bool, IsReady, (), (const override));
   MOCK_METHOD(std::unique_ptr<trusted_vault::TrustedVaultConnection::Request>,
               CheckGpmPinAvailability,
               (EnclaveManagerInterface::GpmPinAvailabilityCallback),
               (override));
+#if BUILDFLAG(IS_MAC)
+  MOCK_METHOD(void,
+              RecoverWithICloudKeychain,
+              (EnclaveManagerInterface::Callback),
+              (override));
+#endif  // BUILDFLAG(IS_MAC)
   MOCK_METHOD(void,
               LoadAfterDelay,
               (base::TimeDelta, base::OnceClosure),

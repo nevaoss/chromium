@@ -32,6 +32,7 @@ source_set("contextual_tasks") {
     "contextual_tasks_panel_controller.h",
     "contextual_tasks_panel_host.h",
     "contextual_tasks_service_factory.h",
+    "contextual_tasks_tab_navigation_observer.h",
     "contextual_tasks_tab_visit_tracker.cc",
     "contextual_tasks_tab_visit_tracker.h",
     "contextual_tasks_ui_interface.h",
@@ -89,6 +90,7 @@ source_set("contextual_tasks") {
       "contextual_tasks_extension_bridge.h",
       "contextual_tasks_extension_bridge_factory.h",
       "contextual_tasks_extension_config_provider.h",
+      "contextual_tasks_extension_service_worker_handler.h",
     ]
     public_deps += [
       "//extensions/browser",
@@ -128,6 +130,7 @@ source_set("impl") {
     "contextual_tasks_context_signal_utils.cc",
     "contextual_tasks_context_signal_utils.h",
     "contextual_tasks_service_factory.cc",
+    "contextual_tasks_tab_navigation_observer.cc",
     "contextual_tasks_utils.cc",
     "search_journey_tab_feature.cc",
     "search_journey_tracker.cc",
@@ -143,6 +146,7 @@ source_set("impl") {
       "contextual_tasks_extension_bridge.cc",
       "contextual_tasks_extension_bridge_factory.cc",
       "contextual_tasks_extension_config_provider.cc",
+      "contextual_tasks_extension_service_worker_handler.cc",
     ]
     if (!is_android) {
       sources += [
@@ -644,6 +648,7 @@ if (!is_android) {
       "contextual_tasks_extension_handler_browsertest.cc",
       "contextual_tasks_ghost_loader_pixel_test.cc",
       "contextual_tasks_page_handler_browsertest.cc",
+      "contextual_tasks_tab_navigation_observer_browsertest.cc",
       "contextual_tasks_ui_browsertest.cc",
       "contextual_tasks_ui_service_browsertest.cc",
       "contextual_tasks_ui_service_pdf_browsertest.cc",
@@ -818,6 +823,7 @@ source_set("unit_tests") {
     "//ui/base/interaction:test_support",
     "//ui/base/unowned_user_data",
     "//ui/webui:buildflags",
+    "//ui/webui/tracked_element",
   ]
 
   if (!is_android) {
@@ -988,7 +994,6 @@ if (is_android) {
       "//base:features_java",
       "//chrome/browser/flags:java",
       "//components/embedder_support/android:util_java",
-      "//content/public/android:content_java",
       "//third_party/jni_zero:jni_zero_java",
       "//url:gurl_java",
     ]

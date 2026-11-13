@@ -21,26 +21,14 @@ namespace one_time_tokens {
 // Duration after which tokens expire and are no longer returned or served.
 inline constexpr base::TimeDelta kCacheDurationForOldTokens = base::Minutes(3);
 
-// The origin of a one time token. This is currently limited to on-device SMS
-// tokens, but may grow to cross-device SMS tokens, email tokens, authenticator
-// tokens, etc. in the future. As SMS tokens can come from different sources
-// this is not identical to `OneTimeTokenType`.
-enum class OneTimeTokenSource {
-  kUnknown = 0,
-  kOnDeviceSms = 1,
-  kGmail = 2,
-};
-
 class OneTimeTokenLogSink;
 
 // Service to subscribe to `OneTimeToken`s. One instance per profile.
 class OneTimeTokenService : public KeyedService {
  public:
   using CallbackSignature =
-      void(OneTimeTokenSource,
-           base::expected<OneTimeToken, OneTimeTokenRetrievalError>);
+      void(base::expected<OneTimeToken, OneTimeTokenRetrievalError>);
   using Callback = base::RepeatingCallback<CallbackSignature>;
-  using TickleCallback = base::RepeatingCallback<void(OneTimeTokenSource)>;
 
   ~OneTimeTokenService() override = default;
 
@@ -57,25 +45,14 @@ class OneTimeTokenService : public KeyedService {
   // Returns the cached one-time tokens.
   virtual std::vector<OneTimeToken> GetCachedOneTimeTokens() const = 0;
 
-  // Returns true if the backend for `source` has pending requests or queued
-  // notifications.
-  virtual bool HasPendingRequests(OneTimeTokenSource source) const = 0;
-
-  // Creates a subscription for new incoming one time tokens. It's possible that
-  // the same one time token is reported many times while a subscription is
-  // active. It's the responsibility of the caller to deduplicate those.
+  // Creates a subscription for new incoming on-device SMS one time tokens.
+  // It's possible that the same one time token is reported many times while a
+  // subscription is active. It's the responsibility of the caller to
+  // deduplicate those.
   [[nodiscard]] virtual ExpiringSubscription Subscribe(
-      OneTimeTokenSource source,
       base::Time expiration,
       Callback callback,
       base::OnceClosure expiration_callback) = 0;
-
-  // Creates a subscription for incoming push notifications (tickles) without
-  // triggering token fetching or network requests.
-  [[nodiscard]] virtual ExpiringSubscription SubscribeToTickles(
-      OneTimeTokenSource source,
-      base::Time expiration,
-      TickleCallback callback) = 0;
 
   // Requests one time tokens from the underlying backend. `callback` is called
   // exactly once when the request is complete, with the fetched token if

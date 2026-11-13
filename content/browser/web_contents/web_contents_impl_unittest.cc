@@ -9,8 +9,6 @@
 
 #include "base/check.h"
 #include "base/command_line.h"
-#include "base/containers/span.h"
-#include "base/containers/to_vector.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/ptr_util.h"
@@ -4366,82 +4364,72 @@ TEST_F(WebContentsImplTest, SetIgnoreZoomGestures) {
   EXPECT_FALSE(contents()->PreHandleGestureEvent(scroll_event));
 }
 
-TEST_F(WebContentsImplTest, DragProvenanceLifecycle) {
-  DropData drop_data;
-  drop_data.file_contents =
-      base::ToVector(base::byte_span_from_cstring("test content"));
-  drop_data.file_contents_filename_extension = FILE_PATH_LITERAL("txt");
-  drop_data.file_contents_source_url = GURL("https://example.com/file.txt");
+namespace {
+
+// Records what observers see when a drag starts.
+class DragStartObserver : public WebContentsObserver {
+ public:
+  explicit DragStartObserver(WebContents* web_contents)
+      : WebContentsObserver(web_contents) {}
+
+  void DidStartDrag(RenderFrameHost* source_rfh,
+                    const DropData& drop_data) override {
+    ++call_count_;
+    observed_drag_id_ = drop_data.drag_id;
+    observed_rfh_token_ = source_rfh->GetGlobalFrameToken();
+  }
+
+  int call_count() const { return call_count_; }
+  const std::optional<base::UnguessableToken>& observed_drag_id() const {
+    return observed_drag_id_;
+  }
+  const GlobalRenderFrameHostToken& observed_rfh_token() const {
+    return observed_rfh_token_;
+  }
+
+ private:
+  int call_count_ = 0;
+  std::optional<base::UnguessableToken> observed_drag_id_;
+  GlobalRenderFrameHostToken observed_rfh_token_;
+};
+
+}  // namespace
+
+TEST_F(WebContentsImplTest, ObserverNotifiedOnDragStartWithDragId) {
+  DragStartObserver observer(contents());
 
   GlobalRenderFrameHostToken source_rfh_token =
       main_test_rfh()->GetGlobalFrameToken();
 
-  // 1. Verify stashing on drag start.
-  GURL page_url("https://example.com/page.html");
-  NavigationSimulator::NavigateAndCommitFromBrowser(contents(), page_url);
-  const std::u16string page_title = u"Test Page";
-  contents()->UpdateTitleForEntry(
-      contents()->GetController().GetLastCommittedEntry(), page_title);
-
+  DropData drop_data;
   contents()->OnStartDragging(&drop_data, source_rfh_token);
 
-  ASSERT_TRUE(drop_data.drag_id.has_value())
-      << "drag_id should be populated when dragging from a valid frame.";
+  // Observers key drag-start state on `drag_id`, so it must already be
+  // assigned by the time the notification fires.
+  EXPECT_EQ(observer.call_count(), 1);
+  ASSERT_TRUE(drop_data.drag_id.has_value());
+  EXPECT_FALSE(drop_data.drag_id->is_empty());
   EXPECT_TRUE(drop_data.custom_data.empty())
       << "custom_data must remain untouched so internal drag tokens never leak "
          "to web renderers via DataTransfer.";
-  base::UnguessableToken drag_id = *drop_data.drag_id;
+  EXPECT_EQ(observer.observed_drag_id(), drop_data.drag_id);
+  EXPECT_EQ(observer.observed_rfh_token(), source_rfh_token);
 
-  // 2. Verify global lookup works.
-  EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
-                                    WebContents::DragId(drag_id)),
-            contents());
-
-  // 3. Verify drag id is NOT cleaned up on drag end (due to async race
-  // conditions, especially on Mac).
-  contents()->OnDragSourceEnded();
-  EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
-                                    WebContents::DragId(drag_id)),
-            contents());
+  DropData second_drop_data;
+  contents()->OnStartDragging(&second_drop_data, source_rfh_token);
+  ASSERT_TRUE(second_drop_data.drag_id.has_value());
+  EXPECT_NE(*drop_data.drag_id, *second_drop_data.drag_id);
 }
 
-TEST_F(WebContentsImplTest, NoStashIfInvalidSourceFrame) {
-  DropData drop_data;
+TEST_F(WebContentsImplTest, ObserverNotNotifiedIfInvalidSourceFrame) {
+  DragStartObserver observer(contents());
 
+  DropData drop_data;
   contents()->OnStartDragging(&drop_data, GlobalRenderFrameHostToken());
 
+  EXPECT_EQ(observer.call_count(), 0);
   EXPECT_FALSE(drop_data.drag_id.has_value());
   EXPECT_TRUE(drop_data.custom_data.empty());
-}
-
-TEST_F(WebContentsImplTest, MultipleDragProvenancesAreIsolated) {
-  // Simulate two separate drags (though only one is typically active).
-  GlobalRenderFrameHostToken source_rfh_token =
-      main_test_rfh()->GetGlobalFrameToken();
-
-  DropData data1;
-  data1.file_contents =
-      base::ToVector(base::byte_span_from_cstring("content 1"));
-  contents()->OnStartDragging(&data1, source_rfh_token);
-  ASSERT_TRUE(data1.drag_id.has_value());
-  EXPECT_TRUE(data1.custom_data.empty());
-  base::UnguessableToken id1 = *data1.drag_id;
-
-  DropData data2;
-  data2.file_contents =
-      base::ToVector(base::byte_span_from_cstring("content 2"));
-  contents()->OnStartDragging(&data2, source_rfh_token);
-  ASSERT_TRUE(data2.drag_id.has_value());
-  EXPECT_TRUE(data2.custom_data.empty());
-  base::UnguessableToken id2 = *data2.drag_id;
-
-  EXPECT_NE(id1, id2);
-  EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
-                                    WebContents::DragId(id1)),
-            contents());
-  EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
-                                    WebContents::DragId(id2)),
-            contents());
 }
 
 TEST_F(WebContentsImplTest, ConstrainPopupBounds) {

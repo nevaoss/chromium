@@ -10,11 +10,13 @@
 #include <utility>
 
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
+#include "chrome/browser/ui/autofill/email_verifier/email_verification_controller_desktop.h"
 #include "chrome/browser/ui/autofill/email_verifier/email_verification_controller_test_api.h"
 #include "chrome/browser/ui/autofill/email_verifier/email_verification_popup_controller.h"
 #include "chrome/browser/ui/autofill/email_verifier/email_verification_popup_view.h"
@@ -55,7 +57,8 @@ class EmailVerificationControllerTest : public ChromeRenderViewHostTestHarness {
 
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
-    controller_ = std::make_unique<EmailVerificationController>(web_contents());
+    controller_ =
+        std::make_unique<EmailVerificationControllerDesktop>(web_contents());
   }
 
   void TearDown() override {
@@ -96,7 +99,8 @@ TEST_F(EmailVerificationControllerTest, InitialState) {
   EXPECT_FALSE(test_api(controller()).loading_start_time().has_value());
   EXPECT_FALSE(test_api(controller()).is_hide_popup_timer_running());
   EXPECT_FALSE(test_api(controller()).is_toast_timer_running());
-  EXPECT_FALSE(test_api(controller()).popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
 }
 
 // Tests that calling ShowPopup shows the popup view and that confirming the
@@ -115,7 +119,8 @@ TEST_F(EmailVerificationControllerTest, ConfirmPromptTransitionsToLoading) {
   mock_view->RunDecisionCallback(true);
 
   EXPECT_EQ(future.Get(), EmailVerificationPermissionUiStatus::kAllowed);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
   EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
   EXPECT_FALSE(test_api(controller()).is_hide_popup_timer_running());
 }
@@ -155,17 +160,20 @@ TEST_F(EmailVerificationControllerTest,
   EXPECT_CALL(*mock_view, ShowLoadingState);
   EXPECT_CALL(*mock_view, Hide).Times(0);
   mock_view->RunDecisionCallback(true);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
 
   // Fast response arrives before 800ms: HidePopup must defer dismissal.
   controller().HidePopup();
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
   EXPECT_TRUE(test_api(controller()).is_hide_popup_timer_running());
 
   // Halfway through (400ms): popup is still loading and timer is active.
   task_environment()->FastForwardBy(
       EmailVerificationController::kMinimumLoadingDuration / 2);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
   EXPECT_TRUE(test_api(controller()).is_hide_popup_timer_running());
 
   testing::Mock::VerifyAndClearExpectations(mock_view.get());
@@ -173,7 +181,8 @@ TEST_F(EmailVerificationControllerTest,
   EXPECT_CALL(*mock_view, Hide);
   task_environment()->FastForwardBy(
       EmailVerificationController::kMinimumLoadingDuration / 2);
-  EXPECT_FALSE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
   EXPECT_FALSE(test_api(controller()).is_hide_popup_timer_running());
   EXPECT_FALSE(test_api(controller()).loading_start_time().has_value());
 }
@@ -192,16 +201,19 @@ TEST_F(EmailVerificationControllerTest,
 
   EXPECT_CALL(*mock_view, ShowLoadingState);
   mock_view->RunDecisionCallback(true);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
 
   // Response takes 900ms (>800ms).
   task_environment()->FastForwardBy(base::Milliseconds(900));
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
 
   // HidePopup should dismiss immediately.
   EXPECT_CALL(*mock_view, Hide);
   controller().HidePopup();
-  EXPECT_FALSE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
   EXPECT_FALSE(test_api(controller()).is_hide_popup_timer_running());
   EXPECT_FALSE(test_api(controller()).loading_start_time().has_value());
 }
@@ -217,7 +229,8 @@ TEST_F(EmailVerificationControllerTest,
   controller().ShowPopup(kDefaultBounds, DefaultSite(), kDefaultEmail,
                          future.GetCallback());
   ASSERT_TRUE(mock_view);
-  EXPECT_FALSE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kShowing);
 
   EXPECT_CALL(*mock_view, Hide);
   controller().HidePopup();
@@ -237,7 +250,9 @@ TEST_F(EmailVerificationControllerTest, HidePopupWhenClosedIsNoOp) {
 // loading start time.
 TEST_F(EmailVerificationControllerTest,
        HidePopupDoesNotResetLoadingStartTimeWhenPopupNotLoading) {
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
   EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
 
   controller().HidePopup();
@@ -250,12 +265,134 @@ TEST_F(EmailVerificationControllerTest,
 // Tests that calling ShowLoadingToast() initiates loading state and sets
 // loading_start_time_.
 TEST_F(EmailVerificationControllerTest, SubsequentRunLoadingToastStartsTimer) {
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
   EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
   EXPECT_FALSE(test_api(controller()).is_toast_timer_running());
   EXPECT_FALSE(test_api(controller()).is_hide_popup_timer_running());
 }
 
+// Tests that cancelling loading while a request is in flight invokes the
+// cancellation callback and resets loading state.
+TEST_F(EmailVerificationControllerTest,
+       OnLoadingCancelledWhileInFlightInvokesCancelCallback) {
+  TestFuture<void> cancel_future;
+  controller().ShowLoadingToast(cancel_future.GetCallback());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+  EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
+
+  test_api(controller()).OnLoadingCancelled();
+  EXPECT_TRUE(cancel_future.IsReady());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+  EXPECT_FALSE(test_api(controller()).loading_start_time().has_value());
+}
+
+// Tests that cancelling loading after the response has arrived (while the toast
+// is deferred) immediately flushes the deferred toast if the tab is visible.
+TEST_F(EmailVerificationControllerTest,
+       OnLoadingCancelledAfterResponseFlushesDeferredToast) {
+  TestFuture<void> cancel_future;
+  controller().ShowLoadingToast(cancel_future.GetCallback());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+
+  // Response arrives before minimum duration; toast is deferred.
+  controller().ShowVerifiedToast(GURL("https://issuer.com"));
+  EXPECT_TRUE(test_api(controller()).is_toast_timer_running());
+
+  // User dismisses/cancels the loading UI while toast is deferred.
+  test_api(controller()).OnLoadingCancelled();
+
+  // Cancel callback should NOT be invoked because the response already arrived.
+  EXPECT_FALSE(cancel_future.IsReady());
+  // Timer should have fired immediately and loading_start_time_ should be
+  // cleared.
+  EXPECT_FALSE(test_api(controller()).is_toast_timer_running());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+  EXPECT_FALSE(test_api(controller()).loading_start_time().has_value());
+}
+
+// Tests that calling OnLoadingCancelled() when no loading toast is active
+// (e.g., while a first-run prompt is in kLoading) is a no-op and does not
+// corrupt the active prompt's state or timers.
+TEST_F(EmailVerificationControllerTest,
+       OnLoadingCancelledWhenNotLoadingToastIsNoOp) {
+  std::unique_ptr<MockEmailVerificationPopupView> mock_view;
+  SetupMockViewFactory(mock_view);
+
+  TestFuture<EmailVerificationPermissionUiStatus> future;
+  controller().ShowPopup(kDefaultBounds, DefaultSite(), kDefaultEmail,
+                         future.GetCallback());
+  ASSERT_TRUE(mock_view);
+  EXPECT_CALL(*mock_view, ShowLoadingState);
+  mock_view->RunDecisionCallback(true);
+
+  controller().HidePopup();
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
+  EXPECT_TRUE(test_api(controller()).is_hide_popup_timer_running());
+  EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
+
+  // Spurious OnLoadingCancelled() must not disturb kLoading state or timer.
+  test_api(controller()).OnLoadingCancelled();
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
+  EXPECT_TRUE(test_api(controller()).is_hide_popup_timer_running());
+  EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
+
+  EXPECT_CALL(*mock_view, Hide);
+  task_environment()->FastForwardBy(
+      EmailVerificationController::kMinimumLoadingDuration);
+}
+
+// Tests that preempting an in-flight loading toast with ShowPopup() invokes the
+// preempted request's cancel callback.
+TEST_F(EmailVerificationControllerTest,
+       ShowPopupWhileLoadingToastInFlightInvokesCancelCallback) {
+  TestFuture<void> cancel_future;
+  controller().ShowLoadingToast(cancel_future.GetCallback());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+
+  std::unique_ptr<MockEmailVerificationPopupView> mock_view;
+  SetupMockViewFactory(mock_view);
+  TestFuture<EmailVerificationPermissionUiStatus> popup_future;
+  controller().ShowPopup(kDefaultBounds, DefaultSite(), kDefaultEmail,
+                         popup_future.GetCallback());
+
+  EXPECT_TRUE(cancel_future.IsReady());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kShowing);
+
+  EXPECT_CALL(*mock_view, Hide);
+  controller().HidePopup();
+}
+
+// Tests that preempting an in-flight loading toast with a new
+// ShowLoadingToast() invokes the first request's cancel callback without
+// cancelling the new one.
+TEST_F(EmailVerificationControllerTest,
+       ShowLoadingToastWhileLoadingToastInFlightInvokesPreviousCancelCallback) {
+  TestFuture<void> first_cancel_future;
+  controller().ShowLoadingToast(first_cancel_future.GetCallback());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+
+  TestFuture<void> second_cancel_future;
+  controller().ShowLoadingToast(second_cancel_future.GetCallback());
+
+  EXPECT_TRUE(first_cancel_future.IsReady());
+  EXPECT_FALSE(second_cancel_future.IsReady());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
+
+  test_api(controller()).OnLoadingCancelled();
+  EXPECT_TRUE(second_cancel_future.IsReady());
+}
 // Tests that calling ShowLoadingToast() while a first-run popup's hide timer
 // is pending cancels `hide_popup_timer_` and immediately dismisses the popup.
 TEST_F(EmailVerificationControllerTest, ShowLoadingToastHidesPendingPopup) {
@@ -276,7 +413,7 @@ TEST_F(EmailVerificationControllerTest, ShowLoadingToastHidesPendingPopup) {
   // Triggering a subsequent-run loading toast must cancel the pending hide
   // timer and immediately dismiss the first-run popup.
   EXPECT_CALL(*mock_view, Hide);
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
   EXPECT_FALSE(test_api(controller()).is_hide_popup_timer_running());
   EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
 }
@@ -294,11 +431,12 @@ TEST_F(EmailVerificationControllerTest,
   ASSERT_TRUE(mock_view);
 
   EXPECT_CALL(*mock_view, Hide);
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
 
   ASSERT_TRUE(future.IsReady());
   EXPECT_EQ(future.Get(), EmailVerificationPermissionUiStatus::kOther);
-  EXPECT_FALSE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
   EXPECT_TRUE(test_api(controller()).loading_start_time().has_value());
   histogram_tester.ExpectUniqueSample(
       "Blink.Evp.PermissionUi.Status",
@@ -315,7 +453,7 @@ TEST_F(EmailVerificationControllerTest,
 // Tests that calling ShowVerifiedToast() while loading is in progress defers
 // displaying the toast until the minimum display duration (800ms) has elapsed.
 TEST_F(EmailVerificationControllerTest, ShowVerifiedToastDefersWhenLoading) {
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
   ASSERT_TRUE(test_api(controller()).loading_start_time().has_value());
 
   controller().ShowVerifiedToast(GURL("https://issuer.com"));
@@ -337,7 +475,7 @@ TEST_F(EmailVerificationControllerTest, ShowVerifiedToastDefersWhenLoading) {
 // displaying the error toast until the minimum display duration (800ms) has
 // elapsed.
 TEST_F(EmailVerificationControllerTest, ShowErrorToastDefersWhenLoading) {
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
   ASSERT_TRUE(test_api(controller()).loading_start_time().has_value());
 
   controller().ShowErrorToast();
@@ -371,7 +509,8 @@ TEST_F(EmailVerificationControllerTest,
 
   EXPECT_CALL(*mock_view, ShowLoadingState);
   mock_view->RunDecisionCallback(true);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
 
   // HidePopup is called by the delegate upon receiving verification response
   // before 800ms has elapsed.
@@ -408,7 +547,7 @@ TEST_F(EmailVerificationControllerTest,
 // already elapsed does not defer.
 TEST_F(EmailVerificationControllerTest,
        ShowToastFiresImmediatelyWhenDurationAlreadyElapsed) {
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
   ASSERT_TRUE(test_api(controller()).loading_start_time().has_value());
 
   task_environment()->FastForwardBy(base::Milliseconds(900));
@@ -421,7 +560,7 @@ TEST_F(EmailVerificationControllerTest,
 // Tests that if an error toast is requested while a verified toast is pending,
 // the pending timer is superseded and only the error toast is scheduled.
 TEST_F(EmailVerificationControllerTest, ToastTimersCancelEachOther) {
-  controller().ShowLoadingToast();
+  controller().ShowLoadingToast(base::DoNothing());
   ASSERT_TRUE(test_api(controller()).loading_start_time().has_value());
 
   // Trigger verified toast first.
@@ -452,7 +591,8 @@ TEST_F(EmailVerificationControllerTest, NewPopupCancelsPendingHidePopupTimer) {
   EXPECT_CALL(*first_view, ShowLoadingState);
   EXPECT_CALL(*first_view, Hide).Times(0);
   first_view->RunDecisionCallback(true);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
 
   // Call HidePopup, starting the anti-flicker delay timer.
   controller().HidePopup();
@@ -536,10 +676,12 @@ TEST_F(EmailVerificationControllerTest,
   EXPECT_CALL(*mock_view, ShowLoadingState);
   mock_view->RunDecisionCallback(true);
   EXPECT_EQ(first_future.Get(), EmailVerificationPermissionUiStatus::kAllowed);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
   const std::optional<base::TimeTicks> initial_loading_start_time =
       test_api(controller()).loading_start_time();
   ASSERT_TRUE(initial_loading_start_time.has_value());
+  const gfx::RectF initial_element_bounds = popup_controller().element_bounds();
 
   // Attempt an overlapping ShowPopup while the first request is still in
   // flight.
@@ -550,9 +692,11 @@ TEST_F(EmailVerificationControllerTest,
 
   EXPECT_EQ(second_future.Get(),
             EmailVerificationPermissionUiStatus::kOverlappingPrompt);
-  EXPECT_TRUE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kLoading);
   EXPECT_EQ(test_api(controller()).loading_start_time(),
             initial_loading_start_time);
+  EXPECT_EQ(popup_controller().element_bounds(), initial_element_bounds);
   histogram_tester.ExpectBucketCount(
       "Blink.Evp.PermissionUi.Status",
       EmailVerificationPermissionUiStatus::kOverlappingPrompt, 1);
@@ -564,7 +708,8 @@ TEST_F(EmailVerificationControllerTest,
   EXPECT_CALL(*mock_view, Hide);
   task_environment()->FastForwardBy(
       EmailVerificationController::kMinimumLoadingDuration);
-  EXPECT_FALSE(popup_controller().is_loading());
+  EXPECT_EQ(test_api(controller()).prompt_state(),
+            EmailVerificationControllerTestApi::PromptState::kClosed);
 }
 
 // Tests that destroying EmailVerificationController while a popup is open

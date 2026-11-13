@@ -28,6 +28,7 @@
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
+#include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -132,14 +133,16 @@ class ContextualTasksUiService : public KeyedService {
 
   // A notification that the browser attempted to navigate to the AI page. If
   // this method is being called, it means the navigation was blocked and it
-  // should be processed by this method.
+  // should be processed by this method. `transition` is the transition of the
+  // blocked navigation.
   // TODO(crbug.com/533072235): Deprecated. This method is being deprecated and
   // should not be used. It is only used by the legacy HandleNavigationImpl
   // which will be cleaned up (see comment there).
   virtual void OnNavigationToAiPageIntercepted(
       const GURL& url,
       base::WeakPtr<tabs::TabInterface> source_tab,
-      bool is_to_new_tab);
+      bool is_to_new_tab,
+      ui::PageTransition transition);
 
   // A notification to this service that a link in the AI thread was clicked by
   // the user. This will open a tab and associate it with the visible thread.
@@ -152,7 +155,7 @@ class ContextualTasksUiService : public KeyedService {
 
   // Determines if a new tab should be allowed to open for a thread link click.
   // Returns false if the link can be handled by focusing an existing tab or
-  // scrolling a citation.
+  // scrolling/highlighting a citation.
   bool ShouldAllowNewTabOpen(const GURL& url,
                              BrowserWindowInterface* browser,
                              const base::Uuid& task_id);
@@ -716,6 +719,13 @@ class ContextualTasksUiService : public KeyedService {
   bool MaybeHandleVideoCitation(const GURL& url,
                                 tabs::TabInterface* tab,
                                 const base::Uuid& task_id);
+
+  // Handles text fragment citation links by searching and highlighting matching
+  // text on the tab if applicable. Returns true if handled.
+  bool MaybeHandleTextFragmentCitation(const GURL& url,
+                                       tabs::TabInterface* tab,
+                                       const base::Uuid& task_id,
+                                       BrowserWindowInterface* browser);
 
 #if !BUILDFLAG(IS_ANDROID)
   // Called when back button expands side panel.

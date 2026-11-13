@@ -8,6 +8,7 @@ import './organizer_list.js';
 import '/strings.m.js';
 
 import type {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
+import {assert} from '//resources/js/assert.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 import type {CrToolbarSearchFieldElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar_search_field.js';
@@ -26,6 +27,7 @@ import {browserProxyFactory} from './organizer_panel.mojom-webui.js';
 
 export interface OrganizerPanelAppElement {
   $: {
+    dragRegion: HTMLElement,
     list: OrganizerListElement,
     menu: CrActionMenuElement,
     searchField: CrToolbarSearchFieldElement,
@@ -47,31 +49,64 @@ export class OrganizerPanelAppElement extends CrLitElement {
 
   static override get properties() {
     return {
+      allSectionsExpanded_: {type: Boolean},
       shortcut_: {type: String},
       sectionDelegates_: {type: Array},
       searchQuery_: {type: String},
+      verticalTabsEnabled: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
-  private browserProxy_: BrowserProxy = browserProxyFactory.getInstance();
-  private boundOnContextMenu_ = this.onContextMenu_.bind(this);
-
+  accessor verticalTabsEnabled: boolean = false;
+  protected accessor allSectionsExpanded_: boolean = false;
   protected accessor shortcut_: string = loadTimeData.getString('shortcutText');
   protected accessor searchQuery_: string = '';
   protected accessor sectionDelegates_:
       Array<OrganizerListSectionDelegate<unknown>> =
           this.getSectionDelegates_();
 
+  private browserProxy_: BrowserProxy = browserProxyFactory.getInstance();
+  private verticalTabsEnabledChangedListenerId_: number|null = null;
+  private onWindowFocused_: () => void = () => {
+    // Autofocus only works when the window is initially shown; for subsequent
+    // focus events, focus the search field.
+    this.$.searchField.showAndFocus();
+  };
+  private onContextMenu_: (e: MouseEvent) => void = (e: MouseEvent) => {
+    e.preventDefault();
+    if (e.composedPath().includes(this.$.dragRegion)) {
+      return;
+    }
+    this.allSectionsExpanded_ = this.$.list.areAllSectionsExpanded();
+    this.$.menu.showAtPosition({
+      top: e.clientY,
+      left: e.clientX,
+    });
+  };
+
   override connectedCallback() {
     super.connectedCallback();
     ColorChangeUpdater.forDocument().start();
-    window.addEventListener('focus', this.onWindowFocused_.bind(this));
-    this.addEventListener('contextmenu', this.boundOnContextMenu_);
+    window.addEventListener('focus', this.onWindowFocused_);
+    window.addEventListener('contextmenu', this.onContextMenu_);
+    this.verticalTabsEnabledChangedListenerId_ =
+        this.browserProxy_.callbackRouter.onVerticalTabsEnabledChanged
+            .addListener((verticalTabsEnabled: boolean) => {
+              this.verticalTabsEnabled = verticalTabsEnabled;
+            });
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeEventListener('contextmenu', this.boundOnContextMenu_);
+    window.removeEventListener('focus', this.onWindowFocused_);
+    window.removeEventListener('contextmenu', this.onContextMenu_);
+    assert(this.verticalTabsEnabledChangedListenerId_ !== null);
+    this.browserProxy_.callbackRouter.removeListener(
+        this.verticalTabsEnabledChangedListenerId_);
+    this.verticalTabsEnabledChangedListenerId_ = null;
   }
 
   private getSectionDelegates_(): Array<OrganizerListSectionDelegate<unknown>> {
@@ -88,27 +123,22 @@ export class OrganizerPanelAppElement extends CrLitElement {
     return delegates;
   }
 
-  private onWindowFocused_() {
-    // Autofocus only works when the window is initially shown; for subsequent
-    // focus events, focus the search field.
-    this.$.searchField.showAndFocus();
-  }
-
   protected onSearchChanged_(e: CustomEvent<string>) {
     this.searchQuery_ = e.detail;
   }
 
-  private onContextMenu_(e: MouseEvent) {
-    e.preventDefault();
-    this.$.menu.showAtPosition({
-      top: e.clientY,
-      left: e.clientX,
-    });
+  protected isSearching_(): boolean {
+    return this.searchQuery_.length > 0;
   }
 
   protected onExpandAllClick_() {
     this.$.menu.close();
     this.$.list.expandAll();
+  }
+
+  protected onCollapseAllClick_() {
+    this.$.menu.close();
+    this.$.list.collapseAll();
   }
 
   protected onCloseTabSearchClick_() {

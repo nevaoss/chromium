@@ -4,6 +4,7 @@
 
 package org.chromium.ui.base;
 
+import org.chromium.base.MutableBooleanParamWithSafeDefault;
 import org.chromium.base.MutableFlagWithSafeDefault;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.components.cached_flags.BooleanCachedFeatureParam;
@@ -137,10 +138,17 @@ public class UiAndroidFeatureList {
             newMutableFlagWithSafeDefault(
                     UiAndroidFeatures.SUPPORT_KEYBOARD, /* defaultValue= */ true);
 
+    public static final MutableFlagWithSafeDefault sSubmenuTypeOverride =
+            newMutableFlagWithSafeDefault(
+                    UiAndroidFeatures.SUBMENU_TYPE_OVERRIDE, /* defaultValue= */ false);
+
+    public static final MutableBooleanParamWithSafeDefault sSubmenuTypeOverrideForceDrilldown =
+            sSubmenuTypeOverride.newBooleanParam("force_drilldown", false);
+
     public static final MutableFlagWithSafeDefault sAndroidResourceMemoryOptimization =
             newMutableFlagWithSafeDefault(
                     UiAndroidFeatures.ANDROID_RESOURCE_MEMORY_OPTIMIZATION,
-                    /* defaultValue= */ false);
+                    /* defaultValue= */ true);
 
     public static final List<CachedFlag> sFlagsCachedUiAndroid =
             List.of(

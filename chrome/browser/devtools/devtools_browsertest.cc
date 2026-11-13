@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <array>
 #include <deque>
 #include <memory>
@@ -253,6 +254,17 @@ const char kDispatchKeyEventShowsAutoFill[] =
     "/devtools/dispatch_key_event_shows_auto_fill.html";
 #endif  // !BUILDFLAG(IS_ANDROID)
 
+// Returns a factor by which the front-end test guard timer (see
+// `TestSuite.takeControl()` in front_end/Tests.js) should be scaled. Slow
+// build configurations (sanitizers, debug, etc.) scale the test action timeouts
+// via TestTimeouts; derive the same multiplier from the default 10 sec action
+// timeout so that the fixed 20 sec front-end timeout is scaled consistently.
+int GetFrontendTimeoutMultiplier() {
+  constexpr base::TimeDelta kDefaultActionTimeout = base::Seconds(10);
+  return std::max(1, static_cast<int>(TestTimeouts::action_timeout() /
+                                      kDefaultActionTimeout));
+}
+
 template <typename... T>
 void DispatchOnTestSuiteSkipCheck(DevToolsWindow* window,
                                   const char* method,
@@ -260,6 +272,22 @@ void DispatchOnTestSuiteSkipCheck(DevToolsWindow* window,
   WebContents* wc = DevToolsWindowTesting::Get(window)->main_web_contents();
   std::array args_array = {method, args...};
   std::ostringstream script;
+  // On slow build configurations the front-end's fixed guard timer fires
+  // before the test completes (crbug.com/572578222). Scale it with the
+  // same multiplier as the C++ test timeouts. The override is installed only
+  // once per front-end instance.
+  if (int multiplier = GetFrontendTimeoutMultiplier(); multiplier > 1) {
+    script << "if (!uiTests.timeoutMultiplierInstalled_) {"
+           << "  uiTests.timeoutMultiplierInstalled_ = true;"
+           << "  const originalTakeControl = uiTests.takeControl;"
+           << "  uiTests.takeControl = function(options) {"
+           << "    const slownessFactor = (options?.slownessFactor ?? 1) * "
+           << multiplier << ";"
+           << "    return originalTakeControl.call("
+           << "        this, {...options, slownessFactor});"
+           << "  };"
+           << "}";
+  }
   script << "uiTests.dispatchOnTestSuite([";
   for (size_t i = 0; i < std::size(args_array); ++i) {
     script << (i ? "," : "") << '\"' << args_array[i] << '\"';
@@ -2120,6 +2148,48 @@ IN_PROC_BROWSER_TEST_F(DevToolsExtensionTest,
   LoadExtension("can_inspect_url");
   RunTest("waitForTestResultsAsMessage",
           base::StrCat({kArbitraryPage, "#", data.new_tab_url}));
+}
+
+// TODO(b/565566308): Re-enable once failure on Android is resolved.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_CantInspectRemoteNewTabPageAfterSearchEngineChange \
+  DISABLED_CantInspectRemoteNewTabPageAfterSearchEngineChange
+#else
+#define MAYBE_CantInspectRemoteNewTabPageAfterSearchEngineChange \
+  CantInspectRemoteNewTabPageAfterSearchEngineChange
+#endif
+IN_PROC_BROWSER_TEST_F(
+    DevToolsExtensionTest,
+    MAYBE_CantInspectRemoteNewTabPageAfterSearchEngineChange) {
+  net::EmbeddedTestServer https_test_server(
+      net::EmbeddedTestServer::TYPE_HTTPS);
+  https_test_server.SetSSLConfig(
+      net::EmbeddedTestServer::CERT_COMMON_NAME_IS_DOMAIN);
+  https_test_server.ServeFilesFromSourceDirectory(GetChromeTestDataDir());
+  ASSERT_TRUE(https_test_server.Start());
+
+  TemplateURLService* template_url_service =
+      TemplateURLServiceFactory::GetForProfile(GetProfile());
+  search_test_utils::WaitForTemplateURLServiceToLoad(template_url_service);
+
+  LoadExtension("can_inspect_url");
+  OpenDevToolsWindow(kArbitraryPage, false);
+
+  TemplateURLData data;
+  data.SetShortName(u"example.com");
+  data.SetURL("https://example.com/url?bar={searchTerms}");
+  data.new_tab_url =
+      https_test_server.GetURL("localhost", "/devtools/empty.html").spec();
+
+  TemplateURL* template_url =
+      template_url_service->Add(std::make_unique<TemplateURL>(data));
+  template_url_service->SetUserSelectedDefaultSearchProvider(template_url);
+
+  ASSERT_TRUE(content::ExecJs(
+      GetInspectedTab(),
+      content::JsReplace("location.hash = $1;", data.new_tab_url)));
+  RunTestFunction(window_, "waitForTestResultsAsMessage");
+  CloseDevToolsWindow();
 }
 
 IN_PROC_BROWSER_TEST_F(DevToolsExtensionTest,
@@ -4507,6 +4577,132 @@ IN_PROC_BROWSER_TEST_F(DevToolsPolicyTest,
   ASSERT_TRUE(manager.WaitForNavigationFinished());
   EXPECT_EQ(web_contents->GetLastCommittedURL(), allowed_url);
   EXPECT_TRUE(DevToolsWindow::AllowDevToolsFor(profile, web_contents));
+}
+
+// Verifies that both the headful DevTools window (tab target) and the
+// main-frame RenderFrameDevToolsAgentHost detach when a committed same-document
+// navigation enters a blocklisted path, including on android_browsertests where
+// HeadlessModeProtocolBrowserTest does not run.
+IN_PROC_BROWSER_TEST_F(DevToolsPolicyTest,
+                       SameDocumentNavigationToBlocklistedUrlClosesDevTools) {
+  GURL initial_url(embedded_test_server()->GetURL("/devtools/empty.html"));
+  GURL blocked_url(embedded_test_server()->GetURL("/devtools/blocked_route"));
+
+  base::ListValue blocklist;
+  blocklist.Append(blocked_url.spec());
+
+  policy::PolicyMap policies;
+  policies.Set(policy::key::kDeveloperToolsAvailabilityBlocklist,
+               policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+               policy::POLICY_SOURCE_CLOUD, base::Value(std::move(blocklist)),
+               nullptr);
+  provider_.UpdateChromePolicy(policies);
+  base::RunLoop().RunUntilIdle();
+
+  content::WebContents* web_contents =
+      chrome_test_utils::GetActiveWebContents(this);
+  ASSERT_TRUE(chrome_test_utils::NavigateToURL(web_contents, initial_url));
+
+  OpenDevToolsWindow(web_contents, false);
+  auto tab_agent_host = GetOrCreateDevToolsHostForWebContents(web_contents);
+  EXPECT_TRUE(DevToolsWindow::FindDevToolsWindow(tab_agent_host.get()));
+
+  auto page_agent_host =
+      content::DevToolsAgentHost::GetOrCreateFor(web_contents);
+  TestDevToolsAgentHostClient page_client;
+  EXPECT_TRUE(page_client.Attach(page_agent_host));
+  EXPECT_TRUE(page_agent_host->IsAttached());
+
+  content::TestNavigationObserver nav_observer(web_contents);
+  ASSERT_TRUE(content::ExecJs(
+      web_contents, content::JsReplace("history.pushState({}, '', $1);",
+                                       blocked_url.spec())));
+  nav_observer.Wait();
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return !DevToolsWindow::FindDevToolsWindow(tab_agent_host.get()) &&
+           !page_agent_host->IsAttached();
+  }));
+  EXPECT_TRUE(page_client.closed());
+  EXPECT_FALSE(page_client.Attach(page_agent_host));
+}
+
+class DevToolsPolicySitePerProcessTest : public DevToolsPolicyTest {
+ protected:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    DevToolsPolicyTest::SetUpCommandLine(command_line);
+    // Android doesn't isolate all sites by default; the OOPIF test needs a
+    // separate frame target.
+    content::IsolateAllSitesForTesting(command_line);
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    DevToolsPolicySitePerProcessTest,
+    OopifSameDocumentNavigationToBlocklistedUrlDetachesFrameTarget) {
+  GURL main_url(
+      embedded_test_server()->GetURL("a.com", "/devtools/empty.html"));
+  GURL initial_oopif_url(
+      embedded_test_server()->GetURL("b.com", "/devtools/empty.html"));
+  GURL blocked_oopif_url(
+      embedded_test_server()->GetURL("b.com", "/devtools/blocked_route"));
+
+  base::ListValue blocklist;
+  blocklist.Append(blocked_oopif_url.spec());
+
+  policy::PolicyMap policies;
+  policies.Set(policy::key::kDeveloperToolsAvailabilityBlocklist,
+               policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+               policy::POLICY_SOURCE_CLOUD, base::Value(std::move(blocklist)),
+               nullptr);
+  provider_.UpdateChromePolicy(policies);
+  base::RunLoop().RunUntilIdle();
+
+  content::WebContents* web_contents =
+      chrome_test_utils::GetActiveWebContents(this);
+  ASSERT_TRUE(chrome_test_utils::NavigateToURL(web_contents, main_url));
+
+  content::TestNavigationObserver iframe_load_observer(web_contents);
+  ASSERT_TRUE(content::ExecJs(
+      web_contents,
+      content::JsReplace("const iframe = document.createElement('iframe');"
+                         "iframe.src = $1;"
+                         "document.body.appendChild(iframe);",
+                         initial_oopif_url.spec())));
+  iframe_load_observer.Wait();
+
+  OpenDevToolsWindow(web_contents, false);
+  auto tab_agent_host = GetOrCreateDevToolsHostForWebContents(web_contents);
+  EXPECT_TRUE(DevToolsWindow::FindDevToolsWindow(tab_agent_host.get()));
+
+  scoped_refptr<content::DevToolsAgentHost> oopif_agent_host;
+  for (const auto& host : content::DevToolsAgentHost::GetOrCreateAll()) {
+    if (host->GetType() == content::DevToolsAgentHost::kTypeFrame &&
+        host->GetURL() == initial_oopif_url) {
+      oopif_agent_host = host;
+      break;
+    }
+  }
+  ASSERT_TRUE(oopif_agent_host);
+
+  TestDevToolsAgentHostClient oopif_client;
+  EXPECT_TRUE(oopif_client.Attach(oopif_agent_host));
+  EXPECT_TRUE(oopif_agent_host->IsAttached());
+
+  content::RenderFrameHost* oopif_rfh =
+      content::ChildFrameAt(web_contents->GetPrimaryMainFrame(), 0);
+  ASSERT_TRUE(oopif_rfh);
+  content::TestNavigationObserver oopif_nav_observer(web_contents);
+  ASSERT_TRUE(content::ExecJs(
+      oopif_rfh, content::JsReplace("history.pushState({}, '', $1);",
+                                    blocked_oopif_url.spec())));
+  oopif_nav_observer.Wait();
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !oopif_agent_host->IsAttached(); }));
+  EXPECT_TRUE(oopif_client.closed());
+  EXPECT_FALSE(oopif_client.Attach(oopif_agent_host));
+  EXPECT_TRUE(DevToolsWindow::FindDevToolsWindow(tab_agent_host.get()));
 }
 
 class DevToolsPolicyBFCacheTest : public DevToolsPolicyTest {

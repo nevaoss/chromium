@@ -102,6 +102,9 @@ targets.mixin(
 
 targets.mixin(
     name = "amd_radeon_rx_5500_xt",
+    # Temporary for ATL97 outage (b/570132975).
+    ci_only = True,
+    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "gpu": "1002:7340",
@@ -161,6 +164,9 @@ targets.mixin(
 
 targets.mixin(
     name = "chrome-finch-swarming-pool",
+    # Temporary for ATL97 outage (b/570133826).
+    ci_only = True,
+    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "pool": "chrome.tests.finch",
@@ -462,6 +468,7 @@ targets.mixin(
     name = "emulator-4-cores",
     swarming = targets.swarming(
         dimensions = {
+            "cpu": "x86-64",
             "device_os": None,
             "device_type": None,
             "pool": "chromium.tests.avd",
@@ -474,6 +481,7 @@ targets.mixin(
     name = "emulator-8-cores",
     swarming = targets.swarming(
         dimensions = {
+            "cpu": "x86-64-n4|x86-64",
             "device_os": None,
             "device_type": None,
             "pool": "chromium.tests.avd",
@@ -1042,6 +1050,9 @@ targets.mixin(
 
 targets.mixin(
     name = "intel_uhd_630_or_770",
+    # Temporary for ATL97 outage (b/570132975).
+    ci_only = True,
+    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "gpu": "8086:9bc5|8086:4680",
@@ -1984,6 +1995,9 @@ targets.mixin(
 
 targets.mixin(
     name = "updater-win-uac-pool",
+    # Temporary for ATL97 outage (b/570132975).
+    ci_only = True,
+    experiment_percentage = 100,
     swarming = targets.swarming(
         dimensions = {
             "pool": "chromium.win.uac",

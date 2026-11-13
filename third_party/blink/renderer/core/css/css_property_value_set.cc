@@ -44,7 +44,8 @@ namespace blink {
 
 static AdditionalBytes
 AdditionalBytesForImmutableCSSPropertyValueSetWithPropertyCount(size_t count) {
-  return AdditionalBytes(sizeof(CSSPropertyValue) * count);
+  return AdditionalBytes(
+      base::checked_cast<uint32_t>(sizeof(CSSPropertyValue) * count));
 }
 
 ImmutableCSSPropertyValueSet* ImmutableCSSPropertyValueSet::Create(
@@ -222,7 +223,7 @@ MutableCSSPropertyValueSet::MutableCSSPropertyValueSet(
     bool may_have_logical_properties =
         bits_.get<MayHaveLogicalPropertiesField>();
     for (const CSSPropertyValue& property : other.Properties()) {
-      property_vector_.UncheckedAppend(CSSPropertyValue(property));
+      property_vector_.UncheckedAppend(property);
       may_have_logical_properties |=
           kLogicalGroupProperties.Has(property.PropertyID());
     }

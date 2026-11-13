@@ -201,10 +201,6 @@ public final class ProductionSupportedFlagList {
                         + " contention, but should regularize the timing of client rendering."),
         Flag.baseFeature(NetFeatures.TRY_QUIC_BY_DEFAULT, "Allow sending QUIC connection options."),
         Flag.baseFeature(
-                "PqcCupSigning",
-                "Controls whether Client Update Protocol (CUP) signing uses the Post-Quantum "
-                        + "Cryptography (PQC) ML-DSA44 key instead of ECDSA."),
-        Flag.baseFeature(
                 NetFeatures.USE_NEW_ALPS_CODEPOINT_QUIC,
                 "Enables using the new ALPS codepoint to negotiate application settings for QUIC."),
         Flag.baseFeature(
@@ -364,9 +360,6 @@ public final class ProductionSupportedFlagList {
                 "Enables GetUserMedia API will only resolve when the document calling it has"
                         + " focus"),
         Flag.baseFeature(
-                ContentFeatures.COMPOSITE_BG_COLOR_ANIMATION,
-                "When enabled, the background-color animation runs on the compositor thread."),
-        Flag.baseFeature(
                 BlinkFeatures.COMPOSITE_CLIP_PATH_ANIMATION,
                 "When enabled, clip-path animations run on the compositor thread."),
         Flag.baseFeature(
@@ -434,9 +427,6 @@ public final class ProductionSupportedFlagList {
                 GpuFeatures.INCREASED_CMD_BUFFER_PARSE_SLICE,
                 "Enable the use of an increased parse slice size per command buffer before"
                         + " each forced context switch."),
-        Flag.baseFeature(
-                CcFeatures.USE_DMSAA_FOR_TILES,
-                "Switches skia to use DMSAA instead of MSAA for tile raster"),
         Flag.baseFeature(
                 BlinkFeatures.THREADED_BODY_LOADER,
                 "If enabled, reads and decodes navigation body data off the main thread."),
@@ -737,14 +727,8 @@ public final class ProductionSupportedFlagList {
                 AwSwitches.WEBVIEW_PROFILE_STORE_NOT_TRIGGER_STARTUP,
                 "When enabled, profile store methods do not trigger startup."),
         Flag.baseFeature(
-                ContentFeatures.ACCESSIBILITY_EXTENDED_SELECTION,
-                "Register, un-register Accessibility extended selection."),
-        Flag.baseFeature(
                 ContentFeatures.ACCESSIBILITY_MANAGE_BROADCAST_RECEIVER_ON_BACKGROUND,
                 "Register, un-register Accessibility broadcast receiver on a background thread."),
-        Flag.baseFeature(
-                ContentFeatures.ACCESSIBILITY_SET_SELECTABLE_ON_ALL_NODES_WITH_TEXT,
-                "Register, un-register Accessibility selection on all nodes with text."),
         Flag.baseFeature(
                 "BatteryStatusManagerBroadcastReceiverInBackground",
                 "Register, unregister Battery Status Manager broadcast receiver on a background"
@@ -1053,9 +1037,6 @@ public final class ProductionSupportedFlagList {
                 AccessibilityFeatures.ACCESSIBILITY_MAGNIFICATION_FOLLOWS_FOCUS_NO_KEYBOARD,
                 "Enables Magnification and other views to keep the text cursor onscreen when no"
                         + " physical keyboard is attached."),
-        Flag.baseFeature(
-                AccessibilityFeatures.ACCESSIBILITY_TEXT_CHANGE_TYPES,
-                "Enables text change types for text changed events."),
         Flag.baseFeature(
                 AccessibilityFeatures.ACCESSIBILITY_TEXT_FORMATTING,
                 "Enables text formatting information to be surfaced as Spans on"
@@ -1551,6 +1532,10 @@ public final class ProductionSupportedFlagList {
                         + " the same app process is stuck holding the lock."),
         Flag.baseFeature("useicu4xnormalizer", "Auto-generated flag for useicu4xnormalizer."),
         Flag.baseFeature("AwMetricsLogTrimming", "Auto-generated flag for AwMetricsLogTrimming."),
+        Flag.baseFeature(
+                AccessibilityFeatures.ACCESSIBILITY_ANDROID_MATH,
+                "Enables exposing additional MathML information in"
+                        + " AccessibilityNodeInfoCompat.MathInfoCompat to screen readers."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

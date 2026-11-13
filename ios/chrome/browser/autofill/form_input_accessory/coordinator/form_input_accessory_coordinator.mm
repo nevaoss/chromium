@@ -26,6 +26,7 @@
 #import "components/autofill/core/browser/data_manager/autofill_ai/entity_suppression_manager.h"
 #import "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #import "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
+#import "components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h"
 #import "components/autofill/core/browser/payments/payments_service_url.h"
 #import "components/autofill/core/common/autofill_features.h"
 #import "components/autofill/ios/browser/form_suggestion.h"
@@ -937,7 +938,6 @@ void UndoInSessionSuppressedEntity(
   _atMemoryCoordinator = [[AtMemoryCoordinator alloc]
       initWithBaseViewController:self.baseViewController
                          browser:self.browser
-                 contentInjector:self.injectionHandler
                          fieldId:fieldId];
 
   [self.childCoordinators addObject:_atMemoryCoordinator];
@@ -1076,17 +1076,22 @@ void UndoInSessionSuppressedEntity(
 
   __weak __typeof__(self) weakSelf = self;
 
-  [_alertCoordinator addItemWithTitle:l10n_util::GetNSString(IDS_CANCEL)
-                               action:^{
-                                 [weakSelf dismissAlertCoordinator];
-                               }
-                                style:UIAlertActionStyleCancel];
+  [_alertCoordinator
+      addItemWithTitle:l10n_util::GetNSString(IDS_CANCEL)
+                action:^{
+                  autofill::LogEntitySuppressionConfirmationDialogResult(
+                      /*accepted=*/false);
+                  [weakSelf dismissAlertCoordinator];
+                }
+                 style:UIAlertActionStyleCancel];
 
   NSString* removeActionTitle =
       l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_REMOVE_ACTION);
   [_alertCoordinator
       addItemWithTitle:removeActionTitle
                 action:^{
+                  autofill::LogEntitySuppressionConfirmationDialogResult(
+                      /*accepted=*/true);
                   [weakSelf suppressEntityForSuggestion:suggestion];
                   [weakSelf dismissAlertCoordinator];
                 }
@@ -1112,9 +1117,13 @@ void UndoInSessionSuppressedEntity(
   // Copy the entity because suppressing it evicts it from the
   // `EntityDataManager`, which owns `*entity`.
   const autofill::EntityInstance entityCopy = *entity;
-  suppressionManager->SuppressEntity(entityCopy);
+  const bool suppressed = suppressionManager->SuppressEntity(entityCopy);
   [self resetSuggestions];
-  [self showUndoSnackbarForEntity:entityCopy];
+  // Only offer an undo if this call suppressed the entity, like on the other
+  // platforms.
+  if (suppressed) {
+    [self showUndoSnackbarForEntity:entityCopy];
+  }
 }
 
 // Shows a snackbar allowing the user to undo removing `entity`.
@@ -1132,6 +1141,8 @@ void UndoInSessionSuppressedEntity(
       self.profile ? self.profile->AsWeakPtr() : nullptr;
   autofill::EntityInstance::EntityId entityId = entity.guid();
   action.handler = ^{
+    base::UmaHistogramBoolean(
+        "Autofill.Snackbar.AutofillAiSuppressionUndo.ActionClicked", true);
     UndoInSessionSuppressedEntity(weakProfile, entityId);
     [weakSelf resetSuggestions];
   };
@@ -1142,6 +1153,8 @@ void UndoInSessionSuppressedEntity(
   message.action = action;
 
   [snackbarHandler showSnackbarMessageAfterDismissingKeyboard:message];
+  base::UmaHistogramBoolean("Autofill.Snackbar.AutofillAiSuppressionUndo.Shown",
+                            true);
 }
 
 // Resets suggestions in the form input accessory mediator.

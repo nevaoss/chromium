@@ -34,6 +34,7 @@ constexpr PrefMap kMimeHandlerOptions = {"mime_handler_options",
 // Keys inside the per-MIME-type record of `kMimeHandlerOptions`. Each key
 // holds an option value that the extension chose at runtime.
 constexpr char kMimeHandlerEnabledKey[] = "enabled";
+constexpr char kMimeHandlerCanEmbedKey[] = "canEmbed";
 
 class MimeHandlerRegistryFactory : public BrowserContextKeyedServiceFactory {
  public:
@@ -70,6 +71,8 @@ class MimeHandlerRegistryFactory : public BrowserContextKeyedServiceFactory {
       content::BrowserContext* context) const override {
     return std::make_unique<MimeHandlerRegistry>(context);
   }
+
+  bool ServiceIsCreatedWithBrowserContext() const override { return true; }
 
   content::BrowserContext* GetBrowserContextToUse(
       content::BrowserContext* context) const override {
@@ -169,17 +172,26 @@ bool MimeHandlerRegistry::IsEnabledForMimeType(
   const MimeTypesHandler& handler =
       GetHandlerOfMimeType(extension_id, mime_type);
 
-  const base::DictValue* options =
-      ExtensionPrefs::Get(&*browser_context_)
-          ->ReadPrefAsDictionary(extension_id, kMimeHandlerOptions);
-  if (const base::DictValue* record =
-          options ? options->FindDict(mime_type) : nullptr) {
-    std::optional<bool> stored = record->FindBool(kMimeHandlerEnabledKey);
-    if (stored.has_value()) {
-      return stored.value();
-    }
+  std::optional<bool> stored =
+      ReadStoredOption(extension_id, mime_type, kMimeHandlerEnabledKey);
+  if (stored.has_value()) {
+    return stored.value();
   }
   return handler.EnabledByDefault(mime_type);
+}
+
+bool MimeHandlerRegistry::CanEmbedForMimeType(
+    const ExtensionId& extension_id,
+    const std::string& mime_type) const {
+  const MimeTypesHandler& handler =
+      GetHandlerOfMimeType(extension_id, mime_type);
+
+  std::optional<bool> stored =
+      ReadStoredOption(extension_id, mime_type, kMimeHandlerCanEmbedKey);
+  if (stored.has_value()) {
+    return stored.value();
+  }
+  return handler.CanEmbedMimeType(mime_type);
 }
 
 void MimeHandlerRegistry::SetEnabledForMimeType(const ExtensionId& extension_id,
@@ -191,24 +203,42 @@ void MimeHandlerRegistry::SetEnabledForMimeType(const ExtensionId& extension_id,
   // `MimeTypesHandler`.
   GetHandlerOfMimeType(extension_id, mime_type);
 
-  // TODO(crbug.com/495538206): Define behavior for two cases not yet
-  // covered by the spec:
-  //   1. Persistence across extension updates — prefs are keyed by
-  //      extension id and survive updates, so entries for MIME types
-  //      the new manifest no longer claims become stale.
-  //   2. Split-mode incognito — ExtensionPrefs are not split by
-  //      profile mode, so an incognito-side write here silently
-  //      overwrites the on-record setting. In-memory, profile-keyed
-  //      storage for OTR may be the right answer.
+  StoreOption(extension_id, mime_type, kMimeHandlerEnabledKey, enabled);
+}
+
+void MimeHandlerRegistry::SetCanEmbedForMimeType(
+    const ExtensionId& extension_id,
+    const std::string& mime_type,
+    bool can_embed) {
+  // Called only to validate the input. See SetEnabledForMimeType().
+  GetHandlerOfMimeType(extension_id, mime_type);
+  StoreOption(extension_id, mime_type, kMimeHandlerCanEmbedKey, can_embed);
+}
+
+void MimeHandlerRegistry::OnExtensionWillBeInstalled(
+    content::BrowserContext* browser_context,
+    const Extension* extension,
+    bool is_update,
+    const std::string& old_name) {
   ExtensionPrefs* prefs = ExtensionPrefs::Get(&*browser_context_);
-  base::DictValue options;
-  if (const base::DictValue* existing =
-          prefs->ReadPrefAsDictionary(extension_id, kMimeHandlerOptions)) {
-    options = existing->Clone();
+  const base::DictValue* options =
+      prefs->ReadPrefAsDictionary(extension->id(), kMimeHandlerOptions);
+  if (!options) {
+    return;
   }
-  options.EnsureDict(mime_type)->Set(kMimeHandlerEnabledKey, enabled);
-  prefs->SetDictionaryPref(extension_id, kMimeHandlerOptions,
-                           std::move(options));
+  // The handler is missing when an update removes every MIME type from the
+  // manifest.
+  const MimeTypesHandler* handler = MimeTypesHandler::Get(*extension);
+  const std::vector<std::string> declared_mime_types =
+      handler ? handler->GetSupportedMimeTypes() : std::vector<std::string>();
+  base::DictValue kept_options = options->Clone();
+  for (const auto [mime_type, _] : *options) {
+    if (!std::ranges::contains(declared_mime_types, mime_type)) {
+      kept_options.Remove(mime_type);
+    }
+  }
+  prefs->SetDictionaryPref(extension->id(), kMimeHandlerOptions,
+                           std::move(kept_options));
 }
 
 void MimeHandlerRegistry::OnExtensionLoaded(
@@ -266,6 +296,37 @@ std::vector<ExtensionId> MimeHandlerRegistry::EnabledHandlers(
     return !IsEnabledForMimeType(extension_id, mime_type);
   });
   return enabled_handlers;
+}
+
+std::optional<bool> MimeHandlerRegistry::ReadStoredOption(
+    const ExtensionId& extension_id,
+    const std::string& mime_type,
+    std::string_view key) const {
+  const base::DictValue* options =
+      ExtensionPrefs::Get(&*browser_context_)
+          ->ReadPrefAsDictionary(extension_id, kMimeHandlerOptions);
+  const base::DictValue* record =
+      options ? options->FindDict(mime_type) : nullptr;
+  return record ? record->FindBool(key) : std::nullopt;
+}
+
+void MimeHandlerRegistry::StoreOption(const ExtensionId& extension_id,
+                                      const std::string& mime_type,
+                                      std::string_view key,
+                                      bool value) {
+  // TODO(crbug.com/495538206): Define behavior for split-mode incognito -
+  // ExtensionPrefs are not split by profile mode, so an incognito-side
+  // write here silently overwrites the on-record setting. In-memory,
+  // profile-keyed storage for OTR may be the right answer.
+  ExtensionPrefs* prefs = ExtensionPrefs::Get(&*browser_context_);
+  base::DictValue options;
+  if (const base::DictValue* existing =
+          prefs->ReadPrefAsDictionary(extension_id, kMimeHandlerOptions)) {
+    options = existing->Clone();
+  }
+  options.EnsureDict(mime_type)->Set(key, value);
+  prefs->SetDictionaryPref(extension_id, kMimeHandlerOptions,
+                           std::move(options));
 }
 
 void MimeHandlerRegistry::SortByPrecedence(

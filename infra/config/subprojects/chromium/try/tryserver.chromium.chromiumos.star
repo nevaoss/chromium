@@ -45,6 +45,7 @@ try_.builder(
         "ci/chromeos-amd64-generic-asan-rel",
     ],
     gn_args = "ci/chromeos-amd64-generic-asan-rel",
+    ssd = True,
     contact_team_email = "chrome-sanitizer-builder-owners@google.com",
 )
 
@@ -56,6 +57,7 @@ try_.builder(
     # TODO(crbug.com/40605913): Enable DCHECKS on the two amd64-generic bots
     # when the PFQ has it enabled.
     gn_args = "ci/chromeos-amd64-generic-cfi-thin-lto-rel",
+    ssd = True,
     contact_team_email = "chromeos-chrome-build@google.com",
 )
 
@@ -70,6 +72,7 @@ try_.builder(
             "ci/chromeos-amd64-generic-dbg",
         ],
     ),
+    ssd = True,
     contact_team_email = "chromeos-chrome-build@google.com",
     cq_settings = try_.cq_settings(
         location_filters = [
@@ -93,6 +96,7 @@ try_.builder(
             "dcheck_always_on",
         ],
     ),
+    ssd = True,
     contact_team_email = "chromeos-chrome-build@google.com",
     main_list_view = "try",
 )
@@ -103,6 +107,7 @@ try_.builder(
         "ci/chromeos-arm-generic-dbg",
     ],
     gn_args = "ci/chromeos-arm-generic-dbg",
+    ssd = True,
     contact_team_email = "chromeos-chrome-build@google.com",
 )
 
@@ -116,6 +121,7 @@ try_.builder(
             "dcheck_always_on",
         ],
     ),
+    ssd = True,
     contact_team_email = "chromeos-chrome-build@google.com",
     experiments = {
         # crbug/940930
@@ -135,6 +141,7 @@ try_.builder(
         ],
     ),
     builderless = not settings.is_main,
+    ssd = None if settings.is_main else True,
     contact_team_email = "chromeos-chrome-build@google.com",
     cq_settings = try_.cq_settings(
         on_default_cq = True,
@@ -164,6 +171,7 @@ try_.builder(
             "skip_generate_fuzzer_owners",
         ],
     ),
+    ssd = True,
     contact_team_email = "chrome-fuzzing-core@google.com",
 )
 
@@ -184,6 +192,7 @@ try_.builder(
         ],
     ),
     builderless = not settings.is_main,
+    ssd = None if settings.is_main else True,
     contact_team_email = "chromeos-chrome-build@google.com",
     cq_settings = try_.cq_settings(
         on_default_cq = True,
@@ -223,6 +232,7 @@ try_.orchestrator_builder(
     # use_orchestrator_pool = True,
     cq_settings = try_.cq_settings(
         on_default_cq = True,
+        reuse_max_commit_distance = 800 if settings.is_main else None,
     ),
     experiments = {
         # go/nplus1shardsproposal
@@ -277,6 +287,7 @@ try_.builder(
             "enable_backup_ref_ptr_feature_flag",
         ],
     ),
+    ssd = True,
     contact_team_email = "cbe-compliance@google.com",
 )
 
@@ -291,6 +302,7 @@ try_.builder(
             "release_try_builder",
         ],
     ),
+    ssd = True,
     contact_team_email = "core-devices-eng@google.com",
     cq_settings = try_.cq_settings(
         location_filters = [
@@ -309,6 +321,7 @@ try_.builder(
         "ci/linux-chromeos-treesinviz-disabled-rel",
     ],
     gn_args = "ci/linux-chromeos-treesinviz-disabled-rel",
+    ssd = True,
     contact_team_email = "chrome-gpu-team@google.com",
 )
 
@@ -322,6 +335,7 @@ try_.builder(
         is_compile_only = True,
     ),
     gn_args = "ci/linux-chromeos-archive-rel",
+    ssd = True,
     contact_team_email = "chrome-browser-infra-team@google.com",
     properties = {
         # The format of these properties is defined at archive/properties.proto
@@ -350,5 +364,6 @@ try_.builder(
             "release_try_builder",
         ],
     ),
+    ssd = True,
     contact_team_email = "chrome-webium-product-eng@google.com",
 )

@@ -41,6 +41,8 @@ BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kInfoBarInlineLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kInfoBarQueuedCountPill, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Kill switch for crbug.com/559656985. When enabled, the press-and-hold Esc
 // timer also exits tab fullscreen (unless browser fullscreen is underneath)
 // when it fires while Esc is locked via the Keyboard Lock API. When disabled,
@@ -51,7 +53,29 @@ BASE_FEATURE(kInfoBarInlineLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kKeyboardLockHeldEscExitsTabFullscreen,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_LINUX)
+// Gives browser windows of non-default profiles their own identity for the
+// desktop environment: the X11 WM_CLASS res_name and the Wayland app_id are set
+// to a per-profile desktop entry ID (e.g. "google-chrome-Profile_1"), so the
+// shell can match the windows to a per-profile .desktop file and icon. The
+// per-profile ID is only used when a desktop entry with that ID is installed,
+// so windows never end up without a matching .desktop file.
+BASE_FEATURE(kLinuxPerProfileAppId, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
+
 BASE_FEATURE(kTabStripDeclutter, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(bool,
+                   kTabStripDeclutterActiveTabCloseHideEnabled,
+                   &kTabStripDeclutter,
+                   true);
+BASE_FEATURE_PARAM(bool,
+                   kTabStripDeclutterInactiveTabCloseHideEnabled,
+                   &kTabStripDeclutter,
+                   true);
+BASE_FEATURE_PARAM(int,
+                   kTabStripDeclutterMaxTabWidthForCloseHide,
+                   &kTabStripDeclutter,
+                   100);
 BASE_FEATURE(kToolbarGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kToolbarGlowUpReloadEnabled,
@@ -144,10 +168,6 @@ BASE_FEATURE(kDseIntegrity, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the dialog shown when user feedback is disabled.
 BASE_FEATURE(kFeedbackDisabledDialog, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the feature to remove the last confirmation dialog when relaunching
-// to update Chrome.
-BASE_FEATURE(kFewerUpdateConfirmations, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLegacySearchIntegrityCheck, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif

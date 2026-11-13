@@ -707,6 +707,66 @@ TEST_F(ReadAnythingAppModelTest, DisplayNodeIdsContains_ContentNodes) {
   EXPECT_TRUE(model().display_node_ids().contains(6));
 }
 
+TEST_F(ReadAnythingAppModelTest, DisplayNodeIdsContains_ListItems) {
+  static constexpr ui::AXNodeID kRootId = 1;
+  static constexpr ui::AXNodeID kListId = 2;
+  static constexpr ui::AXNodeID kListItemId = 3;
+  static constexpr ui::AXNodeID kListMarkerId = 4;
+  static constexpr ui::AXNodeID kItemTextId = 5;
+  static constexpr ui::AXNodeID kCollapsedListItemId = 6;
+  static constexpr ui::AXNodeID kCollapsedItemTextId = 7;
+
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+
+  ui::AXNodeData root = test::GenericContainerNode(kRootId);
+  root.child_ids = {kListId};
+
+  ui::AXNodeData ul_node;
+  ul_node.id = kListId;
+  ul_node.role = ax::mojom::Role::kList;
+  ul_node.AddStringAttribute(ax::mojom::StringAttribute::kHtmlTag, "ul");
+  ul_node.child_ids = {kListItemId, kCollapsedListItemId};
+
+  ui::AXNodeData li_node;
+  li_node.id = kListItemId;
+  li_node.role = ax::mojom::Role::kListItem;
+  li_node.AddStringAttribute(ax::mojom::StringAttribute::kHtmlTag, "li");
+  li_node.child_ids = {kListMarkerId, kItemTextId};
+
+  ui::AXNodeData marker_node;
+  marker_node.id = kListMarkerId;
+  marker_node.role = ax::mojom::Role::kListMarker;
+  marker_node.AddStringAttribute(ax::mojom::StringAttribute::kHtmlTag,
+                                 "::marker");
+  ui::AXNodeData item_text = test::TextNode(kItemTextId, u"Item 1");
+
+  ui::AXNodeData collapsed_li_node;
+  collapsed_li_node.id = kCollapsedListItemId;
+  collapsed_li_node.role = ax::mojom::Role::kListItem;
+  collapsed_li_node.AddStringAttribute(ax::mojom::StringAttribute::kHtmlTag,
+                                       "li");
+  collapsed_li_node.AddState(ax::mojom::State::kCollapsed);
+  collapsed_li_node.child_ids = {kCollapsedItemTextId};
+  ui::AXNodeData collapsed_item_text =
+      test::TextNode(kCollapsedItemTextId, u"Collapsed item");
+
+  update.root_id = kRootId;
+  update.nodes = {std::move(root),
+                  std::move(ul_node),
+                  std::move(li_node),
+                  std::move(marker_node),
+                  std::move(item_text),
+                  std::move(collapsed_li_node),
+                  std::move(collapsed_item_text)};
+
+  ApplyAccessibilityUpdates(tree_id_, {std::move(update)});
+  ProcessDisplayNodes({kListItemId, kCollapsedListItemId});
+  EXPECT_THAT(model().display_node_ids(),
+              UnorderedElementsAre(kRootId, kListId, kListItemId, kListMarkerId,
+                                   kItemTextId));
+}
+
 TEST_F(ReadAnythingAppModelTest,
        DisplayNodeIdsDoesNotContain_InvisibleOrIgnoredNodes) {
   ui::AXTreeUpdate update;
@@ -4292,3 +4352,59 @@ TEST_F(ReadAnythingAppModelScreen2xTest,
   EXPECT_TRUE(model().requires_distillation());
 }
 #endif
+
+TEST_F(ReadAnythingAppModelTest, IsEmpty_ReadabilityMainContent) {
+  model().set_side_panel_distillation_mode_for_testing(
+      ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+  model().set_next_distillation_method(
+      ReadAnythingAppModel::DistillationMethod::kReadability);
+
+  model().set_readability_content_drawn(false);
+  EXPECT_TRUE(model().is_empty());
+
+  model().set_readability_content_drawn(true);
+  EXPECT_FALSE(model().is_empty());
+}
+
+TEST_F(ReadAnythingAppModelTest, IsEmpty_SelectionMode) {
+  model().set_side_panel_distillation_mode_for_testing(
+      ReadAnythingAppModel::SidePanelDistillationMode::kSelection);
+
+  model().set_selection_node_ids_for_testing({});
+  EXPECT_TRUE(model().is_empty());
+
+  model().set_selection_node_ids_for_testing({1});
+  EXPECT_FALSE(model().is_empty());
+
+  model().set_next_distillation_method(
+      ReadAnythingAppModel::DistillationMethod::kReadability);
+  model().set_readability_content_drawn(false);
+  model().set_selection_node_ids_for_testing({1});
+  EXPECT_FALSE(model().is_empty());
+
+  model().set_selection_node_ids_for_testing({});
+  EXPECT_TRUE(model().is_empty());
+}
+
+TEST_F(ReadAnythingAppModelTest, IsEmpty_Screen2x) {
+  model().set_side_panel_distillation_mode_for_testing(
+      ReadAnythingAppModel::SidePanelDistillationMode::kMainContent);
+  model().set_next_distillation_method(
+      ReadAnythingAppModel::DistillationMethod::kScreen2x);
+
+  model().set_display_node_ids_for_testing({});
+  model().set_selection_node_ids_for_testing({});
+  EXPECT_TRUE(model().is_empty());
+
+  model().set_display_node_ids_for_testing({1});
+  model().set_selection_node_ids_for_testing({});
+  EXPECT_FALSE(model().is_empty());
+
+  model().set_display_node_ids_for_testing({});
+  model().set_selection_node_ids_for_testing({2});
+  EXPECT_FALSE(model().is_empty());
+
+  model().set_display_node_ids_for_testing({1});
+  model().set_selection_node_ids_for_testing({2});
+  EXPECT_FALSE(model().is_empty());
+}

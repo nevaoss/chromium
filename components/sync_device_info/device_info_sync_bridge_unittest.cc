@@ -154,9 +154,6 @@ MATCHER_P(ModelEqualsSpecifics, expected_specifics, "") {
              arg.signin_scoped_device_id() &&
          expected_specifics.model() == arg.model_name() &&
          expected_specifics.manufacturer() == arg.manufacturer_name() &&
-         expected_specifics.feature_fields()
-                 .send_tab_to_self_receiving_enabled() ==
-             arg.send_tab_to_self_receiving_enabled() &&
          ToDeviceInfoSendTabReceivingType(
              expected_specifics.feature_fields()
                  .send_tab_to_self_receiving_type()) ==
@@ -479,8 +476,6 @@ class TestLocalDeviceInfoProvider : public MutableLocalDeviceInfoProvider {
         kLocalDeviceFormFactor, SigninScopedDeviceIdForSuffix(kLocalSuffix),
         manufacturer_name, model_name, server_determined_model_name,
         full_hardware_class, base::Time(), DeviceInfoUtil::GetPulseInterval(),
-        /*send_tab_to_self_receiving_enabled=*/
-        true,
         /*send_tab_to_self_receiving_type=*/
         DeviceInfo::SendTabReceivingType::kChromeOrUnspecified,
         DeviceInfo::SharingInfo(
@@ -1892,6 +1887,9 @@ TEST_F(DeviceInfoSyncBridgeTest, SendLocalDataTransportOnly) {
   EXPECT_EQ(2, change_count());
 }
 
+// Tests that on Android, the local device's build fingerprint prefix is derived
+// and persisted to `DeviceInfoSpecifics`, whereas on other platforms it remains
+// unset.
 TEST_F(DeviceInfoSyncBridgeTest, ShouldDeriveAndroidBuildFingerprintPrefix) {
   InitializeAndMergeInitialData(SyncMode::kFull);
 
@@ -1904,9 +1902,14 @@ TEST_F(DeviceInfoSyncBridgeTest, ShouldDeriveAndroidBuildFingerprintPrefix) {
       DeriveAndroidBuildFingerprintPrefixForTesting(real_fingerprint);
   EXPECT_EQ(local_device_info->android_os_build_fingerprint_prefix(),
             expected_prefix);
+  EXPECT_EQ(ReadAllFromStore()[local_device_info->guid()]
+                .android_os_build_fingerprint_prefix(),
+            expected_prefix);
 #else
   EXPECT_EQ(local_device_info->android_os_build_fingerprint_prefix(),
             std::nullopt);
+  EXPECT_FALSE(ReadAllFromStore()[local_device_info->guid()]
+                   .has_android_os_build_fingerprint_prefix());
 #endif
 }
 

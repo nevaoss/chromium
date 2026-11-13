@@ -141,9 +141,12 @@ export const CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID =
 export const CONTEXTUAL_ENTRYPOINT_ELEMENT_ID =
     'NewTabPageUI::kRealboxContextualEntrypointElementId';
 
+// The minimum width for the realbox to show its secondary side.
 // 900px ~= 561px (max value for --ntp-search-box-width) * 1.5 + some margin.
+const REALBOX_SECONDARY_SIDE_MIN_WIDTH_PX = 900;
+// Only used if the threads rail is disabled. See observeRhsWrapperWidth_().
 const realboxCanShowSecondarySideMediaQueryList =
-    window.matchMedia('(min-width: 900px)');
+    window.matchMedia(`(min-width: ${REALBOX_SECONDARY_SIDE_MIN_WIDTH_PX}px)`);
 
 function recordClick(element: NtpElement) {
   recordEnumeration('NewTabPage.Click', element, NtpElement.MAX_VALUE + 1);
@@ -178,6 +181,8 @@ export interface AppElement {
     oneGoogleBarClipPath: HTMLElement,
     logo: LogoElement,
     searchbox: NtpSearchboxElement,
+    rhsWrapper: HTMLElement,
+    rhsContent: HTMLElement,
   };
 }
 
@@ -207,16 +212,6 @@ export class AppElement extends AppElementBase {
       realboxCanShowSecondarySide: {
         type: Boolean,
         reflect: true,
-      },
-
-      /**
-       * Whether the searchbox secondary side was at any point available to
-       * be shown.
-       */
-      realboxHadSecondarySide: {
-        type: Boolean,
-        reflect: true,
-        notify: true,
       },
 
       composeButtonEnabled: {type: Boolean},
@@ -360,6 +355,8 @@ export class AppElement extends AppElementBase {
        */
       enableThreadsRail_: {type: Boolean},
 
+      rhsWrapper_: {type: Object},
+
       // =======================================================================
       // Private properties
       // =======================================================================
@@ -379,7 +376,6 @@ export class AppElement extends AppElementBase {
 
   accessor hasVoiceSearchError = false;
   accessor realboxCanShowSecondarySide: boolean = false;
-  accessor realboxHadSecondarySide: boolean = false;
   accessor composeButtonEnabled: boolean =
       loadTimeData.getBoolean('searchboxShowComposeEntrypoint');
   accessor composeboxEnabled: boolean =
@@ -463,8 +459,7 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('multiLineEnabled');
   protected accessor modulesLoaded_: boolean = false;
   protected accessor lazyRender_: boolean = false;
-  protected accessor scrolledToTop_: boolean =
-      document.documentElement.scrollTop <= 0;
+  protected accessor scrolledToTop_: boolean = true;
   protected accessor wallpaperSearchButtonAnimationEnabled_: boolean =
       loadTimeData.getBoolean('wallpaperSearchButtonAnimationEnabled');
   protected accessor wallpaperSearchButtonEnabled_: boolean =
@@ -507,6 +502,7 @@ export class AppElement extends AppElementBase {
   protected contextMenuAnimationLimitingEnabled_: boolean =
       loadTimeData.getBoolean('contextMenuAnimationLimitingEnabled');
   protected accessor searchboxCallbackRouter_: SearchboxPageCallbackRouter;
+  protected accessor rhsWrapper_: HTMLElement|null = null;
 
   private voiceSearchActivatedByKeyboard_: boolean = false;
   private accessor selectedCustomizeDialogPage_: string|null = null;
@@ -530,6 +526,7 @@ export class AppElement extends AppElementBase {
   private backgroundImageLoadStart_: number = 0;
   private showWebstoreToastListenerId_: number|null = null;
   private pendingUndoToasts_: Array<{message: string, undo: () => void}> = [];
+  private rhsWrapperResizeObserver_: ResizeObserver|null = null;
 
   constructor() {
     performance.mark('app-creation-start');
@@ -558,8 +555,10 @@ export class AppElement extends AppElementBase {
     this.selectedCustomizeDialogPage_ =
         WindowProxy.getInstance().url.searchParams.get(CUSTOMIZE_URL_PARAM);
 
-    this.realboxCanShowSecondarySide =
-        realboxCanShowSecondarySideMediaQueryList.matches;
+    if (!this.enableThreadsRail_) {
+      this.realboxCanShowSecondarySide =
+          realboxCanShowSecondarySideMediaQueryList.matches;
+    }
 
     /**
      * Initialized with the start of the performance timeline in case the
@@ -587,8 +586,12 @@ export class AppElement extends AppElementBase {
 
   override connectedCallback() {
     super.connectedCallback();
-    realboxCanShowSecondarySideMediaQueryList.addEventListener(
-        'change', this.onRealboxCanShowSecondarySideChanged_);
+    if (!this.enableThreadsRail_) {
+      realboxCanShowSecondarySideMediaQueryList.addEventListener(
+          'change', this.onRealboxCanShowSecondarySideChanged_);
+    } else if (this.hasUpdated) {
+      this.observeRhsWrapperWidth_();
+    }
 
     // Listen for chrome-untrusted://ntp-microsoft-auth iframe trying to
     // connect to the NTP.
@@ -667,9 +670,6 @@ export class AppElement extends AppElementBase {
     this.eventTracker_.add(window, 'keydown', this.onWindowKeydown_.bind(this));
     this.eventTracker_.add(
         window, 'click', this.onWindowClick_.bind(this), /*capture=*/ true);
-    this.eventTracker_.add(document, 'scroll', () => {
-      this.scrolledToTop_ = document.documentElement.scrollTop <= 0;
-    });
     this.eventTracker_.add(
         WindowProxy.getInstance().matchMedia('(prefers-color-scheme: dark)'),
         'change', (e: MediaQueryListEvent) => {
@@ -709,6 +709,7 @@ export class AppElement extends AppElementBase {
     super.disconnectedCallback();
     realboxCanShowSecondarySideMediaQueryList.removeEventListener(
         'change', this.onRealboxCanShowSecondarySideChanged_);
+    this.rhsWrapperResizeObserver_?.disconnect();
 
     this.callbackRouter_.removeListener(
         this.connectMicrosoftAuthToParentDocumentListenerId_!);
@@ -822,6 +823,12 @@ export class AppElement extends AppElementBase {
           CONTEXTUAL_ENTRYPOINT_ELEMENT_ID,
           ['#searchbox', '#context', '#entrypointButton', '#entrypoint'],
           {fixed: true});
+    }
+
+    this.rhsWrapper_ = this.$.rhsWrapper;
+
+    if (this.enableThreadsRail_) {
+      this.observeRhsWrapperWidth_();
     }
   }
 
@@ -950,6 +957,20 @@ export class AppElement extends AppElementBase {
   private onRealboxCanShowSecondarySideChanged_ = (e: MediaQueryListEvent) => {
     this.realboxCanShowSecondarySide = e.matches;
   };
+
+  private observeRhsWrapperWidth_() {
+    if (!this.rhsWrapperResizeObserver_) {
+      this.rhsWrapperResizeObserver_ = new ResizeObserver(entries => {
+        this.realboxCanShowSecondarySide = entries[0]!.contentRect.width >=
+            REALBOX_SECONDARY_SIDE_MIN_WIDTH_PX;
+      });
+    }
+    this.rhsWrapperResizeObserver_.observe(this.$.rhsWrapper);
+  }
+
+  protected onRhsContentScroll_() {
+    this.scrolledToTop_ = this.$.rhsContent.scrollTop <= 0;
+  }
 
   private onLazyRendered_() {
     // Integration tests use this attribute to determine when lazy load has
@@ -1690,11 +1711,6 @@ export class AppElement extends AppElementBase {
 
   protected showThemeAttribution_(): boolean {
     return !!this.theme_?.backgroundImage?.attributionUrl;
-  }
-
-  protected onRealboxHadSecondarySideChanged_(
-      e: CustomEvent<{value: boolean}>) {
-    this.realboxHadSecondarySide = e.detail.value;
   }
 
   protected onSearchboxContainerFocusin_(e: FocusEvent) {

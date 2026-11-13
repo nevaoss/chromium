@@ -13,6 +13,12 @@ chromium::import! {
         as self_contained_target;
     "//build/rust/tests/test_rust_api_from_cpp:target_depending_on_another_rs_api"
         as target_depending_on_another;
+    "//build/rust/tests/test_rust_api_from_cpp:test_extra_rust_sources_mod_rs_api"
+        as test_extra_rust_sources_mod;
+    "//build/rust/tests/test_rust_api_from_cpp:test_std_types_rs_api"
+        as test_std_types;
+    "//build/rust/tests/test_rust_api_from_cpp:test_time_delta_rs_api"
+        as test_time_delta;
 }
 
 use rust_gtest_interop::prelude::*;
@@ -65,4 +71,45 @@ fn test_explicit_lifetimes() {
     let other = 456;
     let larger = x.GetLargerValue(&other);
     assert!(std::ptr::eq(::cref::CRef::as_ptr(larger), &other));
+}
+
+#[gtest(TestRustApiFromCpp, ExtraRustSources)]
+fn test_extra_rust_sources() {
+    use ::test_time_delta::test_base::TestTimeDelta;
+    use std::time::Duration;
+
+    // `TryFrom` impl comes from `extra_rust_sources`.
+    let delta = TestTimeDelta::FromMicroseconds(1_234_567);
+    assert_eq!(Duration::try_from(delta), Ok(Duration::from_micros(1_234_567)));
+
+    let negative_delta = TestTimeDelta::FromMicroseconds(-1);
+    assert!(Duration::try_from(negative_delta).is_err());
+}
+
+#[gtest(TestRustApiFromCpp, ExtraRustSourcesMod)]
+fn test_extra_rust_sources_mod() {
+    use ::test_extra_rust_sources_mod::test_outer::test_inner;
+
+    // `double_meters` comes from `extra_rust_sources` placed (via
+    // `extra_rust_sources_mod`) into the `test_outer::test_inner` module.
+    let m = test_inner::double_meters(test_inner::TestMeters { value: 21 });
+    assert_eq!(m.value, 42);
+}
+
+#[gtest(TestRustApiFromCpp, StdOptionalParamsAndReturns)]
+fn test_std_optional_params_and_returns() {
+    // `std::optional<int>` parameters and return values use a layout-compatible
+    // type from `cc_std` (with explicit conversions from/to `Option<i32>`).
+    let result = ::test_std_types::AddOneIfPresent(Some(41).into());
+    assert_eq!(Option::from(result), Some(42));
+    let result = ::test_std_types::AddOneIfPresent(None.into());
+    assert_eq!(Option::<i32>::from(result), None);
+}
+
+#[gtest(TestRustApiFromCpp, StdOptionalField)]
+fn test_std_optional_field() {
+    // `std::optional<int>` fields use a layout-compatible type from `cc_std`.
+    let s = ::test_std_types::CreateStructWithOptionalField(123);
+    let value: ::cc_std::std::trivial_optional<i32> = s.value;
+    assert_eq!(Option::from(value), Some(123));
 }

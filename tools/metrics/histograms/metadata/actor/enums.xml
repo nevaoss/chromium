@@ -172,9 +172,15 @@ chromium-metrics-reviews@google.com.
   <int value="1801" label="FileUploadEmptyFileList"/>
   <int value="1900" label="SearchServiceUnavailable"/>
   <int value="1901" label="DefaultSearchProviderNotSet"/>
+  <int value="1902" label="SiteBasedSearchNotAvailable"/>
+  <int value="1903" label="SearchUrlGenerationFailed"/>
   <int value="2000" label="PageSearchNoMatch"/>
   <int value="2001" label="PageSearchAmbiguousMatch"/>
   <int value="2002" label="PageSearchAlreadyOnMatchingTab"/>
+  <int value="2100" label="ScreenshotCaptureFailed"/>
+  <int value="2101" label="ScreenshotCaptureThrottled"/>
+  <int value="2102" label="ScreenshotCapturePageChanged"/>
+  <int value="2103" label="ScreenshotCapturePageNotEligible"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/actor/public/mojom/actor_types.mojom:ActionResultCode) -->
@@ -187,6 +193,17 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/actor/android/java/src/org/chromium/chrome/browser/actor/ActorMetrics.java:ActorBackgroundActuationTrigger) -->
+
+<!-- LINT.IfChange(ActorBackgroundTabCreationStatus) -->
+
+<enum name="ActorBackgroundTabCreationStatus">
+  <int value="0" label="TaskInitByChromeSuccess"/>
+  <int value="1" label="TaskInitByChromeFailure"/>
+  <int value="2" label="TaskInitByFcmSuccess"/>
+  <int value="3" label="TaskInitByFcmFailure"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/actor/android/java/src/org/chromium/chrome/browser/actor/ActorMetrics.java:ActorBackgroundTabCreationStatus) -->
 
 <!-- LINT.IfChange(ActorEngineState) -->
 

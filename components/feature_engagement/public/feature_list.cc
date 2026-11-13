@@ -20,8 +20,14 @@ const base::Feature* const kAllFeatures[] = {
 #if BUILDFLAG(IS_ANDROID)
     // ALL_FEATURES_ANDROID_START
     // keep-sorted start case=no
+    &kIPH_AndroidTipsOptInPromo,
+    &kIPH_AppLanguagePromo,
+    &kIPH_ArchivedTabsAutoDeletePromo,
     &kIPH_BlueBubbleCooldownGroup,
+    &kIPH_FullscreenSigninPromo,
     &kIPH_InterruptiveIphCooldownGroup,
+    &kIPH_NotificationPermissionPromo,
+    &kIPH_SearchEngineChoicePromo,
     &kIPHAccountSettingsHistorySync,
     &kIPHAdaptiveButtonInTopToolbarCustomizationAddToBookmarksFeature,
     &kIPHAdaptiveButtonInTopToolbarCustomizationNewTabFeature,
@@ -75,6 +81,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHFeedHeaderMenuFeature,
     &kIPHFeedSwipeRefresh,
     &kIPHFuseboxAttachmentFeature,
+    &kIPHFuseboxPlusButtonHintFeature,
     &kIPHGenericAlwaysTriggerHelpUiFeature,
     &kIPHGestureUserEducation,
     &kIPHGlicPromoAndroidFeature,
@@ -287,6 +294,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHLensOverlayFeature,
     &kIPHMemorySaverModeFeature,
     &kIPHMultistepFilterPromoFeature,
+    &kIPHOmniboxAskGLensIconFeature,
     &kIPHOmniboxEverywhereLensPromoFeature,
     &kIPHPasswordManagerShortcutFeature,
     &kIPHPasswordSharingFeature,
@@ -317,7 +325,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHReadingModeLineFocusFeature,
     &kIPHReadingModePageActionLabelFeature,
     &kIPHReadingModePresentationModeFeature,
-    &kIPHReadingModeSidePanelFeature,
     &kIPHSendTabToSelfTutorialFeature,
     &kIPHShoppingCollectionFeature,
     &kIPHSideBySidePinnableFeature,
@@ -338,7 +345,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHTabGroupsSharedTabChangedFeature,
     &kIPHTabGroupsSharedTabFeedbackFeature,
     &kIPHTabScrollButtonFeature,
-    &kIPHTabSearchComboButtonFeature,
     &kIPHVerticalTabsExpandOnHoverFeature,
     &kIPHVerticalTabstripTutorialFeature,
     &kIPHWebUiHelpBubbleTestFeature,
@@ -374,7 +380,6 @@ const base::Feature* const kAllFeatures[] = {
     // keep-sorted start case=no
     &kIPHGoogleOneOfferNotificationFeature,
     &kIPHGrowthFramework,
-    &kIPHLauncherSearchHelpUiFeature,
 // keep-sorted end
 
 #endif  // BUILDFLAG(IS_CHROMEOS)

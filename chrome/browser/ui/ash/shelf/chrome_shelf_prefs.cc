@@ -28,8 +28,6 @@
 #include "base/values.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/apps/app_preload_service/app_preload_service.h"
-#include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/package_id_util.h"
 #include "chrome/browser/apps/app_service/policy_util.h"
 #include "chrome/browser/ash/app_list/app_list_syncable_service.h"
@@ -194,7 +192,7 @@ syncer::StringOrdinal GetAppPosition(
 constexpr char kDefaultPinnedAppsKey[] = "default";
 constexpr char kPreloadPinnedAppsKey[] = "preload";
 
-bool should_add_default_apps_for_test = false;
+std::optional<bool> should_add_default_apps_for_test;
 
 struct PinInfo {
   PinInfo(const std::string& app_id, const syncer::StringOrdinal& item_ordinal)
@@ -676,7 +674,8 @@ void ChromeShelfPrefs::SetPinPosition(
   syncable_service->SetPinPosition(app_id, pin_position);
 }
 
-void ChromeShelfPrefs::SetShouldAddDefaultAppsForTest(bool value) {
+void ChromeShelfPrefs::SetShouldAddDefaultAppsForTest(
+    std::optional<bool> value) {
   should_add_default_apps_for_test = value;
 }
 
@@ -735,8 +734,8 @@ bool ChromeShelfPrefs::DidAddDefaultApps() const {
 }
 
 bool ChromeShelfPrefs::ShouldAddDefaultApps() const {
-  if (should_add_default_apps_for_test) {
-    return true;
+  if (should_add_default_apps_for_test.has_value()) {
+    return *should_add_default_apps_for_test;
   }
   // Apply default apps in case profile syncing is done. Otherwise there is a
   // risk that applied default apps would be overwritten by sync once it is

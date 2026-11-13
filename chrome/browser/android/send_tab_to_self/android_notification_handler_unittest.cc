@@ -120,7 +120,6 @@ class AndroidNotificationHandlerTest : public ChromeRenderViewHostTestHarness {
   MockAndroidNotificationHandler* handler() { return handler_.get(); }
 
  protected:
-  base::test::ScopedFeatureList scoped_feature_list_{kSendTabToSelfAutoOpen};
   std::unique_ptr<TestTabModel> tab_model_;
   tabs::MockTabInterface mock_tab_interface_;
   std::unique_ptr<MockAndroidNotificationHandler> handler_;
@@ -604,21 +603,9 @@ TEST_F(AndroidNotificationHandlerWithTabGridAutoOpenSupportTest,
   TabModelList::RemoveTabModel(tab_model_.get());
 }
 
-class AndroidNotificationHandlerWithFormFieldsPropagationTest
-    : public AndroidNotificationHandlerTest {
- public:
-  AndroidNotificationHandlerWithFormFieldsPropagationTest() {
-    feature_list_.InitAndEnableFeature(kSendTabToSelfPropagateFormFields);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-// Verifies that ShowNotification receives the entry containing form field data
-// when Chrome is not in the foreground.
-TEST_F(AndroidNotificationHandlerWithFormFieldsPropagationTest,
-       ShowNotificationWithPageContext) {
+// Verifies that `ShowNotification` receives the entry containing form field
+// data when Chrome is not in the foreground.
+TEST_F(AndroidNotificationHandlerTest, ShowNotificationWithPageContext) {
   PageContext page_context;
   PageContext::FormField field;
   field.name_attribute = u"username";
@@ -629,11 +616,11 @@ TEST_F(AndroidNotificationHandlerWithFormFieldsPropagationTest,
       GURL(kExampleUrl), "Title", kDeviceId, page_context, NavigationHistory());
   const std::string guid = entry->GetGUID();
 
-  EXPECT_CALL(*handler(),
-              ShowNotification(AllOf(
-                  Property(&SendTabToSelfEntry::GetGUID, Eq(guid)),
-                  Property(&SendTabToSelfEntry::GetPageContext,
-                           Eq(page_context)))));
+  EXPECT_CALL(
+      *handler(),
+      ShowNotification(AllOf(
+          Property(&SendTabToSelfEntry::GetGUID, Eq(guid)),
+          Property(&SendTabToSelfEntry::GetPageContext, Eq(page_context)))));
 
   // Chrome is in background (no tab model added), so entries are displayed as
   // notifications.
@@ -641,11 +628,10 @@ TEST_F(AndroidNotificationHandlerWithFormFieldsPropagationTest,
   EXPECT_FALSE(model()->GetEntryByGUID(guid)->IsOpened());
 }
 
-// Verifies that AndroidNotificationHandler::ShowNotification correctly
-// serializes the entry's PageContext and invokes
-// Java_NotificationManager_showNotification via JNI without errors when form
-// field propagation is enabled.
-TEST_F(AndroidNotificationHandlerWithFormFieldsPropagationTest,
+// Verifies that `AndroidNotificationHandler::ShowNotification` correctly
+// serializes the entry's `PageContext` and invokes
+// `Java_NotificationManager_showNotification` via JNI without errors.
+TEST_F(AndroidNotificationHandlerTest,
        ShowNotificationInvokesJavaNotificationManager) {
   PageContext page_context;
   PageContext::FormField field;

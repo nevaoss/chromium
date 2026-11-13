@@ -58,13 +58,6 @@ BASE_DECLARE_FEATURE(kAutoApproveSharedPasswordUpdatesFromSameSender);
 // experience and the perceived trust they have in the features.
 BASE_DECLARE_FEATURE(kAutofillPersonalizationAndTrustPasswordSurvey);
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
-// Waits for the page to reach stability before triggering any password change
-// actions.
-BASE_DECLARE_FEATURE(kAwaitPageStabilityForPasswordChange);
-extern const base::FeatureParam<base::TimeDelta> kAwaitPageStabilityTimeout;
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
 // Enables Biometrics for the Touch To Fill feature. This only effects Android.
 BASE_DECLARE_FEATURE(kBiometricTouchToFill);
 
@@ -88,10 +81,9 @@ BASE_DECLARE_FEATURE(kClearUndecryptablePasswordsOnSync);
 BASE_DECLARE_FEATURE(kCredentialManagementUnifiedUi);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
-
-// When enabled, automated password change won't be offered when the form
-// contains new password field.
-BASE_DECLARE_FEATURE(kDisablePasswordChangeFromNewPasswordFields);
+// Killswitch to revert the device reauth refactor that splits availability
+// checking from authentication into `DeviceAuthAvailabilityChecker`.
+BASE_DECLARE_FEATURE(kDeviceReauthRefactor);
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
 // Enables Phase 2 of the Mojo JavaScript API migration for the password
@@ -134,7 +126,6 @@ extern const base::FeatureParam<int>
 BASE_DECLARE_FEATURE(kIOSProactivePasswordGenerationBottomSheet);
 #endif  // BUILDFLAG(IS_IOS)
 
-
 // Marks all submitted credentials as leaked, useful for testing of a password
 // leak dialog.
 BASE_DECLARE_FEATURE(kMarkAllCredentialsAsLeaked);
@@ -172,9 +163,6 @@ BASE_DECLARE_FEATURE(kPasswordDateLastFilled);
 // Enables running the clientside form classifier to parse password forms.
 BASE_DECLARE_FEATURE(kPasswordFormClientsideClassifier);
 
-// Enables offering credentials for filling across grouped domains.
-BASE_DECLARE_FEATURE(kPasswordFormGroupedAffiliations);
-
 // Kill switch for dropping fullscreen and checking pointer lock before
 // showing or accepting password generation popups.
 BASE_DECLARE_FEATURE(kPasswordGenerationDropFullscreenAndCheckPointerLock);
@@ -196,8 +184,13 @@ BASE_DECLARE_FEATURE(kPasswordManualFallbackSecurityChecks);
 // password save flow.
 BASE_DECLARE_FEATURE(kPasswordSaveInContextErrorResolution);
 
-// Prevents offering Automatic Password Change on federated login.
-BASE_DECLARE_FEATURE(kPreventAPCOnFederatedLogin);
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+// Enables resolution of Trusted Vault encryption errors directly within the
+// sign-in autofill dropdown.
+BASE_DECLARE_FEATURE(kPasswordSignInInContextErrorResolution);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
+        // BUILDFLAG(IS_CHROMEOS)
 
 // Kill switch for preventing non-HTTP suggestions from being offered in
 // manual fallback flows on HTTP pages.
@@ -216,16 +209,18 @@ BASE_DECLARE_FEATURE(kRecordPasswordReadiness);
 BASE_DECLARE_FEATURE(kRestartToGainAccessToKeychain);
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-// Retries capturing annotated page context during automated password change if
-// capturing failed for some reason.
-BASE_DECLARE_FEATURE(kRetryCapturePageContent);
-extern const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay;
-extern const base::FeatureParam<int> kCapturePageContentRetryCount;
-
-
 // Shows a tab with password change instead of bubble/settings page after
 // successful password change.
 BASE_DECLARE_FEATURE(kShowTabWithPasswordChangeOnSuccess);
+
+#if BUILDFLAG(IS_ANDROID)
+// When enabled, Chrome doesn't trigger its own biometric re-auth before filling
+// credentials selected in Android Credential Manager, since CredMan already
+// authenticates the user. Disable to restore Chrome's re-auth.
+// Kill switch. TODO(crbug.com/352720504): Clean up once the CredMan re-auth is
+// stable.
+BASE_DECLARE_FEATURE(kSkipChromeReauthForCredMan);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 // Displays at least the decryptable and never saved logins in the password
 // manager
@@ -238,11 +233,6 @@ BASE_DECLARE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected);
 // single checkup dialog and removes the check for whether the credential was
 // saved on the current site.
 BASE_DECLARE_FEATURE(kUnifiedPasswordLeakDialog);
-
-// The feature enables the use of detached Widget during password change
-// to which WebContents is attached. This helps to resolve the problem
-// that requestAnimationFrame() is not fired on a detached WebContents.
-BASE_DECLARE_FEATURE(kUseDetachedWidget);
 
 // Controls rollout of storing `PasswordString` password values encrypted in
 // memory via `crypto::ProcessBoundU16String`. When disabled, `PasswordString`

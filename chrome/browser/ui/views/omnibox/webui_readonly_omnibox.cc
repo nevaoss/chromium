@@ -522,6 +522,7 @@ WebUIReadOnlyOmnibox::ComputeMojoState() {
   state->a11y_friendly_suggestion_text = friendly_accessible_label_;
   state->user_input_in_progress =
       controller()->edit_model()->user_input_in_progress();
+  state->has_temporary_text = controller()->edit_model()->has_temporary_text();
 
   // Figure out all the breakpoints so we can go through text span-by-span.
   std::vector<size_t> breakpoints;
@@ -640,7 +641,7 @@ bool WebUIReadOnlyOmnibox::IsWebViewFocused() {
   return web_view && web_view->HasFocus();
 }
 
-bool WebUIReadOnlyOmnibox::IsToolbarViewOrDescendant(
+bool WebUIReadOnlyOmnibox::IsWebUIToolbarViewOrDescendant(
     const views::View* view) const {
   if (!view || !toolbar_delegate_) {
     return false;
@@ -720,7 +721,7 @@ WebUIReadOnlyOmnibox::OnFocusChange(
       views::FocusManager* focus_manager =
           widget ? widget->GetFocusManager() : nullptr;
       if (focus_manager &&
-          !IsToolbarViewOrDescendant(focus_manager->GetFocusedView())) {
+          !IsWebUIToolbarViewOrDescendant(focus_manager->GetFocusedView())) {
         return base::ok(std::monostate());
       }
     }

@@ -24,6 +24,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
+#include "base/scoped_observation.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -71,6 +72,7 @@
 #include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/supervised_user/supervised_user_test_util.h"
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
+#include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -1264,6 +1266,12 @@ class ContextMenuForLockedFullscreenBrowserTest
       auto* controller = chromeos::LockedStateController::From(browser());
       ASSERT_TRUE(controller);
       controller->Lock(chromeos::LockedState::kOnTaskLockedPaused);
+    } else {
+      // Legacy has no explicit paused state; paused is OnTask locked with tab
+      // switching disabled.
+      LockForOnTask();
+      chrome::BrowserCommandController::From(browser())
+          ->SetTabSwitchCommandsEnabled(false);
     }
   }
 
@@ -1429,9 +1437,6 @@ IN_PROC_BROWSER_TEST_P(ContextMenuForLockedFullscreenBrowserTest,
 
 IN_PROC_BROWSER_TEST_P(ContextMenuForLockedFullscreenBrowserTest,
                        CriticalItemsAreEnabledWhenLockedForOnTaskPaused) {
-  if (!is_unified_locked_state_controller_enabled_) {
-    return;
-  }
   const GURL kTestUrl("http://www.google.com/");
   const std::unique_ptr<TestRenderViewContextMenu> menu =
       CreateContextMenuMediaTypeImage(/*url=*/kTestUrl);
@@ -4267,10 +4272,8 @@ IN_PROC_BROWSER_TEST_F(ContextMenuBrowserTest,
 class SendTabToSelfContextMenuBrowserTest : public ContextMenuBrowserTest {
  public:
   SendTabToSelfContextMenuBrowserTest() {
-    feature_list_.InitWithFeatures(
-        {send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
-         send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2},
-        {});
+    feature_list_.InitAndEnableFeature(
+        send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2);
   }
 
   void SetUpInProcessBrowserTestFixture() override {
@@ -4301,8 +4304,8 @@ class SendTabToSelfContextMenuBrowserTest : public ContextMenuBrowserTest {
 };
 
 // Tests that the Send Tab to Self context menu item is appended for standard
-// HTTP/HTTPS pages and links in a full browser test environment when enhanced
-// desktop UI v2 is enabled.
+// HTTP/HTTPS pages and links in a full browser test environment when
+// `kSendTabToSelfEnhancedDesktopUIv2` is enabled.
 IN_PROC_BROWSER_TEST_F(SendTabToSelfContextMenuBrowserTest,
                        SendTabToSelfPageAndLinkPresence) {
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -4323,11 +4326,8 @@ class SendTabToSelfContextMenuLinkDisabledBrowserTest
     : public ContextMenuBrowserTest {
  public:
   SendTabToSelfContextMenuLinkDisabledBrowserTest() {
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/{send_tab_to_self::
-                                  kSendTabToSelfEnhancedDesktopUI},
-        /*disabled_features=*/{
-            send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2});
+    feature_list_.InitAndDisableFeature(
+        send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2);
   }
 
   void SetUpInProcessBrowserTestFixture() override {
@@ -4358,8 +4358,7 @@ class SendTabToSelfContextMenuLinkDisabledBrowserTest
 };
 
 // Tests that the Send Tab to Self context menu item is NOT shown when right
-// clicking on hyperlinks if enhanced desktop UI v2 is disabled (even if v1 is
-// enabled for standard page right clicks).
+// clicking on hyperlinks if `kSendTabToSelfEnhancedDesktopUIv2` is disabled.
 IN_PROC_BROWSER_TEST_F(SendTabToSelfContextMenuLinkDisabledBrowserTest,
                        LinkMenuDisabledWhenV2Disabled) {
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -4379,10 +4378,8 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfContextMenuLinkDisabledBrowserTest,
 class SendTabToSelfNoTargetDeviceBrowserTest : public ContextMenuBrowserTest {
  public:
   SendTabToSelfNoTargetDeviceBrowserTest() {
-    feature_list_.InitWithFeatures(
-        {send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
-         send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2},
-        {});
+    feature_list_.InitAndEnableFeature(
+        send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2);
   }
 
   void SetUpInProcessBrowserTestFixture() override {
@@ -4681,6 +4678,30 @@ INSTANTIATE_TEST_SUITE_P(All,
                          ContextMenuBrowserTestMenuSimplification,
                          testing::Bool());
 
+// Waits for a memory bank entry to be added to a ContextHubService.
+class MemoryBankEntryAddedWaiter
+    : public context_hub::ContextHubService::Observer {
+ public:
+  explicit MemoryBankEntryAddedWaiter(context_hub::ContextHubService* service) {
+    observation_.Observe(service);
+  }
+
+  // Blocks until an entry is added and returns it.
+  context_hub::MemoryBankEntry Wait() { return future_.Take(); }
+
+  // context_hub::ContextHubService::Observer:
+  void OnMemoryBankEntryAdded(
+      const context_hub::MemoryBankEntry& entry) override {
+    future_.SetValue(entry);
+  }
+
+ private:
+  base::test::TestFuture<context_hub::MemoryBankEntry> future_;
+  base::ScopedObservation<context_hub::ContextHubService,
+                          context_hub::ContextHubService::Observer>
+      observation_{this};
+};
+
 class MemoryBanksContextMenuBrowserTest
     : public ContextMenuBrowserTestMenuSimplification {
  protected:
@@ -4744,7 +4765,10 @@ IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
 
 IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
                        SaveToMemoryBanksPage) {
-  GURL url("data:text/html,Hello%20World");
+  GURL url(
+      "data:text/html,<html><head><title>Memory Bank Test Title</title></head>"
+      "<body><p>Hello World this page has enough words for extraction</p>"
+      "</body></html>");
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
 
   std::unique_ptr<TestRenderViewContextMenu> menu =
@@ -4755,30 +4779,199 @@ IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
 
   menu->ExecuteCommand(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 0);
 
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return service->GetPendingMemoryBankEntry().has_value(); }));
-
   std::optional<context_hub::MemoryBankEntry> pending =
       service->GetPendingMemoryBankEntry();
   ASSERT_TRUE(pending.has_value());
   EXPECT_EQ(context_hub::MemoryBankType::kTab, pending->type);
   EXPECT_EQ(url, pending->url);
-  EXPECT_EQ("Hello World", pending->selected_text.value_or(""));
+  EXPECT_EQ("Memory Bank Test Title", pending->tab_title);
+  EXPECT_FALSE(pending->selected_text.has_value());
+
+  MemoryBankEntryAddedWaiter waiter(service);
   EXPECT_TRUE(
       service->SavePendingMemoryBankEntry(/*tags=*/{"page_tag", "research"}));
 
-  base::RunLoop get_entries_run_loop;
-  service->GetAllEntries(base::BindLambdaForTesting(
-      [&](std::vector<context_hub::MemoryBankEntry> entries) {
-        ASSERT_EQ(1u, entries.size());
-        EXPECT_EQ(context_hub::MemoryBankType::kTab, entries[0].type);
-        EXPECT_EQ(url, entries[0].url);
-        EXPECT_EQ("Hello World", entries[0].selected_text.value_or(""));
-        EXPECT_THAT(entries[0].tags,
-                    testing::ElementsAre("page_tag", "research"));
-        get_entries_run_loop.Quit();
-      }));
-  get_entries_run_loop.Run();
+  // The entry is saved asynchronously after page content is extracted.
+  context_hub::MemoryBankEntry saved = waiter.Wait();
+  EXPECT_EQ(context_hub::MemoryBankType::kTab, saved.type);
+  EXPECT_EQ(url, saved.url);
+  EXPECT_EQ("Memory Bank Test Title", saved.tab_title);
+  ASSERT_TRUE(saved.selected_text.has_value());
+  EXPECT_THAT(*saved.selected_text,
+              testing::HasSubstr(
+                  "Hello World this page has enough words for extraction"));
+  EXPECT_THAT(saved.tags, testing::ElementsAre("page_tag", "research"));
+
+  base::test::TestFuture<std::vector<context_hub::MemoryBankEntry>>
+      entries_future;
+  service->GetAllEntries(entries_future.GetCallback());
+  EXPECT_EQ(1u, entries_future.Get().size());
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* controller = SaveToMemoryBankBubbleController::FromWebContents(
+          browser()->tab_strip_model()->GetActiveWebContents())) {
+    controller->CloseBubble();
+  }
+#endif
+}
+
+IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
+                       SaveToMemoryBanksImage) {
+  GURL page_url("data:text/html,Hello%20World");
+  GURL image_url("http://foo.com/image.png");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuMediaTypeImage(image_url);
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS));
+
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(browser()->GetProfile());
+  ASSERT_TRUE(service);
+
+  menu->ExecuteCommand(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 0);
+
+  std::string expected_title = base::UTF16ToUTF8(
+      browser()->tab_strip_model()->GetActiveWebContents()->GetTitle());
+  std::optional<context_hub::MemoryBankEntry> pending =
+      service->GetPendingMemoryBankEntry();
+  ASSERT_TRUE(pending.has_value());
+  EXPECT_EQ(context_hub::MemoryBankType::kImage, pending->type);
+  EXPECT_EQ(page_url, pending->url);
+  EXPECT_EQ(expected_title, pending->tab_title);
+  EXPECT_FALSE(pending->selected_text.has_value());
+  EXPECT_EQ(image_url, pending->image_url);
+  EXPECT_TRUE(service->SavePendingMemoryBankEntry(/*tags=*/{"image_tag"}));
+
+  base::test::TestFuture<std::vector<context_hub::MemoryBankEntry>>
+      entries_future;
+  service->GetAllEntries(entries_future.GetCallback());
+  std::vector<context_hub::MemoryBankEntry> entries = entries_future.Take();
+  ASSERT_EQ(1u, entries.size());
+  EXPECT_EQ(context_hub::MemoryBankType::kImage, entries[0].type);
+  EXPECT_EQ(page_url, entries[0].url);
+  EXPECT_EQ(expected_title, entries[0].tab_title);
+  EXPECT_FALSE(entries[0].selected_text.has_value());
+  EXPECT_EQ(image_url, entries[0].image_url);
+  EXPECT_THAT(entries[0].tags, testing::ElementsAre("image_tag"));
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* controller = SaveToMemoryBankBubbleController::FromWebContents(
+          browser()->tab_strip_model()->GetActiveWebContents())) {
+    controller->CloseBubble();
+  }
+#endif
+}
+
+IN_PROC_BROWSER_TEST_P(
+    MemoryBanksContextMenuBrowserTest,
+    SaveToMemoryBanksUnloadedImageWithoutSelectionHidesMenuItem) {
+  GURL page_url("data:text/html,Hello%20World");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  content::ContextMenuParams params;
+  params.media_type = blink::mojom::ContextMenuDataMediaType::kImage;
+  params.src_url = GURL("http://foo.com/broken.png");
+  params.has_image_contents = false;
+  params.page_url = page_url;
+
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuFromParams(params);
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    MemoryBanksContextMenuBrowserTest,
+    SaveToMemoryBanksNonHttpImageWithoutSelectionHidesMenuItem) {
+  GURL page_url("data:text/html,Hello%20World");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  content::ContextMenuParams params;
+  params.media_type = blink::mojom::ContextMenuDataMediaType::kImage;
+  params.src_url = GURL("data:image/png;base64,iVBORw0KGgo=");
+  params.has_image_contents = true;
+  params.page_url = page_url;
+
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuFromParams(params);
+  EXPECT_FALSE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS));
+}
+
+IN_PROC_BROWSER_TEST_P(
+    MemoryBanksContextMenuBrowserTest,
+    SaveToMemoryBanksUnloadedImageWithSelectionSavesSelectedText) {
+  GURL page_url("data:text/html,Hello%20World");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  content::ContextMenuParams params;
+  params.media_type = blink::mojom::ContextMenuDataMediaType::kImage;
+  params.src_url = GURL("http://foo.com/broken.png");
+  params.has_image_contents = false;
+  params.selection_text = u"Selected text on broken image";
+  params.page_url = page_url;
+
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuFromParams(params);
+  EXPECT_TRUE(menu->IsItemPresent(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS));
+
+  auto* service =
+      ContextHubServiceFactory::GetForProfile(browser()->GetProfile());
+  ASSERT_TRUE(service);
+
+  menu->ExecuteCommand(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 0);
+
+  std::optional<context_hub::MemoryBankEntry> pending =
+      service->GetPendingMemoryBankEntry();
+  ASSERT_TRUE(pending.has_value());
+  EXPECT_EQ(context_hub::MemoryBankType::kTextSelection, pending->type);
+  EXPECT_EQ("Selected text on broken image", pending->selected_text);
+  EXPECT_FALSE(pending->image_url.has_value());
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (auto* controller = SaveToMemoryBankBubbleController::FromWebContents(
+          browser()->tab_strip_model()->GetActiveWebContents())) {
+    controller->CloseBubble();
+  }
+#endif
+}
+
+IN_PROC_BROWSER_TEST_P(MemoryBanksContextMenuBrowserTest,
+                       SaveToMemoryBanksImageWithSelectionDoesNotDuplicate) {
+  GURL page_url("data:text/html,Hello%20World");
+  GURL image_url("http://foo.com/image.png");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
+
+  content::ContextMenuParams params;
+  params.media_type = blink::mojom::ContextMenuDataMediaType::kImage;
+  params.src_url = image_url;
+  params.has_image_contents = true;
+  params.selection_text = u"Selected text with image";
+  params.page_url = page_url;
+
+  std::unique_ptr<TestRenderViewContextMenu> menu =
+      CreateContextMenuFromParams(params);
+
+  int count = 0;
+  const ui::SimpleMenuModel& model = menu->menu_model();
+  for (size_t i = 0; i < model.GetItemCount(); ++i) {
+    if (model.GetCommandIdAt(i) == IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS) {
+      count++;
+    }
+  }
+  EXPECT_EQ(1, count);
+
+  context_hub::ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(browser()->GetProfile());
+  ASSERT_TRUE(service);
+
+  menu->ExecuteCommand(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 0);
+
+  std::optional<context_hub::MemoryBankEntry> pending =
+      service->GetPendingMemoryBankEntry();
+  ASSERT_TRUE(pending.has_value());
+  EXPECT_EQ(context_hub::MemoryBankType::kImage, pending->type);
+  EXPECT_FALSE(pending->selected_text.has_value());
+  EXPECT_EQ(image_url, pending->image_url);
 
 #if !BUILDFLAG(IS_ANDROID)
   if (auto* controller = SaveToMemoryBankBubbleController::FromWebContents(

@@ -7,14 +7,14 @@ import 'chrome://new-tab-page/new_tab_page.js';
 import type {NtpSearchboxElement, SearchboxIconElement, SearchboxMatchElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {BrowserProxyImpl, InputSource, MetricsReporterImpl, SearchboxBrowserProxy, SearchboxOverride} from 'chrome://new-tab-page/new_tab_page.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
-import {createAutocompleteResultForTesting, createSearchMatchForTesting, createSuggestTemplateInfo} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageMetricsCallbackRouter} from 'chrome://resources/js/metrics_reporter.mojom-webui.js';
 import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {DriveDisclaimerStatus, RenderType, SideType} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {SecondaryTextPlacement} from 'chrome://resources/mojo/components/omnibox/browser/suggest_template_info.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {assertIconMaskImageUrl, assertStyle, createClipboardEvent, createUrlMatch, MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
+import {assertIconMaskImageUrl, assertStyle, createClipboardEvent, createSuggestTemplateInfo, createUrlMatch, MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
 import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searchbox/test_searchbox_browser_proxy.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -670,6 +670,15 @@ suite('SearchboxTest', () => {
         // Mock image finishing loading, which should remove the temporary
         // background color.
         const image = matchEls[1]!.$.icon.$.image;
+        // The real image request may still be pending; it fails in browser
+        // tests, which have no external network access. Let it settle first so
+        // that its result can't override the mocked load below.
+        if (!image.hidden && !image.naturalWidth) {
+          await Promise.race([
+            eventToPromise('load', image),
+            eventToPromise('error', image),
+          ]);
+        }
         const loadPromise = eventToPromise('load', image);
         image.dispatchEvent(new Event('load'));
         await loadPromise;
@@ -1354,11 +1363,13 @@ suite('SearchboxTest', () => {
 
         assertFalse(realbox.shareTabsFlyoutOpen);
 
+        // `openTabPicker()` opens the context menu, and an OS-generated window
+        // blur or resize would close it and reset `shareTabsFlyoutOpen`, so
+        // assert right away instead of yielding to the event loop first.
         await realbox.handleFuseboxAction(createFuseboxAction({
           preselectedInputSource: InputSource.kInputSourceTabPicker,
           searchboxOverride: SearchboxOverride.kRealbox,
         }));
-        await microtasksFinished();
 
         assertTrue(realbox.shareTabsFlyoutOpen);
       });

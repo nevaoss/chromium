@@ -14,6 +14,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/branding_buildflags.h"
+#include "build/build_config.h"
 #include "build/buildflag.h"
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
@@ -267,6 +268,9 @@ void WebUILocationBar::OnThemeChanged() {
   // Location icon cares about color scheme.
   UpdateLhsChipsState();
   UpdatePageActions(/*contents=*/nullptr);
+  // `UpdatePageActions()` is a no-op when the active tab and URL are unchanged,
+  // so explicitly re-resolve page action colors.
+  page_action_control_.OnThemeChanged();
 }
 
 void WebUILocationBar::HandleContextMenu(
@@ -948,7 +952,6 @@ void WebUILocationBar::SetSuppressionThresholdForTesting(
       threshold);
   content_setting_image_control_.SetSuppressionThresholdForTesting(  // IN-TEST
       threshold);
-  page_action_control_.SetSuppressionThresholdForTesting(threshold);  // IN-TEST
   if (permission_dashboard_controller_) {
     permission_dashboard_controller_
         ->SetSuppressionThresholdForTesting(  // IN-TEST
@@ -1193,6 +1196,12 @@ void WebUILocationBar::OnPopupStateChanged(OmniboxPopupState old_state,
 }
 
 void WebUILocationBar::NotifyPopupControlsChanged() {
+#if BUILDFLAG(IS_WIN)
+  // Firing `ax::mojom::Event::kControlsChanged` is specifically needed on
+  // Windows UIA (to populate `ControllerFor`) for screen readers (like
+  // Narrator) to discover suggestions popup changes. On macOS, firing
+  // `kControlsChanged` causes crashes because delegates without an NSWindow
+  // hit NOTREACHED().
   if (!toolbar_delegate_) {
     return;
   }
@@ -1241,6 +1250,7 @@ void WebUILocationBar::NotifyPopupControlsChanged() {
           ax::mojom::Event::kControlsChanged);
     }
   }
+#endif
 }
 
 void WebUILocationBar::ClearInPopupStateTransition() {

@@ -376,7 +376,10 @@ TEST_F(AISummarizerTest, CreateSummarizerModelNotEligible) {
 
 #if BUILDFLAG(IS_ANDROID)
 // Android doesn't support text safety yet. crbug.com/442914748
-TEST_F(AISummarizerTest, CreateSummarizerWithTextSafetyCheck) {
+// TODO(crbug.com/571742381): Re-enable once this test can wait for its
+// safety-required config to take effect before creating a session. Currently,
+// creation can succeed using the built-in config before the adaptation loads.
+TEST_F(AISummarizerTest, DISABLED_CreateSummarizerWithTextSafetyCheck) {
   SetSolutionConfig([&]() {
     auto solution_config = CreateSolution();
     solution_config.mutable_feature()->set_can_skip_text_safety(false);

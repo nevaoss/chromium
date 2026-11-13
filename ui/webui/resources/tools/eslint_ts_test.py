@@ -431,6 +431,23 @@ class EslintTsTest(unittest.TestCase):
         'className': 'TestError12Element',
         'propertyName': 'undefinableBtn',
       },
+      # Case 1.13
+      _EXPECTED_MISSING_SUPER_CALLS_ERROR
+      % {
+        'className': 'TestError13Mixin',
+        'lifecycleMethods': 'disconnectedCallback, connectedCallback',
+      },
+      _EXPECTED_INCONSISTENT_METHOD_DEFINITION_ORDER_ERROR
+      % {
+        'className': 'TestError13Mixin',
+        'expectedOrder': '[connectedCallback, disconnectedCallback]',
+        'actualOrder': '[disconnectedCallback, connectedCallback]',
+      },
+      # Case 1.14
+      _EXPECTED_INCORRECT_CLASS_NAME_SUFFIX_ERROR
+      % {
+        'className': 'TestError14ElementFoo',
+      },
     ]
     for e in errors:
       self.assertTrue(
@@ -439,6 +456,12 @@ class EslintTsTest(unittest.TestCase):
 
     # The following strings *should not* appear in the error output.
     non_errors = [
+      # Case 1.13 (non-applicable checks on mixins)
+      _EXPECTED_MISSING_STATIC_GET_IS_ERROR % {'className': 'TestError13Mixin'},
+      _EXPECTED_MISSING_CUSTOM_ELEMENTS_DEFINE_ERROR
+      % {'className': 'TestError13Mixin'},
+      _EXPECTED_INCORRECT_CLASS_NAME_SUFFIX_ERROR
+      % {'className': 'TestError13Mixin'},
       # Case 2.1
       _EXPECTED_MISSING_STATIC_GET_IS_ERROR
       % {'className': 'TestNoError1Element'},
@@ -599,6 +622,22 @@ class EslintTsTest(unittest.TestCase):
 
     _IF_STATEMENT_ERROR = "If statement found in getHtml() method. Use ternary statements for conditional rendering, and delegate more complex logic to the class definition file"
 
+    _SWITCH_STATEMENT_ERROR = (
+      "Switch statement found in getHtml() method. Use ternary statements "
+      "for conditional rendering, and delegate more complex logic to the "
+      "class definition file"
+    )
+
+    _ARROW_RETURN_ERROR = (
+      "Arrow function in template returning Lit HTML must return a single "
+      "tagged template literal directly, i.e. '(item) => html`<template>`'"
+    )
+
+    _UNNECESSARY_NESTED_HTML_ERROR = (
+      "Unnecessary nested html`...` tagged template literal found inside "
+      "template expression. Inline the HTML directly into the parent template"
+    )
+
     _FUNCTION_DEFINITION_ERROR = "Extra function definition '%(functionName)s' found in the HTML template file. Complex logic should be delegated to the class definition file. Standalone/separate chunks of templates may need a dedicated custom element"
 
     _VARIABLE_DECLARATION_ERROR = "Local (const/let) variable '%(variableName)s' found in the HTML template file. Logic should be delegated to the class definition file"
@@ -609,6 +648,9 @@ class EslintTsTest(unittest.TestCase):
     errors = [
       _FOR_STATEMENT_ERROR,
       _IF_STATEMENT_ERROR,
+      _SWITCH_STATEMENT_ERROR,
+      _ARROW_RETURN_ERROR,
+      _UNNECESSARY_NESTED_HTML_ERROR,
       _FUNCTION_DEFINITION_ERROR % {'functionName': 'computeProgress'},
       _FUNCTION_DEFINITION_ERROR % {'functionName': 'getButtonHtml'},
       _FUNCTION_DEFINITION_ERROR % {'functionName': 'getSpinnerDiv'},
@@ -627,6 +669,7 @@ class EslintTsTest(unittest.TestCase):
       self.assertTrue(
         e in str(context.exception), f'Didn\'t find expected error: {e}'
       )
+    self.assertEqual(3, str(context.exception).count(_ARROW_RETURN_ERROR))
 
     # The following strings *should not* appear in the error output.
     non_errors = [
@@ -680,9 +723,10 @@ class EslintTsTest(unittest.TestCase):
     )
 
     _INVALID_TERNARY_CONSEQUENT_ERROR = "Ternary operator in template must return a tagged template literal (html`...`) in its true branch. Invert the condition if necessary"
-    self.assertTrue(
-      _INVALID_TERNARY_CONSEQUENT_ERROR in str(context.exception),
-      f"Didn't find expected error: {_INVALID_TERNARY_CONSEQUENT_ERROR}",
+    self.assertEqual(
+      2,
+      str(context.exception).count(_INVALID_TERNARY_CONSEQUENT_ERROR),
+      f"Didn't find 2 occurrences of: {_INVALID_TERNARY_CONSEQUENT_ERROR}",
     )
 
     _INVALID_TERNARY_ALTERNATE_ERROR = "Ternary operator in template must return a tagged template literal (html`...`). Nested ternaries should be within the literal, i.e. '${cond1 ? html`<template>` : html`${cond2 ? html`<template>` : ''}`}'"
@@ -710,6 +754,7 @@ class EslintTsTest(unittest.TestCase):
     non_errors = [
       "mixinString is referenced in the HTML template for SomeFooElement",
       "propInProperties is referenced in the HTML template for SomeFooElement",
+      "Missing Lit reactive property declaration for property 'readonlyProp' in class 'SomeFooElement'",
     ]
     for e in errors:
       self.assertTrue(

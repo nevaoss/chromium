@@ -61,7 +61,6 @@ import org.chromium.build.annotations.RequiresNonNull;
 import org.chromium.chrome.browser.banners.AppMenuVerbiage;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
-import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtils;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
@@ -72,7 +71,6 @@ import org.chromium.chrome.browser.lens.LensIntentParams;
 import org.chromium.chrome.browser.lens.LensMetrics;
 import org.chromium.chrome.browser.lens.LensQueryParams;
 import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
-import org.chromium.chrome.browser.lifecycle.WindowFocusChangedObserver;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider.AppInstallState;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider.Observer;
 import org.chromium.chrome.browser.omnibox.LocationBarSelectionController.SelectableView;
@@ -173,7 +171,6 @@ public class LocationBarMediator
                 BackPressHandler,
                 PauseResumeWithNativeObserver,
                 AppBannerManager.Observer,
-                WindowFocusChangedObserver,
                 OmniboxSuggestionsDropdownScrollListener {
 
     private static final int ICON_FADE_ANIMATION_DURATION_MS = 150;
@@ -486,7 +483,9 @@ public class LocationBarMediator
         mFuseboxCoordinator.setOnFirstPickerInteractionCanceledCallback(this::endInput);
         mFuseboxCoordinator.setOnPickerInteractionSucceededCallback(
                 () -> onFuseboxInteractionCompleted(/* actionTaken= */ true));
-        mLocationBarLayout.getActivationChip().setOnClickListener(v -> onActivationChipClicked());
+        mLocationBarLayout
+                .getActivationChip()
+                .setOnClickListener(v -> onActivationChipClicked(/* viaKeyboard= */ false));
         mOmniboxChipManager = omniboxChipManager;
         mHintTextUpdater =
                 new HintTextUpdater(
@@ -601,7 +600,8 @@ public class LocationBarMediator
         mActivationChipSelectableView =
                 wrapSelectableView(
                         mLocationBarLayout.getActivationChip(),
-                        mActivationChipSelectedSupplier::set);
+                        mActivationChipSelectedSupplier::set,
+                        () -> onActivationChipClicked(/* viaKeyboard= */ true));
 
         mFuseboxAttachmentsSelectableView =
                 new SelectableView() {
@@ -643,7 +643,7 @@ public class LocationBarMediator
     }
 
     private SelectableView wrapSelectableView(
-            View view, @Nullable Callback<Boolean> onSelectionChanged) {
+            View view, @Nullable Callback<Boolean> onSelectionChanged, Runnable onActivated) {
         return new SelectableView() {
             @Override
             public boolean isVisible() {
@@ -660,13 +660,13 @@ public class LocationBarMediator
 
             @Override
             public void handleActivationEvent(KeyEvent event) {
-                view.performClick();
+                onActivated.run();
             }
         };
     }
 
     private SelectableView wrapSelectableView(View view) {
-        return wrapSelectableView(view, null);
+        return wrapSelectableView(view, /* onSelectionChanged= */ null, view::performClick);
     }
 
     @SuppressWarnings("NullAway")
@@ -1543,19 +1543,6 @@ public class LocationBarMediator
 
         String userText = currentInput.getUserText();
         if (TextUtils.equals(userText, currentInput.getInitialUserText())) {
-            if (ContextualTasksUtils.isContextualTasksUrl(
-                    mLocationBarDataProvider.getCurrentGurl())) {
-                WebContents webContents = mLocationBarDataProvider.getWebContents();
-                if (webContents != null) {
-                    GURL contextualTaskDisplayUrl =
-                            ContextualTasksUtils.getContextualTasksDisplayUrl(webContents);
-                    if (!GURL.isEmptyOrInvalid(contextualTaskDisplayUrl)) {
-                        return UrlBarData.forUrlAndText(
-                                mLocationBarDataProvider.getCurrentGurl(),
-                                contextualTaskDisplayUrl.getSpec());
-                    }
-                }
-            }
             if (!TextUtils.isEmpty(userText)) {
                 return UrlBarData.forUrlAndText(currentInput.getPageUrl(), userText);
             }
@@ -1738,8 +1725,7 @@ public class LocationBarMediator
         @PageClassification int pageClass = mLocationBarDataProvider.getPageClassification(false);
         return pageClass == PageClassification.ANDROID_SHORTCUTS_WIDGET
                 || pageClass == PageClassification.ANDROID_SEARCH_WIDGET
-                || PageClassificationUtils.isHubOrTabSearch(pageClass)
-                || pageClass == PageClassification.JUMP_START;
+                || PageClassificationUtils.isHubOrTabSearch(pageClass);
     }
 
     /**
@@ -2078,7 +2064,11 @@ public class LocationBarMediator
         boolean isInAimRequest =
                 mCurrentInput != null && ToolModeUtils.isAimRequest(mCurrentInput.getRequestType());
 
-        if (!isSuggestionsPopover || isInAimRequest || mAiModeButtonUiConfig == null) {
+        if (!isSuggestionsPopover
+                || isInAimRequest
+                || mAiModeButtonUiConfig == null
+                || TextUtils.isEmpty(mAiModeButtonUiConfig.contextMenuLabel)) {
+            mUrlCoordinator.setShowAiModeLabel(null);
             mUrlCoordinator.setShowAiModeCallback(null);
             return;
         }
@@ -2086,6 +2076,7 @@ public class LocationBarMediator
         boolean currentPrefValue =
                 UserPrefs.get(profile).getBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON);
         mUrlCoordinator.setShowAiMode(currentPrefValue);
+        mUrlCoordinator.setShowAiModeLabel(mAiModeButtonUiConfig.contextMenuLabel);
         mUrlCoordinator.setShowAiModeCallback(
                 (newValue) -> {
                     UserPrefs.get(profile).setBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON, newValue);
@@ -2151,7 +2142,7 @@ public class LocationBarMediator
         // and need not be assigned in updateButtonTints().
         mLocationBarLayout.setDeleteButtonTint(
                 ThemeUtils.getThemedToolbarIconTint(mContext, mBrandedColorScheme));
-        mLocationBarLayout.updateVisualsForState(mBrandedColorScheme);
+        mLocationBarLayout.updateVisualsForState();
         mUrlCoordinator.setBrandedColorScheme(mBrandedColorScheme);
         // This sets spans inside the data object that override the color.
         updateUrl();
@@ -2448,14 +2439,19 @@ public class LocationBarMediator
      */
     @VisibleForTesting
     boolean shouldShowInstallButton() {
-        if (mUrlHasFocus
-                || mIsUrlFocusChangeInProgress
-                || mLocationBarDataProvider.getAppInstallState() != AppInstallState.NOT_INSTALLED) {
+        // The install button is only shown on tablet layouts, so phones skip the checks below,
+        // which can be expensive (see getAppInstallState()).
+        if (!mIsTablet) return false;
+        if (mUrlHasFocus || mIsUrlFocusChangeInProgress) return false;
+
+        WebContents webContents = getWebContentsForCurrentTab();
+        if (webContents == null || !AppBannerManager.isProbablyPromotable(webContents)) {
             return false;
         }
 
-        WebContents webContents = getWebContentsForCurrentTab();
-        return webContents != null && AppBannerManager.isProbablyPromotable(webContents);
+        // Check the install state last: getAppInstallState() may make synchronous PackageManager
+        // IPCs, so only query it for pages that could otherwise show the install button.
+        return mLocationBarDataProvider.getAppInstallState() == AppInstallState.NOT_INSTALLED;
     }
 
     /**
@@ -2875,8 +2871,7 @@ public class LocationBarMediator
         return true;
     }
 
-    @Override
-    public void onWindowFocusChanged(boolean windowHasFocus) {
+    private void onWindowFocusChanged(boolean windowHasFocus) {
         updateShowFocusRing();
         updateActivationChip();
         if (windowHasFocus) maybeShowOrClearCursorInLocationBar();
@@ -3404,23 +3399,6 @@ public class LocationBarMediator
     }
 
     @Override
-    public @Nullable String getReplacementCutCopyText(String currentText, TextSelection selection) {
-        GURL currentGurl = mLocationBarDataProvider.getCurrentGurl();
-        if (!ContextualTasksUtils.isContextualTasksUrl(currentGurl)) return null;
-
-        WebContents webContents = mLocationBarDataProvider.getWebContents();
-        if (webContents == null) return null;
-
-        GURL functionalGurl = ContextualTasksUtils.getContextualTasksFunctionalURL(webContents);
-        if (GURL.isEmptyOrInvalid(functionalGurl)) {
-            return null;
-        }
-
-        return ContextualTasksUtils.getReplacementUrl(
-                currentText, selection.from, selection.to, functionalGurl);
-    }
-
-    @Override
     public boolean isKeyboardSuppressed() {
         // Suppress the keyboard while the fusebox popup is showing as a bottom sheet.
         return mFuseboxCoordinator.getPopupStateSupplier().get() == PopupState.BOTTOM;
@@ -3564,7 +3542,6 @@ public class LocationBarMediator
 
     @Override
     public void onPauseWithNative() {
-        OmniboxFeatures.updateLastExitTimestamp();
         GeolocationHeader.stopListeningForLocationUpdates();
     }
 
@@ -3847,8 +3824,18 @@ public class LocationBarMediator
         return true;
     }
 
-    /* package */ void onActivationChipClicked() {
+    void onActivationChipClicked(boolean viaKeyboard) {
         if (mCurrentInput == null) return;
+
+        boolean userTextPresent =
+                !isUrlBarTextUnchanged()
+                        && (!TextUtils.isEmpty(mCurrentInput.getUserText())
+                                || !TextUtils.isEmpty(
+                                        mUrlCoordinator.getTextWithoutAutocomplete()));
+        boolean isGoogle =
+                mSearchEngineService == null || mSearchEngineService.isDefaultSearchEngineGoogle();
+        OmniboxMetrics.recordAimEntrypointActivatedUserTextPresent(isGoogle, userTextPresent);
+        OmniboxMetrics.recordAimEntrypointActivatedViaKeyboard(isGoogle, viaKeyboard);
 
         mCurrentInput.setRequestType(AutocompleteRequestType.AI_MODE);
         FuseboxMetrics.notifyAiModeActivated(AiModeActivationSource.DEDICATED_BUTTON);

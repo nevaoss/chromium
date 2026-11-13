@@ -4,6 +4,8 @@
 
 #include "components/omnibox/browser/suggest_template_info_mojo_utils.h"
 
+#include <optional>
+#include <string>
 #include <vector>
 
 #include "base/containers/to_vector.h"
@@ -23,6 +25,40 @@ std::vector<mojom::ACMatchClassificationPtr> CreateClassifications(
                           return mojom::ACMatchClassification::New(
                               classification.offset, classification.style);
                         });
+}
+
+// Returns the color for text with the classification `style`. If both URL and
+// DIM are set, URL wins. Other styles get kUnknown and keep the line's default
+// color.
+mojom::ColorType ACMatchClassificationToColorType(int style) {
+  if (style & ACMatchClassification::URL) {
+    return mojom::ColorType::kPrimary;
+  }
+  if (style & ACMatchClassification::DIM) {
+    return mojom::ColorType::kOnSurfaceDeemphasis;
+  }
+  return mojom::ColorType::kUnknown;
+}
+
+// Converts `text` and its `classifications` to a FormattedString. Each
+// classification becomes one fragment. The MATCH style is converted to
+// `is_bolded`, and the URL and DIM styles to colors.
+mojom::FormattedStringPtr CreateFormattedString(
+    const std::u16string& text,
+    const ACMatchClassifications& classifications) {
+  return mojom::FormattedString::New(
+      text,
+      base::ToVector(
+          classifications,
+          [](const ACMatchClassification& classification) {
+            const bool is_bolded =
+                (classification.style & ACMatchClassification::MATCH) != 0;
+            return mojom::FormattedStringFragment::New(
+                classification.offset,
+                ACMatchClassificationToColorType(classification.style),
+                is_bolded);
+          }),
+      /*a11y_text=*/std::nullopt);
 }
 
 // Returns where to place the secondary text of `match` relative to its primary
@@ -75,14 +111,24 @@ mojom::SuggestTemplateInfoPtr CreateSuggestTemplateInfo(
   // process and for other transformations that happen to the match during
   // the autocomplete lifecycle.
   const bool swap = match.swap_contents_and_description;
-  suggest_template->primary_text = swap ? match.description : match.contents;
-  suggest_template->primary_text_class = CreateClassifications(
-      swap ? match.description_class : match.contents_class);
-  suggest_template->secondary_text = swap ? match.contents : match.description;
-  suggest_template->secondary_text_class = CreateClassifications(
-      swap ? match.contents_class : match.description_class);
+  const ACMatchClassifications& primary_text_class =
+      swap ? match.description_class : match.contents_class;
+  const ACMatchClassifications& secondary_text_class =
+      swap ? match.contents_class : match.description_class;
+  suggest_template->primary_text = CreateFormattedString(
+      swap ? match.description : match.contents, primary_text_class);
+  suggest_template->primary_text_class =
+      CreateClassifications(primary_text_class);
+  suggest_template->secondary_text = CreateFormattedString(
+      swap ? match.contents : match.description, secondary_text_class);
+  suggest_template->secondary_text_class =
+      CreateClassifications(secondary_text_class);
   suggest_template->secondary_text_placement = GetSecondaryTextPlacement(match);
   suggest_template->image = GetImage(match);
+  if (match.suggest_template && match.suggest_template->has_style()) {
+    suggest_template->style =
+        static_cast<mojom::SuggestStyle>(match.suggest_template->style());
+  }
   return suggest_template;
 }
 

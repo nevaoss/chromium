@@ -220,7 +220,11 @@ extension ILType {
 ///
 extension ILType {
     fileprivate static let jsNetworkMojomSearchParamsVarianceUnion: ILType = .object(
-        ofGroup: "network.mojom.SearchParamsVariance")
+        ofGroup: "network.mojom.SearchParamsVariance",
+        withProperties: [
+            "noVaryParams",
+            "varyParams",
+        ])
     fileprivate static let jsNetworkMojomSearchParamsVarianceUnionNoVaryParamsConstructor: ILType = .constructor(
         [.plain(.jsStringMojoArray)] => .jsNetworkMojomSearchParamsVarianceUnion)
     fileprivate static let jsNetworkMojomSearchParamsVarianceUnionVaryParamsConstructor: ILType = .constructor(
@@ -231,7 +235,10 @@ extension ObjectGroup {
     fileprivate static let networkMojomSearchParamsVarianceUnion = ObjectGroup(
         name: "network.mojom.SearchParamsVariance",
         instanceType: .jsNetworkMojomSearchParamsVarianceUnion,
-        properties: [:],
+        properties: [
+            "noVaryParams": .jsStringMojoArray,
+            "varyParams": .jsStringMojoArray,
+        ],
         methods: [:]
     )
 }
@@ -332,6 +339,7 @@ let mojoSpeculationHostProfile = Profile(
     maxExecsBeforeRespawn: 50,
     timeout: Timeout.interval(11000, 11000),
     codePrefix: """
+        // --- Begin program prefix ---
         let globalRemote = null;
         function getOrCreatePrimaryRemote() {
             if (!globalRemote) {
@@ -339,8 +347,13 @@ let mojoSpeculationHostProfile = Profile(
             }
             return globalRemote;
         }
+        // --- End program prefix ---
         """,
-    codeSuffix: "if (globalRemote) {globalRemote.$.close()}",
+    codeSuffix: """
+        // --- Begin program suffix ---
+        if (globalRemote) {globalRemote.$.close()}
+        // --- End program suffix ---
+        """,
     ecmaVersion: v8Profile.ecmaVersion,
     startupTests: [
         ("fuzzilli('FUZZILLI_PRINT', 'test')", .shouldSucceed),

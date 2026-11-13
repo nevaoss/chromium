@@ -77,6 +77,10 @@ source_set("omnibox") {
     "//ui/views",
     "//ui/views/controls/webview",
   ]
+
+  if (is_chromeos) {
+    public_deps += [ "//ui/base/ime/ash" ]
+  }
 }
 
 source_set("impl") {
@@ -175,23 +179,8 @@ source_set("impl") {
     "//ui/strings:ui_strings_grit",
   ]
 
-  # These .cc files include headers still compiled in //chrome/browser/ui:ui:
-  # browser.h, view_ids.h, views/frame/browser_view.h,
-  # views/frame/contents_web_view.h and views/theme_copying_widget.h. Reach
-  # them via browser_public_dependencies; the reverse edge is the
-  # allow_circular_includes_from entry on //chrome/browser/ui:ui.
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
-
   if (is_mac) {
     deps += [ ":native_widget_mac" ]
-  }
-
-  if (is_chromeos) {
-    deps += [
-      "//ui/aura",
-      "//ui/wm",
-      "//ui/wm/public",
-    ]
   }
 }
 
@@ -293,6 +282,7 @@ source_set("browser_tests") {
 
   sources = [
     "omnibox_aim_popup_browsertest.cc",
+    "omnibox_full_popup_webui_content_browsertest.cc",
     "omnibox_popup_resource_budget_browsertest.cc",
     "omnibox_popup_view_browser_view_browsertest.cc",
     "omnibox_popup_view_views_browsertest.cc",
@@ -310,6 +300,7 @@ source_set("browser_tests") {
     "//chrome/browser/extensions:test_support",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/themes:test_support",
+    "//chrome/browser/ui:browser_actions",
     "//chrome/browser/ui:browser_commands",
     "//chrome/browser/ui:browser_tabstrip",
     "//chrome/browser/ui:browser_window_header",
@@ -340,9 +331,11 @@ source_set("browser_tests") {
     "//services/resource_coordinator/public/cpp/memory_instrumentation",
     "//testing/gmock",
     "//testing/gtest",
+    "//ui/compositor",
     "//ui/events:test_support",
     "//ui/shell_dialogs:test_support",
     "//ui/views",
+    "//url",
   ]
 
   if (use_ozone) {

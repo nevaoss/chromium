@@ -7,6 +7,10 @@ package org.chromium.android_webview;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Picture;
+import android.net.http.SslCertificate;
+import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -23,6 +27,7 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.content_public.browser.NavigationHistory;
 
 /**
  * Represents underlying Chromium web contents state that can survive moving across WebViews.
@@ -234,15 +239,152 @@ public class AwWebContent {
         return mAwContents;
     }
 
+    // The following methods trigger startup. It waits for Chromium to start before executing the
+    // action if startup has not yet completed.
+
     public void evaluateJavaScript(String script, @Nullable Callback<String> callback) {
-        ensureStartedAndGetAdoptedAwContents(StartupCallSite.WEBVIEW_INSTANCE_EVALUATE_JAVASCRIPT)
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_EVALUATE_JAVASCRIPT)
                 .evaluateJavaScript(script, callback);
     }
 
-    private AwContents ensureStartedAndGetAdoptedAwContents(@StartupCallSite int callSite) {
+    public boolean canGoBack() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_CAN_GO_BACK).canGoBack();
+    }
+
+    public boolean canGoForward() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_CAN_GO_FORWARD).canGoForward();
+    }
+
+    public boolean canGoBackOrForward(int steps) {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_CAN_GO_BACK_OR_FORWARD)
+                .canGoBackOrForward(steps);
+    }
+
+    public @Nullable NavigationHistory getNavigationHistory() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_COPY_BACK_FORWARD_LIST)
+                .getNavigationHistory();
+    }
+
+    public boolean saveState(Bundle outState) {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_SAVE_STATE).saveState(outState);
+    }
+
+    public boolean restoreState(Bundle inState) {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_RESTORE_STATE)
+                .restoreState(inState);
+    }
+
+    public @Nullable String getUrl() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_URL).getUrl();
+    }
+
+    public @Nullable String getOriginalUrl() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_ORIGINAL_URL).getOriginalUrl();
+    }
+
+    public @Nullable String getTitle() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_TITLE).getTitle();
+    }
+
+    public @Nullable Bitmap getFavicon() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_FAVICON).getFavicon();
+    }
+
+    public AwContents.HitTestData getLastHitTestResult() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_HIT_TEST_RESULT)
+                .getLastHitTestResult();
+    }
+
+    public @Nullable Picture capturePicture() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_CAPTURE_PICTURE).capturePicture();
+    }
+
+    public float getScale() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_GET_SCALE).getScale();
+    }
+
+    public boolean zoomIn() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_ZOOM_IN).zoomIn();
+    }
+
+    public boolean zoomOut() {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_ZOOM_OUT).zoomOut();
+    }
+
+    public void zoomBy(float delta) {
+        ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_ZOOM_BY).zoomBy(delta);
+    }
+
+    public boolean pageUp(boolean top) {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_PAGE_UP).pageUp(top);
+    }
+
+    public boolean pageDown(boolean bottom) {
+        return ensureAwContents(StartupCallSite.WEBVIEW_INSTANCE_PAGE_DOWN).pageDown(bottom);
+    }
+
+    // The following methods don't trigger startup. They queue the action to run once Chromium has
+    // started or run the action immediately if Chromium has already started.
+
+    public void goBack() {
+        runOrQueueUntilStarted(AwContents::goBack);
+    }
+
+    // The following methods don't trigger startup. They return a default value if the AwContents
+    // hasn't been created yet.
+
+    public @Nullable SslCertificate getCertificate() {
+        return mAwContents == null ? null : mAwContents.getCertificate();
+    }
+
+    public int getMostRecentProgress() {
+        return mAwContents == null ? 100 : mAwContents.getMostRecentProgress();
+    }
+
+    public int getContentHeightCss() {
+        return mAwContents == null ? 0 : mAwContents.getContentHeightCss();
+    }
+
+    public int getContentWidthCss() {
+        return mAwContents == null ? 0 : mAwContents.getContentWidthCss();
+    }
+
+    public boolean canZoomIn() {
+        return mAwContents != null && mAwContents.canZoomIn();
+    }
+
+    public boolean canZoomOut() {
+        return mAwContents != null && mAwContents.canZoomOut();
+    }
+
+    private AwContents ensureAwContents(@StartupCallSite int callSite) {
         StartupController.getInstance().triggerAndWaitForChromiumStarted(callSite);
         assert mAwContents != null;
         return mAwContents;
+    }
+
+    /**
+     * Runs {@code action} with the adopted {@link AwContents} synchronously if Chromium has
+     * started, or queues it to run asynchronously once startup completes. Unlike {@link
+     * #ensureAwContents}, this does not trigger startup.
+     *
+     * <p>Warning: This method may lead to unnecessary allocation and free of an object for the
+     * callable in the non-queue case - which may have non-zero performance penalty. Do not use this
+     * method for performance critical code, e.g. UI rendering.
+     */
+    private void runOrQueueUntilStarted(Callback<AwContents> action) {
+        StartupController startupController = StartupController.getInstance();
+        if (mAwContents != null) {
+            action.onResult(mAwContents);
+            return;
+        }
+        startupController
+                .getRunQueue()
+                .addTask(
+                        () -> {
+                            assert mAwContents != null;
+                            action.onResult(mAwContents);
+                        });
     }
 
     public void destroy() {

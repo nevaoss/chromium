@@ -7047,7 +7047,7 @@ const CSSValue* MarginTrim::ParseSingleValue(CSSParserTokenStream& stream,
   } else {
     // [ block-start || block-end ]
     while (!stream.AtEnd()) {
-      id = stream.ConsumeIncludingWhitespace().Id();
+      id = stream.Peek().Id();
       if (id == CSSValueID::kBlockStart) {
         if (!add_flags(kMarginTrimBlockStart)) {
           return nullptr;
@@ -7059,6 +7059,7 @@ const CSSValue* MarginTrim::ParseSingleValue(CSSParserTokenStream& stream,
       } else {
         return nullptr;
       }
+      stream.ConsumeIncludingWhitespace();
     }
   }
   DCHECK(margin_trim & kMarginTrimBlock);
@@ -7182,13 +7183,13 @@ const CSSValue* MaskType::CSSValueFromComputedStyleInternal(
   return CSSIdentifierValue::Create(style.MaskType());
 }
 
-const CSSValue* FlowTolerance::CSSValueFromComputedStyleInternal(
+const CSSValue* FitTolerance::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style,
     const LayoutObject*,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  return ComputedStyleUtils::ValueForFlowTolerance(style.GetFlowTolerance(),
-                                                   style);
+  return ComputedStyleUtils::ValueForFitTolerance(style.GetFitTolerance(),
+                                                  style);
 }
 
 const CSSValue* MathShift::CSSValueFromComputedStyleInternal(
