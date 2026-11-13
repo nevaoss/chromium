@@ -883,9 +883,6 @@ class BLINK_PLATFORM_EXPORT Platform {
     return false;
   }
 
-<<<<<<< HEAD
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
   // Returns true if windows with the given origin should allocate isolated
   // WindowAgents per BrowsingInstance rather than sharing a process-global
   // agent.
@@ -894,8 +891,7 @@ class BLINK_PLATFORM_EXPORT Platform {
     return false;
   }
 
-#if BUILDFLAG(IS_ANDROID)
->>>>>>> 158.0.8108.0~1
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
   // User Level Memory Pressure Signal Generator ------------------
   virtual void SetPrivateMemoryFootprint(
       uint64_t private_memory_footprint_bytes) {}
