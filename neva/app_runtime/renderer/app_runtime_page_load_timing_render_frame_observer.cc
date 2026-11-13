@@ -23,6 +23,7 @@
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/web/web_performance_metrics_for_reporting.h"
+#include "third_party/blink/public/web/web_performance_timings.h"
 
 namespace neva_app_runtime {
 namespace {
@@ -112,12 +113,12 @@ bool AppRuntimePageLoadTimingRenderFrameObserver::
     return false;
   }
 
-  const blink::WebPerformanceMetricsForReporting& perf =
-      render_frame()->GetWebFrame()->PerformanceMetricsForReporting();
+  const blink::WebPerformanceTimings& timings =
+      render_frame()->GetWebFrame()->PerformanceTimings();
 
-  if (perf.LoadEventEnd() > 0.0) {
+  if (timings.load_event_end > 0.0) {
     loading_end_ =
-        ClampDelta(perf.LoadEventEnd(), perf.NavigationStart());
+        ClampDelta(timings.load_event_end, timings.navigation_start);
     return true;
   }
   return false;
