@@ -38,8 +38,7 @@ struct wl_resource;
 
 namespace wl {
 
-class TestWebosExtensionServerThread : public TestOutput::Delegate,
-                                       public base::Thread,
+class TestWebosExtensionServerThread : public base::Thread,
                                        base::MessagePumpEpoll::FdWatcher {
  public:
   TestWebosExtensionServerThread();
@@ -66,18 +65,13 @@ class TestWebosExtensionServerThread : public TestOutput::Delegate,
   }
 
   TestOutput* CreateAndInitializeOutput(TestOutputMetrics metrics = {}) {
-    auto output = std::make_unique<TestOutput>(this, std::move(metrics));
+    auto output = std::make_unique<TestOutput>(std::move(metrics));
     output->Initialize(display());
 
     TestOutput* output_ptr = output.get();
     globals_.push_back(std::move(output));
     return output_ptr;
   }
-
-  // TestOutput::Delegate:
-  void OnTestOutputFlush(TestOutput* test_output,
-                         const TestOutputMetrics& metrics) override;
-  void OnTestOutputGlobalDestroy(TestOutput* test_output) override;
 
   // Called when the Flush() is called for a TestOutput associated with
   // `output_resource`.
