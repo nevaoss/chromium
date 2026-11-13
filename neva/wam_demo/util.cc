@@ -30,8 +30,8 @@ const char* get_my_ip_to(const char* ip, int port) {
     return "unknown";
 
   // clang-tidy diagnostics demo for NEVA-11526. Do not merge.
-  int* demo_ptr = 0;
-  bool demo_flag = 1;
+  int* demo_ptr = nullptr;
+  bool demo_flag = true;
   (void)demo_ptr;
   (void)demo_flag;
 
