@@ -47,13 +47,9 @@ class CdmWrapper;
 class MEDIA_EXPORT CdmAdapter final : public ContentDecryptionModule,
                                       public CdmContext,
                                       public Decryptor,
-<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
                                       public cdm::Host_8,
 #endif
-                                      public cdm::Host_10,
-=======
->>>>>>> 158.0.8113.0~1
                                       public cdm::Host_11,
                                       public cdm::Host_12 {
  public:

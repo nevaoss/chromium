@@ -38,21 +38,14 @@ struct SupportedVersion {
   bool enabled;
 };
 
-<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
-constexpr std::array<SupportedVersion, 3> kSupportedCdmInterfaceVersions = {{
+inline constexpr std::array<SupportedVersion, 3> kSupportedCdmInterfaceVersions = {{
     {8, true},
-    {10, true},
-    {11, false},
-}};
-#else
-constexpr std::array<SupportedVersion, 3> kSupportedCdmInterfaceVersions = {{
     {10, true},
     {11, true},
     {12, false},
 }};
-#endif
-=======
+#else
 inline constexpr std::array<SupportedVersion, 3>
     kSupportedCdmInterfaceVersions = {{
         // TODO(b/425796122): Remove CDM_10 once shipped CDM manifests also
@@ -61,28 +54,23 @@ inline constexpr std::array<SupportedVersion, 3>
         {11, true},
         {12, false},
     }};
->>>>>>> 158.0.8113.0~1
+#endif
 
 // In most cases CdmInterface::kVersion == CdmInterface::Host::kVersion. However
 // this is not guaranteed. For example, a newer CDM interface may use an
 // existing CDM host. So we keep CDM host support separate from CDM interface
 // support. In CdmInterfaceTraits we also static assert that for supported CDM
-<<<<<<< HEAD
-// interface, CdmInterface::Host::kVersion must also be supported.
-#if defined(USE_NEVA_CDM)
-constexpr int kMinSupportedCdmHostVersion = 8;
-#else
-constexpr int kMinSupportedCdmHostVersion = 10;
-#endif
-constexpr int kMaxSupportedCdmHostVersion = 12;
-=======
 // interface, CdmInterface::Host::kVersion must also be supported. The exception
 // is CDM_10, whose Host_10 is no longer supported; CDM_10 remains listed only
 // for manifest compatibility while shipped manifests list
 // x-cdm-interface-versions=10 alongside Host_11.
+#if defined(USE_NEVA_CDM)
+inline constexpr int kMinSupportedCdmHostVersion = 8;
+#else
 inline constexpr int kMinSupportedCdmHostVersion = 11;
+#endif
 inline constexpr int kMaxSupportedCdmHostVersion = 12;
->>>>>>> 158.0.8113.0~1
+
 
 constexpr bool IsSupportedCdmModuleVersion(int version) {
   return version == CDM_MODULE_VERSION;
