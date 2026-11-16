@@ -65,7 +65,7 @@ Reviewed-by: Lokesh Kumar Goel <lokeshkumar.goel@lge.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index 4f9e9103e86..054550d2308 100644
+index 99c7da376d6..3773ae8387e 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -17,6 +17,7 @@ import("//build/config/sanitizers/sanitizers.gni")
@@ -76,17 +76,17 @@ index 4f9e9103e86..054550d2308 100644
  
  import("gni/cluster_build.gni")
  import("gni/snapshot_toolchain.gni")
-@@ -8421,6 +8422,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
-       ":v8_tracing",
+@@ -8602,6 +8603,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
        "//build/win:default_exe_manifest",
      ]
-+
+ 
 +    if (use_lttng && current_toolchain == default_toolchain) {
 +      deps += [ "//base/trace_event/neva/lttng:chromium_lttng_provider", ]
 +    }
-   }
- 
-   # This config disables a link time optimization "ICF", which may merge
++
+     if (v8_use_checked_in_generated_headers) {
+       # mksnapshot runs during the build and does not go through :v8_base;
+       # see verify_checked_in_generated_headers.
 -- 
 2.34.1
 
