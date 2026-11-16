@@ -3460,7 +3460,7 @@ void RenderWidgetHostViewAura::InternalSetBounds(const gfx::Rect& rect) {
   // the rest of the application life time. Thus ignore possibly pending
   // synchronize visual properties ack and force new visual properties to be
   // pushed to renderer.
-  if (in_bounds_changed_ && !IsShowing())
+  if (is_setting_bounds_ && !IsShowing())
     SynchronizeVisualPropertiesIgnoringPendingAck(
         cc::DeadlinePolicy::UseDefaultDeadline(), window_->GetLocalSurfaceId());
   else
