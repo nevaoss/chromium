@@ -285,18 +285,8 @@ sk_sp<SkTypeface> FontCache::CreateTypeface(
       return CreateSkTypefaceFromFontConfigInterfaceIdAndTtcIndex(
           creation_params.FontconfigInterfaceId(), creation_params.TtcIndex());
     }
-<<<<<<< HEAD
-    return SkTypeface_Factory::FromFilenameAndTtcIndex(
-// NOTE(neva): Change to blink::String from std::string on
-// FontFaceCreationParams to avoid crash
-#if defined(__GNUC__) && !defined(__clang__)
-        creation_params.Filename().Utf8(), creation_params.TtcIndex());
-#else
-=======
     return CreateSkTypefaceFromFilenameAndTtcIndex(
->>>>>>> 158.0.8113.0~1
         creation_params.Filename().data(), creation_params.TtcIndex());
-#endif
   }
 #endif
 
